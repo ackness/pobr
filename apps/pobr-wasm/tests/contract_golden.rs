@@ -1,4 +1,4 @@
-//! Web JSON contract golden (TODO.md 0.6): pins the **JSON shape** (key
+//! Web JSON contract golden (docs/web-frontend-plan.md 0.6): pins the **JSON shape** (key
 //! set) of `decode_build_json` / `calculate_build_json` / `attribution_json`,
 //! matching `web/src/api/types.ts`'s hand-written TS types one-to-one.
 //!
@@ -20,7 +20,7 @@ fn demo_code() -> String {
 /// on its own thread, so each initializes independently).
 fn ensure_data() {
     if !pobr_wasm::is_data_ready() {
-        let dir = repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION);
+        let dir = pobr_gamedata::current_data_dir();
         pobr_wasm::init_data_from_dir(dir.to_str().unwrap()).expect("init data");
     }
 }
@@ -1354,10 +1354,8 @@ fn memory_backend_matches_dir_backend() {
             pobr_wasm::stage_data_file(&format!("{key_prefix}{rel}"), &content);
         }
     };
-    for version in [
-        pobr_data::GOLDEN_PARITY_DATA_VERSION.to_string(),
-        pobr_gamedata::data_version(),
-    ] {
+    {
+        let version = pobr_gamedata::data_version();
         let root = repo_data_root().join(&version);
         let nodes: Vec<pobr_data::catalog::PassiveNodeDef> = serde_json::from_str(
             &std::fs::read_to_string(root.join("base/passive_tree.json")).unwrap(),
@@ -1483,7 +1481,7 @@ fn memory_backend_matches_dir_backend() {
     }
 
     // Restore the directory backend, to avoid affecting later tests on the same thread.
-    let dir = repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION);
+    let dir = pobr_gamedata::current_data_dir();
     pobr_wasm::init_data_from_dir(dir.to_str().unwrap()).expect("restore dir backend");
 }
 
@@ -1677,6 +1675,57 @@ fn response_cache_hits_on_repeat_request() {
         pobr_wasm::state::response_cache_hits() > hits_before,
         "second call should hit the response cache"
     );
+}
+
+/// Switching the inspected skill reuses cached work: per-skill metrics ignore the
+/// selection entirely, and the panel calculation ignores other groups' ordinals
+/// while still separating results by the selected skill.
+#[test]
+fn response_cache_ignores_irrelevant_skill_selection() {
+    ensure_data();
+    let request = |main: usize, first_ordinal: usize| {
+        serde_json::json!({
+            "character": { "class_name": "Sorceress", "level": 71 },
+            "main_socket_group": main,
+            "socket_groups": [
+                { "main_active_skill": first_ordinal, "gems": [
+                    { "skill_id": "FireballPlayer", "level": 17 },
+                    { "skill_id": "SparkPlayer", "level": 17 }
+                ] },
+                { "gems": [{ "skill_id": "SparkPlayer", "level": 9 }] }
+            ]
+        })
+        .to_string()
+    };
+    let hits = pobr_wasm::state::response_cache_hits;
+
+    let metrics = pobr_wasm::skill_metrics_json(&request(0, 1)).expect("metrics");
+    let before = hits();
+    assert_eq!(
+        pobr_wasm::skill_metrics_json(&request(1, 2)).expect("metrics after switching"),
+        metrics
+    );
+    assert_eq!(hits(), before + 1, "selection must not recompute metrics");
+
+    let skill_id =
+        |json: &str| serde_json::from_str::<Value>(json).unwrap()["main_skill"]["skill_id"].clone();
+    let second_group = pobr_wasm::calculate_build_json(&request(1, 1)).expect("group 2");
+    let before = hits();
+    assert_eq!(
+        pobr_wasm::calculate_build_json(&request(1, 2)).expect("group 2, other ordinal"),
+        second_group
+    );
+    assert_eq!(hits(), before + 1, "another group's ordinal is irrelevant");
+
+    let fireball = pobr_wasm::calculate_build_json(&request(0, 1)).expect("fireball");
+    let spark = pobr_wasm::calculate_build_json(&request(0, 2)).expect("spark");
+    assert_eq!(
+        hits(),
+        before + 1,
+        "a different selected skill is a new result"
+    );
+    assert_eq!(skill_id(&fireball), "FireballPlayer");
+    assert_eq!(skill_id(&spark), "SparkPlayer");
 }
 
 /// A real single-set build: exactly one fully-exempt Default loadout, marked as currently selected.

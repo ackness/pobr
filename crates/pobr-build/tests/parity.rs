@@ -1,12 +1,10 @@
 //! PoB2 comparison / regression test aggregate binary.
 //!
 //! Two kinds of contract (see `devs/docs/architecture/16-data-versioning-and-iteration.md` §5):
-//!   A) **Version-pinned golden reference** — asserts "externally recorded exact
-//!      values" (PoB2 `player_stats` / oracle / self-snapshot); data loads via
-//!      `pobr_data::GOLDEN_PARITY_DATA_VERSION` (decoupled from the active
-//!      `DATA_VERSION`). It's a reference snapshot for one PoB2 version, not a
-//!      version-independent logic gate; moving to a new version requires
-//!      **re-recording the golden values**, not tweaking data/tests to fit.
+//!   A) **Recorded PoB2 reference** — asserts externally recorded exact values
+//!      (PoB2 `player_stats` / oracle / self-snapshot) against the active data
+//!      version. A data update **re-records the reference values** from the
+//!      matching PoB2 version; data and tests are not tweaked to fit.
 //!   B) **Version-independent logic / smoke** — only asserts relations, ranges,
 //!      determinism, and import correctness; no recorded values; runs against the
 //!      active `data_version()` (or every ingested version).
@@ -16,11 +14,11 @@
 //! Physical directories are no longer grouped by category — `#[path]` already
 //! decouples file location from the binary, and several files use file-relative
 //! `include_str!`, so moving them would be fragile. Use the grouping below plus
-//! each file's own loading convention (A pins GOLDEN_PARITY, B uses
-//! `data_version()` or loads no data) as the source of truth.
+//! each file's own loading convention (A and B both use `data_version()`,
+//! or load no data) as the source of truth.
 #![allow(clippy::all)]
 
-// A) Version-pinned golden reference (pins pobr_data::GOLDEN_PARITY_DATA_VERSION)
+// A) Recorded PoB2 reference (active data version)
 #[path = "parity/coc_trigger_golden.rs"]
 mod coc_trigger_golden;
 #[path = "parity/crossbow_reload_golden.rs"]

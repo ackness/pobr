@@ -156,10 +156,8 @@ Implicits: 0
 
 #[test]
 fn body_armour_granted_crit_reduction_requires_normal_chest() {
-    for version in [
-        pobr_gamedata::data_version(),
-        pobr_data::GOLDEN_PARITY_DATA_VERSION.to_owned(),
-    ] {
+    {
+        let version = pobr_gamedata::data_version();
         let data = BuildData::load(&GameData::new(repo_data_root().join(&version))).unwrap();
         for rarity in [
             None,

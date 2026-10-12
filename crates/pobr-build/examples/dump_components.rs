@@ -10,7 +10,7 @@
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::calc::MinimalInput;
 use pobr_data::monster::EnemyTier;
-use pobr_gamedata::{GameData, repo_data_root};
+use pobr_gamedata::GameData;
 use std::path::Path;
 
 fn main() {
@@ -20,17 +20,27 @@ fn main() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../examples/demo-bd-test/builds")
         .join(&name);
-    let data = GameData::new(repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION));
+    let data = GameData::new(pobr_gamedata::current_data_dir());
     let data = BuildData::load(&data).expect("load BuildData");
     let code = std::fs::read_to_string(dir.join("code.txt")).expect("code.txt");
-    let build = parse_build_from_code(code.trim()).expect("parse code");
+    let mut build = parse_build_from_code(code.trim()).expect("parse code");
+    // POBR_UNSET_CONFIG="var,var": drops config inputs before calculating.
+    if let Ok(vars) = std::env::var("POBR_UNSET_CONFIG") {
+        for var in vars.split(',') {
+            build.config.raw_inputs.values.remove(var);
+        }
+    }
     let opts = DataOrchestratorOptions {
         base_input: MinimalInput::default(),
         inject_character_base: true,
         enemy_level: 0,
         enemy_tier: EnemyTier::Pinnacle,
         mode_effective: true,
-        extra_modifier_texts: vec![],
+        // POBR_EXTRA_MODS="line;line": extra modifier lines, for A/B against an
+        // oracle run whose XML carries the same lines as customMods.
+        extra_modifier_texts: std::env::var("POBR_EXTRA_MODS")
+            .map(|v| v.split(';').map(str::to_string).collect())
+            .unwrap_or_default(),
         ..Default::default()
     };
     let out = calculate_with_data(&build, &data, &opts).expect("calc");
@@ -48,13 +58,14 @@ fn main() {
     // oracle mainOutput's <Type>TotalHitPool / LifeRecoverable / MaximumHitTaken family).
     if std::env::var("POBR_DUMP_DEFENCE").is_ok() {
         println!(
-            "  life={:.2} life_unres={:.2} life_recoverable={:.2} es={:.2} es_cap={:.2} ward={:.2} mana={:.2} mana_unres={:.2}",
+            "  life={:.2} life_unres={:.2} life_recoverable={:.2} es={:.2} es_cap={:.2} ward={:.2} ward_regen={:.1} mana={:.2} mana_unres={:.2}",
             out.life,
             out.life_unreserved,
             out.life_recoverable,
             out.energy_shield,
             out.energy_shield_recovery_cap,
             out.ward,
+            out.ward_regen,
             out.mana,
             out.mana_unreserved,
         );

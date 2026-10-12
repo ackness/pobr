@@ -15,12 +15,10 @@ use pobr_core::calc::minion::{
 };
 use pobr_gamedata::{GameData, repo_data_root};
 
-// Minion golden values (life/damage/DPS, from Minions.lua/Spectres.lua + the
-// PoB2 panel) are version-specific, so pin the data version they're checked
-// against (decoupled from the active DATA_VERSION; see
-// pobr_data::GOLDEN_PARITY_DATA_VERSION).
+// Minion reference values (life/damage/DPS, from Minions.lua/Spectres.lua + the
+// PoB2 panel) are checked against the active data version.
 fn version() -> String {
-    pobr_data::GOLDEN_PARITY_DATA_VERSION.to_string()
+    pobr_gamedata::data_version()
 }
 
 fn load_data() -> BuildData {

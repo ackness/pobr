@@ -12,8 +12,7 @@
 //! DPS ±40% (only catches order-of-magnitude drift, tolerating known offence
 //! pipeline gaps).
 //!
-//! Pins `GOLDEN_PARITY_DATA_VERSION` (see parity.rs group A's contract + doc
-//! 16 §5). Uses the same settings as the CLI `calculate-build` default
+//! Runs on the active data version (see parity.rs group A's contract). Uses the same settings as the CLI `calculate-build` default
 //! (mode_effective / Pinnacle / enemy_level=0). DoT/chaos calibration is
 //! covered by `skill_dot_golden` instead (the DoT pipeline's deviation is too
 //! large to fold into the canary).
@@ -21,7 +20,7 @@
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::calc::{MinimalInput, OutputTable};
 use pobr_data::monster::EnemyTier;
-use pobr_gamedata::{GameData, repo_data_root};
+use pobr_gamedata::GameData;
 use std::path::{Path, PathBuf};
 
 fn builds_dir() -> PathBuf {
@@ -32,8 +31,8 @@ fn builds_dir() -> PathBuf {
 }
 
 fn load_data() -> BuildData {
-    // Pins the data version being checked against the golden values (decoupled from the active DATA_VERSION); see pobr_data::GOLDEN_PARITY_DATA_VERSION.
-    let data = GameData::new(repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION));
+    // PoB2 reference values are recaptured for the active data version on every data update.
+    let data = GameData::new(pobr_gamedata::current_data_dir());
     BuildData::load(&data).expect("load BuildData")
 }
 

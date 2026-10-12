@@ -64,6 +64,9 @@ pub struct OutputTable {
     pub life_regen: f64,
     pub mana_regen: f64,
     pub energy_shield_regen: f64,
+    /// Runic Ward regenerated per second (PoB2 `WardRegen`, CalcDefence.lua:1712-1746,
+    /// rounded to one decimal).
+    pub ward_regen: f64,
     /// Defence chance family.
     pub block_chance: f64,
     pub spell_block_chance: f64,
@@ -408,6 +411,7 @@ impl Default for OutputTable {
             life_regen: 0.0,
             mana_regen: 0.0,
             energy_shield_regen: 0.0,
+            ward_regen: 0.0,
             block_chance: 0.0,
             spell_block_chance: 0.0,
             es_recharge_rate: 0.0,

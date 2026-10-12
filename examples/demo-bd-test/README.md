@@ -37,7 +37,7 @@ demo-bd-test/
 
 `stats.json` 与 `player_stats` 的区别：前者是 poe.ninja 站点展示的计算结果（含 EHP、各类型最大承伤、压制/闪避等防御口径和逐技能 DPS），后者是 PoB2 导出码内嵌的全量 PlayerStat。两者可互为校验。
 
-`panel-golden.json` 单独记录 `GOLDEN_PARITY_DATA_VERSION` 对应 PoB2 的
+`panel-golden.json` 单独记录活动数据版本对应 PoB2 的
 COMBAT 输出，用于 `mode_effective=false` 的五列进攻回归门禁。原有
 `meta.json::player_stats` 保持 EFFECTIVE 口径。两者不能混用：例如 Boss
 专属加成在 COMBAT 中不生效，错误启用它反而可能更接近 EFFECTIVE 数字。

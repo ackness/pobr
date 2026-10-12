@@ -1,0 +1,5 @@
+# Pinned so local runs and CI use the same compiler and Clippy lints.
+# Dependabot proposes updates; a toolchain change needs the full gate.
+[toolchain]
+channel = "1.99.0"
+components = ["rustfmt", "clippy"]

@@ -1,6 +1,6 @@
 //! The damage pool deduction state machine (13-G2/G5) -- corresponds to
 //! PoB2 `CalcDefence.lua:461-678 reducePoolsByDamage` (order: allies → aegis
-//! → guard → ward → ES(bypass) → MoM → loss-prevention → life → overkill)
+//! → guard → ES(bypass) → MoM → loss-prevention → life/ward → overkill)
 //! and `:3540-3601`'s max-hit TotalHitPool expansion layer.
 //!
 //! Module split:
@@ -151,10 +151,6 @@ pub struct PoolCtx {
     /// Chaos doesn't double-deduct ES (defaults to chaos's
     /// `esDamageTypeMultiplier = 2`, :582).
     pub chaos_not_double_es: bool,
-    /// WardNotBreak: ward doesn't break after absorbing (`:509` returns the
-    /// original value); in EHP, when damage is below ward, the lethal hit
-    /// count = ∞ (`:3030`, Track F).
-    pub ward_not_break: bool,
     /// Life loss prevention (%; `min(Σ LifeLossPrevented, 100)`, :2662).
     pub prevented_life_loss: f64,
     /// Below-half-life loss prevention (%; the raw Σ `LifeLossBelowHalfPrevented` BASE sum, :514/:2664).
@@ -174,8 +170,7 @@ impl PoolCtx {
 /// reducePoolsByDamage return, `poolsRemaining`, plus per-deduction detail).
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct PoolsAfter {
-    /// The pool snapshot after deduction (the `ward` field follows return
-    /// semantics: restored to its original value under `WardNotBreak`, else 0, :509/:666).
+    /// The pool snapshot after deduction (`ward` is what is left of Runic Ward, :691).
     pub pools: PoolState,
     /// Per-type recoupable damage (the allies before-you layer **does not
     /// count** toward this, CalcDefence.lua:529-530).
@@ -208,7 +203,7 @@ pub struct PoolsAfter {
 ///    its share first, doesn't count toward recoupable) → recoupable
 ///    bookkeeping (:531) → aegis (per-type :539 → sharedElemental, elemental
 ///    only, :545 → shared :551) → guard (per-type :557 and shared :563 each
-///    absorb by AbsorbRate% share) → ward (:569 `×(1−WardBypass/100)`);
+///    absorb by AbsorbRate% share);
 /// 2. **Reversed** (:578, Chaos first) per type: ES (chaos doubles unless
 ///    `ChaosNotDoubleESDamage`, :582; per-type bypass; `EternalLife`
 ///    :587-594 is mutually exclusive with the normal branch :594-601) → MoM
@@ -233,8 +228,8 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
     let mut life_loss_lost_over_time = pools.life_loss_lost_over_time;
     let mut life_below_half_loss_lost_over_time = pools.life_below_half_loss_lost_over_time;
 
-    // :509 ward return semantics: WardNotBreak keeps the original value, otherwise it's zeroed after the hit.
-    let restore_ward = if ctx.ward_not_break { ward } else { 0.0 };
+    // :525 Runic Ward only takes damage when nothing bypasses it.
+    let ward_applies = ctx.ward_bypass == 0.0;
 
     let mut recoupable_by_type = [0.0_f64; 5];
     let mut overkill = 0.0_f64;
@@ -255,7 +250,7 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
         }
     };
 
-    // First half: forward-order allies → aegis → guard → ward (:524-575)
+    // First half: forward-order allies → aegis → guard (:524-587)
     let mut remainder_before_es = [0.0_f64; 5];
     for dtype in POB2_DAMAGE_ORDER {
         let idx = dtype as usize;
@@ -309,13 +304,6 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
             guard_shared -= temp;
             rem -= temp;
             lose(&mut resources_lost, dtype, "shared_guard", temp);
-        }
-        // ward (:569-573): the `×(1−WardBypass/100)` portion is absorbed by ward.
-        if ward > 0.0 {
-            let temp = (rem * (1.0 - ctx.ward_bypass / 100.0)).min(ward);
-            ward -= temp;
-            rem -= temp;
-            lose(&mut resources_lost, dtype, "ward", temp);
         }
         remainder_before_es[idx] = rem;
     }
@@ -450,12 +438,24 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
                 lose(&mut resources_lost, dtype, "life_loss_prevented", temp);
             }
         }
-        // :651-655 life.
+        // :659-676 life down to 1, then Runic Ward, then the last point of life.
         if life > 0.0 {
-            let temp = rem.min(life);
+            let temp = rem.min(life - 1.0);
             life -= temp;
             rem -= temp;
             lose(&mut resources_lost, dtype, "life", temp);
+            if ward > 0.0 && ward_applies {
+                let temp = rem.min(ward);
+                ward -= temp;
+                rem -= temp;
+                lose(&mut resources_lost, dtype, "ward", temp);
+            }
+            if rem > 0.0 {
+                let temp = rem.min(life);
+                life -= temp;
+                rem -= temp;
+                lose(&mut resources_lost, dtype, "life", temp);
+            }
         }
         // :656-657 overkill.
         overkill += rem;
@@ -481,7 +481,8 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
             es_pool_remaining
         } else {
             0.0
-        })
+        }
+        + if ward_applies { ward } else { 0.0 })
     .floor();
 
     PoolsAfter {
@@ -494,7 +495,7 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
             guard_shared_rate: pools.guard_shared_rate,
             guard_by_type,
             guard_rate_by_type: pools.guard_rate_by_type,
-            ward: restore_ward,
+            ward,
             energy_shield,
             mana,
             life,
@@ -619,13 +620,8 @@ pub fn extend_total_hit_pool(
 ) -> f64 {
     let idx = dtype as usize;
     let mut pool = base_pool;
-    // ward (:3544-3553): nested via poolProtected when bypass>0, otherwise added flat.
-    if ctx.ward_bypass > 0.0 {
-        let bypass = ctx.ward_bypass / 100.0;
-        // :3547 protected = Ward/(1−bypass)×bypass = pool_protected(Ward, 1−bypass).
-        let protected = pool_protected(pools.ward, 1.0 - bypass);
-        pool = apply_protected_layer(pool, protected, bypass);
-    } else {
+    // ward (:3639-3642): added flat, and only when nothing bypasses it.
+    if ctx.ward_bypass == 0.0 {
         pool += pools.ward;
     }
     // aegis (:3555): added flat as max(per-type, shared, and for elemental

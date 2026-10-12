@@ -1,6 +1,6 @@
 # Documentation index
 
-Repository-wide rules are in [CLAUDE.md](../CLAUDE.md) and the short
+Repository-wide rules are in [maintainer-guide.md](maintainer-guide.md) and the short
 [AGENTS.md](../AGENTS.md); contribution requirements are in
 [CONTRIBUTING.md](../CONTRIBUTING.md). Mechanics research lives in
 `agent-docs/` and is input material, not final authority.
@@ -11,6 +11,7 @@ Keep these in step with the code. Update the relevant one when behavior changes.
 
 | Document | Covers |
 |----------|--------|
+| [maintainer-guide.md](maintainer-guide.md) | Build environment, validation scope, architecture, parity system and conventions |
 | [development-workflow.md](development-workflow.md) | Commands, caches, PR checks, CI, releases, handling external PRs |
 | [contributing-mods.md](contributing-mods.md) | Adding or fixing modifiers through the overlay data channel |
 | [web-contracts.md](web-contracts.md) | Upgrade guidance, build workspace, weapon sets and skill selection |
@@ -42,6 +43,7 @@ of each before relying on it.
 | [calcs-display-comparison.md](calcs-display-comparison.md) | Calcs panel source comparison with PoB2 (2026-09-25) |
 | [reference-sources-and-engine-review.md](reference-sources-and-engine-review.md) | Build-reference sources and PoB2 alignment review (2026-09-12) |
 | [frontend-usability-review.md](frontend-usability-review.md) | Frontend interaction and copy review |
+| [web-frontend-plan.md](web-frontend-plan.md) | Original Web frontend task list (completed; formerly the root `TODO.md`) |
 
 These files stay at their current paths because code comments and scripts
 reference them.

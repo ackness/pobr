@@ -9,14 +9,7 @@ use pobr_gamedata::{data_version, repo_data_root};
 use std::time::{Duration, Instant};
 
 fn data_dir() -> std::path::PathBuf {
-    let version = std::env::var("POBR_DATA_VERSION").unwrap_or_else(|_| {
-        if std::env::var_os("POBR_PERF_ACTIVE_DATA").is_some() {
-            data_version()
-        } else {
-            pobr_data::GOLDEN_PARITY_DATA_VERSION.to_string()
-        }
-    });
-    repo_data_root().join(version)
+    repo_data_root().join(data_version())
 }
 
 fn iterations() -> usize {

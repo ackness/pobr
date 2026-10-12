@@ -361,8 +361,7 @@ cargo run -p precompile-mods -- --data "data/$(cat data/CURRENT)" --report
 Use the active version from `data/CURRENT` for release artifacts and commit its
 regenerated `generated/parsed_mods.json` and `parse-coverage.json` when changed.
 The committed active coverage is golden-checked, so a stale product fails CI.
-Validate shared rules against the pinned calculation-golden version too, without
-rewriting historical artifacts to absorb unrelated parser changes. Production
+Older committed versions are not regenerated to absorb unrelated parser changes. Production
 `ParseCtx` uses the compiled rules; `parsed_mods.json` is currently an offline
 regression artifact, not a runtime cache loader. `ModCache` is an in-memory memo
 whose lifetime must stay within one immutable rule snapshot.

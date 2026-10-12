@@ -338,7 +338,7 @@ pub fn calculate_skill_metrics(
 /// use pobr_gamedata::GameData;
 /// use pobr_build::{BuildData, calculate_with_data, DataOrchestratorOptions};
 ///
-/// let data = GameData::new("data/4.5.0.3.4");
+/// let data = GameData::new("data/<version>");
 /// let build_data = BuildData::load(&data)?;            // Load once, reuse many times
 /// let opts = DataOrchestratorOptions { mode_effective: true, ..Default::default() };
 /// let out = calculate_with_data(&build, &build_data, &opts)?;
@@ -528,6 +528,9 @@ fn calculate_prepared_with_context(
     //      denominator for pinned MultiplierThreshold entries like "if you have at
     //      least 10 <color> Support Gems Socketed").
     inject_support_gem_counts(&mut session, build, data);
+    if let Some((_, group, skill_id)) = &ctx.main.main_skill {
+        inject_integrated_efficiency(&mut session, data, group, skill_id);
+    }
 
     session.bridge_player_conditions();
 

@@ -862,7 +862,7 @@ pub fn encode_code(xml: &str) -> Result<String, CliError> {
 pub struct CalculateBuildRequest {
     /// PoB Build Code (URL-safe Base64 + zlib).
     pub code: String,
-    /// The game data version directory (containing ingested JSON, e.g. `data/4.5.0.3.4`).
+    /// The game data version directory (containing ingested JSON, e.g. `data/<version>`).
     pub data_dir: PathBuf,
     /// Enemy level (`0` = follows the character level).
     pub enemy_level: u32,

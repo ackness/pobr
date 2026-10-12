@@ -93,3 +93,40 @@ fn red_support_gem_count_activates_threshold_line() {
         "the Life increase should come from a single 5% INC (diluted in the pool to ≤5%): ratio {ratio}"
     );
 }
+
+/// Gemling "Integrated Efficiency" scales with the supports connected to the
+/// calculated skill (CalcOffence.lua:835-873). Oracle on the gemling fixture with
+/// the three lines added as custom modifiers: TotalDPS 86211.36 → 89596.91
+/// (×1.03927, from the red supports; Speed and CritChance unchanged).
+#[test]
+fn integrated_efficiency_scales_with_connected_supports() {
+    let data = load_build_data();
+    let code = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
+            "../../examples/demo-bd-test/builds/mercenary-gemling-legionnaire-explosive-grenade/code.txt",
+        ),
+    )
+    .expect("fixture code");
+    let build = pobr_build::parse_build_from_code(code.trim()).expect("parse code");
+    let calc = |extra: &[&str]| {
+        let opts = DataOrchestratorOptions {
+            base_input: MinimalInput::default(),
+            enemy_level: 0,
+            enemy_tier: EnemyTier::Pinnacle,
+            mode_effective: true,
+            extra_modifier_texts: extra.iter().map(|line| line.to_string()).collect(),
+            ..Default::default()
+        };
+        calculate_with_data(&build, &data, &opts).expect("calc")
+    };
+    let base = calc(&[]);
+    let with = calc(&[
+        "Skills deal 20% increased Damage per Connected Red Support Gem",
+        "Skills have 6% increased Skill Speed per Connected Green Support Gem",
+        "Skills have 20% increased Critical Hit Chance per Connected Blue Support Gem",
+    ]);
+    let ratio = with.dps / base.dps;
+    assert!((ratio - 1.03927).abs() < 5e-4, "dps ratio = {ratio}");
+    assert_eq!(with.action_rate, base.action_rate);
+    assert_eq!(with.crit_chance, base.crit_chance);
+}

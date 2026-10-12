@@ -20,7 +20,7 @@ class WorkflowTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         scripts = ["devs/scripts/regen-check.sh", "devs/scripts/cache-report.py",
-                   ".claude/skills/run-pobr/driver.sh"]
+                   "devs/scripts/driver.sh", ".claude/skills/run-pobr/driver.sh"]
         if (REPO / ".agents/skills/run-pobr/driver.sh").is_file():
             scripts.append(".agents/skills/run-pobr/driver.sh")
         for rel in scripts:
@@ -160,7 +160,7 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
 
     def test_smoke_stops_on_first_failure(self):
         self.env["FAIL_TEST"] = "1"
-        result = self.run_script(".claude/skills/run-pobr/driver.sh", "smoke")
+        result = self.run_script("devs/scripts/driver.sh", "smoke")
         self.assertEqual(result.returncode, 19, result.stdout + result.stderr)
         calls = (self.root / "calls.jsonl").read_text().splitlines()
         self.assertEqual(len(calls), 1)
@@ -168,17 +168,17 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
 
     def test_targeted_arguments_are_forwarded_without_splitting(self):
         args = ["-p", "pobr-build", "--test", "codec", "build_code::", "--", "--exact"]
-        result = self.run_script(".claude/skills/run-pobr/driver.sh", "test", *args)
+        result = self.run_script("devs/scripts/driver.sh", "test", *args)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(json.loads((self.root / "calls.jsonl").read_text()), ["test", *args])
 
     def test_empty_target_does_not_run_workspace(self):
-        result = self.run_script(".claude/skills/run-pobr/driver.sh", "test")
+        result = self.run_script("devs/scripts/driver.sh", "test")
         self.assertEqual(result.returncode, 2)
         self.assertFalse((self.root / "calls.jsonl").exists())
 
     def test_short_commands_select_only_requested_suite_and_preserve_filter(self):
-        result = self.run_script(".claude/skills/run-pobr/driver.sh", "verify", "build", "skills", "a filter with spaces")
+        result = self.run_script("devs/scripts/driver.sh", "verify", "build", "skills", "a filter with spaces")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [
             ["test", "-p", "pobr-build", "--test", "skills", "a filter with spaces"],
@@ -188,19 +188,19 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
 
     def test_verify_does_not_lint_after_test_failure(self):
         self.env["FAIL_TEST"] = "1"
-        result = self.run_script(".claude/skills/run-pobr/driver.sh", "verify", "core", "lib")
+        result = self.run_script("devs/scripts/driver.sh", "verify", "core", "lib")
         self.assertEqual(result.returncode, 19, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [["test", "-p", "pobr-core", "--lib"]])
 
     def test_timings_compiles_only_the_selected_suite(self):
-        result = self.run_script(".claude/skills/run-pobr/driver.sh", "timings", "pobr-build", "parity")
+        result = self.run_script("devs/scripts/driver.sh", "timings", "pobr-build", "parity")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [
             ["test", "--no-run", "--timings", "-p", "pobr-build", "--test", "parity"],
         ])
 
     def test_build_defaults_to_application_only(self):
-        result = self.run_script(".claude/skills/run-pobr/driver.sh", "build")
+        result = self.run_script("devs/scripts/driver.sh", "build")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [["build", "-p", "pobr-cli"]])
 
@@ -210,7 +210,7 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         self.write(".cache/report.json", "local report")
         self.write("outside/secret", "must not be counted")
         (self.root / "target/debug/linked").symlink_to(self.root / "outside", target_is_directory=True)
-        result = self.run_script(".claude/skills/run-pobr/driver.sh", "cache")
+        result = self.run_script("devs/scripts/driver.sh", "cache")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("debug/incremental", result.stdout)
         self.assertRegex(result.stdout, r"\s2  target\n")
@@ -223,7 +223,7 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
     def test_cache_report_propagates_metadata_failure(self):
         # Substitute a failing metadata tool, keeping Cargo diagnostics visible.
         self.write("bin/cargo", "#!/bin/sh\necho 'metadata failure' >&2\nexit 17\n")
-        result = self.run_script(".claude/skills/run-pobr/driver.sh", "cache")
+        result = self.run_script("devs/scripts/driver.sh", "cache")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("metadata failure", result.stderr)
 
@@ -233,19 +233,19 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
                      ["verify", "core", "lib", "--workspace"], ["ci"],
                      ["ci", "feature/x", "--unknown"]]:
             with self.subTest(args=args):
-                result = self.run_script(".claude/skills/run-pobr/driver.sh", *args)
+                result = self.run_script("devs/scripts/driver.sh", *args)
                 self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
                 self.assertFalse((self.root / "calls.jsonl").exists())
 
     def test_ci_uses_explicit_remote_ref_and_propagates_failure(self):
         self.env["GH_EXIT"] = "31"
-        result = self.run_script(".claude/skills/run-pobr/driver.sh", "ci", "feature/ci-workflow")
+        result = self.run_script("devs/scripts/driver.sh", "ci", "feature/ci-workflow")
         self.assertEqual(result.returncode, 31, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [["gh", "workflow", "run", "ci.yml", "--ref", "feature/ci-workflow"]])
         self.assertNotIn("CI requested", result.stdout)
 
     def test_ci_requests_e2e_only_when_asked(self):
-        result = self.run_script(".claude/skills/run-pobr/driver.sh", "ci", "feature/ci-workflow", "--e2e")
+        result = self.run_script("devs/scripts/driver.sh", "ci", "feature/ci-workflow", "--e2e")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [["gh", "workflow", "run", "ci.yml", "--ref", "feature/ci-workflow",
                                          "-f", "e2e=true"]])
@@ -265,7 +265,7 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
 
     def test_lint_only_checks_requested_targets(self):
         args = ["-p", "pobr-build", "--lib", "--test", "skills"]
-        result = self.run_script(".claude/skills/run-pobr/driver.sh", "lint", *args)
+        result = self.run_script("devs/scripts/driver.sh", "lint", *args)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [
             ["fmt", "--all", "--check"], ["clippy", *args, "--", "-D", "warnings"],
@@ -273,7 +273,7 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
 
     def test_lint_stops_on_format_failure(self):
         self.env["FAIL_COMMAND"] = "fmt"
-        result = self.run_script(".claude/skills/run-pobr/driver.sh", "lint", "-p", "pobr-build")
+        result = self.run_script("devs/scripts/driver.sh", "lint", "-p", "pobr-build")
         self.assertEqual(result.returncode, 17, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [["fmt", "--all", "--check"]])
 
@@ -289,7 +289,7 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
 
     def test_full_uses_nextest_and_keeps_doctests(self):
         self.env["HAS_NEXTEST"] = "1"
-        result = self.run_script(".claude/skills/run-pobr/driver.sh", "full")
+        result = self.run_script("devs/scripts/driver.sh", "full")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [
             ["fmt", "--all", "--check"],
@@ -301,7 +301,7 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         ])
 
     def test_full_falls_back_only_when_nextest_is_unavailable(self):
-        result = self.run_script(".claude/skills/run-pobr/driver.sh", "full")
+        result = self.run_script("devs/scripts/driver.sh", "full")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.calls()[2:], [
             ["nextest", "--version"], ["test", "--workspace"], ["run", "-p", "lint-i18n"],
@@ -314,7 +314,7 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
                 (self.root / "calls.jsonl").unlink(missing_ok=True)
                 self.env["FAIL_COMMAND"] = command
                 self.env["HAS_NEXTEST"] = has_nextest
-                result = self.run_script(".claude/skills/run-pobr/driver.sh", "full")
+                result = self.run_script("devs/scripts/driver.sh", "full")
                 self.assertEqual(result.returncode, 17, result.stdout + result.stderr)
                 calls = self.calls()
                 self.assertEqual(calls[-1][0], command)
@@ -429,7 +429,7 @@ printf '[]\\n' > "$POBR_DATA_ROOT/1.2.4/base/skill_gems.json"
                 write("data/CURRENT", "1.2.3\n")
                 rust = 'pub const DATA_VERSION: &str = include_str!("../../../data/CURRENT").trim_ascii();\n'
                 write("crates/pobr-data/src/lib.rs", rust)
-                write(".claude/skills/run-pobr/driver.sh", f"#!/usr/bin/env bash\nexit {17 if failure == 'versions' else 0}\n")
+                write("devs/scripts/driver.sh", f"#!/usr/bin/env bash\nexit {17 if failure == 'versions' else 0}\n")
                 write("bin/cargo", f'''#!/usr/bin/env python3
 import sys
 args = sys.argv[1:]
@@ -464,7 +464,7 @@ class VendorRepositoryIsolationTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.real_git = shutil.which("git")
         assert self.real_git is not None
-        for rel in [".claude/skills/run-pobr/driver.sh", "pipeline/bump-version.sh"]:
+        for rel in ["devs/scripts/driver.sh", "pipeline/bump-version.sh"]:
             self.write(rel, (REPO / rel).read_text(encoding="utf-8"))
         self.write("data/CURRENT", "1.2.3\n")
         self.sha = "a" * 40
@@ -516,7 +516,7 @@ pathlib.Path(sys.argv[sys.argv.index("-o") + 1]).write_text("{}", encoding="utf-
                                                  cwd=self.root, text=True).strip(), "https://example.invalid/parent.git")
 
     def test_driver_vendor_initializes_own_repo_and_propagates_fetch_failure(self):
-        result = subprocess.run(["bash", ".claude/skills/run-pobr/driver.sh", "vendor"], cwd=self.root,
+        result = subprocess.run(["bash", "devs/scripts/driver.sh", "vendor"], cwd=self.root,
                                 env=self.env, capture_output=True, text=True, timeout=10)
         self.assert_failed_fetch_is_isolated(result)
         self.assertNotIn("OK:", result.stdout)
@@ -539,7 +539,7 @@ pathlib.Path(sys.argv[sys.argv.index("-o") + 1]).write_text("{}", encoding="utf-
                         "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "vendor"],
                        cwd=vendor, check=True)
         (vendor / "keep.txt").write_text("user edit\n", encoding="utf-8")
-        result = subprocess.run(["bash", ".claude/skills/run-pobr/driver.sh", "vendor"], cwd=self.root,
+        result = subprocess.run(["bash", "devs/scripts/driver.sh", "vendor"], cwd=self.root,
                                 env=self.env, capture_output=True, text=True, timeout=10)
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual((vendor / "keep.txt").read_text(encoding="utf-8"), "user edit\n")

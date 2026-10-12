@@ -15,7 +15,7 @@
 //!
 //! Usage:
 //! ```text
-//! cargo run -p precompile-mods -- --data data/4.5.0.3.4 [--corpus-extra <file>] [--report]
+//! cargo run -p precompile-mods -- --data data/<version> [--corpus-extra <file>] [--report]
 //! ```
 
 use std::path::PathBuf;
@@ -25,7 +25,7 @@ use precompile_mods::{audit, check, corpus, parsed, report};
 
 /// Parsed command-line arguments.
 struct Args {
-    /// Version data directory (e.g. `data/4.5.0.3.4`).
+    /// Version data directory (e.g. `data/<version>`).
     data_dir: PathBuf,
     /// Optional add-on corpus file (one mod text per line; `#`-prefixed and blank lines ignored).
     corpus_extra: Option<PathBuf>,
@@ -121,7 +121,7 @@ fn usage() {
          precompile-mods --data <version_dir> [--corpus-extra <file>] [--report] [--top-n N]\n\
          \n\
          arguments:\n  \
-         --data <dir>          version data directory (e.g. data/4.5.0.3.4), required\n  \
+         --data <dir>          version data directory (e.g. data/<version>), required\n  \
          --corpus-extra <file> add-on corpus file (one mod text per line)\n  \
          --report               print the coverage report + write generated/parse-coverage.json\n  \
          --check                only validate overlay JSON (deserialize + unknown fields + compile),\n                        \

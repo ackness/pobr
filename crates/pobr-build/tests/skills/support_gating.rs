@@ -13,7 +13,7 @@
 //!    Fireball; exclude `[InbuiltTrigger]` doesn't match) has its `damage_+%`
 //!    boost hit as normal (the INC channel isn't collateral damage).
 //!
-//! Uses real ingested data from `data/4.5.0.3.4/` (granted_effects.json's
+//! Uses real ingested data from `data/<version>/` (granted_effects.json's
 //! require/exclude token stream is parsed from the GrantedEffects .dat type
 //! columns).
 

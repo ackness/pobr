@@ -17,7 +17,7 @@ use pobr_core::calc::env::Env;
 use pobr_core::calc::perform::perform;
 use pobr_core::calc::setup_env::setup_enemy;
 use pobr_core::calc::{
-    EhpLoopParams, MaxHitInputs, MitigationCtx, PoolCtx, PoolState, TypedDamage,
+    EhpLoopParams, GainWhenHit, MaxHitInputs, MitigationCtx, PoolCtx, PoolState, TypedDamage,
     enemy_damage_placeholder, max_hit_pob2, not_hit_suite, number_of_hits_to_die, reduce_pools,
     taken_hit_per_type,
 };
@@ -60,6 +60,40 @@ fn naive_hits_to_die(damage_in: &TypedDamage, pools_full: &PoolState, ctx: &Pool
         hits -= last_overkill / per_hit;
     }
     hits
+}
+
+/// Recovery on block (vendor CalcDefence.lua:2144-2164 `GainWhenHit`): every survived
+/// hit restores `LifeWhenHit`, capped at the full pool. Numbers from the PoB2 oracle
+/// on the smith fixture with "Recover 500 Life when you Block" at 20.25% average
+/// block: 3090 life, 132.68 per mitigated hit, 101.25 recovered per hit.
+/// Hand calc: hit 1 leaves 3058.57 (the cap never binds afterwards), each later
+/// hit nets −31.43, hit 95 leaves 104.15, hit 96 kills with 28.53 overkill:
+/// 96 − 28.53 / 132.68 = 95.785 (oracle NumberOfMitigatedDamagingHits 95.787).
+#[test]
+fn hits_to_die_recovers_on_block_between_hits() {
+    let pools = PoolState {
+        life: 3090.0,
+        ..Default::default()
+    };
+    let ctx = PoolCtx {
+        max_life: 3090.0,
+        ..Default::default()
+    };
+    let hit = TypedDamage {
+        physical: 132.68,
+        ..Default::default()
+    };
+    let params = EhpLoopParams {
+        gain: GainWhenHit {
+            life: 101.25,
+            ..Default::default()
+        },
+        ..EhpLoopParams::from_constants(&RuntimeConstants::default(), true)
+    };
+
+    let hits = number_of_hits_to_die(&hit, &pools, &ctx, &params);
+
+    assert!((hits - 95.785).abs() < 0.01, "hits = {hits}");
 }
 
 // Enemy incoming damage placeholder (ConfigOptions.lua:1982-1996)
@@ -138,10 +172,11 @@ fn hits_to_die_overkill_fractional_fold() {
     assert!((hits - (4.0 - 200.0 / 300.0)).abs() < 1e-9, "hits = {hits}");
 }
 
-/// Zero incoming damage → ∞ (:2984-2988); WardNotBreak with per-hit total damage below
-/// Ward → ∞ (:2990).
+/// Zero incoming damage → ∞ (:2060-2064). Runic Ward is a finite pool spent
+/// after life reaches 1 (:659-676), so a hit smaller than the ward is still lethal
+/// eventually: 1000 life + 500 ward at 300 per hit dies on the fifth hit.
 #[test]
-fn hits_to_die_infinite_branches() {
+fn hits_to_die_zero_damage_and_ward_pool() {
     // Arrange
     let pools = PoolState {
         life: 1000.0,
@@ -150,19 +185,19 @@ fn hits_to_die_infinite_branches() {
     };
     let ctx = PoolCtx {
         max_life: 1000.0,
-        ward_not_break: true,
         ..Default::default()
     };
 
     // Act / Assert: zero incoming damage.
     let zero = TypedDamage::default();
     assert!(number_of_hits_to_die(&zero, &pools, &ctx, &default_params()).is_infinite());
-    // Act / Assert: permanent ward fully absorbs (300 < 500).
+    // Act / Assert: ward extends the pool to 1500, 300 per hit → exactly 5 hits.
     let small = TypedDamage {
         fire: 300.0,
         ..Default::default()
     };
-    assert!(number_of_hits_to_die(&small, &pools, &ctx, &default_params()).is_infinite());
+    let hits = number_of_hits_to_die(&small, &pools, &ctx, &default_params());
+    assert!((hits - 5.0).abs() < 1e-9, "hits = {hits}");
 }
 
 /// Accelerated path vs. naive per-hit path equivalence (Track F test plan; acceleration

@@ -196,9 +196,44 @@ struct CalculateBuildResponse {
 ///
 /// Requires game data to be initialized first (the `init` family of entry points).
 pub fn calculate_build_json(request_json: &str) -> Result<String, String> {
-    state::cached_response("calculate_build", request_json, || {
+    let key = selection_cache_key(request_json, true);
+    state::cached_response_keyed("calculate_build", key, || {
         calculate_build_impl(request_json).map_err(super::ApiError::into_json)
     })
+}
+
+/// A cache key that ignores skill-selection fields the calculation never reads,
+/// so switching the inspected skill reuses earlier results.
+///
+/// Only the main group's `main_active_skill` selects an effect
+/// (`resolve::selected_group_effect`); other groups' ordinals are dropped. With
+/// `keep_main == false` (per-skill metrics, which evaluate every effect) the
+/// main group itself is dropped too. A request without an explicit main group
+/// keeps every ordinal: the fallback group is not known here.
+fn selection_cache_key(request_json: &str, keep_main: bool) -> String {
+    let Ok(serde_json::Value::Object(mut request)) = serde_json::from_str(request_json) else {
+        return request_json.to_string();
+    };
+    let main = request
+        .get("main_socket_group")
+        .and_then(serde_json::Value::as_u64);
+    if keep_main && main.is_none() {
+        return request_json.to_string();
+    }
+    if !keep_main {
+        request.remove("main_socket_group");
+    }
+    if let Some(serde_json::Value::Array(groups)) = request.get_mut("socket_groups") {
+        for (index, group) in groups.iter_mut().enumerate() {
+            if keep_main && main == Some(index as u64) {
+                continue;
+            }
+            if let serde_json::Value::Object(group) = group {
+                group.remove("main_active_skill");
+            }
+        }
+    }
+    serde_json::Value::Object(request).to_string()
 }
 
 fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
@@ -256,7 +291,8 @@ struct SkillMetricsResponse {
 /// Evaluate each active effect in its full build context, without requiring a primary
 /// skill or summing mutually exclusive skills into a purported combat DPS total.
 pub fn skill_metrics_json(request_json: &str) -> Result<String, String> {
-    state::cached_response("skill_metrics", request_json, || {
+    let key = selection_cache_key(request_json, false);
+    state::cached_response_keyed("skill_metrics", key, || {
         skill_metrics_impl(request_json).map_err(super::ApiError::into_json)
     })
 }

@@ -162,9 +162,29 @@ fn split_lines(stats: &[String]) -> Vec<String> {
     stats
         .iter()
         .flat_map(|s| s.lines())
-        .map(|l| l.trim().to_string())
+        .map(|l| strip_colour_bullet(l.trim()).to_string())
         .filter(|l| !l.is_empty())
         .collect()
+}
+
+/// Drops the list bullet of a colour-labelled entry ("•Red: ..." → "Red: ..."),
+/// the form PoB2 matches (ModParser.lua:3398-3406, Gemling "Gem Studded"). Such an
+/// entry is a complete modifier. Other bulleted entries depend on their heading
+/// (e.g. "Storm and Plant Spells:" / "• deal 50% more damage") and keep the bullet
+/// so they are not parsed as unconditional modifiers.
+fn strip_colour_bullet(line: &str) -> &str {
+    let Some(rest) = line.strip_prefix('•') else {
+        return line;
+    };
+    let rest = rest.trim_start();
+    if ["Red:", "Green:", "Blue:"]
+        .iter()
+        .any(|label| rest.starts_with(label))
+    {
+        rest
+    } else {
+        line
+    }
 }
 
 /// Rewrites an attribute-choice line `+N to any [Attributes|Attribute]` to

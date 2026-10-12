@@ -37,9 +37,7 @@ static WRITE_LOCK: Mutex<()> = Mutex::new(());
 /// `<version_dir>/generated/test_pins.json`.
 ///
 /// `version_dir` = the version directory the test actually loaded its data
-/// from (a golden test passes the directory for
-/// `GOLDEN_PARITY_DATA_VERSION`, an active-version test passes the
-/// directory from `data_version()`) — a pin lives alongside its data, so
+/// from, normally `current_data_dir()` — a pin lives alongside its data, so
 /// regenning one version only refreshes that version's snapshot.
 ///
 /// Normal mode: a missing pin or a value mismatch → panics, with the error

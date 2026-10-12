@@ -253,33 +253,39 @@ fn guard_absorb_rate_and_limit() {
     assert!((after.pools.life - 4040.0).abs() < EPS);
 }
 
-/// Ward + bypass (:569-573) and WardNotBreak restoration (:509/:666).
-/// Hand calc: ward 500, bypass 40% -> absorbs min(1000x0.6, 500)=500, rem 500;
-/// ward breaks to zero after the hit; with WardNotBreak it's restored to 500.
+/// Runic Ward is spent after life reaches 1 and keeps what is left (:659-676, :691);
+/// any WardBypass turns it off entirely (:525).
+/// Hand calc: life 2000, ward 500. A 1000 hit only costs life. A 2300 hit takes
+/// life to 1 (1999), ward absorbs the other 301 and 199 ward remains. With
+/// bypass the same hit kills: life 0, overkill 300, ward untouched.
 #[test]
-fn ward_bypass_and_not_break_restore() {
+fn ward_is_spent_after_life_and_disabled_by_bypass() {
     // Arrange
     let pools = PoolState {
         life: 2000.0,
         ward: 500.0,
         ..Default::default()
     };
-    let mut ctx = ctx_with_life(2000.0);
-    ctx.ward_bypass = 40.0;
+    let ctx = ctx_with_life(2000.0);
 
-    // Act: default (ward breaks).
-    let after = reduce_pools(&pools, &phys(1000.0), &ctx);
-    // Act: WardNotBreak restores it.
-    let mut ctx_nb = ctx.clone();
-    ctx_nb.ward_not_break = true;
-    let after_nb = reduce_pools(&pools, &phys(1000.0), &ctx_nb);
+    // Act
+    let small = reduce_pools(&pools, &phys(1000.0), &ctx);
+    let large = reduce_pools(&pools, &phys(2300.0), &ctx);
+    let mut ctx_bypass = ctx.clone();
+    ctx_bypass.ward_bypass = 40.0;
+    let bypassed = reduce_pools(&pools, &phys(2300.0), &ctx_bypass);
 
     // Assert
-    assert!((lost(&after, DamageType::Physical, "ward") - 500.0).abs() < EPS);
-    assert!((after.pools.life - 1500.0).abs() < EPS);
-    assert_eq!(after.pools.ward, 0.0);
-    assert_eq!(after_nb.pools.ward, 500.0);
-    assert!((after_nb.pools.life - 1500.0).abs() < EPS);
+    assert!((small.pools.life - 1000.0).abs() < EPS);
+    assert_eq!(small.pools.ward, 500.0);
+    assert_eq!(small.hit_pool_remaining, 1500.0);
+    assert!((lost(&large, DamageType::Physical, "ward") - 301.0).abs() < EPS);
+    assert!((large.pools.life - 1.0).abs() < EPS);
+    assert!((large.pools.ward - 199.0).abs() < EPS);
+    assert!(large.overkill.abs() < EPS);
+    assert!(bypassed.pools.life.abs() < EPS);
+    assert_eq!(bypassed.pools.ward, 500.0);
+    assert!((bypassed.overkill - 300.0).abs() < EPS);
 }
 
 /// EternalLife + bypass (:587-594): the bypass portion is fully waived instead of
@@ -469,29 +475,22 @@ fn loss_prevention_both_segments_with_overkill_clamp() {
 
 // max-hit TotalHitPool layers (:2942-2960 base + :3540-3596 extension)
 
-/// Pool extension for ward bypass (:3544-3553). Hand calc: base 1000, ward 600,
-/// bypass 40%: protected = 600/0.6x0.4 = 400; pool = max(1000-400,0) + min(1000,400)/0.4 =
-/// 600 + 1000 = 1600; with bypass=0, flat addition gives 1000+600 = 1600 (coincidentally
-/// the same value — disambiguated below with ward 200: the bypass path gives
-/// protected = 133.33 -> 866.67+333.33 = 1200 vs. flat 1200 — so instead use a shape
-/// where the pool is smaller than protected: base 300, ward 600, bypass 40% ->
-/// protected 400 -> 0 + 300/0.4 = 750).
+/// Ward extends the max-hit pool only when nothing bypasses it (:3639-3642).
 #[test]
-fn extend_pool_ward_bypass_vs_flat() {
+fn extend_pool_ward_flat_or_ignored() {
     // Arrange
     let pools = PoolState {
         ward: 600.0,
         ..Default::default()
     };
-    let ctx = PoolCtx {
+    let bypass = PoolCtx {
         ward_bypass: 40.0,
         ..Default::default()
     };
 
-    // Act / Assert: bypass nesting (pool < protected segment: the whole segment scales by 1/bypass).
-    let extended = extend_total_hit_pool(300.0, DamageType::Physical, &pools, &ctx);
-    assert!((extended - 750.0).abs() < EPS);
-    // bypass = 0 -> flat addition (:3552).
+    // Act / Assert
+    let ignored = extend_total_hit_pool(300.0, DamageType::Physical, &pools, &bypass);
+    assert!((ignored - 300.0).abs() < EPS);
     let flat = extend_total_hit_pool(300.0, DamageType::Physical, &pools, &PoolCtx::default());
     assert!((flat - 900.0).abs() < EPS);
 }
@@ -581,7 +580,7 @@ fn oracle_stormweaver_mom_pool_chain() {
         assert!((mom.hit_pool_by_type[idx] - 3948.0).abs() < EPS);
     }
 
-    // Act: TotalHitPool base (:2942-2960) + ward extension (:3540-3553).
+    // Act: TotalHitPool base + ward extension (:3639-3642).
     let pools = PoolState {
         life: 1581.0,
         mana: 2367.0,
@@ -603,7 +602,7 @@ fn oracle_stormweaver_mom_pool_chain() {
     // Act: a physical hit exactly equal to TotalHitPool should drain every pool to exactly zero.
     let after = reduce_pools(&pools, &phys(5825.0), &ctx);
 
-    // Assert: ward 890 -> ES 987 -> mana 2367 (MoM 100) -> life 1581, zero overkill.
+    // Assert: ES 987 -> mana 2367 (MoM 100) -> life 1581 with ward 890 before its last point, zero overkill.
     assert!((lost(&after, DamageType::Physical, "ward") - 890.0).abs() < EPS);
     assert!((lost(&after, DamageType::Physical, "energy_shield") - 987.0).abs() < EPS);
     assert!((lost(&after, DamageType::Physical, "mana") - 2367.0).abs() < EPS);

@@ -44,7 +44,7 @@
 //! (same convention as `golden_regression.rs`).
 
 use pobr_build::{Build, BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
-use pobr_gamedata::{GameData, repo_data_root};
+use pobr_gamedata::GameData;
 
 /// CoC build fixture: Weapon 1 = Wooden Club (the source attack's weapon
 /// base), no passives; group = [Armour Breaker (attack source), Cast on
@@ -95,8 +95,8 @@ fn assert_near_float(label: &str, expected: f64, actual: f64) {
 }
 
 fn load_build_data() -> BuildData {
-    // Pins the data version being checked against the golden values (decoupled from the active DATA_VERSION); see pobr_data::GOLDEN_PARITY_DATA_VERSION.
-    let data = GameData::new(repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION));
+    // PoB2 reference values are recaptured for the active data version on every data update.
+    let data = GameData::new(pobr_gamedata::current_data_dir());
     BuildData::load(&data).expect("load BuildData from repo data")
 }
 

@@ -1060,8 +1060,13 @@ fn main_skill_quality_modifiers_truncate_and_attribute_gem_quality() {
     );
     // q19: trunc(0.55 × 19) = trunc(10.45) = 10 (math.modf semantics, not round).
     let group = SocketGroup::new().with_gem_skill_quality("FireballPlayer", 20, 19);
-    let mods =
-        main_skill_quality_modifiers(&mut test_context(&data), &group, &data, "FireballPlayer");
+    let mods = main_skill_quality_modifiers(
+        &mut test_context(&data),
+        &group,
+        &data,
+        "FireballPlayer",
+        false,
+    );
     assert_eq!(mods.len(), 1, "damage_+% should map to a single Damage INC");
     let m = &mods[0];
     assert_eq!(m.name.as_str(), "Damage");
@@ -1078,8 +1083,14 @@ fn main_skill_quality_modifiers_truncate_and_attribute_gem_quality() {
     // Quality 0: no quality modifier produced.
     let group0 = SocketGroup::new().with_gem_skill("FireballPlayer", 20);
     assert!(
-        main_skill_quality_modifiers(&mut test_context(&data), &group0, &data, "FireballPlayer")
-            .is_empty()
+        main_skill_quality_modifiers(
+            &mut test_context(&data),
+            &group0,
+            &data,
+            "FireballPlayer",
+            false
+        )
+        .is_empty()
     );
 }
 
@@ -1099,8 +1110,13 @@ fn additional_effect_preserves_selected_gem_quality_and_level_provenance() {
         .with_gem_skill_quality("ViciousHexSupportPlayer", 1, 3)
         .with_gem_skill_quality("ViciousHexSupportPlayer", 2, 19)
         .with_main_active_skill(2);
-    let mods =
-        main_skill_quality_modifiers(&mut test_context(&data), &group, &data, "DoomBlastPlayer");
+    let mods = main_skill_quality_modifiers(
+        &mut test_context(&data),
+        &group,
+        &data,
+        "DoomBlastPlayer",
+        false,
+    );
     assert_eq!(mods.len(), 1);
     assert_eq!(mods[0].value.as_number(), Some(10.0));
     let mut build = Build::new()
@@ -1414,6 +1430,80 @@ fn exposure_support_modifiers_detects_support_granted_inflict() {
         exposure_support_modifiers(&mut test_context(&data), &plain, &data, None).is_empty(),
         "host with no exposure source: the Potent effect mod does not leak globally"
     );
+}
+
+/// A compatible support's granted quality (Dialla's Desire's
+/// `supported_active_skill_gem_quality_%` 5, vendor SkillStatMap.lua:3097) is added
+/// to the active skill it supports, not to the support itself.
+#[test]
+fn support_granted_quality_applies_to_supported_active_skill() {
+    let data = repo_data();
+    let build = Build::new().add_socket_group(
+        SocketGroup::new()
+            .with_gem_skill("TrinityPlayer", 19)
+            .with_gem_skill("SupportDiallasDesirePlayer", 1),
+    );
+
+    let adjusted = super::skill::resolve::apply_gem_quality_bonuses(&build, &data)
+        .expect("the support grants quality");
+    let quality: Vec<u32> = adjusted.socket_groups[0]
+        .gem_skills
+        .iter()
+        .map(|gem| gem.quality)
+        .collect();
+    assert_eq!(quality, [5, 0]);
+
+    let alone =
+        Build::new().add_socket_group(SocketGroup::new().with_gem_skill("TrinityPlayer", 19));
+    assert!(super::skill::resolve::apply_gem_quality_bonuses(&alone, &data).is_none());
+}
+
+/// The main skill's quality segment also carries alt quality stats on a Gemling
+/// build (vendor CalcTools.lua:169-174): Flash Grenade's
+/// `active_skill_base_all_damage_%_to_gain_as_lightning` 0.5 per quality.
+#[test]
+fn main_skill_quality_includes_alt_quality_stats() {
+    let data = repo_data();
+    let group = SocketGroup::new().with_gem_skill_quality("FlashGrenadePlayer", 19, 20);
+    let gain = |use_alt_quality: bool| -> Vec<f64> {
+        main_skill_quality_modifiers(
+            &mut test_context(&data),
+            &group,
+            &data,
+            "FlashGrenadePlayer",
+            use_alt_quality,
+        )
+        .iter()
+        .filter(|m| m.name.as_str().ends_with("DamageGainAsLightning"))
+        .filter_map(|m| m.value.as_number())
+        .collect()
+    };
+    assert!(gain(false).is_empty());
+    assert_eq!(gain(true), [10.0]);
+}
+
+/// On a Gemling build ("Gem Quality grants Socketed Skills an additional effect",
+/// vendor CalcTools.lua:169-174) a buff skill's alt quality stats apply too:
+/// Trinity's 1 per quality `PhysicalDamageConvertToRandom`.
+#[test]
+fn buff_skill_specs_apply_alt_quality_stats() {
+    let data = repo_data();
+    let mut group = SocketGroup::new().with_gem_skill("TrinityPlayer", 19);
+    group.gem_skills[0].quality = 20;
+    let build = Build::new().add_socket_group(group);
+    let bonuses = gem_property_bonuses(&build, &data);
+    let convert = |use_alt_quality: bool| -> f64 {
+        let mut context = test_context(&data);
+        let mut ctx = context.stat_map_ctx();
+        pobr_core::skill_env::buff_skill_specs(&mut ctx, &build, &data, &bonuses, use_alt_quality)
+            .iter()
+            .flat_map(|spec| &spec.mods)
+            .filter(|m| m.name.as_str() == "PhysicalDamageConvertToRandom")
+            .filter_map(|m| m.value.as_number())
+            .sum()
+    };
+    assert_eq!(convert(false), 0.0);
+    assert_eq!(convert(true), 20.0);
 }
 
 /// The statmap buff-domain supplementary channel for Aura-kind buff skills:

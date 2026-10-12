@@ -39,7 +39,7 @@ soft_step() {
 die_on_fail() { "$@" || { echo "bump-version: 关键步骤失败，中止：$*" >&2; exit 1; }; }
 
 # CURRENT is the sole active marker. config.json may already name an unpromoted
-# candidate after a failed attempt; Rust derives its fallback from CURRENT.
+# candidate after a failed attempt; Rust reads the active version from CURRENT.
 OLD_PATCH="$(cat data/CURRENT)"
 [[ -n "${OLD_PATCH}" ]] || { echo "bump-version: data/CURRENT is empty" >&2; exit 1; }
 
@@ -168,7 +168,8 @@ cat <<EOF
 剩余人工决策：
   1. review 本次 data/ diff 后提交（生成物已标 -diff，重点看 overlay 人工域与 base 结构变化）；
   2. 引擎适配 triage：pipeline/diff-vendor-calcs.sh ${OLD_VENDOR_SHA:-<旧sha>} <新sha> 拿公式 delta 清单；
-  3. golden 是否翻到 ${NEW_PATCH}：引擎补齐后跑 examples/demo-bd-test/tools/recapture_golden.py
-     并推进 pobr_data::GOLDEN_PARITY_DATA_VERSION（教训见 docs/adapting-to-0.5.4b.md）。
+  3. 重采 PoB2 参照值：examples/demo-bd-test/tools/recapture_golden.py 与 recapture_panel_golden.py，
+     再跑 parity；掉格即引擎与新版 PoB2 的差距，按第 2 步的清单修，不降基线。
+  4. 清理旧数据：python3 pipeline/prune-data.py --apply（保留 CURRENT 加最近两个版本）。
 EOF
 [[ ${#FAILURES[@]} -eq 0 ]]

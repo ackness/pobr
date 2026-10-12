@@ -100,7 +100,6 @@ pub fn build_pool_ctx(
         eternal_life: keystones.eternal_life,
         eb: keystones.energy_shield_protects_mana,
         chaos_not_double_es: db.flag(cfg, "ChaosNotDoubleESDamage"),
-        ward_not_break: keystones.ward_not_break,
         // :2662 `min(Σ LifeLossPrevented, 100)`; :2664 belowHalf is the raw BASE sum.
         prevented_life_loss: db
             .sum(ModType::Base, cfg, &[ModName::from("LifeLossPrevented")])
@@ -407,7 +406,7 @@ mod tests {
         assert_eq!(ctx.es_bypass_by_type, [0.0; 5]);
         assert_eq!(ctx.mom_shared, 0.0);
         assert_eq!(ctx.ward_bypass, 0.0);
-        assert!(!ctx.eternal_life && !ctx.eb && !ctx.ward_not_break);
+        assert!(!ctx.eternal_life && !ctx.eb);
         assert_eq!(ctx.max_life, 1000.0);
     }
 
@@ -479,7 +478,6 @@ mod tests {
         let ks = DefenceKeystones {
             eternal_life: true,
             energy_shield_protects_mana: true,
-            ward_not_break: true,
             ..Default::default()
         };
 
@@ -487,7 +485,7 @@ mod tests {
         let ctx = build_pool_ctx(&db, &cfg, &ks, &base_stats());
 
         // Assert
-        assert!(ctx.eternal_life && ctx.eb && ctx.ward_not_break);
+        assert!(ctx.eternal_life && ctx.eb);
         assert!(ctx.chaos_not_double_es);
         assert_eq!(ctx.prevented_life_loss, 100.0); // capped at 100
         assert_eq!(ctx.life_loss_below_half_prevented, 50.0);

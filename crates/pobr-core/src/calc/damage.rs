@@ -574,6 +574,26 @@ fn build_conversion_matrix(db: &ModDb, cfg: &CalcConfig, skill: bool) -> [[f64; 
             matrix[fi][ti] = pct / 100.0;
             total += pct;
         }
+        // `PhysicalDamageConvertToRandom` (CalcOffence.lua:1370-1385) expands into
+        // the three elements; like the gain side, PoBR uses the AVERAGE tier
+        // (physMode's default): n/3 per element.
+        if !skill && from == DamageType::Physical {
+            let random = db
+                .sum(
+                    ModType::Base,
+                    cfg,
+                    &[ModName::from("PhysicalDamageConvertToRandom")],
+                )
+                .max(0.0);
+            if random > 0.0 {
+                for (ti, &to) in DAMAGE_TYPES.iter().enumerate() {
+                    if to.is_elemental() {
+                        matrix[fi][ti] += random / 3.0 / 100.0;
+                    }
+                }
+                total += random;
+            }
+        }
         // Normalized within the source when >100% (PoB2: factor = 100 / total).
         if total > 100.0 {
             let factor = 100.0 / total;

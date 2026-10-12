@@ -20,10 +20,7 @@ def main():
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[3]
     vendor = args.vendor_root.resolve()
-    version = re.search(
-        r'GOLDEN_PARITY_DATA_VERSION: &str = "([^"]+)"',
-        (repo / "crates/pobr-data/src/lib.rs").read_text(encoding="utf-8"),
-    ).group(1)
+    version = os.environ.get("POBR_DATA_VERSION") or (repo / "data/CURRENT").read_text(encoding="utf-8").split()[0]
     rules = json.loads((repo / f"data/{version}/overlay/mod_parser_rules.json").read_text(encoding="utf-8"))
     commit = rules["_meta"]["vendor_commit"]
     actual = subprocess.check_output(["git", "-C", str(vendor), "rev-parse", "HEAD"], text=True).strip()

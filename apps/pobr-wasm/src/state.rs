@@ -52,7 +52,9 @@ thread_local! {
 /// explicitly warn its content_hash isn't sufficient as a data-path cache
 /// key, hence it isn't used here). Hit scenarios: switching panels /
 /// toggling between comparison views / repeated full-dps and attribution
-/// requests triggered by clicks. Evicted FIFO; `Err` results aren't cached.
+/// requests triggered by clicks. Callers may pass a normalized key instead
+/// (see [`cached_response_keyed`]) when part of the request cannot change the
+/// result. Evicts the least recently used entry; `Err` results aren't cached.
 #[derive(Default)]
 struct ResponseCache {
     entries: std::collections::HashMap<(&'static str, String), String>,
@@ -61,9 +63,9 @@ struct ResponseCache {
 }
 
 /// The cache entry-count cap. A response can reach hundreds of KB (the full
-/// breakdown), and 16 entries is enough to cover "toggling between two
-/// builds plus repeated per-panel requests" while keeping memory bounded.
-const RESPONSE_CACHE_CAP: usize = 16;
+/// breakdown); 32 entries cover "one panel response per skill of a build
+/// plus repeated per-panel requests" while keeping memory bounded.
+const RESPONSE_CACHE_CAP: usize = 32;
 
 /// Caches `compute`'s successful result, keyed by `(endpoint, request_json)`.
 pub(crate) fn cached_response(
@@ -71,12 +73,28 @@ pub(crate) fn cached_response(
     request_json: &str,
     compute: impl FnOnce() -> Result<String, String>,
 ) -> Result<String, String> {
+    cached_response_keyed(endpoint, request_json.to_string(), compute)
+}
+
+/// [`cached_response`] with a caller-built key. The key must cover every part
+/// of the request that can change the response.
+pub(crate) fn cached_response_keyed(
+    endpoint: &'static str,
+    request_key: String,
+    compute: impl FnOnce() -> Result<String, String>,
+) -> Result<String, String> {
+    let key = (endpoint, request_key);
     let hit = RESPONSE_CACHE.with_borrow_mut(|cache| {
-        let got = cache.entries.get(&(endpoint, request_json.to_string()));
+        let got = cache.entries.get(&key).cloned();
         if got.is_some() {
             cache.hits += 1;
+            // Most recently used goes last, so eviction takes the stalest entry.
+            if let Some(position) = cache.order.iter().position(|entry| *entry == key) {
+                cache.order.remove(position);
+                cache.order.push_back(key.clone());
+            }
         }
-        got.cloned()
+        got
     });
     if let Some(response) = hit {
         return Ok(response);
@@ -88,7 +106,6 @@ pub(crate) fn cached_response(
         {
             cache.entries.remove(&oldest);
         }
-        let key = (endpoint, request_json.to_string());
         if cache
             .entries
             .insert(key.clone(), response.clone())

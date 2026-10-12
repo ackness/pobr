@@ -355,10 +355,8 @@ mod tests {
 
     #[test]
     fn body_armour_crit_rule_has_effective_common_provenance() {
-        for version in [
-            pobr_gamedata::data_version(),
-            pobr_data::GOLDEN_PARITY_DATA_VERSION.to_string(),
-        ] {
+        {
+            let version = pobr_gamedata::data_version();
             let data = Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("../../data")
                 .join(&version);
@@ -379,17 +377,11 @@ mod tests {
     }
 
     /// The committed repo data passes `--check` (deserialize + compile clean)
-    /// for the active and parity-golden versions. Versions come from the
-    /// `pobr_data` constants (auto-advance on data bumps, no literal to
-    /// re-pin); stale/experimental dirs under `data/` are out of contract.
+    /// for the active version, discovered at runtime (no literal to re-pin);
+    /// stale/experimental dirs under `data/` are out of contract.
     #[test]
     fn repo_overlay_passes_check() {
-        let mut versions = vec![
-            pobr_gamedata::data_version(),
-            pobr_data::GOLDEN_PARITY_DATA_VERSION.to_string(),
-        ];
-        versions.dedup();
-        for version in versions {
+        for version in std::iter::once(pobr_gamedata::data_version()) {
             let data_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("../../data")
                 .join(&version);

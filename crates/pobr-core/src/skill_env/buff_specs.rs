@@ -202,10 +202,20 @@ pub fn buff_skill_specs(
     groups: &dyn SocketGroupView,
     data: &dyn BuffEnv,
     gem_level_bonuses: &[GemPropertyBonus],
+    use_alt_quality: bool,
 ) -> Vec<BuffSpec> {
     use std::collections::HashSet;
     let mut specs = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
+    // GemlingQuality builds also apply each gem's altQualityStats
+    // (CalcTools.lua:169-174 `includeAltQualityStats`).
+    let effect_stats = |skill_id: &str, level: u32, quality: u32, set_index: Option<u32>| {
+        let mut es = data.effect_stats(skill_id, level, quality, set_index);
+        if use_alt_quality {
+            es.quality.extend(data.alt_quality_stats(skill_id, quality));
+        }
+        es
+    };
     groups.for_each_enabled_group(&mut |group| {
         for (idx, gem) in group.gems.iter().enumerate() {
             // Primary granted effect + additional granted effects (the
@@ -237,8 +247,7 @@ pub fn buff_skill_specs(
                 if !is_aura && !is_curse {
                     // Debuff branch + player-side Buff branch (see the orchestrator's
                     // doc for the vendor mapping; both payloads are empty for most skills).
-                    let es =
-                        data.effect_stats(skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
+                    let es = effect_stats(skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
                     let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
                     let debuff_mods = debuff_stat_modifiers(ctx, &es, skill_id, set_key.as_deref());
                     // Player-side Buff payload: the fetch level = gem level + any
@@ -251,7 +260,7 @@ pub fn buff_skill_specs(
                     let es_buff = if buff_level == gem.gem_level {
                         es
                     } else {
-                        data.effect_stats(skill_id, buff_level, gem.quality, gem.stat_set_index)
+                        effect_stats(skill_id, buff_level, gem.quality, gem.stat_set_index)
                     };
                     let buff_mods =
                         player_buff_stat_modifiers(ctx, &es_buff, skill_id, set_key.as_deref());
@@ -301,8 +310,7 @@ pub fn buff_skill_specs(
                     // Aura defensive buff: the same stat→mod mapping and SkillGem
                     // attribution as aura_buff_modifiers (buff_pass scaling preserves
                     // origin, not dropped in trace).
-                    let es =
-                        data.effect_stats(skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
+                    let es = effect_stats(skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
                     let mut mods = Vec::new();
                     for ds in es.all() {
                         for mapped in map_aura_buff_stat(&ds.stat) {
@@ -365,8 +373,7 @@ pub fn buff_skill_specs(
                     // gem effect — confirmed with EW: 19+8→27, payload -58→-66).
                     let curse_level =
                         gem.gem_level + additional_gem_levels(gem_level_bonuses, data, skill_id);
-                    let es =
-                        data.effect_stats(skill_id, curse_level, gem.quality, gem.stat_set_index);
+                    let es = effect_stats(skill_id, curse_level, gem.quality, gem.stat_set_index);
                     let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
                     // Vendor's registration precondition: buffList is built purely
                     // from GlobalEffect payloads, and a curse table entry is only

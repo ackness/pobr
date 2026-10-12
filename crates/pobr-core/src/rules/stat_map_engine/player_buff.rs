@@ -200,6 +200,13 @@ fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, Unsup
         // cause of monk-invoker-frost-bomb's 0.66x TotalDPS (missing 80%
         // lightning gain-as).
         "DamageGainAsLightning" => Ok(vec!["DamageGainAsLightning"]),
+        // Trinity's alt quality stat on Gemling builds (act_int.lua
+        // `trinity_%_physical_damage_to_convert_to_random_element_granted` →
+        // `PhysicalDamageConvertToRandom` BASE, GlobalEffect/Buff). Consumer =
+        // `calc::damage`'s global conversion matrix (CalcOffence.lua:1370-1385,
+        // n/3 per element). Root cause of gemling's ignite running 5.6% low:
+        // less fire, and ignite chance and magnitude both follow fire.
+        "PhysicalDamageConvertToRandom" => Ok(vec!["PhysicalDamageConvertToRandom"]),
         // (#10-2) Barrage buff (BarragePlayer `empower_barrage_*`,
         // act_dex.lua:216-224): `BarrageRepeats` BASE / `BarrageRepeatDamage`
         // MORE. Consumer = the Barrage-repeats DPS multiplier zone in

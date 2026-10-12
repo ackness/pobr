@@ -636,6 +636,36 @@ pub struct EhpLoopParams {
     /// (vendor `:3094`'s literal 4 -- MoM/loss-prevention would collapse
     /// multiple hits into one, causing EHP to jump discontinuously, so acceleration is slowed).
     pub speed_up: f64,
+    /// Resources recovered per hit (vendor `DamageIn.<X>WhenHit`); zero = no `GainWhenHit`.
+    pub gain: GainWhenHit,
+}
+
+/// Average recovery per hit taken, currently recovery on block × block chance
+/// (vendor CalcDefence.lua:3261-3268 `DamageIn.<X>WhenHit`).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct GainWhenHit {
+    pub life: f64,
+    pub mana: f64,
+    pub energy_shield: f64,
+    pub ward: f64,
+}
+
+impl GainWhenHit {
+    /// Vendor `DamageIn.GainWhenHit` (:3297-3299).
+    pub fn any(&self) -> bool {
+        self.life != 0.0 || self.mana != 0.0 || self.energy_shield != 0.0 || self.ward != 0.0
+    }
+
+    /// Adds `gain × count` to each pool, capped at `cap_mult ×` its full value
+    /// (LifeRecoverable / ManaUnreserved / EnergyShieldRecoveryCap / Ward,
+    /// vendor :2146-2151 and :2159-2164).
+    fn apply(&self, pool: &mut PoolState, full: &PoolState, count: f64, cap_mult: f64) {
+        pool.life = (pool.life + self.life * count).min(cap_mult * full.life);
+        pool.mana = (pool.mana + self.mana * count).min(cap_mult * full.mana);
+        pool.energy_shield =
+            (pool.energy_shield + self.energy_shield * count).min(cap_mult * full.energy_shield);
+        pool.ward = (pool.ward + self.ward * count).min(cap_mult * full.ward);
+    }
 }
 
 /// Vendor CalcDefence.lua:3094: `speedUp = DamageIn["LimitEHPSpeedup"] and 4 or ehpCalcSpeedUp`.
@@ -653,6 +683,7 @@ impl EhpLoopParams {
             } else {
                 game.ehp_calc_speed_up
             },
+            gain: GainWhenHit::default(),
         }
     }
 }
@@ -664,10 +695,8 @@ impl EhpLoopParams {
 /// (recomputes once at `speed_up`× damage from the **full pool** to estimate
 /// a jump step size, `:3105-3119`); fractional overkill folding
 /// (`:3133-3135`, top level only, cycles=1); `max_damage` / `max_iterations`
-/// ceilings guarantee termination; `WardNotBreak && Σdamage < Ward` → ∞
-/// (`:2990`). GainWhenHit (the block/overwhelm recovery hook) is set to 0 at
-/// this stage; once wired up, add a recovery step to this function
-/// (`:3074-3090`).
+/// ceilings guarantee termination. `params.gain` (vendor `GainWhenHit`) is
+/// recovered after every survived hit (`:2144-2164`).
 pub fn number_of_hits_to_die(
     damage_in: &TypedDamage,
     pools_full: &PoolState,
@@ -720,30 +749,39 @@ fn hits_to_die_inner(
     iterations: &mut f64,
     recoupable: &mut [f64; 5],
 ) -> f64 {
-    // :2984-2994 zero incoming damage → ∞; WardNotBreak and per-hit total below Ward → ∞.
+    // :2060-2068 zero incoming damage → ∞.
     let per_hit_total = damage_in.total();
     if per_hit_total <= 0.0 {
         return f64::INFINITY;
     }
-    if ctx.ward_not_break && pools_full.ward > 0.0 && per_hit_total < pools_full.ward {
-        return f64::INFINITY;
-    }
-    // :2996-3000 a non-persistent ward is zeroed during accelerated recursion (cycles>1) (zeroing it every hit can't be modeled correctly).
+    // :2070-2074 Runic Ward only protects the first hit, so batched hits (cycles>1) run without it.
     let mut pool = pools_full.clone();
-    if !ctx.ward_not_break && cycles > 1.0 {
+    if cycles > 1.0 {
         pool.ward = 0.0;
     }
 
+    let gain_active = params.gain.any();
     let mut num_hits = 0.0_f64;
     let mut iteration_multiplier = 1.0_f64;
     let mut cycles_ran = false;
     let mut last_overkill = 0.0_f64;
+    let mut last_damage_total = per_hit_total;
     // :3063 the main while loop.
     while pool.life > 0.0 && *iterations < params.max_iterations {
         *iterations += 1.0;
         let hit = scale_damage(damage_in, iteration_multiplier);
+        // :2144-2151 a batched hit stands for several hits: grant the recovery of all
+        // but the last up front, with the caps scaled to the batch.
+        if gain_active && (iteration_multiplier > 1.0 || cycles > 1.0) {
+            let gain_mult = iteration_multiplier * cycles;
+            params
+                .gain
+                .apply(&mut pool, pools_full, gain_mult - 1.0, gain_mult);
+        }
         let after = reduce_pools(&pool, &hit, ctx);
         last_overkill = after.overkill;
+        // :2127-2143 `damageTotal` is this iteration's (possibly batched) damage.
+        last_damage_total = per_hit_total * iteration_multiplier;
         // F-4: recoupable accumulation (top level only, cycles==1, vendor :3046-3049/:3119-3123).
         if cycles <= 1.0 {
             for (acc, v) in recoupable.iter_mut().zip(after.recoupable_by_type) {
@@ -752,8 +790,12 @@ fn hits_to_die_inner(
         }
         pool = after.pools;
         // :3084 still alive and the single-hit damage already exceeds the ceiling → treated as surviving unlimited hits.
-        if pool.life > 0.0 && per_hit_total >= params.max_damage {
+        if pool.life > 0.0 && last_damage_total >= params.max_damage {
             return f64::INFINITY;
+        }
+        // :2159-2164 recovery from this hit, only while still alive.
+        if gain_active && pool.life > 0.0 {
+            params.gain.apply(&mut pool, pools_full, 1.0, 1.0);
         }
         iteration_multiplier = 1.0;
         // :3095-3119 recursion acceleration: recomputes at speed_up× damage from the full pool, estimating a safe number of hits to skip.
@@ -779,7 +821,7 @@ fn hits_to_die_inner(
     }
     // :3133-3135 fractional overkill folding (top level only, cycles=1, to avoid corrupting the acceleration estimate).
     if pool.life <= 0.0 && cycles <= 1.0 {
-        num_hits -= last_overkill / per_hit_total;
+        num_hits -= last_overkill / last_damage_total;
     }
     // :3137-3140 final check: total damage taken exceeds the ceiling but still alive → ∞.
     let damage_total = per_hit_total * num_hits;
@@ -1227,10 +1269,36 @@ pub fn fill_ehp_pob2(
         let any_recoup = ["LifeRecoup", "ManaRecoup", "EnergyShieldRecoup"]
             .iter()
             .any(|name| db.sum(ModType::Base, cfg, &[ModName::from(*name)]) > 0.0);
+        // Recovery on block (:1948-1960 outputs, :3261-3268 `× BlockChance`). PoBR
+        // evaluates the "Average" damage category, so spell-block recovery counts
+        // half (:3266-3267); `DisableEHPGainOnBlock` turns the whole layer off.
+        let gain = if cfg
+            .conditions
+            .get("DisableEHPGainOnBlock")
+            .copied()
+            .unwrap_or(false)
+        {
+            GainWhenHit::default()
+        } else {
+            let on_block = |name: &str| db.sum(ModType::Base, cfg, &[ModName::from(name)]);
+            GainWhenHit {
+                life: if db.flag(cfg, "CannotRecoverLifeOutsideLeech") {
+                    0.0
+                } else {
+                    on_block("LifeOnBlock") * avg_block_frac
+                },
+                mana: on_block("ManaOnBlock") * avg_block_frac,
+                energy_shield: (on_block("EnergyShieldOnBlock")
+                    + on_block("EnergyShieldOnSpellBlock") / 2.0)
+                    * avg_block_frac,
+                ward: on_block("WardOnBlock") * avg_block_frac,
+            }
+        };
         let (n_mitigated, recoupable_total) = if (configured_damage_chance - 100.0).abs()
             > f64::EPSILON
             || any_recoup
             || prevented_total
+            || gain.any()
         {
             // Per-type reduction (vendor :3277-3300's DamageIn[type] × (1 - avoid_type/100)) --
             // per-type avoidance can't go through scale_damage's uniform
@@ -1245,8 +1313,14 @@ pub fn fill_ehp_pob2(
                 lightning: taken_hit.lightning * base_mult * (1.0 - avoid[3] / 100.0),
                 chaos: taken_hit.chaos * base_mult * (1.0 - avoid[4] / 100.0),
             };
-            let m_params =
-                EhpLoopParams::from_constants(&cfg.constants, any_recoup || prevented_total);
+            // :3338 LimitEHPSpeedup = TrackRecoupable or TrackLifeLossOverTime or GainWhenHit.
+            let m_params = EhpLoopParams {
+                gain,
+                ..EhpLoopParams::from_constants(
+                    &cfg.constants,
+                    any_recoup || prevented_total || gain.any(),
+                )
+            };
             // F-4 (part of 13-G15): the mitigated loop simultaneously
             // accumulates recoupable (vendor's TrackRecoupable is set at
             // `:3232-3236` before NumberOfMitigatedDamagingHits is recomputed;

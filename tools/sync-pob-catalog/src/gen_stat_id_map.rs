@@ -149,7 +149,6 @@ mod tests {
     use super::*;
     use pobr_data::catalog::stat_descriptions::{ScopeDescriptions, StatDescriptionsDef};
     use std::collections::BTreeMap;
-    use std::path::PathBuf;
 
     fn descs_with(scope: &str, entries: &[(&str, &str)]) -> StatDescriptionsDef {
         let mut single = BTreeMap::new();
@@ -169,8 +168,7 @@ mod tests {
 
     /// Load the real overlay rules (no test-rules feature needed; same approach as stat_desc_parse_rate).
     fn real_rules() -> CompiledParserRules {
-        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../data/4.5.0.3.4/overlay/mod_parser_rules.json");
+        let path = pobr_gamedata::current_data_dir().join("overlay/mod_parser_rules.json");
         let doc: ModParserRulesDoc =
             serde_json::from_str(&fs::read_to_string(path).expect("read rules")).expect("doc");
         CompiledParserRules::compile(&doc).expect("compile")

@@ -35,7 +35,8 @@ function MainSkillSection({ session, lang }: { session: BuildSession; lang: Lang
   const groups = session.socketGroups;
   const mainSkill: MainSkillInfo | null = session.calcError || session.calcParams.main_socket_group === undefined
     ? null : session.calc?.main_skill ?? null;
-  // Missing imported selection remains unselected; inspection is explicit.
+  // The session fills a missing selection with the highest-DPS skill; until
+  // that lands (or when nothing is calculable) no skill is selected.
   const selected = session.calcParams.main_socket_group;
 
   if (groups.length === 0) return null;

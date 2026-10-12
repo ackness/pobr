@@ -22,6 +22,7 @@ import { getBackend } from '../../api/backend';
 import { useEffect } from 'react';
 import { useSkillName } from '../../hooks/useSkillName';
 import './calcs.css';
+import { highestDpsSkill } from '../../lib/skillSelection';
 
 interface Props {
   session: BuildSession;
@@ -161,6 +162,7 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
 
   const skillName = useSkillName(lang);
   const mainIndex = session.calcParams.main_socket_group;
+  const highest = report ? highestDpsSkill(report.skills, session.socketGroups) : null;
   const columns = [
     ['combined_dps', 'sidebar.combinedDps'],
     ['average_hit', 'calcs.averageHit'],
@@ -214,6 +216,7 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
                         {tt('calcs.group')} {entry.group_index + 1} · {entry.active_skill_index} · {skillName(entry.skill_id)}
                       </button>
                       {granted && <span className="granted-badge">{granted}</span>}
+                      {entry === highest && entry.metrics!.combined_dps > 0 && <span className="granted-badge">{tt('calcs.highestDps')}</span>}
                     </td>
                     {columns.map(([key]) => (
                       <td className="mod-value" key={key}>{available ? formatStatValue(entry.metrics![key], 'float2') : '—'}</td>

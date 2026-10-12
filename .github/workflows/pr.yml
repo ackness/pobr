@@ -5,15 +5,22 @@ name: PR checks
 #
 # Fork PRs run with a read-only token and no repository secrets. GitHub holds
 # runs from first-time contributors until a maintainer approves them.
+#
+# The same checks run on every push to master. That run reports a broken merge
+# early and saves the build cache under the master scope, the only scope other
+# than its own that a pull request can restore from. Without it each new pull
+# request compiles from scratch.
 on:
   pull_request:
+    branches: [master]
+  push:
     branches: [master]
 
 permissions:
   contents: read
 
 concurrency:
-  group: pr-${{ github.event.pull_request.number }}
+  group: pr-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -29,7 +36,8 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
       release: ${{ steps.release.outputs.release }}
     steps:
-      # The default checkout is the merge commit; its first parent is the base.
+      # The default PR checkout is the merge commit; its first parent is the base.
+      # A push to master is normally a merge commit too, so the same diff applies.
       - uses: actions/checkout@v7
         with:
           fetch-depth: 2
@@ -39,7 +47,7 @@ jobs:
           echo "$files"
           rust=false
           web=false
-          if grep -qE '^(crates|apps|tools|data|examples|devs/scripts|\.claude/skills/run-pobr|\.github/workflows)/|^(Cargo\.(toml|lock)|mise\.toml)$' <<< "$files"; then rust=true; fi
+          if grep -qE '^(crates|apps|tools|data|examples|devs/scripts|\.github/workflows)/|^(Cargo\.(toml|lock)|mise\.toml|rust-toolchain\.toml)$' <<< "$files"; then rust=true; fi
           if grep -qE '^(web|\.github/workflows)/' <<< "$files"; then web=true; fi
           echo "rust=$rust" >> "$GITHUB_OUTPUT"
           echo "web=$web" >> "$GITHUB_OUTPUT"
@@ -55,9 +63,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
       - name: Format
         run: cargo fmt --all --check
@@ -66,8 +73,8 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Smoke tests
-        run: bash .claude/skills/run-pobr/driver.sh smoke
-      # The parity baseline must not drop; see CLAUDE.md "Parity 体系".
+        run: bash devs/scripts/driver.sh smoke
+      # The parity baseline must not drop; see docs/maintainer-guide.md "Parity 体系".
       - name: Parity regression gate
         run: cargo test -p pobr-build --test parity no_regression
 
@@ -86,7 +93,7 @@ jobs:
           version: 12
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 26
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
       - name: Install

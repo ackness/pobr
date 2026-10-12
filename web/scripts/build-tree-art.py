@@ -12,7 +12,7 @@ splice a 1-slice DDS header + that slice's mip0 -> ImageMagick decodes it.
 This reuses magick's BC1/BC7 decoders instead of shipping a decoder in the app.
 
 Requires: zstd, ImageMagick (`magick`), and vendor/PathOfBuilding-PoE2 checked
-out (see CLAUDE.md; `bash .claude/skills/run-pobr/driver.sh vendor`).
+out (see CLAUDE.md; `bash devs/scripts/driver.sh vendor`).
 Run from web/: `npm run build-tree-art`.
 
 Icons/frames sit at each node's own (x,y) which the web passive_tree.json already

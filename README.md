@@ -102,7 +102,7 @@ reproduction commands.
 
 For the web app, follow the [web setup guide](web/README.md) to prepare WASM and
 game data and start Vite. To try the CLI, run from the repository root with the
-installed stable Rust toolchain:
+Rust toolchain pinned in `rust-toolchain.toml`:
 
 ```bash
 # CLI (binary name: pobr)
@@ -212,7 +212,7 @@ the local Lua directly instead of searching online.
 ## Documentation
 
 - [`AGENTS.md`](AGENTS.md) — concise contributor guide and development entry points.
-- [`CLAUDE.md`](CLAUDE.md) — verification tiers, command cheat-sheet, key
+- [Maintainer guide](docs/maintainer-guide.md) — verification tiers, command cheat-sheet, key
   conventions (read before contributing).
 - [`agent-docs/`](agent-docs/) — PoE2 (0.5.0) game-mechanics reference in
   Chinese (damage types / resistances / armour, evasion, ES / crit / ailments /
@@ -221,7 +221,7 @@ the local Lua directly instead of searching online.
 
 Early `devs/docs/architecture/00–16` designs and audits are optional local history;
 committed documents 18–21 cover feature contracts. Historical snapshots are not
-current task lists or fresh-checkout prerequisites. Use code, CLAUDE.md, and
+current task lists or fresh-checkout prerequisites. Use code, the maintainer guide, and
 relevant tests for current behavior.
 
 ## Conventions

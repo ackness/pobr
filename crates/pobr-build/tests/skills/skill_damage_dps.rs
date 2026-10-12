@@ -1,7 +1,7 @@
 //! End-to-end verification of the gem data channel, Phase 3: per-level skill
 //! **base damage** -> DPS.
 //!
-//! Uses real ingested data (`data/4.5.0.3.4/granted_effect_stat_sets.json`) to
+//! Uses real ingested data (`data/<version>/granted_effect_stat_sets.json`) to
 //! verify the whole channel: `<Gem skillId>` + level -> stat-set base damage ->
 //! `<Type>DamageMin/Max` BASE mod -> damage component -> DPS. Reference skill
 //! is Fireball (a pure spell whose base damage comes only from the stat-set,

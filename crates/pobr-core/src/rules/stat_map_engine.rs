@@ -1174,6 +1174,11 @@ pub(crate) fn translated_mod_name_parts<'a>(
         // `calc::scaled_damage::dps_end_factors` (vendor
         // CalcOffence.lua:1124-1127 folds it into a DPS MORE).
         "GrenadeActivateTwice" => base_name,
+        //  Projectile count (vendor SkillStatMap.lua:1889-1892's
+        // `base_number_of_projectiles` -> ProjectileCount BASE with `base = -1`:
+        // the orchestrator already injects the one base projectile). Consumer =
+        // `calc::perform`'s projectile section (ProjectileCount BASE sum).
+        "ProjectileCount" => base_name,
         //  Damage-ailment family pass-through (consumer = `calc::ailment` +
         // `calc::perform::fill_ailments`). Infliction chance: bleed/poison's
         // intrinsic `<Ailment>Chance` (vendor

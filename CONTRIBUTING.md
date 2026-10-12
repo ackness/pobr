@@ -6,7 +6,7 @@ rules live in the documents linked below.
 ## Before you start
 
 - [AGENTS.md](AGENTS.md) is the short contributor guide: layout, commands, style.
-- [CLAUDE.md](CLAUDE.md) has the architecture, validation scope and calculation
+- [Maintainer guide](docs/maintainer-guide.md) has the architecture, validation scope and calculation
   conventions.
 - [docs/](docs/README.md) indexes the feature contracts and guides. To add or
   fix a modifier through data, start with
@@ -38,15 +38,15 @@ mise run test build parity no_regression   # Required for calculation, modifier 
 pnpm --dir web test <file> && pnpm --dir web typecheck
 ```
 
-See [validation scope](CLAUDE.md) for the table of change types and their
+See [validation scope](docs/maintainer-guide.md) for the table of change types and their
 minimum checks, and the [development workflow](docs/development-workflow.md)
 for commands and caches.
 
 Pull requests run lightweight checks automatically: formatting, Clippy, smoke
 tests and the parity regression gate for Rust changes; typecheck and unit tests
 for `web/` changes. Runs from first-time contributors wait for a maintainer's
-approval. The full gate runs on release tags and on pull requests that change
-the workspace version.
+approval. The full gate runs on release tags, on pull requests that change
+the workspace version and nightly on `master`.
 
 ## Pull requests
 

@@ -324,12 +324,11 @@ test('explicit damage skill selection, weapon binding and whole-build priority s
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456');
   await page.locator('.import-submit').click();
   await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
-  await expect(page.locator('.main-skill-select .app-select-value')).toHaveText('Not selected');
+  // The import carries no selection; the highest-DPS skill becomes the default.
+  await expect(page.locator('.main-skill-select .app-select-value')).not.toHaveText('Not selected');
   await page.getByRole('button', { name: 'Upgrades', exact: true }).click();
   const target = page.getByRole('button', { name: 'Skill used for scoring', exact: true });
-  await expect(target).toContainText('Not selected');
-  await expect(page.getByRole('button', { name: 'Analyze all positions', exact: true })).toBeDisabled();
-  await expect(page.locator('.trade-page')).toContainText('Open Skill metrics');
+  await expect(target).not.toContainText('Not selected');
   await target.click();
   await page.getByRole('option', { name: '2. Fireball', exact: true }).click();
   await expect(page.locator('.main-skill-select .app-select-value')).toHaveText('2. Fireball');
@@ -425,7 +424,8 @@ test('applying a gem replacement preserves the evaluated secondary effect throug
   await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
   const replacement = page.locator('.trade-gem-card').filter({ hasText: 'Replaces Impending Doom' }).first();
   await expect(replacement).toBeVisible({ timeout: 90_000 });
-  const predicted = Number((await replacement.locator('.upgrade-gem-stats > span').first().locator('b').last().innerText()).replaceAll(',', ''));
+  // The card shows "before → after"; the prediction is the value after the arrow.
+  const predicted = Number((await replacement.locator('.upgrade-gem-stats > span').first().locator('b').last().innerText()).split('→').pop()!.replaceAll(',', ''));
   await replacement.getByRole('button', { name: 'Apply to build', exact: true }).click();
   await expect(page.locator('.topbar-busy')).toHaveCount(0);
   const current = await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state);

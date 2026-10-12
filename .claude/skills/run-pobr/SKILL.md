@@ -4,9 +4,9 @@ description: Bootstrap, build, test, and drive the pobr (Path of Building in Rus
 ---
 
 pobr is a Rust workspace with a Web frontend. Read the validation policy in
-[`CLAUDE.md`](../../../CLAUDE.md) before choosing checks. Development commands
+[the maintainer guide](../../../docs/maintainer-guide.md) before choosing checks. Development commands
 are mise tasks in the root `mise.toml` (`mise tasks`, `mise run <task> [args]`), backed by
-`.claude/skills/run-pobr/driver.sh`; the game CLI binary `pobr` carries none of them; the optional, gitignored `.agents` entry forwards to it. Run commands
+`devs/scripts/driver.sh`; the game CLI binary `pobr` carries none of them; the optional, gitignored `.agents` entry forwards to it. Run commands
 from the repository root so the configured Rust/Node toolchains stay consistent.
 
 ## Prerequisites
@@ -14,11 +14,11 @@ from the repository root so the configured Rust/Node toolchains stay consistent.
 Inspect the existing environment first:
 
 ```bash
-bash .claude/skills/run-pobr/driver.sh status
+bash devs/scripts/driver.sh status
 ```
 
-Reuse the installed stable Rust toolchain with rustfmt/Clippy; this repository
-does not pin a Rust version. `mise.toml` selects Node 26 locally; CI uses Node 22.
+`rust-toolchain.toml` pins the Rust version with rustfmt/Clippy; rustup installs
+it on first use. `mise.toml` and CI both use Node 26.
 Use the pnpm version in `web/package.json`. Lua extraction/oracle checks need `luajit`.
 Do not bootstrap an already working checkout. On a fresh Ubuntu machine the
 `bootstrap` command installs LuaJIT through apt, clones the pinned vendor and
@@ -50,7 +50,7 @@ stops the command. `timings` compiles selected tests without executing them.
 Clippy for exactly the supplied Cargo targets. Both require explicit arguments.
 They preserve compiler diagnostics and build-lock messages.
 
-- Use the change-to-check table in `CLAUDE.md` for parity, cross-crate contracts,
+- Use the change-to-check table in `docs/maintainer-guide.md` for parity, cross-crate contracts,
   Web, Worker and script changes. Do not run Rust checks for documentation alone.
 - Tests already compile their targets; do not prepend a workspace check/build.
 - A normal local commit requires relevant tests and lint, not `full`. Reuse
@@ -92,13 +92,13 @@ Timing diagnostics, parity dashboards and data-version drills are opt-in, not ev
 ```bash
 mise run test build parity parity_baseline_report -- --ignored --nocapture
 cargo test -p pobr-wasm --test perf_timing --test perf_phases -- --ignored --nocapture
-bash .claude/skills/run-pobr/driver.sh drill
+bash devs/scripts/driver.sh drill
 ```
 
 For PoB2 formula adjudication, read the pinned local Lua source:
 
 ```bash
-bash .claude/skills/run-pobr/driver.sh lua "per (%d+) intelligence"
+bash devs/scripts/driver.sh lua "per (%d+) intelligence"
 ```
 
 Other commands: `deps`, `vendor`, `bootstrap`, `build`, `data`, `versions`,
@@ -114,8 +114,8 @@ needed, not as preparation for a test command.
 The game data is **committed** under `data/<version>/` (`base`/`overlay`/`generated`/`i18n`) — **testing needs no download**. Multiple versions live side by side; inspect `data/CURRENT` for the active default.
 
 The calc is **version-agnostic**: `pobr_gamedata::data_version()` resolves
-`POBR_DATA_VERSION` → the loader data root's `CURRENT` → the legacy
-`pobr_gamedata::DATA_VERSION` fallback (the golden version). `POBR_DATA_ROOT`
+`POBR_DATA_VERSION` → the loader data root's `CURRENT`, and fails when
+neither is set; no version is compiled in. `POBR_DATA_ROOT`
 overrides the loader data root; otherwise it is the repository's `data/`.
 Switching the active version needs no code change: set `POBR_DATA_VERSION`
 or update the selected data root's `CURRENT`.
@@ -123,20 +123,21 @@ or update the selected data root's `CURRENT`.
 Prove it runs on every committed version (the `multi_version` smoke — `BuildData::load` + full calc per version):
 
 ```bash
-bash .claude/skills/run-pobr/driver.sh versions
+bash devs/scripts/driver.sh versions
 ```
 
-The active default is discovered from `data/CURRENT` at runtime. PoB2
-golden/parity values pin `pobr_data::GOLDEN_PARITY_DATA_VERSION` independently;
-advancing the default does not re-pin golden tests. Moving golden to another
-version requires re-recording its baseline. `driver.sh data` prints the regen
+The active default is discovered from `data/CURRENT` at runtime. Tests and
+PoB2 reference values always target the active version: a data update
+re-records the references with `examples/demo-bd-test/tools/recapture_golden.py`
+and `recapture_panel_golden.py`. The repository keeps the active version plus
+the two most recently added (`mise run data:prune`). `driver.sh data` prints the regen
 pipeline; committed data is the source of truth.
 
 To see *what actually changed* between two committed versions (the iteration input PoB2 gets from export+CHANGELOG — added/removed/renumbered nodes, skill stat deltas, mod-pool removals, overlay drift):
 
 ```bash
-bash .claude/skills/run-pobr/driver.sh diff 4.5.0.3.4 4.5.2.1.3            # all domains
-bash .claude/skills/run-pobr/driver.sh diff 4.5.0.3.4 4.5.2.1.3 --domain tree --limit 40
+bash devs/scripts/driver.sh diff <old> <new>            # all domains
+bash devs/scripts/driver.sh diff <old> <new> --domain tree --limit 40
 ```
 
 For the committed data workflow, read [pipeline/README.md](../../../pipeline/README.md)
@@ -147,16 +148,14 @@ background; its historical gap list is not a current implementation checklist.
 ## Gotchas
 
 - **vendor commit is per-data-version.** Each `data/<version>/` pins its own PoB2 vendor commit in `overlay/mod_parser_rules.json::_meta.vendor_commit` (e.g. `4.5.4.3` → `29ab8262`, `4.5.0.3.4` → `2df5a74`). The driver reads the commit for `data/CURRENT` and clones that; pass `--version <ver>` to `version-bump-drill.sh` to drill a non-current version.
-- **`extract-lua` and `pob2-oracle` do NOT work with the old `4.5.0.3.4` vendor commit (`2df5a74`).** That commit loads the parser into *local* scope (`modLib` is `nil`), and `pob2-oracle/run.sh` hangs >120 s in headless bootstrap — so regen for that pinned version is not reproducible; only the `precompile` step byte-reproduces. Current-version extraction works. **Reading vendor Lua always works** (the `lua` subcommand) — that's the main use.
 - Use `smoke` for the green signal; `drill` is the niche version-bump-reproducibility check (older pinned versions fail its extract step per above).
 - **extract-lua needs an *absolute* `--vendor-root`.** A relative path + the tool's `cd vendor/src` doubles the `LUA_PATH` and the bundled `runtime/lua/xml.lua` isn't found (`no file '.../xml.lua'`).
-- **GGG patch CDN 404s for old pinned versions** (`4.5.0.3.4`), so the `.dat` download step isn't runnable; the in-tree data is authoritative.
+- **GGG patch CDN 404s for old pinned versions**, so the `.dat` download step isn't runnable; the in-tree data is authoritative.
 
 ## Troubleshooting
 
 | Symptom | Cause / fix |
 |---|---|
 | `no file '/usr/.../xml.lua'` from extract-lua | relative `--vendor-root`; use absolute (the driver/oracle scripts already do). |
-| `modLib.parseMod missing after bootstrap` | extract-lua/oracle vendor-incompat (commit `2df5a74`); known — regen not reproducible here, read vendor Lua instead. |
 | `drill` reports overlay `DIFF`/`FAIL` | Inspect the selected data version and its pinned vendor; old-version extraction limitations do not justify ignoring failures for the current version. |
 | `no such command: nextest` | Use `cargo test`; `full` selects this fallback automatically when nextest is unavailable. |

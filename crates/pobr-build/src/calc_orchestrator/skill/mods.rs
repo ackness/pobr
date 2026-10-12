@@ -219,13 +219,15 @@ pub(crate) fn crossbow_reload_modifiers(
 /// including additional effects granted by support gems. The
 /// attribution id prefix is `gem.<effect id>.q<Q>`, matching `skill_source.rs`'s
 /// existing convention (`quality_source_id`); [`mapped_stat_modifiers`] appends
-/// `.<stat>` to further split it to a single stat. Returns empty for quality 0 / no
+/// `.<stat>` to further split it to a single stat. `use_alt_quality` is the build's
+/// GemlingQuality flag. Returns empty for quality 0 / no
 /// quality table entry (e.g. supports, which are skipped at export).
 pub(crate) fn main_skill_quality_modifiers(
     context: &mut CalculationContext,
     group: &SocketGroup,
     data: &BuildData,
     skill_id: &str,
+    use_alt_quality: bool,
 ) -> Vec<Modifier> {
     let Some(gem) = super::resolve::selected_group_effect(data, group)
         .filter(|effect| effect.skill_id == skill_id)
@@ -235,18 +237,66 @@ pub(crate) fn main_skill_quality_modifiers(
     if gem.quality == 0 {
         return Vec::new();
     }
-    let stats = data.effect_stats(gem.skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
+    let mut stats = data.effect_stats(gem.skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
+    // GemlingQuality builds also apply the gem's altQualityStats
+    // (CalcTools.lua:169-174 `includeAltQualityStats`).
+    if use_alt_quality {
+        stats
+            .quality
+            .extend(data.alt_quality_stats(gem.skill_id, gem.quality));
+    }
     // The quality segment belongs to the selected set's stats table (PoB2 stacks then
     // maps), the per-set override key matches the primary path.
     let set_key = data.selected_set_key(gem.skill_id, gem.stat_set_index);
-    mapped_stat_modifiers(
-        context,
-        &stats.quality,
-        SourceKind::GemQuality,
-        &format!("gem.{skill_id}.q{}", gem.quality),
-        skill_id,
-        set_key.as_deref(),
-    )
+    let label = format!("gem.{skill_id}.q{}", gem.quality);
+    let mut map = |stats: &[pobr_data::catalog::SkillDamageStat]| {
+        mapped_stat_modifiers(
+            context,
+            stats,
+            SourceKind::GemQuality,
+            &label,
+            skill_id,
+            set_key.as_deref(),
+        )
+    };
+    // PoB2 adds quality onto the stat before mapping (CalcTools.lua:163-175), so a
+    // statmap `base` offset applies once per stat. A quality stat the set already
+    // carries is therefore mapped as the difference it makes on top of the set's
+    // value; mapping it alone would apply the offset a second time (e.g.
+    // `base_number_of_projectiles`, `base = -1`, SkillStatMap.lua:1889-1892).
+    let mut mods = Vec::new();
+    for quality in &stats.quality {
+        let in_set: f64 = stats
+            .base
+            .iter()
+            .filter(|base| base.stat == quality.stat)
+            .map(|base| base.value)
+            .sum();
+        if in_set == 0.0 {
+            mods.extend(map(std::slice::from_ref(quality)));
+            continue;
+        }
+        let stat = |value: f64| pobr_data::catalog::SkillDamageStat {
+            stat: quality.stat.clone(),
+            value,
+        };
+        let without = map(&[stat(in_set)]);
+        for (index, modifier) in map(&[stat(in_set + quality.value)]).into_iter().enumerate() {
+            let before = without
+                .get(index)
+                .filter(|other| other.name == modifier.name && other.mod_type == modifier.mod_type)
+                .and_then(|other| other.value.as_number());
+            match (modifier.value.as_number(), before) {
+                (Some(after), Some(before)) => {
+                    let mut modifier = modifier;
+                    modifier.value = pobr_core::ModValue::Number(after - before);
+                    mods.push(modifier);
+                }
+                _ => mods.push(modifier),
+            }
+        }
+    }
+    mods
 }
 
 /// The main skill's **unselected statSet** global-only merge (matching PoB2's

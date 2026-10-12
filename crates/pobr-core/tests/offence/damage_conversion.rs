@@ -411,6 +411,39 @@ fn random_element_gain_as_splits_average_across_elements() {
     assert!(find(&output, DamageType::Chaos).is_none_or(|c| c.avg() == 0.0));
 }
 
+/// Random-element conversion (vendor CalcOffence.lua:1370-1385:
+/// `PhysicalDamageConvertToRandom BASE n` expands to n/3 per element) is a global
+/// conversion, so it acts on what the skill conversion left (:2456-2468).
+/// Hand calc, 80% skill conversion to fire plus 39% random: physical keeps
+/// 0.2 × 0.61 = 12.2%, cold and lightning get 0.2 × 0.13 = 2.6% each, fire 82.6%.
+/// Instanced by Trinity's alt quality stat on the gemling fixture.
+#[test]
+fn random_element_conversion_applies_to_unconverted_physical() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number(
+        "SkillPhysicalDamageConvertToFire",
+        ModType::Base,
+        80.0,
+    ));
+    db.add_mod(Modifier::number(
+        "PhysicalDamageConvertToRandom",
+        ModType::Base,
+        39.0,
+    ));
+
+    let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
+
+    let close = |actual: f64, expected: f64| (actual - expected).abs() < 1e-9;
+    let phys = component(&output, DamageType::Physical);
+    assert!(close(phys.min, 12.2) && close(phys.max, 24.4), "{phys:?}");
+    for ty in [DamageType::Cold, DamageType::Lightning] {
+        let c = component(&output, ty);
+        assert!(close(c.min, 2.6) && close(c.max, 5.2), "{ty:?} {c:?}");
+    }
+    let fire = component(&output, DamageType::Fire);
+    assert!(close(fire.min, 82.6) && close(fire.max, 165.2), "{fire:?}");
+}
+
 /// PhysicalDamageGainAsRandom only applies to the physical-source line (vendor expands it to
 /// `PhysicalDamageGainAs<Elem>`; CalcOffence.lua:1193-1200).
 #[test]

@@ -117,8 +117,8 @@ value without resetting the other actor.
 ## Quick start
 
 Run these commands from the repository root. Use the pnpm version pinned in
-`web/package.json`; local mise selects Node 26 and CI uses Node 22. Rust is not
-version-pinned in this repository; reuse an installed stable toolchain.
+`web/package.json`; local mise and CI both use Node 26. `rust-toolchain.toml` pins the Rust
+version; rustup installs it on first use.
 Skip tool installation when already configured.
 
 ```bash
@@ -151,7 +151,7 @@ cargo test -p pobr-wasm --test gen_fixtures -- --ignored
 For standalone engine downloads, Browser/Node.js integration, the agent skill
 and the Release CI size comparison, see [WASM packages](../docs/wasm-package.md).
 
-Follow the change-scoped validation policy in [CLAUDE.md](../CLAUDE.md).
+Follow the change-scoped validation policy in [maintainer guide](../docs/maintainer-guide.md).
 Run the relevant Vitest files and typecheck; add the matching Playwright spec
 for interaction changes. Rebuild WASM if missing or after changes to its Rust
 sources, dependencies, features, or toolchain. Sync data when source data changes

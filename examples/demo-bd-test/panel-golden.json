@@ -15,7 +15,7 @@
         "CritChance": 19.74,
         "CritMultiplier": 3.48,
         "Speed": 6.15,
-        "TotalDPS": 254508.392406
+        "TotalDPS": 256189.3890768
       }
     },
     "huntress-ritualist-bow-shot": {
@@ -31,21 +31,21 @@
     "huntress-spirit-walker-twister": {
       "code_sha256": "3277669b69d04a89202be9d0037548609e9f146f1381e68d67af40f7075ccbda",
       "player_stats": {
-        "AverageDamage": 20508.0314637,
-        "CritChance": 40.8954,
+        "AverageDamage": 20509.35645,
+        "CritChance": 40.9,
         "CritMultiplier": 4.3,
         "Speed": 2.3072,
-        "TotalDPS": 48262.45279691
+        "TotalDPS": 48265.570945469
       }
     },
     "mercenary-gemling-legionnaire-explosive-grenade": {
       "code_sha256": "8f2c3b4c33cdf5aad625ad0b403ac32c35dd7a6425293a1b067067c967e8f7e2",
       "player_stats": {
-        "AverageDamage": 84052.436,
+        "AverageDamage": 84214.71825,
         "CritChance": 8.55,
         "CritMultiplier": 2,
         "Speed": 0.41,
-        "TotalDPS": 56861.472954
+        "TotalDPS": 56971.256896125
       }
     },
     "mercenary-tactician-wolf-pack": {
@@ -68,41 +68,41 @@
     "monk-martial-artist-flicker-strike": {
       "code_sha256": "acb26108d733d55d04613ae495cdbe01b4d8db41f4f256ae5e61869b8123110d",
       "player_stats": {
-        "AverageDamage": 75197.57775,
-        "CritChance": 83.6784,
+        "AverageDamage": 75198.675,
+        "CritChance": 83.68,
         "CritMultiplier": 4.85,
         "Speed": 6.13375,
-        "TotalDPS": 461243.14252406
+        "TotalDPS": 461249.87278125
       }
     },
     "monk-martial-artist-twister": {
       "code_sha256": "91f678a18831a5e6bec3eb5c5bc2f85a0a0e6eaee15c6f58ac9b12cfb6f79df6",
       "player_stats": {
-        "AverageDamage": 43841.880527587,
-        "CritChance": 71.93152,
+        "AverageDamage": 43841.23052355,
+        "CritChance": 71.93,
         "CritMultiplier": 4.269,
         "Speed": 2.3408,
-        "TotalDPS": 104677.57541776
+        "TotalDPS": 104676.02345772
       }
     },
     "ranger-deadeye-explosive-grenade": {
       "code_sha256": "b158bc0d4c12101948bc5c3ca331b3c88754651d491353bbe5c85feb9916e394",
       "player_stats": {
-        "AverageDamage": 95621.05,
+        "AverageDamage": 95620.49,
         "CritChance": 5,
         "CritMultiplier": 2,
         "Speed": 0.254,
-        "TotalDPS": 36431.62005
+        "TotalDPS": 36431.40669
       }
     },
     "ranger-pathfinder-ice-shot": {
       "code_sha256": "6f7690a0c3089811221eecc7a663c1e244196ff9e5d7038fe43da049ddcfeb4c",
       "player_stats": {
-        "AverageDamage": 399236.78250599,
-        "CritChance": 49.7046,
+        "AverageDamage": 399204.758775,
+        "CritChance": 49.7,
         "CritMultiplier": 9.0125,
         "Speed": 1.9224,
-        "TotalDPS": 782842.6465033
+        "TotalDPS": 782779.85283444
       }
     },
     "sorceress-chronomancer-essence-drain": {
@@ -120,16 +120,16 @@
         "CritChance": 100,
         "CritMultiplier": 3.5,
         "Speed": 0.70414201183432,
-        "TotalDPS": 300239.81656805
+        "TotalDPS": 297671.81065089
       }
     },
     "sorceress-stormweaver-comet": {
       "code_sha256": "0cc5be607de26109bde9e1f25b1a165421ca43c15e3c544740d778b31b22094a",
       "player_stats": {
-        "CritChance": 91.104,
+        "CritChance": 91.1,
         "CritMultiplier": 3.5,
         "Speed": 0.71428571428571,
-        "TotalDPS": 25976.150571429
+        "TotalDPS": 25975.358035714
       }
     },
     "warrior-smith-of-kitava-shield-wall": {
@@ -145,11 +145,11 @@
     "warrior-titan-shield-wall": {
       "code_sha256": "50a5b890b1926bf4609955b8746c2877049b2de96eb9eb2f5a08a12084254f1c",
       "player_stats": {
-        "AverageDamage": 37168.3100547,
+        "AverageDamage": 38718.2802699,
         "CritChance": 5.85,
         "CritMultiplier": 4.88,
         "Speed": 1.48,
-        "TotalDPS": 55009.098880956
+        "TotalDPS": 57303.054799452
       }
     },
     "witch-abyssal-lich-detonate-dead": {
@@ -158,7 +158,7 @@
         "CritChance": 60.48,
         "CritMultiplier": 8.982,
         "Speed": 2.875,
-        "TotalDPS": 1071516.9448788
+        "TotalDPS": 1080840.6024192
       }
     },
     "witch-blood-mage-coiling-bolts": {
@@ -171,7 +171,7 @@
       }
     }
   },
-  "data_version": "4.5.4.8",
+  "data_version": "0.5.5.4.2",
   "mode": "COMBAT",
-  "vendor_commit": "7d6f530cbdab20389ff8bc6ba97a37ac27f74e41"
+  "vendor_commit": "bb52d6b368307457eb9c54bb13f1829993d390b1"
 }

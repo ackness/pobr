@@ -40,17 +40,14 @@ mod tests {
 
     use crate::GameData;
 
-    fn golden_version_dir() -> std::path::PathBuf {
-        crate::repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION)
+    fn data_dir() -> std::path::PathBuf {
+        crate::current_data_dir()
     }
 
     fn real_data() -> GameData {
-        // This module's tests pin section counts / vendor-commit real
-        // samples (version-specific, growing with extraction), so it loads
-        // the golden verification version rather than the active version
-        // (decoupling data from calc, see
-        // pobr_data::GOLDEN_PARITY_DATA_VERSION).
-        GameData::new(golden_version_dir())
+        // Section counts and vendor-commit samples change with each extraction;
+        // they are checked against the active version's blessed test pins.
+        GameData::new(data_dir())
     }
 
     /// Repo real data: every section's entry count matches the blessed
@@ -70,7 +67,7 @@ mod tests {
         // flag_types includes a pobr-added entry `hindered`→`Condition:Hindered`,
         // so the count is always vendor + 1.
         crate::test_pins::assert_pin(
-            &golden_version_dir(),
+            &data_dir(),
             "parser_rules.section_counts",
             serde_json::json!({
                 "forms": doc.forms.len(),
@@ -283,10 +280,6 @@ mod tests {
             handlers <= 15,
             "handler fallbacks {handlers} exceed the blueprint budget of ≤15"
         );
-        crate::test_pins::assert_pin(
-            &golden_version_dir(),
-            "parser_rules.handler_fallbacks",
-            handlers,
-        );
+        crate::test_pins::assert_pin(&data_dir(), "parser_rules.handler_fallbacks", handlers);
     }
 }

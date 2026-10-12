@@ -28,7 +28,7 @@ use pobr_build::corpus::{CorpusLine, LineSource};
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::calc::{MinimalInput, OutputTable};
 use pobr_data::monster::EnemyTier;
-use pobr_gamedata::{GameData, repo_data_root};
+use pobr_gamedata::GameData;
 use std::path::{Path, PathBuf};
 
 fn builds_dir() -> PathBuf {
@@ -57,10 +57,9 @@ fn discover_builds() -> Vec<PathBuf> {
 }
 
 fn load_data() -> BuildData {
-    // Pins the data version being checked against the golden values (decoupled
-    // from the active DATA_VERSION -- the latter can advance to newer data
-    // without falsely failing parity; see pobr_data::GOLDEN_PARITY_DATA_VERSION).
-    let data = GameData::new(repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION));
+    // PoB2 reference values are recaptured for the active data version on every
+    // data update, so parity always measures the engine against current data.
+    let data = GameData::new(pobr_gamedata::current_data_dir());
     BuildData::load(&data).expect("load BuildData")
 }
 
@@ -90,7 +89,7 @@ fn panel_golden_stats(dir: &Path) -> serde_json::Map<String, serde_json::Value> 
         ))
         .expect("parse panel references")
     });
-    assert_eq!(panel["data_version"], pobr_data::GOLDEN_PARITY_DATA_VERSION);
+    assert_eq!(panel["data_version"], pobr_gamedata::data_version());
     assert_eq!(panel["mode"], "COMBAT");
     let fixture = &panel["builds"][dir.file_name().unwrap().to_str().unwrap()];
     let text = std::fs::read_to_string(dir.join("meta.json")).expect("read fixture metadata");
@@ -975,7 +974,7 @@ const BASELINE_DEF_HIT10: usize = 450; // #13+#14 merged, measured 450/450 = 100
 // deadeye 0.832x (a pre-0.5.4b per-hit shortfall), blood-mage 0.880x /
 // abyssal-lich 0.926x (a Mageblood mod-family gap, a separate Phase 1 item --
 // oracle pins blood-mage as missing `INC CritChance 107 'Mageblood'`),
-// frost-bomb 0.661x (unchanged across both golden versions, a pre-existing
+// frost-bomb 0.661x (unchanged across data versions, a pre-existing
 // cooldown-DPS gap).
 // (pre-existing #7-1) frost-bomb TotalDPS 0.66x->1.00x flips to correct (off
 // @5/@10 each +1): the Archmage buff's `DamageGainAsLightning` (BASE 4/100
@@ -1147,7 +1146,7 @@ const BASELINE_OFF_HIT10: usize = 80; // #15 full marks 80/80 (78 after #10; 76 
 // has a dot-specific residual = Infernal Cry's uptime-scaled
 // DamageGainAsFire 12% isn't modeled (old and new vendor agree on this
 // value, a pre-existing gap not a 0.5.4b item); frost-bomb 0.87x /
-// essence-drain's WithDotDPS 1.36x are unchanged across both golden versions
+// essence-drain's WithDotDPS 1.36x are unchanged across data versions
 // (pre-existing); gemling's dot overestimate at 1.10x is the downstream
 // propagation of a small hit-side fire/crit overestimate (per-component
 // oracle: fire 1.03x × stacks 1.05x × crit aliasing).
@@ -1472,9 +1471,7 @@ fn corpus_unsupported_report() {
         // - modeled-elsewhere: the gem-level family (gem_property_bonuses already models this by
         //   scanning raw lines independently; the GemProperty LIST has no consumer in ModDb; unified under C5).
         let deferred: std::collections::HashSet<String> = {
-            let path = repo_data_root()
-                .join(pobr_data::GOLDEN_PARITY_DATA_VERSION)
-                .join("overlay/mod_parser_rules.json");
+            let path = pobr_gamedata::current_data_dir().join("overlay/mod_parser_rules.json");
             std::fs::read_to_string(&path)
                 .ok()
                 .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())

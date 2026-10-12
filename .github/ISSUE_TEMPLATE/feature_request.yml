@@ -1,0 +1,17 @@
+name: Feature or unsupported mechanic
+description: Ask for a feature, or for a skill, modifier or mechanic that is not calculated yet. 中文也可以。
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What you need
+      description: The problem you are trying to solve, or the mechanic that is missing.
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Example
+      description: A build code, the exact modifier text or a PoB2 reference (file and line) helps.
+      render: text

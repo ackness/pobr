@@ -4,7 +4,7 @@ use pobr_gamedata::repo_data_root;
 use serde_json::{Value, json};
 
 fn init() {
-    let dir = repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION);
+    let dir = pobr_gamedata::current_data_dir();
     pobr_wasm::init_data_from_dir(dir.to_str().unwrap()).expect("init data");
 }
 

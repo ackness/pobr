@@ -1,14 +1,3 @@
-/// Data version the checked-in golden and parity numbers were recorded against.
-///
-/// Those numbers are version-specific — the PoB2 `player_stats` in
-/// `examples/demo-bd-test/*/meta.json`, per-domain row counts, vendor-commit
-/// spot checks — so the tests load the version pinned here instead of the
-/// active one. Bump this when the goldens are re-recorded. Whether the engine
-/// works across versions at all is a separate question, answered by the
-/// `multi_version` smoke test: it runs a calc against every `data/<ver>/` and
-/// asserts the results are dimensionally sane without comparing to goldens.
-pub const GOLDEN_PARITY_DATA_VERSION: &str = "4.5.4.8";
-
 pub mod build_config;
 pub mod catalog;
 pub mod constants;

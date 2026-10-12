@@ -1,6 +1,6 @@
 # Repository Guidelines
 
-Read [CLAUDE.md](CLAUDE.md) for detailed architecture, validation scope, and
+Read the [maintainer guide](docs/maintainer-guide.md) for detailed architecture, validation scope, and
 calculation conventions. Use current code and regression tests to resolve
 disagreements with historical design notes.
 
@@ -51,7 +51,8 @@ Add regression assertions for changed behavior; calculation changes also need
 relevant parity coverage. Specify `--test` or `--lib` to limit compilation.
 Local commits require relevant checks. Pull requests run lightweight checks
 automatically (`.github/workflows/pr.yml`); full merge/release gates run in CI on
-tags, manual dispatch and release PRs (a changed workspace version), so do not
+tags, manual dispatch, release PRs (a changed workspace version) and nightly
+on master, so do not
 require a duplicate local full run. Use `mise run ci <pushed-ref>` for manual
 cloud validation and `mise run full` for explicit local Rust validation. Reuse
 passing checks for unchanged inputs. See [workflow commands](docs/development-workflow.md).

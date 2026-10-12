@@ -3,11 +3,10 @@
 //!
 //! For **every** ingested version directory under `data/`, independently
 //! `BuildData::load`s and runs the same real build end-to-end, asserting key
-//! outputs are finite, non-negative, and life>0. Golden values are
-//! version-specific (see `pobr_data::GOLDEN_PARITY_DATA_VERSION`, pinned and
-//! checked by ninja_parity), so this smoke test **only asserts "assembles
+//! outputs are finite, non-negative, and life>0. PoB2 reference values exist
+//! only for the active version (checked by ninja_parity), so this smoke test **only asserts "assembles
 //! correctly and produces sane magnitudes on this version's data"** — it
-//! doesn't compare against golden values. That's exactly the regression
+//! doesn't compare against reference values. That's exactly the regression
 //! guarantee of "data/calc separation": as the active version advances or new
 //! version directories are added, calc keeps running on every version.
 
