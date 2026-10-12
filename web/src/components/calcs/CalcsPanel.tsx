@@ -334,38 +334,87 @@ function SkillDotView({ rows, lang }: { rows: SkillDotRow[]; lang: Lang }) {
 /** The hit a damaging ailment comes from and the estimate of how many instances are active. */
 function AilmentView({ ailment, lang }: { ailment: AilmentDetail; lang: Lang }) {
   const tt = bindT(lang);
-  type Key = 'sourceHit' | 'sourceCrit' | 'critShare' | 'hitChance' | 'applyChance' | 'duration' | 'hitsPerSecond' | 'stacks' | 'maxStacks';
+  type Key = 'sourceHit' | 'sourceCrit' | 'critShare' | 'hitChance' | 'applyChance' | 'baseDuration' | 'enemyDuration' | 'duration' | 'hitsPerSecond' | 'stacks' | 'maxStacks';
+  const seconds = (value: number) => `${fmtNum(value)}${tt('calcs.ailment.seconds')}`;
   const rows: [Key, string][] = [
     ['sourceHit', fmtNum(ailment.source_hit)],
     ['sourceCrit', fmtNum(ailment.source_crit)],
     ['critShare', `${fmtNum(ailment.crit_share)}%`],
     ['hitChance', `${fmtNum(ailment.hit_chance)}%`],
     ['applyChance', `${fmtNum(ailment.apply_chance)}%`],
-    ['duration', `${fmtNum(ailment.duration)}${tt('calcs.ailment.seconds')}`],
+    ...(ailment.base_duration !== ailment.duration ? [['baseDuration', seconds(ailment.base_duration)] as [Key, string]] : []),
+    ...(ailment.enemy_duration !== 1 ? [['enemyDuration', `×${fmtNum(ailment.enemy_duration)}`] as [Key, string]] : []),
+    ['duration', seconds(ailment.duration)],
     ['hitsPerSecond', fmtNum(ailment.hits_per_second)],
     ...(ailment.stacks > 0 ? [['stacks', fmtNum(ailment.stacks)] as [Key, string]] : []),
     ['maxStacks', fmtNum(ailment.max_stacks)],
   ];
+  const lineGroups = (
+    [
+      ['chance', ailment.chance_mods],
+      ['duration', ailment.duration_mods],
+      ['effect', ailment.effect_mods],
+      ['rate', ailment.rate_mods],
+    ] as const
+  ).filter(([, mods]) => mods.length > 0);
   return (
-    <div className="breakdown-scroll">
-      <table className="breakdown-formula ailment-table" aria-label={tt('calcs.ailment.title')}>
-        <caption>{tt('calcs.ailment.title')}</caption>
-        <tbody>
-          {rows.map(([key, value]) => (
-            <tr key={key} className={`ailment-${key}`}>
-              <th scope="row">{tt(`calcs.ailment.${key}`)}</th>
-              <td className="formula-result">{value}</td>
-            </tr>
+    <>
+      <div className="breakdown-scroll">
+        {ailment.source.length > 1 && (
+          <table className="breakdown-table hit-damage-table ailment-source-table" aria-label={tt('calcs.ailment.sourceTitle')}>
+            <caption>{tt('calcs.ailment.sourceTitle')}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{tt('calcs.damage.type')}</th>
+                <th scope="col">{tt('calcs.ailment.sourceHitShort')}</th>
+                <th scope="col">{tt('calcs.ailment.sourceCritShort')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ailment.source.map((row) => (
+                <tr key={row.damage_type} className={`damage-${row.damage_type.toLowerCase()}`}>
+                  <th scope="row">{damageTypeLabel(lang, row.damage_type)}</th>
+                  <td className="mod-value">{fmtNum(row.hit)}</td>
+                  <td className="mod-value">{fmtNum(row.crit)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <table className="breakdown-formula ailment-table" aria-label={tt('calcs.ailment.title')}>
+          <caption>{tt('calcs.ailment.title')}</caption>
+          <tbody>
+            {rows.map(([key, value]) => (
+              <tr key={key} className={`ailment-${key}`}>
+                <th scope="row">{tt(`calcs.ailment.${key}`)}</th>
+                <td className="formula-result">{value}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {ailment.damage_roll !== 50 && (
+          <p className="breakdown-note">
+            {tt('calcs.ailment.rollNote').replace('{roll}', fmtNum(ailment.damage_roll))}
+          </p>
+        )}
+        {ailment.stacks === 0 && <p className="breakdown-note">{tt('calcs.ailment.noRateNote')}</p>}
+      </div>
+      {lineGroups.length > 0 && (
+        <div className="damage-lines ailment-lines">
+          {lineGroups.map(([key, mods]) => (
+            <details key={key} className={`damage-lines-group ailment-lines-${key}`}>
+              <summary>
+                {tt(`calcs.ailment.${key}Lines`)}
+                <span className="breakdown-count">
+                  {mods.filter((m) => m.active).length} {tt('calcs.mods')}
+                </span>
+              </summary>
+              <ModLines mods={mods} lang={lang} />
+            </details>
           ))}
-        </tbody>
-      </table>
-      {ailment.damage_roll !== 50 && (
-        <p className="breakdown-note">
-          {tt('calcs.ailment.rollNote').replace('{roll}', fmtNum(ailment.damage_roll))}
-        </p>
+        </div>
       )}
-      {ailment.stacks === 0 && <p className="breakdown-note">{tt('calcs.ailment.noRateNote')}</p>}
-    </div>
+    </>
   );
 }
 

@@ -1161,6 +1161,8 @@ struct AilmentPassResult {
     hand: crate::HandTag,
     /// What this pass computed with, for the displayed steps.
     terms: AilmentTerms,
+    /// The source hit of `terms` by damage type.
+    source_parts: Vec<super::AilmentSourcePart>,
 }
 
 /// The complete vendor pipeline for a single ailment on a single pass:
@@ -1287,6 +1289,8 @@ fn damaging_ailment_for_pass(
         hit_chance: ctx.hit_chance,
         duration: ailment_duration(kind, player, cfg) * debuff_duration_mult(enemy, cfg),
         hits_per_second: ctx.speed,
+        base_duration: super::ailment::ailment_base_duration(kind, cfg).unwrap_or(0.0),
+        enemy_duration: debuff_duration_mult(enemy, cfg),
         stacks: stack.active_stacks,
         max_stacks: stack.max_stacks as f64,
         effect: ailment_effect_mod(player, cfg),
@@ -1294,6 +1298,16 @@ fn damaging_ailment_for_pass(
         cap: cfg.constants.game().dot_dps_cap,
         dps: 0.0,
     };
+    // The crit column follows the source: without crit-applied ailments it
+    // is the non-critical hit.
+    let source_parts: Vec<_> =
+        super::ailment::stored_source_parts_at_roll(kind, &ctx.ranges, player, cfg, roll)
+            .into_iter()
+            .map(|part| super::AilmentSourcePart {
+                crit: if never_from_crit { part.hit } else { part.crit },
+                ..part
+            })
+            .collect();
 
     if stack.active_stacks > 0.0 {
         // vendor's uptime convention (`:5189-5193`): activeAilments = min(stacks, max).
@@ -1317,6 +1331,7 @@ fn damaging_ailment_for_pass(
             max_stacks: stack.max_stacks as f64,
             hand: ctx.hand,
             terms: AilmentTerms { dps, ..terms },
+            source_parts,
         })
     } else {
         // Fallback when the signal is missing (the old convention): `chance × magnitude`,
@@ -1331,6 +1346,7 @@ fn damaging_ailment_for_pass(
             max_stacks: stack.max_stacks as f64,
             hand: ctx.hand,
             terms: AilmentTerms { dps, ..terms },
+            source_parts,
         })
     }
 }
@@ -1572,6 +1588,11 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
                     .iter()
                     .take(2)
                     .map(|pass| (pass.hand, pass.terms))
+                    .collect(),
+                sources: results
+                    .iter()
+                    .take(2)
+                    .map(|pass| pass.source_parts.clone())
                     .collect(),
                 merge,
             },

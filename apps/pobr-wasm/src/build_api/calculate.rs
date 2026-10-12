@@ -293,6 +293,30 @@ struct AilmentJson {
     /// The most instances that deal damage at once. The `active_stacks` step
     /// multiplies by the smaller of `stacks` and this.
     max_stacks: f64,
+    /// `source_hit` and `source_crit` per damage type that can apply the
+    /// ailment; the rows add up to the two totals.
+    source: Vec<AilmentSourceRowJson>,
+    /// `duration` before modifiers, in seconds, and the multiplier from how
+    /// fast effects expire on the enemy: `duration` is `base_duration`
+    /// scaled by the `duration_mods` lines, times `enemy_duration`.
+    base_duration: f64,
+    enemy_duration: f64,
+    /// The player's lines behind `apply_chance` (the ailment's own chance
+    /// name and `AilmentChance`), `duration`, the `ailment_effect` step and
+    /// the `ailment_rate` step, inactive lines included. Modifiers on the
+    /// enemy that add to these are not listed.
+    chance_mods: Vec<BreakdownModJson>,
+    duration_mods: Vec<BreakdownModJson>,
+    effect_mods: Vec<BreakdownModJson>,
+    rate_mods: Vec<BreakdownModJson>,
+}
+
+#[derive(Debug, Serialize)]
+struct AilmentSourceRowJson {
+    /// `Physical` / `Fire` / `Cold` / `Lightning` / `Chaos`.
+    damage_type: String,
+    hit: f64,
+    crit: f64,
 }
 
 #[derive(Debug, Serialize)]
@@ -349,8 +373,12 @@ fn formula_json(formula: pobr_core::calc::StatFormula) -> FormulaJson {
     }
 }
 
-fn ailment_json(terms: &pobr_core::calc::AilmentTerms) -> AilmentJson {
-    AilmentJson {
+/// What pass `pass` of the ailment stage computed `stat` with.
+fn ailment_json(session: &CalculationSession, stat: &str, pass: usize) -> Option<AilmentJson> {
+    let stage = session.ailment_stage_terms(stat)?;
+    let (_, terms) = stage.passes.get(pass)?;
+    let lines = session.ailment_lines(stat)?;
+    Some(AilmentJson {
         source_hit: terms.source_hit,
         source_crit: terms.source_crit,
         damage_roll: terms.damage_roll,
@@ -361,7 +389,24 @@ fn ailment_json(terms: &pobr_core::calc::AilmentTerms) -> AilmentJson {
         hits_per_second: terms.hits_per_second,
         stacks: terms.stacks,
         max_stacks: terms.max_stacks,
-    }
+        source: stage
+            .sources
+            .get(pass)
+            .into_iter()
+            .flatten()
+            .map(|part| AilmentSourceRowJson {
+                damage_type: format!("{:?}", part.damage_type),
+                hit: part.hit,
+                crit: part.crit,
+            })
+            .collect(),
+        base_duration: terms.base_duration,
+        enemy_duration: terms.enemy_duration,
+        chance_mods: mod_entries(&lines.chance),
+        duration_mods: mod_entries(&lines.duration),
+        effect_mods: mod_entries(&lines.effect),
+        rate_mods: mod_entries(&lines.rate),
+    })
 }
 
 /// The per-type table of offence pass `pass`'s average hit.
@@ -438,7 +483,8 @@ fn hand_breakdowns(session: &CalculationSession, stat: &str) -> Vec<HandBreakdow
         return terms
             .passes
             .iter()
-            .map(|(hand, terms)| HandBreakdownJson {
+            .enumerate()
+            .map(|(pass, (hand, terms))| HandBreakdownJson {
                 hand: hand_label(*hand),
                 detail: BreakdownJson {
                     base_total: base_total + 0.0,
@@ -450,7 +496,7 @@ fn hand_breakdowns(session: &CalculationSession, stat: &str) -> Vec<HandBreakdow
                     damage: None,
                     mitigation: None,
                     skill_dot: None,
-                    ailment: Some(ailment_json(terms)),
+                    ailment: ailment_json(session, stat, pass),
                     reload: None,
                     hands: Vec::new(),
                 },
@@ -519,7 +565,7 @@ fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJs
         .as_ref()
         .and_then(|_| session.ailment_stage_terms(stat))
         .and_then(|terms| match terms.passes.as_slice() {
-            [(_, only)] => Some(ailment_json(only)),
+            [_] => ailment_json(session, stat, 0),
             _ => None,
         });
     let damage = (stat == "TotalHitAvg" && single_pass)

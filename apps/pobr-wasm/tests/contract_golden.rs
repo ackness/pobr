@@ -252,6 +252,8 @@ struct FormulaTally {
     penetrated: usize,
     skill_dot_lines: usize,
     hands: usize,
+    ailment_lines: usize,
+    ailment_source_types: usize,
 }
 
 /// Checks that the steps of `breakdown` are the calculation: each step
@@ -655,6 +657,65 @@ fn check_formula(
             }
         }
     }
+    // What an ailment's steps start from is listed with them: the source
+    // hit per damage type, and the lines behind the duration and the effect.
+    if let Some(ailment) = breakdown.get("ailment") {
+        let n = |key: &str| ailment[key].as_f64().unwrap();
+        let source = ailment["source"].as_array().unwrap();
+        for (column, total) in [("hit", "source_hit"), ("crit", "source_crit")] {
+            let sum: f64 = source.iter().map(|row| row[column].as_f64().unwrap()).sum();
+            assert!(
+                close(sum, n(total)),
+                "{at}: source rows {column} {sum} != {}",
+                n(total)
+            );
+        }
+        tally.ailment_source_types += source.len();
+        let active = |key: &'static str, mod_type: &'static str| {
+            ailment[key]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(move |line| line["active"] == true && line["mod_type"] == mod_type)
+                .map(|line| line["value"].as_f64().unwrap())
+        };
+        // The calculation rounds a MORE product to two decimals per name.
+        let scale = |key: &'static str| -> f64 {
+            (1.0 + active(key, "INC").sum::<f64>() / 100.0)
+                * active(key, "MORE")
+                    .map(|value| 1.0 + value / 100.0)
+                    .product::<f64>()
+        };
+        let near = |a: f64, b: f64| (a - b).abs() <= 0.02 * a.abs().max(b.abs()).max(1.0);
+        let duration = n("base_duration") * scale("duration_mods") * n("enemy_duration");
+        assert!(
+            near(n("duration"), duration),
+            "{at}: duration {} != {duration} from its lines",
+            n("duration")
+        );
+        let effect = formula["steps"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|step| step["op"] == "ailment_effect")
+            .map_or(1.0, |step| step["operand"].as_f64().unwrap());
+        assert!(
+            near(effect, scale("effect_mods")),
+            "{at}: ailment effect {effect} != its lines"
+        );
+        // Bleed and poison have no chance of their own: it comes from lines.
+        if stat != "IgniteDPS" && n("apply_chance") > 0.0 {
+            assert!(
+                active("chance_mods", "BASE").sum::<f64>() > 0.0,
+                "{at}: no line behind the chance to apply"
+            );
+        }
+        for key in ["chance_mods", "duration_mods", "effect_mods", "rate_mods"] {
+            tally.ailment_lines += active(key, "BASE").count()
+                + active(key, "INC").count()
+                + active(key, "MORE").count();
+        }
+    }
     // Each weapon pass is checked like a displayed breakdown, against the
     // value the merge takes from it; the per-pass tables are listed there.
     if !hands.is_empty() {
@@ -753,6 +814,8 @@ fn breakdown_formulas_end_at_the_displayed_value() {
         penetrated,
         skill_dot_lines,
         hands,
+        ailment_lines,
+        ailment_source_types,
     } = tally;
     println!(
         "formula coverage over {} builds: {covered:?}; without formula {unexplained:?}; ops {ops:?}",
@@ -815,6 +878,12 @@ fn breakdown_formulas_end_at_the_displayed_value() {
     assert!(
         skill_dot_lines > 0,
         "no fixture build lists skill dot lines"
+    );
+    println!("ailment lines {ailment_lines}; ailment source types {ailment_source_types}");
+    assert!(ailment_lines > 0, "no fixture build lists ailment lines");
+    // Some build applies an ailment with more than one damage type.
+    assert!(
+        ailment_source_types > covered["IgniteDPS"] + covered["BleedDPS"] + covered["PoisonDPS"]
     );
     // Every build that deals damage has its combined DPS explained.
     assert!(covered["CombinedDPS"] >= 17 && covered["TotalDotDPS"] >= 17);

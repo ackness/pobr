@@ -560,6 +560,17 @@ export interface AilmentDetail {
   stacks: number;
   /** Most instances that deal damage at once; the `active_stacks` step uses the smaller of the two. */
   max_stacks: number;
+  /** `source_hit` and `source_crit` per damage type that can apply the ailment; the rows add up to the two totals. */
+  source: { damage_type: string; hit: number; crit: number }[];
+  /** `duration` before modifiers, in seconds. */
+  base_duration: number;
+  /** Multiplier from how fast effects expire on the enemy; `duration` is `base_duration` scaled by `duration_mods`, times this. */
+  enemy_duration: number;
+  /** The player's lines behind `apply_chance`, `duration`, the `ailment_effect` step and the `ailment_rate` step. Modifiers on the enemy are not listed. */
+  chance_mods: BreakdownMod[];
+  duration_mods: BreakdownMod[];
+  effect_mods: BreakdownMod[];
+  rate_mods: BreakdownMod[];
 }
 
 /** One damage type of the skill's own damage over time (not an ailment). */

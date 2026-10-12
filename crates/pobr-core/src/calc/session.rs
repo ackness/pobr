@@ -80,6 +80,15 @@ pub struct HitDamageMods<'a> {
     pub by_type: Vec<(DamageType, Vec<crate::ModEvaluation<'a>>)>,
 }
 
+/// See [`CalculationSession::ailment_lines`].
+#[derive(Debug, Clone)]
+pub struct AilmentLines<'a> {
+    pub chance: Vec<crate::ModEvaluation<'a>>,
+    pub duration: Vec<crate::ModEvaluation<'a>>,
+    pub effect: Vec<crate::ModEvaluation<'a>>,
+    pub rate: Vec<crate::ModEvaluation<'a>>,
+}
+
 /// See [`CalculationSession::skill_dot_mods`].
 #[derive(Debug, Clone)]
 pub struct SkillDotMods<'a> {
@@ -1044,6 +1053,31 @@ impl CalculationSession {
             .iter()
             .find(|(ailment, _)| *ailment == kind)
             .map(|(_, terms)| terms)
+    }
+
+    /// The player's lines behind the inputs of a damaging ailment's steps
+    /// (`BleedDPS` / `IgniteDPS` / `PoisonDPS`), as the ailment stage reads
+    /// them: the chance to apply and the duration in the ailment's own
+    /// config, the ailment effect and the faster / slower damage rate in the
+    /// session config. Modifiers on the enemy that add to these are not listed.
+    pub fn ailment_lines(&self, stat: &str) -> Option<AilmentLines<'_>> {
+        use super::ailment;
+        let kind = ailment_of(stat)?;
+        let (name, from_hit_size) = match kind {
+            AilmentType::Bleed => ("Bleed", false),
+            AilmentType::Poison => ("Poison", false),
+            _ => ("Ignite", true),
+        };
+        let db = &self.env.player.mod_db;
+        let cfg = &self.env.cfg;
+        let scoped = ailment::ailment_scoped_cfg(cfg, kind);
+        let (faster, slower) = ailment::rate_mod_names(name);
+        Some(AilmentLines {
+            chance: db.evaluate_names(&scoped, &ailment::chance_mod_names(name, from_hit_size)),
+            duration: db.evaluate_names(&scoped, &ailment::duration_mod_names(kind)),
+            effect: db.evaluate_names(cfg, &ailment::effect_mod_names()),
+            rate: db.evaluate_names(cfg, &[faster, slower]),
+        })
     }
 
     /// The config `stat`'s stage evaluates modifiers in: offence pass `pass`

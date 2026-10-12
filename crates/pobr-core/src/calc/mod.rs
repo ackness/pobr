@@ -37,8 +37,8 @@ pub mod warcry;
 
 pub use actor::{Actor, ActorBaseStats};
 pub use ailment::{
-    AilmentStageTerms, AilmentTerms, HandAilmentMerge, bleed_instance, corrupted_blood_instance,
-    ignite_instance, poison_instance, shock_effect,
+    AilmentSourcePart, AilmentStageTerms, AilmentTerms, HandAilmentMerge, bleed_instance,
+    corrupted_blood_instance, ignite_instance, poison_instance, shock_effect,
 };
 pub use breakdown::{BreakdownStep, BreakdownTable};
 pub use buff_pass::{
