@@ -1135,7 +1135,7 @@ fn breakdowns_merge_two_weapon_passes_and_show_the_reload() {
             { "slot": "weapon1", "text": "Rarity: MAGIC\nWooden Club\nAdds 10 to 20 Fire Damage" },
             {
                 "slot": "weapon2",
-                "text": "Rarity: MAGIC\nWooden Club\n20% increased Attack Speed\n+5% to Critical Hit Chance",
+                "text": "Rarity: MAGIC\nWooden Club\nAdds 4 to 8 Fire Damage\n20% increased Attack Speed\n+5% to Critical Hit Chance",
             },
         ],
         "socket_groups": [

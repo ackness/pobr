@@ -358,3 +358,42 @@ fn weapon_local_critical_chance_is_scoped_and_multiplicative() {
     let ring_out = calculate_with_data(&ring, &data, &opts(&[])).unwrap();
     assert!((ring_out.crit_chance - baseline.crit_chance * 1.5).abs() < 1e-9);
 }
+
+/// A bare elemental or chaos "Adds N to M" line on a weapon is that weapon's
+/// own damage (Item.lua weaponData), like the physical one: only the hand
+/// attacking with it gains the damage.
+#[test]
+fn weapon_local_added_damage_stays_on_its_own_hand() {
+    let data = load_build_data();
+    let plain = calculate_with_data(
+        &dual_build(Some(weapon("Shortsword", &[]))),
+        &data,
+        &opts(&[]),
+    )
+    .unwrap();
+    let (plain_mh, plain_oh) = (
+        plain.main_hand.unwrap().average_hit,
+        plain.off_hand.unwrap().average_hit,
+    );
+    for kind in ["Physical", "Fire", "Cold", "Lightning", "Chaos"] {
+        let line = format!("Adds 10 to 20 {kind} Damage");
+        let on_main = dual_build(Some(weapon("Shortsword", &[])))
+            .set_item(EquipmentSlot::Weapon1, weapon("Wooden Club", &[&line]));
+        let out = calculate_with_data(&on_main, &data, &opts(&[])).unwrap();
+        assert!(out.main_hand.unwrap().average_hit > plain_mh, "{line}");
+        assert_eq!(out.off_hand.unwrap().average_hit, plain_oh, "{line}");
+
+        let on_off = dual_build(Some(weapon("Shortsword", &[&line])));
+        let out = calculate_with_data(&on_off, &data, &opts(&[])).unwrap();
+        assert_eq!(out.main_hand.unwrap().average_hit, plain_mh, "{line}");
+        assert!(out.off_hand.unwrap().average_hit > plain_oh, "{line}");
+    }
+    // The same wording with an attack scope is a global modifier.
+    let global = dual_build(Some(weapon("Shortsword", &[]))).set_item(
+        EquipmentSlot::Weapon1,
+        weapon("Wooden Club", &["Adds 10 to 20 Fire Damage to Attacks"]),
+    );
+    let out = calculate_with_data(&global, &data, &opts(&[])).unwrap();
+    assert!(out.main_hand.unwrap().average_hit > plain_mh);
+    assert!(out.off_hand.unwrap().average_hit > plain_oh);
+}
