@@ -281,7 +281,7 @@ pub(super) fn stage_build_cfg(
     // (already parsed by PoBR as condition tags) wouldn't apply. Generic, independent of build/skill.
     cfg = apply_condition_implications(cfg);
 
-    // Distinct elemental types (pinned ModParser.lua:3866-3872), not stacks
+    // The five distinct PoE2 elemental ailment types, not stacks
     // or infliction capability: another skill/ally may supply each condition.
     // Frozen does not imply Chilled in the pinned ConfigOptions. Target-state
     // bonuses are Effective-only, even when imported panel conditions are true.

@@ -128,6 +128,7 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
     bridge_enemy_conditions(&mut config.conditions, &outcome);
     bridge_combat_player_conditions(&mut config.conditions, &outcome);
     apply_explicit_boolean_conditions(&mut config.conditions, build);
+    reassert_configured_enemy_ailments(&mut config.conditions, &outcome);
 
     // Scalar wrapping (only overrides on explicit input; omitted = keep the existing
     // fallback chain, see module doc).
@@ -302,6 +303,31 @@ fn apply_explicit_boolean_conditions(conditions: &mut HashMap<String, bool>, bui
             } else {
                 conditions.insert((*cond_var).to_string(), *enabled);
             }
+        }
+    }
+}
+
+/// An unchecked primary ailment input only retires its own legacy condition. Other
+/// enabled options still place the same ailment on the enemy (vendor
+/// ConfigOptions.lua: `conditionEnemyChilledByYourHits` and
+/// `conditionEnemyOnChilledGround` both add `Condition:Chilled`), so an active enemy
+/// FLAG restores the condition the explicit false just cleared.
+fn reassert_configured_enemy_ailments(
+    conditions: &mut HashMap<String, bool>,
+    outcome: &ConfigOutcome,
+) {
+    const AILMENTS: [&str; 5] = ["Ignited", "Chilled", "Frozen", "Shocked", "Electrocuted"];
+    for modifier in &outcome.enemy_mods {
+        if modifier.mod_type != ModType::Flag
+            || !matches!(modifier.value, pobr_core::ModValue::Bool(true))
+        {
+            continue;
+        }
+        let Some(var) = modifier.name.as_str().strip_prefix("Condition:") else {
+            continue;
+        };
+        if AILMENTS.contains(&var) {
+            conditions.insert(format!("Enemy{var}"), true);
         }
     }
 }
@@ -550,6 +576,26 @@ mod tests {
             resolved.config.conditions.get("UsedSkillRecently"),
             Some(&false)
         );
+    }
+
+    /// An unchecked primary ailment input must not hide the same ailment supplied by
+    /// another enabled option, but still retires an imported legacy condition.
+    #[test]
+    fn explicit_false_ailment_yields_to_another_enabled_option() {
+        let catalog = load_catalog();
+        let mut build = build_with_inputs(
+            RawConfigInputs::new()
+                .with("conditionEnemyChilled", ConfigInputValue::Bool(false))
+                .with(
+                    "conditionEnemyOnChilledGround",
+                    ConfigInputValue::Bool(true),
+                )
+                .with("conditionEnemyShocked", ConfigInputValue::Bool(false)),
+        );
+        build.config.conditions.insert("EnemyShocked".into(), true);
+        let resolved = resolve_config(&build, Some(&catalog));
+        assert_eq!(resolved.config.conditions.get("EnemyChilled"), Some(&true));
+        assert_eq!(resolved.config.conditions.get("EnemyShocked"), Some(&false));
     }
 
     /// commit ③: enemy numeric overrides (BASE directly injected into the enemy bucket +

@@ -1314,7 +1314,7 @@ mod elemental_armament {
 
     // Source-grounded model, NOT an Armament Lua-oracle golden: pinned
     // sup_str.lua:2891-2920 and gem_stat_descriptions.lua entry 954 give 12%
-    // MORE Attack Damage; ModParser.lua:3866-3872 enumerates five types.
+    // MORE Attack Damage; the five PoE2 elemental ailment types are counted.
     // SkillStatMap.lua:922-924 / ModStore.lua:550-571 establish a single
     // final-per-count term. This support itself has no pinned Lua consumer.
     #[test]

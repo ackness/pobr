@@ -263,8 +263,10 @@ pub fn map_stat(
     let Some(entry) = catalog.lookup(effect_id, set_key, stat) else {
         // Code-owned rule, not a vendor SkillStatMap extraction: pinned
         // sup_str.lua:2891-2920 / gem_stat_descriptions.lua entry 954 specify
-        // MORE Attack Damage per elemental ailment. ModParser.lua:3866-3872
-        // supplies the five distinct types; SkillStatMap.lua:922-924 and
+        // MORE Attack Damage per elemental ailment. Counted types are the five
+        // PoE2 elemental ailments; the "elemental ailment type" list in
+        // ModParser.lua also names Scorched, Brittle and Sapped, which are
+        // deliberately not counted. SkillStatMap.lua:922-924 and
         // ModStore.lua:550-571 establish one final-per-count MORE term.
         // The pinned vendor has no consumer for this exact stat, so this is
         // source-grounded modeling, not oracle-verified Armament parity.

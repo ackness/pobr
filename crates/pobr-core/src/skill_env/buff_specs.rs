@@ -149,7 +149,6 @@ fn support_modifiers_observed(
             set_key.as_deref(),
             |stat, outcome| {
                 if let Some(limits) = limits.as_deref_mut()
-                    && let Some(catalog) = catalog
                     && let Some(reason) = crate::skill_env::stat_map::support_stat_limit(
                         catalog,
                         &sup.effect_id,

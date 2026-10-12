@@ -215,7 +215,7 @@ impl std::fmt::Display for SupportStatLimit<'_> {
 /// Only established missing mechanics qualify; Unknown also contains controls
 /// and stats consumed outside the primary modifier mapping.
 pub(super) fn support_stat_limit<'a>(
-    catalog: &StatMapCatalog,
+    catalog: Option<&StatMapCatalog>,
     effect_id: &str,
     set_key: Option<&str>,
     stat: &pobr_data::catalog::SkillDamageStat,
@@ -239,7 +239,7 @@ pub(super) fn support_stat_limit<'a>(
             }
         }
         MappedOutcome::Unsupported(primary) => {
-            skipped_support_condition(catalog, effect_id, set_key, stat)
+            skipped_support_condition(catalog?, effect_id, set_key, stat)
                 .map(|skipped| SupportStatLimit::Conditional { skipped, primary })
         }
         _ => None,
