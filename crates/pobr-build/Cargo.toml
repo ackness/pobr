@@ -9,9 +9,9 @@ pobr-core.workspace = true
 pobr-tree.workspace = true
 pobr-item.workspace = true
 pobr-gamedata.workspace = true
-base64 = "0.22"
+base64 = "0.23"
 flate2 = "1"
-quick-xml = "0.41"
+quick-xml = "0.42"
 thiserror = "2"
 serde.workspace = true
 
