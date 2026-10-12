@@ -12,6 +12,7 @@ pub mod ehp;
 pub mod env;
 pub mod env_finalize;
 pub mod error;
+pub mod formula;
 pub mod hand_pass;
 pub mod keystone_merge;
 pub mod mageblood;
@@ -70,6 +71,7 @@ pub use ehp::{
 };
 pub use env::Env;
 pub use error::CalcError;
+pub use formula::{FormulaOp, FormulaStep, StatFormula};
 pub use hand_pass::{
     COMBINE_TABLE, HandCfg, HandPassOutput, HandSource, WeaponBase, combine_mode_for,
     run_hand_passes,

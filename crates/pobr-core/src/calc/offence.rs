@@ -5,6 +5,7 @@ use crate::{CalcConfig, ModDb, TraceGraph, TraceNodeId, TraceOperation, TraceOut
 use super::crit::{resolve_crit, resolve_crit_traced};
 use super::crit_pass::run_crit_passes;
 use super::damage::DamageComponent;
+use super::formula::{FormulaBuilder, FormulaOp, StatFormula};
 use super::scaled_damage::{dps_end_factors, scaled_damage_effect};
 use super::{ActorBaseStats, BreakdownStep, BreakdownTable, OutputTable, hit_chance, round};
 
@@ -169,6 +170,27 @@ pub(crate) struct ResistanceResolution {
     pub(crate) final_value: f64,
     max: f64,
     over_cap: f64,
+    /// The terms the total was built from, kept for [`Self::formula`].
+    base: f64,
+    flat: f64,
+    inc: f64,
+    more: f64,
+    override_total: Option<f64>,
+    floor: f64,
+}
+
+impl ResistanceResolution {
+    /// The steps from the starting value to `final_value`.
+    pub(crate) fn formula(&self) -> StatFormula {
+        let mut steps = FormulaBuilder::default();
+        match self.override_total {
+            Some(value) => steps.set(FormulaOp::Override, value, value),
+            None => steps.scaled(self.base, self.flat, self.inc, self.more),
+        }
+        steps.at_most(FormulaOp::Cap, self.max);
+        steps.at_least(self.floor);
+        steps.finish(self.final_value)
+    }
 }
 
 /// Resolves a single resistance (mirrors PoB2's full-channel semantics, CalcDefence.lua:888-930):
@@ -207,16 +229,17 @@ pub(crate) fn resolve_resistance(
         max_names.push(ModName::from("ElementalResistMax"));
     }
 
-    let total = db
+    let flat = db.sum(ModType::Base, cfg, &res_names);
+    let inc = db.sum(ModType::Inc, cfg, &res_names);
+    let more = db.more(cfg, &res_names);
+    let override_total = db
         .override_(cfg, long.as_str())
-        .or_else(|| db.override_(cfg, short.as_str()))
-        .unwrap_or_else(|| {
-            let summed = base + db.sum(ModType::Base, cfg, &res_names);
-            let factor = ((1.0 + db.sum(ModType::Inc, cfg, &res_names) / 100.0)
-                * db.more(cfg, &res_names))
-            .max(0.0);
-            summed * factor
-        });
+        .or_else(|| db.override_(cfg, short.as_str()));
+    let total = override_total.unwrap_or_else(|| {
+        let summed = base + flat;
+        let factor = ((1.0 + inc / 100.0) * more).max(0.0);
+        summed * factor
+    });
     let max = db
         .override_(cfg, max_long.as_str())
         .or_else(|| db.override_(cfg, max_short.as_str()))
@@ -226,10 +249,17 @@ pub(crate) fn resolve_resistance(
                 + db.sum(ModType::Base, cfg, &max_names))
             .min(cfg.constants.game().resist_hard_cap)
         });
+    let floor = cfg.constants.game().resist_floor;
     ResistanceResolution {
-        final_value: round(total.min(max).max(cfg.constants.game().resist_floor)),
+        final_value: round(total.min(max).max(floor)),
         max: round(max),
         over_cap: round((total - max).max(0.0)),
+        base,
+        flat,
+        inc,
+        more,
+        override_total,
+        floor,
     }
 }
 
@@ -259,17 +289,63 @@ pub fn calculate_minimal(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> 
 /// main chain, and the warcry uptime budget (`calc::warcry` -- vendor's
 /// warcry section reads this same `globalOutput.Speed`, CalcOffence.lua:3235).
 pub(crate) fn resolve_action_rate(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> f64 {
+    action_rate_terms(db, cfg, input).value
+}
+
+/// The action rate with the intermediate values of each stage of
+/// [`resolve_action_rate`].
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct ActionRateTerms {
+    base: f64,
+    inc: f64,
+    more: f64,
+    /// After the speed inc/more scaling.
+    scaled: f64,
+    /// After the added cast/attack time.
+    timed: f64,
+    action_speed: f64,
+    uncapped: f64,
+    /// After the cooldown cap.
+    cooled: f64,
+    /// After the server tick cap, before rounding.
+    ticked: f64,
+    pub(crate) value: f64,
+}
+
+impl ActionRateTerms {
+    /// The steps from the weapon or skill base rate to `value`.
+    pub(crate) fn formula(&self) -> StatFormula {
+        let mut steps = FormulaBuilder::default();
+        steps.scaled(self.base, 0.0, self.inc, self.more);
+        if self.timed != self.scaled {
+            steps.set(
+                FormulaOp::AddedTime,
+                1.0 / self.timed - 1.0 / self.scaled,
+                self.timed,
+            );
+        }
+        if self.action_speed != 1.0 {
+            steps.set(FormulaOp::ActionSpeed, self.action_speed, self.uncapped);
+        }
+        steps.at_most(FormulaOp::CooldownCap, self.cooled);
+        steps.at_most(FormulaOp::ServerTickCap, self.ticked);
+        steps.finish(self.value)
+    }
+}
+
+pub(crate) fn action_rate_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    input: &MinimalInput,
+) -> ActionRateTerms {
     let speed_names = super::skill_use_time::speed_names_for(cfg);
     let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
     let inc_speed = db.sum(ModType::Inc, cfg, &speed_names);
     let more_speed = db.more(cfg, &speed_names);
     let action_speed_mod = (1.0 + db.sum(ModType::Inc, cfg, &action_speed_names) / 100.0)
         * db.more(cfg, &action_speed_names);
-    let scaled_rate = apply_total_time(
-        db,
-        cfg,
-        input.base_action_rate * (1.0 + inc_speed / 100.0) * more_speed,
-    );
+    let inc_more_rate = input.base_action_rate * (1.0 + inc_speed / 100.0) * more_speed;
+    let scaled_rate = apply_total_time(db, cfg, inc_more_rate);
     let uncapped_action_rate = scaled_rate * action_speed_mod;
     if dbg_env!("POBR_DBG_SPEED").is_some() {
         eprintln!(
@@ -282,11 +358,20 @@ pub(crate) fn resolve_action_rate(db: &ModDb, cfg: &CalcConfig, input: &MinimalI
             speed_names
         );
     }
-    round(apply_server_tick_cap(
-        db,
-        cfg,
-        apply_cooldown_cap(db, cfg, uncapped_action_rate),
-    ))
+    let cooled = apply_cooldown_cap(db, cfg, uncapped_action_rate);
+    let ticked = apply_server_tick_cap(db, cfg, cooled);
+    ActionRateTerms {
+        base: input.base_action_rate,
+        inc: inc_speed,
+        more: more_speed,
+        scaled: inc_more_rate,
+        timed: scaled_rate,
+        action_speed: action_speed_mod,
+        uncapped: uncapped_action_rate,
+        cooled,
+        ticked,
+        value: round(ticked),
+    }
 }
 
 /// The full entry point: player modDB + enemy modDB. Enemy-side mitigation/
@@ -1449,22 +1534,69 @@ fn apply_server_tick_cap(db: &ModDb, cfg: &CalcConfig, rate: f64) -> f64 {
 }
 
 pub(crate) fn scaled_pool(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) -> f64 {
-    let names = [ModName::from(name)];
-    let conv = pool_conversion_pct(db, cfg, name);
-    if conv == 0.0 {
-        return scaled_numeric_stat(db, cfg, base, &names);
-    }
-    // vendor CalcDefence.lua:92-95: `(base × (1 − conv/100) + extra) × (1+inc) × more`.
-    // OVERRIDE still wins over everything (ChaosInoculation etc. pool clamping).
-    for n in &names {
-        if let Some(value) = db.override_(cfg, n.as_str()) {
-            return round(value);
+    pool_terms(db, cfg, base, name).value
+}
+
+/// A Life/Mana pool with the terms it was built from.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct PoolTerms {
+    base: f64,
+    flat: f64,
+    converted_pct: f64,
+    inc: f64,
+    more: f64,
+    override_value: Option<f64>,
+    pub(crate) value: f64,
+}
+
+impl PoolTerms {
+    /// The steps from the starting value to `value`.
+    pub(crate) fn formula(&self) -> StatFormula {
+        let mut steps = FormulaBuilder::default();
+        if let Some(value) = self.override_value {
+            steps.set(FormulaOp::Override, value, value);
+            return steps.finish(self.value);
         }
+        if self.base != 0.0 {
+            steps.set(FormulaOp::Base, self.base, self.base);
+        }
+        if self.flat != 0.0 {
+            steps.set(FormulaOp::Flat, self.flat, steps.current() + self.flat);
+        }
+        if self.converted_pct != 0.0 {
+            steps.set(
+                FormulaOp::Converted,
+                self.converted_pct,
+                steps.current() * (1.0 - self.converted_pct / 100.0),
+            );
+        }
+        steps.increased(self.inc);
+        steps.more(self.more);
+        steps.finish(self.value)
     }
-    let base_value = base + db.sum(ModType::Base, cfg, &names);
+}
+
+pub(crate) fn pool_terms(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) -> PoolTerms {
+    let names = [ModName::from(name)];
+    let converted_pct = pool_conversion_pct(db, cfg, name);
+    let flat = db.sum(ModType::Base, cfg, &names);
     let inc = db.sum(ModType::Inc, cfg, &names);
     let more = db.more(cfg, &names);
-    round(base_value * (1.0 - conv / 100.0) * (1.0 + inc / 100.0) * more)
+    // OVERRIDE wins over everything (ChaosInoculation etc. pool clamping).
+    let override_value = db.override_(cfg, name);
+    // vendor CalcDefence.lua:92-95: `(base × (1 − conv/100) + extra) × (1+inc) × more`.
+    let value = override_value.unwrap_or_else(|| {
+        (base + flat) * (1.0 - converted_pct / 100.0) * (1.0 + inc / 100.0) * more
+    });
+    PoolTerms {
+        base,
+        flat,
+        converted_pct,
+        inc,
+        more,
+        override_value,
+        value: round(value),
+    }
 }
 
 /// The Life/Mana pool's "N% of Maximum X Converted to <defence>" deduction

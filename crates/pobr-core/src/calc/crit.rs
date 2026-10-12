@@ -28,6 +28,7 @@ use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModDb, TraceGraph, TraceNodeId, TraceOperation};
 
+use super::formula::{FormulaBuilder, FormulaOp, StatFormula};
 use super::offence::more_factor_traced;
 use super::round;
 
@@ -149,57 +150,9 @@ fn resolve_crit_impl(
         };
     }
 
-    let crit_chance_names = [ModName::from("CriticalStrikeChance")];
-    let self_crit_chance = [ModName::from("SelfCritChance")];
-
-    // 0) Base crit from the underlying source (vendor CalcOffence.lua:3665-3676 baseCrit section)
-    // vendor `baseCrit = critOverride or source.CritChance`: the **source's**
-    // base crit (weapon base / spell skillData.critChance) is a separate
-    // bucket from the mod bucket `Sum BASE CritChance`.
-    // PoBR's equivalent: the source injects `SkillBaseCritChance` BASE via
-    // the orchestration layer (distinct from the mod bucket
-    // `CriticalStrikeChance`), plus the `base_crit` parameter (fraction, the
-    // backward-compatible entry point).
-    //
-    // `baseCritOverride = Override(cfg, "CritChanceBase")` (:3667-3676) when
-    // it hits, **replaces the source base directly** (the mod bucket is
-    // unaffected). One source is the Blood Mage ascendancy "Sunder the
-    // Flesh" ("Base Critical Hit Chance for Spells is 15%", ModParser.lua:5801 →
-    // `mod("CritChanceBase","OVERRIDE",num,SkillType.Spell)`).
-    let source_base_pct =
-        base_crit * 100.0 + player.sum(ModType::Base, cfg, &[ModName::from("SkillBaseCritChance")]);
-    let source_base_pct = player
-        .override_(cfg, "CritChanceBase")
-        .unwrap_or(source_base_pct);
-
-    // 1) Base sum (including enemy crit weakness SelfCritChance, mode_effective only)
-    let player_base = player.sum(ModType::Base, cfg, &crit_chance_names);
-    let enemy_base = if mode_effective {
-        enemy.sum(ModType::Base, cfg, &self_crit_chance)
-    } else {
-        0.0
-    };
-    let player_inc = player.sum(ModType::Inc, cfg, &crit_chance_names);
-    let enemy_inc = if mode_effective {
-        enemy.sum(ModType::Inc, cfg, &self_crit_chance)
-    } else {
-        0.0
-    };
-    let chance_more = player.more(cfg, &crit_chance_names);
-
-    // The source base and mod contributions are both in percentage points;
-    // do all arithmetic in percentage-point space (matching PoB2), converting
-    // to a fraction only at the end.
-    let base_pct = source_base_pct + player_base + enemy_base;
-    let inc = player_inc + enemy_inc;
-    let mut crit_pct = base_pct * (1.0 + inc / 100.0) * chance_more;
-
-    // 2) cap (default 100, overridable by Override or Sum BASE)
-    let cap = crit_chance_cap(player, cfg);
-    crit_pct = crit_pct.min(cap);
-    if base_pct > 0.0 {
-        crit_pct = crit_pct.max(0.0);
-    }
+    // 0)-2) Source base, mod totals and the cap.
+    let terms = crit_chance_terms(player, enemy, cfg, base_crit, mode_effective);
+    let mut crit_pct = terms.capped_pct();
     let pre_effective_pct = crit_pct;
 
     // 3) mode_effective: hit chance downgrade (the evasion re-roll)
@@ -264,6 +217,169 @@ fn resolve_crit_impl(
     }
 }
 
+/// The terms of the crit chance before the effective-mode adjustments, in
+/// percentage points.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct CritChanceTerms {
+    /// The weapon/skill base, or the `CritChanceBase` override replacing it.
+    source_base: f64,
+    player_flat: f64,
+    /// Enemy `SelfCritChance` BASE (effective mode only).
+    enemy_flat: f64,
+    player_inc: f64,
+    /// Enemy `SelfCritChance` INC (effective mode only).
+    enemy_inc: f64,
+    more: f64,
+    cap: f64,
+}
+
+impl CritChanceTerms {
+    fn base_pct(&self) -> f64 {
+        self.source_base + self.player_flat + self.enemy_flat
+    }
+
+    /// The chance after the cap, before hit chance, lucky, bifurcate and
+    /// inevitable adjustments.
+    fn capped_pct(&self) -> f64 {
+        let base_pct = self.base_pct();
+        let inc = self.player_inc + self.enemy_inc;
+        let crit_pct = (base_pct * (1.0 + inc / 100.0) * self.more).min(self.cap);
+        if base_pct > 0.0 {
+            crit_pct.max(0.0)
+        } else {
+            crit_pct
+        }
+    }
+
+    /// The steps from the source base to the capped chance. `None` when an
+    /// enemy-side increase shares the INC step, which the player's modifier
+    /// lines alone would not account for.
+    pub(crate) fn formula(&self) -> Option<StatFormula> {
+        if self.enemy_inc != 0.0 {
+            return None;
+        }
+        let mut steps = FormulaBuilder::default();
+        steps.scaled(self.source_base, self.player_flat, 0.0, 1.0);
+        if self.enemy_flat != 0.0 {
+            steps.set(
+                FormulaOp::EnemyFlat,
+                self.enemy_flat,
+                steps.current() + self.enemy_flat,
+            );
+        }
+        steps.increased(self.player_inc);
+        steps.more(self.more);
+        steps.at_most(FormulaOp::Cap, self.cap);
+        if self.base_pct() > 0.0 {
+            steps.at_least(0.0);
+        }
+        Some(steps.finish(round(self.capped_pct().clamp(0.0, 100.0))))
+    }
+}
+
+pub(crate) fn crit_chance_terms(
+    player: &ModDb,
+    enemy: &ModDb,
+    cfg: &CalcConfig,
+    base_crit: f64,
+    mode_effective: bool,
+) -> CritChanceTerms {
+    let crit_chance_names = [ModName::from("CriticalStrikeChance")];
+    let self_crit_chance = [ModName::from("SelfCritChance")];
+
+    // Base crit from the underlying source (vendor CalcOffence.lua:3665-3676 baseCrit section)
+    // vendor `baseCrit = critOverride or source.CritChance`: the **source's**
+    // base crit (weapon base / spell skillData.critChance) is a separate
+    // bucket from the mod bucket `Sum BASE CritChance`.
+    // PoBR's equivalent: the source injects `SkillBaseCritChance` BASE via
+    // the orchestration layer (distinct from the mod bucket
+    // `CriticalStrikeChance`), plus the `base_crit` parameter (fraction, the
+    // backward-compatible entry point).
+    //
+    // `baseCritOverride = Override(cfg, "CritChanceBase")` (:3667-3676) when
+    // it hits, **replaces the source base directly** (the mod bucket is
+    // unaffected). One source is the Blood Mage ascendancy "Sunder the
+    // Flesh" ("Base Critical Hit Chance for Spells is 15%", ModParser.lua:5801 →
+    // `mod("CritChanceBase","OVERRIDE",num,SkillType.Spell)`).
+    let source_base_pct =
+        base_crit * 100.0 + player.sum(ModType::Base, cfg, &[ModName::from("SkillBaseCritChance")]);
+    let source_base = player
+        .override_(cfg, "CritChanceBase")
+        .unwrap_or(source_base_pct);
+
+    // Base sum (including enemy crit weakness SelfCritChance, mode_effective only).
+    // The source base and mod contributions are both in percentage points;
+    // all arithmetic stays in percentage-point space (matching PoB2).
+    let player_flat = player.sum(ModType::Base, cfg, &crit_chance_names);
+    let enemy_flat = if mode_effective {
+        enemy.sum(ModType::Base, cfg, &self_crit_chance)
+    } else {
+        0.0
+    };
+    let player_inc = player.sum(ModType::Inc, cfg, &crit_chance_names);
+    let enemy_inc = if mode_effective {
+        enemy.sum(ModType::Inc, cfg, &self_crit_chance)
+    } else {
+        0.0
+    };
+    CritChanceTerms {
+        source_base,
+        player_flat,
+        enemy_flat,
+        player_inc,
+        enemy_inc,
+        more: player.more(cfg, &crit_chance_names),
+        // Cap: default 100, overridable by Override or Sum BASE.
+        cap: crit_chance_cap(player, cfg),
+    }
+}
+
+/// The terms of the crit damage bonus before the effective-mode adjustments.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct CritMultiplierTerms {
+    /// The character's base crit damage bonus (percentage points).
+    base_bonus: f64,
+    flat: f64,
+    inc: f64,
+    more: f64,
+    /// `Your Critical Damage Bonus is N%`.
+    override_bonus: Option<f64>,
+    /// `NoCritMultiplier`: crits deal no extra damage.
+    disabled: bool,
+}
+
+impl CritMultiplierTerms {
+    /// The steps from the base bonus to the multiplier, as it is without
+    /// effective-mode adjustments.
+    pub(crate) fn formula(&self) -> Option<StatFormula> {
+        if self.disabled {
+            return None;
+        }
+        let mut steps = FormulaBuilder::default();
+        match self.override_bonus {
+            Some(bonus) => steps.set(FormulaOp::Override, bonus, bonus),
+            None => steps.scaled(self.base_bonus, self.flat, self.inc, self.more),
+        }
+        steps.at_least(0.0);
+        let multiplier = 1.0 + steps.current() / 100.0;
+        steps.set(FormulaOp::BonusToMultiplier, 100.0, multiplier);
+        Some(steps.finish(round(multiplier)))
+    }
+}
+
+pub(crate) fn crit_multiplier_terms(player: &ModDb, cfg: &CalcConfig) -> CritMultiplierTerms {
+    let crit_multiplier_names = [ModName::from("CriticalStrikeMultiplier")];
+    CritMultiplierTerms {
+        //  Player's base crit damage bonus reads from the injected constants pack.
+        base_bonus: cfg.constants.character().base_critical_hit_damage_bonus,
+        flat: player.sum(ModType::Base, cfg, &crit_multiplier_names),
+        inc: player.sum(ModType::Inc, cfg, &crit_multiplier_names),
+        more: player.more(cfg, &crit_multiplier_names),
+        override_bonus: player.override_(cfg, "CriticalStrikeMultiplier"),
+        disabled: player.flag(cfg, "NoCritMultiplier"),
+    }
+}
+
 /// Crit chance cap (percentage points). PoB2: `Override("CritChanceCap") or Sum("BASE","CritChanceCap")`, default 100.
 fn crit_chance_cap(player: &ModDb, cfg: &CalcConfig) -> f64 {
     if let Some(override_cap) = player.override_(cfg, "CritChanceCap") {
@@ -296,14 +412,11 @@ fn resolve_crit_multiplier(
     inevitable_less_more: Option<f64>,
 ) -> f64 {
     // NoCritMultiplier: crit damage has no effect (CalcOffence.lua L3782).
-    if player.flag(cfg, "NoCritMultiplier") {
+    let terms = crit_multiplier_terms(player, cfg);
+    if terms.disabled {
         return 1.0;
     }
-
-    let crit_multiplier_names = [ModName::from("CriticalStrikeMultiplier")];
-    let base = player.sum(ModType::Base, cfg, &crit_multiplier_names);
-    let inc = player.sum(ModType::Inc, cfg, &crit_multiplier_names);
-    let mut more = player.more(cfg, &crit_multiplier_names);
+    let mut more = terms.more;
 
     // The less-damage penalty folded in by inevitable crit becomes one extra MORE (PoB2 `NewMod("CritMultiplier","MORE",lessCritBonus)`).
     if let Some(less_more) = inevitable_less_more {
@@ -321,13 +434,10 @@ fn resolve_crit_multiplier(
     // `mode_effective` (the effective view); the panel view is unaffected.
     // The two co-occurring (an inevitable-crit build plus a "crit damage is
     // N%" keystone) is an edge case, currently resolved as the OVERRIDE final value.
-    let mut extra = if let Some(ov) = player.override_(cfg, "CriticalStrikeMultiplier") {
+    let mut extra = if let Some(ov) = terms.override_bonus {
         ov / 100.0
     } else {
-        //  Player's base crit damage bonus now reads from the injected constants pack (fallback == old const, value unchanged).
-        (cfg.constants.character().base_critical_hit_damage_bonus + base) / 100.0
-            * (1.0 + inc / 100.0)
-            * more
+        (terms.base_bonus + terms.flat) / 100.0 * (1.0 + terms.inc / 100.0) * more
     };
 
     // Bifurcate: the conditional probability "given at least one crit, both

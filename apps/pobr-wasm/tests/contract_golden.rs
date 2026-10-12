@@ -195,7 +195,7 @@ fn calculate_build_json_shape() {
     let es_bd = &json["breakdowns"]["EnergyShield"];
     assert_keys(
         es_bd,
-        &["base_total", "inc_total", "more_total", "mods"],
+        &["base_total", "inc_total", "more_total", "mods", "formula"],
         "breakdowns.EnergyShield",
     );
     let mods = es_bd["mods"].as_array().unwrap();
@@ -244,6 +244,135 @@ fn calculate_build_json_shape() {
 /// display id (`MaximumLife`, the shared `ElementalResist`, the skill's speed
 /// buckets, `CriticalStrike*`); the breakdown must follow the calculation
 /// there instead of looking up the display id.
+/// The formula steps of a breakdown must be the calculation itself: each
+/// step follows from the one before, the modifier totals in the steps are the
+/// totals of the listed lines, and the steps end at the displayed stat.
+#[test]
+fn breakdown_formulas_end_at_the_displayed_value() {
+    ensure_data();
+    let builds = repo_data_root().join("../examples/demo-bd-test/builds");
+    let mut dirs: Vec<_> = std::fs::read_dir(&builds)
+        .expect("fixture builds")
+        .filter_map(|entry| Some(entry.ok()?.path()))
+        .filter(|dir| dir.join("code.txt").is_file())
+        .collect();
+    dirs.sort();
+    let close = |a: f64, b: f64| (a - b).abs() <= 1e-6 * a.abs().max(b.abs()).max(1.0);
+    let mut covered = std::collections::BTreeMap::<String, usize>::new();
+    let mut ops = std::collections::BTreeSet::<String>::new();
+    let mut unexplained = std::collections::BTreeMap::<String, usize>::new();
+    for dir in &dirs {
+        let code = std::fs::read_to_string(dir.join("code.txt")).unwrap();
+        let request = serde_json::json!({ "pob_code": code.trim() }).to_string();
+        let json: Value =
+            serde_json::from_str(&pobr_wasm::calculate_build_json(&request).expect("calculate"))
+                .expect("valid json");
+        let stats = json["stats"].as_array().unwrap();
+        let breakdowns = json["breakdowns"].as_object().unwrap();
+        for (stat, breakdown) in breakdowns {
+            let formula = &breakdown["formula"];
+            if formula.is_null() {
+                *unexplained.entry(stat.clone()).or_default() += 1;
+                continue;
+            }
+            let at = format!("{}: {stat}", dir.display());
+            let shown = stats
+                .iter()
+                .find(|s| s["id"] == stat.as_str())
+                .unwrap_or_else(|| panic!("{at}: no display stat"))["value"]
+                .as_f64()
+                .unwrap();
+            let value = formula["value"].as_f64().unwrap();
+            assert!(
+                close(value, shown),
+                "{at}: formula {value} != shown {shown}"
+            );
+
+            let total = |key: &str| breakdown[key].as_f64().unwrap();
+            let mut previous = 0.0;
+            for step in formula["steps"].as_array().unwrap() {
+                let op = step["op"].as_str().unwrap();
+                let operand = step["operand"].as_f64().unwrap();
+                let result = step["result"].as_f64().unwrap();
+                let expected = match op {
+                    "base" | "override" => operand,
+                    "flat" | "enemy_flat" => previous + operand,
+                    "converted" => previous * (1.0 - operand / 100.0),
+                    "increased" => previous * (1.0 + operand / 100.0),
+                    "more" | "action_speed" => previous * operand,
+                    "added_time" => 1.0 / (1.0 / previous + operand),
+                    "cap" | "cooldown_cap" | "server_tick_cap" => {
+                        assert!(previous > operand, "{at}: {op} {operand} does not limit");
+                        operand
+                    }
+                    "floor" => {
+                        assert!(previous < operand, "{at}: floor {operand} does not limit");
+                        operand
+                    }
+                    "bonus_to_multiplier" => 1.0 + previous / operand,
+                    other => panic!("{at}: unknown op {other}"),
+                };
+                assert!(
+                    close(result, expected),
+                    "{at}: {op} gives {result}, expected {expected}"
+                );
+                // The modifier totals in the steps are the listed lines' totals.
+                let listed = match op {
+                    "flat" => Some(total("base_total")),
+                    "increased" => Some(total("inc_total")),
+                    "more" => Some(total("more_total")),
+                    _ => None,
+                };
+                if let Some(listed) = listed {
+                    assert!(
+                        close(operand, listed),
+                        "{at}: {op} {operand} != listed total {listed}"
+                    );
+                }
+                ops.insert(op.to_string());
+                previous = result;
+            }
+            assert!(
+                close(previous, value),
+                "{at}: steps end at {previous}, value {value}"
+            );
+            *covered.entry(stat.clone()).or_default() += 1;
+        }
+        // Pools and resistances are explained on every build that lists them.
+        for stat in [
+            "Life",
+            "Mana",
+            "FireResist",
+            "ColdResist",
+            "LightningResist",
+            "ChaosResist",
+        ] {
+            if let Some(breakdown) = breakdowns.get(stat) {
+                assert!(
+                    !breakdown["formula"].is_null(),
+                    "{}: {stat} has no formula",
+                    dir.display()
+                );
+            }
+        }
+    }
+    println!(
+        "formula coverage over {} builds: {covered:?}; without formula {unexplained:?}; ops {ops:?}",
+        dirs.len()
+    );
+    for stat in [
+        "Life",
+        "FireResist",
+        "ActionRate",
+        "CritChance",
+        "CritMultiplier",
+    ] {
+        assert!(covered.contains_key(stat), "no build explains {stat}");
+    }
+    // A capped resistance says so.
+    assert!(ops.contains("cap"), "no fixture build shows a capped stat");
+}
+
 #[test]
 fn breakdowns_cover_stats_aggregated_under_other_names() {
     ensure_data();
@@ -285,7 +414,10 @@ fn breakdowns_cover_stats_aggregated_under_other_names() {
                 "{}: breakdown {stat} has no display stat",
                 dir.display()
             );
-            assert!(!breakdown["mods"].as_array().unwrap().is_empty());
+            assert!(
+                !breakdown["mods"].as_array().unwrap().is_empty()
+                    || !breakdown["formula"].is_null()
+            );
             *covered.entry(stat).or_default() += 1;
         }
         // Every real character has life and elemental resistance modifiers.

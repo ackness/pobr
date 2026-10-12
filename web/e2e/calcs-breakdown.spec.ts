@@ -24,7 +24,8 @@ test('a stat breakdown counts only the lines the calculation applies', async ({ 
   const inactive = armour.locator('tr.is-inactive');
   await expect(inactive).not.toHaveCount(0);
   await expect(inactive.first().locator('.mod-inactive-tag')).toHaveText('not active');
-  await expect(armour.locator('.breakdown-note')).toBeVisible();
+  await expect(armour.locator('.breakdown-note:not(.breakdown-totals-note)')).toBeVisible();
+  await expect(armour.locator('.breakdown-totals-note')).toBeVisible();
 
   const summary = armour.locator('.breakdown-summary strong');
   const incTotal = num(await summary.nth(1).textContent());
@@ -61,9 +62,24 @@ test('headline sidebar stats open the lines behind them', async ({ page }) => {
     await expect(item.locator('.breakdown-table tbody tr:not(.is-inactive)')).not.toHaveCount(0);
   }
 
-  // Fire resistance: 86% of modifiers, shown capped at 75%.
+  // Fire resistance: the steps go from the modifier total (86) to the capped value shown (75).
   await sidebar.getByRole('button', { name: /^Fire Res\./ }).click();
   const fire = page.locator('#breakdown-FireResist');
-  expect(num(await fire.locator('.breakdown-summary strong').first().textContent())).toBe(86);
-  expect(num(await fire.locator('.breakdown-value').textContent())).toBe(75);
+  const steps = fire.locator('.breakdown-formula tr.formula-step');
+  await expect(steps.first().locator('.formula-result')).toHaveText('86');
+  await expect(fire.locator('tr.formula-cap th')).toHaveText('Capped at the maximum');
+  await expect(fire.locator('tr.formula-cap .formula-operand')).toHaveText('≤ 75');
+  const shown = num(await fire.locator('.breakdown-value').textContent());
+  expect(shown).toBe(75);
+  expect(num(await fire.locator('tr.formula-final .formula-result').textContent())).toBe(shown);
+
+  // Skill speed starts from the weapon or skill base rate, which is not a modifier line.
+  await page.locator('#breakdown-ActionRate .breakdown-toggle').click();
+  const speed = page.locator('#breakdown-ActionRate');
+  await expect(speed.locator('tr.formula-base th')).toContainText('Starting value');
+  expect(num(await speed.locator('tr.formula-base .formula-result').textContent())).toBeGreaterThan(0);
+  expect(num(await speed.locator('tr.formula-final .formula-result').textContent())).toBeCloseTo(
+    num(await speed.locator('.breakdown-value').textContent()),
+    2,
+  );
 });

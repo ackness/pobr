@@ -69,12 +69,50 @@ struct BreakdownJson {
     more_total: f64,
     /// The per-mod-line source list, inactive lines included.
     mods: Vec<BreakdownModJson>,
+    /// How the calculation gets from the starting value to the displayed
+    /// stat (`null` = the steps are not available for this stat).
+    formula: Option<FormulaJson>,
+}
+
+#[derive(Debug, Serialize)]
+struct FormulaStepJson {
+    /// `base` / `flat` / `enemy_flat` / `converted` / `increased` / `more` / `added_time` /
+    /// `action_speed` / `override` / `cap` / `cooldown_cap` /
+    /// `server_tick_cap` / `floor` / `bonus_to_multiplier`.
+    op: &'static str,
+    /// The amount the step applies (percentage points for `increased` and
+    /// `converted`, a multiplier for `more` and `action_speed`, seconds for
+    /// `added_time`, the limit for caps and the floor).
+    operand: f64,
+    /// The running value after the step.
+    result: f64,
+}
+
+#[derive(Debug, Serialize)]
+struct FormulaJson {
+    steps: Vec<FormulaStepJson>,
+    /// The displayed stat value the steps end at.
+    value: f64,
 }
 
 fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJson> {
     let names = session.stat_mod_names(stat);
     let rows = session.evaluated_mods_named(&names);
-    if rows.is_empty() {
+    let formula = session.stat_formula(stat).map(|formula| FormulaJson {
+        steps: formula
+            .steps
+            .iter()
+            .map(|step| FormulaStepJson {
+                op: step.op.as_str(),
+                operand: step.operand + 0.0,
+                result: step.result + 0.0,
+            })
+            .collect(),
+        value: formula.value + 0.0,
+    });
+    // A stat without modifier lines is still explained by its starting value
+    // (a weapon's base crit chance, a skill's base rate).
+    if rows.is_empty() && formula.as_ref().is_none_or(|formula| formula.value == 0.0) {
         return None;
     }
     let mut entries: Vec<BreakdownModJson> = rows
@@ -113,6 +151,7 @@ fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJs
         inc_total: inc_total + 0.0,
         more_total,
         mods: entries,
+        formula,
     })
 }
 

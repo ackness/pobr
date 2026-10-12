@@ -416,6 +416,36 @@ export interface BreakdownMod {
   slot: string | null;
 }
 
+export type FormulaOp =
+  | 'base'
+  | 'flat'
+  | 'enemy_flat'
+  | 'converted'
+  | 'increased'
+  | 'more'
+  | 'added_time'
+  | 'action_speed'
+  | 'override'
+  | 'cap'
+  | 'cooldown_cap'
+  | 'server_tick_cap'
+  | 'floor'
+  | 'bonus_to_multiplier';
+
+export interface FormulaStep {
+  op: FormulaOp;
+  /** Amount applied: percentage points (increased, converted), a multiplier (more, action_speed), seconds (added_time) or the limit. */
+  operand: number;
+  /** Running value after the step. */
+  result: number;
+}
+
+export interface BreakdownFormula {
+  steps: FormulaStep[];
+  /** The displayed stat value the steps end at. */
+  value: number;
+}
+
 export interface Breakdown {
   /** Totals cover active lines only. */
   base_total: number;
@@ -423,6 +453,8 @@ export interface Breakdown {
   /** Product of the active MORE lines as a multiplier (1 when there are none). */
   more_total: number;
   mods: BreakdownMod[];
+  /** Steps from the starting value to the displayed stat; null when not available for this stat. */
+  formula: BreakdownFormula | null;
 }
 
 /** 主技能击中伤害的单类型分量（非暴击腿、玩家侧敌减伤前；占比用 avg）。 */

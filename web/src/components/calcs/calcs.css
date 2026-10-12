@@ -79,6 +79,47 @@
   padding-bottom: var(--space-2);
 }
 
+.breakdown-formula {
+  border-collapse: collapse;
+  margin-bottom: var(--space-3);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.breakdown-formula caption {
+  padding-bottom: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  text-align: left;
+}
+
+.breakdown-formula th,
+.breakdown-formula td {
+  padding: var(--space-1) var(--space-4) var(--space-1) 0;
+}
+
+.breakdown-formula th {
+  color: var(--text-secondary);
+  font-weight: normal;
+  text-align: left;
+}
+
+.breakdown-formula td {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.breakdown-formula .formula-operand {
+  color: var(--text-muted);
+}
+
+.breakdown-formula .formula-final th,
+.breakdown-formula .formula-final td {
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
 .breakdown-note {
   margin: 0;
   padding-bottom: var(--space-2);

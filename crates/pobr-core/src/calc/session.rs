@@ -695,6 +695,72 @@ impl CalculationSession {
         names.iter().map(|name| ModName::from(*name)).collect()
     }
 
+    /// The steps the calculation took from `stat`'s starting value to its
+    /// displayed value (a display stat id), read from the terms the stage
+    /// itself aggregates. `None` when the stat has no formula here, or when
+    /// the displayed value includes something the steps do not cover (the two
+    /// hands combined, hit chance or lucky adjustments to crit), so a formula
+    /// is only returned when it ends at the displayed number.
+    pub fn stat_formula(&self, stat: &str) -> Option<super::StatFormula> {
+        use super::offence;
+        let env = &self.env;
+        let db = &env.player.mod_db;
+        let output = &env.player.output;
+        let input = MinimalInput::from(env.player.base);
+        // The same scope the main-hand pass computes in.
+        let hand = env
+            .hand_sources
+            .iter()
+            .find(|h| matches!(h.label, crate::HandTag::MainHand | crate::HandTag::Single))
+            .or(env.hand_sources.first())
+            .map(|hand| super::hand_pass::hand_scope(hand, &env.cfg, &input));
+        let (cfg, hand_input) = match &hand {
+            Some((cfg, input)) => (cfg, input),
+            None => (&env.cfg, &input),
+        };
+        let resist = |base, element, is_elemental| {
+            offence::resolve_resistance(db, &env.cfg, base, element, is_elemental).formula()
+        };
+        let (formula, displayed) = match stat {
+            "Life" => (
+                offence::pool_terms(db, &env.cfg, input.base_life, "MaximumLife").formula(),
+                output.life,
+            ),
+            "Mana" => (
+                offence::pool_terms(db, &env.cfg, input.base_mana, "MaximumMana").formula(),
+                output.mana,
+            ),
+            "FireResist" => (
+                resist(input.base_fire_resistance, "Fire", true),
+                output.fire_resistance,
+            ),
+            "ColdResist" => (
+                resist(input.base_cold_resistance, "Cold", true),
+                output.cold_resistance,
+            ),
+            "LightningResist" => (
+                resist(input.base_lightning_resistance, "Lightning", true),
+                output.lightning_resistance,
+            ),
+            "ChaosResist" => (resist(0.0, "Chaos", false), output.chaos_resistance),
+            "ActionRate" => (
+                offence::action_rate_terms(db, cfg, hand_input).formula(),
+                output.action_rate,
+            ),
+            "CritChance" => (
+                super::crit::crit_chance_terms(db, &env.enemy.mod_db, cfg, 0.0, cfg.mode_effective)
+                    .formula()?,
+                output.crit_chance * 100.0,
+            ),
+            "CritMultiplier" => (
+                super::crit::crit_multiplier_terms(db, cfg).formula()?,
+                output.crit_multiplier,
+            ),
+            _ => return None,
+        };
+        ((formula.value - displayed).abs() <= 1e-6).then_some(formula)
+    }
+
     /// The modifiers stored under `names` as the calculation context treats
     /// them: each row says whether it applies and with which value. The
     /// context is the session config, i.e. the inspected skill with its

@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from 'react';
 import type {
   AttributionResponse,
   Breakdown,
+  FormulaStep,
   DisplayStatCategory,
   SkillMetricsResponse,
 } from '../../api/types';
@@ -47,6 +48,37 @@ function cleanModText(text: string): string {
     .replace(/\[([^\]]*)\]/g, '$1');
 }
 
+/** How a formula step changes the running value, e.g. `+120`, `×1.35 (+35%)`, `≤ 75`. */
+function formulaOperand(step: FormulaStep): string {
+  const n = fmtNum(step.operand);
+  const signed = step.operand < 0 ? `−${fmtNum(-step.operand)}` : `+${n}`;
+  switch (step.op) {
+    case 'base':
+    case 'bonus_to_multiplier':
+      return '';
+    case 'flat':
+    case 'enemy_flat':
+      return signed;
+    case 'increased':
+      return `×${fmtNum(1 + step.operand / 100)} (${signed}%)`;
+    case 'converted':
+      return `−${n}%`;
+    case 'more':
+    case 'action_speed':
+      return `×${n}`;
+    case 'added_time':
+      return `${signed}s`;
+    case 'override':
+      return `= ${n}`;
+    case 'cap':
+    case 'cooldown_cap':
+    case 'server_tick_cap':
+      return `≤ ${n}`;
+    case 'floor':
+      return `≥ ${n}`;
+  }
+}
+
 function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Breakdown; lang: Lang }) {
   const tt = bindT(lang);
   // 中文界面：词条行批量反查翻译（清洗标注后送翻译器；结果缓存本组件）。
@@ -86,20 +118,44 @@ function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Br
   };
   return (
     <div className="breakdown-detail">
-      <div className="breakdown-summary">
-        <span>
-          {tt('calcs.baseTotal')}: <strong>{fmtNum(breakdown.base_total)}</strong>
-        </span>
-        <span>
-          {tt('calcs.incTotal')}: <strong>{fmtNum(breakdown.inc_total)}%</strong>
-        </span>
-        {breakdown.more_total !== 1 && (
-          <span>
-            {tt('calcs.moreTotal')}: <strong>×{fmtNum(breakdown.more_total)}</strong>
-          </span>
-        )}
-      </div>
+      {breakdown.formula ? (
+        <table className="breakdown-formula" aria-label={tt('calcs.formula')}>
+          <caption>{tt('calcs.formula')}</caption>
+          <tbody>
+            {breakdown.formula.steps.map((step, i) => (
+              <tr key={i} className={`formula-step formula-${step.op}`}>
+                <th scope="row">{tt(`calcs.step.${step.op}`)}</th>
+                <td className="formula-operand">{formulaOperand(step)}</td>
+                <td className="formula-result">{fmtNum(step.result)}</td>
+              </tr>
+            ))}
+            <tr className="formula-final">
+              <th scope="row">{tt('calcs.formulaResult')}</th>
+              <td />
+              <td className="formula-result">{fmtNum(breakdown.formula.value)}</td>
+            </tr>
+          </tbody>
+        </table>
+      ) : (
+        <>
+          <div className="breakdown-summary">
+            <span>
+              {tt('calcs.baseTotal')}: <strong>{fmtNum(breakdown.base_total)}</strong>
+            </span>
+            <span>
+              {tt('calcs.incTotal')}: <strong>{fmtNum(breakdown.inc_total)}%</strong>
+            </span>
+            {breakdown.more_total !== 1 && (
+              <span>
+                {tt('calcs.moreTotal')}: <strong>×{fmtNum(breakdown.more_total)}</strong>
+              </span>
+            )}
+          </div>
+          <p className="breakdown-note breakdown-totals-note">{tt('calcs.totalsNote')}</p>
+        </>
+      )}
       {breakdown.mods.some((m) => !m.active) && <p className="breakdown-note">{tt('calcs.inactiveNote')}</p>}
+      {breakdown.mods.length > 0 && (
       <div className="breakdown-scroll">
         <table className="breakdown-table">
           <thead>
@@ -137,6 +193,7 @@ function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Br
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }
