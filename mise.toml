@@ -1,6 +1,7 @@
 # PoBR 开发环境与数据管线（mise-en-place）
 #
-# 环境：`mise install` 装好钉定的工具链。
+# 环境：`mise run setup` 一次装好 Rust（读 rust-toolchain.toml）、wasm32 target、wasm-pack、
+# Node/pnpm 与 Web 依赖；只装工具链时用 `mise install`。
 # 取数据（一键）：`mise run data:fetch` —— 索引（首次 ~113MB，之后跳过）→ 抽取 .dat 为原始 JSON。
 # data:adapt updates base/i18n in a candidate; data:regen regenerates all domains.
 # Both validate before publishing. Full regeneration needs vendor + LuaJIT.
@@ -8,9 +9,24 @@
 # All export/adaptation entry points resolve the patch from pipeline/config.json.
 # 原始 JSON / 索引缓存均在 pipeline/ 下且 gitignore，不入库；入库的只有 data/<version>/。
 
+# Rust 版本只在 rust-toolchain.toml 里写一份（本地与 CI 共用）；让 mise 读取它，
+# 而不是在这里重复钉一个版本号。
+[settings]
+idiomatic_version_file_enable_tools = ["rust"]
+
 [tools]
 node = "26"
 pnpm = "12"
+# 与 CI 的 taiki-e/install-action 同源；版本记录在 WASM 构建凭据里，升级属于工具链变更。
+"aqua:wasm-bindgen/wasm-pack" = "0.15.0"
+
+[tasks.setup]
+description = "Install Rust (rust-toolchain.toml), wasm32 target, wasm-pack, Node/pnpm and Web dependencies"
+run = [
+  "rustup target add wasm32-unknown-unknown",
+  "pnpm --dir web install --frozen-lockfile",
+  "bash devs/scripts/driver.sh status",
+]
 
 [tasks."data:version"]
 description = "查询 GGG 当前 PoE2 patch 版本号（CDN 版本）"

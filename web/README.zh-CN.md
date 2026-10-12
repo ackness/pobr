@@ -46,14 +46,15 @@ PoB 分享码保留带原始名称的未解析插槽位置，以及编辑后的�
 ## 快速开始
 
 以下命令均在仓库根目录运行，使用 `web/package.json` 指定的 pnpm 版本；本地 mise 与 CI 均使用 Node 26。
-Rust 版本由 `rust-toolchain.toml` 钉定，rustup 首次使用时自动安装。已有可用工具链时跳过安装步骤。
+Rust 版本由 `rust-toolchain.toml` 钉定。已有可用工具链时跳过安装步骤。
 
 ```bash
-# 一次性前置（仓库根目录）
-rustup target add wasm32-unknown-unknown
-cargo install wasm-pack
+# 一次性前置（仓库根目录）：钉定版本的 Rust 与 wasm32 target、wasm-pack、
+# Node/pnpm，以及 Web 依赖（`pnpm --dir web install --frozen-lockfile`）
+mise run setup
+# 不用 mise 时：`rustup target add wasm32-unknown-unknown`，安装 wasm-pack 0.15.0，
+# 再运行 `pnpm --dir web install --frozen-lockfile`。
 
-pnpm --dir web install --frozen-lockfile
 pnpm --dir web build-wasm    # build or reuse verified src/wasm/pkg/ (gitignored)
 pnpm --dir web sync-data     # data/<version>/ JSON → public/data/（gitignored）
 pnpm --dir web dev           # http://localhost:5173
