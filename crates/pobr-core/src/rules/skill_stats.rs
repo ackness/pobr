@@ -132,6 +132,46 @@ pub fn player_buff_modifiers(stat: &str, value: f64, skill: BuffSkill) -> Option
         }
         // Not a buff on the character (see `granted_skill_modifiers`).
         WITCHTOAD_SPAWN_INTERVAL_MS => Some(Vec::new()),
+        // Charge Regulation: "{0}% more Armour, Evasion and Energy Shield
+        // while you have an Endurance Charge".
+        "charge_mastery_armour_evasion_energy_shield_+%_final_with_endurance_charges" => Some(
+            ["Armour", "Evasion", "EnergyShield"]
+                .into_iter()
+                .map(|defence| {
+                    Modifier::number(defence, ModType::More, value)
+                        .with_tag(while_holding("EnduranceCharge"))
+                })
+                .collect(),
+        ),
+        // "{0}% more Critical Hit Chance while you have a Power Charge".
+        "charge_mastery_crit_chance_+%_final_with_power_charges" => Some(vec![
+            Modifier::number("CriticalStrikeChance", ModType::More, value)
+                .with_tag(while_holding("PowerCharge")),
+        ]),
+        // "{0}% increased Skill Speed while you have a Frenzy Charge".
+        "charge_mastery_skill_speed_+%_with_frenzy_charges" => Some(
+            SKILL_SPEED
+                .into_iter()
+                .map(|speed| {
+                    Modifier::number(speed, ModType::Inc, value)
+                        .with_tag(while_holding("FrenzyCharge"))
+                })
+                .collect(),
+        ),
+        // From quality: "Buff grants {0}% increased damage per Charge", of
+        // any kind.
+        "charge_regulation_damage_per_charge_granted_+%" => Some(
+            ["PowerCharge", "FrenzyCharge", "EnduranceCharge"]
+                .into_iter()
+                .map(|charge| {
+                    Modifier::number("Damage", ModType::Inc, value)
+                        .with_tag(ModTag::multiplier(charge, 1.0, None))
+                })
+                .collect(),
+        ),
+        // "Consumes one of each Charge every {0} seconds": upkeep, with no
+        // effect on what the character has while the buff is up.
+        "consume_frenzy_power_and_endurance_charge_every_x_ms" => Some(Vec::new()),
         // Pinnacle of Power: "{0}% more Elemental Damage per Power Charge
         // Consumed" and "Buff causes all Elemental Damage to Contribute to
         // Flammability and Ignite Magnitudes, Shock chance, and Freeze
@@ -151,6 +191,20 @@ pub fn player_buff_modifiers(stat: &str, value: f64, skill: BuffSkill) -> Option
             .collect(),
         ),
         _ => None,
+    }
+}
+
+/// What "Skill Speed" is: the speed of attacks and casts, of Warcries and of
+/// placing Totems.
+const SKILL_SPEED: [&str; 3] = ["SkillSpeed", "WarcrySpeed", "TotemPlacementSpeed"];
+
+/// "while you have a `charge`": at least one charge of that kind
+/// (`PowerCharge`, `FrenzyCharge` or `EnduranceCharge`).
+fn while_holding(charge: &str) -> ModTag {
+    ModTag::MultiplierThreshold {
+        var: charge.into(),
+        threshold: 1.0,
+        upper: false,
     }
 }
 
@@ -193,6 +247,70 @@ mod tests {
         // nothing lands on damage in general.
         assert_eq!(db.more(&CalcConfig::new(), &elemental), 1.0);
         assert_eq!(db.more(&four_consumed(), &[ModName::from("Damage")]), 1.0);
+    }
+
+    /// Charge Regulation grants each of its three effects only while the
+    /// character holds a charge of the matching kind.
+    #[test]
+    fn charge_regulation_needs_a_charge_of_the_matching_kind() {
+        let buff = |stat: &str, value: f64| {
+            let mut db = ModDb::new();
+            db.add_list(player_buff_modifiers(stat, value, BuffSkill::default()).expect("a rule"));
+            db
+        };
+        let holding = |charge: &str| CalcConfig::new().with_multiplier(charge, 1.0);
+        let none = CalcConfig::new();
+
+        let defences = buff(
+            "charge_mastery_armour_evasion_energy_shield_+%_final_with_endurance_charges",
+            19.0,
+        );
+        for name in ["Armour", "Evasion", "EnergyShield"] {
+            let names = [ModName::from(name)];
+            assert!((defences.more(&holding("EnduranceCharge"), &names) - 1.19).abs() < 1e-12);
+            assert_eq!(
+                defences.more(&holding("PowerCharge"), &names),
+                1.0,
+                "{name}"
+            );
+            assert_eq!(defences.more(&none, &names), 1.0, "{name}");
+        }
+
+        let crit = buff(
+            "charge_mastery_crit_chance_+%_final_with_power_charges",
+            25.0,
+        );
+        let names = [ModName::from("CriticalStrikeChance")];
+        assert!((crit.more(&holding("PowerCharge"), &names) - 1.25).abs() < 1e-12);
+        assert_eq!(crit.more(&holding("FrenzyCharge"), &names), 1.0);
+
+        let speed = buff("charge_mastery_skill_speed_+%_with_frenzy_charges", 25.0);
+        for name in SKILL_SPEED {
+            let names = [ModName::from(name)];
+            assert_eq!(
+                speed.sum(ModType::Inc, &holding("FrenzyCharge"), &names),
+                25.0
+            );
+            assert_eq!(speed.sum(ModType::Inc, &none, &names), 0.0, "{name}");
+        }
+    }
+
+    /// Its quality counts every charge the character holds, of any kind.
+    #[test]
+    fn charge_regulation_quality_is_damage_per_charge_of_any_kind() {
+        let mut db = ModDb::new();
+        db.add_list(
+            player_buff_modifiers(
+                "charge_regulation_damage_per_charge_granted_+%",
+                2.0,
+                BuffSkill::default(),
+            )
+            .expect("a rule"),
+        );
+        let cfg = CalcConfig::new()
+            .with_multiplier("PowerCharge", 3.0)
+            .with_multiplier("EnduranceCharge", 4.0);
+        assert_eq!(db.sum(ModType::Inc, &cfg, &[ModName::from("Damage")]), 14.0);
     }
 
     /// Heightened Charges: a 20% chance to double the benefit is, on

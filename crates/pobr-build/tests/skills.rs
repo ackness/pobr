@@ -9,6 +9,8 @@ mod aura_gems;
 mod buff_stack_limits;
 #[path = "skills/charge_consuming_buffs.rs"]
 mod charge_consuming_buffs;
+#[path = "skills/charge_regulation.rs"]
+mod charge_regulation;
 #[path = "skills/corpse_explosion.rs"]
 mod corpse_explosion;
 #[path = "skills/corrupted_gems.rs"]
