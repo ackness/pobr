@@ -166,28 +166,30 @@ pub(crate) fn item_spirit_modifiers(build: &Build, data: &BuildData) -> Vec<Modi
     mods
 }
 
-/// Per-item Ward → a `Ward` BASE mod (13-G14).
+/// Per-item Runic Ward → a `Ward` BASE mod.
 ///
-/// Value semantics (PoB2's `armourData.Ward`, CalcDefence.lua:1158-1186 per-slot
-/// aggregation):
-/// - The item text has a rolled `Ward: N` line → used directly (PoB has already folded
-///   in local boosts/quality per item);
-/// - Otherwise falls back to the catalog base `ward` × (1 + quality/100) (a fallback for
-///   bare items; a local `increased Ward` mod on a ward item is rare, and global-bucket
-///   aggregation is mathematically equivalent, so drop-local isn't applied here yet).
+/// An item's Runic Ward is its base type's, scaled by the item's own
+/// "N% increased Runic Ward" (the game's `local_ward_+%`) and by its quality,
+/// and is a whole number like the item's other defences. It is recomputed from
+/// the base type for the same reason they are: the `Ward:` line of a build
+/// code is what the exporting tool computed, which may leave the local
+/// increase out or predate the data. The line only stands in for a base type
+/// the data has no Runic Ward for.
 pub(crate) fn item_ward_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
     let mut mods = Vec::new();
     for (slot, item) in &build.items {
-        let value = match item.rolled_defence.ward {
-            Some(v) => v,
-            None => {
-                let base = data
-                    .armour_base(&item.base.to_string())
-                    .map_or(0, |a| a.ward);
-                if base == 0 {
-                    continue;
-                }
-                f64::from(base) * (1.0 + f64::from(item.quality) / 100.0)
+        let base = data
+            .armour_base(&item.base.to_string())
+            .map_or(0, |a| a.ward);
+        let value = if base > 0 {
+            (f64::from(base)
+                * (1.0 + pobr_core::skill_env::item_local_ward_inc(item) / 100.0)
+                * (1.0 + f64::from(item.quality) / 100.0))
+                .round()
+        } else {
+            match item.rolled_defence.ward {
+                Some(v) => v,
+                None => continue,
             }
         };
         if value > 0.0 {

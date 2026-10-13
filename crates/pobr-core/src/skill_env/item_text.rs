@@ -231,6 +231,26 @@ pub fn item_local_defence_flat(item: &Item) -> [f64; 3] {
     out
 }
 
+/// A local Runic Ward increase, in percent: the game's `local_ward_+%`, which
+/// reads "N% increased Runic Ward" and scales the Runic Ward of the item it is
+/// on. "N% increased maximum Runic Ward" is `maximum_ward_+%`, a modifier to
+/// the character's total, and is not matched.
+pub fn parse_local_ward_inc(clean: &str) -> Option<f64> {
+    let (number, sign) = if let Some(number) = clean.strip_suffix("% increased runic ward") {
+        (number, 1.0)
+    } else {
+        (clean.strip_suffix("% reduced runic ward")?, -1.0)
+    };
+    number.trim().parse::<f64>().ok().map(|value| sign * value)
+}
+
+/// Sum of the local Runic Ward increases on the item.
+pub fn item_local_ward_inc(item: &Item) -> f64 {
+    weapon_mod_texts(item)
+        .filter_map(|text| parse_local_ward_inc(&clean_item_text(text)))
+        .sum()
+}
+
 /// Whether a mod text is a local Spirit mod (matches `+N to Spirit` / `N% increased Spirit` /
 /// `N% reduced Spirit`).
 pub fn is_local_spirit_mod(clean: &str) -> bool {

@@ -29,6 +29,8 @@ mod equipment_affix_effects;
 mod gem_quality;
 #[path = "skills/minions.rs"]
 mod minions;
+#[path = "skills/runic_ward.rs"]
+mod runic_ward;
 #[path = "skills/skill_damage_dps.rs"]
 mod skill_damage_dps;
 #[path = "skills/skill_metrics.rs"]

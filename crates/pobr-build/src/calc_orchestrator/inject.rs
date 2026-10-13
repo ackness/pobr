@@ -745,6 +745,8 @@ pub(super) fn inject_items(
             || rd.energy_shield.is_some()
             || has_per_level_def;
         if is_armour_piece {
+            // "N% increased Runic Ward" scales the item's own Runic Ward
+            // (item_ward_modifiers); on a piece without any it scales nothing.
             let drop_def = |texts: Vec<String>| -> Vec<String> {
                 texts
                     .into_iter()
@@ -753,6 +755,7 @@ pub(super) fn inject_items(
                         parse_local_defence_inc(&c).is_none()
                             && parse_local_defence_flat(&c).is_none()
                             && parse_has_per_level_defence(&c).is_none()
+                            && pobr_core::skill_env::parse_local_ward_inc(&c).is_none()
                     })
                     .collect()
             };

@@ -51,6 +51,20 @@ Runes of Aldur 引入了多种方式提升符咒护佑：
 - **Cadigan's Epiphany**：摧毁物品中所有 augment 插槽并创建一个珠宝插槽
 - **Aldur's Legacy**：摧毁任何 Kalguuran 或 Ezomyte 传奇物品，创建一个符文，以该传奇物品的力量强化同类型物品[^maxroll-runes-of-aldur]
 
+### 词条的作用范围（游戏数据的 stat id）
+
+提升符咒护佑的词条有三种，文本相近但作用范围不同（`data/<版本>/base/mods.json`）：
+
+| 词条文本 | stat id | 作用范围 |
+|----------|---------|----------|
+| `N% increased Runic Ward` | `local_ward_+%` | 局部：只放大所在物品自身的符咒护佑 |
+| `+N to maximum Runic Ward` | `base_maximum_ward` | 全局：加到角色总量上 |
+| `N% increased maximum Runic Ward` | `maximum_ward_+%` | 全局：放大角色总量 |
+
+物品自身的符咒护佑 = 基底符咒护佑 × (1 + 局部提高%) × (1 + 品质%)，取整。PoBR 按基底数据重算这个值
+（`calc_orchestrator/item/defence.rs::item_ward_modifiers`），不采用构筑码里的 `Ward:` 行：
+那一行是导出工具算出的结果，可能未计入局部词条。
+
 ## 符咒技能 (Kalguuran Skills) — 0.5.0
 
 0.5.0 引入了超过 **40 种 Kalguuran Skills**，这些是特殊类型的技能宝石，由**符咒护佑 (Ward)** 而非法力 (Mana) 驱动[^maxroll-runes-of-aldur]：
