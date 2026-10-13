@@ -2780,6 +2780,122 @@
         "40% increased Spell Damage with Spells that cost Life"
       ],
       "source_note": "Game text of the Blood Mage passives (e.g. 40% / 12% / 6% increased Spell Damage with Spells that cost Life). A spell costs Life when its Life cost, after conversions, is at least 1: the engine's LifeCost stat, set before damage by calc::perform. PoB2 reads the same condition as a StatThreshold over LifeCost; used only as a cross-check."
+    },
+    {
+      "id": "attacks_add_physical_damage_from_weapon_accuracy",
+      "pattern": "attacks using your weapons have added physical damage equal to (\\d+)% of the accuracy rating on the weapon",
+      "mods": [
+        {
+          "name": "PhysicalDamageMin",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "div": 100.0
+              }
+            ]
+          },
+          "flags": [
+            "Attack"
+          ],
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "AccuracyOnweapon1",
+              "div": 1
+            },
+            {
+              "type": "Condition",
+              "var": "MainHandAttack"
+            }
+          ]
+        },
+        {
+          "name": "PhysicalDamageMax",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "div": 100.0
+              }
+            ]
+          },
+          "flags": [
+            "Attack"
+          ],
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "AccuracyOnweapon1",
+              "div": 1
+            },
+            {
+              "type": "Condition",
+              "var": "MainHandAttack"
+            }
+          ]
+        },
+        {
+          "name": "PhysicalDamageMin",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "div": 100.0
+              }
+            ]
+          },
+          "flags": [
+            "Attack"
+          ],
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "AccuracyOnweapon2",
+              "div": 1
+            },
+            {
+              "type": "Condition",
+              "var": "OffHandAttack"
+            }
+          ]
+        },
+        {
+          "name": "PhysicalDamageMax",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "div": 100.0
+              }
+            ]
+          },
+          "flags": [
+            "Attack"
+          ],
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "AccuracyOnweapon2",
+              "div": 1
+            },
+            {
+              "type": "Condition",
+              "var": "OffHandAttack"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "amazon",
+      "examples": [
+        "Attacks using your Weapons have Added Physical Damage equal to 25% of the Accuracy Rating on the Weapon"
+      ],
+      "source_note": "Game text of the Amazon passive Penetrate. Each weapon adds to its own attacks: the Accuracy Rating on a weapon is the total of that item's own '+N to Accuracy Rating' lines (AccuracyOn<slot>, set by pobr-build inject_build_multipliers), and the added damage applies in that hand's pass (MainHandAttack / OffHandAttack). The same amount is added to minimum and maximum. PoB2 models it the same way; used only as a cross-check."
     }
   ]
 }

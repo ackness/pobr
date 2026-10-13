@@ -42754,7 +42754,49 @@
     },
     {
       "text": "[Attack|Attacks] using your Weapons have Added [Physical] Damage equal\nto 25% of the [Accuracy] Rating on the Weapon",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "PhysicalDamageMin",
+          "type": "Base",
+          "value": 0.25,
+          "flags": 1,
+          "tags": [
+            "Multiplier { var: \"AccuracyOnweapon1\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }",
+            "Condition { var: \"MainHandAttack\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "PhysicalDamageMax",
+          "type": "Base",
+          "value": 0.25,
+          "flags": 1,
+          "tags": [
+            "Multiplier { var: \"AccuracyOnweapon1\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }",
+            "Condition { var: \"MainHandAttack\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "PhysicalDamageMin",
+          "type": "Base",
+          "value": 0.25,
+          "flags": 1,
+          "tags": [
+            "Multiplier { var: \"AccuracyOnweapon2\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }",
+            "Condition { var: \"OffHandAttack\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "PhysicalDamageMax",
+          "type": "Base",
+          "value": 0.25,
+          "flags": 1,
+          "tags": [
+            "Multiplier { var: \"AccuracyOnweapon2\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }",
+            "Condition { var: \"OffHandAttack\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Attack|Attacks] with [One-Handed] [MartialWeapon|Weapons] have 15% increased Chance to inflict [Ailments|Ailments]",

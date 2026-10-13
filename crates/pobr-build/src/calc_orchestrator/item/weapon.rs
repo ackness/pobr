@@ -109,6 +109,35 @@ pub(crate) fn weapon_mod_texts(item: &Item) -> impl Iterator<Item = &String> {
         .chain(&item.enchant_texts)
 }
 
+/// The Accuracy Rating on an item: the total of its own "+N to Accuracy
+/// Rating" lines. Lines that are conditional or of another form are not the
+/// item's rating.
+pub(crate) fn item_accuracy_rating(item: &Item) -> f64 {
+    weapon_mod_texts(item)
+        .filter_map(|text| {
+            clean_item_text(text)
+                .strip_prefix('+')?
+                .strip_suffix(" to accuracy rating")?
+                .trim()
+                .parse::<f64>()
+                .ok()
+        })
+        .sum()
+}
+
+/// The Accuracy Rating on each equipped weapon, as `AccuracyOn<slot>`: what
+/// "N% of the Accuracy Rating on the Weapon" scales by.
+pub(crate) fn weapon_accuracy_multipliers(build: &crate::Build) -> Vec<(String, f64)> {
+    use pobr_data::item::EquipmentSlot;
+    [EquipmentSlot::Weapon1, EquipmentSlot::Weapon2]
+        .into_iter()
+        .filter_map(|slot| {
+            let rating = item_accuracy_rating(build.items.get(&slot)?);
+            Some((format!("AccuracyOn{}", slot.id()), rating))
+        })
+        .collect()
+}
+
 /// Whether a mod is a **weapon-local** mod that should be stripped from the global set
 /// (already counted in the weapon source's multiplier zone): local physical
 /// increased/added + local attack speed (the latter applies to weapon attack speed, not

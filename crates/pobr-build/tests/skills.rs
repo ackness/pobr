@@ -37,6 +37,8 @@ mod support_gating;
 mod support_gem_count;
 #[path = "skills/support_granted_skills.rs"]
 mod support_granted_skills;
+#[path = "skills/weapon_accuracy_damage.rs"]
+mod weapon_accuracy_damage;
 
 #[path = "skills/passive_jewels.rs"]
 mod passive_jewels;

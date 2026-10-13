@@ -345,6 +345,11 @@ pub(super) fn inject_build_multipliers(
     for (var, value) in per_slot_socket_multipliers(build) {
         session.set_multiplier(var, value);
     }
+    // "N% of the Accuracy Rating on the Weapon".
+    for (var, value) in super::item::weapon::weapon_accuracy_multipliers(build) {
+        session.set_stat(var.clone(), value);
+        session.set_multiplier(var, value);
+    }
     // "for each Corrupted Item Equipped": the gear in the equipment slots.
     // Flasks and charms are not counted, nor jewels, which are socketed.
     let corrupted = build.items.values().filter(|item| item.corrupted).count();
