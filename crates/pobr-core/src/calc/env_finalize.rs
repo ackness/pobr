@@ -52,6 +52,8 @@ pub fn env_finalize(env: &mut Env) {
     expand_misc_buffs(env);
     // Stage 6.5: Rage, after the buffs that change its maximum and effect.
     super::rage::apply_rage(env);
+    // Stage 6.6: modifiers to something else that also apply to the player.
+    super::shared_modifiers::apply_companion_damage_to_player(env);
     // Stage 7 (T4): applies non-damaging ailments (Chill/Shock → enemy db).
     apply_nondamaging_ailments(env);
     // Stage 7.5: bridges enemy-side condition flags → cfg conditions (vendor

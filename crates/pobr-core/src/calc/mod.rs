@@ -26,6 +26,7 @@ pub mod rage;
 pub mod scaled_damage;
 pub mod session;
 pub mod setup_env;
+pub mod shared_modifiers;
 pub mod skill_dot;
 pub mod skill_mechanics;
 pub mod skill_use_time;
