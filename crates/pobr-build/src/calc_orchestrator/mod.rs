@@ -116,6 +116,12 @@ pub struct DataOrchestratorOptions {
     /// (already loaded alongside the data pack by `BuildData::load`); when neither is
     /// present, the data channel treats everything as a miss.
     pub stat_map_catalog: Option<std::sync::Arc<StatMapCatalog>>,
+    /// Whether a spell in a meta gem that fills with Energy (Cast on Critical)
+    /// is used as often as the gem triggers it. Defaults to `true`, which is
+    /// what happens in the game. `false` gives the spell its own rate of use:
+    /// the basis of a build code's reference values, whose exporter has no
+    /// Energy model, so a comparison with them asks the same question.
+    pub energy_triggers: bool,
 }
 
 impl Default for DataOrchestratorOptions {
@@ -129,7 +135,42 @@ impl Default for DataOrchestratorOptions {
             mode_effective: false,
             stat_map_mode: StatMapMode::default(),
             stat_map_catalog: None,
+            energy_triggers: true,
         }
+    }
+}
+
+impl DataOrchestratorOptions {
+    /// The enemy and mode a build code's reference values (its `<PlayerStat>`
+    /// rows) were exported under: the exporter's main panel is its EFFECTIVE
+    /// mode against its default enemy, a Pinnacle boss. Everything the engine
+    /// models stays on; this is the build as the game plays it against that
+    /// enemy.
+    pub fn against_reference_enemy() -> Self {
+        Self {
+            enemy_tier: EnemyTier::Pinnacle,
+            mode_effective: true,
+            ..Self::default()
+        }
+    }
+
+    /// These options with the models the exporter of a build code's reference
+    /// values does not have turned off, so that a comparison with those values
+    /// asks the question they answer. The exporter has no Energy model: a
+    /// spell in a meta gem is counted at the spell's own rate of use.
+    ///
+    /// A model added here is verified by its own tests, not by the reference.
+    pub fn on_reference_basis(self) -> Self {
+        Self {
+            energy_triggers: false,
+            ..self
+        }
+    }
+
+    /// What a build code's reference values are compared under: their enemy
+    /// and mode, on their basis.
+    pub fn reference_conditions() -> Self {
+        Self::against_reference_enemy().on_reference_basis()
     }
 }
 

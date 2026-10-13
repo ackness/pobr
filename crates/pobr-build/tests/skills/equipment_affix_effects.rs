@@ -695,7 +695,7 @@ fn real_equipment_unknown_affix_remains_visible() {
             .any(|text| text == line)
     );
     assert!(result.output().dps > 0.0);
-    let jewel_line = "Meta Skills gain 8% increased Energy";
+    let jewel_line = "Gain additional Ailment Threshold equal to 7% of maximum Energy Shield";
     let jewel = run(
         &build("SparkPlayer").with_jewels(vec![item("Sapphire", &[jewel_line])]),
         &data,

@@ -7,8 +7,8 @@
 //! so the recognition/injection semantics don't depend on the orchestrator.
 
 use pobr_data::item::EquipmentSlot;
+use pobr_data::modifier::ModType;
 
-use crate::Modifier;
 use crate::calc::TriggerSourceStats;
 use crate::skill_env::lookup::{
     BaseItemLookup, EquipmentView, SocketGroupView, TriggerConfigLookup, WeaponTypeLookup,
@@ -17,6 +17,7 @@ use crate::skill_env::mods::{is_damage_skill, mk_trigger_flag, mk_trigger_mod};
 use crate::skill_env::resolve::{ResolvedSkillLevel, SkillLevelLookup, resolve_skill_level};
 use crate::skill_env::weapon::{WeaponContributionLookup, weapon_contribution};
 use crate::skill_env::{EnabledGroup, GemInput};
+use crate::{ModValue, Modifier};
 
 /// The lookup surface the trigger path needs.
 pub trait TriggerEnv:
@@ -100,6 +101,9 @@ pub struct TriggerCtx<'a, S: TriggerSubCalc> {
     /// The build's class name (the unarmed contribution's lookup key when an attack
     /// skill has no weapon equipped — `data.unarmedWeaponData[classId]`).
     pub class_name: &'a str,
+    /// Whether a spell in an Energy meta gem is used at the rate the gem
+    /// triggers it. Off, it keeps its own rate of use.
+    pub energy_triggers: bool,
 }
 
 /// The result of data-driven recognition: the matched trigger config + the trigger
@@ -112,22 +116,26 @@ pub struct RecognizedTrigger<'a> {
     pub trigger_gem_index: Option<usize>,
 }
 
-/// The main skill's trigger-chain modifiers (build-layer wiring for findings
-/// 03-01/03-02/03-06; expanded since).
+/// The modifiers that say how the main skill is triggered.
 ///
-/// Two recognition paths (data-driven first, then built-in triggers; returns as soon
-/// as one matches):
+/// Three ways a skill can be, tried in this order; the first that recognizes
+/// it answers:
 ///
-/// 1. **Data-driven recognition (`overlay/trigger_configs.json`)**: PoBR's projection
-///    of vendor `CalcTriggers.lua:1452-1455`'s four-level key lookup — an entry's
-///    `match_effect_ids` match either a **gem in the group** (a triggeredBy relation)
-///    or the **main skill itself** (a skill key). On a match, injects per the entry's
-///    declarative facts: trigger cooldown (override value > trigger gem's own
-///    cooldown > triggered skill's cooldown), `TriggerRateCapOverride`, a global
-///    marker, source-skill predicate matching + sub-calculation statistics.
-/// 2. **Built-in triggers** (`skill_types` includes `Triggered`/`InbuiltTrigger`,
-///    matching PoB2's `isTriggered`): injects the triggered skill's cooldown +
-///    in-group source rate.
+/// 1. **A spell in a meta gem that fills with Energy** from critical hits
+///    (Cast on Critical): the gem's own stats say how much Energy it holds
+///    and gains, and the character's other skills are calculated as the
+///    sources of the critical hits ([`crate::calc::energy`]). With
+///    [`TriggerCtx::energy_triggers`] off the spell is recognized and given
+///    nothing: it keeps its own rate of use.
+/// 2. **A trigger listed in `overlay/trigger_configs.json`**: an entry's
+///    `match_effect_ids` match either a gem in the group (the gem triggers the
+///    skill) or the main skill itself. The entry states the trigger cooldown
+///    (its override, else the trigger gem's own cooldown, else the triggered
+///    skill's), a rate cap override, whether the trigger is global, and which
+///    skills can be its source; the source is calculated for its rate.
+/// 3. **A skill that is triggered by its own definition** (`skill_types`
+///    includes `Triggered` or `InbuiltTrigger`): its cooldown and the rate of
+///    a source in its group.
 ///
 /// **Deferred**: ① fetching the `trigger_chance_stat`/`source_rate_stat` stat values;
 /// ② handler entries' real logic; ③ per-skill cooldown rotation for multiple
@@ -147,7 +155,14 @@ pub fn trigger_modifiers<S: TriggerSubCalc>(
         return Vec::new();
     }
 
-    // — Path 1: data-driven recognition (returns as soon as it matches, including
+    // — Path 1: a spell in a meta gem that fills with Energy is triggered when
+    // the gem is full; the game's own data says how much it holds and gains.
+    if let Some(mods) = energy_trigger_modifiers(ctx, data, gem_level_bonuses, group, main_skill_id)
+    {
+        return mods;
+    }
+
+    // — Path 2: data-driven recognition (returns as soon as it matches, including
     // "recognized but the gate isn't satisfied → empty").
     if let Some(mods) = config_trigger_modifiers(
         ctx,
@@ -161,8 +176,8 @@ pub fn trigger_modifiers<S: TriggerSubCalc>(
         return mods;
     }
 
-    // — Path 2: built-in trigger (matching PoB2's isTriggered: skillTypes includes
-    // Triggered or InbuiltTrigger).
+    // — Path 3: a skill triggered by its own definition (its skill types
+    // include Triggered or InbuiltTrigger).
     let Some(effect) = data.effect(main_skill_id) else {
         return Vec::new();
     };
@@ -208,6 +223,201 @@ pub fn trigger_modifiers<S: TriggerSubCalc>(
     }
 
     mods
+}
+
+/// The game's stat for the Energy a meta gem gains from a critical hit, in
+/// hundredths of Energy per Power of the enemy.
+const CENTIENERGY_PER_POWER_ON_CRIT: &str =
+    "cast_on_crit_gain_X_centienergy_per_monster_power_on_crit";
+/// The stat of a meta gem's support half that sets how much Energy it holds:
+/// one per this many milliseconds of its spells' cast time.
+const MS_OF_CAST_TIME_PER_ENERGY: &str =
+    "generic_ongoing_trigger_1_maximum_energy_per_Xms_total_cast_time";
+/// What a spell adds to its own total cast time.
+const ADDED_TOTAL_CAST_TIME_MS: &str = "total_cast_time_+_ms";
+/// The meta gem's own increase to the Energy it gains, by gem level.
+const ENERGY_GENERATED_PCT: &str = "energy_generated_+%";
+/// How many of the character's skills are calculated as possible sources.
+/// Each costs a calculation; they are taken fastest first.
+const MAX_ENERGY_SOURCES: usize = 6;
+
+/// The modifiers `calc::energy` reads for a main skill that sits in a meta gem
+/// filled by critical hits: how much Energy the gem holds and gains, and what
+/// each of the character's other skills would give it. Empty when
+/// [`TriggerCtx::energy_triggers`] is off: the spell keeps its own rate of use.
+///
+/// `None` when the main skill is not such a spell.
+fn energy_trigger_modifiers<S: TriggerSubCalc>(
+    ctx: &mut TriggerCtx<'_, S>,
+    data: &dyn TriggerEnv,
+    gem_level_bonuses: &[crate::skill_env::GemPropertyBonus],
+    group: &EnabledGroup<'_>,
+    main_skill_id: &str,
+) -> Option<Vec<Modifier>> {
+    use crate::calc::energy;
+
+    let stat_of = |gem: &GemInput, effect_id: &str, stat: &str| {
+        let level = gem
+            .gem_level
+            .saturating_add(crate::skill_env::additional_gem_levels(
+                gem_level_bonuses,
+                data.as_gem_property(),
+                &gem.skill_id,
+                gem.corrupted,
+            ));
+        let set_index = (effect_id == gem.skill_id)
+            .then_some(gem.stat_set_index)
+            .flatten();
+        data.effect_stats(effect_id, level, gem.quality, set_index)
+            .base
+            .iter()
+            .filter(|entry| entry.stat == stat)
+            .map(|entry| entry.value)
+            .reduce(|sum, value| sum + value)
+    };
+
+    // The spells a meta gem triggers are the ones its support half supports.
+    let (meta, ms_per_energy) = group.gems.iter().find_map(|gem| {
+        let support_half = triggering_half(data, group, &gem.skill_id, main_skill_id)?;
+        Some((gem, stat_of(gem, support_half, MS_OF_CAST_TIME_PER_ENERGY)?))
+    })?;
+    let energy_per_power = stat_of(meta, &meta.skill_id, CENTIENERGY_PER_POWER_ON_CRIT)? / 100.0;
+    if !ctx.energy_triggers {
+        return Some(Vec::new());
+    }
+    let triggered =
+        |skill_id: &str| triggering_half(data, group, &meta.skill_id, skill_id).is_some();
+    let spells: Vec<energy::SocketedSpell> = group
+        .gems
+        .iter()
+        .filter(|gem| {
+            data.effect(&gem.skill_id)
+                .is_some_and(|effect| !effect.is_support)
+                && triggered(&gem.skill_id)
+        })
+        .map(|gem| energy::SocketedSpell {
+            cast_time_ms: data
+                .effect(&gem.skill_id)
+                .and_then(|effect| effect.cast_time)
+                .map_or(0.0, f64::from),
+            added_total_cast_time_ms: stat_of(gem, &gem.skill_id, ADDED_TOTAL_CAST_TIME_MS)
+                .unwrap_or(0.0),
+        })
+        .collect();
+
+    let mut mods = vec![
+        mk_trigger_mod(
+            energy::MAXIMUM_ENERGY,
+            energy::maximum_energy(&spells, ms_per_energy),
+            "maximum Energy of the meta gem",
+        ),
+        mk_trigger_mod(
+            energy::ENERGY_PER_POWER_ON_CRIT,
+            energy_per_power,
+            "Energy per Power of an enemy hit critically",
+        ),
+    ];
+    if let Some(increase) = stat_of(meta, &meta.skill_id, ENERGY_GENERATED_PCT)
+        && increase != 0.0
+    {
+        let mut increased = mk_trigger_mod(
+            energy::ENERGY_GENERATED,
+            increase,
+            "increased Energy gained, by the meta gem's level",
+        );
+        increased.mod_type = ModType::Inc;
+        mods.push(increased);
+    }
+
+    // The character's other skills, as sources of the critical hits. A spell
+    // a meta gem triggers is not one: what a gem triggers gives no Energy.
+    let groups = ctx.groups;
+    let mut candidates: Vec<(usize, usize, String, f64)> = Vec::new();
+    let mut index = 0;
+    groups.for_each_enabled_group(&mut |other| {
+        let other_index = index;
+        index += 1;
+        for (gem_index, gem) in other.gems.iter().enumerate() {
+            let by_hand = data.effect(&gem.skill_id).is_some_and(hits_by_hand)
+                && !other.gems.iter().any(|meta| {
+                    triggering_half(data, &other, &meta.skill_id, &gem.skill_id).is_some()
+                });
+            if !by_hand {
+                continue;
+            }
+            let rate = base_rate_of(ctx, data, gem_level_bonuses, &other, gem).unwrap_or(0.0);
+            candidates.push((other_index, gem_index, gem.skill_id.clone(), rate));
+        }
+    });
+    candidates.sort_by(|a, b| b.3.total_cmp(&a.3));
+    candidates.truncate(MAX_ENERGY_SOURCES);
+    for (source_group, gem_index, skill_id, _) in candidates {
+        let Some(stats) = ctx.sub_calc.source_stats(source_group, gem_index) else {
+            continue;
+        };
+        let value = |name: &str, value: f64| Modifier::number(name, ModType::Base, value);
+        let mut source =
+            mk_trigger_mod(energy::ENERGY_SOURCE, 0.0, "a skill that can fill the gem");
+        source.mod_type = ModType::List;
+        source.value = ModValue::NestedMods(vec![
+            value(energy::SOURCE_RATE, stats.action_rate),
+            value(energy::SOURCE_HIT_CHANCE, stats.hit_chance),
+            value(energy::SOURCE_CRIT_CHANCE, stats.crit_chance),
+            value(energy::SOURCE_CRIT_DAMAGE, stats.crit_hit_damage),
+        ]);
+        mods.push(source.with_source(skill_id));
+    }
+    Some(mods)
+}
+
+/// The support half through which the meta gem `meta_id` triggers `skill_id`
+/// in `group`: a meta gem that gains Energy grants, next to its own skill, a
+/// support for the spells socketed in it. `None` when `meta_id` is not such a
+/// gem or does not support the skill.
+fn triggering_half<'a>(
+    data: &'a dyn TriggerEnv,
+    group: &EnabledGroup<'_>,
+    meta_id: &str,
+    skill_id: &str,
+) -> Option<&'a str> {
+    let fills_with_energy = data.effect(meta_id).is_some_and(|effect| {
+        ["Meta", "GeneratesEnergy", "Triggers"]
+            .iter()
+            .all(|wanted| effect.skill_types.iter().any(|kind| kind == wanted))
+    });
+    if !fills_with_energy || meta_id == skill_id {
+        return None;
+    }
+    let supports =
+        crate::skill_env::buff_specs::group_judgement(group, data.as_buff_env(), skill_id);
+    data.additional_effects(meta_id)
+        .iter()
+        .map(String::as_str)
+        .find(|half| {
+            supports
+                .compatible
+                .iter()
+                .any(|support| support.effect_id == *half)
+        })
+}
+
+/// A skill the character uses itself and hits with: not a support, not
+/// something another skill triggers, not a persistent effect, minion or totem.
+fn hits_by_hand(effect: &pobr_data::catalog::GrantedEffectDef) -> bool {
+    let has = |wanted: &str| effect.skill_types.iter().any(|kind| kind == wanted);
+    !effect.is_support
+        && (has("Attack") || has("Damage"))
+        && ![
+            "Meta",
+            "Triggered",
+            "InbuiltTrigger",
+            "Persistent",
+            "Minion",
+            "CreatesMinion",
+            "SummonsTotem",
+        ]
+        .iter()
+        .any(|kind| has(kind))
 }
 
 /// Source statistics injection (contract 4's transport surface): rate is always

@@ -2590,8 +2590,11 @@ fn trigger_modifiers_gates_on_triggered_skill_type() {
     );
 }
 
-// trigger_configs recognition + source-rate sub-calc
+// The calculation of the skill that fills a meta gem with Energy
 
+/// A Fireball in a Cast on Critical, and `source_skill` listed in the same
+/// group. The gem does not trigger an attack, so the character uses it itself
+/// and its critical hits fill the gem.
 fn trigger_boundary_build(source_skill: &str) -> Build {
     Build::new()
         .with_character(CharacterIdentity {
@@ -2609,17 +2612,27 @@ fn trigger_boundary_build(source_skill: &str) -> Build {
         .with_main_socket_group(1)
 }
 
+/// What the calculation holds of the one skill that fills the meta gem: its
+/// uses per second, chance to hit and chance to hit critically.
 fn trigger_source_values(session: &CalculationSession) -> [f64; 3] {
+    use pobr_core::calc::energy;
+    let sources = session.mods_named(energy::ENERGY_SOURCE);
+    let [source] = sources.as_slice() else {
+        panic!("one Energy source, got {}", sources.len());
+    };
+    let pobr_core::ModValue::NestedMods(stats) = &source.value else {
+        panic!("an Energy source lists its skill's numbers");
+    };
     [
-        "TriggerSourceRate",
-        "TriggerSourceHitChance",
-        "TriggerSourceCritChance",
+        energy::SOURCE_RATE,
+        energy::SOURCE_HIT_CHANCE,
+        energy::SOURCE_CRIT_CHANCE,
     ]
     .map(|name| {
-        session
-            .mods_named(name)
+        stats
             .iter()
-            .map(|modifier| modifier.value.as_number().expect("numeric source stat"))
+            .filter(|stat| stat.name.as_str() == name)
+            .map(|stat| stat.value.as_number().expect("numeric source stat"))
             .sum()
     })
 }
@@ -2641,7 +2654,7 @@ fn assert_trigger_source_matches_direct(
     };
     assert_eq!(
         trigger_source_values(triggered),
-        [rate, source.hit_chance * 100.0, source.crit_chance * 100.0],
+        [rate, source.hit_chance, source.crit_chance],
         "trigger source stats must match selecting the source directly"
     );
 }
@@ -2789,17 +2802,12 @@ fn trigger_subcalc_applies_quality_bonuses_once() {
     assert_eq!(cache.get_or_compute(&explicit).unwrap(), *q4.output());
 }
 
-/// CoC fixture (a named gate item): group = [attack, MetaCastOnCritPlayer,
-/// spell], main skill = spell. `trigger_configs`'s `match_effect_ids`
-/// recognizes the CoC trigger relationship (the trigger panel no longer
-/// degrades to self-cast 0), folding in the source hit/crit.
+/// A Fireball in a Cast on Critical, with an attack listed in the same group:
+/// the gem triggers the spell, the attack's critical hits fill the gem, and
+/// the spell happens less often than the attack is used.
 #[test]
 fn coc_group_recognized_and_trigger_rate_filled() {
     let data = repo_data();
-    assert!(
-        data.trigger_configs.contains_key("MetaCastOnCritPlayer"),
-        "trigger_configs overlay should include the CoC join key"
-    );
     let build = Build::new()
         .with_character(CharacterIdentity {
             level: 80,
@@ -2819,10 +2827,14 @@ fn coc_group_recognized_and_trigger_rate_filled() {
 
     assert!(
         out.skill_trigger_rate > 0.0,
-        "after CoC recognition, the trigger rate should not be the placeholder 0, got {}",
+        "the gem's spell is triggered, got a rate of {}",
         out.skill_trigger_rate
     );
-    // Crit folded in (trigger_on_crit): the trigger rate should be noticeably lower than the source's attack rate (source crit chance ≪ 100%).
+    assert_eq!(
+        out.energy_trigger_source.as_deref(),
+        Some("ArmourBreakerPlayer")
+    );
+    // Only critical hits give Energy, and the attack's chance of one is far below 100%.
     let source_stats = trigger_source_stats(
         &mut test_context(&data),
         &build,
@@ -2835,7 +2847,7 @@ fn coc_group_recognized_and_trigger_rate_filled() {
     .expect("source sub-calc");
     assert!(
         out.skill_trigger_rate < source_stats.action_rate,
-        "CoC trigger rate {} should be discounted by the source's crit chance to below source rate {}",
+        "the trigger rate {} should be below the source's rate of use {}",
         out.skill_trigger_rate,
         source_stats.action_rate
     );
@@ -2918,9 +2930,8 @@ fn trigger_subcalc_preserves_outer_exposure_supports() {
     assert_eq!(repeated.session.output(), report.session.output());
 }
 
-/// CoC directional assertion: source skill +100% attack speed → trigger rate
-/// (the rate factor feeding DPS) rises in step — a regression guard for
-/// 14-G2's "source rate didn't scale with attack speed" bug.
+/// The skill that fills the gem attacking twice as fast fills it twice as
+/// often: the source's rate is its calculated one, not its base one.
 #[test]
 fn coc_directional_attack_speed_raises_trigger_rate() {
     let data = repo_data();
@@ -2949,7 +2960,7 @@ fn coc_directional_attack_speed_raises_trigger_rate() {
     let fast_out = calculate_with_data(&mk_build(), &data, &fast_opts).expect("coc fast");
     assert!(
         fast_out.skill_trigger_rate > base_out.skill_trigger_rate * 1.5,
-        "+100% attack speed should nearly double the trigger rate (14-G2 fix): {} → {}",
+        "+100% attack speed should nearly double the trigger rate: {} → {}",
         base_out.skill_trigger_rate,
         fast_out.skill_trigger_rate
     );

@@ -17,7 +17,6 @@ use pobr_build::{
     BuildData, DataOrchestratorOptions, ImportedBuild, ModifierRef, compare_to_reference, diagnose,
     import_build_from_code,
 };
-use pobr_data::monster::EnemyTier;
 use pobr_gamedata::GameData;
 
 const TOL: f64 = 0.05;
@@ -112,11 +111,7 @@ fn from_config(modifier: &ModifierRef) -> bool {
 fn diagnosis_does_not_change_the_result() {
     let data =
         BuildData::load(&GameData::new(pobr_gamedata::current_data_dir())).expect("load BuildData");
-    let options = DataOrchestratorOptions {
-        enemy_tier: EnemyTier::Pinnacle,
-        mode_effective: true,
-        ..Default::default()
-    };
+    let options = DataOrchestratorOptions::against_reference_enemy();
     let codes = committed_codes();
     assert!(codes.len() >= 20, "{} committed builds", codes.len());
     for code in codes {
@@ -152,12 +147,9 @@ fn diagnose_build() {
         import_build_from_code(&code).unwrap_or_else(|e| panic!("{name}: import failed: {e}"));
     let data =
         BuildData::load(&GameData::new(pobr_gamedata::current_data_dir())).expect("load BuildData");
-    // PoB2's main panel convention, as in `ninja_parity`.
-    let options = DataOrchestratorOptions {
-        enemy_tier: EnemyTier::Pinnacle,
-        mode_effective: true,
-        ..Default::default()
-    };
+    // The build as the game plays it, against the enemy its reference values
+    // were exported for: the inputs a calculation drops are asked of this one.
+    let options = DataOrchestratorOptions::against_reference_enemy();
     let diagnosis = diagnose(&build, &data, &options)
         .unwrap_or_else(|e| panic!("{name}: calculation failed: {e}"));
     let output = diagnosis.session.output();
@@ -191,6 +183,20 @@ fn diagnose_build() {
         }
         None => eprintln!("main skill: none resolves"),
     }
+    if output.energy_trigger_maximum > 0.0 {
+        match &output.energy_trigger_source {
+            Some(source) => eprintln!(
+                "triggered {:.3} times a second: its meta gem holds {:.0} Energy and {source} gives it {:.2} per critical hit",
+                output.skill_trigger_rate,
+                output.energy_trigger_maximum,
+                output.energy_per_trigger_event,
+            ),
+            None => eprintln!(
+                "in a meta gem that holds {:.0} Energy; no skill of the build fills it, so the spell is at its own rate",
+                output.energy_trigger_maximum,
+            ),
+        }
+    }
 
     eprintln!("\n== 1. Import: what the build code holds that the build does not");
     let mut import_losses = 0;
@@ -216,7 +222,17 @@ fn diagnose_build() {
     if report.reference_stats.is_empty() {
         eprintln!("    the code carries no reference stats");
     } else {
-        let rows = compare_to_reference(output, &report.reference_stats);
+        // The reference counts a spell in a meta gem at its own rate of use;
+        // the comparison is with the same question.
+        let on_reference_basis =
+            pobr_build::calculate_with_data(&build, &data, &options.clone().on_reference_basis())
+                .unwrap_or_else(|e| panic!("{name}: calculation failed: {e}"));
+        if output.energy_trigger_source.is_some() {
+            eprintln!(
+                "    (the triggered spell is counted at its own rate of use, as the reference counts it)"
+            );
+        }
+        let rows = compare_to_reference(&on_reference_basis, &report.reference_stats);
         let misses: Vec<_> = rows.iter().filter(|row| !row.agrees(TOL)).collect();
         eprintln!(
             "    {} of {} stats agree",

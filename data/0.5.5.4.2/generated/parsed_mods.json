@@ -18172,7 +18172,14 @@
     },
     {
       "text": "25% chance for [Trigger] skills to refund half of [Energy] Spent",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyRefundHalfChance",
+          "type": "Base",
+          "value": 25.0
+        }
+      ]
     },
     {
       "text": "25% chance on [Consume|Consuming] a [Shock] on an Enemy to reapply it",
@@ -45294,27 +45301,72 @@
     },
     {
       "text": "[Meta] Skills gain 15% increased [Energy]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "Inc",
+          "value": 15.0
+        }
+      ]
     },
     {
       "text": "[Meta] Skills gain 20% increased [Energy]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "Inc",
+          "value": 20.0
+        }
+      ]
     },
     {
       "text": "[Meta] Skills gain 25% increased [Energy] if you've dealt a [Critical] [Hit] [Recently]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "Inc",
+          "value": 25.0,
+          "tags": [
+            "Condition { var: \"CritRecently\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Meta] Skills gain 35% more [Energy]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "More",
+          "value": 35.0
+        }
+      ]
     },
     {
       "text": "[Meta] Skills gain 4% increased [Energy]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "Inc",
+          "value": 4.0
+        }
+      ]
     },
     {
       "text": "[Meta] Skills gain 8% increased [Energy]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "Inc",
+          "value": 8.0
+        }
+      ]
     },
     {
       "text": "[Meta] Skills have 20% increased [Reservation] [Efficiency]",

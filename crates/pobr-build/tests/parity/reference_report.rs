@@ -29,7 +29,6 @@ use pobr_build::{
     BuildData, DataOrchestratorOptions, ImportedBuild, ReferenceRow, calculate_with_data_session,
     compare_to_reference, import_build_from_code,
 };
-use pobr_data::monster::EnemyTier;
 use pobr_gamedata::GameData;
 
 const TOL: f64 = 0.05;
@@ -106,13 +105,9 @@ struct Agreement {
 fn corpus_agreement(root: &Path, verbose: bool) -> Agreement {
     let data =
         BuildData::load(&GameData::new(pobr_gamedata::current_data_dir())).expect("load BuildData");
-    // The same convention as `ninja_parity`: PoB2's main panel is EFFECTIVE,
-    // and a code without `enemyIsBoss` means PoB2's default, Pinnacle.
-    let options = DataOrchestratorOptions {
-        enemy_tier: EnemyTier::Pinnacle,
-        mode_effective: true,
-        ..Default::default()
-    };
+    // The same convention as `ninja_parity`: the conditions the references
+    // were exported under.
+    let options = DataOrchestratorOptions::reference_conditions();
 
     let mut total = Agreement::default();
     for dir in builds_in(root) {
@@ -272,11 +267,7 @@ fn amulet_granted_skills_do_not_overdraw_spirit() {
     ];
     let data =
         BuildData::load(&GameData::new(pobr_gamedata::current_data_dir())).expect("load BuildData");
-    let options = DataOrchestratorOptions {
-        enemy_tier: EnemyTier::Pinnacle,
-        mode_effective: true,
-        ..Default::default()
-    };
+    let options = DataOrchestratorOptions::reference_conditions();
     let mut checked = 0;
     for dir in builds_in(&repo_path("examples/wasm-benchmark/builds")) {
         let name = dir.file_name().unwrap().to_string_lossy().to_string();

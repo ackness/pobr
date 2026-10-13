@@ -919,6 +919,24 @@ pub struct CalculateBuildOutput {
     pub cooldown: f64,
     /// The main skill's mana cost (derived from its per-level cost).
     pub mana_cost: f64,
+    /// Present when the main skill sits in a meta gem that fills with Energy
+    /// (Cast on Critical): what the gem holds and what fills it. `action_rate`
+    /// and the DPS are by `triggers_per_second` when a source is named.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub energy_trigger: Option<EnergyTriggerOutput>,
+}
+
+/// How a meta gem triggers the main skill.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct EnergyTriggerOutput {
+    /// Energy the gem needs to trigger its spells.
+    pub maximum_energy: f64,
+    /// The skill whose critical hits fill the gem most often; absent when no
+    /// skill of the build can, and the main skill keeps its own rate.
+    pub source_skill: Option<String>,
+    /// Energy one critical hit of that skill gives.
+    pub energy_per_critical_hit: f64,
+    pub triggers_per_second: f64,
 }
 
 /// Passive-tree version reconciliation diagnostics (gap B): the build's
@@ -962,6 +980,12 @@ pub struct ReferenceDifference {
 #[derive(Debug, Clone, Serialize)]
 pub struct ReferenceCheck {
     pub tolerance: f64,
+    /// `true` when the main skill is a spell in a meta gem that fills with
+    /// Energy and the rows below compare it at its own rate of use. The
+    /// exporter counts it so, having no Energy model; `output` reports it at
+    /// the rate the gem triggers it (`output.energy_trigger`), so its DPS and
+    /// action rate are not the `pobr` values of the rows.
+    pub at_own_rate_of_use: bool,
     pub compared: usize,
     pub agreeing: usize,
     pub differing: Vec<ReferenceDifference>,
@@ -1045,14 +1069,31 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
         action_rate: out.action_rate,
         cooldown: out.cooldown,
         mana_cost: out.mana_cost,
+        energy_trigger: (out.energy_trigger_maximum > 0.0).then(|| EnergyTriggerOutput {
+            maximum_energy: out.energy_trigger_maximum,
+            source_skill: out.energy_trigger_source.clone(),
+            energy_per_critical_hit: out.energy_per_trigger_event,
+            triggers_per_second: out.skill_trigger_rate,
+        }),
     };
 
     // The reference was exported on the effective basis against the build's
     // own enemy; any other request compares two different questions.
     let same_conditions =
         req.mode_effective && req.enemy_level == 0 && req.enemy_tier == EnemyTier::Pinnacle;
-    let reference = (same_conditions && !import.reference_stats.is_empty()).then(|| {
-        let rows = compare_to_reference(out, &import.reference_stats);
+    let compares = same_conditions && !import.reference_stats.is_empty();
+    // The exporter has no Energy model: its numbers for a spell in a meta gem
+    // are at the spell's own rate of use. The comparison asks the same
+    // question, so it is made at that rate, not at the rate of triggers the
+    // output above reports.
+    let at_own_rate = (compares && out.energy_trigger_source.is_some())
+        .then(|| {
+            calculate_with_data_session(&build, &build_data, &opts.clone().on_reference_basis())
+        })
+        .transpose()?;
+    let reference = compares.then(|| {
+        let reference_out = at_own_rate.as_ref().map_or(out, |session| session.output());
+        let rows = compare_to_reference(reference_out, &import.reference_stats);
         let differing: Vec<ReferenceDifference> = rows
             .iter()
             .filter(|row| !row.agrees(REFERENCE_TOLERANCE))
@@ -1066,6 +1107,7 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
             .collect();
         ReferenceCheck {
             tolerance: REFERENCE_TOLERANCE,
+            at_own_rate_of_use: at_own_rate.is_some(),
             compared: rows.len(),
             agreeing: rows.len() - differing.len(),
             differing,

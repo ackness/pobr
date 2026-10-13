@@ -534,6 +534,7 @@ mod tests {
                 action_rate: 1.0,
                 hit_chance: 100.0,
                 crit_chance: 5.0,
+                ..Default::default()
             },
         );
         assert!(memo.get(&second).is_none());

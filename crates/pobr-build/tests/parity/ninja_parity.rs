@@ -26,8 +26,7 @@
 
 use pobr_build::corpus::{CorpusLine, LineSource};
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
-use pobr_core::calc::{MinimalInput, OutputTable};
-use pobr_data::monster::EnemyTier;
+use pobr_core::calc::OutputTable;
 use pobr_gamedata::GameData;
 use std::path::{Path, PathBuf};
 
@@ -124,13 +123,8 @@ fn run_build_mode(dir: &Path, data: &BuildData, mode_effective: bool) -> Option<
     let code = std::fs::read_to_string(dir.join("code.txt")).ok()?;
     let build = parse_build_from_code(code.trim()).ok()?;
     let opts = DataOrchestratorOptions {
-        base_input: MinimalInput::default(),
-        inject_character_base: true,
-        enemy_level: 0,
-        enemy_tier: EnemyTier::Pinnacle,
         mode_effective,
-        extra_modifier_texts: vec![],
-        ..Default::default()
+        ..DataOrchestratorOptions::reference_conditions()
     };
     calculate_with_data(&build, data, &opts).ok()
 }

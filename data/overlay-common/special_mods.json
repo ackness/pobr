@@ -3009,6 +3009,144 @@
         "Evasion Rating from Equipped Body Armour is halved"
       ],
       "source_note": "Game text of the Amazon notable Stalking Panther (passive_tree.json node 63254), the other half of evasion_from_helmet_gloves_boots_doubled: 50% less of the Evasion Rating the Body Armour provides."
+    },
+    {
+      "id": "meta_skills_gain_increased_energy",
+      "pattern": "meta skills gain (\\d+)% increased energy",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "energy",
+      "examples": [
+        "Meta Skills gain 8% increased Energy"
+      ],
+      "source_note": "Game text of the passive skills that speed up meta gems (14 nodes of the passive tree and jewel modifiers read \"Meta Skills gain #% increased Energy\"). A meta gem's Energy is the counter that triggers its socketed spells (calc/energy.rs); the modifier adds to the gem's own \"#% increased Energy gained\" (energy_generated_+%)."
+    },
+    {
+      "id": "meta_skills_gain_more_energy",
+      "pattern": "meta skills gain (\\d+)% more energy",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "MORE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "energy",
+      "examples": [
+        "Meta Skills gain 35% more Energy"
+      ],
+      "source_note": "Game text of a passive skill; the multiplicative form of meta_skills_gain_increased_energy."
+    },
+    {
+      "id": "meta_skills_gain_reduced_energy",
+      "pattern": "meta skills gain (\\d+)% reduced energy",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "energy",
+      "examples": [
+        "Meta Skills gain 20% reduced Energy"
+      ],
+      "source_note": "The negative form of the game's stat energy_generated_+% (\"Meta Skills gain 1% increased Energy\"), which an item can roll below zero."
+    },
+    {
+      "id": "meta_skills_gain_increased_energy_while_on_full_mana",
+      "pattern": "meta skills gain (\\d+)% increased energy while on full mana",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "FullMana"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "energy",
+      "examples": [
+        "Meta Skills gain 25% increased Energy while on Full Mana"
+      ],
+      "source_note": "Game text of the stat energy_generated_+%_on_full_mana: meta_skills_gain_increased_energy under the condition the parser's \"while on Full Mana\" sets."
+    },
+    {
+      "id": "energy_generation_is_doubled",
+      "pattern": "energy generation is doubled",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "MORE",
+          "value": 100
+        }
+      ],
+      "verified": false,
+      "batch": "energy",
+      "examples": [
+        "Energy Generation is doubled"
+      ],
+      "source_note": "Game text of the stat energy_generation_is_doubled: twice the Energy a meta gem gains, on top of every increase."
+    },
+    {
+      "id": "meta_skills_gain_increased_energy_if_crit_recently",
+      "pattern": "meta skills gain (\\d+)% increased energy if you've dealt a critical hit recently",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "CritRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "energy",
+      "examples": [
+        "Meta Skills gain 30% increased Energy if you've dealt a Critical Hit Recently"
+      ],
+      "source_note": "Game text of a passive skill: meta_skills_gain_increased_energy under the condition the configuration states as \"have you Crit Recently\"."
+    },
+    {
+      "id": "trigger_skills_refund_half_of_energy_spent",
+      "pattern": "(\\d+)% chance for trigger skills to refund half of energy spent",
+      "mods": [
+        {
+          "name": "EnergyRefundHalfChance",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "energy",
+      "examples": [
+        "25% chance for Trigger skills to refund half of Energy Spent"
+      ],
+      "source_note": "Game text of the notable Energise. A meta gem spends all its Energy when it triggers, so with this chance it starts the next round half full (calc/energy.rs)."
     }
   ]
 }

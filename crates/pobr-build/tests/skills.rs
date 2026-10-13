@@ -25,6 +25,8 @@ mod cost_conversion;
 mod cost_multiplier;
 #[path = "skills/dual_wield.rs"]
 mod dual_wield;
+#[path = "skills/energy_triggers.rs"]
+mod energy_triggers;
 #[path = "skills/equipment_affix_effects.rs"]
 mod equipment_affix_effects;
 #[path = "skills/gem_quality.rs"]

@@ -196,6 +196,7 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // family and main_hand=None, so it's captured here and passed to fill_ailments.
     let ailment_fallback_ranges = output.stored_ranges.clone();
     env.player.output = OutputTable::from(&output);
+    env.player.output.crit_hit_avg = output.stored_crit_avg.iter().map(|(_, avg)| avg).sum();
     env.player.output.main_hand = hand_pass.main_hand;
     env.player.output.off_hand = hand_pass.off_hand;
     // Backfill the curse panel (buff_pass produces this during env_finalize stage 4, before the
@@ -224,6 +225,9 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // fill_ailments' stacking rate estimate / fill_skill_dot_stage's DPS base consume the
     // post-conversion value.
     fill_crossbow_reload(env);
+    // A spell in an Energy meta gem happens as often as the gem triggers it;
+    // the stages below read the rate.
+    super::energy::apply_energy_trigger(env);
     // Ailments: chance + crit weighting + magnitude + effMult. Damaging ailments (bleed/ignite/poison)
     // go through the Stored-family per-pass pipeline; non-damaging ailments (chill/shock/poise) use
     // the component approximation. Kept as its own block to avoid conflicting with the immutable
@@ -845,8 +849,8 @@ pub(super) fn skill_dot_terms(env: &Env) -> super::skill_dot::SkillDotTerms {
 /// Trigger rate fill (Lane B): reads cooldown-gated / CWC trigger mods, writes `trigger_rate_cap` /
 /// `skill_trigger_rate`.
 ///
-/// Two trigger models that mods can drive immediately (the energy-driven model needs the build
-/// layer to inject socketed-spell data, deferred):
+/// Two trigger models with a cooldown or a cadence of their own (a meta gem that fills with
+/// Energy has neither; it is `energy::apply_energy_trigger`, a later stage):
 /// - **Cooldown-gated** (`TriggerCooldownBase` BASE, seconds): the source skill itself has a
 ///   trigger cooldown. `action_cd = max(TriggeredSkillCooldown, TriggerCooldownBase / icdr)`,
 ///   `cap = 1/ceil_tick(action_cd)`, `rate = min(cap, effective_action_rate)`.
@@ -912,6 +916,7 @@ fn fill_trigger(env: &mut Env) {
             cfg,
             &[ModName::from("TriggerSourceCritChance")],
         ) / 100.0,
+        ..Default::default()
     };
     let has_source_stats = source_stats.hit_chance > 0.0 || source_stats.crit_chance > 0.0;
     // triggerOnCrit (the CoC path): either a cfg condition (the legacy channel) or the build
@@ -1756,7 +1761,7 @@ fn enemy_poise_threshold_effective(enemy: &ModDb, cfg: &CalcConfig, level: u8) -
 /// `EnemyAilmentThreshold` is aggregated as INC/MORE into a multiplier (PoB2's `calcLib.mod`).
 /// Degenerates to the bare table value with no enemy mod_db (compatible with old entry points
 /// that construct Env directly).
-fn enemy_ailment_threshold_effective(enemy: &ModDb, cfg: &CalcConfig, level: u8) -> f64 {
+pub(super) fn enemy_ailment_threshold_effective(enemy: &ModDb, cfg: &CalcConfig, level: u8) -> f64 {
     let base = enemy_ailment_threshold(level as u32) as f64;
     let inc = enemy.sum(ModType::Inc, cfg, &[ModName::from("EnemyAilmentThreshold")]);
     let more = enemy.more(cfg, &[ModName::from("EnemyAilmentThreshold")]);

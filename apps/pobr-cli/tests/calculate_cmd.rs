@@ -173,6 +173,10 @@ fn decode_errors_on_invalid_code() {
 // calculate-build: PoB Build Code -> a full Build -> end-to-end attributed calculation
 
 const DEADEYE_CODE: &str = include_str!("../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
+/// A Comet in a Cast on Critical, filled by Spark.
+const GEMLING_COMET_CODE: &str = include_str!(
+    "../../../examples/wasm-benchmark/builds/ninja-2026-10-11-mercenary-gemling-legionnaire-comet-c60ba778fabb/code.txt"
+);
 
 fn repo_data_dir() -> std::path::PathBuf {
     pobr_gamedata::repo_data_root().join(pobr_gamedata::data_version())
@@ -351,6 +355,60 @@ fn calculate_build_compares_with_the_reference_the_code_carries() {
     ] {
         assert!(calculate_build(&other).unwrap().reference.is_none());
     }
+}
+
+/// A spell in a Cast on Critical is reported at the rate the gem triggers it,
+/// and compared with the code's reference at its own rate of use: the
+/// exporter has no Energy model.
+#[test]
+fn calculate_build_reports_a_triggered_spell_at_the_rate_of_triggers() {
+    let report = calculate_build(&CalculateBuildRequest {
+        code: GEMLING_COMET_CODE.trim().to_string(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    })
+    .unwrap();
+    let trigger = report
+        .output
+        .energy_trigger
+        .as_ref()
+        .expect("the main skill is in a Cast on Critical");
+    // Comet alone: 100 for its second of base cast time, 200 for the second
+    // it adds to its total cast time.
+    assert_eq!(trigger.maximum_energy, 300.0);
+    assert_eq!(trigger.source_skill.as_deref(), Some("SparkPlayer"));
+    assert!(trigger.energy_per_critical_hit > 0.0);
+    assert!(trigger.triggers_per_second > 0.0);
+    assert_eq!(report.output.action_rate, trigger.triggers_per_second);
+
+    let reference = report
+        .reference
+        .expect("the code carries PlayerStat values");
+    assert!(reference.at_own_rate_of_use);
+    // The exporter's Speed is the Comet's own cast rate, and so is the value
+    // compared with it.
+    assert!(
+        reference
+            .differing
+            .iter()
+            .all(|row| row.stat != "ActionRate"),
+        "{:?}",
+        reference.differing
+    );
+
+    // A skill used by hand is compared as it is reported.
+    let by_hand = calculate_build(&CalculateBuildRequest {
+        code: DEADEYE_CODE.to_string(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    })
+    .unwrap();
+    assert!(by_hand.output.energy_trigger.is_none());
+    assert!(!by_hand.reference.unwrap().at_own_rate_of_use);
 }
 
 #[test]
