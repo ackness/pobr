@@ -179,6 +179,14 @@ pub const BLOCK_CHANCE_CAP: f64 = 90.0;
 /// 20, agent-docs/ailments.md §Shock).
 pub const SHOCK_MIN_EFFECT: f64 = 20.0;
 
+/// Maximum Rage before modifiers: the game constant `BaseMaximumRage`.
+pub const BASE_MAXIMUM_RAGE: f64 = 30.0;
+
+/// Percent more Attack damage per effective Rage: the character's inherent
+/// stat `attack_damage_final_permyriad_per_rage = 100`, and a permyriad is a
+/// hundredth of a percent.
+pub const ATTACK_DAMAGE_MORE_PER_RAGE: f64 = 1.0;
+
 /// Global DoT DPS cap (`(2^31 - 1) / 60`, roughly 3.579×10^7).
 ///
 /// Source: PoB2 `src/Modules/Data.lua`:

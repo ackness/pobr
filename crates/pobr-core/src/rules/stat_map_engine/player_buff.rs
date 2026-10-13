@@ -123,7 +123,7 @@ pub fn map_player_buff_stat(
 ///   convention anyway.
 /// - The self-buff ailment-duration family (Coolheaded/Warmblooded/
 ///   StrongHearted's `*_duration_on_self_+%_final`), the flask domain
-///   (Herbalism/Alchemist's Boon), and non-mod rage/incision payloads
+///   (Herbalism/Alchemist's Boon), and non-mod incision payloads
 ///   (kind=flag/scalar) -- no consumer yet, so they stay reported as
 ///   `UnknownModName`/`UnsupportedKind` (skip rather than miscompute).
 fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, UnsupportedReason> {
@@ -221,6 +221,13 @@ fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, Unsup
         // companion-first-absorbs-damage layer (CalcDefence.lua:2961-2965 /
         // :3656-3663).
         "TakenFromCompanionBeforeYou" => Ok(vec!["TakenFromCompanionBeforeYou"]),
+        // Rage: a buff's Maximum Rage (Berserk's `berserk_maximum_rage_granted_+`),
+        // its effect (`skill_base_rage_effect_+%_to_apply`) and a regeneration
+        // that lets the character gain Rage at all (Eternal Rage). Consumer =
+        // `calc::rage::apply_rage`.
+        "MaximumRage" => Ok(vec!["MaximumRage"]),
+        "RageEffect" => Ok(vec!["RageEffect"]),
+        "RageRegen" => Ok(vec!["RageRegen"]),
         other => Err(UnsupportedReason::UnknownModName(other.to_string())),
     }
 }
@@ -289,7 +296,10 @@ fn collect_player_buff_flag(
     let name = element.name.as_deref().unwrap_or("?");
     // `SequentialProjectiles` (Barrage buff, act_dex.lua:219): consumer = the
     // Barrage-repeats gate in `dps_end_factors` (vendor CalcOffence.lua:962).
-    if !is_cross_type_ailment_flag(name) && name != "SequentialProjectiles" {
+    // `Condition:CanGainRage` (Eternal Rage): consumer = `calc::rage::apply_rage`.
+    if !is_cross_type_ailment_flag(name)
+        && !matches!(name, "SequentialProjectiles" | "Condition:CanGainRage")
+    {
         return Err(UnsupportedReason::UnknownModName(format!("flag:{name}")));
     }
     if !element.flags.is_empty() {
