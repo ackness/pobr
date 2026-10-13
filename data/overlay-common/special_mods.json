@@ -3153,7 +3153,7 @@
       "pattern": "(?:\\d+(?:\\.\\d+)?)% (?:increased|reduced) experience gain",
       "mods": [],
       "verified": false,
-      "batch": "inert",
+      "batch": "S0",
       "examples": [
         "5% increased Experience gain"
       ],
