@@ -669,9 +669,17 @@ impl CalculationSession {
     /// multiplier that a config option could set but did not is listed too.
     /// Ordered by variable, then modifier name.
     pub fn unprovided_multipliers(&self) -> Vec<(&str, &Modifier)> {
+        // Worked out by a calculation pass for the hit it is computing, so
+        // neither the config nor a stored modifier ever holds them.
+        const SET_BY_A_PASS: [&str; 1] = [
+            // `calc::offence`: what the accuracy check gives beyond a certain hit.
+            "ExcessHitChance",
+        ];
         let db = &self.env.player.mod_db;
         let provided = |var: &str| {
-            self.env.cfg.multipliers.contains_key(var) || db.has_name(&format!("Multiplier:{var}"))
+            SET_BY_A_PASS.contains(&var)
+                || self.env.cfg.multipliers.contains_key(var)
+                || db.has_name(&format!("Multiplier:{var}"))
         };
         let mut out: Vec<(&str, &Modifier)> = db
             .iter_mods()

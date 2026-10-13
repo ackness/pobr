@@ -427,6 +427,12 @@ fn session_reports_modifiers_that_parsed_and_did_nothing() {
             1.0,
             None,
         )),
+        // The offence pass sets this one for the hit it computes.
+        Modifier::number("CriticalStrikeChance", ModType::Base, 0.25).with_tag(ModTag::multiplier(
+            "ExcessHitChance",
+            1.0,
+            None,
+        )),
     ]);
     s.track_modifier_reads();
     let output = s.perform_minimal().unwrap();
