@@ -587,6 +587,9 @@ fn radius_small_grant_excludes_attribute_nodes() {
         notable_effect_inc: 0,
         small_effect_inc: 0,
         tree_texts: vec![],
+        rarity: pobr_data::item::ItemRarity::Rare,
+        corrupted: false,
+        socket: crate::build::JewelSocket::Tree,
     };
     let build = Build::new()
         .with_tree(PassiveTreeSpec {

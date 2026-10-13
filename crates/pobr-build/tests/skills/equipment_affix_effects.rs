@@ -828,6 +828,85 @@ fn time_lost_jewels_use_selected_geometry_radius_upgrades_and_combined_effects()
     );
 }
 
+/// The Adorned makes everything a qualifying jewel grants stronger, the
+/// grants to passives in its radius included; the node the grant lands on
+/// then scales it by its own effect.
+#[test]
+fn the_adorned_scales_what_a_radius_jewel_grants() {
+    let mut data = data();
+    let mut nodes = std::collections::HashMap::new();
+    for (skill, kind, x) in [(900040, "jewel_socket", 0.0), (900041, "notable", 100.0)] {
+        nodes.insert(skill, serde_json::from_value(serde_json::json!({
+            "skill": skill, "id": format!("fixture_{skill}"), "kind": kind, "x": x, "y": 0.0, "stats": []
+        })).unwrap());
+    }
+    data.passive_nodes = nodes;
+    let base = build("SparkPlayer").with_tree(pobr_data::passive_tree::PassiveTreeSpec {
+        allocated_nodes: vec![
+            pobr_data::passive_tree::NodeId(900040),
+            pobr_data::passive_tree::NodeId(900041),
+        ],
+        ..Default::default()
+    });
+    let baseline = run(&base, &data).output().life;
+    let life_scale = (run(
+        &base.clone().set_item(
+            EquipmentSlot::Ring1,
+            item("Sapphire Ring", &["+100 to maximum Life"]),
+        ),
+        &data,
+    )
+    .output()
+    .life
+        - baseline)
+        / 100.0;
+
+    let mut adorned = item(
+        "Diamond",
+        &[
+            "50% increased Effect of Jewel Socket Passive Skills",
+            "containing Corrupted Rare Jewels",
+        ],
+    );
+    adorned.rarity = ItemRarity::Unique;
+    // `notable_effect`% on the notable itself; `state` is the jewel's last line.
+    let gained = |state: &str, notable_effect: u32, socket: pobr_build::build::JewelSocket| {
+        let effect_line = if notable_effect > 0 {
+            format!("{notable_effect}% increased Effect of Notable Passive Skills in Radius\n")
+        } else {
+            String::new()
+        };
+        let text = format!(
+            "Rarity: RARE\nReference\nTime-Lost Ruby\nRadius: Small\nImplicits: 0\n{effect_line}Notable Passive Skills in Radius also grant +20 to maximum Life\n{state}"
+        );
+        let mut radius = pobr_build::radius_jewel_from_text(900040, &text).unwrap();
+        radius.socket = socket;
+        let mut build = base.clone().with_jewels(vec![adorned.clone()]);
+        build
+            .jewels
+            .push((socket, pobr_core::parse_pob_xml_item(&text).unwrap()));
+        let result = run(&build.with_radius_jewels(vec![radius]), &data);
+        assert!(
+            result.unsupported_modifier_texts().is_empty(),
+            "{:?}",
+            result.unsupported_modifier_texts()
+        );
+        (result.output().life - baseline) / life_scale
+    };
+    let tree = pobr_build::build::JewelSocket::Tree;
+
+    // Corrupted and rare: 20 * 1.5 = 30.
+    close(gained("Corrupted", 0, tree), 30.0);
+    // Then the notable's own 50%: 30 * 1.5 = 45.
+    close(gained("Corrupted", 50, tree), 45.0);
+    // Not corrupted, or not in one of the tree's own sockets: 20.
+    close(gained("", 0, tree), 20.0);
+    close(
+        gained("Corrupted", 0, pobr_build::build::JewelSocket::Granted),
+        20.0,
+    );
+}
+
 #[test]
 fn time_lost_scaling_preserves_fractional_recovery_and_both_damage_endpoints() {
     let mut data = data();

@@ -391,6 +391,9 @@ mod tests {
             notable_effect_inc: 0,
             small_effect_inc: 0,
             tree_texts: vec![],
+            rarity: pobr_data::item::ItemRarity::Rare,
+            corrupted: false,
+            socket: crate::build::JewelSocket::Tree,
         });
         assert!(!same_build(&a, &b));
         b = a.clone();

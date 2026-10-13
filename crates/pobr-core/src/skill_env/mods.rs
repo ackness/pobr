@@ -415,10 +415,15 @@ impl CorruptedJewelEffect {
     /// The percent increase to `jewel`'s own modifiers: it must be corrupted
     /// and of a rarity an effect names.
     pub fn increase_for(&self, jewel: &pobr_data::item::Item) -> Option<f64> {
-        if !jewel.corrupted {
+        self.increase(jewel.rarity, jewel.corrupted)
+    }
+
+    /// The percent increase for a jewel of this rarity and corruption.
+    pub fn increase(&self, rarity: pobr_data::item::ItemRarity, corrupted: bool) -> Option<f64> {
+        if !corrupted {
             return None;
         }
-        match jewel.rarity {
+        match rarity {
             pobr_data::item::ItemRarity::Magic => self.magic,
             pobr_data::item::ItemRarity::Rare => self.rare,
             _ => None,

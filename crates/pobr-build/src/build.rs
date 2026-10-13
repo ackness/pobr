@@ -254,6 +254,12 @@ pub struct RadiusJewel {
     pub small_effect_inc: u32,
     /// Normalized active modifier lines for allocation and conquest consumers.
     pub tree_texts: Vec<String>,
+    /// The jewel's rarity and corruption, and the kind of socket it sits in:
+    /// what an effect on "Jewel Socket Passive Skills containing Corrupted
+    /// Rare Jewels" asks of a jewel before it scales what the jewel grants.
+    pub rarity: pobr_data::item::ItemRarity,
+    pub corrupted: bool,
+    pub socket: JewelSocket,
 }
 
 /// Where a jewel is socketed. Effects on "Jewel Socket Passive Skills" (The

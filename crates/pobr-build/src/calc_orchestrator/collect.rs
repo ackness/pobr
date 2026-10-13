@@ -88,7 +88,12 @@ pub(crate) fn resolve_granted_socket_jewels(build: &Build, data: &BuildData) -> 
             resolved
                 .jewels
                 .push((crate::build::JewelSocket::Granted, item.clone()));
-            resolved.radius_jewels.extend(radius.iter().cloned());
+            resolved
+                .radius_jewels
+                .extend(radius.iter().cloned().map(|mut radius| {
+                    radius.socket = crate::build::JewelSocket::Granted;
+                    radius
+                }));
         }
     }
     resolved.granted_socket_jewels.clear();
@@ -534,7 +539,16 @@ pub(crate) fn radius_jewel_grant_modifiers(build: &Build, data: &BuildData) -> V
     let effects = radius_node_effects(&expansions);
     let global_small = small_passive_effect_inc(build, data);
     let ctx = engine_ctx(data);
+    let jewel_effect = pobr_core::skill_env::CorruptedJewelEffect::from_jewels(build.jewel_items());
     for exp in &expansions {
+        // An increase to a jewel socket's effect makes everything the jewel
+        // grants that much stronger, before the node it lands on scales it.
+        let jewel_scale = 1.0
+            + (exp.jewel.socket == crate::build::JewelSocket::Tree)
+                .then(|| jewel_effect.increase(exp.jewel.rarity, exp.jewel.corrupted))
+                .flatten()
+                .unwrap_or(0.0)
+                / 100.0;
         for line in &exp.jewel.grant_lines {
             let Some((kind, granted)) = parse_grant_line(line) else {
                 continue;
@@ -557,9 +571,17 @@ pub(crate) fn radius_jewel_grant_modifiers(build: &Build, data: &BuildData) -> V
                         0.0
                     };
                 for modifier in &parsed.mods {
-                    let mut scaled = pobr_core::ModDb::new();
-                    scaled.scale_add_mod(modifier.clone(), 1.0 + inc / 100.0, &data.high_precision);
-                    mods.extend(scaled.iter_mods().cloned());
+                    let mut by_jewel = pobr_core::ModDb::new();
+                    by_jewel.scale_add_mod(modifier.clone(), jewel_scale, &data.high_precision);
+                    for modifier in by_jewel.iter_mods() {
+                        let mut scaled = pobr_core::ModDb::new();
+                        scaled.scale_add_mod(
+                            modifier.clone(),
+                            1.0 + inc / 100.0,
+                            &data.high_precision,
+                        );
+                        mods.extend(scaled.iter_mods().cloned());
+                    }
                 }
             }
         }

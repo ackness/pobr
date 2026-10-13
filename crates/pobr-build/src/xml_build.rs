@@ -1192,6 +1192,7 @@ pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
 /// available separately for editing and export.
 pub fn radius_jewel_from_text(socket_node: u32, text: &str) -> Option<RadiusJewel> {
     let item = parse_pob_xml_item(text).ok()?;
+    let (rarity, corrupted) = (item.rarity, item.corrupted);
     let tree_texts: Vec<String> = item
         .implicit_texts
         .into_iter()
@@ -1244,6 +1245,11 @@ pub fn radius_jewel_from_text(socket_node: u32, text: &str) -> Option<RadiusJewe
         notable_effect_inc,
         small_effect_inc,
         tree_texts,
+        rarity,
+        corrupted,
+        // The tree's own socket until the calculation finds the socket is one
+        // an item grants (`resolve_granted_socket_jewels`).
+        socket: JewelSocket::Tree,
     })
 }
 
