@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-warrior-smith-of-kitava-maul-f3d9b042531d",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/AlexThrow-6387/Throwarris",
+    "account": "AlexThrow-6387",
+    "character": "Throwarris",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:47:50+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=AlexThrow-6387&name=Throwarris&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Smith+of+Kitava",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Smith of Kitava",
+    "level": 98,
+    "main_skill": "Maul"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 1,
+    "code_sha256": "f18984d5d0df48a038d1002c0ade3fea86f8ef19cb7940819ab0be23321027ca",
+    "code_chars": 12232,
+    "decoded_bytes": 48882
+  }
+}

@@ -141,10 +141,11 @@ cmd_diagnose() {
     diagnose_build::diagnose_build -- --ignored --nocapture
 }
 
-# Every build of a corpus against the reference values its code carries.
+# Builds against the reference values their codes carry: the totals of every
+# committed set, or one directory with each build's differences.
 cmd_accuracy() {
   if [[ $# -gt 1 || "${1:-}" == -* ]]; then
-    echo "usage: mise run accuracy [dir of */code.txt; default examples/wasm-benchmark/builds]" >&2
+    echo "usage: mise run accuracy [dir of */code.txt; default: totals of every committed set]" >&2
     return 2
   fi
   local corpus="${1:-}"
@@ -206,7 +207,8 @@ PoBR development commands (mise tasks; without mise run this script with the sam
   mise run lint build skills                fmt + targeted Clippy
   mise run timings build parity             Compile only, with HTML timings
   mise run diagnose <build>                 One build: import losses, reference differences, dropped inputs
-  mise run accuracy [corpus dir]            Every build of a corpus against the reference its code carries
+  mise run accuracy [corpus dir]            Totals of every committed set, or one set's builds against their reference
+  mise run builds:fetch <set dir> [--pick first|last]  One poe.ninja build per ascendancy into a reference set
   mise run build [-p <crate>]               Build application CLI by default
   mise run smoke                            Representative environment checks
   mise run full                             Explicit full local Rust gate

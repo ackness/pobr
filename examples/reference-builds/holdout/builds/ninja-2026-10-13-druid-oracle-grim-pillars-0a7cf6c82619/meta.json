@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-druid-oracle-grim-pillars-0a7cf6c82619",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%ED%99%8D%EA%B8%B8-3973/%ED%9E%90%ED%95%B4%EC%A4%98%EC%9A%94",
+    "account": "홍길-3973",
+    "character": "힐해줘요",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:53:03+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=%ED%99%8D%EA%B8%B8-3973&name=%ED%9E%90%ED%95%B4%EC%A4%98%EC%9A%94&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Oracle",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Druid",
+    "ascendancy": "Oracle",
+    "level": 99,
+    "main_skill": "Grim Pillars"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 10,
+    "code_sha256": "3ab8c090c7c029b41dcfaa0c80a2f8ab47339437ae3486c3f463423b3df51577",
+    "code_chars": 12532,
+    "decoded_bytes": 46482
+  }
+}

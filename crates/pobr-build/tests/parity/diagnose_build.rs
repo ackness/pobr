@@ -28,6 +28,14 @@ fn repo_path(relative: &str) -> PathBuf {
         .join(relative)
 }
 
+/// The committed builds a name fragment is looked up in. The holdout set of
+/// `examples/reference-builds` is left out on purpose: it is only measured.
+const WORKED_CORPORA: [&str; 3] = [
+    "examples/reference-builds/tuned/builds",
+    "examples/wasm-benchmark/builds",
+    "examples/demo-bd-test/builds",
+];
+
 /// The build code `target` names: a directory holding `code.txt`, a file
 /// holding a code, or a fragment of a committed build's directory name.
 fn build_code(target: &str) -> (String, String) {
@@ -41,19 +49,16 @@ fn build_code(target: &str) -> (String, String) {
     if path.is_file() {
         return (target.to_string(), read(&path));
     }
-    let mut matches: Vec<PathBuf> = [
-        "examples/wasm-benchmark/builds",
-        "examples/demo-bd-test/builds",
-    ]
-    .iter()
-    .flat_map(|corpus| std::fs::read_dir(repo_path(corpus)).into_iter().flatten())
-    .filter_map(|entry| entry.ok().map(|entry| entry.path()))
-    .filter(|dir| dir.join("code.txt").is_file())
-    .filter(|dir| {
-        dir.file_name()
-            .is_some_and(|name| name.to_string_lossy().contains(target))
-    })
-    .collect();
+    let mut matches: Vec<PathBuf> = WORKED_CORPORA
+        .iter()
+        .flat_map(|corpus| std::fs::read_dir(repo_path(corpus)).into_iter().flatten())
+        .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+        .filter(|dir| dir.join("code.txt").is_file())
+        .filter(|dir| {
+            dir.file_name()
+                .is_some_and(|name| name.to_string_lossy().contains(target))
+        })
+        .collect();
     matches.sort();
     match matches.as_slice() {
         [dir] => (
@@ -73,14 +78,11 @@ fn build_code(target: &str) -> (String, String) {
 
 /// Every committed build code, for the names any calculation reads.
 fn committed_codes() -> Vec<String> {
-    [
-        "examples/wasm-benchmark/builds",
-        "examples/demo-bd-test/builds",
-    ]
-    .iter()
-    .flat_map(|corpus| std::fs::read_dir(repo_path(corpus)).into_iter().flatten())
-    .filter_map(|entry| std::fs::read_to_string(entry.ok()?.path().join("code.txt")).ok())
-    .collect()
+    WORKED_CORPORA
+        .iter()
+        .flat_map(|corpus| std::fs::read_dir(repo_path(corpus)).into_iter().flatten())
+        .filter_map(|entry| std::fs::read_to_string(entry.ok()?.path().join("code.txt")).ok())
+        .collect()
 }
 
 /// Modifiers by name: `Name TYPE`, then each value and source.

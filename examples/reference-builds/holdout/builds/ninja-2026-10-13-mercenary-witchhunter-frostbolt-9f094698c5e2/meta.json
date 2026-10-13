@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-mercenary-witchhunter-frostbolt-9f094698c5e2",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%D0%B0%D0%B3%D0%B5%D0%BD%D1%82-7715/%D0%B3%D0%B0%D0%BD%D0%B4%D0%B6%D1%83%D0%B1%D0%B0%D1%81%D1%81",
+    "account": "агент-7715",
+    "character": "ганджубасс",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:53:03+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=%D0%B0%D0%B3%D0%B5%D0%BD%D1%82-7715&name=%D0%B3%D0%B0%D0%BD%D0%B4%D0%B6%D1%83%D0%B1%D0%B0%D1%81%D1%81&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Witchhunter",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Witchhunter",
+    "level": 99,
+    "main_skill": "Frostbolt"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 3,
+    "code_sha256": "2844c29c904d1887b76dd9c3d7267a22a8a58b0692fefd3fe8adab171b7e5f2e",
+    "code_chars": 13128,
+    "decoded_bytes": 46661
+  }
+}

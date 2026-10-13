@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-druid-oracle-grim-pillars-f74c11ce4b4d",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/0786555526-3799/kaiserwbbb",
+    "account": "0786555526-3799",
+    "character": "kaiserwbbb",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:47:50+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=0786555526-3799&name=kaiserwbbb&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Oracle",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Druid",
+    "ascendancy": "Oracle",
+    "level": 99,
+    "main_skill": "Grim Pillars"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "418d267b54f1a2a70d7a41ae9932beeca4661e1771bbf17820b444f93ee97df0",
+    "code_chars": 12320,
+    "decoded_bytes": 44128
+  }
+}

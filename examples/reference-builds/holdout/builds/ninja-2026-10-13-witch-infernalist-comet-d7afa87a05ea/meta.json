@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-witch-infernalist-comet-d7afa87a05ea",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%EC%99%80%EC%9A%B0%EC%99%95-8892/%EC%BF%A0%EB%A1%9C%EA%B2%90",
+    "account": "와우왕-8892",
+    "character": "쿠로겐",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:53:03+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=%EC%99%80%EC%9A%B0%EC%99%95-8892&name=%EC%BF%A0%EB%A1%9C%EA%B2%90&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Infernalist",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Infernalist",
+    "level": 100,
+    "main_skill": "Comet"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 10,
+    "code_sha256": "e3c8c668ebd55ec0d5120765aa2269212ccbdc0234d3ef66e548a36bbdc09787",
+    "code_chars": 14216,
+    "decoded_bytes": 55129
+  }
+}

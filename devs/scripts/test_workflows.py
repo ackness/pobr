@@ -547,5 +547,42 @@ pathlib.Path(sys.argv[sys.argv.index("-o") + 1]).write_text("{}", encoding="utf-
         self.assertEqual((self.root / "vendor/.pob2-version.txt").read_text(encoding="utf-8"), "previous\n")
 
 
+class ReferenceBuildSelectionTests(unittest.TestCase):
+    """The selection never depends on a calculation, and never repeats a character."""
+
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location(
+            "fetch_reference_builds", REPO / "devs/scripts/fetch-reference-builds.py")
+        self.fetch = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.fetch)
+        self.rows = [{"account": account, "character": name}
+                     for account, name in (("a", "one"), ("b", "two"), ("c", "three"))]
+
+    def test_first_and_last_skip_committed_characters(self):
+        taken = {("a", "one"), ("c", "three")}
+        self.assertEqual(self.fetch.choose(self.rows, set(), "first")["account"], "a")
+        self.assertEqual(self.fetch.choose(self.rows, set(), "last")["account"], "c")
+        self.assertEqual(self.fetch.choose(self.rows, taken, "first")["account"], "b")
+        self.assertEqual(self.fetch.choose(self.rows, taken, "last")["account"], "b")
+        self.assertIsNone(self.fetch.choose(self.rows, taken | {("b", "two")}, "first"))
+
+    def test_base_classes_are_not_ascendancies(self):
+        self.assertEqual(self.fetch.ascendancies(["Witch", "Lich", "Monk", "Invoker"]),
+                         ["Invoker", "Lich"])
+
+    def test_committed_characters_are_read_from_every_set(self):
+        with tempfile.TemporaryDirectory() as temp:
+            examples = Path(temp)
+            for corpus, account in (("one/builds/x", "a"), ("two/nested/builds/y", "b")):
+                folder = examples / corpus
+                folder.mkdir(parents=True)
+                (folder / "meta.json").write_text(json.dumps(
+                    {"source": {"account": account, "character": "name"}}), encoding="utf-8")
+            (examples / "one/builds/z").mkdir()
+            (examples / "one/builds/z/meta.json").write_text("{}", encoding="utf-8")
+            self.assertEqual(self.fetch.committed_characters(examples),
+                             {("a", "name"), ("b", "name")})
+
+
 if __name__ == "__main__":
     unittest.main()

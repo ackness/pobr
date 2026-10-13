@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-druid-shaman-comet-dd7f512456b6",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/1020918742-4327/AmoDepresso",
+    "account": "1020918742-4327",
+    "character": "AmoDepresso",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:47:50+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=1020918742-4327&name=AmoDepresso&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Shaman",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Druid",
+    "ascendancy": "Shaman",
+    "level": 99,
+    "main_skill": "Comet"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 9,
+    "code_sha256": "c062a1d080dc892e15173f38e2301ae34b8c7867d079b8ccc37ae551787534af",
+    "code_chars": 12320,
+    "decoded_bytes": 47734
+  }
+}

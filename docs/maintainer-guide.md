@@ -53,8 +53,10 @@ mise run test build parity parity_baseline_report -- --ignored --nocapture
 
 # 数值不对时的第一步：一个构筑的导入损耗、与构筑码自带参考值的差异、计算中丢掉的全部输入
 mise run diagnose <构筑目录 | 构筑码文件 | 已入库构筑名片段>
-# 一批构筑码对照它们自带的参考值（默认 examples/wasm-benchmark/builds，无需 vendor / luajit）
+# 构筑码对照它们自带的参考值（无需 vendor / luajit）：不带参数给出每组已入库构筑的总数，带目录给出该组每个构筑的差异
 mise run accuracy [含 */code.txt 的目录]
+# 从 poe.ninja 抓一组当前赛季构筑（每个升华一个，选择不依赖计算结果）
+mise run builds:fetch <组目录> [--pick first|last]
 
 # CLI（apps/pobr-cli，二进制名 pobr）
 cargo run -p pobr-cli -- calculate --base-life 1000 --mod "+50 to maximum Life"
@@ -248,7 +250,7 @@ PoB2 对照值与逻辑回归都使用活动数据版本，没有单独钉住的
 
 新增按名字消费 modifier 的代码用 `ModDb::named(name)` 或聚合查询，不要用 `iter_mods().filter(名字)`：后者不算读取，诊断会把有读取方的名字报成没有。确实在数据库之外消费的名字（按文本扫描、构筑结构）登记在 `diagnosis.rs::READ_OUTSIDE_THE_DATABASE` 并写明消费者。
 
-`examples/demo-bd-test/builds/` 是回归门禁语料，构筑抓取于 2026-06（上一赛季开服第一周），不包含之后的物品和机制；门禁全绿只说明这批构筑没有回退。`examples/wasm-benchmark/builds/` 是较新的抓取，`mise run accuracy` 默认跑它；`reference_agreement_does_not_regress` 断言它与自带参考值的吻合数（`TotalDPS` 吻合的构筑数、吻合的行数）不低于 `reference_report.rs` 里记录的基线。改动提升了吻合数就上调基线，不为通过而下调；数据版本变化使数字移动时按 `ninja_parity` 的做法重录。这个门禁防的是退步，不证明正确：参考值可能本身有误，构筑也可能因为错误的原因吻合。新赛季开始后重新抓取一批，先看报告，再决定哪些进入语料。
+`examples/demo-bd-test/builds/` 是回归门禁语料，构筑抓取于 2026-06（上一赛季开服第一周），不包含之后的物品和机制；门禁全绿只说明这批构筑没有回退。当前赛季的构筑分三组，都用构筑码自带的参考值衡量：`examples/wasm-benchmark/builds/`（8 个）和 `examples/reference-builds/tuned/`（每个升华一个）用来找差异、修引擎；`examples/reference-builds/holdout/`（每个升华另一个）只测量，不对它运行 `diagnose`，也不按它的差异挑选要修的内容，它的总数回答“没人调过的构筑上有多准”。`mise run accuracy` 不带参数打印三组的总数。`reference_agreement_does_not_regress` 断言每组的吻合数（`TotalDPS` 吻合的构筑数、吻合的行数）不低于 `reference_report.rs` 里记录的基线。改动提升了吻合数就上调基线，不为通过而下调；数据版本变化使数字移动时按 `ninja_parity` 的做法重录。这个门禁防的是退步，不证明正确：参考值可能本身有误，构筑也可能因为错误的原因吻合。需要新一轮目标或新赛季开始时，用 `mise run builds:fetch` 重新抓取（见 [reference-builds](../examples/reference-builds/README.md)）：原来的 holdout 并入 tuned，新抓的一批作 holdout。
 
 ## 游戏机制资料库（agent-docs/）
 

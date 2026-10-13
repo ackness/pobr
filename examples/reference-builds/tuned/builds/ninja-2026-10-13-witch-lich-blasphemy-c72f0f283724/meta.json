@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-witch-lich-blasphemy-c72f0f283724",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/05anhbaophan-3100/YAGBlue",
+    "account": "05anhbaophan-3100",
+    "character": "YAGBlue",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:47:50+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=05anhbaophan-3100&name=YAGBlue&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Lich",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Lich",
+    "level": 98,
+    "main_skill": "Blasphemy"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 7,
+    "code_sha256": "160c459ba1e5a7b8c21d441f22c1b7e430869891df7b3b0d84959f7bb7bfd9fc",
+    "code_chars": 10148,
+    "decoded_bytes": 33334
+  }
+}

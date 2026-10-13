@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-mercenary-gemling-legionnaire-twister-a479eff2b320",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%EC%B6%A5%EB%8B%A4%EC%B6%94-0223/%EC%B6%A5%EB%8B%A4%EC%B6%94",
+    "account": "춥다추-0223",
+    "character": "춥다추",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:53:03+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=%EC%B6%A5%EB%8B%A4%EC%B6%94-0223&name=%EC%B6%A5%EB%8B%A4%EC%B6%94&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Gemling+Legionnaire",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Gemling Legionnaire",
+    "level": 100,
+    "main_skill": "Twister"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 22,
+    "code_sha256": "43f2d1f663a129153163b9f08390abded546262f2696e3c5249b3448b205de75",
+    "code_chars": 14940,
+    "decoded_bytes": 63649
+  }
+}

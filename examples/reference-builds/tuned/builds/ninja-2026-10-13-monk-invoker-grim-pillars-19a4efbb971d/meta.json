@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-monk-invoker-grim-pillars-19a4efbb971d",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/1209866469-1863/%E8%B6%85%E7%BA%A7%E5%B0%8F%E9%BB%91%E5%83%A7",
+    "account": "1209866469-1863",
+    "character": "超级小黑僧",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:47:50+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=1209866469-1863&name=%E8%B6%85%E7%BA%A7%E5%B0%8F%E9%BB%91%E5%83%A7&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Invoker",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Invoker",
+    "level": 96,
+    "main_skill": "Grim Pillars"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 7,
+    "code_sha256": "72886358e6abf7a1cf3697d9f735ee46d04a0617fcec8cf3e45aa7618a0295af",
+    "code_chars": 12348,
+    "decoded_bytes": 43654
+  }
+}

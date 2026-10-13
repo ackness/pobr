@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-witch-blood-mage-comet-bc750d615159",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/285004818-3401/%E6%A2%A6%E5%85%B0%E7%9F%A5%E6%84%8F%E6%9C%88%E6%BB%A1%E6%A5%BC",
+    "account": "285004818-3401",
+    "character": "梦兰知意月满楼",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:47:50+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=285004818-3401&name=%E6%A2%A6%E5%85%B0%E7%9F%A5%E6%84%8F%E6%9C%88%E6%BB%A1%E6%A5%BC&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Blood+Mage",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Blood Mage",
+    "level": 98,
+    "main_skill": "Comet"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 11,
+    "code_sha256": "51f4c913eef5f1b3a629ba6ee4f4d233dbfb02a3d4f56ecea2bcc2c4ce6199fd",
+    "code_chars": 12028,
+    "decoded_bytes": 45769
+  }
+}

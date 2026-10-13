@@ -90,8 +90,12 @@ description = "One build's dropped inputs and reference differences: `mise run d
 run = "bash devs/scripts/driver.sh diagnose"
 
 [tasks.accuracy]
-description = "A corpus of build codes against the reference values they carry: `mise run accuracy [dir]`"
+description = "Build codes against the reference values they carry: totals of every committed set, or `mise run accuracy <dir>` for one set's differences"
 run = "bash devs/scripts/driver.sh accuracy"
+
+[tasks."builds:fetch"]
+description = "One poe.ninja build per ascendancy into a reference set: `mise run builds:fetch <set dir> [--pick first|last]`"
+run = "python3 devs/scripts/fetch-reference-builds.py"
 
 [tasks.build]
 description = "Build the game CLI, or forward explicit Cargo selectors"

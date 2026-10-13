@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-sorceress-stormweaver-frost-bomb-d2172025eabf",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%E9%98%BF%E7%91%A4-6501/%E6%9B%89%E6%9B%89%E7%91%A4",
+    "account": "阿瑤-6501",
+    "character": "曉曉瑤",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:53:03+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=%E9%98%BF%E7%91%A4-6501&name=%E6%9B%89%E6%9B%89%E7%91%A4&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Stormweaver",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Stormweaver",
+    "level": 99,
+    "main_skill": "Frost Bomb"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "ef89a63436c9420fc7f36ebe16e1cf066be1eaffeea44a6136f59dea625e85ef",
+    "code_chars": 10596,
+    "decoded_bytes": 36466
+  }
+}

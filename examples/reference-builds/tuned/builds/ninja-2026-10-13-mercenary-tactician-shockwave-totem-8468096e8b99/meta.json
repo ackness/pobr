@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-mercenary-tactician-shockwave-totem-8468096e8b99",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/123-9568/TTKQA",
+    "account": "123-9568",
+    "character": "TTKQA",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:47:50+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=123-9568&name=TTKQA&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Tactician",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Tactician",
+    "level": 100,
+    "main_skill": "Shockwave Totem"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 6,
+    "code_sha256": "0cbd06242cf67503759e0b0a1bf9449283ccc637641098ecedf19ec6e5321cfd",
+    "code_chars": 11308,
+    "decoded_bytes": 40655
+  }
+}

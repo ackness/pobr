@@ -100,7 +100,8 @@ comparison against PoB2:
 
 ```bash
 mise run diagnose <build dir | code file | committed build name fragment>
-mise run accuracy [dir of */code.txt]    # default: examples/wasm-benchmark/builds
+mise run accuracy                        # totals of every committed set
+mise run accuracy <dir of */code.txt>    # one set, with each build's differences
 ```
 
 `diagnose` prints what the import dropped, where the result differs from the

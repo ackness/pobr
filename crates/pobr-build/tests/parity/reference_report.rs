@@ -8,14 +8,19 @@
 //! fetched builds:
 //!
 //! ```text
-//! mise run test build parity reference_report -- --ignored --nocapture
-//! POBR_REFERENCE_BUILDS=<dir of */code.txt> mise run test build parity reference_report -- --ignored --nocapture
+//! mise run accuracy                 # every committed set, totals only
+//! mise run accuracy <dir of */code.txt>   # one set, with each build's differences
 //! ```
 //!
-//! It is a dashboard, not a gate. The exporting tool's version is unknown and
-//! its numbers are a reference, not the game's: a row that differs is a lead
-//! to investigate, with the pinned oracle (`tools/pob2-oracle`) and the game's
+//! The exporting tool's version is unknown and its numbers are a reference,
+//! not the game's: a row that differs is a lead to investigate, with
+//! `mise run diagnose`, the pinned oracle (`tools/pob2-oracle`) and the game's
 //! own modifier text as the next steps.
+//!
+//! The committed sets have different jobs (see `examples/reference-builds`):
+//! differences are investigated and fixed on the worked sets, and the holdout
+//! is only ever measured, so its total says how PoBR does on builds nobody
+//! has worked on.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -57,10 +62,8 @@ fn import(dir: &Path) -> ImportedBuild {
 /// a different character.
 #[test]
 fn committed_builds_import_without_missing_items() {
-    for corpus in [
-        "examples/demo-bd-test/builds",
-        "examples/wasm-benchmark/builds",
-    ] {
+    let fixtures = ["examples/demo-bd-test/builds"];
+    for corpus in fixtures.into_iter().chain(BASELINES.map(|set| set.corpus)) {
         let dirs = builds_in(&repo_path(corpus));
         assert!(!dirs.is_empty(), "{corpus}: no builds");
         for dir in dirs {
@@ -76,11 +79,12 @@ fn committed_builds_import_without_missing_items() {
 
 #[test]
 fn build_codes_carry_their_reference_stats() {
-    let dirs = builds_in(&repo_path("examples/wasm-benchmark/builds"));
-    for dir in dirs {
-        let stats = import(&dir).report.reference_stats;
-        for key in ["Life", "TotalDPS", "FireResist"] {
-            assert!(stats.contains_key(key), "{}: no {key}", dir.display());
+    for set in BASELINES {
+        for dir in builds_in(&repo_path(set.corpus)) {
+            let stats = import(&dir).report.reference_stats;
+            for key in ["Life", "TotalDPS", "FireResist"] {
+                assert!(stats.contains_key(key), "{}: no {key}", dir.display());
+            }
         }
     }
 }
@@ -170,7 +174,7 @@ fn corpus_agreement(root: &Path, verbose: bool) -> Agreement {
     total
 }
 
-/// Agreement on `examples/wasm-benchmark/builds` when last raised: builds
+/// A committed set of build codes and its agreement when last raised: builds
 /// whose `TotalDPS` agrees, and agreeing rows.
 ///
 /// Raise both when a change improves them; never lower them to make a change
@@ -178,33 +182,89 @@ fn corpus_agreement(root: &Path, verbose: bool) -> Agreement {
 /// this guards PoBR against losing ground, not against being wrong: a build
 /// can agree for the wrong reason, and a data version change can move the
 /// numbers for a good one (then re-record them, as for `ninja_parity`).
-const BASELINE_DPS_BUILDS: usize = 7;
-const BASELINE_AGREEING_ROWS: usize = 348;
+#[derive(Clone, Copy)]
+struct Baseline {
+    corpus: &'static str,
+    dps_builds: usize,
+    agreeing_rows: usize,
+}
+
+const BASELINES: [Baseline; 3] = [
+    Baseline {
+        corpus: "examples/wasm-benchmark/builds",
+        dps_builds: 7,
+        agreeing_rows: 348,
+    },
+    Baseline {
+        corpus: "examples/reference-builds/tuned/builds",
+        dps_builds: 11,
+        agreeing_rows: 796,
+    },
+    // Measured, never worked on: do not diagnose these builds to choose a fix.
+    Baseline {
+        corpus: "examples/reference-builds/holdout/builds",
+        dps_builds: 7,
+        agreeing_rows: 844,
+    },
+];
 
 /// What the current-league builds gained stays gained. `ninja_parity` cannot
 /// see them: its corpus predates their items and skills.
 #[test]
 fn reference_agreement_does_not_regress() {
-    let total = corpus_agreement(&repo_path("examples/wasm-benchmark/builds"), false);
-    assert!(
-        total.dps_builds >= BASELINE_DPS_BUILDS,
-        "TotalDPS agrees on {} builds, was {BASELINE_DPS_BUILDS}",
-        total.dps_builds
-    );
-    assert!(
-        total.agreeing_rows >= BASELINE_AGREEING_ROWS,
-        "{} of {} rows agree, was {BASELINE_AGREEING_ROWS}",
-        total.agreeing_rows,
-        total.rows
-    );
+    for set in BASELINES {
+        let total = corpus_agreement(&repo_path(set.corpus), false);
+        assert!(
+            total.dps_builds >= set.dps_builds,
+            "{}: TotalDPS agrees on {} builds, was {}",
+            set.corpus,
+            total.dps_builds,
+            set.dps_builds
+        );
+        assert!(
+            total.agreeing_rows >= set.agreeing_rows,
+            "{}: {} of {} rows agree, was {}",
+            set.corpus,
+            total.agreeing_rows,
+            total.rows,
+            set.agreeing_rows
+        );
+    }
 }
 
+fn percent(part: usize, whole: usize) -> f64 {
+    100.0 * part as f64 / whole.max(1) as f64
+}
+
+/// One set with each build's differences (`POBR_REFERENCE_BUILDS`), or the
+/// totals of every committed set.
 #[test]
 #[ignore = "reference dashboard; run explicitly with --ignored --nocapture"]
 fn reference_report() {
-    let root = std::env::var("POBR_REFERENCE_BUILDS")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| repo_path("examples/wasm-benchmark/builds"));
+    let Ok(root) = std::env::var("POBR_REFERENCE_BUILDS").map(PathBuf::from) else {
+        eprintln!(
+            "\n================ REFERENCE SUMMARY (tol {:.0}%) ================",
+            TOL * 100.0
+        );
+        eprintln!(
+            "{:<44}{:>8}{:>14}{:>20}",
+            "set", "builds", "TotalDPS", "rows"
+        );
+        for set in BASELINES {
+            let total = corpus_agreement(&repo_path(set.corpus), false);
+            eprintln!(
+                "{:<44}{:>8}{:>8} {:>4.0}%{:>11}/{:<5}{:>5.1}%",
+                set.corpus,
+                total.builds,
+                total.dps_builds,
+                percent(total.dps_builds, total.builds),
+                total.agreeing_rows,
+                total.rows,
+                percent(total.agreeing_rows, total.rows)
+            );
+        }
+        return;
+    };
     let total = corpus_agreement(&root, true);
 
     eprintln!(
@@ -220,7 +280,7 @@ fn reference_report() {
         "rows: {}/{} = {:.1}%",
         total.agreeing_rows,
         total.rows,
-        100.0 * total.agreeing_rows as f64 / total.rows.max(1) as f64
+        percent(total.agreeing_rows, total.rows)
     );
     eprintln!("stats that disagree on at least one build (agree/compared):");
     let mut stats: Vec<_> = total

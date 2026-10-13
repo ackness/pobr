@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-mercenary-witchhunter-crossbow-shot-084d3b2ad49a",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/276558043-6675/%E4%B8%87%E9%87%91%E6%B2%B9%E5%A4%A7%E5%93%A5",
+    "account": "276558043-6675",
+    "character": "万金油大哥",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:47:50+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=276558043-6675&name=%E4%B8%87%E9%87%91%E6%B2%B9%E5%A4%A7%E5%93%A5&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Witchhunter",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Witchhunter",
+    "level": 98,
+    "main_skill": "Crossbow Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 1,
+    "code_sha256": "470f637ee430a0b02c56b0809f954f21ddb4c42aa5c25101f8be46d4ab3ede34",
+    "code_chars": 14464,
+    "decoded_bytes": 60923
+  }
+}

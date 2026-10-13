@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-monk-martial-artist-flicker-strike-5ee3a736caa1",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/15077170922-5749/%E7%94%A8%E6%88%91%E7%9A%84%E9%9B%99%E6%89%8B%E6%88%90%E5%B0%B1%E4%BD%A0%E7%9A%84%E5%A4%A2%E6%83%B3",
+    "account": "15077170922-5749",
+    "character": "用我的雙手成就你的夢想",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:47:50+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=15077170922-5749&name=%E7%94%A8%E6%88%91%E7%9A%84%E9%9B%99%E6%89%8B%E6%88%90%E5%B0%B1%E4%BD%A0%E7%9A%84%E5%A4%A2%E6%83%B3&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Martial+Artist",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Martial Artist",
+    "level": 100,
+    "main_skill": "Flicker Strike"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 8,
+    "code_sha256": "83f9d5d2e63a161b782018b48fc11913eb9868cc277992a8fc9254e6bd6f83b5",
+    "code_chars": 12692,
+    "decoded_bytes": 52157
+  }
+}
