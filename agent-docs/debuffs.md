@@ -180,7 +180,7 @@ enemyDB:ReplaceMod("Armour", "OVERRIDE", -enemyDB:Sum("BASE", {source="Config"},
 | 减益 | 精确效果 (PoB2) | PoB2 落点 |
 |---|---|---|
 | **Maim（残废）** | 敌方 **-30% increased 移动速度** + **-15% increased 闪避**；解锁"对 Maimed 敌人"词条（如对 Maimed +近战伤害） | `MovementSpeed INC -30` / `Evasion INC -15`（cond `Maimed`）；`Condition:Maimed` |
-| **Blind（致盲）** | 敌方 **20% less 命中 (Accuracy)** + **20% less 闪避 (Evasion)**，并把视野压到最小；默认 4 秒 | `Blind` FLAG（cond `Blinded`）；`BlindEffect` OVERRIDE 可设效果 |
+| **Blind（致盲）** | 被致盲一方 **20% less 命中 (Accuracy)** + **20% less 闪避 (Evasion)**（游戏关键词原文："Being Blinded causes 20% less Accuracy Rating and Evasion Rating, and lasts for 4 seconds unless otherwise specified"）；"Blind Effect" 缩放该数值，结果取整 | PoB2：`Blind` FLAG（cond `Blinded`）；`BlindEffect` OVERRIDE 可设效果。PoBR：`calc::blind`（env_finalize 阶段 6.8）给被致盲一方写入 `Accuracy` / `Evasion` MORE；敌方致盲由 `conditionEnemyBlinded` 声明，仅在 effective 视图生效 |
 | **Hinder（妨碍）** | 降低目标移动速度（Wither 技能附带）；不与多来源相加，刷新持续 | `Condition:Hindered` |
 | **Pin（钉刺）** | 目标无法移动且无法闪避 4 秒，钉刺瞬间附带 Light Stun；属 Poise 系（见 stun.md / ailments.md） | `Condition:Pinned` + `Immobilised` + `CannotEvade` + `StunnedRecently` |
 | **Daze（眩目）** | 目标承受 **50% more 眩晕积累**，8 秒 | `Condition:Dazed`（详见 stun.md） |

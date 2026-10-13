@@ -57,6 +57,9 @@ pub fn env_finalize(env: &mut Env) {
     // Stage 6.7: the Withered the enemy is stated to hold, once the skills,
     // items and buffs that can inflict it are all in.
     super::withered::apply_withered(env);
+    // Stage 6.8: Blind on whichever side is stated to be Blinded, after the
+    // modifiers to its effect have reached that side.
+    super::blind::apply_blind(env);
     // Stage 7 (T4): applies non-damaging ailments (Chill/Shock → enemy db).
     apply_nondamaging_ailments(env);
     // Stage 7.5: bridges enemy-side condition flags → cfg conditions (vendor

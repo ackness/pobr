@@ -1,6 +1,7 @@
 pub mod actor;
 pub mod ailment;
 pub mod ailment_apply;
+pub mod blind;
 pub mod breakdown;
 pub mod buff_pass;
 pub mod crit;

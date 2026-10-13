@@ -5,6 +5,8 @@
 
 #[path = "skills/aura_gems.rs"]
 mod aura_gems;
+#[path = "skills/blind.rs"]
+mod blind;
 #[path = "skills/buff_stack_limits.rs"]
 mod buff_stack_limits;
 #[path = "skills/charge_consuming_buffs.rs"]

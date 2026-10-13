@@ -195,6 +195,11 @@ pub const ATTACK_DAMAGE_MORE_PER_RAGE: f64 = 1.0;
 pub const WITHERED_CHAOS_DAMAGE_TAKEN_PER_STACK: f64 = 5.0;
 pub const WITHERED_MAXIMUM_STACKS: f64 = 10.0;
 
+/// Percent less Accuracy Rating and Evasion Rating of whoever is Blinded: the
+/// game's definition of the debuff ("Being Blinded causes 20% less Accuracy
+/// Rating and Evasion Rating").
+pub const BLIND_LESS_ACCURACY_AND_EVASION: f64 = 20.0;
+
 /// Global DoT DPS cap (`(2^31 - 1) / 60`, roughly 3.579×10^7).
 ///
 /// Source: PoB2 `src/Modules/Data.lua`:

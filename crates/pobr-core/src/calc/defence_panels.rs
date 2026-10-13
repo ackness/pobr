@@ -463,13 +463,13 @@ pub fn fill_defence_panels(env: &mut Env, keystones: &crate::rules::DefenceKeyst
     };
 
     // Deflection (CalcDefence.lua:48-54 / :1516-1522)
-    // Enemy accuracy is read the same way as Track E's evade path (env.enemy.base.accuracy).
+    // The same enemy Accuracy Rating as the evade chances.
     let deflect = calc_deflection(
         db,
         cfg,
         env.player.output.armour,
         env.player.output.evasion,
-        env.enemy.base.accuracy,
+        super::setup_env::enemy_accuracy(&env.enemy, cfg),
     );
     env.player.output.deflection_rating = deflect.rating;
     env.player.output.deflect_chance = deflect.chance;

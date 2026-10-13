@@ -1103,7 +1103,7 @@ pub fn fill_evade_stun(env: &mut Env, keystones: &crate::rules::DefenceKeystones
     let enemy_hit_mult = (1.0 + env.enemy.mod_db.sum(ModType::Inc, &env.cfg, &hit_names) / 100.0)
         * env.enemy.mod_db.more(&env.cfg, &hit_names);
     let enemy_cannot_be_evaded = env.enemy.mod_db.flag(&env.cfg, "CannotBeEvaded");
-    let enemy_accuracy = env.enemy.base.accuracy;
+    let enemy_accuracy = super::setup_env::enemy_accuracy(&env.enemy, &env.cfg);
 
     let suite = calc_evade_suite(
         &env.player.mod_db,

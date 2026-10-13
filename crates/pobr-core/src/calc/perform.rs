@@ -31,18 +31,7 @@ use crate::{TraceGraph, TraceOperation};
 /// The player's input to the offence pass: the actor base plus the enemy's evasion.
 pub(crate) fn player_input(env: &Env) -> MinimalInput {
     let mut input = MinimalInput::from(env.player.base);
-    // The source of enemy evasion for hit chance: prefers the enemy.mod_db's Evasion BASE
-    // (injected by setup_env, includes tier multipliers), falls back to the enemy.base.evasion
-    // scalar (for compatibility with old entry points that construct Env directly).
-    let enemy_evasion_from_db =
-        env.enemy
-            .mod_db
-            .sum(ModType::Base, &env.cfg, &[ModName::from("Evasion")]);
-    input.enemy_evasion = if enemy_evasion_from_db > 0.0 {
-        enemy_evasion_from_db
-    } else {
-        env.enemy.base.evasion
-    };
+    input.enemy_evasion = super::setup_env::enemy_evasion(&env.enemy, &env.cfg);
     input
 }
 
@@ -217,7 +206,8 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         env.player.output.curse_slots = curse.curse_slots.clone();
     }
     env.player.breakdown = BreakdownTable::from_steps(output.breakdown);
-    calc_defence(&mut env.player, &env.cfg, env.enemy.base.accuracy);
+    let enemy_accuracy = super::setup_env::enemy_accuracy(&env.enemy, &env.cfg);
+    calc_defence(&mut env.player, &env.cfg, enemy_accuracy);
 
     // Minions (Lane4): each minion is an independent Actor, reusing the player's same
     // offence/defence pipeline. This block is a no-op with no minions. Positioned **before**
@@ -319,23 +309,15 @@ fn perform_minions(env: &mut Env) {
     let mut snapshots = Vec::with_capacity(env.minions.len());
     for minion in &mut env.minions {
         let mut input = MinimalInput::from(minion.base);
-        // Minion hits against the enemy: same as the player, enemy evasion prefers the
-        // enemy.mod_db's Evasion BASE.
-        let enemy_evasion_from_db =
-            env.enemy
-                .mod_db
-                .sum(ModType::Base, &minion_cfg, &[ModName::from("Evasion")]);
-        input.enemy_evasion = if enemy_evasion_from_db > 0.0 {
-            enemy_evasion_from_db
-        } else {
-            env.enemy.base.evasion
-        };
+        // Minions hit the same enemy as the player.
+        input.enemy_evasion = super::setup_env::enemy_evasion(&env.enemy, &minion_cfg);
 
         let output =
             calculate_minimal_vs_enemy(&minion.mod_db, &env.enemy.mod_db, &minion_cfg, &input);
         minion.output = OutputTable::from(&output);
         minion.breakdown = BreakdownTable::from_steps(output.breakdown);
-        calc_defence(minion, &minion_cfg, env.enemy.base.accuracy);
+        let enemy_accuracy = super::setup_env::enemy_accuracy(&env.enemy, &minion_cfg);
+        calc_defence(minion, &minion_cfg, enemy_accuracy);
 
         // Cross-Actor trace edge: player count cap → this minion's DPS output (player-source → minion-output).
         let minion_dps_node =
