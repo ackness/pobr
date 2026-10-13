@@ -194,7 +194,11 @@ with lookup implementations organized under `build_data/{skills,equipment,passiv
 - 机制以游戏自己的定义为依据实现：`data/<版本>/base/` 的 stat id、技能数据和游戏常量，词条文本，官方 patch notes。代码和测试的出处写这些（例如 `attack_damage_final_permyriad_per_rage = 100`），PoB2 只用于交叉核对。范例见 `pobr-core/src/calc/rage.rs`。
 - 技能 stat 的含义写进 `pobr-core/src/rules/skill_stats.rs`：以游戏 stat id 为键，用引擎自己的 modifier 表达，出处是该 stat 的游戏描述文本。这张表先于抽取来的 `skill_stat_map.json` 查询，表里有的 stat 不再读抽取数据；抽取映射拒绝或缺失的 stat（`mise run diagnose` 第 4 节）优先在这里补，而不是去扩充按 PoB2 名称写的白名单。
 - 不再新增“因为 vendor `X.lua:行号` 这样写”式的注释；行号随 vendor 升级失效，也说明不了游戏规则。改到旧代码时顺手把这类注释换成规则本身的描述。
-- PoBR 与 PoB2 结果不同时，先判断谁符合游戏的词条文本和数据，不默认 PoB2 正确（已知例子：PoB2 用自己的符文表覆盖物品原文）。
+- PoBR 与 PoB2 结果不同时，先判断谁符合游戏的词条文本和数据，不默认 PoB2 正确。已知的有意差异：
+  - PoB2 用自己的符文表覆盖物品原文；PoBR 以物品原文为准。
+  - Doedre's Undoing 的 Witchtoad 每 0.25 秒生成一只，PoB2 把这个间隔乘以施法时间，施法越快爆炸越多且没有上限；PoBR 按“区域数 × 1000 / 间隔”计算，与施法速度无关（见 `skill_stats::granted_skill_modifiers`）。
+  - “Minions have 10% chance to inflict Withered on Hit” 在没有召唤物的构筑上，PoB2 仍允许配置 Withered 层数并给敌人加 50% 混沌承伤；PoBR 目前不建模 Withered，这类构筑会比参考值低（`agent-docs/debuffs.md` 记录的游戏数值也与 PoB2 的 5% × 10 层不同，实现前需要先核实）。
+  - 位于触发类 meta 宝石里的技能，PoB2 的 `Speed` 仍是自身施放速率，PoBR 的 DPS 沿用同一口径；`skill_trigger_rate` 目前只用于展示。是否改用触发速率需要游戏内实测依据。
 
 现状清单（`data/<版本>/` 各文件的 `_meta.generator` 可核对）：
 
