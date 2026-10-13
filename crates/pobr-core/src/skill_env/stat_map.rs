@@ -9,6 +9,7 @@
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 use crate::Modifier;
+use crate::rules::skill_stats::{self, BuffSkill};
 use crate::rules::stat_map_engine::{self, MappedItem, MappedOutcome, StatMapCatalog};
 use crate::skill_env::EffectStats;
 
@@ -490,6 +491,7 @@ pub fn player_buff_stat_modifiers(
     stats: &EffectStats,
     skill_id: &str,
     set_key: Option<&str>,
+    skill: BuffSkill,
 ) -> Vec<Modifier> {
     let mut merged: Vec<(String, f64)> = Vec::new();
     for ds in stats.all() {
@@ -505,7 +507,7 @@ pub fn player_buff_stat_modifiers(
         }
         // The engine's own definition of a stat comes first; the extracted
         // stat map is consulted only for the stats it does not define.
-        let native = crate::rules::skill_stats::player_buff_modifiers(stat, *value);
+        let native = skill_stats::player_buff_modifiers(stat, *value, skill);
         let catalog = if native.is_some() { None } else { ctx.catalog };
         let outcome = match (native, catalog) {
             (Some(modifiers), _) => MappedOutcome::Mapped(

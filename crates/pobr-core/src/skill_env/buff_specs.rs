@@ -10,6 +10,7 @@ use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 use crate::Modifier;
 use crate::calc::{BuffKind, BuffSpec, WarcrySpec};
+use crate::rules::skill_stats::{self, BuffSkill};
 use crate::rules::stat_map_engine;
 use crate::skill_env::buff_stat_map::map_aura_buff_stat;
 use crate::skill_env::buffs::buff_skill_name;
@@ -262,8 +263,23 @@ pub fn buff_skill_specs(
                     } else {
                         effect_stats(skill_id, buff_level, gem.quality, gem.stat_set_index)
                     };
-                    let buff_mods =
-                        player_buff_stat_modifiers(ctx, &es_buff, skill_id, set_key.as_deref());
+                    let buff_skill = BuffSkill {
+                        consumed_charge_benefit_double_chance: stat_on_skill_and_supports(
+                            &group,
+                            data,
+                            gem,
+                            skill_id,
+                            buff_level,
+                            skill_stats::CONSUMED_CHARGE_BENEFIT_DOUBLE_CHANCE,
+                        ),
+                    };
+                    let buff_mods = player_buff_stat_modifiers(
+                        ctx,
+                        &es_buff,
+                        skill_id,
+                        set_key.as_deref(),
+                        buff_skill,
+                    );
                     if (debuff_mods.is_empty() && buff_mods.is_empty())
                         || !seen.insert(skill_id.to_string())
                     {
@@ -345,6 +361,7 @@ pub fn buff_skill_specs(
                         &es,
                         skill_id,
                         set_key.as_deref(),
+                        BuffSkill::default(),
                     ));
                     specs.push(BuffSpec {
                         name: buff_skill_name(data, skill_id),
@@ -420,6 +437,42 @@ pub fn buff_skill_specs(
         }
     });
     specs
+}
+
+/// The total of the game stat `stat` on the active skill `skill_id` (at
+/// `level`) and on the supports in its group that apply to it: what a support
+/// says about "Supported Skills" and the skill says about itself.
+fn stat_on_skill_and_supports(
+    group: &EnabledGroup<'_>,
+    data: &dyn BuffEnv,
+    gem: &GemInput,
+    skill_id: &str,
+    level: u32,
+    stat: &str,
+) -> f64 {
+    let total_of = |effect_id: &str, level: u32, quality: u32, set_index: Option<u32>| -> f64 {
+        data.effect_stats(effect_id, level, quality, set_index)
+            .all()
+            .filter(|ds| ds.stat == stat)
+            .map(|ds| ds.value)
+            .sum()
+    };
+    let own = total_of(skill_id, level, gem.quality, gem.stat_set_index);
+    let judgement = group_judgement(group, data, skill_id);
+    let supports: f64 = judgement
+        .compatible
+        .iter()
+        .map(|sup| {
+            let host = &group.gems[sup.gem_index];
+            total_of(
+                &sup.effect_id,
+                host.gem_level,
+                host.quality,
+                support_stat_set_index(sup, group.gems),
+            )
+        })
+        .sum();
+    own + supports
 }
 
 /// A curse skill's **skill-local** CurseEffect multiplier-zone segment (matching vendor
@@ -533,7 +586,13 @@ pub fn support_buff_specs(
                 .flatten();
             let es = data.effect_stats(&effect_id, gem.gem_level, gem.quality, set_index);
             let set_key = data.selected_set_key(&effect_id, set_index);
-            let mods = player_buff_stat_modifiers(ctx, &es, &effect_id, set_key.as_deref());
+            let mods = player_buff_stat_modifiers(
+                ctx,
+                &es,
+                &effect_id,
+                set_key.as_deref(),
+                BuffSkill::default(),
+            );
             if mods.is_empty() {
                 continue;
             }

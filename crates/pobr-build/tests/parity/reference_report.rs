@@ -178,8 +178,8 @@ fn corpus_agreement(root: &Path, verbose: bool) -> Agreement {
 /// this guards PoBR against losing ground, not against being wrong: a build
 /// can agree for the wrong reason, and a data version change can move the
 /// numbers for a good one (then re-record them, as for `ninja_parity`).
-const BASELINE_DPS_BUILDS: usize = 3;
-const BASELINE_AGREEING_ROWS: usize = 328;
+const BASELINE_DPS_BUILDS: usize = 4;
+const BASELINE_AGREEING_ROWS: usize = 332;
 
 /// What the current-league builds gained stays gained. `ninja_parity` cannot
 /// see them: its corpus predates their items and skills.
