@@ -22,6 +22,7 @@ fn item(base: &str, mods: &[&str]) -> Item {
         modifier_texts: mods.iter().map(|s| (*s).into()).collect(),
         enchant_texts: vec![],
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: vec![],
     }
 }

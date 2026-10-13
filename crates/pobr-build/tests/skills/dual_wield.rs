@@ -39,6 +39,7 @@ fn weapon(base_name: &str, mods: &[&str]) -> Item {
         modifier_texts: mods.iter().map(|s| s.to_string()).collect(),
         enchant_texts: vec![],
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: vec![],
     }
 }

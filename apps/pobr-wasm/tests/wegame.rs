@@ -384,7 +384,7 @@ fn importer_emits_only_occupied_runes_and_keeps_their_modifiers_once() {
     assert!(text.contains("Rune: Perfect Body Rune"));
     assert!(!text.contains("Rune: None"));
     let parsed = pobr_core::item_text::parse_pob_xml_item(text).unwrap();
-    assert_eq!(parsed.rolled_defence.sockets_filled, 1);
+    assert_eq!(parsed.socketed.len(), 1);
     assert_eq!(
         parsed
             .modifier_texts

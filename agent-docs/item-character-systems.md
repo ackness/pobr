@@ -113,6 +113,17 @@ PoE2 装备 / 宝石可有**属性需求**（力量 / 敏捷 / 智力）和**等
 - **可覆盖**：符文 / 灵魂核心插入后不可取回，但可用另一个 Augment **覆盖**（旧的销毁）[^poe2wiki-augments][^mobalytics-runes]。
 - **Ancient Augments**（如 Atziri's Temple 的 Abyssal eyes、特殊灵魂核心）：**全角色共享上限 1 个**[^poe2wiki-augments]。
 
+### 4.5 Bonded 词条
+
+符文和神像 (Idol) 除了普通词条，还有以 `Bonded:` 开头的词条。它们默认**不生效**，只有两条规则能让它们生效（都是游戏自己的词条文本）：
+
+| 来源 | 词条 | 生效范围 |
+|------|------|----------|
+| 天赋（`0_4` 树的 Wisdom of the Maji；当前 `0_5` 树上没有这个节点） | "Gain the benefits of Bonded modifiers on Runes and Idols" | 角色全部物品上的 Bonded 词条 |
+| 物品词条（Fox Idol 插在胸甲上给出，它自己的 Bonded 词条是 "+5% to Quality of all Skills"）[^poe2db-fox-idol] | "Idols socketed in this item gain the benefits of their Bonded modifiers" | **这件物品**里**神像**的 Bonded 词条；同一件物品里符文的 Bonded 词条仍不生效 |
+
+物品文本只给出合并后的 Bonded 行，不标明来自哪个插槽；每个可插物给每类物品的词条在 `overlay/runes.json`，神像不一定叫 "…Idol"（如 Carved Cunning），按表里的 `kind` 判断。PoBR 在计算前把生效的 Bonded 行变成普通行、其余删掉（`calc_orchestrator/item/bonded.rs`），之后读物品行的代码（宝石等级 / 品质加成、物品局部防御、词条解析）看到的就是实际生效的内容。一行同时来自神像和符文时，物品写的是合计值，神像的部分取表里它自己的那一行。
+
 ---
 
 ## 五、品质 (Quality)
@@ -288,6 +299,7 @@ PoE2 把 PoE1 的 utility 瓶职能搬到**护符**——装在腰带的护符�
 [^poe2wiki-050]: PoE2 Wiki — Version 0.5.0. https://www.poe2wiki.net/wiki/Version_0.5.0
 [^poe2wiki-quality]: PoE2 Wiki — Quality（各类型效果 / 上限 / 例外）. https://www.poe2wiki.net/wiki/Quality
 [^poe2wiki-augments]: PoE2 Wiki — Augments / Socketables（0.5.0 改名、覆盖、Ancient Augments）. https://www.poe2wiki.net/wiki/Augments
+[^poe2db-fox-idol]: PoE2DB — Fox Idol（胸甲 / 权杖两类词条及各自的 Bonded 词条）. https://poe2db.tw/us/Fox_Idol
 [^poe2wiki-weaponset]: PoE2 Wiki — Weapon set passive skill points. https://www.poe2wiki.net/wiki/Weapon_set_passive_skill_points
 [^poe2wiki-trial]: PoE2 Wiki — Ascension trials. https://www.poe2wiki.net/wiki/Trial
 [^poe2wiki-gem]: PoE2 Wiki — Gem（等级上限 / 升华缩放）. https://www.poe2wiki.net/wiki/Gem

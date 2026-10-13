@@ -182,6 +182,11 @@ fn corpus_agreement(root: &Path, verbose: bool) -> Agreement {
 /// this guards PoBR against losing ground, not against being wrong: a build
 /// can agree for the wrong reason, and a data version change can move the
 /// numbers for a good one (then re-record them, as for `ninja_parity`).
+///
+/// A reference can also be shown to be wrong: the game's own text or data
+/// says otherwise. Then the engine follows the game, and the number drops by
+/// the rows that agreed with the mistake. Record that next to the number:
+/// which builds, which rule, and what shows the reference is the one at fault.
 #[derive(Clone, Copy)]
 struct Baseline {
     corpus: &'static str,
@@ -190,21 +195,31 @@ struct Baseline {
 }
 
 const BASELINES: [Baseline; 3] = [
+    // Was 7 and 357. These codes were exported on 2026-10-11 by a tool that
+    // left out "Idols socketed in this item gain the benefits of their Bonded
+    // modifiers" (the Fox Idol): the references of the Gemling Legionnaire
+    // (TotalDPS and 3 more rows) and the Martial Artist (4 resistance and
+    // maximum hit rows, while its TotalEHP came to agree) are for a character
+    // without those modifiers. The Martial Artist's reference is short by
+    // exactly its Idols' +12% Cold and +8% Chaos Resistance. The codes of the
+    // other two sets, exported two days later, include them, and both sets
+    // gained rows from the same change; the pinned PoB2 applies them to these
+    // two builds as well.
     Baseline {
         corpus: "examples/wasm-benchmark/builds",
-        dps_builds: 7,
-        agreeing_rows: 357,
+        dps_builds: 6,
+        agreeing_rows: 350,
     },
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
         dps_builds: 12,
-        agreeing_rows: 885,
+        agreeing_rows: 886,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
-        dps_builds: 8,
-        agreeing_rows: 945,
+        dps_builds: 9,
+        agreeing_rows: 948,
     },
 ];
 

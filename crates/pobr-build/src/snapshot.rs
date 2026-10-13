@@ -181,6 +181,7 @@ fn same_item(a: &pobr_data::item::Item, b: &pobr_data::item::Item) -> bool {
         modifier_texts,
         enchant_texts,
         rolled_defence,
+        socketed,
         parsed_stats,
     } = a;
     let pobr_data::item::RolledDefence {
@@ -189,7 +190,6 @@ fn same_item(a: &pobr_data::item::Item, b: &pobr_data::item::Item) -> bool {
         energy_shield,
         spirit,
         ward,
-        sockets_filled,
     } = rolled_defence;
     base == &b.base
         && rarity == &b.rarity
@@ -203,7 +203,7 @@ fn same_item(a: &pobr_data::item::Item, b: &pobr_data::item::Item) -> bool {
         && bits(*energy_shield, b.rolled_defence.energy_shield)
         && bits(*spirit, b.rolled_defence.spirit)
         && bits(*ward, b.rolled_defence.ward)
-        && sockets_filled == &b.rolled_defence.sockets_filled
+        && socketed == &b.socketed
         && parsed_stats == &b.parsed_stats
 }
 
@@ -459,6 +459,7 @@ mod tests {
                 modifier_texts: vec!["+10 to maximum Life".into()],
                 enchant_texts: vec![],
                 rolled_defence: RolledDefence::default(),
+                socketed: Vec::new(),
                 parsed_stats: vec![],
             },
         );

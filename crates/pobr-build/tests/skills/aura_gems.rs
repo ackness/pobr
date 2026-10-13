@@ -42,6 +42,7 @@ fn with_amulet(build: Build, line: &str) -> Build {
             modifier_texts: vec![line.into()],
             enchant_texts: vec![],
             rolled_defence: RolledDefence::default(),
+            socketed: Vec::new(),
             parsed_stats: vec![],
         },
     )

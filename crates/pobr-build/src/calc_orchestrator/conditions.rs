@@ -353,6 +353,7 @@ mod weapon_condition_tests {
                 modifier_texts: vec![],
                 enchant_texts: vec![],
                 rolled_defence: RolledDefence::default(),
+                socketed: Vec::new(),
                 parsed_stats: vec![],
             },
         )

@@ -67,6 +67,7 @@ mod ring3_tests {
             modifier_texts: vec!["+30 to maximum Life".into()],
             enchant_texts: vec![],
             rolled_defence: RolledDefence::default(),
+            socketed: Vec::new(),
             parsed_stats: vec![],
         }
     }
@@ -197,6 +198,7 @@ fn life_item(amount: &str) -> Item {
         modifier_texts: vec![format!("+{amount} to maximum Life")],
         enchant_texts: vec![],
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: vec![],
     }
 }
@@ -284,6 +286,7 @@ fn granted_anoint_notable_feeds_gem_property_scan() {
         modifier_texts: vec![],
         enchant_texts: vec!["Allocates Paragon".into()],
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: vec![],
     };
     let build = Build::new().set_item(EquipmentSlot::Amulet, amulet);
@@ -1678,6 +1681,7 @@ fn slot_bonus_effect_scales_covers_equipped_quiver() {
         modifier_texts: vec!["53% increased Damage with Bow Skills".into()],
         enchant_texts: vec![],
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: vec![],
     };
     let tree = PassiveTreeSpec {
@@ -3239,6 +3243,7 @@ fn weapon_type_conditions_match_vendor_type_info() {
                 modifier_texts: vec![],
                 enchant_texts: vec![],
                 rolled_defence: RolledDefence::default(),
+                socketed: Vec::new(),
                 parsed_stats: vec![],
             },
         );
@@ -3268,6 +3273,7 @@ fn weapon_cfg_flags_dual_write_channel() {
             modifier_texts: vec![],
             enchant_texts: vec![],
             rolled_defence: RolledDefence::default(),
+            socketed: Vec::new(),
             parsed_stats: vec![],
         },
     );

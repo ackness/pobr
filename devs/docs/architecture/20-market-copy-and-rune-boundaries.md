@@ -52,11 +52,13 @@ metadata lines do not consume `Implicits`. Rune and enchant annotations retain
 their origin even after the implicit section. Arbitrary unknown text and
 actual unmodeled effects remain modifiers/diagnostics.
 
-Empty socket placeholders previously emitted as `Rune: None` could increment
-`sockets_filled`. Importers now emit rune names only for occupied sockets; the
-core also ignores empty/None rune and soul-core headers in older text. This
-does not remove actual `{rune}` modifiers, nor inject a second copy of a rune's
-effects from its name.
+Empty socket placeholders previously emitted as `Rune: None` could count as a
+filled socket. Importers now emit rune names only for occupied sockets; the
+core also ignores empty/None rune and soul-core headers in older text.
+`Item.socketed` lists what the sockets hold by name, and its length is the
+number of filled sockets. This does not remove actual `{rune}` modifiers, nor
+inject a second copy of a rune's effects from its name: the names are read
+only to tell which socketable a `Bonded:` line belongs to.
 
 Recovery descriptions are preserved for inspection. This is not a new flask
 uptime/healing or charm-trigger simulation. In particular, `Also grants 102

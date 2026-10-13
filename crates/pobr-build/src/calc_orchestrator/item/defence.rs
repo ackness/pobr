@@ -323,18 +323,17 @@ pub(crate) fn per_slot_defence_multipliers(build: &Build, data: &BuildData) -> V
     out
 }
 
-/// Each item's filled socket count (`item.rolled_defence.sockets_filled`) × slot id
-/// builds a `RunesSocketedIn<slot>` multiplier key, fetched by `per Socket filled` /
-/// `per socketed rune or soul core` mods (parsed as
-/// `Multiplier{var:"RunesSocketedIn{SlotName}"}`, with ingest already substituting
-/// `{SlotName}` for the slot id) — matching PoB2's semantics, ModParser.lua:1477-1478.
-/// Generic: builds keys from slot, never targets a specific item.
+/// How many of each item's sockets are filled (`item.socketed`), as a
+/// `RunesSocketedIn<slot>` multiplier: what `per Socket filled` and `per
+/// socketed rune or soul core` modifiers scale on (parsed as
+/// `Multiplier{var:"RunesSocketedIn{SlotName}"}`, with ingest substituting the
+/// slot id for `{SlotName}`). Generic: keyed by slot, never by a specific item.
 pub(crate) fn per_slot_socket_multipliers(build: &Build) -> Vec<(String, f64)> {
     let mut out = Vec::new();
     for (slot, item) in &build.items {
-        let filled = item.rolled_defence.sockets_filled;
+        let filled = item.socketed.len();
         if filled > 0 {
-            out.push((format!("RunesSocketedIn{}", slot.id()), f64::from(filled)));
+            out.push((format!("RunesSocketedIn{}", slot.id()), filled as f64));
         }
     }
     out

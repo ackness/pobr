@@ -7,6 +7,8 @@
 mod aura_gems;
 #[path = "skills/blind.rs"]
 mod blind;
+#[path = "skills/bonded_modifiers.rs"]
+mod bonded_modifiers;
 #[path = "skills/buff_stack_limits.rs"]
 mod buff_stack_limits;
 #[path = "skills/charge_consuming_buffs.rs"]

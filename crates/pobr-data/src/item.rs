@@ -47,11 +47,6 @@ pub struct RolledDefence {
     pub spirit: Option<f64>,
     /// Ward as rolled, from the `Ward:` line (`armourData.Ward` in PoB2).
     pub ward: Option<f64>,
-    /// How many sockets hold something, counted from the `Rune:` and
-    /// `Soul Core:` lines. Feeds the `RunesSocketedIn{SlotName}` multiplier that
-    /// `per Socket filled` and `per socketed rune or soul core` mods scale on
-    /// (ModParser.lua:1477-1478). Zero means nothing is socketed.
-    pub sockets_filled: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -75,6 +70,12 @@ pub struct Item {
     /// in the data has its defences recomputed from that base, so these only
     /// stand in for a base the data does not know.
     pub rolled_defence: RolledDefence,
+    /// What the item's sockets hold (Runes, Idols, Soul Cores), by name, from
+    /// the `Rune:` and `Soul Core:` lines; an empty socket is not listed. Their
+    /// modifiers are among the item's own lines. The names say how many
+    /// sockets are filled, which `per Socket filled` modifiers scale on, and
+    /// which of the item's `Bonded:` modifiers belong to an Idol.
+    pub socketed: Vec<String>,
     pub parsed_stats: Vec<StatId>,
 }
 

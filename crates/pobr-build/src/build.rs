@@ -510,6 +510,7 @@ mod tests {
             modifier_texts: vec!["+10 to maximum Life".into()],
             enchant_texts: vec![],
             rolled_defence: RolledDefence::default(),
+            socketed: Vec::new(),
             parsed_stats: vec![],
         }
     }

@@ -513,6 +513,7 @@ mod kalandra_tests {
             modifier_texts: texts.iter().map(|s| s.to_string()).collect(),
             enchant_texts: vec![],
             rolled_defence: RolledDefence::default(),
+            socketed: Vec::new(),
             parsed_stats: vec![],
         }
     }

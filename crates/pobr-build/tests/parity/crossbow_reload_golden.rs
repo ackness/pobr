@@ -43,6 +43,7 @@ fn bare_weapon(base_name: &str) -> Item {
         modifier_texts: vec![],
         enchant_texts: vec![],
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: vec![],
     }
 }

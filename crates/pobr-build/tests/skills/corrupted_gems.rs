@@ -38,6 +38,7 @@ fn with_the_bonus(build: Build) -> Build {
             modifier_texts: vec!["+1 to Level of all Corrupted Skill Gems".into()],
             enchant_texts: vec![],
             rolled_defence: RolledDefence::default(),
+            socketed: Vec::new(),
             parsed_stats: vec![],
         },
     )
@@ -92,6 +93,7 @@ fn gear(base: &str, corrupted: bool, counts_them: bool) -> Item {
         modifier_texts: vec![],
         enchant_texts: vec![],
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: vec![],
     }
 }

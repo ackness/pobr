@@ -401,6 +401,7 @@ mod tests {
                 modifier_texts: vec![],
                 enchant_texts: vec![],
                 rolled_defence: Default::default(),
+                socketed: Vec::new(),
                 parsed_stats: vec![],
             },
         );

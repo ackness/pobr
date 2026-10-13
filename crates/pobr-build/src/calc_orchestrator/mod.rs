@@ -588,6 +588,13 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
         build = Cow::Owned(gated);
     }
 
+    // Bonded modifiers of socketed Runes and Idols: the ones in effect become
+    // ordinary lines of their item and the rest are removed, before anything
+    // reads an item's lines.
+    if let Some(resolved) = item::bonded::resolve_bonded_modifiers(&build, data) {
+        build = Cow::Owned(resolved);
+    }
+
     if let Some(resolved) = collect::resolve_granted_socket_jewels(&build, data) {
         build = Cow::Owned(resolved);
     }

@@ -257,6 +257,7 @@ mod tests {
             modifier_texts: vec![format!("Grants Skill: Level {level} Firebolt")],
             enchant_texts: Vec::new(),
             rolled_defence: RolledDefence::default(),
+            socketed: Vec::new(),
             parsed_stats: Vec::new(),
         }
     }

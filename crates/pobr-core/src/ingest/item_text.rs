@@ -121,6 +121,7 @@ pub fn parse_item_text(raw: &str) -> Result<Item, ItemTextError> {
     let mut enchant_texts = Vec::new();
     let mut modifier_texts = Vec::new();
     let mut rolled_defence = RolledDefence::default();
+    let mut socketed = Vec::new();
 
     // Subsequent sections: first scan for metadata (Quality / Implicits
     // header / rolled defence values), then classify remaining lines as modifiers.
@@ -133,8 +134,10 @@ pub fn parse_item_text(raw: &str) -> Result<Item, ItemTextError> {
                 quality = value;
             } else if let Some(count) = implicits_header(line) {
                 implicit_count = count;
-            } else if accumulate_rolled_defence(line, &mut rolled_defence) {
-                // A rolled defence value line: recorded into rolled_defence, not counted as a modifier.
+            } else if accumulate_rolled_defence(line, &mut rolled_defence)
+                || accumulate_socketed(line, &mut socketed)
+            {
+                // A rolled defence value or a socket: recorded, not counted as a modifier.
             } else if let Some(state) = item_state(line) {
                 corrupted |= state.corrupted;
             } else if is_xml_metadata_line(line) {
@@ -163,6 +166,7 @@ pub fn parse_item_text(raw: &str) -> Result<Item, ItemTextError> {
         modifier_texts,
         enchant_texts,
         rolled_defence,
+        socketed,
         parsed_stats: Vec::new(),
     })
 }
@@ -249,6 +253,7 @@ pub fn parse_pob_xml_item(raw: &str) -> Result<Item, ItemTextError> {
     let mut quality = 0u8;
     let mut implicit_count = 0usize;
     let mut rolled_defence = RolledDefence::default();
+    let mut socketed = Vec::new();
     let mut corrupted = false;
     let mut mod_lines: Vec<&str> = Vec::new();
     for &line in &lines[idx..] {
@@ -256,8 +261,10 @@ pub fn parse_pob_xml_item(raw: &str) -> Result<Item, ItemTextError> {
             quality = value;
         } else if let Some(count) = implicits_header(line) {
             implicit_count = count;
-        } else if accumulate_rolled_defence(line, &mut rolled_defence) {
-            // A rolled defence value line: recorded into rolled_defence, not counted as a modifier.
+        } else if accumulate_rolled_defence(line, &mut rolled_defence)
+            || accumulate_socketed(line, &mut socketed)
+        {
+            // A rolled defence value or a socket: recorded, not counted as a modifier.
         } else if let Some(state) = item_state(line) {
             corrupted |= state.corrupted;
         } else if is_xml_metadata_line(line) {
@@ -288,6 +295,7 @@ pub fn parse_pob_xml_item(raw: &str) -> Result<Item, ItemTextError> {
         modifier_texts,
         enchant_texts,
         rolled_defence,
+        socketed,
         parsed_stats: Vec::new(),
     })
 }
@@ -453,22 +461,27 @@ fn accumulate_rolled_defence(line: &str, out: &mut RolledDefence) -> bool {
         // The `Ward: N` line (same semantics as PoB2's `armourData.Ward`, 13-G14).
         out.ward = Some(out.ward.unwrap_or(0.0) + n);
         return true;
-    } else if let Some(name) = line
-        .strip_prefix("Rune:")
-        .or_else(|| line.strip_prefix("Soul Core:"))
-    {
-        // Each line names one already-socketed rune/soul core → one filled
-        // socket (matches PoB2's `RunesSocketedIn` count, ModParser.lua:1477-1478).
-        // Its modifiers are listed separately with a `{rune}` prefix and
-        // parsed individually; here we only accumulate the socket count for
-        // the `per Socket filled` Multiplier to read.
-        let name = name.trim();
-        if !name.is_empty() && !name.eq_ignore_ascii_case("None") {
-            out.sockets_filled += 1;
-        }
-        return true;
     }
     false
+}
+
+/// A socket line (`Rune: <name>` / `Soul Core: <name>`): one socket of the
+/// item and what it holds. Returns `false` for any other line. An empty socket
+/// (`None`, or no name) is recognized and adds nothing. What a socket holds
+/// gives the item modifiers, which the text lists separately with a `{rune}`
+/// marker; the name itself is not a modifier.
+fn accumulate_socketed(line: &str, out: &mut Vec<String>) -> bool {
+    let Some(name) = line
+        .strip_prefix("Rune:")
+        .or_else(|| line.strip_prefix("Soul Core:"))
+    else {
+        return false;
+    };
+    let name = name.trim();
+    if !name.is_empty() && !name.eq_ignore_ascii_case("None") {
+        out.push(name.to_string());
+    }
+    true
 }
 
 /// Determines whether a line is metadata (not counted as a modifier). Matches known `Key:` prefixes.

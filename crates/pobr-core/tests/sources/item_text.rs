@@ -464,7 +464,7 @@ fn xml_item_counts_filled_sockets_from_rune_lines() {
     // `Sockets: S S` declares 2 sockets, but only 1 `Rune:` line → filled count is 1
     // (PoB2's `RunesSocketedIn` counts runes/soul cores actually socketed, not total sockets).
     let item = parse_pob_xml_item(XML_RARE_CROSSBOW).expect("parse");
-    assert_eq!(item.rolled_defence.sockets_filled, 1);
+    assert_eq!(item.socketed.len(), 1);
 }
 
 #[test]
@@ -474,7 +474,7 @@ fn empty_rune_and_soul_core_placeholders_never_count_as_filled_sockets() {
             "Rarity: NORMAL\nGrand Regalia\n{separator}Sockets: S S S S S\nRune: None\nRune: \nSoul Core: none\nSoul Core: \nRune: Perfect Body Rune\nSoul Core: Soul Core of Tacati\nImplicits: 0\n+14 to Spirit per Socket filled"
         );
         let item = parse_pob_xml_item(&text).expect("parse");
-        assert_eq!(item.rolled_defence.sockets_filled, 2, "{text}");
+        assert_eq!(item.socketed.len(), 2, "{text}");
         assert_eq!(item.modifier_texts, ["+14 to Spirit per Socket filled"]);
     }
 }
@@ -499,7 +499,7 @@ Implicits: 0
 #[test]
 fn xml_item_counts_five_filled_sockets() {
     let item = parse_pob_xml_item(XML_FIVE_RUNE_BODY).expect("parse");
-    assert_eq!(item.rolled_defence.sockets_filled, 5);
+    assert_eq!(item.socketed.len(), 5);
     // Rune: lines are recognized as filled sockets and don't leak into a modifier section.
     let all: Vec<&String> = item
         .implicit_texts

@@ -109,6 +109,8 @@ const READ_OUTSIDE_THE_DATABASE: &[&str] = &[
     "JewelData",
     // Copied to a minion when one is spawned: `extract_minion_modifier_entries`.
     "MinionModifier",
+    // Puts the Bonded lines of an item's Idols in effect: `item::bonded`.
+    "SocketedIdolsUseBondedModifiers",
 ];
 
 /// Calculates `build` like [`calculate_with_data_session`](super::calculate_with_data_session)

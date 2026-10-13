@@ -55,6 +55,7 @@ pub fn example_build() -> Build {
         ],
         enchant_texts: vec![],
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: vec![],
     };
 

@@ -195,6 +195,7 @@ fn minion_increased_damage_raises_minion_dps() {
         modifier_texts: vec!["Minions deal 50% increased Damage".into()],
         enchant_texts: vec![],
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: vec![],
     };
     let buffed_build = zombie_build(20).set_item(EquipmentSlot::Ring1, ring);

@@ -171,6 +171,13 @@ pub struct BuildData {
     /// path). Empty when the overlay file is missing (old data pack) — no minions,
     /// backward compatible. Only queried by consumers through [`Self::minion_def`].
     pub minions: HashMap<String, MinionDef>,
+    /// What can be put in an item's sockets (Runes, Idols, Soul Cores), keyed
+    /// by name (`overlay/runes.json`): its kind and the lines it gives each
+    /// class of item. The calculation reads an item's modifiers from the item's
+    /// own text; this table says which of them belong to an Idol
+    /// (`calc_orchestrator::item::bonded`). Empty when the overlay file is
+    /// missing: no line is attributed to an Idol.
+    pub augments: HashMap<String, pobr_data::catalog::RuneDef>,
     /// Data-driven ModParser engine rules (the sole parser): `overlay/mod_parser_rules.json`
     /// compiled via [`CompiledParserRules::compile_with_special`] (the special channel
     /// reuses `special_mods` + `special_derived`, concatenated). Injected by
@@ -403,6 +410,16 @@ impl BuildData {
                 minions.insert(entry.id.clone(), MinionDef::from_entry(entry));
             }
         }
+        let augments = data
+            .runes()?
+            .map(|table| {
+                table
+                    .runes
+                    .into_iter()
+                    .map(|augment| (augment.name.clone(), augment))
+                    .collect()
+            })
+            .unwrap_or_default();
         // The special entry array (RuleSet's three-source concatenation) — compiled into the engine's special channel.
         let special_entries = ruleset.special_mods.unwrap_or_default();
 
@@ -447,6 +464,7 @@ impl BuildData {
             trigger_configs,
             high_precision,
             minions,
+            augments,
             parser_rules,
         })
     }
@@ -479,6 +497,7 @@ impl BuildData {
             trigger_configs: HashMap::new(),
             high_precision: HighPrecisionRules::default(),
             minions: HashMap::new(),
+            augments: HashMap::new(),
             parser_rules: None,
         }
     }
