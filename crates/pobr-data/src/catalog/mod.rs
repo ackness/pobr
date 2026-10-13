@@ -39,6 +39,7 @@ pub mod runtime;
 
 // Small lookup-table overlay schemas (the rounding-precision exception table + the local-mod whitelist)
 pub mod high_precision_mods;
+pub mod item_granted_skills;
 pub mod local_mods;
 
 // Per-skill override-value overlay schema (vendor Lua extraction)

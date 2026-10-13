@@ -205,21 +205,30 @@ const BASELINES: [Baseline; 3] = [
     // other two sets, exported two days later, include them, and both sets
     // gained rows from the same change; the pinned PoB2 applies them to these
     // two builds as well.
+    //
+    // Then 350, 886 and 948 rows. The Lament, Portent and Absent Amulets grant
+    // a skill without reservation (`ItemInherentSkills.NoReservation`). The
+    // exporting tool lists that skill a second time as a gem and reserves its
+    // 30, 60 or 100 Spirit, which leaves most of these characters with less
+    // than no Spirit: the references of the six benchmark builds that wear one
+    // are -66 to -100, and without the second count they are 0 to 7
+    // (`amulet_granted_skills_do_not_overdraw_spirit`). `SpiritUnreserved` is
+    // the only row the rule can move; it stopped agreeing on 4, 6 and 6 builds.
     Baseline {
         corpus: "examples/wasm-benchmark/builds",
         dps_builds: 6,
-        agreeing_rows: 350,
+        agreeing_rows: 346,
     },
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
         dps_builds: 12,
-        agreeing_rows: 886,
+        agreeing_rows: 880,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
         dps_builds: 9,
-        agreeing_rows: 948,
+        agreeing_rows: 942,
     },
 ];
 
@@ -245,6 +254,46 @@ fn reference_agreement_does_not_regress() {
             set.agreeing_rows
         );
     }
+}
+
+/// A character cannot reserve more Spirit than it has. These builds wear a
+/// Lament, Portent or Absent Amulet, whose granted skill reserves nothing. The
+/// references in their codes are 66 to 100 Spirit below zero: the exporting
+/// tool counts the granted skill a second time, as a gem.
+#[test]
+fn amulet_granted_skills_do_not_overdraw_spirit() {
+    const BUILDS: [&str; 6] = [
+        "huntress-amazon-ice-shot",
+        "mercenary-gemling-legionnaire-comet",
+        "monk-martial-artist-ice-shot",
+        "sorceress-stormweaver-comet",
+        "warrior-titan-his-scattering-calamity",
+        "witch-blood-mage-impending-doom",
+    ];
+    let data =
+        BuildData::load(&GameData::new(pobr_gamedata::current_data_dir())).expect("load BuildData");
+    let options = DataOrchestratorOptions {
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+        ..Default::default()
+    };
+    let mut checked = 0;
+    for dir in builds_in(&repo_path("examples/wasm-benchmark/builds")) {
+        let name = dir.file_name().unwrap().to_string_lossy().to_string();
+        if !BUILDS.iter().any(|build| name.contains(build)) {
+            continue;
+        }
+        let ImportedBuild { build, report } = import(&dir);
+        let reference = report.reference_stats["SpiritUnreserved"];
+        assert!(reference <= -66.0, "{name}: reference {reference}");
+        let unreserved = calculate_with_data_session(&build, &data, &options)
+            .unwrap_or_else(|e| panic!("{name}: {e}"))
+            .output()
+            .spirit_unreserved;
+        assert!(unreserved >= 0.0, "{name}: {unreserved} Spirit unreserved");
+        checked += 1;
+    }
+    assert_eq!(checked, BUILDS.len());
 }
 
 fn percent(part: usize, whole: usize) -> f64 {

@@ -13,7 +13,7 @@
 //! and passed in by the caller; this module only reads its per-domain loaders and lands
 //! the result as a deterministic in-memory structure.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use pobr_core::HighPrecisionRules;
@@ -124,6 +124,10 @@ pub struct BuildData {
     /// Falls back to the built-in [`LocalModsDef::default`] when a data pack lacks this
     /// overlay file (a mirror that matches the JSON value-for-value, no behavior change).
     pub local_mods: LocalModsDef,
+    /// Names of the base items whose granted skills reserve no Spirit
+    /// (`overlay/item_granted_skills.json`): the Lament, Portent and Absent
+    /// Amulets. Empty when a data pack lacks the file.
+    pub reservation_free_grant_bases: HashSet<String>,
     /// statmap data catalog (`overlay/skill_stat_map.json` → [`StatMapCatalog`], the data
     /// source for the [`crate::StatMapMode::Data`] channel once switched to default).
     /// `calculate_with_data` falls back to this when the orchestrator options don't
@@ -351,6 +355,18 @@ impl BuildData {
             Err(e) => return Err(e),
         };
 
+        // The same tolerance for the rules of item-granted skills: a data pack
+        // without the file knows no base whose granted skills reserve nothing.
+        let reservation_free_grant_bases = match data.item_granted_skills() {
+            Ok(def) => def.reservation_free_bases.into_iter().collect(),
+            Err(LoadError::Io { ref source, .. })
+                if source.kind() == std::io::ErrorKind::NotFound =>
+            {
+                HashSet::new()
+            }
+            Err(e) => return Err(e),
+        };
+
         // statmap data catalog (the data source for the default Data channel). `None`
         // when the overlay file is missing (old data pack) — the data channel misses
         // entirely; every other load/parse error still propagates as normal.
@@ -457,6 +473,7 @@ impl BuildData {
             jewel_radii,
             passive_jewels: data.passive_jewels()?.unwrap_or_default(),
             local_mods,
+            reservation_free_grant_bases,
             stat_map_catalog,
             buff_definitions,
             curse_priority,
@@ -490,6 +507,7 @@ impl BuildData {
             jewel_radii: JewelRadiiDef::default(),
             passive_jewels: Default::default(),
             local_mods: LocalModsDef::default(),
+            reservation_free_grant_bases: HashSet::new(),
             stat_map_catalog: None,
             buff_definitions: Vec::new(),
             curse_priority: None,

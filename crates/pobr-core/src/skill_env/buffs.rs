@@ -196,7 +196,10 @@ impl ReservationDb for crate::ModDb {
 ///   §4-12).
 ///
 /// The same effect appearing in multiple groups is deduplicated by id (matching
-/// `aura_buff_modifiers`'s semantics); support contributions are currently taken in
+/// `aura_buff_modifiers`'s semantics). A group's
+/// [`crate::skill_env::EnabledGroup::reservation_free_skill`] is left out before that: it reserves
+/// nothing, and a gem of the same skill in another group still reserves. Support
+/// contributions are currently taken in
 /// full per group (to be tightened along with `support_modifiers`'s semantics once the
 /// T3.6 compatible-list merge lands).
 /// The lookup surface [`spirit_reservation_modifiers`] needs.
@@ -224,6 +227,11 @@ pub fn spirit_reservation_modifiers(
             };
             let has = |t: &str| effect.skill_types.iter().any(|x| x == t);
             let totem_under_bond = ancestral_bond && has("SummonsTotem");
+            // A skill an item grants without reservation reserves nothing, and
+            // does not stand for a gem of the same skill: that one reserves.
+            if group.reservation_free_skill == Some(gem.skill_id.as_str()) {
+                continue;
+            }
             if effect.is_support
                 || !(has("HasReservation") || totem_under_bond)
                 || has("ReservationBecomesCost")

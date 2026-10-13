@@ -204,6 +204,19 @@ PoE2 用**Spirit（精魂）**而非 PoE1 的法力百分比来驱动持久效�
 - 保留**不改变资源最大值**，只改「未保留上限」。**持久保留效果在死亡时不解除**。
 - **由装备/升华直接授予的持久 buff / 召唤通常不保留 Spirit**（如权杖光环、部分升华）[^poe2wiki-spirit]。
 
+#### 物品授予技能的保留（游戏数据）
+
+| 来源 | 游戏数据里的表达 | 结果 |
+|------|------------------|------|
+| 只能由物品授予的持久技能：权杖的 Purity of Fire / Ice / Lightning、Impurity，以及 Malice、Discipline、盾的 Cast on Block、法杖的 Spellslinger 等 | 技能等级行没有 `spirit_reservation_flat`，或带 `reservation_multiplier = -100` | 不保留；挂在上面的辅助宝石追加的精魄乘以 0，也不保留 |
+| 权杖的 Skeletal Warrior | 每级有 `spirit_reservation_flat`（16–21，每个召唤物一份） | 正常保留 |
+| Lament / Portent / Absent Amulet 授予的技能（Herald、Time of Need、Wolf Pack、Cast on Critical、Archmage、Trinity、Eternal Rage 等，作为宝石分别保留 30 / 60 / 100） | 物品授予技能表 `ItemInherentSkills` 给这三个基底标了 `NoReservation` | 由项链授予的那一份不保留；同名的宝石照常保留[^ggg-forum-amulet] |
+
+- 这三个基底列在 `data/overlay-common/item_granted_skills.json`（adapter 还不读 `ItemInherentSkills`，暂为手工整理）。
+- 从游戏导入的角色（PoB2 的角色导入、poe.ninja 的构筑码）会把物品授予的技能再列成一个普通宝石组，用来放它的辅助宝石；它和物品自己的那一组是同一个技能。PoB2 只对“仅物品可授予”的技能做这种合并，项链授予的是普通宝石技能，于是被当成第二颗宝石计入保留，导出的 `SpiritUnreserved` 常为负数（游戏里不可能）。PoBR 的判断：普通组的第一颗宝石与授予的技能相同、等级等于授予等级、品质 0、未腐化，就是被授予的那一份；每条授予只认一个组。
+- 没有游戏内实测的一点：项链授予的技能上，辅助宝石追加的精魄是否也免除。PoBR 按上表第一行的类推处理为免除；PoB2 仍计入。
+- 构筑码无法表达“哪些持久技能在游戏里处于开启状态”，导入的角色默认全部开启，所以去掉上面的重复计数后仍可能出现负的未保留精魄。
+
 ### 5.2 保留效率 (Reservation Efficiency)
 
 ```
@@ -315,6 +328,7 @@ PresenceRadius BASE base_presence_radius(=40);  PresenceAreaOfEffect
 
 [^poe2wiki-charge]: PoE2 Wiki — Charge. https://www.poe2wiki.net/wiki/Charge
 [^poe2db-charges]: PoE2DB — Charges. https://poe2db.tw/us/Charges
+[^ggg-forum-amulet]: Path of Exile 官方论坛 — [0.5.4] Amulet-granted Persistent Buffs Cost Spirit after Zoning（玩家报告：项链授予的持久技能保留被免除；换区后免除丢失是一个 bug）. https://www.pathofexile.com/forum/view-thread/3975864
 [^poe2wiki-spirit]: PoE2 Wiki — Spirit. https://www.poe2wiki.net/wiki/Spirit
 [^poe2wiki-reservation]: PoE2 Wiki — Reservation. https://www.poe2wiki.net/wiki/Reservation
 [^poe2db-presence]: PoE2DB — Presence. https://poe2db.tw/us/Presence

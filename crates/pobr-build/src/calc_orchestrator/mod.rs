@@ -607,6 +607,12 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
         build = Cow::Owned(augmented);
     }
 
+    // The skills an item grants without reservation, while gem qualities are
+    // still the build's own: the next steps add quality to every gem.
+    if let Some(marked) = mark_reservation_free_skills(&build, data) {
+        build = Cow::Owned(marked);
+    }
+
     // nameSpec-only gem references → skill_id backfilled (matching PoB2 SkillsTab
     // looking up a gem's equivalent by nameSpec): a lineage support (e.g. Atziri's
     // Communion) lacks skillId/gemId in the XML, only a display name. Matched against

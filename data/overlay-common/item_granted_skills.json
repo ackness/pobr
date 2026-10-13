@@ -1,0 +1,17 @@
+{
+  "_meta": {
+    "schema": "item_granted_skills/v1",
+    "generator": "manual",
+    "source": [
+      "Game table ItemInherentSkills: one row per base item with the skills it grants and a NoReservation flag. The bases below are the rows with the flag set.",
+      "The granted skill is an ordinary Spirit skill (30 Spirit from a Lament Amulet, 60 from a Portent Amulet, 100 from an Absent Amulet) whose reservation the item waives. Reported in play: https://www.pathofexile.com/forum/view-thread/3975864"
+    ],
+    "notes": "The data adapter does not read ItemInherentSkills yet. Once it does, generate this list from the table and remove this file.",
+    "audit": "On a data version change, compare with the bases whose ItemInherentSkills row has NoReservation (the pinned PoB2 exports the same flag as grantedSkillsHaveNoReservation)."
+  },
+  "reservation_free_bases": [
+    "Absent Amulet",
+    "Lament Amulet",
+    "Portent Amulet"
+  ]
+}

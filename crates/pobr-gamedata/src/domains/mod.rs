@@ -18,6 +18,7 @@ pub mod weapon_types;
 
 // Small lookup tables (overlay layer)
 pub mod high_precision_mods;
+pub mod item_granted_skills;
 pub mod local_mods;
 
 // Per-skill override values (overlay layer, loader + a dedicated merge)

@@ -94,6 +94,12 @@ pub struct SocketGroup {
     /// Effects granted by support gems also count. `None` selects the first effect;
     /// an invalid explicit ordinal is not clamped or replaced with another skill.
     pub main_active_skill: Option<usize>,
+    /// The skill of this group that an item grants without reservation: the
+    /// Lament, Portent and Absent Amulets waive the Spirit their granted skill
+    /// reserves as a gem. A build does not state this; the calculation works
+    /// it out from the items when it prepares the build
+    /// (`calc_orchestrator::granted_skills`).
+    pub reservation_free_skill: Option<String>,
 }
 
 impl SocketGroup {
@@ -130,6 +136,7 @@ impl SocketGroup {
             slot: self.slot.as_deref(),
             active_skill_id: self.active_skill_id.as_deref(),
             active_gem_level: self.active_gem_level.unwrap_or(1),
+            reservation_free_skill: self.reservation_free_skill.as_deref(),
         }
     }
 
@@ -145,6 +152,7 @@ impl SocketGroup {
             active_gem_quality: None,
             gem_skills: Vec::new(),
             main_active_skill: None,
+            reservation_free_skill: None,
         }
     }
 
@@ -459,6 +467,7 @@ impl pobr_core::skill_env::SocketGroupView for Build {
                 slot: group.slot.as_deref(),
                 active_skill_id: group.active_skill_id.as_deref(),
                 active_gem_level: group.active_gem_level.unwrap_or(1),
+                reservation_free_skill: group.reservation_free_skill.as_deref(),
             });
         }
     }

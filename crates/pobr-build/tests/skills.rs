@@ -29,6 +29,8 @@ mod dual_wield;
 mod equipment_affix_effects;
 #[path = "skills/gem_quality.rs"]
 mod gem_quality;
+#[path = "skills/granted_skill_reservation.rs"]
+mod granted_skill_reservation;
 #[path = "skills/minions.rs"]
 mod minions;
 #[path = "skills/runic_ward.rs"]

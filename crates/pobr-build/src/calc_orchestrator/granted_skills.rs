@@ -188,6 +188,7 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
                 corrupted: false,
             }],
             main_active_skill: None,
+            reservation_free_skill: None,
         });
     }
     if synthesized.is_empty() {
@@ -196,6 +197,79 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
     let mut augmented = build.clone();
     augmented.socket_groups.extend(synthesized);
     Some(augmented)
+}
+
+/// Marks the skills that an item grants without reservation.
+///
+/// The Lament, Portent and Absent Amulets grant a skill and waive the Spirit it
+/// reserves as a gem ([`BuildData::reservation_free_grant_bases`]). The granted
+/// skill is the item's own group. It is also the ordinary group that lists the
+/// same skill first, at the level the item grants, with no quality and
+/// uncorrupted: a character imported from the game lists a granted skill a
+/// second time there, holding its supports. One such group is the granted
+/// skill; any other gem of the same skill is a gem, and reserves.
+///
+/// Returns `None` when no equipped item is such a base, or none of the build's
+/// groups is its skill.
+pub(crate) fn mark_reservation_free_skills(build: &Build, data: &BuildData) -> Option<Build> {
+    if data.reservation_free_grant_bases.is_empty() {
+        return None;
+    }
+    let mut grants: Vec<(String, String, Option<u32>)> = Vec::new(); // (slot id, name, level)
+    for (slot, item) in build.equipped_items() {
+        if !data
+            .reservation_free_grant_bases
+            .contains(&item.base.to_string())
+        {
+            continue;
+        }
+        for text in item
+            .implicit_texts
+            .iter()
+            .chain(&item.modifier_texts)
+            .chain(&item.enchant_texts)
+        {
+            if let Some((name, level)) = parse_grants_skill(text) {
+                grants.push((normalized_slot(slot.id()), name, level));
+            }
+        }
+    }
+    if grants.is_empty() {
+        return None;
+    }
+
+    let by_name = skill_id_by_name(data);
+    let mut marked = build.clone();
+    let mut any = false;
+    for (slot, name, level) in grants {
+        let Some(&skill_id) = by_name.get(&name) else {
+            continue;
+        };
+        let own = |group: &SocketGroup| {
+            is_item_skill_source(group.source.as_deref())
+                && group.slot.as_deref().map(normalized_slot).as_deref() == Some(slot.as_str())
+                && group.active_skill_id.as_deref() == Some(skill_id)
+        };
+        let listed = |group: &SocketGroup| {
+            group.from_gem()
+                && group.reservation_free_skill.is_none()
+                && group.gem_skills.first().is_some_and(|gem| {
+                    gem.skill_id == skill_id
+                        && level.is_none_or(|level| gem.gem_level == level)
+                        && gem.quality == 0
+                        && !gem.corrupted
+                })
+        };
+        let groups = &mut marked.socket_groups;
+        let listed_at = groups.iter().position(listed);
+        for (index, group) in groups.iter_mut().enumerate() {
+            if own(group) || listed_at == Some(index) {
+                group.reservation_free_skill = Some(skill_id.to_string());
+                any = true;
+            }
+        }
+    }
+    any.then_some(marked)
 }
 
 #[cfg(test)]

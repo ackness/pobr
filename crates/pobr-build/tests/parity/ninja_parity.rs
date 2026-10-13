@@ -832,8 +832,17 @@ const BASELINE_DEF_CORE_HIT5: usize = 144; // After #14's long-tail triage: 144/
 //    average block switched to the four-way mean (:1067, no longer missing
 //    SpellProjectileBlock=max(spell,proj)): 2 slots for smith+titan TotalEHP.
 //    The remaining 6 slots are all wolf-pack (#13's territory).
-const BASELINE_DEF_HIT5: usize = 450; // #13+#14 merged, measured 450/450 = 100% (#13 alone: 437, wolf-pack fully cleared; #14 alone: 444, long tail 12 slots + four-way block; migration baseline: 343; 0.5.0=415)
-const BASELINE_DEF_HIT10: usize = 450; // #13+#14 merged, measured 450/450 = 100% (migration baseline: 361; 0.5.0=432)
+//
+// 449 of 450 since the Absent Amulet's granted skill reserves nothing: one cell
+// differs from the pinned PoB2 on purpose. blood-mage coiling-bolts wears an
+// Absent Amulet that grants Cast on Critical, and the game's table of
+// item-granted skills flags that base `NoReservation`. PoB2 lists the granted
+// skill a second time as a gem and reserves its Spirit, recording
+// SpiritUnreserved = -48 for a character with 340 Spirit; a character cannot
+// reserve more Spirit than it has. PoBR counts the skill once, without
+// reservation (`skills::granted_skill_reservation`).
+const BASELINE_DEF_HIT5: usize = 449; // 449/450: every cell but the one above (#13+#14 merged measured 450/450; #13 alone: 437, wolf-pack fully cleared; #14 alone: 444, long tail 12 slots + four-way block; migration baseline: 343; 0.5.0=415)
+const BASELINE_DEF_HIT10: usize = 449; // 449/450: every cell but the one above (migration baseline: 361; 0.5.0=432)
 // **Re-recorded for expanding additional granted effects (+3 @10%)**: a gem's
 // additionalGrantedEffectId1..N (a foreign key in overlay/gem_effects.json --
 // e.g. a banner's buff-side effect: the primary slot is the reservation-side
