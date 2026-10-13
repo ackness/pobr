@@ -469,3 +469,44 @@ fn session_reports_no_unread_modifiers_unless_reads_are_tracked() {
     assert!(s.unread_modifiers().is_empty());
     assert!(s.read_modifier_names().is_empty());
 }
+
+/// "per 50 current Life" counts the Life that is not reserved. Nothing set
+/// that amount for a modifier to read, so such lines scaled by zero.
+#[test]
+fn per_unreserved_life_modifiers_read_the_pool_less_its_reservation() {
+    use pobr_core::{ModTag, Modifier};
+    use pobr_data::prelude::ModType;
+
+    let mut session = session(MinimalInput {
+        base_life: 1000.0,
+        base_mana: 500.0,
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        ..Default::default()
+    });
+    session.add_modifiers([
+        Modifier::number("LifeReservedPercent", ModType::Inc, 40.0),
+        Modifier::number("ManaReserved", ModType::Base, 200.0),
+        // 600 unreserved Life / 50 = 12 steps of 5%.
+        Modifier::number("Damage", ModType::Inc, 5.0).with_tag(ModTag::multiplier(
+            "LifeUnreserved",
+            50.0,
+            None,
+        )),
+        // 300 unreserved Mana / 100 = 3 steps of 10%.
+        Modifier::number("Damage", ModType::Inc, 10.0).with_tag(ModTag::multiplier(
+            "ManaUnreserved",
+            100.0,
+            None,
+        )),
+    ]);
+    session.prepare_player_stats(1, None);
+    session.track_modifier_reads();
+    let output = session.perform_minimal().expect("perform");
+    assert!(
+        (output.total_hit_avg - 190.0).abs() < 1e-10,
+        "{}",
+        output.total_hit_avg
+    );
+    assert!(session.unprovided_multipliers().is_empty());
+}

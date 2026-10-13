@@ -156,6 +156,18 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         // Multiplier and GetStat consumers must read the same post-conversion pools.
         env.cfg.multipliers.insert("Mana".into(), mana_pool);
         env.cfg.multipliers.insert("Life".into(), life_pool);
+        // "per N current Life / unreserved Mana": the pools less what is
+        // reserved. Current Life is not something a build states, so the
+        // character is taken to be at full unreserved Life.
+        let (life_res, mana_res) =
+            pool_reservations(&env.player.mod_db, &env.cfg, life_pool, mana_pool);
+        for (name, value) in [
+            ("LifeUnreserved", life_res.unreserved),
+            ("ManaUnreserved", mana_res.unreserved),
+        ] {
+            env.cfg.stats.insert(name.into(), value);
+            env.cfg.multipliers.insert(name.into(), value);
+        }
     }
 
     // Warcry uptime machinery (backlog #9, vendor CalcOffence.lua:3203-3256): injects the
@@ -337,6 +349,48 @@ fn perform_minions(env: &mut Env) {
 /// Fill stage: on top of base offence + defence, writes skill-use-time / ailment / EHP /
 /// reservation / regen / defensive chances into [`OutputTable`]. Purely additive, doesn't
 /// change existing fields.
+/// What the character's reservations take from its Life and Mana pools.
+///
+/// (13-G11): ReservationMultiplier more and Reservation Efficiency division semantics
+/// (CalcDefence.lua:197/:240-241/:249-258) — mult = floor(More(ReservationMultiplier), 4);
+/// efficiency inc/more acts as a **divisor**; the divisor is floored at a tiny positive
+/// number: when efficiency is −100%, the raw value diverges, and reservation's [0, pool]
+/// clamp resolves it to "the pool is fully reserved", matching vendor's semantics.
+fn pool_reservations(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    life: f64,
+    mana: f64,
+) -> (
+    super::survivability::Reservation,
+    super::survivability::Reservation,
+) {
+    let reservation_mult =
+        (db.more(cfg, &[ModName::from("ReservationMultiplier")]) * 10_000.0).floor() / 10_000.0;
+    let res_eff_divisor = |kind: &str| -> f64 {
+        let names = [
+            ModName::from(format!("{kind}ReservationEfficiency").as_str()),
+            ModName::from("ReservationEfficiency"),
+        ];
+        let inc = db.sum(ModType::Inc, cfg, &names).max(-100.0);
+        ((1.0 + inc / 100.0) * db.more(cfg, &names)).max(1e-12)
+    };
+    let life_factor = reservation_mult / res_eff_divisor("Life");
+    let mana_factor = reservation_mult / res_eff_divisor("Mana");
+    (
+        reservation(
+            life,
+            db.sum(ModType::Base, cfg, &[ModName::from("LifeReserved")]) * life_factor,
+            db.sum(ModType::Inc, cfg, &[ModName::from("LifeReservedPercent")]) * life_factor,
+        ),
+        reservation(
+            mana,
+            db.sum(ModType::Base, cfg, &[ModName::from("ManaReserved")]) * mana_factor,
+            db.sum(ModType::Inc, cfg, &[ModName::from("ManaReservedPercent")]) * mana_factor,
+        ),
+    )
+}
+
 fn fill_mechanics(env: &mut Env) {
     // Read the enemy's crit chance/damage up front (avoids a later conflict between a mutable
     // borrow of player.mod_db and an immutable borrow of enemy).
@@ -513,33 +567,8 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.total_ehp_lowest_max_hit = ehp.total_ehp;
 
     // Reservation / remaining
-    // (13-G11): adds ReservationMultiplier more and Reservation Efficiency division semantics
-    // (CalcDefence.lua:197/:240-241/:249-258) — mult = floor(More(ReservationMultiplier), 4);
-    // efficiency inc/more acts as a **divisor**; the divisor is floored at a tiny positive
-    // number: when efficiency is −100%, the raw value diverges, and reservation's [0, pool]
-    // clamp resolves it to "the pool is fully reserved", matching vendor's semantics.
-    let reservation_mult =
-        (db.more(cfg, &[ModName::from("ReservationMultiplier")]) * 10_000.0).floor() / 10_000.0;
-    let res_eff_divisor = |kind: &str| -> f64 {
-        let names = [
-            ModName::from(format!("{kind}ReservationEfficiency").as_str()),
-            ModName::from("ReservationEfficiency"),
-        ];
-        let inc = db.sum(ModType::Inc, cfg, &names).max(-100.0);
-        ((1.0 + inc / 100.0) * db.more(cfg, &names)).max(1e-12)
-    };
-    let life_factor = reservation_mult / res_eff_divisor("Life");
-    let mana_factor = reservation_mult / res_eff_divisor("Mana");
-    let life_res = reservation(
-        env.player.output.life,
-        db.sum(ModType::Base, cfg, &[ModName::from("LifeReserved")]) * life_factor,
-        db.sum(ModType::Inc, cfg, &[ModName::from("LifeReservedPercent")]) * life_factor,
-    );
-    let mana_res = reservation(
-        env.player.output.mana,
-        db.sum(ModType::Base, cfg, &[ModName::from("ManaReserved")]) * mana_factor,
-        db.sum(ModType::Inc, cfg, &[ModName::from("ManaReservedPercent")]) * mana_factor,
-    );
+    let (life_res, mana_res) =
+        pool_reservations(db, cfg, env.player.output.life, env.player.output.mana);
     env.player.output.life_reserved = life_res.reserved;
     env.player.output.life_unreserved = life_res.unreserved;
     env.player.output.mana_reserved = mana_res.reserved;

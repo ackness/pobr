@@ -179,7 +179,7 @@ fn corpus_agreement(root: &Path, verbose: bool) -> Agreement {
 /// can agree for the wrong reason, and a data version change can move the
 /// numbers for a good one (then re-record them, as for `ninja_parity`).
 const BASELINE_DPS_BUILDS: usize = 3;
-const BASELINE_AGREEING_ROWS: usize = 327;
+const BASELINE_AGREEING_ROWS: usize = 328;
 
 /// What the current-league builds gained stays gained. `ninja_parity` cannot
 /// see them: its corpus predates their items and skills.
