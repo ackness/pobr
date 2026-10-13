@@ -29,6 +29,8 @@ mod spirit_reservation;
 mod support_gating;
 #[path = "skills/support_gem_count.rs"]
 mod support_gem_count;
+#[path = "skills/support_granted_skills.rs"]
+mod support_granted_skills;
 
 #[path = "skills/passive_jewels.rs"]
 mod passive_jewels;

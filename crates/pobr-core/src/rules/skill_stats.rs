@@ -6,6 +6,7 @@
 //! a rule here is not looked up in the stat map extracted from PoB2: this is
 //! where that map is replaced, one stat at a time.
 
+use pobr_data::catalog::SkillDamageStat;
 use pobr_data::prelude::*;
 
 use crate::{ModTag, Modifier};
@@ -39,11 +40,56 @@ impl BuffSkill {
     }
 }
 
+/// The stat behind "Each Cursed Ground area from Supported Skills spawns a
+/// Witchtoad every {0} seconds" (Doedre's Undoing).
+const WITCHTOAD_SPAWN_INTERVAL_MS: &str = "doedre_cursed_ground_toad_spawn_interval_ms";
+
+/// The modifiers the stat `stat` of a skill, or of a support that applies to
+/// it, grants that skill at `value`, when this table defines the stat. `None`
+/// leaves the stat to the extracted stat map.
+pub fn skill_modifiers(stat: &str, _value: f64) -> Option<Vec<Modifier>> {
+    match stat {
+        // Says nothing about the curse the support applies to: the Witchtoads
+        // use the skill the support grants (see `granted_skill_modifiers`).
+        WITCHTOAD_SPAWN_INTERVAL_MS => Some(Vec::new()),
+        _ => None,
+    }
+}
+
+/// The modifiers the stat `stat` of a support grants, at `value`, to the
+/// active skill that the same gem grants. `stats` is every stat of the
+/// support. Empty when this table has nothing to say about the stat.
+pub fn granted_skill_modifiers(stat: &str, value: f64, stats: &[SkillDamageStat]) -> Vec<Modifier> {
+    let sibling = |id: &str| stats.iter().find(|ds| ds.stat == id).map(|ds| ds.value);
+    match stat {
+        // Doedre's Undoing: "Each Cursed Ground area from Supported Skills
+        // spawns a Witchtoad every {0} seconds", with "Limit {0} areas of
+        // Cursed Ground". The skill the gem grants, Dark Consequences, "is
+        // Triggered when Witchtoads leap at enemies": it is used once per
+        // Witchtoad, so at the rate they spawn, whatever the character's
+        // cast speed. The enemy is taken to stand in every area the
+        // character may have.
+        WITCHTOAD_SPAWN_INTERVAL_MS if value > 0.0 => {
+            let areas = sibling("maximum_curse_zones_allowed")
+                .unwrap_or(1.0)
+                .max(1.0);
+            vec![Modifier::number(
+                "SkillUseRate",
+                ModType::Base,
+                areas * 1000.0 / value,
+            )]
+        }
+        _ => Vec::new(),
+    }
+}
+
 /// The player modifiers the stat of the buff skill `skill` grants at `value`,
 /// when this table defines the stat. `None` leaves the stat to the extracted
 /// stat map.
 pub fn player_buff_modifiers(stat: &str, value: f64, skill: BuffSkill) -> Option<Vec<Modifier>> {
     match stat {
+        // Not a buff on the character (see `granted_skill_modifiers`).
+        WITCHTOAD_SPAWN_INTERVAL_MS => Some(Vec::new()),
         // Pinnacle of Power: "{0}% more Elemental Damage per Power Charge
         // Consumed" and "Buff causes all Elemental Damage to Contribute to
         // Flammability and Ignite Magnitudes, Shock chance, and Freeze
@@ -149,5 +195,54 @@ mod tests {
     fn a_stat_without_a_rule_is_left_to_the_stat_map() {
         let skill = BuffSkill::default();
         assert!(player_buff_modifiers("base_skill_effect_duration", 5000.0, skill).is_none());
+        assert!(skill_modifiers("base_skill_effect_duration", 5000.0).is_none());
+        assert!(granted_skill_modifiers("base_skill_effect_duration", 5000.0, &[]).is_empty());
+    }
+
+    fn stat(id: &str, value: f64) -> SkillDamageStat {
+        SkillDamageStat {
+            stat: id.into(),
+            value,
+        }
+    }
+
+    /// The use rate `stats` of Doedre's Undoing give the skill its gem grants.
+    fn witchtoad_use_rate(stats: &[SkillDamageStat]) -> f64 {
+        let mut db = ModDb::new();
+        for ds in stats {
+            db.add_list(granted_skill_modifiers(&ds.stat, ds.value, stats));
+        }
+        db.sum(
+            ModType::Base,
+            &CalcConfig::new(),
+            &[ModName::from("SkillUseRate")],
+        )
+    }
+
+    /// One Witchtoad every 0.25 seconds in each of two areas: eight a second.
+    #[test]
+    fn witchtoads_use_the_skill_their_gem_grants_at_the_rate_they_spawn() {
+        let two_areas = [
+            stat("maximum_curse_zones_allowed", 2.0),
+            stat("max_toads_per_doedre_cursed_ground", 4.0),
+            stat(WITCHTOAD_SPAWN_INTERVAL_MS, 250.0),
+        ];
+        assert_eq!(witchtoad_use_rate(&two_areas), 8.0);
+        assert_eq!(
+            witchtoad_use_rate(&[stat(WITCHTOAD_SPAWN_INTERVAL_MS, 500.0)]),
+            2.0
+        );
+    }
+
+    /// The interval says nothing about the curse the support applies to, and
+    /// the Witchtoads are not a buff on the character.
+    #[test]
+    fn the_witchtoad_interval_grants_the_supported_curse_and_the_character_nothing() {
+        assert_eq!(
+            skill_modifiers(WITCHTOAD_SPAWN_INTERVAL_MS, 250.0),
+            Some(Vec::new())
+        );
+        let buff = player_buff_modifiers(WITCHTOAD_SPAWN_INTERVAL_MS, 250.0, BuffSkill::default());
+        assert_eq!(buff, Some(Vec::new()));
     }
 }

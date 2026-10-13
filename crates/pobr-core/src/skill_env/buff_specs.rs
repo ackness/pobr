@@ -126,7 +126,7 @@ fn support_modifiers_observed(
 ) -> Vec<Modifier> {
     let judgement = group_judgement(group, data, active_skill_id);
     let mut host_set_key = None;
-    let mut mods = Vec::new();
+    let mut mods = granting_support_modifiers(group, data, active_skill_id);
     for sup in &judgement.compatible {
         let gem = &group.gems[sup.gem_index];
         let set_index = support_stat_set_index(sup, group.gems);
@@ -186,6 +186,47 @@ fn support_modifiers_observed(
                 .and_then(|row| row.mana_multiplier),
         ) {
             mods.push(m);
+        }
+    }
+    mods
+}
+
+/// What the support that grants `active_skill_id` says about it.
+///
+/// A support gem can grant an active skill beside its support effect. That
+/// support applies to the skills it is socketed with, not to the skill it
+/// grants, yet some of its stats describe the granted skill: the Witchtoads of
+/// Doedre's Undoing are what use Dark Consequences.
+fn granting_support_modifiers(
+    group: &EnabledGroup<'_>,
+    data: &dyn BuffEnv,
+    active_skill_id: &str,
+) -> Vec<Modifier> {
+    let mut mods = Vec::new();
+    for gem in group.gems {
+        let grants_it = gem.skill_id != active_skill_id
+            && data.effect(&gem.skill_id).is_some_and(|e| e.is_support)
+            && data
+                .additional_effects(&gem.skill_id)
+                .iter()
+                .any(|id| id == active_skill_id);
+        if !grants_it {
+            continue;
+        }
+        let stats = data
+            .effect_stats(&gem.skill_id, gem.gem_level, 0, gem.stat_set_index)
+            .base;
+        for ds in &stats {
+            let origin = ModifierSource::new(SourceId::new(
+                SourceKind::SupportGem,
+                format!("{}.{}", gem.skill_id, ds.stat),
+            ))
+            .with_raw_text(format!("{} {} ({})", gem.skill_id, ds.stat, ds.value));
+            mods.extend(
+                skill_stats::granted_skill_modifiers(&ds.stat, ds.value, &stats)
+                    .into_iter()
+                    .map(|modifier| modifier.with_origin(origin.clone())),
+            );
         }
     }
     mods

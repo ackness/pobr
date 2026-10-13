@@ -153,11 +153,22 @@ pub(super) fn mapped_stat_modifiers_observed(
         if ds.value == 0.0 {
             continue;
         }
-        let outcome = match ctx.catalog {
-            Some(catalog) => {
+        // The engine's own definition of a stat comes first; the extracted
+        // stat map is consulted only for the stats it does not define.
+        let outcome = match (
+            skill_stats::skill_modifiers(&ds.stat, ds.value),
+            ctx.catalog,
+        ) {
+            (Some(modifiers), _) => MappedOutcome::Mapped(
+                modifiers
+                    .into_iter()
+                    .map(|modifier| MappedItem::Modifier(Box::new(modifier)))
+                    .collect(),
+            ),
+            (None, Some(catalog)) => {
                 stat_map_engine::map_stat(catalog, effect_id, set_key, &ds.stat, ds.value)
             }
-            None => MappedOutcome::Unknown,
+            (None, None) => MappedOutcome::Unknown,
         };
         if ctx.mode == StatMapMode::Compare && ctx.records.is_some() {
             let (classification, detail) = match &outcome {

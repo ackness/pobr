@@ -54,6 +54,9 @@ const NOT_COMPARABLE: &[&str] = &[
     "EffectiveActionRate",
 ];
 
+/// PoB2's name for the rate of a skill's hits when it is not its rate of use.
+const HIT_RATE_KEY: &str = "HitSpeed";
+
 /// Every computed catalog stat the reference also reports, in catalog order.
 pub fn compare_to_reference(
     output: &OutputTable,
@@ -64,7 +67,13 @@ pub fn compare_to_reference(
         .filter(|def| def.parity_status == ParityStatus::Computed)
         .filter(|def| !NOT_COMPARABLE.contains(&def.id.as_str()))
         .filter_map(|def| {
-            let pob_key = def.pob_key?;
+            let mut pob_key = def.pob_key?;
+            // PoB2 reports how often a skill is used as `Speed` and, where
+            // its hits come at another rate, that rate as `HitSpeed`. Its DPS
+            // is by the latter, like the one rate PoBR reports.
+            if def.id.as_str() == "ActionRate" && reference.contains_key(HIT_RATE_KEY) {
+                pob_key = HIT_RATE_KEY.to_string();
+            }
             let reference = *reference.get(&pob_key)?;
             Some(ReferenceRow {
                 pobr: display_value(output, def.id.as_str()),
@@ -116,5 +125,33 @@ mod tests {
         let reference = BTreeMap::from([("Life".to_string(), 1010.0)]);
         let rows = compare_to_reference(&output, &reference);
         assert_eq!(rows, [row(1000.0, 1010.0)]);
+    }
+
+    /// A skill used once a second whose hits come four times a second: the
+    /// reference's DPS is by its `HitSpeed`, so that is what PoBR's rate is
+    /// compared with.
+    #[test]
+    fn the_action_rate_is_compared_with_the_rate_of_hits_when_the_reference_has_one() {
+        let output = OutputTable {
+            action_rate: 4.0,
+            ..Default::default()
+        };
+        let rate = |reference: &[(&str, f64)]| {
+            let reference = reference
+                .iter()
+                .map(|(key, value)| (key.to_string(), *value))
+                .collect();
+            let rows = compare_to_reference(&output, &reference);
+            let row = rows
+                .iter()
+                .find(|row| row.id == "ActionRate")
+                .expect("the rate");
+            (row.pob_key.clone(), row.reference)
+        };
+        assert_eq!(rate(&[("Speed", 1.0)]), ("Speed".to_string(), 1.0));
+        assert_eq!(
+            rate(&[("Speed", 1.0), ("HitSpeed", 3.96)]),
+            ("HitSpeed".to_string(), 3.96)
+        );
     }
 }
