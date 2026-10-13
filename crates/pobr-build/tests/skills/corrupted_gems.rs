@@ -3,6 +3,8 @@
 //! A corrupted gem already carries what corruption did to its own level. A
 //! line such as "+1 to Level of all Corrupted Skill Gems" raises it once more,
 //! and leaves a gem that is not corrupted alone.
+//!
+//! "for each Corrupted Item Equipped" counts the gear that is corrupted.
 
 use pobr_build::{Build, BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
@@ -75,4 +77,47 @@ fn a_level_bonus_for_corrupted_skill_gems_applies_to_a_corrupted_gem_only() {
     // Corruption alone changes nothing; nor does the bonus on a clean gem.
     assert_eq!(average_hit(&data, &build(corrupted)), level_20);
     assert_eq!(average_hit(&data, &with_the_bonus(build(clean))), level_20);
+}
+
+/// Gear with `corrupted` and "+1% to all Resistances for each Corrupted Item
+/// Equipped" when it is the body armour.
+fn gear(base: &str, corrupted: bool, counts_them: bool) -> Item {
+    let line = "+1% to all Resistances for each Corrupted Item Equipped";
+    Item {
+        base: ItemBaseId::from(base),
+        rarity: ItemRarity::Rare,
+        quality: 0,
+        corrupted,
+        implicit_texts: counts_them.then(|| line.to_string()).into_iter().collect(),
+        modifier_texts: vec![],
+        enchant_texts: vec![],
+        rolled_defence: RolledDefence::default(),
+        parsed_stats: vec![],
+    }
+}
+
+#[test]
+fn corrupted_items_equipped_are_counted() {
+    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version())))
+        .expect("load repository data");
+    let fire_resistance = |build: &Build| {
+        calculate_with_data(build, &data, &DataOrchestratorOptions::default())
+            .expect("calculate")
+            .fire_resistance
+    };
+    let wearing = |body_corrupted: bool, ring_corrupted: bool, counts_them: bool| {
+        build(r#"level="20""#)
+            .set_item(
+                EquipmentSlot::BodyArmour,
+                gear("Vile Robe", body_corrupted, counts_them),
+            )
+            .set_item(
+                EquipmentSlot::Ring1,
+                gear("Gold Ring", ring_corrupted, false),
+            )
+    };
+    let base = fire_resistance(&wearing(true, true, false));
+    assert_eq!(fire_resistance(&wearing(false, false, true)), base);
+    assert_eq!(fire_resistance(&wearing(false, true, true)), base + 1.0);
+    assert_eq!(fire_resistance(&wearing(true, true, true)), base + 2.0);
 }

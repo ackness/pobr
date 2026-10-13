@@ -345,6 +345,11 @@ pub(super) fn inject_build_multipliers(
     for (var, value) in per_slot_socket_multipliers(build) {
         session.set_multiplier(var, value);
     }
+    // "for each Corrupted Item Equipped": the gear in the equipment slots.
+    // Flasks and charms are not counted, nor jewels, which are socketed.
+    let corrupted = build.items.values().filter(|item| item.corrupted).count();
+    session.set_multiplier("CorruptedItem", corrupted as f64);
+    session.set_multiplier("NonCorruptedItem", (build.items.len() - corrupted) as f64);
     // GrenadeTypes (matching vendor CalcPerform.lua:1238-1242: counts the number of
     // distinct granted effects among enabled active skills with `SkillType.Grenade`,
     // deduplicated) — the Demolitionist ascendancy's "… for every different Grenade
