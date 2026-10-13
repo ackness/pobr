@@ -429,12 +429,7 @@ pub(crate) fn apply_request_overrides(
         if key.starts_with("quest")
             && let ConfigInputValue::Text(s) = value
         {
-            quest_texts.extend(
-                s.lines()
-                    .map(str::trim)
-                    .filter(|l| !l.is_empty())
-                    .map(String::from),
-            );
+            quest_texts.extend(pobr_build::quest_reward_lines(s).map(String::from));
         }
     }
     build.config.global_modifier_texts = quest_texts;

@@ -650,15 +650,17 @@ const DEFAULT_QUEST_STAT_REWARDS: &[(&str, &str)] = &[
     ("questInterlude 3Kriar VillageLythara", "+40 to Spirit"),
 ];
 
-/// Collects quest reward text line by line (matching PoB2's `applyModsFromString`
-/// splitting by line; multi-line options like Tribal Medicine chain several entries with `\n\t`).
+/// The modifier lines of a quest reward. An option with several rewards chains
+/// them with `\n\t` (Tribal Medicine); `None` is the option for taking no
+/// reward and is not a line.
+pub fn quest_reward_lines(text: &str) -> impl Iterator<Item = &str> {
+    text.lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && *line != "None")
+}
+
 fn push_quest_lines(out: &mut Vec<String>, text: &str) {
-    for line in text.lines() {
-        let line = line.trim();
-        if !line.is_empty() {
-            out.push(line.to_string());
-        }
-    }
+    out.extend(quest_reward_lines(text).map(String::from));
 }
 
 /// PoB2's charge-usage checkboxes (`use{Power,Frenzy,Endurance}Charges`) → the calc-side
@@ -2013,6 +2015,29 @@ Item Level: 80
         assert!(texts.iter().any(|t| t == "+5% to Fire Resistance"));
         // Default entries not mentioned are still there.
         assert!(texts.iter().any(|t| t == "+10% to Cold Resistance"));
+    }
+
+    #[test]
+    fn a_quest_reward_left_untaken_adds_no_line() {
+        let xml = r#"<?xml version="1.0"?>
+<PathOfBuilding2>
+    <Build level="92" className="Ranger" ascendClassName="Deadeye" viewMode="TREE"/>
+    <Config>
+        <Input name="questAct 3Venom CryptsVenom Draught" string="None"/>
+        <Input name="questAct 2Valley of the TitansMedallion" string="30% increased Charm Charges Gained
+	+1 Charm Slot"/>
+    </Config>
+</PathOfBuilding2>"#;
+        let build = parse_build(xml).expect("parse");
+        let texts = &build.config.global_modifier_texts;
+        assert!(!texts.iter().any(|t| t == "None"), "{texts:?}");
+        // An option with several rewards gives a line each.
+        assert!(
+            texts
+                .iter()
+                .any(|t| t == "30% increased Charm Charges Gained")
+        );
+        assert!(texts.iter().any(|t| t == "+1 Charm Slot"));
     }
 
     // Config resistancePenalty → CampaignProgress (19-G5 wiring)

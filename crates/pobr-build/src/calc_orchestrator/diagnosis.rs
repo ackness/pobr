@@ -174,7 +174,10 @@ pub fn diagnose(
         .collect();
 
     Ok(Diagnosis {
-        main_skill: super::skill::resolve::main_skill_summary(build, data),
+        main_skill: super::skill::resolve::main_skill_summary(
+            &super::with_extra_gem_bonuses(build, &options),
+            data,
+        ),
         read_names: session
             .read_modifier_names()
             .iter()

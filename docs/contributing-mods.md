@@ -194,6 +194,13 @@ Field summary:
 | `source_note` | optional | where it came from (unique name, `ModParser.lua:NNNN`, …) |
 | `examples` | optional | concrete source lines; checked against this rule and included in overlap/oracle audits |
 
+An entry with `"mods": []` recognises a line and stores nothing, so the line
+parses whole and is not listed as unsupported. Use it only for a line whose game
+stat changes nothing a calculation reports (`experience_gain`: how fast the
+character gains experience, stat `experience_gain_+%`). It must not stand in for
+a mechanic the engine has not implemented; such a line stays unsupported until
+the mechanic exists.
+
 A `ModTemplateDef` (`mods[]`):
 
 ```jsonc

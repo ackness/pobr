@@ -3147,6 +3147,17 @@
         "25% chance for Trigger skills to refund half of Energy Spent"
       ],
       "source_note": "Game text of the notable Energise. A meta gem spends all its Energy when it triggers, so with this chance it starts the next round half full (calc/energy.rs)."
+    },
+    {
+      "id": "experience_gain",
+      "pattern": "(?:\\d+(?:\\.\\d+)?)% (?:increased|reduced) experience gain",
+      "mods": [],
+      "verified": false,
+      "batch": "inert",
+      "examples": [
+        "5% increased Experience gain"
+      ],
+      "source_note": "Game text of the stat experience_gain_+%, which an item, a rune and a quest reward carry. How fast a character gains experience is part of nothing a calculation reports, so the line is recognised and adds no modifier: it is not an input the calculation dropped."
     }
   ]
 }

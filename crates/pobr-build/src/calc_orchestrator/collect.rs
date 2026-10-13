@@ -325,7 +325,7 @@ pub(crate) fn combine_wrapped(texts: Vec<String>, ctx: ParseCtx<'_>) -> (Vec<Str
                 i = end + 1;
             }
             None => {
-                // Diagnostic semantics match filter_parseable (visibility into structural drops).
+                // POBR_DBG_DROPPED=1 prints each line as it is dropped.
                 if pobr_core::dbg_env!("POBR_DBG_DROPPED").is_some() {
                     eprintln!("[POBR_DROP] {}", texts[i]);
                 }
@@ -689,27 +689,6 @@ pub(crate) fn gate_parses(ctx: ParseCtx<'_>, t: &str) -> bool {
         eprintln!("[GATE_DROP] {t}");
     }
     pass
-}
-
-/// Keeps mod text that passes the [`gate_parses`] gate, dropping mods that fail to parse
-/// / have leftover residue.
-///
-/// Some real mod text forms can't contribute a modifier (a legacy hard `ParseError` /
-/// leftover unparsed residue from the engine); this filters at the entry point following
-/// PoB's skip-and-collect semantics, making end-to-end calculation robust against real
-/// data (dropped text doesn't error, nor is any value invented).
-pub(crate) fn filter_parseable(texts: Vec<String>, ctx: ParseCtx<'_>) -> Vec<String> {
-    texts
-        .into_iter()
-        .filter(|text| {
-            let ok = gate_parses(ctx, text);
-            // Diagnostic: POBR_DBG_DROPPED=1 dumps structurally-dropped mods (for parity investigation).
-            if !ok && pobr_core::dbg_env!("POBR_DBG_DROPPED").is_some() {
-                eprintln!("[POBR_DROP] {text}");
-            }
-            ok
-        })
-        .collect()
 }
 
 /// Filters an item's three mod segments (implicit / explicit / enchant) each into their

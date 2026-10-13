@@ -15,6 +15,8 @@ mod buff_stack_limits;
 mod charge_consuming_buffs;
 #[path = "skills/charge_regulation.rs"]
 mod charge_regulation;
+#[path = "skills/configured_lines.rs"]
+mod configured_lines;
 #[path = "skills/corpse_explosion.rs"]
 mod corpse_explosion;
 #[path = "skills/corrupted_gems.rs"]

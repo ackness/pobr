@@ -111,8 +111,8 @@ pub fn resolve_main_skill_selection(
 ///
 /// An effect takes the level of the gem it comes from. A support gem has no
 /// levels of its own, so an active effect a support grants takes the level of
-/// the skill that support is applied to (vendor CalcActiveSkill.lua:439-461);
-/// with no such skill in the group it keeps the support's.
+/// the skill that support is applied to; with no such skill in the group it
+/// keeps the support's.
 fn level_source<'a>(
     build: &Build,
     data: &BuildData,
@@ -264,17 +264,16 @@ pub(crate) fn support_granted_gem_quality(
     pobr_core::skill_env::support_granted_gem_quality(&judgement, &gems, data)
 }
 
-/// Scans every GemProperty mod source (equipment implicit/explicit/enchant + jewels +
-/// **allocated tree node stats** — vendor's GemProperty LIST goes into the global
-/// modDB, and the tree is one of its main carriers: e.g. the "Skill Gem Quality" small
-/// passive's `+2% to Quality of all Skills`, "Motoric Implants"'s `+2 to Level of all
-/// Skills with a Dexterity requirement`), returning the parsed results.
+/// The gem level and quality bonuses the character has ("+1 to Level of all
+/// Spell Skills", "+2% to Quality of all Skills"), from every place a line of
+/// the character can be: equipment and jewels, allocated passive nodes (the
+/// "Skill Gem Quality" small passives, "Neurological Implants"), notables an
+/// item allocates, and the lines the build's configuration adds. No rule
+/// stores such a line as a modifier; this is where it counts.
 pub(crate) fn gem_property_bonuses(build: &Build, data: &BuildData) -> Vec<GemPropertyBonus> {
-    // Anointed notables (`Allocates <name>` enchant → GrantedPassive, parsed by the
-    // same logic as append_granted_passives): vendor puts a granted node's modList
-    // into the global modDB the same as an allocated node (CalcSetup.lua:1322-1331),
-    // so the GemProperty scan must cover it equally (e.g. the gemling ascendancy's
-    // "Allocates Paragon"'s `+5% to Quality of all Skills`).
+    use pobr_core::rules::config_interpreter::{ConfigInputValue, custom_modifier_lines};
+    // A notable an item allocates ("Allocates <name>") counts like an
+    // allocated one, e.g. the "+5% to Quality of all Skills" of Paragon.
     let allocated: std::collections::HashSet<u32> =
         build.tree.allocated_nodes.iter().map(|id| id.0).collect();
     let granted_stats: Vec<String> = granted_passive_defs(build, data)
@@ -283,12 +282,28 @@ pub(crate) fn gem_property_bonuses(build: &Build, data: &BuildData) -> Vec<GemPr
         .flat_map(|def| def.stats.iter().cloned())
         .collect();
     let allocated_ids: Vec<u32> = build.tree.allocated_nodes.iter().map(|id| id.0).collect();
-    pobr_core::skill_env::gem_property_bonuses(
+    let mut bonuses = pobr_core::skill_env::gem_property_bonuses(
         build,
         &allocated_ids,
         &granted_stats,
         data.passive_nodes_for(build.tree_version.as_deref()),
-    )
+    );
+    // The configuration's lines: quest rewards and, read with a config
+    // catalog only (as the calculation reads them), custom modifiers.
+    let config = &build.config;
+    bonuses.extend(
+        config
+            .global_modifier_texts
+            .iter()
+            .filter_map(|line| parse_gem_property_bonus(line)),
+    );
+    if data.config_catalog.is_some()
+        && let Some(ConfigInputValue::Text(text)) = config.raw_inputs.values.get("customMods")
+    {
+        bonuses
+            .extend(custom_modifier_lines(text).filter_map(|line| parse_gem_property_bonus(&line)));
+    }
+    bonuses
 }
 
 /// Whether the build carries the GemlingQuality flag (matching vendor

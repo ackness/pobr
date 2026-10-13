@@ -23,9 +23,9 @@ use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 use super::EXPOSURE_MAGNITUDE;
 use super::collect::{
-    append_granted_passives, character_base, engine_ctx, filter_item_parseable, filter_parseable,
-    gate_parses, keystone_mod_map, parse_grant_line, passive_effect_copies,
-    radius_jewel_grant_modifiers, resolve_gems, resolve_passive_nodes, vendor_scale_mod_value,
+    append_granted_passives, character_base, engine_ctx, filter_item_parseable, gate_parses,
+    keystone_mod_map, parse_grant_line, passive_effect_copies, radius_jewel_grant_modifiers,
+    resolve_gems, resolve_passive_nodes, vendor_scale_mod_value,
 };
 use super::conditions::grenade_type_count;
 use super::context::CalculationContext;
@@ -48,7 +48,7 @@ use super::skill::mods::{
     main_skill_quality_modifiers, skill_base_modifiers, support_modifiers,
     unselected_set_global_modifiers,
 };
-use super::skill::resolve::config_enemy_level;
+use super::skill::resolve::{config_enemy_level, parse_gem_property_bonus};
 use super::skill::triggers::trigger_modifiers;
 use super::sources::SourceWriter;
 use super::stat_map::exposure_support_modifiers;
@@ -1034,19 +1034,7 @@ pub(super) fn stage_inject_config_mods(
     //     mods until vendor/parser naming is unified; `config_resolve` already
     //     excludes quest-attributed entries from the injection list to avoid
     //     double-counting).
-    if !resolved_config.config.global_modifier_texts.is_empty() {
-        // Consistent with the equipment/jewel path: hard-failing mods are filtered
-        // first (skip-and-collect), so a single unparseable text doesn't abort the whole batch.
-        let texts = filter_parseable(
-            resolved_config.config.global_modifier_texts.clone(),
-            engine_ctx(data),
-        );
-        if !texts.is_empty() {
-            session
-                .add_modifier_texts(&texts)
-                .map_err(|e| BuildError::Parse(e.to_string()))?;
-        }
-    }
+    add_config_lines(session, data, &resolved_config.config.global_modifier_texts)?;
 
     // 2d. Output of the config interpreter: player modifiers attributed to
     //     `SourceKind::Config`. Combat-gated entries (`Condition:Combat` tag) are
@@ -1057,22 +1045,38 @@ pub(super) fn stage_inject_config_mods(
         session.add_modifiers(resolved_config.player_mods.clone());
     }
 
-    // 2e. customMods line channel (commit ④, vendor ConfigOptions.lua:2278-2296:
-    //     line-by-line StripEscapes + parseMod, source=Custom): the interpreter
-    //     strips color codes then feeds lines to add_modifier_texts one at a time —
-    //     unparseable lines naturally fall into the `ParseStatus::Unsupported`
-    //     visibility channel (session.unsupported_modifier_texts); structurally
-    //     hard-failing lines are skipped via filter_parseable (same treatment as
-    //     the 2c quest / equipment text channels).
-    if !resolved_config.custom_mod_lines.is_empty() {
-        let texts = filter_parseable(resolved_config.custom_mod_lines.clone(), engine_ctx(data));
-        if !texts.is_empty() {
-            session
-                .add_modifier_texts(&texts)
-                .map_err(|e| BuildError::Parse(e.to_string()))?;
+    // 2e. The build's custom modifiers, one modifier a line, colour codes
+    //     already stripped by the interpreter.
+    add_config_lines(session, data, &resolved_config.custom_mod_lines)
+}
+
+/// Stores the lines of one of the configuration's text channels. A gem level
+/// or quality bonus among them was read where gem levels are settled
+/// ([`gem_property_bonuses`](super::skill::resolve::gem_property_bonuses)) and
+/// leaves nothing to store. A line no rule parses whole is not applied in
+/// part: it is recorded as a dropped input, marked `Config:` for where it is.
+fn add_config_lines(
+    session: &mut SourceWriter,
+    data: &BuildData,
+    lines: &[String],
+) -> Result<(), BuildError> {
+    let mut parsed = Vec::new();
+    for line in lines {
+        if parse_gem_property_bonus(line).is_some() {
+            continue;
+        }
+        if gate_parses(engine_ctx(data), line) {
+            parsed.push(line);
+        } else {
+            session.record_unsupported_modifier_text(format!("Config: {line}"));
         }
     }
-    Ok(())
+    if parsed.is_empty() {
+        return Ok(());
+    }
+    session
+        .add_modifier_texts(parsed)
+        .map_err(|e| BuildError::Parse(e.to_string()))
 }
 
 /// 3/3a'/3b/3b'/3c. Passive tree injection: node mods (node-level attribution) →
@@ -1096,7 +1100,11 @@ pub(super) fn stage_inject_passives(
     // gives the same diagnostics.
     unsupported.sort_by_key(|(node, _)| *node);
     for (node, line) in unsupported {
-        session.record_unsupported_modifier_text(format!("Tree:{node}: {line}"));
+        // A gem level or quality bonus is read from the node's text
+        // (`gem_property_bonuses`), whether or not a rule parses it.
+        if parse_gem_property_bonus(&line).is_none() {
+            session.record_unsupported_modifier_text(format!("Tree:{node}: {line}"));
+        }
     }
     let passive_nodes = passive_nodes;
     if !passive_nodes.is_empty() {
@@ -1125,10 +1133,14 @@ pub(super) fn stage_inject_extra_texts(
     session: &mut SourceWriter,
     ctx: &StageCtx<'_>,
 ) -> Result<(), BuildError> {
-    if !ctx.options.extra_modifier_texts.is_empty() {
-        session
-            .add_modifier_texts(ctx.options.extra_modifier_texts.iter())
-            .map_err(|e| BuildError::Parse(e.to_string()))?;
-    }
-    Ok(())
+    // A gem level or quality bonus among them is a line of the build view
+    // (`with_extra_gem_bonuses`) and leaves nothing to store here.
+    let texts = ctx
+        .options
+        .extra_modifier_texts
+        .iter()
+        .filter(|line| parse_gem_property_bonus(line).is_none());
+    session
+        .add_modifier_texts(texts)
+        .map_err(|e| BuildError::Parse(e.to_string()))
 }

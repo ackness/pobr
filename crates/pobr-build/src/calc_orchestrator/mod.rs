@@ -313,7 +313,7 @@ pub fn calculate_skill_metrics(
 ) -> Result<SkillMetricsReport, BuildError> {
     // Share exactly the panel's equipment gates, granted skills, name resolution
     // and quality preparation. Reusing this view avoids applying quality twice.
-    let prepared = stage_build_view(build, data);
+    let prepared = prepared_build_view(build, data, options);
     let mut scoped = prepared.as_ref().clone();
     let mut skills = Vec::new();
     for (group_index, group) in prepared.socket_groups.iter().enumerate() {
@@ -445,9 +445,48 @@ fn calculate_with_context(
     options: &DataOrchestratorOptions,
     context: &mut CalculationContext,
 ) -> Result<CalculationSession, BuildError> {
-    // Stage 0: build view transformation (Ring3 gate → item-granted skill synthesis → quality conversion)
-    let build = stage_build_view(build, data);
+    let build = prepared_build_view(build, data, options);
     calculate_prepared_with_context(&build, data, options, context)
+}
+
+/// Stage 0: the build as a calculation under `options` reads it. Its lines
+/// first ([`with_extra_gem_bonuses`]), then the view of them
+/// ([`stage_build_view`]: Ring 3 gate → item-granted skills → quality).
+fn prepared_build_view<'a>(
+    build: &'a Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+) -> Cow<'a, Build> {
+    match with_extra_gem_bonuses(build, options) {
+        Cow::Borrowed(build) => stage_build_view(build, data),
+        Cow::Owned(build) => Cow::Owned(stage_build_view(&build, data).into_owned()),
+    }
+}
+
+/// `build` with the gem level and quality bonuses among the extra modifier
+/// texts added to its own lines. A gem's level is settled from the build's
+/// lines before any modifier is stored, so a bonus given only as an extra text
+/// would arrive too late; as a line of the build it counts like the same line
+/// on an item. The stages that store lines leave gem bonuses out, so each is
+/// read once, where gem levels are settled.
+pub(crate) fn with_extra_gem_bonuses<'a>(
+    build: &'a Build,
+    options: &DataOrchestratorOptions,
+) -> Cow<'a, Build> {
+    let bonuses: Vec<&String> = options
+        .extra_modifier_texts
+        .iter()
+        .filter(|line| skill::resolve::parse_gem_property_bonus(line).is_some())
+        .collect();
+    if bonuses.is_empty() {
+        return Cow::Borrowed(build);
+    }
+    let mut build = build.clone();
+    build
+        .config
+        .global_modifier_texts
+        .extend(bonuses.into_iter().cloned());
+    Cow::Owned(build)
 }
 
 /// Calculates a prepared build view. Trigger sources change only skill selection,

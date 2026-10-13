@@ -3,9 +3,9 @@
 //!
 //! Source of truth for "migrate in batches ordered by ninja hit frequency": runs the
 //! full modifier text of the build fixtures through the data-driven engine's
-//! classification, then sorts by normalized-template frequency. This **bypasses**
-//! `calc_orchestrator::filter_parseable` (which silently drops unparseable modifiers)
-//! and classifies the raw lines directly, so gaps in the corpus stay visible.
+//! classification, then sorts by normalized-template frequency. This classifies
+//! the raw lines directly, without the calculation's gate on what it stores, so
+//! every gap in the corpus is counted.
 //!
 //! Reuse note: this module lives in pobr-build so it's reachable (the ninja_parity
 //! report section calls it directly). Zero I/O — corpus lines are collected and passed

@@ -3191,6 +3191,84 @@ fn custom_modifier_blocks_roundtrip_and_calculate_once() {
     );
 }
 
+/// A gem level bonus typed into a group of custom modifiers reaches the gems:
+/// the request's enabled groups are lines of the character like an item's.
+#[test]
+fn custom_modifier_blocks_raise_gem_levels() {
+    ensure_data();
+    let dps = |level: u32, blocks: Value| -> f64 {
+        let request = serde_json::json!({
+            "character": { "class_name": "Sorceress", "level": 80 },
+            "socket_groups": [{ "enabled": true, "gems": [
+                { "skill_id": "FireballPlayer", "level": level, "quality": 0 }
+            ] }],
+            "main_socket_group": 0,
+            "custom_modifier_blocks": blocks,
+        });
+        let result: Value =
+            serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+                .unwrap();
+        result["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|entry| entry["id"] == "TotalDPS")
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+    let block = |enabled: bool| {
+        serde_json::json!([{ "title": "Levels", "enabled": enabled,
+            "text": "+1 to Level of all Spell Skills" }])
+    };
+    let level_20 = dps(20, serde_json::json!([]));
+    let level_21 = dps(21, serde_json::json!([]));
+    assert!(level_20 > 0.0 && level_21 > level_20);
+    assert_eq!(dps(20, block(true)), level_21);
+    assert_eq!(dps(20, block(false)), level_20);
+}
+
+/// A configured line the calculation could not apply is listed with the
+/// unsupported lines, marked `Config:`. A quest reward left untaken is not a
+/// line, so it is not listed.
+#[test]
+fn unsupported_modifiers_list_configuration_lines() {
+    ensure_data();
+    let configured = |extra: Value| -> Vec<String> {
+        let mut request = serde_json::json!({
+            "character": { "class_name": "Warrior", "level": 80 },
+        });
+        for (key, value) in extra.as_object().unwrap() {
+            request[key] = value.clone();
+        }
+        let result: Value =
+            serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+                .unwrap();
+        result["unsupported_modifiers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|line| line.as_str().unwrap().to_string())
+            .filter(|line| line.starts_with("Config:"))
+            .collect()
+    };
+    assert_eq!(configured(serde_json::json!({})), [""; 0]);
+    assert_eq!(
+        configured(serde_json::json!({ "custom_modifier_blocks": [{
+            "title": "Notes", "enabled": true,
+            "text": "Zorblax the unknowable 12%\n+100 to maximum Life",
+        }] })),
+        ["Config: Zorblax the unknowable 12%"]
+    );
+    assert_eq!(
+        configured(serde_json::json!({ "config_inputs": {
+            "questAct 3Venom CryptsVenom Draught": "None",
+            "questInterlude 2QimahSeven Pillars": "5% increased Experience Gain\n\t3% reduced Movement Speed",
+        } })),
+        [""; 0]
+    );
+}
+
 #[test]
 fn exporting_second_loadout_preserves_set_identity_and_item_references() {
     ensure_data();

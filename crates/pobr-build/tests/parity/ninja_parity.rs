@@ -622,7 +622,7 @@ const BASELINE_DEF_CORE_HIT5: usize = 144; // After #14's long-tail triage: 144/
 // **Re-recorded for the per-socket-filled fix (+1 @5%/@10%)**: gemling-legionnaire's
 // body armour Morior Invictus's `+14 to Spirit per Socket filled` (×5 sockets)
 // wired in via a `RunesSocketedIn{SlotName}` Multiplier -> Spirit 180->250
-// (0.72x->1.00x, flips to correct). See collect.rs::filter_parseable's gate +
+// (0.72x->1.00x, flips to correct). See collect.rs::gate_parses +
 // the legacy/engine per-socket suffix + ingest's {SlotName} substitution +
 // per_slot_socket_multipliers pre-fill for details.
 // **Re-recorded for the charm base buff fix (+3 @5% / +2 @10%)**:
@@ -1341,7 +1341,7 @@ fn parity_baseline_report() {
 
 /// Collects a build's full mod-text corpus lines (all three gear text
 /// blocks + jewels + **allocated tree nodes**) for unsupported
-/// classification. **Bypasses** `filter_parseable` / the tree-side gate --
+/// classification. **Bypasses** the calculation's gate on what it stores --
 /// classifies the raw lines directly so gap corpus is visible (method A-1 §1;
 /// tree behaviour folded in per A2 -- after B3, the gate/ingest share the
 /// same engine, so tree-side gaps are production gaps too).
