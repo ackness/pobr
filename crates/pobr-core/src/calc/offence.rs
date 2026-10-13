@@ -1445,7 +1445,22 @@ fn enemy_mitigation_terms(
                 invert_share = invert;
             }
         }
-        let effective_resist = apply_penetration(player_db, &type_cfg, damage_type, resist);
+        // A hit that ignores the enemy's resistance to this type is neither
+        // reduced nor increased by it: `hits_ignore_enemy_fire_resistance`,
+        // `critical_strikes_ignore_lightning_resistance` (which holds on the
+        // critical leg only), the enemy's own "resistance does not affect
+        // damage taken". "Cannot penetrate or ignore elemental resistances"
+        // (`cannot_penetrate_or_ignore_elemental_resistances`) overrides it.
+        let ignores_resist = (player_db.flag(&type_cfg, &format!("Ignore{type_prefix}Resistance"))
+            || enemy_db.flag(&type_cfg, &format!("SelfIgnore{type_prefix}Resistance"))
+            || damage_type.is_elemental()
+                && player_db.flag(&type_cfg, "IgnoreElementalResistances"))
+            && !(damage_type.is_elemental() && player_db.flag(&type_cfg, "CannotElePenIgnore"));
+        let effective_resist = if ignores_resist {
+            0.0
+        } else {
+            apply_penetration(player_db, &type_cfg, damage_type, resist)
+        };
         // Diagnostics: dumps the enemy mitigation breakdown per type when
         // POBR_DBG_ENEMYMIT=1 (for comparison against the oracle's
         // enemyMitigation: resistBase/pen/takenInc/takenMore).
@@ -2242,6 +2257,62 @@ mod speed_tests {
             enemy_physical_multiplier(&wrong_side, &plain_enemy, &cfg, 100.0),
             1.0
         );
+    }
+    /// A hit that ignores a resistance is not changed by it, whichever way
+    /// the resistance points; a critical-only ignore leaves the other leg alone.
+    #[test]
+    fn a_hit_that_ignores_resistance_is_unchanged_by_it() {
+        let lightning = |player: &ModDb, enemy: &ModDb, cfg: &CalcConfig| {
+            enemy_damage_multiplier(player, enemy, cfg, DamageType::Lightning, 100.0)
+        };
+        let cfg = CalcConfig::spell();
+        let mut enemy = ModDb::new();
+        enemy.add_mod(Modifier::number("LightningResist", ModType::Base, 40.0));
+        let plain = ModDb::new();
+        assert!((lightning(&plain, &enemy, &cfg) - 0.6).abs() < 1e-9);
+
+        let mut ignores = ModDb::new();
+        ignores.add_mod(Modifier::flag("IgnoreLightningResistance"));
+        assert_eq!(lightning(&ignores, &enemy, &cfg), 1.0);
+        // The other elements still meet their own resistance.
+        enemy.add_mod(Modifier::number("FireResist", ModType::Base, 40.0));
+        assert!(
+            (enemy_damage_multiplier(&ignores, &enemy, &cfg, DamageType::Fire, 100.0) - 0.6).abs()
+                < 1e-9
+        );
+        let mut elemental = ModDb::new();
+        elemental.add_mod(Modifier::flag("IgnoreElementalResistances"));
+        assert_eq!(
+            enemy_damage_multiplier(&elemental, &enemy, &cfg, DamageType::Fire, 100.0),
+            1.0
+        );
+
+        // Negative resistance is ignored too: no bonus from it.
+        let mut exposed = ModDb::new();
+        exposed.add_mod(Modifier::number("LightningResist", ModType::Base, -30.0));
+        assert!((lightning(&plain, &exposed, &cfg) - 1.3).abs() < 1e-9);
+        assert_eq!(lightning(&ignores, &exposed, &cfg), 1.0);
+
+        // "Critical Hits ignore ...": only the critical leg.
+        let mut crit_only = ModDb::new();
+        crit_only.add_mod(
+            Modifier::flag("IgnoreLightningResistance")
+                .with_tag(crate::ModTag::condition("CriticalStrike", false)),
+        );
+        let crit = cfg.clone().with_condition("CriticalStrike", true);
+        let hit = cfg.clone().with_condition("CriticalStrike", false);
+        assert_eq!(lightning(&crit_only, &enemy, &crit), 1.0);
+        assert!((lightning(&crit_only, &enemy, &hit) - 0.6).abs() < 1e-9);
+
+        // The enemy's own "resistance does not affect damage taken".
+        let mut indifferent = ModDb::new();
+        indifferent.add_mod(Modifier::number("LightningResist", ModType::Base, 40.0));
+        indifferent.add_mod(Modifier::flag("SelfIgnoreLightningResistance"));
+        assert_eq!(lightning(&plain, &indifferent, &cfg), 1.0);
+
+        // "Cannot penetrate or ignore elemental resistances" wins.
+        ignores.add_mod(Modifier::flag("CannotElePenIgnore"));
+        assert!((lightning(&ignores, &enemy, &cfg) - 0.6).abs() < 1e-9);
     }
     use crate::Modifier;
 
