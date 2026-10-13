@@ -522,3 +522,76 @@ fn spirit_reservation_no_cost_flag() {
     assert_eq!(result.final_cost, 0.0);
     assert!(result.no_cost);
 }
+
+// §5b  How a skill's Mana and Life costs combine
+
+/// A skill with a base Mana cost of 20 under a support that multiplies cost
+/// by 1.5, plus `extra` modifiers.
+fn costs_with(extra: Vec<Modifier>) -> pobr_core::calc::skill_mechanics::SkillCosts {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("SkillManaCostBase", ModType::Base, 20.0));
+    db.add_mod(Modifier::number(
+        "SupportManaMultiplier",
+        ModType::More,
+        50.0,
+    ));
+    db.add_list(extra);
+    pobr_core::calc::skill_mechanics::skill_costs(&db, &CalcConfig::new())
+}
+
+#[test]
+fn a_skill_with_no_base_cost_costs_nothing() {
+    let costs = pobr_core::calc::skill_mechanics::skill_costs(&ModDb::new(), &CalcConfig::new());
+    assert_eq!((costs.mana, costs.life), (0.0, 0.0));
+    assert_eq!(
+        (costs_with(vec![]).mana, costs_with(vec![]).life),
+        (30.0, 0.0)
+    );
+}
+
+/// "Cost an additional N of ..." is added after the supports' multipliers: 20
+/// x 1.5 + 10, not (20 + 10) x 1.5. It is a cost even for a skill with none.
+#[test]
+fn an_additional_cost_is_not_scaled_by_support_cost_multipliers() {
+    let additional = || Modifier::number("ManaCostNoMult", ModType::Base, 10.0);
+    assert_eq!(costs_with(vec![additional()]).mana, 40.0);
+
+    let mut db = ModDb::new();
+    db.add_mod(additional());
+    let costs = pobr_core::calc::skill_mechanics::skill_costs(&db, &CalcConfig::new());
+    assert_eq!((costs.mana, costs.life), (10.0, 0.0));
+}
+
+/// "Mana Costs Converted to Life Costs": all of it at 100%, the additional
+/// cost included; "less Cost" then applies to what is paid.
+#[test]
+fn mana_costs_converted_to_life_are_paid_in_life() {
+    let converted =
+        |share: f64| Modifier::number("HybridManaAndLifeCost_Life", ModType::Base, share);
+    let costs = costs_with(vec![
+        converted(100.0),
+        Modifier::number("ManaCostNoMult", ModType::Base, 10.0),
+    ]);
+    assert_eq!((costs.mana, costs.life), (0.0, 40.0));
+
+    let half = costs_with(vec![converted(50.0)]);
+    assert_eq!((half.mana, half.life), (15.0, 15.0));
+
+    let cheaper = costs_with(vec![
+        converted(100.0),
+        Modifier::number("Cost", ModType::More, -40.0),
+    ]);
+    assert_eq!((cheaper.mana, cheaper.life), (0.0, 18.0));
+}
+
+/// "Skills gain a Base Life Cost equal to Base Mana Cost": the gem's own
+/// cost as its supports scale it, on top of the Mana cost. An additional
+/// cost is not a base cost.
+#[test]
+fn a_base_life_cost_equal_to_the_base_mana_cost_is_paid_as_well() {
+    let costs = costs_with(vec![
+        Modifier::number("BaseManaCostAsLifeCost", ModType::Base, 100.0),
+        Modifier::number("ManaCostNoMult", ModType::Base, 10.0),
+    ]);
+    assert_eq!((costs.mana, costs.life), (40.0, 30.0));
+}

@@ -10716,7 +10716,18 @@
     },
     {
       "text": "12% increased [Spell] Damage with [Spell|Spells] that cost Life",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "Inc",
+          "value": 12.0,
+          "flags": 2,
+          "tags": [
+            "StatThreshold { stat: \"LifeCost\", threshold: 1.0, upper: false }"
+          ]
+        }
+      ]
     },
     {
       "text": "12% increased [StunThreshold|Stun Threshold]",
@@ -24912,7 +24923,18 @@
     },
     {
       "text": "40% increased [Spell] Damage with [Spell|Spells] that cost Life",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "Inc",
+          "value": 40.0,
+          "flags": 2,
+          "tags": [
+            "StatThreshold { stat: \"LifeCost\", threshold: 1.0, upper: false }"
+          ]
+        }
+      ]
     },
     {
       "text": "40% increased [StunRecovery|Stun Recovery]",
@@ -28159,7 +28181,18 @@
     },
     {
       "text": "6% increased [Spell] Damage with [Spell|Spells] that cost Life",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "Inc",
+          "value": 6.0,
+          "flags": 2,
+          "tags": [
+            "StatThreshold { stat: \"LifeCost\", threshold: 1.0, upper: false }"
+          ]
+        }
+      ]
     },
     {
       "text": "6% increased [Warcry|Warcry] Cooldown Recovery Rate",

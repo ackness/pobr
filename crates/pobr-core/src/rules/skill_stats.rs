@@ -47,8 +47,25 @@ const WITCHTOAD_SPAWN_INTERVAL_MS: &str = "doedre_cursed_ground_toad_spawn_inter
 /// The modifiers the stat `stat` of a skill, or of a support that applies to
 /// it, grants that skill at `value`, when this table defines the stat. `None`
 /// leaves the stat to the extracted stat map.
-pub fn skill_modifiers(stat: &str, _value: f64) -> Option<Vec<Modifier>> {
+pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
     match stat {
+        // Efficiency: "Supported Skills have {0}% more Cost" / "less Cost",
+        // of whatever the skill costs.
+        "support_inspiration_cost_+%_final" => {
+            Some(vec![Modifier::number("Cost", ModType::More, value)])
+        }
+        // "Supported Skills have {0}% increased Mana Cost Efficiency".
+        "base_mana_cost_efficiency_+%" => Some(vec![Modifier::number(
+            "ManaCostEfficiency",
+            ModType::Inc,
+            value,
+        )]),
+        // "Supported Skills have {0}% of Mana Costs Converted to Life Costs".
+        "base_skill_cost_life_instead_of_mana_%" => Some(vec![Modifier::number(
+            "HybridManaAndLifeCost_Life",
+            ModType::Base,
+            value,
+        )]),
         // Says nothing about the curse the support applies to: the Witchtoads
         // use the skill the support grants (see `granted_skill_modifiers`).
         WITCHTOAD_SPAWN_INTERVAL_MS => Some(Vec::new()),
@@ -88,6 +105,23 @@ pub fn granted_skill_modifiers(stat: &str, value: f64, stats: &[SkillDamageStat]
 /// stat map.
 pub fn player_buff_modifiers(stat: &str, value: f64, skill: BuffSkill) -> Option<Vec<Modifier>> {
     match stat {
+        // Archmage: "Non-Channelling Spells cost an additional {0}% of your
+        // maximum Mana". The stat is in hundredths of a percent. The cost is
+        // added to the spell's own after its supports' cost multipliers,
+        // which are multipliers of the gem's cost.
+        "archmage_max_mana_permyriad_to_add_to_non_channelled_spell_mana_cost" => {
+            let spell = SkillTypes::from_pob2_name("Spell")?;
+            let channel = SkillTypes::from_pob2_name("Channel")?;
+            Some(vec![
+                Modifier::number("ManaCostNoMult", ModType::Base, value / 100.0)
+                    .with_tag(ModTag::SkillTypes(spell))
+                    .with_tag(ModTag::SkillTypesNeg(channel))
+                    .with_tag(ModTag::PercentStat {
+                        stat: "Mana".into(),
+                        percent: Some(1.0),
+                    }),
+            ])
+        }
         // Not a buff on the character (see `granted_skill_modifiers`).
         WITCHTOAD_SPAWN_INTERVAL_MS => Some(Vec::new()),
         // Pinnacle of Power: "{0}% more Elemental Damage per Power Charge
@@ -197,6 +231,57 @@ mod tests {
         assert!(player_buff_modifiers("base_skill_effect_duration", 5000.0, skill).is_none());
         assert!(skill_modifiers("base_skill_effect_duration", 5000.0).is_none());
         assert!(granted_skill_modifiers("base_skill_effect_duration", 5000.0, &[]).is_empty());
+    }
+
+    /// The stats of supports that change what the skill they apply to costs.
+    #[test]
+    fn support_cost_stats_become_the_modifiers_the_cost_reads() {
+        let only = |stat: &str, value: f64| {
+            let mut mods = skill_modifiers(stat, value).expect("a rule");
+            assert_eq!(mods.len(), 1, "{stat}");
+            let modifier = mods.remove(0);
+            (
+                modifier.name.to_string(),
+                modifier.mod_type,
+                modifier.value.as_number(),
+            )
+        };
+        assert_eq!(
+            only("support_inspiration_cost_+%_final", -40.0),
+            ("Cost".to_string(), ModType::More, Some(-40.0))
+        );
+        assert_eq!(
+            only("base_mana_cost_efficiency_+%", 25.0),
+            ("ManaCostEfficiency".to_string(), ModType::Inc, Some(25.0))
+        );
+        assert_eq!(
+            only("base_skill_cost_life_instead_of_mana_%", 100.0),
+            (
+                "HybridManaAndLifeCost_Life".to_string(),
+                ModType::Base,
+                Some(100.0)
+            )
+        );
+    }
+
+    /// Archmage at 4.10% of 4000 maximum Mana: 164 more Mana for a spell,
+    /// nothing for an attack or a channelled spell.
+    #[test]
+    fn archmage_adds_a_share_of_maximum_mana_to_the_cost_of_non_channelling_spells() {
+        let stat = "archmage_max_mana_permyriad_to_add_to_non_channelled_spell_mana_cost";
+        let mut db = ModDb::new();
+        db.add_list(player_buff_modifiers(stat, 410.0, BuffSkill::default()).expect("a rule"));
+        let added = |types: &[&str]| {
+            let mut cfg = CalcConfig::new();
+            cfg.stats.insert("Mana".into(), 4000.0);
+            for name in types {
+                cfg.skill_types |= SkillTypes::from_pob2_name(name).unwrap();
+            }
+            db.sum(ModType::Base, &cfg, &[ModName::from("ManaCostNoMult")])
+        };
+        assert_eq!(added(&["Spell"]), 164.0);
+        assert_eq!(added(&["Attack"]), 0.0);
+        assert_eq!(added(&["Spell", "Channel"]), 0.0);
     }
 
     fn stat(id: &str, value: f64) -> SkillDamageStat {

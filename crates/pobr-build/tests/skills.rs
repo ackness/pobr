@@ -11,6 +11,8 @@ mod charge_consuming_buffs;
 mod corpse_explosion;
 #[path = "skills/corrupted_gems.rs"]
 mod corrupted_gems;
+#[path = "skills/cost_conversion.rs"]
+mod cost_conversion;
 #[path = "skills/cost_multiplier.rs"]
 mod cost_multiplier;
 #[path = "skills/dual_wield.rs"]

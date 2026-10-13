@@ -605,7 +605,9 @@ pub fn calc_skill_cost(
 
     // Support gem cost multiplier: the product truncated to 4 decimal places
     // → applied to base → floored (PoB2 CalcOffence.lua:2052/:2076-2077, before the inc/more chain).
-    let base_cost_after_support = (base_cost * support_cost_multiplier(db, cfg)).floor();
+    let base_cost_after_support = (base_cost * support_cost_multiplier(db, cfg)
+        + unscaled_cost(db, cfg, resource_mod_prefix))
+    .floor();
     let final_cost = apply_cost_chain(db, cfg, resource_mod_prefix, base_cost_after_support);
 
     SkillCostResult {
@@ -680,6 +682,65 @@ fn support_cost_multiplier(db: &ModDb, cfg: &CalcConfig) -> f64 {
     (m * 10000.0).floor() / 10000.0
 }
 
+/// A cost added to the skill's own that its supports' cost multipliers do not
+/// scale (`<Resource>CostNoMult`): Archmage's "Non-Channelling Spells cost an
+/// additional N% of your maximum Mana".
+fn unscaled_cost(db: &ModDb, cfg: &CalcConfig, resource_mod_prefix: &str) -> f64 {
+    let name = format!("{resource_mod_prefix}CostNoMult");
+    db.sum(ModType::Base, cfg, &[ModName::from(name.as_str())])
+        .max(0.0)
+}
+
+/// The share (0 and up) of the skill's base Mana cost it also costs in Life:
+/// "Skills gain a Base Life Cost equal to Base Mana Cost" is 1.
+fn base_mana_cost_as_life_share(db: &ModDb, cfg: &CalcConfig) -> f64 {
+    (db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("BaseManaCostAsLifeCost")],
+    ) / 100.0)
+        .max(0.0)
+}
+
+/// What one use of the skill costs.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct SkillCosts {
+    pub mana: f64,
+    pub life: f64,
+}
+
+/// The Mana and Life cost of the skill, from its base costs
+/// (`SkillManaCostBase` / `SkillLifeCostBase`) and everything that moves a
+/// cost between the two. A resource the skill has no cost in stays 0.
+pub fn skill_costs(db: &ModDb, cfg: &CalcConfig) -> SkillCosts {
+    let base = |name: &str| db.sum(ModType::Base, cfg, &[ModName::from(name)]);
+    let base_mana = base("SkillManaCostBase");
+    let base_life = base("SkillLifeCostBase");
+    let has_mana_cost = base_mana > 0.0 || unscaled_cost(db, cfg, "Mana") > 0.0;
+    let hybrid = hybrid_life_cost_share(db, cfg);
+    let mana = if has_mana_cost {
+        let mana = calc_mana_cost(db, cfg, base_mana).final_cost;
+        // The share converted to Life is no longer paid in Mana.
+        if hybrid > 0.0 {
+            ((1.0 - hybrid) * mana).floor().max(0.0)
+        } else {
+            mana
+        }
+    } else {
+        0.0
+    };
+    let mana_becomes_life = hybrid > 0.0 || base_mana_cost_as_life_share(db, cfg) > 0.0;
+    let has_life_cost = base_life > 0.0
+        || unscaled_cost(db, cfg, "Life") > 0.0
+        || (mana_becomes_life && has_mana_cost);
+    let life = if has_life_cost {
+        calc_life_cost_hybrid(db, cfg, base_life, base_mana).final_cost
+    } else {
+        0.0
+    };
+    SkillCosts { mana, life }
+}
+
 /// Hybrid mana→life cost share (0..=1). Sourced from
 /// `HybridManaAndLifeCost_Life` BASE (vendor stat
 /// `base_skill_cost_life_instead_of_mana_%`, e.g. Atalui's Bloodletting's
@@ -722,7 +783,8 @@ pub fn calc_life_cost_hybrid(
     base_mana_cost: f64,
 ) -> SkillCostResult {
     let hybrid = hybrid_life_cost_share(db, cfg);
-    if hybrid <= 0.0 {
+    let base_as_life = base_mana_cost_as_life_share(db, cfg);
+    if hybrid <= 0.0 && base_as_life <= 0.0 {
         return calc_life_cost(db, cfg, base_life_cost);
     }
     if db.flag(cfg, "HasNoCost") {
@@ -734,8 +796,15 @@ pub fn calc_life_cost_hybrid(
         };
     }
     let mult = support_cost_multiplier(db, cfg);
-    let mana_final_base = (base_mana_cost * mult).floor();
-    let life_final_base = (base_life_cost * mult + (mana_final_base * hybrid).round()).round();
+    // The whole Mana cost converts; only the gem's own, as its supports
+    // scale it, is also gained as a base Life cost.
+    let scaled_base_mana = (base_mana_cost * mult).floor();
+    let mana_final_base = (base_mana_cost * mult + unscaled_cost(db, cfg, "Mana")).floor();
+    let life_final_base = (base_life_cost * mult
+        + unscaled_cost(db, cfg, "Life")
+        + (mana_final_base * hybrid).round()
+        + scaled_base_mana * base_as_life)
+        .round();
     SkillCostResult {
         kind: SkillCostKind::Life,
         base_cost: base_life_cost,

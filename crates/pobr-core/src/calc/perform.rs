@@ -12,7 +12,7 @@ use super::ailment::{
 };
 use super::output::StoredDamageRange;
 use super::skill_mechanics::{
-    calc_aoe, calc_cooldown, calc_mana_cost, calc_projectile_count, calc_spirit_reservation,
+    calc_aoe, calc_cooldown, calc_projectile_count, calc_spirit_reservation,
 };
 use super::trigger::{
     RotationSkill, TriggerSourceStats, calc_cwc_trigger_rate_traced, calc_multi_spell_rotation,
@@ -167,6 +167,14 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         ] {
             env.cfg.stats.insert(name.into(), value);
             env.cfg.multipliers.insert(name.into(), value);
+        }
+        // What the skill costs in Life, now that buffs can add to it and the
+        // Mana pool they read is final: "per N Life cost" and "Skills that
+        // cost Life" scale and gate damage by it.
+        let life_cost = super::skill_mechanics::skill_costs(&env.player.mod_db, &env.cfg).life;
+        if life_cost > 0.0 || env.cfg.stats.contains_key("LifeCost") {
+            env.cfg.stats.insert("LifeCost".into(), life_cost);
+            env.cfg.multipliers.insert("LifeCost".into(), life_cost);
         }
     }
 
@@ -1126,26 +1134,11 @@ fn fill_skill_mechanics(env: &mut Env) {
         env.player.output.cooldown_stored_uses = cd.stored_uses;
     }
 
-    // Cost: each resource needs its corresponding base-value BASE mod. Skipped if absent (stays 0).
-    // The hybrid mana→life conversion (`HybridManaAndLifeCost_Life`, e.g. Atalui's Bloodletting /
-    // the Blood-Magic family): the Life side takes mana's finalBase × hybrid, the Mana side's
-    // chain tail is `floor((1-hybrid)×ManaCost)` (vendor CalcOffence.lua:2090-2104 + :2160-2162).
-    let hybrid = crate::calc::skill_mechanics::hybrid_life_cost_share(db, cfg);
-    let base_mc = db.sum(ModType::Base, cfg, &[ModName::from("SkillManaCostBase")]);
-    if base_mc > 0.0 {
-        let mana = calc_mana_cost(db, cfg, base_mc).final_cost;
-        env.player.output.mana_cost = if hybrid > 0.0 {
-            ((1.0 - hybrid) * mana).floor().max(0.0)
-        } else {
-            mana
-        };
-    }
-    let base_lc = db.sum(ModType::Base, cfg, &[ModName::from("SkillLifeCostBase")]);
-    if base_lc > 0.0 || (hybrid > 0.0 && base_mc > 0.0) {
-        env.player.output.life_cost =
-            crate::calc::skill_mechanics::calc_life_cost_hybrid(db, cfg, base_lc, base_mc)
-                .final_cost;
-    }
+    // Cost: each resource needs a base cost, its own or one moved to it; one
+    // without stays 0.
+    let costs = crate::calc::skill_mechanics::skill_costs(db, cfg);
+    env.player.output.mana_cost = costs.mana;
+    env.player.output.life_cost = costs.life;
     let base_sr = db.sum(
         ModType::Base,
         cfg,

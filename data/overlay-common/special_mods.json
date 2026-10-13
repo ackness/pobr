@@ -2753,6 +2753,33 @@
         "Gain no inherent bonus from Dexterity"
       ],
       "source_note": "LegionPassives.lua Circular Teachings; CalcPerform.lua NoDexBonusToAccuracy. Consumed by pobr-build inject_attribute_derivation; tested with transformed keystone and complete character attributes."
+    },
+    {
+      "id": "spell_damage_with_spells_that_cost_life",
+      "pattern": "(\\d+)% increased spell damage with spells that cost life",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "flags": [
+            "Spell"
+          ],
+          "tags": [
+            {
+              "type": "StatThreshold",
+              "stat": "LifeCost",
+              "threshold": 1.0
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "cost",
+      "examples": [
+        "40% increased Spell Damage with Spells that cost Life"
+      ],
+      "source_note": "Game text of the Blood Mage passives (e.g. 40% / 12% / 6% increased Spell Damage with Spells that cost Life). A spell costs Life when its Life cost, after conversions, is at least 1: the engine's LifeCost stat, set before damage by calc::perform. PoB2 reads the same condition as a StatThreshold over LifeCost; used only as a cross-check."
     }
   ]
 }

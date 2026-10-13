@@ -716,15 +716,7 @@ impl CalculationSession {
     /// read during damage aggregation -- equivalent to vendor CalcOffence's
     /// order of computing cost before damage.
     pub fn life_cost_snapshot(&self) -> f64 {
-        let base_mc = self.base_sum("SkillManaCostBase");
-        let base_lc = self.base_sum("SkillLifeCostBase");
-        super::skill_mechanics::calc_life_cost_hybrid(
-            &self.env.player.mod_db,
-            &self.env.cfg,
-            base_lc,
-            base_mc,
-        )
-        .final_cost
+        super::skill_mechanics::skill_costs(&self.env.player.mod_db, &self.env.cfg).life
     }
 
     /// Final total attribute value (PoB2's `calculateAttributes`,
