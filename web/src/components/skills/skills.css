@@ -507,7 +507,10 @@
 .skill-group.is-main { background: color-mix(in srgb, var(--accent-gold) 4%, var(--surface-card)); }
 .skill-group.is-main .skill-group-name { color: var(--accent-gold-bright); }
 .skill-gem-editor { padding-top: var(--space-3); margin-top: var(--space-3); border-top: 1px solid var(--border-subtle); }
-.gem-column-labels { display: grid; grid-template-columns: minmax(0, 1fr) 56px 56px 32px; gap: var(--space-1); color: var(--text-muted); font-size: var(--text-xs); padding-inline: var(--space-2); }
+.gem-column-labels { display: grid; grid-template-columns: minmax(0, 1fr) 56px 56px var(--gem-corrupted-width) 32px; gap: var(--space-1); color: var(--text-muted); font-size: var(--text-xs); padding-inline: var(--space-2); }
+.skill-gem-editor { --gem-corrupted-width: 60px; }
+.gem-corrupted { display: inline-flex; justify-content: center; align-items: center; width: var(--gem-corrupted-width); min-height: 32px; cursor: pointer; }
+.gem-column-labels > :nth-child(4) { text-align: center; }
 .skill-gem { align-items: center; gap: var(--space-2); padding: var(--space-2); border-bottom: 1px solid var(--border-subtle); }
 .gem-controls { flex: none; }
 .gem-controls .skill-remove { width: 32px; padding: 0; }
@@ -524,7 +527,6 @@
   .skill-gem { flex-wrap: wrap; }
   .gem-name { flex-basis: 100%; }
   .gem-controls { margin-left: auto; }
-  .gem-column-labels { grid-template-columns: minmax(0, 1fr) 56px 56px 32px; }
 }
 
 .support-pool-summary { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-2); color: var(--text-secondary); }
@@ -577,7 +579,12 @@
 .skill-group { scroll-margin-top: var(--space-4); }
 .skills-toolbar > button { max-width: 100%; white-space: normal; text-align: left; }
 
-@media (min-width: 380px) and (max-width: 600px) {
+@media (min-width: 444px) and (max-width: 600px) {
   .skill-gem { flex-wrap: nowrap; }
   .gem-name { flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; }
+}
+/* Below that the gem's name has a line of its own, so its column heading
+   would only run into the next one. */
+@media (max-width: 443px) {
+  .gem-column-labels > :first-child { visibility: hidden; }
 }

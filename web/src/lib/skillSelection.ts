@@ -51,6 +51,15 @@ export function removeSkillGem(group: SocketGroupInput, gemIndex: number, catalo
 }
 
 /**
+ * A gem with its corrupted state set. The field is present only on a corrupted
+ * gem, so an untouched gem and one toggled back compare and save the same.
+ */
+export function withGemCorrupted<Gem extends { corrupted?: boolean }>(gem: Gem, corrupted: boolean): Gem {
+  const { corrupted: _state, ...rest } = gem;
+  return (corrupted ? { ...rest, corrupted: true } : rest) as Gem;
+}
+
+/**
  * The default inspected skill when nothing is selected: the highest combined
  * (hit + damage over time) DPS among calculated effects of enabled groups.
  * Ties and all-zero builds keep the earliest row, so the choice is stable.

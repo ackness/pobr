@@ -7,7 +7,7 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, grantedSourceLabel, type Lang } from '../../lib/i18n';
 import { GemPicker } from './GemPicker';
 import { skillDisplayName } from '../../lib/skillNames';
-import { activeSkillEffects, removeSkillGem } from '../../lib/skillSelection';
+import { activeSkillEffects, removeSkillGem, withGemCorrupted } from '../../lib/skillSelection';
 export { prettySkillId } from '../../lib/skillNames';
 import { GemOptimizer } from './GemOptimizer';
 import { NoteEditor } from '../shared/NoteEditor';
@@ -217,7 +217,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                   options={[{ value: '0', label: tt('weapons.both') }, ...[1, 2].map(set => ({ value: String(set), label: `${tt('weapons.set')} ${set}` }))]}
                   disabled={session.busy} onChange={value => updateGroup(idx, { weapon_set: value === '0' ? null : Number(value) as 1 | 2 })} />
               </div>
-              <div className="gem-column-labels"><span>{tt('calcs.skill')}</span><span>{tt('skills.level')}</span><span>{tt('skills.quality')}</span><span /></div>
+              <div className="gem-column-labels"><span>{tt('calcs.skill')}</span><span>{tt('skills.level')}</span><span>{tt('skills.quality')}</span><span>{tt('skills.corrupted')}</span><span /></div>
               <ul className="skill-gems">
                 {group.gems.map((gem, gemIdx) => (
                   <li key={gemIdx} className={`skill-gem${gemIdx === 0 ? ' is-active' : ''}`}>
@@ -256,6 +256,17 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                           });
                         }}
                       />
+                      <label className="gem-corrupted" title={tt('skills.corruptedHint')}>
+                        <input
+                          type="checkbox"
+                          checked={gem.corrupted === true}
+                          disabled={session.busy}
+                          aria-label={tt('skills.corrupted')}
+                          onChange={(e) => updateGroup(idx, {
+                            gems: group.gems.map((g, i) => (i === gemIdx ? withGemCorrupted(g, e.target.checked) : g)),
+                          })}
+                        />
+                      </label>
                       <button
                         className="skill-remove"
                         disabled={session.busy || catalog.length === 0}

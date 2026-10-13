@@ -181,6 +181,12 @@ const DICT = {
   'skills.removeGem': { 'en-US': 'Remove gem', 'zh-TW': '移除寶石', 'zh-CN': '移除宝石' },
   'skills.level': { 'en-US': 'Level', 'zh-TW': '等級', 'zh-CN': '等级' },
   'skills.quality': { 'en-US': 'Quality', 'zh-TW': '品質', 'zh-CN': '品质' },
+  'skills.corrupted': { 'en-US': 'Corrupted', 'zh-TW': '已腐化', 'zh-CN': '已腐化' },
+  'skills.corruptedHint': {
+    'en-US': 'A corrupted gem gains modifiers that name Corrupted Skill Gems, such as "+1 to Level of all Corrupted Skill Gems".',
+    'zh-TW': '已腐化的寶石會獲得只對腐化技能寶石生效的詞綴，例如腐化技能寶石的等級加成。',
+    'zh-CN': '已腐化的宝石会获得只对被腐化技能宝石生效的词缀，例如“所有被腐化技能宝石等级提高 +1”。',
+  },
   'picker.all': { 'en-US': 'All', 'zh-TW': '全部', 'zh-CN': '全部' },
   'picker.noResults': { 'en-US': 'No matches', 'zh-TW': '無匹配', 'zh-CN': '无匹配' },
   'picker.active': { 'en-US': 'Active', 'zh-TW': '主動', 'zh-CN': '主动' },
