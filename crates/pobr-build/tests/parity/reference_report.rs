@@ -85,12 +85,21 @@ fn build_codes_carry_their_reference_stats() {
     }
 }
 
-#[test]
-#[ignore = "reference dashboard; run explicitly with --ignored --nocapture"]
-fn reference_report() {
-    let root = std::env::var("POBR_REFERENCE_BUILDS")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| repo_path("examples/wasm-benchmark/builds"));
+/// How a corpus compares with the reference its codes carry.
+#[derive(Default)]
+struct Agreement {
+    /// Builds that carry a reference and calculated.
+    builds: usize,
+    /// Of those, the builds whose `TotalDPS` agrees.
+    dps_builds: usize,
+    rows: usize,
+    agreeing_rows: usize,
+    /// stat id -> (agreeing builds, compared builds)
+    per_stat: BTreeMap<String, (usize, usize)>,
+}
+
+/// Compares every build under `root`; `verbose` prints each build's misses.
+fn corpus_agreement(root: &Path, verbose: bool) -> Agreement {
     let data =
         BuildData::load(&GameData::new(pobr_gamedata::current_data_dir())).expect("load BuildData");
     // The same convention as `ninja_parity`: PoB2's main panel is EFFECTIVE,
@@ -101,35 +110,40 @@ fn reference_report() {
         ..Default::default()
     };
 
-    // stat id -> (agreeing builds, compared builds)
-    let mut per_stat: BTreeMap<String, (usize, usize)> = BTreeMap::new();
-    let (mut agree, mut compared, mut dps_agree, mut builds) = (0, 0, 0, 0);
-    for dir in builds_in(&root) {
+    let mut total = Agreement::default();
+    for dir in builds_in(root) {
         let name = dir.file_name().unwrap().to_string_lossy().to_string();
         let ImportedBuild { build, report } = import(&dir);
         if report.reference_stats.is_empty() {
-            eprintln!("\n##### {name} :: no reference stats in the code #####");
+            if verbose {
+                eprintln!("\n##### {name} :: no reference stats in the code #####");
+            }
             continue;
         }
         let session = match calculate_with_data_session(&build, &data, &options) {
             Ok(session) => session,
             Err(error) => {
-                eprintln!("\n##### {name} :: calculation failed: {error} #####");
+                if verbose {
+                    eprintln!("\n##### {name} :: calculation failed: {error} #####");
+                }
                 continue;
             }
         };
         let rows = compare_to_reference(session.output(), &report.reference_stats);
         let misses: Vec<&ReferenceRow> = rows.iter().filter(|row| !row.agrees(TOL)).collect();
-        builds += 1;
-        compared += rows.len();
-        agree += rows.len() - misses.len();
+        total.builds += 1;
+        total.rows += rows.len();
+        total.agreeing_rows += rows.len() - misses.len();
         for row in &rows {
-            let entry = per_stat.entry(row.id.clone()).or_default();
+            let entry = total.per_stat.entry(row.id.clone()).or_default();
             entry.0 += usize::from(row.agrees(TOL));
             entry.1 += 1;
         }
         let dps = rows.iter().find(|row| row.id == "TotalDPS");
-        dps_agree += usize::from(dps.is_some_and(|row| row.agrees(TOL)));
+        total.dps_builds += usize::from(dps.is_some_and(|row| row.agrees(TOL)));
+        if !verbose {
+            continue;
+        }
 
         eprintln!(
             "\n##### {name} :: {}/{} agree, {} unsupported lines #####",
@@ -153,19 +167,64 @@ fn reference_report() {
             );
         }
     }
+    total
+}
+
+/// Agreement on `examples/wasm-benchmark/builds` when last raised: builds
+/// whose `TotalDPS` agrees, and agreeing rows.
+///
+/// Raise both when a change improves them; never lower them to make a change
+/// pass. The reference is whatever the exporting tool wrote into each code, so
+/// this guards PoBR against losing ground, not against being wrong: a build
+/// can agree for the wrong reason, and a data version change can move the
+/// numbers for a good one (then re-record them, as for `ninja_parity`).
+const BASELINE_DPS_BUILDS: usize = 3;
+const BASELINE_AGREEING_ROWS: usize = 327;
+
+/// What the current-league builds gained stays gained. `ninja_parity` cannot
+/// see them: its corpus predates their items and skills.
+#[test]
+fn reference_agreement_does_not_regress() {
+    let total = corpus_agreement(&repo_path("examples/wasm-benchmark/builds"), false);
+    assert!(
+        total.dps_builds >= BASELINE_DPS_BUILDS,
+        "TotalDPS agrees on {} builds, was {BASELINE_DPS_BUILDS}",
+        total.dps_builds
+    );
+    assert!(
+        total.agreeing_rows >= BASELINE_AGREEING_ROWS,
+        "{} of {} rows agree, was {BASELINE_AGREEING_ROWS}",
+        total.agreeing_rows,
+        total.rows
+    );
+}
+
+#[test]
+#[ignore = "reference dashboard; run explicitly with --ignored --nocapture"]
+fn reference_report() {
+    let root = std::env::var("POBR_REFERENCE_BUILDS")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| repo_path("examples/wasm-benchmark/builds"));
+    let total = corpus_agreement(&root, true);
 
     eprintln!(
         "\n================ REFERENCE SUMMARY (tol {:.0}%) ================",
         TOL * 100.0
     );
     eprintln!("corpus: {}", root.display());
-    eprintln!("builds: {builds}; TotalDPS agrees on {dps_agree}");
     eprintln!(
-        "rows: {agree}/{compared} = {:.1}%",
-        100.0 * agree as f64 / compared.max(1) as f64
+        "builds: {}; TotalDPS agrees on {}",
+        total.builds, total.dps_builds
+    );
+    eprintln!(
+        "rows: {}/{} = {:.1}%",
+        total.agreeing_rows,
+        total.rows,
+        100.0 * total.agreeing_rows as f64 / total.rows.max(1) as f64
     );
     eprintln!("stats that disagree on at least one build (agree/compared):");
-    let mut stats: Vec<_> = per_stat
+    let mut stats: Vec<_> = total
+        .per_stat
         .into_iter()
         .filter(|(_, (agree, compared))| agree < compared)
         .collect();
