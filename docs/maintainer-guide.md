@@ -199,7 +199,7 @@ with lookup implementations organized under `build_data/{skills,equipment,passiv
 - PoBR 与 PoB2 结果不同时，先判断谁符合游戏的词条文本和数据，不默认 PoB2 正确。已知的有意差异：
   - PoB2 用自己的符文表覆盖物品原文；PoBR 以物品原文为准。
   - Doedre's Undoing 的 Witchtoad 每 0.25 秒生成一只，PoB2 把这个间隔乘以施法时间，施法越快爆炸越多且没有上限；PoBR 按“区域数 × 1000 / 间隔”计算，与施法速度无关（见 `skill_stats::granted_skill_modifiers`）。
-  - “Minions have 10% chance to inflict Withered on Hit” 在没有召唤物的构筑上，PoB2 仍允许配置 Withered 层数并给敌人加 50% 混沌承伤；PoBR 目前不建模 Withered，这类构筑会比参考值低（`agent-docs/debuffs.md` 记录的游戏数值也与 PoB2 的 5% × 10 层不同，实现前需要先核实）。
+  - “Minions have 10% chance to inflict Withered on Hit” 在没有召唤物的构筑上，PoB2 把这条词条当作玩家自己能施加 Withered，并按配置的层数给敌人加混沌承伤；PoBR 把它交给召唤物，角色自己的技能、Presence 或已有的召唤物能施加 Withered 时才计入配置的层数（`calc/withered.rs`），所以这类构筑会比参考值低。每层 5%、最多 10 层两边一致。
   - 位于触发类 meta 宝石里的技能，PoB2 的 `Speed` 仍是自身施放速率，PoBR 的 DPS 沿用同一口径；`skill_trigger_rate` 目前只用于展示。是否改用触发速率需要游戏内实测依据。
 
 现状清单（`data/<版本>/` 各文件的 `_meta.generator` 可核对）：

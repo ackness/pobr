@@ -44,11 +44,43 @@ impl BuffSkill {
 /// Witchtoad every {0} seconds" (Doedre's Undoing).
 const WITCHTOAD_SPAWN_INTERVAL_MS: &str = "doedre_cursed_ground_toad_spawn_interval_ms";
 
+/// The stats that say a skill inflicts Withered: on the skill itself, or on a
+/// support for the skills it supports. "Minions have {0}% chance to inflict
+/// Withered on Hit" is not among them: it is about the minions.
+const INFLICTS_WITHERED: [&str; 9] = [
+    // "{0}% chance to inflict Withered on Hit" and its fixed-duration forms.
+    "withered_on_hit_chance_%",
+    "withered_on_hit_for_2_seconds_%_chance",
+    "withered_on_chaos_damage_hit_chance_%",
+    "wither_on_hit_chance_rollovercapped",
+    // Withering Touch: a chance per 100% of the target's Ailment Threshold
+    // dealt as Chaos damage.
+    "withered_on_hit_chance_%_for_every_100%_target_ailment_threshold_dealt_as_chaos_damage",
+    // "Inflicts {0} Withered on Hit" (Chaos Bolt granted by a weapon).
+    "apply_x_wither_on_hit",
+    "archon_of_chayula_withered_on_hit_for_4_seconds_%_chance",
+    // Withering Presence: "Every {0} seconds, inflicts Withered on enemies
+    // in your Presence".
+    "skill_withering_presence_frequency_ms",
+    // Wither, His Foul Emergence: the duration of the Withered they inflict.
+    "active_skill_withered_base_duration_ms",
+];
+
+/// Whether the stat `stat`, on a skill or on a support that applies to it,
+/// says the skill inflicts Withered. A character that uses such a skill can
+/// have Withered on the enemy, whichever skill is being calculated: the
+/// build is searched for one (`skill_env::skill_inflicting_withered`), and
+/// the stat grants nothing to the skill itself.
+pub fn inflicts_withered(stat: &str) -> bool {
+    INFLICTS_WITHERED.contains(&stat)
+}
+
 /// The modifiers the stat `stat` of a skill, or of a support that applies to
 /// it, grants that skill at `value`, when this table defines the stat. `None`
 /// leaves the stat to the extracted stat map.
 pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
     match stat {
+        stat if inflicts_withered(stat) => Some(Vec::new()),
         // Efficiency: "Supported Skills have {0}% more Cost" / "less Cost",
         // of whatever the skill costs.
         "support_inspiration_cost_+%_final" => {
@@ -105,6 +137,8 @@ pub fn granted_skill_modifiers(stat: &str, value: f64, stats: &[SkillDamageStat]
 /// stat map.
 pub fn player_buff_modifiers(stat: &str, value: f64, skill: BuffSkill) -> Option<Vec<Modifier>> {
     match stat {
+        // Not a buff on the character (see `inflicts_withered`).
+        stat if inflicts_withered(stat) => Some(Vec::new()),
         // Cast on Critical, from its quality on a character whose gem quality
         // grants the additional effect: "Buff grants {0}% increased Critical
         // Hit chance".

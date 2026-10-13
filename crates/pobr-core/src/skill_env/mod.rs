@@ -19,8 +19,9 @@ mod triggers;
 mod weapon;
 
 pub use buff_specs::{
-    BuffEnv, buff_skill_specs, exposure_support_modifiers, group_judgement, support_buff_specs,
-    support_modifiers, support_modifiers_with_limits, warcry_skill_specs,
+    BuffEnv, buff_skill_specs, exposure_support_modifiers, group_judgement,
+    skill_inflicting_withered, support_buff_specs, support_modifiers,
+    support_modifiers_with_limits, warcry_skill_specs,
 };
 pub use buffs::{
     ReservationDb, ReservationLookup, buff_skill_name, herald_skill_names,

@@ -2896,6 +2896,51 @@
         "Attacks using your Weapons have Added Physical Damage equal to 25% of the Accuracy Rating on the Weapon"
       ],
       "source_note": "Game text of the Amazon passive Penetrate. Each weapon adds to its own attacks: the Accuracy Rating on a weapon is the total of that item's own '+N to Accuracy Rating' lines (AccuracyOn<slot>, set by pobr-build inject_build_multipliers), and the added damage applies in that hand's pass (MainHandAttack / OffHandAttack). The same amount is added to minimum and maximum. PoB2 models it the same way; used only as a cross-check."
+    },
+    {
+      "id": "minions_inflict_withered_on_hit",
+      "pattern": "minions have (\\d+)% chance to inflict withered on hit",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:CanWither",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "withered",
+      "examples": [
+        "Minions have 10% chance to inflict Withered on Hit"
+      ],
+      "source_note": "Game text of the passive Wither Away's neighbours. The chance is the minions': a character without minions cannot inflict Withered with it, so the flag goes to the minions (read by calc::withered::apply_withered from each minion). PoB2 gives the flag to the player, which applies the configured Withered stacks to a character with no minions; PoBR differs on purpose."
+    },
+    {
+      "id": "spells_inflict_withered_on_hit",
+      "pattern": "spells have a (\\d+)% chance to inflict withered for (\\d+) seconds on hit",
+      "mods": [
+        {
+          "name": "Condition:CanWither",
+          "type": "FLAG",
+          "value": true,
+          "flags": [
+            "Spell"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "withered",
+      "examples": [
+        "Spells have a 25% chance to inflict Withered for 4 seconds on Hit"
+      ],
+      "source_note": "Game text of The Wicked Quill. Only the character's spells inflict the Withered, so the flag carries the Spell flag and is read under the calculated skill's flags by calc::withered::apply_withered. The chance and the duration say how fast stacks build, which the stated stack count (config) stands for."
     }
   ]
 }

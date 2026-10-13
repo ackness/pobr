@@ -873,6 +873,17 @@ pub(super) fn inject_self_buff_exposure(
         data,
         main_skill_group,
     ));
+    // 4c''. A skill that inflicts Withered lets the character have it on the
+    //      enemy, whichever skill is being calculated.
+    if let Some(skill_id) = pobr_core::skill_env::skill_inflicting_withered(build, data) {
+        let origin = ModifierSource::new(SourceId::new(
+            SourceKind::SkillGem,
+            format!("skill.{skill_id}.inflicts_withered"),
+        ));
+        session.add_modifiers(vec![
+            Modifier::flag(pobr_core::calc::withered::CAN_WITHER).with_origin(origin),
+        ]);
+    }
 }
 
 /// Reads the complete source database before actor snapshots and condition bridging.

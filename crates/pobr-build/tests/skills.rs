@@ -41,6 +41,8 @@ mod support_gem_count;
 mod support_granted_skills;
 #[path = "skills/weapon_accuracy_damage.rs"]
 mod weapon_accuracy_damage;
+#[path = "skills/withered.rs"]
+mod withered;
 
 #[path = "skills/passive_jewels.rs"]
 mod passive_jewels;

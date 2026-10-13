@@ -46039,9 +46039,15 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Condition:CanWither",
-          "type": "Flag",
-          "value": true
+          "name": "MinionModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "Condition:CanWither",
+              "type": "Flag",
+              "value": true
+            }
+          ]
         }
       ]
     },

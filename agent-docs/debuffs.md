@@ -136,13 +136,13 @@ enemyDB:NewMod(element.."Resist", "BASE", -magnitude, source)
 
 凋萎是一种**可叠加层数、增加目标受到的混沌伤害**的减益。
 
-- 每层 **+6% 受到的混沌伤害 (increased Chaos Damage taken)**，**最多 15 层**（游戏当前值，PoE2DB / PoE Wiki[^poe2db-wither][^poewiki-withered]）。
+- 每层 **+5% 受到的混沌伤害 (increased Chaos Damage taken)**，**最多 10 层**（PoE2 的减益定义：“Withered applies 5% increased Chaos Damage taken, and can be inflicted up to 10 times”，PoE2DB 镜像的游戏数据，`MaxStacks = 10`[^poe2db-wither]）。本文此前写的 6% / 15 层是 PoE1 的数值[^poewiki-withered]，2026-10-13 核对后更正。
 - 每层**独立计时**（基础 2 秒），施加新层**不刷新**旧层——因此实战层数受刷新频率限制。
-- 由于每层是独立的 `INC` 修饰，`increased Effect of Withered` 只在约 16.67% 的倍数处跨越档位（向上取整）：0%→6%、17%→7%、34%→8%……每档 +1%。
+- 每层的数值是整数。`Withered Magnitude`（`withered_magnitude_+%`）按 `floor(5 × (1 + 加成))` 生效：20% → 每层 6%，10% 仍是每层 5%。
 - **Wither 技能**本身同时施加 **Hinder（移速降低）** 和 Withered 层；二者是不同减益。
 - 凋萎也可施加在**玩家自己**身上（PoB2 `Condition:CanBeWithered`，`Multiplier:WitheredStackCountSelf`）。
 
-> **PoB2 建模与游戏值的偏差（核对注意）**：PoB2 `ConfigOptions.lua` 当前把凋萎建模为 **5% increased Chaos Damage taken、上限 10 层**（`CalcPerform.lua`：`enemyDB:NewMod("ChaosDamageTaken", "INC", effect, "Withered", { type="Multiplier", var="WitheredStack", limit=10 })`，config tooltip 写 "5% ... up to 10 stacks"），与游戏的 6%/15 层存在差异。pobr 实现时以**游戏一手数据 (6%/15 层)** 为准，并记录 PoB2 偏差以便对账。
+> **与 PoB2 的对照**：PoB2 同样按 5% / 上限 10 层建模（`CalcPerform.lua`，`Multiplier:WitheredStack` limit 10），数值一致。差异在“谁能施加”：PoB2 把 “Minions have 10% chance to inflict Withered on Hit” 当成玩家自己的 `Condition:CanWither`；PoBR 把它交给召唤物（见 `crates/pobr-core/src/calc/withered.rs`）。
 
 **PoB2 旗标**：`Multiplier:WitheredStack`（limit 10）、`Condition:CanWither` / `Condition:CanBeWithered`、`Multiplier:WitheredStackCount(Self)`、`ChaosDamageTaken`。
 
@@ -214,7 +214,7 @@ enemyDB:ReplaceMod("Armour", "OVERRIDE", -enemyDB:Sum("BASE", {source="Config"},
 
 - **0.3.0**：诅咒对高稀有度怪物效果降低（魔法 15% / 稀有 30% / 唯一·Boss 50% less）。Despair 大幅加强为 -35~-49% 混沌抗（原 -20~-24%）；Enfeeble 改为统一 21~29% less damage（不再区分唯一/非唯一）[^poe2-030-patch]。
 - **0.5.0**：未发现针对 curses/exposure/wither/armour-break 的专门数值改动（patch notes 主要改护甲数值缩放与重眩晕衰减，见 armour.md / stun.md）[^maxroll-050-patchnotes]。如后续 PoB2 数据更新，以一手数据校正本节。
-- **PoB2 vs 游戏的 Wither 偏差**见上文凋萎节（5%/10 vs 6%/15）。
+- **Wither 的数值**：PoE2 为 5% / 10 层，与 PoB2 一致（见上文凋萎节）。
 
 ---
 
@@ -228,7 +228,7 @@ pobr 当前 `Env` 已是 player/enemy 双 `Actor` 结构，减益天然落在 **
 4. **`Condition:` 标志驱动玩家词条**：`Maimed`/`Blinded`/`Cursed`/`ArmourFullyBroken` 等作为敌方 `CalcConfig` 条件，让玩家侧 "against X enemies" 修饰通过 `matches(cfg)` 生效（pobr 已有 condition/flags 机制，扩充 condition 名集即可）。
 5. **Boss 场景的 `MORE -50`**：实现 Boss 预设时，对 `CurseEffectOnSelf` / `ExposureEffectOnSelf` 注入 `More -50`，否则诅咒/曝光收益偏高 1 倍。
 6. **破甲**：建模为对敌方 `Armour` 的 `Override`（0 = 完全破甲；负值 = 破到负数上限），与 `armour.md` 的减伤公式衔接；条件 `ArmourFullyBroken` / `CanArmourBreakBelowZero`。
-7. **凋萎**：敌方 `ChaosDamageTaken Inc` × `Multiplier:WitheredStack`，**采用游戏值 6%/上限15**，并在测试 fixture 中标注与 PoB2(5%/10) 的差异以便回归对账。
+7. **凋萎**：敌方 `ChaosDamageTaken Inc` = 每层数值 × 层数（上限 10），只在角色能施加凋萎时计入；实现见 `calc/withered.rs`。
 8. **归因 (TraceGraph)**：每个减益来源（诅咒宝石/曝光技能/破甲攻击/Maim 词条）都应回溯到 `SourceId`——这正是 pobr 相对 PoB 的增量价值（"这 12% 增伤来自 Despair + 曝光各贡献多少"）。
 
 **核对过的关键 PoB2 变量/旗标**：`EnemyCurseLimit`(BASE 1)、`EnemyMarkLimit`(BASE 1)、`CurseEffect`、`CurseEffectOnSelf`、`CurseEffectAgainstPlayers`、`MaxDoom`/`HexDoomStack`/`DoomEffect`、`Hexproof`/`CursesIgnoreHexproof`、`CursesIgnoreCurseLimit`、`<Element>Exposure`/`<Element>ExposureEffect`/`ExposureEffectOnSelf`/`ExposureMin`/`InflictExposure`、`Multiplier:WitheredStack`(limit 10)/`ChaosDamageTaken`、`ArmourBreak`/`Condition:ArmourFullyBroken`/`CanArmourBreakBelowZero`、`Condition:Maimed`+`MovementSpeed INC -30`+`Evasion INC -15`、`Blind`/`BlindEffect`、`Condition:Pinned`+`CannotEvade`+`Immobilised`、`Condition:Dazed`、`Condition:Intimidated`+`DamageTaken INC 10`+`Damage INC -10`、`Condition:Unnerved`+`DamageTaken INC 10`(Spell)、`PhysicalDamageReduction BASE -15`(Crushed)、`Damage MORE -10`(Debilitated)、`SelfCritChance`(Critical Weakness)。
@@ -242,8 +242,8 @@ pobr 当前 `Env` 已是 player/enemy 双 `Actor` 结构，减益天然落在 **
 [^poe2db-conductivity]: PoE2DB — Conductivity. https://poe2db.tw/Conductivity
 [^poe2db-despair]: PoE2DB — Despair. https://poe2db.tw/us/Despair
 [^poe2-030-patch]: Path of Exile — Early Access Patch Notes 0.3.0 (The Third Edict)（诅咒对高稀有度怪物 less effect；Despair/Enfeeble 重做）. https://www.pathofexile.com/forum/view-thread/3826682
-[^poe2db-wither]: PoE2DB — Wither / Withered（6% increased Chaos Damage taken, up to 15）. https://poe2db.tw/us/Wither
-[^poewiki-withered]: PoE Wiki — Withered（独立计时、Effect 档位 16.67% 倍数）. https://www.poewiki.net/wiki/Withered
+[^poe2db-wither]: PoE2DB — Withered（5% increased Chaos Damage taken, up to 10 times；MaxStacks 10）. https://poe2db.tw/us/Withered
+[^poewiki-withered]: PoE Wiki — Withered（PoE1：6% / 15 层，独立计时）. https://www.poewiki.net/wiki/Withered
 [^poe2wiki-blind]: PoE2 Wiki — Blind（20% less Accuracy & Evasion, 4s）. https://www.poe2wiki.net/wiki/Blind
 [^maxroll-050-patchnotes]: Maxroll — 0.5.0 Patch Notes – Return of the Ancients. https://maxroll.gg/poe2/news/0-5-0-patch-notes-return-of-the-ancients
 [^pob2-configoptions]: PathOfBuilding-PoE2 — `src/Modules/ConfigOptions.lua`（敌方减益 config：Maim/Blind/Pin/Daze/Intimidate/Unnerve/Crush/Exposure/ArmourBreak/Wither/Curse 各项数值与旗标）. https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/blob/dev/src/Modules/ConfigOptions.lua

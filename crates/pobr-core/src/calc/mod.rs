@@ -36,6 +36,7 @@ pub mod survivability;
 pub mod taken;
 pub mod trigger;
 pub mod warcry;
+pub mod withered;
 
 pub use actor::{Actor, ActorBaseStats};
 pub use ailment::{

@@ -187,6 +187,14 @@ pub const BASE_MAXIMUM_RAGE: f64 = 30.0;
 /// hundredth of a percent.
 pub const ATTACK_DAMAGE_MORE_PER_RAGE: f64 = 1.0;
 
+/// Percent increased Chaos Damage taken per stack of Withered, and the most
+/// stacks a target holds: the game's definition of the debuff ("Withered
+/// applies 5% increased Chaos Damage taken, and can be inflicted up to 10
+/// times"). The committed data carries no buff definitions, so the two
+/// numbers are stated here.
+pub const WITHERED_CHAOS_DAMAGE_TAKEN_PER_STACK: f64 = 5.0;
+pub const WITHERED_MAXIMUM_STACKS: f64 = 10.0;
+
 /// Global DoT DPS cap (`(2^31 - 1) / 60`, roughly 3.579×10^7).
 ///
 /// Source: PoB2 `src/Modules/Data.lua`:

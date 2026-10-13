@@ -522,6 +522,60 @@ fn stat_on_skill_and_supports(
     own + supports
 }
 
+/// The first enabled active skill of the build that inflicts Withered, by
+/// its own stats or by those of a support that applies to it
+/// ([`skill_stats::inflicts_withered`]). Any of the character's skills can
+/// put Withered on the enemy the calculated skill then hits.
+pub fn skill_inflicting_withered(
+    groups: &dyn SocketGroupView,
+    data: &dyn BuffEnv,
+) -> Option<String> {
+    let inflicts = |effect_id: &str, level: u32, quality: u32, set_index: Option<u32>| {
+        data.effect_stats(effect_id, level, quality, set_index)
+            .all()
+            .any(|ds| ds.value != 0.0 && skill_stats::inflicts_withered(&ds.stat))
+    };
+    let mut found = None;
+    groups.for_each_enabled_group(&mut |group| {
+        if found.is_some() {
+            return;
+        }
+        for gem in group.gems {
+            let effect_ids = std::iter::once(gem.skill_id.as_str()).chain(
+                data.additional_effects(&gem.skill_id)
+                    .iter()
+                    .map(String::as_str),
+            );
+            for skill_id in effect_ids {
+                if data.effect(skill_id).is_none_or(|effect| effect.is_support) {
+                    continue;
+                }
+                let by_support = || {
+                    group_judgement(&group, data, skill_id)
+                        .compatible
+                        .iter()
+                        .any(|sup| {
+                            let host = &group.gems[sup.gem_index];
+                            inflicts(
+                                &sup.effect_id,
+                                host.gem_level,
+                                host.quality,
+                                support_stat_set_index(sup, group.gems),
+                            )
+                        })
+                };
+                if inflicts(skill_id, gem.gem_level, gem.quality, gem.stat_set_index)
+                    || by_support()
+                {
+                    found = Some(skill_id.to_string());
+                    return;
+                }
+            }
+        }
+    });
+    found
+}
+
 /// A curse skill's **skill-local** CurseEffect multiplier-zone segment (matching vendor
 /// CalcPerform.lua:2423's `skillModList:Sum("INC", skillCfg, "CurseEffect")` + :2427's
 /// `More(...)`): the curse gem's own effect stats (the quality segment carries
