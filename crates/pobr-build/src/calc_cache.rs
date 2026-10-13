@@ -402,9 +402,10 @@ mod tests {
             },
         );
         let mut jewel = original.clone();
-        jewel
-            .jewels
-            .push(item.items[&pobr_data::item::EquipmentSlot::Helmet].clone());
+        jewel.jewels.push((
+            crate::build::JewelSocket::Tree,
+            item.items[&pobr_data::item::EquipmentSlot::Helmet].clone(),
+        ));
         let mut config = original.clone();
         config
             .config

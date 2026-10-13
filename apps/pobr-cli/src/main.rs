@@ -204,6 +204,12 @@ fn run(cli: Cli) -> Result<String, Box<dyn std::error::Error>> {
                     diag.unknown_nodes,
                 );
             }
+            for item in &report.missing_items {
+                eprintln!(
+                    "warning: could not read the item in {:?} ({}): {}; the result is calculated without it",
+                    item.used_in, item.name, item.reason,
+                );
+            }
             Ok(serde_json::to_string_pretty(&report)?)
         }
         Command::ParseMod(args) => {

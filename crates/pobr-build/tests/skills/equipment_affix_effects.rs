@@ -111,7 +111,10 @@ Implicits: 0
     };
     let baseline = life("1234", 0, "", "future_tree");
     let mut direct = pobr_build::parse_build(&xml("1234", 0, "", "future_tree")).unwrap();
-    direct.jewels.push(item("Ruby", &["+100 to maximum Life"]));
+    direct.jewels.push((
+        pobr_build::build::JewelSocket::Tree,
+        item("Ruby", &["+100 to maximum Life"]),
+    ));
     let life_scale = (run(&direct, &data).output().life - baseline) / 100.0;
     assert!(life_scale > 0.0);
     close(
@@ -388,6 +391,74 @@ fn every_stun_threshold_roll_uses_final_energy_shield() {
             close(result.output().life, base.output().life);
             close(result.output().dps, base.output().dps);
         }
+    }
+}
+
+/// The Adorned names one jewel rarity. It scales the corrupted jewels of that
+/// rarity and no others; the rare form used to be two unsupported lines.
+#[test]
+fn the_adorned_scales_corrupted_jewels_of_the_rarity_it_names() {
+    let data = data();
+    let baseline = build("SparkPlayer");
+    let life = |jewels: Vec<Item>| {
+        let result = run(&baseline.clone().with_jewels(jewels), &data);
+        assert!(
+            result.unsupported_modifier_texts().is_empty(),
+            "{:?}",
+            result.unsupported_modifier_texts()
+        );
+        result.output().life
+    };
+    let jewel = |rarity: ItemRarity, corrupted: bool| {
+        let mut jewel = item("Sapphire", &["+100 to maximum Life"]);
+        jewel.rarity = rarity;
+        jewel.corrupted = corrupted;
+        jewel
+    };
+    let adorned = |named: &str| {
+        let mut adorned = item(
+            "Diamond",
+            &[
+                "50% increased Effect of Jewel Socket Passive Skills",
+                &format!("containing Corrupted {named} Jewels"),
+            ],
+        );
+        adorned.rarity = ItemRarity::Unique;
+        adorned
+    };
+
+    let without = life(vec![]);
+    for (named, scaled, other) in [
+        ("Rare", ItemRarity::Rare, ItemRarity::Magic),
+        ("Magic", ItemRarity::Magic, ItemRarity::Rare),
+    ] {
+        let plain = life(vec![jewel(scaled, true)]) - without;
+        assert!(plain > 0.0);
+        close(
+            life(vec![jewel(scaled, true), adorned(named)]) - without,
+            plain * 1.5,
+        );
+        // Not corrupted, or the other rarity: unchanged.
+        close(
+            life(vec![jewel(scaled, false), adorned(named)]) - without,
+            plain,
+        );
+        close(
+            life(vec![jewel(other, true), adorned(named)]) - without,
+            plain,
+        );
+    }
+
+    // Only the tree's own sockets are "Jewel Socket Passive Skills": a jewel
+    // in a socket something grants, or in a socket on equipment, is not scaled.
+    let plain = life(vec![jewel(ItemRarity::Rare, true)]) - without;
+    for socket in [
+        pobr_build::build::JewelSocket::Granted,
+        pobr_build::build::JewelSocket::Equipment,
+    ] {
+        let mut build = baseline.clone().with_jewels(vec![adorned("Rare")]);
+        build.jewels.push((socket, jewel(ItemRarity::Rare, true)));
+        close(run(&build, &data).output().life - without, plain);
     }
 }
 

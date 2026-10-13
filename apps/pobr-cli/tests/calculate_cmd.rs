@@ -273,6 +273,86 @@ fn calculate_build_summarizes_and_computes_from_code() {
     );
 }
 
+/// A build whose gloves cannot be read is still calculated, and says so.
+#[test]
+fn calculate_build_reports_an_item_it_could_not_read() {
+    let request = |code: String| CalculateBuildRequest {
+        code,
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    };
+    let intact = calculate_build(&request(DEADEYE_CODE.to_string())).unwrap();
+    assert!(intact.missing_items.is_empty());
+
+    // Item 9 is in the Gloves slot of this code.
+    let xml = decode_code(DEADEYE_CODE).unwrap();
+    let gloves = xml.find("<Item id=\"9\">").expect("item 9");
+    let broken = format!(
+        "{}{}",
+        &xml[..gloves],
+        xml[gloves..].replacen("Rarity: ", "Rarity: UNREADABLE ", 1)
+    );
+    let report = calculate_build(&request(encode_code(&broken).unwrap())).unwrap();
+
+    assert_eq!(report.missing_items.len(), 1);
+    let missing = &report.missing_items[0];
+    assert_eq!(missing.item_id, 9);
+    assert_eq!(missing.used_in, ["gloves"]);
+    assert!(missing.reason.contains("rarity"), "{}", missing.reason);
+    assert!(!missing.name.is_empty());
+    assert_eq!(
+        report.build.equipped_item_count + 1,
+        intact.build.equipped_item_count
+    );
+}
+
+/// The code's own exported stats are compared only under the conditions they
+/// were exported with.
+#[test]
+fn calculate_build_compares_with_the_reference_the_code_carries() {
+    let exported = CalculateBuildRequest {
+        code: DEADEYE_CODE.to_string(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    };
+    let reference = calculate_build(&exported)
+        .unwrap()
+        .reference
+        .expect("the code carries PlayerStat values");
+    assert!(reference.compared > 20, "{}", reference.compared);
+    assert_eq!(
+        reference.agreeing + reference.differing.len(),
+        reference.compared
+    );
+    assert!(
+        reference
+            .differing
+            .iter()
+            .all(|row| row.pobr != row.reference)
+    );
+
+    for other in [
+        CalculateBuildRequest {
+            mode_effective: false,
+            ..exported.clone()
+        },
+        CalculateBuildRequest {
+            enemy_level: 80,
+            ..exported.clone()
+        },
+        CalculateBuildRequest {
+            enemy_tier: EnemyTier::Boss,
+            ..exported.clone()
+        },
+    ] {
+        assert!(calculate_build(&other).unwrap().reference.is_none());
+    }
+}
+
 #[test]
 fn calculate_build_panel_vs_effective_hit_chance() {
     let base = CalculateBuildRequest {

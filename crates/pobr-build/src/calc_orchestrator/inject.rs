@@ -52,9 +52,7 @@ use super::skill::resolve::config_enemy_level;
 use super::skill::triggers::trigger_modifiers;
 use super::sources::SourceWriter;
 use super::stat_map::exposure_support_modifiers;
-use super::{
-    DataOrchestratorOptions, StageCtx, adorned_corrupted_magic_jewel_inc, scale_trunc_2dp,
-};
+use super::{DataOrchestratorOptions, StageCtx, scale_trunc_2dp};
 use crate::build::{Build, SocketGroup};
 use crate::build_data::BuildData;
 use crate::error::BuildError;
@@ -289,8 +287,8 @@ pub(super) fn inject_integrated_efficiency(
         .filter_map(|(flag, colour, names)| {
             let found = session
                 .mod_db()
-                .iter_mods()
-                .find(|m| m.name.as_str() == *flag && m.mod_type == ModType::Flag)?;
+                .named(flag)
+                .find(|m| m.mod_type == ModType::Flag)?;
             Some((
                 found.value.as_number()?,
                 found.source.clone(),
@@ -655,12 +653,14 @@ pub(super) fn inject_items(
     // additional scaled copy appended (matching PoB2 CalcPerform.lua:1326-1370's
     // `EffectOfBonusesFrom<Slot>` ScaleAddMod semantics; only takes effect when scale>0).
     let bonus_scales = slot_bonus_effect_scales(build, data);
+    let granted_skill_texts = super::granted_skills::resolved_granted_skill_texts(build, data);
     for (slot, item) in build.equipped_items() {
         // Kalandra's Touch's "Reflects opposite Ring": mirrors every mod of the ring in
         // the opposite slot (matching vendor CalcSetup.lua:1221-1243), while the source
         // is still attributed to the slot Kalandra's Touch is in.
         let item = kalandra_reflected_ring(build, slot, item).unwrap_or(item);
-        let mut filtered = filter_item_parseable(item, engine_ctx(data), session, &[]);
+        let mut filtered =
+            filter_item_parseable(item, engine_ctx(data), session, &granted_skill_texts);
         // Main-hand weapon: strips local physical damage boost/added (already counted
         // into weapon_contribution as an independent weapon-source multiplier zone ×
         // baseMultiplier); leaving it in the global set would double-count and
@@ -888,7 +888,8 @@ pub(super) fn stage_inject_jewels(
     session: &mut SourceWriter,
     ctx: &StageCtx<'_>,
 ) -> Result<(), BuildError> {
-    let adorned_inc = adorned_corrupted_magic_jewel_inc(&ctx.build.jewels);
+    let jewel_effect =
+        pobr_core::skill_env::CorruptedJewelEffect::from_jewels(ctx.build.jewel_items());
     // Radius directives are consumed by geometry, not the global mod parser.
     // Exempt only validated directives with available socket geometry; unknown
     // nested grants must remain visible to the trade optimizer's safety gate.
@@ -898,19 +899,14 @@ pub(super) fn stage_inject_jewels(
     let mut radius_texts = Vec::new();
     let tree_state = crate::jewel_tree::passive_jewel_state(ctx.build, ctx.data);
     radius_texts.extend(tree_state.handled_modifiers);
+    // A transformed node's own lines are reported with every other allocated
+    // node's, in `stage_inject_passives`.
     for node in &ctx.build.tree.allocated_nodes {
         if tree_state.unresolved.contains(&node.0) {
             session.record_unsupported_modifier_text(format!(
                 "Tree:{}: missing timeless jewel seed data",
                 node.0
             ));
-        }
-        if let Some(change) = tree_state.nodes.get(&node.0) {
-            for text in &change.stats {
-                if !gate_parses(engine_ctx(ctx.data), text) {
-                    session.record_unsupported_modifier_text(format!("Tree:{}: {}", node.0, text));
-                }
-            }
         }
     }
     for radius in &ctx.build.radius_jewels {
@@ -944,7 +940,7 @@ pub(super) fn stage_inject_jewels(
             radius_texts.push(format!("Upgrades Radius to {label}"));
         }
     }
-    for jewel in &ctx.build.jewels {
+    for (socket, jewel) in &ctx.build.jewels {
         let filtered = filter_item_parseable(jewel, engine_ctx(ctx.data), session, &radius_texts);
         let texts: Vec<&str> = filtered
             .implicit_texts
@@ -953,15 +949,16 @@ pub(super) fn stage_inject_jewels(
             .chain(&filtered.enchant_texts)
             .map(String::as_str)
             .collect();
-        // The Adorned (matching vendor CalcSetup.lua:944-948 + :1342-1347): every mod
-        // on a **corrupted magic** jewel in a tree socket is scaled by `1 + N/100` on
-        // injection (ScaleAddList semantics, value = trunc(round(v×scale, 2)),
-        // ModStore.lua:70-79).
-        // ponytail: doesn't model vendor's sinister/containJewelSocket slot exemptions
-        // or the unscalable marker (no corpus source for them), wire up when the parity gate flags it.
-        if let Some(inc) = adorned_inc
-            && jewel.rarity == pobr_data::item::ItemRarity::Magic
-            && jewel.corrupted
+        // The Adorned (matching vendor CalcSetup.lua:120-126 + :1475): every mod on a
+        // corrupted jewel of the rarity it names (magic or rare) in one of the tree's
+        // own sockets is scaled by `1 + N/100` on injection (ScaleAddList semantics,
+        // value = trunc(round(v×scale, 2)), ModStore.lua:70-79). Granted sockets
+        // (vendor's sinister / containJewelSocket) and equipment sockets are not
+        // "Jewel Socket Passive Skills".
+        // ponytail: doesn't model vendor's unscalable marker (no corpus source for it),
+        // wire up when the parity gate flags it.
+        if *socket == crate::build::JewelSocket::Tree
+            && let Some(inc) = jewel_effect.increase_for(jewel)
         {
             let scale = 1.0 + inc / 100.0;
             let parse_ctx = engine_ctx(ctx.data);
@@ -1064,12 +1061,19 @@ pub(super) fn stage_inject_passives(
 ) -> Result<(), BuildError> {
     let (build, data) = (ctx.build, ctx.data);
     // 3. Passive tree: NodeId → node mod text (node-level attribution).
-    let mut passive_nodes = resolve_passive_nodes(build, data);
+    let mut unsupported = Vec::new();
+    let mut passive_nodes = resolve_passive_nodes(build, data, &mut unsupported);
     // 3a'. Anointed notables (vendor `Allocates <name>` enchant → `GrantedPassive`
     //      LIST, ModParser.lua:5809 → CalcSetup.lua:1322-1331 merges notableMap
     //      into allocNodes): matched by name against Notable nodes and appended as
     //      an AllocatedNode (same node-level attribution).
-    append_granted_passives(build, data, &mut passive_nodes);
+    append_granted_passives(build, data, &mut passive_nodes, &mut unsupported);
+    // By node, not by the order the build lists its nodes in: the same tree
+    // gives the same diagnostics.
+    unsupported.sort_by_key(|(node, _)| *node);
+    for (node, line) in unsupported {
+        session.record_unsupported_modifier_text(format!("Tree:{node}: {line}"));
+    }
     let passive_nodes = passive_nodes;
     if !passive_nodes.is_empty() {
         session

@@ -135,11 +135,10 @@ pub fn parse_item_text(raw: &str) -> Result<Item, ItemTextError> {
                 implicit_count = count;
             } else if accumulate_rolled_defence(line, &mut rolled_defence) {
                 // A rolled defence value line: recorded into rolled_defence, not counted as a modifier.
+            } else if let Some(state) = item_state(line) {
+                corrupted |= state.corrupted;
             } else if is_xml_metadata_line(line) {
-                // Metadata lines aren't counted as modifiers; a `Corrupted` marker line sets the corrupted state.
-                if line.trim() == "Corrupted" {
-                    corrupted = true;
-                }
+                // Metadata lines aren't counted as modifiers.
             } else {
                 mod_lines.push(line);
             }
@@ -231,7 +230,11 @@ pub fn parse_pob_xml_item(raw: &str) -> Result<Item, ItemTextError> {
     };
     let mut header: Vec<&str> = vec![lines[0]];
     let mut idx = 1;
-    while idx < lines.len() && header.len() <= max_names && !is_xml_metadata_line(lines[idx]) {
+    while idx < lines.len()
+        && header.len() <= max_names
+        && !is_xml_metadata_line(lines[idx])
+        && item_state(lines[idx]).is_none()
+    {
         header.push(lines[idx]);
         idx += 1;
     }
@@ -255,11 +258,10 @@ pub fn parse_pob_xml_item(raw: &str) -> Result<Item, ItemTextError> {
             implicit_count = count;
         } else if accumulate_rolled_defence(line, &mut rolled_defence) {
             // A rolled defence value line: recorded into rolled_defence, not counted as a modifier.
+        } else if let Some(state) = item_state(line) {
+            corrupted |= state.corrupted;
         } else if is_xml_metadata_line(line) {
-            // Metadata lines aren't counted as modifiers; a `Corrupted` marker line sets the corrupted state.
-            if line == "Corrupted" {
-                corrupted = true;
-            }
+            // Metadata lines aren't counted as modifiers.
         } else {
             mod_lines.push(line);
         }
@@ -358,7 +360,9 @@ fn parse_rarity(header: &[&str]) -> Result<ItemRarity, ItemTextError> {
         "normal" => Ok(ItemRarity::Normal),
         "magic" => Ok(ItemRarity::Magic),
         "rare" => Ok(ItemRarity::Rare),
-        "unique" => Ok(ItemRarity::Unique),
+        // PoB2 exports a foil unique as RELIC and treats it as a unique
+        // everywhere else (vendor Item.lua:446); only its colour differs.
+        "unique" | "relic" => Ok(ItemRarity::Unique),
         other => Err(ItemTextError::UnknownRarity(other.into())),
     }
 }
@@ -489,12 +493,28 @@ fn is_metadata_line(line: &str) -> bool {
         "Unique ID:",
         "Item ID:",
         "Note:",
-        "Corrupted",
-        "Mirrored",
     ];
     METADATA_PREFIXES
         .iter()
         .any(|prefix| line.starts_with(prefix))
+}
+
+/// What an item state line records for the calculation.
+struct ItemState {
+    corrupted: bool,
+}
+
+/// A line recording the item's state rather than a modifier (vendor
+/// Item.lua:683-692). The whole line must match: modifiers such as
+/// "Corrupted Blood cannot be inflicted on you" begin with the same word.
+fn item_state(line: &str) -> Option<ItemState> {
+    match line.trim() {
+        "Corrupted" | "Twice Corrupted" => Some(ItemState { corrupted: true }),
+        "Mirrored" | "Sanctified" | "Desecrated Prefix" | "Desecrated Suffix" => {
+            Some(ItemState { corrupted: false })
+        }
+        _ => None,
+    }
 }
 
 /// Strips meta-annotations from PoB-exported modifier lines, leaving clean text that `mod_parser` can parse.

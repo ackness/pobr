@@ -2749,6 +2749,38 @@ fn structured_errors_and_item_degrade() {
     assert!(life > 50.0, "good ring still applies: Life={life}");
 }
 
+/// A `{ pob_code }` request reports an item its code uses but the importer
+/// cannot read; it used to be calculated without that item and say nothing.
+#[test]
+fn pob_code_request_reports_an_item_the_code_lost() {
+    ensure_data();
+    let xml = pobr_build::decode_pob_code(&demo_code()).unwrap();
+    // Item 2 is in the Gloves slot of the demo code.
+    let gloves = xml.find("<Item id=\"2\">").expect("item 2");
+    let broken = format!(
+        "{}{}",
+        &xml[..gloves],
+        xml[gloves..].replacen("Rarity: ", "Rarity: UNREADABLE ", 1)
+    );
+    let code = pobr_build::encode_pob_code(&broken).unwrap();
+
+    let calculate = |request: Value| -> Value {
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap()
+    };
+    let issues = calculate(serde_json::json!({ "pob_code": code }))["item_errors"].clone();
+    assert_eq!(issues.as_array().unwrap().len(), 1, "{issues}");
+    assert_eq!(issues[0]["slot"], "gloves");
+    assert!(issues[0]["message"].as_str().unwrap().contains("rarity"));
+
+    // The request's own equipment replaces the code's, lost item included.
+    let replaced = calculate(serde_json::json!({ "pob_code": code, "items": [] }));
+    assert_eq!(replaced["item_errors"], serde_json::json!([]));
+
+    let intact = calculate(serde_json::json!({ "pob_code": demo_code() }));
+    assert_eq!(intact["item_errors"], serde_json::json!([]));
+}
+
 /// The entry-level response cache: a second call with the same request string hits the cache and the response is byte-identical.
 #[test]
 fn response_cache_hits_on_repeat_request() {

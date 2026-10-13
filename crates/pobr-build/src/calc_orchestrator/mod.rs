@@ -42,7 +42,7 @@ use std::borrow::Cow;
 use pobr_core::calc::{CalculationSession, MinimalInput, OutputTable};
 use pobr_core::rules::stat_map_engine::StatMapCatalog;
 use pobr_core::{CalcConfig, CharacterBase, Modifier};
-use pobr_data::item::{EquipmentSlot, Item};
+use pobr_data::item::EquipmentSlot;
 use pobr_data::modifier::{ModFlags, ModType};
 use pobr_data::monster::EnemyTier;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
@@ -69,6 +69,8 @@ mod prepare;
 use prepare::*;
 mod context;
 use context::CalculationContext;
+mod diagnosis;
+pub use diagnosis::{Diagnosis, MainSkillSummary, ModifierRef, UnmappedStat, diagnose};
 mod sources;
 use sources::SourceWriter;
 mod inject;
@@ -509,6 +511,9 @@ fn calculate_prepared_with_context(
     // All source writes are complete. Consuming the writer enables ModDb reads;
     // reservation must see equipment, passives, config, and extra modifier texts.
     let mut session = session.finish_sources();
+    if context.track_reads {
+        session.track_modifier_reads();
+    }
     inject_spirit_reservation(&mut session, build, data);
 
     // Core owns actor-derived values; build supplies starting attributes and equipment facts.
@@ -783,14 +788,6 @@ fn stage_cooldown_bypass(session: &mut SourceWriter, ctx: &StageCtx<'_>) {
                 .with_raw_text("skill bypasses cooldown (consumes charges on use)");
         session.add_modifiers(vec![Modifier::flag("CooldownBypass").with_origin(origin)]);
     }
-}
-
-/// The value of The Adorned's "N% increased Effect of Jewel Socket Passive Skills
-/// containing Corrupted Magic Jewels" among the jewel list (this mod wraps across two
-/// physical lines in the XML; matched after joining with a space; vendor parses it as
-/// `JewelData{corruptedMagicJewelIncEffect}`). Returns `None` when this jewel isn't present.
-fn adorned_corrupted_magic_jewel_inc(jewels: &[Item]) -> Option<f64> {
-    pobr_core::skill_env::adorned_corrupted_magic_jewel_inc(jewels)
 }
 
 /// Vendor's `ModStore:ScaleAddMod` numeric scaling semantics (ModStore.lua:70-79):

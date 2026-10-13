@@ -127,6 +127,32 @@ cmd_verify() {
   cmd_test "$@" && cmd_lint "$1" "$2"
 }
 
+# One build: what its import dropped, where the result differs from the
+# reference its code carries, and every input the calculation lost on the way.
+cmd_diagnose() {
+  if [[ $# -ne 1 || "$1" == -* ]]; then
+    echo "usage: mise run diagnose <build dir | code file | committed build name fragment>" >&2
+    return 2
+  fi
+  local target="$1"
+  # A relative path is the caller's; the test binary runs from its crate.
+  if [[ -e "$target" && "$target" != /* ]]; then target="$PWD/$target"; fi
+  POBR_DIAGNOSE="$target" cargo test -q -p pobr-build --test parity \
+    diagnose_build::diagnose_build -- --ignored --nocapture
+}
+
+# Every build of a corpus against the reference values its code carries.
+cmd_accuracy() {
+  if [[ $# -gt 1 || "${1:-}" == -* ]]; then
+    echo "usage: mise run accuracy [dir of */code.txt; default examples/wasm-benchmark/builds]" >&2
+    return 2
+  fi
+  local corpus="${1:-}"
+  if [[ -n "$corpus" && "$corpus" != /* ]]; then corpus="$PWD/$corpus"; fi
+  ${corpus:+env POBR_REFERENCE_BUILDS="$corpus"} cargo test -q -p pobr-build --test parity \
+    reference_report::reference_report -- --ignored --nocapture
+}
+
 cmd_timings() {
   select_targets "$@" || return $?
   say "Compile only; Cargo writes target/cargo-timings/cargo-timing.html"
@@ -179,6 +205,8 @@ PoBR development commands (mise tasks; without mise run this script with the sam
   mise run test core parser [filter]         Test one suite (or use 'lib')
   mise run lint build skills                fmt + targeted Clippy
   mise run timings build parity             Compile only, with HTML timings
+  mise run diagnose <build>                 One build: import losses, reference differences, dropped inputs
+  mise run accuracy [corpus dir]            Every build of a corpus against the reference its code carries
   mise run build [-p <crate>]               Build application CLI by default
   mise run smoke                            Representative environment checks
   mise run full                             Explicit full local Rust gate
@@ -294,6 +322,8 @@ case "${1:-}" in
   lint)      shift; cmd_lint "$@" ;;
   verify)    shift; cmd_verify "$@" ;;
   timings)   shift; cmd_timings "$@" ;;
+  diagnose)  shift; cmd_diagnose "$@" ;;
+  accuracy)  shift; cmd_accuracy "$@" ;;
   targets)   cmd_targets ;;
   cache)     shift; cmd_cache "$@" ;;
   ci)        shift; cmd_ci "$@" ;;

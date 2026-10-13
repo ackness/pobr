@@ -1381,8 +1381,7 @@ fn collect_corpus_lines(dir: &Path, data: &BuildData) -> Vec<CorpusLine> {
     // selected tree data is available. This is a parser corpus, not an assertion
     // that every stored socket is active in the calculation.
     for jewel in build
-        .jewels
-        .iter()
+        .jewel_items()
         .chain(build.granted_socket_jewels.iter().map(|(_, item, _)| item))
     {
         push_item(jewel, LineSource::Jewel, &mut lines);

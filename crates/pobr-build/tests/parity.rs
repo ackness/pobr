@@ -38,6 +38,9 @@ mod skill_dot_golden;
 mod stored_hand_output;
 
 // B) Version-independent logic / smoke / self-snapshot regression (active version / all versions)
+#[path = "parity/diagnose_build.rs"]
+// one build: import losses, reference differences, and every input the calculation dropped
+mod diagnose_build;
 #[path = "parity/e2e_real_build.rs"]
 // real build end-to-end: only asserts ranges/determinism/import correctness
 mod e2e_real_build;
@@ -47,6 +50,9 @@ mod golden_regression;
 #[path = "parity/multi_version.rs"]
 // iterates every ingested version, proving calc is version-independent
 mod multi_version;
+#[path = "parity/reference_report.rs"]
+// import keeps every used item; dashboard against the stats a build code carries
+mod reference_report;
 #[path = "parity/special_oracle_differential.rs"]
 // active special_mods vs live oracle (skip-guarded)
 mod special_oracle_differential;

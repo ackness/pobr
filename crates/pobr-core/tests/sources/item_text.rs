@@ -564,6 +564,58 @@ Implicits: 1
     );
 }
 
+/// A foil unique. An unknown rarity used to reject the whole block, so the
+/// build was calculated without the item.
+#[test]
+fn xml_item_reads_a_relic_as_a_unique() {
+    let item = parse_pob_xml_item(
+        "Rarity: RELIC\nMorior Invictus\nGrand Regalia\nArmour: 1241\nQuality: 20\nImplicits: 0\n+35 to Spirit",
+    )
+    .expect("relic parses");
+
+    assert_eq!(item.rarity, ItemRarity::Unique);
+    assert_eq!(item.base, ItemBaseId::from("Grand Regalia"));
+    assert_eq!(item.modifier_texts, ["+35 to Spirit"]);
+}
+
+/// Every state line PoB2 writes is read as state. `Twice Corrupted` used to
+/// reach the modifier parser, so the item was not corrupted and every build
+/// listed the line as an unsupported modifier.
+#[test]
+fn item_state_lines_are_state_not_modifiers() {
+    for (state, corrupted) in [
+        ("Corrupted", true),
+        ("Twice Corrupted", true),
+        ("Mirrored", false),
+        ("Sanctified", false),
+        ("Desecrated Prefix", false),
+        ("Desecrated Suffix", false),
+    ] {
+        for text in [
+            format!("Rarity: MAGIC\nSapphire\nImplicits: 0\n+10 to Strength\n{state}"),
+            format!("Rarity: MAGIC\nSapphire\n--------\n+10 to Strength\n--------\n{state}"),
+        ] {
+            let item = parse_pob_xml_item(&text).expect("parses");
+            assert_eq!(item.modifier_texts, ["+10 to Strength"], "{state}");
+            assert_eq!(item.corrupted, corrupted, "{state}");
+        }
+    }
+}
+
+/// The state words also begin real modifiers.
+#[test]
+fn a_modifier_that_begins_with_a_state_word_is_kept() {
+    let line = "Corrupted Blood cannot be inflicted on you";
+    for text in [
+        format!("Rarity: MAGIC\nSapphire\nImplicits: 0\n{line}"),
+        format!("Rarity: MAGIC\nSapphire\n--------\n{line}"),
+    ] {
+        let item = parse_pob_xml_item(&text).expect("parses");
+        assert_eq!(item.modifier_texts, [line]);
+        assert!(!item.corrupted);
+    }
+}
+
 #[test]
 fn xml_item_rejects_empty_and_missing_rarity() {
     assert!(matches!(parse_pob_xml_item(""), Err(ItemTextError::Empty)));

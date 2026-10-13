@@ -54,6 +54,10 @@ p95 使用 nearest rank，在九次采样下即最大值。
 
 15 个 BD 均无物品解析错误。
 
+> 后续更正：这次测量所用版本在 `{ pob_code }` 请求下不报告构筑码内读不出的物品。
+> Stormweaver 的胸甲（`Rarity: RELIC`）当时被丢弃，它的防御和伤害是缺了这件装备的数值；
+> 现在该稀有度可以读取，其余读不出的物品会出现在 `item_errors`。本节数值保持原测量。
+
 <details>
 <summary>历史对比样本：7 个 BD</summary>
 

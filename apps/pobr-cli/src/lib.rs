@@ -15,8 +15,8 @@
 use std::path::PathBuf;
 
 use pobr_build::{
-    Build, BuildData, DataOrchestratorOptions, calculate_with_data_session, diagnose_tree_version,
-    parse_build_from_code,
+    Build, BuildData, DataOrchestratorOptions, ImportedBuild, calculate_with_data_session,
+    compare_to_reference, diagnose_tree_version, import_build_from_code, parse_build_from_code,
 };
 use pobr_core::calc::{CalculationSession, MinimalInput, MinimalOutput, OutputTable};
 use pobr_core::item::ingest_item_with_ctx;
@@ -932,14 +932,59 @@ pub struct TreeVersionDiag {
     pub unknown_nodes: Vec<u32>,
 }
 
+/// An item the build uses that the importer could not read. The result is
+/// calculated without it.
+#[derive(Debug, Clone, Serialize)]
+pub struct MissingItem {
+    pub item_id: u32,
+    /// Equipment slot ids, PoB flask or jewel slot names, or `socket:<node>`.
+    pub used_in: Vec<String>,
+    pub name: String,
+    pub reason: String,
+}
+
+/// A stat that differs from the value the build code was exported with.
+#[derive(Debug, Clone, Serialize)]
+pub struct ReferenceDifference {
+    /// Display stat id.
+    pub stat: String,
+    /// The exporting tool's name for it.
+    pub pob_key: String,
+    pub pobr: f64,
+    pub reference: f64,
+    /// `pobr / reference`; absent when the reference is zero or not finite.
+    pub ratio: Option<f64>,
+}
+
+/// The result against the `<PlayerStat>` values the build code carries. Those
+/// are the exporting tool's numbers at export time (usually PoB2's): a
+/// reference, not the game's values. A difference says the tools disagree.
+#[derive(Debug, Clone, Serialize)]
+pub struct ReferenceCheck {
+    pub tolerance: f64,
+    pub compared: usize,
+    pub agreeing: usize,
+    pub differing: Vec<ReferenceDifference>,
+}
+
+/// Relative difference above which a stat is listed in [`ReferenceCheck::differing`].
+pub const REFERENCE_TOLERANCE: f64 = 0.05;
+
 /// The `calculate-build` report: Build summary plus calc output plus passive-tree version reconciliation diagnostics.
 #[derive(Debug, Clone, Serialize)]
 pub struct CalculateBuildReport {
     pub data_version: String,
     /// Rejected modifier text; successful calculation does not imply complete support.
     pub unsupported_modifiers: Vec<String>,
+    /// Items the build uses that could not be read. Not empty means the
+    /// numbers below are for a character without that gear.
+    pub missing_items: Vec<MissingItem>,
     pub build: BuildSummary,
     pub output: CalculateBuildOutput,
+    /// Absent when the code carries no reference values, or when the request
+    /// overrides the conditions they were exported under (panel basis, an
+    /// explicit enemy level, or an enemy tier other than PoB2's default).
+    pub reference: Option<ReferenceCheck>,
     pub tree_version: TreeVersionDiag,
 }
 
@@ -951,7 +996,10 @@ pub struct CalculateBuildReport {
 /// into the REAL calc engine, producing scalars that can be compared
 /// directly against PoB2's panel.
 pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildReport, CliError> {
-    let build = parse_build_from_code(&req.code)?;
+    let ImportedBuild {
+        build,
+        report: import,
+    } = import_build_from_code(&req.code)?;
 
     let game_data = GameData::new(req.data_dir.clone());
     let build_data = BuildData::load(&game_data)?;
@@ -999,11 +1047,46 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
         mana_cost: out.mana_cost,
     };
 
+    // The reference was exported on the effective basis against the build's
+    // own enemy; any other request compares two different questions.
+    let same_conditions =
+        req.mode_effective && req.enemy_level == 0 && req.enemy_tier == EnemyTier::Pinnacle;
+    let reference = (same_conditions && !import.reference_stats.is_empty()).then(|| {
+        let rows = compare_to_reference(out, &import.reference_stats);
+        let differing: Vec<ReferenceDifference> = rows
+            .iter()
+            .filter(|row| !row.agrees(REFERENCE_TOLERANCE))
+            .map(|row| ReferenceDifference {
+                stat: row.id.clone(),
+                pob_key: row.pob_key.clone(),
+                pobr: row.pobr,
+                reference: row.reference,
+                ratio: row.ratio(),
+            })
+            .collect();
+        ReferenceCheck {
+            tolerance: REFERENCE_TOLERANCE,
+            compared: rows.len(),
+            agreeing: rows.len() - differing.len(),
+            differing,
+        }
+    });
+
     Ok(CalculateBuildReport {
         data_version: game_data.manifest()?.poe_version,
         unsupported_modifiers: session.unsupported_modifier_texts().to_vec(),
+        missing_items: import
+            .missing_items()
+            .map(|item| MissingItem {
+                item_id: item.item_id,
+                used_in: item.used_in.clone(),
+                name: item.name.clone(),
+                reason: item.reason.clone(),
+            })
+            .collect(),
         build: summary,
         output,
+        reference,
         tree_version: TreeVersionDiag {
             build_tree_version: tree_report.build_tree_version,
             unknown_node_count: tree_report.unknown_nodes.len(),

@@ -606,6 +606,98 @@ impl CalculationSession {
         self.unsupported_modifier_texts.push(text);
     }
 
+    /// Starts noting which stored modifier names the calculation reads
+    /// ([`ModDb::track_reads`]). Call once every source is written and before
+    /// [`Self::perform_minimal`]; it is for diagnostics, not for normal runs.
+    pub fn track_modifier_reads(&mut self) {
+        self.env.player.mod_db.track_reads();
+        self.env.enemy.mod_db.track_reads();
+    }
+
+    /// Player modifiers that were parsed and stored but whose name the
+    /// calculation never read ([`ModDb::unread_mods`]): the line parsed, and
+    /// did nothing. Empty unless [`Self::track_modifier_reads`] was called.
+    pub fn unread_modifiers(&self) -> Vec<&Modifier> {
+        self.env.player.mod_db.unread_mods()
+    }
+
+    /// The stored player modifier names the calculation read, sorted. With
+    /// [`Self::unread_modifiers`] across several builds it separates a name
+    /// no calculation reads from one this build's skill had no use for.
+    pub fn read_modifier_names(&self) -> Vec<ModName> {
+        self.env.player.mod_db.read_names()
+    }
+
+    /// The condition and multiplier variables the tags of stored player and
+    /// enemy modifiers refer to. A `Condition:<X>` or `Multiplier:<X>`
+    /// modifier is consumed through the config's own maps rather than by a
+    /// query, so it has a use exactly when `<X>` is in this set (or when
+    /// engine code asks for `<X>` by name).
+    pub fn referenced_variables(&self) -> std::collections::BTreeSet<&str> {
+        let mut variables = std::collections::BTreeSet::new();
+        for modifier in self
+            .env
+            .player
+            .mod_db
+            .iter_mods()
+            .chain(self.env.enemy.mod_db.iter_mods())
+        {
+            for tag in &modifier.tags {
+                match tag {
+                    crate::ModTag::Condition { var, .. }
+                    | crate::ModTag::MultiplierThreshold { var, .. } => {
+                        variables.insert(var.as_str());
+                    }
+                    crate::ModTag::ConditionAnyOf { vars, .. } => {
+                        variables.extend(vars.iter().map(String::as_str));
+                    }
+                    crate::ModTag::Multiplier { var, limit_var, .. } => {
+                        variables.insert(var.as_str());
+                        variables.extend(limit_var.as_deref());
+                    }
+                    _ => {}
+                }
+            }
+        }
+        variables
+    }
+
+    /// `(variable, modifier)` for each stored player modifier that scales by,
+    /// or is gated on, a multiplier nothing set: no `Multiplier:<variable>`
+    /// modifier and no value in the calculation's config. Such a multiplier
+    /// reads as 0, so the modifier contributes nothing however it parsed. A
+    /// multiplier that a config option could set but did not is listed too.
+    /// Ordered by variable, then modifier name.
+    pub fn unprovided_multipliers(&self) -> Vec<(&str, &Modifier)> {
+        let db = &self.env.player.mod_db;
+        let provided = |var: &str| {
+            self.env.cfg.multipliers.contains_key(var) || db.has_name(&format!("Multiplier:{var}"))
+        };
+        let mut out: Vec<(&str, &Modifier)> = db
+            .iter_mods()
+            .flat_map(|modifier| {
+                modifier.tags.iter().filter_map(move |tag| match tag {
+                    crate::ModTag::Multiplier {
+                        var, actor: None, ..
+                    }
+                    | crate::ModTag::MultiplierThreshold { var, .. } => {
+                        Some((var.as_str(), modifier))
+                    }
+                    _ => None,
+                })
+            })
+            .filter(|(var, _)| !provided(var))
+            .collect();
+        out.sort_by(|a, b| {
+            (a.0, a.1.name.as_str(), a.1.source.as_deref()).cmp(&(
+                b.0,
+                b.1.name.as_str(),
+                b.1.source.as_deref(),
+            ))
+        });
+        out
+    }
+
     /// Gets the sum of a ModName's BASE in the player ModDb for the current cfg.
     /// This excludes actor bases and INC/MORE scaling; use [`Self::attribute_total`]
     /// when a consumer needs a final attribute value.

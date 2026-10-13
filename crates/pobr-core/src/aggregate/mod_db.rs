@@ -155,9 +155,36 @@ pub struct ModContribution {
     pub clamped_from: Option<f64>,
 }
 
+/// The stored names a calculation's queries asked for. See [`ModDb::track_reads`].
+#[derive(Debug, Clone, Default)]
+struct ReadLog(std::sync::Arc<std::sync::Mutex<std::collections::HashSet<ModName>>>);
+
+impl ReadLog {
+    fn note(&self, name: &str) {
+        let mut names = self
+            .0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if !names.contains(name) {
+            names.insert(ModName::new(name));
+        }
+    }
+
+    fn contains(&self, name: &ModName) -> bool {
+        self.0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .contains(name)
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct ModDb {
     mods: HashMap<ModName, Vec<Modifier>>,
+    /// Which stored names queries have asked for, once [`Self::track_reads`]
+    /// turns it on. Clones and [`Self::filtered`] copies share the log, so a
+    /// query against a derived db counts for the db it was made from.
+    reads: Option<ReadLog>,
     /// Rounding-precision rules: vendor treats `data.highPrecisionMods` as
     /// global environment data, while pobr keeps it scoped to the db
     /// instance (the calc core stays zero-I/O; the orchestration layer
@@ -178,6 +205,75 @@ pub struct ModDb {
 impl ModDb {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Starts noting which stored names queries ask for. Off by default: it
+    /// takes a lock per query. Diagnostics turn it on to find modifiers that
+    /// were parsed and stored but that nothing in the calculation reads.
+    pub fn track_reads(&mut self) {
+        self.reads.get_or_insert_with(ReadLog::default);
+    }
+
+    /// Stored modifiers whose name no query has asked for since
+    /// [`Self::track_reads`], by name and then insertion order. Empty when
+    /// reads are not tracked. A name can go unread because no code reads it
+    /// at all, or because this calculation had no use for it (spell damage on
+    /// an attack); whole-db iteration ([`Self::iter_mods`]) is not a read.
+    pub fn unread_mods(&self) -> Vec<&Modifier> {
+        let Some(reads) = &self.reads else {
+            return Vec::new();
+        };
+        let mut names: Vec<&ModName> = self
+            .mods
+            .keys()
+            .filter(|name| !reads.contains(name))
+            .collect();
+        names.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+        names
+            .into_iter()
+            .flat_map(|name| self.mods[name].iter())
+            .collect()
+    }
+
+    /// The stored names queries have asked for since [`Self::track_reads`],
+    /// sorted. Empty when reads are not tracked.
+    pub fn read_names(&self) -> Vec<ModName> {
+        let Some(reads) = &self.reads else {
+            return Vec::new();
+        };
+        let mut names: Vec<ModName> = self
+            .mods
+            .keys()
+            .filter(|name| reads.contains(name))
+            .cloned()
+            .collect();
+        names.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+        names
+    }
+
+    /// Every modifier stored under `name`, in insertion order, for a consumer
+    /// that inspects them itself. A read, unlike filtering [`Self::iter_mods`]
+    /// by name: prefer it, so diagnostics know the name has a reader.
+    pub fn named(&self, name: &str) -> impl Iterator<Item = &Modifier> {
+        self.bucket(name).into_iter().flatten()
+    }
+
+    /// Whether any modifier is stored under `name`. Not a read.
+    pub fn has_name(&self, name: &str) -> bool {
+        self.mods.get(name).is_some_and(|mods| !mods.is_empty())
+    }
+
+    /// The bucket for `name`, noting the query when reads are tracked. Every
+    /// query takes its modifiers from here; writes and whole-db iteration do not.
+    #[inline]
+    fn bucket(&self, name: &str) -> Option<&Vec<Modifier>> {
+        let bucket = self.mods.get(name);
+        if bucket.is_some()
+            && let Some(reads) = &self.reads
+        {
+            reads.note(name);
+        }
+        bucket
     }
 
     /// Maintains [`Self::global_limit_names`] (one tags scan per write, zero cost at query time).
@@ -357,6 +453,7 @@ impl ModDb {
             .collect();
         Self {
             mods,
+            reads: self.reads.clone(),
             high_precision: self.high_precision.clone(),
             // A copy of the full set (a stale false-positive is fine: a
             // filtered-out name just takes the slow path check once more).
@@ -385,7 +482,7 @@ impl ModDb {
         }
         names
             .iter()
-            .filter_map(|name| self.mods.get(name))
+            .filter_map(|name| self.bucket(name.as_str()))
             .flat_map(|mods| mods.iter())
             .filter(|modifier| modifier.mod_type == mod_type && modifier.matches(ctx.cfg))
             .filter_map(|modifier| modifier.effective_number_ref(&ctx))
@@ -405,7 +502,7 @@ impl ModDb {
         let mut total = 0.0;
         let mut limits: GlobalLimits = None;
         for name in names {
-            for modifier in self.mods.get(name).into_iter().flatten() {
+            for modifier in self.bucket(name.as_str()).into_iter().flatten() {
                 if modifier.mod_type != mod_type || !modifier.matches(ctx.cfg) {
                     continue;
                 }
@@ -430,7 +527,7 @@ impl ModDb {
     pub fn max_of(&self, mod_type: ModType, cfg: &CalcConfig, names: &[ModName]) -> f64 {
         names
             .iter()
-            .filter_map(|name| self.mods.get(name))
+            .filter_map(|name| self.bucket(name.as_str()))
             .flat_map(|mods| mods.iter())
             .filter(|modifier| modifier.mod_type == mod_type && modifier.matches(cfg))
             .filter_map(|modifier| modifier.effective_number(cfg))
@@ -450,7 +547,7 @@ impl ModDb {
         let mut out = Vec::new();
         let mut limits: GlobalLimits = None;
         for name in names {
-            for modifier in self.mods.get(name).into_iter().flatten() {
+            for modifier in self.bucket(name.as_str()).into_iter().flatten() {
                 if modifier.mod_type != mod_type || !modifier.matches(ctx.cfg) {
                     continue;
                 }
@@ -501,7 +598,7 @@ impl ModDb {
         let mut limits: [GlobalLimits; 3] = [None, None, None];
         names
             .iter()
-            .filter_map(|name| self.mods.get(name))
+            .filter_map(|name| self.bucket(name.as_str()))
             .flatten()
             .map(|modifier| {
                 let stored = modifier.value.as_number();
@@ -646,7 +743,7 @@ impl ModDb {
         let mut limits: GlobalLimits = None;
         for name in names {
             let mut mod_result = 1.0;
-            for m in self.mods.get(name).into_iter().flatten() {
+            for m in self.bucket(name.as_str()).into_iter().flatten() {
                 if m.mod_type != ModType::More || !m.matches(cfg) || !extra(m) {
                     continue;
                 }
@@ -735,7 +832,7 @@ impl ModDb {
     pub fn sum_global_only(&self, mod_type: ModType, cfg: &CalcConfig, names: &[ModName]) -> f64 {
         names
             .iter()
-            .filter_map(|name| self.mods.get(name))
+            .filter_map(|name| self.bucket(name.as_str()))
             .flat_map(|mods| mods.iter())
             .filter(|modifier| {
                 modifier.mod_type == mod_type
@@ -756,7 +853,7 @@ impl ModDb {
     ) -> f64 {
         names
             .iter()
-            .filter_map(|name| self.mods.get(name))
+            .filter_map(|name| self.bucket(name.as_str()))
             .flat_map(|mods| mods.iter())
             .filter(|modifier| {
                 modifier.mod_type == mod_type
@@ -785,8 +882,7 @@ impl ModDb {
     /// the caller via [`sum_global_only`](Self::sum_global_only) (as the
     /// "slot-less base", which only benefits from the global multiplier bucket).
     pub fn slot_bases(&self, cfg: &CalcConfig, name: &str) -> Vec<(String, f64)> {
-        self.mods
-            .get(name)
+        self.bucket(name)
             .into_iter()
             .flat_map(|mods| mods.iter())
             .filter(|modifier| modifier.mod_type == ModType::Base && modifier.matches(cfg))
@@ -799,8 +895,7 @@ impl ModDb {
     }
 
     pub fn flag(&self, cfg: &CalcConfig, name: &str) -> bool {
-        self.mods
-            .get(name)
+        self.bucket(name)
             .into_iter()
             .flat_map(|mods| mods.iter())
             .any(|modifier| {
@@ -815,8 +910,7 @@ impl ModDb {
     /// attribution path trace a flag's behavior back to its source (e.g.
     /// which passive/gem grants `CritChanceLucky`).
     pub fn flag_origin(&self, cfg: &CalcConfig, name: &str) -> Option<SourceId> {
-        self.mods
-            .get(name)
+        self.bucket(name)
             .into_iter()
             .flat_map(|mods| mods.iter())
             .find(|modifier| {
@@ -848,7 +942,7 @@ impl ModDb {
             if active { 1.0 } else { 0.0 },
             TraceOperation::QueryFlag,
         );
-        let matching = self.mods.get(name).into_iter().flat_map(|mods| mods.iter());
+        let matching = self.bucket(name).into_iter().flat_map(|mods| mods.iter());
         for modifier in matching {
             if modifier.mod_type != ModType::Flag
                 || !modifier.matches(cfg)
@@ -874,8 +968,7 @@ impl ModDb {
     }
 
     pub fn override_(&self, cfg: &CalcConfig, name: &str) -> Option<f64> {
-        self.mods
-            .get(name)
+        self.bucket(name)
             .into_iter()
             .flat_map(|mods| mods.iter().rev())
             .filter(|modifier| modifier.mod_type == ModType::Override && modifier.matches(cfg))
@@ -966,8 +1059,7 @@ impl ModDb {
     }
 
     pub fn list(&self, cfg: &CalcConfig, name: &str) -> Vec<String> {
-        self.mods
-            .get(name)
+        self.bucket(name)
             .into_iter()
             .flat_map(|mods| mods.iter())
             .filter(|modifier| modifier.mod_type == ModType::List && modifier.matches(cfg))
@@ -990,8 +1082,7 @@ impl ModDb {
     /// without evaluating — the inner mods' `matches`/`effective_number` are
     /// settled by the target db's aggregation under its own context.
     pub fn list_nested(&self, cfg: &CalcConfig, name: &str) -> Vec<Modifier> {
-        self.mods
-            .get(name)
+        self.bucket(name)
             .into_iter()
             .flat_map(|mods| mods.iter())
             .filter(|modifier| modifier.mod_type == ModType::List && modifier.matches(cfg))

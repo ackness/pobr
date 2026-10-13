@@ -5,8 +5,8 @@ use pobr_data::modifier::ModType;
 
 use super::super::collect::{granted_passive_defs, radius_jewel_grant_modifiers};
 use super::super::item::weapon::clean_item_text;
+use super::super::scale_trunc_2dp;
 use super::super::skill::resolve::clean_grant_text;
-use super::super::{adorned_corrupted_magic_jewel_inc, scale_trunc_2dp};
 use crate::build::Build;
 use crate::build_data::BuildData;
 
@@ -136,13 +136,12 @@ pub(crate) fn slot_bonus_effect_scales(
     }
     // Ordinary socketed jewels enter the same global ModDb as equipment. Match
     // their injection scaling (including The Adorned) before scaling the quiver.
-    let adorned_inc = adorned_corrupted_magic_jewel_inc(&build.jewels);
-    for jewel in &build.jewels {
-        let scale = if jewel.rarity == pobr_data::item::ItemRarity::Magic && jewel.corrupted {
-            1.0 + adorned_inc.unwrap_or(0.0) / 100.0
-        } else {
-            1.0
-        };
+    let jewel_effect = pobr_core::skill_env::CorruptedJewelEffect::from_jewels(build.jewel_items());
+    for (socket, jewel) in &build.jewels {
+        let inc = (*socket == crate::build::JewelSocket::Tree)
+            .then(|| jewel_effect.increase_for(jewel))
+            .flatten();
+        let scale = 1.0 + inc.unwrap_or(0.0) / 100.0;
         for text in jewel
             .implicit_texts
             .iter()

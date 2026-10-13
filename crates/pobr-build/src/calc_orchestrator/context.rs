@@ -16,6 +16,8 @@ pub(super) struct CalculationContext {
     pub support_limits: Vec<String>,
     pub is_trigger_source: bool,
     pub trigger_memo: Option<Rc<RefCell<TriggerMemo>>>,
+    /// Note which stored modifiers the calculation reads (`diagnosis::diagnose`).
+    pub track_reads: bool,
 }
 
 impl CalculationContext {
@@ -45,6 +47,7 @@ impl CalculationContext {
             support_limits: Vec::new(),
             is_trigger_source: false,
             trigger_memo: None,
+            track_reads: false,
         }
     }
 
@@ -56,6 +59,7 @@ impl CalculationContext {
             support_limits: Vec::new(),
             is_trigger_source: true,
             trigger_memo: None,
+            track_reads: false,
         }
     }
 }

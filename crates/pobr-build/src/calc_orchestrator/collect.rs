@@ -45,8 +45,7 @@ pub(crate) fn resolve_granted_socket_jewels(build: &Build, data: &BuildData) -> 
         .collect();
     sinister.sort_unstable();
     let count = build
-        .jewels
-        .iter()
+        .jewel_items()
         .flat_map(|item| item.implicit_texts.iter().chain(&item.modifier_texts))
         .filter_map(|text| {
             let (number, suffix) = text.trim().strip_prefix("Allocates ")?.split_once(' ')?;
@@ -86,7 +85,9 @@ pub(crate) fn resolve_granted_socket_jewels(build: &Build, data: &BuildData) -> 
     let mut resolved = build.clone();
     for (node, item, radius) in &build.granted_socket_jewels {
         if granted.contains(node) {
-            resolved.jewels.push(item.clone());
+            resolved
+                .jewels
+                .push((crate::build::JewelSocket::Granted, item.clone()));
             resolved.radius_jewels.extend(radius.iter().cloned());
         }
     }
@@ -111,7 +112,13 @@ pub(crate) fn character_base(build: &Build, data: &BuildData) -> Option<Characte
 /// Resolves allocated passive nodes into node-attributed [`AllocatedNode`]s (via
 /// [`collect_allocated_mods_for_class`], handling JewelSocket / Mastery gating +
 /// isSwitchable variant selection by class/ascendancy; unknown nodes are skipped).
-pub(crate) fn resolve_passive_nodes(build: &Build, data: &BuildData) -> Vec<AllocatedNode> {
+/// A line of an allocated node that does not parse goes to `unsupported` with
+/// its node: the node is allocated, so the line was meant to count.
+pub(crate) fn resolve_passive_nodes(
+    build: &Build,
+    data: &BuildData,
+    unsupported: &mut Vec<(u32, String)>,
+) -> Vec<AllocatedNode> {
     // isSwitchable variant context (matching PoB's curClassName / curAscendClassName,
     // PassiveSpec.lua:1251-1256): sourced from the Build XML header's class/ascendancy name.
     let class = ClassContext {
@@ -150,10 +157,12 @@ pub(crate) fn resolve_passive_nodes(build: &Build, data: &BuildData) -> Vec<Allo
                 .get(&node_id.0)
                 .map(|def| def.ascendancy_id.is_some())
                 .unwrap_or(false);
+            let (modifier_texts, dropped) = combine_wrapped(modifier_texts, engine_ctx(data));
+            unsupported.extend(dropped.into_iter().map(|line| (node_id.0, line)));
             Some(AllocatedNode {
                 node_id: *node_id,
                 ascendancy,
-                modifier_texts: combine_wrapped_then_filter(modifier_texts, engine_ctx(data)),
+                modifier_texts,
             })
         })
         .collect()
@@ -171,17 +180,20 @@ pub(crate) fn append_granted_passives(
     build: &Build,
     data: &BuildData,
     nodes: &mut Vec<AllocatedNode>,
+    unsupported: &mut Vec<(u32, String)>,
 ) {
     let mut allocated: std::collections::HashSet<u32> = nodes.iter().map(|n| n.node_id.0).collect();
     for def in granted_passive_defs(build, data) {
         if !allocated.insert(def.skill) {
             continue; // Already allocated/already granted, idempotent.
         }
+        // Tree stats can also wrap across lines (same source data as combine_wrapped_then_filter).
+        let (modifier_texts, dropped) = combine_wrapped(def.stats.clone(), engine_ctx(data));
+        unsupported.extend(dropped.into_iter().map(|line| (def.skill, line)));
         nodes.push(AllocatedNode {
             node_id: pobr_data::passive_tree::NodeId(def.skill),
             ascendancy: def.ascendancy_id.is_some(),
-            // Tree stats can also wrap across lines (same source data as combine_wrapped_then_filter).
-            modifier_texts: combine_wrapped_then_filter(def.stats.clone(), engine_ctx(data)),
+            modifier_texts,
         });
     }
 }
@@ -216,7 +228,7 @@ pub(crate) fn granted_passive_defs<'d>(
             .chain(&item.modifier_texts)
             .chain(&item.enchant_texts)
     });
-    let jewel_texts = build.jewels.iter().flat_map(|jewel| {
+    let jewel_texts = build.jewel_items().flat_map(|jewel| {
         jewel
             .implicit_texts
             .iter()
@@ -278,8 +290,14 @@ pub(crate) fn granted_passive_defs<'d>(
 /// **one** mod split across two lines. Only the tree path needs this merge (equipment
 /// mods are already cataloged line by line).
 pub(crate) fn combine_wrapped_then_filter(texts: Vec<String>, ctx: ParseCtx<'_>) -> Vec<String> {
+    combine_wrapped(texts, ctx).0
+}
+
+/// [`combine_wrapped_then_filter`] with the lines it dropped: `(parsed, dropped)`.
+pub(crate) fn combine_wrapped(texts: Vec<String>, ctx: ParseCtx<'_>) -> (Vec<String>, Vec<String>) {
     let parses = |t: &str| gate_parses(ctx, t);
     let mut out = Vec::new();
+    let mut dropped = Vec::new();
     let mut i = 0;
     while i < texts.len() {
         if parses(&texts[i]) {
@@ -306,11 +324,12 @@ pub(crate) fn combine_wrapped_then_filter(texts: Vec<String>, ctx: ParseCtx<'_>)
                 if pobr_core::dbg_env!("POBR_DBG_DROPPED").is_some() {
                     eprintln!("[POBR_DROP] {}", texts[i]);
                 }
+                dropped.push(texts[i].clone());
                 i += 1;
             }
         }
     }
-    out
+    (out, dropped)
 }
 
 /// Keystone name → that keystone's modifier list (a tree keystone node's stats parsed
@@ -339,7 +358,9 @@ pub(crate) fn keystone_mod_map(
         let node = AllocatedNode {
             node_id: pobr_data::passive_tree::NodeId(*id),
             ascendancy: def.ascendancy_id.is_some(),
-            modifier_texts: filter_parseable(def.stats.clone(), engine_ctx(data)),
+            // The same line handling as an allocated keystone, so a granted
+            // keystone means what the allocated one does.
+            modifier_texts: combine_wrapped_then_filter(def.stats.clone(), engine_ctx(data)),
         };
         // A keystone that fails to parse (hard error) / produces zero mods doesn't enter the map (merge silently skips it, safely under-counting).
         let Ok(ingest) = pobr_core::passive::ingest_passive_nodes_with_ctx(
@@ -687,10 +708,7 @@ pub(crate) fn filter_item_parseable(
     let adorned_pair = (item.rarity == pobr_data::item::ItemRarity::Unique)
         .then(|| {
             item.modifier_texts.windows(2).find(|pair| {
-                pair[0]
-                    .strip_suffix("% increased Effect of Jewel Socket Passive Skills")
-                    .is_some_and(|number| number.parse::<u32>().is_ok())
-                    && pair[1] == "containing Corrupted Magic Jewels"
+                pobr_core::skill_env::CorruptedJewelEffect::parse_line(&pair.join(" ")).is_some()
             })
         })
         .flatten();

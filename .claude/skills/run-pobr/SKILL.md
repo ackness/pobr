@@ -95,6 +95,24 @@ cargo test -p pobr-wasm --test perf_timing --test perf_phases -- --ignored --noc
 bash devs/scripts/driver.sh drill
 ```
 
+When a build's numbers look wrong, start with the build itself, not with a
+comparison against PoB2:
+
+```bash
+mise run diagnose <build dir | code file | committed build name fragment>
+mise run accuracy [dir of */code.txt]    # default: examples/wasm-benchmark/builds
+```
+
+`diagnose` prints what the import dropped, where the result differs from the
+reference values the build code carries, the main skill and level actually
+calculated, and every input the calculation lost: lines no rule parses, gem
+stats the stat map rejected, modifiers that scale by a multiplier nothing set,
+and modifiers stored under a name nothing reads. It needs no vendor checkout or
+LuaJIT. Only a difference that list does not explain needs the component-level
+oracle (`tools/pob2-oracle/run.sh`). A reference is another tool's number, not
+the game's: judge a disagreement by the game's own modifier text and data. See
+"排查数值差异" in the maintainer guide.
+
 For PoB2 formula adjudication, read the pinned local Lua source:
 
 ```bash

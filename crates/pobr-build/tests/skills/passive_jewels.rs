@@ -223,7 +223,7 @@ fn kalguur_keystones_replace_old_stats_and_remove_inherent_attribute_bonuses() {
             "Remembrancing 1234 songworthy deeds by the line of {conqueror}\nPassives in radius are Conquered by the Kalguur\nHistoric"
         ));
         let mut changed = base.clone();
-        changed.jewels = vec![parse_pob_xml_item(&text).unwrap()];
+        changed = changed.with_jewels(vec![parse_pob_xml_item(&text).unwrap()]);
         changed.radius_jewels = vec![radius_jewel_from_text(900001, &text).unwrap()];
         assert_eq!(passive_jewel_state(&changed, &data).nodes[&2].name, name);
         let calc = calculate_with_data_session(&changed, &data, &options).unwrap();

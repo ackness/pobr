@@ -51,6 +51,11 @@ cargo bench -p pobr-core --bench mod_db_bench          # ModDB 热查询基准�
 mise run test build parity parity_baseline_report -- --ignored --nocapture
 # 其中 parity_no_regression 用例是回归门禁（命中率不得低于已记录基线）
 
+# 数值不对时的第一步：一个构筑的导入损耗、与构筑码自带参考值的差异、计算中丢掉的全部输入
+mise run diagnose <构筑目录 | 构筑码文件 | 已入库构筑名片段>
+# 一批构筑码对照它们自带的参考值（默认 examples/wasm-benchmark/builds，无需 vendor / luajit）
+mise run accuracy [含 */code.txt 的目录]
+
 # CLI（apps/pobr-cli，二进制名 pobr）
 cargo run -p pobr-cli -- calculate --base-life 1000 --mod "+50 to maximum Life"
 cargo run -p pobr-cli -- decode-code <pob_code>        # PoB Build Code → XML
@@ -139,7 +144,9 @@ schema 3 的 `manifest.json` 列出运行时文件及 SHA-256；`BuildData::load
 
 Web 的计算、市场目录和天赋树使用初始化时固定的数据版本；重新初始化清除翻译与词缀层级缓存。节点规划逐节点计算，不能按原始词条文本共享包含位置/半径效应的结果。缺少历史树展示元数据时保留导入和计算，禁用不可靠的历史树编辑/规划。存档导入校验嵌套结构，非法存档不覆盖当前内容；启动失败保留原始字节并提供下载恢复。
 
-CLI 完整构筑与 marginal 结果包含数据版本、树版本和未支持词条，调用方必须保留诊断，不能把未支持内容视为零效果。
+CLI 完整构筑与 marginal 结果包含数据版本、树版本和未支持词条，调用方必须保留诊断，不能把未支持内容视为零效果。`calculate-build` 另有 `missing_items`（构筑用到但导入器读不出的物品，结果是缺了这件装备的角色）和 `reference`（与构筑码内 `<PlayerStat>` 的差异；仅在请求沿用导出条件时给出）。WASM 的 `{ pob_code }` 请求把同类物品放进 `item_errors`。
+
+导入的损耗由 `pobr_build::ImportReport` 承载，与 `Build` 并列返回（`import_build*`）；`Build` 只描述计算输入，不携带诊断。`Build.jewels` 的每颗珠宝带 `JewelSocket`：树上自有插槽、被授予的插槽（Sinister / 含插槽的核心）或装备插槽，“珠宝插槽天赋效果”类词条只作用于第一种。
 
 ## 计算引擎架构（pobr-core）
 
@@ -191,6 +198,31 @@ PoB2 兼容是硬回归基准，三层校验互补：
 PoB2 对照值与逻辑回归都使用活动数据版本，没有单独钉住的对照版本；代码和测试不写具体版本号。依赖本地 vendor 的对照可能跳过，需如实记录，不能将跳过视为公式已获验证。
 
 `vendor/PathOfBuilding-PoE2/` 是 [PathOfBuildingCommunity/PathOfBuilding-PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2) 的完整检出（版本见 `vendor/.pob2-version.txt`；gitignore 不入库，`bash devs/scripts/driver.sh vendor` 可按钉定 commit 重新克隆），公式核对直接读本地 Lua（`CalcOffence.lua`/`CalcDefence.lua`/`CalcPerform.lua` 等），不要去网上找。
+
+## 排查数值差异（诊断闭环）
+
+一个输入可能在四处丢失，引擎必须把每一处都记下来，而不是让数值悄悄偏小：
+
+| 环节 | 丢失方式 | 记录位置 |
+|------|----------|----------|
+| 导入（XML → `Build`） | 物品块被拒、物品所在装备槽没有模型 | `ImportReport::skipped_items` / `unmodelled_slots` |
+| 文本 → Modifier | 没有规则能解析的词条行（物品、珠宝、已分配天赋 `Tree:<节点>: …`、配置文本） | `unsupported_modifier_texts` |
+| 宝石 stat → Modifier | stat map 有条目但引擎拒绝（未知 mod 名、不支持的 tag） | `Diagnosis::unmapped_stats` |
+| Modifier → 计算 | 存入的名字从未被查询；依赖的 `Multiplier` 没有任何地方赋值 | `Diagnosis::unread_modifiers` / `unprovided_multipliers` |
+
+`pobr_build::diagnose` 运行同一条计算管线并返回以上全部，外加实际计算的主技能及其等级（技能或等级选错不会丢输入，所以单独列出）。它打开 `ModDb::track_reads` 并以 Compare 模式记录 stat 映射，结果与普通计算逐位相同（`diagnosis_does_not_change_the_result` 对全部已入库构筑断言），但更慢，只用于排查。
+
+排查顺序：
+
+1. `mise run diagnose <构筑>`。第 1 节是导入损耗，第 2 节是与构筑码自带参考值的差异，第 3–8 节是丢掉的输入。多数差异在这里就能对上原因。
+2. 清单解释不了的差异，再用 `tools/pob2-oracle` 逐分量对照钉定的 PoB2。
+3. 参考值不是真值。构筑码内的 `<PlayerStat>` 是导出工具当时的结果（版本未知，可能早于当前数据）；PoB2 自身也有假设和缺陷。两边不一致时，以游戏自己的词条文本和数据判断谁对，再决定改哪一边。
+
+“未被读取”是线索不是结论：攻击技能不读法术伤害是正常的。报告用全部已入库构筑的读取并集区分“任何构筑都不读（没有读取方）”和“本构筑的技能用不上”。
+
+新增按名字消费 modifier 的代码用 `ModDb::named(name)` 或聚合查询，不要用 `iter_mods().filter(名字)`：后者不算读取，诊断会把有读取方的名字报成没有。确实在数据库之外消费的名字（按文本扫描、构筑结构）登记在 `diagnosis.rs::READ_OUTSIDE_THE_DATABASE` 并写明消费者。
+
+`examples/demo-bd-test/builds/` 是回归门禁语料，构筑抓取于 2026-06（上一赛季开服第一周），不包含之后的物品和机制；门禁全绿只说明这批构筑没有回退。`examples/wasm-benchmark/builds/` 是较新的抓取，`mise run accuracy` 默认跑它。新赛季开始后重新抓取一批，先看这份报告，再决定哪些进入门禁语料。
 
 ## 游戏机制资料库（agent-docs/）
 

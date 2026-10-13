@@ -138,7 +138,11 @@ pub(crate) fn same_build(a: &Build, b: &Build) -> bool {
         && attribute_overrides == &b.tree.attribute_overrides
         && tree_version == &b.tree_version
         && same_item_map(items, &b.items)
-        && same_items(jewels, &b.jewels)
+        && jewels.len() == b.jewels.len()
+        && jewels
+            .iter()
+            .zip(&b.jewels)
+            .all(|(a, b)| a.0 == b.0 && same_item(&a.1, &b.1))
         && granted_socket_jewels.len() == b.granted_socket_jewels.len()
         && granted_socket_jewels
             .iter()
@@ -162,10 +166,6 @@ fn same_item_map(
     a.len() == b.len()
         && a.iter()
             .all(|(slot, item)| b.get(slot).is_some_and(|other| same_item(item, other)))
-}
-
-fn same_items(a: &[pobr_data::item::Item], b: &[pobr_data::item::Item]) -> bool {
-    a.len() == b.len() && a.iter().zip(b).all(|(a, b)| same_item(a, b))
 }
 
 fn same_item(a: &pobr_data::item::Item, b: &pobr_data::item::Item) -> bool {

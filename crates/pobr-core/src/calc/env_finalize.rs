@@ -142,11 +142,8 @@ pub fn forward_enemy_modifiers(env: &mut Env) {
     let source_dbs =
         std::iter::once(&env.player.mod_db).chain(env.minions.iter().map(|m| &m.mod_db));
     for db in source_dbs {
-        for outer in db.iter_mods() {
-            if outer.name != enemy_modifier
-                || outer.mod_type != ModType::List
-                || !outer.matches(&env.cfg)
-            {
+        for outer in db.named(enemy_modifier.as_str()) {
+            if outer.mod_type != ModType::List || !outer.matches(&env.cfg) {
                 continue;
             }
             let Some(nested) = outer.value.as_nested_mods() else {
@@ -341,12 +338,10 @@ pub fn merge_flasks_charms(env: &mut Env) {
     let carriers: Vec<Modifier> = env
         .player
         .mod_db
-        .iter_mods()
+        .named(flask_list.as_str())
+        .chain(env.player.mod_db.named(charm_list.as_str()))
         .filter(|m| {
-            m.mod_type == ModType::List
-                && (m.name == flask_list || m.name == charm_list)
-                && m.matches(&env.cfg)
-                && m.value.as_nested_mods().is_some()
+            m.mod_type == ModType::List && m.matches(&env.cfg) && m.value.as_nested_mods().is_some()
         })
         .cloned()
         .collect();

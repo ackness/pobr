@@ -88,6 +88,33 @@ fn normalized_slot(slot: &str) -> String {
     normalized
 }
 
+/// The `Grants Skill:` lines on equipment that name a gem skill: the ones
+/// [`augment_item_granted_skills`] turns into socket groups. That text has a
+/// consumer, so it is not an unsupported modifier; a grant of a skill that is
+/// not a gem still is.
+pub(crate) fn resolved_granted_skill_texts(build: &Build, data: &BuildData) -> Vec<String> {
+    let grants: Vec<(&String, String)> = build
+        .equipped_items()
+        .into_iter()
+        .flat_map(|(_, item)| {
+            item.implicit_texts
+                .iter()
+                .chain(&item.modifier_texts)
+                .chain(&item.enchant_texts)
+        })
+        .filter_map(|text| Some((text, parse_grants_skill(text)?.0)))
+        .collect();
+    if grants.is_empty() {
+        return Vec::new();
+    }
+    let by_name = skill_id_by_name(data);
+    grants
+        .into_iter()
+        .filter(|(_, name)| by_name.contains_key(name))
+        .map(|(text, _)| text.clone())
+        .collect()
+}
+
 /// Scans item mods for granted skills and synthesizes skill groups; returns `None` when
 /// there's nothing new (a zero-copy fast path).
 pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Option<Build> {

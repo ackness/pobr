@@ -1047,3 +1047,46 @@ fn evaluate_names_shares_limits_across_the_name_set() {
     let total: f64 = rows.iter().filter_map(|r| r.value).sum();
     assert_eq!(total, db.sum(ModType::Base, &cfg, &names));
 }
+
+/// Read tracking finds the modifiers a calculation stored but never asked
+/// for: a line that parsed into a name no code reads does nothing, silently.
+#[test]
+fn unread_mods_are_the_stored_names_no_query_asked_for() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("Life", ModType::Base, 50.0));
+    db.add_mod(Modifier::flag("CompanionDamageAppliesToPlayer"));
+    db.add_mod(Modifier::number("Mana", ModType::Inc, 10.0));
+    let cfg = CalcConfig::new();
+    let names = |db: &ModDb| -> Vec<String> {
+        db.unread_mods()
+            .iter()
+            .map(|modifier| modifier.name.as_str().to_string())
+            .collect()
+    };
+
+    // Not tracked: nothing is reported, whatever was read.
+    db.sum(ModType::Base, &cfg, &[ModName::from("Life")]);
+    assert!(db.unread_mods().is_empty());
+
+    db.track_reads();
+    assert_eq!(
+        names(&db),
+        ["CompanionDamageAppliesToPlayer", "Life", "Mana"]
+    );
+
+    db.sum(ModType::Base, &cfg, &[ModName::from("Life")]);
+    // A query for a name with nothing stored is not a read of anything.
+    assert!(!db.flag(&cfg, "NoSuchFlag"));
+    // Whole-db iteration and existence checks are not reads either.
+    assert_eq!(db.iter_mods().count(), 3);
+    assert!(db.has_name("Mana"));
+    assert_eq!(names(&db), ["CompanionDamageAppliesToPlayer", "Mana"]);
+
+    // A query against a filtered copy counts for the db it came from.
+    let copy = db.filtered(|_| true);
+    copy.sum(ModType::Inc, &cfg, &[ModName::from("Mana")]);
+    assert_eq!(names(&db), ["CompanionDamageAppliesToPlayer"]);
+
+    assert!(db.flag(&cfg, "CompanionDamageAppliesToPlayer"));
+    assert!(db.unread_mods().is_empty());
+}

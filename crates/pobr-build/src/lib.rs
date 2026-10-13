@@ -4,6 +4,7 @@
 //! - [`error`] — three error layers ([`BuildCodeError`] / [`XmlError`] / [`BuildError`]).
 //! - [`build_code`] — PoB Build Code codec (URL-safe Base64 + zlib, padding-tolerant + bomb guard).
 //! - [`import_detect`] — quick-import recognition (Build Code / XML / pobb.in link / raw item).
+//! - [`import_report`] — what an import dropped, and the reference values a build code carries.
 //! - [`build_config`] — [`BuildConfig`] + `to_calc_config` (adapts to REAL [`pobr_core::CalcConfig`]).
 //! - [`build`] — [`Build`] in-memory state (uses REAL `pobr_data` types + a simplified [`SocketGroup`]).
 //! - [`xml_serde`] — PoB Build XML header parsing (quick-xml).
@@ -14,6 +15,7 @@
 //!   (text-only `calculate` + end-to-end attribution `calculate_with_data`).
 //! - [`calc_cache`] — result cache keyed by content hash.
 //! - [`comparison`] — scalar field diff between two [`pobr_core::calc::OutputTable`]s.
+//! - [`reference_check`] — a calculation against reference values recorded under PoB2 output names.
 //!
 //! Design constraints: deterministic, immutable, zero network I/O (share links are only
 //! recognized and their key extracted; fetching is left to the caller).
@@ -31,8 +33,10 @@ pub mod corpus;
 pub mod error;
 pub mod handlers;
 pub mod import_detect;
+pub mod import_report;
 pub mod jewel_tree;
 pub mod loadout;
+pub mod reference_check;
 pub mod snapshot;
 pub mod support;
 pub mod xml_build;
@@ -45,22 +49,26 @@ pub use build_config::BuildConfig;
 pub use build_data::{BuildData, ClassBaseAttributes, EffectStats, ResolvedSkillLevel};
 pub use calc_cache::{CalcCache, DataCalcCache};
 pub use calc_orchestrator::{
-    CalculationReport, DataOrchestratorOptions, OrchestratorOptions, SkillMetrics,
-    SkillMetricsReport, StatMapCompareRecord, StatMapMode, TreeVersionReport, calculate,
-    calculate_skill_metrics, calculate_with_data, calculate_with_data_report,
-    calculate_with_data_session, diagnose_tree_version, resolve_main_skill_selection,
+    CalculationReport, DataOrchestratorOptions, Diagnosis, MainSkillSummary, ModifierRef,
+    OrchestratorOptions, SkillMetrics, SkillMetricsReport, StatMapCompareRecord, StatMapMode,
+    TreeVersionReport, UnmappedStat, calculate, calculate_skill_metrics, calculate_with_data,
+    calculate_with_data_report, calculate_with_data_session, diagnose, diagnose_tree_version,
+    resolve_main_skill_selection,
 };
 pub use comparison::{FieldDiff, OutputComparison, compare_outputs};
 pub use error::{BuildCodeError, BuildError, XmlError};
 pub use import_detect::{ImportKind, ShareService, detect_import};
+pub use import_report::{ImportReport, ImportedBuild, SkippedItem, UnmodelledSlot};
 pub use loadout::{
     BuildSets, Loadout, SetRef, SetSelection, active_selection, derive_loadouts, select_sets,
 };
+pub use reference_check::{ReferenceRow, compare_to_reference};
 pub use snapshot::BuildSnapshot;
 pub use xml_build::{
-    RawItemsView, default_quest_stat_reward_texts, default_true_condition_keys, parse_build,
-    parse_build_from_code, parse_build_sets, parse_build_with_allocated_nodes,
-    parse_custom_modifier_blocks, parse_notes, parse_raw_items_view, radius_jewel_from_text,
+    RawItemsView, default_quest_stat_reward_texts, default_true_condition_keys, import_build,
+    import_build_from_code, import_build_with_allocated_nodes, parse_build, parse_build_from_code,
+    parse_build_sets, parse_build_with_allocated_nodes, parse_custom_modifier_blocks, parse_notes,
+    parse_raw_items_view, radius_jewel_from_text,
 };
 pub use xml_merge::{SetKind, duplicate_set, merge_active_sets, remove_set, rename_set};
 pub use xml_serde::{ParsedBuildHeader, is_pob_xml, parse_build_header};

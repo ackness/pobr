@@ -279,7 +279,11 @@ pub fn parse_gem_property_bonus(text: &str) -> Option<GemPropertyBonus> {
     };
     let mut rest = rest.trim();
     let mut attr_req = None;
-    if let Some((head, req)) = rest.split_once(" with a ") {
+    // "with an Intelligence requirement", "with a Strength requirement".
+    if let Some((head, req)) = rest
+        .split_once(" with an ")
+        .or_else(|| rest.split_once(" with a "))
+    {
         attr_req = Some(match req.trim() {
             "strength requirement" => "str",
             "dexterity requirement" => "dex",
@@ -363,28 +367,63 @@ pub fn mk_trigger_flag(name: &str, label: &str) -> Modifier {
     Modifier::flag(name).with_origin(origin)
 }
 
-/// Finds the "N% increased Effect of Jewel Socket Passive Skills containing Corrupted
-/// Magic Jewels" value on a unique jewel (the Adorned). Returns `None` when no unique
-/// jewel carries the suffix.
-pub fn adorned_corrupted_magic_jewel_inc(jewels: &[pobr_data::item::Item]) -> Option<f64> {
-    const SUFFIX: &str =
-        "% increased Effect of Jewel Socket Passive Skills containing Corrupted Magic Jewels";
-    for jewel in jewels {
-        if jewel.rarity != pobr_data::item::ItemRarity::Unique {
-            continue;
-        }
-        let joined = jewel.modifier_texts.join(" ");
-        if let Some(pos) = joined.find(SUFFIX) {
-            let head = &joined[..pos];
-            let num_start = head
-                .rfind(|c: char| !c.is_ascii_digit())
-                .map_or(0, |i| i + 1);
-            if let Ok(v) = head[num_start..].parse::<f64>() {
-                return Some(v);
+/// The Adorned: "N% increased Effect of Jewel Socket Passive Skills containing
+/// Corrupted Magic Jewels" or "... Corrupted Rare Jewels". Each applies to the
+/// corrupted jewels of that rarity (vendor ModParser.lua:5644,
+/// CalcSetup.lua:120-126).
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct CorruptedJewelEffect {
+    pub magic: Option<f64>,
+    pub rare: Option<f64>,
+}
+
+impl CorruptedJewelEffect {
+    const MIDDLE: &str = "% increased Effect of Jewel Socket Passive Skills containing Corrupted ";
+
+    /// `(rarity, N)` when `line` is the whole modifier. Item text wraps it
+    /// after "Passive Skills", so a caller joins the two halves with a space.
+    pub fn parse_line(line: &str) -> Option<(pobr_data::item::ItemRarity, f64)> {
+        let (number, rest) = line.trim().split_once(Self::MIDDLE)?;
+        let rarity = match rest {
+            "Magic Jewels" => pobr_data::item::ItemRarity::Magic,
+            "Rare Jewels" => pobr_data::item::ItemRarity::Rare,
+            _ => return None,
+        };
+        Some((rarity, number.parse().ok()?))
+    }
+
+    /// The effects the unique jewels among `jewels` carry.
+    pub fn from_jewels<'a>(jewels: impl IntoIterator<Item = &'a pobr_data::item::Item>) -> Self {
+        let mut effect = Self::default();
+        for jewel in jewels {
+            if jewel.rarity != pobr_data::item::ItemRarity::Unique {
+                continue;
+            }
+            let lines = &jewel.modifier_texts;
+            let wrapped = lines.windows(2).map(|pair| pair.join(" "));
+            for line in lines.iter().cloned().chain(wrapped) {
+                match Self::parse_line(&line) {
+                    Some((pobr_data::item::ItemRarity::Magic, n)) => effect.magic = Some(n),
+                    Some((_, n)) => effect.rare = Some(n),
+                    None => {}
+                }
             }
         }
+        effect
     }
-    None
+
+    /// The percent increase to `jewel`'s own modifiers: it must be corrupted
+    /// and of a rarity an effect names.
+    pub fn increase_for(&self, jewel: &pobr_data::item::Item) -> Option<f64> {
+        if !jewel.corrupted {
+            return None;
+        }
+        match jewel.rarity {
+            pobr_data::item::ItemRarity::Magic => self.magic,
+            pobr_data::item::ItemRarity::Rare => self.rare,
+            _ => None,
+        }
+    }
 }
 
 /// Vendor's `ModStore:ScaleAddMod` numeric scaling semantics (ModStore.lua:70-79):

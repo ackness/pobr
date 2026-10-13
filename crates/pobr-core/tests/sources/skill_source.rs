@@ -775,3 +775,35 @@ fn support_level_quality_more_without_type_filter_remains_unrestricted() {
     assert!((db.more(&CalcConfig::spell(), &[ModName::from("Damage")]) - 1.3).abs() < 1e-9);
     assert!((db.more(&CalcConfig::spell(), &[ModName::from("Speed")]) - 0.8).abs() < 1e-9);
 }
+
+/// The game writes "with an Intelligence requirement" and "with a Strength
+/// requirement". Only the latter form was read, so every Intelligence
+/// gem-level bonus was dropped without a diagnostic.
+#[test]
+fn gem_level_bonus_reads_every_attribute_requirement() {
+    use pobr_core::skill_env::{GemPropertyKind, parse_gem_property_bonus};
+
+    for (line, attribute) in [
+        (
+            "+2 to Level of all Skills with an Intelligence requirement",
+            "int",
+        ),
+        (
+            "+2 to Level of all Skills with a Strength requirement",
+            "str",
+        ),
+        (
+            "+2 to Level of all Skills with a Dexterity requirement",
+            "dex",
+        ),
+    ] {
+        let bonus = parse_gem_property_bonus(line).unwrap_or_else(|| panic!("{line}"));
+        assert_eq!(bonus.kind, GemPropertyKind::Level, "{line}");
+        assert_eq!(bonus.value, 2, "{line}");
+        assert_eq!(bonus.attr_req, Some(attribute), "{line}");
+        assert_eq!(bonus.category, "", "{line}");
+    }
+    assert!(
+        parse_gem_property_bonus("+2 to Level of all Skills with a Luck requirement").is_none()
+    );
+}

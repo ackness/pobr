@@ -184,6 +184,24 @@ pub struct BuildData {
     pub parser_rules: Option<Arc<pobr_core::mod_parser::CompiledParserRules>>,
 }
 
+/// One `stats` entry per text line. The tree export packs a node's lines into
+/// a single newline-joined entry for some nodes (most keystones, some notables)
+/// and writes one entry per line for the rest; every reader of `stats` parses
+/// an entry as one modifier line, so a packed entry parsed as nothing.
+fn one_stat_per_line(mut node: PassiveNodeDef) -> PassiveNodeDef {
+    if node.stats.iter().any(|stat| stat.contains('\n')) {
+        node.stats = node
+            .stats
+            .iter()
+            .flat_map(|stat| stat.lines())
+            .map(str::trim)
+            .filter(|line| !line.is_empty())
+            .map(String::from)
+            .collect();
+    }
+    node
+}
+
 impl BuildData {
     /// Loads and projects every domain the orchestrator needs from an already-constructed [`GameData`].
     ///
@@ -195,7 +213,7 @@ impl BuildData {
         let passive_nodes = data
             .passive_nodes()?
             .into_iter()
-            .map(|node| (node.skill, node))
+            .map(|node| (node.skill, one_stat_per_line(node)))
             .collect();
 
         // Historical league trees (mirroring PoB2's multi-version TreeData):
@@ -207,7 +225,10 @@ impl BuildData {
             if let Some(nodes) = data.passive_nodes_versioned(&version)? {
                 versioned_passive_nodes.insert(
                     version,
-                    nodes.into_iter().map(|node| (node.skill, node)).collect(),
+                    nodes
+                        .into_iter()
+                        .map(|node| (node.skill, one_stat_per_line(node)))
+                        .collect(),
                 );
             }
         }

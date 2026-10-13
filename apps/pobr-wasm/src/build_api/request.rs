@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use pobr_build::build::GemSkillRef;
 use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup,
-    calculate_with_data_session, decode_pob_code, parse_build, parse_build_with_allocated_nodes,
+    calculate_with_data_session, decode_pob_code, import_build, import_build_with_allocated_nodes,
     radius_jewel_from_text,
 };
 use pobr_core::calc::{CalculationSession, MinimalInput};
@@ -362,7 +362,7 @@ pub(crate) fn apply_request_overrides(
                     .push((jewel.socket_node, parsed, radius_jewel));
                 continue;
             }
-            plain.push(parsed);
+            plain.push((pobr_build::build::JewelSocket::Tree, parsed));
             if let Some(rj) = radius_jewel {
                 radius.push(rj);
             }
@@ -461,6 +461,15 @@ pub(crate) fn orchestrator_options(
 }
 
 pub(crate) fn parse_build_from_request(req: &CalculateBuildRequest) -> Result<Build, ApiError> {
+    Ok(import_build_from_request(req)?.0)
+}
+
+/// The request's baseline build, with an issue for each item its code uses
+/// that could not be read and that the request does not replace. Without
+/// this a `{ pob_code }` request is calculated minus that gear, silently.
+pub(crate) fn import_build_from_request(
+    req: &CalculateBuildRequest,
+) -> Result<(Build, Vec<SlotIssue>), ApiError> {
     if req.pob_code.trim().is_empty() {
         // Starting a build from scratch (PoB2's "new build" semantics): an
         // empty build with no equipment/skill groups, with character
@@ -475,20 +484,45 @@ pub(crate) fn parse_build_from_request(req: &CalculateBuildRequest) -> Result<Bu
         // Quest rewards aren't injected here: they're uniformly rebuilt by
         // apply_request_overrides from the merged config inputs (the XML
         // and direct-construction paths share one basis, and rewards can be changed on the Config page after import).
-        return Ok(Build::new().with_character(CharacterIdentity {
+        let build = Build::new().with_character(CharacterIdentity {
             level: ch.level.unwrap_or(1),
             class_name,
             ascendancy_name: ch.ascendancy_name.clone().unwrap_or_default(),
-        }));
+        });
+        return Ok((build, Vec::new()));
     }
     let xml = decode_pob_code(req.pob_code.trim())
         .map_err(|e| ApiError::decode_error(format!("decode: {e}")))?;
-    let parsed = if let Some(nodes) = &req.allocated_nodes {
-        parse_build_with_allocated_nodes(&xml, nodes)
+    let imported = if let Some(nodes) = &req.allocated_nodes {
+        import_build_with_allocated_nodes(&xml, nodes)
     } else {
-        parse_build(&xml)
-    };
-    parsed.map_err(|e| ApiError::decode_error(format!("parse build: {e}")))
+        import_build(&xml)
+    }
+    .map_err(|e| ApiError::decode_error(format!("parse build: {e}")))?;
+
+    let mut issues = Vec::new();
+    for item in imported.report.missing_items() {
+        for used in &item.used_in {
+            // The request's own section replaces the code's; its items are
+            // reported by `apply_request_overrides`.
+            let (replaced, slot) = if let Some(node) = used.strip_prefix("socket:") {
+                (req.jewels.is_some(), format!("Jewel@{node}"))
+            } else if used == "jewel" {
+                (req.jewels.is_some(), "Jewel".to_string())
+            } else if used.starts_with("Flask ") || used.starts_with("Charm ") {
+                (req.flasks.is_some(), used.clone())
+            } else {
+                (req.items.is_some(), used.clone())
+            };
+            if !replaced {
+                issues.push(SlotIssue {
+                    slot,
+                    message: item.reason.clone(),
+                });
+            }
+        }
+    }
+    Ok((imported.build, issues))
 }
 
 pub(crate) fn run_session_for_build(

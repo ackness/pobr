@@ -256,6 +256,19 @@ pub struct RadiusJewel {
     pub tree_texts: Vec<String>,
 }
 
+/// Where a jewel is socketed. Effects on "Jewel Socket Passive Skills" (The
+/// Adorned) reach only the tree's own sockets (vendor CalcSetup.lua:120-126).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum JewelSocket {
+    /// One of the passive tree's own jewel sockets, allocated.
+    Tree,
+    /// A socket an item or another jewel grants: a Sinister socket, or a
+    /// notable that holds a socket.
+    Granted,
+    /// Outside the tree: an equipment jewel socket.
+    Equipment,
+}
+
 /// In-memory state of a PoB Build.
 ///
 /// Immutable updates: every `with_*` method returns a new copy; `set_item` /
@@ -281,10 +294,10 @@ pub struct Build {
     /// determinism (`EquipmentSlot` only implements `Hash`, not `Ord`, and we can't
     /// change the REAL type).
     pub items: HashMap<EquipmentSlot, Item>,
-    /// Jewels (passive tree / abyss sockets, no fixed [`EquipmentSlot`]). Their mods are
+    /// Active jewels with where each sits (no fixed [`EquipmentSlot`]). Their mods are
     /// injected as global. Radius directives are consumed separately below,
     /// using the selected tree's geometry and allocated nodes.
-    pub jewels: Vec<Item>,
+    pub jewels: Vec<(JewelSocket, Item)>,
     /// Jewels in sockets not explicitly allocated by the imported tree. Their
     /// activation depends on item grants and the selected tree data, so XML parsing
     /// preserves them until calculation instead of pinning numeric node IDs.
@@ -356,10 +369,18 @@ impl Build {
         self
     }
 
-    /// Sets the jewel list, returns a new copy.
+    /// Sets the jewel list to `jewels` in the tree's own sockets, returns a new copy.
     pub fn with_jewels(mut self, jewels: Vec<Item>) -> Self {
-        self.jewels = jewels;
+        self.jewels = jewels
+            .into_iter()
+            .map(|jewel| (JewelSocket::Tree, jewel))
+            .collect();
         self
+    }
+
+    /// Every active jewel, wherever it sits.
+    pub fn jewel_items(&self) -> impl Iterator<Item = &Item> {
+        self.jewels.iter().map(|(_, jewel)| jewel)
     }
 
     /// Sets the radius jewel geometric expansion list, returns a new copy.
@@ -447,7 +468,7 @@ impl pobr_core::skill_env::GemPropertyScanView for Build {
                 f(text);
             }
         }
-        for jewel in &self.jewels {
+        for jewel in self.jewel_items() {
             for text in jewel
                 .implicit_texts
                 .iter()

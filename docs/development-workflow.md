@@ -196,7 +196,12 @@ cargo nextest run -p pobr-build --test parity
 mise run test build parity parity_baseline_report -- --ignored --nocapture
 mise run test build parity effective_switch_dual_run_report -- --ignored --nocapture
 mise run test build parity ehp_dual_run_report -- --ignored --nocapture
+
+mise run diagnose <build dir | code file | committed build name>   # One build's dropped inputs
+mise run accuracy [dir of */code.txt]                             # A corpus against the reference its codes carry
 ```
+
+`diagnose` 是数值差异的第一步，流程见[维护者指南的“排查数值差异”](maintainer-guide.md#排查数值差异诊断闭环)。
 
 `--timings` 显示编译单元耗时与依赖等待。使用重定向后的 target 时按 Cargo 输出定位报告。
 不要为了测量清缓存。测试目标由 `mise run targets` 读取当前 manifest；深层 tests 文件通常是

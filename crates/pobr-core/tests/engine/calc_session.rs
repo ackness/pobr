@@ -406,3 +406,66 @@ fn projectile_speed_applies_to_bow_damage_conversion() {
     let non_bow_out = non_bow.perform_minimal().expect("perform");
     assert_eq!(non_bow_out.total_hit_avg, 100.0);
 }
+
+/// A line can parse and still do nothing: its name has no reader, or it scales
+/// by a variable nothing sets. Diagnostics name both instead of leaving a
+/// number quietly short.
+#[test]
+fn session_reports_modifiers_that_parsed_and_did_nothing() {
+    use pobr_core::{ModTag, Modifier};
+    use pobr_data::prelude::ModType;
+
+    let mut s = session(MinimalInput {
+        base_life: 100.0,
+        ..Default::default()
+    });
+    s.add_modifiers([
+        Modifier::number("MaximumLife", ModType::Base, 50.0),
+        Modifier::flag("NothingReadsThisFlag").with_source("Synthetic keystone"),
+        Modifier::number("MaximumLife", ModType::Base, 5.0).with_tag(ModTag::multiplier(
+            "NothingSetsThis",
+            1.0,
+            None,
+        )),
+    ]);
+    s.track_modifier_reads();
+    let output = s.perform_minimal().unwrap();
+
+    // The per-multiplier line reads as 0: only the plain +50 arrived.
+    assert_eq!(output.life, 150.0);
+    let unread: Vec<&str> = s
+        .unread_modifiers()
+        .iter()
+        .map(|modifier| modifier.name.as_str())
+        .collect();
+    assert_eq!(unread, ["NothingReadsThisFlag"]);
+    assert!(
+        s.read_modifier_names()
+            .iter()
+            .any(|name| name.as_str() == "MaximumLife")
+    );
+    let unprovided: Vec<(&str, &str, f64)> = s
+        .unprovided_multipliers()
+        .into_iter()
+        .map(|(variable, modifier)| {
+            (
+                variable,
+                modifier.name.as_str(),
+                modifier.value.as_number().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(unprovided, [("NothingSetsThis", "MaximumLife", 5.0)]);
+}
+
+/// Without tracking, nothing is reported and nothing is paid for.
+#[test]
+fn session_reports_no_unread_modifiers_unless_reads_are_tracked() {
+    use pobr_core::Modifier;
+
+    let mut s = session(MinimalInput::default());
+    s.add_modifiers([Modifier::flag("NothingReadsThisFlag")]);
+    s.perform_minimal().unwrap();
+    assert!(s.unread_modifiers().is_empty());
+    assert!(s.read_modifier_names().is_empty());
+}

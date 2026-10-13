@@ -8,8 +8,8 @@ use pobr_core::calc::CalculationSession;
 use serde::Serialize;
 
 use super::request::{
-    CalculateBuildRequest, apply_request_overrides, orchestrator_options, parse_build_from_request,
-    run_session_for_build,
+    CalculateBuildRequest, apply_request_overrides, import_build_from_request,
+    orchestrator_options, run_session_for_build,
 };
 use crate::state;
 
@@ -886,8 +886,8 @@ fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
     let req: CalculateBuildRequest = serde_json::from_str(request_json)
         .map_err(|e| super::ApiError::bad_request(format!("invalid request json: {e}")))?;
     let data = state::build_data().map_err(super::ApiError::not_initialized)?;
-    let mut build = parse_build_from_request(&req)?;
-    let item_errors = apply_request_overrides(&mut build, &req, &data)?;
+    let (mut build, mut item_errors) = import_build_from_request(&req)?;
+    item_errors.extend(apply_request_overrides(&mut build, &req, &data)?);
     let session = run_session_for_build(&build, &req)?;
     let stats = pobr_core::extract_display_values(session.output());
     let breakdowns = BREAKDOWN_MOD_NAMES
@@ -947,8 +947,8 @@ fn skill_metrics_impl(request_json: &str) -> Result<String, super::ApiError> {
     let req: CalculateBuildRequest = serde_json::from_str(request_json)
         .map_err(|e| super::ApiError::bad_request(format!("invalid request json: {e}")))?;
     let data = state::build_data().map_err(super::ApiError::not_initialized)?;
-    let mut build = parse_build_from_request(&req)?;
-    let item_errors = apply_request_overrides(&mut build, &req, &data)?;
+    let (mut build, mut item_errors) = import_build_from_request(&req)?;
+    item_errors.extend(apply_request_overrides(&mut build, &req, &data)?);
     let opts = orchestrator_options(&req)?;
     let report = pobr_build::calculate_skill_metrics(&build, &data, &opts)
         .map_err(|e| format!("calculate: {e}"))?;

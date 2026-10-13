@@ -41,7 +41,7 @@ pub use lookup::{
 };
 pub use minions::{MinionEnv, MinionSession, spawn_minions};
 pub use mods::{
-    ActiveEffect, GemInput, GemPropertyBonus, GemPropertyKind, adorned_corrupted_magic_jewel_inc,
+    ActiveEffect, CorruptedJewelEffect, GemInput, GemPropertyBonus, GemPropertyKind,
     clean_grant_text, crossbow_reload_modifiers, data_mapped_stat_modifiers, dot_flag_modifiers,
     gem_level_category_matches, group_active_effects, is_attribute_node, is_damage_skill,
     is_off_hand_weapon_base_stat, mk_trigger_flag, mk_trigger_mod, parse_gem_level_bonus,

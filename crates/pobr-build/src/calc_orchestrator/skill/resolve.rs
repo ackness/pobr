@@ -106,6 +106,89 @@ pub fn resolve_main_skill_selection(
     ))
 }
 
+/// The gem whose level an effect runs at, that gem's own level, and the
+/// levels items, passives and supports add to it.
+///
+/// An effect takes the level of the gem it comes from. A support gem has no
+/// levels of its own, so an active effect a support grants takes the level of
+/// the skill that support is applied to (vendor CalcActiveSkill.lua:439-461);
+/// with no such skill in the group it keeps the support's.
+fn level_source<'a>(
+    build: &Build,
+    data: &BuildData,
+    group: &'a SocketGroup,
+    effect: &pobr_core::skill_env::ActiveEffect<'a>,
+) -> (&'a str, u32, u32) {
+    let own = group
+        .gem_skills
+        .get(effect.gem_index)
+        .map(|gem| gem.skill_id.as_str())
+        .or(group.active_skill_id.as_deref())
+        .unwrap_or(effect.skill_id);
+    let granted_by_support = own != effect.skill_id
+        && data
+            .granted_effects
+            .get(own)
+            .is_some_and(|granting| granting.is_support);
+    let (gem_id, gem_level) = granted_by_support
+        .then(|| supported_skill(group, data, effect.gem_index))
+        .flatten()
+        .map_or((own, effect.gem_level), |host| {
+            (host.skill_id.as_str(), host.gem_level)
+        });
+    let bonus = additional_gem_levels(build, data, gem_id)
+        .saturating_add(support_granted_gem_levels(group, data, gem_id));
+    (gem_id, gem_level, bonus)
+}
+
+/// The first active skill of `group` that the support at `support_index` applies to.
+fn supported_skill<'a>(
+    group: &'a SocketGroup,
+    data: &BuildData,
+    support_index: usize,
+) -> Option<&'a crate::build::GemSkillRef> {
+    group.gem_skills.iter().find(|gem| {
+        data.granted_effects
+            .get(&gem.skill_id)
+            .is_some_and(|effect| !effect.is_support)
+            && crate::support::judge_group_supports(group, data, &gem.skill_id, group.from_gem())
+                .compatible
+                .iter()
+                .any(|support| support.gem_index == support_index)
+    })
+}
+
+/// What a calculation is of: the selected effect and the level it runs at.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MainSkillSummary {
+    pub skill_id: String,
+    /// The gem whose level the effect runs at: the gem it comes from, or for
+    /// an effect a support grants, the skill that support is applied to.
+    pub gem_id: String,
+    /// That gem's own level, corruption included.
+    pub gem_level: u32,
+    /// Levels items, passives and supports add to that gem.
+    pub bonus_levels: u32,
+    pub quality: u32,
+    pub stat_set_index: Option<u32>,
+}
+
+/// The main skill as the calculation resolves it, on the prepared build view.
+pub(crate) fn main_skill_summary(build: &Build, data: &BuildData) -> Option<MainSkillSummary> {
+    let prepared = super::super::stage_build_view(build, data);
+    let (_, group, _, _) = resolve_main_skill(&prepared, data)?;
+    let effect = selected_group_effect(data, group)?;
+    let (gem_id, gem_level, bonus_levels) = level_source(&prepared, data, group, &effect);
+    Some(MainSkillSummary {
+        skill_id: effect.skill_id.to_string(),
+        gem_id: gem_id.to_string(),
+        gem_level,
+        bonus_levels,
+        quality: effect.quality,
+        stat_set_index: effect.stat_set_index,
+    })
+}
+
 /// Level bonuses belong to the originating gem, not the selected additional
 /// effect's type or a same-id gem elsewhere in the group/build. The resulting
 /// level is used to resolve this exact effect's own selected stat set.
@@ -116,15 +199,7 @@ pub(crate) fn resolve_skill_level_with_gem_bonus(
     effect: pobr_core::skill_env::ActiveEffect<'_>,
 ) -> Option<ResolvedSkillLevel> {
     let skill_id = effect.skill_id;
-    let base_level = effect.gem_level;
-    let gem_id = group
-        .gem_skills
-        .get(effect.gem_index)
-        .map(|gem| gem.skill_id.as_str())
-        .or(group.active_skill_id.as_deref())
-        .unwrap_or(skill_id);
-    let bonus = additional_gem_levels(build, data, gem_id)
-        .saturating_add(support_granted_gem_levels(group, data, gem_id));
+    let (_, base_level, bonus) = level_source(build, data, group, &effect);
     if pobr_core::dbg_env!("POBR_DBG_GEMLVL").is_some() {
         eprintln!("[POBR_GEMLVL] {skill_id} base={base_level} bonus={bonus}");
     }

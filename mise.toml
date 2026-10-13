@@ -85,6 +85,14 @@ run = "bash devs/scripts/driver.sh verify"
 description = "Compile one suite with Cargo HTML timings: `mise run timings build parity`"
 run = "bash devs/scripts/driver.sh timings"
 
+[tasks.diagnose]
+description = "One build's dropped inputs and reference differences: `mise run diagnose <build dir | code file | name>`"
+run = "bash devs/scripts/driver.sh diagnose"
+
+[tasks.accuracy]
+description = "A corpus of build codes against the reference values they carry: `mise run accuracy [dir]`"
+run = "bash devs/scripts/driver.sh accuracy"
+
 [tasks.build]
 description = "Build the game CLI, or forward explicit Cargo selectors"
 run = "bash devs/scripts/driver.sh build"

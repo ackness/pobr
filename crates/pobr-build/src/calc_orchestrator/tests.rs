@@ -1136,6 +1136,48 @@ fn additional_effect_preserves_selected_gem_quality_and_level_provenance() {
     assert_eq!(boosted, baseline);
 }
 
+/// A support gem has no levels. The active effect it grants runs at the
+/// level of the skill the support is applied to, bonuses included; it used to
+/// run at the support's own level 1, which put a level-1 skill on an endgame
+/// character.
+#[test]
+fn support_granted_effect_takes_the_level_of_the_supported_skill() {
+    let data = repo_data();
+    // Doedre's Undoing grants Dark Consequences (`ChaosFrogExplosionPlayer`).
+    let group = SocketGroup::new()
+        .with_gem_skill("ElementalWeaknessPlayer", 17)
+        .with_gem_skill("SupportDoedresUndoingPlayer", 1)
+        .with_main_active_skill(2);
+    let mut build = Build::new()
+        .add_socket_group(group)
+        .with_main_socket_group(1);
+    let at = |level| {
+        pobr_core::skill_env::resolve_skill_level(&data, "ChaosFrogExplosionPlayer", level, None)
+            .expect("level row")
+    };
+    assert_ne!(at(1), at(17), "the effect scales with level");
+
+    let summary = super::skill::resolve::main_skill_summary(&build, &data).unwrap();
+    assert_eq!(summary.skill_id, "ChaosFrogExplosionPlayer");
+    assert_eq!(summary.gem_id, "ElementalWeaknessPlayer");
+    assert_eq!((summary.gem_level, summary.bonus_levels), (17, 0));
+    let resolved = super::skill::resolve::resolve_main_skill(&build, &data)
+        .unwrap()
+        .0;
+    assert_eq!(resolved, at(17));
+
+    // A level the supported skill gains is a level the granted effect gains.
+    let mut item = life_item("0");
+    item.modifier_texts = vec!["+2 to Level of all Spell Skills".into()];
+    build.items.insert(EquipmentSlot::Ring1, item);
+    let summary = super::skill::resolve::main_skill_summary(&build, &data).unwrap();
+    assert_eq!((summary.gem_level, summary.bonus_levels), (17, 2));
+    let boosted = super::skill::resolve::resolve_main_skill(&build, &data)
+        .unwrap()
+        .0;
+    assert_eq!(boosted, at(19));
+}
+
 #[test]
 fn builder_additional_effect_keeps_primary_gem_level_bonus_provenance() {
     let mut data = repo_data();

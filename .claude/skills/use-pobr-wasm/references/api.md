@@ -117,6 +117,10 @@ Preserve row diagnostics and do not add mutually exclusive skill DPS into a tota
 Look up stats by stable `stats[].id` (for example `Life` or `TotalDPS`), not array
 position or translated display labels. `value` can be `null` for unavailable
 outputs. Preserve `unsupported_modifiers`, `item_errors`, and tree diagnostics.
+`item_errors` lists every item that could not be read: one supplied in the
+request, and for a `{ pob_code }` request an item the code uses that the
+request does not replace. A non-empty list means the result is for a character
+without that item.
 
 Invalid calls throw JS `Error`s. Build endpoints commonly put a JSON
 `{ code, message, slot? }` error envelope in the message (`not_initialized`,

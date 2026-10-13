@@ -633,17 +633,16 @@ fn fill_mechanics(env: &mut Env) {
             calc_leech_from_db(db, scope, pool, physical_hit, resource).display_rate_per_second
         })
     };
-    let has_leech_source = db.iter_mods().any(|modifier| {
-        matches!(
-            modifier.name.as_str(),
-            "LifeLeech"
-                | "ManaLeech"
-                | "EnergyShieldLeech"
-                | "PhysicalDamageLifeLeech"
-                | "PhysicalDamageManaLeech"
-                | "PhysicalDamageEnergyShieldLeech"
-        )
-    });
+    let has_leech_source = [
+        "LifeLeech",
+        "ManaLeech",
+        "EnergyShieldLeech",
+        "PhysicalDamageLifeLeech",
+        "PhysicalDamageManaLeech",
+        "PhysicalDamageEnergyShieldLeech",
+    ]
+    .iter()
+    .any(|name| db.named(name).next().is_some());
     let leech_rates = if !has_leech_source {
         // Most build variants have no leech: avoid cloning per-hand scopes.
         [0.0; 3]
@@ -1447,12 +1446,8 @@ fn copy_projectile_speed_as_damage(
     let copies: Vec<crate::Modifier> = env
         .player
         .mod_db
-        .iter_mods()
-        .filter(|m| {
-            m.name == proj_speed
-                && m.mod_type == ModType::Inc
-                && m.flags.is_subset_of(source_subset)
-        })
+        .named(proj_speed.as_str())
+        .filter(|m| m.mod_type == ModType::Inc && m.flags.is_subset_of(source_subset))
         .map(|m| {
             let mut copy = m.clone();
             copy.name = damage.clone();
