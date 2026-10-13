@@ -281,12 +281,19 @@ pub(crate) fn grenade_type_count(build: &Build, data: &BuildData) -> f64 {
 ///   `Vaal` token, kept to match vendor, but never actually triggers);
 /// - `SkillType.Channel` → `Channelling` (:264-266, an existing consumer on offence's
 ///   channelling branch in `offence.rs`).
+///
+/// A skill a totem uses ([`used_by_totem`]) is not the character attacking or
+/// casting. For it to be in use the character has summoned the totem, so it
+/// has a totem and has summoned one recently.
 pub(crate) fn combat_conditions(
     skill_types: &[String],
     skill_flags: ModFlags,
 ) -> Vec<&'static str> {
     let has = |t: &str| skill_types.iter().any(|x| x == t);
-    if has("Triggered") || has("InbuiltTrigger") || has("RemoteMined") || has("SummonsTotem") {
+    if used_by_totem(skill_types) {
+        return vec!["HaveTotem", "SummonedTotemRecently"];
+    }
+    if has("Triggered") || has("InbuiltTrigger") || has("RemoteMined") {
         return Vec::new();
     }
     let mut conds = Vec::new();
@@ -308,6 +315,15 @@ pub(crate) fn combat_conditions(
         conds.push("Channelling");
     }
     conds
+}
+
+/// Whether a totem uses the skill with these final types: the skill of a totem
+/// gem itself, a skill socketed in a meta totem gem (whose support half adds
+/// the game's `UsedByTotem`), or the skill that places the totem.
+pub(crate) fn used_by_totem(skill_types: &[String]) -> bool {
+    skill_types
+        .iter()
+        .any(|skill_type| skill_type == "UsedByTotem" || skill_type == "SummonsTotem")
 }
 
 #[cfg(test)]

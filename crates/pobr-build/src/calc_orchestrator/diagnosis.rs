@@ -82,9 +82,10 @@ pub struct Diagnosis {
     pub unparsed_lines: Vec<String>,
     /// Gem stats the stat map has an entry for and the engine rejected.
     pub unmapped_stats: Vec<UnmappedStat>,
-    /// How many gem stats have no stat-map entry at all. Most are display or
-    /// animation data; the count is a size, not a list of gaps.
-    pub unknown_stat_count: usize,
+    /// `(owner, stat)`: the gem stats with no stat-map entry at all. Most are
+    /// display or animation data, so this is where to look for a missing
+    /// mechanic of the skill in use, not a list of gaps.
+    pub unknown_stats: Vec<(String, String)>,
     /// Modifiers stored under a name the calculation never read.
     pub unread_modifiers: Vec<ModifierRef>,
     /// The stored names the calculation did read. A name unread here and read
@@ -111,6 +112,8 @@ const READ_OUTSIDE_THE_DATABASE: &[&str] = &[
     "MinionModifier",
     // Puts the Bonded lines of an item's Idols in effect: `item::bonded`.
     "SocketedIdolsUseBondedModifiers",
+    // The configured number of summoned totems: `prepare::stage_build_cfg`.
+    "TotemsSummoned",
 ];
 
 /// Calculates `build` like [`calculate_with_data_session`](super::calculate_with_data_session)
@@ -146,11 +149,14 @@ pub fn diagnose(
         .collect();
     unmapped_stats.sort_by(|a, b| (&a.owner, &a.stat).cmp(&(&b.owner, &b.stat)));
     unmapped_stats.dedup();
-    let unknown_stat_count = context
+    let mut unknown_stats: Vec<(String, String)> = context
         .compare_records
         .iter()
         .filter(|record| record.classification == "unknown")
-        .count();
+        .map(|record| (record.label.clone(), record.stat.clone()))
+        .collect();
+    unknown_stats.sort();
+    unknown_stats.dedup();
 
     // A condition or multiplier modifier is consumed through the config's
     // maps, not by a query: it is used when some stored modifier depends on it.
@@ -185,7 +191,7 @@ pub fn diagnose(
             .collect(),
         unparsed_lines: session.unsupported_modifier_texts().to_vec(),
         unmapped_stats,
-        unknown_stat_count,
+        unknown_stats,
         unread_modifiers,
         unprovided_multipliers,
         session,

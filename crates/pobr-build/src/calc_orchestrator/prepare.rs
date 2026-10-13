@@ -249,6 +249,25 @@ pub(super) fn stage_build_cfg(
     }) {
         cfg.keyword_flags = cfg.keyword_flags | pobr_data::modifier::KeywordFlags::ARROW;
     }
+    // A skill a totem uses. What is said of totems ("Totem Damage", "Spells
+    // Cast by Totems have …") is said of it, and of the skill that places the
+    // totem.
+    let uses_totem = super::conditions::used_by_totem(&main.main_skill_types);
+    if uses_totem {
+        cfg.keyword_flags = cfg.keyword_flags | pobr_data::modifier::KeywordFlags::TOTEM;
+    }
+    // How many totems are summoned is the player's to say ("# of Summoned
+    // Totems"). Unsaid, the totem using the main skill is: the limit of a
+    // totem gem is not modelled, so nothing here assumes it is reached.
+    let configured_totems = resolved_config.player_mods.iter().find_map(|m| {
+        match (m.name.as_str(), m.mod_type, &m.value) {
+            ("TotemsSummoned", ModType::Override, pobr_core::ModValue::Number(n)) => Some(*n),
+            _ => None,
+        }
+    });
+    if let Some(totems) = configured_totems.or(uses_totem.then_some(1.0)) {
+        cfg = cfg.with_multiplier("TotemsSummoned", totems);
+    }
     // Main skill-derived combat conditions (read directly from vendor
     // CalcPerform.lua:242-266's `if env.mode_combat` section): attack/spell/Movement/
     // Minion/Vaal/Channel → "...Recently"/Channelling conditions;

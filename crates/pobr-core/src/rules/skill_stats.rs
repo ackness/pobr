@@ -101,6 +101,18 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         // Says nothing about the curse the support applies to: the Witchtoads
         // use the skill the support grants (see `granted_skill_modifiers`).
         WITCHTOAD_SPAWN_INTERVAL_MS => Some(Vec::new()),
+        // "Spells Cast by Totems have {0}% increased Cast Speed" and "Attacks
+        // used by Totems have {0}% increased Attack Speed" (Urgent Totems):
+        // for the skills a totem uses, as the same line on a passive is.
+        "totem_skill_cast_speed_+%" => Some(vec![
+            Modifier::number("CastSpeed", ModType::Inc, value)
+                .with_flags(ModFlags::SPELL)
+                .with_keyword_flags(KeywordFlags::TOTEM),
+        ]),
+        "totem_skill_attack_speed_+%" => Some(vec![
+            Modifier::number("AttackSpeed", ModType::Inc, value)
+                .with_keyword_flags(KeywordFlags::TOTEM),
+        ]),
         _ => None,
     }
 }

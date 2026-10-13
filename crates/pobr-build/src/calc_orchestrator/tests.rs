@@ -2291,11 +2291,19 @@ fn combat_conditions_follow_vendor_branches() {
         vec!["CastSpellRecently"],
         "Duration suppresses UsedMinionSkillRecently"
     );
-    // Exemptions (:248): triggered / mine / totem clear the whole set.
-    for exempt in ["Triggered", "InbuiltTrigger", "RemoteMined", "SummonsTotem"] {
+    // Exemptions (:248): triggered / mine clear the whole set.
+    for exempt in ["Triggered", "InbuiltTrigger", "RemoteMined"] {
         assert!(
             combat_conditions(&types(&["Attack", exempt]), ModFlags::ATTACK).is_empty(),
             "{exempt} should be exempt from combat conditions"
+        );
+    }
+    // A totem uses the skill: the character neither attacks nor casts, and
+    // has summoned the totem.
+    for totem in ["SummonsTotem", "UsedByTotem"] {
+        assert_eq!(
+            combat_conditions(&types(&["Spell", totem]), ModFlags::SPELL),
+            vec!["HaveTotem", "SummonedTotemRecently"]
         );
     }
 }

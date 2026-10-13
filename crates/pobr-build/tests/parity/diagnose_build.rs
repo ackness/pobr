@@ -261,10 +261,20 @@ fn diagnose_build() {
     eprintln!(
         "\n== 4. Gem stats with a stat-map entry the engine rejected ({}; {} more have no entry)",
         diagnosis.unmapped_stats.len(),
-        diagnosis.unknown_stat_count,
+        diagnosis.unknown_stats.len(),
     );
     for stat in &diagnosis.unmapped_stats {
         eprintln!("    {:<40} {:<46} {}", stat.owner, stat.stat, stat.reason);
+    }
+    // Most stats without an entry are display or animation data; the list is
+    // short enough to read for the one that is a mechanic.
+    let mut owner = "";
+    for (stat_owner, stat) in &diagnosis.unknown_stats {
+        if stat_owner != owner {
+            owner = stat_owner;
+            eprintln!("   no entry, {owner}:");
+        }
+        eprintln!("        {stat}");
     }
 
     // A multiplier a config option can set is the user's to provide; one no
