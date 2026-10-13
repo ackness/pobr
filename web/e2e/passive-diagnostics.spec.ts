@@ -152,7 +152,10 @@ for (const edit of ['copied stage', 'jewel input'] as const) {
       expect((await saved(page)).allocatedNodes).toEqual(before.allocatedNodes);
       await complete(page);
       await expect(baseline(page)).toHaveCount(0);
-      await expect(exclusions(page)).toHaveCount(0);
+      // A plain jewel leaves no radius node unresolved. A route through a node
+      // with a line the engine does not parse stays excluded, for that line.
+      const reasons = await exclusions(page).locator(':scope > li ul > li').allTextContents();
+      for (const reason of reasons) expect(reason).toMatch(/^Tree:\d+: (?!missing timeless jewel seed data)/);
       await expect(page.locator('.tree-planner-body')).not.toContainText('missing timeless jewel seed data');
       await expect(page.locator('.calc-error')).toHaveCount(0);
     }

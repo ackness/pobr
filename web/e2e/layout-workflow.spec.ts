@@ -80,12 +80,13 @@ test('a build without a main selection defaults to its highest-DPS skill and can
     <Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
     <Skills activeSkillSet="1"><SkillSet id="1">
       <Skill enabled="true" set1="false" set2="true"><Gem skillId="FireballPlayer" level="15" quality="0" enabled="true"/><Gem skillId="SparkPlayer" level="15" quality="0" enabled="true"/></Skill>
-      <Skill enabled="true"><Gem skillId="ElementalWeaknessPlayer" level="15" quality="0" enabled="true"/><Gem skillId="ViciousHexSupportPlayer" level="1" quality="0" enabled="true"/></Skill>
+      <Skill enabled="true"><Gem skillId="ElementalWeaknessPlayer" level="1" quality="0" enabled="true"/><Gem skillId="ViciousHexSupportPlayer" level="1" quality="0" enabled="true"/></Skill>
       <Skill enabled="true"><Gem skillId="UnknownOverviewSkillPlayer" level="1" quality="0" enabled="true"/></Skill>
     </SkillSet></Skills><Items/><Config/>
   </PathOfBuilding2>`).toString('base64url');
   await start(page, code);
-  // Only the first group deals damage; it is bound to the second weapon set.
+  // The first group deals the most damage; it is bound to the second weapon set.
+  // Doom Blast runs at the level of the curse it is granted on, here 1.
   await expect(page.locator('.main-skill-select .app-select-value')).toHaveText(/^1\. (Fireball|Spark)$/);
   expect((await saved(page)).params.main_socket_group).toBe(0);
   expect((await saved(page)).weaponSwap.active).toBe(2);
