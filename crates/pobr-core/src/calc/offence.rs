@@ -452,6 +452,21 @@ pub(crate) struct HitChanceTerms {
     enemy_block: f64,
     /// Chance to hit (fraction).
     pub(crate) value: f64,
+    /// Percentage points of chance to hit beyond 100, for a character whose
+    /// chance to hit with attacks can exceed 100%; otherwise 0.
+    pub(crate) excess: f64,
+}
+
+impl HitChanceTerms {
+    /// `cfg` as the hit's critical hit chance reads it: "Critical Hit Chance
+    /// equal to N% of excess chance to Hit" scales by the excess of this hit.
+    pub(crate) fn crit_cfg<'a>(&self, cfg: &'a CalcConfig) -> std::borrow::Cow<'a, CalcConfig> {
+        if self.excess > 0.0 {
+            std::borrow::Cow::Owned(cfg.clone().with_multiplier("ExcessHitChance", self.excess))
+        } else {
+            std::borrow::Cow::Borrowed(cfg)
+        }
+    }
 }
 
 impl HitChanceTerms {
@@ -509,6 +524,14 @@ pub(crate) fn hit_chance_terms(
     } else {
         0.0
     };
+    // "Chance to Hit with Attacks can exceed 100%": the accuracy check has no
+    // upper limit, and what it gives beyond a certain hit is the excess.
+    let excess = if !always_hits && db.flag(cfg, "Condition:HitChanceCanExceed100") {
+        (super::defence::hit_chance_uncapped_percent(input.enemy_evasion, accuracy) - 100.0)
+            .max(0.0)
+    } else {
+        0.0
+    };
     HitChanceTerms {
         accuracy,
         enemy_evasion: input.enemy_evasion,
@@ -516,6 +539,7 @@ pub(crate) fn hit_chance_terms(
         accuracy_chance,
         enemy_block,
         value: round(accuracy_chance * (1.0 - enemy_block)),
+        excess,
     }
 }
 
@@ -623,7 +647,7 @@ pub(crate) fn hit_pass(
     let crit = resolve_crit(
         db,
         enemy_db,
-        cfg,
+        &hit_terms.crit_cfg(cfg),
         accuracy_hit_chance,
         0.0,
         cfg.mode_effective,
@@ -1136,7 +1160,7 @@ fn total_dps_traced(
     let (crit, crit_node) = resolve_crit_traced(
         db,
         enemy_db,
-        cfg,
+        &hit_chance_terms(db, enemy_db, cfg, input).crit_cfg(cfg),
         accuracy_hit_chance,
         0.0,
         cfg.mode_effective,

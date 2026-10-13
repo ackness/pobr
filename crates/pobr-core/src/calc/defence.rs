@@ -126,6 +126,17 @@ pub fn calc_defence(actor: &mut Actor, cfg: &CalcConfig, enemy_accuracy: f64) ->
     }
 }
 
+/// The chance to hit the accuracy formula gives, in whole percent, with no
+/// upper limit: what a character whose "Chance to Hit with Attacks can exceed
+/// 100%" has. Against no evasion the formula tops out at 125%.
+pub fn hit_chance_uncapped_percent(evasion: f64, accuracy: f64) -> f64 {
+    if accuracy <= 0.0 {
+        return 5.0;
+    }
+    let raw = accuracy * 1.25 / (accuracy + evasion.max(0.0) * 0.3) * 100.0;
+    raw.round().max(5.0)
+}
+
 /// The player's chance to hit a monster with an attack (offensive side, `calcs.hitChance`).
 ///
 /// PoE2 formula (CalcDefence.lua `calcs.hitChance`, agent-docs/accuracy-and-enemy.md §2):
