@@ -105,6 +105,14 @@ pub fn granted_skill_modifiers(stat: &str, value: f64, stats: &[SkillDamageStat]
 /// stat map.
 pub fn player_buff_modifiers(stat: &str, value: f64, skill: BuffSkill) -> Option<Vec<Modifier>> {
     match stat {
+        // Cast on Critical, from its quality on a character whose gem quality
+        // grants the additional effect: "Buff grants {0}% increased Critical
+        // Hit chance".
+        "cast_on_crit_global_critical_hit_chance_granted_+%" => Some(vec![Modifier::number(
+            "CriticalStrikeChance",
+            ModType::Inc,
+            value,
+        )]),
         // Archmage: "Non-Channelling Spells cost an additional {0}% of your
         // maximum Mana". The stat is in hundredths of a percent. The cost is
         // added to the spell's own after its supports' cost multipliers,
@@ -262,6 +270,15 @@ mod tests {
                 Some(100.0)
             )
         );
+    }
+
+    #[test]
+    fn cast_on_critical_can_grant_increased_critical_hit_chance() {
+        let stat = "cast_on_crit_global_critical_hit_chance_granted_+%";
+        let mut db = ModDb::new();
+        db.add_list(player_buff_modifiers(stat, 23.0, BuffSkill::default()).expect("a rule"));
+        let names = [ModName::from("CriticalStrikeChance")];
+        assert_eq!(db.sum(ModType::Inc, &CalcConfig::new(), &names), 23.0);
     }
 
     /// Archmage at 4.10% of 4000 maximum Mana: 164 more Mana for a spell,
