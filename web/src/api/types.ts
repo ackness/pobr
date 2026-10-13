@@ -722,6 +722,12 @@ export interface MainSkillInfo {
 
 export interface CalculateBuildResponse {
   stats: DisplayStatValue[];
+  /**
+   * Lines the calculation could not apply, so their effect is missing from the
+   * numbers. An item's line is given as written; a passive node's as
+   * `Tree:<node>: <line>`; a configuration line (custom modifier, quest reward)
+   * as `Config: <line>`.
+   */
   unsupported_modifiers: string[];
   /** 键 = 聚合 ModName（Life / EnergyShield / FireResist / ...）。 */
   breakdowns: Record<string, Breakdown>;

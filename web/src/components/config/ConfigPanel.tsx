@@ -16,6 +16,10 @@ interface Props {
 
 const ENEMY_TIERS: EnemyTier[] = ['none', 'boss', 'pinnacle', 'uber'];
 
+// How `unsupported_modifiers` marks a line of the configuration (a custom
+// modifier or a quest reward) the calculation could not apply.
+const UNAPPLIED_PREFIX = 'Config: ';
+
 const QUICK_OPTIONS = [
   { key: 'conditionEnemyShocked', damageType: null },
   { key: 'conditionShockEffect', damageType: null },
@@ -289,6 +293,9 @@ export function ConfigPanel({ session, lang }: Props) {
     enabled: true,
     text: (session.calcParams.extra_modifiers ?? []).join('\n'),
   }];
+  const unappliedLines = (session.calc?.unsupported_modifiers ?? [])
+    .filter(line => line.startsWith(UNAPPLIED_PREFIX))
+    .map(line => line.slice(UNAPPLIED_PREFIX.length));
   const updateModifierBlocks = (blocks: CustomModifierBlock[]) => {
     session.updateParams({ custom_modifier_blocks: blocks, extra_modifiers: undefined });
   };
@@ -476,6 +483,12 @@ export function ConfigPanel({ session, lang }: Props) {
           </div>
         ))}
       </div>
+      {unappliedLines.length > 0 && (
+        <div className="config-unapplied" role="status">
+          <p>{tt('config.unappliedLines')}</p>
+          <ul>{unappliedLines.map((line, index) => <li key={index}>{line}</li>)}</ul>
+        </div>
+      )}
       <button type="button" className="config-modifier-add" disabled={session.busy}
         onClick={() => updateModifierBlocks([...modifierBlocks, { title: '', enabled: true, text: '' }])}>
         {tt('config.groupAdd')}

@@ -796,9 +796,14 @@ const DICT = {
   "config.groupUntitled": {"en-US": "Untitled group", "zh-TW": "未命名分組", "zh-CN": "未命名分组"},
   'config.extraModsHint': {
     'en-US':
-      'One modifier per line (PoB text, e.g. "20% increased Fire Damage"); Only enabled groups apply; text is saved when you leave the field. Unparsable lines show up in the Build tab unsupported list.',
-    'zh-TW': '一行一條詞綴（PoB 文本，如「20% increased Fire Damage」），僅啟用的分組生效，離開輸入框即儲存；無法解析的行會出現在構築頁的不支援清單。',
-    'zh-CN': '一行一条词缀（PoB 文本，如「20% increased Fire Damage」），仅启用的分组生效，离开输入框即保存；无法解析的行会出现在构筑页的不支持列表。',
+      'One modifier per line (PoB text, e.g. "20% increased Fire Damage"); only enabled groups apply; text is saved when you leave the field. A line the calculation cannot apply is listed below the groups and in the Build tab unsupported list.',
+    'zh-TW': '一行一條詞綴（PoB 文本，如「20% increased Fire Damage」），僅啟用的分組生效，離開輸入框即儲存；計算無法套用的行會列在分組下方，也會出現在構築頁的不支援清單。',
+    'zh-CN': '一行一条词缀（PoB 文本，如「20% increased Fire Damage」），仅启用的分组生效，离开输入框即保存；计算无法应用的行会列在分组下方，也会出现在构筑页的不支持列表。',
+  },
+  'config.unappliedLines': {
+    'en-US': 'Not applied. The calculation does not understand these lines:',
+    'zh-TW': '以下行未生效，計算無法識別：',
+    'zh-CN': '以下行未生效，计算无法识别：',
   },
 
   // Notes 页
