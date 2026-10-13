@@ -367,28 +367,34 @@ pub fn buff_skill_specs(
                     // Aura defensive buff: the same stat→mod mapping and SkillGem
                     // attribution as aura_buff_modifiers (buff_pass scaling preserves
                     // origin, not dropped in trace).
-                    let es = effect_stats(skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
-                    let mut mods = Vec::new();
+                    // An aura gem gains levels like any other skill gem.
+                    let aura_level = gem.gem_level
+                        + additional_gem_levels(gem_level_bonuses, data, skill_id, gem.corrupted);
+                    let es = effect_stats(skill_id, aura_level, gem.quality, gem.stat_set_index);
+                    // Quality adds to the stat the gem already has. The two
+                    // are one value: as separate modifiers of one name the
+                    // weaker would be dropped as a duplicate buff.
+                    let mut totals: Vec<(&str, f64)> = Vec::new();
                     for ds in es.all() {
-                        for mapped in map_aura_buff_stat(&ds.stat) {
-                            if ds.value == 0.0 {
+                        match totals.iter_mut().find(|(stat, _)| *stat == ds.stat) {
+                            Some((_, value)) => *value += ds.value,
+                            None => totals.push((ds.stat.as_str(), ds.value)),
+                        }
+                    }
+                    let mut mods = Vec::new();
+                    for (stat, value) in totals {
+                        for mapped in map_aura_buff_stat(stat) {
+                            if value == 0.0 {
                                 continue;
                             }
                             let origin = ModifierSource::new(SourceId::new(
                                 SourceKind::SkillGem,
-                                format!("aura.{}.{}", gem.skill_id, ds.stat),
+                                format!("aura.{}.{}", gem.skill_id, stat),
                             ))
-                            .with_raw_text(format!(
-                                "aura {} {} ({})",
-                                gem.skill_id, ds.stat, ds.value
-                            ));
+                            .with_raw_text(format!("aura {} {} ({})", gem.skill_id, stat, value));
                             mods.push(
-                                Modifier::number(
-                                    mapped.mod_name.as_str(),
-                                    mapped.mod_type,
-                                    ds.value,
-                                )
-                                .with_origin(origin),
+                                Modifier::number(mapped.mod_name.as_str(), mapped.mod_type, value)
+                                    .with_origin(origin),
                             );
                         }
                     }

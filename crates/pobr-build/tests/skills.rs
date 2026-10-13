@@ -3,6 +3,8 @@
 //! Aggregated test binary: originally separate test files, merged into submodules (22→4) to cut the number of linked test binaries and speed up builds.
 #![allow(clippy::all)]
 
+#[path = "skills/aura_gems.rs"]
+mod aura_gems;
 #[path = "skills/buff_stack_limits.rs"]
 mod buff_stack_limits;
 #[path = "skills/charge_consuming_buffs.rs"]
