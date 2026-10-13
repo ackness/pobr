@@ -193,12 +193,12 @@ const BASELINES: [Baseline; 3] = [
     Baseline {
         corpus: "examples/wasm-benchmark/builds",
         dps_builds: 7,
-        agreeing_rows: 348,
+        agreeing_rows: 350,
     },
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
         dps_builds: 12,
-        agreeing_rows: 867,
+        agreeing_rows: 869,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     Baseline {

@@ -2941,6 +2941,74 @@
         "Spells have a 25% chance to inflict Withered for 4 seconds on Hit"
       ],
       "source_note": "Game text of The Wicked Quill. Only the character's spells inflict the Withered, so the flag carries the Spell flag and is read under the calculated skill's flags by calc::withered::apply_withered. The chance and the duration say how fast stacks build, which the stated stack count (config) stands for."
+    },
+    {
+      "id": "evasion_from_helmet_gloves_boots_doubled",
+      "pattern": "evasion rating from equipped helmet, gloves and boots is doubled",
+      "mods": [
+        {
+          "name": "Evasion",
+          "type": "MORE",
+          "value": 100,
+          "tags": [
+            {
+              "type": "SlotName",
+              "slotName": "Helmet"
+            }
+          ]
+        },
+        {
+          "name": "Evasion",
+          "type": "MORE",
+          "value": 100,
+          "tags": [
+            {
+              "type": "SlotName",
+              "slotName": "Gloves"
+            }
+          ]
+        },
+        {
+          "name": "Evasion",
+          "type": "MORE",
+          "value": 100,
+          "tags": [
+            {
+              "type": "SlotName",
+              "slotName": "Boots"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "stalking-panther",
+      "examples": [
+        "Evasion Rating from Equipped Helmet, Gloves and Boots is doubled"
+      ],
+      "source_note": "Game text of the Amazon notable Stalking Panther (passive_tree.json node 63254). Doubled is 100% more of the Evasion Rating each of the three items provides: the amount goes into the slot's own bucket, so it multiplies with the global increases the item's Evasion Rating already receives."
+    },
+    {
+      "id": "evasion_from_body_armour_halved",
+      "pattern": "evasion rating from equipped body armour is halved",
+      "mods": [
+        {
+          "name": "Evasion",
+          "type": "MORE",
+          "value": -50,
+          "tags": [
+            {
+              "type": "SlotName",
+              "slotName": "Body Armour"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "stalking-panther",
+      "examples": [
+        "Evasion Rating from Equipped Body Armour is halved"
+      ],
+      "source_note": "Game text of the Amazon notable Stalking Panther (passive_tree.json node 63254), the other half of evasion_from_helmet_gloves_boots_doubled: 50% less of the Evasion Rating the Body Armour provides."
     }
   ]
 }

@@ -33,6 +33,8 @@ mod skill_damage_dps;
 mod skill_metrics;
 #[path = "skills/spirit_reservation.rs"]
 mod spirit_reservation;
+#[path = "skills/stalking_panther.rs"]
+mod stalking_panther;
 #[path = "skills/support_gating.rs"]
 mod support_gating;
 #[path = "skills/support_gem_count.rs"]

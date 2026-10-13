@@ -567,7 +567,7 @@ pub fn compile_keyword_flags(names: &[String]) -> KeywordFlags {
 /// Vendor slot name → legacy's stable slot ID (lowercase + spaces stripped; off-hand-family
 /// slots map to `weapon2`, main-hand-family to `weapon1`, matching legacy's
 /// `slot_words_to_id` coverage).
-fn slot_name_to_id(name: &str) -> String {
+pub(crate) fn slot_name_to_id(name: &str) -> String {
     match name.to_ascii_lowercase().as_str() {
         "body armour" => "bodyarmour".to_string(),
         "focus" | "shield" | "quiver" | "off hand" | "weapon 2" => "weapon2".to_string(),

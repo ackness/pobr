@@ -37,12 +37,15 @@ use pobr_data::catalog::parser_rules::{
 };
 use pobr_data::catalog::value_expr::ValueExpr;
 use pobr_data::constants::DamageType;
+use pobr_data::item::EquipmentSlot;
 use pobr_data::modifier::{KeywordFlags, ModFlags, ModType};
 use pobr_data::skill::SkillTypes;
 use regex::{Regex, RegexSet};
 
 use crate::modifier::{ActorRef, ModTag, ModValue, Modifier};
-use crate::parse::mod_parser::template::{normalize_attribute_var, normalize_perstat_slot_suffix};
+use crate::parse::mod_parser::template::{
+    normalize_attribute_var, normalize_perstat_slot_suffix, slot_name_to_id,
+};
 use crate::rules::registry::{HandlerCtx, HandlerRegistry};
 use crate::rules::stat_map_engine::damage_bound_mod_name;
 use crate::rules::value_expr::eval;
@@ -738,6 +741,17 @@ fn compile_literal_tag(tag: &TemplateTagDef) -> Option<ModTag> {
                 return None;
             }
             Some(ModTag::SkillName { names })
+        }
+        "SlotName" => {
+            // The equipment slot the modifier is scoped to, by the name the
+            // game's text uses (`Body Armour`, `Helmet`, …). A line naming
+            // several slots is one modifier per slot. A name that is not a
+            // slot would never match an item, so it is rejected.
+            let slot = slot_name_to_id(&scalar_text(tag.fields.get("slotName")?)?);
+            EquipmentSlot::ALL
+                .iter()
+                .any(|known| known.id() == slot)
+                .then_some(ModTag::SlotName(slot))
         }
         "MultiplierThreshold" => {
             // Literal var/threshold/upper (vendor's `thresholdVar`/`actor`
@@ -1514,6 +1528,23 @@ mod tests {
             &m.mods[0].tags[0],
             ModTag::Multiplier { var, div, .. } if var == "EnergyShieldOnbodyarmour" && *div == 1.0
         ));
+    }
+
+    /// A slot tag scopes the modifier to the item in that slot, under the
+    /// slot's stable id.
+    #[test]
+    fn slot_name_tag() {
+        let d = def(
+            r#"{"id":"t","pattern":"evasion from body armour is halved","mods":[
+                {"name":"Evasion","type":"MORE","value":-50,
+                 "tags":[{"type":"SlotName","slotName":"Body Armour"}]}],"batch":"S2"}"#,
+        );
+        let r = rules(vec![d]);
+        let reg = HandlerRegistry::new();
+        let m = r
+            .try_match("evasion from body armour is halved", &reg)
+            .unwrap();
+        assert_eq!(m.mods[0].slot_name(), Some("bodyarmour"));
     }
 
     #[test]

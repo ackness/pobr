@@ -44145,7 +44145,17 @@
     },
     {
       "text": "[Evasion] Rating from Equipped Body Armour is halved",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Evasion",
+          "type": "More",
+          "value": -50.0,
+          "tags": [
+            "SlotName(\"bodyarmour\")"
+          ]
+        }
+      ]
     },
     {
       "text": "[Evasion] Rating from Equipped Helmet, Gloves and Boots is doubled",
@@ -44156,8 +44166,23 @@
           "type": "More",
           "value": 100.0,
           "tags": [
-            "SlotName(\"helmet\")",
-            "GlobalLimit { value: 100.0, key: \"EvasionDoubledLimit\" }"
+            "SlotName(\"helmet\")"
+          ]
+        },
+        {
+          "name": "Evasion",
+          "type": "More",
+          "value": 100.0,
+          "tags": [
+            "SlotName(\"gloves\")"
+          ]
+        },
+        {
+          "name": "Evasion",
+          "type": "More",
+          "value": 100.0,
+          "tags": [
+            "SlotName(\"boots\")"
           ]
         }
       ]

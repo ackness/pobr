@@ -118,20 +118,8 @@ impl From<String> for ApiError {
 
 /// Stable equipment-slot id -> [`EquipmentSlot`] (the inverse of `EquipmentSlot::id()`).
 fn slot_from_id(id: &str) -> Result<EquipmentSlot, String> {
-    const ALL: [EquipmentSlot; 11] = [
-        EquipmentSlot::Weapon1,
-        EquipmentSlot::Weapon2,
-        EquipmentSlot::Helmet,
-        EquipmentSlot::BodyArmour,
-        EquipmentSlot::Gloves,
-        EquipmentSlot::Boots,
-        EquipmentSlot::Amulet,
-        EquipmentSlot::Ring1,
-        EquipmentSlot::Ring2,
-        EquipmentSlot::Ring3,
-        EquipmentSlot::Belt,
-    ];
-    ALL.into_iter()
+    EquipmentSlot::ALL
+        .into_iter()
         .find(|s| s.id() == id)
         .ok_or_else(|| format!("unknown equipment slot: {id}"))
 }

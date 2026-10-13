@@ -71,8 +71,9 @@ pub struct Item {
     pub modifier_texts: Vec<String>,
     /// Enchant mod lines. Attributed to `SourceKind::ItemEnchant`.
     pub enchant_texts: Vec<String>,
-    /// Defence values as rolled. Armour pieces use these as their per-slot base
-    /// in preference to the base type's defaults.
+    /// Defence values as the item text states them. A piece whose base type is
+    /// in the data has its defences recomputed from that base, so these only
+    /// stand in for a base the data does not know.
     pub rolled_defence: RolledDefence,
     pub parsed_stats: Vec<StatId>,
 }
@@ -98,6 +99,21 @@ pub enum EquipmentSlot {
 }
 
 impl EquipmentSlot {
+    /// Every slot, in declaration order.
+    pub const ALL: [Self; 11] = [
+        Self::Weapon1,
+        Self::Weapon2,
+        Self::Helmet,
+        Self::BodyArmour,
+        Self::Gloves,
+        Self::Boots,
+        Self::Amulet,
+        Self::Ring1,
+        Self::Ring2,
+        Self::Ring3,
+        Self::Belt,
+    ];
+
     /// Stable id used inside the engine. Display text comes from `pobr-i18n`.
     pub fn id(self) -> &'static str {
         match self {
