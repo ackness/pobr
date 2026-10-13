@@ -33,6 +33,8 @@ mod gem_quality;
 mod granted_skill_reservation;
 #[path = "skills/minions.rs"]
 mod minions;
+#[path = "skills/quarterstaff_conditions.rs"]
+mod quarterstaff_conditions;
 #[path = "skills/runic_ward.rs"]
 mod runic_ward;
 #[path = "skills/skill_damage_dps.rs"]

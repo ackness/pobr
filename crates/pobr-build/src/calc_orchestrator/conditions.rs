@@ -119,10 +119,11 @@ pub(crate) fn apply_condition_implications(mut cfg: CalcConfig) -> CalcConfig {
     cfg
 }
 
-/// Equipped weapon categories → weapon type / grip conditions. PoE2's GGG
-/// item class for Quarterstaff is `Warstaff`. Grip and melee use vendor's
-/// `weaponTypeInfo` predicates (CalcPerform.lua:305-351), independently of
-/// `ModFlags::Weapon1H/2H` used by per-skill weapon matching.
+/// Equipped weapon categories → weapon type / grip conditions. The game's
+/// item class for a Quarterstaff is `Warstaff`; the caster `Staff` class is
+/// not a weapon type and sets nothing. Whether a weapon is one- or two-handed
+/// and melee comes from the weapon type table (`weapon_types.json`),
+/// independently of `ModFlags::Weapon1H/2H` used by per-skill weapon matching.
 pub(crate) fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'static str> {
     let Some(item) = build.items.get(&EquipmentSlot::Weapon1) else {
         return Vec::new();
@@ -148,19 +149,22 @@ pub(crate) fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'s
     .into_iter()
     .flatten()
     {
-        let category = match info.flag.as_str() {
-            "Staff" => Some("UsingQuarterstaff"),
-            "Mace" => Some("UsingMace"),
-            "Crossbow" => Some("UsingCrossbow"),
-            "Bow" => Some("UsingBow"),
-            "Spear" => Some("UsingSpear"),
-            "Dagger" => Some("UsingDagger"),
-            _ => None,
+        // The names the parser rules test for a weapon type. A Quarterstaff
+        // has two: "with Quarterstaves" modifiers test `UsingQuarterstaff`,
+        // "while wielding a Quarterstaff" ones test `UsingStaff`.
+        let categories: &[&'static str] = match info.flag.as_str() {
+            "Staff" => &["UsingQuarterstaff", "UsingStaff"],
+            "Mace" => &["UsingMace"],
+            "Crossbow" => &["UsingCrossbow"],
+            "Bow" => &["UsingBow"],
+            "Spear" => &["UsingSpear"],
+            "Dagger" => &["UsingDagger"],
+            _ => &[],
         };
-        if let Some(var) = category
-            && !vars.contains(&var)
-        {
-            vars.push(var);
+        for &var in categories {
+            if !vars.contains(&var) {
+                vars.push(var);
+            }
         }
         if info.melee {
             let grip = if info.one_hand {
@@ -366,7 +370,10 @@ mod weapon_condition_tests {
             ("Bow", vec!["UsingBow"]),
             ("Crossbow", vec!["UsingCrossbow"]),
             ("Wand", vec![]),
-            ("Warstaff", vec!["UsingQuarterstaff", "UsingTwoHandedMelee"]),
+            (
+                "Warstaff",
+                vec!["UsingQuarterstaff", "UsingStaff", "UsingTwoHandedMelee"],
+            ),
             ("Staff", vec![]),
             ("Talisman", vec!["UsingTwoHandedMelee"]),
             ("FishingRod", vec!["UsingTwoHandedMelee"]),

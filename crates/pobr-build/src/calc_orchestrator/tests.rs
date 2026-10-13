@@ -3209,7 +3209,10 @@ fn weapon_type_conditions_match_vendor_type_info() {
     let mut data = BuildData::empty();
     let cases: &[(&str, &[&str])] = &[
         // GGG `Warstaff` (quarterstaff) → table key `Staff` (label=Quarterstaff).
-        ("Warstaff", &["UsingQuarterstaff", "UsingTwoHandedMelee"]),
+        (
+            "Warstaff",
+            &["UsingQuarterstaff", "UsingStaff", "UsingTwoHandedMelee"],
+        ),
         ("One Hand Mace", &["UsingMace", "UsingOneHandedMelee"]),
         ("Two Hand Mace", &["UsingMace", "UsingTwoHandedMelee"]),
         ("Bow", &["UsingBow"]),

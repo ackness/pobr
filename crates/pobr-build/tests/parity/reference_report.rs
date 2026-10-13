@@ -222,7 +222,7 @@ const BASELINES: [Baseline; 3] = [
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
         dps_builds: 12,
-        agreeing_rows: 880,
+        agreeing_rows: 897,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     Baseline {
