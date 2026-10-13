@@ -192,6 +192,7 @@ with lookup implementations organized under `build_data/{skills,equipment,passiv
 新代码的做法：
 
 - 机制以游戏自己的定义为依据实现：`data/<版本>/base/` 的 stat id、技能数据和游戏常量，词条文本，官方 patch notes。代码和测试的出处写这些（例如 `attack_damage_final_permyriad_per_rage = 100`），PoB2 只用于交叉核对。范例见 `pobr-core/src/calc/rage.rs`。
+- 技能 stat 的含义写进 `pobr-core/src/rules/skill_stats.rs`：以游戏 stat id 为键，用引擎自己的 modifier 表达，出处是该 stat 的游戏描述文本。这张表先于抽取来的 `skill_stat_map.json` 查询，表里有的 stat 不再读抽取数据；抽取映射拒绝或缺失的 stat（`mise run diagnose` 第 4 节）优先在这里补，而不是去扩充按 PoB2 名称写的白名单。
 - 不再新增“因为 vendor `X.lua:行号` 这样写”式的注释；行号随 vendor 升级失效，也说明不了游戏规则。改到旧代码时顺手把这类注释换成规则本身的描述。
 - PoBR 与 PoB2 结果不同时，先判断谁符合游戏的词条文本和数据，不默认 PoB2 正确（已知例子：PoB2 用自己的符文表覆盖物品原文）。
 

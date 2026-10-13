@@ -342,12 +342,17 @@ pub fn resolve_all_charges(db: &ModDb, cfg: &CalcConfig) -> AllChargeStates {
 ///
 /// Positive legacy/programmatic multipliers retain their existing fallback
 /// precedence when no enabled OVERRIDE applies.
+///
+/// Also fills how many charges of each kind a skill could consume
+/// (`RemovablePowerCharge`, ..., and their sum `RemovableTotalCharges`), for
+/// "per charge consumed" effects.
 pub fn charge_multipliers_panel_default(db: &ModDb, cfg: &CalcConfig) -> CalcConfig {
     let mut out = cfg.clone();
     // Project the runtime mode only for charge-override queries. Do not activate
     // unrelated Combat-tagged effects in the returned calculation context.
     let original_combat = cfg.conditions.get("Combat").copied();
     let mut projected_combat = false;
+    let mut removable_total = 0.0;
     for (kind, override_name, use_condition) in [
         (ChargeKind::Power, "PowerCharges", "UsePowerCharges"),
         (ChargeKind::Frenzy, "FrenzyCharges", "UseFrenzyCharges"),
@@ -385,7 +390,14 @@ pub fn charge_multipliers_panel_default(db: &ModDb, cfg: &CalcConfig) -> CalcCon
         if current != legacy {
             out = out.with_multiplier(key, current);
         }
+        // A skill that consumes charges takes every charge above the
+        // minimum; the minimum is always held.
+        let removable = (current - minimum).max(0.0);
+        removable_total += removable;
+        out.multipliers.insert(format!("Removable{key}"), removable);
     }
+    out.multipliers
+        .insert("RemovableTotalCharges".into(), removable_total);
     if projected_combat {
         if let Some(original) = original_combat {
             *out.conditions

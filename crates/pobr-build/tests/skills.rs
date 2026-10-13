@@ -5,6 +5,8 @@
 
 #[path = "skills/buff_stack_limits.rs"]
 mod buff_stack_limits;
+#[path = "skills/charge_consuming_buffs.rs"]
+mod charge_consuming_buffs;
 #[path = "skills/corpse_explosion.rs"]
 mod corpse_explosion;
 #[path = "skills/cost_multiplier.rs"]

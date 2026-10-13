@@ -21,6 +21,7 @@ pub mod config_interpreter;
 pub mod handlers;
 pub mod keystone_registry;
 pub mod registry;
+pub mod skill_stats;
 pub mod skill_type_expr;
 pub mod special_mod;
 pub mod stat_map_engine;

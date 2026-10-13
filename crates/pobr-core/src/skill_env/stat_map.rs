@@ -491,9 +491,6 @@ pub fn player_buff_stat_modifiers(
     skill_id: &str,
     set_key: Option<&str>,
 ) -> Vec<Modifier> {
-    let Some(catalog) = ctx.catalog else {
-        return Vec::new();
-    };
     let mut merged: Vec<(String, f64)> = Vec::new();
     for ds in stats.all() {
         match merged.iter_mut().find(|(stat, _)| *stat == ds.stat) {
@@ -506,14 +503,30 @@ pub fn player_buff_stat_modifiers(
         if *value == 0.0 {
             continue;
         }
-        let outcome =
-            stat_map_engine::map_player_buff_stat(catalog, skill_id, set_key, stat, *value);
+        // The engine's own definition of a stat comes first; the extracted
+        // stat map is consulted only for the stats it does not define.
+        let native = crate::rules::skill_stats::player_buff_modifiers(stat, *value);
+        let catalog = if native.is_some() { None } else { ctx.catalog };
+        let outcome = match (native, catalog) {
+            (Some(modifiers), _) => MappedOutcome::Mapped(
+                modifiers
+                    .into_iter()
+                    .map(|modifier| MappedItem::Modifier(Box::new(modifier)))
+                    .collect(),
+            ),
+            (None, Some(catalog)) => {
+                stat_map_engine::map_player_buff_stat(catalog, skill_id, set_key, stat, *value)
+            }
+            (None, None) => MappedOutcome::Unknown,
+        };
         if let Some((classification, detail)) = classify_outcome(&outcome, "buff") {
             ctx.record(stat, format!("buff.{skill_id}"), classification, detail);
         }
         // An entry that maps in part reads as mapped; the rejected parts are
         // recorded too, so the half that was dropped is not invisible.
-        if ctx.mode == StatMapMode::Compare {
+        if let Some(catalog) = catalog
+            && ctx.mode == StatMapMode::Compare
+        {
             for reason in stat_map_engine::player_buff_rejected_elements(
                 catalog, skill_id, set_key, stat, *value,
             ) {
