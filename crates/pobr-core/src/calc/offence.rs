@@ -1488,7 +1488,8 @@ fn enemy_mitigation_terms(
             enemy_physical_reduction(player_db, enemy_db, &type_cfg, raw_hit),
         )
     } else {
-        let mut resist = enemy_resist_final(enemy_db, &type_cfg, damage_type);
+        let enemy_resist = enemy_resist_final(enemy_db, &type_cfg, damage_type);
+        let mut resist = enemy_resist;
         // A hit treats enemy elemental resistance as inverted (Rakiata's
         // Flow etc., vendor CalcOffence.lua:4145-4148):
         // `invertChance = clamp(Sum(CHANCE, "HitsInvertEleResChance"), 0, 1)`,
@@ -1520,8 +1521,26 @@ fn enemy_mitigation_terms(
             || damage_type.is_elemental()
                 && player_db.flag(&type_cfg, "IgnoreElementalResistances"))
             && !(damage_type.is_elemental() && player_db.flag(&type_cfg, "CannotElePenIgnore"));
+        // A hit that ignores a non-negative elemental resistance
+        // (`critical_strikes_ignore_positive_elemental_resistances`, which
+        // holds on the critical leg only) is not reduced by a resistance of
+        // zero or more, and there is nothing for penetration to lower. A
+        // negative resistance still raises the hit. Each hit meets the
+        // resistance as it is or inverted, so the two cases are judged apart.
+        let ignores_non_negative = damage_type.is_elemental()
+            && player_db.flag(&type_cfg, "IgnoreNonNegativeEleRes")
+            && !player_db.flag(&type_cfg, "CannotElePenIgnore");
         let effective_resist = if ignores_resist {
             0.0
+        } else if ignores_non_negative {
+            let against = |resist: f64| {
+                if resist >= 0.0 {
+                    0.0
+                } else {
+                    apply_penetration(player_db, &type_cfg, damage_type, resist)
+                }
+            };
+            (1.0 - invert_share) * against(enemy_resist) + invert_share * against(-enemy_resist)
         } else {
             apply_penetration(player_db, &type_cfg, damage_type, resist)
         };
@@ -2322,6 +2341,68 @@ mod speed_tests {
             1.0
         );
     }
+    /// "Critical Hits ignore non-negative Enemy Monster Elemental
+    /// Resistances": a resistance of zero or more does nothing to the hit; a
+    /// negative one still raises it.
+    #[test]
+    fn a_hit_that_ignores_a_non_negative_resistance_keeps_a_negative_one() {
+        let multiplier = |player: &ModDb, enemy: &ModDb, cfg: &CalcConfig, ty: DamageType| {
+            enemy_damage_multiplier(player, enemy, cfg, ty, 100.0)
+        };
+        let cfg = CalcConfig::spell();
+        let crit = cfg.clone().with_condition("CriticalStrike", true);
+        let hit = cfg.clone().with_condition("CriticalStrike", false);
+        let mut player = ModDb::new();
+        player.add_mod(
+            Modifier::flag("IgnoreNonNegativeEleRes")
+                .with_tag(crate::ModTag::condition("CriticalStrike", false)),
+        );
+        player.add_mod(Modifier::number("ColdPenetration", ModType::Base, 24.0));
+
+        let mut resistant = ModDb::new();
+        resistant.add_mod(Modifier::number("ColdResist", ModType::Base, 50.0));
+        resistant.add_mod(Modifier::number("ChaosResist", ModType::Base, 50.0));
+        // The ordinary hit meets 50 less the 24 penetrated; the critical one meets nothing.
+        assert!((multiplier(&player, &resistant, &hit, DamageType::Cold) - 0.74).abs() < 1e-9);
+        assert_eq!(
+            multiplier(&player, &resistant, &crit, DamageType::Cold),
+            1.0
+        );
+        // Chaos resistance is not elemental.
+        assert!((multiplier(&player, &resistant, &crit, DamageType::Chaos) - 0.5).abs() < 1e-9);
+
+        // A negative resistance is not ignored.
+        let mut exposed = ModDb::new();
+        exposed.add_mod(Modifier::number("ColdResist", ModType::Base, -20.0));
+        let on_hit = multiplier(&player, &exposed, &hit, DamageType::Cold);
+        assert!(on_hit > 1.0);
+        assert_eq!(
+            multiplier(&player, &exposed, &crit, DamageType::Cold),
+            on_hit
+        );
+
+        // Nor is one a hit treats as negated: 50 is met as -50.
+        let mut inverting = player.clone();
+        inverting.add_mod(Modifier::number(
+            "HitsInvertEleResChance",
+            ModType::Base,
+            1.0,
+        ));
+        assert_eq!(
+            multiplier(&inverting, &resistant, &crit, DamageType::Cold),
+            multiplier(&inverting, &resistant, &hit, DamageType::Cold)
+        );
+        assert!(multiplier(&inverting, &resistant, &crit, DamageType::Cold) > 1.0);
+
+        // "Cannot penetrate or ignore elemental resistances" overrides it.
+        let mut bound = player.clone();
+        bound.add_mod(Modifier::flag("CannotElePenIgnore"));
+        assert_eq!(
+            multiplier(&bound, &resistant, &crit, DamageType::Cold),
+            multiplier(&bound, &resistant, &hit, DamageType::Cold)
+        );
+    }
+
     /// A hit that ignores a resistance is not changed by it, whichever way
     /// the resistance points; a critical-only ignore leaves the other leg alone.
     #[test]
