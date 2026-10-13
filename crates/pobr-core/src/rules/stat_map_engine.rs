@@ -427,7 +427,7 @@ mod player_buff;
 pub use curse::has_exposure_inflict_payload;
 pub use curse::{curse_local_effect, has_curse_payload, map_curse_stat};
 pub use debuff::map_debuff_stat;
-pub use player_buff::map_player_buff_stat;
+pub use player_buff::{map_player_buff_stat, player_buff_rejected_elements};
 
 // #12: minion domain (MinionModifier LIST payload -> inner minion mod)
 
@@ -3341,6 +3341,42 @@ mod tests {
             ],
             "all six <El>Can<Ailment> flags should be produced; scalar Damage MORE injects zero"
         );
+    }
+
+    /// An entry that maps in part is reported as mapped. The parts that were
+    /// rejected are still retrievable, so a diagnosis can show the half of a
+    /// buff that was dropped.
+    #[test]
+    fn player_buff_reports_the_rejected_parts_of_a_partly_mapped_entry() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "X": { "1": {
+                 "part": { "mods": [
+                     { "kind": "mod", "name": "NoSuchName", "mod_type": "MORE",
+                       "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] },
+                     { "kind": "flag", "name": "ColdCanIgnite", "mod_type": "FLAG", "value": true,
+                       "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] } ] },
+                 "whole": { "mods": [
+                     { "kind": "flag", "name": "ColdCanShock", "mod_type": "FLAG", "value": true,
+                       "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] } ] },
+                 "none": { "mods": [
+                     { "kind": "mod", "name": "NoSuchName", "mod_type": "MORE",
+                       "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] } ] } } } } }"#,
+        );
+        let rejected =
+            |stat: &str| player_buff_rejected_elements(&catalog, "X", Some("1"), stat, 10.0);
+        assert_eq!(
+            rejected("part"),
+            vec![UnsupportedReason::UnknownModName("NoSuchName".into())]
+        );
+        // Wholly mapped: nothing rejected. Wholly rejected: the outcome
+        // itself already says so. Unknown stat: there is no entry.
+        assert!(rejected("whole").is_empty());
+        assert!(rejected("none").is_empty());
+        assert!(rejected("absent").is_empty());
+        assert!(matches!(
+            map_player_buff_stat(&catalog, "X", Some("1"), "none", 10.0),
+            MappedOutcome::Unsupported(UnsupportedReason::UnknownModName(_))
+        ));
     }
 
     /// A flag outside the `<Type>Can<Ailment>` family (e.g. the behaviour

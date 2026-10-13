@@ -511,6 +511,20 @@ pub fn player_buff_stat_modifiers(
         if let Some((classification, detail)) = classify_outcome(&outcome, "buff") {
             ctx.record(stat, format!("buff.{skill_id}"), classification, detail);
         }
+        // An entry that maps in part reads as mapped; the rejected parts are
+        // recorded too, so the half that was dropped is not invisible.
+        if ctx.mode == StatMapMode::Compare {
+            for reason in stat_map_engine::player_buff_rejected_elements(
+                catalog, skill_id, set_key, stat, *value,
+            ) {
+                ctx.record(
+                    stat,
+                    format!("buff.{skill_id}"),
+                    "unsupported",
+                    format!("unsupported:{} (part of the entry)", reason.category()),
+                );
+            }
+        }
         let MappedOutcome::Mapped(items) = outcome else {
             continue;
         };
