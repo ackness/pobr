@@ -499,6 +499,7 @@ fn resolve_source_level<S: TriggerSubCalc>(
         gem_level_bonuses,
         data.as_gem_property(),
         &gem.skill_id,
+        gem.corrupted,
     )
     .saturating_add(crate::skill_env::support_granted_gem_levels(
         &judgement,

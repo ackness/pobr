@@ -347,10 +347,12 @@ export function parseSaved(json: string): SavedSession | null {
       for (const gem of group.gems) {
         // PoB imports retain unresolved slots as an empty stable ID, including level 0.
         if (!record(gem) || typeof gem.skill_id !== 'string' || !uint(gem.level) || gem.level === 0 && gem.skill_id !== ''
-          || !uint(gem.quality) || !optionalIndex(gem.stat_set_index, 1) || !optionalText(gem.name_spec)) return null;
+          || !uint(gem.quality) || !optionalIndex(gem.stat_set_index, 1) || !optionalText(gem.name_spec)
+          || gem.corrupted != null && typeof gem.corrupted !== 'boolean') return null;
         gems.push({ skill_id: gem.skill_id, level: gem.level, quality: gem.quality,
           ...(gem.stat_set_index != null ? { stat_set_index: Number(gem.stat_set_index) } : {}),
-          ...(gem.name_spec !== undefined ? { name_spec: gem.name_spec as string | null } : {}) });
+          ...(gem.name_spec !== undefined ? { name_spec: gem.name_spec as string | null } : {}),
+          ...(gem.corrupted === true ? { corrupted: true } : {}) });
       }
       socketGroups.push({ enabled: group.enabled == null ? true : group.enabled as boolean,
         slot: group.slot as string | null | undefined, source: group.source as string | null | undefined,
@@ -471,7 +473,7 @@ export function backfillFromDecoded(state: BuildState, decoded: BuildJson): Buil
 }
 
 /** 解码结果 → 可编辑技能组/装备状态（物化，之后全走覆盖）。 */
-function materialize(
+export function materialize(
   decoded: BuildJson,
 ): Pick<BuildState, 'treeVersion' | 'socketGroups' | 'items' | 'flasks' | 'jewels' | 'weaponSwap'> {
   return {
@@ -489,6 +491,7 @@ function materialize(
         quality: gem.quality,
         stat_set_index: gem.stat_set_index,
         ...(gem.name_spec !== undefined ? { name_spec: gem.name_spec } : {}),
+        ...(gem.corrupted ? { corrupted: true } : {}),
       })),
     })),
     items: decoded.items.equipped.map((item) => ({ slot: item.slot, text: item.text })),

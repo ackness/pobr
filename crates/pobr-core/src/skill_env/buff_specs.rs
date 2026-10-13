@@ -297,8 +297,8 @@ pub fn buff_skill_specs(
                     // applies to every gem effect, CalcSetup.lua:410-435; confirmed
                     // with Sigil: 20→32). The level granted by a support isn't modeled;
                     // noted as a residual gap.
-                    let buff_level =
-                        gem.gem_level + additional_gem_levels(gem_level_bonuses, data, skill_id);
+                    let buff_level = gem.gem_level
+                        + additional_gem_levels(gem_level_bonuses, data, skill_id, gem.corrupted);
                     let es_buff = if buff_level == gem.gem_level {
                         es
                     } else {
@@ -429,8 +429,8 @@ pub fn buff_skill_specs(
                     // the enemy db. Fetch level = gem level + any applicable `+N to
                     // Level of all <X> Skills` (vendor's applyGemMods applies to every
                     // gem effect — confirmed with EW: 19+8→27, payload -58→-66).
-                    let curse_level =
-                        gem.gem_level + additional_gem_levels(gem_level_bonuses, data, skill_id);
+                    let curse_level = gem.gem_level
+                        + additional_gem_levels(gem_level_bonuses, data, skill_id, gem.corrupted);
                     let es = effect_stats(skill_id, curse_level, gem.quality, gem.stat_set_index);
                     let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
                     // Vendor's registration precondition: buffList is built purely
@@ -700,7 +700,7 @@ pub fn warcry_skill_specs(
             // 51+q11=62, matching oracle exactly).
             let judgement = group_judgement(&group, data, &gem.skill_id);
             let level = gem.gem_level
-                + additional_gem_levels(gem_level_bonuses, data, &gem.skill_id)
+                + additional_gem_levels(gem_level_bonuses, data, &gem.skill_id, gem.corrupted)
                 + support_granted_gem_levels(&judgement, group.gems, data);
             let es = data.effect_stats(&gem.skill_id, level, gem.quality, gem.stat_set_index);
             let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);

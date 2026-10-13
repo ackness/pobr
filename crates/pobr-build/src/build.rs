@@ -49,6 +49,10 @@ pub struct GemSkillRef {
     /// that fail to resolve are silently skipped at every consumption point because
     /// `granted_effects.get("")` comes up empty.
     pub name_spec: Option<String>,
+    /// Whether the gem is corrupted (PoB `<Gem corrupted>`). What corruption did
+    /// to its level is already in `gem_level`; this is the state that "all
+    /// Corrupted Skill Gems" modifiers test.
+    pub corrupted: bool,
 }
 
 /// A group of skill gems in the same socket (active skill + its supports). A simplified
@@ -109,6 +113,7 @@ impl SocketGroup {
                 gem_level: g.gem_level,
                 quality: g.quality,
                 stat_set_index: g.stat_set_index,
+                corrupted: g.corrupted,
             })
             .collect()
     }
@@ -191,6 +196,7 @@ impl SocketGroup {
             quality,
             stat_set_index: None,
             name_spec: None,
+            corrupted: false,
         });
         self
     }
@@ -208,6 +214,7 @@ impl SocketGroup {
             quality: 0,
             stat_set_index: Some(stat_set_index),
             name_spec: None,
+            corrupted: false,
         });
         self
     }
@@ -443,6 +450,7 @@ impl pobr_core::skill_env::SocketGroupView for Build {
                     gem_level: g.gem_level,
                     quality: g.quality,
                     stat_set_index: g.stat_set_index,
+                    corrupted: g.corrupted,
                 })
                 .collect();
             f(pobr_core::skill_env::EnabledGroup {

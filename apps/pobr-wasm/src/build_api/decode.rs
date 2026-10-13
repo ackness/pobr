@@ -75,6 +75,9 @@ struct GemJson {
     stat_set_index: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     name_spec: Option<String>,
+    /// Written only for a corrupted gem.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    corrupted: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -227,6 +230,7 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
                         } else {
                             None
                         },
+                        corrupted: gem.corrupted,
                     })
                     .collect(),
             })
@@ -580,6 +584,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                 quality: 0,
                 stat_set_index: None,
                 name_spec: None,
+                corrupted: false,
             }];
             for support in &group.support_skills {
                 match cn_gem_effect_id(&data, &support.id) {
@@ -589,6 +594,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                         quality: 0,
                         stat_set_index: None,
                         name_spec: None,
+                        corrupted: false,
                     }),
                     None => unknown_gems += 1,
                 }

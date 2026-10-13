@@ -179,6 +179,7 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
                         } else {
                             None
                         },
+                        corrupted: gem.corrupted,
                     }
                 })
                 .collect();

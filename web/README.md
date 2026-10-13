@@ -57,6 +57,11 @@ source name only when the original slot can be matched unambiguously. If no name
 can be recovered safely, PoB export reports an error rather than dropping the
 slot or inventing its identity; PoBR JSON sharing and backups remain lossless.
 
+Whether a gem is corrupted is kept with the gem through import, saves, stage
+calculation and PoB export, because modifiers such as "+1 to Level of all
+Corrupted Skill Gems" test it. A gem's level already includes what corruption
+did to it. The Skills page does not yet offer a way to change the state.
+
 Custom modifiers keep ordered groups, titles, raw text and enabled state in saves
 and PoB exports. Only enabled groups affect calculations. Unchanged legacy saves
 recover groups from their source code; edited flat legacy modifiers keep their

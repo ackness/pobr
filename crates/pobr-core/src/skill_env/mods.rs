@@ -223,6 +223,8 @@ pub struct GemPropertyBonus {
     pub kind: GemPropertyKind,
     /// The category (lowercase; empty = a bare "all Skills" matches unconditionally).
     pub category: String,
+    /// "all Corrupted ... Skill Gems": only a corrupted gem gains the bonus.
+    pub corrupted_only: bool,
     /// Attribute requirement filter (matching vendor's
     /// `gemRequirements[reqStr|reqDex|reqInt] ≥ 1`, the `with a <Attr> requirement`
     /// suffix): Some("str"|"dex"|"int").
@@ -292,11 +294,17 @@ pub fn parse_gem_property_bonus(text: &str) -> Option<GemPropertyBonus> {
         });
         rest = head.trim_end();
     }
+    // "Corrupted" names a state of the gem, not a kind of skill.
+    let (corrupted_only, rest) = match rest.strip_prefix("corrupted ") {
+        Some(rest) => (true, rest),
+        None => (false, rest),
+    };
     let category = rest.strip_suffix("skills").unwrap_or(rest).trim();
     Some(GemPropertyBonus {
         value,
         kind,
         category: category.to_string(),
+        corrupted_only,
         attr_req,
     })
 }
@@ -448,6 +456,8 @@ pub struct GemInput {
     pub quality: u32,
     /// The gem's selected statSet index (0-based; `None` = default).
     pub stat_set_index: Option<u32>,
+    /// Whether the gem is corrupted.
+    pub corrupted: bool,
 }
 
 /// Crossbow reload data channel (matching vendor `CalcOffence.lua:1118-1122`'s

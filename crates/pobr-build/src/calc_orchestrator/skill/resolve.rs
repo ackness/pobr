@@ -130,13 +130,17 @@ fn level_source<'a>(
             .granted_effects
             .get(own)
             .is_some_and(|granting| granting.is_support);
-    let (gem_id, gem_level) = granted_by_support
+    let own_corrupted = group
+        .gem_skills
+        .get(effect.gem_index)
+        .is_some_and(|gem| gem.corrupted);
+    let (gem_id, gem_level, corrupted) = granted_by_support
         .then(|| supported_skill(group, data, effect.gem_index))
         .flatten()
-        .map_or((own, effect.gem_level), |host| {
-            (host.skill_id.as_str(), host.gem_level)
+        .map_or((own, effect.gem_level, own_corrupted), |host| {
+            (host.skill_id.as_str(), host.gem_level, host.corrupted)
         });
-    let bonus = additional_gem_levels(build, data, gem_id)
+    let bonus = additional_gem_levels(build, data, gem_id, corrupted)
         .saturating_add(support_granted_gem_levels(group, data, gem_id));
     (gem_id, gem_level, bonus)
 }
@@ -317,15 +321,22 @@ pub(crate) fn gem_property_applies(
     data: &BuildData,
     skill_types: &[String],
     skill_id: &str,
+    corrupted: bool,
 ) -> bool {
-    pobr_core::skill_env::gem_property_applies(bonus, data, skill_types, skill_id)
+    pobr_core::skill_env::gem_property_applies(bonus, data, skill_types, skill_id, corrupted)
 }
 
 /// The sum of "`+N to Level of all <X> Skills`" level bonuses that apply to the main
-/// skill (the Level dimension of [`gem_property_bonuses`], filtered against the main skill and summed).
-pub(crate) fn additional_gem_levels(build: &Build, data: &BuildData, skill_id: &str) -> u32 {
+/// skill on a gem that is `corrupted` or not (the Level dimension of
+/// [`gem_property_bonuses`], filtered against the main skill and summed).
+pub(crate) fn additional_gem_levels(
+    build: &Build,
+    data: &BuildData,
+    skill_id: &str,
+    corrupted: bool,
+) -> u32 {
     let bonuses = gem_property_bonuses(build, data);
-    pobr_core::skill_env::additional_gem_levels(&bonuses, data, skill_id)
+    pobr_core::skill_env::additional_gem_levels(&bonuses, data, skill_id, corrupted)
 }
 
 /// Applies gem quality bonuses (matching vendor's `applyGemMods`, which stacks
@@ -359,7 +370,9 @@ pub(crate) fn apply_gem_quality_bonuses(build: &Build, data: &BuildData) -> Opti
                         .unwrap_or(&[]);
                     let from_mods: u32 = bonuses
                         .iter()
-                        .filter(|b| gem_property_applies(b, data, skill_types, &gem.skill_id))
+                        .filter(|b| {
+                            gem_property_applies(b, data, skill_types, &gem.skill_id, gem.corrupted)
+                        })
                         .map(|b| b.value)
                         .sum();
                     from_mods + support_granted_gem_quality(group, data, &gem.skill_id)
@@ -557,6 +570,7 @@ mod gem_level_tests {
                 value: 2,
                 kind: GemPropertyKind::Quality,
                 category: String::new(),
+                corrupted_only: false,
                 attr_req: None,
             })
         );
@@ -566,6 +580,7 @@ mod gem_level_tests {
                 value: 2,
                 kind: GemPropertyKind::Level,
                 category: String::new(),
+                corrupted_only: false,
                 attr_req: Some("dex"),
             })
         );
@@ -573,6 +588,32 @@ mod gem_level_tests {
         assert_eq!(
             parse_gem_level_bonus("+2 to Level of all Skills with a [Dexterity] requirement"),
             None
+        );
+    }
+
+    /// "Corrupted" is a state of the gem, not a kind of skill: the bonus is
+    /// for every skill gem that is corrupted.
+    #[test]
+    fn parses_a_bonus_for_corrupted_skill_gems() {
+        assert_eq!(
+            parse_gem_property_bonus("+1 to Level of all Corrupted Skill Gems"),
+            Some(GemPropertyBonus {
+                value: 1,
+                kind: GemPropertyKind::Level,
+                category: "skill gems".into(),
+                corrupted_only: true,
+                attr_req: None,
+            })
+        );
+        assert_eq!(
+            parse_gem_property_bonus("+2 to Level of all Corrupted Spell Skills"),
+            Some(GemPropertyBonus {
+                value: 2,
+                kind: GemPropertyKind::Level,
+                category: "spell".into(),
+                corrupted_only: true,
+                attr_req: None,
+            })
         );
     }
 

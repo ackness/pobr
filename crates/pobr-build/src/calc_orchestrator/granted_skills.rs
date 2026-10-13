@@ -185,6 +185,7 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
                 quality: 0,
                 stat_set_index: None,
                 name_spec: None,
+                corrupted: false,
             }],
             main_active_skill: None,
         });

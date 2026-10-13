@@ -282,7 +282,11 @@ pub fn gem_property_applies(
     data: &dyn GemPropertyLookup,
     skill_types: &[String],
     skill_id: &str,
+    corrupted: bool,
 ) -> bool {
+    if bonus.corrupted_only && !corrupted {
+        return false;
+    }
     if !gem_level_category_matches(&bonus.category, skill_types, skill_id) {
         return false;
     }
@@ -304,11 +308,13 @@ pub fn gem_property_applies(
 }
 
 /// The sum of "`+N to Level of all <X> Skills`" level bonuses that apply to `skill_id`
-/// (the Level dimension of [`gem_property_bonuses`], filtered and summed).
+/// on a gem that is `corrupted` or not (the Level dimension of
+/// [`gem_property_bonuses`], filtered and summed).
 pub fn additional_gem_levels(
     bonuses: &[GemPropertyBonus],
     data: &dyn GemPropertyLookup,
     skill_id: &str,
+    corrupted: bool,
 ) -> u32 {
     let skill_types = data
         .effect(skill_id)
@@ -317,7 +323,7 @@ pub fn additional_gem_levels(
     bonuses
         .iter()
         .filter(|b| b.kind == GemPropertyKind::Level)
-        .filter(|b| gem_property_applies(b, data, skill_types, skill_id))
+        .filter(|b| gem_property_applies(b, data, skill_types, skill_id, corrupted))
         .map(|b| b.value)
         .sum()
 }

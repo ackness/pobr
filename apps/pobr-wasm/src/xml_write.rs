@@ -35,6 +35,7 @@ pub(crate) struct XmlGem {
     pub quality: u32,
     pub stat_set_index: Option<u32>,
     pub name_spec: Option<String>,
+    pub corrupted: bool,
 }
 
 /// A socket group ready to write out (gem_id already reverse-looked-up).
@@ -228,6 +229,9 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
             }
             if let Some(index) = gem.stat_set_index {
                 w!(w, r#" statSetIndex="{index}""#);
+            }
+            if gem.corrupted {
+                w!(w, r#" corrupted="true""#);
             }
             wln!(
                 w,

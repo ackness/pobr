@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { backfillFromDecoded, paramsFromDecoded, parseSaved, prepareTreePlan, type SavedSession } from './useBuildSession';
+import { backfillFromDecoded, materialize, paramsFromDecoded, parseSaved, prepareTreePlan, type SavedSession } from './useBuildSession';
 import type { BuildJson, CalculateBuildRequest } from '../api/types';
 import { parseWorkspace, createWorkspace } from '../lib/buildWorkspace';
 
@@ -276,6 +276,7 @@ describe('unresolved imported gem persistence', () => {
     ...[-1, 0.5, '0', 0x100000000].map(quality => ({ quality })),
     ...[0, -1, 0.5, '1', 0x100000000].map(stat_set_index => ({ stat_set_index })),
     ...[1, true, [], {}].map(name_spec => ({ name_spec })),
+    ...[1, 'true', [], {}].map(corrupted => ({ corrupted })),
   ])('rejects malformed gem values in standalone and inactive workspace stages: %j', patch => {
     const invalid = structuredClone(unresolved);
     Object.assign(invalid.state.socketGroups[0].gems[1], patch);
@@ -314,6 +315,23 @@ describe('unresolved imported gem persistence', () => {
     const session = structuredClone(unresolved);
     session.state.socketGroups[0].gems[1].name_spec = name_spec;
     expect(parseSaved(JSON.stringify(session))).toEqual(session);
+  });
+
+  test('keeps whether a gem is corrupted through a save and an import', () => {
+    const session = structuredClone(unresolved);
+    session.state.socketGroups[0].gems[0].corrupted = true;
+    expect(parseSaved(JSON.stringify(session))).toEqual(session);
+    // A gem saved as not corrupted is the same as one that does not say.
+    const clean = structuredClone(unresolved);
+    (clean.state.socketGroups[0].gems[0] as { corrupted?: boolean }).corrupted = false;
+    expect(parseSaved(JSON.stringify(clean))).toEqual(unresolved);
+
+    const decoded = {
+      config_inputs: {}, tree: {}, items: { equipped: [], socket_jewels: [], flasks: [] },
+      socket_groups: session.state.socketGroups,
+    } as unknown as BuildJson;
+    const gems = materialize(decoded).socketGroups[0].gems;
+    expect(gems.map(gem => gem.corrupted)).toEqual([true, undefined, undefined]);
   });
 
   test('backfills an old unnamed slot only for intact gem order and keeps deliberate name edits', () => {

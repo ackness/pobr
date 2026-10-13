@@ -100,6 +100,8 @@ export interface GemJson {
   stat_set_index?: number | null;
   /** Raw PoB name for an unresolved slot; display/export metadata, never calculation identity. */
   name_spec?: string | null;
+  /** Present and true only for a corrupted gem. */
+  corrupted?: boolean;
   skill_id: string;
   level: number;
   quality: number;
@@ -187,6 +189,8 @@ export interface GemInput {
   stat_set_index?: number | null;
   /** Raw PoB name for an unresolved slot; display/export metadata, never calculation identity. */
   name_spec?: string | null;
+  /** Whether the gem is corrupted ("all Corrupted Skill Gems" modifiers test it); omitted means not. */
+  corrupted?: boolean;
   skill_id: string;
   level: number;
   quality: number;

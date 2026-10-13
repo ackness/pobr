@@ -408,6 +408,9 @@ mod tests {
         b = c.clone();
         b.socket_groups[0].gem_skills[0].name_spec = Some("Spark".into());
         assert!(!same_build(&b, &c));
+        b = c.clone();
+        b.socket_groups[0].gem_skills[0].corrupted = true;
+        assert!(!same_build(&b, &c));
     }
 
     #[test]

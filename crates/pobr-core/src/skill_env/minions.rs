@@ -131,19 +131,19 @@ pub fn spawn_minions(
         // Prefers `gems` (the real import path, includes both active + support);
         // falls back to `active_skill_id` when empty (the builder/test path's
         // with_active_skill, the same fallback source as resolve_main_skill).
-        let candidates: Vec<(String, u32)> = if group.gems.is_empty() {
+        let candidates: Vec<(String, u32, bool)> = if group.gems.is_empty() {
             group
                 .active_skill_id
-                .map(|id| vec![(id.to_string(), group.active_gem_level)])
+                .map(|id| vec![(id.to_string(), group.active_gem_level, false)])
                 .unwrap_or_default()
         } else {
             group
                 .gems
                 .iter()
-                .map(|g| (g.skill_id.clone(), g.gem_level))
+                .map(|g| (g.skill_id.clone(), g.gem_level, g.corrupted))
                 .collect()
         };
-        for (skill_id, gem_level) in candidates {
+        for (skill_id, gem_level, corrupted) in candidates {
             // A support itself doesn't summon — its addMinionList appends to the active
             // skill's minion_list, which is deferred; the first version only wires up
             // the active skill's minion_list.
@@ -170,6 +170,7 @@ pub fn spawn_minions(
                     gem_level_bonuses,
                     data,
                     &skill_id,
+                    corrupted,
                 ))
                 .saturating_add(support_granted_gem_levels(&judgement, group.gems, data));
             // (#12 companion) Companion determination: the granted skill has

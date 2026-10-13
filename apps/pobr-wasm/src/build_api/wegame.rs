@@ -391,6 +391,7 @@ fn gem(
         quality: property(item, 6).unwrap_or(0),
         stat_set_index: None,
         name_spec: None,
+        corrupted: false,
     })
 }
 

@@ -71,6 +71,8 @@ pub struct GemInput {
     pub(crate) stat_set_index: Option<u32>,
     /// Source display metadata for unresolved slots; never used to resolve calculation effects.
     pub(crate) name_spec: Option<String>,
+    /// Whether the gem is corrupted; omitted means it is not.
+    pub(crate) corrupted: bool,
 }
 
 impl Default for GemInput {
@@ -81,6 +83,7 @@ impl Default for GemInput {
             quality: 0,
             stat_set_index: None,
             name_spec: None,
+            corrupted: false,
         }
     }
 }
@@ -248,6 +251,7 @@ pub(super) fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData
             quality: gem.quality,
             stat_set_index: gem.stat_set_index,
             name_spec: None,
+            corrupted: gem.corrupted,
         });
         if let Some(gem_id) = gem_id {
             group.gem_ids.push(gem_id);

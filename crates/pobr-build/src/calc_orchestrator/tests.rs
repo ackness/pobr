@@ -214,6 +214,7 @@ fn selected_tree_controls_gem_properties_and_equipment_effects() {
             value: 10,
             kind: GemPropertyKind::Quality,
             category: String::new(),
+            corrupted_only: false,
             attr_req: None,
         })
     );
@@ -302,6 +303,7 @@ fn granted_anoint_notable_feeds_gem_property_scan() {
             value: 5,
             kind: GemPropertyKind::Quality,
             category: String::new(),
+            corrupted_only: false,
             attr_req: None,
         }),
         "granting Paragon should produce a catch-all Quality +5 mod, got {bonuses:?}"
