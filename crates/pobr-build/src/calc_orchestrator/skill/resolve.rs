@@ -616,7 +616,7 @@ mod gem_level_tests {
             Some(GemPropertyBonus {
                 value: 1,
                 kind: GemPropertyKind::Level,
-                category: "skill gems".into(),
+                category: String::new(),
                 corrupted_only: true,
                 attr_req: None,
             })
@@ -685,7 +685,55 @@ mod gem_level_tests {
         ));
         // A bare "all skills" (empty category) matches unconditionally.
         assert!(gem_level_category_matches("", &grenade, ""));
-        assert!(gem_level_category_matches("skill gems", &grenade, ""));
+    }
+
+    /// The game words a kind as "all Cold Skills" or as "all Nova Skill Gems".
+    #[test]
+    fn a_kind_of_skill_gems_is_the_kind_of_skills() {
+        let bonus = |line: &str| parse_gem_property_bonus(line).expect("a gem bonus");
+        let nova = bonus("+1 to Level of all Nova Skill Gems");
+        assert_eq!((nova.value, nova.category.as_str()), (1, "nova"));
+        assert!(!nova.corrupted_only);
+        let corrupted_spell = bonus("+2 to Level of all Corrupted Spell Skill Gems");
+        assert_eq!(corrupted_spell.category, "spell");
+        assert!(corrupted_spell.corrupted_only);
+        let corrupted = bonus("+1 to Level of all Corrupted Skill Gems");
+        assert_eq!(corrupted.category, "");
+        assert!(corrupted.corrupted_only);
+        assert_eq!(bonus("+1 to Level of all Skills").category, "");
+        assert_eq!(
+            bonus("+3 to Level of all Cold Spell Skills").category,
+            "cold spell"
+        );
+    }
+
+    /// A kind whose word is not the name of a skill type goes by the types
+    /// that make a gem of that kind.
+    #[test]
+    fn a_kind_named_differently_from_its_skill_type_still_matches() {
+        let kind = |word: &str, skill_types: &[&str]| {
+            gem_level_category_matches(word, &types(skill_types), "")
+        };
+        // Spell Totem summons a totem; the spell socketed in it does not.
+        assert!(kind("totem", &["SummonsTotem", "Meta", "Duration"]));
+        assert!(!kind(
+            "totem",
+            &["Spell", "Cold", "Totemable", "UsedByTotem"]
+        ));
+        assert!(kind("curse", &["Spell", "AppliesCurse", "Area"]));
+        assert!(!kind("curse", &["Spell", "Area"]));
+        assert!(kind("strike", &["Attack", "Melee", "MeleeSingleTarget"]));
+        assert!(!kind("strike", &["Attack", "Melee", "Slam"]));
+        assert!(kind("crossbow", &["Attack", "CrossbowSkill"]));
+        assert!(kind("crossbow", &["Attack", "CrossbowAmmoSkill"]));
+        assert!(!kind("crossbow", &["Attack", "Bow"]));
+        for element in ["Fire", "Cold", "Lightning"] {
+            assert!(kind("elemental", &["Spell", element]));
+        }
+        assert!(!kind("elemental", &["Spell", "Chaos", "Physical"]));
+        // Both words of a kind still have to hold.
+        assert!(kind("elemental spell", &["Spell", "Fire"]));
+        assert!(!kind("elemental spell", &["Attack", "Fire"]));
     }
 
     #[test]
@@ -723,11 +771,9 @@ mod gem_level_tests {
             &fireball,
             "FireballPlayer"
         ));
-        // A category like "corrupted skill gems" that contains a non-type token stays
-        // non-matching (consistent with PoB2's corrupted special case being missing —
-        // better to skip than to miscalculate).
+        // A word that names no kind of skill matches nothing.
         assert!(!gem_level_category_matches(
-            "corrupted skill",
+            "zorblax spell",
             &comet,
             "CometPlayer"
         ));

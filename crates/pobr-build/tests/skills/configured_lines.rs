@@ -105,6 +105,45 @@ fn a_level_bonus_in_the_custom_modifiers_raises_the_gems_it_names() {
     assert_eq!(levels, 2);
 }
 
+/// The game words the kind of a bonus two ways: "all Cold Skills" and "all
+/// Nova Skill Gems". Grim Pillars is a Cold Nova spell.
+#[test]
+fn a_bonus_for_a_kind_of_skill_gems_raises_the_gems_of_that_kind() {
+    let data = data();
+    let options = DataOrchestratorOptions::default();
+    let levels = |skill: &str, lines: &str| {
+        let build = build_of(
+            skill,
+            LEVEL_20,
+            "",
+            &format!(
+                r#"<CustomModifierBlock title="Test" enabled="true">{lines}</CustomModifierBlock>"#
+            ),
+        );
+        bonus(&data, &build, &options).0
+    };
+    assert_eq!(
+        levels("GrimPillars", "+1 to Level of all Nova Skill Gems"),
+        1
+    );
+    assert_eq!(levels("GrimPillars", "+1 to Level of all Cold Skills"), 1);
+    assert_eq!(
+        levels(
+            "GrimPillars",
+            "+1 to Level of all Nova Skill Gems\n+2 to Level of all Cold Spell Skills"
+        ),
+        3
+    );
+    // Fireball is neither a Nova nor a skill that summons a totem.
+    assert_eq!(levels("Fireball", "+1 to Level of all Nova Skill Gems"), 0);
+    assert_eq!(levels("Fireball", "+1 to Level of all Totem Skill Gems"), 0);
+    assert_eq!(levels("Fireball", "+1 to Level of all Elemental Skills"), 1);
+    assert_eq!(
+        levels("GrimPillars", "+1 to Level of all Elemental Skills"),
+        1
+    );
+}
+
 #[test]
 fn a_bonus_for_corrupted_gems_in_the_custom_modifiers_tests_the_gem() {
     let data = data();

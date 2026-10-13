@@ -264,7 +264,9 @@ pub fn clean_grant_text(text: &str) -> String {
 }
 
 /// Parses a `+N to [Level|Quality] of all <category> Skills [with a <Attr> requirement]`
-/// mod into a [`GemPropertyBonus`]. Returns `None` for any other form.
+/// mod into a [`GemPropertyBonus`]. Returns `None` for any other form. The game
+/// writes the kind either way, "all Cold Skills" or "all Nova Skill Gems"; both
+/// leave the kind alone as the category.
 pub fn parse_gem_property_bonus(text: &str) -> Option<GemPropertyBonus> {
     let clean = clean_grant_text(text);
     let body = clean.strip_prefix('+')?;
@@ -299,7 +301,11 @@ pub fn parse_gem_property_bonus(text: &str) -> Option<GemPropertyBonus> {
         Some(rest) => (true, rest),
         None => (false, rest),
     };
-    let category = rest.strip_suffix("skills").unwrap_or(rest).trim();
+    let category = rest
+        .strip_suffix("skill gems")
+        .or_else(|| rest.strip_suffix("skills"))
+        .unwrap_or(rest)
+        .trim();
     Some(GemPropertyBonus {
         value,
         kind,
@@ -318,16 +324,17 @@ pub fn parse_gem_level_bonus(text: &str) -> Option<(u32, String)> {
         .then_some((bonus.value, bonus.category))
 }
 
-/// Whether a gem-level-bonus's `<category>` applies to the main skill. Matches PoB2
-/// semantics (`ModParser.lua:3480-3496`'s GemProperty construction +
-/// `CalcSetup.lua:404-435`'s `applyGemMods` + `CalcTools.lua:113-126`'s `gemIsType`):
-/// - a bare "all skills"/"skill gems" matches unconditionally;
-/// - the whole string = a skill name (PoB2's `gemIdLookup` match branch) → matches by
-///   the main skill's name (derived from the granted effect id);
-/// - otherwise, split on whitespace (PoB2's multi-word category = `keywordList`):
-///   **every** token must hit the main skill's `skill_types`.
+/// Whether the kind a gem bonus names (`category`, lowercase) is the kind of the
+/// skill `skill_id` with the game's `skill_types`:
+/// - no kind ("all Skills", "all Corrupted Skill Gems") is every skill;
+/// - the name of the skill is that skill ("all Shield Wall Skills");
+/// - otherwise each word names a kind and the skill has to be all of them
+///   ("all Cold Spell Skills").
+///
+/// The game decides a kind by the gem's tags, which the committed data does
+/// not carry; the skill's types stand in for them (see [`kind_skill_types`]).
 pub fn gem_level_category_matches(category: &str, skill_types: &[String], skill_id: &str) -> bool {
-    if category.is_empty() || category == "skill gems" {
+    if category.is_empty() {
         return true;
     }
     if category == skill_name_from_id(skill_id) {
@@ -335,7 +342,30 @@ pub fn gem_level_category_matches(category: &str, skill_types: &[String], skill_
     }
     category
         .split_whitespace()
-        .all(|tok| skill_types.iter().any(|t| t.eq_ignore_ascii_case(tok)))
+        .all(|word| match kind_skill_types(word) {
+            Some(named) => skill_types
+                .iter()
+                .any(|skill_type| named.contains(&skill_type.as_str())),
+            None => skill_types
+                .iter()
+                .any(|skill_type| skill_type.eq_ignore_ascii_case(word)),
+        })
+}
+
+/// The skill types a kind of gem goes by where the word a line uses is not the
+/// type's own name: a "Totem" gem is one that summons a totem, a "Curse" one
+/// that applies a curse, a "Strike" a melee attack on a single target, and an
+/// "Elemental" skill is of any of the three elements. Every other kind a line
+/// names (Nova, Cold, Spell, Herald, …) is a skill type of that name.
+fn kind_skill_types(word: &str) -> Option<&'static [&'static str]> {
+    match word {
+        "totem" => Some(&["SummonsTotem"]),
+        "curse" => Some(&["AppliesCurse"]),
+        "strike" => Some(&["MeleeSingleTarget"]),
+        "crossbow" => Some(&["CrossbowSkill", "CrossbowAmmoSkill"]),
+        "elemental" => Some(&["Fire", "Cold", "Lightning"]),
+        _ => None,
+    }
 }
 
 /// Derives a skill's display name from its granted effect id (lowercase, CamelCase
