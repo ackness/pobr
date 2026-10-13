@@ -99,6 +99,50 @@ fn wegame_preserves_calculation_inputs_and_roundtrips() {
     assert_swap(&roundtrip["weapon_swap"], &decoded["weapon_swap"]);
 }
 
+/// A corrupted gem arrives with the flag a corrupted item has; the build keeps
+/// it, so modifiers to corrupted gems reach the gem. The level property is
+/// already the gem's whole level.
+#[test]
+fn wegame_carries_a_gems_corrupted_state() {
+    init();
+    let mut share = fixture();
+    share["skills"] = json!([
+        {"baseType":"冰霜射击","support":false,"corrupted":true,
+         "properties":[{"type":5,"values":[["21",1]]},{"type":6,"values":[["+20%",1]]}]},
+        {"baseType":"冰霜射击","support":false,"corrupted":false,
+         "properties":[{"type":5,"values":[["20",0]]}]},
+        {"baseType":"冰霜射击","support":false,
+         "properties":[{"type":5,"values":[["20",0]]}]}
+    ]);
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_file_json(&share.to_string()).unwrap())
+            .unwrap();
+    let gem = |group: usize| &decoded["socket_groups"][group]["gems"][0];
+    assert_eq!(gem(0)["skill_id"], "IceShotPlayer");
+    assert_eq!(gem(0)["corrupted"], true);
+    assert_eq!(gem(0)["level"], 21);
+    // The field is written only for a corrupted gem.
+    for group in [1, 2] {
+        assert_eq!(gem(group)["skill_id"], "IceShotPlayer");
+        assert!(gem(group).get("corrupted").is_none(), "{}", gem(group));
+    }
+
+    // The state reaches the build code the share is exported as.
+    let request = json!({
+        "character":decoded["character"], "allocated_nodes":decoded["tree"]["allocated_nodes"],
+        "items":decoded["items"]["equipped"], "socket_groups":groups(&decoded),
+    });
+    let code = pobr_wasm::encode_build_json(&request.to_string()).unwrap();
+    let roundtrip: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).unwrap()).unwrap();
+    assert_eq!(roundtrip["socket_groups"][0]["gems"][0]["corrupted"], true);
+    assert!(
+        roundtrip["socket_groups"][1]["gems"][0]
+            .get("corrupted")
+            .is_none()
+    );
+}
+
 #[test]
 fn wegame_rejects_incomplete_or_unknown_payloads() {
     for input in [

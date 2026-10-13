@@ -391,7 +391,8 @@ fn gem(
         quality: property(item, 6).unwrap_or(0),
         stat_set_index: None,
         name_spec: None,
-        corrupted: false,
+        // The same flag a corrupted piece of equipment carries.
+        corrupted: item["corrupted"].as_bool() == Some(true),
     })
 }
 
