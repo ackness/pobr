@@ -246,7 +246,14 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
             // assert loudly (surfaced for A2), release builds conservatively drop the tag.
             let st = SkillTypes::from_pob2_name(bare);
             debug_assert!(st.is_some(), "unknown SkillType name: {bare}");
-            st.map(ModTag::SkillTypes)
+            // "Non-Channelling Spells …", "effect of Non-Curse Auras": the
+            // rule names the type the skill must not have.
+            let neg = f.get("neg").and_then(field_bool).unwrap_or(false);
+            st.map(if neg {
+                ModTag::SkillTypesNeg
+            } else {
+                ModTag::SkillTypes
+            })
         }
         "SkillName" => {
             // Named-skill qualifier (vendor's single `skillName` / list `skillNameList`,

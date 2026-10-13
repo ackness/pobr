@@ -18605,7 +18605,7 @@
           "flags": 8192,
           "tags": [
             "Condition { var: \"{Hand}Attack\", negated: false, actor: None }",
-            "SkillTypes(SkillTypes([0, 0, 137438953472, 0, 0]))"
+            "SkillTypesNeg(SkillTypes([0, 0, 137438953472, 0, 0]))"
           ]
         },
         {
@@ -18615,7 +18615,7 @@
           "flags": 8192,
           "tags": [
             "Condition { var: \"{Hand}Attack\", negated: false, actor: None }",
-            "SkillTypes(SkillTypes([0, 0, 137438953472, 0, 0]))"
+            "SkillTypesNeg(SkillTypes([0, 0, 137438953472, 0, 0]))"
           ]
         }
       ]

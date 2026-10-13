@@ -1419,3 +1419,45 @@ fn parses_chance_to_block_is_lucky_variants() {
     assert_flags("Your Chance to Block is Lucky", &all_four);
     assert_flags("Chance to Block is Lucky", &all_four);
 }
+
+/// "Non-Channelling Spells …" names the type a skill must not have. The
+/// restriction is on the skill, so the line is for every spell that is not
+/// channelled and for no spell that is.
+#[test]
+fn a_non_channelling_line_is_for_skills_that_are_not_channelled() {
+    let parsed =
+        parse_mod("Non-Channelling Spells deal 6% increased Damage per 100 maximum Mana").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed, "{parsed:?}");
+    assert_eq!(parsed.mods.len(), 1);
+    let modifier = &parsed.mods[0];
+    assert!(
+        modifier
+            .tags
+            .contains(&ModTag::SkillTypesNeg(SkillTypes::CHANNEL)),
+        "{modifier:?}"
+    );
+
+    let mut db = ModDb::new();
+    db.add_list(parsed.mods);
+    let names = [ModName::from("SpellDamage"), ModName::from("Damage")];
+    let cast = CalcConfig::spell().with_multiplier("Mana", 1000.0);
+    let channelled = cast.clone().with_skill_types(SkillTypes::CHANNEL);
+    assert_eq!(db.sum(ModType::Inc, &cast, &names), 60.0);
+    assert_eq!(db.sum(ModType::Inc, &channelled, &names), 0.0);
+
+    // The other phrasings carry the same restriction.
+    for line in [
+        "Non-Channelling Skills have 3% increased Spell Critical Hit Chance per 100 maximum Mana",
+        "20% increased effect of Non-Curse Auras from your Skills",
+    ] {
+        let parsed = parse_mod(line).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed, "{line}: {parsed:?}");
+        assert!(
+            parsed.mods.iter().all(|modifier| modifier
+                .tags
+                .iter()
+                .any(|tag| matches!(tag, ModTag::SkillTypesNeg(_)))),
+            "{line}: {parsed:?}"
+        );
+    }
+}
