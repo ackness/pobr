@@ -6,6 +6,7 @@
 //! summoned minion into the session's minion ModDb — driven by lookup traits +
 //! `SocketGroupView` + a `MinionSession` write surface.
 
+use pobr_data::skill::SkillTypes;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 use crate::calc::minion::{AttributeInfusion, MinionModifierEntry};
@@ -32,6 +33,10 @@ pub trait MinionSession {
 
     /// Whether the player has the flag `name`.
     fn has_flag(&self, name: &str) -> bool;
+
+    /// What the character grants the minions of a skill with `skill_types`
+    /// (see [`crate::calc::CalculationSession::minion_modifiers_for`]).
+    fn minion_modifiers_for(&self, skill_types: SkillTypes) -> Vec<MinionModifierEntry>;
 
     /// Gives the player modifiers granted instead of a minion.
     fn add_player_modifiers(&mut self, modifiers: Vec<crate::Modifier>);
@@ -62,6 +67,10 @@ impl MinionSession for crate::calc::CalculationSession {
 
     fn add_player_modifiers(&mut self, modifiers: Vec<crate::Modifier>) {
         self.add_modifiers(modifiers);
+    }
+
+    fn minion_modifiers_for(&self, skill_types: SkillTypes) -> Vec<MinionModifierEntry> {
+        crate::calc::CalculationSession::minion_modifiers_for(self, skill_types)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -123,21 +132,9 @@ pub fn spawn_minions(
     session: &mut dyn MinionSession,
     groups: &dyn SocketGroupView,
     data: &dyn MinionEnv,
-    item_texts: &[String],
-    extra_texts: &[String],
     gem_level_bonuses: &[crate::skill_env::GemPropertyBonus],
 ) {
     use std::collections::BTreeSet;
-
-    let mut minion_modifiers: Vec<MinionModifierEntry> = Vec::new();
-    if let Some(rules) = data.parser_rules() {
-        for text in item_texts.iter().chain(extra_texts.iter()) {
-            let outcome = crate::mod_parser::parse_mod_engine(text, rules);
-            minion_modifiers.extend(crate::calc::minion::extract_minion_modifier_entries(
-                &outcome.mods,
-            ));
-        }
-    }
 
     // Deduplication: the same minion id (referenced by the same minion from different
     // skills/groups) is only wired in once, to avoid double-counting.
@@ -255,7 +252,16 @@ pub fn spawn_minions(
             // **that skill's** minion modDB, in-group scope). Data channel =
             // `map_minion_life_stat` (the first batch only covers inner Life, e.g.
             // Loyalty's −30% more minion life).
-            let mut group_minion_modifiers = minion_modifiers.clone();
+            // What the character grants this skill's minions: every
+            // `MinionModifier` from its items, tree, jewels and
+            // configuration whose own tags hold for this skill.
+            let skill_types = data.effect(&skill_id).map_or(SkillTypes::NONE, |e| {
+                e.skill_types
+                    .iter()
+                    .filter_map(|name| SkillTypes::from_pob2_name(name))
+                    .fold(SkillTypes::NONE, |all, one| all | one)
+            });
+            let mut group_minion_modifiers = session.minion_modifiers_for(skill_types);
             if let Some(catalog) = data.stat_map_catalog() {
                 use crate::rules::stat_map_engine::map_minion_life_stat;
                 for sup in &judgement.compatible {

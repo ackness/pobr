@@ -24,7 +24,7 @@
 
 use pobr_data::prelude::*;
 
-use crate::{ModDb, Modifier};
+use crate::{CalcConfig, ModDb, Modifier};
 
 use super::round;
 
@@ -242,6 +242,33 @@ pub fn extract_minion_modifier_entries<'a>(
         for inner in inner_mods {
             entries.push(MinionModifierEntry {
                 inner: inner.clone(),
+                minion_type: None,
+            });
+        }
+    }
+    entries
+}
+
+/// What the character's `MinionModifier` lists in `db` grant the minions of
+/// a skill: the inner modifier of every list whose own tags hold under `cfg`,
+/// which carries that skill's types ("Companions deal …" is for the minions
+/// of a Companion skill only). Each keeps the line it came from.
+pub fn granted_minion_modifiers(db: &ModDb, cfg: &CalcConfig) -> Vec<MinionModifierEntry> {
+    let mut entries = Vec::new();
+    for outer in db.named("MinionModifier") {
+        if outer.mod_type != ModType::List || !outer.matches(cfg) {
+            continue;
+        }
+        for inner in outer.value.as_nested_mods().into_iter().flatten() {
+            let mut inner = inner.clone();
+            if inner.source.is_none() {
+                inner.source = outer.source.clone();
+            }
+            if inner.origin.is_none() {
+                inner.origin = outer.origin.clone();
+            }
+            entries.push(MinionModifierEntry {
+                inner,
                 minion_type: None,
             });
         }

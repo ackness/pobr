@@ -4,15 +4,14 @@
 //! breakdowns); [`render_breakdowns`] prints them as text.
 
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
+use pobr_build::ReferenceRow;
 use pobr_build::breakdown::{
     AilmentBreakdown, BREAKDOWN_STATS, BreakdownFormula, BreakdownMod, HitDamageTable,
-    HitMitigationRow, SkillDotRow, StatBreakdown, stat_breakdown,
+    HitMitigationRow, SkillDotRow, StatBreakdown, minion_stat_breakdown, stat_breakdown,
 };
-use pobr_build::compare_to_reference;
-use pobr_core::calc::CalculationSession;
+use pobr_core::calc::{CalculationSession, MinionOutput};
 use pobr_core::display_catalog::{display_catalog, display_value};
 use pobr_data::display_stat::ParityStatus;
 use serde::Serialize;
@@ -74,22 +73,47 @@ pub(crate) fn requested_stats(asked: &[String]) -> Vec<String> {
     stats
 }
 
+/// The prefix of a stat of the main skill's minion (`Minion:Life`).
+const MINION_PREFIX: &str = "Minion:";
+
+/// The value a minion reports for `stat`.
+fn minion_value(minion: &MinionOutput, stat: &str) -> Option<f64> {
+    match stat {
+        "TotalDPS" => Some(minion.dps),
+        "Life" => Some(minion.life),
+        "Armour" => Some(minion.armour),
+        "Evasion" => Some(minion.evasion),
+        "EnergyShield" => Some(minion.energy_shield),
+        _ => None,
+    }
+}
+
 /// The breakdown of each stat in `stats` from the finished `session`.
-/// `reference` is the build code's values when the report compares with
-/// them.
+/// `rows` is the comparison with the build code's values, when the report
+/// makes it. A stat named `Minion:<stat>` is of `minion`, the main skill's
+/// minion and its position among the minions the calculation created.
 pub(crate) fn breakdown_entries(
     session: &CalculationSession,
     stats: &[String],
-    reference: Option<&BTreeMap<String, f64>>,
+    rows: &[ReferenceRow],
+    minion: Option<(usize, &MinionOutput)>,
 ) -> Vec<StatBreakdownEntry> {
     let output = session.output();
     let catalog = display_catalog();
-    let rows = reference
-        .map(|reference| compare_to_reference(output, reference))
-        .unwrap_or_default();
     stats
         .iter()
         .map(|stat| {
+            if let Some(name) = stat.strip_prefix(MINION_PREFIX) {
+                let row = rows.iter().find(|row| row.pob_key == *stat);
+                return StatBreakdownEntry {
+                    stat: stat.clone(),
+                    value: minion.and_then(|(_, minion)| minion_value(minion, name)),
+                    pob_key: Some(stat.clone()),
+                    reference: row.map(|row| row.reference),
+                    breakdown: minion
+                        .and_then(|(index, _)| minion_stat_breakdown(session, index, name)),
+                };
+            }
             let def = catalog.iter().find(|def| {
                 def.id.as_str() == stat.as_str() && def.parity_status == ParityStatus::Computed
             });

@@ -824,6 +824,12 @@ impl CalculationSession {
     /// Gets the sum of a ModName's BASE in the player ModDb for the current cfg.
     /// This excludes actor bases and INC/MORE scaling; use [`Self::attribute_total`]
     /// when a consumer needs a final attribute value.
+    pub fn minion_modifiers_for(&self, skill_types: SkillTypes) -> Vec<super::MinionModifierEntry> {
+        let mut cfg = self.env.cfg.clone();
+        cfg.skill_types = skill_types;
+        super::minion::granted_minion_modifiers(&self.env.player.mod_db, &cfg)
+    }
+
     pub fn base_sum(&self, name: &str) -> f64 {
         self.env
             .player
@@ -1428,6 +1434,67 @@ impl CalculationSession {
             db.sum(ModType::Base, &*cfg, &names),
             db.sum(ModType::Inc, &*cfg, &names),
             db.more(&*cfg, &names),
+        )
+    }
+
+    /// How many minions the calculation created.
+    pub fn minion_count(&self) -> usize {
+        self.env.minions.len()
+    }
+
+    /// The modifier names any minion's calculation read, when reads are
+    /// noted ([`Self::track_modifier_reads`]).
+    pub fn minion_read_names(&self) -> std::collections::BTreeSet<ModName> {
+        self.env
+            .minions
+            .iter()
+            .flat_map(|minion| minion.mod_db.read_names())
+            .collect()
+    }
+
+    /// The modifier names a minion's `stat` is built from: its Life pool
+    /// holds both the monster's base `Life` and the `MaximumLife` lines.
+    fn minion_stat_names(&self, stat: &str) -> Vec<ModName> {
+        match stat {
+            "Life" => vec![ModName::from("MaximumLife"), ModName::from("Life")],
+            _ => self.stat_mod_names(stat),
+        }
+    }
+
+    /// The modifiers of minion `index` (in the order the calculation created
+    /// it) that its `stat` reads, evaluated in the minion's own context.
+    pub fn minion_stat_mods(&self, index: usize, stat: &str) -> Vec<crate::ModEvaluation<'_>> {
+        let Some(minion) = self.env.minions.get(index) else {
+            return Vec::new();
+        };
+        let cfg = perform::minion_cfg(&self.env);
+        minion
+            .mod_db
+            .evaluate_names(&cfg, &self.minion_stat_names(stat))
+    }
+
+    /// `(BASE sum, INC sum, MORE product)` of [`Self::minion_stat_mods`].
+    pub fn minion_stat_totals(&self, index: usize, stat: &str) -> (f64, f64, f64) {
+        let Some(minion) = self.env.minions.get(index) else {
+            return (0.0, 0.0, 1.0);
+        };
+        let cfg = perform::minion_cfg(&self.env);
+        let names = self.minion_stat_names(stat);
+        let db = &minion.mod_db;
+        (
+            db.sum(ModType::Base, &cfg, &names),
+            db.sum(ModType::Inc, &cfg, &names),
+            db.more(&cfg, &names),
+        )
+    }
+
+    /// The steps from minion `index`'s base Life to its maximum Life.
+    pub fn minion_life_formula(&self, index: usize) -> Option<super::StatFormula> {
+        let minion = self.env.minions.get(index)?;
+        let cfg = perform::minion_cfg(&self.env);
+        Some(
+            super::offence::pool_terms(&minion.mod_db, &cfg, minion.base.life, "MaximumLife")
+                .formula(),
         )
     }
 

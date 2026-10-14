@@ -1239,11 +1239,18 @@ pub fn calculate_build_detailed(
     });
 
     let stats = breakdown::requested_stats(&detail.breakdown);
-    let breakdowns = breakdown::breakdown_entries(
-        &session,
-        &stats,
-        compares.then_some(&import.reference_stats),
-    );
+    let breakdown_rows = if compares {
+        compare_build_to_reference(&build, &build_data, out, &import)
+    } else {
+        Vec::new()
+    };
+    let main_minion = pobr_build::main_skill_minion(&build, &build_data, out).and_then(|minion| {
+        out.minions
+            .iter()
+            .position(|other| std::ptr::eq(other, minion))
+            .map(|index| (index, minion))
+    });
+    let breakdowns = breakdown::breakdown_entries(&session, &stats, &breakdown_rows, main_minion);
     let main_skill = (!stats.is_empty())
         .then(|| pobr_build::breakdown::main_skill_breakdown(&build, &build_data, out))
         .flatten();

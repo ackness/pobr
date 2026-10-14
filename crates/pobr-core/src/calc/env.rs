@@ -179,6 +179,10 @@ impl Env {
         );
         super::write_summoned_minion_multipliers(&mut self.player.mod_db, limit, &def.id);
         let mut actor = minion_actor_from_context(&ctx);
+        // A minion created while the calculation notes its reads is noted too.
+        if self.player.mod_db.tracks_reads() {
+            actor.mod_db.track_reads();
+        }
         actor.is_companion = origin.is_companion;
         actor.minion = Some(MinionIdentity {
             minion_id: def.id.clone(),

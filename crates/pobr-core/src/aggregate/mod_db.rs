@@ -388,6 +388,11 @@ impl ModDb {
         self.reads.get_or_insert_with(ReadLog::default);
     }
 
+    /// Whether [`Self::track_reads`] was called.
+    pub fn tracks_reads(&self) -> bool {
+        self.reads.is_some()
+    }
+
     /// The queries asked of each stored name and the modifiers they counted
     /// since [`Self::track_reads`] (see [`ReadSnapshot`]); empty when reads
     /// are not tracked. The log goes on after it, so take it when the

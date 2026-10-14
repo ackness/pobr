@@ -29,7 +29,7 @@ use pobr_core::calc::CalculationSession;
 use pobr_core::{EvalContext, ModEvaluation, ModValue, Modifier, ReadSnapshot, ReadVariables};
 use pobr_data::catalog::PassiveNodeDef;
 use pobr_data::item::Item;
-use pobr_data::modifier::ModType;
+use pobr_data::modifier::{ModName, ModType};
 use pobr_data::source::SourceKind;
 use serde::Serialize;
 
@@ -292,6 +292,10 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
         referenced: session.referenced_variables(),
         asked: &diagnosis.variables,
     };
+    let minions = MinionReads {
+        created: session.minion_count(),
+        read: session.minion_read_names(),
+    };
     let uses = breakdown_uses(session);
 
     // The stored modifiers by the line they came from. Whole-db iteration
@@ -326,7 +330,8 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
         let modifiers: Vec<UsageModifier> = modifiers
             .into_iter()
             .map(|modifier| {
-                let (status, reason) = judge(modifier, &diagnosis.reads, &main, &variables);
+                let (status, reason) =
+                    judge(modifier, &diagnosis.reads, &main, &variables, &minions);
                 UsageModifier {
                     name: modifier.name.as_str().to_string(),
                     mod_type: modifier.mod_type.as_trace_label(),
@@ -550,14 +555,64 @@ impl Variables<'_> {
     }
 }
 
+/// The minions a calculation created and the modifier names their own
+/// calculations read. A `MinionModifier` line is given to the minions: it is
+/// used when their calculations read what it gives them.
+struct MinionReads {
+    created: usize,
+    read: BTreeSet<ModName>,
+}
+
+impl MinionReads {
+    fn judge(&self, modifier: &Modifier) -> (ModifierStatus, Option<String>) {
+        if self.created == 0 {
+            return (
+                ModifierStatus::Unread,
+                Some("the build creates no minion to give it to".to_string()),
+            );
+        }
+        let given: Vec<&str> = modifier
+            .value
+            .as_nested_mods()
+            .into_iter()
+            .flatten()
+            .map(|inner| inner.name.as_str())
+            .collect();
+        let unread: Vec<&str> = given
+            .iter()
+            .copied()
+            .filter(|name| !self.read.contains(&ModName::from(*name)))
+            .collect();
+        if unread.is_empty() {
+            return (
+                ModifierStatus::Applied,
+                Some("given to the minions, whose calculation reads it".to_string()),
+            );
+        }
+        let reason = format!(
+            "given to the minions; no minion's calculation reads {}",
+            unread.join(", ")
+        );
+        if unread.len() < given.len() {
+            (ModifierStatus::Applied, Some(reason))
+        } else {
+            (ModifierStatus::Unread, Some(reason))
+        }
+    }
+}
+
 /// What became of `modifier`, and why when it is not applied.
 fn judge(
     modifier: &Modifier,
     reads: &ReadSnapshot,
     main: &EvalContext<'_>,
     variables: &Variables<'_>,
+    minions: &MinionReads,
 ) -> (ModifierStatus, Option<String>) {
     let name = modifier.name.as_str();
+    if name == "MinionModifier" {
+        return minions.judge(modifier);
+    }
     if let Some(consumer) = read_outside_the_database(name) {
         return (ModifierStatus::Outside, Some(consumer.to_string()));
     }
@@ -717,6 +772,55 @@ fn stats_reached(modifiers: &[UsageModifier]) -> Vec<&'static str> {
         .collect()
 }
 
+/// What a gem level or quality line does in this build: the skills of the
+/// enabled groups whose gems are of the kind it names, or `Unread` when no
+/// gem is. `None` for a line that is no such bonus.
+fn gem_bonus_reach(text: &str, build: &Build, data: &BuildData) -> Option<(LineStatus, String)> {
+    use pobr_core::skill_env::{
+        EffectLookup, GemPropertyKind, gem_property_applies, parse_gem_property_bonus,
+    };
+    let bonus = parse_gem_property_bonus(text)?;
+    let what = match bonus.kind {
+        GemPropertyKind::Level => "level",
+        GemPropertyKind::Quality => "quality",
+    };
+    let mut raised: Vec<&str> = Vec::new();
+    for gem in build
+        .enabled_socket_groups()
+        .flat_map(|group| &group.gem_skills)
+    {
+        // A support gem has neither levels nor quality of its own here.
+        let Some(effect) = data
+            .effect(&gem.skill_id)
+            .filter(|effect| !effect.is_support)
+        else {
+            continue;
+        };
+        if !raised.contains(&gem.skill_id.as_str())
+            && gem_property_applies(
+                &bonus,
+                data,
+                &effect.skill_types,
+                &gem.skill_id,
+                gem.corrupted,
+            )
+        {
+            raised.push(&gem.skill_id);
+        }
+    }
+    Some(if raised.is_empty() {
+        (
+            LineStatus::Unread,
+            format!("raises the {what} of no gem in this build"),
+        )
+    } else {
+        (
+            LineStatus::Outside,
+            format!("raises the {what} of {}", raised.join(", ")),
+        )
+    })
+}
+
 /// The lines the calculation received ([`Diagnosis::received_lines`]) that
 /// are not among `stored`, the lines with modifiers stored, each once: taken
 /// and read some other way, left out, not parsed, or parsed and leaving no
@@ -751,7 +855,10 @@ fn lines_without_modifiers(
             continue;
         }
         let (status, reason) = match received.fate {
-            LineFate::ReadBy(reader) => (LineStatus::Outside, Some(reader.to_string())),
+            LineFate::ReadBy(reader) => match gem_bonus_reach(text, build, data) {
+                Some((status, reach)) => (status, Some(format!("{reader}: {reach}"))),
+                None => (LineStatus::Outside, Some(reader.to_string())),
+            },
             LineFate::LeftOut(reason) => (LineStatus::Inactive, Some(reason.to_string())),
             LineFate::Unparsed => (LineStatus::Unparsed, None),
             LineFate::Parsed => match parse.parse(text) {

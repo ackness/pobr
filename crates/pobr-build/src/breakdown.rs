@@ -759,6 +759,40 @@ pub fn stat_breakdown(session: &CalculationSession, stat: &str) -> Option<StatBr
     })
 }
 
+/// [`stat_breakdown`] for a minion's `stat` (minion `index` in the order the
+/// calculation created it): the lines of the minion's own modifiers that the
+/// stat reads, including what the character grants it, and for `Life` the
+/// steps from the monster's base Life. `None` without such lines.
+pub fn minion_stat_breakdown(
+    session: &CalculationSession,
+    index: usize,
+    stat: &str,
+) -> Option<StatBreakdown> {
+    let rows = session.minion_stat_mods(index, stat);
+    if rows.is_empty() {
+        return None;
+    }
+    let (base_total, inc_total, more_total) = session.minion_stat_totals(index, stat);
+    let formula = (stat == "Life")
+        .then(|| session.minion_life_formula(index))
+        .flatten()
+        .map(formula_steps);
+    Some(StatBreakdown {
+        base_total: base_total + 0.0,
+        inc_total: inc_total + 0.0,
+        more_total,
+        mods: mod_entries(&rows),
+        formula,
+        damage: None,
+        mitigation: None,
+        skill_dot: None,
+        ailment: None,
+        reload: None,
+        slots: Vec::new(),
+        hands: Vec::new(),
+    })
+}
+
 /// One damage-type component of the main skill's hit damage (a non-crit
 /// leg, player-side, before enemy damage reduction — matches PoB2's Calcs
 /// page damage-breakdown basis; `avg` is used for share display).

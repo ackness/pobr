@@ -69,6 +69,8 @@ fn every_line_says_what_became_of_it() {
             "Adds 5 to 10 Physical Damage to Attacks",
             "16% increased Rarity of Items found",
             "Targets affected by Abyssal Wasting you inflict are Hindered",
+            "+1 to Level of all Minion Skills",
+            "Minions deal 10% increased Damage",
         ],
     );
 
@@ -92,9 +94,29 @@ fn every_line_says_what_became_of_it() {
         "+1 to Level of all Spell Skills",
     );
     assert_eq!(level.status, LineStatus::Outside);
+    let reason = level.reason.as_deref().unwrap();
+    assert!(reason.contains("gem levels"), "{level:#?}");
     assert!(
-        level.reason.as_deref().unwrap().contains("gem levels"),
+        reason.ends_with("raises the level of FireballPlayer"),
         "{level:#?}"
+    );
+    // A gem bonus of a kind no gem of the build is raises nothing.
+    let minion_level = line(
+        &ledger,
+        "item.amulet.explicit",
+        "+1 to Level of all Minion Skills",
+    );
+    assert_eq!(minion_level.status, LineStatus::Unread, "{minion_level:#?}");
+    // A line for minions, and no minion to give it to.
+    let minions = line(
+        &ledger,
+        "item.amulet.explicit",
+        "Minions deal 10% increased Damage",
+    );
+    assert_eq!(minions.status, LineStatus::Unread, "{minions:#?}");
+    assert_eq!(
+        minions.modifiers[0].reason.as_deref(),
+        Some("the build creates no minion to give it to")
     );
     // A node's gem quality line, which a rule also recognises.
     let quality = line(&ledger, "node.20686", "+5% to [Quality] of all Skills");

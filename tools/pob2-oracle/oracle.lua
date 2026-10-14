@@ -678,10 +678,10 @@ end
 -- Tabulate one (modType, name) over the main skill modList. Returns the array
 -- of per-mod records. evalValue is the post-EvalMod value PoB actually uses
 -- (so conditional mods that fail evaluate to 0 / are dropped by Tabulate).
-local function tabulateModList(modType, name)
+local function tabulateIn(list, cfg, modType, name)
 	local out = {}
-	if not sml then return out end
-	local ok, modTable = pcall(function() return sml:Tabulate(modType, skillCfg, name) end)
+	if not list then return out end
+	local ok, modTable = pcall(function() return list:Tabulate(modType, cfg, name) end)
 	if not ok or not modTable then return out end
 	for _, entry in ipairs(modTable) do
 		local mod = entry.mod
@@ -702,6 +702,46 @@ local function tabulateModList(modType, name)
 		}
 	end
 	return out
+end
+
+local function tabulateModList(modType, name)
+	return tabulateIn(sml, skillCfg, modType, name)
+end
+
+-- The main skill's minion: the skill it uses and every source of the stats
+-- that set its damage and Life, from that skill's mod list (which holds the
+-- minion's own modifiers and what the character grants it).
+-- ORACLE_MINION_STATS="Name,Name" adds more names.
+local minionModList
+do
+	local minion = build.calcsTab.mainEnv.minion
+	if minion then
+		local mskill = minion.mainSkill
+		local effect = mskill and mskill.activeEffect
+		local list = mskill and mskill.skillModList or minion.modDB
+		local cfg = mskill and mskill.skillCfg or nil
+		minionModList = {
+			skill = effect and effect.grantedEffect and effect.grantedEffect.id or nil,
+			skillLevel = effect and effect.level or nil,
+			level = minion.level,
+		}
+		local names = { "Life", "Damage", "AttackDamage", "SpellDamage", "MeleeDamage", "AreaDamage",
+			"PhysicalDamage", "FireDamage", "ColdDamage", "LightningDamage", "ChaosDamage", "ElementalDamage",
+			"Speed", "CritChance", "CritMultiplier", "Accuracy" }
+		local extra = os.getenv("ORACLE_MINION_STATS")
+		if extra then
+			for name in extra:gmatch("[^,%s]+") do names[#names + 1] = name end
+		end
+		for _, name in ipairs(names) do
+			for _, mt in ipairs({ "BASE", "INC", "MORE", "OVERRIDE" }) do
+				local l = tabulateIn(list, cfg, mt, name)
+				if #l > 0 then
+					minionModList[mt] = minionModList[mt] or {}
+					minionModList[mt][name] = l
+				end
+			end
+		end
+	end
 end
 
 -- Names that feed the generic + per-type increased/more damage chain in PoBR's
@@ -1077,6 +1117,7 @@ local report = {
 	-- The main skill's minion, whose output a build code's <MinionStat>
 	-- values describe; absent when the main skill has none.
 	minionOutput = build.calcsTab.mainEnv.minion and scalarsOf(build.calcsTab.mainEnv.minion.output) or nil,
+	minionModList = minionModList,
 	-- Per-hand attack pass outputs (CalcOffence.lua:2371 output.MainHand = {}):
 	-- DoubleDamageChance / TripleDamageChance / ScaledDamageEffect / per-pass
 	-- CritChance live here for attacks (M4-T3 W-C1 oracle parity).

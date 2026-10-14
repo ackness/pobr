@@ -251,3 +251,73 @@ fn cackling_companions_creates_as_many_hyenas_as_it_says() {
     assert_eq!(session.base_sum("Multiplier:SummonedMinion"), 7.0);
     assert_eq!(session.base_sum("Multiplier:MinionPresenceCount"), 7.0);
 }
+
+/// The zombie's Life with `lines` among the character's modifiers.
+fn zombie_life_with(data: &BuildData, lines: &[&str]) -> f64 {
+    let mut options = default_opts();
+    options
+        .extra_modifier_texts
+        .extend(lines.iter().map(|line| line.to_string()));
+    let out = calculate_with_data(&zombie_build(20), data, &options).expect("calculate");
+    out.minions[0].life
+}
+
+/// What the character grants minions reaches them from any source, not only
+/// from item text, and a line for Companions only reaches Companions.
+#[test]
+fn the_characters_minion_modifiers_reach_its_minions() {
+    let data = load_data();
+    let base = zombie_life_with(&data, &[]);
+    let more = zombie_life_with(&data, &["Minions have 50% increased maximum Life"]);
+    assert!((more / base - 1.5).abs() < 1e-3, "{base} -> {more}");
+    let companions = zombie_life_with(&data, &["Companions have 50% increased maximum Life"]);
+    assert_eq!(companions, base, "a zombie is no Companion");
+    // "Your Minions are Gigantic": 20% more Life.
+    let gigantic = zombie_life_with(&data, &["Your Minions are Gigantic"]);
+    assert!((gigantic / base - 1.2).abs() < 1e-3, "{base} -> {gigantic}");
+}
+
+const QUADRILLA: &str = "Metadata/Monsters/Quadrilla/Quadrilla";
+
+/// The minions of a Huntress with one tamed beast's gem, `lines` on her
+/// amulet.
+fn tamed_beast_minions(data: &BuildData, lines: &[&str]) -> Vec<pobr_core::calc::MinionOutput> {
+    let xml = format!(
+        r#"<PathOfBuilding2>
+<Build level="90" className="Huntress" ascendClassName="None"/>
+<Skills defaultGemLevel="20" activeSkillSet="1"><SkillSet id="1"><Skill enabled="true"><Gem skillId="SummonBeastPlayer" level="20" quality="0" enabled="true" skillMinion="{QUADRILLA}"/></Skill></SkillSet></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: RARE
+Test Beads
+Gold Amulet
+Implicits: 0
+{}
+</Item><ItemSet id="1"><Slot name="Amulet" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#,
+        lines.join("\n")
+    );
+    let build = pobr_build::parse_build(&xml).expect("parse synthetic build");
+    calculate_with_data(&build, data, &default_opts())
+        .expect("calculate")
+        .minions
+}
+
+/// A tamed beast's gem summons the monster the player chose for it, and
+/// "+# to Level of all Tamed Companion Skills" (Prism of Belief) raises that
+/// gem: two levels are four monster levels.
+#[test]
+fn a_tamed_beasts_gem_summons_the_beast_it_chose() {
+    let data = load_data();
+    let minions = tamed_beast_minions(&data, &[]);
+    let beast = minions
+        .iter()
+        .find(|minion| minion.minion_id == QUADRILLA)
+        .expect("the chosen beast");
+    assert_eq!(beast.summoned_by, "SummonBeastPlayer");
+
+    let raised = tamed_beast_minions(&data, &["+2 to Level of all Tamed Companion Skills"]);
+    let raised = raised
+        .iter()
+        .find(|minion| minion.minion_id == QUADRILLA)
+        .expect("the chosen beast");
+    assert_eq!(raised.level, beast.level + 4);
+}

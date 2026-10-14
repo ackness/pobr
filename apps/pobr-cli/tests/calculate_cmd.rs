@@ -184,6 +184,11 @@ const RAIN_OF_ARROWS_CODE: &str = include_str!(
     "../../../examples/reference-builds/tuned/builds/ninja-2026-10-13-huntress-amazon-rain-of-arrows-0826116e6c98/code.txt"
 );
 
+/// A Spirit Walker whose main skill is a tamed beast's (Zekoa).
+const TAMED_BEAST_CODE: &str = include_str!(
+    "../../../examples/reference-builds/tuned/builds/ninja-2026-10-13-huntress-spirit-walker-companion-zekoa-the-headcrusher-14d04f6ecc92/code.txt"
+);
+
 fn repo_data_dir() -> std::path::PathBuf {
     pobr_gamedata::repo_data_root().join(pobr_gamedata::data_version())
 }
@@ -678,4 +683,60 @@ fn calculate_build_errors_on_invalid_code() {
     };
     let err = calculate_build(&req).expect_err("invalid code should error");
     assert!(!format!("{err}").is_empty());
+}
+
+/// A build whose main skill summons a minion: its minions are in the output,
+/// the code's `<MinionStat>` values are compared with the main skill's
+/// minion, and `Minion:<stat>` breaks down that minion's stat.
+#[test]
+fn calculate_build_reports_the_minion_of_the_main_skill() {
+    let request = CalculateBuildRequest {
+        code: TAMED_BEAST_CODE.trim().to_string(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    };
+    let report = calculate_build_detailed(
+        &request,
+        &BuildDetail {
+            breakdown: vec!["Minion:Life".into()],
+            ..BuildDetail::default()
+        },
+    )
+    .unwrap();
+    let beast = "Metadata/Monsters/Quadrilla/QuadrillaBossMinion2";
+    let minion = report
+        .output
+        .minions
+        .iter()
+        .find(|minion| minion.minion_id == beast)
+        .expect("the main skill's beast");
+    assert_eq!(minion.summoned_by, "SummonBeastPlayer");
+
+    let entry = &report.breakdowns[0];
+    assert_eq!(entry.stat, "Minion:Life");
+    assert_eq!(entry.pob_key.as_deref(), Some("Minion:Life"));
+    assert_eq!(entry.value, Some(minion.life));
+    assert!(
+        entry.reference.is_some(),
+        "the code carries the minion's Life"
+    );
+    let breakdown = entry.breakdown.as_ref().expect("the minion's Life lines");
+    assert!(breakdown.formula.is_some());
+    assert!(
+        breakdown
+            .mods
+            .iter()
+            .any(|line| line.origin_id.as_deref() == Some("minion.base.life")),
+        "{breakdown:#?}"
+    );
+    let reference = report.reference.as_ref().expect("compared");
+    assert!(
+        reference
+            .differing
+            .iter()
+            .all(|row| row.stat != "MinionLife"),
+        "the beast's Life agrees: {reference:#?}"
+    );
 }

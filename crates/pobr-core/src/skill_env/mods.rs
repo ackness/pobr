@@ -374,7 +374,7 @@ pub fn gem_tags_match_category(category: &str, gem_tags: &[String], skill_id: &s
     if category.is_empty() {
         return true;
     }
-    if category == skill_name_from_id(skill_id) {
+    if names_skill(category, skill_id) {
         return true;
     }
     let tagged = |tag: &str| gem_tags.iter().any(|gem_tag| gem_tag == tag);
@@ -392,7 +392,7 @@ pub fn gem_level_category_matches(category: &str, skill_types: &[String], skill_
     if category.is_empty() {
         return true;
     }
-    if category == skill_name_from_id(skill_id) {
+    if names_skill(category, skill_id) {
         return true;
     }
     category
@@ -421,6 +421,20 @@ fn kind_skill_types(word: &str) -> Option<&'static [&'static str]> {
         "elemental" => Some(&["Fire", "Cold", "Lightning"]),
         _ => None,
     }
+}
+
+/// The names lines use for a skill whose name is not its id's
+/// (lowercase): Prism of Belief's "+# to Level of all {1} Skills"
+/// (`unique_jewel_specific_skill_level_+_skill`) names the skill a tamed
+/// beast's gem grants "Tamed Companion".
+const SKILL_NAMES: &[(&str, &str)] = &[("SummonBeastPlayer", "tamed companion")];
+
+/// Whether `category` is the name of the skill `skill_id`.
+fn names_skill(category: &str, skill_id: &str) -> bool {
+    category == skill_name_from_id(skill_id)
+        || SKILL_NAMES
+            .iter()
+            .any(|(id, name)| *id == skill_id && *name == category)
 }
 
 /// Derives a skill's display name from its granted effect id (lowercase, CamelCase

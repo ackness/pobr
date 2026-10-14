@@ -1,6 +1,6 @@
 use pobr_data::prelude::*;
 
-use crate::{CalcConfig, ModDb};
+use crate::{CalcConfig, ModDb, Modifier};
 
 use super::ailment::{
     AilmentSource, AilmentStageTerms, AilmentTerms, HandAilmentMerge, StackConfig,
@@ -282,24 +282,47 @@ fn inject_companion_life(env: &mut Env) {
 /// into the player's `OutputTable.minions`. Minions reuse `calculate_minimal_vs_enemy` +
 /// `calc_defence`, no separate formula is written. Minions' hit chance against the enemy uses
 /// the same enemy config as the player (the same `env.enemy`).
-fn perform_minions(env: &mut Env) {
-    if env.minions.is_empty() {
-        return;
-    }
-
-    // The minion count cap (the player's `Multiplier:SummonedMinion`, written by
-    // add_minion_from_def). Injected into cfg's multiplier so minion mods like `Damage per
-    // Summoned Minion` can reference it (PoB2). 0 when there's no such multiplier (doesn't affect
-    // any output, backward compatible).
+/// The context a minion's stats are calculated in. The minion count cap (the
+/// player's `Multiplier:SummonedMinion`, written by add_minion_from_def) is
+/// injected as a multiplier so minion mods like `Damage per Summoned Minion`
+/// can reference it; without it the player's context is used as is.
+pub(crate) fn minion_cfg(env: &Env) -> CalcConfig {
     let minion_limit = env.player.mod_db.get_multiplier("SummonedMinion", &env.cfg);
-    let minion_cfg = if minion_limit > 0.0 {
+    if minion_limit > 0.0 {
         env.cfg
             .clone()
             .with_multiplier("SummonedMinion", minion_limit)
             .with_multiplier("MinionPresenceCount", minion_limit)
     } else {
         env.cfg.clone()
+    }
+}
+
+/// "Your Minions are Gigantic" (`minions_are_gigantic`, the minion's
+/// `is_gigantic`): a Gigantic minion has 20% more Life and deals 20% more
+/// Damage. The game data in the snapshot gives no magnitude for it
+/// (`is_gigantic_magnitude` has no value); the numbers are PoB2's.
+fn apply_gigantic(minion: &mut super::Actor, cfg: &CalcConfig) {
+    if !minion.mod_db.flag(cfg, "Gigantic") {
+        return;
+    }
+    let origin = || {
+        ModifierSource::new(SourceId::new(SourceKind::GameConstant, "minion.gigantic"))
+            .with_raw_text("Gigantic")
     };
+    minion.mod_db.add_list([
+        Modifier::number("MaximumLife", ModType::More, 20.0).with_origin(origin()),
+        Modifier::number("Damage", ModType::More, 20.0).with_origin(origin()),
+    ]);
+}
+
+fn perform_minions(env: &mut Env) {
+    if env.minions.is_empty() {
+        return;
+    }
+
+    let minion_limit = env.player.mod_db.get_multiplier("SummonedMinion", &env.cfg);
+    let minion_cfg = minion_cfg(env);
 
     // Cross-Actor attribution: player source (the count cap) → minion output; builds one source
     // node for the trace DAG to connect to.
@@ -312,6 +335,7 @@ fn perform_minions(env: &mut Env) {
 
     let mut snapshots = Vec::with_capacity(env.minions.len());
     for minion in &mut env.minions {
+        apply_gigantic(minion, &minion_cfg);
         let mut input = MinimalInput::from(minion.base);
         // Minions hit the same enemy as the player.
         input.enemy_evasion = super::setup_env::enemy_evasion(&env.enemy, &minion_cfg);

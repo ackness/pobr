@@ -650,7 +650,7 @@ fn calculate_prepared_with_context(
     // `OutputTable.minions`. Gate: only wired in when some active skill resolves a
     // nonempty minion_list — a non-summoning build never triggers this, zero behavior
     // impact on the existing 18 builds.
-    spawn_minions(&mut session, build, data, &options.extra_modifier_texts);
+    spawn_minions(&mut session, build, data);
     // "for each Minion in your Presence" counts the minions just created, or
     // the configured number.
     session.bridge_minion_presence();
