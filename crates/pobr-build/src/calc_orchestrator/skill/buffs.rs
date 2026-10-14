@@ -144,6 +144,7 @@ pub(crate) fn spirit_reservation_modifiers(
     build: &Build,
     data: &BuildData,
     db: &pobr_core::ModDb,
+    character: &pobr_core::CalcConfig,
 ) -> Vec<Modifier> {
     // GemlingQuality (the Gemling ascendancy's "Gem Quality grants Socketed Skills an
     // additional effect"): when active, a gem's altQualityStats quality stats apply
@@ -152,7 +153,14 @@ pub(crate) fn spirit_reservation_modifiers(
     // `base_spirit_reservation_efficiency_+%` ×0.75).
     let use_alt_quality = super::resolve::gemling_quality_flag(build, data);
     let bonuses = super::resolve::gem_property_bonuses(build, data);
-    pobr_core::skill_env::spirit_reservation_modifiers(build, data, db, use_alt_quality, &bonuses)
+    pobr_core::skill_env::spirit_reservation_modifiers(
+        build,
+        data,
+        db,
+        character,
+        use_alt_quality,
+        &bonuses,
+    )
 }
 
 /// (Pre-existing #9) Builds every **enabled warcry active skill** into a

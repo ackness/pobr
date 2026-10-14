@@ -213,30 +213,42 @@ pub trait ReservationLookup:
 }
 impl<T: StatSetLookup + EffectLookup + GemPropertyLookup + MinionLookup> ReservationLookup for T {}
 
+///
+/// `character` holds the character's conditions, multipliers and stats, under
+/// which each gem's lines are read ("2% increased Reservation Efficiency of
+/// Skills per Idol in your Equipment").
 pub fn spirit_reservation_modifiers(
     groups: &dyn SocketGroupView,
     data: &dyn ReservationLookup,
     db: &dyn ReservationDb,
+    character: &crate::CalcConfig,
     use_alt_quality: bool,
     gem_level_bonuses: &[GemPropertyBonus],
 ) -> Vec<Modifier> {
     use std::collections::HashSet;
     let mut mods = Vec::new();
-    // A skill reserves once however many groups hold it; a Companion or a
-    // Spectre once per monster.
-    let mut seen: HashSet<(String, Option<String>)> = HashSet::new();
+    // A skill reserves once however many groups hold it. A Companion or a
+    // Spectre reserves once per group and monster: each group's summons its
+    // own (`spawn_minions`).
+    let mut seen: HashSet<(String, Option<String>, Option<usize>)> = HashSet::new();
+    let mut group_ordinal = 0usize;
     // Ancestral Bond (tree node 45202, "Totems reserve N Spirit each", produces an
     // `AncestralBond` FLAG): SummonsTotem skills are pulled into the reservation loop
     // because of it (vendor CalcDefence.lua:197's `isTotemAndAncestralBond`). The flag
     // carries no tag, so any cfg can look it up.
     let ancestral_bond = db.flag(&crate::CalcConfig::new(), "AncestralBond");
     groups.for_each_enabled_group(&mut |group| {
+        group_ordinal += 1;
         for gem in group.gems {
             let Some(effect) = data.effect(&gem.skill_id) else {
                 continue;
             };
             let has = |t: &str| effect.skill_types.iter().any(|x| x == t);
             let totem_under_bond = ancestral_bond && has("SummonsTotem");
+            let picks_a_monster = matches!(
+                effect.active_skill.as_deref(),
+                Some("summon_beast" | "summon_spectre")
+            );
             // A skill an item grants without reservation reserves nothing, and
             // does not stand for a gem of the same skill: that one reserves.
             if group.reservation_free_skill == Some(gem.skill_id.as_str()) {
@@ -245,7 +257,11 @@ pub fn spirit_reservation_modifiers(
             if effect.is_support
                 || !(has("HasReservation") || totem_under_bond)
                 || has("ReservationBecomesCost")
-                || !seen.insert((gem.skill_id.clone(), gem.minion.clone()))
+                || !seen.insert((
+                    gem.skill_id.clone(),
+                    gem.minion.clone(),
+                    picks_a_monster.then_some(group_ordinal),
+                ))
             {
                 continue;
             }
@@ -356,8 +372,11 @@ pub fn spirit_reservation_modifiers(
                 .filter(|s| EFFICIENCY_STATS.contains(&s.stat.as_str()))
                 .map(|s| s.value)
                 .sum();
-            let gem_cfg =
+            let mut gem_cfg =
                 crate::CalcConfig::new().with_skill_types(skill_type_bits(&effect.skill_types));
+            gem_cfg.conditions.clone_from(&character.conditions);
+            gem_cfg.multipliers.clone_from(&character.multipliers);
+            gem_cfg.stats.clone_from(&character.stats);
             let eff_names = [
                 pobr_data::prelude::ModName::from("SpiritReservationEfficiency"),
                 pobr_data::prelude::ModName::from("ReservationEfficiency"),

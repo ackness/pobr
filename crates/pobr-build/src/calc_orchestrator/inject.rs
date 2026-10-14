@@ -315,10 +315,12 @@ fn augments_in_equipment(build: &Build, data: &BuildData) -> (usize, usize) {
 
 /// Build-derived counts and equipment facts; actor-derived values belong to core.
 ///
-/// Written before `prepare_player_stats`: the attributes that grant Life, Mana
-/// and Accuracy can scale on these facts, as "+7 to all Attributes per Socket
+/// Written before the Spirit reservation, whose efficiency can scale on these
+/// facts ("… Reservation Efficiency of Skills per Idol in your Equipment"),
+/// and before `prepare_player_stats`: the attributes that grant Life, Mana
+/// and Accuracy can scale on them too, as "+7 to all Attributes per Socket
 /// filled" does on the filled sockets of its item. Nothing here reads what
-/// that preparation writes.
+/// either writes.
 pub(super) fn inject_build_multipliers(
     session: &mut CalculationSession,
     build: &Build,
@@ -977,7 +979,8 @@ pub(super) fn inject_self_buff_exposure(
     }
 }
 
-/// Reads the complete source database before actor snapshots and condition bridging.
+/// Reads the complete source database before actor snapshots and condition
+/// bridging, under the build's multipliers ([`inject_build_multipliers`]).
 pub(super) fn inject_spirit_reservation(
     session: &mut CalculationSession,
     build: &Build,
@@ -989,7 +992,7 @@ pub(super) fn inject_spirit_reservation(
     //     passed as a read-only view to fetch tree/item ReservationEfficiency mods (the
     //     tree/items are already ingested by this point); computed first then injected
     //     to avoid a mutable/immutable borrow conflict within the same statement.
-    let spirit_mods = spirit_reservation_modifiers(build, data, session.mod_db());
+    let spirit_mods = spirit_reservation_modifiers(build, data, session.mod_db(), session.config());
     session.add_modifiers(spirit_mods);
 }
 

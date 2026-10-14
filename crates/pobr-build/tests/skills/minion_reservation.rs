@@ -4,8 +4,9 @@
 //! "+N to Level of all Minion Skills" included. A Spectre reserves the Spirit
 //! of the monster it raises (`spectre_reservation`); a Companion reserves a
 //! share of the Spirit pool set by its beast (`companion_reservation`, which
-//! grows with the beast's experience multiplier). The shares of all skills add
-//! up before the pool's reserved amount is taken, rounded up.
+//! grows with the beast's experience multiplier), once for each group that
+//! summons it. The shares of all skills add up before the pool's reserved
+//! amount is taken, rounded up.
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_gamedata::{GameData, data_version, repo_data_root};
@@ -102,4 +103,38 @@ fn companions_reserve_a_share_of_the_pool_set_by_their_beast() {
         .1,
         0.0
     );
+}
+
+/// Each group summons its own Companion, so a beast in two groups reserves
+/// twice; an aura in two groups is one skill and reserves once.
+#[test]
+fn a_companion_in_two_groups_reserves_twice() {
+    let data = data();
+    let ape = group("SummonBeastPlayer", 20, Some(BRAMBLE_APE));
+    // Two Bramble Apes, 24.9% each: 49.8% of 150, so 75.
+    assert_eq!(
+        spirit(&data, &[ape.clone(), ape], &["+50 to Spirit"]),
+        (150.0, 75.0)
+    );
+}
+
+/// A skill's reservation efficiency is read with the character's counts:
+/// "per Idol in your Equipment" counts the Idols socketed in the equipment.
+#[test]
+fn reservation_efficiency_per_idol_counts_the_idols() {
+    let data = data();
+    let quadrilla = [group("SummonBeastPlayer", 20, Some(QUADRILLA))];
+    let lines = [
+        "+50 to Spirit",
+        "10% increased Reservation Efficiency of Skills per Idol in your Equipment",
+    ];
+    // No Idol: 42.3% of 150, so 64.
+    assert_eq!(spirit(&data, &quadrilla, &lines).1, 64.0);
+    // Two Idols, 20% efficiency: 42.3% / 1.2 = 35.25% of 150, so 53.
+    let socketed = [
+        &lines[..],
+        &["Sockets: S S", "Rune: Fox Idol", "Rune: Fox Idol"],
+    ]
+    .concat();
+    assert_eq!(spirit(&data, &quadrilla, &socketed).1, 53.0);
 }
