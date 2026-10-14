@@ -298,6 +298,96 @@ pub(crate) fn mark_item_granted_skills(build: &Build, data: &BuildData) -> Optio
     any.then_some(marked)
 }
 
+/// The groups of the skills allocated passives grant: a build code lists each
+/// as `<Skill source="Tree:<node>">` with a placeholder level. A granted skill
+/// is used at the highest level whose requirements the character meets, up to
+/// the highest level its gem reaches ([`SkillGemDef::level_requirements`]:
+/// Sorcery Ward at character level 98 is 20), and the group records that level
+/// so [`scale_granted_skills`] also checks its attribute requirements.
+///
+/// A character from the game lists such a skill a second time as an ordinary
+/// group, first and at that level, holding its supports. That group is the
+/// granted skill: the tree's group gives way to it, and so does the main
+/// socket group. A group of a passive that is not allocated grants nothing.
+///
+/// Returns `None` when no group is a skill the tree grants.
+///
+/// [`SkillGemDef::level_requirements`]: pobr_data::catalog::SkillGemDef::level_requirements
+pub(crate) fn resolve_tree_granted_skills(build: &Build, data: &BuildData) -> Option<Build> {
+    let tree_node = |group: &SocketGroup| {
+        group
+            .source
+            .as_deref()?
+            .strip_prefix("Tree:")?
+            .parse::<u32>()
+            .ok()
+    };
+    if !build.socket_groups.iter().any(|g| tree_node(g).is_some()) {
+        return None;
+    }
+    let allocated: HashSet<u32> = build.tree.allocated_nodes.iter().map(|id| id.0).collect();
+    let character_level = build.character.level;
+    let mut resolved = build.clone();
+    let mut claimed: HashSet<usize> = HashSet::new();
+    for index in 0..resolved.socket_groups.len() {
+        let Some(node) = tree_node(&resolved.socket_groups[index]) else {
+            continue;
+        };
+        let group = &mut resolved.socket_groups[index];
+        if !allocated.contains(&node) {
+            group.enabled = false;
+            continue;
+        }
+        let Some(skill_id) = group.gem_skills.first().map(|gem| gem.skill_id.clone()) else {
+            continue;
+        };
+        let Some(def) = data
+            .gem_effects
+            .get(&skill_id)
+            .and_then(|effect| data.skill_gems.get(&effect.gem_id))
+        else {
+            continue;
+        };
+        let highest = def.level_requirements.len() as u32;
+        let Some(level) = (1..=highest).rev().find(|level| {
+            def.level_requirement(*level)
+                .is_some_and(|required| required <= character_level)
+        }) else {
+            continue;
+        };
+        let listed = resolved
+            .socket_groups
+            .iter()
+            .enumerate()
+            .position(|(i, g)| {
+                !claimed.contains(&i)
+                    && g.from_gem()
+                    && g.gem_skills
+                        .first()
+                        .is_some_and(|gem| gem.skill_id == skill_id && gem.gem_level == level)
+            });
+        match listed {
+            Some(listed) => {
+                claimed.insert(listed);
+                resolved.socket_groups[listed].granted_level = Some(level);
+                resolved.socket_groups[index].enabled = false;
+                if resolved.main_socket_group == Some(index + 1) {
+                    resolved.main_socket_group = Some(listed + 1);
+                }
+            }
+            None => {
+                let group = &mut resolved.socket_groups[index];
+                group.gem_skills[0].gem_level = level;
+                if group.active_skill_id.as_deref() == Some(skill_id.as_str()) {
+                    group.active_gem_level = Some(level);
+                }
+                group.granted_level = Some(level);
+            }
+        }
+    }
+    Some(resolved)
+}
+
 /// The groups of `build` an item grants, each at the highest level up to the
 /// one the item names whose requirements the character meets: the game's
 /// rule for a granted skill, "if your character falls short, it scales down
@@ -389,7 +479,7 @@ mod tests {
 
     use super::{
         ITEM_SKILL_SOURCE, augment_item_granted_skills, mark_item_granted_skills,
-        parse_grants_skill, scale_granted_skills,
+        parse_grants_skill, resolve_tree_granted_skills, scale_granted_skills,
     };
 
     const SKILL_ID: &str = "FireboltPlayer";
@@ -591,5 +681,48 @@ mod tests {
             levels([200.0, 0.0, 200.0], 70),
             Some(vec![(16, Some(16)), (16, Some(16))])
         );
+    }
+
+    /// A skill an allocated passive grants is used at the highest level the
+    /// character's level allows (character level 70: gem level 16); an
+    /// ordinary group listing it at that level is the skill, and the tree's
+    /// group gives way to it, main socket group included. A passive that is
+    /// not allocated grants nothing.
+    #[test]
+    fn a_tree_granted_skill_takes_the_level_the_character_allows() {
+        use pobr_data::passive_tree::NodeId;
+        let data = with_requirements(data());
+        let tree_group = |node: u32| {
+            SocketGroup::new()
+                .with_source(format!("Tree:{node}"))
+                .with_active_skill(SKILL_ID, 1)
+                .with_gem_skill(SKILL_ID, 1)
+        };
+        let mut build = Build::new().add_socket_group(tree_group(7));
+        build.character.level = 70;
+        build.tree.allocated_nodes.push(NodeId(7));
+        let alone = resolve_tree_granted_skills(&build, &data).unwrap();
+        let group = &alone.socket_groups[0];
+        assert!(group.enabled);
+        assert_eq!(
+            (group.gem_skills[0].gem_level, group.active_gem_level),
+            (16, Some(16))
+        );
+        assert_eq!(group.granted_level, Some(16));
+
+        let listed = SocketGroup::new()
+            .with_active_skill(SKILL_ID, 16)
+            .with_gem_skill(SKILL_ID, 16);
+        let build = build.add_socket_group(listed).with_main_socket_group(1);
+        let merged = resolve_tree_granted_skills(&build, &data).unwrap();
+        assert!(!merged.socket_groups[0].enabled);
+        assert_eq!(merged.socket_groups[1].granted_level, Some(16));
+        assert_eq!(merged.main_socket_group, Some(2));
+
+        let mut unallocated = build.clone();
+        unallocated.tree.allocated_nodes.clear();
+        let resolved = resolve_tree_granted_skills(&unallocated, &data).unwrap();
+        assert!(!resolved.socket_groups[0].enabled);
+        assert_eq!(resolved.socket_groups[1].granted_level, None);
     }
 }

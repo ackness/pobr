@@ -778,6 +778,13 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
         build = Cow::Owned(augmented);
     }
 
+    // The groups of the skills the passive tree grants, at the level the
+    // character's level allows; an ordinary group listing the same skill
+    // stands for it.
+    if let Some(resolved) = resolve_tree_granted_skills(&build, data) {
+        build = Cow::Owned(resolved);
+    }
+
     // The groups that are skills the equipment grants (their level, and the
     // ones granted without reservation), while gem qualities are still the
     // build's own: the next steps add quality to every gem.
