@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-14-monk-acolyte-of-chayula-wildwood-s-gifts-1f8c2c2cca3e",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%E8%8B%B9%E6%9E%9C-8627/%E9%BB%91%E9%BB%91%E5%83%A7",
+    "account": "苹果-8627",
+    "character": "黑黑僧",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-14T17:05:05+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/character?account=%E8%8B%B9%E6%9E%9C-8627&name=%E9%BB%91%E9%BB%91%E5%83%A7&overview=forbidden-rites",
+    "snapshot": "1457-20261014-11300",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/search?overview=forbidden-rites&class=Acolyte+of+Chayula",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Acolyte of Chayula",
+    "level": 99,
+    "main_skill": "Wildwood's Gifts"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 6,
+    "code_sha256": "4de066052db50a9016da255d0174ff39f86e70cbd7f284c65212003b7b06a906",
+    "code_chars": 10596,
+    "decoded_bytes": 35810
+  }
+}

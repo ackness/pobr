@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-14-witch-blood-mage-impending-doom-c0dcbc68022c",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%E6%95%8F%E6%95%8F-3267/%E5%86%8D%E7%88%B1%E6%88%91%E4%B8%80%E6%AC%A1%E5%A5%BD%E5%90%97",
+    "account": "敏敏-3267",
+    "character": "再爱我一次好吗",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-14T17:05:05+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/character?account=%E6%95%8F%E6%95%8F-3267&name=%E5%86%8D%E7%88%B1%E6%88%91%E4%B8%80%E6%AC%A1%E5%A5%BD%E5%90%97&overview=forbidden-rites",
+    "snapshot": "1457-20261014-11300",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/search?overview=forbidden-rites&class=Blood+Mage",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Blood Mage",
+    "level": 98,
+    "main_skill": "Impending Doom"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 9,
+    "code_sha256": "5c06de7323c3998ee43ef4e71e673f0869247dd6245054e77309175b994142ab",
+    "code_chars": 11768,
+    "decoded_bytes": 43806
+  }
+}

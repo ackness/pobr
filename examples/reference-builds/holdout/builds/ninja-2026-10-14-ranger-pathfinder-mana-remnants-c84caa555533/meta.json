@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-14-ranger-pathfinder-mana-remnants-c84caa555533",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%EB%85%B8%EB%A3%A8%EB%83%A5%EC%9D%B4-1591/%EB%AF%B8%EC%9B%8C%EB%8F%84%EB%8B%A4%EC%8B%9C%ED%95%9C%EB%B2%88_",
+    "account": "노루냥이-1591",
+    "character": "미워도다시한번_",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-14T17:05:05+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/character?account=%EB%85%B8%EB%A3%A8%EB%83%A5%EC%9D%B4-1591&name=%EB%AF%B8%EC%9B%8C%EB%8F%84%EB%8B%A4%EC%8B%9C%ED%95%9C%EB%B2%88_&overview=forbidden-rites",
+    "snapshot": "1457-20261014-11300",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/search?overview=forbidden-rites&class=Pathfinder",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Ranger",
+    "ascendancy": "Pathfinder",
+    "level": 99,
+    "main_skill": "Mana Remnants"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 5,
+    "code_sha256": "334868acb7400b73ae277cd157164cb7fcef385733f747da49b99d80e0e73ed6",
+    "code_chars": 12280,
+    "decoded_bytes": 45286
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-14-druid-shaman-spark-5dcf9ecdd375",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%EC%98%88%EB%91%A5-5852/%EC%9E%A5%EB%91%90%EC%8B%9D",
+    "account": "예둥-5852",
+    "character": "장두식",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-14T17:05:05+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/character?account=%EC%98%88%EB%91%A5-5852&name=%EC%9E%A5%EB%91%90%EC%8B%9D&overview=forbidden-rites",
+    "snapshot": "1457-20261014-11300",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/search?overview=forbidden-rites&class=Shaman",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Druid",
+    "ascendancy": "Shaman",
+    "level": 99,
+    "main_skill": "Spark"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 6,
+    "code_sha256": "e442c63d31f5715e5d8a9f15728ad1d41bee8fd054c5666a240984dfea5085b0",
+    "code_chars": 13952,
+    "decoded_bytes": 57399
+  }
+}

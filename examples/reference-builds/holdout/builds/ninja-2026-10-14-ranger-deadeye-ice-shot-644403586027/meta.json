@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-14-ranger-deadeye-ice-shot-644403586027",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%D0%9A%D0%BE%D0%B4%D0%B7%D1%83-1226/YuritheFox",
+    "account": "Кодзу-1226",
+    "character": "YuritheFox",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-14T17:05:05+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/character?account=%D0%9A%D0%BE%D0%B4%D0%B7%D1%83-1226&name=YuritheFox&overview=forbidden-rites",
+    "snapshot": "1457-20261014-11300",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/search?overview=forbidden-rites&class=Deadeye",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Ranger",
+    "ascendancy": "Deadeye",
+    "level": 99,
+    "main_skill": "Ice Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 8,
+    "code_sha256": "fda78aca3e798c938d2505af0dbcad8522bb0f80666662d310f0bc9e675ebc83",
+    "code_chars": 11316,
+    "decoded_bytes": 43264
+  }
+}

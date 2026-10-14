@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-14-witch-lich-spark-0a17a1a7df6d",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%EC%83%81%EC%97%AC%EC%9E%90-3139/%EC%83%88%EB%A1%AD%EA%B2%8C%EB%8B%A4%EC%8B%9C%ED%95%B4%EB%B3%B4%EC%9E%90",
+    "account": "상여자-3139",
+    "character": "새롭게다시해보자",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-14T17:05:05+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/character?account=%EC%83%81%EC%97%AC%EC%9E%90-3139&name=%EC%83%88%EB%A1%AD%EA%B2%8C%EB%8B%A4%EC%8B%9C%ED%95%B4%EB%B3%B4%EC%9E%90&overview=forbidden-rites",
+    "snapshot": "1457-20261014-11300",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/search?overview=forbidden-rites&class=Lich",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Lich",
+    "level": 100,
+    "main_skill": "Spark"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 6,
+    "code_sha256": "b9ccbe97af770fc4e0f96467a16ce2ea21d01cff6c9c999086265273ceeec75a",
+    "code_chars": 14192,
+    "decoded_bytes": 55956
+  }
+}

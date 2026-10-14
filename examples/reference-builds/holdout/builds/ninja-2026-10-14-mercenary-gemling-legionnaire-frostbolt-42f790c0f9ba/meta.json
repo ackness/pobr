@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-14-mercenary-gemling-legionnaire-frostbolt-42f790c0f9ba",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%EC%9D%B4%EB%AC%BC%EB%B2%85-7068/gumbagumba",
+    "account": "이물벅-7068",
+    "character": "gumbagumba",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-14T17:05:05+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/character?account=%EC%9D%B4%EB%AC%BC%EB%B2%85-7068&name=gumbagumba&overview=forbidden-rites",
+    "snapshot": "1457-20261014-11300",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/search?overview=forbidden-rites&class=Gemling+Legionnaire",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Gemling Legionnaire",
+    "level": 100,
+    "main_skill": "Frostbolt"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 11,
+    "code_sha256": "f1da6a6bc4c7313e1e8caa6edee4e79b925ed0de5c45a1fdd1c8530c69cadbc9",
+    "code_chars": 14960,
+    "decoded_bytes": 57480
+  }
+}

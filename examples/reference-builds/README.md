@@ -9,7 +9,7 @@
 | `tuned/` | 找差异、修引擎。`mise run accuracy examples/reference-builds/tuned/builds` 看每个构筑的差异，`mise run diagnose <构筑>` 看丢掉的输入，`mise run compare <构筑>` 与钉定的 PoB2 逐个 stat 对照 | 修完后上调 `reference_report.rs` 里的基线 |
 | `holdout/` | 只测量。它的总数回答“没人调过的构筑上 PoBR 有多准” | 不对其中的构筑运行 `diagnose` 或 `compare`，不按它的差异挑选要修的内容；只看 `mise run accuracy` 的总数 |
 
-`examples/wasm-benchmark/builds` 的 8 个构筑同样已被逐个修过，属于前一类。
+`examples/wasm-benchmark/builds` 的 8 个构筑同样已被逐个修过，属于前一类。`tuned/selection-holdout-2026-10-13.json` 是并入 `tuned/` 的那批 holdout 的抓取记录。
 
 一旦按 `holdout/` 里某个构筑的差异改了引擎，这组数字就不再说明“没调过的构筑”。需要新一轮目标时，把 `holdout/` 的构筑移入 `tuned/`，再抓一批新的作 `holdout/`。
 
@@ -94,5 +94,7 @@ mise run builds:fetch examples/reference-builds/holdout --pick last
 | 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 14（61%） | 985/1079（91.3%） |
 | 2026-10-15（第三十二轮：授予的技能按角色等级与属性降到能满足需求的等级（物品与天赋授予；天赋授予的组与列出它的普通组合并）；辅助一颗宝石任一效果的辅助宝石给整颗宝石加等级。技能等级与 PoB2 一致的更多了，没有参考行变化） | `tuned/` | 23 | 22（96%） | 1037/1067（97.2%） |
 | 2026-10-15（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 14（61%） | 985/1079（91.3%） |
+| 2026-10-15（换轮：上面的 `holdout/` 23 个并入 `tuned/`，按上一行的数字计入） | `tuned/` | 46 | 36（78%） | 2022/2146（94.2%） |
+| 2026-10-15（新抓取，poe.ninja 2026-10-14 的快照，每个升华取未入库的最后一个角色；未做任何针对性修改） | `holdout/` | 23 | 11（48%） | 971/1076（90.2%） |
 
 吻合行里有按游戏规则有意不同于参考值的行（例如护身符授予的技能不保留精魄，见 `reference_report.rs` 基线旁的说明），所以上限不是 100%。

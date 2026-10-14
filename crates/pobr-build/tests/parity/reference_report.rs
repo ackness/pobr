@@ -274,44 +274,33 @@ const BASELINES: [Baseline; 3] = [
     // supports grant theirs by how many other supports modify the skill
     // ("+3 to level of Supported Skills if no other Supports are modifying
     // them"). The Abyssal Lich's ChaosMaxHit.
+    //
+    // Then 36 builds and 2022 rows: the holdout set of 2026-10-13 joined, at
+    // the 14 builds and 985 rows it was measured at, once the next holdout
+    // was fetched. What was found on those builds without diagnosing them
+    // stays true here: the Ritualist whose main skill is Purity of Fire has
+    // "Critical Spell Damage Bonus" lines that only spells take (its
+    // `CritMultiplier` reference applies them to the aura); the Gemling
+    // Legionnaire's Twister ignites against the lowest elemental resistance
+    // ("Enemies in your Presence Resist Elemental Damage based on their
+    // Lowest Resistance"), 1.21 times the reference that keeps it to hits;
+    // the Blood Mage's (Arc) CombinedDPS is 1.057 times the reference with
+    // the Spectre it chose.
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
-        dps_builds: 22,
-        agreeing_rows: 1037,
+        dps_builds: 36,
+        agreeing_rows: 2022,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
-    // Was 954. "Critical Spell Damage Bonus" is the bonus of spells. The
-    // Ritualist whose main skill is Purity of Fire, a Buff/Aura skill and no
-    // Spell in the game's skill types, has "14%" and "11% increased Critical
-    // Spell Damage Bonus": its `CritMultiplier` reference, 2.49 against 2.24,
-    // is exactly those 25% applied to the aura. The pinned PoB2 parses the
-    // line as spell-only too; the exporting tool did not.
-    //
-    // Then 984. "Enemies in your Presence Resist Elemental Damage based on
-    // their Lowest Resistance"
-    // (`enemies_in_presence_elemental_damage_resisted_by_lowest_elemental_resistance`)
-    // is about all elemental damage the enemy takes; the game's other stat,
-    // "Elemental Damage from your Hits is Resisted by the enemy's lowest
-    // Elemental Resistance", is the one limited to hits. The exporting tool
-    // applies both to hits only. The Gemling Legionnaire's Twister ignites,
-    // and its ignite now meets the lower resistance as well: its IgniteDPS
-    // and TotalDotDPS are 1.21 times the reference, while its hit rows still
-    // agree. Found by measuring with the ignite left on the fire resistance,
-    // not by diagnosing the build.
-    //
-    // Then 14 builds and 984 rows: the minion rows (see the tuned set). The
-    // main skills of two builds summon a minion, whose damage the minimal
-    // minion pipeline does not reach (one row more agrees). A Spectre's or a
-    // tamed beast's gem now summons the monster the player chose for it,
-    // which was not created at all before; with that minion the Blood Mage's
-    // (Arc) CombinedDPS, which agreed within 5%, is 1.057 times the reference.
-    // Measured with and without the chosen monster, not by diagnosing the
-    // build.
+    // Fetched 2026-10-15 from poe.ninja's snapshot of 2026-10-14, the last
+    // character of each ascendancy not already committed
+    // (`mise run builds:fetch examples/reference-builds/holdout --pick last`),
+    // and measured before any change: 11 builds and 971 rows.
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
-        dps_builds: 14,
-        agreeing_rows: 985,
+        dps_builds: 11,
+        agreeing_rows: 971,
     },
 ];
 

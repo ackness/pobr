@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-14-mercenary-witchhunter-living-bomb-7d1384aac103",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%D0%93%D0%BE%D0%B4%D0%B7%D0%B8%D0%BB%D1%8B%D1%87-7412/%D0%96%D0%9E%D0%9F%D0%90_%D0%92_%D0%9E%D0%93%D0%9D%D0%95_",
+    "account": "Годзилыч-7412",
+    "character": "ЖОПА_В_ОГНЕ_",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-14T17:05:05+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/character?account=%D0%93%D0%BE%D0%B4%D0%B7%D0%B8%D0%BB%D1%8B%D1%87-7412&name=%D0%96%D0%9E%D0%9F%D0%90_%D0%92_%D0%9E%D0%93%D0%9D%D0%95_&overview=forbidden-rites",
+    "snapshot": "1457-20261014-11300",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/search?overview=forbidden-rites&class=Witchhunter",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Witchhunter",
+    "level": 99,
+    "main_skill": "Living Bomb"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "8ab9e08ab947fdf7fdc4e0670885c2352af43203e9b77ac1faaeeda616c9790c",
+    "code_chars": 14380,
+    "decoded_bytes": 53912
+  }
+}
