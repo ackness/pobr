@@ -30,7 +30,7 @@
       "0.5.5.4.2/generated/special_vendor.json": "51d520b5e9f26b57c4b1bfe5aa92bd4ee483f049cfba7fa152c95167628ba01e",
       "0.5.5.4.2/overlay/mod_parser_rules.json": "4ca754192ca4422982d7828b410a68723bfcdf1cc3cbea7f30c522d94fea6860",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
-      "overlay-common/special_mods.json": "e1ef44ca6b76b86f2f9a8232ec5513b43a7fbcaf8e424febb5a658269348ac6a"
+      "overlay-common/special_mods.json": "4e6fda4a90731452349a0338fa8d71aea81593482c4737ccf5a627031391b333"
     },
     "effective_rules": [
       {
@@ -181,6 +181,14 @@
       },
       {
         "id": "defend_with_pct_of_armour",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "defend_with_pct_of_armour_while_not_on_low_energy_shield",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -18203,8 +18211,8 @@
     "unsampled_translations": 170
   },
   "summary": {
-    "parsed": 14795,
-    "pobr_gap": 2435,
+    "parsed": 14797,
+    "pobr_gap": 2433,
     "recognized_empty": 330,
     "upstream_gap": 25137
   },
@@ -256482,9 +256490,15 @@
       "sources": [
         "stat:stat_descriptions:defend_with_%_of_armour_while_not_on_low_energy_shield"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "ArmourDefense"
+      ],
+      "special_rule_id": "defend_with_pct_of_armour_while_not_on_low_energy_shield",
+      "matching_special_rules": [
+        "defend_with_pct_of_armour_while_not_on_low_energy_shield"
+      ]
     },
     "Defend with 1% of Armour while on Low Energy Shield": {
       "sources": [
@@ -256562,9 +256576,15 @@
       "sources": [
         "translation:护甲值在非低能量护盾的状态下以 {0}% 进行防御"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "ArmourDefense"
+      ],
+      "special_rule_id": "defend_with_pct_of_armour_while_not_on_low_energy_shield",
+      "matching_special_rules": [
+        "defend_with_pct_of_armour_while_not_on_low_energy_shield"
+      ]
     },
     "Defend with 17% of Armour while on Low Energy Shield": {
       "sources": [

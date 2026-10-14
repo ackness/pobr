@@ -554,3 +554,33 @@ fn a_quest_reward_is_reported_only_when_its_line_is_not_understood() {
     let unknown = r#"<Input name="questAct 3Venom CryptsVenom Draught" string="Zorblax the unknowable 12%"/>"#;
     assert_eq!(unparsed(unknown), ["Config: Zorblax the unknowable 12%"]);
 }
+
+/// "Defend with 120% of Armour while not on Low Energy Shield" (the game
+/// stat `defend_with_%_of_armour_while_not_on_low_energy_shield`): against
+/// hits the Armour counts 120%, as "Defend with 120% of Armour" has it,
+/// unless the character is on Low Energy Shield.
+#[test]
+fn armour_defends_more_while_not_on_low_energy_shield() {
+    let data = data();
+    let options = DataOrchestratorOptions::reference_conditions();
+    let reduction = |lines: &str, config: &str| {
+        let build = build(
+            LEVEL_20,
+            "",
+            &format!(
+                r#"{config}<CustomModifierBlock title="Test" enabled="true">+5000 to Armour
+{lines}</CustomModifierBlock>"#
+            ),
+        );
+        calculate_with_data(&build, &data, &options)
+            .expect("calculate")
+            .physical_damage_reduction
+    };
+    let line = "Defend with 120% of Armour while not on Low Energy Shield";
+    let plain = reduction("", "");
+    let defended = reduction("Defend with 120% of Armour", "");
+    assert!(defended > plain, "{plain} -> {defended}");
+    assert_eq!(reduction(line, ""), defended);
+    let low = r#"<Input name="conditionLowEnergyShield" boolean="true"/>"#;
+    assert_eq!(reduction(line, low), reduction("", low));
+}

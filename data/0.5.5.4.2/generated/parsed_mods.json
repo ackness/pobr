@@ -35455,7 +35455,17 @@
     },
     {
       "text": "Defend with 120% of [Armour] while not on [LowEnergyShield|Low Energy Shield]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArmourDefense",
+          "type": "Base",
+          "value": 20.0,
+          "tags": [
+            "Condition { var: \"LowEnergyShield\", negated: true, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Defend with 150% of [Armour] against [Hit|Hits] from Enemies that are further than 6m away",

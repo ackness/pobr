@@ -377,6 +377,34 @@
       "source_note": "ModParser.lua:2616/:2619（Defend with N% of Armour [during effect] → ArmourDefense BASE N-100；pobr 准源 legacy.rs:1715。during effect 变体同无条件，消费侧 max_of）"
     },
     {
+      "id": "defend_with_pct_of_armour_while_not_on_low_energy_shield",
+      "pattern": "defend with (\\d+(?:\\.\\d+)?)% of armour while not on low energy shield",
+      "mods": [
+        {
+          "name": "ArmourDefense",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "base": -100.0
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "neg": true,
+              "var": "LowEnergyShield"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "游戏 stat defend_with_%_of_armour_while_not_on_low_energy_shield（“Defend with {0}% of Armour while not on Low Energy Shield”，天赋 Barrier of Venarius）：不在低能量护盾时按护甲的 N% 防御，ArmourDefense BASE N-100"
+    },
+    {
       "id": "double_activation_delay_of_curses",
       "pattern": "double activation delay of curses",
       "vendor_pattern": "double activation delay of curses",
