@@ -112,7 +112,7 @@ struct CalculateBuildArgs {
     /// the modifier lines it reads as text, unless --json is given.
     #[arg(long, value_delimiter = ',', value_name = "STATS")]
     breakdown: Vec<String>,
-    /// With --breakdown, print the JSON report (breakdowns included) instead of text.
+    /// With --breakdown or --usage, print the JSON report instead of text.
     #[arg(long)]
     json: bool,
     /// Calculate on the basis of the code's reference values: the models their
@@ -120,6 +120,12 @@ struct CalculateBuildArgs {
     /// the output and the breakdowns alike.
     #[arg(long)]
     reference_basis: bool,
+    /// Report what the calculation did with each of the build's lines: applied
+    /// (and the stats each reaches), left out and why, never read, or not
+    /// parsed, with the item, node or config holding it. As text, the lines not
+    /// fully used; with --json, every line.
+    #[arg(long)]
+    usage: bool,
 }
 
 #[derive(Debug, Args)]
@@ -205,10 +211,11 @@ fn run(cli: Cli) -> Result<String, Box<dyn std::error::Error>> {
     match cli.command {
         Command::Calculate(args) => Ok(pobr_cli::calculate_json(&build_calculate_request(args)?)?),
         Command::CalculateBuild(args) => {
-            let as_text = !args.breakdown.is_empty() && !args.json;
+            let as_text = (!args.breakdown.is_empty() || args.usage) && !args.json;
             let detail = pobr_cli::BuildDetail {
                 breakdown: args.breakdown.clone(),
                 reference_basis: args.reference_basis,
+                usage: args.usage,
             };
             let report =
                 pobr_cli::calculate_build_detailed(&build_calc_build_request(args)?, &detail)?;

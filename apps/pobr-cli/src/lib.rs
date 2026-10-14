@@ -33,6 +33,7 @@ use serde::Serialize;
 use thiserror::Error;
 
 mod breakdown;
+mod usage;
 
 pub use breakdown::{BuildDetail, StatBreakdownEntry, render_breakdowns};
 
@@ -1050,6 +1051,12 @@ pub struct CalculateBuildReport {
     /// hit by damage type.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub main_skill: Option<pobr_build::breakdown::MainSkillBreakdown>,
+    /// With [`BuildDetail::usage`]: what the calculation did with each of the
+    /// build's lines. Always of the calculation with every model on, also
+    /// on the reference's basis: a model that basis turns off reads lines,
+    /// which would otherwise be reported as unused.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub usage: Option<pobr_build::usage::LineUsage>,
 }
 
 fn is_false(value: &bool) -> bool {
@@ -1090,6 +1097,15 @@ pub fn calculate_build_detailed(
         mode_effective: req.mode_effective,
         ..Default::default()
     };
+    // The ledger of lines comes from a diagnosis, which calculates exactly as
+    // a plain calculation does; with every model on, that is the report's.
+    let diagnosis = detail
+        .usage
+        .then(|| pobr_build::diagnose(&build, &build_data, &opts))
+        .transpose()?;
+    let usage = diagnosis
+        .as_ref()
+        .map(|diagnosis| pobr_build::usage::line_usage(diagnosis, &build, &build_data));
     // On the reference's basis the models its exporter lacks are off for the
     // whole report, so the output and the breakdowns answer its question.
     let opts = if detail.reference_basis {
@@ -1097,7 +1113,10 @@ pub fn calculate_build_detailed(
     } else {
         opts
     };
-    let session = calculate_with_data_session(&build, &build_data, &opts)?;
+    let session = match diagnosis {
+        Some(diagnosis) if !detail.reference_basis => diagnosis.session,
+        _ => calculate_with_data_session(&build, &build_data, &opts)?,
+    };
     let out = session.output();
     let tree_report = diagnose_tree_version(&build, &build_data);
 
@@ -1217,6 +1236,7 @@ pub fn calculate_build_detailed(
         reference_basis: detail.reference_basis,
         breakdowns,
         main_skill,
+        usage,
     })
 }
 

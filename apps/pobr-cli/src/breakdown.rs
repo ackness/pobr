@@ -33,6 +33,9 @@ pub struct BuildDetail {
     /// output and the breakdowns answer the question the reference, and
     /// PoB2, answers.
     pub reference_basis: bool,
+    /// Report what the calculation did with each of the build's lines
+    /// ([`pobr_build::usage::line_usage`]).
+    pub usage: bool,
 }
 
 /// One stat asked for with `--breakdown`.
@@ -108,7 +111,7 @@ pub(crate) fn breakdown_entries(
 
 /// Compact number: integers as such, otherwise up to four decimals (one
 /// from a thousand up), trailing zeros dropped.
-fn num(n: f64) -> String {
+pub(crate) fn num(n: f64) -> String {
     if !n.is_finite() {
         return format!("{n}");
     }
@@ -419,7 +422,8 @@ fn write_breakdown(s: &mut String, pad: &str, breakdown: &StatBreakdown) {
 /// skill and its hit by damage type, then one block per stat with the steps
 /// from its starting value and the modifier lines its stage reads, sorted by
 /// type and value. Lines whose condition, skill type or weapon is not met
-/// are marked `inactive`.
+/// are marked `inactive`. With the ledger of lines, the lines the
+/// calculation did not fully use follow.
 pub fn render_breakdowns(report: &CalculateBuildReport) -> String {
     let mut s = String::new();
     let b = &report.build;
@@ -443,10 +447,10 @@ pub fn render_breakdowns(report: &CalculateBuildReport) -> String {
             report.missing_items.len()
         );
     }
-    if !report.unsupported_modifiers.is_empty() {
+    if !report.unsupported_modifiers.is_empty() && report.usage.is_none() {
         let _ = writeln!(
             s,
-            "{} modifier line(s) not understood (see `mise run diagnose`)",
+            "{} modifier line(s) not understood (--usage lists them with their sources)",
             report.unsupported_modifiers.len()
         );
     }
@@ -520,6 +524,10 @@ pub fn render_breakdowns(report: &CalculateBuildReport) -> String {
                 let _ = writeln!(s, "  no modifier lines or steps for this stat");
             }
         }
+    }
+    if let Some(usage) = &report.usage {
+        let _ = writeln!(s);
+        crate::usage::write_usage(&mut s, usage);
     }
     s
 }

@@ -476,7 +476,7 @@ fn calculate_build_breaks_down_the_stats_asked_for() {
             "Life".into(),
             "NothingIsNamedThis".into(),
         ],
-        reference_basis: false,
+        ..BuildDetail::default()
     };
     let report = calculate_build_detailed(&request, &detail).unwrap();
 
@@ -570,6 +570,7 @@ fn calculate_build_on_the_reference_basis_answers_the_exporters_question() {
         &BuildDetail {
             breakdown: vec!["ActionRate".into()],
             reference_basis: true,
+            ..BuildDetail::default()
         },
     )
     .unwrap();
@@ -590,6 +591,55 @@ fn calculate_build_on_the_reference_basis_answers_the_exporters_question() {
         reference.differing
     );
     assert_eq!(report.breakdowns[0].value, Some(report.output.action_rate));
+}
+
+/// `--usage` adds what the calculation did with each line of the build and
+/// changes nothing else. On the reference's basis the ledger is still of the
+/// calculation with every model on, whose readers of lines that basis lacks.
+#[test]
+fn calculate_build_reports_what_became_of_each_line() {
+    let request = CalculateBuildRequest {
+        code: GEMLING_COMET_CODE.trim().to_string(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    };
+    let plain = calculate_build(&request).unwrap();
+    assert!(plain.usage.is_none());
+    let usage = BuildDetail {
+        usage: true,
+        ..BuildDetail::default()
+    };
+    let report = calculate_build_detailed(&request, &usage).unwrap();
+    assert_eq!(json(&report.output), json(&plain.output));
+    let ledger = report.usage.as_ref().expect("asked for");
+    assert!(
+        ledger.lines.iter().any(|line| {
+            line.status == pobr_build::usage::LineStatus::Applied
+                && line.used_in.contains(&"TotalHitAvg")
+        }),
+        "no line reaches the average hit"
+    );
+    let text = render_breakdowns(&report);
+    assert!(text.contains("== line usage"), "{text}");
+
+    let on_basis = calculate_build_detailed(
+        &request,
+        &BuildDetail {
+            usage: true,
+            reference_basis: true,
+            ..BuildDetail::default()
+        },
+    )
+    .unwrap();
+    assert_ne!(json(&on_basis.output), json(&report.output));
+    assert_eq!(json(&on_basis.usage), json(&report.usage));
+}
+
+/// A value as the JSON report carries it, for comparing.
+fn json<T: serde::Serialize>(value: &T) -> serde_json::Value {
+    serde_json::to_value(value).unwrap()
 }
 
 #[test]
