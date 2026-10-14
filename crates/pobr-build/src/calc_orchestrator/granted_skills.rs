@@ -161,6 +161,15 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
             .get(skill_id)
             .map(|def| def.gem_id.clone())
             .unwrap_or_default();
+        // A line without a level stands for the group the build already
+        // has for that skill in that slot, whatever its level.
+        if level.is_none()
+            && existing
+                .iter()
+                .any(|(_, s, id, _)| *s == normalized_slot(&slot) && id == skill_id)
+        {
+            continue;
+        }
         let level = level.unwrap_or(MAX_LEVEL_FALLBACK);
         if !existing.insert((
             ITEM_SKILL_SOURCE.to_string(),

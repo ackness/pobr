@@ -281,6 +281,17 @@ pub fn buff_skill_specs(
                 if effect.is_support {
                     continue;
                 }
+                // The level the effect runs at: the gem's, with every
+                // applicable "+N to Level of all <X> Skills" and the levels
+                // the group's supports grant it ("+3 to level of Supported
+                // Skills if no other Supports are modifying them").
+                let level = gem.gem_level
+                    + additional_gem_levels(gem_level_bonuses, data, skill_id, gem.corrupted)
+                    + support_granted_gem_levels(
+                        &group_judgement(&group, data, skill_id),
+                        group.gems,
+                        data,
+                    );
                 let has_type = |t: &str| effect.skill_types.iter().any(|x| x == t);
                 let is_aura = has_type("Aura");
                 let is_mark = has_type("Mark");
@@ -289,28 +300,17 @@ pub fn buff_skill_specs(
                 if !is_aura && !is_curse {
                     // Debuff branch + player-side Buff branch (see the orchestrator's
                     // doc for the vendor mapping; both payloads are empty for most skills).
-                    let es = effect_stats(skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
+                    let es_buff = effect_stats(skill_id, level, gem.quality, gem.stat_set_index);
                     let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
-                    let debuff_mods = debuff_stat_modifiers(ctx, &es, skill_id, set_key.as_deref());
-                    // Player-side Buff payload: the fetch level = gem level + any
-                    // applicable `+N to Level of all <X> Skills` (vendor's applyGemMods
-                    // applies to every gem effect, CalcSetup.lua:410-435; confirmed
-                    // with Sigil: 20→32). The level granted by a support isn't modeled;
-                    // noted as a residual gap.
-                    let buff_level = gem.gem_level
-                        + additional_gem_levels(gem_level_bonuses, data, skill_id, gem.corrupted);
-                    let es_buff = if buff_level == gem.gem_level {
-                        es
-                    } else {
-                        effect_stats(skill_id, buff_level, gem.quality, gem.stat_set_index)
-                    };
+                    let debuff_mods =
+                        debuff_stat_modifiers(ctx, &es_buff, skill_id, set_key.as_deref());
                     let buff_skill = BuffSkill {
                         consumed_charge_benefit_double_chance: stat_on_skill_and_supports(
                             &group,
                             data,
                             gem,
                             skill_id,
-                            buff_level,
+                            level,
                             skill_stats::CONSUMED_CHARGE_BENEFIT_DOUBLE_CHANCE,
                         ),
                     };
@@ -368,9 +368,7 @@ pub fn buff_skill_specs(
                     // attribution as aura_buff_modifiers (buff_pass scaling preserves
                     // origin, not dropped in trace).
                     // An aura gem gains levels like any other skill gem.
-                    let aura_level = gem.gem_level
-                        + additional_gem_levels(gem_level_bonuses, data, skill_id, gem.corrupted);
-                    let es = effect_stats(skill_id, aura_level, gem.quality, gem.stat_set_index);
+                    let es = effect_stats(skill_id, level, gem.quality, gem.stat_set_index);
                     // Quality adds to the stat the gem already has. The two
                     // are one value: as separate modifiers of one name the
                     // weaker would be dropped as a duplicate buff.
@@ -432,12 +430,8 @@ pub fn buff_skill_specs(
                     // Curse effect mods: statset stats mapped through the statmap curse
                     // domain into enemy-side modifiers, applied by buff_pass's
                     // CurseEffect multiplier zone + Condition:Effective before entering
-                    // the enemy db. Fetch level = gem level + any applicable `+N to
-                    // Level of all <X> Skills` (vendor's applyGemMods applies to every
-                    // gem effect — confirmed with EW: 19+8→27, payload -58→-66).
-                    let curse_level = gem.gem_level
-                        + additional_gem_levels(gem_level_bonuses, data, skill_id, gem.corrupted);
-                    let es = effect_stats(skill_id, curse_level, gem.quality, gem.stat_set_index);
+                    // the enemy db, at the effect's level.
+                    let es = effect_stats(skill_id, level, gem.quality, gem.stat_set_index);
                     let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
                     // Vendor's registration precondition: buffList is built purely
                     // from GlobalEffect payloads, and a curse table entry is only
@@ -464,7 +458,7 @@ pub fn buff_skill_specs(
                     // the **compatible** supports in the group's payload, pre-scaled
                     // via the statmap global segment `curse_local_effect`.
                     let (local_effect_inc, local_effect_more) =
-                        curse_local_effect_scale(ctx, &group, data, gem, skill_id, curse_level);
+                        curse_local_effect_scale(ctx, &group, data, gem, skill_id, level);
                     specs.push(BuffSpec {
                         name: buff_skill_name(data, skill_id),
                         kind: BuffKind::Curse,

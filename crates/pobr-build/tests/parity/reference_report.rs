@@ -268,10 +268,16 @@ const BASELINES: [Baseline; 3] = [
     // "30% more Damage with Command Skills" and the tree's lines for Command
     // Skills wait for. The Disciple of Varashta's Water Djinn: 206,838 against
     // 206,838.
+    //
+    // Then 1037 rows. A buff, aura, curse or debuff is the one of its skill's
+    // level, with the levels the group's supports grant it, and Uhtred's
+    // supports grant theirs by how many other supports modify the skill
+    // ("+3 to level of Supported Skills if no other Supports are modifying
+    // them"). The Abyssal Lich's ChaosMaxHit.
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
         dps_builds: 22,
-        agreeing_rows: 1036,
+        agreeing_rows: 1037,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //

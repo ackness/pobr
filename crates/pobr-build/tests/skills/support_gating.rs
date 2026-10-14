@@ -1497,3 +1497,69 @@ mod elemental_armament {
         assert!(rejected.unsupported_modifier_texts().is_empty());
     }
 }
+
+/// Uhtred's supports grant levels by how many other supports modify the
+/// skill: Exodus "+3 to level of Supported Skills if no other Supports are
+/// modifying them", Omen +2 "if exactly one other Support is", Augury +2 "if
+/// exactly two other Supports are". The buff the skill grants is the one of
+/// that level: Elemental Conflux's damage is 59% at level 20 and one more per
+/// level.
+#[test]
+fn uhtreds_supports_grant_levels_by_the_other_supports() {
+    use pobr_build::{Build, CharacterIdentity, SocketGroup};
+    let data = load_build_data();
+    let conflux = |supports: &[&str]| {
+        let mut group = SocketGroup::new().with_gem_skill("ElementalConfluxPlayer", 20);
+        for support in supports {
+            group = group.with_gem_skill(*support, 1);
+        }
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Witch".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(group);
+        let diagnosis = pobr_build::diagnose(&build, &data, &panel_opts()).unwrap();
+        let level = diagnosis
+            .skills
+            .iter()
+            .find(|skill| skill.skill_id == "ElementalConfluxPlayer")
+            .map(|skill| skill.gem_level + skill.bonus_levels)
+            .unwrap();
+        let usage = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+        let buff = usage
+            .lines
+            .iter()
+            .find(|line| {
+                line.source_id.as_deref().is_some_and(|id| {
+                    id.starts_with("buff.ElementalConfluxPlayer.skill_elemental_conflux")
+                })
+            })
+            .map(|line| line.modifiers[0].value.clone());
+        (level, buff)
+    };
+    let (level, buff) = conflux(&[]);
+    assert_eq!(level, 20);
+    let exodus = conflux(&["SupportUhtredExodusPlayer"]);
+    assert_eq!(exodus.0, 23);
+    assert_ne!(exodus.1, buff, "the buff must follow the level");
+    // Lightning Mastery's own level makes another support: Exodus gives none.
+    assert_eq!(
+        conflux(&["SupportUhtredExodusPlayer", "SupportLightningMasteryPlayer"]).0,
+        21
+    );
+    assert_eq!(
+        conflux(&["SupportUhtredOmenPlayer", "SupportLightningMasteryPlayer"]).0,
+        23
+    );
+    assert_eq!(
+        conflux(&[
+            "SupportUhtredAuguryPlayer",
+            "SupportLightningMasteryPlayer",
+            "SupportDiallasDesirePlayer",
+        ])
+        .0,
+        24
+    );
+}

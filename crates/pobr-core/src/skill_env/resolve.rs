@@ -350,11 +350,25 @@ pub fn additional_gem_levels(
 ///   (chaos/fire/…) matches against the post-judgement `final_skill_types` (including
 ///   the addSkillTypes fixed point).
 /// - A support does not receive granted levels itself (the caller skips support ids).
+/// - Uhtred's lineage supports grant theirs by how many other supports modify
+///   the skill: "+3 to level of Supported Skills if no other Supports are
+///   modifying them" (`supported_active_skill_gem_level_+_if_no_other_supports`),
+///   "… if exactly one other Support is …" and "… if exactly two other
+///   Supports are …".
 pub fn support_granted_gem_levels(
     judgement: &GroupSupportJudgement,
     gems: &[GemInput],
     data: &dyn StatSetLookup,
 ) -> u32 {
+    const BY_OTHER_SUPPORTS: [(&str, usize); 3] = [
+        ("supported_active_skill_gem_level_+_if_no_other_supports", 0),
+        ("supported_active_skill_gem_level_+_if_one_other_support", 1),
+        (
+            "supported_active_skill_gem_level_+_if_two_other_supports",
+            2,
+        ),
+    ];
+    let other_supports = judgement.compatible.len().saturating_sub(1);
     let mut total = 0u32;
     for sup in &judgement.compatible {
         let host = &gems[sup.gem_index];
@@ -366,6 +380,12 @@ pub fn support_granted_gem_levels(
             set_index,
         );
         for s in &stats.base {
+            if let Some((_, others)) = BY_OTHER_SUPPORTS.iter().find(|(id, _)| s.stat == *id) {
+                if *others == other_supports && s.value > 0.0 {
+                    total += s.value as u32;
+                }
+                continue;
+            }
             let Some(rest) = s.stat.strip_prefix("supported_") else {
                 continue;
             };
