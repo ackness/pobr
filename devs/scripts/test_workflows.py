@@ -235,7 +235,8 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         for args in [["test", "core"], ["lint", "core"], ["timings"],
                      ["verify", "core"], ["verify", "core", "--workspace"],
                      ["verify", "core", "lib", "--workspace"], ["ci"],
-                     ["ci", "feature/x", "--unknown"], ["compare"], ["compare", "--refresh"]]:
+                     ["ci", "feature/x", "--unknown"], ["compare"], ["compare", "--refresh"],
+                     ["lookup"], ["lookup", "--level", "20"]]:
             with self.subTest(args=args):
                 result = self.run_script("devs/scripts/driver.sh", *args)
                 self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
@@ -789,6 +790,158 @@ class CompareBuildTests(unittest.TestCase):
             (folder / "engine.json").write_text(json.dumps(engine), encoding="utf-8")
             self.assertIn("comparing the panel stats where PoBR and PoB2 disagree by more than 5%: "
                           "Life, TotalDPS, TotalHitAvg", self.report(folder))
+
+
+LOOKUP_DATA = {
+    "base/granted_effects.json": [
+        {"id": "IceShotPlayer", "is_support": False, "active_skill": "ice_shot", "cast_time": 1000,
+         "additional_stat_set_ids": ["IceShotShardPlayer"], "cost_types": [0],
+         "skill_types": ["Attack", "Projectile", "Cold"]}],
+    "base/granted_effect_levels.json": {"IceShotPlayer": [
+        {"level": 1, "cost_amounts": [6], "attack_speed_multiplier": -10.0},
+        {"level": 20, "cost_amounts": [31], "attack_speed_multiplier": -10.0}]},
+    "base/cost_types.json": [{"id": "Mana", "divisor": 1}],
+    "base/granted_effect_stat_sets.json": [{"effect_id": "IceShotPlayer", "sets": [{
+        "set_id": "IceShotPlayer", "base_effectiveness": 1.0,
+        "constant_stats": [{"stat": "active_skill_chill_effect_+%_final", "value": 50.0}],
+        "implicit_stats": ["base_is_projectile"],
+        "levels": [{"gem_level": 1, "damage_multiplier": 0.95, "stats": []},
+                   {"gem_level": 20, "damage_multiplier": 1.3599999999999999,
+                    "stats": [{"stat": "base_number_of_projectiles", "value": 1.0}]}]}]}],
+    "base/skill_gems.json": [
+        {"id": "Metadata/Items/Gem/SkillGemIceShot", "gem_effect_id": "IceShot",
+         "granted_effect_id": "IceShotPlayer", "gem_tags": ["attack", "projectile", "cold"]}],
+    "base/stats.json": [{"id": "base_number_of_projectiles", "is_local": False},
+                        {"id": "support_rigwald_damage_+%_final_in_weapon_set_two", "is_local": False}],
+    "base/base_items.json": [
+        {"id": "Metadata/Items/Rings/Ring2", "name": "Ruby Ring", "item_class": "Ring", "drop_level": 1,
+         "width": 1, "height": 1, "tags": ["ring"], "implicits": ["FireResistImplicitRing1"]},
+        {"id": "Metadata/Items/SoulCores/TalismanFox", "name": "Fox Idol", "item_class": "SoulCore",
+         "drop_level": 65, "width": 1, "height": 1, "tags": ["idol"], "implicits": []}],
+    "base/mods.json": [{"id": "FireResistImplicitRing1",
+                        "stats": [{"stat_id": "base_fire_damage_resistance_%", "min": 20, "max": 30}]}],
+    "base/passive_tree.json": [
+        {"skill": 1143, "id": "spell_criticals7", "name": "Spell Critical Damage", "kind": "normal",
+         "stats": ["15% increased [CriticalDamageBonus|Critical Spell Damage Bonus]"],
+         "connections": [50084],
+         "variants": [{"class": "Druid", "variant_skill": 57726, "name": "Life Regeneration",
+                       "stats": ["Regenerate 0.2% of maximum Life per second"]}]}],
+    "overlay/uniques.json": {"uniques": [
+        {"name": "Astramentis", "base": "Stellar Amulet", "item_type": "amulet",
+         "raw": "Astramentis\nStellar Amulet\nImplicits: 1\n{tags:attribute}+(5-7) to all Attributes\n"
+                "{variant:2}{tags:attribute}+(50-100) to all Attributes\n"}]},
+    "overlay/runes.json": {"runes": [{"name": "Fox Idol", "slots": {"body armour": {
+        "kind": "Idol", "lines": ["Idols socketed in this item gain the benefits of their Bonded modifiers",
+                                  "Bonded: +5% to Quality of all Skills"]}}}]},
+    "overlay/stat_descriptions.json": {"scopes": {"stat_descriptions": {
+        "single": {"base_number_of_projectiles": ["1 additional\nProjectile"]}}}},
+    "overlay/skill_stat_map.json": {
+        "global": {"base_number_of_projectiles": {"mods": [
+            {"kind": "mod", "name": "ProjectileCount", "mod_type": "BASE"}]}},
+        "per_stat_set": {"IceShotPlayer": {"1": {"base_number_of_projectiles": {"mods": []}}}}},
+}
+
+
+class LookupTests(unittest.TestCase):
+    """`mise run lookup` prints the records an id or a name has in the data the
+    engine reads, and the names that contain it when nothing is exact."""
+
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location("lookup", REPO / "devs/scripts/lookup.py")
+        self.lookup = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.lookup)
+        temp = tempfile.TemporaryDirectory(prefix="pobr lookup tests ")
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+        (self.root / "CURRENT").write_text("test\n", encoding="utf-8")
+        for relative, content in LOOKUP_DATA.items():
+            path = self.root / "test" / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(content), encoding="utf-8")
+        # The engine's own stat meanings, with the stat on line 2.
+        self.skill_stats = self.root / "skill_stats.rs"
+        self.skill_stats.write_text(
+            'fn rules() {\n    "support_rigwald_damage_+%_final_in_weapon_set_two" => more(),\n}\n',
+            encoding="utf-8")
+
+    def lookup_output(self, *arguments, version=None):
+        output = io.StringIO()
+        with patch.dict(os.environ, {"POBR_DATA_ROOT": str(self.root)}), \
+                patch.object(self.lookup, "SKILL_STATS_RS", self.skill_stats), \
+                contextlib.redirect_stdout(output):
+            os.environ.pop("POBR_DATA_VERSION", None)
+            if version:
+                os.environ["POBR_DATA_VERSION"] = version
+            status = self.lookup.main(list(arguments))
+        return status, output.getvalue()
+
+    def test_a_skill_is_found_by_its_effect_or_gem_id(self):
+        for query in ("IceShotPlayer", "iceshot", "SkillGemIceShot"):
+            with self.subTest(query=query):
+                status, text = self.lookup_output(query)
+                self.assertEqual(status, 0)
+                self.assertTrue(text.startswith("data test\n"), text)
+                self.assertIn("== granted effect IceShotPlayer", text)
+                self.assertIn("gem Metadata/Items/Gem/SkillGemIceShot · tags attack, projectile, cold", text)
+                self.assertIn("constant: active_skill_chill_effect_+%_final = 50", text)
+                self.assertIn("implicit: base_is_projectile", text)
+                self.assertIn("per level: base_number_of_projectiles", text)
+        status, text = self.lookup_output("IceShotPlayer", "--level", "20")
+        self.assertIn("level 20: cost 31 Mana, attack_speed_multiplier -10", text)
+        self.assertIn("level 20: damage multiplier 1.36; base_number_of_projectiles = 1", text)
+        self.assertIn("level 30: no row", self.lookup_output("IceShotPlayer", "--level", "30")[1])
+
+    def test_a_stat_shows_its_description_meaning_and_carriers(self):
+        status, text = self.lookup_output("base_number_of_projectiles")
+        self.assertEqual(status, 0)
+        self.assertIn("== stat base_number_of_projectiles", text)
+        self.assertIn("description: stat_descriptions: 1 additional Projectile", text)
+        self.assertIn('stat map, global: [{"kind": "mod", "name": "ProjectileCount"', text)
+        self.assertIn("stat map, per stat set: IceShotPlayer/1", text)
+        self.assertIn("in stat sets: IceShotPlayer", text)
+        status, text = self.lookup_output("support_rigwald_damage_+%_final_in_weapon_set_two")
+        self.assertIn("description: none in overlay/stat_descriptions.json", text)
+        self.assertIn(f"engine meaning: {self.skill_stats}:2", text)
+
+    def test_a_base_item_shows_its_implicits_and_what_it_grants_socketed(self):
+        text = self.lookup_output("Ruby Ring")[1]
+        self.assertIn("== base item Ruby Ring (Metadata/Items/Rings/Ring2)", text)
+        self.assertIn("implicit FireResistImplicitRing1: base_fire_damage_resistance_% 20–30", text)
+        text = self.lookup_output("fox idol")[1]
+        self.assertIn("implicits: none", text)
+        self.assertIn("socketed in body armour (Idol): Idols socketed in this item gain the benefits of "
+                      "their Bonded modifiers / Bonded: +5% to Quality of all Skills", text)
+
+    def test_a_passive_node_is_found_by_number_name_or_variant(self):
+        for query in ("1143", "spell critical damage", "spell_criticals7", "57726"):
+            with self.subTest(query=query):
+                status, text = self.lookup_output(query)
+                self.assertEqual(status, 0)
+                self.assertIn("== passive node 1143 Spell Critical Damage (spell_criticals7, normal)", text)
+                self.assertIn("   15% increased Critical Spell Damage Bonus\n", text)
+                self.assertIn("as Druid (57726): Life Regeneration — Regenerate 0.2% of maximum Life "
+                              "per second", text)
+
+    def test_a_unique_shows_its_item_text(self):
+        text = self.lookup_output("astramentis")[1]
+        self.assertIn("== unique Astramentis (Stellar Amulet, amulet)", text)
+        self.assertIn("   +(5-7) to all Attributes\n", text)
+        self.assertIn("   {variant:2}+(50-100) to all Attributes\n", text)
+
+    def test_nothing_exact_lists_the_names_that_contain_the_query(self):
+        status, text = self.lookup_output("shot")
+        self.assertEqual(status, 1)
+        self.assertIn("the names that contain it (1)", text)
+        self.assertIn("granted effect IceShotPlayer", text)
+        status, text = self.lookup_output("nothing like it")
+        self.assertEqual(status, 1)
+        self.assertIn("nothing is named 'nothing like it'", text)
+
+    def test_the_data_version_is_the_engines(self):
+        self.assertTrue(self.lookup_output("Ruby Ring", version="test")[1].startswith("data test\n"))
+        with self.assertRaises(SystemExit):
+            self.lookup_output("Ruby Ring", version="missing")
+        self.assertEqual(self.lookup_output("Ruby Ring", "--version", "test")[0], 0)
 
 
 if __name__ == "__main__":

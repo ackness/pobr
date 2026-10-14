@@ -154,6 +154,16 @@ cmd_compare() {
   python3 devs/scripts/compare-build.py "$target" "$@"
 }
 
+# The game data records an id or a name has: a granted effect, stat, base
+# item, passive node or unique.
+cmd_lookup() {
+  if [[ $# -lt 1 || "$1" == -* ]]; then
+    echo "usage: mise run lookup <skill id | stat id | base item | passive node | unique> [--level N] [--version V]" >&2
+    return 2
+  fi
+  python3 devs/scripts/lookup.py "$@"
+}
+
 # Builds against the reference values their codes carry: the totals of every
 # committed set, or one directory with each build's differences.
 cmd_accuracy() {
@@ -221,6 +231,7 @@ PoBR development commands (mise tasks; without mise run this script with the sam
   mise run timings build parity             Compile only, with HTML timings
   mise run diagnose <build>                 One build: import losses, reference differences, dropped inputs
   mise run compare <build> [Stat ...]       One build against the pinned PoB2: totals and differing modifier lines
+  mise run lookup <id or name> [--level N]  Game data records of a skill, stat, base item, passive node or unique
   mise run accuracy [corpus dir]            Totals of every committed set, or one set's builds against their reference
   mise run builds:fetch <set dir> [--pick first|last]  One poe.ninja build per ascendancy into a reference set
   mise run build [-p <crate>]               Build application CLI by default
@@ -340,6 +351,7 @@ case "${1:-}" in
   timings)   shift; cmd_timings "$@" ;;
   diagnose)  shift; cmd_diagnose "$@" ;;
   compare)   shift; cmd_compare "$@" ;;
+  lookup)    shift; cmd_lookup "$@" ;;
   accuracy)  shift; cmd_accuracy "$@" ;;
   targets)   cmd_targets ;;
   cache)     shift; cmd_cache "$@" ;;
