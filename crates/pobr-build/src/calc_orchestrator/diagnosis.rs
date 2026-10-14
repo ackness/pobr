@@ -98,6 +98,10 @@ pub struct Diagnosis {
     /// has no skill that resolves. A wrong skill or level drops no input, so
     /// nothing below would show it.
     pub main_skill: Option<MainSkillSummary>,
+    /// Every active effect of the enabled groups and the level and quality
+    /// it runs at: a gem at another level than the exporting tool's changes
+    /// what its buff or aura gives without dropping an input.
+    pub skills: Vec<MainSkillSummary>,
     /// Modifier lines no rule parses: items, jewels, allocated passive nodes
     /// (`Tree:<node>: …`) and config text.
     pub unparsed_lines: Vec<String>,
@@ -358,11 +362,10 @@ pub fn diagnose(
         .collect();
     let unset_conditions = group_unset_conditions(&session, data);
 
+    let view = super::with_extra_gem_bonuses(build, &options);
     Ok(Diagnosis {
-        main_skill: super::skill::resolve::main_skill_summary(
-            &super::with_extra_gem_bonuses(build, &options),
-            data,
-        ),
+        main_skill: super::skill::resolve::main_skill_summary(&view, data),
+        skills: super::skill::resolve::skill_summaries(&view, data),
         read_names: session
             .read_modifier_names()
             .iter()

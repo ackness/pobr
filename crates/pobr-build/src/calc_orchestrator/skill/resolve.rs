@@ -193,6 +193,27 @@ pub(crate) fn main_skill_summary(build: &Build, data: &BuildData) -> Option<Main
     })
 }
 
+/// Every active effect of the enabled groups, each at the level and quality
+/// it runs at, as [`main_skill_summary`] resolves the main one.
+pub(crate) fn skill_summaries(build: &Build, data: &BuildData) -> Vec<MainSkillSummary> {
+    let prepared = super::super::stage_build_view(build, data);
+    let mut skills = Vec::new();
+    for group in prepared.socket_groups.iter().filter(|group| group.enabled) {
+        for effect in group_active_effects(data, group) {
+            let (gem_id, gem_level, bonus_levels) = level_source(&prepared, data, group, &effect);
+            skills.push(MainSkillSummary {
+                skill_id: effect.skill_id.to_string(),
+                gem_id: gem_id.to_string(),
+                gem_level,
+                bonus_levels,
+                quality: effect.quality,
+                stat_set_index: effect.stat_set_index,
+            });
+        }
+    }
+    skills
+}
+
 /// Level bonuses belong to the originating gem, not the selected additional
 /// effect's type or a same-id gem elsewhere in the group/build. The resulting
 /// level is used to resolve this exact effect's own selected stat set.

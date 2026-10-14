@@ -899,6 +899,12 @@ export interface LineUsageMultiplier {
   modifiers: LineUsageRef[];
 }
 
+export interface LineUsageSkill {
+  skill_id: string;
+  level: number;
+  quality: number;
+}
+
 export interface LineUsageSummary {
   lines: number;
   lines_applied: number;
@@ -932,6 +938,8 @@ export interface LineUsage {
   gem_stats: LineUsageGemStat[];
   conditions: LineUsageCondition[];
   multipliers: LineUsageMultiplier[];
+  /** 启用组里的每个主动效果，以及它实际使用的等级（含加成）与品质。 */
+  skills: LineUsageSkill[];
   /** 每个被读取的 modifier 名 → 读取它的查询（如 `INC Damage+FireDamage`）。 */
   reads: Record<string, string[]>;
 }

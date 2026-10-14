@@ -821,6 +821,22 @@ for _, dt in ipairs(damageTypes) do
 end
 
 ----------------------------------------------------------------------
+-- Every active skill's granted effect, level and quality: a gem at another
+-- level changes what its buff or aura gives, which no output names.
+----------------------------------------------------------------------
+local skillLevels = {}
+for _, as in ipairs(mainEnv.player.activeSkillList or {}) do
+	local ae = as.activeEffect
+	if ae and ae.grantedEffect and ae.grantedEffect.id then
+		skillLevels[#skillLevels + 1] = {
+			skillId = ae.grantedEffect.id,
+			level = ae.level,
+			quality = ae.quality,
+		}
+	end
+end
+
+----------------------------------------------------------------------
 -- Skill metadata (level, active gem level, supports) for sanity-checking the
 -- skill is at the expected level — critical for the deadeye +6 question.
 ----------------------------------------------------------------------
@@ -1142,6 +1158,7 @@ local report = {
 	damageTypeBreakdown = damageTypeBreakdown,
 	conversionTable = conversionTable,
 	skillInfo = skillInfo,
+	skillLevels = skillLevels,
 	enemyMitigation = enemyMitigation,
 }
 

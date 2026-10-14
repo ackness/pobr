@@ -26,7 +26,9 @@ many builds carry them. From each build's ledger of lines (`--usage`) it
 gathers the inputs the calculation drops whether or not a row differs: lines a
 rule recognises and nothing models, modifiers stored and never read (first
 those no triaged build reads), conditions nothing sets, gem stats the engine
-rejects, and lines parsed yet storing nothing. Fix what several builds share
+rejects, and lines parsed yet storing nothing. Each build also lists the
+skills the two sides calculate at another level or quality, which change a
+buff, aura or curse without any of the above. Fix what several builds share
 first, then rerun.
 
 The holdout set is only measured (`mise run accuracy`), never triaged. The
@@ -284,6 +286,30 @@ def stat_leads(stat: str, entries: dict, oracle: dict, item_slots: dict, main_sk
     return comparison_leads(compare.compare(ours, theirs), stat)
 
 
+def skill_levels(usage, oracle: dict) -> list:
+    """The skills both sides calculate at another level or quality: a gem
+    level changes what a buff, aura or curse gives without dropping an
+    input, so no other lead names it. By skill id; a skill in several groups
+    compares as the set of its levels, as the exporting tool may list a
+    skill once that the build holds in several groups."""
+    def by_skill(entries, key):
+        found = {}
+        for entry in entries:
+            skill = entry.get(key)
+            if skill:
+                found.setdefault(skill, []).append((entry.get("level"), entry.get("quality")))
+        return {skill: sorted(set(levels), key=str) for skill, levels in found.items()}
+    ours = by_skill(compare.as_dict(usage).get("skills") or [], "skill_id")
+    theirs = by_skill(compare.as_list(oracle.get("skillLevels")), "skillId")
+    return [{"skill": skill, "pobr": ours[skill], "pob2": theirs[skill]}
+            for skill in sorted(set(ours) & set(theirs)) if ours[skill] != theirs[skill]]
+
+
+def levels_text(found: dict) -> str:
+    side = lambda levels: ", ".join(f"{level}/q{quality}" for level, quality in levels)
+    return f"{found['skill']} PoBR {side(found['pobr'])} · PoB2 {side(found['pob2'])}"
+
+
 def pools(entries: dict, oracle: dict) -> str:
     main_output = compare.as_dict(oracle.get("mainOutput"))
     theirs = ", ".join(f"{label} {compare.num(compare.number(main_output.get(key)))}"
@@ -385,6 +411,7 @@ def analyse(name: str, corpus: str, report: dict, oracle: dict, xml: str, known:
         "unsupported": report.get("unsupported_modifiers") or [],
         "ledger": ledger_findings(report.get("usage")),
         "missing_items": report.get("missing_items") or [],
+        "skill_levels": skill_levels(report.get("usage"), oracle),
         "main_skill": skill, "pob2_main_skill": info.get("grantedEffectId"),
     }
 
@@ -619,6 +646,10 @@ def render(results: list, failures: list, commit: str, top: int) -> str:
                            f"{row['class']}")
         if result["pools"]:
             out.append(f"   pools: {result['pools']}")
+        for found in result["skill_levels"][:4]:
+            out.append(f"   level: {levels_text(found)}")
+        if len(result["skill_levels"]) > 4:
+            out.append(f"   level: … {len(result['skill_levels']) - 4} more")
         for found in result["leads"][:6]:
             out.append(f"   - {lead_text(found)}")
             for label in found["inactive"][:1]:

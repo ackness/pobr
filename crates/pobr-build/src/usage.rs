@@ -62,10 +62,23 @@ pub struct LineUsage {
     pub conditions: Vec<ConditionUsage>,
     /// Multipliers modifiers scale by, or are gated on, that nothing provided.
     pub multipliers: Vec<MultiplierUsage>,
+    /// Every active effect of the enabled groups, at the level and quality
+    /// it runs at.
+    pub skills: Vec<SkillLevel>,
     /// Per stored name the calculation read, the queries that read it
     /// ([`ReadSnapshot::sites`]): the kind of query and the names it asked
     /// for together, such as `INC Damage+FireDamage+ElementalDamage`.
     pub reads: BTreeMap<String, Vec<String>>,
+}
+
+/// An active effect and the level and quality it runs at.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SkillLevel {
+    pub skill_id: String,
+    /// The gem's level, corruption included, with the levels items,
+    /// passives and supports add.
+    pub level: u32,
+    pub quality: u32,
 }
 
 /// Counts of a [`LineUsage`].
@@ -478,6 +491,15 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
         gem_stats,
         conditions,
         multipliers,
+        skills: diagnosis
+            .skills
+            .iter()
+            .map(|skill| SkillLevel {
+                skill_id: skill.skill_id.clone(),
+                level: skill.gem_level + skill.bonus_levels,
+                quality: skill.quality,
+            })
+            .collect(),
         reads: diagnosis
             .reads
             .sites
