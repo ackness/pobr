@@ -54,7 +54,8 @@ pub fn assemble_document(meta: OverlayMeta, mut entries: Vec<ConfigOptionDef>) -
     json
 }
 
-/// Launch luajit in headless mode (cwd = vendor src, LUA_PATH points at runtime/lua).
+/// Launch luajit in headless mode (cwd = vendor src, `LUA_PATH` from
+/// [`headless_lua_path`](crate::extract_lua::headless_lua_path)).
 fn invoke_headless_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<ConfigOptionDef>> {
     let vendor_root = &args.vendor_root;
     if !vendor_root.join("HeadlessWrapper.lua").exists() {
@@ -71,7 +72,7 @@ fn invoke_headless_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<ConfigOptionD
         .current_dir(vendor_root)
         .env(
             "LUA_PATH",
-            "../runtime/lua/?.lua;../runtime/lua/?/init.lua;./?.lua;;",
+            crate::extract_lua::headless_lua_path(vendor_root)?,
         )
         .env("CI", "true")
         .stdin(Stdio::piped())

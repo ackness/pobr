@@ -308,8 +308,7 @@ pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
 fn invoke_headless_jsonl(args: &ExtractLuaArgs) -> io::Result<Vec<RawRow>> {
     // Canonicalize: cwd switches to vendor src/, and a relative vendor_root would break LUA_PATH.
     let vendor_root = args.vendor_root.canonicalize()?;
-    let runtime = vendor_root.join("../runtime/lua");
-    let lua_path = format!("{r}/?.lua;{r}/?/init.lua;./?.lua;;", r = runtime.display());
+    let lua_path = crate::extract_lua::headless_lua_path(&vendor_root)?;
     let mut child = Command::new(&args.luajit)
         .arg("-")
         .arg(&vendor_root)

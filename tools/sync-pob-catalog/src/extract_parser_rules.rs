@@ -193,11 +193,11 @@ pub fn run_extract_parser_rules(args: &ExtractLuaArgs) -> io::Result<String> {
     Ok(json)
 }
 
-/// Headless bootstrap invocation: cwd = vendor `src/`, `LUA_PATH` points at
-/// `runtime/lua`, `CI=true` (the same convention as `tools/pob2-oracle/run.sh`).
+/// Headless bootstrap invocation: cwd = vendor `src/`, `LUA_PATH` from
+/// [`headless_lua_path`], `CI=true` (the same convention as
+/// `tools/pob2-oracle/run.sh`).
 fn invoke_headless_jsonl(args: &ExtractLuaArgs) -> io::Result<Vec<serde_json::Value>> {
-    let runtime = args.vendor_root.join("../runtime/lua");
-    let lua_path = format!("{r}/?.lua;{r}/?/init.lua;./?.lua;;", r = runtime.display());
+    let lua_path = crate::extract_lua::headless_lua_path(&args.vendor_root)?;
     let mut child = Command::new(&args.luajit)
         .arg("-") // read the script from stdin
         .arg(&args.vendor_root)
