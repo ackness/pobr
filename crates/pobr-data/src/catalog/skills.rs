@@ -14,12 +14,11 @@ use serde::{Deserialize, Serialize};
 /// relevant to gem mechanics.
 ///
 /// The gem → granted-effect edge (`granted_effect_id` /
-/// `additional_granted_effect_ids`) is absent from the base artifact: the
-/// `GemEffects` table's bundle isn't downloadable at the pinned patch (see
-/// `pipeline/config.json`'s `_tablesUnavailableForPinnedPatch`).
-/// `pobr-gamedata` merges it in at load time from `overlay/gem_effects.json`
-/// ([`GemEffectDef`], extracted from vendor `Data/Gems.lua` via extract-lua);
-/// the adapter always writes it empty.
+/// `additional_granted_effect_ids`) and the gem's tags come from the game's
+/// `GemEffects` table, joined by the adapter through `SkillGems.GemEffects`.
+/// A snapshot adapted before that join has neither: `pobr-gamedata` then
+/// fills the edge from `overlay/gem_effects.json` ([`GemEffectDef`]), and
+/// the tags stay empty.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SkillGemDef {
     /// Stable id, taken from the `Id` of the underlying `BaseItemType`.
@@ -40,10 +39,15 @@ pub struct SkillGemDef {
     pub int_pct: u32,
     /// Whether this is a support gem (determined by `GemType == 1`).
     pub is_support: bool,
+    /// Id of the gem's row in the game's `GemEffects` table (e.g. `IceNova`):
+    /// what a build code calls the gem's `variantId`. `None` in a snapshot
+    /// adapted before the adapter joined that table.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gem_effect_id: Option<String>,
     /// Id of the gem's primary granted effect (`GemEffects.GrantedEffect` →
-    /// `GrantedEffects.Id`, e.g. `IceNovaPlayer`). Sourced by merging
-    /// `overlay/gem_effects.json` at load time; always `None` in the base
-    /// artifact / old data packs.
+    /// `GrantedEffects.Id`, e.g. `IceNovaPlayer`). `None` in a snapshot
+    /// adapted before the adapter joined that table, until
+    /// `overlay/gem_effects.json` is merged in at load time.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub granted_effect_id: Option<String>,
     /// Ids of effects the gem **additionally** grants
@@ -54,6 +58,13 @@ pub struct SkillGemDef {
     /// same way as `granted_effect_id`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub additional_granted_effect_ids: Vec<String>,
+    /// The gem's tags (`GemEffects.GemTags` → `GemTags.Id`, in table order,
+    /// e.g. `attack`, `area`, `projectile`): what kind of gem it is. A line
+    /// that raises "all Projectile Skills" raises the gems tagged
+    /// `projectile`, whatever the types of the skills they grant. Empty in a
+    /// snapshot adapted before the adapter joined that table.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub gem_tags: Vec<String>,
 }
 
 /// A granted-effect definition (from `GrantedEffects.dat` plus foreign-key
@@ -376,19 +387,18 @@ pub struct StatSetDef {
     /// channel. Default false means nothing is injected.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub explode_corpse: bool,
-    /// Implicit (no per-level values) stats: entries from vendor statSet's
-    /// `stats` list where **no level row has a value** (= GGG `.dat`'s
-    /// `GrantedEffectStatSets.ImplicitStats` column, not downloaded by the
-    /// adapter). Vendor always consumes value 1 for these
-    /// (`CalcTools.lua:152`, `statSetLevel[index] or 1`); mostly
-    /// behavior-flag stats (e.g. Garukhan's Resolve's
-    /// `attacks_roll_crits_twice` → statmap flag BifurcateCrit).
+    /// The stats the set has without a value (the game's
+    /// `GrantedEffectStatSets.ImplicitStats`): what its hits are rather than
+    /// how much they deal (`base_is_projectile`, `is_area_damage`) and
+    /// switches of behaviour (Garukhan's Resolve's `attacks_roll_crits_twice`).
+    /// They count as value 1. An additional set has the main set's, less the
+    /// ones it ignores (`IgnoredStats`), and its own.
     ///
-    /// Sourced from the extract-lua skill_overrides channel (`implicit_stat`
-    /// entries, a **curated whitelist** — the vendor's full 4394 entries are
-    /// mostly display/behavior noise, so only stats PoBR's calc actually
-    /// consumes are extracted), merged at load time. Consumed by folding
-    /// into the base segment with value 1 via `effect_stats`.
+    /// A snapshot adapted before the adapter read the column has none here;
+    /// the `implicit_stat` entries of `overlay/skill_overrides.json` (a
+    /// whitelist extracted from PoB2) are merged in at load time for it.
+    /// Consumed by folding into the base segment with value 1 via
+    /// `effect_stats`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub implicit_stats: Vec<String>,
     /// Per-level stats (ascending by gem level; includes base damage values
@@ -541,16 +551,15 @@ pub struct GemQualityStatsDef {
 // Gem ↔ effect foreign-key domain (`overlay/gem_effects.json`)
 
 /// A single gem variant's link to its granted effect (a single entry of
-/// `overlay/gem_effects.json`).
+/// `overlay/gem_effects.json`, or one the loader builds from
+/// [`SkillGemDef`]).
 ///
-/// Sourced from vendor PoB2 `Data/Gems.lua` (exported by
-/// `Export/Scripts/skills.lua:898-925` from `.dat`
-/// `SkillGems.GemEffects` → the `GemEffects` table; that table's bundle
-/// isn't downloadable at pinned patch 4.5.0.3.4, so per the owner's decision
-/// on layering production tooling, it goes through extract-lua → overlay/
-/// for now, and will migrate to base/ once the `.dat` channel is restored —
-/// a byte-equivalent migration commit). Deterministically extracted by
-/// `sync-pob-catalog extract-lua --what gem-effects`.
+/// The game's `GemEffects` table holds these links; the adapter writes them
+/// onto each gem in `base/skill_gems.json`. `overlay/gem_effects.json` is
+/// the same table as PoB2 exports it (`sync-pob-catalog extract-lua --what
+/// gem-effects`), kept for snapshots adapted before the adapter read the
+/// table and for the effects that several gems grant, which an effect-keyed
+/// index cannot tell apart.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GemEffectDef {
     /// Gem base id (vendor `gameId` = `BaseItemTypes.Id`, aligned with

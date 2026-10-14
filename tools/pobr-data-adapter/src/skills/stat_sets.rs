@@ -1,7 +1,7 @@
 //! Per-level damage stat set adapter (`GrantedEffectStatSets` +
 //! `GrantedEffectStatSetsPerLevel` -> `granted_effect_stat_sets.json`).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use pobr_data::catalog::{SkillDamageStat, SkillStatSetDef, SkillStatSetLevel, StatSetDef};
@@ -36,6 +36,12 @@ struct RawStatSet {
     id: String,
     #[serde(rename = "BaseEffectiveness")]
     base_effectiveness: Option<f64>,
+    /// Stats the set has without a value (`Stats` row indices): what its
+    /// hits are rather than how much they deal, e.g. `base_is_projectile`,
+    /// `is_area_damage`. Absent from an export made before the column was
+    /// read: the set is then written without them.
+    #[serde(rename = "ImplicitStats", default)]
+    implicit_stats: Vec<usize>,
     /// Level-independent constant stats (`Stats` row indices) and their
     /// values (positionally paired; e.g. a support's `damage_+%_final`).
     #[serde(rename = "ConstantStats", default)]
@@ -71,6 +77,10 @@ struct RawStatSetPerLevel {
     additional_stats: Vec<usize>,
     #[serde(rename = "AdditionalStatsValues", default)]
     additional_stats_values: Vec<i64>,
+    /// Stats the row has without a value (`Stats` row indices), like the
+    /// set's `ImplicitStats` but for this level only.
+    #[serde(rename = "AdditionalFlags", default)]
+    additional_flags: Vec<usize>,
     /// Raw skill damage multiplier value (permyriad); multiplier = `1 + BaseMultiplier/10000`.
     #[serde(rename = "BaseMultiplier")]
     base_multiplier: Option<i64>,
@@ -241,6 +251,8 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
     }
 
     // Positional-pairing resolution of a single row's stats (stored in full, no filtering).
+    // A stat the row has without a value is on at this level: value 1, as
+    // the set's valueless stats are read.
     let resolve_row_stats = |row: &RawStatSetPerLevel| -> Vec<SkillDamageStat> {
         row.float_stats
             .iter()
@@ -250,6 +262,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
                     .iter()
                     .zip(row.additional_stats_values.iter()),
             )
+            .chain(row.additional_flags.iter().zip(std::iter::repeat(&1)))
             .filter_map(|(&stat_idx, &value)| {
                 stat_id
                     .get(stat_idx)
@@ -276,6 +289,30 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
                     })
             })
             .collect()
+    };
+    // The valueless stats of a set. An additional set has the main set's
+    // (`inherited`) and its own, less those it ignores: an ignored stat
+    // loses its first occurrence, which is the inherited one, so a stat the
+    // set both ignores and declares stays. The game lists some stats twice;
+    // each is kept once.
+    let resolve_implicit = |inherited: &[String], set: &RawStatSet| -> Vec<String> {
+        let mut stats = inherited.to_vec();
+        stats.extend(
+            set.implicit_stats
+                .iter()
+                .filter_map(|&idx| stat_id.get(idx).filter(|s| !s.is_empty()).cloned()),
+        );
+        for &idx in &set.ignored_stats {
+            let Some(sid) = stat_id.get(idx).filter(|s| !s.is_empty()) else {
+                continue;
+            };
+            if let Some(position) = stats.iter().position(|s| s == sid) {
+                stats.remove(position);
+            }
+        }
+        let mut seen = BTreeSet::new();
+        stats.retain(|s| seen.insert(s.clone()));
+        stats
     };
     let raw_multiplier = |row: &RawStatSetPerLevel| {
         1.0 + f64::from(row.base_multiplier.unwrap_or(0) as i32) / 10000.0
@@ -312,6 +349,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
         };
 
         let main_constants = resolve_constants(main_set);
+        let main_implicit = resolve_implicit(&[], main_set);
         let main_rows = rows_by_set.get(&main_idx).map(Vec::as_slice).unwrap_or(&[]);
 
         // Main set: parsed as-is, the same as the single-set era (the migration-invariant anchor).
@@ -352,8 +390,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
             // column, merged in from the overlay during loading; kept at their conservative default (all false) during adaptation.
             dot_flags: Default::default(),
             explode_corpse: false,
-            // Implicit stats come from the overlay (extract-lua's curated whitelist); left empty during adaptation.
-            implicit_stats: Vec::new(),
+            implicit_stats: main_implicit.clone(),
             levels: main_levels,
         }];
 
@@ -415,17 +452,15 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
                 skill_attack_speed_more: None,
                 dot_flags: Default::default(),
                 explode_corpse: false,
-                // Implicit stats come from the overlay (extract-lua's curated whitelist); left empty during adaptation.
-                implicit_stats: Vec::new(),
+                implicit_stats: resolve_implicit(&main_implicit, add_set),
                 levels,
             });
         }
 
-        // All sets are empty (no constants, no level rows) -> skip this effect (matching the single-set era's behavior).
-        if def_sets
-            .iter()
-            .all(|s| s.levels.is_empty() && s.constant_stats.is_empty())
-        {
+        // All sets are empty (no constants, no level rows, no valueless stats) -> skip this effect.
+        if def_sets.iter().all(|s| {
+            s.levels.is_empty() && s.constant_stats.is_empty() && s.implicit_stats.is_empty()
+        }) {
             continue;
         }
         damage_levels_total += def_sets.iter().map(|s| s.levels.len()).sum::<usize>();
@@ -441,4 +476,97 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
         sets_total,
         damage_levels_total,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::{Value, json};
+    use std::fs;
+    use std::path::PathBuf;
+
+    fn tables(name: &str, files: &[(&str, Value)]) -> PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("pobr-stat-sets-{}-{name}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        for (file, value) in files {
+            fs::write(dir.join(file), serde_json::to_vec(value).unwrap()).unwrap();
+        }
+        dir
+    }
+
+    /// The valueless stats of a set: an additional set has the main set's
+    /// and its own, less those it ignores; a stat it both ignores and
+    /// declares stays, once. An effect with nothing but valueless stats is
+    /// written, and a level's own valueless stats are on at that level.
+    #[test]
+    fn a_set_has_the_valueless_stats_of_the_main_set_and_its_own() {
+        let dir = tables(
+            "implicit",
+            &[
+                (
+                    "Stats.json",
+                    json!([
+                        {"_index": 0, "Id": "base_is_projectile"},
+                        {"_index": 1, "Id": "is_area_damage"},
+                        {"_index": 2, "Id": "spell_minimum_base_fire_damage"},
+                        {"_index": 3, "Id": "flag_at_this_level"}
+                    ]),
+                ),
+                (
+                    "GrantedEffectStatSets.json",
+                    json!([
+                        {"Id": "Bolt", "ImplicitStats": [0]},
+                        {"Id": "Explosion", "ImplicitStats": [1, 1]},
+                        {"Id": "Burning", "IgnoredStats": [0]},
+                        {"Id": "Again", "ImplicitStats": [0], "IgnoredStats": [0]},
+                        {"Id": "Marks", "ImplicitStats": [1]}
+                    ]),
+                ),
+                (
+                    "GrantedEffects.json",
+                    json!([
+                        {"Id": "FireboltPlayer", "StatSet": 0, "AdditionalStatSets": [1, 2, 3]},
+                        {"Id": "MarksOnlyPlayer", "StatSet": 4}
+                    ]),
+                ),
+                (
+                    "GrantedEffectStatSetsPerLevel.json",
+                    json!([
+                        {"StatSet": 0, "GemLevel": 1, "FloatStats": [2], "BaseResolvedValues": [8],
+                         "AdditionalFlags": [3]}
+                    ]),
+                ),
+            ],
+        );
+        let bundle = adapt_stat_sets(&dir).unwrap();
+        let implicit = |effect: &str| -> Vec<Vec<String>> {
+            let def = bundle
+                .sets
+                .iter()
+                .find(|def| def.effect_id == effect)
+                .unwrap();
+            def.sets
+                .iter()
+                .map(|set| set.implicit_stats.clone())
+                .collect()
+        };
+        assert_eq!(
+            implicit("FireboltPlayer"),
+            [
+                vec!["base_is_projectile"],
+                vec!["base_is_projectile", "is_area_damage"],
+                vec![],
+                vec!["base_is_projectile"],
+            ]
+        );
+        assert_eq!(implicit("MarksOnlyPlayer"), [vec!["is_area_damage"]]);
+        let bolt = &bundle.sets[0].sets[0];
+        let flag = bolt.levels[0]
+            .stats
+            .iter()
+            .find(|stat| stat.stat == "flag_at_this_level")
+            .expect("the level's valueless stat");
+        assert_eq!(flag.value, 1.0);
+    }
 }

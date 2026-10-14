@@ -650,8 +650,10 @@ fn gems_classified_and_do_not_error() {
             dex_pct: 0,
             int_pct: 0,
             is_support: false,
+            gem_effect_id: None,
             granted_effect_id: None,
             additional_granted_effect_ids: Vec::new(),
+            gem_tags: Vec::new(),
         },
     );
     skill_gems.insert(
@@ -665,8 +667,10 @@ fn gems_classified_and_do_not_error() {
             dex_pct: 0,
             int_pct: 0,
             is_support: true,
+            gem_effect_id: None,
             granted_effect_id: None,
             additional_granted_effect_ids: Vec::new(),
+            gem_tags: Vec::new(),
         },
     );
     let data = BuildData {

@@ -94,11 +94,12 @@ pub struct BuildData {
     /// `GrantedEffects.Id`. Empty when an old data pack lacks this overlay domain
     /// (quality produces no stats, backward compatible).
     pub gem_quality_stats: HashMap<String, Vec<QualityStat>>,
-    /// Gem → granted-effect links (`overlay/gem_effects.json`), keyed by the **primary
-    /// effect id** (`granted_effect_id`) — used by meta/composite gem expansion (T5.6)
-    /// to look up additional effects forward from a socket group's gem `skill_id` (= the
-    /// primary effect id). Empty when an old data pack lacks this overlay domain (no
-    /// expansion, backward compatible).
+    /// Gem → granted-effect links, keyed by the **primary effect id**
+    /// (`granted_effect_id`) — used by meta/composite gem expansion (T5.6) to look up
+    /// additional effects forward from a socket group's gem `skill_id` (= the primary
+    /// effect id). Built from the gems' own links (the game's `GemEffects` table), with
+    /// `overlay/gem_effects.json` overriding where it lists an effect; empty when a data
+    /// pack has neither (no expansion, backward compatible).
     pub gem_effects: HashMap<String, GemEffectDef>,
     /// Cost resource type table (indexed by `CostTypes`, ascending; empty means an old
     /// data pack lacks this domain).
@@ -244,7 +245,7 @@ impl BuildData {
             }
         }
 
-        let skill_gems = data
+        let skill_gems: HashMap<String, SkillGemDef> = data
             .skill_gems()?
             .into_iter()
             .map(|gem| (gem.id.clone(), gem))
@@ -291,17 +292,33 @@ impl BuildData {
             })
             .unwrap_or_default();
 
-        // Gem → effect links (overlay domain, T5.1): indexed by primary effect id (the
-        // forward lookup key for meta expansion). Missing file = empty table (no expansion, backward compatible).
-        let gem_effects = data
-            .gem_effects()?
-            .map(|def| {
-                def.gems
-                    .into_iter()
-                    .map(|g| (g.granted_effect_id.clone(), g))
-                    .collect()
-            })
-            .unwrap_or_default();
+        // Gem → effect links, indexed by primary effect id (the forward lookup key for meta
+        // expansion). A gem comes with the game's link; an effect several gems grant is
+        // indexed under the first of them. `overlay/gem_effects.json` holds the links of a
+        // snapshot adapted before the adapter joined the game's `GemEffects` table, and
+        // where it lists an effect its gem stands for it.
+        let mut linked_gems: Vec<&SkillGemDef> = skill_gems.values().collect();
+        linked_gems.sort_by(|a, b| a.id.cmp(&b.id));
+        let mut gem_effects: HashMap<String, GemEffectDef> = HashMap::new();
+        for gem in linked_gems {
+            let Some(effect_id) = &gem.granted_effect_id else {
+                continue;
+            };
+            gem_effects
+                .entry(effect_id.clone())
+                .or_insert_with(|| GemEffectDef {
+                    gem_id: gem.id.clone(),
+                    variant_id: gem.gem_effect_id.clone().unwrap_or_default(),
+                    granted_effect_id: effect_id.clone(),
+                    additional_granted_effect_ids: gem.additional_granted_effect_ids.clone(),
+                    additional_stat_set_ids: Vec::new(),
+                });
+        }
+        if let Some(def) = data.gem_effects()? {
+            for link in def.gems {
+                gem_effects.insert(link.granted_effect_id.clone(), link);
+            }
+        }
 
         let cost_types = data.cost_types()?;
 

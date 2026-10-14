@@ -51,15 +51,14 @@ pub const OVERRIDE_STAT_DOT_IS_HIT: &str = "dot_is_hit";
 /// damage; value 1.0 = true, corresponds to `StatSetDef::explode_corpse`).
 /// A statSet-level entry (always carries `stat_set`).
 pub const OVERRIDE_STAT_EXPLODE_CORPSE: &str = "explode_corpse";
-/// A value for [`SkillOverrideEntry::stat`]: a statSet implicit stat
-/// (entries from vendor statSet's `stats` list where no level row has a
-/// value = the `.dat`'s `ImplicitStats` column, not downloaded by the
-/// adapter; vendor always consumes value 1,
-/// `CalcTools.lua:152`'s `statSetLevel[index] or 1`). A statSet-level entry
-/// (always carries `stat_set`); the stat id lives in
-/// [`SkillOverrideEntry::stat_id`], corresponding to
+/// A value for [`SkillOverrideEntry::stat`]: a statSet implicit stat, a
+/// stat the set has without a value (the game's `ImplicitStats` column),
+/// as PoB2 lists it. A statSet-level entry (always carries `stat_set`); the
+/// stat id lives in [`SkillOverrideEntry::stat_id`], corresponding to
 /// `StatSetDef::implicit_stats`. Extracted as a **curated whitelist** on
 /// the generation side (see `extract_skill_overrides.lua`'s header comment).
+/// The adapter now writes the game's column itself; these entries only
+/// matter to a snapshot adapted without it.
 pub const OVERRIDE_STAT_IMPLICIT_STAT: &str = "implicit_stat";
 
 /// All statSet-level dotIs* stat names (a shared list for both the

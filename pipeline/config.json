@@ -164,6 +164,7 @@
         "FloatStatsValues",
         "AdditionalStats",
         "AdditionalStatsValues",
+        "AdditionalFlags",
         "SpellCritChance",
         "AttackCritChance"
       ]
@@ -225,6 +226,16 @@
         "SupportName",
         "GemTags",
         "AdditionalGrantedEffects"
+      ]
+    },
+    {
+      "name": "GemTags",
+      "columns": [
+        "Id",
+        "Name",
+        "LocalLevelStat",
+        "LocalQualityStat",
+        "GlobalSpellLevelStat"
       ]
     },
     {
