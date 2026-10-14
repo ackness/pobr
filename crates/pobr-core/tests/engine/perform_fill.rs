@@ -2,7 +2,8 @@ use pobr_core::calc::actor::{Actor, ActorBaseStats};
 use pobr_core::calc::env::Env;
 use pobr_core::calc::perform::perform;
 use pobr_core::calc::{
-    AttributeInfusion, MinionData, MinionInput, MinionModifierEntry, build_minion_context,
+    AttributeInfusion, MinionData, MinionInput, MinionModifierEntry, MinionOrigin,
+    build_minion_context,
 };
 use pobr_core::{CalcConfig, ModTag, Modifier};
 use pobr_data::prelude::*;
@@ -1288,7 +1289,7 @@ fn perform_minion_from_def_with_limit() {
         vec![],
         vec![],
         AttributeInfusion::default(),
-        false,
+        MinionOrigin::default(),
     );
     perform(&mut env).unwrap();
 
@@ -1336,7 +1337,7 @@ fn perform_minion_damage_per_summoned_minion_uses_limit() {
             vec![entry],
             vec![],
             AttributeInfusion::default(),
-            false,
+            MinionOrigin::default(),
         );
         perform(&mut env).unwrap();
         env.player.output.minions[0].dps

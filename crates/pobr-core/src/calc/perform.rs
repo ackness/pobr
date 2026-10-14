@@ -328,7 +328,10 @@ fn perform_minions(env: &mut Env) {
             trace.add_node("minion dps", minion.output.dps, TraceOperation::Aggregate);
         trace.add_edge(player_limit_node, minion_dps_node);
 
+        let identity = minion.minion.clone().unwrap_or_default();
         snapshots.push(MinionOutput {
+            minion_id: identity.minion_id,
+            summoned_by: identity.summoned_by,
             level: minion.level as u32,
             dps: minion.output.dps,
             life: minion.output.life,

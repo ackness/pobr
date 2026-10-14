@@ -1074,6 +1074,9 @@ local report = {
 	auraEffectList = auraEffectList,
 	mainOutput = scalarsOf(mainOutput),
 	calcsOutput = scalarsOf(calcsOutput),
+	-- The main skill's minion, whose output a build code's <MinionStat>
+	-- values describe; absent when the main skill has none.
+	minionOutput = build.calcsTab.mainEnv.minion and scalarsOf(build.calcsTab.mainEnv.minion.output) or nil,
 	-- Per-hand attack pass outputs (CalcOffence.lua:2371 output.MainHand = {}):
 	-- DoubleDamageChance / TripleDamageChance / ScaledDamageEffect / per-pass
 	-- CritChance live here for attacks (M4-T3 W-C1 oracle parity).

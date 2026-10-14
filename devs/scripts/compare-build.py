@@ -325,6 +325,14 @@ def as_dict(value) -> dict:
     return value if isinstance(value, dict) else {}
 
 
+def reference_value(oracle: dict, pob_key: str) -> Optional[float]:
+    """PoB2's value for a reference row: `Minion:<stat>` is the main skill's
+    minion's, any other key the character's."""
+    if pob_key.startswith("Minion:"):
+        return number(as_dict(oracle.get("minionOutput")).get(pob_key[len("Minion:"):]))
+    return number(as_dict(oracle.get("mainOutput")).get(pob_key))
+
+
 def as_list(value) -> list:
     # The oracle writes an empty Lua table as `{}`.
     return value if isinstance(value, list) else []
@@ -779,7 +787,7 @@ def render(name: str, report: dict, oracle: dict, xml: str, stats, basis: str,
         rows.append(f"   {'stat':<26}{'PoBR':>14}{'code':>14}{'PoB2 now':>14}{'PoBR/code':>11}")
         for row in differing:
             pobr, code = number(row.get("pobr")), number(row.get("reference"))
-            now = number(main_output.get(row.get("pob_key") or ""))
+            now = reference_value(oracle, row.get("pob_key") or "")
             rows.append(f"   {str(row.get('stat') or ''):<26}{num(pobr):>14}{num(code):>14}"
                         f"{num(now):>14}{ratio(pobr, code):>11}")
     elif basis == "oracle":

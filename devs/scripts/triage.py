@@ -347,7 +347,7 @@ def analyse(name: str, corpus: str, report: dict, oracle: dict, xml: str, known:
     for row in reference.get("differing") or []:
         stat = row.get("stat")
         pobr, code = compare.number(row.get("pobr")), compare.number(row.get("reference"))
-        now = compare.number(main_output.get(row.get("pob_key") or ""))
+        now = compare.reference_value(oracle, row.get("pob_key") or "")
         reason = known_reason(known, name, stat)
         rows.append({"stat": stat, "pobr": pobr, "code": code, "pob2": now,
                      "class": "known" if reason else classify(pobr, code, now), "reason": reason})

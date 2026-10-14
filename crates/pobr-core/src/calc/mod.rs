@@ -42,7 +42,7 @@ pub mod trigger;
 pub mod warcry;
 pub mod withered;
 
-pub use actor::{Actor, ActorBaseStats};
+pub use actor::{Actor, ActorBaseStats, MinionIdentity};
 pub use ailment::{
     AilmentSourcePart, AilmentStageTerms, AilmentTerms, HandAilmentMerge, bleed_instance,
     corrupted_blood_instance, ignite_instance, poison_instance, shock_effect,
@@ -86,10 +86,10 @@ pub use hand_pass::{
 };
 pub use minion::{
     AttributeInfusion, MinionBaseStats, MinionCategory, MinionContext, MinionData, MinionDef,
-    MinionInput, MinionLimitId, MinionModifierEntry, MinionWeaponData, build_minion_context,
-    build_minion_context_from_def, derive_minion_base_stats, extract_minion_modifier_entries,
-    minion_level_from_gem_level, minion_modifier_applies, resolve_minion_level,
-    write_summoned_minion_multipliers,
+    MinionInput, MinionLimitId, MinionModifierEntry, MinionOrigin, MinionWeaponData,
+    build_minion_context, build_minion_context_from_def, derive_minion_base_stats,
+    extract_minion_modifier_entries, minion_level_from_gem_level, minion_modifier_applies,
+    resolve_minion_level, write_summoned_minion_multipliers,
 };
 pub use offence::{
     EnemyMitigationLines, HitDamagePart, HitDamageTerms, HitMitigationPart, MinimalInput,

@@ -14,8 +14,8 @@
 use std::path::{Path, PathBuf};
 
 use pobr_build::{
-    BuildData, DataOrchestratorOptions, ImportedBuild, ModifierRef, compare_to_reference, diagnose,
-    import_build_from_code,
+    BuildData, DataOrchestratorOptions, ImportedBuild, ModifierRef, compare_build_to_reference,
+    diagnose, import_build_from_code,
 };
 use pobr_gamedata::GameData;
 
@@ -232,7 +232,7 @@ fn diagnose_build() {
                 "    (the triggered spell is counted at its own rate of use, as the reference counts it)"
             );
         }
-        let rows = compare_to_reference(&on_reference_basis, &report.reference_stats);
+        let rows = compare_build_to_reference(&build, &data, &on_reference_basis, &report);
         let misses: Vec<_> = rows.iter().filter(|row| !row.agrees(TOL)).collect();
         eprintln!(
             "    {} of {} stats agree",

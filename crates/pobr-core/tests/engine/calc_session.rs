@@ -85,7 +85,7 @@ fn per_lowest_attribute_modifiers_read_the_least_final_attribute() {
 /// created, or the configured "# of Minions in your Presence".
 #[test]
 fn minions_in_presence_are_the_minions_created_or_the_configured_number() {
-    use pobr_core::calc::minion::AttributeInfusion;
+    use pobr_core::calc::minion::{AttributeInfusion, MinionOrigin};
     use pobr_core::{CalcConfig, ModTag, Modifier};
     use pobr_data::minion::minion_def_zombie;
     use pobr_data::prelude::ModType;
@@ -118,7 +118,7 @@ fn minions_in_presence_are_the_minions_created_or_the_configured_number() {
                 Vec::new(),
                 Vec::new(),
                 AttributeInfusion::default(),
-                false,
+                MinionOrigin::default(),
             );
         }
         s.bridge_minion_presence();

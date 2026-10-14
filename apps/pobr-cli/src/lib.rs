@@ -18,7 +18,8 @@ use std::path::PathBuf;
 
 use pobr_build::{
     Build, BuildData, DataOrchestratorOptions, ImportedBuild, calculate_with_data_session,
-    compare_to_reference, diagnose_tree_version, import_build_from_code, parse_build_from_code,
+    compare_build_to_reference, diagnose_tree_version, import_build_from_code,
+    parse_build_from_code,
 };
 use pobr_core::calc::{CalculationSession, MinimalInput, MinimalOutput, OutputTable};
 use pobr_core::item::ingest_item_with_ctx;
@@ -935,6 +936,26 @@ pub struct CalculateBuildOutput {
     /// come. `action_rate` and the DPS are by `hits_per_second`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rain: Option<RainOutput>,
+    /// Each minion the calculation created, in the order created: its own
+    /// offence and defence. Absent without minions.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub minions: Vec<MinionOutput>,
+}
+
+/// One minion's own output.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct MinionOutput {
+    /// The minion's catalog id.
+    pub minion_id: String,
+    /// The id of the skill that summoned it.
+    pub summoned_by: String,
+    /// The minion's level (a monster level).
+    pub level: u32,
+    pub dps: f64,
+    pub life: f64,
+    pub armour: f64,
+    pub evasion: f64,
+    pub energy_shield: f64,
 }
 
 /// How a meta gem triggers the main skill.
@@ -1161,6 +1182,20 @@ pub fn calculate_build_detailed(
             arrows: rain.arrows,
             hits_per_second: rain.hits_per_second,
         }),
+        minions: out
+            .minions
+            .iter()
+            .map(|minion| MinionOutput {
+                minion_id: minion.minion_id.clone(),
+                summoned_by: minion.summoned_by.clone(),
+                level: minion.level,
+                dps: minion.dps,
+                life: minion.life,
+                armour: minion.armour,
+                evasion: minion.evasion,
+                energy_shield: minion.energy_shield,
+            })
+            .collect(),
     };
 
     // The reference was exported on the effective basis against the build's
@@ -1181,7 +1216,7 @@ pub fn calculate_build_detailed(
         .transpose()?;
     let reference = compares.then(|| {
         let reference_out = on_basis.as_ref().map_or(out, |session| session.output());
-        let rows = compare_to_reference(reference_out, &import.reference_stats);
+        let rows = compare_build_to_reference(&build, &build_data, reference_out, &import);
         let differing: Vec<ReferenceDifference> = rows
             .iter()
             .filter(|row| !row.agrees(REFERENCE_TOLERANCE))

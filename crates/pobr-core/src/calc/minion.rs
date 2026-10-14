@@ -254,6 +254,18 @@ pub fn extract_minion_modifier_entries<'a>(
 /// A minion's base attributes default to 0 and don't inherit the player's;
 /// only these flags infuse the player's attributes, after which the minion
 /// derives life/armour/crit through the same attribute-derivation rules.
+/// What summoned a minion.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct MinionOrigin {
+    /// The id of the skill that summoned it (`SummonBeastPlayer`); empty
+    /// when no skill did.
+    pub summoned_by: String,
+    /// Whether it is a damageable companion: the skill has
+    /// `SkillType.Companion` and not `MinionsAreUndamagable`.
+    /// `TotalCompanionLife` only sums these minions.
+    pub is_companion: bool,
+}
+
 /// Source: agent-docs/minions.md §2.6; PoB2 CalcPerform.lua L1063
 /// (StrengthAddedToMinions / HalfStrengthAddedToMinions / DexterityAddedToMinions).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]

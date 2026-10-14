@@ -10,7 +10,7 @@ use crate::{CalcConfig, HighPrecisionRules};
 
 use super::buff_pass::CursePassOutput;
 use super::session::BuffSpec;
-use super::{Actor, ActorBaseStats};
+use super::{Actor, ActorBaseStats, MinionIdentity};
 
 #[derive(Debug, Clone)]
 pub struct Env {
@@ -168,7 +168,7 @@ impl Env {
         minion_modifiers: Vec<super::MinionModifierEntry>,
         ally_buff_mods: Vec<crate::Modifier>,
         infusion: super::AttributeInfusion,
-        is_companion: bool,
+        origin: super::MinionOrigin,
     ) -> &mut Self {
         let ctx = super::build_minion_context_from_def(
             def,
@@ -179,7 +179,11 @@ impl Env {
         );
         super::write_summoned_minion_multipliers(&mut self.player.mod_db, limit, &def.id);
         let mut actor = minion_actor_from_context(&ctx);
-        actor.is_companion = is_companion;
+        actor.is_companion = origin.is_companion;
+        actor.minion = Some(MinionIdentity {
+            minion_id: def.id.clone(),
+            summoned_by: origin.summoned_by,
+        });
         self.minions.push(actor);
         self
     }

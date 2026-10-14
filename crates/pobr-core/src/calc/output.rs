@@ -368,6 +368,10 @@ pub struct HandOutput {
 /// A single minion's output snapshot (same structure as the subset of the player's key offence/defence output).
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct MinionOutput {
+    /// The minion's catalog id.
+    pub minion_id: String,
+    /// The id of the skill that summoned it; empty when no skill did.
+    pub summoned_by: String,
     /// Minion level (monster level).
     pub level: u32,
     /// Minion DPS (runs the same offence pipeline as the player).

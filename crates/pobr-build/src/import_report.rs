@@ -28,6 +28,9 @@ pub struct ImportReport {
     /// output name. They are that tool's result at export time, under its own
     /// game data: a reference to compare against, not the game's numbers.
     pub reference_stats: BTreeMap<String, f64>,
+    /// `<MinionStat>` values: the same tool's result for the minion of the
+    /// main skill, when that skill has one.
+    pub minion_reference_stats: BTreeMap<String, f64>,
 }
 
 impl ImportReport {

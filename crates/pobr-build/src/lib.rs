@@ -68,7 +68,10 @@ pub use import_report::{ImportReport, ImportedBuild, SkippedItem, UnmodelledSlot
 pub use loadout::{
     BuildSets, Loadout, SetRef, SetSelection, active_selection, derive_loadouts, select_sets,
 };
-pub use reference_check::{ReferenceRow, compare_to_reference};
+pub use reference_check::{
+    ReferenceRow, compare_build_to_reference, compare_minion_to_reference, compare_to_reference,
+    damage_row, main_skill_minion,
+};
 pub use snapshot::BuildSnapshot;
 pub use xml_build::{
     RawItemsView, default_quest_stat_reward_texts, default_true_condition_keys, import_build,

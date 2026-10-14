@@ -47,7 +47,7 @@ pub trait MinionSession {
         minion_modifiers: Vec<MinionModifierEntry>,
         ally_buff_mods: Vec<crate::Modifier>,
         infusion: AttributeInfusion,
-        is_companion: bool,
+        origin: crate::calc::MinionOrigin,
     );
 }
 
@@ -73,7 +73,7 @@ impl MinionSession for crate::calc::CalculationSession {
         minion_modifiers: Vec<MinionModifierEntry>,
         ally_buff_mods: Vec<crate::Modifier>,
         infusion: AttributeInfusion,
-        is_companion: bool,
+        origin: crate::calc::MinionOrigin,
     ) {
         crate::calc::CalculationSession::add_minion_from_def(
             self,
@@ -83,7 +83,7 @@ impl MinionSession for crate::calc::CalculationSession {
             minion_modifiers,
             ally_buff_mods,
             infusion,
-            is_companion,
+            origin,
         );
     }
 }
@@ -173,7 +173,7 @@ pub fn spawn_minions(
             quality,
             stat_set_index,
             corrupted,
-            minion: _,
+            minion: chosen,
         } in candidates
         {
             // A support itself doesn't summon — its addMinionList appends to the active
@@ -186,7 +186,7 @@ pub fn spawn_minions(
             if is_support {
                 continue;
             }
-            let minion_ids = data.effect_minion_list(&skill_id);
+            let minion_ids = summoned_minions(data, &skill_id, chosen.as_deref());
             if minion_ids.is_empty() {
                 continue;
             }
@@ -317,11 +317,39 @@ pub fn spawn_minions(
                     group_minion_modifiers.clone(),
                     Vec::new(),
                     AttributeInfusion::default(),
-                    is_companion,
+                    crate::calc::MinionOrigin {
+                        summoned_by: skill_id.clone(),
+                        is_companion,
+                    },
                 );
             }
         }
     });
+}
+
+/// The minions the skill `skill_id` summons. A Spectre's or a tamed beast's
+/// gem summons the monster the player chose for it (`chosen`, PoB's `<Gem
+/// skillMinion>`), as does a skill with no minions of its own; any other
+/// skill summons its own minions, whichever one the player shows.
+fn summoned_minions<'a>(
+    data: &'a dyn MinionEnv,
+    skill_id: &str,
+    chosen: Option<&'a str>,
+) -> Vec<&'a String> {
+    let own = data.effect_minion_list(skill_id);
+    let picks_a_monster = data.effect(skill_id).is_some_and(|effect| {
+        matches!(
+            effect.active_skill.as_deref(),
+            Some("summon_beast" | "summon_spectre")
+        )
+    });
+    match chosen {
+        Some(id) if (picks_a_monster || own.is_empty()) && data.minion_def(id).is_some() => {
+            let def = data.minion_def(id).expect("checked");
+            vec![&def.id]
+        }
+        _ => own.iter().collect(),
+    }
 }
 
 /// How much one Umbral Soul of the minions of the skill `skill_id` grants,

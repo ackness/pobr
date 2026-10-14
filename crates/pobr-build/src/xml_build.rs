@@ -116,15 +116,16 @@ pub fn import_build_with_allocated_nodes(
     parse_build_with_allocated_nodes_impl(xml, Some(allocated_nodes))
 }
 
-/// `<PlayerStat stat value>` under `<Build>`: the exporting tool's own result.
-/// The first value of a repeated stat wins; a value that is not a number is dropped.
-fn parse_reference_stats(xml: &str) -> Result<BTreeMap<String, f64>, XmlError> {
+/// `<PlayerStat stat value>` (or `<MinionStat …>`, as `element` names) under
+/// `<Build>`: the exporting tool's own result. The first value of a repeated
+/// stat wins; a value that is not a number is dropped.
+fn parse_reference_stats(xml: &str, element: &str) -> Result<BTreeMap<String, f64>, XmlError> {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
     let mut stats = BTreeMap::new();
     loop {
         match reader.read_event() {
-            Ok(Event::Start(e)) | Ok(Event::Empty(e)) if element_name(&e) == "PlayerStat" => {
+            Ok(Event::Start(e)) | Ok(Event::Empty(e)) if element_name(&e) == element => {
                 if let (Some(stat), Some(value)) = (
                     attr_value(&e, b"stat"),
                     attr_value(&e, b"value").and_then(|v| v.parse::<f64>().ok()),
@@ -171,7 +172,8 @@ fn parse_build_with_allocated_nodes_impl(
         },
         mut report,
     ) = parse_items_and_slots(xml, &allocated_set)?;
-    report.reference_stats = parse_reference_stats(xml)?;
+    report.reference_stats = parse_reference_stats(xml, "PlayerStat")?;
+    report.minion_reference_stats = parse_reference_stats(xml, "MinionStat")?;
     let attribute_overrides = parse_attribute_overrides(xml)?;
     let radius_jewels = parse_radius_jewels(xml, &allocated_set)?;
     let socket_texts = parse_raw_item_texts(xml)?;
@@ -989,6 +991,7 @@ fn parse_items_and_slots(
             skipped_items: skipped,
             unmodelled_slots,
             reference_stats: BTreeMap::new(),
+            minion_reference_stats: BTreeMap::new(),
         },
     ))
 }

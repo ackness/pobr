@@ -4,8 +4,8 @@
 //! `ninja_parity` gates a fixed corpus whose PoB2 values are re-recorded with
 //! the pinned vendor. That corpus ages: its builds predate the items and skills
 //! of later leagues. This report needs no recorded values — it reads the
-//! `<PlayerStat>` values each code was exported with — so it runs on freshly
-//! fetched builds:
+//! `<PlayerStat>` values each code was exported with, and its `<MinionStat>`
+//! values for the main skill's minion — so it runs on freshly fetched builds:
 //!
 //! ```text
 //! mise run accuracy                 # every committed set, totals only
@@ -27,7 +27,7 @@ use std::path::{Path, PathBuf};
 
 use pobr_build::{
     BuildData, DataOrchestratorOptions, ImportedBuild, ReferenceRow, calculate_with_data_session,
-    compare_to_reference, import_build_from_code,
+    compare_build_to_reference, damage_row, import_build_from_code,
 };
 use pobr_gamedata::GameData;
 
@@ -93,7 +93,8 @@ fn build_codes_carry_their_reference_stats() {
 struct Agreement {
     /// Builds that carry a reference and calculated.
     builds: usize,
-    /// Of those, the builds whose `TotalDPS` agrees.
+    /// Of those, the builds whose damage agrees ([`damage_row`]: the
+    /// minion's `TotalDPS` when the main skill's minion has damage).
     dps_builds: usize,
     rows: usize,
     agreeing_rows: usize,
@@ -128,7 +129,7 @@ fn corpus_agreement(root: &Path, verbose: bool) -> Agreement {
                 continue;
             }
         };
-        let rows = compare_to_reference(session.output(), &report.reference_stats);
+        let rows = compare_build_to_reference(&build, &data, session.output(), &report);
         let misses: Vec<&ReferenceRow> = rows.iter().filter(|row| !row.agrees(TOL)).collect();
         total.builds += 1;
         total.rows += rows.len();
@@ -138,8 +139,7 @@ fn corpus_agreement(root: &Path, verbose: bool) -> Agreement {
             entry.0 += usize::from(row.agrees(TOL));
             entry.1 += 1;
         }
-        let dps = rows.iter().find(|row| row.id == "TotalDPS");
-        total.dps_builds += usize::from(dps.is_some_and(|row| row.agrees(TOL)));
+        total.dps_builds += usize::from(damage_row(&rows).is_some_and(|row| row.agrees(TOL)));
         if !verbose {
             continue;
         }
@@ -224,10 +224,22 @@ const BASELINES: [Baseline; 3] = [
         dps_builds: 5,
         agreeing_rows: 348,
     },
+    // Was 22 builds and 1024 rows. A code whose main skill summons a minion
+    // also carries `<MinionStat>` values for that minion, which were not
+    // compared: such a build counted as agreeing on damage because the
+    // character's TotalDPS is 0 on both sides. The minion's TotalDPS, Life
+    // and Energy Shield are now compared with the first minion the main skill
+    // summoned, and its TotalDPS decides whether the build's damage agrees.
+    // PoBR computes a minion's damage with the minimal pipeline, without the
+    // minion's own skills: the Spirit Walker's companion has 463 DPS against
+    // 1,280,037, the Disciple of Varashta's 0 against 206,838, and neither's
+    // Life agrees. Their Energy Shield (0) adds 2 rows. The Spirit Walker's
+    // main skill is a tamed beast's, whose monster PoBR did not create
+    // before; its rows are for the beast the gem chose.
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
-        dps_builds: 22,
-        agreeing_rows: 1024,
+        dps_builds: 20,
+        agreeing_rows: 1026,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
@@ -249,9 +261,18 @@ const BASELINES: [Baseline; 3] = [
     // and TotalDotDPS are 1.21 times the reference, while its hit rows still
     // agree. Found by measuring with the ignite left on the fire resistance,
     // not by diagnosing the build.
+    //
+    // Then 14 builds and 984 rows: the minion rows (see the tuned set). The
+    // main skills of two builds summon a minion, whose damage the minimal
+    // minion pipeline does not reach (one row more agrees). A Spectre's or a
+    // tamed beast's gem now summons the monster the player chose for it,
+    // which was not created at all before; with that minion the Blood Mage's
+    // (Arc) CombinedDPS, which agreed within 5%, is 1.057 times the reference.
+    // Measured with and without the chosen monster, not by diagnosing the
+    // build.
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
-        dps_builds: 16,
+        dps_builds: 14,
         agreeing_rows: 984,
     },
 ];
