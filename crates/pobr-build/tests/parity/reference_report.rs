@@ -237,10 +237,22 @@ const BASELINES: [Baseline; 3] = [
     // Spell Damage Bonus": its `CritMultiplier` reference, 2.49 against 2.24,
     // is exactly those 25% applied to the aura. The pinned PoB2 parses the
     // line as spell-only too; the exporting tool did not.
+    //
+    // Then 984. "Enemies in your Presence Resist Elemental Damage based on
+    // their Lowest Resistance"
+    // (`enemies_in_presence_elemental_damage_resisted_by_lowest_elemental_resistance`)
+    // is about all elemental damage the enemy takes; the game's other stat,
+    // "Elemental Damage from your Hits is Resisted by the enemy's lowest
+    // Elemental Resistance", is the one limited to hits. The exporting tool
+    // applies both to hits only. The Gemling Legionnaire's Twister ignites,
+    // and its ignite now meets the lower resistance as well: its IgniteDPS
+    // and TotalDotDPS are 1.21 times the reference, while its hit rows still
+    // agree. Found by measuring with the ignite left on the fire resistance,
+    // not by diagnosing the build.
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
         dps_builds: 16,
-        agreeing_rows: 986,
+        agreeing_rows: 984,
     },
 ];
 

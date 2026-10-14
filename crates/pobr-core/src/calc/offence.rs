@@ -1536,6 +1536,9 @@ fn enemy_mitigation_terms(
         )
     } else {
         let enemy_resist = enemy_resist_final(enemy_db, &type_cfg, damage_type);
+        // Penetration lowers the resistance it names: the one the enemy
+        // meets this damage with.
+        let resisting = enemy_resisting_element(enemy_db, &type_cfg, damage_type);
         let mut resist = enemy_resist;
         // A hit treats enemy elemental resistance as inverted (Rakiata's
         // Flow etc., vendor CalcOffence.lua:4145-4148):
@@ -1584,12 +1587,12 @@ fn enemy_mitigation_terms(
                 if resist >= 0.0 {
                     0.0
                 } else {
-                    apply_penetration(player_db, &type_cfg, damage_type, resist)
+                    apply_penetration(player_db, &type_cfg, resisting, resist)
                 }
             };
             (1.0 - invert_share) * against(enemy_resist) + invert_share * against(-enemy_resist)
         } else {
-            apply_penetration(player_db, &type_cfg, damage_type, resist)
+            apply_penetration(player_db, &type_cfg, resisting, resist)
         };
         // Diagnostics: dumps the enemy mitigation breakdown per type when
         // POBR_DBG_ENEMYMIT=1 (for comparison against the oracle's
@@ -1722,11 +1725,65 @@ pub(crate) fn enemy_mitigation_lines<'a>(
 /// FLAG is set (config's "Enemy Max Resistance is always 75%",
 /// ConfigOptions.lua:2158-2159). Physical doesn't go through this function
 /// (its armour/PDR path is [`enemy_physical_multiplier`]).
+///
+/// An enemy that resists elemental damage by its lowest elemental resistance
+/// ([`enemy_resisting_element`]) meets each element with that resistance.
 pub(crate) fn enemy_resist_final(
     enemy_db: &ModDb,
     type_cfg: &CalcConfig,
     damage_type: DamageType,
 ) -> f64 {
+    let resisting = enemy_resisting_element(enemy_db, type_cfg, damage_type);
+    if resisting == damage_type {
+        enemy_own_resist(enemy_db, type_cfg, damage_type)
+    } else {
+        enemy_own_resist(
+            enemy_db,
+            &type_cfg.clone().with_damage_type(resisting),
+            resisting,
+        )
+    }
+}
+
+/// The enemy flag of "Enemies in your Presence Resist Elemental Damage based
+/// on their Lowest Resistance"
+/// (`enemies_in_presence_elemental_damage_resisted_by_lowest_elemental_resistance`).
+pub(crate) const RESISTS_ELEMENTS_BY_LOWEST: &str = "ElementalDamageResistedByLowestResistance";
+
+/// The element whose resistance the enemy meets `damage_type` with: its own,
+/// or for an element, while the enemy resists elemental damage by its
+/// lowest elemental resistance, the element of the lowest of the three. A
+/// tie keeps the damage's own element.
+pub(crate) fn enemy_resisting_element(
+    enemy_db: &ModDb,
+    type_cfg: &CalcConfig,
+    damage_type: DamageType,
+) -> DamageType {
+    if !damage_type.is_elemental() || !enemy_db.flag(type_cfg, RESISTS_ELEMENTS_BY_LOWEST) {
+        return damage_type;
+    }
+    let mut lowest = (
+        enemy_own_resist(enemy_db, type_cfg, damage_type),
+        damage_type,
+    );
+    for element in [DamageType::Fire, DamageType::Cold, DamageType::Lightning] {
+        if element == damage_type {
+            continue;
+        }
+        let resist = enemy_own_resist(
+            enemy_db,
+            &type_cfg.clone().with_damage_type(element),
+            element,
+        );
+        if resist < lowest.0 {
+            lowest = (resist, element);
+        }
+    }
+    lowest.1
+}
+
+/// The enemy's own resistance to `damage_type`; see [`enemy_resist_final`].
+fn enemy_own_resist(enemy_db: &ModDb, type_cfg: &CalcConfig, damage_type: DamageType) -> f64 {
     debug_assert!(
         damage_type != DamageType::Physical,
         "physical has no resistance path"
@@ -2447,6 +2504,43 @@ mod speed_tests {
         assert_eq!(
             multiplier(&bound, &resistant, &crit, DamageType::Cold),
             multiplier(&bound, &resistant, &hit, DamageType::Cold)
+        );
+    }
+
+    /// "Enemies in your Presence Resist Elemental Damage based on their
+    /// Lowest Resistance": every element meets the lowest of the three
+    /// elemental resistances, lowered by the penetration of the one used;
+    /// chaos keeps its own.
+    #[test]
+    fn an_enemy_resisting_by_its_lowest_resistance_meets_every_element_with_it() {
+        let multiplier = |player: &ModDb, enemy: &ModDb, ty: DamageType| {
+            enemy_damage_multiplier(player, enemy, &CalcConfig::spell(), ty, 100.0)
+        };
+        let mut enemy = ModDb::new();
+        enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
+        enemy.add_mod(Modifier::number("ColdResist", ModType::Base, 20.0));
+        enemy.add_mod(Modifier::number("LightningResist", ModType::Base, 40.0));
+        enemy.add_mod(Modifier::number("ChaosResist", ModType::Base, 10.0));
+        let plain = ModDb::new();
+        assert!((multiplier(&plain, &enemy, DamageType::Fire) - 0.5).abs() < 1e-9);
+
+        enemy.add_mod(Modifier::flag(RESISTS_ELEMENTS_BY_LOWEST));
+        for element in [DamageType::Fire, DamageType::Cold, DamageType::Lightning] {
+            assert!((multiplier(&plain, &enemy, element) - 0.8).abs() < 1e-9);
+        }
+        assert!((multiplier(&plain, &enemy, DamageType::Chaos) - 0.9).abs() < 1e-9);
+        // Fire damage met with cold resistance: cold penetration lowers it,
+        // fire penetration does not.
+        let mut cold_pen = ModDb::new();
+        cold_pen.add_mod(Modifier::number("ColdPenetration", ModType::Base, 10.0));
+        assert!((multiplier(&cold_pen, &enemy, DamageType::Fire) - 0.9).abs() < 1e-9);
+        let mut fire_pen = ModDb::new();
+        fire_pen.add_mod(Modifier::number("FirePenetration", ModType::Base, 10.0));
+        assert!((multiplier(&fire_pen, &enemy, DamageType::Fire) - 0.8).abs() < 1e-9);
+        // Damage over time and ailments read the same resistance.
+        assert_eq!(
+            enemy_resist_final(&enemy, &CalcConfig::spell(), DamageType::Lightning),
+            20.0
         );
     }
 

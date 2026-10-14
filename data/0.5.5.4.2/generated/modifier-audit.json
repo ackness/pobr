@@ -27,10 +27,10 @@
     "scope": "Special-rule schemas, handlers, captures, operations and scopes; generic parser schema/compile. StatId is open; recognition is not calculation support. Overlap audit covers sampled source text only.",
     "input_sha256": {
       "0.5.5.4.2/generated/special_derived.json": "d18157d99c7620f096aa485d1f93d33166a578d45a9e4a064817d629e023a105",
-      "0.5.5.4.2/generated/special_vendor.json": "51d520b5e9f26b57c4b1bfe5aa92bd4ee483f049cfba7fa152c95167628ba01e",
+      "0.5.5.4.2/generated/special_vendor.json": "f3926c0c036113b4ab50d56fd81acfa6e7ae0024d9ab6b0f79da5b34d8fb93c8",
       "0.5.5.4.2/overlay/mod_parser_rules.json": "4ca754192ca4422982d7828b410a68723bfcdf1cc3cbea7f30c522d94fea6860",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
-      "overlay-common/special_mods.json": "9be188291dcfe6f6944d12729bf3b5f9a231ec295831bc083f8e55777967d7af"
+      "overlay-common/special_mods.json": "75f2f511a6d4937867e63c232d292191ffc862bd152b001f9262276fc5eec7f3"
     },
     "effective_rules": [
       {
@@ -1385,6 +1385,14 @@
       },
       {
         "id": "bear_skills_convert_physical_to_fire",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "enemies_in_presence_resist_elemental_damage_by_lowest_resistance",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -7329,14 +7337,6 @@
       },
       {
         "id": "vnd_enemies_in_your_presence_have_no_element_9d8d6f2f",
-        "files": [
-          "0.5.5.4.2/generated/special_vendor.json"
-        ],
-        "replaced_files": [],
-        "non_effective_fields": []
-      },
-      {
-        "id": "vnd_enemies_in_your_presence_resist_elementa_a8b68d4f",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
         ],
@@ -264780,6 +264780,7 @@
     },
     "Enemies in your Presence Resist Elemental Damage based on their Lowest Resistance": {
       "sources": [
+        "rule:enemies_in_presence_resist_elemental_damage_by_lowest_resistance",
         "stat:stat_descriptions:enemies_in_presence_elemental_damage_resisted_by_lowest_elemental_resistance",
         "translation:在场的敌人根据最低的抗性抵抗元素伤害",
         "unique:Sacred Flame"
@@ -264787,11 +264788,11 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "ElementalDamageUsesLowestResistance"
+        "EnemyModifier"
       ],
-      "special_rule_id": "vnd_enemies_in_your_presence_resist_elementa_a8b68d4f",
+      "special_rule_id": "enemies_in_presence_resist_elemental_damage_by_lowest_resistance",
       "matching_special_rules": [
-        "vnd_enemies_in_your_presence_resist_elementa_a8b68d4f"
+        "enemies_in_presence_resist_elemental_damage_by_lowest_resistance"
       ]
     },
     "Enemies in your Presence are Blinded": {

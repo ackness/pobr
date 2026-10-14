@@ -15911,27 +15911,6 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
-      "id": "vnd_enemies_in_your_presence_resist_elementa_a8b68d4f",
-      "pattern": "enemies in your presence resist elemental damage based on their lowest resistance",
-      "vendor_pattern": "^enemies in your presence resist elemental damage based on their lowest resistance$",
-      "mods": [
-        {
-          "name": "ElementalDamageUsesLowestResistance",
-          "type": "FLAG",
-          "value": true,
-          "tags": [
-            {
-              "type": "Condition",
-              "var": "EnemyInPresence"
-            }
-          ]
-        }
-      ],
-      "verified": false,
-      "batch": "V0",
-      "source_note": "vendor specialModList 批量抽取（静态表）"
-    },
-    {
       "id": "vnd_enemies_maimed_by_you_take_d_increased_d_277915f0",
       "pattern": "enemies maimed by you take (\\d+)% increased damage over time",
       "vendor_pattern": "^enemies maimed by you take (%d+)%% increased damage over time$",
