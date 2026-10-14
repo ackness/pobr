@@ -3302,6 +3302,69 @@
       "source_note": "Game text of the stats remnant_pickup_range_+% and remnant_pickup_range_+%_if_you_have_at_least_100_tribute: how far away Remnants can be picked up, which nothing a calculation reports depends on."
     },
     {
+      "id": "item_affix_effect_in_item_text",
+      "pattern": "\\d+% (?:increased|reduced) effect of (?:suffixes|prefixes)",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "examples": [
+        "59% increased Effect of Suffixes",
+        "46% increased Effect of Prefixes"
+      ],
+      "source_note": "Game text of local_suffix_effect_+% / local_prefix_effect_+% and local_non_unique_item_explicit_suffix_mod_magnitudes_+% / _prefix_: they scale the item's own suffixes or prefixes, and the item text the game copies shows those lines with the effect applied. A Sapphire with 59% increased Effect of Suffixes reads 30% increased Critical Damage Bonus, above the 10-20% range of the suffix JewelCriticalDamage (base mods.json); the line is recognised and adds no modifier: applying it again would count it twice."
+    },
+    {
+      "id": "socketed_item_effect_in_item_text",
+      "pattern": "\\d+% (?:increased|reduced) effect of socketed (?:augment items|runes|soul cores)",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "examples": [
+        "24% increased effect of Socketed Augment Items",
+        "200% increased effect of Socketed Runes",
+        "50% increased effect of Socketed Soul Cores"
+      ],
+      "source_note": "Game text of local_socketed_items_effect_+%, local_rune_effect_+% and local_soul_core_effect_+%: they scale the lines the item's runes and soul cores add, and the item text lists those lines with the effect applied. Runeseeker's Call (200% increased effect of Socketed Runes) reads Bonded: Archon recovery period expires 90% faster for Hedgewitch Assandra's Rune of Wisdom, whose line is 30% (runes.json); the line is recognised and adds no modifier: applying it again would count it twice."
+    },
+    {
+      "id": "item_crafting_properties",
+      "pattern": "(?:raven-touched|[+-]\\d+ (?:prefix|suffix) modifiers? allowed|\\+\\d+% to maximum quality|only (?:runes|soul cores) can be socketed in this item)",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "examples": [
+        "Raven-Touched",
+        "+1 Suffix Modifier allowed",
+        "-1 Prefix Modifier allowed",
+        "+20% to Maximum Quality",
+        "Only Runes can be Socketed in this item"
+      ],
+      "source_note": "Game text of local_item_can_be_instilled, local_maximum_prefixes_allowed_+ / local_maximum_suffixes_allowed_+, local_maximum_quality_+, local_can_only_socket_runes and local_can_only_socket_soul_cores. They decide how the item can be crafted, how much quality it can take and what can be socketed in it; the item's lines, quality and socketed items are part of the imported item, and the lines change nothing a calculation reports."
+    },
+    {
+      "id": "timeless_jewel_description",
+      "pattern": "(?:historic|passives in radius are conquered by the [a-z ]+)",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "examples": [
+        "Historic",
+        "Passives in radius are Conquered by the Kalguur"
+      ],
+      "source_note": "Game text of local_is_alternate_tree_jewel and the conqueror line of a timeless jewel. Which passives the jewel conquers, and how, is read from its Remembrancing line (pobr-build jewel_tree); these lines describe the jewel and change nothing a calculation reports."
+    },
+    {
+      "id": "titan_inventory_chest",
+      "pattern": "carry a chest which adds \\d+ inventory slots",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "examples": [
+        "Carry a Chest which adds 20 Inventory Slots"
+      ],
+      "source_note": "Game text of titan_additional_inventory / titan_expanded_main_inventory (Colossal Capacity). Inventory space is part of nothing a calculation reports."
+    },
+    {
       "id": "skills_damage_per_connected_red_support_gem",
       "pattern": "skills deal (\\d+)% increased damage per connected red support gem",
       "vendor_pattern": "^skills deal (%d+)%% increased damage per connected red support gem$",

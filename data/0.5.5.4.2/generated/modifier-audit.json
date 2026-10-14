@@ -30,7 +30,7 @@
       "0.5.5.4.2/generated/special_vendor.json": "51d520b5e9f26b57c4b1bfe5aa92bd4ee483f049cfba7fa152c95167628ba01e",
       "0.5.5.4.2/overlay/mod_parser_rules.json": "4ca754192ca4422982d7828b410a68723bfcdf1cc3cbea7f30c522d94fea6860",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
-      "overlay-common/special_mods.json": "618f3e367068143ff2e6160ba69648d96272273b71beeede8da2a7d70a90dfa2"
+      "overlay-common/special_mods.json": "9be188291dcfe6f6944d12729bf3b5f9a231ec295831bc083f8e55777967d7af"
     },
     "effective_rules": [
       {
@@ -1313,6 +1313,46 @@
       },
       {
         "id": "remnant_pickup_range",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "item_affix_effect_in_item_text",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "socketed_item_effect_in_item_text",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "item_crafting_properties",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "timeless_jewel_description",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "titan_inventory_chest",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -18267,9 +18307,10 @@
     "unsampled_translations": 170
   },
   "summary": {
-    "parsed": 14806,
+    "no_effect": 84,
+    "parsed": 14786,
     "pobr_gap": 2426,
-    "recognized_empty": 351,
+    "recognized_empty": 291,
     "upstream_gap": 25114
   },
   "entries": {
@@ -19028,11 +19069,12 @@
         "mods:jewel:CraftedJewelAdditionalPrefixAllowed",
         "stat:stat_descriptions:local_maximum_prefixes_allowed_+"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_prefix_modifiers_allowed_6a07e0b4",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_prefix_modifiers_allowed_6a07e0b4"
       ]
     },
@@ -19097,13 +19139,15 @@
         "bases:Gloam Amulet",
         "bases:Gloam Ring",
         "mods:jewel:CraftedJewelAdditionalSuffixAllowed",
+        "rule:item_crafting_properties",
         "stat:stat_descriptions:local_maximum_suffixes_allowed_+"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_suffix_modifiers_allowed_408ae344",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_suffix_modifiers_allowed_408ae344"
       ]
     },
@@ -24701,11 +24745,12 @@
       "sources": [
         "stat:stat_descriptions:local_maximum_quality_+"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_to_maximum_quality_96ce4da2",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_to_maximum_quality_96ce4da2"
       ]
     },
@@ -28476,11 +28521,12 @@
       "sources": [
         "translation:允许的前缀 {0:+d}"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_prefix_modifiers_allowed_6a07e0b4",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_prefix_modifiers_allowed_6a07e0b4"
       ]
     },
@@ -28488,11 +28534,12 @@
       "sources": [
         "translation:允许的前缀 {0:+d}"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_prefix_modifiers_allowed_6a07e0b4",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_prefix_modifiers_allowed_6a07e0b4"
       ]
     },
@@ -28547,11 +28594,12 @@
       "sources": [
         "translation:允许的后缀 {0:+d}"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_suffix_modifiers_allowed_408ae344",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_suffix_modifiers_allowed_408ae344"
       ]
     },
@@ -28559,11 +28607,12 @@
       "sources": [
         "translation:允许的后缀 {0:+d}"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_suffix_modifiers_allowed_408ae344",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_suffix_modifiers_allowed_408ae344"
       ]
     },
@@ -37343,11 +37392,12 @@
       "sources": [
         "translation:品质上限 {:+d}%"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_to_maximum_quality_96ce4da2",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_to_maximum_quality_96ce4da2"
       ]
     },
@@ -38500,11 +38550,12 @@
         "bases:Penumbra Amulet",
         "bases:Penumbra Ring"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_prefix_modifiers_allowed_6a07e0b4",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_prefix_modifiers_allowed_6a07e0b4"
       ]
     },
@@ -38513,11 +38564,12 @@
         "bases:Tenebrous Amulet",
         "bases:Tenebrous Ring"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_suffix_modifiers_allowed_408ae344",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_suffix_modifiers_allowed_408ae344"
       ]
     },
@@ -39515,13 +39567,15 @@
       "sources": [
         "bases:Breach Ring",
         "mods:equipment:EssenceBreach",
+        "rule:item_crafting_properties",
         "search_mods:essence:EssenceBreach"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_to_maximum_quality_96ce4da2",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_to_maximum_quality_96ce4da2"
       ]
     },
@@ -40381,11 +40435,12 @@
       "sources": [
         "bases:Refined Breach Ring"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_to_maximum_quality_96ce4da2",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_to_maximum_quality_96ce4da2"
       ]
     },
@@ -46125,13 +46180,15 @@
         "bases:Gloam Amulet",
         "bases:Gloam Ring",
         "bases:Lament Amulet",
-        "bases:Twisted Amulet"
+        "bases:Twisted Amulet",
+        "rule:item_crafting_properties"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_prefix_modifiers_allowed_6a07e0b4",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_prefix_modifiers_allowed_6a07e0b4"
       ]
     },
@@ -46143,11 +46200,12 @@
         "bases:Dusk Ring",
         "bases:Portent Amulet"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_suffix_modifiers_allowed_408ae344",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_suffix_modifiers_allowed_408ae344"
       ]
     },
@@ -46514,11 +46572,12 @@
         "bases:Tenebrous Amulet",
         "bases:Tenebrous Ring"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_prefix_modifiers_allowed_6a07e0b4",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_prefix_modifiers_allowed_6a07e0b4"
       ]
     },
@@ -46527,11 +46586,12 @@
         "bases:Penumbra Amulet",
         "bases:Penumbra Ring"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_suffix_modifiers_allowed_408ae344",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_suffix_modifiers_allowed_408ae344"
       ]
     },
@@ -64192,11 +64252,12 @@
         "stat:stat_descriptions:local_non_unique_item_explicit_prefix_mod_magnitudes_+%",
         "stat:stat_descriptions:local_prefix_effect_+%"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14",
+      "special_rule_id": "item_affix_effect_in_item_text",
       "matching_special_rules": [
+        "item_affix_effect_in_item_text",
         "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14"
       ]
     },
@@ -64295,11 +64356,12 @@
         "stat:stat_descriptions:local_non_unique_item_explicit_suffix_mod_magnitudes_+%",
         "stat:stat_descriptions:local_suffix_effect_+%"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14",
+      "special_rule_id": "item_affix_effect_in_item_text",
       "matching_special_rules": [
+        "item_affix_effect_in_item_text",
         "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14"
       ]
     },
@@ -65693,7 +65755,7 @@
         "stat:stat_descriptions:experience_gain_+%",
         "stat:stat_descriptions:map_experience_gain_+%"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "experience_gain",
@@ -76679,30 +76741,36 @@
       "sources": [
         "stat:stat_descriptions:local_socketed_items_effect_+%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedAugmentItemEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "1% increased effect of Socketed Runes": {
       "sources": [
         "stat:stat_descriptions:local_rune_effect_+%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedRuneEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "1% increased effect of Socketed Soul Cores": {
       "sources": [
         "stat:stat_descriptions:local_soul_core_effect_+%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedSoulCoreEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "1% increased effect of Sorcery Ward": {
@@ -85074,20 +85142,24 @@
       "sources": [
         "unique:Darkness Enthroned"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedAugmentItemEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "100% increased effect of Socketed Soul Cores": {
       "sources": [
         "unique:Mahuxotl's Machination"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedSoulCoreEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "100% increased for each time you've been": {
@@ -114240,11 +114312,12 @@
       "sources": [
         "translation:前缀效果提高 {0}%"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14",
+      "special_rule_id": "item_affix_effect_in_item_text",
       "matching_special_rules": [
+        "item_affix_effect_in_item_text",
         "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14"
       ]
     },
@@ -114382,11 +114455,12 @@
       "sources": [
         "translation:后缀效果提高 {0}%"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14",
+      "special_rule_id": "item_affix_effect_in_item_text",
       "matching_special_rules": [
+        "item_affix_effect_in_item_text",
         "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14"
       ]
     },
@@ -116188,7 +116262,7 @@
       "sources": [
         "translation:获得的经验值提高 {0}%"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "experience_gain",
@@ -130402,30 +130476,36 @@
       "sources": [
         "translation:镶嵌的增幅器物品效果提高 {0}%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedAugmentItemEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "17% increased effect of Socketed Runes": {
       "sources": [
         "translation:镶嵌的符文效果提高 {0}%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedRuneEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "17% increased effect of Socketed Soul Cores": {
       "sources": [
         "translation:镶嵌的灵核效果提高 {0}%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedSoulCoreEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "17% increased effect of Sorcery Ward": {
@@ -149137,11 +149217,12 @@
       "sources": [
         "translation:前缀效果降低 {0}%"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14",
+      "special_rule_id": "item_affix_effect_in_item_text",
       "matching_special_rules": [
+        "item_affix_effect_in_item_text",
         "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14"
       ]
     },
@@ -149279,11 +149360,12 @@
       "sources": [
         "translation:后缀效果降低 {0}%"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14",
+      "special_rule_id": "item_affix_effect_in_item_text",
       "matching_special_rules": [
+        "item_affix_effect_in_item_text",
         "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14"
       ]
     },
@@ -150928,7 +151010,7 @@
       "sources": [
         "translation:获得的经验值降低 {0}%"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "experience_gain",
@@ -163716,30 +163798,36 @@
       "sources": [
         "translation:镶嵌的增幅器物品效果降低 {0}%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedAugmentItemEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "17% reduced effect of Socketed Runes": {
       "sources": [
         "translation:镶嵌的符文效果降低 {0}%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedRuneEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "17% reduced effect of Socketed Soul Cores": {
       "sources": [
         "translation:镶嵌的灵核效果降低 {0}%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedSoulCoreEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "17% reduced effect of Sorcery Ward": {
@@ -169227,12 +169315,15 @@
     },
     "200% increased effect of Socketed Runes": {
       "sources": [
+        "rule:socketed_item_effect_in_item_text",
         "unique:Runeseeker's Call"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedRuneEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "2000 Mana, no more than once every 2 seconds": {
@@ -170202,6 +170293,18 @@
       "vendor_status": "parsed",
       "mod_names": [
         "FullyBrokenArmourEffect"
+      ]
+    },
+    "24% increased effect of Socketed Augment Items": {
+      "sources": [
+        "rule:socketed_item_effect_in_item_text"
+      ],
+      "status": "no_effect",
+      "vendor_status": "parsed",
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "24% increased maximum": {
@@ -176012,10 +176115,12 @@
         "mods:equipment:AlloyEffectOfSocketedAugments1",
         "search_mods:alloy:AlloyEffectOfSocketedAugments1"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedAugmentItemEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "30% increased for": {
@@ -177247,10 +177352,12 @@
       "sources": [
         "unique:Mahuxotl's Machination"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedSoulCoreEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "34% increased Attack Damage": {
@@ -181521,6 +181628,19 @@
         "CriticalStrikeChance"
       ]
     },
+    "46% increased Effect of Prefixes": {
+      "sources": [
+        "rule:item_affix_effect_in_item_text"
+      ],
+      "status": "no_effect",
+      "vendor_status": "unsupported",
+      "mod_names": [],
+      "special_rule_id": "item_affix_effect_in_item_text",
+      "matching_special_rules": [
+        "item_affix_effect_in_item_text",
+        "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14"
+      ]
+    },
     "46% increased Projectile Speed": {
       "sources": [
         "mods:equipment:ProjectileSpeed5"
@@ -182214,7 +182334,7 @@
         "rule:experience_gain",
         "unique:Cornathaum"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "experience_gain",
@@ -184171,10 +184291,24 @@
       "sources": [
         "unique:Darkness Enthroned"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedAugmentItemEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
+      ]
+    },
+    "50% increased effect of Socketed Soul Cores": {
+      "sources": [
+        "rule:socketed_item_effect_in_item_text"
+      ],
+      "status": "no_effect",
+      "vendor_status": "parsed",
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "50% increased if has started in the past 2 seconds": {
@@ -185505,6 +185639,19 @@
         "BowDamage"
       ]
     },
+    "59% increased Effect of Suffixes": {
+      "sources": [
+        "rule:item_affix_effect_in_item_text"
+      ],
+      "status": "no_effect",
+      "vendor_status": "unsupported",
+      "mod_names": [],
+      "special_rule_id": "item_affix_effect_in_item_text",
+      "matching_special_rules": [
+        "item_affix_effect_in_item_text",
+        "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14"
+      ]
+    },
     "59% increased Fire Damage if you've collected a Fire Infusion in the last 8 seconds": {
       "sources": [
         "mods:equipment:GenesisTreeBeltFireDamageIfFireInfusionCollectedLast8SecondsCrafted",
@@ -186592,11 +186739,12 @@
       "sources": [
         "mods:jewel:CraftedJewelPrefixEffect"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14",
+      "special_rule_id": "item_affix_effect_in_item_text",
       "matching_special_rules": [
+        "item_affix_effect_in_item_text",
         "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14"
       ]
     },
@@ -186604,11 +186752,12 @@
       "sources": [
         "mods:jewel:CraftedJewelSuffixEffect"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14",
+      "special_rule_id": "item_affix_effect_in_item_text",
       "matching_special_rules": [
+        "item_affix_effect_in_item_text",
         "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14"
       ]
     },
@@ -186880,10 +187029,12 @@
         "mods:equipment:EssenceLocalRuneAndSoulCoreEffect1",
         "search_mods:essence:EssenceLocalRuneAndSoulCoreEffect1"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedAugmentItemEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "60% increased from Equipped": {
@@ -187289,10 +187440,12 @@
       "sources": [
         "unique:Mahuxotl's Machination"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedSoulCoreEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "666% increased Armour and Energy Shield": {
@@ -187309,10 +187462,12 @@
       "sources": [
         "unique:Mahuxotl's Machination"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedSoulCoreEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "67% increased Armour": {
@@ -237341,7 +237496,7 @@
         "stat:stat_descriptions:warping_rune_add_item_tag_3",
         "translation:可以重置盛怒词缀"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "item_can_roll_modifiers",
@@ -237354,7 +237509,7 @@
         "stat:stat_descriptions:warping_rune_add_item_tag_1",
         "translation:可以重置塑时术师词缀"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "item_can_roll_modifiers",
@@ -237367,7 +237522,7 @@
         "stat:stat_descriptions:warping_rune_add_item_tag_5",
         "translation:可以重置腐蚀词缀"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "item_can_roll_modifiers",
@@ -237380,7 +237535,7 @@
         "stat:stat_descriptions:warping_rune_add_item_tag_6",
         "translation:可以选取毁灭词缀"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "item_can_roll_modifiers",
@@ -237394,7 +237549,7 @@
         "stat:stat_descriptions:warping_rune_add_item_tag_4",
         "translation:可以重置神射手词缀"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "item_can_roll_modifiers",
@@ -237407,7 +237562,7 @@
         "stat:stat_descriptions:display_item_generation_can_roll_minion_affixes",
         "translation:可以附加召唤词缀"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "item_can_roll_modifiers",
@@ -237424,7 +237579,7 @@
         "stat:stat_descriptions:display_item_can_also_roll_ring_mods",
         "translation:可以重置戒指词缀"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "item_can_roll_modifiers",
@@ -237438,7 +237593,7 @@
         "stat:stat_descriptions:warping_rune_add_item_tag_2",
         "translation:可以重置灵魂词缀"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "item_can_roll_modifiers",
@@ -237451,7 +237606,7 @@
         "stat:stat_descriptions:display_item_generation_can_roll_totem_affixes",
         "translation:可以附加图腾词缀"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "item_can_roll_modifiers",
@@ -239679,15 +239834,17 @@
     "Carry a Chest which adds 20 Inventory Slots": {
       "sources": [
         "passive:60634",
+        "rule:titan_inventory_chest",
         "stat:stat_descriptions:titan_additional_inventory",
         "stat:stat_descriptions:titan_expanded_main_inventory",
         "translation:携带一个箱子，附加 20 个物品栏位"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_carry_a_chest_which_adds_d_inventory_slo_343ad014",
+      "special_rule_id": "titan_inventory_chest",
       "matching_special_rules": [
+        "titan_inventory_chest",
         "vnd_carry_a_chest_which_adds_d_inventory_slo_343ad014"
       ]
     },
@@ -257990,7 +258147,7 @@
         "stat:stat_descriptions:dummy_display_stat_rune_create_jewel_socket",
         "translation:摧毁该物品上的所有增幅器插槽，以生成一个珠宝插槽"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "rune_creates_jewel_socket",
@@ -301089,16 +301246,18 @@
     },
     "Historic": {
       "sources": [
+        "rule:timeless_jewel_description",
         "stat:stat_descriptions:local_is_alternate_tree_jewel",
         "translation:史实",
         "unique:Heroic Tragedy",
         "unique:Undying Hate"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_historic_ec4b36ed",
+      "special_rule_id": "timeless_jewel_description",
       "matching_special_rules": [
+        "timeless_jewel_description",
         "vnd_historic_ec4b36ed"
       ]
     },
@@ -305298,7 +305457,7 @@
         "stat:passive_skill_stat_descriptions:keystone_chaos_inoculation",
         "translation:生命上限变成 1\n免疫混沌伤害和流血"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "parsed",
       "mod_names": [],
       "special_rule_id": "immune_to_chaos_damage_and_bleeding",
@@ -344175,17 +344334,17 @@
     },
     "Only Runes can be Socketed in this item": {
       "sources": [
+        "rule:item_crafting_properties",
         "stat:stat_descriptions:local_can_only_socket_runes",
         "translation:该物品仅能镶嵌符文",
         "unique:Runeseeker's Call"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedRunesOnly"
-      ],
-      "special_rule_id": "vnd_only_runes_can_be_socketed_in_this_item_20f3b9f5",
+      "mod_names": [],
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_only_runes_can_be_socketed_in_this_item_20f3b9f5"
       ]
     },
@@ -344204,13 +344363,12 @@
         "translation:该物品仅能镶嵌灵核",
         "unique:Atziri's Splendour"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedSoulCoresOnly"
-      ],
-      "special_rule_id": "vnd_only_soul_cores_can_be_socketed_in_this_39e2f356",
+      "mod_names": [],
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_only_soul_cores_can_be_socketed_in_this_39e2f356"
       ]
     },
@@ -345591,11 +345749,12 @@
         "translation:赞颂以阿曼娜姆之名（阿曼娜姆-乌拉曼）亵渎的 {1} 个灵魂\n范围内的天赋被深渊抑制\n渎灵会使物品不稳定。",
         "unique:Undying Hate"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_passives_in_radius_are_conquered_by_the_7f743382",
+      "special_rule_id": "timeless_jewel_description",
       "matching_special_rules": [
+        "timeless_jewel_description",
         "vnd_passives_in_radius_are_conquered_by_the_7f743382"
       ]
     },
@@ -345610,16 +345769,18 @@
         "translation:用 {1} 枚金币纪念维多里奥\n范围内的天赋被永恒帝国抑制",
         "translation:用 {1} 枚金币纪念维多里奥（卡迪罗 - 维多里奥）\n范围内的天赋被永恒帝国抑制"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_passives_in_radius_are_conquered_by_the_7f743382",
+      "special_rule_id": "timeless_jewel_description",
       "matching_special_rules": [
+        "timeless_jewel_description",
         "vnd_passives_in_radius_are_conquered_by_the_7f743382"
       ]
     },
     "Passives in radius are Conquered by the Kalguur": {
       "sources": [
+        "rule:timeless_jewel_description",
         "translation:纪念 {1} 件梅德维德世系值得传唱的事迹\n范围内的天赋被卡古兰抑制",
         "translation:纪念 {1} 件梅德维德（沃拉娜-欧罗什）世系值得传唱的事迹\n范围内的天赋被卡古兰抑制",
         "translation:纪念 {1} 件欧罗什世系值得传唱的事迹\n范围内的天赋被卡古兰抑制",
@@ -345628,11 +345789,12 @@
         "translation:纪念 {1} 件沃拉娜（沃拉娜-欧罗什）世系值得传唱的事迹\n范围内的天赋被卡古兰抑制",
         "unique:Heroic Tragedy"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_passives_in_radius_are_conquered_by_the_7f743382",
+      "special_rule_id": "timeless_jewel_description",
       "matching_special_rules": [
+        "timeless_jewel_description",
         "vnd_passives_in_radius_are_conquered_by_the_7f743382"
       ]
     },
@@ -345647,11 +345809,12 @@
         "translation:获得阿克雅麾下 {1} 名武士的领导权\n范围内的天赋被卡鲁抑制",
         "translation:获得阿克雅（阿克雅 - 拉凯尔塔）麾下 {1} 名武士的领导权\n范围内的天赋被卡鲁抑制"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_passives_in_radius_are_conquered_by_the_7f743382",
+      "special_rule_id": "timeless_jewel_description",
       "matching_special_rules": [
+        "timeless_jewel_description",
         "vnd_passives_in_radius_are_conquered_by_the_7f743382"
       ]
     },
@@ -345666,11 +345829,12 @@
         "translation:在迪虚瑞特的阿卡拉中指派 {1} 名德卡拉的服务\n范围中的天赋被马拉克斯抑制",
         "translation:在迪虚瑞特（安赛娜丝 - 娜斯玛）的阿卡拉中指派 {1} 名德卡拉的服务\n范围中的天赋被马拉克斯抑制"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_passives_in_radius_are_conquered_by_the_7f743382",
+      "special_rule_id": "timeless_jewel_description",
       "matching_special_rules": [
+        "timeless_jewel_description",
         "vnd_passives_in_radius_are_conquered_by_the_7f743382"
       ]
     },
@@ -345685,11 +345849,12 @@
         "translation:赞美 {1} 名被神主阿瓦留斯转化的新信徒\n范围内的天赋被圣堂教团抑制",
         "translation:赞美 {1} 名被神主阿瓦留斯（神主阿瓦留斯 - 玛萨留斯）转化的新信徒\n范围内的天赋被圣堂教团抑制"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_passives_in_radius_are_conquered_by_the_7f743382",
+      "special_rule_id": "timeless_jewel_description",
       "matching_special_rules": [
+        "timeless_jewel_description",
         "vnd_passives_in_radius_are_conquered_by_the_7f743382"
       ]
     },
@@ -345705,11 +345870,12 @@
         "translation:以阿华纳的名义用 {1} 名祭品之血浸染\n范围内的天赋被瓦尔抑制",
         "translation:以阿华纳（阿华纳 - 夏巴夸亚）的名义用 {1} 名祭品之血浸染 \n范围内的天赋被瓦尔抑制"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_passives_in_radius_are_conquered_by_the_7f743382",
+      "special_rule_id": "timeless_jewel_description",
       "matching_special_rules": [
+        "timeless_jewel_description",
         "vnd_passives_in_radius_are_conquered_by_the_7f743382"
       ]
     },
@@ -357450,16 +357616,18 @@
     },
     "Raven-Touched": {
       "sources": [
+        "rule:item_crafting_properties",
         "stat:stat_descriptions:local_item_can_be_instilled",
         "translation:渡鸦触碰",
         "unique:Horror's Flight",
         "unique:The Auspex"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_raven_touched_9faa2143",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_raven_touched_9faa2143"
       ]
     },
@@ -363378,7 +363546,7 @@
       "sources": [
         "stat:stat_descriptions:remnant_pickup_range_+%"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "remnant_pickup_range",
@@ -363390,7 +363558,7 @@
       "sources": [
         "stat:stat_descriptions:remnant_pickup_range_+%_if_you_have_at_least_100_tribute"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "remnant_pickup_range",
@@ -363402,7 +363570,7 @@
       "sources": [
         "translation:残片收集距离延长 {0}%"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "remnant_pickup_range",
@@ -363414,7 +363582,7 @@
       "sources": [
         "translation:至少有 100 个贡品时，收集残片的距离延长 {0}%"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "remnant_pickup_range",
@@ -363427,7 +363595,7 @@
         "mods:equipment:RemnantPickupRadiusIncrease1",
         "search_mods:breach:RemnantPickupRadiusIncrease1"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "remnant_pickup_range",
@@ -363440,7 +363608,7 @@
         "mods:equipment:RemnantPickupRadiusIncrease2",
         "search_mods:breach:RemnantPickupRadiusIncrease2"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "remnant_pickup_range",
@@ -363452,7 +363620,7 @@
       "sources": [
         "search_mods:desecrated:AbyssModRingAmuletAmanamuSuffixRemnantCollectionRange"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "remnant_pickup_range",
@@ -363465,7 +363633,7 @@
         "mods:equipment:RemnantPickupRadiusIncrease3",
         "search_mods:breach:RemnantPickupRadiusIncrease3"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "remnant_pickup_range",
@@ -363478,7 +363646,7 @@
         "mods:equipment:RemnantPickupRadiusIncrease4",
         "search_mods:breach:RemnantPickupRadiusIncrease4"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "remnant_pickup_range",
@@ -363492,7 +363660,7 @@
         "rule:remnant_pickup_range",
         "search_mods:alloy:AlloyRemnantPickupRange1"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "remnant_pickup_range",
@@ -363505,7 +363673,7 @@
         "mods:equipment:RemnantPickupRadiusIncrease5",
         "search_mods:breach:RemnantPickupRadiusIncrease5"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "remnant_pickup_range",

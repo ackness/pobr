@@ -68,7 +68,7 @@ fn every_line_says_what_became_of_it() {
             "+1 to Level of all Spell Skills",
             "Adds 5 to 10 Physical Damage to Attacks",
             "16% increased Rarity of Items found",
-            "60% increased Effect of Suffixes",
+            "Targets affected by Abyssal Wasting you inflict are Hindered",
         ],
     );
 
@@ -129,12 +129,12 @@ fn every_line_says_what_became_of_it() {
         "5% increased Experience Gain",
     );
     assert_eq!(experience.status, LineStatus::NoEffect);
-    let suffixes = line(
+    let hindered = line(
         &ledger,
         "item.amulet.explicit",
-        "60% increased Effect of Suffixes",
+        "Targets affected by Abyssal Wasting you inflict are Hindered",
     );
-    assert_eq!(suffixes.status, LineStatus::Unmodelled);
+    assert_eq!(hindered.status, LineStatus::Unmodelled);
 
     // No rule parses it: listed with its exact source, and among the unparsed.
     let unknown = "Wields a feather that sings at dawn";
