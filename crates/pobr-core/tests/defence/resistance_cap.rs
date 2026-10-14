@@ -108,3 +108,38 @@ fn parses_maximum_resistance_modifiers() {
         ModName::from("MaximumAllElementalResistances")
     );
 }
+
+/// Smith of Kitava: "Modifiers to Fire Resistance also grant Cold and
+/// Lightning Resistance at 50% of their value" and "Modifiers to Maximum Fire
+/// Resistance also grant Maximum Cold and Lightning Resistance". The
+/// elemental resistance penalty is not a modifier to Fire Resistance.
+#[test]
+fn fire_resistance_shares_with_cold_and_lightning() {
+    let mut db = ModDb::new();
+    for line in [
+        "Modifiers to Fire Resistance also grant Cold and Lightning Resistance at 50% of their value",
+        "Modifiers to Maximum Fire Resistance also grant Maximum Cold and Lightning Resistance",
+        "+100% to Fire Resistance",
+        "+5% to Maximum Fire Resistance",
+        "+10% to Cold Resistance",
+    ] {
+        let parsed = parse_mod(line).unwrap();
+        assert!(!parsed.mods.is_empty(), "{line}");
+        for modifier in parsed.mods {
+            db.add_mod(modifier);
+        }
+    }
+    for modifier in pobr_core::ingest::campaign::CampaignProgress::Endgame.modifiers() {
+        db.add_mod(modifier);
+    }
+
+    let output = calculate_minimal(&db, &CalcConfig::new(), &MinimalInput::default());
+
+    // Fire: 100 − 60 = 40, below its maximum of 80.
+    assert_eq!(output.fire_resistance, 40.0);
+    // Cold: 10 + 50 − 60 = 0, Lightning: 50 − 60 = −10; both reach 80.
+    assert_eq!(output.cold_resistance, 0.0);
+    assert_eq!(output.lightning_resistance, -10.0);
+    assert_eq!(output.max_cold_resistance, 80.0);
+    assert_eq!(output.max_lightning_resistance, 80.0);
+}

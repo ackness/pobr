@@ -3511,6 +3511,40 @@
         "Enemies in your Presence Resist Elemental Damage based on their Lowest Resistance"
       ],
       "source_note": "Game stat enemies_in_presence_elemental_damage_resisted_by_lowest_elemental_resistance: an enemy in your Presence meets fire, cold and lightning damage with the lowest of its three elemental resistances. It is the enemy's property, so it reaches every elemental hit, damage over time and ailment through the enemy's resistance (calc::offence::enemy_resist_final); penetration lowers the resistance it names, the one the enemy uses."
+    },
+    {
+      "id": "fire_resistance_also_grants_cold_and_lightning_resistance",
+      "pattern": "modifiers to fire resistance also grant cold and lightning resistance at (\\d+)% of their value",
+      "mods": [
+        {
+          "name": "FireResistanceAlsoGrantsColdAndLightning",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "resistance-sharing",
+      "examples": [
+        "Modifiers to Fire Resistance also grant Cold and Lightning Resistance at 50% of their value"
+      ],
+      "source_note": "Game stat modifiers_to_fire_resistance_also_apply_to_cold_lightning_resistance_at_%_value (Smith of Kitava's Coal Stoker): every modifier to Fire Resistance adds this share of its value to Cold and Lightning Resistance; the elemental resistance penalty is not a modifier (calc::offence::resolve_resistance)."
+    },
+    {
+      "id": "maximum_fire_resistance_also_grants_maximum_cold_and_lightning_resistance",
+      "pattern": "modifiers to maximum fire resistance also grant maximum cold and lightning resistance",
+      "mods": [
+        {
+          "name": "MaximumFireResistanceAlsoGrantsColdAndLightning",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "resistance-sharing",
+      "examples": [
+        "Modifiers to Maximum Fire Resistance also grant Maximum Cold and Lightning Resistance"
+      ],
+      "source_note": "Game stat modifiers_to_maximum_fire_resistance_apply_to_maximum_cold_and_lightning_resistance (Smith of Kitava's Forged in Flame): every modifier to Maximum Fire Resistance also adds its value to Maximum Cold and Lightning Resistance (calc::offence::resolve_resistance)."
     }
   ]
 }

@@ -545,20 +545,7 @@ pub fn compile_flags(names: &[String]) -> ModFlags {
 
 /// KeywordFlag name → bit (matches special_mod::keyword_bit's coverage).
 pub fn keyword_bit(name: &str) -> Option<KeywordFlags> {
-    Some(match name {
-        "Aura" => KeywordFlags::AURA,
-        "Curse" => KeywordFlags::CURSE,
-        "Arrow" => KeywordFlags::ARROW,
-        "Totem" => KeywordFlags::TOTEM,
-        "Attack" => KeywordFlags::ATTACK,
-        "Spell" => KeywordFlags::SPELL,
-        "Hit" => KeywordFlags::HIT,
-        "Ailment" => KeywordFlags::AILMENT,
-        "Poison" => KeywordFlags::POISON,
-        "Bleed" => KeywordFlags::BLEED,
-        "Ignite" => KeywordFlags::IGNITE,
-        _ => return None,
-    })
+    KeywordFlags::from_name(name)
 }
 
 /// Keyword-name array → bit set.

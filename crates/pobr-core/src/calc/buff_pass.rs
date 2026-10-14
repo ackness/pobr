@@ -364,7 +364,11 @@ pub fn buff_pass(env: &mut Env) {
                 // type bits (vendor's skillCfg), so scoped mods (e.g.
                 // "Banner Skills have N% increased Aura Magnitudes"'s
                 // SkillTypes(Banner) tag) only match the corresponding aura.
-                let aura_cfg = env.cfg.clone().with_skill_types(spec.skill_types);
+                let aura_cfg = env
+                    .cfg
+                    .clone()
+                    .with_skill_types(spec.skill_types)
+                    .with_keyword_flags(crate::skill_env::skill_keyword_flags(spec.skill_types));
                 let names: Vec<ModName> = AURA_SELF_EFFECT_NAMES
                     .iter()
                     .map(|n| ModName::from(*n))
@@ -420,9 +424,15 @@ pub fn buff_pass(env: &mut Env) {
                 // Chayula) has what raises the Remnants the character
                 // creates too ("Remnants you create have 15% increased
                 // effect").
-                let mut inc = env.player.mod_db.sum(ModType::Inc, &env.cfg, &inc_names)
+                // "increased Warcry Effect" is a Buff effect of warcries:
+                // the buff's own skill says which keywords it has.
+                let buff_cfg = env
+                    .cfg
+                    .clone()
+                    .with_keyword_flags(crate::skill_env::skill_keyword_flags(spec.skill_types));
+                let mut inc = env.player.mod_db.sum(ModType::Inc, &buff_cfg, &inc_names)
                     + spec.local_effect_inc;
-                let mut more = env.player.mod_db.more(&env.cfg, &more_names)
+                let mut more = env.player.mod_db.more(&buff_cfg, &more_names)
                     * spec.magnitude
                     * spec.local_effect_more;
                 if SkillTypes::from_pob2_name("GeneratesRemnants")

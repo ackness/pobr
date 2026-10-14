@@ -178,6 +178,13 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         }
     }
 
+    // Exposure, after the buffs and debuffs that apply it and the defences
+    // some of it scales with: every `<El>Exposure` on the enemy comes down to
+    // the strongest, folded into its resistance. The sole reduction point:
+    // `CalculationSession::apply_enemy_exposure` only injects (reducing
+    // twice would lower the resistance twice).
+    super::setup_env::reduce_enemy_exposure(&mut env.enemy.mod_db, &env.player.mod_db, &env.cfg);
+
     // Warcry uptime machinery (backlog #9, vendor CalcOffence.lua:3203-3256): injects the
     // uptime-scaled warcry offensive effect (Infernal's `DamageGainAsFire`) into the player db
     // **before** hand pass — vendor likewise writes into skillModList before the damage section,
@@ -305,7 +312,7 @@ pub(crate) fn minion_cfg(env: &Env, minion: &super::Actor) -> CalcConfig {
     {
         cfg = cfg
             .with_flags(skill.flags())
-            .with_keyword_flags(KeywordFlags::NONE)
+            .with_keyword_flags(crate::skill_env::skill_keyword_flags(skill.type_bits()))
             .with_skill_types(skill.type_bits())
             .with_skill_name(None)
             .with_damage_keywords(Vec::new());

@@ -281,6 +281,10 @@ pub(super) fn stage_build_cfg(
         })
         .flatten();
     cfg = cfg.with_skill_distance(skill_distance);
+    // What the main skill is a skill of: "Damage with Warcries", "with Fire
+    // Skills" and "Curse Skills" ask its types.
+    cfg.keyword_flags =
+        cfg.keyword_flags | pobr_core::skill_env::skill_keyword_flags(main.skill_type_bits);
     // SkillStatMap's skill_can_fire_arrows -> skillFlags.arrow ->
     // CalcActiveSkill's KeywordFlag.Arrow. Use the selected stat set, since
     // secondary projectiles need not be arrows even when fired from a bow.

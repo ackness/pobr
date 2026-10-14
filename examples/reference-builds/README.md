@@ -100,5 +100,7 @@ mise run builds:fetch examples/reference-builds/holdout --pick last
 | 2026-10-15（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 12（52%） | 978/1076（90.9%） |
 | 2026-10-15（第三十四轮：毒、点燃等的层数按 “deal damage #% faster” 缩短的持续时间估算，“duration of Ailments you inflict” 计入持续时间；同一诅咒取最强的一份；“per 1% Chance to Block” 读取格挡率；Decompose 的毒云必定中毒；尸爆的伤害类型取自 stat id；Into the Breach 的紫焰与残骸效果；“你和 Presence 内的友军” 类词条角色自己也有；Uhtred 系只把辅助宝石算作“其他辅助”；“Skills from Corrupted Gems” 判断主技能的宝石；Embitter 把获得的额外伤害都记为冰；技能品质与 Projectile Acceleration 的投射物速度） | `tuned/` | 46 | 43（93%） | 2054/2146（95.7%） |
 | 2026-10-15（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 12（52%） | 979/1076（91.0%） |
+| 2026-10-15（第三十五轮：词条规则的关键字不再丢弃，“Damage with Warcries”“with Fire Skills” 只作用于对应技能，技能按类型带关键字；Smith of Kitava 的火抗同时给冰电抗；Refraction III 的旗帜按护甲施加元素曝露；Culling Strike；配置的 Arcane Surge 在战斗中生效；Fire Spell on Hit 触发的法术无消耗） | `tuned/` | 46 | 43（93%） | 2062/2146（96.1%） |
+| 2026-10-15（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 13（57%） | 984/1076（91.4%） |
 
 吻合行里有按游戏规则有意不同于参考值的行（例如护身符授予的技能不保留精魄，见 `reference_report.rs` 基线旁的说明），所以上限不是 100%。

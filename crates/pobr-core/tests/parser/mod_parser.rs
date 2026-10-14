@@ -1532,3 +1532,36 @@ fn a_bear_skills_conversion_is_for_bear_skills() {
     assert_eq!(db.sum(ModType::Base, &bear_attack, &names), 80.0);
     assert_eq!(db.sum(ModType::Base, &attack, &names), 0.0);
 }
+
+/// "Damage with Warcries" is damage of warcries and "with Fire Skills" of
+/// skills with the Fire type: a skill answers to the keywords of its types.
+#[test]
+fn skill_keywords_restrict_to_the_skills_of_those_types() {
+    use pobr_data::skill::SkillTypes;
+    let warcry = parse_mod("40% increased Damage with Warcries")
+        .unwrap()
+        .mods;
+    let fire = parse_mod("20% increased Damage with Fire Skills")
+        .unwrap()
+        .mods;
+    assert_eq!(warcry[0].keyword_flags, KeywordFlags::WARCRY);
+    assert_eq!(fire[0].keyword_flags, KeywordFlags::FIRE);
+
+    let types = |names: &[&str]| {
+        names
+            .iter()
+            .filter_map(|name| SkillTypes::from_pob2_name(name))
+            .fold(SkillTypes::NONE, |all, one| all | one)
+    };
+    let skill = |names: &[&str]| {
+        CalcConfig::new()
+            .with_keyword_flags(pobr_core::skill_env::skill_keyword_flags(types(names)))
+    };
+    let infernal_cry = skill(&["Warcry", "Fire", "Area"]);
+    let detonate_dead = skill(&["Spell", "Fire", "Physical", "Area"]);
+    let ice_shot = skill(&["Attack", "Cold", "Projectile"]);
+    assert!(warcry[0].matches(&infernal_cry));
+    assert!(!warcry[0].matches(&detonate_dead));
+    assert!(fire[0].matches(&detonate_dead));
+    assert!(!fire[0].matches(&ice_shot));
+}

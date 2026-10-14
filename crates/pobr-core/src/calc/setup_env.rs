@@ -451,7 +451,19 @@ pub fn reduce_enemy_exposure(db: &mut ModDb, player_db: &ModDb, cfg: &CalcConfig
         ("Cold", "ColdExposure", "ColdResist"),
         ("Lightning", "LightningExposure", "LightningResist"),
     ] {
-        let raw = db.max_of(ModType::Base, cfg, &[ModName::from(exposure_name)]);
+        // Refraction III: "Banner applies {0}% Elemental Exposure per 1000
+        // Armour" (`support_tempered_valour_banner_applies_%_elemental_exposure_per_1000_armour`),
+        // per whole 1000 of the character's Armour.
+        let per_armour = player_db.sum(
+            ModType::Base,
+            cfg,
+            &[ModName::from(
+                crate::rules::skill_stats::ELEMENTAL_EXPOSURE_PER_1000_ARMOUR,
+            )],
+        ) * (cfg.stats.get("Armour").copied().unwrap_or(0.0) / 1000.0).floor();
+        let raw = db
+            .max_of(ModType::Base, cfg, &[ModName::from(exposure_name)])
+            .max(per_armour);
         if raw <= 0.0 {
             continue;
         }

@@ -27,10 +27,10 @@
     "scope": "Special-rule schemas, handlers, captures, operations and scopes; generic parser schema/compile. StatId is open; recognition is not calculation support. Overlap audit covers sampled source text only.",
     "input_sha256": {
       "0.5.5.4.2/generated/special_derived.json": "d18157d99c7620f096aa485d1f93d33166a578d45a9e4a064817d629e023a105",
-      "0.5.5.4.2/generated/special_vendor.json": "2fff4cae691c7770fdc2d401d81fcc5022f04affd0c10bc7c0cb4c6090f4883e",
+      "0.5.5.4.2/generated/special_vendor.json": "c202035c54924c23ce48559538a8d2068b444d9571a2f986fe43105276e37426",
       "0.5.5.4.2/overlay/mod_parser_rules.json": "c719c7c3eeed65048067f264fd0a62f81cc20d89b917f05e2aa53753166242af",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
-      "overlay-common/special_mods.json": "75f2f511a6d4937867e63c232d292191ffc862bd152b001f9262276fc5eec7f3"
+      "overlay-common/special_mods.json": "78a620024785808373e836c8b8763c28315ece1004406220b308e657997e9a84"
     },
     "effective_rules": [
       {
@@ -1393,6 +1393,22 @@
       },
       {
         "id": "enemies_in_presence_resist_elemental_damage_by_lowest_resistance",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "fire_resistance_also_grants_cold_and_lightning_resistance",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "maximum_fire_resistance_also_grants_maximum_cold_and_lightning_resistance",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -2933,6 +2949,14 @@
       },
       {
         "id": "vnd_attack_projectiles_always_inflict_bleedi_e803a8c2",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_attack_skills_can_have_d_additional_tote_cf83bbd4",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
         ],
@@ -6043,6 +6067,22 @@
       },
       {
         "id": "vnd_d_of_consecrated_path_and_purifying_flam_d204c2ed",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_d_of_damage_dealt_by_y_o_u_r_mines_is_le_b9733f78",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_d_of_damage_dealt_by_y_o_u_r_totems_is_l_2f9e57f5",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
         ],
@@ -12824,6 +12864,14 @@
         "non_effective_fields": []
       },
       {
+        "id": "vnd_movement_skills_cost_no_mana_ba4488c2",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
         "id": "vnd_movement_speed_cannot_be_modified_to_bel_c40e853d",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
@@ -13513,6 +13561,14 @@
       },
       {
         "id": "vnd_physical_damage_taken_bypasses_energy_sh_449fd55f",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_physical_spell_critical_hits_build_pin_67287472",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
         ],
@@ -14456,6 +14512,14 @@
         "non_effective_fields": []
       },
       {
+        "id": "vnd_retaliation_skills_have_d_increased_spee_5e75fcae",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
         "id": "vnd_rolling_magma_fires_an_additional_projec_c87c5d6c",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
@@ -15140,6 +15204,14 @@
         ]
       },
       {
+        "id": "vnd_spells_consume_a_power_charge_if_able_to_d4c12975",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
         "id": "vnd_spells_deal_added_chaos_damage_equal_to_835ed7e3",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
@@ -15325,6 +15397,14 @@
       },
       {
         "id": "vnd_stormblast_icicle_and_pyroclast_mine_dea_ac088fd2",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_stormblast_icicle_and_pyroclast_mine_hav_cf8f1e1a",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
         ],
@@ -15834,6 +15914,14 @@
         "non_effective_fields": []
       },
       {
+        "id": "vnd_totems_fire_d_additional_projectiles_9daba9ef",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
         "id": "vnd_totems_gain_d_to_all_elemental_resistanc_c58f165c",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
@@ -15963,6 +16051,30 @@
       },
       {
         "id": "vnd_transfiguration_of_soul_f80fe778",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_traps_and_mines_deal_d_d_additional_phys_3f72e1d2",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_traps_and_mines_deal_d_to_d_additional_p_9dff66d3",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_traps_and_mines_have_a_d_chance_to_poiso_048ddc76",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
         ],
@@ -16700,6 +16812,14 @@
         "non_effective_fields": []
       },
       {
+        "id": "vnd_warcries_cost_no_mana_96440526",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
         "id": "vnd_warcries_count_as_having_d_additional_ne_c64d05e2",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
@@ -16781,6 +16901,22 @@
       },
       {
         "id": "vnd_warcries_have_minimum_of_d_power_6aff18b1",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_warcry_skills_cooldown_time_is_d_seconds_57057c0e",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_warcry_skills_have_d_seconds_to_cooldown_73d48ff5",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
         ],
@@ -17201,6 +17337,14 @@
       },
       {
         "id": "vnd_you_and_nearby_party_members_gain_d_rage_5a718604",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_you_and_your_totems_regenerate_d_of_life_5a64579e",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
         ],
@@ -18388,8 +18532,8 @@
   },
   "summary": {
     "no_effect": 84,
-    "parsed": 14786,
-    "pobr_gap": 2426,
+    "parsed": 14803,
+    "pobr_gap": 2410,
     "recognized_empty": 291,
     "upstream_gap": 25114
   },
@@ -331592,17 +331736,43 @@
       "sources": [
         "stat:stat_descriptions:modifiers_to_fire_resistance_also_apply_to_cold_lightning_resistance_at_%_value"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "FireResistanceAlsoGrantsColdAndLightning"
+      ],
+      "special_rule_id": "fire_resistance_also_grants_cold_and_lightning_resistance",
+      "matching_special_rules": [
+        "fire_resistance_also_grants_cold_and_lightning_resistance"
+      ]
     },
     "Modifiers to Fire Resistance also grant Cold and Lightning Resistance at 17% of their value": {
       "sources": [
         "translation:火焰抗性修正的 {}% 也作用于冰霜和闪电抗性"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "FireResistanceAlsoGrantsColdAndLightning"
+      ],
+      "special_rule_id": "fire_resistance_also_grants_cold_and_lightning_resistance",
+      "matching_special_rules": [
+        "fire_resistance_also_grants_cold_and_lightning_resistance"
+      ]
+    },
+    "Modifiers to Fire Resistance also grant Cold and Lightning Resistance at 50% of their value": {
+      "sources": [
+        "rule:fire_resistance_also_grants_cold_and_lightning_resistance"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "FireResistanceAlsoGrantsColdAndLightning"
+      ],
+      "special_rule_id": "fire_resistance_also_grants_cold_and_lightning_resistance",
+      "matching_special_rules": [
+        "fire_resistance_also_grants_cold_and_lightning_resistance"
+      ]
     },
     "Modifiers to Ignite Duration on you apply to all Elemental Ailments": {
       "sources": [
@@ -331685,12 +331855,19 @@
     },
     "Modifiers to Maximum Fire Resistance also grant Maximum Cold and Lightning Resistance": {
       "sources": [
+        "rule:maximum_fire_resistance_also_grants_maximum_cold_and_lightning_resistance",
         "stat:stat_descriptions:modifiers_to_maximum_fire_resistance_apply_to_maximum_cold_and_lightning_resistance",
         "translation:火焰抗性上限修正也作用于冰霜和闪电抗性上限"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "MaximumFireResistanceAlsoGrantsColdAndLightning"
+      ],
+      "special_rule_id": "maximum_fire_resistance_also_grants_maximum_cold_and_lightning_resistance",
+      "matching_special_rules": [
+        "maximum_fire_resistance_also_grants_maximum_cold_and_lightning_resistance"
+      ]
     },
     "Modifiers to Melee Strike Range also apply to this Skill's Area radius": {
       "sources": [
@@ -336640,9 +336817,15 @@
         "stat:stat_descriptions:movement_skills_cost_no_mana",
         "translation:位移技能不消耗魔力"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "ManaCost"
+      ],
+      "special_rule_id": "vnd_movement_skills_cost_no_mana_ba4488c2",
+      "matching_special_rules": [
+        "vnd_movement_skills_cost_no_mana_ba4488c2"
+      ]
     },
     "Movement Skills deal no Physical Damage": {
       "sources": [
@@ -347132,9 +347315,15 @@
         "stat:stat_descriptions:physical_spell_damage_can_pin_on_critical_hit",
         "translation:物理法术暴击击中造成定身积蓄"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "CanPin"
+      ],
+      "special_rule_id": "vnd_physical_spell_critical_hits_build_pin_67287472",
+      "matching_special_rules": [
+        "vnd_physical_spell_critical_hits_build_pin_67287472"
+      ]
     },
     "Physical Stun buildup modifier@17%": {
       "sources": [
@@ -382628,9 +382817,15 @@
       "sources": [
         "stat:passive_skill_stat_descriptions:ascendancy_lich_spells_consume_power_charges_for_spell_damage_+%_final"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "Damage"
+      ],
+      "special_rule_id": "vnd_spells_consume_a_power_charge_if_able_to_d4c12975",
+      "matching_special_rules": [
+        "vnd_spells_consume_a_power_charge_if_able_to_d4c12975"
+      ]
     },
     "Spells consume a Power Charge if able to deal 17% less Damage": {
       "sources": [
@@ -382644,9 +382839,15 @@
       "sources": [
         "translation:法术可以消耗一个暴击球，使造成的伤害总增 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "Damage"
+      ],
+      "special_rule_id": "vnd_spells_consume_a_power_charge_if_able_to_d4c12975",
+      "matching_special_rules": [
+        "vnd_spells_consume_a_power_charge_if_able_to_d4c12975"
+      ]
     },
     "Spells deal 17% increased Area Damage while in Blood Stance": {
       "sources": [
@@ -384757,17 +384958,29 @@
       "sources": [
         "stat:stat_descriptions:stormblast_icicle_pyroclast_mine_aura_effect_+%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "AuraEffect"
+      ],
+      "special_rule_id": "vnd_stormblast_icicle_and_pyroclast_mine_hav_cf8f1e1a",
+      "matching_special_rules": [
+        "vnd_stormblast_icicle_and_pyroclast_mine_hav_cf8f1e1a"
+      ]
     },
     "Stormblast, Icicle and Pyroclast Mine have 17% increased Aura Effect": {
       "sources": [
         "translation:雷暴地雷、冰锥地雷和火屑地雷的光环效果提高 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "AuraEffect"
+      ],
+      "special_rule_id": "vnd_stormblast_icicle_and_pyroclast_mine_hav_cf8f1e1a",
+      "matching_special_rules": [
+        "vnd_stormblast_icicle_and_pyroclast_mine_hav_cf8f1e1a"
+      ]
     },
     "Stormblast, Icicle and Pyroclast Mine havee has 17% reduced Aura Effect": {
       "sources": [
@@ -402929,9 +403142,15 @@
       "sources": [
         "translation:图腾发射 {0} 个额外投射物"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "ProjectileCount"
+      ],
+      "special_rule_id": "vnd_totems_fire_d_additional_projectiles_9daba9ef",
+      "matching_special_rules": [
+        "vnd_totems_fire_d_additional_projectiles_9daba9ef"
+      ]
     },
     "Totems gain +1% to Chaos Resistance": {
       "sources": [
@@ -403485,28 +403704,44 @@
         "compound:stat_descriptions:trap_and_mine_minimum_added_physical_damage",
         "translation:陷阱和地雷造成 {0} - {1} 额外物理伤害"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "PhysicalDamageMax",
         "PhysicalDamageMin"
+      ],
+      "special_rule_id": "vnd_traps_and_mines_deal_d_to_d_additional_p_9dff66d3",
+      "matching_special_rules": [
+        "vnd_traps_and_mines_deal_d_to_d_additional_p_9dff66d3"
       ]
     },
     "Traps and Mines have a 1% chance to Poison on Hit": {
       "sources": [
         "stat:stat_descriptions:traps_and_mines_%_chance_to_poison"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "PoisonChance"
+      ],
+      "special_rule_id": "vnd_traps_and_mines_have_a_d_chance_to_poiso_048ddc76",
+      "matching_special_rules": [
+        "vnd_traps_and_mines_have_a_d_chance_to_poiso_048ddc76"
+      ]
     },
     "Traps and Mines have a 17% chance to Poison on Hit": {
       "sources": [
         "translation:陷阱和地雷击中时，有 {0}% 的几率使敌人中毒"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "PoisonChance"
+      ],
+      "special_rule_id": "vnd_traps_and_mines_have_a_d_chance_to_poiso_048ddc76",
+      "matching_special_rules": [
+        "vnd_traps_and_mines_have_a_d_chance_to_poiso_048ddc76"
+      ]
     },
     "Traps are thrown randomly around targeted location": {
       "sources": [
@@ -410368,17 +410603,29 @@
       "sources": [
         "stat:stat_descriptions:warcry_cooldown_modifier_ms"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "CooldownRecovery"
+      ],
+      "special_rule_id": "vnd_warcry_skills_have_d_seconds_to_cooldown_73d48ff5",
+      "matching_special_rules": [
+        "vnd_warcry_skills_have_d_seconds_to_cooldown_73d48ff5"
+      ]
     },
     "Warcry Skills have +17 seconds to Cooldown": {
       "sources": [
         "translation:战吼技能冷却时间 {:+d} 秒"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "CooldownRecovery"
+      ],
+      "special_rule_id": "vnd_warcry_skills_have_d_seconds_to_cooldown_73d48ff5",
+      "matching_special_rules": [
+        "vnd_warcry_skills_have_d_seconds_to_cooldown_73d48ff5"
+      ]
     },
     "Warcry Skills have 1% increased Area of Effect": {
       "sources": [
@@ -410457,9 +410704,15 @@
         "stat:stat_descriptions:warcry_skills_cooldown_is_4_seconds",
         "translation:战吼技能的冷却时间为 4秒"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "CooldownRecovery"
+      ],
+      "special_rule_id": "vnd_warcry_skills_cooldown_time_is_d_seconds_57057c0e",
+      "matching_special_rules": [
+        "vnd_warcry_skills_cooldown_time_is_d_seconds_57057c0e"
+      ]
     },
     "Warcry duration is 17 second": {
       "sources": [

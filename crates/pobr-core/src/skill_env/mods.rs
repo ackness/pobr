@@ -5,7 +5,7 @@
 //! letting the same logic be reused by WASM, CLI, and test harnesses.
 
 use pobr_data::catalog::DotFlags;
-use pobr_data::modifier::ModType;
+use pobr_data::modifier::{KeywordFlags, ModType};
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 use crate::Modifier;
@@ -193,6 +193,35 @@ pub fn skill_type_flags(skill_types: &[String]) -> pobr_data::modifier::ModFlags
         flags |= pobr_data::modifier::ModFlags::HIT;
     }
     flags
+}
+
+/// The keywords a skill of these types answers to: what "Damage with
+/// Warcries", "with Fire Skills", "of Movement Skills" or "Curse Skills"
+/// ask of the skill. A skill is a Fire skill when it has the Fire type, a
+/// Warcry when it has the Warcry type, and so on. Attack and Spell are damage
+/// flags ([`skill_type_flags`]); Hit, Arrow and Totem are set where the hit,
+/// the arrows and the totem are known.
+pub fn skill_keyword_flags(types: pobr_data::skill::SkillTypes) -> KeywordFlags {
+    const BY_TYPE: [(&str, KeywordFlags); 12] = [
+        ("Aura", KeywordFlags::AURA),
+        ("AppliesCurse", KeywordFlags::CURSE),
+        ("Warcry", KeywordFlags::WARCRY),
+        ("Movement", KeywordFlags::MOVEMENT),
+        ("Vaal", KeywordFlags::VAAL),
+        ("Physical", KeywordFlags::PHYSICAL),
+        ("Fire", KeywordFlags::FIRE),
+        ("Cold", KeywordFlags::COLD),
+        ("Lightning", KeywordFlags::LIGHTNING),
+        ("Chaos", KeywordFlags::CHAOS),
+        ("Trapped", KeywordFlags::TRAP),
+        ("RemoteMined", KeywordFlags::MINE),
+    ];
+    BY_TYPE
+        .iter()
+        .filter(|(name, _)| {
+            pobr_data::skill::SkillTypes::from_pob2_name(name).is_some_and(|t| types.intersects(t))
+        })
+        .fold(KeywordFlags::NONE, |flags, (_, keyword)| flags | *keyword)
 }
 
 /// The game's stat on a stat set whose hits are a projectile's: "Projectile

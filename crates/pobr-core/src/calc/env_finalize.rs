@@ -78,14 +78,9 @@ pub fn env_finalize(env: &mut Env) {
     // `Condition:*` flags already have their own dedicated bridge
     // (config/ailments), extend one by one as needed.
     bridge_enemy_condition_flags(env);
-    // Stage 8: exposure reduction (vendor CalcPerform.lua:3214-3247 "Apply
-    // exposures", after the buff loop / before offence) -- reduces every
-    // `<El>Exposure BASE` in the enemy db (from config injection + buff_pass's
-    // Debuff path, e.g. Frost Bomb) down to the single strongest one, folded
-    // into `<El>Resist BASE -magnitude`. **The sole reduction point**:
-    // `CalculationSession::apply_enemy_exposure` only injects, never reduces
-    // (reducing twice = double-deducting resistance). A no-op without any exposure mod (every value unchanged).
-    super::setup_env::reduce_enemy_exposure(&mut env.enemy.mod_db, &env.player.mod_db, &env.cfg);
+    // Exposure is reduced in `perform` once the character's defences are
+    // known (`setup_env::reduce_enemy_exposure`): a banner's exposure can be
+    // "per 1000 Armour".
 }
 
 /// Stages 1/5 (T5 implementation): injects keystones granted by

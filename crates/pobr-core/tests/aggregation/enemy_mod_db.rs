@@ -648,6 +648,31 @@ fn exposure_takes_strongest_single_source() {
     );
 }
 
+/// Refraction III: "Banner applies 2% Elemental Exposure per 1000 Armour"
+/// counts each whole 1000 of the character's Armour, and a Pinnacle boss
+/// has half the effect: 30 323 Armour gives 60%, so 30 off each resistance.
+#[test]
+fn a_banner_applies_exposure_per_thousand_armour() {
+    let actor = Actor::new(85, ActorBaseStats::default());
+    let mut env = Env::new(actor);
+    setup_enemy(&mut env, 0, EnemyTier::Pinnacle);
+    env.player.mod_db.add_mod(Modifier::number(
+        pobr_core::rules::skill_stats::ELEMENTAL_EXPOSURE_PER_1000_ARMOUR,
+        ModType::Base,
+        2.0,
+    ));
+    let mut cfg = effective_attack();
+    cfg.stats.insert("Armour".into(), 30_323.0);
+    reduce_enemy_exposure(&mut env.enemy.mod_db, &env.player.mod_db, &cfg);
+    for resist in ["FireResist", "ColdResist", "LightningResist"] {
+        let value = env
+            .enemy
+            .mod_db
+            .sum(ModType::Base, &cfg, &[ModName::from(resist)]);
+        assert!((value - 20.0).abs() < 1e-6, "{resist}: {value}");
+    }
+}
+
 // Exposure effect scaling (vendor CalcPerform.lua:3222-3227).
 
 #[test]

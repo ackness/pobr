@@ -6556,6 +6556,7 @@
           "name": "ChaosDamage",
           "type": "Inc",
           "value": 1.0,
+          "kw": 268435456,
           "tags": [
             "DamageType(Chaos)"
           ]
@@ -8100,7 +8101,8 @@
         {
           "name": "CriticalStrikeChance",
           "type": "Inc",
-          "value": 10.0
+          "value": 10.0,
+          "kw": 4096
         }
       ]
     },
@@ -8724,7 +8726,8 @@
         {
           "name": "Damage",
           "type": "Inc",
-          "value": 10.0
+          "value": 10.0,
+          "kw": 4096
         }
       ]
     },
@@ -8735,7 +8738,8 @@
         {
           "name": "CooldownRecovery",
           "type": "Inc",
-          "value": 10.0
+          "value": 10.0,
+          "kw": 4
         }
       ]
     },
@@ -13506,7 +13510,8 @@
         {
           "name": "Damage",
           "type": "Inc",
-          "value": 16.0
+          "value": 16.0,
+          "kw": 4
         }
       ]
     },
@@ -13906,7 +13911,8 @@
         {
           "name": "WarcrySpeed",
           "type": "Inc",
-          "value": 16.0
+          "value": 16.0,
+          "kw": 4
         }
       ]
     },
@@ -14328,7 +14334,8 @@
         {
           "name": "CooldownRecovery",
           "type": "Inc",
-          "value": 18.0
+          "value": 18.0,
+          "kw": 4
         }
       ]
     },
@@ -14874,7 +14881,8 @@
         {
           "name": "ChainChance",
           "type": "Base",
-          "value": 20.0
+          "value": 20.0,
+          "kw": 128
         }
       ]
     },
@@ -15080,7 +15088,8 @@
         {
           "name": "Damage",
           "type": "Inc",
-          "value": 20.0
+          "value": 20.0,
+          "kw": 4
         }
       ]
     },
@@ -16855,7 +16864,8 @@
         {
           "name": "WarcrySpeed",
           "type": "Inc",
-          "value": 20.0
+          "value": 20.0,
+          "kw": 4
         }
       ]
     },
@@ -18099,7 +18109,8 @@
         {
           "name": "WarcrySpeed",
           "type": "Inc",
-          "value": 24.0
+          "value": 24.0,
+          "kw": 4
         }
       ]
     },
@@ -19133,7 +19144,8 @@
         {
           "name": "CriticalStrikeChance",
           "type": "Inc",
-          "value": 25.0
+          "value": 25.0,
+          "kw": 4096
         }
       ]
     },
@@ -19494,7 +19506,8 @@
         {
           "name": "Damage",
           "type": "Inc",
-          "value": 25.0
+          "value": 25.0,
+          "kw": 4096
         }
       ]
     },
@@ -19505,7 +19518,8 @@
         {
           "name": "CooldownRecovery",
           "type": "Inc",
-          "value": 25.0
+          "value": 25.0,
+          "kw": 4
         }
       ]
     },
@@ -19516,7 +19530,8 @@
         {
           "name": "WarcrySpeed",
           "type": "Inc",
-          "value": 25.0
+          "value": 25.0,
+          "kw": 4
         }
       ]
     },
@@ -20440,7 +20455,8 @@
         {
           "name": "CastSpeed",
           "type": "Inc",
-          "value": 3.0
+          "value": 3.0,
+          "kw": 64
         }
       ]
     },
@@ -20724,12 +20740,14 @@
         {
           "name": "AttackSpeed",
           "type": "Inc",
-          "value": 3.0
+          "value": 3.0,
+          "kw": 224
         },
         {
           "name": "CastSpeed",
           "type": "Inc",
-          "value": 3.0
+          "value": 3.0,
+          "kw": 224
         }
       ]
     },
@@ -20740,12 +20758,14 @@
         {
           "name": "AttackSpeed",
           "type": "Inc",
-          "value": 3.0
+          "value": 3.0,
+          "kw": 128
         },
         {
           "name": "CastSpeed",
           "type": "Inc",
-          "value": 3.0
+          "value": 3.0,
+          "kw": 128
         }
       ]
     },
@@ -24115,7 +24135,8 @@
         {
           "name": "Damage",
           "type": "Inc",
-          "value": 40.0
+          "value": 40.0,
+          "kw": 4
         }
       ]
     },
@@ -26000,12 +26021,14 @@
         {
           "name": "AttackSpeed",
           "type": "Inc",
-          "value": 5.0
+          "value": 5.0,
+          "kw": 224
         },
         {
           "name": "CastSpeed",
           "type": "Inc",
-          "value": 5.0
+          "value": 5.0,
+          "kw": 224
         }
       ]
     },
@@ -26016,12 +26039,14 @@
         {
           "name": "AttackSpeed",
           "type": "Inc",
-          "value": 5.0
+          "value": 5.0,
+          "kw": 128
         },
         {
           "name": "CastSpeed",
           "type": "Inc",
-          "value": 5.0
+          "value": 5.0,
+          "kw": 128
         }
       ]
     },
@@ -28224,7 +28249,8 @@
         {
           "name": "CooldownRecovery",
           "type": "Inc",
-          "value": 6.0
+          "value": 6.0,
+          "kw": 4
         }
       ]
     },
@@ -28356,7 +28382,8 @@
         {
           "name": "ChainChance",
           "type": "Base",
-          "value": 60.0
+          "value": 60.0,
+          "kw": 128
         }
       ]
     },
@@ -29453,7 +29480,8 @@
         {
           "name": "CastSpeed",
           "type": "Inc",
-          "value": 8.0
+          "value": 8.0,
+          "kw": 64
         }
       ]
     },
@@ -29927,12 +29955,14 @@
         {
           "name": "AttackSpeed",
           "type": "Inc",
-          "value": 8.0
+          "value": 8.0,
+          "kw": 128
         },
         {
           "name": "CastSpeed",
           "type": "Inc",
-          "value": 8.0
+          "value": 8.0,
+          "kw": 128
         }
       ]
     },
@@ -30349,7 +30379,8 @@
         {
           "name": "WarcrySpeed",
           "type": "Inc",
-          "value": 8.0
+          "value": 8.0,
+          "kw": 4
         }
       ]
     },
@@ -39642,11 +39673,25 @@
     },
     {
       "text": "Modifiers to [MaximumResistances|Maximum Fire Resistance] also grant [MaximumResistances|Maximum Cold and Lightning Resistance]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MaximumFireResistanceAlsoGrantsColdAndLightning",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Modifiers to [Resistances|Fire Resistance] also grant [Resistances|Cold and Lightning Resistance] at 50% of their value",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "FireResistanceAlsoGrantsColdAndLightning",
+          "type": "Base",
+          "value": 50.0
+        }
+      ]
     },
     {
       "text": "Morbid Veil",
@@ -46777,7 +46822,19 @@
     },
     {
       "text": "[Physical] [Spell] [Critical] [Hit|Hits] build [Pinned|Pin]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CanPin",
+          "type": "Flag",
+          "value": true,
+          "flags": 2,
+          "kw": 16,
+          "tags": [
+            "Condition { var: \"CriticalStrike\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Pinned] Enemies cannot deal [Critical|Critical Hits]",
@@ -47354,7 +47411,18 @@
     },
     {
       "text": "[Spell|Spells] consume a [Charges|Power Charge] if able to deal 40% more Damage",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "More",
+          "value": 40.0,
+          "kw": 131072,
+          "tags": [
+            "MultiplierThreshold { var: \"RemovablePowerCharge\", threshold: 1.0, upper: false }"
+          ]
+        }
+      ]
     },
     {
       "text": "[StatConversion|Convert] 100% of maximum [EnergyShield|Energy Shield] to maximum Mana\nMana Costs are Doubled",

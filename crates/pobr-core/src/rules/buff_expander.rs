@@ -251,6 +251,14 @@ pub fn expand_misc_buffs(
     registry: &HandlerRegistry,
 ) -> BuffExpansion {
     let mut out = BuffExpansion::default();
+    // Every built-in buff is a buff in combat, so a trigger stated "in
+    // combat" (a configured "Do you have Arcane Surge?") holds when the
+    // calculation is in combat.
+    let mut trigger_cfg = state.cfg.clone();
+    trigger_cfg
+        .conditions
+        .entry("Combat".into())
+        .or_insert(state.mode_combat);
     for def in defs {
         // Mode gate (doActorMisc's whole block at :510 is gated on
         // `env.mode_combat`).
@@ -259,7 +267,7 @@ pub fn expand_misc_buffs(
             BuffModeGate::Combat => {}
         }
         // Trigger flag not set → zero output.
-        if !state.db.flag(state.cfg, def.trigger_flag.as_str()) {
+        if !state.db.flag(&trigger_cfg, def.trigger_flag.as_str()) {
             continue;
         }
         expand_one(state, def, registry, &mut out);
@@ -589,6 +597,21 @@ mod tests {
         let origin = out.mods[0].origin.as_ref().unwrap();
         assert_eq!(origin.source_id.kind, SourceKind::Buff);
         assert_eq!(origin.source_id.id, "buff.Onslaught");
+    }
+
+    /// A trigger stated "in combat" (the configured "Do you have Onslaught?")
+    /// holds when the calculation is in combat, and not otherwise.
+    #[test]
+    fn a_trigger_stated_in_combat_holds_in_combat() {
+        let mut db = ModDb::new();
+        db.add_mod(Modifier::flag("Onslaught").with_tag(crate::ModTag::condition("Combat", false)));
+        let cfg = CalcConfig::new();
+        let registry = HandlerRegistry::new();
+        let in_combat = expand_misc_buffs(&state(&db, &cfg, true), &[onslaught_def()], &registry);
+        assert_eq!(in_combat.mods.len(), 2);
+        let out_of_combat =
+            expand_misc_buffs(&state(&db, &cfg, false), &[onslaught_def()], &registry);
+        assert!(out_of_combat.mods.is_empty());
     }
 
     /// vendor's `Speed` folding: Attack → AttackSpeed (consumes that

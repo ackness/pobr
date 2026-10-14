@@ -18,7 +18,7 @@ const ELEMENTAL_RESISTANCES: [&str; 3] =
     ["FireResistance", "ColdResistance", "LightningResistance"];
 
 /// Stable source id for the elemental resistance penalty.
-const RESISTANCE_PENALTY_SOURCE: &str = "campaign.resistance_penalty";
+pub(crate) const RESISTANCE_PENALTY_SOURCE: &str = "campaign.resistance_penalty";
 
 /// Campaign / zone progress, which determines the elemental resistance penalty.
 ///

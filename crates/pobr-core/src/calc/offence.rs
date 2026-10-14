@@ -229,8 +229,9 @@ pub(crate) fn resolve_resistance(
         max_names.push(ModName::from("ElementalResistMax"));
     }
 
-    let flat = db.sum(ModType::Base, cfg, &res_names);
-    let inc = db.sum(ModType::Inc, cfg, &res_names);
+    let shared = shared_fire_resistance(db, cfg, element);
+    let flat = db.sum(ModType::Base, cfg, &res_names) + shared.flat;
+    let inc = db.sum(ModType::Inc, cfg, &res_names) + shared.inc;
     let more = db.more(cfg, &res_names);
     let override_total = db
         .override_(cfg, long.as_str())
@@ -246,8 +247,9 @@ pub(crate) fn resolve_resistance(
         .unwrap_or_else(|| {
             //  The default max resistance / hard cap now reads from the injected constants pack (fallback == old const, value unchanged).
             (cfg.constants.character().base_maximum_all_resistances_pct
-                + db.sum(ModType::Base, cfg, &max_names))
-            .min(cfg.constants.game().resist_hard_cap)
+                + db.sum(ModType::Base, cfg, &max_names)
+                + shared.max)
+                .min(cfg.constants.game().resist_hard_cap)
         });
     let floor = cfg.constants.game().resist_floor;
     ResistanceResolution {
@@ -261,6 +263,61 @@ pub(crate) fn resolve_resistance(
         override_total,
         floor,
     }
+}
+
+/// What Cold or Lightning Resistance gains from the modifiers to Fire
+/// Resistance (Smith of Kitava): "Modifiers to Fire Resistance also grant
+/// Cold and Lightning Resistance at {0}% of their value" and "Modifiers to
+/// Maximum Fire Resistance also grant Maximum Cold and Lightning
+/// Resistance". The elemental resistance penalty is not a modifier to Fire
+/// Resistance, and "all Elemental Resistances" already grants the others.
+struct SharedResistance {
+    flat: f64,
+    inc: f64,
+    max: f64,
+}
+
+fn shared_fire_resistance(db: &ModDb, cfg: &CalcConfig, element: &str) -> SharedResistance {
+    let mut shared = SharedResistance {
+        flat: 0.0,
+        inc: 0.0,
+        max: 0.0,
+    };
+    if !matches!(element, "Cold" | "Lightning") {
+        return shared;
+    }
+    let total = |names: &[ModName], mod_type: ModType| -> f64 {
+        db.evaluate_names(cfg, names)
+            .into_iter()
+            .filter(|row| row.active && row.modifier.mod_type == mod_type)
+            .filter(|row| {
+                row.modifier.origin.as_ref().is_none_or(|origin| {
+                    origin.source_id.id != crate::ingest::campaign::RESISTANCE_PENALTY_SOURCE
+                })
+            })
+            .filter_map(|row| row.value)
+            .sum()
+    };
+    let rate = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("FireResistanceAlsoGrantsColdAndLightning")],
+    ) / 100.0;
+    if rate > 0.0 {
+        let fire = [ModName::from("FireResistance"), ModName::from("FireResist")];
+        shared.flat = total(&fire, ModType::Base) * rate;
+        shared.inc = total(&fire, ModType::Inc) * rate;
+    }
+    if db.flag(cfg, "MaximumFireResistanceAlsoGrantsColdAndLightning") {
+        shared.max = total(
+            &[
+                ModName::from("MaximumFireResistance"),
+                ModName::from("FireResistMax"),
+            ],
+            ModType::Base,
+        );
+    }
+    shared
 }
 
 /// The old three-parameter entry point: equivalent to computing against an

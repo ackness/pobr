@@ -109,6 +109,8 @@ pub struct SkillDotTerms {
     pub cap: f64,
     pub total_dot_dps: f64,
     pub with_dot_dps: f64,
+    /// How much sooner Culling Strike kills ([`cull_multiplier`]).
+    pub cull_multiplier: f64,
     pub combined_dps: f64,
 }
 
@@ -432,8 +434,8 @@ pub fn skill_dot_terms(
     let total_dot = if db.flag(cfg, "DotCanStack") && inputs.duration > 0.0 {
         // Rate branch (`:5934-5940`): switches to
         // MineLayingSpeed/TrapThrowingSpeed when keywordFlags has Mine/Trap
-        // -- pobr has no totem/trap throughput (12-G11, not implemented)
-        // and KeywordFlags has no Mine/Trap bit yet, so this always falls back to Speed.
+        // -- pobr has no totem/trap throughput (12-G11, not implemented), so
+        // this always uses Speed.
         let speed = inputs.speed;
         let end = dps_end_factors(db, cfg, None);
         (instance * speed * inputs.duration * end.dps_multiplier * end.quantity_multiplier).min(cap)
@@ -451,7 +453,8 @@ pub fn skill_dot_terms(
     } else {
         0.0
     };
-    let combined_dps = inputs.base_dps + total_dot_dps;
+    let cull = cull_multiplier(db, enemy, cfg);
+    let combined_dps = (inputs.base_dps + total_dot_dps) * cull;
 
     SkillDotTerms {
         parts,
@@ -464,8 +467,34 @@ pub fn skill_dot_terms(
         cap,
         total_dot_dps,
         with_dot_dps,
+        cull_multiplier: cull,
         combined_dps,
     }
+}
+
+/// Culling Strike: a hit kills an enemy left at or below the threshold its
+/// rarity sets (the game constants `culling_strike_<rarity>_threshold`: 5%
+/// of a unique's Life), so the damage that kills it is the rest of its Life
+/// and the damage per second it takes is `100 / (100 − threshold)` times
+/// greater. "increased Culling Strike Threshold" raises the threshold.
+pub(crate) fn cull_multiplier(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig) -> f64 {
+    if !db.flag(cfg, "CanCull") {
+        return 1.0;
+    }
+    let game = cfg.constants.game();
+    let threshold = if enemy.flag(cfg, "Condition:Unique") {
+        game.culling_strike_unique_threshold
+    } else if enemy.flag(cfg, "Condition:RareOrUnique") {
+        game.culling_strike_rare_threshold
+    } else {
+        game.culling_strike_normal_threshold
+    };
+    let percent =
+        threshold * (1.0 + db.sum(ModType::Inc, cfg, &[ModName::from("CullPercent")]) / 100.0);
+    if !(0.0..100.0).contains(&percent) {
+        return 1.0;
+    }
+    100.0 / (100.0 - percent)
 }
 
 /// Writes the skill DoT result into [`OutputTable`]'s contract fields (pure field transfer, no computation).
@@ -489,6 +518,46 @@ mod tests {
         let mut db = ModDb::new();
         db.add_list(mods);
         db
+    }
+
+    /// Culling Strike kills a unique at 5% of its Life (the game constant),
+    /// a rare at 10%; "increased Culling Strike Threshold" raises it. The
+    /// damage that kills is the rest of the Life.
+    #[test]
+    fn culling_strike_kills_at_the_threshold_of_the_enemy_rarity() {
+        let cfg = CalcConfig::attack();
+        let inputs = SkillDotInputs {
+            base_dps: 950.0,
+            ..SkillDotInputs::default()
+        };
+        let mut unique = ModDb::new();
+        unique.add_mod(Modifier::flag("Condition:Unique"));
+        let mut rare = ModDb::new();
+        rare.add_mod(Modifier::flag("Condition:RareOrUnique"));
+
+        let without = db_with(Vec::new());
+        assert_eq!(
+            calc_skill_dot(&without, &unique, &cfg, &inputs).combined_dps,
+            950.0
+        );
+
+        let culls = db_with(vec![Modifier::flag("CanCull")]);
+        assert_eq!(
+            calc_skill_dot(&culls, &unique, &cfg, &inputs).combined_dps,
+            1000.0
+        );
+        let against_rare = calc_skill_dot(&culls, &rare, &cfg, &inputs).combined_dps;
+        assert!((against_rare - 950.0 / 0.9).abs() < 0.01, "{against_rare}");
+
+        let raised = db_with(vec![
+            Modifier::flag("CanCull"),
+            Modifier::number("CullPercent", ModType::Inc, 100.0),
+        ]);
+        let against_unique = calc_skill_dot(&raised, &unique, &cfg, &inputs).combined_dps;
+        assert!(
+            (against_unique - 950.0 / 0.9).abs() < 0.01,
+            "{against_unique}"
+        );
     }
 
     /// Neutrality invariant: empty db + all-zero inputs → all-zero output (a non-DoT build's contract fields stay neutral).

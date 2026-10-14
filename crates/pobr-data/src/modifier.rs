@@ -318,10 +318,34 @@ impl KeywordFlags {
     pub const AURA: Self = Self(0x0000_0001);
     /// `KeywordFlag.Curse = 0x00000002`
     pub const CURSE: Self = Self(0x0000_0002);
+    /// `KeywordFlag.Warcry = 0x00000004`
+    pub const WARCRY: Self = Self(0x0000_0004);
+    /// `KeywordFlag.Movement = 0x00000008`
+    pub const MOVEMENT: Self = Self(0x0000_0008);
+    /// `KeywordFlag.Physical = 0x00000010`: a skill of that damage type.
+    pub const PHYSICAL: Self = Self(0x0000_0010);
+    /// `KeywordFlag.Fire = 0x00000020`
+    pub const FIRE: Self = Self(0x0000_0020);
+    /// `KeywordFlag.Cold = 0x00000040`
+    pub const COLD: Self = Self(0x0000_0040);
+    /// `KeywordFlag.Lightning = 0x00000080`
+    pub const LIGHTNING: Self = Self(0x0000_0080);
+    /// `KeywordFlag.Chaos = 0x00000100`
+    pub const CHAOS: Self = Self(0x0000_0100);
+    /// `KeywordFlag.Vaal = 0x00000200`
+    pub const VAAL: Self = Self(0x0000_0200);
+    /// `KeywordFlag.Bow = 0x00000400`
+    pub const BOW: Self = Self(0x0000_0400);
     /// `KeywordFlag.Arrow = 0x00000800`
     pub const ARROW: Self = Self(0x0000_0800);
+    /// `KeywordFlag.Trap = 0x00001000`
+    pub const TRAP: Self = Self(0x0000_1000);
+    /// `KeywordFlag.Mine = 0x00002000`
+    pub const MINE: Self = Self(0x0000_2000);
     /// `KeywordFlag.Totem = 0x00004000`
     pub const TOTEM: Self = Self(0x0000_4000);
+    /// `KeywordFlag.Minion = 0x00008000`
+    pub const MINION: Self = Self(0x0000_8000);
     /// `KeywordFlag.Attack = 0x00010000` (default backfill for DMGATTACKS / flag_phrases)
     pub const ATTACK: Self = Self(0x0001_0000);
     /// `KeywordFlag.Spell = 0x00020000` (default backfill for DMGSPELLS / flag_phrases)
@@ -330,6 +354,8 @@ impl KeywordFlags {
     pub const HIT: Self = Self(0x0004_0000);
     /// `KeywordFlag.Ailment = 0x00080000`
     pub const AILMENT: Self = Self(0x0008_0000);
+    /// `KeywordFlag.Brand = 0x00100000`
+    pub const BRAND: Self = Self(0x0010_0000);
     /// `KeywordFlag.Poison = 0x00200000`
     pub const POISON: Self = Self(0x0020_0000);
     /// `KeywordFlag.Bleed = 0x00400000`
@@ -351,6 +377,53 @@ impl KeywordFlags {
     /// keyword match switches from the default ANY to ALL (subset) — see
     /// PoB2 Global.lua's `MatchKeywordFlags`.
     pub const MATCH_ALL: Self = Self(0x4000_0000);
+
+    /// Every keyword by the name rules and stat maps give it, `MatchAll`
+    /// included.
+    const NAMED: [(&'static str, KeywordFlags); 29] = [
+        ("Aura", KeywordFlags::AURA),
+        ("Curse", KeywordFlags::CURSE),
+        ("Warcry", KeywordFlags::WARCRY),
+        ("Movement", KeywordFlags::MOVEMENT),
+        ("Physical", KeywordFlags::PHYSICAL),
+        ("Fire", KeywordFlags::FIRE),
+        ("Cold", KeywordFlags::COLD),
+        ("Lightning", KeywordFlags::LIGHTNING),
+        ("Chaos", KeywordFlags::CHAOS),
+        ("Vaal", KeywordFlags::VAAL),
+        ("Bow", KeywordFlags::BOW),
+        ("Arrow", KeywordFlags::ARROW),
+        ("Trap", KeywordFlags::TRAP),
+        ("Mine", KeywordFlags::MINE),
+        ("Totem", KeywordFlags::TOTEM),
+        ("Minion", KeywordFlags::MINION),
+        ("Attack", KeywordFlags::ATTACK),
+        ("Spell", KeywordFlags::SPELL),
+        ("Hit", KeywordFlags::HIT),
+        ("Ailment", KeywordFlags::AILMENT),
+        ("Brand", KeywordFlags::BRAND),
+        ("Poison", KeywordFlags::POISON),
+        ("Bleed", KeywordFlags::BLEED),
+        ("Ignite", KeywordFlags::IGNITE),
+        ("PhysicalDot", KeywordFlags::PHYSICAL_DOT),
+        ("LightningDot", KeywordFlags::LIGHTNING_DOT),
+        ("ColdDot", KeywordFlags::COLD_DOT),
+        ("FireDot", KeywordFlags::FIRE_DOT),
+        ("ChaosDot", KeywordFlags::CHAOS_DOT),
+    ];
+
+    /// The keyword a rule names (`Warcry`, `FireDot`, `MatchAll` …), or
+    /// `None` for a name that is not one. A rule's keyword that is dropped
+    /// leaves its modifier for every skill, so callers reject unknown names.
+    pub fn from_name(name: &str) -> Option<Self> {
+        if name == "MatchAll" {
+            return Some(Self::MATCH_ALL);
+        }
+        Self::NAMED
+            .iter()
+            .find(|(named, _)| *named == name)
+            .map(|(_, flag)| *flag)
+    }
 
     pub fn bits(self) -> u64 {
         self.0
@@ -405,27 +478,9 @@ impl KeywordFlags {
     /// order, for messages; `MATCH_ALL` is left out. Bits without a name come
     /// last, in hex.
     pub fn names(self) -> Vec<String> {
-        const NAMED: [(&str, KeywordFlags); 16] = [
-            ("Aura", KeywordFlags::AURA),
-            ("Curse", KeywordFlags::CURSE),
-            ("Arrow", KeywordFlags::ARROW),
-            ("Totem", KeywordFlags::TOTEM),
-            ("Attack", KeywordFlags::ATTACK),
-            ("Spell", KeywordFlags::SPELL),
-            ("Hit", KeywordFlags::HIT),
-            ("Ailment", KeywordFlags::AILMENT),
-            ("Poison", KeywordFlags::POISON),
-            ("Bleed", KeywordFlags::BLEED),
-            ("Ignite", KeywordFlags::IGNITE),
-            ("PhysicalDot", KeywordFlags::PHYSICAL_DOT),
-            ("LightningDot", KeywordFlags::LIGHTNING_DOT),
-            ("ColdDot", KeywordFlags::COLD_DOT),
-            ("FireDot", KeywordFlags::FIRE_DOT),
-            ("ChaosDot", KeywordFlags::CHAOS_DOT),
-        ];
         let keywords = self.without_match_all();
         let mut rest = keywords.0;
-        let mut names: Vec<String> = NAMED
+        let mut names: Vec<String> = Self::NAMED
             .iter()
             .filter(|(_, flag)| keywords.0 & flag.0 != 0)
             .map(|(name, flag)| {

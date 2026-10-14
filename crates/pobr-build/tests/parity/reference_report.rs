@@ -305,10 +305,18 @@ const BASELINES: [Baseline; 3] = [
     // is corrupted; Embitter gains every extra damage as Cold; a gem's
     // quality and Projectile Acceleration add Projectile Speed, which
     // Projectile Acceleration III adds to projectile damage.
+    //
+    // Then 2062 rows: a rule's keyword is kept ("Damage with Warcries" is no
+    // longer every skill's damage) and a skill has the keywords of its
+    // types; Smith of Kitava's Fire Resistance also grants Cold and
+    // Lightning; Refraction III's banner applies exposure per 1000 Armour;
+    // Culling Strike kills a unique at 5% of its Life; a configured Arcane
+    // Surge applies in combat; Fire Spell on Hit's triggered spells cost no
+    // Mana.
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
         dps_builds: 43,
-        agreeing_rows: 2054,
+        agreeing_rows: 2062,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
@@ -318,11 +326,12 @@ const BASELINES: [Baseline; 3] = [
     // and measured before any change: 11 builds and 971 rows.
     //
     // 12 builds and 978 rows after the changes the tuned set's 41 builds
-    // record; 979 rows after those of its 43.
+    // record; 979 rows after those of its 43, and 13 builds and 984 rows
+    // after those of its 2062 rows.
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
-        dps_builds: 12,
-        agreeing_rows: 979,
+        dps_builds: 13,
+        agreeing_rows: 984,
     },
 ];
 

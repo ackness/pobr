@@ -231,6 +231,8 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         stat if is_minion_stat(stat) => Some(Vec::new()),
         // Read where a minion's skill is chosen (`calc::MinionSkill`).
         COMMAND_SKILL_STAT => Some(Vec::new()),
+        // Reap: "Culling Strike" (`calc::skill_dot::cull_multiplier`).
+        "kill_enemy_on_hit_if_under_10%_life" => Some(vec![Modifier::flag("CanCull")]),
         // Decompose: "Poisons enemies as though dealing Chaos damage equal
         // to {0}% of Corpse's maximum Life": what it deals poisons.
         "corpse_explosion_monster_life_permillage_chaos" => {
@@ -256,6 +258,10 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
             ModType::More,
             value,
         )]),
+        // A meta gem's triggered skills cost nothing (Fire Spell on Hit's
+        // `no_cost`). It is their cost, not the meta gem's reservation of
+        // Spirit, which `HasNoCost` would also waive.
+        "no_cost" => Some(vec![Modifier::number("Cost", ModType::More, -100.0)]),
         // Efficiency: "Supported Skills have {0}% more Cost" / "less Cost",
         // of whatever the skill costs.
         "support_inspiration_cost_+%_final" => {
@@ -406,11 +412,25 @@ fn per_minion_in_presence(maximum: Option<f64>) -> ModTag {
     }
 }
 
+/// Elemental Exposure a planted banner applies per 1000 of the character's
+/// Armour (Refraction III).
+pub const ELEMENTAL_EXPOSURE_PER_1000_ARMOUR: &str = "BannerElementalExposurePer1000Armour";
+
 /// The player modifiers the stat of the buff skill `skill` grants at `value`,
 /// when this table defines the stat. `None` leaves the stat to the extracted
 /// stat map.
 pub fn player_buff_modifiers(stat: &str, value: f64, skill: BuffSkill) -> Option<Vec<Modifier>> {
     match stat {
+        // Refraction III: the banner applies Elemental Exposure to the
+        // enemies in its area, this much per 1000 of the character's Armour,
+        // while it is planted. The exposure is reduced with the others once
+        // the Armour is known (`calc::setup_env::reduce_enemy_exposure`).
+        "support_tempered_valour_banner_applies_%_elemental_exposure_per_1000_armour" => {
+            Some(vec![
+                Modifier::number(ELEMENTAL_EXPOSURE_PER_1000_ARMOUR, ModType::Base, value)
+                    .with_tag(ModTag::condition("BannerPlanted", false)),
+            ])
+        }
         // Not a buff on the character (see `inflicts_withered`).
         stat if inflicts_withered(stat) => Some(Vec::new()),
         // Read where the buff is made (see `skill_modifiers`).
@@ -669,6 +689,17 @@ mod tests {
 
     fn four_consumed() -> CalcConfig {
         CalcConfig::new().with_multiplier("RemovablePowerCharge", 4.0)
+    }
+
+    /// A meta gem's triggered skills cost nothing, while the meta gem still
+    /// reserves its Spirit.
+    #[test]
+    fn a_skill_with_no_cost_waives_its_cost_not_a_reservation() {
+        let mods = skill_modifiers("no_cost", 1.0).expect("defined");
+        assert_eq!(mods.len(), 1);
+        assert_eq!(mods[0].name.as_str(), "Cost");
+        assert_eq!(mods[0].mod_type, ModType::More);
+        assert_eq!(mods[0].value.as_number(), Some(-100.0));
     }
 
     /// The damage type is in the stat id, or, for Fiery Death's

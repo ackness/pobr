@@ -567,18 +567,8 @@ fn compile_flags(names: &[String]) -> ModFlags {
 }
 
 fn keyword_bit(name: &str) -> Option<KeywordFlags> {
-    Some(match name {
-        "Aura" => KeywordFlags::AURA,
-        "Curse" => KeywordFlags::CURSE,
-        "Arrow" => KeywordFlags::ARROW,
-        "Hit" => KeywordFlags::HIT,
-        "Ailment" => KeywordFlags::AILMENT,
-        "Poison" => KeywordFlags::POISON,
-        "Bleed" => KeywordFlags::BLEED,
-        "Ignite" => KeywordFlags::IGNITE,
-        // Validation rejects unknown keywords before compilation.
-        _ => return None,
-    })
+    // Validation rejects unknown keywords before compilation.
+    KeywordFlags::from_name(name)
 }
 
 fn compile_keyword_flags(names: &[String]) -> KeywordFlags {

@@ -979,23 +979,8 @@ fn translate_keyword_flags(
             extra_mod_flags |= ModFlags::SPELL;
             continue;
         }
-        let bit = match token.as_str() {
-            "Aura" => KeywordFlags::AURA,
-            "Curse" => KeywordFlags::CURSE,
-            "Arrow" => KeywordFlags::ARROW,
-            "Hit" => KeywordFlags::HIT,
-            "Ailment" => KeywordFlags::AILMENT,
-            "Poison" => KeywordFlags::POISON,
-            "Bleed" => KeywordFlags::BLEED,
-            "Ignite" => KeywordFlags::IGNITE,
-            "PhysicalDot" => KeywordFlags::PHYSICAL_DOT,
-            "LightningDot" => KeywordFlags::LIGHTNING_DOT,
-            "ColdDot" => KeywordFlags::COLD_DOT,
-            "FireDot" => KeywordFlags::FIRE_DOT,
-            "ChaosDot" => KeywordFlags::CHAOS_DOT,
-            _ => {
-                return Err(UnsupportedReason::UnsupportedKeywordFlags(tokens.join("|")));
-            }
+        let Some(bit) = KeywordFlags::from_name(token) else {
+            return Err(UnsupportedReason::UnsupportedKeywordFlags(tokens.join("|")));
         };
         flags = flags | bit;
     }
@@ -2047,10 +2032,15 @@ mod tests {
             vec!["SkillSpeed", "WarcrySpeed", "TotemPlacementSpeed"]
         );
         assert!(mods.iter().all(|m| m.value.as_number() == Some(20.0)));
-        // A Warcry keyword on a non-inert name is still rejected (no
-        // corresponding KeywordFlags bit).
+        // A Warcry keyword on any other name keeps it to warcries.
         let entry = entry_json(
             r#"{ "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "INC", "keyword_flags": ["Warcry"] } ] }"#,
+        );
+        let mods = expect_modifiers(map_entry(&entry, 1.0));
+        assert_eq!(mods[0].keyword_flags, KeywordFlags::WARCRY);
+        // A name that is no keyword is rejected.
+        let entry = entry_json(
+            r#"{ "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "INC", "keyword_flags": ["Shapeshift"] } ] }"#,
         );
         assert!(matches!(
             map_entry(&entry, 1.0),
