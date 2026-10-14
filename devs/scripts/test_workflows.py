@@ -890,6 +890,41 @@ class TriageTests(unittest.TestCase):
         self.assertEqual(key("SummonSpectrePlayer"), key("Spectre: Quill Crab"))
         self.assertEqual(key("SummonBeastPlayer"), key("Companion: Quadrilla"))
 
+    def test_the_ledger_of_lines_is_gathered_across_builds(self):
+        usage = lambda reads, lines, conditions=(): {
+            "reads": {name: [] for name in reads}, "lines": lines,
+            "conditions": list(conditions), "gem_stats": []}
+        line = lambda status, text, *names: {
+            "status": status, "text": text, "source_id": "item.ring1.explicit",
+            "holder": "Ruby Ring", "reason": "rule r", "modifiers": [
+                {"name": name, "status": "unread"} for name in names]}
+        first = self.triage.ledger_findings(usage(
+            ["Damage"],
+            [line("unread", "16% increased Rarity of Items found", "LootRarity"),
+             line("unread", "10% increased Spell Damage", "SpellDamage"),
+             line("unmodelled", "60% increased Effect of Suffixes"),
+             line("no_effect", "Config", "Condition:TargetingBrandedEnemy")],
+            [{"condition": "OnConsecratedGround", "config_option": None,
+              "modifiers": [{"source": "PassiveNode:node.1 | line"}]},
+             {"condition": "LowLife", "config_option": "conditionLowLife", "modifiers": []}]))
+        second = self.triage.ledger_findings(usage(
+            ["SpellDamage"], [line("unmodelled", "58% increased Effect of Suffixes")]))
+        self.assertEqual(first["unmodelled"][0]["source"], "item.ring1.explicit (Ruby Ring)")
+        results = [{"short": "a", "rows": [{"class": "engine"}], "ledger": first},
+                   {"short": "b", "rows": [], "ledger": second}]
+        unmodelled = self.triage.gather_lines(results, "unmodelled")
+        self.assertEqual(len(unmodelled), 1)
+        self.assertEqual(unmodelled[0][1]["builds"], {"a", "b"})
+        self.assertEqual(unmodelled[0][1]["actionable"], {"a"})
+        # A name no build reads comes before one another build reads.
+        self.assertEqual([(name, entry["read_elsewhere"])
+                          for name, entry in self.triage.gather_unread(results)],
+                         [("LootRarity", False), ("SpellDamage", True)])
+        # Only the conditions nothing sets: one a config option sets is the user's choice.
+        self.assertEqual([name for name, _ in self.triage.gather_conditions(results)],
+                         ["OnConsecratedGround"])
+        self.assertEqual(self.triage.ledger_findings(None)["unread"], [])
+
     def test_spirit_is_compared_skill_by_skill(self):
         reserved = lambda *rows: {"breakdown": {"mods": [
             {"value": value, "origin_kind": "SkillGem", "origin_id": "spirit." + skill}

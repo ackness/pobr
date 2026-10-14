@@ -4,9 +4,10 @@
     mise run triage [set dir | build dir ...] [--jobs N] [--refresh] [--top N] [--json FILE]
 
 Runs the engine (`pobr calculate-build --breakdown all --json
---reference-basis`) and the PoB2 oracle once for each build of the sets, the
-benchmark and tuned sets by default, several builds at a time. Each reference
-row that differs falls in one class by what the pinned PoB2 says today:
+--reference-basis --usage`) and the PoB2 oracle once for each build of the
+sets, the benchmark and tuned sets by default, several builds at a time. Each
+reference row that differs falls in one class by what the pinned PoB2 says
+today:
 
   engine     PoB2 agrees with the reference and the engine does not.
   both       the engine, PoB2 and the reference all differ.
@@ -21,7 +22,12 @@ another value (by source and type), the engine's lines that do not apply
 where PoB2 counts their source (a condition the engine does not set), the
 factors of the damage and the enemy's mitigation that differ, PoB2's pools
 behind a largest hit or EHP that differs, and the lines no rule parses, by how
-many builds carry them. Fix what several builds share first, then rerun.
+many builds carry them. From each build's ledger of lines (`--usage`) it
+gathers the inputs the calculation drops whether or not a row differs: lines a
+rule recognises and nothing models, modifiers stored and never read (first
+those no triaged build reads), conditions nothing sets, gem stats the engine
+rejects, and lines parsed yet storing nothing. Fix what several builds share
+first, then rerun.
 
 The holdout set is only measured (`mise run accuracy`), never triaged. The
 oracle's results share `mise run compare`'s cache, so a build triaged once
@@ -288,6 +294,46 @@ def pools(entries: dict, oracle: dict) -> str:
     return f"PoB2 {theirs or '—'}; PoBR {ours or '—'}"
 
 
+def line_source(line: dict) -> str:
+    """Where a line of the ledger is: its source id and holder."""
+    source = line.get("source_id") or line.get("source_kind") or "?"
+    return f"{source} ({line['holder']})" if line.get("holder") else source
+
+
+def ledger_findings(usage) -> dict:
+    """The inputs a build's ledger of lines (`calculate-build --usage`) says the
+    calculation drops, and the modifier names it read."""
+    found = {"unread": [], "unmodelled": [], "no_modifier": [], "conditions": [],
+             "gem_stats": [], "reads": []}
+    if not usage:
+        return found
+    for line in usage.get("lines") or []:
+        status, text, where = line.get("status"), line.get("text") or "", line_source(line)
+        if status in ("unmodelled", "no_modifier"):
+            found[status].append({"text": text, "source": where, "reason": line.get("reason")})
+        if status == "no_effect":  # such as a config option nothing in the build asks for
+            continue
+        config_option = (line.get("source_id") or "").startswith("config.")
+        for modifier in line.get("modifiers") or []:
+            name = modifier.get("name") or ""
+            if config_option and name.startswith(("Condition:", "Multiplier:")):
+                continue  # what a config option sets, with no effect on this build
+            if modifier.get("status") == "unread":
+                found["unread"].append({"name": modifier.get("name"), "text": text,
+                                        "source": where})
+    for condition in usage.get("conditions") or []:
+        if condition.get("config_option") is None:
+            modifiers = condition.get("modifiers") or [{}]
+            found["conditions"].append({"condition": condition.get("condition"),
+                                        "example": modifiers[0].get("source", "")})
+    for stat in usage.get("gem_stats") or []:
+        if stat.get("status") == "unmapped":
+            found["gem_stats"].append({"owner": stat.get("owner"), "stat": stat.get("stat"),
+                                       "reason": stat.get("reason")})
+    found["reads"] = sorted((usage.get("reads") or {}).keys())
+    return found
+
+
 def analyse(name: str, corpus: str, report: dict, oracle: dict, xml: str, known: list) -> dict:
     """One build's differing rows, their classes and what explains them."""
     entries = {entry.get("stat"): entry for entry in report.get("breakdowns") or []}
@@ -337,6 +383,7 @@ def analyse(name: str, corpus: str, report: dict, oracle: dict, xml: str, known:
         "build": name, "short": short(name), "set": corpus, "compared": reference.get("compared"),
         "rows": rows, "leads": leads, "pools": pool_line,
         "unsupported": report.get("unsupported_modifiers") or [],
+        "ledger": ledger_findings(report.get("usage")),
         "missing_items": report.get("missing_items") or [],
         "main_skill": skill, "pob2_main_skill": info.get("grantedEffectId"),
     }
@@ -379,7 +426,7 @@ def triage_build(binary: Path, corpus: str, folder: Path, commit: str, refresh: 
     code = code_file.read_text(encoding="utf-8")
     xml = compare.decode_code(code)
     command = [str(binary), "calculate-build", "--file", str(code_file), "--breakdown",
-               f"all,{SKILL_RESERVATION}", "--json", "--reference-basis"]
+               f"all,{SKILL_RESERVATION}", "--json", "--reference-basis", "--usage"]
     result = subprocess.run(command, cwd=REPO, capture_output=True, text=True)
     if result.returncode != 0:
         tail = "\n".join(result.stderr.strip().splitlines()[-5:])
@@ -445,6 +492,65 @@ def gather_unsupported(results: list) -> list:
                 entry["actionable"].add(result["short"])
     return sorted(gathered.items(), key=lambda item: (
         -len(item[1]["actionable"]), -len(item[1]["builds"]), item[0]))
+
+
+def gather_lines(results: list, status: str) -> list:
+    """The ledger's lines of `status` (`unmodelled`, `no_modifier`) by
+    template; first those on builds with engine or both rows."""
+    gathered = {}
+    for result in results:
+        actionable = any(row["class"] in ACTIONABLE for row in result["rows"])
+        for line in result["ledger"][status]:
+            entry = gathered.setdefault(template(line["text"]), {
+                "example": line, "builds": set(), "actionable": set()})
+            entry["builds"].add(result["short"])
+            if actionable:
+                entry["actionable"].add(result["short"])
+    return sorted(gathered.items(), key=lambda item: (
+        -len(item[1]["actionable"]), -len(item[1]["builds"]), item[0]))
+
+
+def gather_unread(results: list) -> list:
+    """Modifier names stored and never read, by name. First the names no
+    triaged build reads, which have no reader at all; a name another build
+    reads is one this build's skills have no use for."""
+    read = set()
+    for result in results:
+        read.update(result["ledger"]["reads"])
+    gathered = {}
+    for result in results:
+        for item in result["ledger"]["unread"]:
+            entry = gathered.setdefault(item["name"], {
+                "example": item, "builds": set(), "read_elsewhere": item["name"] in read})
+            entry["builds"].add(result["short"])
+    return sorted(gathered.items(), key=lambda item: (
+        item[1]["read_elsewhere"], -len(item[1]["builds"]), item[0]))
+
+
+def gather_conditions(results: list) -> list:
+    """Conditions modifiers wait for that nothing sets, by condition."""
+    gathered = {}
+    for result in results:
+        for item in result["ledger"]["conditions"]:
+            entry = gathered.setdefault(item["condition"], {"example": item["example"],
+                                                            "builds": set()})
+            entry["builds"].add(result["short"])
+    return sorted(gathered.items(), key=lambda item: (-len(item[1]["builds"]), item[0]))
+
+
+def gather_gem_stats(results: list) -> list:
+    """Gem stats with a stat map entry the engine rejects, by owner and stat."""
+    gathered = {}
+    for result in results:
+        for item in result["ledger"]["gem_stats"]:
+            entry = gathered.setdefault((item["owner"], item["stat"]), {
+                "reason": item["reason"], "builds": set()})
+            entry["builds"].add(result["short"])
+    return sorted(gathered.items(), key=lambda item: (-len(item[1]["builds"]), item[0]))
+
+
+def builds_text(builds: set) -> str:
+    return ", ".join(sorted(builds)[:4]) + (" …" if len(builds) > 4 else "")
 
 
 def gather_stats(results: list) -> list:
@@ -541,6 +647,38 @@ def render(results: list, failures: list, commit: str, top: int) -> str:
         names = ", ".join(sorted(entry["builds"])[:4]) + (" …" if len(entry["builds"]) > 4 else "")
         out.append(f" {mark} [{len(entry['builds'])}] {entry['example'][:150]}")
         out.append(f"       {names}")
+
+    for status, title in (
+            ("unmodelled", "lines a rule recognises and nothing models"),
+            ("no_modifier", "lines parsed yet storing nothing (the ledger does not know why)")):
+        gathered = gather_lines(results, status)
+        if not gathered:
+            continue
+        out.append(f"\n== {title}, by template (* = on a build with engine or both rows); "
+                   f"top {top}")
+        for _template, entry in gathered[:top]:
+            mark = "*" if entry["actionable"] else " "
+            example = entry["example"]
+            out.append(f" {mark} [{len(entry['builds'])}] {example['text'][:150]}")
+            out.append(f"       {example['source']} · {example['reason']}")
+            out.append(f"       {builds_text(entry['builds'])}")
+
+    out.append(f"\n== modifiers stored and never read, by name: first those no triaged build "
+               f"reads; top {top}")
+    for name, entry in gather_unread(results)[:top]:
+        reader = "read in another build" if entry["read_elsewhere"] else "no build reads it"
+        example = entry["example"]
+        out.append(f"   [{len(entry['builds'])}] {name} ({reader})")
+        out.append(f"       e.g. {example['source']} | {example['text'][:120]}")
+
+    out.append(f"\n== conditions modifiers wait for that nothing sets; top {top}")
+    for condition, entry in gather_conditions(results)[:top]:
+        out.append(f"   [{len(entry['builds'])}] {condition}")
+        out.append(f"       e.g. {entry['example'][:150]}")
+
+    out.append(f"\n== gem stats the engine rejects; top {top}")
+    for (owner, stat), entry in gather_gem_stats(results)[:top]:
+        out.append(f"   [{len(entry['builds'])}] {owner} · {stat}: {entry['reason']}")
     return "\n".join(out) + "\n"
 
 
@@ -574,7 +712,16 @@ def main(argv=None) -> int:
                    "leads": [{"kind": key[0], "type": key[1], "key": key[2], **entry}
                              for key, entry in gather_leads(results)],
                    "unsupported": [{"template": key, **entry}
-                                   for key, entry in gather_unsupported(results)]}
+                                   for key, entry in gather_unsupported(results)],
+                   "unmodelled": [{"template": key, **entry}
+                                  for key, entry in gather_lines(results, "unmodelled")],
+                   "no_modifier": [{"template": key, **entry}
+                                   for key, entry in gather_lines(results, "no_modifier")],
+                   "unread": [{"name": key, **entry} for key, entry in gather_unread(results)],
+                   "conditions": [{"condition": key, **entry}
+                                  for key, entry in gather_conditions(results)],
+                   "gem_stats": [{"owner": key[0], "stat": key[1], **entry}
+                                 for key, entry in gather_gem_stats(results)]}
         args.json.write_text(json.dumps(payload, indent=1, default=to_json), encoding="utf-8")
     sys.stdout.write(render(results, failures, commit, args.top))
     return 1 if failures else 0

@@ -69,16 +69,21 @@ Improve calculation accuracy in batches, not one build at a time:
    version; nothing to fix) or `known` (explained in
    `devs/scripts/known-differences.json`). The holdout set is only measured
    with `mise run accuracy`; never triage or diagnose it.
-2. Fix the causes the report shares across the most builds (its shared leads
-   and unparsed-line templates), several in one batch. Implement from game
-   data and item text; PoB2 is a cross-check. Parallel agents may write
-   independent fixes without compiling; the main session merges and tests.
+2. Fix the causes the report shares across the most builds, several in one
+   batch: its shared leads, the unparsed-line templates, and what each build's
+   ledger of lines (`calculate-build --usage`) says the calculation drops
+   whether or not a row differs: lines a rule recognises and nothing models,
+   modifier names no build reads, conditions nothing sets, rejected gem
+   stats. Implement from game data and item text; PoB2 is a cross-check.
+   Parallel agents may write independent fixes without compiling; the main
+   session merges and tests.
 3. Validate once per batch: rerun `mise run triage` (PoB2's side is cached),
    `mise run accuracy`, the affected suites, the parity `reference_report`
    gate and lint. Raise improved baselines, add a round to
    `examples/reference-builds/README.md`, and commit each cause separately.
 4. Open one build (`mise run diagnose`, `mise run compare <build> [Stat ...]`,
-   `--breakdown`) only for a row the triage does not explain. When a kind of
+   `calculate-build --breakdown <stats> --usage`) only for a row the triage
+   does not explain. When a kind of
    row keeps needing that, extend the triage or diagnosis output so the next
    batch shows it; slow per-build investigation means the tooling is missing
    something.

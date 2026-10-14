@@ -67,6 +67,7 @@ mise run builds:fetch <组目录> [--pick first|last]
 # CLI（apps/pobr-cli，二进制名 pobr）
 cargo run -p pobr-cli -- calculate --base-life 1000 --mod "+50 to maximum Life"
 cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakdown TotalDPS,Life  # 所列 stat 的计算步骤与读到的词条
+cargo run -p pobr-cli -- calculate-build --file <code.txt> --usage [--json]          # 逐行台账：每一行词条的去向、影响的 stat、没用上的原因
 cargo run -p pobr-cli -- decode-code <pob_code>        # PoB Build Code → XML
 cargo run -p pobr-cli -- parse-mod "20% increased Fire Damage"
 
@@ -153,7 +154,7 @@ schema 3 的 `manifest.json` 列出运行时文件及 SHA-256；`BuildData::load
 
 Web 的计算、市场目录和天赋树使用初始化时固定的数据版本；重新初始化清除翻译与词缀层级缓存。节点规划逐节点计算，不能按原始词条文本共享包含位置/半径效应的结果。缺少历史树展示元数据时保留导入和计算，禁用不可靠的历史树编辑/规划。存档导入校验嵌套结构，非法存档不覆盖当前内容；启动失败保留原始字节并提供下载恢复。
 
-CLI 完整构筑与 marginal 结果包含数据版本、树版本和未支持词条，调用方必须保留诊断，不能把未支持内容视为零效果。`calculate-build` 另有 `missing_items`（构筑用到但导入器读不出的物品，结果是缺了这件装备的角色）和 `reference`（与构筑码内 `<PlayerStat>` 的差异；仅在请求沿用导出条件时给出）；`--breakdown <stats>` 时还有 `breakdowns`（每个 stat 的计算步骤和读到的词条，与 Web 的分解同源，见 `pobr_build::breakdown`）和 `main_skill`，`--reference-basis` 时 `output` 与分解都按参考值口径（`reference_basis`）。WASM 的 `{ pob_code }` 请求把同类物品放进 `item_errors`。
+CLI 完整构筑与 marginal 结果包含数据版本、树版本和未支持词条，调用方必须保留诊断，不能把未支持内容视为零效果。`calculate-build` 另有 `missing_items`（构筑用到但导入器读不出的物品，结果是缺了这件装备的角色）和 `reference`（与构筑码内 `<PlayerStat>` 的差异；仅在请求沿用导出条件时给出）；`--breakdown <stats>` 时还有 `breakdowns`（每个 stat 的计算步骤和读到的词条，与 Web 的分解同源，见 `pobr_build::breakdown`）和 `main_skill`，`--reference-basis` 时 `output` 与分解都按参考值口径（`reference_basis`）；`--usage` 时还有 `usage`（逐行台账，见“排查数值差异”），它总是来自游戏口径、全部模型开启的计算，不随 `--reference-basis` 改变。WASM 的 `{ pob_code }` 请求把同类物品放进 `item_errors`；WASM 的 `line_usage_json`（JS 名 `lineUsageJson`）接受与 `calculate_build_json` 相同的请求，返回 `{ usage, item_errors }`，不缓存。
 
 导入的损耗由 `pobr_build::ImportReport` 承载，与 `Build` 并列返回（`import_build*`）；`Build` 只描述计算输入，不携带诊断。`Build.jewels` 的每颗珠宝带 `JewelSocket`：树上自有插槽、被授予的插槽（Sinister / 含插槽的核心）或装备插槽，“珠宝插槽天赋效果”类词条只作用于第一种。超越肢体（PoB 的 `Arm 1/2`、`Leg 1/2`，游戏物品类 `IncursionArm` / `IncursionLeg`）是与装备并列的一组栏位 `Build.limbs`（按 `LimbSlot`）：肢体的 stat 都是全局的，词条在装备之后注入并按栏位归因（`item.arm1.implicit`），宝石等级加成和 “Allocates” 等按文本读取的通道也包含它们。`Build.weapon_set` 是 `items` 里那组武器所属的武器组（导入时取当前物品集的 `useSecondWeaponSet`；WASM 请求带 `weapon_swap` 时取它的 `active`），编排据此设置 `WeaponSet1` / `WeaponSet2` 条件，“使用武器组 1/2 时”的词条（例如 Rigwald's Ferocity 的 `support_rigwald_*_in_weapon_set_*`）只在对应的组生效。
 
@@ -256,15 +257,17 @@ PoB2 对照值与逻辑回归都使用活动数据版本，没有单独钉住的
 | 宝石 stat → Modifier | stat map 有条目但引擎拒绝（未知 mod 名、不支持的 tag）；完全没有条目的 stat 多数是展示或动画数据，按所属宝石列出供查找缺失的机制 | `Diagnosis::unmapped_stats` / `unknown_stats` |
 | Modifier → 计算 | 存入的名字从未被查询；依赖的 `Multiplier` 没有任何地方赋值（含从角色快照读取的 `actor: player` 类，例如 “per non-Idol Augment in your Equipment”）；等待的条件不在条件表里，也没有计算阶段推导它 | `Diagnosis::unread_modifiers` / `unprovided_multipliers` / `unset_conditions` |
 
-`pobr_build::diagnose` 运行同一条计算管线并返回以上全部，外加实际计算的主技能及其等级（技能或等级选错不会丢输入，所以单独列出）。它打开 `ModDb::track_reads` 并以 Compare 模式记录 stat 映射，结果与普通计算逐位相同（`diagnosis_does_not_change_the_result` 对全部已入库构筑断言），但更慢，只用于排查。
+`pobr_build::diagnose` 运行同一条计算管线并返回以上全部，外加实际计算的主技能及其等级（技能或等级选错不会丢输入，所以单独列出）。它打开 `ModDb::track_reads` 与 `CalcConfig::track_reads` 并以 Compare 模式记录 stat 映射，结果与普通计算逐位相同（`diagnosis_does_not_change_the_result` 对全部已入库构筑断言），但更慢，只用于排查。
+
+逐行台账 `pobr_build::usage::line_usage`（CLI `calculate-build --usage [--json]`、WASM `line_usage_json`）在同一次诊断上回答“构筑的每一行词条用上了没有、用在哪里”：计算收到的每一行（物品各区段、肢体、药剂与护符、珠宝、天赋节点、任务奖励与自定义词条、配置项，以及宝石 stat）列一次，带来源 id、持有者名字（节点名、物品基底）、解析出的每个 modifier 和它的去向：`applied`（被计数；`used_in` 列出它进入的 stat）、`partial`、`inactive`（名字被读取但没被计数，`reason` 给出缺的条件或标志，例如 “needs Attack”）、`unread`（没有任何查询问过这个名字）、`outside`（在 ModDb 之外消费：物品自身的防御 / 武器伤害、宝石等级与品质、珠宝半径，`reason` 写明读取方）、`no_effect`（登记为不影响任何输出的 S0 条目，或本构筑无人询问的配置项）、`unmodelled`（有规则识别但不产生 modifier，机制未建模）、`unparsed`、`no_modifier`（解析出 modifier 却没有存入，台账应当学会说明原因）。`Condition:<X>` / `Multiplier:<X>` 类 modifier 经条件表消费：有 modifier 等待 `<X>`、或计算阶段问过 `<X>`（`CalcConfig::read_variables`）时算作用上。行的去向由编排在写入来源时记录（`SourceWriter::note_line`，`LineFate`）；在 ModDb 之外拿走或丢弃词条行的新代码（剥离本地词条、按文本读取）要同时调用 `note_line` 并写明读取方，否则台账会把这些行报成未解析或没有 modifier。`mise run triage` 带 `--usage` 运行每个构筑，把未建模的行、没有任何构筑读取的名字、无人设置的条件和被拒绝的宝石 stat 跨构筑汇总，不论该构筑有没有不一致的行。
 
 条件不在条件表里时，有两类不是线索：计算阶段自己推导、成立时才写入的（暴击的一半、主副手、怒气与战斗、敌人的冰缓与感电、诅咒与标记、Elusive、Surrounded、所用武器组、内置 buff 附带的条件、`AffectedBy*`、`Using*Flask` / `Using*Charm`，见 `calc/session.rs::CONDITIONS_SET_BY_A_PASS`），以及编排按构筑本身设置、换一个构筑才会成立的（武器类型、盾、主技能的战斗条件、首领、同伴、普通胸甲、辅助宝石颜色，见 `diagnosis.rs::SET_BY_THE_ORCHESTRATION`）。其余条件中有配置项能设置的标为 “config: off”，由用户决定是否打开；没有任何来源的才是丢掉的输入。新增由计算阶段或编排设置的条件时登记进对应清单，否则其他构筑会误报它。
 
 排查顺序（先批量、后单个；完整流程见 [AGENTS.md](../AGENTS.md#accuracy-workflow)）：
 
-1. `mise run triage` 一次计算基准组与 tuned 组的全部构筑和钉定的 PoB2（也可给组目录或构筑目录），把与构筑码参考值不一致的每一行按今天的 PoB2 分类：`engine`（PoB2 与参考值一致而 PoBR 不一致）、`both`（三方都不同）、`reference`（PoBR 与 PoB2 一致，参考值出自另一版导出工具，不用改）、`known`（`devs/scripts/known-differences.json` 已解释的有意差异；PoB2 额外保留护身符授予技能的精魄也自动归入）。随后把 engine / both 行的线索跨构筑汇总：按来源与类型对齐后只有一边有或数值不同的词条、PoBR 有却没生效的词条、伤害因子与敌人的抗性 / 穿透 / 承伤、最大承伤与 EHP 背后 PoB2 的资源池、精魄总量与逐技能保留，以及没有规则能解析的词条（按模板合并，按涉及的构筑数排序）。按涉及构筑最多的原因成批修复，整批修完再跑一次（PoB2 一侧按构筑码缓存，与 `compare` 共用）。holdout 组只用 `mise run accuracy` 测量，`triage` 拒绝它。
+1. `mise run triage` 一次计算基准组与 tuned 组的全部构筑和钉定的 PoB2（也可给组目录或构筑目录），把与构筑码参考值不一致的每一行按今天的 PoB2 分类：`engine`（PoB2 与参考值一致而 PoBR 不一致）、`both`（三方都不同）、`reference`（PoBR 与 PoB2 一致，参考值出自另一版导出工具，不用改）、`known`（`devs/scripts/known-differences.json` 已解释的有意差异；PoB2 额外保留护身符授予技能的精魄也自动归入）。随后把 engine / both 行的线索跨构筑汇总：按来源与类型对齐后只有一边有或数值不同的词条、PoBR 有却没生效的词条、伤害因子与敌人的抗性 / 穿透 / 承伤、最大承伤与 EHP 背后 PoB2 的资源池、精魄总量与逐技能保留，以及没有规则能解析的词条（按模板合并，按涉及的构筑数排序）；再从每个构筑的逐行台账汇总计算丢掉的输入：有规则识别却未建模的行、存入后没有任何构筑读取的名字（先列没有读取方的）、无人设置的条件、被拒绝的宝石 stat。按涉及构筑最多的原因成批修复，整批修完再跑一次（PoB2 一侧按构筑码缓存，与 `compare` 共用）。holdout 组只用 `mise run accuracy` 测量，`triage` 拒绝它。
 2. 分诊解释不了的行，再单独看那个构筑：`mise run diagnose <构筑>`。第 1 节是导入损耗，第 2 节是与构筑码自带参考值的差异，第 3–9 节是丢掉的输入（第 6 节是等待无人设置的条件的词条，配置项能设置的条件另列为 “config: off”）。多数差异在这里就能对上原因。
-3. 看一个 stat 怎么算出来：`cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakdown <Stat,...>` 打印计算步骤和读到的每条词条（`--reference-basis` 按参考值口径，`--json` 输出 JSON）；技能、stat、基底、天赋或暗金在游戏数据里的记录用 `mise run lookup <id 或名字>`，不必逐个打开数据文件。
+3. 看一个 stat 怎么算出来：`cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakdown <Stat,...>` 打印计算步骤和读到的每条词条（`--reference-basis` 按参考值口径，`--json` 输出 JSON；加 `--usage` 列出没有完全用上的每一行及原因）；技能、stat、基底、天赋或暗金在游戏数据里的记录用 `mise run lookup <id 或名字>`，不必逐个打开数据文件。
 4. 清单解释不了的差异，用 `mise run compare <构筑> [Stat ...]` 对照钉定的 PoB2：每个 stat 两边的总值与比值、BASE / INC / MORE 合计，以及按来源（天赋节点、装备槽、技能、角色基础与属性、配置、任务奖励）对齐后只有一边有或数值不同的词条。不给 stat 时比较构筑码参考值中不一致的行。PoB2 的结果按构筑码缓存在 `.cache/pob2-oracle/`，重跑只重算 PoBR（`--refresh` 两边都重算）。更细的中间值仍可直接用 `tools/pob2-oracle/run.sh`。
 5. 参考值不是真值。构筑码内的 `<PlayerStat>` 是导出工具当时的结果（版本未知，可能早于当前数据）；PoB2 自身也有假设和缺陷。两边不一致时，以游戏自己的词条文本和数据判断谁对，再决定改哪一边。确认为有意差异后写进上文“已知的有意差异”，并把构筑与行登记进 `devs/scripts/known-differences.json`，分诊就不再列出。
 
