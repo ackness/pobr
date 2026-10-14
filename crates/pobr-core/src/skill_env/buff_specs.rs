@@ -373,7 +373,14 @@ pub fn buff_skill_specs(
                             socket_index,
                             is_mark: false,
                             ignore_curse_limit: false,
-                            local_effect_inc: 0.0,
+                            local_effect_inc: stat_on_skill_and_supports(
+                                &group,
+                                data,
+                                gem,
+                                skill_id,
+                                level,
+                                skill_stats::OFFERING_BUFF_EFFECT,
+                            ),
                             local_effect_more: 1.0,
                             skill_types: pobr_data::skill::SkillTypes::NONE,
                         });

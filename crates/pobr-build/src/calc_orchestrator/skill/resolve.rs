@@ -228,12 +228,40 @@ pub(crate) fn resolve_skill_level_with_gem_bonus(
     if pobr_core::dbg_env!("POBR_DBG_GEMLVL").is_some() {
         eprintln!("[POBR_GEMLVL] {skill_id} base={base_level} bonus={bonus}");
     }
-    pobr_core::skill_env::resolve_skill_level(
+    let mut resolved = pobr_core::skill_env::resolve_skill_level(
         data,
         skill_id,
         base_level.saturating_add(bonus),
         effect.stat_set_index,
-    )
+    )?;
+    if resolved.cooldown_s.is_none() {
+        adopt_support_cooldown(group, data, skill_id, &mut resolved);
+    }
+    Some(resolved)
+}
+
+/// A support that gives the skills it supports a cooldown (Breachlord's
+/// Amalgam: "Supports … skills … which do not already have cooldowns, adding
+/// a cooldown"): its level row holds the cooldown and the stored uses, which
+/// the supported skill takes. Only a skill without a cooldown of its own
+/// reaches here, as such a support supports no other.
+fn adopt_support_cooldown(
+    group: &SocketGroup,
+    data: &BuildData,
+    skill_id: &str,
+    resolved: &mut ResolvedSkillLevel,
+) {
+    use pobr_core::skill_env::StatSetLookup;
+    let judgement = crate::support::judge_group_supports(group, data, skill_id, group.from_gem());
+    let row = judgement.compatible.iter().find_map(|support| {
+        let level = group.gem_skills.get(support.gem_index)?.gem_level;
+        data.effect_level_row(&support.effect_id, level)
+            .filter(|row| row.cooldown_ms.is_some_and(|ms| ms > 0))
+    });
+    if let Some(row) = row {
+        resolved.cooldown_s = row.cooldown_ms.map(|ms| f64::from(ms) / 1000.0);
+        resolved.stored_uses = row.stored_uses;
+    }
 }
 
 /// The +N gem level granted by a **compatible** support gem in the same group (matching

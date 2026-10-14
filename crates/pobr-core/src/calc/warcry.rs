@@ -264,7 +264,8 @@ pub fn apply_warcry_uptime(env: &mut Env) {
         .or(env.hand_sources.first())
     {
         Some(hand) => {
-            let (cfg, input) = super::hand_pass::hand_scope(hand, &env.cfg, &input);
+            let (cfg, input) =
+                super::hand_pass::hand_scope(&env.player.mod_db, hand, &env.cfg, &input);
             super::offence::resolve_use_rate(&env.player.mod_db, &cfg, &input)
         }
         None => super::offence::resolve_use_rate(&env.player.mod_db, &env.cfg, &input),

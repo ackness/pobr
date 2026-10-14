@@ -20,6 +20,16 @@
       "build": "mercenary-witchhunter-crossbow-shot",
       "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "IgniteDPS"],
       "reason": "Pounce's Predator's Mark counts the minions already in Presence, not the wolves Pounce summons (docs/maintainer-guide.md, Pounce)"
+    },
+    {
+      "build": "mercenary-gemling-legionnaire-twister-a479eff2b320",
+      "stats": ["TotalDotDPS", "IgniteDPS"],
+      "reason": "enemies in Presence resist each element with their lowest Elemental Resistance, ailments included (docs/maintainer-guide.md, Presence)"
+    },
+    {
+      "build": "huntress-ritualist-purity-of-fire",
+      "stats": ["CritMultiplier"],
+      "reason": "an aura is not a spell: increased Critical Spell Damage Bonus does not apply to Purity of Fire (docs/maintainer-guide.md, Purity of Fire)"
     }
   ]
 }

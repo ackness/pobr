@@ -249,8 +249,20 @@ fn scale_buff_mod(
     fallback_source_id: &str,
 ) -> Modifier {
     let mut out = modifier.clone();
-    if let ModValue::Number(v) = out.value {
-        out.value = ModValue::Number(scale_value(rules, out.name.as_str(), out.mod_type, v, mult));
+    match &mut out.value {
+        ModValue::Number(v) => {
+            *v = scale_value(rules, out.name.as_str(), out.mod_type, *v, mult);
+        }
+        // What a buff grants others (an aura only allies have) is scaled
+        // with it.
+        ModValue::NestedMods(nested) => {
+            for inner in nested.iter_mut() {
+                if let ModValue::Number(v) = &mut inner.value {
+                    *v = scale_value(rules, inner.name.as_str(), inner.mod_type, *v, mult);
+                }
+            }
+        }
+        _ => {}
     }
     let scale_note = format!("buff effect ×{mult:.4}");
     match out.origin.as_mut() {
@@ -401,8 +413,14 @@ pub fn buff_pass(env: &mut Env) {
                     ModName::from("BuffEffect"),
                     ModName::from("BuffEffectOnSelf"),
                 ];
-                let inc = env.player.mod_db.sum(ModType::Inc, &env.cfg, &inc_names);
-                let more = env.player.mod_db.more(&env.cfg, &more_names) * spec.magnitude;
+                // The skill's own and its supports' increase of its buff
+                // (Sacrificial Offering's "Supported Offering Skills have
+                // 30% increased Buff effect") adds to the character's.
+                let inc = env.player.mod_db.sum(ModType::Inc, &env.cfg, &inc_names)
+                    + spec.local_effect_inc;
+                let more = env.player.mod_db.more(&env.cfg, &more_names)
+                    * spec.magnitude
+                    * spec.local_effect_more;
                 let mult = (1.0 + inc / 100.0) * more;
                 // vendor :1955: `modDB.conditions["AffectedBy"..buff.name] = true`.
                 conditions.push(affected_by_condition(&spec.name));

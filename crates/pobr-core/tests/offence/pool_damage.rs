@@ -643,7 +643,7 @@ fn oracle_lich_eternal_life_pool_chain() {
 
     // Act: setup.
     let ctx = build_pool_ctx(&db, &cfg, &keystones, &base);
-    let pools = build_pool_state(&db, &cfg, &base);
+    let pools = build_pool_state(&db, &cfg, &base, 0.0);
     let mom = mom_hit_pools(&ctx, &base);
 
     // Assert: setup intermediate values against the oracle.

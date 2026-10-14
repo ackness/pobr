@@ -286,10 +286,19 @@ const BASELINES: [Baseline; 3] = [
     // Lowest Resistance"), 1.21 times the reference that keeps it to hits;
     // the Blood Mage's (Arc) CombinedDPS is 1.057 times the reference with
     // the Spectre it chose.
+    //
+    // Then 41 builds and 2041 rows: a hand's attacks read the hand's own
+    // Accuracy ("1% increased Attack Speed per 400 Accuracy Rating"); Spell
+    // Echo repeats a spell under its cooldown; Barrage repeats once more per
+    // Frenzy Charge consumed; a support that adds a cooldown (Breachlord's
+    // Amalgam) gives the skill its cooldown and stored uses; Gigantic
+    // companions, "Companions gain your Strength", Pain Offering's aura on
+    // minions with Sacrificial Offering's increased Buff effect, and a
+    // companion's share of Deflected Hits.
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
-        dps_builds: 36,
-        agreeing_rows: 2022,
+        dps_builds: 41,
+        agreeing_rows: 2041,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
@@ -297,10 +306,13 @@ const BASELINES: [Baseline; 3] = [
     // character of each ascendancy not already committed
     // (`mise run builds:fetch examples/reference-builds/holdout --pick last`),
     // and measured before any change: 11 builds and 971 rows.
+    //
+    // 12 builds and 978 rows after the changes the tuned set's 41 builds
+    // record.
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
-        dps_builds: 11,
-        agreeing_rows: 971,
+        dps_builds: 12,
+        agreeing_rows: 978,
     },
 ];
 

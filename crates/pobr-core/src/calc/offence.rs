@@ -2159,9 +2159,8 @@ pub(crate) fn apply_cooldown_cap(db: &ModDb, cfg: &CalcConfig, uncapped_rate: f6
     uncapped_rate.min(repeats(db, cfg) / cd)
 }
 
-/// Skill repeat count Repeats (PoB2 CalcOffence L981: `1 + RepeatCount`,
-/// default 1). This exceeds 1 once multistrike / skill-repeat mods inject
-/// BASE `RepeatCount`; currently always 1 while unwired.
+/// How many times one use of the skill casts it: `1 + RepeatCount` (Spell
+/// Echo's echoes, see `rules::skill_stats`).
 fn repeats(db: &ModDb, cfg: &CalcConfig) -> f64 {
     1.0 + db
         .sum(ModType::Base, cfg, &[ModName::from("RepeatCount")])

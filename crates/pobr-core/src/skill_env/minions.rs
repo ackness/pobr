@@ -34,6 +34,10 @@ pub trait MinionSession {
     /// Whether the player has the flag `name`.
     fn has_flag(&self, name: &str) -> bool;
 
+    /// The character's final attribute `name` (`Strength`, `Dexterity`), as
+    /// its attributes were prepared.
+    fn attribute(&self, name: &str) -> f64;
+
     /// What the character grants the minions of a skill with `skill_types`
     /// (see [`crate::calc::CalculationSession::minion_modifiers_for`]).
     fn minion_modifiers_for(&self, skill_types: SkillTypes) -> Vec<MinionModifierEntry>;
@@ -63,6 +67,10 @@ impl MinionSession for crate::calc::CalculationSession {
 
     fn has_flag(&self, name: &str) -> bool {
         crate::calc::CalculationSession::has_flag(self, name)
+    }
+
+    fn attribute(&self, name: &str) -> f64 {
+        self.config().stats.get(name).copied().unwrap_or(0.0)
     }
 
     fn add_player_modifiers(&mut self, modifiers: Vec<crate::Modifier>) {
@@ -279,6 +287,20 @@ pub fn spawn_minions(
                     .fold(SkillTypes::NONE, |all, one| all | one)
             });
             let mut group_minion_modifiers = session.minion_modifiers_for(skill_types);
+            // What of the character's attributes this skill's minions gain:
+            // "Minions gain your Strength", Sturdy Ally's "Companions gain
+            // your Strength".
+            let infusion = AttributeInfusion {
+                player_strength: session.attribute("Strength"),
+                player_dexterity: session.attribute("Dexterity"),
+                strength_added: session.has_flag("StrengthAddedToMinions")
+                    || (data
+                        .effect(&skill_id)
+                        .is_some_and(|e| e.skill_types.iter().any(|t| t == "Companion"))
+                        && session.has_flag("StrengthAddedToCompanions")),
+                half_strength_added: session.has_flag("HalfStrengthAddedToMinions"),
+                dexterity_added: session.has_flag("DexterityAddedToMinions"),
+            };
             // What the summoning skill's own stats, and those of the supports
             // that apply to it, grant its minions.
             let own_stats =
@@ -358,7 +380,7 @@ pub fn spawn_minions(
                     limit,
                     minion_modifiers,
                     Vec::new(),
-                    AttributeInfusion::default(),
+                    infusion,
                     crate::calc::MinionOrigin {
                         summoned_by: skill_id.clone(),
                         is_companion,

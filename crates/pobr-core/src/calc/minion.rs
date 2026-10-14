@@ -544,23 +544,34 @@ fn write_intrinsics(db: &mut ModDb, base: &MinionBaseStats) {
     }
 }
 
-/// Writes attribute infusion (flag-driven) into the minion ModDb's `Str`/`Dex` BASE.
+/// Maximum Life a point of Strength grants, a minion's as the character's.
+pub const LIFE_PER_STRENGTH: f64 = 2.0;
+
+/// Writes attribute infusion (flag-driven) into the minion ModDb's
+/// `Strength` / `Dexterity` BASE, with the Life the Strength grants: a minion
+/// has no attributes of its own, so what it gains is all it has.
 fn write_attribute_infusion(db: &mut ModDb, infusion: &AttributeInfusion) {
     let src = |id: &str| ModifierSource::new(SourceId::new(SourceKind::Config, id.to_string()));
-    if infusion.strength_added {
-        db.add_mod(
-            Modifier::number("Str", ModType::Base, round(infusion.player_strength))
-                .with_origin(src("minion.infusion.strength")),
-        );
+    let strength = if infusion.strength_added {
+        Some((round(infusion.player_strength), "minion.infusion.strength"))
     } else if infusion.half_strength_added {
+        Some((
+            round(infusion.player_strength * 0.5),
+            "minion.infusion.half_strength",
+        ))
+    } else {
+        None
+    };
+    if let Some((strength, id)) = strength {
+        db.add_mod(Modifier::number("Strength", ModType::Base, strength).with_origin(src(id)));
         db.add_mod(
-            Modifier::number("Str", ModType::Base, round(infusion.player_strength * 0.5))
-                .with_origin(src("minion.infusion.half_strength")),
+            Modifier::number("MaximumLife", ModType::Base, strength * LIFE_PER_STRENGTH)
+                .with_origin(src(id)),
         );
     }
     if infusion.dexterity_added {
         db.add_mod(
-            Modifier::number("Dex", ModType::Base, round(infusion.player_dexterity))
+            Modifier::number("Dexterity", ModType::Base, round(infusion.player_dexterity))
                 .with_origin(src("minion.infusion.dexterity")),
         );
     }
@@ -615,6 +626,11 @@ pub fn build_minion_context(input: &MinionInput) -> MinionContext {
 
     MinionContext { base, mod_db: db }
 }
+
+/// The flag of a Gigantic minion ("Your Minions are Gigantic", the
+/// `companions_are_gigantic` of Tangmazu's Thurible; see
+/// `calc::perform::apply_gigantic`).
+pub const GIGANTIC: &str = "Gigantic";
 
 // Count limit / per-minion multiplier (agent-docs/minions.md §4.1)
 

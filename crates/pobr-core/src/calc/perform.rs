@@ -42,7 +42,7 @@ pub(crate) fn main_hand_scope(env: &Env) -> Option<(CalcConfig, MinimalInput)> {
         .iter()
         .find(|h| matches!(h.label, crate::HandTag::MainHand | crate::HandTag::Single))
         .or(env.hand_sources.first())
-        .map(|hand| super::hand_pass::hand_scope(hand, &env.cfg, &input))
+        .map(|hand| super::hand_pass::hand_scope(&env.player.mod_db, hand, &env.cfg, &input))
 }
 
 /// The scope of every offence pass, in the order `run_hand_passes` runs
@@ -56,7 +56,8 @@ pub(crate) fn pass_scopes(env: &Env) -> Vec<(crate::HandTag, CalcConfig, Minimal
         .iter()
         .take(2)
         .map(|hand| {
-            let (cfg, input) = super::hand_pass::hand_scope(hand, &env.cfg, &input);
+            let (cfg, input) =
+                super::hand_pass::hand_scope(&env.player.mod_db, hand, &env.cfg, &input);
             (hand.label, cfg, input)
         })
         .collect()
@@ -312,11 +313,11 @@ pub(crate) fn minion_cfg(env: &Env, minion: &super::Actor) -> CalcConfig {
 }
 
 /// "Your Minions are Gigantic" (`minions_are_gigantic`, the minion's
-/// `is_gigantic`): a Gigantic minion has 20% more Life and deals 20% more
-/// Damage. The game data in the snapshot gives no magnitude for it
-/// (`is_gigantic_magnitude` has no value); the numbers are PoB2's.
+/// `is_gigantic`): "Gigantic Minions have 20% more Maximum Life, 20% more
+/// Damage and 20% increased size". The snapshot's game data gives no
+/// magnitude for it (`is_gigantic_magnitude` has no value).
 fn apply_gigantic(minion: &mut super::Actor, cfg: &CalcConfig) {
-    if !minion.mod_db.flag(cfg, "Gigantic") {
+    if !minion.mod_db.flag(cfg, super::minion::GIGANTIC) {
         return;
     }
     let origin = || {
@@ -810,7 +811,7 @@ fn fill_mechanics(env: &mut Env) {
             // Damage is already calculated in HandOutput; only reuse the
             // hand scope here, so the returned input is deliberately unused.
             let (mut hand_cfg, _) =
-                super::hand_pass::hand_scope(source, cfg, &MinimalInput::default());
+                super::hand_pass::hand_scope(db, source, cfg, &player_input(env));
             hand_cfg.conditions.insert(
                 "MainHandAttack".into(),
                 matches!(

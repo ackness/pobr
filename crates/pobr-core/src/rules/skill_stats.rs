@@ -9,7 +9,7 @@
 use pobr_data::catalog::SkillDamageStat;
 use pobr_data::prelude::*;
 
-use crate::{ModTag, Modifier};
+use crate::{ModTag, ModValue, Modifier};
 
 /// The ailment each element builds up on its own.
 const ELEMENTAL_AILMENTS: [(&str, &str); 3] = [
@@ -117,6 +117,11 @@ pub fn minion_modifiers(stat: &str, value: f64, minions: SummonedMinions) -> Opt
         }
         // "Supported Skills have {0}% increased Minion Attack Speed".
         "minion_attack_speed_+%" => Modifier::number("AttackSpeed", ModType::Inc, value),
+        // Tangmazu's Thurible: "Companions from Supported Skills are
+        // Gigantic"; a summoning skill's "Minions are Gigantic".
+        "companions_are_gigantic" | "minions_are_gigantic" => {
+            Modifier::flag(crate::calc::minion::GIGANTIC)
+        }
         // Bidding: "Supported Minions deal {0}% more Damage with Command
         // Skills".
         "support_command_skill_damage_+%_final" => Modifier::number("Damage", ModType::More, value)
@@ -139,6 +144,16 @@ pub fn minion_modifiers(stat: &str, value: f64, minions: SummonedMinions) -> Opt
         _ => return None,
     };
     Some(vec![modifier])
+}
+
+/// Sacrificial Offering: "Supported Offering Skills have {0}% increased Buff
+/// effect", of the buff the Offering grants.
+pub const OFFERING_BUFF_EFFECT: &str = "offering_spells_effect_+%";
+
+/// An aura of the character's that only its allies have, the minions among
+/// them (`calc::perform`'s `ExtraAura`): `modifiers` are what each has.
+fn allies_aura(modifiers: Vec<Modifier>) -> Modifier {
+    Modifier::new("ExtraAura", ModType::List, ModValue::NestedMods(modifiers))
 }
 
 /// The valueless stat of a Command skill, a skill a minion uses when the
@@ -169,6 +184,9 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         stat if is_minion_stat(stat) => Some(Vec::new()),
         // Read where a minion's skill is chosen (`calc::MinionSkill`).
         COMMAND_SKILL_STAT => Some(Vec::new()),
+        // Raises the buff of the Offering it supports, where that buff is
+        // made (`skill_env::buff_specs`).
+        OFFERING_BUFF_EFFECT => Some(Vec::new()),
         // Efficiency: "Supported Skills have {0}% more Cost" / "less Cost",
         // of whatever the skill costs.
         "support_inspiration_cost_+%_final" => {
@@ -216,6 +234,12 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
             ModType::Base,
             value,
         )]),
+        // Spell Echo: "Supported Spells Echo {0} times". Each echo repeats
+        // the spell, so a use under a cooldown is that many more casts
+        // (`calc::offence::apply_cooldown_cap`).
+        "support_spell_echo_number_of_echo_cascades" => {
+            Some(vec![Modifier::number("RepeatCount", ModType::Base, value)])
+        }
         // Rigwald's Ferocity: increased Attack Speed and more Damage for
         // Supported Skills, each only while using one of the two weapon sets.
         "support_rigwald_attack_speed_+%_in_weapon_set_one" => Some(vec![
@@ -320,6 +344,19 @@ pub fn player_buff_modifiers(stat: &str, value: f64, skill: BuffSkill) -> Option
     match stat {
         // Not a buff on the character (see `inflicts_withered`).
         stat if inflicts_withered(stat) => Some(Vec::new()),
+        // Pain Offering: "Aura grants Minions {0}% increased damage" and
+        // "Aura grants Minions {0}% increased Attack and Cast Speed". The
+        // bone spike's aura affects minions, not the character: an aura of
+        // the character's that only its allies have (`ExtraAura`).
+        "pain_offering_damage_+%" => Some(vec![allies_aura(vec![Modifier::number(
+            "Damage",
+            ModType::Inc,
+            value,
+        )])]),
+        "pain_offering_attack_and_cast_speed_+%" => Some(vec![allies_aura(vec![
+            Modifier::number("AttackSpeed", ModType::Inc, value),
+            Modifier::number("CastSpeed", ModType::Inc, value),
+        ])]),
         // Cast on Critical, from its quality on a character whose gem quality
         // grants the additional effect: "Buff grants {0}% increased Critical
         // Hit chance".
@@ -430,6 +467,19 @@ pub fn player_buff_modifiers(stat: &str, value: f64, skill: BuffSkill) -> Option
         // "Buff duration is {0} seconds per Power Charge Consumed": how long
         // the buff lasts, with no effect on what it grants while it is up.
         "charged_staff_buff_duration_per_stack_ms" => Some(Vec::new()),
+        // Barrage: "Empowered Attacks Repeat {0:+d} times, and a further
+        // {1:+d} times per Frenzy Charge consumed" (this is {1}). The skill
+        // consumes every Frenzy Charge the character can lose, so the count is
+        // the charges above the minimum; a consumed charge whose benefit is
+        // doubled adds twice the repeats.
+        "empower_barrage_number_of_barrage_repeats_per_frenzy_charge" => Some(vec![
+            Modifier::number(
+                "BarrageRepeats",
+                ModType::Base,
+                value * skill.consumed_charge_benefit(),
+            )
+            .with_tag(ModTag::multiplier("RemovableFrenzyCharge", 1.0, None)),
+        ]),
         _ => None,
     }
 }
