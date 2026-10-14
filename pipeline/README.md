@@ -44,6 +44,7 @@ bash pipeline/refresh-modifiers.sh
 报告中的 `pobr_gap` 表示 PoB2 完整解析而 PoBR 未完整解析，优先检查提取器、枚举、标签映射。
 `upstream_gap` 表示 PoB2 也不能完整解析，需查游戏机制并实现对应计算，不能靠空规则消除提示。
 `recognized_empty` 单列零 modifier 的规则；有残余文本或丢失条件标签也不计为完整支持。
+`no_effect` 是登记为不影响任何计算输出的 S0 规则（`"mods": []`、`"batch": "S0"`）匹配的行，与 `parsed` 一样计为完整支持：从 `parsed` 变成 `no_effect` 不算退化。
 没有 oracle 时缺口为 `uncompared_gap`。`mod_names` 便于定位计算消费者，但识别出名称不证明消费者已实现。
 
 每条样本的 `special_rule_id` 关联规则文件来源，`matching_special_rules` 按优先级列出所有候选，多个 ID 表示后续规则被遮蔽。该检查只覆盖样本，不证明任意文本都无重叠。结构化 LIST 等未参与计算的字段在 `non_effective_fields` 单列；现有装备 / 天赋的 `SourceId` 不由规则来源替代。严格校验与合并契约见[维护者规则说明](../docs/contributing-mods.md#7-validate-test-and-open-a-pr)。
