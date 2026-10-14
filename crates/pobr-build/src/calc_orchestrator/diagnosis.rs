@@ -362,7 +362,7 @@ pub fn diagnose(
         .collect();
     let unset_conditions = group_unset_conditions(&session, data);
 
-    let view = super::with_extra_gem_bonuses(build, &options);
+    let view = super::prepared_build_view(build, data, &options);
     Ok(Diagnosis {
         main_skill: super::skill::resolve::main_skill_summary(&view, data),
         skills: super::skill::resolve::skill_summaries(&view, data),

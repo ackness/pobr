@@ -1,8 +1,11 @@
-//! Skill gem table adapter (`SkillGems` + `GemEffects` + `GemTags` -> `skill_gems.json`).
+//! Skill gem table adapter (`SkillGems` + `GemEffects` + `GemTags` +
+//! `ItemExperiencePerLevel` -> `skill_gems.json`).
 //!
 //! Gem identity comes from `SkillGems.BaseItemType` -> `BaseItemTypes.Id`; dev placeholder entries are filtered out.
 //! What the gem grants and its tags come from its row of `GemEffects`
-//! (`SkillGems.GemEffects`; every gem has one).
+//! (`SkillGems.GemEffects`; every gem has one). The character level each gem
+//! level requires comes from `ItemExperiencePerLevel`, by the gem's
+//! `ItemExperienceType`.
 
 use std::path::Path;
 
@@ -35,6 +38,21 @@ struct RawSkillGem {
     /// `GemEffects` row indices.
     #[serde(rename = "GemEffects", default)]
     gem_effects: Vec<usize>,
+    /// `ItemExperienceTypes` row index.
+    #[serde(rename = "ItemExperienceType")]
+    item_experience_type: Option<usize>,
+}
+
+#[derive(Deserialize)]
+struct RawItemExperienceLevel {
+    #[serde(rename = "ItemExperienceType")]
+    item_experience_type: Option<usize>,
+    /// The gem level.
+    #[serde(rename = "ItemCurrentLevel")]
+    item_level: Option<i64>,
+    /// The character level that gem level requires.
+    #[serde(rename = "Level")]
+    level: Option<i64>,
 }
 
 #[derive(Deserialize)]
@@ -73,6 +91,7 @@ pub(super) fn adapt_gems(
         .map(|tag| tag.id)
         .collect();
     let effect_id = |index: usize| effect_ids.get(index).filter(|id| !id.is_empty()).cloned();
+    let level_requirements = level_requirements(en)?;
     let mut gems = Vec::new();
     for raw in raw_gems {
         let Some(idx) = raw.base_item_type else {
@@ -129,10 +148,39 @@ pub(super) fn adapt_gems(
                         .collect()
                 })
                 .unwrap_or_default(),
+            level_requirements: raw
+                .item_experience_type
+                .and_then(|kind| level_requirements.get(&kind).cloned())
+                .unwrap_or_default(),
         });
     }
     gems.sort_by(|a, b| a.id.cmp(&b.id));
     Ok((gems, gems_total))
+}
+
+/// `ItemExperiencePerLevel` by experience type: the character level each gem
+/// level requires, from gem level 1 to the last the type lists. A type may
+/// list only some levels (Cast when Stunned's lists gem level 11 at character
+/// level 41); a level it doesn't list requires what the level before it does,
+/// nothing before the first listed.
+fn level_requirements(en: &Path) -> Result<std::collections::HashMap<usize, Vec<u32>>, String> {
+    let rows = read_json::<Vec<RawItemExperienceLevel>>(&en.join("ItemExperiencePerLevel.json"))?;
+    let mut by_type: std::collections::HashMap<usize, Vec<u32>> = std::collections::HashMap::new();
+    let mut listed: Vec<(usize, usize, u32)> = rows
+        .into_iter()
+        .filter_map(|row| {
+            let item_level = usize::try_from(row.item_level?).ok().filter(|l| *l >= 1)?;
+            Some((row.item_experience_type?, item_level, clamp_u32(row.level)))
+        })
+        .collect();
+    listed.sort_unstable();
+    for (kind, item_level, level) in listed {
+        let levels = by_type.entry(kind).or_default();
+        let previous = levels.last().copied().unwrap_or(0);
+        levels.resize(item_level - 1, previous);
+        levels.push(level.max(previous));
+    }
+    Ok(by_type)
 }
 
 #[cfg(test)]
@@ -174,8 +222,8 @@ mod tests {
                 (
                     "SkillGems.json",
                     json!([
-                        {"BaseItemType": 1, "GemType": 1, "GemEffects": [0]},
-                        {"BaseItemType": 0, "GemType": 0, "GemEffects": [1]}
+                        {"BaseItemType": 1, "GemType": 1, "GemEffects": [0], "ItemExperienceType": 1},
+                        {"BaseItemType": 0, "GemType": 0, "GemEffects": [1], "ItemExperienceType": 0}
                     ]),
                 ),
                 (
@@ -191,6 +239,14 @@ mod tests {
                     "GemTags.json",
                     json!([{"Id": "support"}, {"Id": "attack"}, {"Id": "spell"}, {"Id": "projectile"}]),
                 ),
+                (
+                    "ItemExperiencePerLevel.json",
+                    json!([
+                        {"ItemExperienceType": 0, "ItemCurrentLevel": 2, "Level": 3},
+                        {"ItemExperienceType": 1, "ItemCurrentLevel": 3, "Level": 26},
+                        {"ItemExperienceType": 0, "ItemCurrentLevel": 1, "Level": 0}
+                    ]),
+                ),
             ],
         );
         let (gems, total) = adapt_gems(&dir, &base_ids(), &effect_ids()).unwrap();
@@ -201,11 +257,14 @@ mod tests {
         assert_eq!(rain.granted_effect_id.as_deref(), Some("RainPlayer"));
         assert!(rain.additional_granted_effect_ids.is_empty());
         assert_eq!(rain.gem_tags, ["attack", "projectile"]);
+        assert_eq!(rain.level_requirements, [0, 3]);
         let doom = &gems[1];
         assert!(doom.is_support);
         assert_eq!(doom.granted_effect_id.as_deref(), Some("DoomSupportPlayer"));
         assert_eq!(doom.additional_granted_effect_ids, ["DoomBlastPlayer"]);
         assert_eq!(doom.gem_tags, ["support", "spell"]);
+        // Levels before the first listed require nothing.
+        assert_eq!(doom.level_requirements, [0, 0, 26]);
     }
 
     /// A gem definition holds one row of `GemEffects`; a gem with more is
@@ -227,6 +286,7 @@ mod tests {
                     ]),
                 ),
                 ("GemTags.json", json!([])),
+                ("ItemExperiencePerLevel.json", json!([])),
             ],
         );
         let error = adapt_gems(&dir, &base_ids(), &effect_ids()).unwrap_err();

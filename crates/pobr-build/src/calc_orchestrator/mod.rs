@@ -468,15 +468,82 @@ fn calculate_with_context(
 /// Stage 0: the build as a calculation under `options` reads it. Its lines
 /// first ([`with_extra_gem_bonuses`]), then the view of them
 /// ([`stage_build_view`]: Ring 3 gate → item-granted skills → quality).
-fn prepared_build_view<'a>(
+pub(crate) fn prepared_build_view<'a>(
     build: &'a Build,
     data: &BuildData,
     options: &DataOrchestratorOptions,
 ) -> Cow<'a, Build> {
-    match with_extra_gem_bonuses(build, options) {
+    let view = match with_extra_gem_bonuses(build, options) {
         Cow::Borrowed(build) => stage_build_view(build, data),
         Cow::Owned(build) => Cow::Owned(stage_build_view(&build, data).into_owned()),
+    };
+    // A skill an item grants is used at the level the character meets the
+    // requirements of, which depends on the attributes its items and passives
+    // give it: settled from the view without its skills.
+    match scale_granted_skills(&view, data, || {
+        attributes_without_skills(&view, data, options)
+    }) {
+        Some(scaled) => Cow::Owned(scaled),
+        None => view,
     }
+}
+
+/// The character's Strength, Dexterity and Intelligence from everything but
+/// its skills: its class, equipment, limbs, jewels, configuration, passive
+/// tree and extra lines, sourced as [`calculate_prepared_with_context`]
+/// sources them. A skill's level is settled before any skill is calculated,
+/// so a skill's own effects don't count. A build the calculation can't
+/// source has no limit on its attributes.
+fn attributes_without_skills(
+    build: &Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+) -> [f64; 3] {
+    let sourced = || -> Result<[f64; 3], BuildError> {
+        let main = stage_resolve_main_skill(build, data);
+        let (resolved_config, base_cfg) = stage_resolve_config(build, data, options);
+        let (cfg, enemy_tier) =
+            stage_build_cfg(build, data, options, &main, &resolved_config, base_cfg);
+        let weapons = stage_weapon_bases(build, data, &main, options.base_input);
+        let ctx = StageCtx {
+            build,
+            data,
+            options,
+            main,
+            weapons,
+            resolved_config,
+            enemy_tier,
+        };
+        let mut session = stage_create_session(&ctx, cfg);
+        inject_character_base(&mut session, build, data, options, &ctx.resolved_config);
+        let main_weapon_active = ctx
+            .main
+            .main_effect
+            .is_some_and(|e| e.is_attack() && !e.is_non_weapon_attack());
+        inject_items(
+            &mut session,
+            build,
+            data,
+            ctx.weapons.off_hand_weapon.is_some(),
+            main_weapon_active,
+        )?;
+        inject_limbs(&mut session, build, data)?;
+        stage_inject_jewels(&mut session, &ctx)?;
+        stage_inject_radius_jewels(&mut session, &ctx)?;
+        stage_inject_config_mods(&mut session, &ctx)?;
+        stage_inject_passives(&mut session, &ctx)?;
+        stage_inject_extra_texts(&mut session, &ctx)?;
+        let mut session = session.finish_sources();
+        inject_build_multipliers(&mut session, build, data);
+        let class = character_base(build, data).filter(|_| options.inject_character_base);
+        let bases = class.map_or([0.0; 3], |c| [c.strength, c.dexterity, c.intelligence]);
+        Ok([
+            session.attribute_total("Strength", bases[0]),
+            session.attribute_total("Dexterity", bases[1]),
+            session.attribute_total("Intelligence", bases[2]),
+        ])
+    };
+    sourced().unwrap_or([f64::INFINITY; 3])
 }
 
 /// `build` with the gem level and quality bonuses among the extra modifier
@@ -711,9 +778,10 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
         build = Cow::Owned(augmented);
     }
 
-    // The skills an item grants without reservation, while gem qualities are
-    // still the build's own: the next steps add quality to every gem.
-    if let Some(marked) = mark_reservation_free_skills(&build, data) {
+    // The groups that are skills the equipment grants (their level, and the
+    // ones granted without reservation), while gem qualities are still the
+    // build's own: the next steps add quality to every gem.
+    if let Some(marked) = mark_item_granted_skills(&build, data) {
         build = Cow::Owned(marked);
     }
 

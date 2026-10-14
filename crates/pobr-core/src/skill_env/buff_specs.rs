@@ -79,6 +79,26 @@ pub fn group_judgement<'a>(
     )
 }
 
+/// [`group_judgement`] for each effect of the gem whose primary effect is
+/// `gem_skill_id`, the primary first: what [`support_granted_gem_levels`] and
+/// [`crate::skill_env::support_granted_gem_quality`] take, since a support on
+/// any of a gem's effects modifies the gem.
+pub fn gem_judgements<'a>(
+    group: &EnabledGroup<'a>,
+    data: &'a (dyn BuffEnv + 'a),
+    gem_skill_id: &str,
+) -> Vec<GroupSupportJudgement> {
+    let secondary = data
+        .additional_effects(gem_skill_id)
+        .iter()
+        .map(String::as_str)
+        .filter(|id| data.effect(id).is_some_and(|e| !e.is_support));
+    std::iter::once(gem_skill_id)
+        .chain(secondary)
+        .map(|id| group_judgement(group, data, id))
+        .collect()
+}
+
 /// Injects the **compatible** support gems' modifiers for `active_skill_id` in `group`
 /// (the support-side half of the skill-group → modifier translation).
 ///
@@ -288,7 +308,7 @@ pub fn buff_skill_specs(
                 let level = gem.gem_level
                     + additional_gem_levels(gem_level_bonuses, data, skill_id, gem.corrupted)
                     + support_granted_gem_levels(
-                        &group_judgement(&group, data, skill_id),
+                        &gem_judgements(&group, data, &gem.skill_id),
                         group.gems,
                         data,
                     );
@@ -842,10 +862,13 @@ pub fn warcry_skill_specs(
             // supports' granted levels (smith's Fire Mastery
             // `supported_fire_skill_gem_level_+` → Infernal Cry 21→22 level, gain
             // 51+q11=62, matching oracle exactly).
-            let judgement = group_judgement(&group, data, &gem.skill_id);
             let level = gem.gem_level
                 + additional_gem_levels(gem_level_bonuses, data, &gem.skill_id, gem.corrupted)
-                + support_granted_gem_levels(&judgement, group.gems, data);
+                + support_granted_gem_levels(
+                    &gem_judgements(&group, data, &gem.skill_id),
+                    group.gems,
+                    data,
+                );
             let es = data.effect_stats(&gem.skill_id, level, gem.quality, gem.stat_set_index);
             let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
             let stats: Vec<pobr_data::catalog::SkillDamageStat> = es.all().cloned().collect();

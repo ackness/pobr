@@ -703,8 +703,8 @@ fn resolve_source_level<S: TriggerSubCalc>(
     group: &EnabledGroup<'_>,
     gem: &GemInput,
 ) -> Option<ResolvedSkillLevel> {
-    let judgement =
-        crate::skill_env::buff_specs::group_judgement(group, data.as_buff_env(), &gem.skill_id);
+    let judgements =
+        crate::skill_env::buff_specs::gem_judgements(group, data.as_buff_env(), &gem.skill_id);
     let bonus = crate::skill_env::additional_gem_levels(
         gem_level_bonuses,
         data.as_gem_property(),
@@ -712,7 +712,7 @@ fn resolve_source_level<S: TriggerSubCalc>(
         gem.corrupted,
     )
     .saturating_add(crate::skill_env::support_granted_gem_levels(
-        &judgement,
+        &judgements,
         group.gems,
         data.as_buff_env(),
     ));

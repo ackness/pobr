@@ -718,6 +718,7 @@ fn gems_classified_and_do_not_error() {
             granted_effect_id: None,
             additional_granted_effect_ids: Vec::new(),
             gem_tags: Vec::new(),
+            level_requirements: Vec::new(),
         },
     );
     skill_gems.insert(
@@ -735,6 +736,7 @@ fn gems_classified_and_do_not_error() {
             granted_effect_id: None,
             additional_granted_effect_ids: Vec::new(),
             gem_tags: Vec::new(),
+            level_requirements: Vec::new(),
         },
     );
     let data = BuildData {

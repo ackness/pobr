@@ -835,7 +835,17 @@ const BASELINE_DEF_CORE_HIT5: usize = 144; // After #14's long-tail triage: 144/
 // SpiritUnreserved = -48 for a character with 340 Spirit; a character cannot
 // reserve more Spirit than it has. PoBR counts the skill once, without
 // reservation (`skills::granted_skill_reservation`).
-const BASELINE_DEF_HIT5: usize = 449; // 449/450: every cell but the one above (#13+#14 merged measured 450/450; #13 alone: 437, wolf-pack fully cleared; #14 alone: 444, long tail 12 slots + four-way block; migration baseline: 343; 0.5.0=415)
+//
+// 448 at 5% since a granted skill takes the level its requirements allow: a
+// second cell differs on purpose. stormweaver-comet's Purity of Fire is
+// granted at level 17, which needs 39 Strength; the character has 38, so both
+// PoBR and the pinned PoB2 use it at level 16 (37% instead of 38% Fire
+// Resistance). Its helmet and gloves each hold a Soul Core of Citaqualotl
+// whose line reads "+5% to all Elemental Resistances"; PoB2 takes +6% from
+// its own rune table, PoBR the item's text. The 2% between them, which the
+// skill's extra level hid before, puts FireMaxHit at 0.94 of PoB2's: still
+// within 10%.
+const BASELINE_DEF_HIT5: usize = 448; // 448/450: every cell but the two above (#13+#14 merged measured 450/450; #13 alone: 437, wolf-pack fully cleared; #14 alone: 444, long tail 12 slots + four-way block; migration baseline: 343; 0.5.0=415)
 const BASELINE_DEF_HIT10: usize = 449; // 449/450: every cell but the one above (migration baseline: 361; 0.5.0=432)
 // **Re-recorded for expanding additional granted effects (+3 @10%)**: a gem's
 // additionalGrantedEffectId1..N (a foreign key in overlay/gem_effects.json --

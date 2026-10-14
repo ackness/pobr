@@ -177,12 +177,12 @@ pub struct MainSkillSummary {
     pub stat_set_index: Option<u32>,
 }
 
-/// The main skill as the calculation resolves it, on the prepared build view.
-pub(crate) fn main_skill_summary(build: &Build, data: &BuildData) -> Option<MainSkillSummary> {
-    let prepared = super::super::stage_build_view(build, data);
-    let (_, group, _, _) = resolve_main_skill(&prepared, data)?;
+/// The main skill as the calculation resolves it, on the prepared build view
+/// (`calc_orchestrator::prepared_build_view`).
+pub(crate) fn main_skill_summary(prepared: &Build, data: &BuildData) -> Option<MainSkillSummary> {
+    let (_, group, _, _) = resolve_main_skill(prepared, data)?;
     let effect = selected_group_effect(data, group)?;
-    let (gem_id, gem_level, bonus_levels) = level_source(&prepared, data, group, &effect);
+    let (gem_id, gem_level, bonus_levels) = level_source(prepared, data, group, &effect);
     Some(MainSkillSummary {
         skill_id: effect.skill_id.to_string(),
         gem_id: gem_id.to_string(),
@@ -194,13 +194,13 @@ pub(crate) fn main_skill_summary(build: &Build, data: &BuildData) -> Option<Main
 }
 
 /// Every active effect of the enabled groups, each at the level and quality
-/// it runs at, as [`main_skill_summary`] resolves the main one.
-pub(crate) fn skill_summaries(build: &Build, data: &BuildData) -> Vec<MainSkillSummary> {
-    let prepared = super::super::stage_build_view(build, data);
+/// it runs at, as [`main_skill_summary`] resolves the main one (on the same
+/// prepared build view).
+pub(crate) fn skill_summaries(prepared: &Build, data: &BuildData) -> Vec<MainSkillSummary> {
     let mut skills = Vec::new();
     for group in prepared.socket_groups.iter().filter(|group| group.enabled) {
         for effect in group_active_effects(data, group) {
-            let (gem_id, gem_level, bonus_levels) = level_source(&prepared, data, group, &effect);
+            let (gem_id, gem_level, bonus_levels) = level_source(prepared, data, group, &effect);
             skills.push(MainSkillSummary {
                 skill_id: effect.skill_id.to_string(),
                 gem_id: gem_id.to_string(),
@@ -247,9 +247,10 @@ pub(crate) fn resolve_skill_level_with_gem_bonus(
 ///   selected disabled group. Repeated skill ids in other groups cannot contribute.
 ///   A support does not receive granted levels itself.
 /// - Compatibility: goes through [`crate::support::judge_group_supports`]'s
-///   four-stage judgement (an incompatible support's grant doesn't apply, matching
-///   vendor's effectList gate); a typed variant (chaos/fire/…) matches against the
-///   post-judgement `final_skill_types` (including the addSkillTypes fixed point), the same basis as vendor's tag evaluation.
+///   four-stage judgement for each of the gem's effects (an incompatible support's
+///   grant doesn't apply; one compatible with any effect modifies the gem); a typed
+///   variant (chaos/fire/…) matches against the post-judgement `final_skill_types`
+///   (including the addSkillTypes fixed point) of an effect it supports.
 pub(crate) fn support_granted_gem_levels(
     group: &SocketGroup,
     data: &BuildData,
@@ -262,9 +263,32 @@ pub(crate) fn support_granted_gem_levels(
     {
         return 0;
     }
-    let judgement = crate::support::judge_group_supports(group, data, skill_id, group.from_gem());
     let gems = group.gem_inputs();
-    pobr_core::skill_env::support_granted_gem_levels(&judgement, &gems, data)
+    pobr_core::skill_env::support_granted_gem_levels(
+        &gem_judgements(group, data, skill_id),
+        &gems,
+        data,
+    )
+}
+
+/// The group's support judgement for each effect of the gem whose primary
+/// effect is `skill_id`, the primary first: a support on any of a gem's
+/// effects modifies the gem.
+fn gem_judgements(
+    group: &SocketGroup,
+    data: &BuildData,
+    skill_id: &str,
+) -> Vec<pobr_core::skill_env::GroupSupportJudgement> {
+    use pobr_core::skill_env::EffectLookup;
+    let secondary = data
+        .additional_effects(skill_id)
+        .iter()
+        .map(String::as_str)
+        .filter(|id| data.granted_effects.get(*id).is_some_and(|e| !e.is_support));
+    std::iter::once(skill_id)
+        .chain(secondary)
+        .map(|id| crate::support::judge_group_supports(group, data, id, group.from_gem()))
+        .collect()
 }
 
 /// The quality half of [`support_granted_gem_levels`] (same scope and compatibility rules).
@@ -280,9 +304,12 @@ pub(crate) fn support_granted_gem_quality(
     {
         return 0;
     }
-    let judgement = crate::support::judge_group_supports(group, data, skill_id, group.from_gem());
     let gems = group.gem_inputs();
-    pobr_core::skill_env::support_granted_gem_quality(&judgement, &gems, data)
+    pobr_core::skill_env::support_granted_gem_quality(
+        &gem_judgements(group, data, skill_id),
+        &gems,
+        data,
+    )
 }
 
 /// The gem level and quality bonuses the character has ("+1 to Level of all

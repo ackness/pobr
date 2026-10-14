@@ -106,6 +106,7 @@ const REQUIRED_EN: &[(&str, &[&str])] = &[
             "DexterityRequirementPercent",
             "IntelligenceRequirementPercent",
             "GemEffects",
+            "ItemExperienceType",
         ],
     ),
     (
@@ -197,6 +198,11 @@ const REQUIRED_EN: &[(&str, &[&str])] = &[
         &["Id", "GrantedEffect", "AdditionalGrantedEffects", "GemTags"],
     ),
     ("GemTags.json", &["Id"]),
+    // The character level each gem level requires.
+    (
+        "ItemExperiencePerLevel.json",
+        &["ItemExperienceType", "ItemCurrentLevel", "Level"],
+    ),
 ];
 
 /// Traditional Chinese sidecar tables -> required columns.

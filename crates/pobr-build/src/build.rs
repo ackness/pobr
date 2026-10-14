@@ -108,6 +108,13 @@ pub struct SocketGroup {
     /// it out from the items when it prepares the build
     /// (`calc_orchestrator::granted_skills`).
     pub reservation_free_skill: Option<String>,
+    /// The level an item grants this group's first skill at (`Grants Skill:
+    /// Level N X`): the skill is used at the highest level up to it whose
+    /// character level and attribute requirements the character meets. A
+    /// build does not state this either; the calculation works it out from
+    /// the items when it prepares the build
+    /// (`calc_orchestrator::granted_skills`).
+    pub granted_level: Option<u32>,
 }
 
 impl SocketGroup {
@@ -163,6 +170,7 @@ impl SocketGroup {
             gem_skills: Vec::new(),
             main_active_skill: None,
             reservation_free_skill: None,
+            granted_level: None,
         }
     }
 

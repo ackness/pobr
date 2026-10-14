@@ -65,6 +65,47 @@ pub struct SkillGemDef {
     /// snapshot adapted before the adapter joined that table.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub gem_tags: Vec<String>,
+    /// The character level each gem level requires, from level 1
+    /// (`SkillGems.ItemExperienceType` → `ItemExperiencePerLevel.Level` by
+    /// `ItemCurrentLevel`); a level past the last listed requires what the
+    /// last does. Empty in a snapshot adapted before the adapter joined that
+    /// table.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub level_requirements: Vec<u32>,
+}
+
+impl SkillGemDef {
+    /// The character level gem level `level` requires; `None` when the
+    /// snapshot doesn't carry the gem's requirements.
+    pub fn level_requirement(&self, level: u32) -> Option<u32> {
+        let index = (level.max(1) as usize - 1).min(self.level_requirements.len().checked_sub(1)?);
+        Some(self.level_requirements[index])
+    }
+
+    /// The Strength, Dexterity and Intelligence gem level `level` requires:
+    /// each attribute's share of the gem (`str_pct` …) applied to the
+    /// requirement of a gem needing character level L,
+    /// round((5 + (L − 3) × 1.7) × (share / 100)^0.9) + 4, nothing for an
+    /// attribute without a share. (The game's per-level values agree: Purity
+    /// of Ice, 25% Strength and 75% Intelligence, needs 42 and 106 at gem
+    /// level 18, character level 78.) `None` when the snapshot doesn't carry
+    /// the gem's level requirements.
+    pub fn attribute_requirements(&self, level: u32) -> Option<[u32; 3]> {
+        let required_level = f64::from(self.level_requirement(level)?);
+        let requirement = |share: u32| {
+            if share == 0 {
+                return 0;
+            }
+            let scaled =
+                (5.0 + (required_level - 3.0) * 1.7) * (f64::from(share) / 100.0).powf(0.9);
+            ((scaled + 0.5).floor() + 4.0).max(0.0) as u32
+        };
+        Some([
+            requirement(self.str_pct),
+            requirement(self.dex_pct),
+            requirement(self.int_pct),
+        ])
+    }
 }
 
 /// A granted-effect definition (from `GrantedEffects.dat` plus foreign-key

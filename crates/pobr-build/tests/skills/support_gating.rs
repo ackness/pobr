@@ -1563,3 +1563,34 @@ fn uhtreds_supports_grant_levels_by_the_other_supports() {
         24
     );
 }
+
+/// A support on any of a gem's effects modifies the gem: Physical Mastery
+/// ("Supported Physical Skills have +1 to Level", requires Physical) supports
+/// Iron Ward's Physical nova, not its buff, and Iron Ward is a level higher.
+#[test]
+fn a_support_on_a_secondary_effect_levels_the_whole_gem() {
+    use pobr_build::{Build, CharacterIdentity, SocketGroup};
+    let data = load_build_data();
+    let iron_ward = |supports: &[&str]| {
+        let mut group = SocketGroup::new().with_gem_skill("IronWardPlayer", 20);
+        for support in supports {
+            group = group.with_gem_skill(*support, 1);
+        }
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Warrior".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(group);
+        let diagnosis = pobr_build::diagnose(&build, &data, &panel_opts()).unwrap();
+        diagnosis
+            .skills
+            .iter()
+            .find(|skill| skill.skill_id == "IronWardPlayer")
+            .map(|skill| skill.gem_level + skill.bonus_levels)
+            .unwrap()
+    };
+    assert_eq!(iron_ward(&[]), 20);
+    assert_eq!(iron_ward(&["SupportPhysicalMasteryPlayer"]), 21);
+}

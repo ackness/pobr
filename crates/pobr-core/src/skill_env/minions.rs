@@ -226,7 +226,17 @@ pub fn spawn_minions(
             // Skills` and levels granted by supports). wolf-pack's "+4 to Level of all
             // Minion Skills": gem 18 → 22 → monster level 44 (pinned by oracle; before
             // the fix, 36 → life 1013 vs 2262).
-            let judgement = group_judgement(&group, data, &skill_id);
+            // A support on any of the gem's effects grants the gem its levels.
+            let judgements: Vec<_> = std::iter::once(skill_id.as_str())
+                .chain(
+                    data.additional_effects(&skill_id)
+                        .iter()
+                        .map(String::as_str)
+                        .filter(|id| data.effect(id).is_some_and(|e| !e.is_support)),
+                )
+                .map(|id| group_judgement(&group, data, id))
+                .collect();
+            let judgement = &judgements[0];
             let effective_gem_level = gem_level
                 .saturating_add(crate::skill_env::additional_gem_levels(
                     gem_level_bonuses,
@@ -234,7 +244,7 @@ pub fn spawn_minions(
                     &skill_id,
                     corrupted,
                 ))
-                .saturating_add(support_granted_gem_levels(&judgement, group.gems, data));
+                .saturating_add(support_granted_gem_levels(&judgements, group.gems, data));
             // A skill that says how many minions it summons ("Summons {0}
             // Hyenas") creates that many of each kind; any other creates as
             // many as the kind's limit.
