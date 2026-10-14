@@ -21,7 +21,7 @@
     "ColdDamageEnergyShieldLeech": { "BASE": 2 },
     "ColdDamageLifeLeech": { "BASE": 2 },
     "ColdDamageManaLeech": { "BASE": 2 },
-    "CritChance": { "BASE": 2 },
+    "CriticalStrikeChance": { "BASE": 2 },
     "DamageEnergyShieldLeech": { "BASE": 2 },
     "DamageLifeLeech": { "BASE": 2 },
     "DamageManaLeech": { "BASE": 2 },

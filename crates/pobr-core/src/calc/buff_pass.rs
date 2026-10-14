@@ -761,7 +761,7 @@ mod tests {
             default_high_precision: 1,
             more_default_round_decimals: 2,
             mods: BTreeMap::from([
-                ("CritChance".to_string(), entry("BASE", 2)),
+                ("CriticalStrikeChance".to_string(), entry("BASE", 2)),
                 ("LifeRegen".to_string(), entry("BASE", 1)),
                 ("LifeRegenPercent".to_string(), entry("BASE", 2)),
                 ("PhysicalDamageLifeLeech".to_string(), entry("BASE", 2)),
@@ -794,9 +794,9 @@ mod tests {
         );
         // Non-integer raw value → defaultHighPrecision = 1 (Data.lua:413): 1.5 × 1.3 = 1.95 → 1.9.
         assert_eq!(scale_value(&rules, "Damage", ModType::Inc, 1.5, 1.3), 1.9);
-        // CritChance BASE → precision 2 (Data.lua:416-418): 5 × 1.234 = 6.17.
+        // Critical Hit Chance BASE → precision 2: 5 × 1.234 = 6.17.
         assert_eq!(
-            scale_value(&rules, "CritChance", ModType::Base, 5.0, 1.234),
+            scale_value(&rules, "CriticalStrikeChance", ModType::Base, 5.0, 1.234),
             6.17
         );
         // LifeRegen BASE → precision 1: 7 × 1.15 = 8.05 → 8.0 (floor truncation).
@@ -837,9 +837,9 @@ mod tests {
         assert_eq!(scale_value(&rules, "Damage", ModType::Inc, 33.0, 1.1), 36.0);
         // Non-integer raw values still take default_high_precision = 1 (independent of the exception table).
         assert_eq!(scale_value(&rules, "Damage", ModType::Inc, 1.5, 1.3), 1.9);
-        // No exception table → CritChance's integer raw value falls to the default branch (5 × 1.234 = 6.17 → trunc 6).
+        // No exception table → Critical Hit Chance's integer raw value falls to the default branch (5 × 1.234 = 6.17 → trunc 6).
         assert_eq!(
-            scale_value(&rules, "CritChance", ModType::Base, 5.0, 1.234),
+            scale_value(&rules, "CriticalStrikeChance", ModType::Base, 5.0, 1.234),
             6.0
         );
     }

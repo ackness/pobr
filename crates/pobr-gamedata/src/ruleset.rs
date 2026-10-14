@@ -261,6 +261,26 @@ mod tests {
         assert!(matches!(result, Err(crate::LoadError::Io { .. })));
     }
 
+    /// The precision exceptions are looked up by the engine's modifier
+    /// names: Critical Hit Chance is `CriticalStrikeChance` (PoB2's
+    /// `CritChance` matches nothing the engine stores).
+    #[test]
+    fn repo_high_precision_mods_use_engine_names() {
+        let ruleset = GameData::new(crate::current_data_dir())
+            .load_ruleset()
+            .unwrap();
+        let mods = ruleset
+            .high_precision_mods
+            .expect("high_precision_mods")
+            .mods;
+        assert_eq!(
+            mods.get("CriticalStrikeChance")
+                .and_then(|types| types.get("BASE")),
+            Some(&2)
+        );
+        assert!(!mods.contains_key("CritChance"));
+    }
+
     /// The repo data directory: the special_mods domain is wired up (the
     /// overlay's curated entries plus generated's keystone-derived ones
     /// concatenated; once the consumer activates, downgraded shadow

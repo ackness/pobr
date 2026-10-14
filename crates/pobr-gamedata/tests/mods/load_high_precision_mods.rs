@@ -54,7 +54,8 @@ fn exception_table_has_vendor_entry_count() {
 fn vendor_entries_spot_checks() {
     let def = load();
     // BASE precision 2: crit / regen-percent-per-second / the leech family.
-    assert_eq!(precision(&def, "CritChance", "BASE"), 2);
+    // Critical Hit Chance is keyed by the engine's name (PoB2: `CritChance`).
+    assert_eq!(precision(&def, "CriticalStrikeChance", "BASE"), 2);
     assert_eq!(precision(&def, "SelfCritChance", "BASE"), 2);
     assert_eq!(precision(&def, "LifeRegenPercent", "BASE"), 2);
     assert_eq!(precision(&def, "DamageLifeLeech", "BASE"), 2);
