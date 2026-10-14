@@ -86,3 +86,7 @@ mod minion_reservation;
 
 #[path = "skills/jewel_sources.rs"]
 mod jewel_sources;
+
+// What the calculation did with each line of a build.
+#[path = "skills/line_usage.rs"]
+mod line_usage;

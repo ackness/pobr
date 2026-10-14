@@ -8,7 +8,7 @@ use pobr_data::modifier::ModType;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 use pobr_tree::{ClassContext, JewelRadius};
 
-use super::sources::SourceWriter;
+use super::sources::{GEM_PROPERTY_READER, LineFate, LineHolder, SourceWriter, item_sections_mut};
 use crate::build::Build;
 use crate::build::RadiusJewel;
 use crate::build_data::BuildData;
@@ -717,12 +717,16 @@ pub(crate) fn gate_parses(ctx: ParseCtx<'_>, t: &str) -> bool {
 /// parseable subset, preserving which segment each mod belongs to (used by
 /// [`CalculationSession::add_item`] to assign source-category attribution per segment).
 /// Rejected text remains visible in diagnostics; it must not silently disappear from
-/// replacement comparisons or be applied as a partially understood modifier.
+/// replacement comparisons or be applied as a partially understood modifier. Each
+/// rejected line is noted with its source (`holder`'s) and what reads it:
+/// `dedicated_reader` for `dedicated_texts`.
 pub(crate) fn filter_item_parseable(
     item: &Item,
     ctx: ParseCtx<'_>,
     session: &mut SourceWriter,
+    holder: LineHolder<'_>,
     dedicated_texts: &[String],
+    dedicated_reader: &'static str,
 ) -> Item {
     // These sources have dedicated orchestration consumers even when they do
     // not yield ordinary ModDb modifiers. Some of their game texts wrap across
@@ -740,25 +744,43 @@ pub(crate) fn filter_item_parseable(
         })
         .collect();
     let mut filtered = item.clone();
-    for texts in [
-        &mut filtered.implicit_texts,
-        &mut filtered.modifier_texts,
-        &mut filtered.enchant_texts,
-    ] {
+    for (section, texts) in item_sections_mut(&mut filtered) {
+        let source = holder.source(section);
         texts.retain(|text| {
-            let accepted = gate_parses(ctx, text);
-            if !accepted
-                && !dedicated_texts.contains(text)
-                && parse_gem_property_bonus(text).is_none()
-                && !wrapped_pairs.iter().any(|pair| pair.contains(text))
-            {
-                session.record_unsupported_modifier_text(text.clone());
+            let reader = if dedicated_texts.contains(text) {
+                Some(dedicated_reader)
+            } else if parse_gem_property_bonus(text).is_some() {
+                Some(GEM_PROPERTY_READER)
+            } else if wrapped_pairs.iter().any(|pair| pair.contains(text)) {
+                Some(WRAPPED_LINE_READER)
+            } else {
+                None
+            };
+            if gate_parses(ctx, text) {
+                // A rule that recognises a line with a reader of its own
+                // stores nothing for it, or what nothing reads: the line's
+                // use is its reader's.
+                if let Some(reader) = reader {
+                    session.note_line(&source, text, LineFate::ReadBy(reader));
+                }
+                return true;
             }
-            accepted
+            let fate = match reader {
+                Some(reader) => LineFate::ReadBy(reader),
+                None => {
+                    session.record_unsupported_modifier_text(text.clone());
+                    LineFate::Unparsed
+                }
+            };
+            session.note_line(&source, text, fate);
+            false
         });
     }
     filtered
 }
+
+/// The reader of half of a line the item text wraps across two.
+const WRAPPED_LINE_READER: &str = "read whole with the line it wraps onto, by the jewel's own reader (jewel_tree, CorruptedJewelEffect)";
 
 /// Resolves enabled skill gem groups into classified (active/support) [`GemModSource`]s.
 ///

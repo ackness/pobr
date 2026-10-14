@@ -70,11 +70,14 @@ use prepare::*;
 mod context;
 use context::CalculationContext;
 mod diagnosis;
+pub(crate) use collect::engine_ctx;
+pub(crate) use diagnosis::read_outside_the_database;
 pub use diagnosis::{
     Diagnosis, MainSkillSummary, ModifierRef, UnmappedStat, UnsetCondition, diagnose,
 };
 mod sources;
 use sources::SourceWriter;
+pub use sources::{LineFate, ReceivedLine};
 mod inject;
 use inject::*;
 
@@ -526,6 +529,9 @@ fn calculate_prepared_with_context(
     };
 
     let mut session = stage_create_session(&ctx, cfg);
+    if context.track_reads {
+        session.keep_received_lines();
+    }
     stage_hand_sources(&mut session, &ctx);
     stage_cooldown_bypass(&mut session, &ctx);
 
@@ -606,6 +612,7 @@ fn calculate_prepared_with_context(
 
     // All source writes are complete. Consuming the writer enables ModDb reads;
     // reservation must see equipment, passives, config, and extra modifier texts.
+    context.received_lines = session.received_lines();
     let mut session = session.finish_sources();
     if context.track_reads {
         session.track_modifier_reads();

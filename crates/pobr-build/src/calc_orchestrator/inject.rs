@@ -17,7 +17,7 @@
 use pobr_core::Modifier;
 use pobr_core::calc::CalculationSession;
 use pobr_core::mod_parser::ParseStatus;
-use pobr_data::item::EquipmentSlot;
+use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::modifier::ModType;
 use pobr_data::monster::EnemyTier;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
@@ -51,7 +51,7 @@ use super::skill::mods::{
 };
 use super::skill::resolve::{config_enemy_level, parse_gem_property_bonus};
 use super::skill::triggers::trigger_modifiers;
-use super::sources::SourceWriter;
+use super::sources::{GEM_PROPERTY_READER, LineFate, LineHolder, SourceWriter, item_sections_mut};
 use super::stat_map::exposure_support_modifiers;
 use super::{DataOrchestratorOptions, StageCtx, scale_trunc_2dp};
 use crate::build::{Build, SocketGroup};
@@ -679,8 +679,14 @@ pub(super) fn inject_items(
         // the opposite slot (matching vendor CalcSetup.lua:1221-1243), while the source
         // is still attributed to the slot Kalandra's Touch is in.
         let item = kalandra_reflected_ring(build, slot, item).unwrap_or(item);
-        let mut filtered =
-            filter_item_parseable(item, engine_ctx(data), session, &granted_skill_texts);
+        let mut filtered = filter_item_parseable(
+            item,
+            engine_ctx(data),
+            session,
+            LineHolder::Slot(slot.id()),
+            &granted_skill_texts,
+            "the skill the item grants (granted_skills)",
+        );
         // Main-hand weapon: strips local physical damage boost/added (already counted
         // into weapon_contribution as an independent weapon-source multiplier zone ×
         // baseMultiplier); leaving it in the global set would double-count and
@@ -690,15 +696,13 @@ pub(super) fn inject_items(
         // folded into the off-hand WeaponContribution (when not consumed, the global
         // injection is left untouched).
         if slot == EquipmentSlot::Weapon1 || (slot == EquipmentSlot::Weapon2 && off_weapon_active) {
-            let drop_local = |texts: Vec<String>| -> Vec<String> {
-                texts
-                    .into_iter()
-                    .filter(|t| !is_weapon_local_mod(t, &data.local_mods.weapon))
-                    .collect()
-            };
-            filtered.implicit_texts = drop_local(filtered.implicit_texts);
-            filtered.modifier_texts = drop_local(filtered.modifier_texts);
-            filtered.enchant_texts = drop_local(filtered.enchant_texts);
+            take_item_lines(
+                session,
+                slot,
+                &mut filtered,
+                LineFate::ReadBy("local to the weapon, in its own damage (weapon_contribution)"),
+                |t| is_weapon_local_mod(t, &data.local_mods.weapon),
+            );
         }
         // Bare "Adds N to M <type> Damage" is stripped for a weapon that isn't the
         // damage source (#10-3, the root cause of titan/smith over-counting): vendor
@@ -722,20 +726,20 @@ pub(super) fn inject_items(
                 "lightning damage",
                 "chaos damage",
             ];
-            let drop_typed_adds = |texts: Vec<String>| -> Vec<String> {
-                texts
-                    .into_iter()
-                    .filter(|t| {
-                        let clean = clean_item_text(t);
-                        !TYPED_ADDS_SUFFIXES
-                            .iter()
-                            .any(|s| parse_adds_with_suffix(&clean, s).is_some())
-                    })
-                    .collect()
-            };
-            filtered.implicit_texts = drop_typed_adds(filtered.implicit_texts);
-            filtered.modifier_texts = drop_typed_adds(filtered.modifier_texts);
-            filtered.enchant_texts = drop_typed_adds(filtered.enchant_texts);
+            take_item_lines(
+                session,
+                slot,
+                &mut filtered,
+                LineFate::LeftOut(
+                    "added damage local to a weapon the main skill does not hit with",
+                ),
+                |t| {
+                    let clean = clean_item_text(t);
+                    TYPED_ADDS_SUFFIXES
+                        .iter()
+                        .any(|s| parse_adds_with_suffix(&clean, s).is_some())
+                },
+            );
         }
         // Armour item: strips local "increased / +flat Armour/Evasion/ES" (already
         // folded into the rolled per-item base value / the base-fallback multiplier
@@ -757,39 +761,32 @@ pub(super) fn inject_items(
         if is_armour_piece {
             // "N% increased Runic Ward" scales the item's own Runic Ward
             // (item_ward_modifiers); on a piece without any it scales nothing.
-            let drop_def = |texts: Vec<String>| -> Vec<String> {
-                texts
-                    .into_iter()
-                    .filter(|t| {
-                        let c = clean_item_text(t);
-                        parse_local_defence_inc(&c).is_none()
-                            && parse_local_defence_flat(&c).is_none()
-                            && parse_has_per_level_defence(&c).is_none()
-                            && pobr_core::skill_env::parse_local_ward_inc(&c).is_none()
-                    })
-                    .collect()
-            };
-            filtered.implicit_texts = drop_def(filtered.implicit_texts);
-            filtered.modifier_texts = drop_def(filtered.modifier_texts);
-            filtered.enchant_texts = drop_def(filtered.enchant_texts);
+            take_item_lines(
+                session,
+                slot,
+                &mut filtered,
+                LineFate::ReadBy("local to the item, in its own defences (defence_base_modifiers)"),
+                |t| {
+                    let c = clean_item_text(t);
+                    parse_local_defence_inc(&c).is_some()
+                        || parse_local_defence_flat(&c).is_some()
+                        || parse_has_per_level_defence(&c).is_some()
+                        || pobr_core::skill_env::parse_local_ward_inc(&c).is_some()
+                },
+            );
         }
         // A shield's own Block chance lines are part of its block chance
         // (shield_block_modifiers); in the global set they would add to the
         // character's "increased Block chance" instead of being multiplied
         // by it.
         if slot == EquipmentSlot::Weapon2 && shield_base_block(item, data).is_some() {
-            let drop_block = |texts: Vec<String>| -> Vec<String> {
-                texts
-                    .into_iter()
-                    .filter(|t| {
-                        pobr_core::skill_env::parse_local_block_chance(&clean_item_text(t))
-                            .is_none()
-                    })
-                    .collect()
-            };
-            filtered.implicit_texts = drop_block(filtered.implicit_texts);
-            filtered.modifier_texts = drop_block(filtered.modifier_texts);
-            filtered.enchant_texts = drop_block(filtered.enchant_texts);
+            take_item_lines(
+                session,
+                slot,
+                &mut filtered,
+                LineFate::ReadBy("the shield's own Block chance (shield_block_modifiers)"),
+                |t| pobr_core::skill_env::parse_local_block_chance(&clean_item_text(t)).is_some(),
+            );
         }
         // An item with a Spirit base (a weapon): strips local `increased Spirit` /
         // `+N to Spirit` — already folded into the rolled `Spirit:` line
@@ -803,15 +800,13 @@ pub(super) fn inject_items(
                 .and_then(|b| b.spirit)
                 .is_some();
         if has_spirit_base {
-            let drop_spirit = |texts: Vec<String>| -> Vec<String> {
-                texts
-                    .into_iter()
-                    .filter(|t| !is_local_spirit_mod(&clean_item_text(t)))
-                    .collect()
-            };
-            filtered.implicit_texts = drop_spirit(filtered.implicit_texts);
-            filtered.modifier_texts = drop_spirit(filtered.modifier_texts);
-            filtered.enchant_texts = drop_spirit(filtered.enchant_texts);
+            take_item_lines(
+                session,
+                slot,
+                &mut filtered,
+                LineFate::ReadBy("the item's own Spirit (item_spirit_modifiers)"),
+                |t| is_local_spirit_mod(&clean_item_text(t)),
+            );
         }
         // Weapon items go through add_weapon_item: a flagless crit-damage mod is
         // converted to a per-hand condition (matching vendor Item.lua:1954-1961; 0.22.0
@@ -823,15 +818,13 @@ pub(super) fn inject_items(
             // Local critical chance is already folded into the weapon base.
             // Strip it even when this weapon is not an active damage source,
             // so spells and attacks using another source cannot inherit it.
-            filtered
-                .implicit_texts
-                .retain(|t| parse_weapon_local_crit(t).is_none());
-            filtered
-                .modifier_texts
-                .retain(|t| parse_weapon_local_crit(t).is_none());
-            filtered
-                .enchant_texts
-                .retain(|t| parse_weapon_local_crit(t).is_none());
+            take_item_lines(
+                session,
+                slot,
+                &mut filtered,
+                LineFate::ReadBy("local to the weapon, its own Critical Hit chance"),
+                |t| parse_weapon_local_crit(t).is_some(),
+            );
             session
                 .add_weapon_item(slot, &filtered)
                 .map_err(|e| BuildError::Parse(e.to_string()))?;
@@ -879,6 +872,28 @@ pub(super) fn inject_items(
     Ok(())
 }
 
+/// Takes off `item`, in `slot`, every line `take` matches before its
+/// modifiers are stored, noting each with `fate`.
+fn take_item_lines(
+    session: &mut SourceWriter,
+    slot: EquipmentSlot,
+    item: &mut Item,
+    fate: LineFate,
+    take: impl Fn(&str) -> bool,
+) {
+    let holder = LineHolder::Slot(slot.id());
+    for (section, texts) in item_sections_mut(item) {
+        let source = holder.source(section);
+        texts.retain(|text| {
+            let taken = take(text);
+            if taken {
+                session.note_line(&source, text, fate);
+            }
+            !taken
+        });
+    }
+}
+
 /// Stage 2a: the Transcendent limbs. Every stat a limb carries is global
 /// (`attack_speed_+%`, `evasion_rating_+%`, `block_chance_+%`, …, never a
 /// `local_` one), so its lines are taken as they read, attributed to the
@@ -889,7 +904,14 @@ pub(super) fn inject_limbs(
     data: &BuildData,
 ) -> Result<(), BuildError> {
     for (slot, limb) in &build.limbs {
-        let filtered = filter_item_parseable(limb, engine_ctx(data), session, &[]);
+        let filtered = filter_item_parseable(
+            limb,
+            engine_ctx(data),
+            session,
+            LineHolder::Slot(slot.id()),
+            &[],
+            "",
+        );
         session
             .add_limb(*slot, &filtered)
             .map_err(|e| BuildError::Parse(e.to_string()))?;
@@ -1032,7 +1054,17 @@ pub(super) fn stage_inject_jewels(
     }
     let parse_ctx = engine_ctx(ctx.data);
     for (index, (socket, jewel)) in ctx.build.jewels.iter().enumerate() {
-        let filtered = filter_item_parseable(jewel, parse_ctx, session, &radius_texts);
+        // A jewel's lines are attributed to it, `jewel.<n>` by its place among
+        // the build's jewels.
+        let source = SourceId::new(SourceKind::Jewel, format!("jewel.{}", index + 1));
+        let filtered = filter_item_parseable(
+            jewel,
+            parse_ctx,
+            session,
+            LineHolder::Jewel(&source),
+            &radius_texts,
+            "the jewel's radius on the passive tree (jewel_tree)",
+        );
         let texts = filtered
             .implicit_texts
             .iter()
@@ -1047,9 +1079,6 @@ pub(super) fn stage_inject_jewels(
             .then(|| jewel_effect.increase_for(jewel))
             .flatten()
             .map(|inc| 1.0 + inc / 100.0);
-        // A jewel's lines are attributed to it, `jewel.<n>` by its place among
-        // the build's jewels.
-        let source = SourceId::new(SourceKind::Jewel, format!("jewel.{}", index + 1));
         let mut mods: Vec<pobr_core::Modifier> = Vec::new();
         for text in texts {
             let outcome = parse_ctx
@@ -1057,8 +1086,10 @@ pub(super) fn stage_inject_jewels(
                 .map_err(|e| BuildError::Parse(e.to_string()))?;
             if outcome.status == ParseStatus::Unsupported {
                 session.record_unsupported_modifier_text(text.clone());
+                session.note_line(&source, text, LineFate::Unparsed);
                 continue;
             }
+            session.note_line(&source, text, LineFate::Parsed);
             for mut m in outcome.mods {
                 if let Some(scale) = scale
                     && let pobr_core::ModValue::Number(v) = m.value
@@ -1142,12 +1173,15 @@ fn add_config_lines(
     let mut mods = Vec::new();
     for line in lines {
         if parse_gem_property_bonus(line).is_some() {
+            session.note_line(source, line, LineFate::ReadBy(GEM_PROPERTY_READER));
             continue;
         }
         if !gate_parses(parse_ctx, line) {
             session.record_unsupported_modifier_text(format!("Config: {line}"));
+            session.note_line(source, line, LineFate::Unparsed);
             continue;
         }
+        session.note_line(source, line, LineFate::Parsed);
         let outcome = parse_ctx
             .parse(line)
             .map_err(|e| BuildError::Parse(e.to_string()))?;
@@ -1183,14 +1217,32 @@ pub(super) fn stage_inject_passives(
     // By node, not by the order the build lists its nodes in: the same tree
     // gives the same diagnostics.
     unsupported.sort_by_key(|(node, _)| *node);
+    let tree_nodes = data.passive_nodes_for(build.tree_version.as_deref());
     for (node, line) in unsupported {
+        let ascendancy = tree_nodes
+            .get(&node)
+            .is_some_and(|def| def.ascendancy_id.is_some());
+        let source = pobr_core::passive::node_source(node, ascendancy);
         // A gem level or quality bonus is read from the node's text
         // (`gem_property_bonuses`), whether or not a rule parses it.
         if parse_gem_property_bonus(&line).is_none() {
             session.record_unsupported_modifier_text(format!("Tree:{node}: {line}"));
+            session.note_line(&source, &line, LineFate::Unparsed);
+        } else {
+            session.note_line(&source, &line, LineFate::ReadBy(GEM_PROPERTY_READER));
         }
     }
     let passive_nodes = passive_nodes;
+    // A gem level or quality bonus a rule also recognises is still read from
+    // the node's text, where gem levels are settled.
+    for node in &passive_nodes {
+        let source = pobr_core::passive::node_source(node.node_id.0, node.ascendancy);
+        for line in &node.modifier_texts {
+            if parse_gem_property_bonus(line).is_some() {
+                session.note_line(&source, line, LineFate::ReadBy(GEM_PROPERTY_READER));
+            }
+        }
+    }
     if !passive_nodes.is_empty() {
         session
             .add_passive_nodes(&passive_nodes)

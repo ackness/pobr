@@ -12,8 +12,10 @@
 //! because this skill has no use for it (spell damage on an attack). What a
 //! lead cannot be is invisible.
 
-use pobr_core::Modifier;
 use pobr_core::calc::CalculationSession;
+use pobr_core::{Modifier, ReadSnapshot, ReadVariables};
+
+use super::sources::ReceivedLine;
 use pobr_data::catalog::value_expr::EffectTarget;
 use pobr_data::modifier::ModType;
 use pobr_gamedata::ruleset::ConfigCatalog;
@@ -119,26 +121,57 @@ pub struct Diagnosis {
     /// option sets that the build leaves off. Each once, those nothing sets
     /// first, by name.
     pub unset_conditions: Vec<UnsetCondition>,
+    /// The queries the calculation asked of the stored player modifiers and
+    /// the modifiers they counted, taken as it ended (before anything reads
+    /// the session for a breakdown). [`crate::usage::line_usage`] reads it.
+    pub reads: ReadSnapshot,
+    /// The conditions and multipliers the calculation asked for, taken at
+    /// the same moment as [`Self::reads`].
+    pub variables: ReadVariables,
+    /// The build's lines as the calculation received them, in order: each
+    /// with the source its modifiers are stored under and what became of it
+    /// (handed to the parser, not parsed, or taken and read some other way).
+    pub received_lines: Vec<ReceivedLine>,
 }
 
 /// Names the orchestrator consumes from item text or build structure rather
 /// than by querying the modifier database, so "never read" says nothing.
-const READ_OUTSIDE_THE_DATABASE: &[&str] = &[
-    // Gem level and quality bonuses: `skill_env::gem_property_bonuses`.
-    "GemProperty",
-    // Item-granted skills become socket groups: `granted_skills`.
-    "ExtraSkill",
-    // Anointed notables become allocated nodes: `append_granted_passives`.
-    "GrantedPassive",
-    // Radius, conquest and socket data: `jewel_tree`.
-    "JewelData",
-    // Copied to a minion when one is spawned: `extract_minion_modifier_entries`.
-    "MinionModifier",
-    // Puts the Bonded lines of an item's Idols in effect: `item::bonded`.
-    "SocketedIdolsUseBondedModifiers",
-    // The configured number of summoned totems: `prepare::stage_build_cfg`.
-    "TotemsSummoned",
+/// Each with the consumer, as a ledger of line use names it.
+pub(crate) const READ_OUTSIDE_THE_DATABASE: &[(&str, &str)] = &[
+    (
+        "GemProperty",
+        "gem level and quality bonuses (skill_env::gem_property_bonuses)",
+    ),
+    (
+        "ExtraSkill",
+        "item-granted skills become socket groups (granted_skills)",
+    ),
+    (
+        "GrantedPassive",
+        "anointed notables become allocated nodes (append_granted_passives)",
+    ),
+    ("JewelData", "radius, conquest and socket data (jewel_tree)"),
+    (
+        "MinionModifier",
+        "copied to a minion when one is spawned (extract_minion_modifier_entries)",
+    ),
+    (
+        "SocketedIdolsUseBondedModifiers",
+        "puts the Bonded lines of an item's Idols in effect (item::bonded)",
+    ),
+    (
+        "TotemsSummoned",
+        "the configured number of summoned totems (prepare::stage_build_cfg)",
+    ),
 ];
+
+/// What consumes `name` outside the modifier database, when something does.
+pub(crate) fn read_outside_the_database(name: &str) -> Option<&'static str> {
+    READ_OUTSIDE_THE_DATABASE
+        .iter()
+        .find(|(outside, _)| *outside == name)
+        .map(|(_, consumer)| *consumer)
+}
 
 /// Conditions the orchestration sets from what a build has before the
 /// calculation. One it set for this build is in the calculation's condition
@@ -270,6 +303,8 @@ pub fn diagnose(
     let mut context = CalculationContext::new(data, &options);
     context.track_reads = true;
     let session = calculate_with_context(build, data, &options, &mut context)?;
+    let reads = session.modifier_reads();
+    let variables = session.read_variables();
 
     let mut unmapped_stats: Vec<UnmappedStat> = context
         .compare_records
@@ -297,17 +332,22 @@ pub fn diagnose(
     unknown_stats.dedup();
 
     // A condition or multiplier modifier is consumed through the config's
-    // maps, not by a query: it is used when some stored modifier depends on it.
+    // maps, not by a query: it is used when some stored modifier depends on
+    // it or a calculation stage asks for it.
     let referenced = session.referenced_variables();
     let depended_on = |name: &str| {
-        name.strip_prefix("Condition:")
-            .or_else(|| name.strip_prefix("Multiplier:"))
-            .is_some_and(|variable| referenced.contains(variable))
+        if let Some(variable) = name.strip_prefix("Condition:") {
+            referenced.contains(variable) || variables.conditions.contains(variable)
+        } else if let Some(variable) = name.strip_prefix("Multiplier:") {
+            referenced.contains(variable) || variables.multipliers.contains(variable)
+        } else {
+            false
+        }
     };
     let unread_modifiers = session
         .unread_modifiers()
         .into_iter()
-        .filter(|modifier| !READ_OUTSIDE_THE_DATABASE.contains(&modifier.name.as_str()))
+        .filter(|modifier| read_outside_the_database(modifier.name.as_str()).is_none())
         .filter(|modifier| !depended_on(modifier.name.as_str()))
         .map(ModifierRef::of)
         .collect();
@@ -334,6 +374,9 @@ pub fn diagnose(
         unread_modifiers,
         unprovided_multipliers,
         unset_conditions,
+        reads,
+        variables,
+        received_lines: std::mem::take(&mut context.received_lines),
         session,
     })
 }
