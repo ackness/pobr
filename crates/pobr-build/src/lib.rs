@@ -54,9 +54,9 @@ pub use calc_cache::{CalcCache, DataCalcCache};
 pub use calc_orchestrator::{
     CalculationReport, DataOrchestratorOptions, Diagnosis, MainSkillSummary, ModifierRef,
     OrchestratorOptions, SkillMetrics, SkillMetricsReport, StatMapCompareRecord, StatMapMode,
-    TreeVersionReport, UnmappedStat, calculate, calculate_skill_metrics, calculate_with_data,
-    calculate_with_data_report, calculate_with_data_session, diagnose, diagnose_tree_version,
-    resolve_main_skill_selection,
+    TreeVersionReport, UnmappedStat, UnsetCondition, calculate, calculate_skill_metrics,
+    calculate_with_data, calculate_with_data_report, calculate_with_data_session, diagnose,
+    diagnose_tree_version, resolve_main_skill_selection,
 };
 pub use comparison::{FieldDiff, OutputComparison, compare_outputs};
 pub use error::{BuildCodeError, BuildError, XmlError};

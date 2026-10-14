@@ -676,19 +676,33 @@ impl CalculationSession {
     /// modifier and no value in the calculation's config. Such a multiplier
     /// reads as 0, so the modifier contributes nothing however it parsed. A
     /// multiplier that a config option could set but did not is listed too.
+    ///
+    /// A multiplier read on the player's side (`actor: player`, PoB2's form
+    /// of "per Idol in your Equipment") is read from the player's entry in
+    /// [`CalcConfig::actor_multipliers`], or without one from the
+    /// configuration's own multipliers
+    /// ([`CalcConfig::actor_multiplier`]), so either provides it.
+    /// Multipliers read from another actor are not this report's.
     /// Ordered by variable, then modifier name.
     pub fn unprovided_multipliers(&self) -> Vec<(&str, &Modifier)> {
-        // Worked out by a calculation pass for the hit it is computing, so
-        // neither the config nor a stored modifier ever holds them.
-        const SET_BY_A_PASS: [&str; 1] = [
+        // Worked out by a calculation pass, so neither the config nor a
+        // stored modifier ever holds them.
+        const SET_BY_A_PASS: [&str; 2] = [
             // `calc::offence`: what the accuracy check gives beyond a certain hit.
             "ExcessHitChance",
+            // The lowest of the three attributes, set while the character is prepared.
+            "LowestAttribute",
         ];
         let db = &self.env.player.mod_db;
+        let cfg = &self.env.cfg;
         let provided = |var: &str| {
             SET_BY_A_PASS.contains(&var)
-                || self.env.cfg.multipliers.contains_key(var)
+                || cfg.multipliers.contains_key(var)
                 || db.has_name(&format!("Multiplier:{var}"))
+        };
+        let in_player_snapshot = |var: &str| {
+            cfg.actor_multipliers
+                .contains_key(&format!("{}.{var}", crate::ActorRef::Player.key()))
         };
         let mut out: Vec<(&str, &Modifier)> = db
             .iter_mods()
@@ -698,20 +712,89 @@ impl CalculationSession {
                         var, actor: None, ..
                     }
                     | crate::ModTag::MultiplierThreshold { var, .. } => {
-                        Some((var.as_str(), modifier))
+                        Some((var.as_str(), false, modifier))
                     }
+                    crate::ModTag::Multiplier {
+                        var,
+                        actor: Some(crate::ActorRef::Player),
+                        ..
+                    } => Some((var.as_str(), true, modifier)),
                     _ => None,
                 })
             })
-            .filter(|(var, _)| !provided(var))
+            .filter(|&(var, player_side, _)| {
+                if player_side {
+                    !in_player_snapshot(var)
+                        && !SET_BY_A_PASS.contains(&var)
+                        && !cfg.multipliers.contains_key(var)
+                } else {
+                    !provided(var)
+                }
+            })
+            .map(|(var, _, modifier)| (var, modifier))
             .collect();
-        out.sort_by(|a, b| {
-            (a.0, a.1.name.as_str(), a.1.source.as_deref()).cmp(&(
-                b.0,
-                b.1.name.as_str(),
-                b.1.source.as_deref(),
-            ))
-        });
+        sort_by_variable(&mut out);
+        out
+    }
+
+    /// `(condition, modifier)` for each stored player modifier that applies
+    /// only while a condition holds which the calculation never decided: the
+    /// condition is not in its condition map, and no pass of the calculation
+    /// works it out for itself (the critical half of a hit, a hand's pass, a
+    /// flask in use, an aura in effect: `condition_set_by_a_pass`). Such a
+    /// modifier never applies, however it parsed. A stored `Condition:<X>`
+    /// flag does not decide `<X>` by itself: only the flags a bridge copies
+    /// into the condition map do.
+    ///
+    /// A condition read on the player's side (`actor: player`) is read from
+    /// the player's entry in [`CalcConfig::actor_multipliers`], and only that
+    /// entry decides it. Conditions of another actor, and modifiers that apply
+    /// while a condition does *not* hold (unset, they apply), are not this
+    /// report's. The orchestration decides more conditions from what a build
+    /// has (its weapons, its enemy); a condition it would have set for another
+    /// build is listed here, and telling those apart is the caller's. Ordered
+    /// by condition, then modifier name.
+    pub fn unset_conditions(&self) -> Vec<(&str, &Modifier)> {
+        let cfg = &self.env.cfg;
+        let decided = |var: &str| {
+            // `Effective` falls back to the effective-DPS mode when unset.
+            var == "Effective"
+                || cfg.conditions.contains_key(var)
+                || condition_set_by_a_pass(var, &self.env.buff_definitions)
+        };
+        let in_player_snapshot = |var: &str| {
+            cfg.actor_multipliers
+                .contains_key(&format!("{}.{var}", crate::ActorRef::Player.key()))
+        };
+        let mut out: Vec<(&str, &Modifier)> = Vec::new();
+        for modifier in self.env.player.mod_db.iter_mods() {
+            for tag in &modifier.tags {
+                match tag {
+                    crate::ModTag::Condition {
+                        var,
+                        negated: false,
+                        actor: None,
+                    } if !decided(var) => out.push((var.as_str(), modifier)),
+                    crate::ModTag::Condition {
+                        var,
+                        negated: false,
+                        actor: Some(crate::ActorRef::Player),
+                    } if !in_player_snapshot(var) => out.push((var.as_str(), modifier)),
+                    // Any one of them holding is enough: the modifier is
+                    // dropped only while none of them is set.
+                    crate::ModTag::ConditionAnyOf {
+                        vars,
+                        negated: false,
+                    } if !vars.iter().any(|var| cfg.condition(var)) => out.extend(
+                        vars.iter()
+                            .filter(|var| !decided(var))
+                            .map(|var| (var.as_str(), modifier)),
+                    ),
+                    _ => {}
+                }
+            }
+        }
+        sort_by_variable(&mut out);
         out
     }
 
@@ -1355,4 +1438,66 @@ fn ailment_of(stat: &str) -> Option<AilmentType> {
         "PoisonDPS" => Some(AilmentType::Poison),
         _ => None,
     }
+}
+
+/// Conditions a pass of the calculation works out for itself, for the hit
+/// or hand it is computing or from what the character has in effect. Absent
+/// from the condition map, they do not hold; nothing is missing.
+const CONDITIONS_SET_BY_A_PASS: [&str; 18] = [
+    // `calc::offence` and `calc::crit_pass`: the critical and the
+    // non-critical half of a hit.
+    "CriticalStrike",
+    // `calc::hand_pass`: the main-hand and the off-hand pass of an attack.
+    "MainHandAttack",
+    "OffHandAttack",
+    // Projected by `calc::rage` and the charge counts for their own queries;
+    // the orchestration bridges the config entries gated on combat.
+    "Combat",
+    "CanGainRage",
+    "HaveMaximumRage",
+    // `calc::ailment_apply`: Chill and Shock on the enemy.
+    "Chilled",
+    "Shocked",
+    // `calc::buff_pass`: curses and marks on the enemy.
+    "EnemyCursed",
+    "EnemyMarked",
+    // `env_finalize`: the enemy's own Intimidated flag.
+    "EnemyIntimidated",
+    // `rules::buff_expander`: the Elusive handler.
+    "Elusive",
+    // `bridge_player_conditions`: from the flag of what grants it.
+    "CanUseBondedModifiers",
+    "SorceryWard",
+    "CeremonialAblution",
+    // Set while the character is prepared (`session/preparation.rs`).
+    "Surrounded",
+    // The weapon set in use, set from the build before the calculation; the
+    // other set's modifiers are not meant to apply.
+    "WeaponSet1",
+    "WeaponSet2",
+];
+
+/// Whether a pass of the calculation sets `var` when it holds:
+/// [`CONDITIONS_SET_BY_A_PASS`], a condition a built-in buff sets alongside
+/// itself, each aura or buff in effect (`calc::buff_pass`: `AffectedByAura`,
+/// `AffectedBy<name>`) and each flask or charm in use (`env_finalize`:
+/// `UsingFlask`, `UsingLifeFlask`, `Using<base>`).
+fn condition_set_by_a_pass(var: &str, buffs: &[BuffDef]) -> bool {
+    CONDITIONS_SET_BY_A_PASS.contains(&var)
+        || buffs
+            .iter()
+            .any(|buff| buff.conditions_set.iter().any(|set| set == var))
+        || var.starts_with("AffectedBy")
+        || (var.starts_with("Using") && (var.ends_with("Flask") || var.ends_with("Charm")))
+}
+
+/// Orders `(variable, modifier)` entries by variable, then modifier name and source.
+fn sort_by_variable(entries: &mut [(&str, &Modifier)]) {
+    entries.sort_by(|a, b| {
+        (a.0, a.1.name.as_str(), a.1.source.as_deref()).cmp(&(
+            b.0,
+            b.1.name.as_str(),
+            b.1.source.as_deref(),
+        ))
+    });
 }

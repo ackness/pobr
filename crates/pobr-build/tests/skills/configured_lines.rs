@@ -446,6 +446,93 @@ fn a_configured_line_no_rule_parses_is_reported_and_the_rest_still_count() {
     );
 }
 
+/// A line can parse and still do nothing, waiting for something nothing in
+/// the calculation sets. "while wielding a Melee Weapon" waits for
+/// `UsingMeleeWeapon`, which no pass of the engine and no config option sets;
+/// "while moving" waits for `Moving`, which a config option sets and this
+/// build leaves off. "per non-Idol Augment in your Equipment" counts on the
+/// player's side, where the build sets the count, and "while holding a
+/// Shield" waits for what the orchestration sets from the off hand: neither
+/// is missing anything.
+#[test]
+fn modifiers_waiting_for_what_nothing_sets_are_reported() {
+    let data = data();
+    let options = DataOrchestratorOptions::default();
+    let lines = "12% increased Spell Damage while wielding a Melee Weapon\n\
+                 20% increased Evasion Rating while moving\n\
+                 +1% to all Elemental Resistances per non-Idol Augment in your Equipment\n\
+                 Attack Skills deal 10% increased Damage while holding a Shield";
+    let diagnosis =
+        diagnose(&with_custom_modifiers(LEVEL_20, lines), &data, &options).expect("diagnose");
+    assert!(
+        diagnosis.unparsed_lines.is_empty(),
+        "{:?}",
+        diagnosis.unparsed_lines
+    );
+
+    let unset = |condition: &str| {
+        diagnosis
+            .unset_conditions
+            .iter()
+            .find(|entry| entry.condition == condition)
+    };
+    let from_line = |entry: &pobr_build::UnsetCondition, words: &str| {
+        entry
+            .modifiers
+            .iter()
+            .any(|modifier| modifier.source.contains(words))
+    };
+    let melee = unset("UsingMeleeWeapon").expect("UsingMeleeWeapon is reported");
+    assert_eq!(melee.config_option, None);
+    assert!(!melee.flagged);
+    assert!(
+        from_line(melee, "while wielding a Melee Weapon"),
+        "{:?}",
+        melee.modifiers
+    );
+    let moving = unset("Moving").expect("Moving is reported");
+    assert_eq!(moving.config_option.as_deref(), Some("conditionMoving"));
+    assert!(from_line(moving, "while moving"), "{:?}", moving.modifiers);
+    assert!(unset("UsingShield").is_none());
+    // What nothing sets comes before what the config leaves off.
+    assert!(
+        diagnosis
+            .unset_conditions
+            .windows(2)
+            .all(|pair| pair[0].config_option.is_none() || pair[1].config_option.is_some())
+    );
+    // Set by the config, it is not reported.
+    let moving_set = diagnose(
+        &build(
+            LEVEL_20,
+            "",
+            &format!(
+                r#"<Input name="conditionMoving" boolean="true"/><CustomModifierBlock title="Test" enabled="true">{lines}</CustomModifierBlock>"#
+            ),
+        ),
+        &data,
+        &options,
+    )
+    .expect("diagnose");
+    assert!(
+        moving_set
+            .unset_conditions
+            .iter()
+            .all(|entry| entry.condition != "Moving")
+    );
+
+    // Read on the player's side, a count the build sets is provided: the
+    // build counts the Augments in its equipment, none here.
+    assert!(
+        diagnosis
+            .unprovided_multipliers
+            .iter()
+            .all(|(variable, _)| variable != "NonIdolAugmentsInEquipment"),
+        "{:?}",
+        diagnosis.unprovided_multipliers
+    );
+}
+
 /// A quest reward is a line of the configuration too. The option for taking
 /// no reward is not a line, and "5% increased Experience Gain" (one of the
 /// Seven Pillars) changes nothing a calculation reports and is a line the

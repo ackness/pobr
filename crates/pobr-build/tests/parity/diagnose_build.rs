@@ -312,6 +312,50 @@ fn diagnose_build() {
         );
     }
 
+    // A condition no pass of the engine works out and no config option sets
+    // drops every modifier that waits for it; one a config option sets is the
+    // user's to switch on.
+    let (config_off, nothing_sets): (Vec<_>, Vec<_>) = diagnosis
+        .unset_conditions
+        .iter()
+        .partition(|unset| unset.config_option.is_some());
+    eprintln!(
+        "\n== 6. Modifiers that wait for a condition nothing sets ({} conditions)",
+        nothing_sets.len()
+    );
+    for unset in nothing_sets {
+        let flag = if unset.flagged {
+            "; a stored Condition flag says it holds, and nothing copies that into the calculation"
+        } else {
+            ""
+        };
+        eprintln!(
+            "    {}  ({} modifiers{flag})",
+            unset.condition,
+            unset.modifiers.len()
+        );
+        for modifier in unset.modifiers.iter().take(3) {
+            eprintln!(
+                "        {} {:?} {}  {}",
+                modifier.name, modifier.mod_type, modifier.value, modifier.source
+            );
+        }
+        if unset.modifiers.len() > 3 {
+            eprintln!("        … and {} more", unset.modifiers.len() - 3);
+        }
+    }
+    if !config_off.is_empty() {
+        eprintln!("   config: off (a config option sets these; this build leaves it off):");
+        for unset in config_off {
+            eprintln!(
+                "    {:<36}{:<40}{} modifiers",
+                unset.condition,
+                unset.config_option.as_deref().unwrap_or_default(),
+                unset.modifiers.len()
+            );
+        }
+    }
+
     // A name unread here and read in some other committed build is one this
     // build's skill has no use for. A name no committed build reads has no
     // reader that any of them exercises.
@@ -333,7 +377,7 @@ fn diagnose_build() {
         .partition(|modifier| from_config(modifier));
 
     eprintln!(
-        "\n== 6. Stored modifiers no committed build's calculation reads ({})",
+        "\n== 7. Stored modifiers no committed build's calculation reads ({})",
         from_build.len()
     );
     eprintln!("   The character has these; the name they are stored under has no reader.");
@@ -352,7 +396,7 @@ fn diagnose_build() {
         .into_iter()
         .partition(|modifier| set_by_build(modifier));
     eprintln!(
-        "\n== 7. Config inputs this build sets, written to a name nothing reads ({})",
+        "\n== 8. Config inputs this build sets, written to a name nothing reads ({})",
         set.len()
     );
     for modifier in set {
@@ -378,7 +422,7 @@ fn diagnose_build() {
         .collect();
     names.dedup();
     eprintln!(
-        "\n== 8. Stored modifiers this build's skill had no use for ({} under {} names; other builds read them)",
+        "\n== 9. Stored modifiers this build's skill had no use for ({} under {} names; other builds read them)",
         unused.len(),
         names.len()
     );

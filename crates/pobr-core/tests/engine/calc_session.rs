@@ -569,9 +569,18 @@ fn projectile_speed_applies_to_bow_damage_conversion() {
 /// number quietly short.
 #[test]
 fn session_reports_modifiers_that_parsed_and_did_nothing() {
-    use pobr_core::{ModTag, Modifier};
+    use pobr_core::{ActorRef, ModTag, Modifier};
     use pobr_data::prelude::ModType;
 
+    // A count read from an actor's snapshot, as PoB2 writes "per Idol in
+    // your Equipment" (`actor = "player"`).
+    let read_from = |actor: ActorRef, var: &str| {
+        let mut tag = ModTag::multiplier(var, 1.0, None);
+        if let ModTag::Multiplier { actor: read, .. } = &mut tag {
+            *read = Some(actor);
+        }
+        tag
+    };
     let mut s = session(MinimalInput {
         base_life: 100.0,
         ..Default::default()
@@ -590,6 +599,12 @@ fn session_reports_modifiers_that_parsed_and_did_nothing() {
             1.0,
             None,
         )),
+        // Nothing fills the player's snapshot, so this reads 0 as well.
+        Modifier::number("MaximumLife", ModType::Base, 6.0)
+            .with_tag(read_from(ActorRef::Player, "IdolsInEquipment")),
+        // A parent's count is not the player's to provide.
+        Modifier::number("MaximumLife", ModType::Base, 7.0)
+            .with_tag(read_from(ActorRef::Parent, "Virulence")),
     ]);
     s.track_modifier_reads();
     let output = s.perform_minimal().unwrap();
@@ -618,7 +633,83 @@ fn session_reports_modifiers_that_parsed_and_did_nothing() {
             )
         })
         .collect();
-    assert_eq!(unprovided, [("NothingSetsThis", "MaximumLife", 5.0)]);
+    assert_eq!(
+        unprovided,
+        [
+            ("IdolsInEquipment", "MaximumLife", 6.0),
+            ("NothingSetsThis", "MaximumLife", 5.0)
+        ]
+    );
+}
+
+/// A modifier that waits for a condition the calculation never decided does
+/// nothing, and the session says which condition. What the config decided,
+/// either way, is not listed; neither is what a pass works out for itself,
+/// nor a modifier that applies while a condition does not hold. A condition
+/// read on the player's side is decided only by the player's snapshot.
+#[test]
+fn session_reports_conditions_nothing_decided() {
+    use pobr_core::{ActorRef, CalcConfig, ModTag, Modifier};
+    use pobr_data::prelude::{DamageType, ModType};
+
+    let life = |value: f64, tag: ModTag| {
+        Modifier::number("MaximumLife", ModType::Base, value).with_tag(tag)
+    };
+    let player_side = |var: &str| ModTag::Condition {
+        var: var.to_string(),
+        negated: false,
+        actor: Some(ActorRef::Player),
+    };
+    let any_of = |vars: [&str; 2]| ModTag::ConditionAnyOf {
+        vars: vars.iter().map(|var| var.to_string()).collect(),
+        negated: false,
+    };
+    let mut s = session(MinimalInput {
+        base_life: 100.0,
+        ..Default::default()
+    })
+    .with_config(
+        CalcConfig::attack()
+            .with_damage_type(DamageType::Physical)
+            .with_condition("SwitchedOff", false)
+            .with_actor_multiplier(ActorRef::Player, "InThePlayerSnapshot", 1.0),
+    );
+    s.set_condition("SwitchedOn", true);
+    s.add_modifiers([
+        life(1.0, ModTag::condition("NothingSetsThis", false)),
+        life(2.0, ModTag::condition("SwitchedOff", false)),
+        life(4.0, ModTag::condition("SwitchedOn", false)),
+        // Passes set these when they hold: for the critical half of a hit,
+        // while a Life flask is in use, for the weapon set in use.
+        life(8.0, ModTag::condition("CriticalStrike", false)),
+        life(512.0, ModTag::condition("UsingLifeFlask", false)),
+        life(1024.0, ModTag::condition("WeaponSet2", false)),
+        // Unset, it does not hold, and this one applies.
+        life(16.0, ModTag::condition("NothingSetsThisEither", true)),
+        life(32.0, player_side("InThePlayerSnapshot")),
+        // Set in the condition map, which a player-side read does not look at.
+        life(64.0, player_side("SwitchedOn")),
+        // Either would do; one is off and nothing sets the other.
+        life(128.0, any_of(["SwitchedOff", "NorThis"])),
+        life(256.0, any_of(["SwitchedOn", "NotNeeded"])),
+    ]);
+    let output = s.perform_minimal().unwrap();
+
+    // 4 + 16 + 32 + 256 arrived.
+    assert_eq!(output.life, 408.0);
+    let unset: Vec<(&str, f64)> = s
+        .unset_conditions()
+        .into_iter()
+        .map(|(condition, modifier)| (condition, modifier.value.as_number().unwrap()))
+        .collect();
+    assert_eq!(
+        unset,
+        [
+            ("NorThis", 128.0),
+            ("NothingSetsThis", 1.0),
+            ("SwitchedOn", 64.0)
+        ]
+    );
 }
 
 /// Without tracking, nothing is reported and nothing is paid for.

@@ -70,7 +70,9 @@ use prepare::*;
 mod context;
 use context::CalculationContext;
 mod diagnosis;
-pub use diagnosis::{Diagnosis, MainSkillSummary, ModifierRef, UnmappedStat, diagnose};
+pub use diagnosis::{
+    Diagnosis, MainSkillSummary, ModifierRef, UnmappedStat, UnsetCondition, diagnose,
+};
 mod sources;
 use sources::SourceWriter;
 mod inject;

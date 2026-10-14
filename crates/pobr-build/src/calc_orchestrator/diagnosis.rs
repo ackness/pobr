@@ -3,9 +3,10 @@
 //! A calculation can lose an input at four places, and each used to be silent
 //! in its own way: a line no rule parses, a gem stat the stat map cannot turn
 //! into a modifier, a modifier that is stored under a name nothing reads, and
-//! a modifier that scales by a variable nothing sets. [`diagnose`] runs the
-//! ordinary calculation and reports all four, so a wrong number starts from a
-//! list of what was dropped instead of from a comparison with another tool.
+//! a modifier that scales by a variable, or waits for a condition, that
+//! nothing sets. [`diagnose`] runs the ordinary calculation and reports all
+//! four, so a wrong number starts from a list of what was dropped instead of
+//! from a comparison with another tool.
 //!
 //! The list is a set of leads, not of defects: a modifier can be unread
 //! because this skill has no use for it (spell damage on an attack). What a
@@ -13,7 +14,9 @@
 
 use pobr_core::Modifier;
 use pobr_core::calc::CalculationSession;
+use pobr_data::catalog::value_expr::EffectTarget;
 use pobr_data::modifier::ModType;
+use pobr_gamedata::ruleset::ConfigCatalog;
 
 use super::context::CalculationContext;
 pub use super::skill::resolve::MainSkillSummary;
@@ -70,6 +73,22 @@ pub struct UnmappedStat {
     pub reason: String,
 }
 
+/// A condition stored player modifiers wait for that the calculation never
+/// set, so they never applied.
+#[derive(Debug, Clone, PartialEq)]
+pub struct UnsetCondition {
+    /// The condition (one of the enemy's is `Enemy<X>`).
+    pub condition: String,
+    /// The config option that sets it, when one does: the build leaves it
+    /// off. `None`: nothing in the engine or the config sets it.
+    pub config_option: Option<String>,
+    /// A stored `Condition:<condition>` flag says it holds, and nothing
+    /// copies that flag into the calculation's conditions.
+    pub flagged: bool,
+    /// The stored player modifiers that apply only while it holds.
+    pub modifiers: Vec<ModifierRef>,
+}
+
 /// A completed calculation and its dropped inputs. See the module docs.
 pub struct Diagnosis {
     pub session: CalculationSession,
@@ -95,6 +114,11 @@ pub struct Diagnosis {
     /// `(multiplier, modifier)`: the modifier scales by, or is gated on, a
     /// multiplier nothing set, so it contributed nothing.
     pub unprovided_multipliers: Vec<(String, ModifierRef)>,
+    /// The conditions stored player modifiers wait for that neither the
+    /// build, its config nor any pass of the engine set, and those a config
+    /// option sets that the build leaves off. Each once, those nothing sets
+    /// first, by name.
+    pub unset_conditions: Vec<UnsetCondition>,
 }
 
 /// Names the orchestrator consumes from item text or build structure rather
@@ -115,6 +139,118 @@ const READ_OUTSIDE_THE_DATABASE: &[&str] = &[
     // The configured number of summoned totems: `prepare::stage_build_cfg`.
     "TotemsSummoned",
 ];
+
+/// Conditions the orchestration sets from what a build has before the
+/// calculation. One it set for this build is in the calculation's condition
+/// map; one listed here it would have set for another build (another weapon,
+/// a spell instead of an attack), so its absence is not a lead.
+const SET_BY_THE_ORCHESTRATION: &[&str] = &[
+    // `conditions::weapon_type_conditions` and the shield in the off hand.
+    "UsingQuarterstaff",
+    "UsingStaff",
+    "UsingMace",
+    "UsingCrossbow",
+    "UsingBow",
+    "UsingSpear",
+    "UsingDagger",
+    "UsingOneHandedMelee",
+    "UsingTwoHandedMelee",
+    "DualWielding",
+    "UsingShield",
+    // `conditions::combat_conditions`: what using the main skill means.
+    "AttackedRecently",
+    "CastSpellRecently",
+    "UsedMovementSkillRecently",
+    "UsedMinionSkillRecently",
+    "UsedVaalSkillRecently",
+    "Channelling",
+    "HaveTotem",
+    "SummonedTotemRecently",
+    // `prepare::stage_build_cfg`: a boss-tier enemy, a Companion skill, a
+    // Normal body armour.
+    "Unique",
+    "RareOrUnique",
+    "CompanionInPresence",
+    "NormalBodyArmourEquipped",
+    // `inject::inject_support_gem_counts`: the colour most supports have.
+    "MostNumerousRedSocketedSupports",
+    "MostNumerousGreenSocketedSupports",
+    "MostNumerousBlueSocketedSupports",
+    // `inject::inject_enemy`: the config input of the same name.
+    "DisableEHPGainOnBlock",
+];
+
+/// The config option that sets `condition`, if one does: its own
+/// `condition<condition>` input first, else an option that implies it or
+/// whose effect writes `Condition:<X>`. Written on the enemy, that is
+/// `Enemy<X>` in the calculation's conditions (and `<X>` as well when the
+/// effect has no tags or flags).
+fn config_option_setting(catalog: &ConfigCatalog, condition: &str) -> Option<String> {
+    let own = format!("condition{condition}");
+    if catalog.by_var.contains_key(&own) {
+        return Some(own);
+    }
+    catalog
+        .options
+        .iter()
+        .find(|option| {
+            option
+                .imply_conditions
+                .iter()
+                .any(|implied| implied == condition)
+                || option
+                    .effects
+                    .iter()
+                    .chain(option.option_effects.values().flatten())
+                    .any(|effect| {
+                        effect
+                            .name
+                            .strip_prefix("Condition:")
+                            .is_some_and(|written| match effect.target {
+                                EffectTarget::Enemy => {
+                                    condition.strip_prefix("Enemy") == Some(written)
+                                        || (effect.tags.is_empty()
+                                            && effect.flags.is_empty()
+                                            && written == condition)
+                                }
+                                EffectTarget::Player | EffectTarget::Minion => written == condition,
+                            })
+                    })
+        })
+        .map(|option| option.var.clone())
+}
+
+/// [`CalculationSession::unset_conditions`] less what the orchestration would
+/// have set for another build, each condition once with the modifiers that
+/// wait for it and the config option that could set it.
+fn group_unset_conditions(session: &CalculationSession, data: &BuildData) -> Vec<UnsetCondition> {
+    let mut conditions: Vec<UnsetCondition> = Vec::new();
+    for (condition, modifier) in session.unset_conditions() {
+        if SET_BY_THE_ORCHESTRATION.contains(&condition) {
+            continue;
+        }
+        // Ordered by condition, so its modifiers arrive together.
+        if let Some(last) = conditions
+            .last_mut()
+            .filter(|last| last.condition == condition)
+        {
+            last.modifiers.push(ModifierRef::of(modifier));
+            continue;
+        }
+        conditions.push(UnsetCondition {
+            condition: condition.to_string(),
+            config_option: data
+                .config_catalog
+                .as_deref()
+                .and_then(|catalog| config_option_setting(catalog, condition)),
+            flagged: session.mod_db().has_name(&format!("Condition:{condition}")),
+            modifiers: vec![ModifierRef::of(modifier)],
+        });
+    }
+    // What nothing sets first. The sort is stable: by name within each part.
+    conditions.sort_by_key(|entry| entry.config_option.is_some());
+    conditions
+}
 
 /// Calculates `build` like [`calculate_with_data_session`](super::calculate_with_data_session)
 /// and reports its dropped inputs. It tracks every modifier read and records
@@ -178,6 +314,7 @@ pub fn diagnose(
         .into_iter()
         .map(|(variable, modifier)| (variable.to_string(), ModifierRef::of(modifier)))
         .collect();
+    let unset_conditions = group_unset_conditions(&session, data);
 
     Ok(Diagnosis {
         main_skill: super::skill::resolve::main_skill_summary(
@@ -194,6 +331,7 @@ pub fn diagnose(
         unknown_stats,
         unread_modifiers,
         unprovided_multipliers,
+        unset_conditions,
         session,
     })
 }
