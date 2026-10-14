@@ -53,6 +53,11 @@ pub struct GemSkillRef {
     /// to its level is already in `gem_level`; this is the state that "all
     /// Corrupted Skill Gems" modifiers test.
     pub corrupted: bool,
+    /// The monster a minion gem summons, when the player chooses it (PoB `<Gem
+    /// skillMinion>`, a monster variety id such as
+    /// `Metadata/Monsters/Quadrilla/Quadrilla`). A Companion's beast and a
+    /// Spectre's monster set the Spirit the gem reserves.
+    pub minion: Option<String>,
 }
 
 /// A group of skill gems in the same socket (active skill + its supports). A simplified
@@ -120,6 +125,7 @@ impl SocketGroup {
                 quality: g.quality,
                 stat_set_index: g.stat_set_index,
                 corrupted: g.corrupted,
+                minion: g.minion.clone(),
             })
             .collect()
     }
@@ -205,6 +211,7 @@ impl SocketGroup {
             stat_set_index: None,
             name_spec: None,
             corrupted: false,
+            minion: None,
         });
         self
     }
@@ -223,6 +230,7 @@ impl SocketGroup {
             stat_set_index: Some(stat_set_index),
             name_spec: None,
             corrupted: false,
+            minion: None,
         });
         self
     }
@@ -498,6 +506,7 @@ impl pobr_core::skill_env::SocketGroupView for Build {
                     quality: g.quality,
                     stat_set_index: g.stat_set_index,
                     corrupted: g.corrupted,
+                    minion: g.minion.clone(),
                 })
                 .collect();
             f(pobr_core::skill_env::EnabledGroup {

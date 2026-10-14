@@ -104,6 +104,8 @@ export interface GemJson {
   name_spec?: string | null;
   /** Present and true only for a corrupted gem. */
   corrupted?: boolean;
+  /** The monster a minion gem summons (PoB skillMinion); a Companion's beast or a Spectre's monster sets its Spirit reservation. */
+  minion?: string;
   skill_id: string;
   level: number;
   quality: number;
@@ -193,6 +195,8 @@ export interface GemInput {
   name_spec?: string | null;
   /** Whether the gem is corrupted ("all Corrupted Skill Gems" modifiers test it); omitted means not. */
   corrupted?: boolean;
+  /** The monster a minion gem summons (PoB skillMinion), passed through from decode. */
+  minion?: string | null;
   skill_id: string;
   level: number;
   quality: number;

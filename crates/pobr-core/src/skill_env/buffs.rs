@@ -11,9 +11,10 @@ use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 use crate::Modifier;
 use crate::skill_env::buff_stat_map::map_self_buff_offensive_stat;
-use crate::skill_env::lookup::{EffectLookup, SocketGroupView, StatSetLookup};
+use crate::skill_env::lookup::{EffectLookup, MinionLookup, SocketGroupView, StatSetLookup};
+use crate::skill_env::mods::GemPropertyBonus;
 use crate::skill_env::mods::skill_type_bits;
-use crate::skill_env::resolve::GemPropertyLookup;
+use crate::skill_env::resolve::{GemPropertyLookup, additional_gem_levels};
 
 /// The buff display names of all **herald active skills** among the enabled groups
 /// (deduplicated by name, deterministically sorted).
@@ -203,18 +204,24 @@ impl ReservationDb for crate::ModDb {
 /// full per group (to be tightened along with `support_modifiers`'s semantics once the
 /// T3.6 compatible-list merge lands).
 /// The lookup surface [`spirit_reservation_modifiers`] needs.
-pub trait ReservationLookup: StatSetLookup + EffectLookup + GemPropertyLookup {}
-impl<T: StatSetLookup + EffectLookup + GemPropertyLookup> ReservationLookup for T {}
+pub trait ReservationLookup:
+    StatSetLookup + EffectLookup + GemPropertyLookup + MinionLookup
+{
+}
+impl<T: StatSetLookup + EffectLookup + GemPropertyLookup + MinionLookup> ReservationLookup for T {}
 
 pub fn spirit_reservation_modifiers(
     groups: &dyn SocketGroupView,
     data: &dyn ReservationLookup,
     db: &dyn ReservationDb,
     use_alt_quality: bool,
+    gem_level_bonuses: &[GemPropertyBonus],
 ) -> Vec<Modifier> {
     use std::collections::HashSet;
     let mut mods = Vec::new();
-    let mut seen: HashSet<String> = HashSet::new();
+    // A skill reserves once however many groups hold it; a Companion or a
+    // Spectre once per monster.
+    let mut seen: HashSet<(String, Option<String>)> = HashSet::new();
     // Ancestral Bond (tree node 45202, "Totems reserve N Spirit each", produces an
     // `AncestralBond` FLAG): SummonsTotem skills are pulled into the reservation loop
     // because of it (vendor CalcDefence.lua:197's `isTotemAndAncestralBond`). The flag
@@ -235,12 +242,28 @@ pub fn spirit_reservation_modifiers(
             if effect.is_support
                 || !(has("HasReservation") || totem_under_bond)
                 || has("ReservationBecomesCost")
-                || !seen.insert(gem.skill_id.clone())
+                || !seen.insert((gem.skill_id.clone(), gem.minion.clone()))
             {
                 continue;
             }
-            let own = data.effect_level_row(&gem.skill_id, gem.gem_level);
+            // The level the skill is used at: "+N to Level of all Minion
+            // Skills" lowers what a minion skill reserves.
+            let level = gem.gem_level
+                + additional_gem_levels(gem_level_bonuses, data, &gem.skill_id, gem.corrupted);
+            let own = data.effect_level_row(&gem.skill_id, level);
             let mut flat = own.and_then(|r| r.spirit_reservation_flat).unwrap_or(0.0);
+            // The monster a Spectre or a tamed beast's gem summons sets what
+            // it reserves: a Spectre that monster's Spirit, a tamed Companion
+            // a share of the Spirit pool that grows with the beast's
+            // experience multiplier (`companion_reservation`). Other minion
+            // skills reserve what their level does, whichever minion they name.
+            let chosen = gem.minion.as_deref().and_then(|id| data.minion_def(id));
+            let mut percent = 0.0;
+            match (chosen, effect.active_skill.as_deref()) {
+                (Some(monster), Some("summon_beast")) => percent = monster.companion_reservation,
+                (Some(monster), Some("summon_spectre")) => flat = monster.spectre_reservation,
+                _ => {}
+            }
             let mut mult = 1.0 + own.and_then(|r| r.reservation_multiplier).unwrap_or(0.0) / 100.0;
             // Spirit→Life reservation conversion (vendor CalcDefence.lua:248-254, added
             // in 0.5.4b; Atziri's Communion support's constant stat
@@ -272,12 +295,7 @@ pub fn spirit_reservation_modifiers(
                     .map(|s| s.value / 100.0)
                     .sum::<f64>();
             }
-            let es = data.effect_stats(
-                &gem.skill_id,
-                gem.gem_level,
-                gem.quality,
-                gem.stat_set_index,
-            );
+            let es = data.effect_stats(&gem.skill_id, level, gem.quality, gem.stat_set_index);
             // Blasphemy's per-curse reservation (vendor CalcDefence.lua:229-239): an
             // `IsBlasphemy` effect adds `blasphemy_base_spirit_reservation_per_socketed_curse`
             // (constant stat = 60) once **per supported curse** (vendor's
@@ -434,6 +452,26 @@ pub fn spirit_reservation_modifiers(
                     );
                 }
                 continue;
+            }
+            // A share of the pool, to two places; the shares of all skills
+            // add up before the pool's reserved amount is taken.
+            let share = (percent * mult * res_factor / (1.0 + efficiency / 100.0) / eff_more
+                * 100.0)
+                .round()
+                / 100.0;
+            if share > 0.0 {
+                let origin = ModifierSource::new(SourceId::new(
+                    SourceKind::SkillGem,
+                    format!("spirit.{}", gem.skill_id),
+                ))
+                .with_raw_text(format!(
+                    "spirit reservation {} ({percent}% × {mult})",
+                    gem.skill_id
+                ));
+                mods.push(
+                    Modifier::number("SkillSpiritReservationPercent", ModType::Base, share)
+                        .with_origin(origin),
+                );
             }
             let reserved = (flat * mult * res_factor / (1.0 + efficiency / 100.0) / eff_more)
                 .round()

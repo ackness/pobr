@@ -81,5 +81,8 @@ mod withered;
 #[path = "skills/passive_jewels.rs"]
 mod passive_jewels;
 
+#[path = "skills/minion_reservation.rs"]
+mod minion_reservation;
+
 #[path = "skills/jewel_sources.rs"]
 mod jewel_sources;

@@ -73,6 +73,9 @@ pub struct GemInput {
     pub(crate) name_spec: Option<String>,
     /// Whether the gem is corrupted; omitted means it is not.
     pub(crate) corrupted: bool,
+    /// The monster a minion gem summons (PoB `skillMinion`); a Companion's
+    /// beast and a Spectre's monster set the Spirit it reserves.
+    pub(crate) minion: Option<String>,
 }
 
 impl Default for GemInput {
@@ -84,6 +87,7 @@ impl Default for GemInput {
             stat_set_index: None,
             name_spec: None,
             corrupted: false,
+            minion: None,
         }
     }
 }
@@ -260,6 +264,7 @@ pub(super) fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData
             stat_set_index: gem.stat_set_index,
             name_spec: None,
             corrupted: gem.corrupted,
+            minion: gem.minion.clone(),
         });
         if let Some(gem_id) = gem_id {
             group.gem_ids.push(gem_id);

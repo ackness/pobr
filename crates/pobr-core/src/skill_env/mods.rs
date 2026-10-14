@@ -543,6 +543,9 @@ pub struct GemInput {
     pub stat_set_index: Option<u32>,
     /// Whether the gem is corrupted.
     pub corrupted: bool,
+    /// The monster the gem summons when the player chooses it (a Companion's
+    /// beast, a Spectre's monster): a monster variety id.
+    pub minion: Option<String>,
 }
 
 /// Crossbow reload data channel (matching vendor `CalcOffence.lua:1118-1122`'s

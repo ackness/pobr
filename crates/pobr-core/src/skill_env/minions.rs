@@ -160,6 +160,7 @@ pub fn spawn_minions(
                         quality: 0,
                         stat_set_index: None,
                         corrupted: false,
+                        minion: None,
                     }]
                 })
                 .unwrap_or_default()
@@ -172,6 +173,7 @@ pub fn spawn_minions(
             quality,
             stat_set_index,
             corrupted,
+            minion: _,
         } in candidates
         {
             // A support itself doesn't summon — its addMinionList appends to the active

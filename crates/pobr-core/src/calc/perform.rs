@@ -1134,6 +1134,17 @@ fn fill_skill_mechanics(env: &mut Env) {
     if base_sr > 0.0 {
         env.player.output.spirit_reserved = calc_spirit_reservation(db, cfg, base_sr).final_cost;
     }
+    // Skills that reserve a share of the pool (Companions): the shares add
+    // up, and the pool reserves that share of itself, rounded up.
+    let share = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("SkillSpiritReservationPercent")],
+    );
+    if share > 0.0 {
+        let pool = crate::calc::defence_panels::calc_spirit_pool(db, cfg);
+        env.player.output.spirit_reserved += (pool * share / 100.0).ceil();
+    }
 }
 
 /// The ailment calculation context for a single pass (a subset of vendor's per-pass `output`

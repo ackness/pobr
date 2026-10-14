@@ -151,7 +151,8 @@ pub(crate) fn spirit_reservation_modifiers(
     // Mirage Archer's alt `base_reservation_efficiency_+%` ×2, Eternal Rage's alt
     // `base_spirit_reservation_efficiency_+%` ×0.75).
     let use_alt_quality = super::resolve::gemling_quality_flag(build, data);
-    pobr_core::skill_env::spirit_reservation_modifiers(build, data, db, use_alt_quality)
+    let bonuses = super::resolve::gem_property_bonuses(build, data);
+    pobr_core::skill_env::spirit_reservation_modifiers(build, data, db, use_alt_quality, &bonuses)
 }
 
 /// (Pre-existing #9) Builds every **enabled warcry active skill** into a

@@ -1,5 +1,6 @@
-//! Whether a gem is corrupted survives decoding, the structured request and
-//! export, so "all Corrupted Skill Gems" modifiers reach the calculation
+//! Whether a gem is corrupted, and the monster a minion gem summons, survive
+//! decoding, the structured request and export, so "all Corrupted Skill Gems"
+//! modifiers and a Companion's Spirit reservation reach the calculation
 //! whichever way a build arrives.
 
 use serde_json::{Value, json};
@@ -74,5 +75,44 @@ fn corruption_survives_export_and_decode() {
     assert_eq!(
         decode(&code)["socket_groups"][0]["gems"][0],
         json!({ "skill_id": "FireballPlayer", "level": 20, "quality": 0 })
+    );
+}
+
+/// A Companion summoning `minion` when given, on a character with 100 Spirit.
+fn companion(minion: Option<&str>) -> Value {
+    let mut gem = json!({ "skill_id": "SummonBeastPlayer", "level": 20, "quality": 0 });
+    if let Some(minion) = minion {
+        gem["minion"] = json!(minion);
+    }
+    json!({
+        "character": { "level": 85, "class_name": "Huntress" },
+        "main_socket_group": 0,
+        "socket_groups": [{ "enabled": true, "gems": [gem] }],
+        "items": [{
+            "slot": "amulet",
+            "text": "Rarity: RARE\nTest Amulet\nJade Amulet\nImplicits: 0\n+100 to Spirit",
+        }],
+    })
+}
+
+#[test]
+fn a_chosen_minion_survives_export_and_decode() {
+    init();
+    let quadrilla = "Metadata/Monsters/Quadrilla/Quadrilla";
+    // The beast sets the Spirit the Companion reserves.
+    assert_ne!(
+        output(&companion(Some(quadrilla))),
+        output(&companion(None))
+    );
+
+    let code = pobr_wasm::encode_build_json(&companion(Some(quadrilla)).to_string()).unwrap();
+    let xml = pobr_build::decode_pob_code(&code).unwrap();
+    assert!(
+        xml.contains(&format!(r#"skillMinion="{quadrilla}""#)),
+        "{xml}"
+    );
+    assert_eq!(
+        decode(&code)["socket_groups"][0]["gems"][0],
+        json!({ "skill_id": "SummonBeastPlayer", "level": 20, "quality": 0, "minion": quadrilla })
     );
 }

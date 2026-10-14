@@ -1676,6 +1676,8 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                                     .and_then(|v| v.parse::<u32>().ok());
                                 let corrupted =
                                     attr_value(&e, b"corrupted").is_some_and(|v| v == "true");
+                                let minion = attr_value(&e, b"skillMinion")
+                                    .filter(|v| !v.is_empty() && v.as_str() != "nil");
                                 // The first enabled gem in the group with a skillId is
                                 // treated as the active skill (PoB's Gem list has active
                                 // first; nameSpec-only references are always lineage
@@ -1695,6 +1697,7 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                                     stat_set_index,
                                     name_spec: if name_spec_pending { name_spec } else { None },
                                     corrupted,
+                                    minion,
                                 });
                             }
                             if let Some(gem_id) = gem_id {

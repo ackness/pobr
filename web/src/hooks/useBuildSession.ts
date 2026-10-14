@@ -355,10 +355,12 @@ export function parseSaved(json: string): SavedSession | null {
         // PoB imports retain unresolved slots as an empty stable ID, including level 0.
         if (!record(gem) || typeof gem.skill_id !== 'string' || !uint(gem.level) || gem.level === 0 && gem.skill_id !== ''
           || !uint(gem.quality) || !optionalIndex(gem.stat_set_index, 1) || !optionalText(gem.name_spec)
+          || !optionalText(gem.minion)
           || gem.corrupted != null && typeof gem.corrupted !== 'boolean') return null;
         gems.push({ skill_id: gem.skill_id, level: gem.level, quality: gem.quality,
           ...(gem.stat_set_index != null ? { stat_set_index: Number(gem.stat_set_index) } : {}),
           ...(gem.name_spec !== undefined ? { name_spec: gem.name_spec as string | null } : {}),
+          ...(typeof gem.minion === 'string' ? { minion: gem.minion } : {}),
           ...(gem.corrupted === true ? { corrupted: true } : {}) });
       }
       socketGroups.push({ enabled: group.enabled == null ? true : group.enabled as boolean,
@@ -501,6 +503,7 @@ export function materialize(
         quality: gem.quality,
         stat_set_index: gem.stat_set_index,
         ...(gem.name_spec !== undefined ? { name_spec: gem.name_spec } : {}),
+        ...(gem.minion ? { minion: gem.minion } : {}),
         ...(gem.corrupted ? { corrupted: true } : {}),
       })),
     })),

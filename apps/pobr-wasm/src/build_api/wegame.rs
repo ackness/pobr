@@ -399,6 +399,7 @@ fn gem(
         name_spec: None,
         // The same flag a corrupted piece of equipment carries.
         corrupted: item["corrupted"].as_bool() == Some(true),
+        minion: None,
     })
 }
 
