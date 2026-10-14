@@ -283,18 +283,11 @@ fn conversion_rates_over_100_are_normalised() {
     // Act
     let res = calc_defence_resources(&db, &cfg, &base, &ks);
 
-    // Assert: armour converts out entirely (total=100); evasion=100x(80x5/6)/100=66.67, ES=33.33.
+    // Assert: armour converts out entirely (total=100); evasion=100x(80x5/6)/100=66.67,
+    // ES=33.33, each a whole number.
     assert_eq!(res.armour, 0.0);
-    assert!(
-        (res.evasion - 200.0 / 3.0).abs() < 1e-6,
-        "evasion={}",
-        res.evasion
-    );
-    assert!(
-        (res.energy_shield - 100.0 / 3.0).abs() < 1e-6,
-        "es={}",
-        res.energy_shield
-    );
+    assert_eq!(res.evasion, 67.0);
+    assert_eq!(res.energy_shield, 33.0);
 }
 
 /// GainAs doesn't shrink the source (CalcDefence.lua:1336-1337: gainRate is added

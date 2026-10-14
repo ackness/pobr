@@ -56,8 +56,9 @@ fn evasion(data: &BuildData, worn: &[Piece], notable: bool) -> f64 {
         .evasion
 }
 
+/// A rating is a whole number: the one nearest to `expected`.
 fn close(actual: f64, expected: f64) {
-    assert!((actual - expected).abs() < 0.01, "{actual} != {expected}");
+    assert_eq!(actual, expected.round(), "{actual} != {expected}");
 }
 
 #[test]

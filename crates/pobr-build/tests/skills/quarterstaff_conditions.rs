@@ -53,8 +53,9 @@ Implicits: 0
     calculate_with_data(&build, data, &options).expect("calculate")
 }
 
+/// A rating is a whole number: the one nearest to `expected`.
 fn close(actual: f64, expected: f64) {
-    assert!((actual - expected).abs() < 0.01, "{actual} != {expected}");
+    assert_eq!(actual, expected.round(), "{actual} != {expected}");
 }
 
 #[test]

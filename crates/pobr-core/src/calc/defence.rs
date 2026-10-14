@@ -349,6 +349,10 @@ impl DefenceTerms {
             );
         }
         steps.add(FormulaOp::FlatAfter, self.flat_after);
+        let rounded = steps.current().round();
+        if rounded != steps.current() {
+            steps.set(FormulaOp::Round, 0.0, rounded);
+        }
         steps.finish(self.value)
     }
 }
@@ -572,7 +576,9 @@ pub(crate) fn defence_resource_terms(
         }
         // The Total direct-add channel isn't multiplied by inc/more (vendor :1394 `… + res.totalBase`).
         total += kept_total[s] + total_received[s];
-        *value = round(total);
+        // A rating, like the Energy Shield pool, is a whole number, as the
+        // character sheet shows it: the nearest one.
+        *value = total.round().max(0.0);
         terms[s].gained_after += received[s] + slot_total(&slots[s]);
         terms[s].inc = global_inc;
         terms[s].more = global_more;
