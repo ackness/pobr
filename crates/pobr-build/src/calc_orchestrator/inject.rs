@@ -313,6 +313,11 @@ fn augments_in_equipment(build: &Build, data: &BuildData) -> (usize, usize) {
 }
 
 /// Build-derived counts and equipment facts; actor-derived values belong to core.
+///
+/// Written before `prepare_player_stats`: the attributes that grant Life, Mana
+/// and Accuracy can scale on these facts, as "+7 to all Attributes per Socket
+/// filled" does on the filled sockets of its item. Nothing here reads what
+/// that preparation writes.
 pub(super) fn inject_build_multipliers(
     session: &mut CalculationSession,
     build: &Build,

@@ -619,8 +619,8 @@ fn calculate_prepared_with_context(
             intelligence: 0.0,
         })
     });
-    session.prepare_player_stats(build.character.level, class);
     inject_build_multipliers(&mut session, build, data);
+    session.prepare_player_stats(build.character.level, class);
 
     // 6c2. Equipped support gems counted by color (matching PoB2
     //      CalcSetup.lua:2015-2044) → Red/Green/BlueSupportGems multipliers (the

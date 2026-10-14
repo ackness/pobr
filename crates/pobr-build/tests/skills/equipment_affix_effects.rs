@@ -1066,3 +1066,36 @@ fn item_granted_keystone_changes_what_attributes_grant() {
         100.0,
     );
 }
+
+/// "+7 to all Attributes per Socket filled" scales on the runes socketed in
+/// its item, and the attributes it gives grant Life and Mana like any other:
+/// each point of Strength grants Life and each point of Intelligence grants
+/// Mana at the game's rates (`base/character_constants.json`).
+#[test]
+fn attributes_per_socket_filled_grant_life_and_mana() {
+    let data = data();
+    let runes = ["Iron Rune", "Glacial Rune"];
+    let with_lines = |lines: &[&str]| {
+        let mut chest = item("Plate Vest", lines);
+        chest.socketed = runes.iter().map(|name| (*name).into()).collect();
+        let session = run(
+            &build("FireballPlayer").set_item(EquipmentSlot::BodyArmour, chest),
+            &data,
+        );
+        (session.output().life, session.output().mana)
+    };
+    let (life, mana) = with_lines(&[]);
+    let (per_socket_life, per_socket_mana) =
+        with_lines(&["+7 to all Attributes per Socket filled"]);
+    // Two filled sockets: 14 of each attribute.
+    let attribute = 7.0 * runes.len() as f64;
+    let constants = &data.constants.character_constants;
+    close(
+        per_socket_life - life,
+        attribute * constants.life_per_strength,
+    );
+    close(
+        per_socket_mana - mana,
+        attribute * constants.mana_per_intelligence,
+    );
+}

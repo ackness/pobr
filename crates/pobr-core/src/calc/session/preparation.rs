@@ -18,7 +18,8 @@ pub(in crate::calc) fn life_mana_pools(env: &Env) -> (f64, f64) {
 
 impl CalculationSession {
     /// Derives attribute bonuses and captures the initial actor stat/multiplier values.
-    /// Call once after source injection and before build counters and condition bridging.
+    /// Call once after source injection and the build's equipment facts (attributes can
+    /// scale on them, as "per Socket filled" does), and before condition bridging.
     /// `class` contains the starting attributes already baked into CharacterBase mods;
     /// `None` disables attribute derivation for callers supplying their own base input.
     pub fn prepare_player_stats(&mut self, level: u32, class: Option<crate::CharacterBase>) {
