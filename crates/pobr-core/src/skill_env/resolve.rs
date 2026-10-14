@@ -15,7 +15,7 @@ use crate::skill_env::lookup::{
 };
 use crate::skill_env::mods::{
     GemPropertyBonus, GemPropertyKind, clean_grant_text, gem_level_category_matches,
-    parse_gem_property_bonus,
+    gem_tags_match_category, parse_gem_property_bonus,
 };
 use crate::skill_env::support::{CompatibleSupport, GroupSupportJudgement};
 
@@ -287,14 +287,24 @@ pub fn gem_property_applies(
     if bonus.corrupted_only && !corrupted {
         return false;
     }
-    if !gem_level_category_matches(&bonus.category, skill_types, skill_id) {
+    let gem_def = data.gem_def_for_effect(skill_id);
+    // A kind is a kind of gem, which the gem's tags say. The types of the
+    // skill stand in where the tags do not: a snapshot without them, and a
+    // support gem, whose tags name the skills it supports and the skill it
+    // grants (Impending Doom is tagged `spell` for Doom Blast, which runs at
+    // the level of the supported skill).
+    let of_kind = match gem_def.filter(|gem| !gem.is_support && !gem.gem_tags.is_empty()) {
+        Some(gem) => gem_tags_match_category(&bonus.category, &gem.gem_tags, skill_id),
+        None => gem_level_category_matches(&bonus.category, skill_types, skill_id),
+    };
+    if !of_kind {
         return false;
     }
     match bonus.attr_req {
         None => true,
         Some(attr) => {
             // Granted effect → gem base → attribute requirement weight (matching vendor's `effect.gemData[reqX] > 0`).
-            let Some(gem_def) = data.gem_def_for_effect(skill_id) else {
+            let Some(gem_def) = gem_def else {
                 return false;
             };
             match attr {

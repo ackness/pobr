@@ -144,6 +144,81 @@ fn a_bonus_for_a_kind_of_skill_gems_raises_the_gems_of_that_kind() {
     );
 }
 
+/// A kind is a kind of gem, which the gem's tags say (the game's `GemEffects`
+/// table). Rain of Arrows fires arrows that fall instead of flying: its skill
+/// is not of the game's `Projectile` type, and the gem is tagged `projectile`.
+/// Shockwave Totem places a totem and is tagged for the Slam the totem uses
+/// (`slam`, `melee`, `nova`), which is another skill of the same gem.
+#[test]
+fn a_gem_is_of_the_kinds_its_tags_say() {
+    let data = data();
+    let options = DataOrchestratorOptions::default();
+    let levels = |skill: &str, lines: &str| {
+        let build = build_of(
+            skill,
+            LEVEL_20,
+            "",
+            &format!(
+                r#"<CustomModifierBlock title="Test" enabled="true">{lines}</CustomModifierBlock>"#
+            ),
+        );
+        bonus(&data, &build, &options).0
+    };
+    assert_eq!(
+        levels("RainOfArrows", "+3 to Level of all Projectile Skills"),
+        3
+    );
+    assert_eq!(
+        levels("RainOfArrows", "+1 to Level of all Attack Skills"),
+        1
+    );
+    assert_eq!(levels("RainOfArrows", "+1 to Level of all Spell Skills"), 0);
+    assert_eq!(
+        levels("ShockwaveTotem", "+1 to Level of all Slam Skill Gems"),
+        1
+    );
+    assert_eq!(
+        levels("ShockwaveTotem", "+1 to Level of all Melee Skills"),
+        1
+    );
+    assert_eq!(
+        levels("ShockwaveTotem", "+1 to Level of all Totem Skill Gems"),
+        1
+    );
+    assert_eq!(
+        levels("ShockwaveTotem", "+1 to Level of all Nova Skill Gems"),
+        1
+    );
+    assert_eq!(
+        levels("ShockwaveTotem", "+1 to Level of all Projectile Skills"),
+        0
+    );
+    // A spell that flies is a projectile as before; one that does not is not.
+    assert_eq!(
+        levels("Fireball", "+1 to Level of all Projectile Skills"),
+        1
+    );
+    assert_eq!(
+        levels("GrimPillars", "+1 to Level of all Projectile Skills"),
+        0
+    );
+    // Every word of a kind is a tag the gem has to carry, and "Elemental"
+    // is any of the three elements.
+    assert_eq!(
+        levels("Fireball", "+1 to Level of all Fire Spell Skills"),
+        1
+    );
+    assert_eq!(
+        levels("Fireball", "+1 to Level of all Cold Spell Skills"),
+        0
+    );
+    assert_eq!(levels("Fireball", "+1 to Level of all Elemental Skills"), 1);
+    assert_eq!(
+        levels("RainOfArrows", "+1 to Level of all Elemental Skills"),
+        0
+    );
+}
+
 #[test]
 fn a_bonus_for_corrupted_gems_in_the_custom_modifiers_tests_the_gem() {
     let data = data();

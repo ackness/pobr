@@ -324,15 +324,37 @@ pub fn parse_gem_level_bonus(text: &str) -> Option<(u32, String)> {
         .then_some((bonus.value, bonus.category))
 }
 
-/// Whether the kind a gem bonus names (`category`, lowercase) is the kind of the
-/// skill `skill_id` with the game's `skill_types`:
-/// - no kind ("all Skills", "all Corrupted Skill Gems") is every skill;
+/// Whether the gem that grants the skill `skill_id`, with the game's
+/// `gem_tags`, is of the kind a gem bonus names (`category`, lowercase):
+/// - no kind ("all Skills", "all Corrupted Skill Gems") is every gem;
 /// - the name of the skill is that skill ("all Shield Wall Skills");
-/// - otherwise each word names a kind and the skill has to be all of them
-///   ("all Cold Spell Skills").
+/// - otherwise each word names a tag and the gem has to carry all of them
+///   ("all Cold Spell Skills": `cold` and `spell`).
 ///
-/// The game decides a kind by the gem's tags, which the committed data does
-/// not carry; the skill's types stand in for them (see [`kind_skill_types`]).
+/// The game ties each tag to the stat that raises its gems (`GemTags`:
+/// `projectile` to `projectile_skill_gem_level_+`, "+# to Level of all
+/// Projectile Skills"), so the tag decides, whatever the types of the skills
+/// the gem grants: Rain of Arrows is tagged `projectile` and its arrows are
+/// not of the `Projectile` skill type. "Elemental" is not a tag: the game's
+/// `elemental_skill_gem_level_+` is for the gems of the three elements.
+pub fn gem_tags_match_category(category: &str, gem_tags: &[String], skill_id: &str) -> bool {
+    if category.is_empty() {
+        return true;
+    }
+    if category == skill_name_from_id(skill_id) {
+        return true;
+    }
+    let tagged = |tag: &str| gem_tags.iter().any(|gem_tag| gem_tag == tag);
+    category.split_whitespace().all(|word| match word {
+        "elemental" => tagged("fire") || tagged("cold") || tagged("lightning"),
+        tag => tagged(tag),
+    })
+}
+
+/// [`gem_tags_match_category`] for a skill whose gem has no tags to go by: a
+/// skill no gem in the data grants, or a snapshot adapted before gems
+/// carried their tags. The game's `skill_types` of the skill stand in for
+/// the tags (see [`kind_skill_types`]).
 pub fn gem_level_category_matches(category: &str, skill_types: &[String], skill_id: &str) -> bool {
     if category.is_empty() {
         return true;
