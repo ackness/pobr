@@ -16,6 +16,7 @@
 // in via glob import — matching the style of the rest of the `calc_orchestrator::*` submodules.
 use pobr_core::Modifier;
 use pobr_core::calc::CalculationSession;
+use pobr_core::mod_parser::ParseStatus;
 use pobr_data::item::EquipmentSlot;
 use pobr_data::modifier::ModType;
 use pobr_data::monster::EnemyTier;
@@ -1029,46 +1030,46 @@ pub(super) fn stage_inject_jewels(
             radius_texts.push(format!("Upgrades Radius to {label}"));
         }
     }
-    for (socket, jewel) in &ctx.build.jewels {
-        let filtered = filter_item_parseable(jewel, engine_ctx(ctx.data), session, &radius_texts);
-        let texts: Vec<&str> = filtered
+    let parse_ctx = engine_ctx(ctx.data);
+    for (index, (socket, jewel)) in ctx.build.jewels.iter().enumerate() {
+        let filtered = filter_item_parseable(jewel, parse_ctx, session, &radius_texts);
+        let texts = filtered
             .implicit_texts
             .iter()
             .chain(&filtered.modifier_texts)
-            .chain(&filtered.enchant_texts)
-            .map(String::as_str)
-            .collect();
-        // The Adorned (matching vendor CalcSetup.lua:120-126 + :1475): every mod on a
-        // corrupted jewel of the rarity it names (magic or rare) in one of the tree's
-        // own sockets is scaled by `1 + N/100` on injection (ScaleAddList semantics,
-        // value = trunc(round(v×scale, 2)), ModStore.lua:70-79). Granted sockets
-        // (vendor's sinister / containJewelSocket) and equipment sockets are not
+            .chain(&filtered.enchant_texts);
+        // The Adorned: every mod on a corrupted jewel of the rarity it names (magic
+        // or rare) in one of the tree's own sockets is scaled by `1 + N/100`, the
+        // value truncated after rounding to two places. Granted sockets (Sinister
+        // sockets, notables that hold a socket) and equipment sockets are not
         // "Jewel Socket Passive Skills".
-        // ponytail: doesn't model vendor's unscalable marker (no corpus source for it),
-        // wire up when the parity gate flags it.
-        if *socket == crate::build::JewelSocket::Tree
-            && let Some(inc) = jewel_effect.increase_for(jewel)
-        {
-            let scale = 1.0 + inc / 100.0;
-            let parse_ctx = engine_ctx(ctx.data);
-            let mut mods: Vec<pobr_core::Modifier> = Vec::new();
-            for text in texts {
-                let Ok(outcome) = parse_ctx.parse(text) else {
-                    continue;
-                };
-                for mut m in outcome.mods {
-                    if let pobr_core::ModValue::Number(v) = m.value {
-                        m.value = pobr_core::ModValue::Number(scale_trunc_2dp(v, scale));
-                    }
-                    mods.push(m);
-                }
-            }
-            session.add_modifiers(mods);
-        } else {
-            session
-                .add_modifier_texts(texts)
+        let scale = (*socket == crate::build::JewelSocket::Tree)
+            .then(|| jewel_effect.increase_for(jewel))
+            .flatten()
+            .map(|inc| 1.0 + inc / 100.0);
+        // A jewel's lines are attributed to it, `jewel.<n>` by its place among
+        // the build's jewels.
+        let source = SourceId::new(SourceKind::Jewel, format!("jewel.{}", index + 1));
+        let mut mods: Vec<pobr_core::Modifier> = Vec::new();
+        for text in texts {
+            let outcome = parse_ctx
+                .parse(text)
                 .map_err(|e| BuildError::Parse(e.to_string()))?;
+            if outcome.status == ParseStatus::Unsupported {
+                session.record_unsupported_modifier_text(text.clone());
+                continue;
+            }
+            for mut m in outcome.mods {
+                if let Some(scale) = scale
+                    && let pobr_core::ModValue::Number(v) = m.value
+                {
+                    m.value = pobr_core::ModValue::Number(scale_trunc_2dp(v, scale));
+                }
+                let origin = ModifierSource::new(source.clone()).with_raw_text(text.clone());
+                mods.push(m.with_origin(origin));
+            }
         }
+        session.add_modifiers(mods);
     }
     Ok(())
 }
@@ -1099,7 +1100,12 @@ pub(super) fn stage_inject_config_mods(
     //     mods until vendor/parser naming is unified; `config_resolve` already
     //     excludes quest-attributed entries from the injection list to avoid
     //     double-counting).
-    add_config_lines(session, data, &resolved_config.config.global_modifier_texts)?;
+    add_config_lines(
+        session,
+        data,
+        &resolved_config.config.global_modifier_texts,
+        &SourceId::new(SourceKind::CampaignReward, "quest"),
+    )?;
 
     // 2d. Output of the config interpreter: player modifiers attributed to
     //     `SourceKind::Config`. Combat-gated entries (`Condition:Combat` tag) are
@@ -1112,7 +1118,12 @@ pub(super) fn stage_inject_config_mods(
 
     // 2e. The build's custom modifiers, one modifier a line, colour codes
     //     already stripped by the interpreter.
-    add_config_lines(session, data, &resolved_config.custom_mod_lines)
+    add_config_lines(
+        session,
+        data,
+        &resolved_config.custom_mod_lines,
+        &SourceId::new(SourceKind::Config, "config.custom"),
+    )
 }
 
 /// Stores the lines of one of the configuration's text channels. A gem level
@@ -1120,28 +1131,36 @@ pub(super) fn stage_inject_config_mods(
 /// ([`gem_property_bonuses`](super::skill::resolve::gem_property_bonuses)) and
 /// leaves nothing to store. A line no rule parses whole is not applied in
 /// part: it is recorded as a dropped input, marked `Config:` for where it is.
+/// The lines are attributed to `source`: the quest rewards, or the custom lines.
 fn add_config_lines(
     session: &mut SourceWriter,
     data: &BuildData,
     lines: &[String],
+    source: &SourceId,
 ) -> Result<(), BuildError> {
-    let mut parsed = Vec::new();
+    let parse_ctx = engine_ctx(data);
+    let mut mods = Vec::new();
     for line in lines {
         if parse_gem_property_bonus(line).is_some() {
             continue;
         }
-        if gate_parses(engine_ctx(data), line) {
-            parsed.push(line);
-        } else {
+        if !gate_parses(parse_ctx, line) {
             session.record_unsupported_modifier_text(format!("Config: {line}"));
+            continue;
         }
+        let outcome = parse_ctx
+            .parse(line)
+            .map_err(|e| BuildError::Parse(e.to_string()))?;
+        let origin = ModifierSource::new(source.clone()).with_raw_text(line.clone());
+        mods.extend(
+            outcome
+                .mods
+                .into_iter()
+                .map(|m| m.with_origin(origin.clone())),
+        );
     }
-    if parsed.is_empty() {
-        return Ok(());
-    }
-    session
-        .add_modifier_texts(parsed)
-        .map_err(|e| BuildError::Parse(e.to_string()))
+    session.add_modifiers(mods);
+    Ok(())
 }
 
 /// 3/3a'/3b/3b'/3c. Passive tree injection: node mods (node-level attribution) →

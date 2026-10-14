@@ -5,6 +5,7 @@ use pobr_core::mod_parser::ParseCtx;
 use pobr_core::skill_source::GemModSource;
 use pobr_data::item::Item;
 use pobr_data::modifier::ModType;
+use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 use pobr_tree::{ClassContext, JewelRadius};
 
 use super::sources::SourceWriter;
@@ -583,9 +584,17 @@ pub(crate) fn radius_jewel_grant_modifiers(build: &Build, data: &BuildData) -> V
                     } else {
                         0.0
                     };
+                // What a jewel grants a node is that node's: it counts where
+                // the node counts and is attributed to it.
+                let origin = ModifierSource::new(SourceId::new(
+                    SourceKind::PassiveNode,
+                    format!("node.{node}"),
+                ))
+                .with_raw_text(granted.to_string());
                 for modifier in &parsed.mods {
+                    let modifier = modifier.clone().with_origin(origin.clone());
                     let mut by_jewel = pobr_core::ModDb::new();
-                    by_jewel.scale_add_mod(modifier.clone(), jewel_scale, &data.high_precision);
+                    by_jewel.scale_add_mod(modifier, jewel_scale, &data.high_precision);
                     for modifier in by_jewel.iter_mods() {
                         let mut scaled = pobr_core::ModDb::new();
                         scaled.scale_add_mod(
