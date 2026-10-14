@@ -4,7 +4,7 @@ import { PageHeader } from '../shared/PageHeader';
 import { formatApiError } from '../../api/error';
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { getBackend } from '../../api/backend';
-import type { ItemAugmentInfo, ItemLineJson, RuneCatalogEntry } from '../../api/types';
+import type { ItemAugmentInfo, ItemLineJson, RuneCatalogEntry, SlotItemInput } from '../../api/types';
 import type { BuildSession, LibraryItem } from '../../hooks/useBuildSession';
 import {
   cleanLine,
@@ -160,31 +160,44 @@ const CHARM_TEMPLATE = 'Rarity: MAGIC\nRuby Charm';
 /** PoB 药剂/护符槽（激活态；与 wasm 契约的 utility 槽名一致）。 */
 const UTILITY_SLOTS = ['Flask 1', 'Flask 2', 'Charm 1', 'Charm 2', 'Charm 3'];
 const isUtilitySlot = (slot: string) => slot.startsWith('Flask') || slot.startsWith('Charm');
+/** 超越肢体槽（与 wasm 契约的 limb 槽 id 一致）：与装备并列的一组栏位，没有符文孔，不进市集。 */
+const LIMB_SLOTS = ['arm1', 'arm2', 'leg1', 'leg2'];
+const isLimbSlot = (slot: string) => LIMB_SLOTS.includes(slot);
+/** Equipment proper: the slots with rune sockets and market searches. */
+const isEquipmentSlot = (slot: string) => !isUtilitySlot(slot) && !isLimbSlot(slot);
+const ARM_TEMPLATE = 'Rarity: NORMAL\nCombat Arm\nImplicits: 1\n6% increased Attack Speed';
+const LEG_TEMPLATE = 'Rarity: NORMAL\nEvasive Leg\nImplicits: 1\n20% increased Evasion Rating';
+const ALL_SLOTS = [...DOLL_SLOTS, ...UTILITY_SLOTS, ...LIMB_SLOTS];
 const itemDraftKey = (slot: string, weaponSet: number) =>
   `item:${slot.startsWith('weapon') ? weaponSet : 0}:${slot}`;
 
 /** 装备页：PoB2 式人形槽位布局；点槽位在下方编辑 PoB 文本，保存即重算。 */
 export function ItemsPanel({ session, lang, onUpgrade }: Props) {
   const tt = bindT(lang);
-  const [selected, setSelected] = useState<string | null>(() => [...DOLL_SLOTS, ...UTILITY_SLOTS]
+  const [selected, setSelected] = useState<string | null>(() => ALL_SLOTS
     .find(slot => session.editorDrafts[itemDraftKey(slot, session.activeWeaponSet)] !== undefined) ?? null);
   const detailRef = useRef<HTMLDivElement>(null);
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const build = session.build;
   const items = session.items;
-  const bySlot = new Map(items.map((item) => [item.slot, item.text]));
-  const utilityBySlot = new Map(session.flasks.map((f) => [f.slot, f.text]));
-
-  const textOf = (slot: string) =>
-    isUtilitySlot(slot) ? utilityBySlot.get(slot) : bySlot.get(slot);
+  /** The list a slot's item belongs to (equipment, flasks/charms or limbs), each replaced whole. */
+  const listOf = (slot: string): [SlotItemInput[], (list: SlotItemInput[]) => void] =>
+    isUtilitySlot(slot) ? [session.flasks, session.setFlasks]
+      : isLimbSlot(slot) ? [session.limbs, session.setLimbs]
+        : [items, session.setItems];
+  const textOf = (slot: string) => listOf(slot)[0].find((item) => item.slot === slot)?.text;
+  /** Puts `text` in `slot`, or empties it with `null`. */
+  const equip = (slot: string, text: string | null) => {
+    const [list, setList] = listOf(slot);
+    const rest = list.filter((item) => item.slot !== slot);
+    setList(text === null ? rest : [...rest, { slot, text }]);
+  };
   // 槽位按钮上的物品显示名「名称·基底」（一批送翻译；中文界面显示本地化名）。
-  const slotNames = useItemDisplayNames(
-    [...DOLL_SLOTS, ...UTILITY_SLOTS].map((slot) => textOf(slot)),
-    lang,
-  );
-  const slotName = (index: number) => slotNames[index] || null;
+  const slotNames = useItemDisplayNames(ALL_SLOTS.map((slot) => textOf(slot)), lang);
+  const slotName = (slot: string) => slotNames[ALL_SLOTS.indexOf(slot)] || null;
   const templateOf = (slot: string) =>
-    slot.startsWith('Charm') ? CHARM_TEMPLATE : slot.startsWith('Flask') ? FLASK_TEMPLATE : ITEM_TEMPLATE;
+    slot.startsWith('Charm') ? CHARM_TEMPLATE : slot.startsWith('Flask') ? FLASK_TEMPLATE
+      : slot.startsWith('arm') ? ARM_TEMPLATE : slot.startsWith('leg') ? LEG_TEMPLATE : ITEM_TEMPLATE;
   const draftKey = selected ? itemDraftKey(selected, session.activeWeaponSet) : '';
   const savedDraft = session.editorDrafts[draftKey];
   const draft = savedDraft ?? (selected ? textOf(selected) ?? templateOf(selected) : '');
@@ -214,35 +227,19 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
   };
   const applyEdit = () => {
     if (!selected) return;
-    if (isUtilitySlot(selected)) {
-      const rest = session.flasks.filter((f) => f.slot !== selected);
-      session.setFlasks([...rest, { slot: selected, text: draft }]);
-    } else {
-      const rest = items.filter((item) => item.slot !== selected);
-      session.setItems([...rest, { slot: selected, text: draft }]);
-    }
+    equip(selected, draft);
     setEditing(false);
   };
   const removeItem = () => {
     if (!selected) return;
-    if (isUtilitySlot(selected)) {
-      session.setFlasks(session.flasks.filter((f) => f.slot !== selected));
-    } else {
-      session.setItems(items.filter((item) => item.slot !== selected));
-    }
+    equip(selected, null);
     setEditing(false);
   };
 
   /** 把库中某件物品直接装进当前选中槽位（PoB2 式下拉切换）。 */
   const switchTo = (text: string) => {
     if (!selected) return;
-    if (isUtilitySlot(selected)) {
-      const rest = session.flasks.filter((f) => f.slot !== selected);
-      session.setFlasks([...rest, { slot: selected, text }]);
-    } else {
-      const rest = items.filter((item) => item.slot !== selected);
-      session.setItems([...rest, { slot: selected, text }]);
-    }
+    equip(selected, text);
     setDraft(text);
     setEditing(false);
   };
@@ -267,7 +264,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
     let cancelled = false;
     setAugmentResult(null);
     setRuneError(null);
-    if (!selected || !selectedText || isUtilitySlot(selected)) return;
+    if (!selected || !selectedText || !isEquipmentSlot(selected)) return;
     const slot = selected;
     const text = selectedText;
     getBackend()
@@ -294,7 +291,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
   const characterLevel = session.character?.level ?? 1;
   const runeCatalog = useMemo(() => (augmentInfo?.options ?? [])
     .filter(entry => (entry.required_level ?? 0) <= characterLevel), [augmentInfo, characterLevel]);
-  const showAugments = augmentInfo && !isUtilitySlot(selected ?? '')
+  const showAugments = augmentInfo && isEquipmentSlot(selected ?? '')
     && (augmentInfo.sockets > 0 || augmentInfo.max_sockets > 0
       || (!augmentInfo.editable && !['unsupported_item_type', 'no_augment_sockets'].includes(augmentInfo.reason ?? '')));
 
@@ -337,7 +334,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
   };
 
   const reforge = async (runes: string[], sockets: number) => {
-    if (!selected || !selectedText || !augmentInfo?.editable || isUtilitySlot(selected) || runeBusy) return;
+    if (!selected || !selectedText || !augmentInfo?.editable || !isEquipmentSlot(selected) || runeBusy) return;
     if (!Number.isInteger(sockets) || sockets < 0 || sockets > augmentInfo.max_sockets) return;
     const origin = { slot: selected, text: selectedText, version: session.stateVersion };
     const sequence = ++reforgeSequence.current;
@@ -394,75 +391,56 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
   const switcherValue =
     candidates.find((c) => c.text === selectedText)?.id ?? (selectedText ? '__current' : '');
 
+  const slotButton = (slot: string, label = slotLabel(lang, slot)) => {
+    const text = textOf(slot);
+    const name = text ? slotName(slot) : null;
+    return (
+      <button
+        key={slot}
+        className={`doll-slot${text ? ` rarity-${rarityOf(text)}` : ' doll-slot-empty'}${
+          selected === slot ? ' is-selected' : ''
+        }`}
+        onClick={() => select(slot)}
+        aria-pressed={selected === slot}
+        aria-label={label}
+      >
+        <span className="doll-symbol"><SlotSymbol slot={slot} /></span>
+        <span className="doll-slot-label">
+          {slotLabel(lang, slot)}
+          {hasNote(slot) && <span className="note-dot" aria-hidden />}
+          {session.editorDrafts[itemDraftKey(slot, session.activeWeaponSet)] !== undefined && <span className="ui-badge">{tt('editor.draft')}</span>}
+        </span>
+        {name ? (
+          <span className="doll-item-name item-name">{name}</span>
+        ) : (
+          <span className="doll-empty">{tt('items.empty')}</span>
+        )}
+      </button>
+    );
+  };
+
   return (
     <section className="ui-page items-page" aria-labelledby="items-heading">
       <PageHeader id="items-heading" title={tt('items.title')} description={tt('ui.itemsHint')}>
         <WeaponSetControl session={session} lang={lang} />
-        {onUpgrade && <button onClick={() => onUpgrade(selected ?? "weapon1")}>{tt("trade.findBetter")} ↗</button>}
+        {onUpgrade && <button onClick={() => onUpgrade(selected && !isLimbSlot(selected) ? selected : "weapon1")}>{tt("trade.findBetter")} ↗</button>}
       </PageHeader>
       <p className="weapon-set-hint">{tt('weapons.hint')}</p>
       <div className="items-workspace">
       <article className="ui-card items-equipped">
       <h3 className="section-heading">{tt('ui.equipped')}</h3>
       <div className="paper-doll" role="group" aria-label={tt('items.title')}>
-        {DOLL_SLOTS.map((slot, slotIdx) => {
-          const text = bySlot.get(slot);
-          const name = text ? slotName(slotIdx) : null;
-          return (
-            <button
-              key={slot}
-              className={`doll-slot${text ? ` rarity-${rarityOf(text)}` : ' doll-slot-empty'}${
-                selected === slot ? ' is-selected' : ''
-              }`}
-              onClick={() => select(slot)}
-              aria-pressed={selected === slot}
-              aria-label={slotLabel(lang, slot)}
-            >
-              <span className="doll-symbol"><SlotSymbol slot={slot} /></span>
-              <span className="doll-slot-label">
-                {slotLabel(lang, slot)}
-                {hasNote(slot) && <span className="note-dot" aria-hidden />}
-                {session.editorDrafts[itemDraftKey(slot, session.activeWeaponSet)] !== undefined && <span className="ui-badge">{tt('editor.draft')}</span>}
-              </span>
-              {name ? (
-                <span className="doll-item-name item-name">{name}</span>
-              ) : (
-                <span className="doll-empty">{tt('items.empty')}</span>
-              )}
-            </button>
-          );
-        })}
+        {DOLL_SLOTS.map((slot) => slotButton(slot))}
       </div>
 
       <h3 className="section-heading utility-heading">{tt('items.flasks')}</h3>
       <div className="utility-row" role="group" aria-label={tt('items.flasks')}>
-        {UTILITY_SLOTS.map((slot, utilIdx) => {
-          const text = utilityBySlot.get(slot);
-          const name = text ? slotName(DOLL_SLOTS.length + utilIdx) : null;
-          return (
-            <button
-              key={slot}
-              className={`doll-slot${text ? ` rarity-${rarityOf(text)}` : ' doll-slot-empty'}${
-                selected === slot ? ' is-selected' : ''
-              }`}
-              onClick={() => select(slot)}
-              aria-pressed={selected === slot}
-              aria-label={slot}
-            >
-              <span className="doll-symbol"><SlotSymbol slot={slot} /></span>
-              <span className="doll-slot-label">
-                {slotLabel(lang, slot)}
-                {hasNote(slot) && <span className="note-dot" aria-hidden />}
-                {session.editorDrafts[itemDraftKey(slot, session.activeWeaponSet)] !== undefined && <span className="ui-badge">{tt('editor.draft')}</span>}
-              </span>
-              {name ? (
-                <span className="doll-item-name item-name">{name}</span>
-              ) : (
-                <span className="doll-empty">{tt('items.empty')}</span>
-              )}
-            </button>
-          );
-        })}
+        {UTILITY_SLOTS.map((slot) => slotButton(slot, slot))}
+      </div>
+
+      <h3 className="section-heading utility-heading">{tt('items.limbs')}</h3>
+      <div className="utility-row limb-row" role="group" aria-label={tt('items.limbs')}>
+        {LIMB_SLOTS.map((slot) => slotButton(slot))}
       </div>
 
       </article>
@@ -472,7 +450,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
           <header className="item-detail-header">
             <label className="item-position"><span className="item-slot">{tt('items.position')}</span>
               <AppSelect ariaLabel={tt('items.position')} value={selected}
-                options={[...DOLL_SLOTS, ...UTILITY_SLOTS].map(slot => ({ value: slot, label: slotLabel(lang, slot) }))}
+                options={ALL_SLOTS.map(slot => ({ value: slot, label: slotLabel(lang, slot) }))}
                 onChange={select} />
             </label>
             {candidates.length > 0 && (
@@ -590,7 +568,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
           ) : (
             <p className="item-empty-hint">{tt('items.empty')}</p>
           )}
-          {!isUtilitySlot(selected) && (
+          {isEquipmentSlot(selected) && (
             <ItemOptimizer
               session={session}
               lang={lang}
@@ -698,7 +676,7 @@ function LibrarySection({
     const request = session.currentRequest();
     if (!request || !selectedSlot || !session.calc || !canUse(entry)) return;
     const origin = { id: entry.id, slot: selectedSlot, source: session.currentRequest };
-    const field = isUtilitySlot(selectedSlot) ? 'flasks' : 'items';
+    const field = isUtilitySlot(selectedSlot) ? 'flasks' : isLimbSlot(selectedSlot) ? 'limbs' : 'items';
     const rest = (request[field] ?? []).filter((it) => it.slot !== selectedSlot);
     try {
       const diffs = await previewDiff({ ...request, [field]: [...rest, { slot: selectedSlot, text: entry.text }] }, session.calc);

@@ -45,6 +45,11 @@ section before changing these areas; update it when the behavior changes.
 - Full-position trade analyses reuse only successful combination-search results for unchanged calculation inputs. Cancellation retains completed positions until the panel is left or inputs change; explicit refresh recalculates. Market-only filters do not invalidate scores.
 - The app release label comes from root Cargo workspace metadata at Vite build time. Data version comes from the backend manifest only after successful data initialization.
 
+## Web limbs
+
+- Transcendent limbs (slots `arm1`, `arm2`, `leg1`, `leg2`; PoB's `Arm 1/2` and `Leg 1/2`; the game's item classes `IncursionArm` / `IncursionLeg`) are a set of their own beside the equipment and the flasks: `items.limbs` when decoding, the session's `limbs`, the request's `limbs` (a whole-list override) and their own row on Items. Their lines are global modifiers attributed to the slot; attribution lists each as a `limb` entry. Saves from before limbs restore with none. WeGame's `IncursionArmRight/Left` and `IncursionLegRight/Left` are the first and second arm and leg, as in PoB.
+- Limbs have no rune sockets and no market position: the rune editor, the item optimizer and "find better" leave them out.
+
 ## Web weapon sets and skill selection
 
 - Config controls resolve the typed catalog defaults (`state_bool`, `state_number`, `placeholder_number`, 1-based list `index`) without materializing overrides. Fixed quest rewards default on and choice rewards default to None, matching PoB2; explicit imported false/zero values take priority. Imports show a dismissible inline configuration review note. Gem catalog `additional_skill_ids` is optional display metadata for secondary effects/stat sets, not extra gem-picker entries; shared skill naming uses the parent gem's locale at display boundaries.

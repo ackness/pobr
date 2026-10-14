@@ -8,7 +8,8 @@ const saved: SavedSession = {
     character: { class_name: 'Witch', ascendancy_name: '', level: 1 }, pobCode: null,
     treeVersion: '0_1', allocatedNodes: [770], attributeChoices: { '770': 'int' },
     socketGroups: [{ enabled: true, gems: [{ skill_id: 'IceNovaPlayer', level: 20, quality: 0, stat_set_index: 2 }] }],
-    items: [{ slot: 'ring1', text: 'Rarity: NORMAL\nSapphire Ring' }], flasks: [], jewels: [],
+    items: [{ slot: 'ring1', text: 'Rarity: NORMAL\nSapphire Ring' }], flasks: [],
+    limbs: [{ slot: 'arm1', text: 'Rarity: NORMAL\nCombat Arm\nImplicits: 1\n6% increased Attack Speed' }], jewels: [],
     annotations: {}, params: { config_inputs: { conditionFullLife: false, multiplier: 0 } },
   },
 };
@@ -26,7 +27,7 @@ describe('complete jewel/passive plan application', () => {
     tree_version: current.treeVersion, character: current.character,
     allocated_nodes: current.allocatedNodes, attribute_choices: current.attributeChoices,
     socket_groups: current.socketGroups, items: current.items, flasks: current.flasks,
-    jewels: current.jewels, main_socket_group: current.params.main_socket_group,
+    limbs: current.limbs, jewels: current.jewels, main_socket_group: current.params.main_socket_group,
     enemy_tier: current.params.enemy_tier, extra_modifiers: current.params.extra_modifiers,
     custom_modifier_blocks: current.params.custom_modifier_blocks,
     config_inputs: current.params.config_inputs,
@@ -43,7 +44,7 @@ describe('complete jewel/passive plan application', () => {
       attributeChoices: { '770': 'int', '12': 'dex' },
     });
     expect(next?.attributeChoices).not.toHaveProperty('99');
-    for (const key of ['character', 'socketGroups', 'items', 'flasks', 'weaponSwap', 'params', 'annotations', 'pobCode'] as const) {
+    for (const key of ['character', 'socketGroups', 'items', 'flasks', 'limbs', 'weaponSwap', 'params', 'annotations', 'pobCode'] as const) {
       expect(next?.[key]).toBe(current[key]);
     }
     expect(current.jewels).toEqual([{ socket_node: 99, text: 'Old Jewel' }]);
@@ -146,12 +147,24 @@ describe('saved-session validation', () => {
 
   test('normalizes omitted legacy fields and partial params before they reach rendering', () => {
     const restored = parseState({ treeVersion: undefined, params: {}, attributeChoices: undefined,
-      flasks: undefined, jewels: undefined, annotations: undefined });
+      flasks: undefined, limbs: undefined, jewels: undefined, annotations: undefined });
     expect(restored?.state.params.config_inputs).toEqual({});
     expect(Object.keys(restored!.state.params.config_inputs)).toEqual([]);
     expect(restored?.state.attributeChoices).toEqual({});
     expect(restored?.state.flasks).toEqual([]);
+    expect(restored?.state.limbs).toEqual([]);
     expect(restored?.state.jewels).toEqual([]);
+  });
+
+  test('materializes the decoded limbs as a set of their own', () => {
+    const limb = { slot: 'leg2', text: 'Rarity: NORMAL\nEvasive Leg\nImplicits: 1\n25% increased Evasion Rating' };
+    const items = { equipped: [], socket_jewels: [], flasks: [] };
+    const decoded = (limbs?: unknown[]) => ({
+      config_inputs: {}, tree: {}, socket_groups: [], items: limbs ? { ...items, limbs } : items,
+    }) as unknown as BuildJson;
+    expect(materialize(decoded([limb])).limbs).toEqual([limb]);
+    expect(materialize(decoded([limb])).items).toEqual([]);
+    expect(materialize(decoded()).limbs).toEqual([]);
   });
 
   test.each([
@@ -167,6 +180,9 @@ describe('saved-session validation', () => {
     { items: [{ slot: 'ring1', text: {} }] },
     { items: [{ slot: 'unknown', text: '' }] },
     { flasks: {} },
+    { limbs: {} },
+    { limbs: [{ slot: 'Arm 1', text: '' }] },
+    { limbs: [{ slot: 'arm3', text: '' }] },
     { jewels: [{ socket_node: '770', text: '' }] },
     { annotations: [] },
     { annotations: { note: {} } },

@@ -480,9 +480,10 @@ const DEFAULT_ATTRIBUTION_FIELDS: &[&str] = &["TotalDPS", "Life", "TotalEHP"];
 
 #[derive(Debug, Serialize)]
 struct AttributionEntryJson {
-    /// The source category: `item` / `socket_group` / `flask`.
+    /// The source category: `item` / `socket_group` / `flask` / `limb`.
     kind: &'static str,
-    /// The source's stable id (equipment slot id / group index / flask slot name).
+    /// The source's stable id (equipment slot id / group index / flask slot
+    /// name / limb slot id).
     id: String,
     /// This source's marginal contribution to each field (`baseline - the
     /// value after removal`; positive = a gain).
@@ -540,7 +541,7 @@ fn attribution_impl(request_json: &str) -> Result<String, super::ApiError> {
     let baseline = display_values_map(&baseline_session, &fields);
 
     // The variant list: equipment slots (remove the item) / enabled skill
-    // groups (disable them) / flask slots (remove them). Jewels aren't
+    // groups (disable them) / flask slots and limbs (remove them). Jewels aren't
     // individually attributed yet (radius jewels are geometrically coupled
     // to tree sockets, skipped for v1).
     let mut variants: Vec<(&'static str, String, Build)> = Vec::new();
@@ -563,6 +564,11 @@ fn attribution_impl(request_json: &str) -> Result<String, super::ApiError> {
         let mut v = build.clone();
         v.utility_slots.remove(idx);
         variants.push(("flask", slot_name.clone(), v));
+    }
+    for slot in build.limbs.keys() {
+        let mut v = build.clone();
+        v.limbs.remove(slot);
+        variants.push(("limb", slot.id().to_string(), v));
     }
 
     let entries = variants

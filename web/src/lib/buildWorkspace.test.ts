@@ -6,7 +6,7 @@ const saved: SavedSession = {
   version: 1, notes: 'Leveling route', state: {
     pobCode: null, character: { level: 30, class_name: 'Ranger', ascendancy_name: 'Deadeye' },
     allocatedNodes: [12, 34], attributeChoices: { '12': 'dex' }, socketGroups: [],
-    items: [{ slot: 'ring1', text: 'Rarity: NORMAL\nSapphire Ring' }], flasks: [], jewels: [],
+    items: [{ slot: 'ring1', text: 'Rarity: NORMAL\nSapphire Ring' }], flasks: [], limbs: [], jewels: [],
     annotations: { 'item:ring1': 'Keep until maps' }, params: { config_inputs: {} },
   },
 };

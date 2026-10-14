@@ -42,7 +42,7 @@ pub use request::{
     CalculateBuildRequest, CharacterOverride, GemInput, JewelInput, SlotItemInput, SocketGroupInput,
 };
 
-use pobr_data::item::EquipmentSlot;
+use pobr_data::item::{EquipmentSlot, LimbSlot};
 use serde::Serialize;
 
 use crate::state;
@@ -122,6 +122,11 @@ fn slot_from_id(id: &str) -> Result<EquipmentSlot, String> {
         .into_iter()
         .find(|s| s.id() == id)
         .ok_or_else(|| format!("unknown equipment slot: {id}"))
+}
+
+/// A Transcendent limb slot by its stable id (`arm1` … `leg2`).
+fn limb_slot_from_id(id: &str) -> Result<LimbSlot, String> {
+    LimbSlot::from_id(id).ok_or_else(|| format!("unknown limb slot: {id}"))
 }
 
 /// Chinese input preprocessing (Phase 7.1): a line containing CJK attempts

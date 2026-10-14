@@ -22,7 +22,7 @@ use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::{AttributeChoice, NodeId};
 use serde::{Deserialize, Serialize};
 
-use super::{ApiError, localize_input_text, slot_from_id};
+use super::{ApiError, limb_slot_from_id, localize_input_text, slot_from_id};
 use crate::state;
 
 /// A degraded record for a single source item's **text** failing to parse:
@@ -170,6 +170,9 @@ pub struct CalculateBuildRequest {
     /// The active-flask/charm override (wholesale replaces
     /// `utility_slots`; slot names are `Flask 1/2`, `Charm 1..3`).
     pub(crate) flasks: Option<Vec<SlotItemInput>>,
+    /// The Transcendent limb override (wholesale replaces `limbs`; slots are
+    /// `arm1`, `arm2`, `leg1`, `leg2`).
+    pub(crate) limbs: Option<Vec<SlotItemInput>>,
     /// The tree-socket jewel override (including radius jewels: `in Radius
     /// also grant` lines rewrite passive mod lines via geometric expansion).
     pub(crate) jewels: Option<Vec<JewelInput>>,
@@ -334,6 +337,23 @@ pub(crate) fn apply_request_overrides(
                 Ok(parsed) => build.utility_slots.push((flask.slot.clone(), parsed)),
                 Err(e) => issues.push(SlotIssue {
                     slot: flask.slot.clone(),
+                    message: format!("{e:?}"),
+                }),
+            }
+        }
+    }
+    if let Some(limbs) = &req.limbs {
+        build.limbs.clear();
+        for limb in limbs {
+            let slot = limb_slot_from_id(&limb.slot)
+                .map_err(|e| ApiError::bad_request(e).with_slot(limb.slot.as_str()))?;
+            let text = localize_input_text(&limb.text);
+            match parse_pob_xml_item(&text) {
+                Ok(parsed) => {
+                    build.limbs.insert(slot, parsed);
+                }
+                Err(e) => issues.push(SlotIssue {
+                    slot: limb.slot.clone(),
                     message: format!("{e:?}"),
                 }),
             }

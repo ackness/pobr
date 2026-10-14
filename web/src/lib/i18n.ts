@@ -426,6 +426,7 @@ const DICT = {
   'items.cancel': { 'en-US': 'Cancel', 'zh-TW': '取消', 'zh-CN': '取消' },
   'items.empty': { 'en-US': '(empty)', 'zh-TW': '（空）', 'zh-CN': '（空）' },
   "items.flasks": {"en-US": "Flasks / Charms", "zh-TW": "藥劑 / 護符", "zh-CN": "药剂 / 护符"},
+  'items.limbs': { 'en-US': 'Limbs', 'zh-TW': '肢體', 'zh-CN': '肢体' },
   'items.switcher': { 'en-US': 'Switch item', 'zh-TW': '切換裝備', 'zh-CN': '切换装备' },
   'items.runes': { 'en-US': 'Rune sockets', 'zh-TW': '符文插槽', 'zh-CN': '符文插槽' },
   'items.socketAdd': { 'en-US': 'Add socket', 'zh-TW': '加孔', 'zh-CN': '加孔' },
@@ -858,6 +859,10 @@ const SLOT_LABELS: Record<string, Entry> = {
   'Charm 1': { 'en-US': 'Charm 1', 'zh-TW': '護符 1', 'zh-CN': '护符 1' },
   'Charm 2': { 'en-US': 'Charm 2', 'zh-TW': '護符 2', 'zh-CN': '护符 2' },
   'Charm 3': { 'en-US': 'Charm 3', 'zh-TW': '護符 3', 'zh-CN': '护符 3' },
+  arm1: { 'en-US': 'Arm 1', 'zh-TW': '手臂 1', 'zh-CN': '手臂 1' },
+  arm2: { 'en-US': 'Arm 2', 'zh-TW': '手臂 2', 'zh-CN': '手臂 2' },
+  leg1: { 'en-US': 'Leg 1', 'zh-TW': '腿 1', 'zh-CN': '腿 1' },
+  leg2: { 'en-US': 'Leg 2', 'zh-TW': '腿 2', 'zh-CN': '腿 2' },
 };
 
 /** 装备槽稳定 id → 本地化槽位名。 */

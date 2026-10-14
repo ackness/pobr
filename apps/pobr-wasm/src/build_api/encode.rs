@@ -135,6 +135,11 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
         allocated_nodes.sort_unstable();
         allocated_nodes.dedup();
     }
+    for limb in req.limbs.as_deref().unwrap_or_default() {
+        let slot = super::limb_slot_from_id(&limb.slot)
+            .map_err(|e| super::ApiError::bad_request(e).with_slot(limb.slot.as_str()))?;
+        items.push((slot.pob_name().into(), limb.text.clone()));
+    }
     let mut flasks: Vec<(String, String)> = Vec::new();
     for flask in req.flasks.as_deref().unwrap_or_default() {
         if !(flask.slot.starts_with("Flask ") || flask.slot.starts_with("Charm ")) {

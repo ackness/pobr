@@ -94,6 +94,8 @@ export interface ItemsJson {
   /** 树插槽珠宝（天赋树页可编辑）。 */
   socket_jewels: SocketJewelJson[];
   flasks: SlotItemJson[];
+  /** 超越肢体（槽 `arm1`/`arm2`/`leg1`/`leg2`）：与装备并列的一组栏位，词条为全局词条。 */
+  limbs: SlotItemJson[];
 }
 
 export interface GemJson {
@@ -370,6 +372,8 @@ export interface CalculateBuildRequest {
   items?: SlotItemInput[];
   /** 整份替换激活态药剂/护符（槽名 `Flask 1/2`、`Charm 1..3`）。 */
   flasks?: SlotItemInput[];
+  /** 整份替换超越肢体（槽 `arm1`/`arm2`/`leg1`/`leg2`）。 */
+  limbs?: SlotItemInput[];
   /** 整份替换树插槽珠宝。 */
   jewels?: JewelInput[];
   main_socket_group?: number;
@@ -766,11 +770,11 @@ export interface AttributionRequest {
   fields?: string[];
 }
 
-export type AttributionSourceKind = 'item' | 'socket_group' | 'flask';
+export type AttributionSourceKind = 'item' | 'socket_group' | 'flask' | 'limb';
 
 export interface AttributionEntry {
   kind: AttributionSourceKind;
-  /** 装备槽 id / 技能组下标（字符串）/ 药剂槽名。 */
+  /** 装备槽 id / 技能组下标（字符串）/ 药剂槽名 / 肢体槽 id。 */
   id: string;
   /** 字段 → 边际贡献（baseline - 移除后值；正 = 增益）。 */
   deltas: Record<string, number>;

@@ -877,8 +877,7 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
         gem.skill_id ? skillName(gem.skill_id) : gem.name_spec || tt('skills.unresolved')).join(' + ');
       return `${tt('calcs.group')} ${Number(id) + 1}${gems ? ` · ${gems}` : ''}`;
     }
-    if (kind === 'item') return slotLabel(lang, id);
-    if (kind === 'flask') return slotLabel(lang, id);
+    if (kind === 'item' || kind === 'flask' || kind === 'limb') return slotLabel(lang, id);
     return id;
   };
 

@@ -174,6 +174,8 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-2);
 }
+/* Arms above legs. */
+.limb-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 
 
@@ -347,6 +349,7 @@
   .items-workspace { grid-template-columns: minmax(0, 1fr); }
   .paper-doll { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .utility-row { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .limb-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (max-width: 600px) {
   .paper-doll, .utility-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -373,4 +376,5 @@
 @media (min-width: 1800px) {
   .paper-doll { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .utility-row { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .limb-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }

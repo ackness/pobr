@@ -324,6 +324,12 @@ fn slot(item: &Value) -> Option<String> {
             "Belt" => "belt",
             "Ring" => "ring1",
             "Ring2" => "ring2",
+            // The character API names the limbs by side; the build's first
+            // arm and leg are the right ones.
+            "IncursionArmRight" => "arm1",
+            "IncursionArmLeft" => "arm2",
+            "IncursionLegRight" => "leg1",
+            "IncursionLegLeft" => "leg2",
             "Flask" => {
                 return item["x"].as_u64().filter(|x| *x <= 4).map(|x| {
                     if x < 2 {
@@ -465,6 +471,7 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
     }
     let mut equipped = Vec::new();
     let mut flasks = Vec::new();
+    let mut limbs = Vec::new();
     let mut alternate_items = Vec::new();
     for item in file.equipments {
         if let Some(slot) = match text(&item, "inventoryId") {
@@ -491,6 +498,8 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
         };
         if entry.slot.starts_with("Flask ") || entry.slot.starts_with("Charm ") {
             flasks.push(entry);
+        } else if pobr_data::item::LimbSlot::from_id(&entry.slot).is_some() {
+            limbs.push(entry);
         } else {
             equipped.push(entry);
         }
@@ -599,6 +608,7 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
             jewels: Vec::new(),
             socket_jewels,
             flasks,
+            limbs,
         },
         socket_groups: groups,
         main_socket_group: None,

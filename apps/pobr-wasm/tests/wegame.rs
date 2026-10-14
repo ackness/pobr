@@ -26,7 +26,11 @@ fn fixture() -> Value {
              "properties":[{"type":18,"values":[["100",1]]}],
              "explicitMods":["[EnergyShield|能量护盾]提高 50%"]},
             {"baseType":"Lesser Life Flask","frameType":0,"inventoryId":"Flask","x":0},
-            {"baseType":"Crude Bow","frameType":0,"inventoryId":"Weapon2"}
+            {"baseType":"Crude Bow","frameType":0,"inventoryId":"Weapon2"},
+            {"baseType":"Combat Arm","frameType":0,"inventoryId":"IncursionArmRight",
+             "implicitMods":["6% increased Attack Speed"]},
+            {"baseType":"Evasive Leg","frameType":0,"inventoryId":"IncursionLegLeft",
+             "implicitMods":["25% increased Evasion Rating"]}
         ],
         "talent_tree":{"hashes":[7960], "skill_overrides":{"7960":{"grantedDexterity":5}},
             "specialisations":{}, "quest_stats":["+20 生命上限", "+100 [Spirit|精魂]"]},
@@ -53,6 +57,17 @@ fn wegame_preserves_calculation_inputs_and_roundtrips() {
     assert_eq!(decoded["tree"]["attribute_choices"]["7960"], "dex");
     assert_eq!(decoded["items"]["equipped"].as_array().unwrap().len(), 2);
     assert_eq!(decoded["items"]["flasks"][0]["slot"], "Flask 1");
+    // The right arm and leg are the build's first.
+    let limbs = decoded["items"]["limbs"].as_array().unwrap();
+    assert_eq!(limbs.len(), 2);
+    assert_eq!(limbs[0]["slot"], "arm1");
+    assert!(
+        limbs[0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("6% increased Attack Speed")
+    );
+    assert_eq!(limbs[1]["slot"], "leg2");
     assert_eq!(decoded["items"]["socket_jewels"][0]["socket_node"], 7960);
     let belt = decoded["items"]["equipped"][0]["text"].as_str().unwrap();
     assert!(belt.contains("+20 to maximum Life"));
@@ -64,6 +79,7 @@ fn wegame_preserves_calculation_inputs_and_roundtrips() {
     let notes = decoded["notes"].as_str().unwrap();
     assert!(notes.contains("Unknown Test Support"));
     assert!(!notes.contains("Equipment slot omitted: Weapon2"));
+    assert!(!notes.contains("Equipment slot omitted: Incursion"));
     assert_eq!(
         decoded["weapon_swap"]["alternate_items"][0]["slot"],
         "weapon1"
@@ -79,6 +95,7 @@ fn wegame_preserves_calculation_inputs_and_roundtrips() {
     let request = json!({
         "character":decoded["character"], "allocated_nodes":decoded["tree"]["allocated_nodes"],
         "items":decoded["items"]["equipped"], "flasks":decoded["items"]["flasks"],
+        "limbs":decoded["items"]["limbs"],
         "jewels":decoded["items"]["socket_jewels"], "socket_groups":groups(&decoded),
         "config_inputs":decoded["config_inputs"], "weapon_swap":decoded["weapon_swap"]
     });
@@ -97,6 +114,18 @@ fn wegame_preserves_calculation_inputs_and_roundtrips() {
         serde_json::from_str(&pobr_wasm::decode_build_json(&code).unwrap()).unwrap();
     assert_eq!(roundtrip["socket_groups"][0]["gems"][0], *gem);
     assert_swap(&roundtrip["weapon_swap"], &decoded["weapon_swap"]);
+    let limbs = |build: &Value| -> Vec<(String, String)> {
+        build["items"]["limbs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|limb| {
+                let text = limb["text"].as_str().unwrap().trim();
+                (limb["slot"].as_str().unwrap().into(), text.into())
+            })
+            .collect()
+    };
+    assert_eq!(limbs(&roundtrip), limbs(&decoded));
 }
 
 /// A corrupted gem arrives with the flag a corrupted item has; the build keeps

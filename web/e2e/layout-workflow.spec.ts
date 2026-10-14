@@ -22,7 +22,7 @@ for (const width of [390, 1440]) {
     const detail = page.locator('.item-detail');
     await expect(detail).toBeFocused();
     const trigger = page.getByRole('button', { name: 'Equipment position', exact: true });
-    const positions = ['Main Hand', 'Off Hand', 'Helmet', 'Body Armour', 'Gloves', 'Boots', 'Amulet', 'Ring 1', 'Ring 2', 'Belt', 'Flask 1', 'Flask 2', 'Charm 1', 'Charm 2', 'Charm 3'];
+    const positions = ['Main Hand', 'Off Hand', 'Helmet', 'Body Armour', 'Gloves', 'Boots', 'Amulet', 'Ring 1', 'Ring 2', 'Belt', 'Flask 1', 'Flask 2', 'Charm 1', 'Charm 2', 'Charm 3', 'Arm 1', 'Arm 2', 'Leg 1', 'Leg 2'];
     for (const position of positions) {
       await trigger.click();
       await page.getByRole('listbox', { name: 'Equipment position', exact: true }).getByRole('option', { name: position, exact: true }).click();

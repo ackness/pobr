@@ -74,7 +74,7 @@ fn decode_build_json_shape() {
     );
     assert_keys(
         &json["items"],
-        &["equipped", "jewels", "socket_jewels", "flasks"],
+        &["equipped", "jewels", "socket_jewels", "flasks", "limbs"],
         "items",
     );
     assert_keys(
@@ -1807,6 +1807,91 @@ fn manual_flasks_override_utility_slots() {
         .iter()
         .any(|e| e["kind"] == "flask" && e["id"] == "Charm 1");
     assert!(has_flask_entry, "attribution should list the charm slot");
+}
+
+/// The Transcendent limbs: a request's `limbs` (slot ids `arm1` … `leg2`)
+/// are written into the code's arm and leg slots, decoded back into
+/// `items.limbs`, calculated from the code as from the request, and listed
+/// by the attribution view.
+#[test]
+fn limbs_round_trip_and_calculate_from_code_and_request() {
+    ensure_data();
+    let request = serde_json::json!({
+        "character": { "class_name": "Ranger", "level": 90 },
+        "allocated_nodes": [],
+        "items": [{ "slot": "bodyarmour", "text": "Rarity: NORMAL\nStrider Vest" }],
+        "limbs": [
+            {
+                "slot": "arm1",
+                "text": "Rarity: NORMAL\nCombat Arm\nImplicits: 1\n6% increased Attack Speed",
+            },
+            {
+                "slot": "leg2",
+                "text": "Rarity: NORMAL\nEvasive Leg\nImplicits: 1\n25% increased Evasion Rating",
+            },
+        ],
+    });
+    let calc = |request: &Value| -> Value {
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).expect("calc"))
+            .unwrap()
+    };
+    let stat = |resp: &Value, id: &str| -> f64 {
+        resp["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["id"] == id)
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+
+    let worn = calc(&request);
+    let mut bare = request.clone();
+    bare["limbs"] = serde_json::json!([]);
+    let ratio = stat(&worn, "Evasion") / stat(&calc(&bare), "Evasion");
+    assert!((ratio - 1.25).abs() < 0.01, "Evasive Leg: {ratio}");
+
+    let code = pobr_wasm::encode_build_json(&request.to_string()).expect("encode");
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).expect("decode")).unwrap();
+    let limbs: Vec<(&str, bool)> = decoded["items"]["limbs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|limb| {
+            let text = limb["text"].as_str().unwrap();
+            (
+                limb["slot"].as_str().unwrap(),
+                text.contains(" Arm") || text.contains(" Leg"),
+            )
+        })
+        .collect();
+    assert_eq!(limbs, [("arm1", true), ("leg2", true)]);
+    assert_eq!(decoded["items"]["equipped"].as_array().unwrap().len(), 1);
+    let via_code = calc(&serde_json::json!({ "pob_code": code }));
+    assert_eq!(stat(&via_code, "Evasion"), stat(&worn, "Evasion"));
+
+    let mut bad = request.clone();
+    bad["limbs"] = serde_json::json!([{ "slot": "arm3", "text": "Rarity: NORMAL\nCombat Arm" }]);
+    let err = pobr_wasm::calculate_build_json(&bad.to_string()).unwrap_err();
+    assert!(err.contains("unknown limb slot"), "unexpected: {err}");
+
+    let attr: Value = serde_json::from_str(
+        &pobr_wasm::attribution_json(
+            &serde_json::json!({ "request": request, "fields": ["Evasion"] }).to_string(),
+        )
+        .expect("attribution"),
+    )
+    .unwrap();
+    assert!(
+        attr["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|e| e["kind"] == "limb" && e["id"] == "leg2"),
+        "attribution should list the leg: {attr}"
+    );
 }
 
 /// Equipment-granted skills: a `Grants Skill: Level N X` mod line
