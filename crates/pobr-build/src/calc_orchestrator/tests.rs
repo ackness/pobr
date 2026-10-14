@@ -2349,6 +2349,16 @@ fn combat_conditions_follow_vendor_branches() {
         combat_conditions(&types(&["Spell", "Channel"]), ModFlags::SPELL),
         vec!["CastSpellRecently", "Channelling"]
     );
+    // A skill that shapeshifts its user puts the character in the form it
+    // names; only Bear form has modelled effects.
+    assert_eq!(
+        combat_conditions(&types(&["Attack", "Shapeshift", "Bear"]), ModFlags::ATTACK),
+        vec!["AttackedRecently", "Shapeshifted", "BearForm"]
+    );
+    assert_eq!(
+        combat_conditions(&types(&["Attack", "Shapeshift", "Wolf"]), ModFlags::ATTACK),
+        vec!["AttackedRecently", "Shapeshifted"]
+    );
     // minion and not duration (:257-259).
     assert_eq!(
         combat_conditions(&types(&["Spell", "Minion"]), ModFlags::SPELL),

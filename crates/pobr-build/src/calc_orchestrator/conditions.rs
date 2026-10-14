@@ -262,25 +262,20 @@ pub(crate) fn grenade_type_count(build: &Build, data: &BuildData) -> f64 {
     seen.len() as f64
 }
 
-/// Combat conditions derived from the main skill (read directly from vendor
-/// `CalcPerform.lua:242-266`, the `if env.mode_combat` section).
+/// Combat conditions that follow from the character using the main skill, by its
+/// final skill types:
 ///
-/// Line-by-line comparison against vendor:
-/// - **Exemption** (:248 `not skillData.triggered and not trap/mine/totem`): the PoE2
-///   data-token equivalents are `Triggered`/`InbuiltTrigger` (triggered, same
-///   determination as `trigger_modifiers`), `RemoteMined` (mine), `SummonsTotem`
-///   (totem); trap has no token in PoE2's cataloged data (0 hits), so there's no
-///   matching exemption for it.
-/// - attack → `AttackedRecently` **else if** spell → `CastSpellRecently` (:249-253,
-///   the mutually-exclusive branches carried over verbatim);
-/// - `SkillType.Movement` → `UsedMovementSkillRecently` (:254-256);
-/// - minion and not duration → `UsedMinionSkillRecently` (:257-259, matching vendor's
-///   `skillFlags.minion and not skillFlags.duration` → the `Minion` token present and no
-///   `Duration` token);
-/// - `SkillType.Vaal` → `UsedVaalSkillRecently` (:260-262; PoE2's cataloged data has no
-///   `Vaal` token, kept to match vendor, but never actually triggers);
-/// - `SkillType.Channel` → `Channelling` (:264-266, an existing consumer on offence's
-///   channelling branch in `offence.rs`).
+/// - **Exemption**: a triggered skill (`Triggered`/`InbuiltTrigger`, the same
+///   determination as `trigger_modifiers`) or a mine (`RemoteMined`) is not the
+///   character using it, and gives none. Traps have no skill type in the game data.
+/// - an attack → `AttackedRecently`, otherwise a spell → `CastSpellRecently`;
+/// - `Movement` → `UsedMovementSkillRecently`;
+/// - `Minion` without `Duration` → `UsedMinionSkillRecently`;
+/// - `Vaal` → `UsedVaalSkillRecently` (no skill in the game data has the type);
+/// - `Channel` → `Channelling` (read by offence's channelling branch);
+/// - `Shapeshift`, a skill that shapeshifts its user → `Shapeshifted`, and with
+///   `Bear`, the form it takes → `BearForm` (what the form gives:
+///   [`pobr_core::calc::bear_form`]).
 ///
 /// A skill a totem uses ([`used_by_totem`]) is not the character attacking or
 /// casting. For it to be in use the character has summoned the totem, so it
@@ -313,6 +308,12 @@ pub(crate) fn combat_conditions(
     }
     if has("Channel") {
         conds.push("Channelling");
+    }
+    if has("Shapeshift") {
+        conds.push("Shapeshifted");
+        if has("Bear") {
+            conds.push(pobr_core::calc::bear_form::BEAR_FORM);
+        }
     }
     conds
 }

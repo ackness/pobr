@@ -207,6 +207,14 @@ pub const BLIND_LESS_ACCURACY_AND_EVASION: f64 = 20.0;
 /// do not include it, so the number is stated here.
 pub const BASE_REQUIRED_ENEMIES_TO_BE_SURROUNDED: f64 = 5.0;
 
+/// Armour per character level, and the percent of Armour that also applies to
+/// Elemental damage, of a character in Bear form: the game's definition of the
+/// form ("While in Bear form, you gain: +10 to Armour per level; 30% of Armour
+/// also applies to Elemental Damage Types"). The committed data carries no
+/// form definitions, so the two numbers are stated here.
+pub const BEAR_FORM_ARMOUR_PER_LEVEL: f64 = 10.0;
+pub const BEAR_FORM_ARMOUR_ALSO_APPLIES_TO_ELEMENTAL: f64 = 30.0;
+
 /// Global DoT DPS cap (`(2^31 - 1) / 60`, roughly 3.579×10^7).
 ///
 /// Source: PoB2 `src/Modules/Data.lua`:

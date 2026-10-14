@@ -5,6 +5,8 @@
 
 #[path = "skills/aura_gems.rs"]
 mod aura_gems;
+#[path = "skills/bear_form.rs"]
+mod bear_form;
 #[path = "skills/blind.rs"]
 mod blind;
 #[path = "skills/bonded_modifiers.rs"]

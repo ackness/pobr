@@ -311,11 +311,10 @@ pub(super) fn stage_build_cfg(
     if let Some(totems) = configured_totems.or(uses_totem.then_some(1.0)) {
         cfg = cfg.with_multiplier("TotemsSummoned", totems);
     }
-    // Main skill-derived combat conditions (read directly from vendor
-    // CalcPerform.lua:242-266's `if env.mode_combat` section): attack/spell/Movement/
-    // Minion/Vaal/Channel → "...Recently"/Channelling conditions;
-    // triggered/trap/mine/totem exempted (using the **final** type set — a meta
-    // support's addSkillTypes `Triggered` makes the exemption apply, matching vendor :248).
+    // Combat conditions from using the main skill (attack/spell/Movement/Minion/Vaal →
+    // "...Recently", Channel → Channelling, Shapeshift → Shapeshifted and its form),
+    // read from the **final** type set: a meta support's added `Triggered` exempts
+    // the skill like any triggered skill.
     if main.main_effect.is_some() {
         for cond in combat_conditions(&main.main_skill_types, main.skill_flags) {
             cfg = cfg.with_condition(cond, true);
