@@ -782,14 +782,21 @@ end
 -- Ad-hoc stat tabulation: ORACLE_EXTRA_STATS="CooldownRecovery,Speed" dumps the
 -- per-source mod list for any vendor stat names (same shape as critModList),
 -- keyed under extraModList. Zero cost when the env var is unset.
+-- ORACLE_EXTRA_CFG=weapon1 (or weapon2) queries with that hand's attack
+-- configuration, which an attack's speed and damage are read with.
 local extraModList
 do
 	local names = os.getenv("ORACLE_EXTRA_STATS")
 	if names and #names > 0 then
+		local hand = os.getenv("ORACLE_EXTRA_CFG")
+		local cfg = skillCfg
+		if hand and mainSkill and mainSkill[hand .. "Cfg"] then
+			cfg = mainSkill[hand .. "Cfg"]
+		end
 		extraModList = { INC = {}, MORE = {}, BASE = {}, OVERRIDE = {} }
 		for name in names:gmatch("[^,%s]+") do
 			for _, mt in ipairs({ "BASE", "INC", "MORE", "OVERRIDE" }) do
-				local list = tabulateModList(mt, name)
+				local list = tabulateIn(sml, cfg, mt, name)
 				if #list > 0 then extraModList[mt][name] = list end
 			end
 		end
@@ -1113,7 +1120,9 @@ do
 				end
 				itemDump[tostring(id)] = { title = item.title, baseName = item.baseName, lines = lines, mods = mods,
 					armourData = item.armourData, quality = item.quality,
-					baseArmour = item.base and item.base.armour or nil }
+					baseArmour = item.base and item.base.armour or nil,
+					-- The weapon's local values (attack rate, damage, crit) per slot.
+					weaponData = item.weaponData and item.weaponData[1] and scalarsOf(item.weaponData[1]) or nil }
 			end
 		end
 	end

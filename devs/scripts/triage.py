@@ -259,14 +259,14 @@ def damage_leads(entries: dict, oracle: dict, item_slots: dict, main_skill: str)
     table, _hand = compare.damage_table(entries)
     if table is None:
         return found
-    shared_ours = compare.pobr_lines(table.get("shared_mods"), main_skill)
+    shared_ours = compare.pobr_lines(table.get("shared_mods"), main_skill, item_slots)
     shared_theirs = compare.pob2_lines(oracle, ("damageModList",), compare.SHARED_DAMAGE_NAMES,
                                        item_slots)
     found += comparison_leads(compare.compare(shared_ours, shared_theirs), "damage")
     for row in table.get("rows") or []:
         damage_type = row.get("damage_type") or "?"
         names = [damage_type + "Damage"] + (["ElementalDamage"] if damage_type in compare.ELEMENTS else [])
-        ours = compare.pobr_lines(row.get("mods"), main_skill)
+        ours = compare.pobr_lines(row.get("mods"), main_skill, item_slots)
         theirs = compare.pob2_lines(oracle, ("damageModList",), names, item_slots)
         found += comparison_leads(compare.compare(ours, theirs), f"{damage_type} damage")
     return found
@@ -281,7 +281,7 @@ def stat_leads(stat: str, entries: dict, oracle: dict, item_slots: dict, main_sk
     names = compare.pob2_names(stat, entry)
     if not names:
         return []
-    ours = compare.pobr_lines((entry.get("breakdown") or {}).get("mods"), main_skill)
+    ours = compare.pobr_lines((entry.get("breakdown") or {}).get("mods"), main_skill, item_slots)
     theirs = compare.pob2_lines(oracle, compare.POB2_TABLES, names, item_slots)
     return comparison_leads(compare.compare(ours, theirs), stat)
 

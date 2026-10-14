@@ -182,19 +182,66 @@ def decode_code(code: str) -> str:
     return xml.decode("utf-8")
 
 
-def item_slot_keys(xml: str) -> dict:
+class SourceKeys(dict):
+    """PoB2 item id → the source key of its slot (see `item_slot_keys`), and
+    `radius_grants`: what a jewel on the passive tree gives the passives in
+    its radius ("Small Passive Skills in Radius also grant 2% increased Attack
+    Damage"), by the granted line's text, keyed as the jewel's socket. PoB2
+    counts those lines on the socket; the engine on each passive."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.radius_grants = {}
+
+
+RADIUS_GRANT_PREFIXES = (
+    "notable passive skills in radius also grant ",
+    "small passive skills in radius also grant ",
+)
+
+
+def radius_grants(root) -> dict:
+    """The granted line (lowercase) → `tree:<socket>` of every jewel socketed
+    on the active passive tree whose lines grant to the passives in its
+    radius."""
+    items = {item.get("id"): item.text or "" for item in root.iter("Item")}
+    specs = root.find("Tree")
+    spec = None
+    if specs is not None:
+        active = specs.get("activeSpec")
+        all_specs = specs.findall("Spec")
+        index = int(active) - 1 if active and active.isdigit() else 0
+        spec = all_specs[index] if 0 <= index < len(all_specs) else (all_specs[0] if all_specs else None)
+    grants = {}
+    for socket in spec.iter("Socket") if spec is not None else ():
+        text = items.get(socket.get("itemId"))
+        node = socket.get("nodeId")
+        if not text or not node:
+            continue
+        for line in text.splitlines():
+            line = line.strip()
+            lowered = line.lower()
+            for prefix in RADIUS_GRANT_PREFIXES:
+                if lowered.startswith(prefix):
+                    grants.setdefault(lowered[len(prefix):], "tree:" + node)
+    return grants
+
+
+def item_slot_keys(xml: str) -> "SourceKeys":
     """PoB2 item id → the source key of the slot it is equipped in, in the
     active item set. Jewels and unslotted items are left out: their lines are
-    keyed as `jewel`."""
+    keyed as `jewel`. The result also carries the jewels' radius grants
+    (`SourceKeys.radius_grants`)."""
     root = ElementTree.fromstring(xml)
+    keys = SourceKeys()
+    keys.radius_grants = radius_grants(root)
     items = root.find("Items")
     if items is None:
-        return {}
+        return keys
     sets = items.findall("ItemSet")
     active = items.get("activeItemSet")
     chosen = next((s for s in sets if s.get("id") == active), sets[0] if sets else items)
     second_set = (chosen.get("useSecondWeaponSet") or items.get("useSecondWeaponSet")) == "true"
-    keys = {}
     for slot in chosen.iter("Slot"):
         item_id = slot.get("itemId")
         key = slot_key(slot.get("name") or "", second_set)
@@ -338,16 +385,22 @@ def as_list(value) -> list:
     return value if isinstance(value, list) else []
 
 
-def pobr_lines(mods, main_skill: str) -> list:
-    """The engine's breakdown lines (`BreakdownMod`), inactive ones included."""
+def pobr_lines(mods, main_skill: str, keys: Optional[dict] = None) -> list:
+    """The engine's breakdown lines (`BreakdownMod`), inactive ones included.
+    With the build's `SourceKeys`, a line a tree jewel grants a passive in its
+    radius is keyed as the jewel's socket, as PoB2 keys it."""
+    grants = getattr(keys, "radius_grants", None) or {}
     lines = []
     for mod in mods or []:
         text = mod.get("source_text") or ""
         origin = " ".join(part for part in (mod.get("origin_kind"), mod.get("origin_id")) if part)
         label = f"{text}  [{origin}]" if text and origin else text or origin or "?"
+        key = pobr_source_key(mod, main_skill)
+        if key.startswith("tree:") and text.strip().lower() in grants:
+            key = grants[text.strip().lower()]
         lines.append(Line(
             mod.get("mod_type") or "?",
-            pobr_source_key(mod, main_skill),
+            key,
             number(mod.get("value")),
             label,
             bool(mod.get("active", True)),
@@ -671,7 +724,7 @@ def stat_rows(stat: str, entry: dict, oracle: dict, item_slots: dict, main_skill
     if not names:
         return ["   (no PoB2 modifier list for this stat; totals only)"]
     breakdown = entry.get("breakdown") or {}
-    ours = pobr_lines(breakdown.get("mods"), main_skill)
+    ours = pobr_lines(breakdown.get("mods"), main_skill, item_slots)
     theirs = pob2_lines(oracle, POB2_TABLES, names, item_slots)
     rows = [f"   PoB2 names: {', '.join(names)}"]
     if not ours and not theirs:
@@ -707,7 +760,7 @@ def damage_rows(entries: dict, oracle: dict, item_slots: dict, main_skill: str) 
     rows = []
     if hand:
         rows.append(f"   (PoBR's {hand.replace('_', ' ')} pass; PoB2's lists are for the skill)")
-    shared_ours = pobr_lines(table.get("shared_mods"), main_skill)
+    shared_ours = pobr_lines(table.get("shared_mods"), main_skill, item_slots)
     shared_theirs = pob2_lines(oracle, ("damageModList",), SHARED_DAMAGE_NAMES, item_slots)
     rows.append("   -- every damage type (Damage, AttackDamage, SpellDamage, ProjectileDamage, ... "
                 "as PoB2 lists them)")
@@ -731,7 +784,7 @@ def damage_rows(entries: dict, oracle: dict, item_slots: dict, main_skill: str) 
             f"{num(number(row.get('base_max')))}) · PoB2 {num(number(component.get('Min')))}–"
             f"{num(number(component.get('Max')))} (average {num(theirs_avg)})")
         names = [damage_type + "Damage"] + (["ElementalDamage"] if damage_type in ELEMENTS else [])
-        ours = pobr_lines(row.get("mods"), main_skill)
+        ours = pobr_lines(row.get("mods"), main_skill, item_slots)
         theirs = pob2_lines(oracle, ("damageModList",), names, item_slots)
         theirs_sums = sums(shared_theirs + theirs)
         ours_more = number(row.get("more"))
