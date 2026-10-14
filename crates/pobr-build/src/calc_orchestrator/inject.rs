@@ -262,67 +262,20 @@ pub(super) fn inject_support_gem_counts(
     session.set_condition(most_numerous, true);
 }
 
-/// Gemling "Integrated Efficiency" (CalcOffence.lua:835-873): each flag carries a
-/// percentage that the vendor expands into an INC modifier scaled by the number of
-/// supports of one colour connected to the calculated skill (`activeSkill.supportList`,
-/// `grantedEffect.color`). The first matching modifier supplies value and source, as
-/// the vendor's `Tabulate(...)[1]` does.
-pub(super) fn inject_integrated_efficiency(
+/// The support gems connected to the calculated skill, by colour: what lines
+/// such as "Skills have 6% increased Skill Speed per Connected Green Support
+/// Gem" count (`overlay-common/special_mods.json`).
+pub(super) fn inject_connected_support_counts(
     session: &mut CalculationSession,
-    data: &BuildData,
-    group: &crate::build::SocketGroup,
-    skill_id: &str,
+    connected_supports: [u32; 3],
 ) {
-    const EFFECTS: [(&str, u32, &[&str]); 3] = [
-        ("SkillDamageIncreasedPerRedSupport", 1, &["Damage"]),
-        (
-            "SkillSpeedIncreasedPerGreenSupport",
-            2,
-            &["Speed", "WarcrySpeed", "TotemPlacementSpeed"],
-        ),
-        ("SkillCritChanceIncreasedPerBlueSupport", 3, &["CritChance"]),
+    let names = [
+        "ConnectedRedSupportGems",
+        "ConnectedGreenSupportGems",
+        "ConnectedBlueSupportGems",
     ];
-    let flags: Vec<_> = EFFECTS
-        .iter()
-        .filter_map(|(flag, colour, names)| {
-            let found = session
-                .mod_db()
-                .named(flag)
-                .find(|m| m.mod_type == ModType::Flag)?;
-            Some((
-                found.value.as_number()?,
-                found.source.clone(),
-                *colour,
-                *names,
-            ))
-        })
-        .collect();
-    if flags.is_empty() {
-        return;
-    }
-    let judgement = crate::support::judge_group_supports(group, data, skill_id, group.from_gem());
-    let connected = |colour: u32| {
-        judgement
-            .compatible
-            .iter()
-            .filter(|support| {
-                data.skill_gems
-                    .values()
-                    .find(|gem| {
-                        gem.granted_effect_id.as_deref() == Some(support.effect_id.as_str())
-                    })
-                    .and_then(|gem| gem.gem_colour)
-                    == Some(colour)
-            })
-            .count() as f64
-    };
-    for (value, source, colour, names) in flags {
-        let total = value * connected(colour);
-        session.add_modifiers(names.iter().map(|name| {
-            let mut modifier = Modifier::number(*name, ModType::Inc, total);
-            modifier.source = source.clone();
-            modifier
-        }));
+    for (name, count) in names.into_iter().zip(connected_supports) {
+        session.set_multiplier(name, f64::from(count));
     }
 }
 

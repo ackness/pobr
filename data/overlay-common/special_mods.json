@@ -3158,6 +3158,100 @@
         "5% increased Experience gain"
       ],
       "source_note": "Game text of the stat experience_gain_+%, which an item, a rune and a quest reward carry. How fast a character gains experience is part of nothing a calculation reports, so the line is recognised and adds no modifier: it is not an input the calculation dropped."
+    },
+    {
+      "id": "skills_damage_per_connected_red_support_gem",
+      "pattern": "skills deal (\\d+)% increased damage per connected red support gem",
+      "vendor_pattern": "^skills deal (%d+)%% increased damage per connected red support gem$",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "ConnectedRedSupportGems"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "connected-supports",
+      "examples": [
+        "Skills deal 20% increased Damage per Connected Red Support Gem"
+      ],
+      "source_note": "Game stat skills_gain_damage_+%_per_sockted_or_adjacent_red_support_gem (the Gemling Legionnaire's Integrated Efficiency). The calculation counts the support gems of that colour connected to the skill it calculates."
+    },
+    {
+      "id": "skills_skill_speed_per_connected_green_support_gem",
+      "pattern": "skills have (\\d+)% increased skill speed per connected green support gem",
+      "vendor_pattern": "^skills have (%d+)%% increased skill speed per connected green support gem$",
+      "mods": [
+        {
+          "name": "SkillSpeed",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "ConnectedGreenSupportGems"
+            }
+          ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "ConnectedGreenSupportGems"
+            }
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "ConnectedGreenSupportGems"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "connected-supports",
+      "examples": [
+        "Skills have 6% increased Skill Speed per Connected Green Support Gem"
+      ],
+      "source_note": "Game stat skills_gain_skill_speed_+%_per_sockted_or_adjacent_green_support_gem (Integrated Efficiency): Skill Speed, under the names the line '#% increased Skill Speed' gives. The calculation counts the support gems of that colour connected to the skill it calculates."
+    },
+    {
+      "id": "skills_critical_hit_chance_per_connected_blue_support_gem",
+      "pattern": "skills have (\\d+)% increased critical hit chance per connected blue support gem",
+      "vendor_pattern": "^skills have (%d+)%% increased critical hit chance per connected blue support gem$",
+      "mods": [
+        {
+          "name": "CriticalStrikeChance",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "ConnectedBlueSupportGems"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "connected-supports",
+      "examples": [
+        "Skills have 20% increased Critical Hit Chance per Connected Blue Support Gem"
+      ],
+      "source_note": "Game stat skills_gain_critical_strike_chance_+%_per_sockted_or_adjacent_blue_support_gem (Integrated Efficiency). The calculation counts the support gems of that colour connected to the skill it calculates."
     }
   ]
 }

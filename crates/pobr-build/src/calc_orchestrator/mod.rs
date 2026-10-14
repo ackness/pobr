@@ -624,9 +624,7 @@ fn calculate_prepared_with_context(
     //      denominator for pinned MultiplierThreshold entries like "if you have at
     //      least 10 <color> Support Gems Socketed").
     inject_support_gem_counts(&mut session, build, data);
-    if let Some((_, group, skill_id)) = &ctx.main.main_skill {
-        inject_integrated_efficiency(&mut session, data, group, skill_id);
-    }
+    inject_connected_support_counts(&mut session, ctx.main.connected_supports);
 
     session.bridge_player_conditions();
 

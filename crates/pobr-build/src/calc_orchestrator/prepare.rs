@@ -31,6 +31,9 @@ pub(super) struct ResolvedMainSkill<'a> {
     pub main_skill_types: Vec<String>,
     pub skill_flags: ModFlags,
     pub skill_type_bits: SkillTypes,
+    /// The support gems connected to the main skill, counted by colour: red,
+    /// green, blue.
+    pub connected_supports: [u32; 3],
 }
 
 pub(super) struct ResolvedWeapons {
@@ -72,14 +75,20 @@ pub(super) fn stage_resolve_main_skill<'a>(
     // `Triggered` to the triggered spell, making the "Triggered Spells deal …" mod
     // family hit + the combat-condition trigger exemption apply per vendor :248).
     // Sorted for determinism.
+    let main_supports = main_skill
+        .as_ref()
+        .map(|(_, group, skill_id)| judge_group_supports(group, data, skill_id, group.from_gem()));
+    let connected_supports = match (&main_skill, &main_supports) {
+        (Some((_, group, _)), Some(supports)) => {
+            connected_support_colours(group, data, &supports.compatible)
+        }
+        _ => [0; 3],
+    };
     let main_skill_types = main_skill
         .as_ref()
-        .map(|(_, group, skill_id)| {
-            let mut types: Vec<String> =
-                judge_group_supports(group, data, skill_id, group.from_gem())
-                    .final_skill_types
-                    .into_iter()
-                    .collect();
+        .zip(main_supports)
+        .map(|((_, group, skill_id), supports)| {
+            let mut types: Vec<String> = supports.final_skill_types.into_iter().collect();
             // A meta trigger shell's `Triggered`: vendor injects this from the gem's
             // **support half** (e.g. Cast on Critical → SupportMetaCastOnCritPlayer's
             // addSkillTypes=[Triggered]); PoBR's cataloged data doesn't model a gem's
@@ -122,7 +131,30 @@ pub(super) fn stage_resolve_main_skill<'a>(
         main_skill_types,
         skill_flags,
         skill_type_bits,
+        connected_supports,
     }
+}
+
+/// The supports `compatible` with a skill of `group`, counted by the colour
+/// of their gems: red, green, blue.
+fn connected_support_colours(
+    group: &SocketGroup,
+    data: &BuildData,
+    compatible: &[pobr_core::skill_env::CompatibleSupport],
+) -> [u32; 3] {
+    use pobr_core::skill_env::GemDefLookup;
+    let mut counts = [0; 3];
+    for support in compatible {
+        let colour = group
+            .gem_skills
+            .get(support.gem_index)
+            .and_then(|gem| data.gem_def_for_effect(&gem.skill_id))
+            .and_then(|gem| gem.gem_colour);
+        if let Some(colour @ 1..=3) = colour {
+            counts[colour as usize - 1] += 1;
+        }
+    }
+    counts
 }
 
 /// Stage 2: closes out config consumption (the primary-path switch) — goes through

@@ -38304,21 +38304,6 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
-      "id": "vnd_skills_deal_d_increased_damage_per_conne_9ad70288",
-      "pattern": "skills deal (\\d+)% increased damage per connected red support gem",
-      "vendor_pattern": "^skills deal (%d+)%% increased damage per connected red support gem$",
-      "mods": [
-        {
-          "name": "SkillDamageIncreasedPerRedSupport",
-          "type": "FLAG",
-          "value": "$1"
-        }
-      ],
-      "verified": false,
-      "batch": "V0",
-      "source_note": "vendor specialModList 批量抽取（闭包探针）"
-    },
-    {
       "id": "vnd_skills_deal_d_more_damage_for_each_warcr_8eeb51b1",
       "pattern": "skills deal (\\d+)% more damage for each warcry exerting them",
       "vendor_pattern": "^skills deal (%d+)%% more damage for each warcry exerting them$",
@@ -38487,36 +38472,6 @@
               "skillType": "Cooldown"
             }
           ]
-        }
-      ],
-      "verified": false,
-      "batch": "V0",
-      "source_note": "vendor specialModList 批量抽取（闭包探针）"
-    },
-    {
-      "id": "vnd_skills_have_d_increased_critical_hit_cha_bdb76eac",
-      "pattern": "skills have (\\d+)% increased critical hit chance per connected blue support gem",
-      "vendor_pattern": "^skills have (%d+)%% increased critical hit chance per connected blue support gem$",
-      "mods": [
-        {
-          "name": "SkillCritChanceIncreasedPerBlueSupport",
-          "type": "FLAG",
-          "value": "$1"
-        }
-      ],
-      "verified": false,
-      "batch": "V0",
-      "source_note": "vendor specialModList 批量抽取（闭包探针）"
-    },
-    {
-      "id": "vnd_skills_have_d_increased_skill_speed_per_2143701b",
-      "pattern": "skills have (\\d+)% increased skill speed per connected green support gem",
-      "vendor_pattern": "^skills have (%d+)%% increased skill speed per connected green support gem$",
-      "mods": [
-        {
-          "name": "SkillSpeedIncreasedPerGreenSupport",
-          "type": "FLAG",
-          "value": "$1"
         }
       ],
       "verified": false,
