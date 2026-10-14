@@ -150,6 +150,17 @@ impl CalculationSession {
             ("Condition:CanUseBondedModifiers", "CanUseBondedModifiers"),
             ("Condition:ArcaneSurge", "AffectedByArcaneSurge"),
             ("ChaosInoculation", "FullLife"),
+            // "Grants Skill: Sorcery Ward" and "Sorcery Ward's Barrier can
+            // also take Physical and Chaos Damage from Hits": read by the
+            // Barrier's modifiers.
+            (
+                "Condition:SorceryWard",
+                crate::rules::skill_stats::SORCERY_WARD,
+            ),
+            (
+                "Condition:CeremonialAblution",
+                crate::rules::skill_stats::CEREMONIAL_ABLUTION,
+            ),
         ] {
             if self.has_flag(flag) {
                 self.set_condition(condition, true);

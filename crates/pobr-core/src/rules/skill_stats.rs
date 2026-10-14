@@ -213,6 +213,8 @@ pub fn player_buff_modifiers(stat: &str, value: f64, skill: BuffSkill) -> Option
                     }),
             ])
         }
+        // Sorcery Ward (see `sorcery_ward_barrier`).
+        SORCERY_WARD_BARRIER => Some(sorcery_ward_barrier(value)),
         // Not a buff on the character (see `granted_skill_modifiers`).
         WITCHTOAD_SPAWN_INTERVAL_MS => Some(Vec::new()),
         // Charge Regulation: "{0}% more Armour, Evasion and Energy Shield
@@ -313,6 +315,46 @@ fn charged_staff_added_lightning(name: &str, value: f64, skill: BuffSkill) -> Mo
         .with_tag(ModTag::DamageType(DamageType::Lightning))
         .with_tag(ModTag::condition("UsingQuarterstaff", false))
         .with_tag(ModTag::multiplier("RemovablePowerCharge", 1.0, None))
+}
+
+/// The stat behind Sorcery Ward's "Barrier can take Elemental Damage equal to
+/// {0}% of your Armour and Evasion Rating".
+const SORCERY_WARD_BARRIER: &str = "aegis_unique_shield_max_value_from_%_armour_evasion";
+
+/// The condition "Grants Skill: Sorcery Ward" sets (`Condition:SorceryWard`,
+/// bridged by `CalculationSession::bridge_player_conditions`). Sorcery Ward is
+/// an Ascendancy skill: the character has it only while something grants it
+/// (the Witchhunter's Obsessive Rituals), so a skill group that lists the gem
+/// without the grant gives no Barrier.
+pub const SORCERY_WARD: &str = "SorceryWard";
+
+/// The condition "Sorcery Ward's Barrier can also take Physical and Chaos
+/// Damage from Hits" sets (`Condition:CeremonialAblution`, bridged by
+/// `CalculationSession::bridge_player_conditions`).
+pub const CEREMONIAL_ABLUTION: &str = "CeremonialAblution";
+
+/// Sorcery Ward: "Elemental Damage from Hits is taken from the Barrier before
+/// your Life, Mana or Energy Shield. Barrier can take Elemental Damage equal
+/// to {0}% of your Armour and Evasion Rating, up to a maximum of 32,000".
+/// With "Sorcery Ward's Barrier can also take Physical and Chaos Damage from
+/// Hits" the same Barrier takes every type of damage. The engine's aegis pools
+/// take the strongest source, so a second Sorcery Ward does not add to it. The
+/// maximum of 32,000 is not applied: no tag caps a percentage of a stat.
+fn sorcery_ward_barrier(percent: f64) -> Vec<Modifier> {
+    let of_armour_and_evasion = || ModTag::PercentStat {
+        stat: "Armour|Evasion".into(),
+        percent: Some(1.0),
+    };
+    vec![
+        Modifier::number("ElementalAegisValue", ModType::Base, percent)
+            .with_tag(ModTag::condition(SORCERY_WARD, false))
+            .with_tag(ModTag::condition(CEREMONIAL_ABLUTION, true))
+            .with_tag(of_armour_and_evasion()),
+        Modifier::number("AegisValue", ModType::Base, percent)
+            .with_tag(ModTag::condition(SORCERY_WARD, false))
+            .with_tag(ModTag::condition(CEREMONIAL_ABLUTION, false))
+            .with_tag(of_armour_and_evasion()),
+    ]
 }
 
 /// What "Skill Speed" is: the speed of attacks and casts, of Warcries and of
@@ -583,6 +625,38 @@ mod tests {
         assert_eq!(added(&["Spell"]), 164.0);
         assert_eq!(added(&["Attack"]), 0.0);
         assert_eq!(added(&["Spell", "Channel"]), 0.0);
+    }
+
+    /// Sorcery Ward at 31% of 18000 Armour and Evasion Rating: a 5580
+    /// Barrier for Elemental Damage, or for every type of damage once
+    /// "Sorcery Ward's Barrier can also take Physical and Chaos Damage from
+    /// Hits".
+    #[test]
+    fn sorcery_ward_barrier_is_a_share_of_armour_and_evasion() {
+        let mut db = ModDb::new();
+        db.add_list(
+            player_buff_modifiers(SORCERY_WARD_BARRIER, 31.0, BuffSkill::default())
+                .expect("a rule"),
+        );
+        // (Barrier for Elemental Damage, Barrier for every type of damage).
+        let barrier = |cfg: &CalcConfig| {
+            let strongest = |name: &str| db.max_of(ModType::Base, cfg, &[ModName::from(name)]);
+            (strongest("ElementalAegisValue"), strongest("AegisValue"))
+        };
+        let granted = || CalcConfig::new().with_condition(SORCERY_WARD, true);
+        let armour = granted().with_stat("Armour", 18000.0);
+        assert_eq!(barrier(&armour), (5580.0, 0.0));
+        let split = granted()
+            .with_stat("Armour", 9000.0)
+            .with_stat("Evasion", 9000.0);
+        assert_eq!(barrier(&split), (5580.0, 0.0));
+        let ablution = armour.with_condition(CEREMONIAL_ABLUTION, true);
+        assert_eq!(barrier(&ablution), (0.0, 5580.0));
+        // No defences, no Barrier.
+        assert_eq!(barrier(&granted()), (0.0, 0.0));
+        // A skill group that lists the gem without the grant: no Barrier.
+        let listed_only = CalcConfig::new().with_stat("Armour", 18000.0);
+        assert_eq!(barrier(&listed_only), (0.0, 0.0));
     }
 
     fn stat(id: &str, value: f64) -> SkillDamageStat {

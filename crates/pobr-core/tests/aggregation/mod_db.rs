@@ -777,6 +777,24 @@ fn percent_stat_scales_by_stat_percentage_with_ceil() {
     assert_eq!(plain.effective_number(ctx), Some(666.0));
 }
 
+/// A `|`-joined stat is a percentage of the stats' sum, rounded up once:
+/// "equal to 31% of your Armour and Evasion Rating" at 1001 of each is
+/// ceil(620.62) = 621, not 311 + 311.
+#[test]
+fn percent_stat_of_joined_stats_is_a_percentage_of_their_sum() {
+    let m = Modifier::number("AegisValue", ModType::Base, 31.0).with_tag(ModTag::PercentStat {
+        stat: "Armour|Evasion".into(),
+        percent: Some(1.0),
+    });
+    let both = CalcConfig::new()
+        .with_stat("Armour", 1001.0)
+        .with_stat("Evasion", 1001.0);
+    assert_eq!(m.effective_number(&both), Some(621.0));
+    // A rating the character does not have adds nothing.
+    let armour_only = CalcConfig::new().with_stat("Armour", 18366.0);
+    assert_eq!(m.effective_number(&armour_only), Some(5694.0));
+}
+
 /// StatThreshold is a binary gate (V2s4; vendor ModStore.lua:556-573): it reads the cfg.stats
 /// snapshot during matches — the FLAG query path is gated the same way (the gate lives in
 /// matches, not at evaluation time, which is the key difference from PerStat's evaluation-time

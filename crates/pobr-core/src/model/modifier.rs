@@ -186,7 +186,8 @@ pub enum ModTag {
     /// `limit`/`floor` forms aren't implemented in this batch (blocked by the
     /// DSL whitelist, so `base` is always 0).
     PercentStat {
-        /// The output-table stat name (e.g. `Life`/`EnergyShield`).
+        /// The output-table stat name (e.g. `Life`/`EnergyShield`), or several
+        /// joined by `|` (`Armour|Evasion`) for a percentage of their sum.
         stat: String,
         /// Percentage (vendor `tag.percent`); defaults to the or-1 side of
         /// vendor's `(percent and percent/100 or 1)` (mult = the stat itself).
@@ -638,8 +639,10 @@ impl Modifier {
                     // always 0 since it's blocked by the DSL whitelist; ceil
                     // applies to the final contribution (vendor likewise settles
                     // tag by tag when multiple tags chain, and this loop preserves
-                    // that order).
-                    let base = ctx.stat(stat);
+                    // that order). A `|`-joined stat is a percentage of the stats'
+                    // sum ("equal to 30% of your Armour and Evasion Rating"), with
+                    // one ceil for the total.
+                    let base: f64 = stat.split('|').map(|part| ctx.stat(part)).sum();
                     let mult = base * percent.map_or(1.0, |p| p / 100.0);
                     value = (value * mult).ceil();
                 }

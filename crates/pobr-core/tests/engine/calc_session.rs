@@ -172,6 +172,34 @@ fn player_condition_bridge_derives_surrounded_from_the_required_enemies() {
     }
 }
 
+/// Sorcery Ward is an Ascendancy skill: "Grants Skill: Sorcery Ward" (the
+/// Witchhunter's Obsessive Rituals) gives it to the character, and its
+/// Barrier reads the condition that line sets. A skill group that lists the
+/// gem without the grant gives no Barrier.
+#[test]
+fn player_condition_bridge_sets_sorcery_ward_from_its_grant() {
+    use pobr_core::{ModTag, Modifier};
+    use pobr_data::prelude::ModType;
+
+    for granted in [false, true] {
+        let mut s = session(MinimalInput::default());
+        if granted {
+            s.add_modifier_texts(["Grants Skill: Sorcery Ward"])
+                .unwrap();
+        }
+        s.add_modifiers([Modifier::number("Armour", ModType::Inc, 20.0)
+            .with_tag(ModTag::condition("SorceryWard", false))]);
+        s.prepare_player_stats(1, None);
+        s.bridge_player_conditions();
+        let (_, increased, _) = s.stat_totals("Armour");
+        assert_eq!(
+            increased,
+            if granted { 20.0 } else { 0.0 },
+            "granted {granted}"
+        );
+    }
+}
+
 #[test]
 fn per_mana_damage_uses_the_pool_after_defence_conversion() {
     use pobr_core::{ModTag, Modifier};
