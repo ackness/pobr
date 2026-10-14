@@ -9,7 +9,7 @@
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 use crate::calc::minion::{AttributeInfusion, MinionModifierEntry};
-use crate::skill_env::SupportCandidate;
+use crate::rules::umbral_souls::{self, Soul};
 use crate::skill_env::lookup::{
     EffectLookup, MinionLookup, ParserRulesLookup, SocketGroupView, StatMapLookup, StatSetLookup,
 };
@@ -17,15 +17,23 @@ use crate::skill_env::resolve::{
     GemPropertyLookup, support_granted_gem_levels, support_stat_set_index,
 };
 use crate::skill_env::support::judge_group_supports;
+use crate::skill_env::{GemInput, SupportCandidate};
 
 /// The session write surface [`spawn_minions`] needs: the minion quantity limit's
-/// player-side BASE sum + the per-minion spawn sink.
+/// player-side BASE sum, the player's flags, the per-minion spawn sink and the
+/// player sink for what replaces a minion.
 ///
 /// `pobr_core::calc::CalculationSession` implements this; the trait exists so minion
 /// wiring doesn't depend on the concrete session type.
 pub trait MinionSession {
     /// `Sum("BASE", nil, name)` over the player db (the minion limit stat source).
     fn base_sum(&self, name: &str) -> f64;
+
+    /// Whether the player has the flag `name`.
+    fn has_flag(&self, name: &str) -> bool;
+
+    /// Gives the player modifiers granted instead of a minion.
+    fn add_player_modifiers(&mut self, modifiers: Vec<crate::Modifier>);
 
     /// Spawns one minion from its catalog definition (see
     /// [`crate::calc::CalculationSession::add_minion_from_def`]).
@@ -45,6 +53,14 @@ pub trait MinionSession {
 impl MinionSession for crate::calc::CalculationSession {
     fn base_sum(&self, name: &str) -> f64 {
         crate::calc::CalculationSession::base_sum(self, name)
+    }
+
+    fn has_flag(&self, name: &str) -> bool {
+        crate::calc::CalculationSession::has_flag(self, name)
+    }
+
+    fn add_player_modifiers(&mut self, modifiers: Vec<crate::Modifier>) {
+        self.add_modifiers(modifiers);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -125,25 +141,38 @@ pub fn spawn_minions(
     // Deduplication: the same minion id (referenced by the same minion from different
     // skills/groups) is only wired in once, to avoid double-counting.
     let mut seen: BTreeSet<String> = BTreeSet::new();
+    // Umbral Well: Skeletal Minions become Souls on the character instead.
+    let umbral_well = session.has_flag(umbral_souls::UMBRAL_WELL);
 
     groups.for_each_enabled_group(&mut |group| {
-        // This group's each **active skill** gem's (granted effect id, gem level).
+        // This group's each **active skill** gem.
         // Prefers `gems` (the real import path, includes both active + support);
         // falls back to `active_skill_id` when empty (the builder/test path's
         // with_active_skill, the same fallback source as resolve_main_skill).
-        let candidates: Vec<(String, u32, bool)> = if group.gems.is_empty() {
+        let candidates: Vec<GemInput> = if group.gems.is_empty() {
             group
                 .active_skill_id
-                .map(|id| vec![(id.to_string(), group.active_gem_level, false)])
+                .map(|id| {
+                    vec![GemInput {
+                        skill_id: id.to_string(),
+                        gem_level: group.active_gem_level,
+                        quality: 0,
+                        stat_set_index: None,
+                        corrupted: false,
+                    }]
+                })
                 .unwrap_or_default()
         } else {
-            group
-                .gems
-                .iter()
-                .map(|g| (g.skill_id.clone(), g.gem_level, g.corrupted))
-                .collect()
+            group.gems.to_vec()
         };
-        for (skill_id, gem_level, corrupted) in candidates {
+        for GemInput {
+            skill_id,
+            gem_level,
+            quality,
+            stat_set_index,
+            corrupted,
+        } in candidates
+        {
             // A support itself doesn't summon — its addMinionList appends to the active
             // skill's minion_list, which is deferred; the first version only wires up
             // the active skill's minion_list.
@@ -156,6 +185,32 @@ pub fn spawn_minions(
             }
             let minion_ids = data.effect_minion_list(&skill_id);
             if minion_ids.is_empty() {
+                continue;
+            }
+            if umbral_well
+                && let Some(soul) = Soul::of_skill(&skill_id)
+                && let Some(magnitude) =
+                    soul_magnitude(data, &skill_id, gem_level, quality, stat_set_index)
+            {
+                for minion_id in minion_ids {
+                    if !seen.insert(minion_id.clone()) {
+                        continue;
+                    }
+                    let souls = data
+                        .minion_def(minion_id)
+                        .map_or(1, |def| minion_limit(&*session, def));
+                    let origin = ModifierSource::new(SourceId::new(
+                        SourceKind::Buff,
+                        format!("buff.{}", soul.buff),
+                    ))
+                    .with_raw_text(format!("{souls} Umbral Soul ({skill_id})"));
+                    session.add_player_modifiers(
+                        soul.modifiers(magnitude, souls)
+                            .into_iter()
+                            .map(|modifier| modifier.with_origin(origin.clone()))
+                            .collect(),
+                    );
+                }
                 continue;
             }
             // Minion level uses the **effective gem level** (matching vendor's
@@ -233,17 +288,9 @@ pub fn spawn_minions(
                     // skip, theoretically unreachable).
                     continue;
                 };
-                // Quantity cap: the sum of the minion's limit stat's (e.g.
-                // `ActiveZombieLimit`) player BASE; falls back to 1 when missing. The
-                // limit only affects `Multiplier:SummonedMinion` (per-minion mods +
+                // The limit only affects `Multiplier:SummonedMinion` (per-minion mods +
                 // DPS aggregation count), not a single minion's life/defence.
-                let limit_stat = def.limit.to_pob2_str();
-                let limit = if limit_stat.is_empty() {
-                    1
-                } else {
-                    let summed = session.base_sum(limit_stat);
-                    if summed >= 1.0 { summed as u32 } else { 1 }
-                };
+                let limit = minion_limit(&*session, def);
                 let def = def.clone();
                 // `add_minion_from_def` internally maps gem level to monster level via
                 // `minion_level_from_gem_level` (the default rule at
@@ -262,6 +309,35 @@ pub fn spawn_minions(
             }
         }
     });
+}
+
+/// How much one Umbral Soul of the minions of the skill `skill_id` grants,
+/// when its minions can become Souls.
+fn soul_magnitude(
+    data: &dyn MinionEnv,
+    skill_id: &str,
+    level: u32,
+    quality: u32,
+    set_index: Option<u32>,
+) -> Option<f64> {
+    let magnitude: f64 = data
+        .effect_stats(skill_id, level, quality, set_index)
+        .all()
+        .filter(|ds| ds.stat == umbral_souls::SOUL_MAGNITUDE)
+        .map(|ds| ds.value)
+        .sum();
+    (magnitude > 0.0).then_some(magnitude)
+}
+
+/// How many of the minion `def` its skill creates: the player's BASE sum of
+/// the minion's limit stat (e.g. `ActiveZombieLimit`), at least one.
+fn minion_limit(session: &dyn MinionSession, def: &pobr_data::minion::MinionDef) -> u32 {
+    let limit_stat = def.limit.to_pob2_str();
+    if limit_stat.is_empty() {
+        return 1;
+    }
+    let summed = session.base_sum(limit_stat);
+    if summed >= 1.0 { summed as u32 } else { 1 }
 }
 
 /// Runs the group support judgement for `skill_id` over an [`EnabledGroup`] (the

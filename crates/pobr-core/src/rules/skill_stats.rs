@@ -257,7 +257,7 @@ pub fn player_buff_modifiers(stat: &str, value: f64, skill: BuffSkill) -> Option
 
 /// What "Skill Speed" is: the speed of attacks and casts, of Warcries and of
 /// placing Totems.
-const SKILL_SPEED: [&str; 3] = ["SkillSpeed", "WarcrySpeed", "TotemPlacementSpeed"];
+pub(crate) const SKILL_SPEED: [&str; 3] = ["SkillSpeed", "WarcrySpeed", "TotemPlacementSpeed"];
 
 /// "while you have a `charge`": at least one charge of that kind
 /// (`PowerCharge`, `FrenzyCharge` or `EnduranceCharge`).

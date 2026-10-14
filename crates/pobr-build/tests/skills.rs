@@ -61,6 +61,8 @@ mod support_gem_count;
 mod support_granted_skills;
 #[path = "skills/totem_skills.rs"]
 mod totem_skills;
+#[path = "skills/umbral_well.rs"]
+mod umbral_well;
 #[path = "skills/weapon_accuracy_damage.rs"]
 mod weapon_accuracy_damage;
 #[path = "skills/withered.rs"]

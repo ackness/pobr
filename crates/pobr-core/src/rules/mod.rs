@@ -25,6 +25,7 @@ pub mod skill_stats;
 pub mod skill_type_expr;
 pub mod special_mod;
 pub mod stat_map_engine;
+pub mod umbral_souls;
 pub mod value_expr;
 
 pub use handlers::register_special_handlers;
