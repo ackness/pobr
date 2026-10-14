@@ -1046,3 +1046,23 @@ fn augments_in_equipment_are_counted_by_kind() {
     close(socketed_life - life, 10.0);
     close(socketed_fire - fire, -8.0);
 }
+
+/// A keystone an item grants ("Giant's Blood" on a jewel) applies before
+/// the attributes are derived: its "Inherent Life granted by Strength is
+/// halved" makes 100 Strength grant 100 Life instead of 200.
+#[test]
+fn item_granted_keystone_changes_what_attributes_grant() {
+    let data = data();
+    let life = |lines: &[&str]| {
+        let session = run(
+            &build("FireballPlayer").set_item(EquipmentSlot::Ring1, item("Iron Ring", lines)),
+            &data,
+        );
+        session.output().life
+    };
+    close(life(&["+100 to Strength"]) - life(&[]), 200.0);
+    close(
+        life(&["+100 to Strength", "Giant's Blood"]) - life(&["Giant's Blood"]),
+        100.0,
+    );
+}

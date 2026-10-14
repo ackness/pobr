@@ -22,6 +22,11 @@ impl CalculationSession {
     /// `class` contains the starting attributes already baked into CharacterBase mods;
     /// `None` disables attribute derivation for callers supplying their own base input.
     pub fn prepare_player_stats(&mut self, level: u32, class: Option<crate::CharacterBase>) {
+        // A keystone an item grants (a jewel's "Giant's Blood") can change
+        // what the attributes grant ("Inherent Life granted by Strength is
+        // halved"), so it joins before they are derived; the merges of
+        // `perform` skip the keystones already added.
+        crate::calc::keystone_merge::merge_keystones(&mut self.env);
         let bases = class.map_or([0.0; 3], |c| [c.strength, c.dexterity, c.intelligence]);
         let attributes = [
             self.attribute_total("Strength", bases[0]),
