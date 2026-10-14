@@ -9,6 +9,7 @@
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 use crate::calc::minion::{AttributeInfusion, MinionModifierEntry};
+use crate::rules::skill_stats;
 use crate::rules::umbral_souls::{self, Soul};
 use crate::skill_env::lookup::{
     EffectLookup, MinionLookup, ParserRulesLookup, SocketGroupView, StatMapLookup, StatSetLookup,
@@ -228,6 +229,16 @@ pub fn spawn_minions(
                     corrupted,
                 ))
                 .saturating_add(support_granted_gem_levels(&judgement, group.gems, data));
+            // A skill that says how many minions it summons ("Summons {0}
+            // Hyenas") creates that many of each kind; any other creates as
+            // many as the kind's limit.
+            let own_count = own_minion_count(
+                data,
+                &skill_id,
+                effective_gem_level,
+                quality,
+                stat_set_index,
+            );
             // (#12 companion) Companion determination: the granted skill has
             // `SkillType.Companion` and not `MinionsAreUndamagable` (matching vendor
             // CalcPerform.lua:3365-3367's includeSkill predicate) → this skill's
@@ -290,7 +301,7 @@ pub fn spawn_minions(
                 };
                 // The limit only affects `Multiplier:SummonedMinion` (per-minion mods +
                 // DPS aggregation count), not a single minion's life/defence.
-                let limit = minion_limit(&*session, def);
+                let limit = own_count.unwrap_or_else(|| minion_limit(&*session, def));
                 let def = def.clone();
                 // `add_minion_from_def` internally maps gem level to monster level via
                 // `minion_level_from_gem_level` (the default rule at
@@ -327,6 +338,24 @@ fn soul_magnitude(
         .map(|ds| ds.value)
         .sum();
     (magnitude > 0.0).then_some(magnitude)
+}
+
+/// How many minions of each kind the skill `skill_id` creates at `level`,
+/// when one of its stats says ([`skill_stats::is_summoned_minion_count`]).
+fn own_minion_count(
+    data: &dyn MinionEnv,
+    skill_id: &str,
+    level: u32,
+    quality: u32,
+    set_index: Option<u32>,
+) -> Option<u32> {
+    let mut count = None;
+    for ds in data.effect_stats(skill_id, level, quality, set_index).all() {
+        if skill_stats::is_summoned_minion_count(&ds.stat) {
+            *count.get_or_insert(0.0) += ds.value;
+        }
+    }
+    count.map(|total: f64| total.max(0.0) as u32)
 }
 
 /// How many of the minion `def` its skill creates: the player's BASE sum of

@@ -6,6 +6,7 @@
 //! optional Compare-mode record sink instead of `CalculationContext`, so the same
 //! mapping can be reused without the orchestrator.
 
+use pobr_data::catalog::SkillDamageStat;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 use crate::Modifier;
@@ -361,22 +362,37 @@ fn skipped_conditional_number(
 /// - Visibility: Compare mode records each stat's curse payload as `mapped` /
 ///   `unsupported:<category>` (label = `curse.<skill_id>`); `Mapped(empty)` / `Unknown`
 ///   aren't recorded. Data mode silently skips.
+///
+/// Each stat is read with its quality added, as one value: a rule may also
+/// read the skill's other stats (a maximum), which it sees as totals too.
+/// The engine's own rules ([`skill_stats::curse_modifiers`]) come first; the
+/// extracted map is consulted only for the stats they do not define, and
+/// without a catalog (old data pack) those miss entirely.
 pub fn curse_stat_modifiers(
     ctx: &mut StatMapCtx<'_>,
     stats: &EffectStats,
     skill_id: &str,
     set_key: Option<&str>,
 ) -> Vec<Modifier> {
-    let Some(catalog) = ctx.catalog else {
-        return Vec::new(); // No catalog (old data pack): curse mods miss entirely.
-    };
+    let merged = merged_stats(stats);
     let mut mods = Vec::new();
-    for ds in stats.all() {
+    for ds in &merged {
         if ds.value == 0.0 {
             continue;
         }
-        let outcome =
-            stat_map_engine::map_curse_stat(catalog, skill_id, set_key, &ds.stat, ds.value);
+        let native = skill_stats::curse_modifiers(&ds.stat, ds.value, &merged);
+        let outcome = match (native, ctx.catalog) {
+            (Some(modifiers), _) => MappedOutcome::Mapped(
+                modifiers
+                    .into_iter()
+                    .map(|modifier| MappedItem::Modifier(Box::new(modifier)))
+                    .collect(),
+            ),
+            (None, Some(catalog)) => {
+                stat_map_engine::map_curse_stat(catalog, skill_id, set_key, &ds.stat, ds.value)
+            }
+            (None, None) => MappedOutcome::Unknown,
+        };
         if let Some((classification, detail)) = classify_outcome(&outcome, "curse") {
             ctx.record(
                 &ds.stat,
@@ -401,6 +417,19 @@ pub fn curse_stat_modifiers(
         }
     }
     mods
+}
+
+/// `stats` with the quality of each stat added to the value its level has:
+/// one entry per stat, in the order the stats first appear.
+fn merged_stats(stats: &EffectStats) -> Vec<SkillDamageStat> {
+    let mut merged: Vec<SkillDamageStat> = Vec::new();
+    for ds in stats.all() {
+        match merged.iter_mut().find(|total| total.stat == ds.stat) {
+            Some(total) => total.value += ds.value,
+            None => merged.push(ds.clone()),
+        }
+    }
+    merged
 }
 
 /// The debuff-effect mod fetch point: maps every stat in a debuff skill's statset,
@@ -567,4 +596,47 @@ pub fn player_buff_stat_modifiers(
         }
     }
     mods
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{CalcConfig, ModDb};
+    use pobr_data::prelude::{ModName, ModType};
+
+    fn stat(id: &str, value: f64) -> SkillDamageStat {
+        SkillDamageStat {
+            stat: id.into(),
+            value,
+        }
+    }
+
+    /// Predator's Mark at 20 quality: its quality adds 1 to the 3% per
+    /// minion in Presence and 15 to the maximum of 45%. The mark reads the
+    /// totals, as one modifier of 4% up to 60%.
+    #[test]
+    fn a_curse_reads_each_stat_with_its_quality_added() {
+        const PER_MINION: &str = "skill_wolf_mark_damage_taken_+%_per_nearby_enemy";
+        const MAXIMUM: &str = "skill_wolf_mark_damage_taken_+%_cap";
+        let stats = EffectStats {
+            base: vec![stat(PER_MINION, 3.0), stat(MAXIMUM, 45.0)],
+            quality: vec![stat(PER_MINION, 1.0), stat(MAXIMUM, 15.0)],
+        };
+        let mods = curse_stat_modifiers(
+            &mut StatMapCtx::data(None),
+            &stats,
+            "WolfPounceMarkPlayer",
+            None,
+        );
+        assert_eq!(mods.len(), 1);
+        assert_eq!(mods[0].value.as_number(), Some(4.0));
+        let mut db = ModDb::new();
+        db.add_list(mods);
+        let taken = |count: f64| {
+            let cfg = CalcConfig::new().with_multiplier("MinionPresenceCount", count);
+            db.sum(ModType::Inc, &cfg, &[ModName::from("DamageTaken")])
+        };
+        assert_eq!(taken(7.0), 28.0);
+        assert_eq!(taken(20.0), 60.0);
+    }
 }

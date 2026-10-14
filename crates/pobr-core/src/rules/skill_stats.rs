@@ -75,12 +75,27 @@ pub fn inflicts_withered(stat: &str) -> bool {
     INFLICTS_WITHERED.contains(&stat)
 }
 
+/// The stats that say how many minions a summoning skill creates, of each
+/// kind of minion it summons.
+const SUMMONED_MINION_COUNTS: [&str; 1] = [
+    // Cackling Companions: "Summons {0} Hyenas".
+    "skill_hyena_cackle_size",
+];
+
+/// Whether the stat `stat` of a summoning skill is the number of minions it
+/// creates. They are counted where the skill creates them
+/// (`skill_env::spawn_minions`); the stat grants the skill nothing.
+pub fn is_summoned_minion_count(stat: &str) -> bool {
+    SUMMONED_MINION_COUNTS.contains(&stat)
+}
+
 /// The modifiers the stat `stat` of a skill, or of a support that applies to
 /// it, grants that skill at `value`, when this table defines the stat. `None`
 /// leaves the stat to the extracted stat map.
 pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
     match stat {
         stat if inflicts_withered(stat) => Some(Vec::new()),
+        stat if is_summoned_minion_count(stat) => Some(Vec::new()),
         // Efficiency: "Supported Skills have {0}% more Cost" / "less Cost",
         // of whatever the skill costs.
         "support_inspiration_cost_+%_final" => {
@@ -178,6 +193,50 @@ pub fn granted_skill_modifiers(stat: &str, value: f64, stats: &[SkillDamageStat]
             )]
         }
         _ => Vec::new(),
+    }
+}
+
+/// Predator's Mark, the mark Pounce applies: "Marked target takes {0}%
+/// increased damage for each of its enemies within 6 metres of it, up to
+/// {1}%". The stat of `{0}`.
+const PREDATORS_MARK_PER_ENEMY: &str = "skill_wolf_mark_damage_taken_+%_per_nearby_enemy";
+
+/// The stat of `{1}` in [`PREDATORS_MARK_PER_ENEMY`]'s text, the maximum.
+const PREDATORS_MARK_MAXIMUM: &str = "skill_wolf_mark_damage_taken_+%_cap";
+
+/// The modifiers the stat `stat` of a curse or a mark puts on the enemy at
+/// `value`, when this table defines the stat. `stats` is every stat of the
+/// skill, each with its quality added. `None` leaves the stat to the
+/// extracted stat map.
+pub fn curse_modifiers(stat: &str, value: f64, stats: &[SkillDamageStat]) -> Option<Vec<Modifier>> {
+    let sibling = |id: &str| stats.iter().find(|ds| ds.stat == id).map(|ds| ds.value);
+    match stat {
+        // Predator's Mark: the enemies of the marked target near it are the
+        // character's minions in its Presence. The wolves Pounce summons
+        // when the marked target dies come after it, so they are not among
+        // them.
+        PREDATORS_MARK_PER_ENEMY => Some(vec![
+            Modifier::number("DamageTaken", ModType::Inc, value)
+                .with_tag(per_minion_in_presence(sibling(PREDATORS_MARK_MAXIMUM))),
+        ]),
+        // The maximum of the line above.
+        PREDATORS_MARK_MAXIMUM => Some(Vec::new()),
+        _ => None,
+    }
+}
+
+/// "for each Minion in your Presence", the total up to `maximum`. The count
+/// is `MinionPresenceCount`, set by `CalculationSession::bridge_minion_presence`.
+fn per_minion_in_presence(maximum: Option<f64>) -> ModTag {
+    ModTag::Multiplier {
+        var: "MinionPresenceCount".into(),
+        div: 1.0,
+        limit: maximum,
+        actor: None,
+        limit_var: None,
+        limit_actor: None,
+        invert: false,
+        limit_total: true,
     }
 }
 
@@ -565,6 +624,40 @@ mod tests {
         assert!(player_buff_modifiers("base_skill_effect_duration", 5000.0, skill).is_none());
         assert!(skill_modifiers("base_skill_effect_duration", 5000.0).is_none());
         assert!(granted_skill_modifiers("base_skill_effect_duration", 5000.0, &[]).is_empty());
+        assert!(curse_modifiers("base_skill_effect_duration", 5000.0, &[]).is_none());
+    }
+
+    /// Predator's Mark at 20 quality: 4% increased damage taken for each of
+    /// the character's minions in its Presence, up to 60%.
+    #[test]
+    fn predators_mark_counts_the_minions_in_presence_up_to_its_maximum() {
+        let stats = [
+            stat(PREDATORS_MARK_PER_ENEMY, 4.0),
+            stat(PREDATORS_MARK_MAXIMUM, 60.0),
+        ];
+        let mut db = ModDb::new();
+        for ds in &stats {
+            db.add_list(curse_modifiers(&ds.stat, ds.value, &stats).expect("a rule"));
+        }
+        let taken = |cfg: &CalcConfig| db.sum(ModType::Inc, cfg, &[ModName::from("DamageTaken")]);
+        let minions = |count: f64| CalcConfig::new().with_multiplier("MinionPresenceCount", count);
+        assert_eq!(taken(&minions(7.0)), 28.0);
+        // Twenty minions reach the maximum.
+        assert_eq!(taken(&minions(20.0)), 60.0);
+        // The mark adds nothing when the character has no minions.
+        assert_eq!(taken(&minions(0.0)), 0.0);
+        assert_eq!(taken(&CalcConfig::new()), 0.0);
+    }
+
+    /// "Summons {0} Hyenas" is how many Hyenas Cackling Companions creates,
+    /// counted where they are created. It grants the skill nothing.
+    #[test]
+    fn the_number_of_hyenas_is_read_where_they_are_created() {
+        assert!(is_summoned_minion_count("skill_hyena_cackle_size"));
+        assert_eq!(
+            skill_modifiers("skill_hyena_cackle_size", 7.0),
+            Some(Vec::new())
+        );
     }
 
     /// The stats of supports that change what the skill they apply to costs.

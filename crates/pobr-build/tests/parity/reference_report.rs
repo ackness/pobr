@@ -209,15 +209,25 @@ const BASELINES: [Baseline; 3] = [
     // are -66 to -100, and without the second count they are 0 to 7
     // (`amulet_granted_skills_do_not_overdraw_spirit`). `SpiritUnreserved` is
     // the only row the rule can move; it stopped agreeing on 4, 6 and 6 builds.
+    //
+    // Then 6 builds and 346 rows. Every minion the calculation creates is in
+    // the character's Presence, a Companion with no limit stat included, such
+    // as the Rhoa of Rhoa Mount (skill types `Minion`, `Companion`). The Ice
+    // Shot of the Chaos Inoculation Deadeye has Minion Pact II, "Supported
+    // Skills remove 150% of your maximum Life from a nearby Minion on use to
+    // deal 35% more damage": 1.5 of its Rhoa's 4,182 Life. Its reference
+    // leaves the 35% out of TotalDPS and CombinedDPS, and out of TotalDotDPS
+    // and IgniteDPS, which follow the hit twice (about 1.35 squared): the
+    // exporting tool counts only the minions of skills that name a limit stat.
     Baseline {
         corpus: "examples/wasm-benchmark/builds",
-        dps_builds: 6,
-        agreeing_rows: 346,
+        dps_builds: 5,
+        agreeing_rows: 342,
     },
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
-        dps_builds: 21,
-        agreeing_rows: 993,
+        dps_builds: 22,
+        agreeing_rows: 1003,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
@@ -229,8 +239,8 @@ const BASELINES: [Baseline; 3] = [
     // line as spell-only too; the exporting tool did not.
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
-        dps_builds: 15,
-        agreeing_rows: 969,
+        dps_builds: 16,
+        agreeing_rows: 979,
     },
 ];
 

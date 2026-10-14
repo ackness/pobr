@@ -227,3 +227,27 @@ fn minion_limit_reads_completed_player_sources() {
     assert!(limit >= 3.0);
     assert_eq!(session.base_sum("Multiplier:SummonedMinion"), limit);
 }
+
+/// Cackling Companions: "Summons {0} Hyenas", seven at gem level 7. The
+/// character has that many minions, though nothing raises the Hyenas' own
+/// limit.
+#[test]
+fn cackling_companions_creates_as_many_hyenas_as_it_says() {
+    let data = load_data();
+    let build = Build::new()
+        .with_character(CharacterIdentity {
+            level: 90,
+            class_name: "Witch".into(),
+            ascendancy_name: String::new(),
+        })
+        .add_socket_group(
+            SocketGroup::new()
+                .with_slot("weapon1")
+                .with_gem_skill("FireballPlayer", 20),
+        )
+        .add_socket_group(SocketGroup::new().with_gem_skill("HyenaCacklePlayer", 7));
+    let options = default_opts();
+    let session = pobr_build::calculate_with_data_session(&build, &data, &options).unwrap();
+    assert_eq!(session.base_sum("Multiplier:SummonedMinion"), 7.0);
+    assert_eq!(session.base_sum("Multiplier:MinionPresenceCount"), 7.0);
+}

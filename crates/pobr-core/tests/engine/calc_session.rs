@@ -81,6 +81,58 @@ fn per_lowest_attribute_modifiers_read_the_least_final_attribute() {
     assert!((out.total_hit_avg - 110.0).abs() < 1e-9);
 }
 
+/// "for each Minion in your Presence" counts the minions the calculation
+/// created, or the configured "# of Minions in your Presence".
+#[test]
+fn minions_in_presence_are_the_minions_created_or_the_configured_number() {
+    use pobr_core::calc::minion::AttributeInfusion;
+    use pobr_core::{CalcConfig, ModTag, Modifier};
+    use pobr_data::minion::minion_def_zombie;
+    use pobr_data::prelude::ModType;
+
+    let attack_hit = |zombies: u32, configured: Option<f64>| {
+        let mut s = session(MinimalInput {
+            base_hit_min: 100.0,
+            base_hit_max: 100.0,
+            ..Default::default()
+        })
+        .with_config(CalcConfig::attack().with_mode_combat(true));
+        s.add_modifier_texts([
+            "5% increased Attack Damage for each Minion in your Presence, up to a maximum of 80%",
+        ])
+        .unwrap();
+        assert!(s.unsupported_modifier_texts().is_empty());
+        if let Some(count) = configured {
+            // What the config option adds: a combat input.
+            let name = "Multiplier:MinionPresenceCount";
+            let modifier = Modifier::number(name, ModType::Override, count)
+                .with_tag(ModTag::condition("Combat", false));
+            s.add_modifiers([modifier]);
+        }
+        s.prepare_player_stats(1, None);
+        if zombies > 0 {
+            s.add_minion_from_def(
+                &minion_def_zombie(),
+                20,
+                zombies,
+                Vec::new(),
+                Vec::new(),
+                AttributeInfusion::default(),
+                false,
+            );
+        }
+        s.bridge_minion_presence();
+        s.perform_minimal().unwrap().total_hit_avg
+    };
+    // Three Raised Zombies: 15%.
+    assert!((attack_hit(3, None) - 115.0).abs() < 1e-9);
+    // Twenty reach the maximum of 80%.
+    assert!((attack_hit(20, None) - 180.0).abs() < 1e-9);
+    assert!((attack_hit(0, None) - 100.0).abs() < 1e-9);
+    // The configured number is the count.
+    assert!((attack_hit(3, Some(5.0)) - 125.0).abs() < 1e-9);
+}
+
 #[test]
 fn completed_session_rejects_recalculation_without_mutating_derived_resources() {
     use pobr_core::{Modifier, calc::CalcError};
