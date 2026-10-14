@@ -222,7 +222,7 @@ pub(super) fn tag(tag: &TemplateTagDef, count: usize) -> Result<(), String> {
     let (required, allowed): (&[&str], &[&str]) = match tag.tag_type.as_str() {
         "Condition" => (&["var"], &["var", "neg"]),
         "ActorCondition" => (&["var", "actor"], &["var", "neg", "actor"]),
-        "SkillType" => (&[], &["skillType", "skillTypeList"]),
+        "SkillType" => (&[], &["skillType", "skillTypeList", "neg"]),
         "DamageType" => (&["damageType"], &["damageType"]),
         "Multiplier" => (&["var"], &["var", "div", "limit"]),
         "PerStat" => (&["stat"], &["stat", "div", "limit"]),

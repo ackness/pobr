@@ -584,3 +584,33 @@ fn armour_defends_more_while_not_on_low_energy_shield() {
     let low = r#"<Input name="conditionLowEnergyShield" boolean="true"/>"#;
     assert_eq!(reduction(line, low), reduction("", low));
 }
+
+/// "Non-Channelling Spells cost an additional N% of your maximum Life" adds
+/// that share of the maximum Life, rounded down, to the cost of a spell that
+/// is not channelled. A line for attacks leaves a spell's cost alone.
+#[test]
+fn a_spell_costs_a_share_of_maximum_life() {
+    let data = data();
+    let options = DataOrchestratorOptions::default();
+    let calculate = |skill: &str, lines: &str| {
+        let build = build_of(
+            skill,
+            LEVEL_20,
+            "",
+            &format!(
+                r#"<CustomModifierBlock title="Test" enabled="true">{lines}</CustomModifierBlock>"#
+            ),
+        );
+        calculate_with_data(&build, &data, &options).expect("calculate")
+    };
+    let line = "Non-Channelling Spells cost an additional 6% of your maximum Life";
+    let plain = calculate("Fireball", "");
+    let fireball = calculate("Fireball", line);
+    assert_eq!(plain.life_cost, 0.0);
+    assert!(fireball.life > 0.0);
+    assert_eq!(fireball.life_cost, (fireball.life * 0.06).floor());
+    assert_eq!(fireball.mana_cost, plain.mana_cost);
+    assert_eq!(calculate("Incinerate", line).life_cost, 0.0);
+    let attacks = "Attacks cost an additional 6% of your maximum Mana";
+    assert_eq!(calculate("Fireball", attacks).mana_cost, plain.mana_cost);
+}

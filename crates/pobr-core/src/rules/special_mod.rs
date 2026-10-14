@@ -648,8 +648,17 @@ fn compile_literal_tag(tag: &TemplateTagDef) -> Option<ModTag> {
                 let bare = name.strip_prefix("SkillType:").unwrap_or(name);
                 SkillTypes::from_pob2_name(bare)
             };
+            // `neg`: the skill has none of the types ("Non-Channelling Spells").
+            let neg = tag.fields.get("neg").and_then(scalar_bool).unwrap_or(false);
+            let tag_of = |types| {
+                if neg {
+                    ModTag::SkillTypesNeg(types)
+                } else {
+                    ModTag::SkillTypes(types)
+                }
+            };
             if let Some(v) = tag.fields.get("skillType") {
-                return lookup(&scalar_text(v)?).map(ModTag::SkillTypes);
+                return lookup(&scalar_text(v)?).map(tag_of);
             }
             // `skillTypeList` (vendor OR over multiple types — the ModStore
             // SkillType branch fires on any match) → folded into a single
@@ -663,7 +672,7 @@ fn compile_literal_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             for name in items {
                 acc |= lookup(name)?;
             }
-            (!acc.is_empty()).then_some(ModTag::SkillTypes(acc))
+            (!acc.is_empty()).then_some(tag_of(acc))
         }
         "DamageType" => {
             let name = scalar_text(tag.fields.get("damageType")?)?;
@@ -1510,6 +1519,21 @@ mod tests {
         assert!(
             matches!(&m.mods[0].tags[0], ModTag::Condition { var, negated, .. } if var=="NeverCrit" && *negated)
         );
+    }
+
+    /// A negated SkillType tag: the skill has none of the types.
+    #[test]
+    fn negated_skill_type_tag() {
+        let d = def(r#"{"id":"t","pattern":"not channelled","mods":[
+                {"name":"X","type":"BASE","value":1,
+                 "tags":[{"type":"SkillType","skillType":"SkillType:Channel","neg":true}]}],"batch":"S2"}"#);
+        let r = rules(vec![d]);
+        let reg = HandlerRegistry::new();
+        let m = r.try_match("not channelled", &reg).unwrap();
+        assert!(matches!(
+            &m.mods[0].tags[0],
+            ModTag::SkillTypesNeg(types) if Some(*types) == SkillTypes::from_pob2_name("Channel")
+        ));
     }
 
     /// Literal Multiplier tag mapping (fork-a: Blood Mage's

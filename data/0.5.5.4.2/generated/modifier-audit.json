@@ -30,7 +30,7 @@
       "0.5.5.4.2/generated/special_vendor.json": "51d520b5e9f26b57c4b1bfe5aa92bd4ee483f049cfba7fa152c95167628ba01e",
       "0.5.5.4.2/overlay/mod_parser_rules.json": "4ca754192ca4422982d7828b410a68723bfcdf1cc3cbea7f30c522d94fea6860",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
-      "overlay-common/special_mods.json": "4e6fda4a90731452349a0338fa8d71aea81593482c4737ccf5a627031391b333"
+      "overlay-common/special_mods.json": "af6d38ae3560c460598f907a23bc0db55b5a7f68aaf89611150e81d256a34480"
     },
     "effective_rules": [
       {
@@ -189,6 +189,30 @@
       },
       {
         "id": "defend_with_pct_of_armour_while_not_on_low_energy_shield",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "non_channelling_spells_cost_pct_of_maximum_life",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "attacks_cost_pct_of_maximum_mana",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "non_channelling_attacks_cost_pct_of_maximum_mana",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -18211,10 +18235,10 @@
     "unsampled_translations": 170
   },
   "summary": {
-    "parsed": 14797,
-    "pobr_gap": 2433,
+    "parsed": 14805,
+    "pobr_gap": 2427,
     "recognized_empty": 330,
-    "upstream_gap": 25137
+    "upstream_gap": 25135
   },
   "entries": {
     "% of spent Runic Ward granted as Guard@100%": {
@@ -222658,25 +222682,43 @@
       "sources": [
         "stat:stat_descriptions:attacks_base_mana_cost_+_%_of_maximum_mana"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "ManaCostPercentOfMaximumMana"
+      ],
+      "special_rule_id": "attacks_cost_pct_of_maximum_mana",
+      "matching_special_rules": [
+        "attacks_cost_pct_of_maximum_mana"
+      ]
     },
     "Attacks cost an additional 17% of your maximum Mana": {
       "sources": [
         "translation:攻击额外消耗 {0}% 的魔力上限"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "ManaCostPercentOfMaximumMana"
+      ],
+      "special_rule_id": "attacks_cost_pct_of_maximum_mana",
+      "matching_special_rules": [
+        "attacks_cost_pct_of_maximum_mana"
+      ]
     },
     "Attacks cost an additional 6% of your maximum Mana": {
       "sources": [
         "unique:Mind of the Council"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "ManaCostPercentOfMaximumMana"
+      ],
+      "special_rule_id": "attacks_cost_pct_of_maximum_mana",
+      "matching_special_rules": [
+        "attacks_cost_pct_of_maximum_mana"
+      ]
     },
     "Attacks deal no Physical Damage": {
       "sources": [
@@ -339209,17 +339251,29 @@
       "sources": [
         "stat:stat_descriptions:base_mana_cost_+_with_non_channelling_attacks_%_maximum_mana"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ManaCostPercentOfMaximumMana"
+      ],
+      "special_rule_id": "non_channelling_attacks_cost_pct_of_maximum_mana",
+      "matching_special_rules": [
+        "non_channelling_attacks_cost_pct_of_maximum_mana"
+      ]
     },
     "Non-Channelling Attacks cost an additional 17% of your maximum Mana": {
       "sources": [
         "translation:非吟唱攻击额外消耗 {0}% 的魔力上限"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ManaCostPercentOfMaximumMana"
+      ],
+      "special_rule_id": "non_channelling_attacks_cost_pct_of_maximum_mana",
+      "matching_special_rules": [
+        "non_channelling_attacks_cost_pct_of_maximum_mana"
+      ]
     },
     "Non-Channelling Attacks have Added Lightning Damage equal to 1% of maximum Mana": {
       "sources": [
@@ -339395,9 +339449,15 @@
       "sources": [
         "stat:stat_descriptions:base_life_cost_+_with_non_channelling_spells_%_maximum_life"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "LifeCostPercentOfMaximumLife"
+      ],
+      "special_rule_id": "non_channelling_spells_cost_pct_of_maximum_life",
+      "matching_special_rules": [
+        "non_channelling_spells_cost_pct_of_maximum_life"
+      ]
     },
     "Non-Channelling Spells cost an additional 17% of maximum Energy Shield": {
       "sources": [
@@ -339411,9 +339471,15 @@
       "sources": [
         "translation:非吟唱法术额外消耗 {0}% 的生命上限"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "LifeCostPercentOfMaximumLife"
+      ],
+      "special_rule_id": "non_channelling_spells_cost_pct_of_maximum_life",
+      "matching_special_rules": [
+        "non_channelling_spells_cost_pct_of_maximum_life"
+      ]
     },
     "Non-Channelling Spells cost an additional 17% of your maximum Mana": {
       "sources": [
@@ -339427,9 +339493,15 @@
       "sources": [
         "unique:Rathpith Globe"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "LifeCostPercentOfMaximumLife"
+      ],
+      "special_rule_id": "non_channelling_spells_cost_pct_of_maximum_life",
+      "matching_special_rules": [
+        "non_channelling_spells_cost_pct_of_maximum_life"
+      ]
     },
     "Non-Channelling Spells deal 1% increased Damage per 100 maximum Life": {
       "sources": [

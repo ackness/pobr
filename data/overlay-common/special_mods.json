@@ -405,6 +405,77 @@
       "source_note": "游戏 stat defend_with_%_of_armour_while_not_on_low_energy_shield（“Defend with {0}% of Armour while not on Low Energy Shield”，天赋 Barrier of Venarius）：不在低能量护盾时按护甲的 N% 防御，ArmourDefense BASE N-100"
     },
     {
+      "id": "non_channelling_spells_cost_pct_of_maximum_life",
+      "pattern": "non-channelling spells cost an additional (\\d+)% of your maximum life",
+      "mods": [
+        {
+          "name": "LifeCostPercentOfMaximumLife",
+          "type": "BASE",
+          "value": {
+            "ref": "$1"
+          },
+          "flags": [
+            "Spell"
+          ],
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "SkillType:Channel",
+              "neg": true
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "游戏 stat base_life_cost_+_with_non_channelling_spells_%_maximum_life（“Non-Channelling Spells cost an additional {0}% of your maximum Life”）：非引导法术额外消耗最大生命的 N%，按最大值取整后加到技能的基础消耗（skill_mechanics::cost_from_maximum_pool）"
+    },
+    {
+      "id": "attacks_cost_pct_of_maximum_mana",
+      "pattern": "attacks cost an additional (\\d+)% of your maximum mana",
+      "mods": [
+        {
+          "name": "ManaCostPercentOfMaximumMana",
+          "type": "BASE",
+          "value": {
+            "ref": "$1"
+          },
+          "flags": [
+            "Attack"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "游戏 stat attacks_base_mana_cost_+_%_of_maximum_mana（“Attacks cost an additional {0}% of your maximum Mana”）：攻击额外消耗最大魔力的 N%，按最大值取整后加到技能的基础消耗（skill_mechanics::cost_from_maximum_pool）"
+    },
+    {
+      "id": "non_channelling_attacks_cost_pct_of_maximum_mana",
+      "pattern": "non-channelling attacks cost an additional (\\d+)% of your maximum mana",
+      "mods": [
+        {
+          "name": "ManaCostPercentOfMaximumMana",
+          "type": "BASE",
+          "value": {
+            "ref": "$1"
+          },
+          "flags": [
+            "Attack"
+          ],
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "SkillType:Channel",
+              "neg": true
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "游戏 stat base_mana_cost_+_with_non_channelling_attacks_%_maximum_mana（“Non-Channelling Attacks cost an additional {0}% of your maximum Mana”）：非引导攻击额外消耗最大魔力的 N%，按最大值取整后加到技能的基础消耗（skill_mechanics::cost_from_maximum_pool）"
+    },
+    {
       "id": "double_activation_delay_of_curses",
       "pattern": "double activation delay of curses",
       "vendor_pattern": "double activation delay of curses",

@@ -702,6 +702,23 @@ fn base_mana_cost_as_life_share(db: &ModDb, cfg: &CalcConfig) -> f64 {
         .max(0.0)
 }
 
+/// What lines like "Non-Channelling Spells cost an additional 6% of your
+/// maximum Life" add to the skill's base cost in that pool (game stats
+/// `base_life_cost_+_with_non_channelling_spells_%_maximum_life`,
+/// `attacks_base_mana_cost_+_%_of_maximum_mana`,
+/// `base_mana_cost_+_with_non_channelling_attacks_%_maximum_mana`): that
+/// share of the maximum in whole points, rounded down. Like the skill's own
+/// base cost, it is then scaled by the supports' cost multipliers and the
+/// cost modifiers.
+fn cost_from_maximum_pool(db: &ModDb, cfg: &CalcConfig, pool: &str) -> f64 {
+    let name = format!("{pool}CostPercentOfMaximum{pool}");
+    let percent = db.sum(ModType::Base, cfg, &[ModName::from(name.as_str())]);
+    if percent <= 0.0 {
+        return 0.0;
+    }
+    (cfg.stat(pool) * percent / 100.0).floor()
+}
+
 /// What one use of the skill costs.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct SkillCosts {
@@ -714,8 +731,8 @@ pub struct SkillCosts {
 /// cost between the two. A resource the skill has no cost in stays 0.
 pub fn skill_costs(db: &ModDb, cfg: &CalcConfig) -> SkillCosts {
     let base = |name: &str| db.sum(ModType::Base, cfg, &[ModName::from(name)]);
-    let base_mana = base("SkillManaCostBase");
-    let base_life = base("SkillLifeCostBase");
+    let base_mana = base("SkillManaCostBase") + cost_from_maximum_pool(db, cfg, "Mana");
+    let base_life = base("SkillLifeCostBase") + cost_from_maximum_pool(db, cfg, "Life");
     let has_mana_cost = base_mana > 0.0 || unscaled_cost(db, cfg, "Mana") > 0.0;
     let hybrid = hybrid_life_cost_share(db, cfg);
     let mana = if has_mana_cost {
