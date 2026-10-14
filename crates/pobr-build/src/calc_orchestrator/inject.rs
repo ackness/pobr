@@ -290,6 +290,28 @@ fn is_grand_spectrum(jewel: &pobr_data::item::Item) -> bool {
         .any(|line| line.ends_with("per socketed Grand Spectrum"))
 }
 
+/// The augments in the equipment's sockets, as `(Idols, the others)`. The
+/// game's base items class every augment (Rune, Soul Core, Idol) as
+/// `SoulCore` and tag the Idols `idol`. A socket entry that is no augment,
+/// such as the skill a Talisman grants, is not counted.
+fn augments_in_equipment(build: &Build, data: &BuildData) -> (usize, usize) {
+    let (mut idols, mut others) = (0, 0);
+    for name in build.items.values().flat_map(|item| &item.socketed) {
+        let Some(base) = data.base_items.get(name) else {
+            continue;
+        };
+        if base.item_class != "SoulCore" {
+            continue;
+        }
+        if base.tags.iter().any(|tag| tag == "idol") {
+            idols += 1;
+        } else {
+            others += 1;
+        }
+    }
+    (idols, others)
+}
+
 /// Build-derived counts and equipment facts; actor-derived values belong to core.
 pub(super) fn inject_build_multipliers(
     session: &mut CalculationSession,
@@ -323,6 +345,11 @@ pub(super) fn inject_build_multipliers(
     // in the build's sockets, whatever their base.
     let grand_spectrums = build.jewel_items().filter(|jewel| is_grand_spectrum(jewel));
     session.set_multiplier("GrandSpectrum", grand_spectrums.count() as f64);
+    // "… per Idol in your Equipment" and "… per non-Idol Augment in your
+    // Equipment": what the equipment's sockets hold.
+    let (idols, others) = augments_in_equipment(build, data);
+    session.set_multiplier("IdolsInEquipment", idols as f64);
+    session.set_multiplier("NonIdolAugmentsInEquipment", others as f64);
     // GrenadeTypes (matching vendor CalcPerform.lua:1238-1242: counts the number of
     // distinct granted effects among enabled active skills with `SkillType.Grenade`,
     // deduplicated) — the Demolitionist ascendancy's "… for every different Grenade

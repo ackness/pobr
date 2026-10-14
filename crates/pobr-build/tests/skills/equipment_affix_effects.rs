@@ -1014,3 +1014,35 @@ fn overlapping_time_lost_jewels_share_the_last_local_effect_per_node() {
         );
     }
 }
+
+/// "… per Idol in your Equipment" and "… per non-Idol Augment in your
+/// Equipment" count what the equipment's sockets hold. Every augment is a
+/// `SoulCore` among the game's base items and an Idol is tagged `idol`; a
+/// socket entry that is no augment (a skill a Talisman grants) is neither.
+#[test]
+fn augments_in_equipment_are_counted_by_kind() {
+    let data = data();
+    let lines = [
+        "+10 to maximum Life per Idol in your Equipment",
+        "-4% to all Elemental Resistances per non-Idol Augment in your Equipment",
+    ];
+    let with_sockets = |socketed: &[&str]| {
+        let mut chest = item("Plate Vest", &lines);
+        chest.socketed = socketed.iter().map(|name| (*name).into()).collect();
+        let session = run(
+            &build("FireballPlayer").set_item(EquipmentSlot::BodyArmour, chest),
+            &data,
+        );
+        (session.output().life, session.output().fire_resistance)
+    };
+    let (life, fire) = with_sockets(&[]);
+    let (socketed_life, socketed_fire) = with_sockets(&[
+        "Fox Idol",
+        "Soul Core of Cholotl",
+        "Greater Rune of Leadership",
+        "Cackling Companions",
+    ]);
+    // One Idol, two other augments.
+    close(socketed_life - life, 10.0);
+    close(socketed_fire - fire, -8.0);
+}

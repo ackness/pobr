@@ -124,7 +124,8 @@ pub enum ModTag {
         /// Cross-actor value read (PoB2 ModStore.lua:347-353 `tag.actor`).
         /// `None` (default) reads the current `cfg.multiplier(var)`, unchanged
         /// from before this field existed; `Some(actor)` reads
-        /// `cfg.actor_multipliers["<actor>.<var>"]` (missing key → 0).
+        /// [`CalcConfig::actor_multiplier`](crate::CalcConfig::actor_multiplier)
+        /// (missing key → 0, except the player's own count).
         actor: Option<ActorRef>,
         /// Dynamic limit variable (PoB2 ModStore.lua:369 `tag.limitVar`:
         /// `limit = tag.limit or GetMultiplier(limitTarget, tag.limitVar)` —
@@ -439,10 +440,12 @@ impl Modifier {
                 // Cross-actor condition (PoB2 ActorCondition): checks the
                 // truthiness of the actor_multipliers snapshot (≠0 is true,
                 // missing key is false — equivalent to PoB2's conservative
-                // behavior of the mod not applying when getActor fails).
+                // behavior of the mod not applying when getActor fails). The
+                // player's own conditions are not read here: the exposure
+                // config entries depend on that (see `config_resolve`).
                 let enabled = match actor {
                     None => cfg.condition(var),
-                    Some(actor) => cfg.actor_multiplier(*actor, var) != 0.0,
+                    Some(actor) => cfg.actor_snapshot(*actor, var) != 0.0,
                 };
                 if *negated { !enabled } else { enabled }
             }
@@ -619,7 +622,7 @@ impl Modifier {
                     // the actor_multipliers snapshot with Multiplier.
                     let base = match actor {
                         None => ctx.stat(stat),
-                        Some(actor) => cfg.actor_multiplier(*actor, stat),
+                        Some(actor) => cfg.actor_snapshot(*actor, stat),
                     };
                     // vendor :460 `mult = m_floor(base / (tag.div or 1) + 0.0001)`.
                     let count = (base / div.max(f64::EPSILON) + 0.0001).floor();
@@ -783,6 +786,20 @@ mod tests {
             limit_total: false,
         });
         assert_eq!(missing.effective_number(&cfg), Some(0.0));
+
+        // The player without a snapshot entry is this configuration's own count.
+        let player = Modifier::number("Life", ModType::Base, 10.0).with_tag(ModTag::Multiplier {
+            var: "IdolsInEquipment".into(),
+            div: 1.0,
+            limit: None,
+            actor: Some(ActorRef::Player),
+            limit_var: None,
+            limit_actor: None,
+            invert: false,
+            limit_total: false,
+        });
+        let own = CalcConfig::new().with_multiplier("IdolsInEquipment", 2.0);
+        assert_eq!(player.effective_number(&own), Some(20.0));
     }
 
     /// Dynamic limit: static `limit` takes priority over `limit_var` (PoB2

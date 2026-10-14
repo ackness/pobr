@@ -355,14 +355,29 @@ impl CalcConfig {
         self
     }
 
-    /// Reads the cross-actor multiplier snapshot for a given actor (the
-    /// `actor`/`limit_actor` evaluation channel of [`ModTag`](crate::ModTag)).
+    /// Reads the cross-actor snapshot for a given actor (the `actor`/
+    /// `limit_actor` evaluation channel of [`ModTag`](crate::ModTag)).
     /// Missing key → 0.0 — conservatively matching PoB2 ModStore.lua's
     /// behavior where the mod doesn't apply when `getActor` is missing.
-    pub fn actor_multiplier(&self, actor: crate::ActorRef, var: &str) -> f64 {
+    pub fn actor_snapshot(&self, actor: crate::ActorRef, var: &str) -> f64 {
         self.actor_multipliers
             .get(&format!("{}.{}", actor.key(), var))
             .copied()
             .unwrap_or(0.0)
+    }
+
+    /// An actor's multiplier: the snapshot's, or for the player without a
+    /// snapshot entry this configuration's own. Every calculation
+    /// configuration is the player's or a copy of it (the minions' and the
+    /// enemy's are clones), so the player's count is the one it holds; PoB2
+    /// likewise makes the player its own `player` actor. Lines such as
+    /// "… per Idol in your Equipment" take this path.
+    pub fn actor_multiplier(&self, actor: crate::ActorRef, var: &str) -> f64 {
+        let key = format!("{}.{}", actor.key(), var);
+        match self.actor_multipliers.get(&key) {
+            Some(value) => *value,
+            None if actor == crate::ActorRef::Player => self.multiplier(var),
+            None => 0.0,
+        }
     }
 }
