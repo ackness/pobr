@@ -189,9 +189,10 @@ pub(crate) fn resolved_enemy_level(
 ///   don't consume ammo);
 /// - `CrossbowReloadTimeBase` BASE (seconds) ← the main-hand weapon's
 ///   `weapon.reload_time_ms` (WeaponTypes' ReloadTime; falls back to the overlay's
-///   base_item_overrides, 33 crossbows already cataloged). When the weapon has no
-///   reload data (not holding a crossbow) → returns empty entirely (matching vendor's
-///   baseReloadTime nil semantics);
+///   base_item_overrides, 33 crossbows already cataloged), divided by
+///   `1 + (local reload speed + local attack speed) / 100` of that weapon. When the
+///   weapon has no reload data (not holding a crossbow) → returns empty entirely
+///   (matching vendor's baseReloadTime nil semantics);
 /// - `CrossbowBoltCount` BASE ← the stat `base_number_of_crossbow_bolts` from the
 ///   sibling ammo skill in the same group (either directly in the group, or linked via
 ///   gem_effects' additional effects) (matching vendor's ammo skill modList transfer

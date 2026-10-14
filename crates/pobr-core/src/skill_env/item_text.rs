@@ -66,6 +66,20 @@ pub fn weapon_local_attack_speed(item: &Item) -> f64 {
         .sum()
 }
 
+/// A weapon's own reload speed, in percent: the game's `local_reload_speed_+%`,
+/// which reads "N% increased Reload Speed" or "N% reduced Reload Speed" on a
+/// crossbow (The Last Lament's "42% reduced Reload Speed").
+pub fn parse_local_reload_speed(clean: &str) -> Option<f64> {
+    local_percent(clean, "reload speed")
+}
+
+/// Sum of the weapon's own reload speed lines (see [`parse_local_reload_speed`]).
+pub fn weapon_local_reload_speed(item: &Item) -> f64 {
+    weapon_mod_texts(item)
+        .filter_map(|text| parse_local_reload_speed(&clean_item_text(text)))
+        .sum()
+}
+
 /// Bare weapon critical chance is local (Item.lua `calcLocal("CritChance")`).
 /// Exact numeric forms leave global, attack/spell-specific and conditional
 /// modifiers in the global pipeline. Shared by weapon base assembly and stripping.
@@ -344,5 +358,13 @@ mod tests {
         ] {
             assert!(!is_weapon_local_mod(line, &rules), "{line}");
         }
+    }
+
+    #[test]
+    fn local_reload_speed_reads_increased_and_reduced() {
+        let parse = |text: &str| parse_local_reload_speed(&clean_item_text(text));
+        assert_eq!(parse("42% reduced Reload Speed"), Some(-42.0));
+        assert_eq!(parse("15% increased Reload Speed"), Some(15.0));
+        assert_eq!(parse("15% increased Attack Speed"), None);
     }
 }

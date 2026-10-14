@@ -554,9 +554,10 @@ pub struct GemInput {
 ///   don't consume ammo);
 /// - `CrossbowReloadTimeBase` BASE (seconds) ← the main-hand weapon's
 ///   `weapon.reload_time_ms` (WeaponTypes' ReloadTime; falls back to the overlay's
-///   base_item_overrides, 33 crossbows already cataloged). When the weapon has no
-///   reload data (not holding a crossbow) → returns empty entirely (matching vendor's
-///   baseReloadTime nil semantics);
+///   base_item_overrides, 33 crossbows already cataloged), divided by
+///   `1 + (local reload speed + local attack speed) / 100` of that weapon. When the
+///   weapon has no reload data (not holding a crossbow) → returns empty entirely
+///   (matching vendor's baseReloadTime nil semantics);
 /// - `CrossbowBoltCount` BASE ← the stat `base_number_of_crossbow_bolts` from the
 ///   sibling ammo skill in the same group (either directly in the group, or linked via
 ///   gem_effects' additional effects) (matching vendor's ammo skill modList transfer
@@ -564,7 +565,9 @@ pub struct GemInput {
 ///   minimum magazine of 1).
 ///
 /// `ReloadSpeed`/`ChanceToNotConsumeAmmo`/`InstantReloadChance` mods go through the
-/// generic modifier bus, aggregated on the calc side (`fill_crossbow_reload`).
+/// generic modifier bus, aggregated on the calc side (`fill_crossbow_reload`). The
+/// weapon's own reload speed lines are not among them: they are local
+/// (`local_mods.weapon`) and stripped from the global pool.
 pub fn crossbow_reload_modifiers(
     effects: &dyn crate::skill_env::EffectLookup,
     weapons: &dyn crate::skill_env::WeaponBaseLookup,
@@ -580,15 +583,28 @@ pub fn crossbow_reload_modifiers(
     if !has_type("CrossbowSkill") || has_type("Grenade") || has_type("CrossbowAmmoSkill") {
         return Vec::new();
     }
-    // Weapon reload base value (main-hand only; matching vendor's `actor.weaponData1.ReloadTime`).
-    let Some(reload_ms) = equipment
-        .item(pobr_data::item::EquipmentSlot::Weapon1)
-        .and_then(|item| weapons.weapon_base(&item.base.to_string()))
+    // The main-hand weapon's reload time.
+    let Some(weapon) = equipment.item(pobr_data::item::EquipmentSlot::Weapon1) else {
+        return Vec::new();
+    };
+    let Some(reload_ms) = weapons
+        .weapon_base(&weapon.base.to_string())
         .and_then(|w| w.reload_time_ms)
         .filter(|&ms| ms > 0)
     else {
         return Vec::new();
     };
+    // The weapon's own reload speed (the game's `local_reload_speed_+%`) and
+    // its own attack speed, which changes reload time as attack speed does,
+    // change the weapon's reload time before the character's reload and
+    // attack speed apply to it (`calc::skill_use_time::crossbow_reload_time`).
+    let local_speed = super::item_text::weapon_local_reload_speed(weapon)
+        + super::item_text::weapon_local_attack_speed(weapon);
+    let local_multiplier = 1.0 + local_speed / 100.0;
+    let mut reload_s = f64::from(reload_ms) / 1000.0;
+    if local_multiplier > 0.0 {
+        reload_s /= local_multiplier;
+    }
     let mk = |name: &str, value: f64, label: String| {
         let origin = ModifierSource::new(SourceId::new(
             SourceKind::SkillGem,
@@ -599,8 +615,8 @@ pub fn crossbow_reload_modifiers(
     };
     let mut mods = vec![mk(
         "CrossbowReloadTimeBase",
-        f64::from(reload_ms) / 1000.0,
-        format!("crossbow weapon reload {reload_ms}ms"),
+        reload_s,
+        format!("crossbow weapon reload {reload_ms}ms, {local_speed:+}% on the weapon"),
     )];
     // Magazine capacity from the sibling ammo skill: the first `CrossbowAmmoSkill`
     // among the group's own gems or their additional granted effects, taking its
