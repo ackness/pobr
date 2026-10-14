@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 
 use pobr_build::build::GemSkillRef;
 use pobr_build::{
-    Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup,
+    Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup, WeaponSet,
     calculate_with_data_session, decode_pob_code, import_build, import_build_with_allocated_nodes,
     radius_jewel_from_text,
 };
@@ -128,8 +128,11 @@ pub struct SlotItemInput {
 #[derive(Debug, Clone, Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct WeaponSwapInput {
+    /// The weapon set in use, 1 or 2; calculation reads only this field.
     pub(crate) active: u8,
+    /// The other set's weapons (export only).
     pub(crate) alternate_items: Vec<SlotItemInput>,
+    /// The passives allocated in only one set, per set (export only).
     pub(crate) exclusive_nodes: [Vec<u32>; 2],
 }
 
@@ -149,7 +152,9 @@ pub struct JewelInput {
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct CalculateBuildRequest {
-    /// Editable inactive equipment and weapon-set passives, used for export.
+    /// The weapon set in use (`active`, which calculation reads), plus the
+    /// editable inactive weapons and weapon-set passives that export writes.
+    /// `None` keeps the set of the code's active item set (a new build: 1).
     pub(crate) weapon_swap: Option<WeaponSwapInput>,
     pub(crate) pob_code: String,
     /// Preserve the imported passive tree instead of implicitly migrating it.
@@ -264,7 +269,8 @@ pub(super) fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData
 }
 
 /// Applies the request's overrides to a decoded/newly-created build
-/// (character / tree / skill groups / equipment / main socket group / config).
+/// (character / tree / skill groups / equipment and its weapon set / main
+/// socket group / config).
 pub(crate) fn apply_request_overrides(
     build: &mut Build,
     req: &CalculateBuildRequest,
@@ -319,6 +325,14 @@ pub(crate) fn apply_request_overrides(
                 }),
             }
         }
+    }
+    // The weapon set in use decides modifiers "while using Weapon Set 1/2".
+    // Without `weapon_swap` the build keeps its own set.
+    if let Some(swap) = &req.weapon_swap {
+        let active = swap.active;
+        build.weapon_set = WeaponSet::from_number(active).ok_or_else(|| {
+            ApiError::bad_request(format!("weapon_swap.active must be 1 or 2, got {active}"))
+        })?;
     }
     if let Some(flasks) = &req.flasks {
         build.utility_slots.clear();

@@ -24,7 +24,6 @@ import type {
   PassiveNode,
   PassiveTreeMeta,
   TreeArt,
-  WeaponSwap,
   RuneCatalogEntry,
   ItemAugmentInfo,
 } from './types';
@@ -67,9 +66,7 @@ export interface PobrBackend {
   importTradeItems(items: unknown[]): Promise<{ text?: string; warnings?: string[]; error?: string }[]>;
   calculateBuild(request: CalculateBuildRequest): Promise<CalculateBuildResponse>;
   /** 编辑态 → PoB2 分享 code（请求同 calculateBuild + 可选 notes）。 */
-  encodeBuild(
-    request: CalculateBuildRequest & { notes?: string; base_code?: string; weapon_swap?: WeaponSwap | null },
-  ): Promise<string>;
+  encodeBuild(request: CalculateBuildRequest & { notes?: string; base_code?: string }): Promise<string>;
   /** Independent metrics for every active effect, including utility and unavailable skills. */
   skillMetrics(request: CalculateBuildRequest): Promise<SkillMetricsResponse>;
   attribution(request: AttributionRequest): Promise<AttributionResponse>;

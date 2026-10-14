@@ -370,6 +370,11 @@ export interface CalculateBuildRequest {
   socket_groups?: SocketGroupInput[];
   /** 整份替换装备槽（手动编辑）。 */
   items?: SlotItemInput[];
+  /**
+   * `active` 是这次计算使用的武器组（1/2），“使用武器组 1/2 时”的词条按它生效；
+   * 另一组武器与武器组专属天赋只用于导出。省略时沿用构筑码的武器组（新构筑为 1）。
+   */
+  weapon_swap?: WeaponSwap | null;
   /** 整份替换激活态药剂/护符（槽名 `Flask 1/2`、`Charm 1..3`）。 */
   flasks?: SlotItemInput[];
   /** 整份替换超越肢体（槽 `arm1`/`arm2`/`leg1`/`leg2`）。 */

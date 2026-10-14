@@ -1,6 +1,6 @@
 import type { BuildJson, CalculateBuildRequest, CalculateBuildResponse, GemCatalogEntry, GemInput, PassiveNode, SocketGroupInput } from '../api/types';
 import { nameParts, rarityOf } from '../hooks/useLocalizedLines';
-import { groupsForWeaponSet } from './weaponSets';
+import { weaponSetRequest } from './weaponSets';
 import { activeSkillEffects } from './skillSelection';
 
 export interface ReferenceSource { url?: string; league?: string; gameVersion?: string; fetchedAt?: string }
@@ -31,7 +31,8 @@ export function buildProfile(request: CalculateBuildRequest, catalog: Map<string
 }
 
 export function referenceRequest(build: BuildJson): CalculateBuildRequest {
-  return { character: build.character, items: build.items.equipped, socket_groups: groupsForWeaponSet(build.socket_groups, build.weapon_swap?.active ?? 1),
+  return { character: build.character, items: build.items.equipped,
+    ...weaponSetRequest({ socketGroups: build.socket_groups, weaponSwap: build.weapon_swap }),
     main_socket_group: build.main_socket_group ?? undefined, allocated_nodes: build.tree.allocated_nodes };
 }
 

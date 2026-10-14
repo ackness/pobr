@@ -10,7 +10,7 @@ import { activeWorkspaceStage, addWorkspaceBuild, createWorkspace, duplicateWork
 import { formatApiError } from '../api/error';
 import { resolveBuildInput } from '../api/import';
 import { reconcileJewelAllocation } from '../lib/passiveGraph';
-import { groupsForWeaponSet, skillWeaponSet, switchWeapons, validWeaponSwap } from '../lib/weaponSets';
+import { skillWeaponSet, switchWeapons, validWeaponSwap, weaponSetRequest } from '../lib/weaponSets';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getBackend } from '../api/backend';
 import { composeNotes, splitNotes, type Annotations } from '../lib/annotations';
@@ -189,13 +189,14 @@ export interface BuildSession {
 // 计算请求不带 pob_code：导入时 XML 内容已全量物化进 state（materialize +
 // config_inputs/main_socket_group），再带 code 只是让 Rust 每次重算都白解码
 // 一遍然后立刻被覆盖项冲掉。state.pobCode 仅存档用（恢复会话时重建 build 视图）。
+// 请求按 state 的武器组物化技能组，并以 weapon_swap.active 写明计算哪一组。
 function toRequest(state: BuildState): CalculateBuildRequest {
   return {
     tree_version: state.treeVersion,
     character: state.character,
     allocated_nodes: state.allocatedNodes,
     attribute_choices: state.attributeChoices,
-    socket_groups: groupsForWeaponSet(state.socketGroups, state.weaponSwap?.active ?? 1),
+    ...weaponSetRequest(state),
     items: state.items,
     flasks: state.flasks,
     limbs: state.limbs,
@@ -513,7 +514,8 @@ export function materialize(
   };
 }
 
-async function skillMetricsForState(state: BuildState): Promise<SkillMetricsResponse> {
+/** Each weapon set's rows come from a request that materializes and names that set. */
+export async function skillMetricsForState(state: BuildState): Promise<SkillMetricsResponse> {
   const backend = await getBackend();
   const active = state.weaponSwap?.active ?? 1;
   const sets = new Set<1 | 2>([active]);

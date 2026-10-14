@@ -2819,6 +2819,89 @@ fn materialized_request_matches_pob_code_calculation() {
     }
 }
 
+/// A request without a code names the weapon set its weapons belong to,
+/// `weapon_swap.active`, and modifiers "while using Weapon Set 1/2" follow it
+/// in the panel calculation and in each skill overview row. Rigwald's
+/// Ferocity: 30% increased Attack Speed and 15% less Damage in the first set,
+/// 10% reduced Attack Speed and 30% more Damage in the second. A code without
+/// `weapon_swap` keeps the set its active item set names.
+#[test]
+fn weapon_swap_active_is_the_weapon_set_calculated() {
+    ensure_data();
+    let request = |active: Option<u8>| {
+        let mut body = serde_json::json!({
+            "character": { "class_name": "Ranger", "level": 90 },
+            "items": [{ "slot": "weapon1", "text": "Rarity: NORMAL\nCrude Bow" }],
+            "socket_groups": [{ "slot": "weapon1", "gems": [
+                { "skill_id": "IceShotPlayer", "level": 20, "quality": 0 },
+                { "skill_id": "SupportRigwaldsFerocityPlayer", "level": 1, "quality": 0 },
+            ] }],
+            "main_socket_group": 0,
+            "mode_effective": false,
+        });
+        if let Some(active) = active {
+            body["weapon_swap"] = serde_json::json!({
+                "active": active,
+                "alternate_items": [],
+                "exclusive_nodes": [[], []],
+            });
+        }
+        body
+    };
+    let calculate = |request: &Value| -> Value {
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap()
+    };
+    let stat = |response: &Value, id: &str| {
+        response["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|entry| entry["id"] == id)
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+
+    let first = calculate(&request(Some(1)));
+    let second = calculate(&request(Some(2)));
+    let speed = stat(&first, "ActionRate") / stat(&second, "ActionRate");
+    assert!((speed - 1.30 / 0.90).abs() < 1e-9, "{speed}");
+    let damage = stat(&second, "TotalHitAvg") / stat(&first, "TotalHitAvg");
+    assert!((damage - 1.30 / 0.85).abs() < 1e-6, "{damage}");
+    // A new build that names no set uses the first.
+    let unnamed = calculate(&request(None));
+    for id in ["ActionRate", "TotalHitAvg"] {
+        assert!(close(stat(&unnamed, id), stat(&first, id)), "{id}");
+    }
+
+    // The skill overview evaluates each set's rows with that set.
+    let row_rate = |active: u8| {
+        let json = pobr_wasm::skill_metrics_json(&request(Some(active)).to_string()).unwrap();
+        let report: Value = serde_json::from_str(&json).unwrap();
+        report["skills"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["skill_id"] == "IceShotPlayer")
+            .unwrap()["metrics"]["action_rate"]
+            .as_f64()
+            .unwrap()
+    };
+    let speed = row_rate(1) / row_rate(2);
+    assert!((speed - 1.30 / 0.90).abs() < 1e-9, "{speed}");
+
+    // The exported code's item set names the second set, and the code keeps it.
+    let code = pobr_wasm::encode_build_json(&request(Some(2)).to_string()).unwrap();
+    let from_code = serde_json::json!({ "pob_code": code, "mode_effective": false });
+    let kept = stat(&calculate(&from_code), "ActionRate");
+    assert!(close(kept, stat(&second, "ActionRate")), "{kept}");
+
+    let rejected = pobr_wasm::calculate_build_json(&request(Some(3)).to_string()).unwrap_err();
+    let error: Value = serde_json::from_str(&rejected).unwrap();
+    assert_eq!(error["code"], "bad_request", "{error}");
+}
+
 /// The v2 error contract: the Err side is `{code, message, slot?}` JSON; a
 /// single item's text failing to parse degrades to the response's
 /// `item_errors` (that item is skipped, everything else still calculates), no longer erroring the whole call.
