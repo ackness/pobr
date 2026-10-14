@@ -14,12 +14,15 @@
 //! - [`calc_orchestrator`] — drives a [`Build`] through [`pobr_core::calc::CalculationSession`]
 //!   (text-only `calculate` + end-to-end attribution `calculate_with_data`).
 //! - [`calc_cache`] — result cache keyed by content hash.
+//! - [`breakdown`] — how a finished calculation arrives at a displayed stat (steps and
+//!   modifier lines), serializable; shared by the web contract and the CLI.
 //! - [`comparison`] — scalar field diff between two [`pobr_core::calc::OutputTable`]s.
 //! - [`reference_check`] — a calculation against reference values recorded under PoB2 output names.
 //!
 //! Design constraints: deterministic, immutable, zero network I/O (share links are only
 //! recognized and their key extracted; fetching is left to the caller).
 
+pub mod breakdown;
 pub mod buff_stat_map;
 pub mod build;
 pub mod build_code;

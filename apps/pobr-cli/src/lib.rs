@@ -11,6 +11,8 @@
 //!   [`pobr_core::item::ingest_item_with_ctx`] to actually parse raw item
 //!   text, outputting JSON (the parsed modifiers / sections / unsupported text).
 //! - [`encode_code`] / [`decode_code`]: wrap PoB Build Code encoding/decoding.
+//! - [`calculate_build_detailed`]: a full build from its code, with the
+//!   breakdowns of the stats asked for ([`render_breakdowns`] prints them).
 
 use std::path::PathBuf;
 
@@ -29,6 +31,10 @@ use pobr_data::monster::EnemyTier;
 use pobr_gamedata::GameData;
 use serde::Serialize;
 use thiserror::Error;
+
+mod breakdown;
+
+pub use breakdown::{BuildDetail, StatBreakdownEntry, render_breakdowns};
 
 /// The unified error type for the CLI library layer.
 #[derive(Debug, Error)]
@@ -1032,6 +1038,22 @@ pub struct CalculateBuildReport {
     /// explicit enemy level, or an enemy tier other than PoB2's default).
     pub reference: Option<ReferenceCheck>,
     pub tree_version: TreeVersionDiag,
+    /// `true` when calculated on the reference's basis
+    /// ([`BuildDetail::reference_basis`]): `output` and the breakdowns then
+    /// leave out the models the reference's exporter lacks.
+    #[serde(skip_serializing_if = "is_false")]
+    pub reference_basis: bool,
+    /// The stats asked for with [`BuildDetail::breakdown`], in that order.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub breakdowns: Vec<StatBreakdownEntry>,
+    /// With breakdowns: the main skill the calculation centres on and its
+    /// hit by damage type.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub main_skill: Option<pobr_build::breakdown::MainSkillBreakdown>,
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 /// Computes end-to-end from a PoB Build Code: decode -> [`parse_build_from_code`]
@@ -1042,6 +1064,15 @@ pub struct CalculateBuildReport {
 /// into the REAL calc engine, producing scalars that can be compared
 /// directly against PoB2's panel.
 pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildReport, CliError> {
+    calculate_build_detailed(req, &BuildDetail::default())
+}
+
+/// [`calculate_build`] with what `detail` asks for beyond the default
+/// output: the breakdowns of some stats, and the reference's basis.
+pub fn calculate_build_detailed(
+    req: &CalculateBuildRequest,
+    detail: &BuildDetail,
+) -> Result<CalculateBuildReport, CliError> {
     let ImportedBuild {
         build,
         report: import,
@@ -1058,6 +1089,13 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
         enemy_tier: req.enemy_tier,
         mode_effective: req.mode_effective,
         ..Default::default()
+    };
+    // On the reference's basis the models its exporter lacks are off for the
+    // whole report, so the output and the breakdowns answer its question.
+    let opts = if detail.reference_basis {
+        opts.on_reference_basis()
+    } else {
+        opts
     };
     let session = calculate_with_data_session(&build, &build_data, &opts)?;
     let out = session.output();
@@ -1117,7 +1155,7 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
     // it is made on that basis, not at the rates the output above reports.
     let at_own_rate = compares && out.energy_trigger_source.is_some();
     let rain_hits_whenever_allowed = compares && output.rain.is_some();
-    let on_basis = (at_own_rate || rain_hits_whenever_allowed)
+    let on_basis = (!detail.reference_basis && (at_own_rate || rain_hits_whenever_allowed))
         .then(|| {
             calculate_with_data_session(&build, &build_data, &opts.clone().on_reference_basis())
         })
@@ -1146,6 +1184,16 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
         }
     });
 
+    let stats = breakdown::requested_stats(&detail.breakdown);
+    let breakdowns = breakdown::breakdown_entries(
+        &session,
+        &stats,
+        compares.then_some(&import.reference_stats),
+    );
+    let main_skill = (!stats.is_empty())
+        .then(|| pobr_build::breakdown::main_skill_breakdown(&build, &build_data, out))
+        .flatten();
+
     Ok(CalculateBuildReport {
         data_version: game_data.manifest()?.poe_version,
         unsupported_modifiers: session.unsupported_modifier_texts().to_vec(),
@@ -1166,6 +1214,9 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
             unknown_node_count: tree_report.unknown_nodes.len(),
             unknown_nodes: tree_report.unknown_nodes,
         },
+        reference_basis: detail.reference_basis,
+        breakdowns,
+        main_skill,
     })
 }
 

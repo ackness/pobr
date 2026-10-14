@@ -1,8 +1,9 @@
 //! Integration tests: calling `pobr_cli` library functions directly (pure functions, no IO).
 
 use pobr_cli::{
-    CalculateBuildRequest, CalculateRequest, ParseItemRequest, calculate, calculate_build,
-    decode_code, encode_code, parse_item, parse_mod,
+    BuildDetail, CalculateBuildRequest, CalculateRequest, ParseItemRequest, calculate,
+    calculate_build, calculate_build_detailed, decode_code, encode_code, parse_item, parse_mod,
+    render_breakdowns,
 };
 use pobr_data::monster::EnemyTier;
 
@@ -455,6 +456,140 @@ fn calculate_build_reports_a_rain_by_its_landing_arrows() {
         "{:?}",
         reference.differing
     );
+}
+
+/// `--breakdown` lists the stats asked for in that order, each with the
+/// steps and lines of the calculation behind the output; the default report
+/// carries none.
+#[test]
+fn calculate_build_breaks_down_the_stats_asked_for() {
+    let request = CalculateBuildRequest {
+        code: DEADEYE_CODE.to_string(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    };
+    let detail = BuildDetail {
+        breakdown: vec![
+            "TotalDPS".into(),
+            "Life".into(),
+            "NothingIsNamedThis".into(),
+        ],
+        reference_basis: false,
+    };
+    let report = calculate_build_detailed(&request, &detail).unwrap();
+
+    let stats: Vec<&str> = report
+        .breakdowns
+        .iter()
+        .map(|entry| entry.stat.as_str())
+        .collect();
+    assert_eq!(stats, ["TotalDPS", "Life", "NothingIsNamedThis"]);
+
+    let life = &report.breakdowns[1];
+    assert_eq!(life.value, Some(report.output.life));
+    assert_eq!(life.pob_key.as_deref(), Some("Life"));
+    // The code carries the exporter's Life and the report compares with it.
+    assert!(life.reference.is_some());
+    let breakdown = life.breakdown.as_ref().expect("Life has lines");
+    let formula = breakdown.formula.as_ref().expect("Life has steps");
+    assert!(
+        (formula.value - report.output.life).abs() <= 1e-6 * report.output.life.max(1.0),
+        "steps end at {} for Life {}",
+        formula.value,
+        report.output.life
+    );
+    // The lines that apply are the totals the steps use.
+    let active_base: f64 = breakdown
+        .mods
+        .iter()
+        .filter(|line| line.active && line.mod_type == "BASE")
+        .filter_map(|line| line.value)
+        .sum();
+    assert!((active_base - breakdown.base_total).abs() < 1e-6);
+
+    let dps = &report.breakdowns[0];
+    assert_eq!(dps.value, Some(report.output.dps));
+    assert_eq!(dps.pob_key.as_deref(), Some("TotalDPS"));
+
+    let unknown = &report.breakdowns[2];
+    assert!(unknown.value.is_none());
+    assert!(unknown.pob_key.is_none());
+    assert!(unknown.breakdown.is_none());
+
+    let main = report
+        .main_skill
+        .as_ref()
+        .expect("the build has a main skill");
+    assert!(!main.skill_id.is_empty());
+    assert_eq!(main.hit_dps, report.output.dps);
+
+    let text = render_breakdowns(&report);
+    assert!(
+        text.contains(&format!("main skill: {}", main.skill_id)),
+        "{text}"
+    );
+    for stat in &stats {
+        assert!(text.contains(&format!("== {stat}")), "{text}");
+    }
+    assert!(
+        text.contains("no modifier lines or steps for this stat"),
+        "{text}"
+    );
+    if breakdown.mods.iter().any(|line| !line.active) {
+        assert!(text.contains("inactive"), "{text}");
+    }
+
+    // The default report is as before: no breakdowns, no main skill.
+    let plain = calculate_build(&request).unwrap();
+    assert!(plain.breakdowns.is_empty());
+    assert!(plain.main_skill.is_none());
+    assert_eq!(plain.output.life, report.output.life);
+    let json = serde_json::to_value(&plain).unwrap();
+    for key in ["breakdowns", "main_skill", "reference_basis"] {
+        assert!(json.get(key).is_none(), "{key}");
+    }
+}
+
+/// On the reference's basis the whole report leaves out the models the
+/// exporter lacks: a Comet in a Cast on Critical is at its own rate of use,
+/// in the output and in its breakdown.
+#[test]
+fn calculate_build_on_the_reference_basis_answers_the_exporters_question() {
+    let request = CalculateBuildRequest {
+        code: GEMLING_COMET_CODE.trim().to_string(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    };
+    let triggered = calculate_build(&request).unwrap();
+    let report = calculate_build_detailed(
+        &request,
+        &BuildDetail {
+            breakdown: vec!["ActionRate".into()],
+            reference_basis: true,
+        },
+    )
+    .unwrap();
+    assert!(report.reference_basis);
+    assert!(report.output.energy_trigger.is_none());
+    assert_ne!(report.output.action_rate, triggered.output.action_rate);
+    let reference = report
+        .reference
+        .as_ref()
+        .expect("the code carries PlayerStat values");
+    assert!(!reference.at_own_rate_of_use);
+    assert!(
+        reference
+            .differing
+            .iter()
+            .all(|row| row.stat != "ActionRate"),
+        "{:?}",
+        reference.differing
+    );
+    assert_eq!(report.breakdowns[0].value, Some(report.output.action_rate));
 }
 
 #[test]

@@ -30,7 +30,8 @@ enum Command {
     /// Run a minimal calc from base stats plus mod text, printing the key fields as JSON.
     Calculate(CalculateArgs),
     /// Run a full calc from a PoB build code — gear, tree, gems, character base and
-    /// enemy — printing the result as JSON.
+    /// enemy — printing the result as JSON, or with --breakdown how it arrives at
+    /// the stats asked for, as text.
     CalculateBuild(CalculateBuildArgs),
     /// Parse one mod line and print what the parser made of it.
     ParseMod(ParseModArgs),
@@ -106,6 +107,19 @@ struct CalculateBuildArgs {
     /// Report panel numbers, which ignore enemy interaction. Defaults to effective DPS.
     #[arg(long, default_value_t = false)]
     panel: bool,
+    /// Break these stats down: comma-separated display stat ids (TotalDPS,Life),
+    /// `all` for the panel's set, or modifier names. Prints the steps of each and
+    /// the modifier lines it reads as text, unless --json is given.
+    #[arg(long, value_delimiter = ',', value_name = "STATS")]
+    breakdown: Vec<String>,
+    /// With --breakdown, print the JSON report (breakdowns included) instead of text.
+    #[arg(long)]
+    json: bool,
+    /// Calculate on the basis of the code's reference values: the models their
+    /// exporter lacks (Energy triggering, a rain's landing arrows) are off, for
+    /// the output and the breakdowns alike.
+    #[arg(long)]
+    reference_basis: bool,
 }
 
 #[derive(Debug, Args)]
@@ -191,7 +205,13 @@ fn run(cli: Cli) -> Result<String, Box<dyn std::error::Error>> {
     match cli.command {
         Command::Calculate(args) => Ok(pobr_cli::calculate_json(&build_calculate_request(args)?)?),
         Command::CalculateBuild(args) => {
-            let report = pobr_cli::calculate_build(&build_calc_build_request(args)?)?;
+            let as_text = !args.breakdown.is_empty() && !args.json;
+            let detail = pobr_cli::BuildDetail {
+                breakdown: args.breakdown.clone(),
+                reference_basis: args.reference_basis,
+            };
+            let report =
+                pobr_cli::calculate_build_detailed(&build_calc_build_request(args)?, &detail)?;
             // gap B: tree-version mismatches (allocated nodes not in the
             // loaded tree) are no longer silent — warn to stderr.
             let diag = &report.tree_version;
@@ -209,6 +229,9 @@ fn run(cli: Cli) -> Result<String, Box<dyn std::error::Error>> {
                     "warning: could not read the item in {:?} ({}): {}; the result is calculated without it",
                     item.used_in, item.name, item.reason,
                 );
+            }
+            if as_text {
+                return Ok(pobr_cli::render_breakdowns(&report));
             }
             Ok(serde_json::to_string_pretty(&report)?)
         }
