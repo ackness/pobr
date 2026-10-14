@@ -5,6 +5,7 @@
 //! Both snapshots use the same core pool calculation; build only supplies source facts.
 
 use super::*;
+use pobr_data::constants::BASE_REQUIRED_ENEMIES_TO_BE_SURROUNDED;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 pub(in crate::calc) fn life_mana_pools(env: &Env) -> (f64, f64) {
@@ -141,8 +142,9 @@ impl CalculationSession {
         ]);
     }
 
-    /// Bridges source-granted flags and reservation-derived LowLife after all counters
-    /// are present. Explicit LowLife configuration retains its existing precedence.
+    /// Bridges source-granted flags, reservation-derived LowLife and Surrounded after
+    /// all counters are present. Explicit LowLife or Surrounded configuration retains
+    /// its existing precedence.
     pub fn bridge_player_conditions(&mut self) {
         for (flag, condition) in [
             ("Condition:CanUseBondedModifiers", "CanUseBondedModifiers"),
@@ -154,5 +156,24 @@ impl CalculationSession {
             }
         }
         self.bridge_low_pool_conditions();
+        self.bridge_surrounded();
+    }
+
+    /// Surrounded: as many enemies near the character as the game requires,
+    /// [`BASE_REQUIRED_ENEMIES_TO_BE_SURROUNDED`] changed by the stat
+    /// `required_enemies_to_be_considered_surrounded_offset` (`SurroundedMinimum`,
+    /// "Require 4 fewer enemies to be Surrounded"). The calculation is against one
+    /// enemy, taken to be near the character as it is for `EnemyInPresence`, so the
+    /// character is Surrounded once a single enemy is enough. There is no distance
+    /// model: the Surrounded radius and "increased Surrounded Area of Effect" are
+    /// not compared with anything.
+    fn bridge_surrounded(&mut self) {
+        if self.env.cfg.conditions.contains_key("Surrounded") {
+            return;
+        }
+        let required = BASE_REQUIRED_ENEMIES_TO_BE_SURROUNDED + self.base_sum("SurroundedMinimum");
+        if required <= 1.0 {
+            self.set_condition("Surrounded", true);
+        }
     }
 }

@@ -132,6 +132,46 @@ fn player_condition_bridge_preserves_explicit_low_life_choice() {
     }
 }
 
+/// Five enemies make a character Surrounded before "Require N fewer enemies to
+/// be Surrounded"; the calculation is against one, so only a requirement
+/// lowered to a single enemy makes it Surrounded. A configured choice is kept.
+#[test]
+fn player_condition_bridge_derives_surrounded_from_the_required_enemies() {
+    use pobr_core::CalcConfig;
+
+    for (fewer, configured, surrounded) in [
+        (Some(4), None, true),
+        (Some(3), None, false),
+        (None, None, false),
+        (Some(4), Some(false), false),
+        (None, Some(true), true),
+    ] {
+        let mut cfg = CalcConfig::default();
+        if let Some(value) = configured {
+            cfg = cfg.with_condition("Surrounded", value);
+        }
+        let mut s = session(MinimalInput::default()).with_config(cfg);
+        let lines = fewer
+            .map(|n| format!("Require {n} fewer enemies to be Surrounded"))
+            .into_iter()
+            .chain(["20% increased Armour while Surrounded".to_string()]);
+        s.add_modifier_texts(lines).unwrap();
+        assert!(
+            s.unsupported_modifier_texts().is_empty(),
+            "{:?}",
+            s.unsupported_modifier_texts()
+        );
+        s.prepare_player_stats(1, None);
+        s.bridge_player_conditions();
+        let (_, increased, _) = s.stat_totals("Armour");
+        assert_eq!(
+            increased,
+            if surrounded { 20.0 } else { 0.0 },
+            "{fewer:?} fewer, configured {configured:?}"
+        );
+    }
+}
+
 #[test]
 fn per_mana_damage_uses_the_pool_after_defence_conversion() {
     use pobr_core::{ModTag, Modifier};

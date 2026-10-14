@@ -200,6 +200,13 @@ pub const WITHERED_MAXIMUM_STACKS: f64 = 10.0;
 /// Rating and Evasion Rating").
 pub const BLIND_LESS_ACCURACY_AND_EVASION: f64 = 20.0;
 
+/// Enemies that must be near a character for it to be Surrounded, before
+/// modifiers: the game constant `BaseRequiredEnemiesToBeConsideredSurrounded`.
+/// The stat `required_enemies_to_be_considered_surrounded_offset` changes it
+/// ("Require 4 fewer enemies to be Surrounded"). The committed game constants
+/// do not include it, so the number is stated here.
+pub const BASE_REQUIRED_ENEMIES_TO_BE_SURROUNDED: f64 = 5.0;
+
 /// Global DoT DPS cap (`(2^31 - 1) / 60`, roughly 3.579×10^7).
 ///
 /// Source: PoB2 `src/Modules/Data.lua`:
