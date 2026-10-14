@@ -49,4 +49,13 @@ fn every_line_of_a_jewelled_build_names_its_source() {
         }
     }
     assert!(jewel_lines > 0, "the jewels' own lines name them");
+    // From Nothing's line wraps in the item text; the tree reads it whole.
+    let unparsed = session.unsupported_modifier_texts();
+    assert!(
+        !unparsed
+            .iter()
+            .any(|line| line.contains("can be Allocated")
+                || line.contains("without being connected")),
+        "{unparsed:?}"
+    );
 }

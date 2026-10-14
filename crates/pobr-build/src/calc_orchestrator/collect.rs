@@ -725,16 +725,20 @@ pub(crate) fn filter_item_parseable(
     dedicated_texts: &[String],
 ) -> Item {
     // These sources have dedicated orchestration consumers even when they do
-    // not yield ordinary ModDb modifiers. The Adorned's real clipboard/XML
-    // text wraps across two lines; exempt only the verified pair, not all
-    // text on that jewel (unknown additional effects must remain visible).
-    let adorned_pair = (item.rarity == pobr_data::item::ItemRarity::Unique)
-        .then(|| {
-            item.modifier_texts.windows(2).find(|pair| {
-                pobr_core::skill_env::CorruptedJewelEffect::parse_line(&pair.join(" ")).is_some()
-            })
+    // not yield ordinary ModDb modifiers. Some of their game texts wrap across
+    // two lines of the item text (The Adorned's, From Nothing's allocation
+    // line): exempt only a pair whose join is such a line, not all text on
+    // that jewel (unknown additional effects must remain visible).
+    let wrapped_pairs: Vec<&[String]> = item
+        .modifier_texts
+        .windows(2)
+        .filter(|pair| {
+            let joined = pair.join(" ");
+            dedicated_texts.contains(&joined)
+                || (item.rarity == pobr_data::item::ItemRarity::Unique
+                    && pobr_core::skill_env::CorruptedJewelEffect::parse_line(&joined).is_some())
         })
-        .flatten();
+        .collect();
     let mut filtered = item.clone();
     for texts in [
         &mut filtered.implicit_texts,
@@ -746,7 +750,7 @@ pub(crate) fn filter_item_parseable(
             if !accepted
                 && !dedicated_texts.contains(text)
                 && parse_gem_property_bonus(text).is_none()
-                && !adorned_pair.is_some_and(|pair| pair.contains(text))
+                && !wrapped_pairs.iter().any(|pair| pair.contains(text))
             {
                 session.record_unsupported_modifier_text(text.clone());
             }

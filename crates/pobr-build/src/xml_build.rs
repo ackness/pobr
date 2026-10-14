@@ -1228,18 +1228,43 @@ pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
     })
 }
 
+/// The second line of a stat whose game text wraps, as an item's text keeps
+/// it: From Nothing's "Passives in Radius of <Keystone> can be Allocated" /
+/// "without being connected to your tree"
+/// (`local_unique_jewel_disconnected_passives_can_be_allocated_around_keystone_hash`).
+pub(crate) const WRAPPED_CONTINUATIONS: &[&str] = &["without being connected to your tree"];
+
+/// `lines` with each wrapped continuation ([`WRAPPED_CONTINUATIONS`]) joined
+/// to the line before it, so a stat reads as one line.
+fn join_wrapped_lines(lines: impl IntoIterator<Item = String>) -> Vec<String> {
+    let mut joined: Vec<String> = Vec::new();
+    for line in lines {
+        let continues = WRAPPED_CONTINUATIONS
+            .iter()
+            .any(|continuation| line.trim().eq_ignore_ascii_case(continuation));
+        match joined.last_mut() {
+            Some(previous) if continues => {
+                previous.push(' ');
+                previous.push_str(line.trim());
+            }
+            _ => joined.push(line),
+        }
+    }
+    joined
+}
+
 /// Extracts radius effects and allocation/transform directives from the selected
 /// item variant. Shared by XML import and manually entered jewels; raw text remains
 /// available separately for editing and export.
 pub fn radius_jewel_from_text(socket_node: u32, text: &str) -> Option<RadiusJewel> {
     let item = parse_pob_xml_item(text).ok()?;
     let (rarity, corrupted) = (item.rarity, item.corrupted);
-    let tree_texts: Vec<String> = item
-        .implicit_texts
-        .into_iter()
-        .chain(item.modifier_texts)
-        .chain(item.enchant_texts)
-        .collect();
+    let tree_texts: Vec<String> = join_wrapped_lines(
+        item.implicit_texts
+            .into_iter()
+            .chain(item.modifier_texts)
+            .chain(item.enchant_texts),
+    );
     let grant_lines: Vec<String> = tree_texts
         .iter()
         .map(String::as_str)
