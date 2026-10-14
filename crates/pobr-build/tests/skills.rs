@@ -65,6 +65,8 @@ mod totem_skills;
 mod umbral_well;
 #[path = "skills/weapon_accuracy_damage.rs"]
 mod weapon_accuracy_damage;
+#[path = "skills/weapon_sets.rs"]
+mod weapon_sets;
 #[path = "skills/withered.rs"]
 mod withered;
 

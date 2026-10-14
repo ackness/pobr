@@ -290,6 +290,33 @@ pub enum JewelSocket {
     Equipment,
 }
 
+/// Which of the character's two weapon sets is in use.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub enum WeaponSet {
+    #[default]
+    First,
+    Second,
+}
+
+impl WeaponSet {
+    /// The set's number, 1 or 2 (PoB's `set1` / `set2`, `useSecondWeaponSet`).
+    pub fn number(self) -> u8 {
+        match self {
+            Self::First => 1,
+            Self::Second => 2,
+        }
+    }
+
+    /// The set numbered `number`, 1 or 2.
+    pub fn from_number(number: u8) -> Option<Self> {
+        match number {
+            1 => Some(Self::First),
+            2 => Some(Self::Second),
+            _ => None,
+        }
+    }
+}
+
 /// In-memory state of a PoB Build.
 ///
 /// Immutable updates: every `with_*` method returns a new copy; `set_item` /
@@ -340,6 +367,9 @@ pub struct Build {
     /// The Transcendent limbs, by slot: a set of their own beside the
     /// equipment. Their lines are global modifiers, attributed to the slot.
     pub limbs: BTreeMap<LimbSlot, Item>,
+    /// The weapon set in use; its weapons are the ones in `items`. Modifiers
+    /// "while using Weapon Set 2" apply to it.
+    pub weapon_set: WeaponSet,
     /// Skill gem groups.
     pub socket_groups: Vec<SocketGroup>,
     /// Main skill group index (PoB `<Build mainSocketGroup>`, **1-based**, indexes

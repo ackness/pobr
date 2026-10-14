@@ -128,8 +128,30 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
             ModType::Base,
             value,
         )]),
+        // Rigwald's Ferocity: increased Attack Speed and more Damage for
+        // Supported Skills, each only while using one of the two weapon sets.
+        "support_rigwald_attack_speed_+%_in_weapon_set_one" => Some(vec![
+            Modifier::number("AttackSpeed", ModType::Inc, value)
+                .with_tag(while_using_weapon_set(1)),
+        ]),
+        "support_rigwald_attack_speed_+%_in_weapon_set_two" => Some(vec![
+            Modifier::number("AttackSpeed", ModType::Inc, value)
+                .with_tag(while_using_weapon_set(2)),
+        ]),
+        "support_rigwald_damage_+%_final_in_weapon_set_one" => Some(vec![
+            Modifier::number("Damage", ModType::More, value).with_tag(while_using_weapon_set(1)),
+        ]),
+        "support_rigwald_damage_+%_final_in_weapon_set_two" => Some(vec![
+            Modifier::number("Damage", ModType::More, value).with_tag(while_using_weapon_set(2)),
+        ]),
         _ => None,
     }
+}
+
+/// "while using Weapon Set `set`": the condition the build sets for the
+/// weapon set in use, `WeaponSet1` or `WeaponSet2`.
+fn while_using_weapon_set(set: u8) -> ModTag {
+    ModTag::condition(format!("WeaponSet{set}"), false)
 }
 
 /// The modifiers the stat `stat` of a support grants, at `value`, to the

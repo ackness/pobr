@@ -42,7 +42,7 @@ use pobr_data::item::{EquipmentSlot, Item, LimbSlot};
 use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::{AttributeChoice, NodeId, PassiveTreeSpec};
 
-use crate::build::{Build, CharacterIdentity, JewelSocket, RadiusJewel, SocketGroup};
+use crate::build::{Build, CharacterIdentity, JewelSocket, RadiusJewel, SocketGroup, WeaponSet};
 use crate::build_code::decode_pob_code;
 use crate::error::{BuildError, XmlError};
 use crate::import_report::{ImportReport, ImportedBuild, SkippedItem, UnmodelledSlot};
@@ -206,6 +206,9 @@ fn parse_build_with_allocated_nodes_impl(
 
     for (slot, item) in items {
         build = build.set_item(slot, item);
+    }
+    if use_second_weapon_set {
+        build.weapon_set = WeaponSet::Second;
     }
     build.granted_socket_jewels = granted_socket_jewels;
     build.jewels = jewels;

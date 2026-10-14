@@ -413,6 +413,10 @@ pub(super) fn stage_build_cfg(
     for var in weapon_type_conditions(build, data) {
         cfg = cfg.with_condition(var, true);
     }
+    // The weapon set in use: "Supported Skills deal 30% more Damage while
+    // using Weapon Set 2" (`support_rigwald_damage_+%_final_in_weapon_set_two`)
+    // and the other modifiers of one set.
+    cfg = cfg.with_condition(format!("WeaponSet{}", build.weapon_set.number()), true);
     // Main-hand weapon bits → cfg.flags: derived from the **same source**
     // (weapon_type_info table) with the **same gating** as the Using* conditions above
     // — the mod-side dual-written weapon-bit channel doesn't get a separate activation
