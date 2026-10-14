@@ -615,6 +615,70 @@ fn radius_small_grant_excludes_attribute_nodes() {
     );
 }
 
+/// A Notable an item allocates ("Allocates <Notable>") shows as allocated on
+/// the passive tree, so a jewel's "Notable Passive Skills in Radius" include
+/// it. A Notable in the radius that nothing allocates stays out.
+#[test]
+fn radius_notable_grant_includes_notables_allocated_by_items() {
+    let socket = 200u32;
+    let notable = |skill: u32, name: &str, x: f64| pobr_data::catalog::PassiveNodeDef {
+        name: Some(name.into()),
+        kind: pobr_data::catalog::PassiveNodeKind::Notable,
+        ..normal_node_at(skill, x, 0.0, vec!["+5 to maximum Life".into()])
+    };
+    // The real data supplies the rule that reads "Allocates <Notable>"; the
+    // nodes all sit near the socket (distance << any radius tier).
+    let mut data = repo_data();
+    data.passive_nodes = HashMap::from([
+        (socket, normal_node_at(socket, 0.0, 0.0, vec![])),
+        (201, notable(201, "Item Allocated Test Notable", 50.0)),
+        (202, notable(202, "Unallocated Test Notable", -50.0)),
+    ]);
+
+    let grant = "Notable Passive Skills in Radius also grant +10 to maximum Mana";
+    let jewel = RadiusJewel {
+        socket_node: socket,
+        radius_label: Some("Large".into()),
+        grant_lines: vec![grant.into()],
+        notable_effect_inc: 0,
+        small_effect_inc: 0,
+        tree_texts: vec![],
+        rarity: pobr_data::item::ItemRarity::Rare,
+        corrupted: false,
+        socket: crate::build::JewelSocket::Tree,
+    };
+    let amulet = Item {
+        base: ItemBaseId::from("Solar Amulet"),
+        rarity: ItemRarity::Rare,
+        quality: 0,
+        corrupted: false,
+        implicit_texts: vec![],
+        modifier_texts: vec![],
+        enchant_texts: vec!["Allocates Item Allocated Test Notable".into()],
+        rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
+        parsed_stats: vec![],
+    };
+    // Only the jewel socket is allocated with a passive point.
+    let build = Build::new()
+        .set_item(EquipmentSlot::Amulet, amulet)
+        .with_tree(PassiveTreeSpec {
+            allocated_nodes: vec![NodeId(socket)],
+            ..Default::default()
+        })
+        .with_radius_jewels(vec![jewel]);
+
+    let mods = radius_jewel_grant_modifiers(&build, &data);
+    let count = mods
+        .iter()
+        .filter(|m| m.name.as_str() == "MaximumMana" && m.value.as_number() == Some(10.0))
+        .count();
+    assert_eq!(
+        count, 1,
+        "only the Notable the amulet allocates should receive the grant, got {mods:?}"
+    );
+}
+
 #[test]
 fn unknown_passive_node_is_skipped() {
     // Allocating a node absent from the node table → skipped, no error, life stays at base.

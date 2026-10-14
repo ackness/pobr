@@ -217,7 +217,7 @@ const BASELINES: [Baseline; 3] = [
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
         dps_builds: 19,
-        agreeing_rows: 952,
+        agreeing_rows: 958,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
@@ -229,8 +229,8 @@ const BASELINES: [Baseline; 3] = [
     // line as spell-only too; the exporting tool did not.
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
-        dps_builds: 13,
-        agreeing_rows: 953,
+        dps_builds: 15,
+        agreeing_rows: 965,
     },
 ];
 

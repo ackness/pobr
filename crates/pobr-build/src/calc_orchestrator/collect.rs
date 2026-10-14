@@ -217,8 +217,9 @@ pub(crate) fn engine_ctx(data: &BuildData) -> ParseCtx<'_> {
 
 /// Parses every equipment/jewel mod line's `GrantedPassive` (`Allocates <name>`
 /// enchant), matching them by name against Notable node definitions and returning them
-/// deduplicated (shared parsing logic for [`append_granted_passives`] and
-/// [`gem_property_bonuses`]; see the former for the semantics).
+/// deduplicated (shared parsing logic for [`append_granted_passives`],
+/// [`gem_property_bonuses`] and [`radius_jewel_expansions`]; see the first for
+/// the semantics).
 pub(crate) fn granted_passive_defs<'d>(
     build: &Build,
     data: &'d BuildData,
@@ -419,8 +420,9 @@ pub(crate) struct RadiusJewelExpansion<'a> {
 /// Runs radius geometric expansion on every radius jewel (circle center = socket node
 /// coordinates, tier = the `Radius:` line).
 ///
-/// Candidates are filtered only from the **allocated** node set; a jewel with missing
-/// socket coordinates or a failed geometry computation is skipped (nothing is invented).
+/// Candidates are filtered only from the **allocated** node set (the tree's, and the
+/// Notables items allocate); a jewel with missing socket coordinates or a failed
+/// geometry computation is skipped (nothing is invented).
 /// Shared between [`radius_jewel_grant_modifiers`] (grant-mod expansion) and
 /// [`passive_effect_copies`] (notable effect scaling).
 pub(crate) fn radius_jewel_expansions<'a>(
@@ -444,8 +446,14 @@ pub(crate) fn radius_jewel_expansions<'a>(
     // 8.55). PoBR's parse layer already strips non-active-set exclusive points, so using
     // `tree.allocated_nodes` directly here is equivalent.
     let tree_nodes = data.passive_nodes_for(build.tree_version.as_deref());
-    let allocated: std::collections::HashSet<u32> =
+    let mut allocated: std::collections::HashSet<u32> =
         build.tree.allocated_nodes.iter().map(|n| n.0).collect();
+    // A Notable an item allocates ("Allocates <Notable>": an anointment, a
+    // Megalomaniac) shows as allocated on the passive tree, so a jewel's
+    // radius sees it like one allocated with a passive point.
+    for def in granted_passive_defs(build, data) {
+        allocated.insert(def.skill);
+    }
 
     // Position table: the socket itself + every allocated node (candidates are filtered only from the allocated set).
     let mut positions: std::collections::HashMap<u32, (f64, f64)> =
