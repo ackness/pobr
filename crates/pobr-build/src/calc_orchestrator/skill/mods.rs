@@ -80,33 +80,22 @@ pub(crate) fn dot_flag_modifiers(
     pobr_core::skill_env::dot_flag_modifiers(flags, skill_id)
 }
 
-/// Corpse explosion base damage (vendor `CalcOffence.lua:2211-2217`):
+/// Corpse explosion base damage: the skill deals a share of the corpse's
+/// maximum Life as base damage of a type, both given by its stat
+/// ([`skill_stats::corpse_explosion_damage`]).
 ///
-/// ```lua
-/// local monsterLife = skillData.corpseLife or data.monsterLifeTable[env.enemyLevel]
-/// if skillData.explodeCorpse then
-///     skillData[type.."BonusMin"] = monsterLife * skillData.corpseExplosionLifeMultiplier
-/// ```
+/// - Gate = the selected statSet's `explodeCorpse` (catalog
+///   `StatSetDef::explode_corpse`, from the skill_overrides overlay; e.g.
+///   DetonateDeadPlayer);
+/// - Corpse life = the monster life of the enemy level
+///   (`monster_scaling.life_at`; the level resolved in the same order as
+///   setup_enemy: orchestrator option → config enemyLevel → min(MaxEnemyLevel,
+///   character level));
+/// - Injection = `<Type>DamageMin/Max` BASE, added to the skill's base.
 ///
-/// - Gate = the selected statSet's `explodeCorpse` baseMod (catalog
-///   `StatSetDef::explode_corpse`, merged in via the skill_overrides overlay; e.g.
-///   DetonateDeadPlayer, act_int.lua:5287);
-/// - Multiplier = the selected set's per-level stat, via the statmap skill_data channel
-///   (`corpse_explosion_monster_life_%` div=100 /
-///   `corpse_explosion_monster_life_permillage_physical` div=1000 →
-///   `corpseExplosionLifeMultiplier`, SkillStatMap.lua:309-316);
-/// - Monster life = `monster_scaling.life_at(enemy level)` (enemy level resolved in the
-///   same order as setup_enemy: orchestrator option → config enemyLevel →
-///   min(MaxEnemyLevel, character level), CalcSetup.lua:529);
-/// - Injection = `PhysicalDamageMin/Max` BASE (vendor's `corpseExplosionDamageType`
-///   defaults to Physical, and the 4.5.0.3.4 statmap has no damage-type override
-///   entry), matching vendor's semantics of directly adding to base via
-///   `source[type.."BonusMin"]` (CalcOffence.lua:3910-3911; the Detonate Dead family has
-///   baseMultiplier=1, so there's no added-mult interaction).
-///
-/// Returns empty (zero injection) for a non-corpse skill / no multiplier stat / no catalog.
+/// Returns empty (zero injection) for a non-corpse skill or a skill without
+/// such a stat.
 pub(crate) fn corpse_explosion_modifiers(
-    context: &mut CalculationContext,
     build: &Build,
     data: &BuildData,
     options: &DataOrchestratorOptions,
@@ -120,48 +109,38 @@ pub(crate) fn corpse_explosion_modifiers(
     if !data.selected_set_explode_corpse(skill_id, set_index) {
         return Vec::new();
     }
-    let catalog = context.catalog.clone();
-    let Some(catalog) = catalog else {
-        return Vec::new(); // No catalog (old data pack): the multiplier is unavailable, conservatively zero injection.
-    };
-    // Fetching the multiplier: the selected set's per-level stat goes through the same
-    // mapping engine as skill_base_modifiers, only harvesting skill_data output (the
-    // Modifier output is already injected by the primary channel, not duplicated here).
-    let set_key = data.selected_set_key(skill_id, set_index);
-    let mut multiplier = 0.0;
+    let enemy_level = resolved_enemy_level(build, data, options);
+    let monster_life = f64::from(data.constants.monster_scaling.life_at(enemy_level));
+    let mut mods = Vec::new();
     for ds in &skill.base_damage {
         if ds.value == 0.0 {
             continue;
         }
-        if let MappedOutcome::Mapped(items) =
-            stat_map_engine::map_stat(&catalog, skill_id, set_key.as_deref(), &ds.stat, ds.value)
-        {
-            for item in items {
-                if let MappedItem::SkillData { key, value } = item
-                    && key == "corpseExplosionLifeMultiplier"
-                {
-                    multiplier += value;
-                }
-            }
-        }
-    }
-    if multiplier == 0.0 {
-        return Vec::new();
-    }
-    let enemy_level = resolved_enemy_level(build, data, options);
-    let monster_life = f64::from(data.constants.monster_scaling.life_at(enemy_level));
-    let bonus = monster_life * multiplier;
-    let mk = |name: &str| {
+        let Some((damage_type, share)) =
+            pobr_core::rules::skill_stats::corpse_explosion_damage(&ds.stat, ds.value)
+        else {
+            continue;
+        };
+        let bonus = monster_life * share;
         let origin = ModifierSource::new(SourceId::new(
             SourceKind::SkillGem,
             format!("skill.{skill_id}.corpseExplosion"),
         ))
         .with_raw_text(format!(
-            "corpse explosion {bonus:.1} (monster life {monster_life} x {multiplier})"
+            "corpse explosion {bonus:.1} (monster life {monster_life} x {share})"
         ));
-        Modifier::number(name, ModType::Base, bonus).with_origin(origin)
-    };
-    vec![mk("PhysicalDamageMin"), mk("PhysicalDamageMax")]
+        for bound in ["Min", "Max"] {
+            mods.push(
+                Modifier::number(
+                    format!("{damage_type:?}Damage{bound}"),
+                    ModType::Base,
+                    bonus,
+                )
+                .with_origin(origin.clone()),
+            );
+        }
+    }
+    mods
 }
 
 /// Resolves the enemy level (in the same order as `calculate_with_data` step 5's

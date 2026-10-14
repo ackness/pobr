@@ -119,6 +119,26 @@ fn level_source<'a>(
     group: &'a SocketGroup,
     effect: &pobr_core::skill_env::ActiveEffect<'a>,
 ) -> (&'a str, u32, u32) {
+    let (gem_id, gem_level, corrupted) = source_gem(data, group, effect);
+    let bonus = additional_gem_levels(build, data, gem_id, corrupted)
+        .saturating_add(support_granted_gem_levels(group, data, gem_id));
+    (gem_id, gem_level, bonus)
+}
+
+/// Whether the main skill of `group` comes from a corrupted gem: "Skills
+/// from Corrupted Gems have …". The gem is the one [`level_source`] takes
+/// the level of.
+pub(crate) fn from_corrupted_gem(data: &BuildData, group: &SocketGroup) -> bool {
+    selected_group_effect(data, group).is_some_and(|effect| source_gem(data, group, &effect).2)
+}
+
+/// The gem an effect comes from: its id, its own level and whether it is
+/// corrupted.
+fn source_gem<'a>(
+    data: &BuildData,
+    group: &'a SocketGroup,
+    effect: &pobr_core::skill_env::ActiveEffect<'a>,
+) -> (&'a str, u32, bool) {
     let own = group
         .gem_skills
         .get(effect.gem_index)
@@ -134,15 +154,12 @@ fn level_source<'a>(
         .gem_skills
         .get(effect.gem_index)
         .is_some_and(|gem| gem.corrupted);
-    let (gem_id, gem_level, corrupted) = granted_by_support
+    granted_by_support
         .then(|| supported_skill(group, data, effect.gem_index))
         .flatten()
         .map_or((own, effect.gem_level, own_corrupted), |host| {
             (host.skill_id.as_str(), host.gem_level, host.corrupted)
-        });
-    let bonus = additional_gem_levels(build, data, gem_id, corrupted)
-        .saturating_add(support_granted_gem_levels(group, data, gem_id));
-    (gem_id, gem_level, bonus)
+        })
 }
 
 /// The first active skill of `group` that the support at `support_index` applies to.

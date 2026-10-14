@@ -27,6 +27,11 @@
       "reason": "enemies in Presence resist each element with their lowest Elemental Resistance, ailments included (docs/maintainer-guide.md, Presence)"
     },
     {
+      "build": "witch-infernalist-comet",
+      "stats": ["Life", "LifeUnreserved", "LifeRecoverable"],
+      "reason": "the weapon's runes read as the item says, one \"45% less maximum Life\", not PoB2's two runes of 15% and 30% less (docs/maintainer-guide.md, runes)"
+    },
+    {
       "build": "huntress-ritualist-purity-of-fire",
       "stats": ["CritMultiplier"],
       "reason": "an aura is not a spell: increased Critical Spell Damage Bonus does not apply to Purity of Fire (docs/maintainer-guide.md, Purity of Fire)"

@@ -889,7 +889,8 @@ fn check_formula(
                     .product::<f64>()
         };
         let near = |a: f64, b: f64| (a - b).abs() <= 0.02 * a.abs().max(b.abs()).max(1.0);
-        let duration = n("base_duration") * scale("duration_mods") * n("enemy_duration");
+        let duration =
+            n("base_duration") * scale("duration_mods") * n("enemy_duration") / n("rate");
         assert!(
             near(n("duration"), duration),
             "{at}: duration {} != {duration} from its lines",

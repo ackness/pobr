@@ -98,5 +98,7 @@ mise run builds:fetch examples/reference-builds/holdout --pick last
 | 2026-10-15（新抓取，poe.ninja 2026-10-14 的快照，每个升华取未入库的最后一个角色；未做任何针对性修改） | `holdout/` | 23 | 11（48%） | 971/1076（90.2%） |
 | 2026-10-15（第三十三轮：主副手各按自己的命中值读取 “per Accuracy Rating” 类词条；Spell Echo 的重复受冷却限制；Barrage 每消耗一个狂怒球多重复一次；给技能加冷却的辅助（Breachlord's Amalgam）提供冷却与可储存次数；Gigantic 同伴，“Companions gain your Strength”；Pain Offering 的光环只给召唤物并计入 Sacrificial Offering 的 buff 效果；偏斜命中由同伴分担的份额；抽取规则的捕获推断改为先匹配同值捕获，特殊词条正则改用 ASCII 数字） | `tuned/` | 46 | 41（89%） | 2041/2146（95.1%） |
 | 2026-10-15（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 12（52%） | 978/1076（90.9%） |
+| 2026-10-15（第三十四轮：毒、点燃等的层数按 “deal damage #% faster” 缩短的持续时间估算，“duration of Ailments you inflict” 计入持续时间；同一诅咒取最强的一份；“per 1% Chance to Block” 读取格挡率；Decompose 的毒云必定中毒；尸爆的伤害类型取自 stat id；Into the Breach 的紫焰与残骸效果；“你和 Presence 内的友军” 类词条角色自己也有；Uhtred 系只把辅助宝石算作“其他辅助”；“Skills from Corrupted Gems” 判断主技能的宝石；Embitter 把获得的额外伤害都记为冰；技能品质与 Projectile Acceleration 的投射物速度） | `tuned/` | 46 | 43（93%） | 2054/2146（95.7%） |
+| 2026-10-15（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 12（52%） | 979/1076（91.0%） |
 
 吻合行里有按游戏规则有意不同于参考值的行（例如护身符授予的技能不保留精魄，见 `reference_report.rs` 基线旁的说明），所以上限不是 100%。

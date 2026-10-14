@@ -314,6 +314,37 @@ fn per_mana_damage_uses_the_pool_after_defence_conversion() {
     assert!((output.total_hit_avg - 130.0).abs() < 1e-10);
 }
 
+/// "1% increased Damage per 1% Chance to Block" reads the chance to Block
+/// the defences give: rounded, capped at the maximum.
+#[test]
+fn per_block_chance_damage_reads_the_capped_chance_to_block() {
+    use pobr_core::{ModTag, Modifier};
+    use pobr_data::prelude::ModType;
+
+    let mut session = session(MinimalInput {
+        base_life: 100.0,
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        ..Default::default()
+    });
+    session.add_modifiers([
+        Modifier::number("BlockChance", ModType::Base, 90.0),
+        Modifier::number("Damage", ModType::Inc, 1.0).with_tag(ModTag::multiplier(
+            "BlockChance",
+            1.0,
+            None,
+        )),
+    ]);
+    session.prepare_player_stats(1, None);
+    let output = session.perform_minimal().expect("perform");
+    // The chance to Block is at most 50%.
+    assert!(
+        (output.total_hit_avg - 150.0).abs() < 1e-10,
+        "{}",
+        output.total_hit_avg
+    );
+}
+
 #[test]
 fn session_parses_modifier_texts_and_calculates_minimal_output() {
     let input = MinimalInput {

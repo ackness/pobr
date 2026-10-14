@@ -538,6 +538,7 @@ const DICT = {
   'calcs.ailment.maxStacks': { 'en-US': 'Most that deal damage at once', 'zh-TW': '最多同時造成傷害的層數', 'zh-CN': '最多同时造成伤害的层数' },
   'calcs.ailment.baseDuration': { 'en-US': 'Duration before modifiers', 'zh-TW': '未計詞條的持續時間', 'zh-CN': '未计词条的持续时间' },
   'calcs.ailment.enemyDuration': { 'en-US': 'Duration multiplier from effects on the enemy', 'zh-TW': '敵人身上效果帶來的持續時間倍率', 'zh-CN': '敌人身上效果带来的持续时间倍率' },
+  'calcs.ailment.rate': { 'en-US': 'Deals its damage faster', 'zh-TW': '更快造成傷害', 'zh-CN': '更快造成伤害' },
   'calcs.ailment.sourceTitle': { 'en-US': 'The hit that applies it, by damage type', 'zh-TW': '施加它的擊中傷害（各類型）', 'zh-CN': '施加它的击中伤害（各类型）' },
   'calcs.ailment.sourceHitShort': { 'en-US': 'Non-critical', 'zh-TW': '非暴擊', 'zh-CN': '非暴击' },
   'calcs.ailment.sourceCritShort': { 'en-US': 'Critical', 'zh-TW': '暴擊', 'zh-CN': '暴击' },

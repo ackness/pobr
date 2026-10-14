@@ -485,3 +485,21 @@ fn physical_random_gain_as_only_from_physical_source() {
     assert_eq!(cold.min, 10.0);
     assert_eq!(cold.max, 20.0);
 }
+
+/// Embitter: "all sources of Damage Gained [are] instead … treated as Damage
+/// Gained as extra Cold". Gains of every type land on Cold.
+#[test]
+fn embitter_gains_every_extra_damage_as_cold() {
+    let mut db = ModDb::new();
+    db.add_list([
+        Modifier::number("DamageGainAsFire", ModType::Base, 30.0),
+        Modifier::number("DamageGainAsChaos", ModType::Base, 20.0),
+        Modifier::number("DamageGainAsCold", ModType::Base, 10.0),
+        Modifier::flag(pobr_core::rules::skill_stats::GAINS_ONLY_COLD),
+    ]);
+    let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
+    let cold = component(&output, DamageType::Cold);
+    assert_eq!((cold.min, cold.max), (60.0, 120.0));
+    assert!(find(&output, DamageType::Fire).is_none_or(|fire| fire.max == 0.0));
+    assert!(find(&output, DamageType::Chaos).is_none_or(|chaos| chaos.max == 0.0));
+}

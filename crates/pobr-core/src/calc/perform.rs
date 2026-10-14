@@ -139,6 +139,16 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
             "LowestOfArmourAndEvasion".into(),
             resources.armour.min(resources.evasion),
         );
+        // "1% increased Damage per 1% Chance to Block": the chances to
+        // Block, as the defences give them.
+        let block = super::defence_panels::calc_block(&env.player.mod_db, &env.cfg);
+        for (name, value) in [
+            ("BlockChance", block.block_chance),
+            ("SpellBlockChance", block.spell_block_chance),
+        ] {
+            env.cfg.stats.insert(name.into(), value);
+            env.cfg.multipliers.insert(name.into(), value);
+        }
         // Refresh the initial actor snapshots after buffs and defence conversion.
         let (life_pool, mana_pool) = super::session::preparation::life_mana_pools(env);
         env.cfg.stats.insert("Life".into(), life_pool);
@@ -1378,17 +1388,20 @@ fn damaging_ailment_for_pass(
     }
     // Stacking mods use the ailment-scoped cfg (vendor :5024's cfg = that ailment's dotCfg).
     let scoped_cfg = super::ailment::ailment_scoped_cfg(cfg, kind);
-    // Ailment duration folds in debuffDurationMult (vendor :5040
-    // `durationBase * durationMod / rateMod * debuffDurationMult` — Temporal Chains' negative
-    // `BuffExpireFaster MORE` on the enemy side stretches the duration, which feeds into DPS via
-    // the active-stack estimate).
+    // How long an instance lasts: its duration, stretched by how slowly
+    // effects on the enemy expire (Temporal Chains), and shortened by
+    // "Damaging Ailments deal damage #% faster" — the same damage in less
+    // time, so fewer instances are active at once.
+    let rate = ailment_rate_mod(player, enemy, cfg, name);
+    let duration = ailment_duration(kind, player, cfg) * debuff_duration_mult(enemy, cfg)
+        / if rate > 0.0 { rate } else { 1.0 };
     let stack = resolve_stack_config(
         player,
         &scoped_cfg,
         name,
         ctx.hit_chance,
         probe_out.chance,
-        ailment_duration(kind, player, cfg) * debuff_duration_mult(enemy, cfg),
+        duration,
         ctx.speed,
     );
     let sp = stack_potential(&stack);
@@ -1396,7 +1409,7 @@ fn damaging_ailment_for_pass(
         eprintln!(
             "[POBR_AILMENT] {name}: hit50={hit50:.2} crit50={crit50:.2} probe_chance={:.4} duration={:.4} speed={:.4} hit_chance={:.4} active={:.4} max={} sp={sp:.4}",
             probe_out.chance,
-            ailment_duration(kind, player, cfg) * debuff_duration_mult(enemy, cfg),
+            duration,
             ctx.speed,
             ctx.hit_chance,
             stack.active_stacks,
@@ -1433,14 +1446,14 @@ fn damaging_ailment_for_pass(
         apply_chance: probe_out.chance,
         apply_chance_rolled: out.chance,
         hit_chance: ctx.hit_chance,
-        duration: ailment_duration(kind, player, cfg) * debuff_duration_mult(enemy, cfg),
+        duration,
         hits_per_second: ctx.speed,
         base_duration: super::ailment::ailment_base_duration(kind, cfg).unwrap_or(0.0),
         enemy_duration: debuff_duration_mult(enemy, cfg),
         stacks: stack.active_stacks,
         max_stacks: stack.max_stacks as f64,
         effect: ailment_effect_mod(player, cfg),
-        rate: ailment_rate_mod(player, enemy, cfg, name),
+        rate,
         cap: cfg.constants.game().dot_dps_cap,
         dps: 0.0,
     };

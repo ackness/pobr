@@ -370,7 +370,13 @@ pub fn support_granted_gem_levels(
         ),
     ];
     let modifying = modifying_supports(judgements);
-    let other_supports = modifying.len().saturating_sub(1);
+    // Supports are support gems: a meta gem's trigger (Cast on Elemental
+    // Ailment's) is a second effect of a skill gem, not a Support.
+    let other_supports = modifying
+        .iter()
+        .filter(|(sup, _)| gems[sup.gem_index].skill_id == sup.effect_id)
+        .count()
+        .saturating_sub(1);
     let mut total = 0u32;
     for (sup, supported) in &modifying {
         let host = &gems[sup.gem_index];

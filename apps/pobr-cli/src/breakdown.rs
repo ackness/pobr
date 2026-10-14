@@ -360,10 +360,11 @@ fn write_ailment(s: &mut String, pad: &str, ailment: &AilmentBreakdown) {
     );
     let _ = writeln!(
         s,
-        "{pad}lasts {}s (base {}s, enemy x{}) · {} hits/s · {} instances of at most {}",
+        "{pad}lasts {}s (base {}s, enemy x{}, faster /{}) · {} hits/s · {} instances of at most {}",
         num(ailment.duration),
         num(ailment.base_duration),
         num(ailment.enemy_duration),
+        num(ailment.rate),
         num(ailment.hits_per_second),
         num(ailment.stacks),
         num(ailment.max_stacks)

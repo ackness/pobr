@@ -295,10 +295,20 @@ const BASELINES: [Baseline; 3] = [
     // companions, "Companions gain your Strength", Pain Offering's aura on
     // minions with Sacrificial Offering's increased Buff effect, and a
     // companion's share of Deflected Hits.
+    //
+    // Then 43 builds and 2054 rows: an ailment that deals its damage faster
+    // ends sooner, so fewer instances are active, and "increased duration of
+    // Ailments you inflict" counts; Bringer of Flame's "All Damage from you
+    // and Allies in your Presence contributes to … Ignite" is also the
+    // character's; Uhtred's Omen counts support gems, not a meta gem's
+    // trigger; "Skills from Corrupted Gems" asks whether the main skill's gem
+    // is corrupted; Embitter gains every extra damage as Cold; a gem's
+    // quality and Projectile Acceleration add Projectile Speed, which
+    // Projectile Acceleration III adds to projectile damage.
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
-        dps_builds: 41,
-        agreeing_rows: 2041,
+        dps_builds: 43,
+        agreeing_rows: 2054,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
@@ -308,11 +318,11 @@ const BASELINES: [Baseline; 3] = [
     // and measured before any change: 11 builds and 971 rows.
     //
     // 12 builds and 978 rows after the changes the tuned set's 41 builds
-    // record.
+    // record; 979 rows after those of its 43.
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
         dps_builds: 12,
-        agreeing_rows: 978,
+        agreeing_rows: 979,
     },
 ];
 

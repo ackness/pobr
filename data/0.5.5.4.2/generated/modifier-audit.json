@@ -27,7 +27,7 @@
     "scope": "Special-rule schemas, handlers, captures, operations and scopes; generic parser schema/compile. StatId is open; recognition is not calculation support. Overlap audit covers sampled source text only.",
     "input_sha256": {
       "0.5.5.4.2/generated/special_derived.json": "d18157d99c7620f096aa485d1f93d33166a578d45a9e4a064817d629e023a105",
-      "0.5.5.4.2/generated/special_vendor.json": "476b36b1d1ee0ac1450dbec397f3c4fe151e8233beada967f790501d8f1136b7",
+      "0.5.5.4.2/generated/special_vendor.json": "2fff4cae691c7770fdc2d401d81fcc5022f04affd0c10bc7c0cb4c6090f4883e",
       "0.5.5.4.2/overlay/mod_parser_rules.json": "c719c7c3eeed65048067f264fd0a62f81cc20d89b917f05e2aa53753166242af",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
       "overlay-common/special_mods.json": "75f2f511a6d4937867e63c232d292191ffc862bd152b001f9262276fc5eec7f3"
@@ -286584,7 +286584,8 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "ExtraAura"
+        "ExtraAura",
+        "HasShapersPresence"
       ],
       "special_rule_id": "vnd_gain_shaper_s_presence_for_10_seconds_wh_d648d057",
       "matching_special_rules": [
@@ -304497,7 +304498,9 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "ExtraAura"
+        "ExtraAura",
+        "MovementSpeed",
+        "SkillSpeed"
       ],
       "special_rule_id": "vnd_if_you_ve_warcried_recently_you_and_near_42b3bb98",
       "matching_special_rules": [
@@ -304511,7 +304514,9 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "ExtraAura"
+        "ExtraAura",
+        "MovementSpeed",
+        "SkillSpeed"
       ],
       "special_rule_id": "vnd_if_you_ve_warcried_recently_you_and_near_42b3bb98",
       "matching_special_rules": [
@@ -411637,7 +411642,8 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "ExtraAura"
+        "ExtraAura",
+        "Onslaught"
       ],
       "special_rule_id": "vnd_when_you_warcry_you_and_nearby_allies_ga_0541be15",
       "matching_special_rules": [
@@ -412189,7 +412195,8 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "ExtraAura"
+        "ExtraAura",
+        "Onslaught"
       ],
       "special_rule_id": "vnd_while_there_are_at_least_five_nearby_all_c0e94049",
       "matching_special_rules": [
@@ -412203,6 +412210,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
+        "Damage",
         "ExtraAura"
       ],
       "special_rule_id": "vnd_while_there_is_at_least_one_nearby_ally_9e0b8b1a",
@@ -412225,6 +412233,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
+        "Damage",
         "ExtraAura"
       ],
       "special_rule_id": "vnd_while_there_is_at_least_one_nearby_ally_9e0b8b1a",
@@ -412257,6 +412266,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
+        "Condition:UnholyMight",
         "ExtraAura"
       ],
       "special_rule_id": "vnd_while_you_are_not_on_low_mana_you_and_al_d6d386df",
@@ -414149,6 +414159,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
+        "Damage",
         "ExtraAura"
       ],
       "special_rule_id": "vnd_with_at_least_one_nearby_corpse_you_and_860f4ddf",
@@ -414171,6 +414182,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
+        "Damage",
         "ExtraAura"
       ],
       "special_rule_id": "vnd_with_at_least_one_nearby_corpse_you_and_860f4ddf",

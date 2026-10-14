@@ -588,8 +588,10 @@ export interface AilmentDetail {
   source: { damage_type: string; hit: number; crit: number }[];
   /** `duration` before modifiers, in seconds. */
   base_duration: number;
-  /** Multiplier from how fast effects expire on the enemy; `duration` is `base_duration` scaled by `duration_mods`, times this. */
+  /** Multiplier from how fast effects expire on the enemy; `duration` is `base_duration` scaled by `duration_mods`, times this, divided by `rate`. */
   enemy_duration: number;
+  /** How much faster the ailment deals its damage (the `ailment_rate` step): the same damage in less time. */
+  rate: number;
   /** The player's lines behind `apply_chance`, `duration`, the `ailment_effect` step and the `ailment_rate` step. Modifiers on the enemy are not listed. */
   chance_mods: BreakdownMod[];
   duration_mods: BreakdownMod[];

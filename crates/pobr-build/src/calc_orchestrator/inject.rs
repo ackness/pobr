@@ -588,7 +588,7 @@ pub(super) fn inject_main_skill_mods(
         //         `monsterLife × corpseExplosionLifeMultiplier` → Physical BASE
         //         (matching vendor CalcOffence.lua:2211-2217; e.g. Detonate Dead).
         session.add_modifiers(corpse_explosion_modifiers(
-            context, build, data, options, group, skill, skill_id,
+            build, data, options, group, skill, skill_id,
         ));
         // 1b-i-x. Crossbow reload data channel: CrossbowReloadTimeBase (the weapon's
         //         reload_time_ms) + CrossbowBoltCount (the ammo sibling skill's stat),

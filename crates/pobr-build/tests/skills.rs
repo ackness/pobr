@@ -29,6 +29,8 @@ mod corrupted_gems;
 mod cost_conversion;
 #[path = "skills/cost_multiplier.rs"]
 mod cost_multiplier;
+#[path = "skills/curse_copies.rs"]
+mod curse_copies;
 #[path = "skills/dual_wield.rs"]
 mod dual_wield;
 #[path = "skills/energy_triggers.rs"]
@@ -90,3 +92,5 @@ mod jewel_sources;
 // What the calculation did with each line of a build.
 #[path = "skills/line_usage.rs"]
 mod line_usage;
+#[path = "skills/uhtred_omen.rs"]
+mod uhtred_omen;

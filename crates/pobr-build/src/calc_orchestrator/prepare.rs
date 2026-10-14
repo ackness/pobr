@@ -320,6 +320,12 @@ pub(super) fn stage_build_cfg(
             cfg = cfg.with_condition(cond, true);
         }
     }
+    // "Skills from Corrupted Gems have 50% of Mana Costs Converted to Life Costs".
+    if let Some((_, group, _)) = &main.main_skill
+        && super::skill::resolve::from_corrupted_gem(data, group)
+    {
+        cfg = cfg.with_condition("GemCorrupted", true);
+    }
     // Enemy tier (19-G3 wiring): the build XML Config's explicitly saved `enemyIsBoss`
     // takes priority; falls back to the caller's orchestrator option when omitted
     // (PoB2's defaultIndex=3 = Pinnacle, matching existing callers).

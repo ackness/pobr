@@ -440,11 +440,12 @@ fn calculate_build_reports_a_rain_by_its_landing_arrows() {
         .rain
         .as_ref()
         .expect("the main skill is a rain");
-    // 169% increased: an arrow every 0.08 / 2.69 s, and the fifth after a hit
-    // is the first to land once 0.12 s have passed.
-    assert!((rain.landing_interval - 0.08 / 2.69).abs() < 1e-9);
+    // 169% increased and Projectile Acceleration III's 40% more: an arrow
+    // every 0.08 / (2.69 × 1.4) s, and the sixth after a hit is the first to
+    // land once 0.12 s have passed.
+    assert!((rain.landing_interval - 0.08 / (2.69 * 1.4)).abs() < 1e-9);
     assert_eq!(rain.hit_interval, 0.12);
-    assert_eq!(rain.arrows_per_hit, 5.0);
+    assert_eq!(rain.arrows_per_hit, 6.0);
     assert_eq!(report.output.action_rate, rain.hits_per_second);
 
     let reference = report

@@ -893,6 +893,18 @@ fn build_gain_matrix(db: &ModDb, cfg: &CalcConfig) -> [[f64; 5]; 5] {
             }
         }
     }
+    // Embitter: every gain is gained as Cold instead.
+    if db.flag(cfg, crate::rules::skill_stats::GAINS_ONLY_COLD) {
+        let cold = DAMAGE_TYPES
+            .iter()
+            .position(|&t| t == DamageType::Cold)
+            .expect("Cold is a damage type");
+        for row in &mut matrix {
+            let total: f64 = row.iter().sum();
+            *row = [0.0; 5];
+            row[cold] = total;
+        }
+    }
     matrix
 }
 

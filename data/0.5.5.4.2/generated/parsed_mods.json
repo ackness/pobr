@@ -32527,6 +32527,11 @@
           ]
         },
         {
+          "name": "ColdCanIgnite",
+          "type": "Flag",
+          "value": true
+        },
+        {
           "name": "ExtraAura",
           "type": "List",
           "value": [
@@ -32536,6 +32541,11 @@
               "value": true
             }
           ]
+        },
+        {
+          "name": "LightningCanIgnite",
+          "type": "Flag",
+          "value": true
         },
         {
           "name": "ExtraAura",
@@ -32549,6 +32559,11 @@
           ]
         },
         {
+          "name": "ChaosCanIgnite",
+          "type": "Flag",
+          "value": true
+        },
+        {
           "name": "ExtraAura",
           "type": "List",
           "value": [
@@ -32558,6 +32573,11 @@
               "value": true
             }
           ]
+        },
+        {
+          "name": "PhysicalCanIgnite",
+          "type": "Flag",
+          "value": true
         }
       ]
     },
@@ -41886,6 +41906,14 @@
               "value": true
             }
           ],
+          "tags": [
+            "Condition { var: \"LowMana\", negated: true, actor: None }"
+          ]
+        },
+        {
+          "name": "Condition:UnholyMight",
+          "type": "Flag",
+          "value": true,
           "tags": [
             "Condition { var: \"LowMana\", negated: true, actor: None }"
           ]

@@ -373,21 +373,24 @@ pub fn buff_skill_specs(
                             socket_index,
                             is_mark: false,
                             ignore_curse_limit: false,
-                            local_effect_inc: stat_on_skill_and_supports(
-                                &group,
-                                data,
-                                gem,
-                                skill_id,
-                                level,
+                            local_effect_inc: [
                                 skill_stats::OFFERING_BUFF_EFFECT,
-                            ),
+                                skill_stats::REMNANT_EFFECT,
+                            ]
+                            .into_iter()
+                            .map(|stat| {
+                                stat_on_skill_and_supports(&group, data, gem, skill_id, level, stat)
+                            })
+                            .sum(),
                             local_effect_more: 1.0,
-                            skill_types: pobr_data::skill::SkillTypes::NONE,
+                            skill_types: skill_type_bits(&effect.skill_types),
                         });
                     }
                     continue;
                 }
-                if !seen.insert(skill_id.to_string()) {
+                // A curse is judged among its copies below; an aura is the
+                // character's once.
+                if !is_curse && !seen.insert(skill_id.to_string()) {
                     continue;
                 }
                 if is_aura {
@@ -486,7 +489,7 @@ pub fn buff_skill_specs(
                     // via the statmap global segment `curse_local_effect`.
                     let (local_effect_inc, local_effect_more) =
                         curse_local_effect_scale(ctx, &group, data, gem, skill_id, level);
-                    specs.push(BuffSpec {
+                    let spec = BuffSpec {
                         name: buff_skill_name(data, skill_id),
                         kind: BuffKind::Curse,
                         skill_id: skill_id.to_string(),
@@ -499,12 +502,39 @@ pub fn buff_skill_specs(
                         local_effect_inc,
                         local_effect_more,
                         skill_types: pobr_data::skill::SkillTypes::NONE,
-                    });
+                    };
+                    // "Debuffs of the same type do not stack, and only the copy
+                    // with the strongest effect applies": of the groups that
+                    // use the same curse, the one whose curse is strongest
+                    // before the character's and the enemy's shared factors.
+                    match specs
+                        .iter_mut()
+                        .find(|other| other.kind == BuffKind::Curse && other.skill_id == skill_id)
+                    {
+                        Some(other) if curse_strength(&spec) > curse_strength(other) => {
+                            *other = spec;
+                        }
+                        Some(_) => {}
+                        None => specs.push(spec),
+                    }
                 }
             }
         }
     });
     specs
+}
+
+/// How strong a curse is before the factors every copy of it shares (the
+/// character's curse effect, the enemy's): its modifiers' total size, scaled
+/// by its own and its supports' effect.
+fn curse_strength(spec: &BuffSpec) -> f64 {
+    let size: f64 = spec
+        .mods
+        .iter()
+        .filter_map(|m| m.value.as_number())
+        .map(f64::abs)
+        .sum();
+    size * (1.0 + spec.local_effect_inc / 100.0) * spec.local_effect_more
 }
 
 /// The total of the game stat `stat` on the active skill `skill_id` (at

@@ -793,9 +793,9 @@ do
 		if hand and mainSkill and mainSkill[hand .. "Cfg"] then
 			cfg = mainSkill[hand .. "Cfg"]
 		end
-		extraModList = { INC = {}, MORE = {}, BASE = {}, OVERRIDE = {} }
+		extraModList = { INC = {}, MORE = {}, BASE = {}, OVERRIDE = {}, FLAG = {} }
 		for name in names:gmatch("[^,%s]+") do
-			for _, mt in ipairs({ "BASE", "INC", "MORE", "OVERRIDE" }) do
+			for _, mt in ipairs({ "BASE", "INC", "MORE", "OVERRIDE", "FLAG" }) do
 				local list = tabulateIn(sml, cfg, mt, name)
 				if #list > 0 then extraModList[mt][name] = list end
 			end

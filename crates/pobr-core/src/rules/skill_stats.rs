@@ -75,6 +75,37 @@ pub fn inflicts_withered(stat: &str) -> bool {
     INFLICTS_WITHERED.contains(&stat)
 }
 
+/// What a corpse explosion deals, by the stat of the skill that says so: the
+/// type of its damage and the share of the corpse's maximum Life it is.
+///
+/// - `corpse_explosion_monster_life_permillage_<type>`, in thousandths:
+///   Detonate Dead's "Deals Physical damage equal to {0}% of Corpse's maximum
+///   Life", Decompose's "Poisons enemies as though dealing Chaos damage equal
+///   to {0}% of Corpse's maximum Life";
+/// - `corpse_explosion_monster_life_%`, in hundredths: Fiery Death's
+///   "Explosion deals base Fire Damage equal to {0}% of the Corpse's Maximum
+///   Life";
+/// - `corpse_explosion_monster_life_%_<type>`, in hundredths: "Explosion
+///   deals base Lightning Damage equal to {0}% of corpse's Maximum Life".
+pub fn corpse_explosion_damage(stat: &str, value: f64) -> Option<(DamageType, f64)> {
+    let damage_type = |name: &str| match name {
+        "physical" => Some(DamageType::Physical),
+        "fire" => Some(DamageType::Fire),
+        "cold" => Some(DamageType::Cold),
+        "lightning" => Some(DamageType::Lightning),
+        "chaos" => Some(DamageType::Chaos),
+        _ => None,
+    };
+    let rest = stat.strip_prefix("corpse_explosion_monster_life_")?;
+    if let Some(name) = rest.strip_prefix("permillage_") {
+        return Some((damage_type(name)?, value / 1000.0));
+    }
+    match rest.strip_prefix('%')? {
+        "" => Some((DamageType::Fire, value / 100.0)),
+        typed => Some((damage_type(typed.strip_prefix('_')?)?, value / 100.0)),
+    }
+}
+
 /// The stats that say how many minions a summoning skill creates, of each
 /// kind of minion it summons.
 const SUMMONED_MINION_COUNTS: [&str; 1] = [
@@ -150,6 +181,17 @@ pub fn minion_modifiers(stat: &str, value: f64, minions: SummonedMinions) -> Opt
 /// effect", of the buff the Offering grants.
 pub const OFFERING_BUFF_EFFECT: &str = "offering_spells_effect_+%";
 
+/// "Flames of Chayula have {0}% increased effect" on Into the Breach,
+/// "Remnants from Supported Skills have {0}% increased effect" on a support:
+/// the effect of the Remnants the skill creates, and of the buff they grant.
+pub const REMNANT_EFFECT: &str = "remnant_effect_+%";
+
+/// The Purple Flames of Chayula the character has collected.
+pub const PURPLE_FLAMES: &str = "PurpleFlamesCount";
+
+/// The Purple Flames' buff "stacks up to 10 times".
+pub const MAXIMUM_PURPLE_FLAMES: f64 = 10.0;
+
 /// An aura of the character's that only its allies have, the minions among
 /// them (`calc::perform`'s `ExtraAura`): `modifiers` are what each has.
 fn allies_aura(modifiers: Vec<Modifier>) -> Modifier {
@@ -161,6 +203,11 @@ fn allies_aura(modifiers: Vec<Modifier>) -> Modifier {
 /// said of Command skills ("Minions deal 20% increased Damage with Command
 /// Skills", Bidding's "Supported Minions deal 30% more Damage with Command
 /// Skills") holds while a minion uses one: the condition [`COMMAND_SKILL`].
+/// Embitter (`all_damage_gained_as_cold_instead`): "all sources of Damage
+/// Gained [are] instead … treated as Damage Gained as extra Cold for
+/// Supported Skills" (`calc::damage`'s gain table).
+pub const GAINS_ONLY_COLD: &str = "DamageGainIsOnlyCold";
+
 pub const COMMAND_SKILL_STAT: &str = "is_commandable_skill";
 
 /// The condition a minion's Command skill sets (`CommandableSkill`).
@@ -184,9 +231,31 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         stat if is_minion_stat(stat) => Some(Vec::new()),
         // Read where a minion's skill is chosen (`calc::MinionSkill`).
         COMMAND_SKILL_STAT => Some(Vec::new()),
-        // Raises the buff of the Offering it supports, where that buff is
-        // made (`skill_env::buff_specs`).
-        OFFERING_BUFF_EFFECT => Some(Vec::new()),
+        // Decompose: "Poisons enemies as though dealing Chaos damage equal
+        // to {0}% of Corpse's maximum Life": what it deals poisons.
+        "corpse_explosion_monster_life_permillage_chaos" => {
+            Some(vec![Modifier::number("PoisonChance", ModType::Base, 100.0)])
+        }
+        // The corpse's Life the skill deals, where the corpse is known
+        // (`calc_orchestrator::skill::mods::corpse_explosion_modifiers`).
+        stat if corpse_explosion_damage(stat, 0.0).is_some() => Some(Vec::new()),
+        // Raise the buff of the Offering, or the effect of the Remnants, of
+        // the skill they are on, where that buff is made
+        // (`skill_env::buff_specs`).
+        OFFERING_BUFF_EFFECT | REMNANT_EFFECT => Some(Vec::new()),
+        "all_damage_gained_as_cold_instead" => Some(vec![Modifier::flag(GAINS_ONLY_COLD)]),
+        // "{0}% increased Projectile Speed" (Spark's quality) and Projectile
+        // Acceleration's "Supported Skills have {0}% more Projectile Speed".
+        "base_projectile_speed_+%" => Some(vec![Modifier::number(
+            "ProjectileSpeed",
+            ModType::Inc,
+            value,
+        )]),
+        "support_faster_projectiles_projectile_speed_+%_final" => Some(vec![Modifier::number(
+            "ProjectileSpeed",
+            ModType::More,
+            value,
+        )]),
         // Efficiency: "Supported Skills have {0}% more Cost" / "less Cost",
         // of whatever the skill costs.
         "support_inspiration_cost_+%_final" => {
@@ -344,6 +413,18 @@ pub fn player_buff_modifiers(stat: &str, value: f64, skill: BuffSkill) -> Option
     match stat {
         // Not a buff on the character (see `inflicts_withered`).
         stat if inflicts_withered(stat) => Some(Vec::new()),
+        // Read where the buff is made (see `skill_modifiers`).
+        REMNANT_EFFECT => Some(Vec::new()),
+        // Into the Breach: a Purple Flame of Chayula "grants 7% of Damage as
+        // extra Chaos Damage", a buff that stacks up to 10 times. How many
+        // the character has is the configured number of Purple Flames
+        // collected (`PurpleFlamesCount`). The stat is per Flame; the Flame
+        // is a Remnant, so what raises the effect of Remnants raises it.
+        "breach_flame_chaos_addition_%" => Some(vec![
+            Modifier::number("DamageGainAsChaos", ModType::Base, value).with_tag(
+                ModTag::multiplier(PURPLE_FLAMES, 1.0, Some(MAXIMUM_PURPLE_FLAMES)),
+            ),
+        ]),
         // Pain Offering: "Aura grants Minions {0}% increased damage" and
         // "Aura grants Minions {0}% increased Attack and Cast Speed". The
         // bone spike's aura affects minions, not the character: an aura of
@@ -588,6 +669,63 @@ mod tests {
 
     fn four_consumed() -> CalcConfig {
         CalcConfig::new().with_multiplier("RemovablePowerCharge", 4.0)
+    }
+
+    /// The damage type is in the stat id, or, for Fiery Death's
+    /// `corpse_explosion_monster_life_%`, in its text: "base Fire Damage".
+    #[test]
+    fn a_corpse_explosion_deals_the_type_its_stat_names() {
+        let cases = [
+            (
+                "corpse_explosion_monster_life_permillage_physical",
+                60.0,
+                DamageType::Physical,
+                0.06,
+            ),
+            (
+                "corpse_explosion_monster_life_permillage_chaos",
+                100.0,
+                DamageType::Chaos,
+                0.1,
+            ),
+            (
+                "corpse_explosion_monster_life_%",
+                8.0,
+                DamageType::Fire,
+                0.08,
+            ),
+            (
+                "corpse_explosion_monster_life_%_lightning",
+                5.0,
+                DamageType::Lightning,
+                0.05,
+            ),
+        ];
+        for (stat, value, damage_type, share) in cases {
+            assert_eq!(
+                corpse_explosion_damage(stat, value),
+                Some((damage_type, share)),
+                "{stat}"
+            );
+        }
+        assert_eq!(
+            corpse_explosion_damage("corpse_explosion_monster_life_%_x", 5.0),
+            None
+        );
+        // Decompose poisons with what it deals.
+        let mut db = ModDb::new();
+        db.add_list(
+            skill_modifiers("corpse_explosion_monster_life_permillage_chaos", 100.0)
+                .expect("a rule"),
+        );
+        assert_eq!(
+            db.sum(
+                ModType::Base,
+                &CalcConfig::new(),
+                &[ModName::from("PoisonChance")]
+            ),
+            100.0
+        );
     }
 
     #[test]

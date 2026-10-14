@@ -415,12 +415,23 @@ pub fn buff_pass(env: &mut Env) {
                 ];
                 // The skill's own and its supports' increase of its buff
                 // (Sacrificial Offering's "Supported Offering Skills have
-                // 30% increased Buff effect") adds to the character's.
-                let inc = env.player.mod_db.sum(ModType::Inc, &env.cfg, &inc_names)
+                // 30% increased Buff effect") adds to the character's. The
+                // buff of a skill's Remnants (Into the Breach's Flames of
+                // Chayula) has what raises the Remnants the character
+                // creates too ("Remnants you create have 15% increased
+                // effect").
+                let mut inc = env.player.mod_db.sum(ModType::Inc, &env.cfg, &inc_names)
                     + spec.local_effect_inc;
-                let more = env.player.mod_db.more(&env.cfg, &more_names)
+                let mut more = env.player.mod_db.more(&env.cfg, &more_names)
                     * spec.magnitude
                     * spec.local_effect_more;
+                if SkillTypes::from_pob2_name("GeneratesRemnants")
+                    .is_some_and(|remnants| spec.skill_types.contains(remnants))
+                {
+                    let names = [ModName::from("RemnantEffect")];
+                    inc += env.player.mod_db.sum(ModType::Inc, &env.cfg, &names);
+                    more *= env.player.mod_db.more(&env.cfg, &names);
+                }
                 let mult = (1.0 + inc / 100.0) * more;
                 // vendor :1955: `modDB.conditions["AffectedBy"..buff.name] = true`.
                 conditions.push(affected_by_condition(&spec.name));

@@ -345,7 +345,9 @@ pub struct AilmentBreakdown {
     pub apply_chance: f64,
     /// The chance to hit, in percent.
     pub hit_chance: f64,
-    /// How long one instance lasts, in seconds.
+    /// How long one instance lasts, in seconds: its duration stretched by
+    /// the enemy and divided by the `ailment_rate` step (damage dealt faster
+    /// ends sooner).
     pub duration: f64,
     /// Hits per second (uses per second and the skill's damage per second multiplier).
     pub hits_per_second: f64,
@@ -361,9 +363,13 @@ pub struct AilmentBreakdown {
     pub source: Vec<AilmentSourceRow>,
     /// `duration` before modifiers, in seconds, and the multiplier from how
     /// fast effects expire on the enemy: `duration` is `base_duration`
-    /// scaled by the `duration_mods` lines, times `enemy_duration`.
+    /// scaled by the `duration_mods` lines, times `enemy_duration`, divided
+    /// by `rate`.
     pub base_duration: f64,
     pub enemy_duration: f64,
+    /// How much faster the ailment deals its damage (the `ailment_rate`
+    /// step): the same damage in less time.
+    pub rate: f64,
     /// The player's lines behind `apply_chance` (the ailment's own chance
     /// name and `AilmentChance`), `duration`, the `ailment_effect` step and
     /// the `ailment_rate` step, inactive lines included. Modifiers on the
@@ -478,6 +484,7 @@ fn ailment_breakdown(
             .collect(),
         base_duration: terms.base_duration,
         enemy_duration: terms.enemy_duration,
+        rate: terms.rate,
         chance_mods: mod_entries(&lines.chance),
         duration_mods: mod_entries(&lines.duration),
         effect_mods: mod_entries(&lines.effect),

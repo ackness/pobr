@@ -1604,6 +1604,11 @@
           }
         },
         {
+          "name": "ColdCanIgnite",
+          "type": "FLAG",
+          "value": true
+        },
+        {
           "name": "ExtraAura",
           "type": "LIST",
           "value": {
@@ -1615,6 +1620,11 @@
               }
             ]
           }
+        },
+        {
+          "name": "LightningCanIgnite",
+          "type": "FLAG",
+          "value": true
         },
         {
           "name": "ExtraAura",
@@ -1630,6 +1640,11 @@
           }
         },
         {
+          "name": "ChaosCanIgnite",
+          "type": "FLAG",
+          "value": true
+        },
+        {
           "name": "ExtraAura",
           "type": "LIST",
           "value": {
@@ -1641,6 +1656,11 @@
               }
             ]
           }
+        },
+        {
+          "name": "PhysicalCanIgnite",
+          "type": "FLAG",
+          "value": true
         }
       ],
       "verified": false,
@@ -1666,6 +1686,11 @@
           }
         },
         {
+          "name": "ColdCanIgnite",
+          "type": "FLAG",
+          "value": true
+        },
+        {
           "name": "ExtraAura",
           "type": "LIST",
           "value": {
@@ -1677,6 +1702,11 @@
               }
             ]
           }
+        },
+        {
+          "name": "LightningCanIgnite",
+          "type": "FLAG",
+          "value": true
         },
         {
           "name": "ExtraAura",
@@ -1692,6 +1722,11 @@
           }
         },
         {
+          "name": "ChaosCanIgnite",
+          "type": "FLAG",
+          "value": true
+        },
+        {
           "name": "ExtraAura",
           "type": "LIST",
           "value": {
@@ -1703,6 +1738,11 @@
               }
             ]
           }
+        },
+        {
+          "name": "PhysicalCanIgnite",
+          "type": "FLAG",
+          "value": true
         }
       ],
       "verified": false,
@@ -2418,6 +2458,17 @@
               }
             ]
           },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "KilledPoisonedLast2Seconds"
+            }
+          ]
+        },
+        {
+          "name": "LifeRegen",
+          "type": "BASE",
+          "value": "$1",
           "tags": [
             {
               "type": "Condition",
@@ -7709,6 +7760,17 @@
               }
             ]
           }
+        },
+        {
+          "name": "LifeRegenerationRecoversEnergyShield",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "OnConsecratedGround"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -7738,6 +7800,17 @@
               }
             ]
           }
+        },
+        {
+          "name": "ElementalAilmentImmune",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "OnConsecratedGround"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -22439,6 +22512,17 @@
               "var": "KilledUniqueEnemy"
             }
           ]
+        },
+        {
+          "name": "HasShapersPresence",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "KilledUniqueEnemy"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -24817,6 +24901,17 @@
               "var": "ConsumedCorpseRecently"
             }
           ]
+        },
+        {
+          "name": "LifeRegenPercent",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "ConsumedCorpseRecently"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -24868,6 +24963,17 @@
               "var": "BlockedRecently"
             }
           ]
+        },
+        {
+          "name": "LifeRegenPercent",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "BlockedRecently"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -24897,6 +25003,17 @@
               "var": "AttackedRecently"
             }
           ]
+        },
+        {
+          "name": "BlockChance",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "AttackedRecently"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -24920,6 +25037,17 @@
               }
             ]
           },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "CastSpellRecently"
+            }
+          ]
+        },
+        {
+          "name": "SpellBlockChance",
+          "type": "BASE",
+          "value": "$1",
           "tags": [
             {
               "type": "Condition",
@@ -24995,6 +25123,17 @@
               "var": "ImpaledRecently"
             }
           ]
+        },
+        {
+          "name": "Armour",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "ImpaledRecently"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -25026,6 +25165,17 @@
           ]
         },
         {
+          "name": "Speed",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsedWarcryRecently"
+            }
+          ]
+        },
+        {
           "name": "ExtraAura",
           "type": "LIST",
           "value": {
@@ -25037,6 +25187,17 @@
               }
             ]
           },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsedWarcryRecently"
+            }
+          ]
+        },
+        {
+          "name": "MovementSpeed",
+          "type": "INC",
+          "value": "$1",
           "tags": [
             {
               "type": "Condition",
@@ -25069,6 +25230,20 @@
               }
             ]
           },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsedWarcryRecently"
+            }
+          ]
+        },
+        {
+          "name": "Speed",
+          "type": "INC",
+          "value": "$1",
+          "flags": [
+            "Attack"
+          ],
           "tags": [
             {
               "type": "Condition",
@@ -44685,6 +44860,17 @@
               "var": "UsedWarcryRecently"
             }
           ]
+        },
+        {
+          "name": "Onslaught",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsedWarcryRecently"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -44932,6 +45118,18 @@
               "var": "NearbyAlly"
             }
           ]
+        },
+        {
+          "name": "Onslaught",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 5.0,
+              "var": "NearbyAlly"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -44962,6 +45160,18 @@
               "var": "NearbyAlly"
             }
           ]
+        },
+        {
+          "name": "Damage",
+          "type": "MORE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 1.0,
+              "var": "NearbyAlly"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -44985,6 +45195,18 @@
               }
             ]
           },
+          "tags": [
+            {
+              "type": "Condition",
+              "neg": true,
+              "var": "LowMana"
+            }
+          ]
+        },
+        {
+          "name": "Condition:UnholyMight",
+          "type": "FLAG",
+          "value": true,
           "tags": [
             {
               "type": "Condition",
@@ -45464,6 +45686,18 @@
               "var": "NearbyCorpse"
             }
           ]
+        },
+        {
+          "name": "Damage",
+          "type": "MORE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 1.0,
+              "var": "NearbyCorpse"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -45704,6 +45938,21 @@
               }
             ]
           }
+        },
+        {
+          "name": "LifeRegenPercent",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "AffectedByPlacedBanner"
+            },
+            {
+              "type": "Multiplier",
+              "var": "BannerValour"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -45737,6 +45986,21 @@
               }
             ]
           }
+        },
+        {
+          "name": "LifeRegenPercent",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "AffectedByPlacedBanner"
+            },
+            {
+              "type": "Multiplier",
+              "var": "BannerValour"
+            }
+          ]
         }
       ],
       "verified": false,
