@@ -158,6 +158,8 @@ const SET_BY_THE_ORCHESTRATION: &[&str] = &[
     "DualWielding",
     "UsingShield",
     // `conditions::combat_conditions`: what using the main skill means.
+    "HitRecently",
+    "HitSpellRecently",
     "AttackedRecently",
     "CastSpellRecently",
     "UsedMovementSkillRecently",

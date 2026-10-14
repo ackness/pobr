@@ -265,9 +265,14 @@ pub(crate) fn grenade_type_count(build: &Build, data: &BuildData) -> f64 {
 /// Combat conditions that follow from the character using the main skill, by its
 /// final skill types:
 ///
+/// - a skill that hits → `HitRecently`, and a spell that hits also
+///   `HitSpellRecently` ("if you've Hit an Enemy Recently"): the hits of the
+///   skills the character uses or triggers are its own, those of its mines and
+///   totems are not;
 /// - **Exemption**: a triggered skill (`Triggered`/`InbuiltTrigger`, the same
 ///   determination as `trigger_modifiers`) or a mine (`RemoteMined`) is not the
-///   character using it, and gives none. Traps have no skill type in the game data.
+///   character using it, and gives nothing below. Traps have no skill type in
+///   the game data.
 /// - an attack → `AttackedRecently`, otherwise a spell → `CastSpellRecently`;
 /// - `Movement` → `UsedMovementSkillRecently`;
 /// - `Minion` without `Duration` → `UsedMinionSkillRecently`;
@@ -288,10 +293,19 @@ pub(crate) fn combat_conditions(
     if used_by_totem(skill_types) {
         return vec!["HaveTotem", "SummonedTotemRecently"];
     }
-    if has("Triggered") || has("InbuiltTrigger") || has("RemoteMined") {
+    if has("RemoteMined") {
         return Vec::new();
     }
     let mut conds = Vec::new();
+    if skill_flags.intersects(ModFlags::HIT) {
+        conds.push("HitRecently");
+        if skill_flags.intersects(ModFlags::SPELL) {
+            conds.push("HitSpellRecently");
+        }
+    }
+    if has("Triggered") || has("InbuiltTrigger") {
+        return conds;
+    }
     if skill_flags.intersects(ModFlags::ATTACK) {
         conds.push("AttackedRecently");
     } else if skill_flags.intersects(ModFlags::SPELL) {

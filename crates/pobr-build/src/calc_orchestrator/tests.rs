@@ -2376,11 +2376,24 @@ fn combat_conditions_follow_vendor_branches() {
             "{exempt} should be exempt from combat conditions"
         );
     }
+    // A skill that hits: the character has hit an enemy recently, also when
+    // the skill is triggered, but not with its mines.
+    let hit = ModFlags::ATTACK | ModFlags::HIT;
+    assert_eq!(
+        combat_conditions(&types(&["Attack"]), hit),
+        vec!["HitRecently", "AttackedRecently"]
+    );
+    let spell_hit = ModFlags::SPELL | ModFlags::HIT;
+    assert_eq!(
+        combat_conditions(&types(&["Spell", "Triggered"]), spell_hit),
+        vec!["HitRecently", "HitSpellRecently"]
+    );
+    assert!(combat_conditions(&types(&["Spell", "RemoteMined"]), spell_hit).is_empty());
     // A totem uses the skill: the character neither attacks nor casts, and
     // has summoned the totem.
     for totem in ["SummonsTotem", "UsedByTotem"] {
         assert_eq!(
-            combat_conditions(&types(&["Spell", totem]), ModFlags::SPELL),
+            combat_conditions(&types(&["Spell", totem]), spell_hit),
             vec!["HaveTotem", "SummonedTotemRecently"]
         );
     }
