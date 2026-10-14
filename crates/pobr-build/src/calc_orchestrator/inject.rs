@@ -932,6 +932,26 @@ pub(super) fn inject_self_buff_exposure(
             Modifier::flag(pobr_core::calc::withered::CAN_WITHER).with_origin(origin),
         ]);
     }
+    // 4c'''. The Blind on the enemy is the strongest one the character's
+    //       skills inflict: the effect a skill and its supports give its
+    //       Blinds (Blind II's "20% increased Blind Effect") is the enemy's,
+    //       as the character's own "increased Blind Effect" is.
+    if let Some((skill_id, increase)) = pobr_core::skill_env::strongest_skill_blind(build, data) {
+        let origin = ModifierSource::new(SourceId::new(
+            SourceKind::SkillGem,
+            format!("skill.{skill_id}.blind_effect"),
+        ));
+        let effect = Modifier::number("BlindEffect", ModType::Inc, increase)
+            .with_tag(pobr_core::ModTag::condition("Effective", false));
+        session.add_modifiers(vec![
+            Modifier::new(
+                "EnemyModifier",
+                ModType::List,
+                pobr_core::ModValue::NestedMods(vec![effect]),
+            )
+            .with_origin(origin),
+        ]);
+    }
 }
 
 /// Reads the complete source database before actor snapshots and condition bridging.

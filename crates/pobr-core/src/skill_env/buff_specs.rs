@@ -576,6 +576,62 @@ pub fn skill_inflicting_withered(
     found
 }
 
+/// The stat behind "N% increased Blind Effect" on a skill or a support gem
+/// (Blind II's 20%): the effect of the Blinds that skill inflicts.
+const BLIND_EFFECT: &str = "blind_effect_+%";
+
+/// The build's strongest Blind, as `(skill, increased effect)`: the enabled
+/// active skill whose own stats and those of the supports that apply to it
+/// increase the effect of its Blinds the most (`blind_effect_+%`). Blind
+/// does not stack, so the enemy carries one skill's Blind, the strongest.
+/// `None` when no skill has such a stat.
+pub fn strongest_skill_blind(
+    groups: &dyn SocketGroupView,
+    data: &dyn BuffEnv,
+) -> Option<(String, f64)> {
+    let increase = |effect_id: &str, level: u32, quality: u32, set_index: Option<u32>| -> f64 {
+        data.effect_stats(effect_id, level, quality, set_index)
+            .all()
+            .filter(|ds| ds.stat == BLIND_EFFECT)
+            .map(|ds| ds.value)
+            .sum()
+    };
+    let mut strongest: Option<(String, f64)> = None;
+    groups.for_each_enabled_group(&mut |group| {
+        for gem in group.gems {
+            let effect_ids = std::iter::once(gem.skill_id.as_str()).chain(
+                data.additional_effects(&gem.skill_id)
+                    .iter()
+                    .map(String::as_str),
+            );
+            for skill_id in effect_ids {
+                if data.effect(skill_id).is_none_or(|effect| effect.is_support) {
+                    continue;
+                }
+                let by_supports: f64 = group_judgement(&group, data, skill_id)
+                    .compatible
+                    .iter()
+                    .map(|sup| {
+                        let host = &group.gems[sup.gem_index];
+                        increase(
+                            &sup.effect_id,
+                            host.gem_level,
+                            host.quality,
+                            support_stat_set_index(sup, group.gems),
+                        )
+                    })
+                    .sum();
+                let total = increase(skill_id, gem.gem_level, gem.quality, gem.stat_set_index)
+                    + by_supports;
+                if total != 0.0 && strongest.as_ref().is_none_or(|(_, best)| total > *best) {
+                    strongest = Some((skill_id.to_string(), total));
+                }
+            }
+        }
+    });
+    strongest
+}
+
 /// A curse skill's **skill-local** CurseEffect multiplier-zone segment (matching vendor
 /// CalcPerform.lua:2423's `skillModList:Sum("INC", skillCfg, "CurseEffect")` + :2427's
 /// `More(...)`): the curse gem's own effect stats (the quality segment carries

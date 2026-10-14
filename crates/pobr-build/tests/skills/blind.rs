@@ -11,6 +11,8 @@ use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 const ICE_SHOT: &str = r#"<Gem gemId="Metadata/Items/Gem/SkillGemIceShot" skillId="IceShotPlayer" nameSpec="Ice Shot" level="20" quality="0" enabled="true"/>"#;
 
+const BLIND_II: &str = r#"<Gem gemId="Metadata/Items/Gems/SupportGemBlindTwo" skillId="SupportBlindPlayerTwo" nameSpec="Blind II" level="1" quality="0" enabled="true"/>"#;
+
 fn data() -> BuildData {
     BuildData::load(&GameData::new(repo_data_root().join(data_version())))
         .expect("load repository data")
@@ -19,6 +21,30 @@ fn data() -> BuildData {
 /// A bow attacker with some Evasion and Deflection Rating, against an enemy
 /// that is or is not stated to be Blinded.
 fn calculate(data: &BuildData, blinded: bool, effective: bool, extra: &[&str]) -> OutputTable {
+    calculate_with(data, &[ICE_SHOT], blinded, effective, extra)
+}
+
+/// [`calculate`] with a skill group for each of `groups`, the first the
+/// main one.
+fn calculate_with(
+    data: &BuildData,
+    groups: &[&str],
+    blinded: bool,
+    effective: bool,
+    extra: &[&str],
+) -> OutputTable {
+    let skills: String = groups
+        .iter()
+        .enumerate()
+        .map(|(index, gems)| {
+            let main = if index == 0 {
+                r#" mainActiveSkill="1""#
+            } else {
+                ""
+            };
+            format!(r#"<Skill enabled="true"{main}>{gems}</Skill>"#)
+        })
+        .collect();
     let input = if blinded {
         r#"<Input name="conditionEnemyBlinded" boolean="true"/>"#
     } else {
@@ -28,7 +54,7 @@ fn calculate(data: &BuildData, blinded: bool, effective: bool, extra: &[&str]) -
         r#"<PathOfBuilding2>
 <Build level="80" className="Ranger" ascendClassName="None" mainSocketGroup="1"/>
 <Skills defaultGemLevel="20" activeSkillSet="1"><SkillSet id="1">
-  <Skill enabled="true" mainActiveSkill="1">{ICE_SHOT}</Skill>
+  {skills}
 </SkillSet></Skills>
 <Items activeItemSet="1"><Item id="1">Rarity: RARE
 Test Bow
@@ -110,4 +136,26 @@ fn blind_effect_makes_the_blind_the_character_inflicts_stronger() {
     let unused = calculate(&data, false, true, &effect);
     assert_eq!(unused.evade_chance, seeing.evade_chance);
     assert_eq!(unused.hit_chance, seeing.hit_chance);
+}
+
+/// Blind II gives the Blinds of the skill it supports "20% increased Blind
+/// Effect" (`blind_effect_+%`). Blind does not stack: the enemy carries
+/// one Blind, the strongest, so a second supported skill adds nothing.
+#[test]
+fn a_support_strengthens_the_blind_of_the_skill_it_supports() {
+    let data = data();
+    let supported = format!("{ICE_SHOT}{BLIND_II}");
+    let plain = calculate(&data, true, true, &[]);
+    let increased = calculate(&data, true, true, &["20% increased Blind Effect"]);
+    assert!(increased.evade_chance > plain.evade_chance);
+
+    let one = calculate_with(&data, &[&supported], true, true, &[]);
+    assert_eq!(one.evade_chance, increased.evade_chance);
+    assert_eq!(one.deflect_chance, increased.deflect_chance);
+    assert_eq!(one.hit_chance, increased.hit_chance);
+    // Supporting another skill's group, not the main one.
+    let other = calculate_with(&data, &[ICE_SHOT, &supported], true, true, &[]);
+    assert_eq!(other.evade_chance, increased.evade_chance);
+    let two = calculate_with(&data, &[&supported, &supported], true, true, &[]);
+    assert_eq!(two.evade_chance, increased.evade_chance);
 }
