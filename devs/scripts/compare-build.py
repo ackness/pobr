@@ -185,7 +185,7 @@ def decode_code(code: str) -> str:
 def item_slot_keys(xml: str) -> dict:
     """PoB2 item id → the source key of the slot it is equipped in, in the
     active item set. Jewels and unslotted items are left out: their lines are
-    keyed by the item's name."""
+    keyed as `jewel`."""
     root = ElementTree.fromstring(xml)
     items = root.find("Items")
     if items is None:
@@ -221,14 +221,16 @@ def slot_key(name: str, second_weapon_set: bool) -> Optional[str]:
 
 def pob2_source_key(source: str, item_slots: dict) -> str:
     """The key a PoB2 modifier source is matched by (`Tree:123` → `tree:123`,
-    `Item:23:Name, Base` → the slot of item 23, `Skill:Id` → `skill:Id`)."""
+    `Item:23:Name, Base` → the slot of item 23, `jewel` for any jewel,
+    `Skill:Id` → `skill:Id`). The engine numbers its jewels by their place in
+    the build, so the jewels meet as one source."""
     source = source or ""
     head, _, rest = source.partition(":")
     if head == "Tree":
         return "tree:" + rest
     if head == "Item":
         item_id, _, name = rest.partition(":")
-        return item_slots.get(item_id) or "jewel:" + name
+        return item_slots.get(item_id) or "jewel"
     if head == "Skill":
         return "skill:" + rest
     if head == "Quest":
@@ -247,8 +249,8 @@ def pob2_source_key(source: str, item_slots: dict) -> str:
 def pobr_source_key(line: dict, main_skill: str) -> str:
     """The key an engine breakdown line is matched by, from its origin
     (`PassiveNode node.123` → `tree:123`, `ItemAffix item.gloves.explicit` →
-    `item:gloves`). A line without an origin (a jewel's, a custom line's) is
-    keyed by its text."""
+    `item:gloves`, `Jewel jewel.2` → `jewel`). A line without an origin (a
+    custom line's) is keyed by its text."""
     kind = line.get("origin_kind")
     ident = line.get("origin_id") or ""
     if not kind:
@@ -268,12 +270,16 @@ def pobr_source_key(line: dict, main_skill: str) -> str:
         return "item:" + slot
     if kind == "Flask":
         return "flask:" + rest
+    if kind == "Jewel":
+        return "jewel"
     if kind in SKILL_KINDS:
         return "skill:" + skill_effect(ident, main_skill)
     if kind == "CharacterBase":
         return "attributes" if ident == "base.attr_derived" else "base"
     if kind == "GameConstant":
         return "base"
+    if kind == "Config" and ident == "config.custom":
+        return "custom"
     if kind in ("Config", "ConfigOption", "EnemyConfig"):
         return "config"
     if kind == "CampaignReward":
@@ -402,7 +408,7 @@ def compare(pobr: list, pob2: list) -> Comparison:
             result.only_pob2.append(other)
         else:
             result.only_pobr.append(mine)
-    # A source both sides name differently (a jewel, a custom line) is left
+    # A source both sides name differently (a custom line) is left
     # over on both sides with the same type and value.
     for other in list(result.only_pob2):
         mine = next((group for group in result.only_pobr

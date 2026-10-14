@@ -197,6 +197,7 @@ mise run test build parity parity_baseline_report -- --ignored --nocapture
 mise run test build parity effective_switch_dual_run_report -- --ignored --nocapture
 mise run test build parity ehp_dual_run_report -- --ignored --nocapture
 
+mise run triage [set dir | build dir ...]                         # Every worked build at once: whose differences, and their shared causes
 mise run diagnose <build dir | code file | committed build name>   # One build's dropped inputs
 mise run compare <build> [Stat ...]                               # One build against the pinned PoB2, stat by stat
 mise run lookup <id or name> [--level N]                          # Game data records of a skill, stat, base, node or unique
@@ -204,8 +205,9 @@ mise run accuracy [dir of */code.txt]                             # A corpus aga
 cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakdown TotalDPS,Life   # How the stats asked for arrive
 ```
 
-`diagnose` 是数值差异的第一步，流程见[维护者指南的“排查数值差异”](maintainer-guide.md#排查数值差异诊断闭环)。
-`compare` 需要 vendor 与 LuaJIT，PoB2 的结果按构筑码缓存在 `.cache/pob2-oracle/`；`lookup` 只读
+`triage` 是数值差异的第一步，一次对照基准组与 tuned 组的全部构筑，`diagnose` / `compare` 只用于它解释不了的单个构筑；
+流程见 [AGENTS.md](../AGENTS.md#accuracy-workflow) 和[维护者指南的“排查数值差异”](maintainer-guide.md#排查数值差异诊断闭环)。
+`triage` 与 `compare` 需要 vendor 与 LuaJIT，PoB2 的结果按构筑码缓存在 `.cache/pob2-oracle/`，两者共用；`lookup` 只读
 当前数据版本（`POBR_DATA_ROOT` / `POBR_DATA_VERSION` / `CURRENT`，或 `--version`），二者都只用 Python 标准库。
 
 `--timings` 显示编译单元耗时与依赖等待。使用重定向后的 target 时按 Cargo 输出定位报告。

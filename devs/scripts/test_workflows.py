@@ -642,9 +642,14 @@ class CompareBuildTests(unittest.TestCase):
             with self.subTest(pob2=pob2, pobr=pobr):
                 self.assertEqual(self.compare.pob2_source_key(pob2, slots),
                                  self.compare.pobr_source_key(pobr, "IceShotPlayer"))
-        # A jewel's lines have no origin in the engine and no slot in PoB2.
-        self.assertEqual(self.compare.pob2_source_key("Item:2:Prism of Belief, Diamond", slots),
-                         "jewel:Prism of Belief, Diamond")
+        # The jewels meet as one source: PoB2 names them, the engine numbers them.
+        self.assertEqual(self.compare.pob2_source_key("Item:2:Prism of Belief, Diamond", slots), "jewel")
+        self.assertEqual(self.compare.pobr_source_key(
+            {"origin_kind": "Jewel", "origin_id": "jewel.2"}, "IceShotPlayer"), "jewel")
+        self.assertEqual(self.compare.pobr_source_key(
+            {"origin_kind": "Config", "origin_id": "config.custom"}, "IceShotPlayer"),
+            self.compare.pob2_source_key("Custom", slots))
+        # A line without an origin is keyed by its text.
         self.assertEqual(self.compare.pobr_source_key({"source_text": "+8 to Strength"}, "IceShotPlayer"),
                          "text:+8 to Strength")
 
@@ -673,7 +678,7 @@ class CompareBuildTests(unittest.TestCase):
         pob2 = [
             line("BASE", "tree:1", 100.0, "A"),
             line("INC", "item:gloves", 15.0, "B"),
-            line("INC", "jewel:Prism of Belief, Diamond", 8.0, "C"),
+            line("INC", "custom", 8.0, "C"),
             line("INC", "tree:9", 7.0, "D"),
             # Two 10% more lines are 21% more.
             line("MORE", "skill:S", 21.0, "E"),
@@ -686,7 +691,7 @@ class CompareBuildTests(unittest.TestCase):
         self.assertEqual([(ours.key, ours.value, theirs.value) for ours, theirs in result.different],
                          [("item:gloves", 10.0, 15.0)])
         self.assertEqual([(ours.key, theirs.key) for ours, theirs in result.renamed],
-                         [("text:8% increased maximum Life", "jewel:Prism of Belief, Diamond")])
+                         [("text:8% increased maximum Life", "custom")])
         totals = self.compare.sums(pobr)
         self.assertEqual((totals["BASE"], totals["INC"]), (100.0, 21.0))
         self.assertAlmostEqual(totals["MORE"], 1.21)
@@ -776,7 +781,7 @@ class CompareBuildTests(unittest.TestCase):
                           "code reference 4,500", text)
             self.assertIn("item:gloves: PoBR +10% · PoB2 +15%", text)
             self.assertIn("PoBR has it, inactive: +7%  7% increased maximum Life while X", text)
-            self.assertIn("PoBR text:50% increased maximum Life · PoB2 jewel:Prism of Belief, Diamond", text)
+            self.assertIn("PoBR text:50% increased maximum Life · PoB2 jewel", text)
             self.assertIn("-- Cold: PoBR 30–60 (average 45; base 10–20) · PoB2 33–66 (average 50)", text)
             self.assertIn("+25%  tree:3  Tree:3  [ElementalDamage]", text)
 
@@ -840,6 +845,98 @@ LOOKUP_DATA = {
             {"kind": "mod", "name": "ProjectileCount", "mod_type": "BASE"}]}},
         "per_stat_set": {"IceShotPlayer": {"1": {"base_number_of_projectiles": {"mods": []}}}}},
 }
+
+
+class TriageTests(unittest.TestCase):
+    """`mise run triage` files each reference row that differs by what the
+    pinned PoB2 says today, and gathers what explains the engine's rows."""
+
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location("triage", REPO / "devs/scripts/triage.py")
+        self.triage = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.triage)
+
+    def test_rows_are_filed_by_what_pob2_says_today(self):
+        classify = self.triage.classify
+        self.assertEqual(classify(100.0, 120.0, 101.0), "reference")
+        self.assertEqual(classify(100.0, 120.0, 119.0), "engine")
+        self.assertEqual(classify(100.0, 120.0, 150.0), "both")
+        self.assertEqual(classify(100.0, 120.0, None), "no oracle")
+
+    def test_known_differences_name_a_build_and_its_rows(self):
+        known = [{"build": "deadeye-ice-shot", "stats": ["TotalDPS"], "reason": "Rhoa"}]
+        name = "ninja-2026-10-11-ranger-deadeye-ice-shot-0123456789ab"
+        self.assertEqual(self.triage.known_reason(known, name, "TotalDPS"), "Rhoa")
+        self.assertIsNone(self.triage.known_reason(known, name, "Life"))
+        self.assertEqual(self.triage.short(name), "ranger-deadeye-ice-shot")
+        for entry in self.triage.load_known():
+            with self.subTest(build=entry.get("build")):
+                self.assertTrue(entry["build"] and entry["stats"] and entry["reason"])
+
+    def test_lines_meet_across_rolls_and_places(self):
+        template = self.triage.template
+        self.assertEqual(template("Tree:5332: 22% Chance to gain a Charge"),
+                         template("19% Chance to gain a Charge"))
+        self.assertEqual(template("Config: +1.5% to all Resistances"), "#% to all Resistances")
+
+    def test_the_holdout_set_is_not_triaged(self):
+        with self.assertRaises(SystemExit) as raised:
+            self.triage.build_dirs(["examples/reference-builds/holdout/builds"])
+        self.assertIn("mise run accuracy", str(raised.exception))
+
+    def test_skills_meet_by_id_and_pob2_name(self):
+        key = self.triage.skill_key
+        self.assertEqual(key("SummonSkeletalReaversPlayer"), key("Skeletal Reaver Minion"))
+        self.assertEqual(key("SummonSpectrePlayer"), key("Spectre: Quill Crab"))
+        self.assertEqual(key("SummonBeastPlayer"), key("Companion: Quadrilla"))
+
+    def test_spirit_is_compared_skill_by_skill(self):
+        reserved = lambda *rows: {"breakdown": {"mods": [
+            {"value": value, "origin_kind": "SkillGem", "origin_id": "spirit." + skill}
+            for skill, value in rows]}}
+        entries = {"Spirit": {"value": 100.0},
+                   "SkillSpiritReservationBase": reserved(("SummonSkeletalReaversPlayer", 30.0),
+                                                          ("BlinkPlayer", 60.0))}
+        oracle = {"mainOutput": {"Spirit": 130.0}, "spiritReservedBreakdown": [
+            {"skillName": "Skeletal Reaver Minion", "total": 25},
+            {"skillName": "Blink", "total": 60},
+            {"skillName": "Trinity", "total": 100}]}
+        self.assertEqual(
+            [(found["kind"], found["key"], found["pobr"], found["pob2"])
+             for found in self.triage.spirit_leads(entries, oracle)],
+            [("total", "Spirit", 100.0, 130.0),
+             ("different", "Skeletal Reaver Minion", 30.0, 25.0),
+             ("only PoB2", "Trinity", None, 100.0)])
+
+        # PoB2 also reserves the skill a reservation-free amulet grants: known.
+        xml = ("<PathOfBuilding2><Items><Item id=\"1\">Rarity: UNIQUE\nVoid\nLament Amulet\n"
+               "Grants Skill: Level 20 Cast on Minion Death\n</Item></Items></PathOfBuilding2>")
+        report = {"reference": {"compared": 1, "differing": [
+            {"stat": "SpiritUnreserved", "pobr": -26, "reference": -56, "pob_key": "SpiritUnreserved"}]},
+            "breakdowns": [{"stat": "SkillSpiritReservationBase",
+                            **reserved(("MetaCastOnMinionDeathPlayer", 30.0))}]}
+        oracle = {"mainOutput": {"SpiritUnreserved": -56},
+                  "spiritReservedBreakdown": [{"skillName": "Cast on Minion Death", "total": 60}]}
+        result = self.triage.analyse("build", "set", report, oracle, xml, [])
+        self.assertEqual([(row["stat"], row["class"]) for row in result["rows"]],
+                         [("SpiritUnreserved", "known")])
+
+    def test_leads_are_gathered_across_builds(self):
+        lead = self.triage.lead
+        results = [
+            {"short": "a", "rows": [], "unsupported": ["Tree:1: 10% increased Damage"], "leads": [
+                dict(lead("Life", "only PoB2", "INC", "tree:1", pob2=5.0), stat="Life")]},
+            {"short": "b", "rows": [{"class": "engine"}], "unsupported": ["12% increased Damage"],
+             "leads": [dict(lead("Life", "only PoB2", "INC", "tree:1", pob2=5.0), stat="Life"),
+                       dict(lead("Mana", "only PoBR", "BASE", "item:ring1", pobr=9.0), stat="Mana")]},
+        ]
+        gathered = self.triage.gather_leads(results)
+        self.assertEqual([(key, sorted(entry["builds"])) for key, entry in gathered],
+                         [(("only PoB2", "INC", "tree:1"), ["a", "b"]),
+                          (("only PoBR", "BASE", "item:ring1"), ["b"])])
+        [(template, entry)] = self.triage.gather_unsupported(results)
+        self.assertEqual((template, sorted(entry["builds"]), sorted(entry["actionable"])),
+                         ("#% increased Damage", ["a", "b"], ["b"]))
 
 
 class LookupTests(unittest.TestCase):

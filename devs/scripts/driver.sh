@@ -154,6 +154,18 @@ cmd_compare() {
   python3 devs/scripts/compare-build.py "$target" "$@"
 }
 
+# Every worked build (the benchmark and tuned sets by default) against its
+# reference and the pinned PoB2 at once: which differing rows are the
+# engine's, and what explains them across builds.
+cmd_triage() {
+  local args=() arg
+  for arg in "$@"; do
+    if [[ -e "$arg" && "$arg" != /* ]]; then arg="$PWD/$arg"; fi
+    args+=("$arg")
+  done
+  python3 devs/scripts/triage.py ${args[@]+"${args[@]}"}
+}
+
 # The game data records an id or a name has: a granted effect, stat, base
 # item, passive node or unique.
 cmd_lookup() {
@@ -231,6 +243,7 @@ PoBR development commands (mise tasks; without mise run this script with the sam
   mise run timings build parity             Compile only, with HTML timings
   mise run diagnose <build>                 One build: import losses, reference differences, dropped inputs
   mise run compare <build> [Stat ...]       One build against the pinned PoB2: totals and differing modifier lines
+  mise run triage [set or build dir ...]    Every worked build at once: whose differences, and their shared causes
   mise run lookup <id or name> [--level N]  Game data records of a skill, stat, base item, passive node or unique
   mise run accuracy [corpus dir]            Totals of every committed set, or one set's builds against their reference
   mise run builds:fetch <set dir> [--pick first|last]  One poe.ninja build per ascendancy into a reference set
@@ -351,6 +364,7 @@ case "${1:-}" in
   timings)   shift; cmd_timings "$@" ;;
   diagnose)  shift; cmd_diagnose "$@" ;;
   compare)   shift; cmd_compare "$@" ;;
+  triage)    shift; cmd_triage "$@" ;;
   lookup)    shift; cmd_lookup "$@" ;;
   accuracy)  shift; cmd_accuracy "$@" ;;
   targets)   cmd_targets ;;
