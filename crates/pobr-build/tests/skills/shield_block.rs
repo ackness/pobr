@@ -6,13 +6,17 @@
 //!   `local_block_chance_+%`, "N% increased Block chance": local to the
 //!   shield they are on, like its base type's block chance. The item shows
 //!   `floor((base + added) × (1 + increased))`.
-//! - "N% increased Block chance" anywhere else: multiplies the shield's
-//!   block chance.
+//! - "N% increased Block chance" anywhere else, Magma Barrier's "Grants {0}%
+//!   increased Block chance" (`skill_igneous_shield_grants_block_chance_+%`,
+//!   25 plus 0.25 per quality) among them: multiplies the shield's block
+//!   chance.
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 const SHIELD: &str = "Crucible Tower Shield";
+
+const MAGMA_BARRIER: &str = r#"<Skill enabled="true" mainActiveSkill="1"><Gem gemId="Metadata/Items/Gem/SkillGemMagmaBarrier" skillId="MagmaBarrierPlayer" nameSpec="Magma Barrier" level="18" quality="20" enabled="true"/></Skill>"#;
 
 fn data() -> BuildData {
     BuildData::load(&GameData::new(repo_data_root().join(data_version())))
@@ -74,5 +78,16 @@ fn a_shields_own_block_chance_is_multiplied_by_the_characters() {
     assert_eq!(
         block_chance(&data, &["+5% to Block chance", increased], "", &[]),
         ((base + 5.0) * 1.3).floor()
+    );
+}
+
+#[test]
+fn magma_barrier_increases_block_chance() {
+    let data = data();
+    let base = base_block(&data);
+    // 25 + 0.25 x 20 quality = 30% increased.
+    assert_eq!(
+        block_chance(&data, &[], MAGMA_BARRIER, &[]),
+        (base * 1.3).round()
     );
 }

@@ -274,6 +274,9 @@ pub fn player_buff_modifiers(stat: &str, value: f64, skill: BuffSkill) -> Option
         }
         // Sorcery Ward (see `sorcery_ward_barrier`).
         SORCERY_WARD_BARRIER => Some(sorcery_ward_barrier(value)),
+        // Magma Barrier, "While active, increases your Block Chance
+        // passively": "Grants {0}% increased Block chance".
+        MAGMA_BARRIER_BLOCK => Some(vec![Modifier::number("BlockChance", ModType::Inc, value)]),
         // Not a buff on the character (see `granted_skill_modifiers`).
         WITCHTOAD_SPAWN_INTERVAL_MS => Some(Vec::new()),
         // Charge Regulation: "{0}% more Armour, Evasion and Energy Shield
@@ -375,6 +378,10 @@ fn charged_staff_added_lightning(name: &str, value: f64, skill: BuffSkill) -> Mo
         .with_tag(ModTag::condition("UsingQuarterstaff", false))
         .with_tag(ModTag::multiplier("RemovablePowerCharge", 1.0, None))
 }
+
+/// The stat behind Magma Barrier's "Grants {0}% increased Block chance" (25,
+/// plus 0.25 per quality).
+const MAGMA_BARRIER_BLOCK: &str = "skill_igneous_shield_grants_block_chance_+%";
 
 /// The stat behind Sorcery Ward's "Barrier can take Elemental Damage equal to
 /// {0}% of your Armour and Evasion Rating".
@@ -750,6 +757,22 @@ mod tests {
         // A skill group that lists the gem without the grant: no Barrier.
         let listed_only = CalcConfig::new().with_stat("Armour", 18000.0);
         assert_eq!(barrier(&listed_only), (0.0, 0.0));
+    }
+
+    /// Magma Barrier's buff is increased Block chance, which multiplies a
+    /// shield's own.
+    #[test]
+    fn magma_barrier_grants_increased_block_chance() {
+        let mut db = ModDb::new();
+        db.add_list(
+            player_buff_modifiers(MAGMA_BARRIER_BLOCK, 30.0, BuffSkill::default()).expect("a rule"),
+        );
+        let increased = db.sum(
+            ModType::Inc,
+            &CalcConfig::new(),
+            &[ModName::from("BlockChance")],
+        );
+        assert_eq!(increased, 30.0);
     }
 
     fn stat(id: &str, value: f64) -> SkillDamageStat {
