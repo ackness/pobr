@@ -28,7 +28,7 @@
     "input_sha256": {
       "0.5.5.4.2/generated/special_derived.json": "d18157d99c7620f096aa485d1f93d33166a578d45a9e4a064817d629e023a105",
       "0.5.5.4.2/generated/special_vendor.json": "51d520b5e9f26b57c4b1bfe5aa92bd4ee483f049cfba7fa152c95167628ba01e",
-      "0.5.5.4.2/overlay/mod_parser_rules.json": "a85d60c3c20b8e10e2f0672625d46822c1f27878f59c6171ef42cce21bc4db7b",
+      "0.5.5.4.2/overlay/mod_parser_rules.json": "4ca754192ca4422982d7828b410a68723bfcdf1cc3cbea7f30c522d94fea6860",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
       "overlay-common/special_mods.json": "7f46e6febea2c9ebe3b9c7a7925dad2c47e93e01aa04e0bd945dac2ff6dc5c58"
     },

@@ -140,6 +140,34 @@ fn parses_accuracy_and_defence_stats() {
     assert_eq!(energy_shield.mods[0].mod_type, ModType::Base);
 }
 
+/// "Critical Spell Damage Bonus" is the bonus of spells only, as "Attack
+/// Critical Damage Bonus" is of attacks; the plain one is of every hit.
+#[test]
+fn critical_damage_bonus_keeps_its_scope() {
+    let scoped = |line: &str| {
+        let outcome = parse_mod(line).unwrap();
+        assert_eq!(outcome.mods.len(), 1, "{line}");
+        assert_eq!(
+            outcome.mods[0].name,
+            ModName::from("CriticalStrikeMultiplier"),
+            "{line}"
+        );
+        outcome.mods[0].flags
+    };
+    assert_eq!(
+        scoped("13% increased Critical Spell Damage Bonus"),
+        ModFlags::SPELL
+    );
+    assert_eq!(
+        scoped("13% increased Attack Critical Damage Bonus"),
+        ModFlags::ATTACK
+    );
+    assert_eq!(
+        scoped("13% increased Critical Damage Bonus"),
+        ModFlags::NONE
+    );
+}
+
 #[test]
 fn parses_attack_preflag_and_damage_type() {
     let outcome = parse_mod("Attacks deal 25% increased Physical Damage").unwrap();

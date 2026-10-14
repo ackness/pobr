@@ -1605,6 +1605,9 @@
       "phrase": "critical spell damage bonus",
       "names": [
         "CriticalStrikeMultiplier"
+      ],
+      "flags": [
+        "Spell"
       ]
     },
     {

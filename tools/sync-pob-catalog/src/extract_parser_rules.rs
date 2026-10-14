@@ -440,15 +440,7 @@ fn normalize_name_map_to_pobr(doc: &mut ModParserRulesDoc) {
                 }
             }
         }
-        // 3. Phrases whose embedded scope word got absorbed into a special
-        //    name: clear the leftover vendor flag (legacy's parse_name maps
-        //    `critical spell damage bonus` as a whole to
-        //    `CriticalStrikeMultiplier` with no Spell flag, whereas vendor
-        //    splits out `spell` as a flag). Only this one confirmed phrase.
-        if FLAGLESS_NAME_PHRASES.contains(&entry.phrase.as_str()) {
-            entry.effects.flags.clear();
-        }
-        // 4. Special-name normalization (C3): legacy's parse_name maps
+        // 3. Special-name normalization (C3): legacy's parse_name maps
         //    `attack damage` as a whole to the special name `AttackDamage`
         //    (vendor: `Damage` + Attack flag). Rename and clear the flag.
         if let Some(special) = SPECIAL_NAME_PHRASES
@@ -559,11 +551,6 @@ const WEAPON_KEYWORDS: &[&str] = &[
     "Wand",
     "Staff",
 ];
-
-/// Phrases where vendor's name_map carries a scope flag, but legacy embeds
-/// the scope into the special name instead (no flag). Cleared during
-/// extraction to match legacy (a C3 embedded-scope subcase).
-const FLAGLESS_NAME_PHRASES: &[&str] = &["critical spell damage bonus"];
 
 /// Phrases where vendor uses `Damage` + a scope flag, but legacy uses a standalone special name (C3): renamed and flag-cleared during extraction.
 const SPECIAL_NAME_PHRASES: &[(&str, &str)] = &[("attack damage", "AttackDamage")];

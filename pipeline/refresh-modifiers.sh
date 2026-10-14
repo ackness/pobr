@@ -73,6 +73,10 @@ fi
 if [[ "$AUDIT_ONLY" -eq 0 ]]; then
     "${SYNC[@]}" extract-lua --what parser-rules --vendor-root "$VENDOR" --out "$DATA/overlay/mod_parser_rules.json"
     POBR_DATA_VERSION="$VERSION" "${SYNC[@]}" extract-lua --what special-mods --vendor-root "$VENDOR" --out "$DATA/generated/special_vendor.json"
+    # The extracted rules are runtime files of this candidate snapshot: seal
+    # them before the hash-validating loader reads them. Publication seals
+    # the candidate again after every generator has run.
+    python3 pipeline/data_snapshot.py manifest --data "$DATA"
 fi
 
 # Validate the effective rules before publishing audit or parser artifacts.

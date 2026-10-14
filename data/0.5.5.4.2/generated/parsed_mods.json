@@ -9584,7 +9584,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 11.0
+          "value": 11.0,
+          "flags": 2
         }
       ]
     },
@@ -9927,7 +9928,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 12.0
+          "value": 12.0,
+          "flags": 2
         }
       ]
     },
@@ -11020,7 +11022,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 13.0
+          "value": 13.0,
+          "flags": 2
         }
       ]
     },
@@ -11180,7 +11183,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 14.0
+          "value": 14.0,
+          "flags": 2
         }
       ]
     },
@@ -11564,7 +11568,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 15.0
+          "value": 15.0,
+          "flags": 2
         }
       ]
     },
@@ -12463,7 +12468,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 15.0
+          "value": 15.0,
+          "flags": 2
         }
       ]
     },
@@ -13455,7 +13461,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 16.0
+          "value": 16.0,
+          "flags": 2
         }
       ]
     },
@@ -14152,7 +14159,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 18.0
+          "value": 18.0,
+          "flags": 2
         }
       ]
     },
@@ -14408,7 +14416,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 19.0
+          "value": 19.0,
+          "flags": 2
         }
       ]
     },
@@ -15005,7 +15014,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 20.0
+          "value": 20.0,
+          "flags": 2
         }
       ]
     },
@@ -17505,7 +17515,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 21.0
+          "value": 21.0,
+          "flags": 2
         }
       ]
     },
@@ -17761,7 +17772,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 22.0
+          "value": 22.0,
+          "flags": 2
         }
       ]
     },
@@ -20127,7 +20139,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 28.0
+          "value": 28.0,
+          "flags": 2
         }
       ]
     },
@@ -21204,7 +21217,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 30.0
+          "value": 30.0,
+          "flags": 2
         }
       ]
     },
@@ -22951,7 +22965,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 33.0
+          "value": 33.0,
+          "flags": 2
         }
       ]
     },
@@ -23397,7 +23412,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 36.0
+          "value": 36.0,
+          "flags": 2
         }
       ]
     },
@@ -30821,7 +30837,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 9.0
+          "value": 9.0,
+          "flags": 2
         }
       ]
     },
@@ -40856,9 +40873,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "SkillDamageIncreasedPerRedSupport",
-          "type": "Flag",
-          "value": 20.0
+          "name": "Damage",
+          "type": "Inc",
+          "value": 20.0,
+          "tags": [
+            "Multiplier { var: \"ConnectedRedSupportGems\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+          ]
         }
       ]
     },
@@ -40939,9 +40959,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "SkillCritChanceIncreasedPerBlueSupport",
-          "type": "Flag",
-          "value": 20.0
+          "name": "CriticalStrikeChance",
+          "type": "Inc",
+          "value": 20.0,
+          "tags": [
+            "Multiplier { var: \"ConnectedBlueSupportGems\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+          ]
         }
       ]
     },
@@ -40954,9 +40977,28 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "SkillSpeedIncreasedPerGreenSupport",
-          "type": "Flag",
-          "value": 6.0
+          "name": "SkillSpeed",
+          "type": "Inc",
+          "value": 6.0,
+          "tags": [
+            "Multiplier { var: \"ConnectedGreenSupportGems\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+          ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 6.0,
+          "tags": [
+            "Multiplier { var: \"ConnectedGreenSupportGems\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "Inc",
+          "value": 6.0,
+          "tags": [
+            "Multiplier { var: \"ConnectedGreenSupportGems\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+          ]
         }
       ]
     },
