@@ -73,6 +73,19 @@ pub fn parse_local_reload_speed(clean: &str) -> Option<f64> {
     local_percent(clean, "reload speed")
 }
 
+/// A shield's own Block chance line, local to the item like its base Block
+/// chance: "+N% to Block chance" (`local_additional_block_chance_%`, BASE) or
+/// "N% increased Block chance" (`local_block_chance_+%`, INC, "reduced"
+/// negative). `clean` is the line as [`clean_item_text`] returns it.
+pub fn parse_local_block_chance(clean: &str) -> Option<(ModType, f64)> {
+    if let Some(increased) = local_percent(clean, "block chance") {
+        return Some((ModType::Inc, increased));
+    }
+    let added = clean.strip_suffix("% to block chance")?;
+    let value = added.trim().trim_start_matches('+').parse::<f64>().ok()?;
+    Some((ModType::Base, value))
+}
+
 /// Sum of the weapon's own reload speed lines (see [`parse_local_reload_speed`]).
 pub fn weapon_local_reload_speed(item: &Item) -> f64 {
     weapon_mod_texts(item)
@@ -366,5 +379,21 @@ mod tests {
         assert_eq!(parse("42% reduced Reload Speed"), Some(-42.0));
         assert_eq!(parse("15% increased Reload Speed"), Some(15.0));
         assert_eq!(parse("15% increased Attack Speed"), None);
+    }
+
+    #[test]
+    fn local_block_chance_reads_added_and_increased() {
+        let parse = |text: &str| parse_local_block_chance(&clean_item_text(text));
+        assert_eq!(
+            parse("{enchant}{rune}30% increased Block chance"),
+            Some((ModType::Inc, 30.0))
+        );
+        assert_eq!(
+            parse("15% reduced Block chance"),
+            Some((ModType::Inc, -15.0))
+        );
+        assert_eq!(parse("+5% to Block chance"), Some((ModType::Base, 5.0)));
+        assert_eq!(parse("+5% to maximum Block chance"), None);
+        assert_eq!(parse("30% increased Block chance while Surrounded"), None);
     }
 }

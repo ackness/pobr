@@ -11,6 +11,7 @@ use super::super::item::weapon::{
 use crate::build::Build;
 use crate::build_data::BuildData;
 use pobr_core::ModTag;
+use pobr_core::skill_env::parse_local_block_chance;
 
 /// Injects every armour piece's **per-item** defence base value (armour/evasion/ES) as
 /// an Item-attributed BASE mod, for `scaled_defence_stat` to layer global (tree/aura)
@@ -68,28 +69,32 @@ pub(crate) fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Mod
     mods
 }
 
-/// A shield's base block chance → a `ShieldBlockChance` BASE mod (13-G8; matching
-/// PoB2's CalcDefence.lua:975-980 `Weapon 2/3 armourData.BlockChance` injection).
-///
-/// The base value comes from catalog `ArmourBaseStats::block_chance` (vendor's
-/// `ShieldTypes.Block`, after overlay merge). Local block mods on the shield
-/// (`+N% chance to Block` / `increased Block chance`) do **not** get drop-local applied:
-/// vendor folds them into the per-item base value (Item.lua:1825-1826's
-/// `floor(base × (1+local inc) + local BASE)`), while PoBR leaves them in the global
-/// bucket where `(base + ΣBASE) × mod` aggregation is mathematically equivalent (the
-/// only difference is vendor's per-item floor).
+/// A shield's block chance → a `ShieldBlockChance` BASE mod: the base type's
+/// block chance (`ArmourBaseStats::block_chance`) with the shield's own Block
+/// chance lines, which are local stats of the item like that base
+/// (`local_additional_block_chance_%` "+N% to Block chance" and
+/// `local_block_chance_+%` "N% increased Block chance", those its runes grant
+/// included): `floor((base + added) × (1 + increased))`, as the item shows it.
+/// The character's "increased Block chance" multiplies that, so the two do not
+/// add up; item injection keeps the local lines out of the global modifiers.
 pub(crate) fn shield_block_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
     let mut mods = Vec::new();
     // PoBR's slot model only treats Weapon2 as the off-hand (no Weapon3 dual weapon-set toggling).
     let Some(item) = build.items.get(&EquipmentSlot::Weapon2) else {
         return mods;
     };
-    let Some(block) = data
-        .armour_base(&item.base.to_string())
-        .and_then(|a| a.block_chance)
-    else {
+    let Some(base) = shield_base_block(item, data) else {
         return mods;
     };
+    let (mut added, mut increased) = (0.0, 0.0);
+    for text in weapon_mod_texts(item) {
+        match parse_local_block_chance(&clean_item_text(text)) {
+            Some((ModType::Base, value)) => added += value,
+            Some((_, value)) => increased += value,
+            None => {}
+        }
+    }
+    let block = ((base + added) * (1.0 + increased / 100.0)).floor();
     if block > 0.0 {
         let origin = ModifierSource::new(SourceId::new(
             SourceKind::Item,
@@ -103,6 +108,13 @@ pub(crate) fn shield_block_modifiers(build: &Build, data: &BuildData) -> Vec<Mod
         );
     }
     mods
+}
+
+/// The block chance of a shield's base type; `None` for any other item.
+pub(crate) fn shield_base_block(item: &Item, data: &BuildData) -> Option<f64> {
+    data.armour_base(&item.base.to_string())
+        .and_then(|armour| armour.block_chance)
+        .filter(|&block| block > 0.0)
 }
 
 /// Determines whether a mod (cleaned text) is a per-item local Spirit mod:

@@ -32,7 +32,7 @@ use super::context::CalculationContext;
 use super::item::defence::{
     defence_base_modifiers, is_local_spirit_mod, item_per_level_defence, item_spirit_modifiers,
     item_ward_modifiers, parse_has_per_level_defence, per_slot_defence_multipliers,
-    per_slot_socket_multipliers, shield_block_modifiers,
+    per_slot_socket_multipliers, shield_base_block, shield_block_modifiers,
 };
 use super::item::mirror::{kalandra_reflected_ring, slot_bonus_effect_scales};
 use super::item::weapon::{
@@ -762,6 +762,24 @@ pub(super) fn inject_items(
             filtered.implicit_texts = drop_def(filtered.implicit_texts);
             filtered.modifier_texts = drop_def(filtered.modifier_texts);
             filtered.enchant_texts = drop_def(filtered.enchant_texts);
+        }
+        // A shield's own Block chance lines are part of its block chance
+        // (shield_block_modifiers); in the global set they would add to the
+        // character's "increased Block chance" instead of being multiplied
+        // by it.
+        if slot == EquipmentSlot::Weapon2 && shield_base_block(item, data).is_some() {
+            let drop_block = |texts: Vec<String>| -> Vec<String> {
+                texts
+                    .into_iter()
+                    .filter(|t| {
+                        pobr_core::skill_env::parse_local_block_chance(&clean_item_text(t))
+                            .is_none()
+                    })
+                    .collect()
+            };
+            filtered.implicit_texts = drop_block(filtered.implicit_texts);
+            filtered.modifier_texts = drop_block(filtered.modifier_texts);
+            filtered.enchant_texts = drop_block(filtered.enchant_texts);
         }
         // An item with a Spirit base (a weapon): strips local `increased Spirit` /
         // `+N to Spirit` — already folded into the rolled `Spirit:` line

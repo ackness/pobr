@@ -49,6 +49,8 @@ mod quarterstaff_conditions;
 mod rain;
 #[path = "skills/runic_ward.rs"]
 mod runic_ward;
+#[path = "skills/shield_block.rs"]
+mod shield_block;
 #[path = "skills/skill_damage_dps.rs"]
 mod skill_damage_dps;
 #[path = "skills/skill_metrics.rs"]
