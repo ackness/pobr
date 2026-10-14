@@ -99,6 +99,16 @@ pub(super) fn stage_resolve_main_skill<'a>(
     let skill_flags = main_effect
         .map(|_| skill_type_flags(&main_skill_types))
         .unwrap_or(ModFlags::NONE);
+    // Whether the hits are a projectile's and whether they are area damage is
+    // for the stat set in use to say, where the data has the game's marks.
+    let main_stat_set = main_skill
+        .as_ref()
+        .filter(|_| data.stat_sets_mark_hits)
+        .and_then(|(_, _, skill_id)| data.select_stat_set(skill_id, main_stat_set_index));
+    let skill_flags = match main_stat_set {
+        Some(set) => pobr_core::skill_env::stat_set_hit_flags(skill_flags, &set.implicit_stats),
+        None => skill_flags,
+    };
     // Main skill type → `cfg.skill_types` classification bits: `is_attack()` drives the
     // hit-chance check (only attacks do an accuracy/evasion check, vendor
     // CalcOffence.lua:2611); see skill_type_bits's doc.

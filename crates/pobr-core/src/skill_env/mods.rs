@@ -195,6 +195,39 @@ pub fn skill_type_flags(skill_types: &[String]) -> pobr_data::modifier::ModFlags
     flags
 }
 
+/// The game's stat on a stat set whose hits are a projectile's: "Projectile
+/// Damage" is damage of such a hit.
+pub const STAT_IS_PROJECTILE: &str = "base_is_projectile";
+/// The game's stat on a stat set whose damage is area damage.
+pub const STAT_IS_AREA_DAMAGE: &str = "is_area_damage";
+
+/// The damage flags of a stat set that has the valueless `stats`, from the
+/// flags the types of its skill give (`by_types`).
+///
+/// A skill is of the `Projectile` or `Area` type when some part of it is:
+/// Fireball flies and explodes, and only the explosion is area damage;
+/// Falling Thunder slams and then fires projectiles. The game marks each
+/// stat set, so the set decides, also where the skill has neither type:
+/// the arrows of Rain of Arrows fall instead of flying, and their hits are
+/// projectile hits. Spell, attack and melee still come from the types.
+pub fn stat_set_hit_flags(
+    by_types: pobr_data::modifier::ModFlags,
+    stats: &[String],
+) -> pobr_data::modifier::ModFlags {
+    use pobr_data::modifier::ModFlags;
+    let has = |stat: &str| stats.iter().any(|s| s == stat);
+    let mut flags = by_types
+        .without(ModFlags::PROJECTILE)
+        .without(ModFlags::AREA);
+    if has(STAT_IS_PROJECTILE) {
+        flags |= ModFlags::PROJECTILE;
+    }
+    if has(STAT_IS_AREA_DAMAGE) {
+        flags |= ModFlags::AREA;
+    }
+    flags
+}
+
 /// Vendor `math.floor(value * scale * 100 + 0.5) / 100` scaling (PoB2's `modValue`
 /// rounding for radius jewel grants). Returns the truncated-to-integer result.
 pub fn vendor_scale_mod_value(value: f64, scale: f64) -> f64 {

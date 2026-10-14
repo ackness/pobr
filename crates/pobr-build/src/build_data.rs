@@ -90,6 +90,11 @@ pub struct BuildData {
     /// Per-level **damage stat sets** for granted effects, keyed by `GrantedEffects.Id`
     /// (resolved damage stats for each level).
     pub skill_stat_sets: HashMap<String, SkillStatSetDef>,
+    /// Whether the stat sets list the game's valueless stats, so that a set
+    /// says what its hits are (`base_is_projectile`, `is_area_damage`). False
+    /// for a snapshot adapted before the adapter read them: there the types
+    /// of the skill are all there is to go by.
+    pub stat_sets_mark_hits: bool,
     /// Gem quality stat slopes (`overlay/gem_quality_stats.json`), keyed by
     /// `GrantedEffects.Id`. Empty when an old data pack lacks this overlay domain
     /// (quality produces no stats, backward compatible).
@@ -275,11 +280,19 @@ impl BuildData {
 
         let granted_effect_levels = data.granted_effect_levels()?.into_iter().collect();
 
-        let skill_stat_sets = data
+        let skill_stat_sets: HashMap<String, SkillStatSetDef> = data
             .skill_stat_sets()?
             .into_iter()
             .map(|set| (set.effect_id.clone(), set))
             .collect();
+        let stat_sets_mark_hits = skill_stat_sets
+            .values()
+            .flat_map(|def| &def.sets)
+            .any(|set| {
+                set.implicit_stats
+                    .iter()
+                    .any(|stat| stat == pobr_core::skill_env::STAT_IS_PROJECTILE)
+            });
 
         // Quality stat slopes (overlay domain): missing file = empty table (quality produces no stats, backward compatible).
         let gem_quality_stats = data
@@ -482,6 +495,7 @@ impl BuildData {
             granted_effects,
             granted_effect_levels,
             skill_stat_sets,
+            stat_sets_mark_hits,
             gem_quality_stats,
             gem_effects,
             cost_types,
@@ -516,6 +530,7 @@ impl BuildData {
             granted_effects: HashMap::new(),
             granted_effect_levels: HashMap::new(),
             skill_stat_sets: HashMap::new(),
+            stat_sets_mark_hits: false,
             gem_quality_stats: HashMap::new(),
             gem_effects: HashMap::new(),
             cost_types: Vec::new(),

@@ -28,7 +28,11 @@ impl BuildData {
     /// pack has no index sidecar) falls back to the **primary set** — better to default
     /// than to pick the wrong one (conservative; the unselected sets' global-only merge
     /// is left to the caller).
-    fn select_stat_set(&self, skill_id: &str, set_index: Option<u32>) -> Option<&StatSetDef> {
+    pub(crate) fn select_stat_set(
+        &self,
+        skill_id: &str,
+        set_index: Option<u32>,
+    ) -> Option<&StatSetDef> {
         let def = self.skill_stat_sets.get(skill_id)?;
         match set_index {
             Some(n) => def

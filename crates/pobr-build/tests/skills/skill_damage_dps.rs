@@ -384,3 +384,51 @@ fn flame_breath_attack_speed_scales_dps_e2e() {
         base.dps
     );
 }
+
+/// What a hit is, a projectile's or area damage, is for the stat set in use
+/// to say: the game marks each set with `base_is_projectile` and
+/// `is_area_damage`. Fireball is of the `Area` type, and only its explosion
+/// is area damage; the arrows of Rain of Arrows fall instead of flying, its
+/// skill is of no projectile type, and their hits are projectile hits.
+#[test]
+fn a_hit_is_what_its_stat_set_says() {
+    let build_data = load_build_data();
+    let hit = |build: &Build, line: Option<&str>| {
+        let opts = DataOrchestratorOptions {
+            extra_modifier_texts: line.map(String::from).into_iter().collect(),
+            ..panel_opts()
+        };
+        calculate_with_data(build, &build_data, &opts)
+            .expect("calculates")
+            .total_hit_avg
+    };
+    let gain = |build: &Build, line: &str| hit(build, Some(line)) / hit(build, None);
+    let fireball = |set: u32| {
+        let mut build = fireball_build(20);
+        build.socket_groups[0] = SocketGroup::new()
+            .with_slot("weapon1")
+            .with_gem_skill_stat_set("FireballPlayer", 20, set);
+        build
+    };
+    let (bolt, explosion) = (fireball(1), fireball(2));
+    assert_eq!(gain(&bolt, "50% increased Area Damage"), 1.0);
+    assert!((gain(&explosion, "50% increased Area Damage") - 1.5).abs() < 1e-3);
+    assert!((gain(&bolt, "50% increased Projectile Damage") - 1.5).abs() < 1e-3);
+    assert!((gain(&explosion, "50% increased Projectile Damage") - 1.5).abs() < 1e-3);
+
+    let rain = Build::new()
+        .with_character(CharacterIdentity {
+            level: 90,
+            class_name: "Ranger".into(),
+            ascendancy_name: String::new(),
+        })
+        .add_socket_group(
+            SocketGroup::new()
+                .with_slot("weapon1")
+                .with_active_skill("RainOfArrowsPlayer", 20),
+        )
+        .set_item(EquipmentSlot::Weapon1, bare_weapon("Crude Bow"));
+    assert!(hit(&rain, None) > 0.0);
+    assert!((gain(&rain, "50% increased Projectile Damage") - 1.5).abs() < 1e-3);
+    assert!((gain(&rain, "50% increased Area Damage") - 1.5).abs() < 1e-3);
+}
