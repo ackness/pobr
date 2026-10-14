@@ -10,6 +10,7 @@ import type {
   AttributionRequest,
   ClassNames,
   AttributionResponse,
+  LineUsageResponse,
   BuildJson,
   SelectedLoadoutJson,
   CalculateBuildRequest,
@@ -70,6 +71,8 @@ export interface PobrBackend {
   /** Independent metrics for every active effect, including utility and unavailable skills. */
   skillMetrics(request: CalculateBuildRequest): Promise<SkillMetricsResponse>;
   attribution(request: AttributionRequest): Promise<AttributionResponse>;
+  /** 构筑每一行词条在计算中的去向（比计算更慢，按需调用）。 */
+  lineUsage(request: CalculateBuildRequest): Promise<LineUsageResponse>;
   /** 天赋树静态数据（静态资产，不经 wasm）。 */
   loadPassiveTree(treeVersion?: string | null): Promise<PassiveNode[]>;
   /** Catalog from the same immutable data snapshot used by calculation. */

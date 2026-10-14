@@ -16,7 +16,8 @@
 //! decoding), [`request`] (calculation request DTOs plus shared assembly),
 //! [`calculate`] (full calculation / full DPS), [`analysis`] (node power /
 //! variant optimization / attribution), [`encode`] (edit state -> a share
-//! code), [`catalog`] (gem/rune catalogs, per-line coloring, translation).
+//! code), [`catalog`] (gem/rune catalogs, per-line coloring, translation),
+//! [`usage`] (what the calculation does with each line of a build).
 //! Small shared utilities stay in this file.
 
 mod analysis;
@@ -27,7 +28,9 @@ mod decode;
 mod encode;
 mod request;
 mod support;
+mod usage;
 pub use support::support_groups_compatible_json;
+pub use usage::line_usage_json;
 
 pub use analysis::{AttributionRequest, attribution_json, node_power_json, optimize_variants_json};
 pub use augments::{item_augment_info_json, reforge_runes_json, rune_catalog_json};

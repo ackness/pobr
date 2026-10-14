@@ -10,6 +10,7 @@ import type {
   AttributionRequest,
   ClassNames,
   AttributionResponse,
+  LineUsageResponse,
   BuildJson,
   SelectedLoadoutJson,
   CalculateBuildRequest,
@@ -44,6 +45,7 @@ interface WasmModule {
   encodeBuildJson(requestJson: string): string;
   skillMetricsJson(requestJson: string): string;
   attributionJson(requestJson: string): string;
+  lineUsageJson(requestJson: string): string;
   gemCatalogJson(): string;
   translateLinesToZhCn(linesJson: string): string;
   classifyItemLinesJson(text: string): string;
@@ -185,6 +187,9 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     },
     async attribution(request: AttributionRequest) {
       return JSON.parse(wasm.attributionJson(JSON.stringify(request))) as AttributionResponse;
+    },
+    async lineUsage(request: CalculateBuildRequest) {
+      return JSON.parse(wasm.lineUsageJson(JSON.stringify(request))) as LineUsageResponse;
     },
     async loadTradeCatalog() {
       await backend.init();

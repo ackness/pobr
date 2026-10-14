@@ -57,6 +57,9 @@ export function createMockBackend(): PobrBackend {
     async attribution() {
       return attributionFixture as unknown as AttributionResponse;
     },
+    async lineUsage() {
+      throw new Error('lineUsage is not available in the mock backend');
+    },
     async loadTradeCatalog() {
       return { bases: [], mods: [], gems: [] };
     },

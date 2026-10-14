@@ -24,9 +24,9 @@ pub use build_api::support_groups_compatible_json;
 pub use build_api::{
     attribution_json, calculate_build_json, classify_item_lines_json, decode_build_file_json,
     decode_build_json, decode_build_loadout_json, encode_build_json, gem_catalog_json,
-    import_trade_items_json, item_augment_info_json, manage_loadout_json, node_power_json,
-    optimize_variants_json, reforge_runes_json, rune_catalog_json, skill_metrics_json,
-    translate_lines_to_zh_cn_json,
+    import_trade_items_json, item_augment_info_json, line_usage_json, manage_loadout_json,
+    node_power_json, optimize_variants_json, reforge_runes_json, rune_catalog_json,
+    skill_metrics_json, translate_lines_to_zh_cn_json,
 };
 pub use i18n::translate;
 pub use session::calculate_json;
@@ -117,6 +117,13 @@ pub mod wasm {
     #[wasm_bindgen(js_name = attributionJson)]
     pub fn attribution_json(request_json: &str) -> Result<String, JsError> {
         crate::build_api::attribution_json(request_json).map_err(|err| JsError::new(&err))
+    }
+
+    /// JS entry point: `lineUsageJson(requestJson) -> string` (what the
+    /// calculation does with each line of the build; costs more than a calculation).
+    #[wasm_bindgen(js_name = lineUsageJson)]
+    pub fn line_usage_json(request_json: &str) -> Result<String, JsError> {
+        crate::build_api::line_usage_json(request_json).map_err(|err| JsError::new(&err))
     }
 
     /// JS entry point: `gemCatalogJson() -> string` (the gem picker's catalog).
