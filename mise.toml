@@ -89,6 +89,10 @@ run = "bash devs/scripts/driver.sh timings"
 description = "One build's dropped inputs and reference differences: `mise run diagnose <build dir | code file | name>`"
 run = "bash devs/scripts/driver.sh diagnose"
 
+[tasks.compare]
+description = "One build against the pinned PoB2, stat by stat: `mise run compare <build dir | code file | name> [Stat ...]` (needs `mise run vendor` and LuaJIT)"
+run = "bash devs/scripts/driver.sh compare"
+
 [tasks.accuracy]
 description = "Build codes against the reference values they carry: totals of every committed set, or `mise run accuracy <dir>` for one set's differences"
 run = "bash devs/scripts/driver.sh accuracy"

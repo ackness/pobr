@@ -141,6 +141,19 @@ cmd_diagnose() {
     diagnose_build::diagnose_build -- --ignored --nocapture
 }
 
+# One build against the pinned PoB2, stat by stat: both totals and the
+# modifier lines only one side has or has with another value.
+cmd_compare() {
+  if [[ $# -lt 1 || "$1" == -* ]]; then
+    echo "usage: mise run compare <build dir | code file | committed build name fragment> [Stat ...] [--refresh]" >&2
+    return 2
+  fi
+  local target="$1"
+  shift
+  if [[ -e "$target" && "$target" != /* ]]; then target="$PWD/$target"; fi
+  python3 devs/scripts/compare-build.py "$target" "$@"
+}
+
 # Builds against the reference values their codes carry: the totals of every
 # committed set, or one directory with each build's differences.
 cmd_accuracy() {
@@ -207,6 +220,7 @@ PoBR development commands (mise tasks; without mise run this script with the sam
   mise run lint build skills                fmt + targeted Clippy
   mise run timings build parity             Compile only, with HTML timings
   mise run diagnose <build>                 One build: import losses, reference differences, dropped inputs
+  mise run compare <build> [Stat ...]       One build against the pinned PoB2: totals and differing modifier lines
   mise run accuracy [corpus dir]            Totals of every committed set, or one set's builds against their reference
   mise run builds:fetch <set dir> [--pick first|last]  One poe.ninja build per ascendancy into a reference set
   mise run build [-p <crate>]               Build application CLI by default
@@ -325,6 +339,7 @@ case "${1:-}" in
   verify)    shift; cmd_verify "$@" ;;
   timings)   shift; cmd_timings "$@" ;;
   diagnose)  shift; cmd_diagnose "$@" ;;
+  compare)   shift; cmd_compare "$@" ;;
   accuracy)  shift; cmd_accuracy "$@" ;;
   targets)   cmd_targets ;;
   cache)     shift; cmd_cache "$@" ;;
