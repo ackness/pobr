@@ -777,6 +777,21 @@ impl CalculationSession {
         &self.env.player.output
     }
 
+    /// How the main skill's hits come when it is a rain (`calc::rain`):
+    /// its `ActionRate` is the rate of these hits, not of its uses.
+    pub fn rain(&self) -> Option<super::rain::RainSummary> {
+        let env = &self.env;
+        let input = perform::player_input(env);
+        let hand = perform::main_hand_scope(env);
+        let (cfg, hand_input) = match &hand {
+            Some((cfg, input)) => (cfg, input),
+            None => (&env.cfg, &input),
+        };
+        let db = &env.player.mod_db;
+        let uses = super::offence::resolve_use_rate(db, cfg, hand_input);
+        super::rain::rain_hits(db, cfg, uses).map(|rain| rain.summary())
+    }
+
     /// Diagnostic helper: lists every modifier named `name` in the player
     /// modDB (including ones that don't match cfg), for parity debugging to
     /// check each source's contribution.
@@ -808,6 +823,10 @@ impl CalculationSession {
             "ColdResist" => &["ColdResistance", "ColdResist", "ElementalResist"],
             "LightningResist" => &["LightningResistance", "LightningResist", "ElementalResist"],
             "ChaosResist" => &["ChaosResistance", "ChaosResist"],
+            // A rain's hits come as its arrows land, at projectile speed.
+            "ActionRate" if super::rain::is_rain(&self.env.player.mod_db, &self.env.cfg) => {
+                &["ProjectileSpeed"]
+            }
             "ActionRate" => return super::skill_use_time::speed_names_for(&self.env.cfg),
             "CritChance" => &["CriticalStrikeChance"],
             "CritMultiplier" => &["CriticalStrikeMultiplier"],

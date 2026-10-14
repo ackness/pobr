@@ -479,13 +479,14 @@ export type FormulaOp =
   | 'off_hand_either'
   | 'off_hand_alternating'
   | 'reload'
+  | 'hit_interval'
   | 'stronger_hand'
   | 'stronger_share'
   | 'weaker_hand';
 
 export interface FormulaStep {
   op: FormulaOp;
-  /** Amount applied: percentage points (increased, converted, hit_chance, chance_to_hit, crit_hits, enemy_block, the bonus and penalty steps), the enemy's evasion (vs_evasion), a multiplier (more, action_speed, enemy_mitigation, uses_per_second, dps_multiplier, ailment_effect, ailment_rate), seconds (added_time), the limit, the number of rolls (lucky, bifurcate), the starting damage per second (skill_dot, hit_dps), the hit an ailment starts from (ailment_source), the percentage of it dealt per second (per_second), the number of instances (active_stacks), the chance in percent (chance_to_apply), a hand's own value (main_hand, the off_hand steps, stronger_hand, weaker_hand), the percentage of instances from the stronger hand (stronger_share), a multiplier (reload) or the amount added. */
+  /** Amount applied: percentage points (increased, converted, hit_chance, chance_to_hit, crit_hits, enemy_block, the bonus and penalty steps), the enemy's evasion (vs_evasion), a multiplier (more, action_speed, enemy_mitigation, uses_per_second, dps_multiplier, ailment_effect, ailment_rate), seconds (added_time), the limit, the number of rolls (lucky, bifurcate), the starting damage per second (skill_dot, hit_dps), the hit an ailment starts from (ailment_source), the percentage of it dealt per second (per_second), the number of instances (active_stacks), the chance in percent (chance_to_apply), a hand's own value (main_hand, the off_hand steps, stronger_hand, weaker_hand), the percentage of instances from the stronger hand (stronger_share), a multiplier (reload), the seconds before a target can be hit again (hit_interval) or the amount added. */
   operand: number;
   /** Running value after the step. */
   result: number;

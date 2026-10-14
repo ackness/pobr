@@ -285,11 +285,16 @@ pub fn calculate_minimal(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> 
 /// CalcOffence L2827's additive denominator + the end-of-pipeline action
 /// speed), and finally the cooldown speed cap + the server tick cap.
 ///
-/// Split into its own function for two shared call sites: `calculate_minimal_vs_enemy`'s
-/// main chain, and the warcry uptime budget (`calc::warcry` -- vendor's
-/// warcry section reads this same `globalOutput.Speed`, CalcOffence.lua:3235).
+/// The rate a skill's hits come at, which is its rate of use except for a
+/// rain: the hits of a rain come as its arrows land (`calc::rain`).
 pub(crate) fn resolve_action_rate(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> f64 {
     action_rate_terms(db, cfg, input).value
+}
+
+/// How often the skill is used, even where its hits come at another rate:
+/// what the warcry uptime budget counts (`calc::warcry`).
+pub(crate) fn resolve_use_rate(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> f64 {
+    action_rate_terms(db, cfg, input).uses
 }
 
 /// The action rate with the intermediate values of each stage of
@@ -309,12 +314,21 @@ pub(crate) struct ActionRateTerms {
     cooled: f64,
     /// After the server tick cap, before rounding.
     ticked: f64,
+    /// Uses per second.
+    pub(crate) uses: f64,
+    /// How the uses turn into hits, for a rain.
+    rain: Option<super::rain::RainHits>,
+    /// The rate the hits come at: the uses, or the hits of a rain.
     pub(crate) value: f64,
 }
 
 impl ActionRateTerms {
-    /// The steps from the weapon or skill base rate to `value`.
+    /// The steps from the weapon or skill base rate to `value`. A rain's
+    /// steps start from its arrows instead.
     pub(crate) fn formula(&self) -> StatFormula {
+        if let Some(rain) = &self.rain {
+            return rain.formula(self.value);
+        }
         let mut steps = FormulaBuilder::default();
         steps.scaled(self.base, 0.0, self.inc, self.more);
         if self.timed != self.scaled {
@@ -346,6 +360,16 @@ pub(crate) fn action_rate_terms(
     cfg: &CalcConfig,
     input: &MinimalInput,
 ) -> ActionRateTerms {
+    let mut terms = use_rate_terms(db, cfg, input);
+    terms.rain = super::rain::rain_hits(db, cfg, terms.uses);
+    if let Some(rain) = &terms.rain {
+        terms.value = round(rain.rate);
+    }
+    terms
+}
+
+/// How often the skill is used.
+fn use_rate_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> ActionRateTerms {
     if let Some(rate) = fixed_use_rate(db, cfg) {
         let cooled = apply_cooldown_cap(db, cfg, rate);
         let ticked = apply_server_tick_cap(db, cfg, cooled);
@@ -359,6 +383,8 @@ pub(crate) fn action_rate_terms(
             uncapped: rate,
             cooled,
             ticked,
+            uses: round(ticked),
+            rain: None,
             value: round(ticked),
         };
     }
@@ -394,6 +420,8 @@ pub(crate) fn action_rate_terms(
         uncapped: uncapped_action_rate,
         cooled,
         ticked,
+        uses: round(ticked),
+        rain: None,
         value: round(ticked),
     }
 }
@@ -1307,7 +1335,7 @@ fn total_dps_traced(
     // separate factor multiplied in on its own; finally capped by the
     // inherent cooldown speed limit (min(rate, 1/effective_cooldown)) --
     // matching the non-traced path.
-    let (action_rate, action_rate_node) = if fixed_use_rate(db, cfg).is_some() {
+    let (use_rate, use_rate_node) = if fixed_use_rate(db, cfg).is_some() {
         // Used by something other than the character: no speed scales it.
         let use_rate = db.sum_traced(
             ModType::Base,
@@ -1316,7 +1344,7 @@ fn total_dps_traced(
             trace,
             "Skill use rate (not the character's)",
         );
-        let action_rate = action_rate_terms(db, cfg, input).value;
+        let action_rate = action_rate_terms(db, cfg, input).uses;
         let node = trace.add_node("action rate", action_rate, TraceOperation::Multiply);
         trace.add_edge(use_rate.node_id, node);
         (action_rate, node)
@@ -1354,6 +1382,25 @@ fn total_dps_traced(
         trace.add_edge(inc_speed.node_id, node);
         trace.add_edge(more_speed.node_id, node);
         (action_rate, node)
+    };
+    // A rain hits as its arrows land, which projectile speed hastens
+    // (`calc::rain`); the uses only limit it.
+    let (action_rate, action_rate_node) = match super::rain::rain_hits(db, cfg, use_rate) {
+        Some(rain) => {
+            let landing_speed = db.sum_traced(
+                ModType::Inc,
+                cfg,
+                &[ModName::from("ProjectileSpeed")],
+                trace,
+                "Projectile speed INC (how often the arrows land)",
+            );
+            let rate = round(rain.rate);
+            let node = trace.add_node("rain hit rate", rate, TraceOperation::Multiply);
+            trace.add_edge(landing_speed.node_id, node);
+            trace.add_edge(use_rate_node, node);
+            (rate, node)
+        }
+        None => (use_rate, use_rate_node),
     };
 
     // TotalDPS final

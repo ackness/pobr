@@ -498,6 +498,9 @@ fn check_formula(
                 assert!(close(operand, reload_factor()), "{at}: reload factor");
                 previous * operand
             }
+            // Arrows land `previous` times a second and an enemy can be hit
+            // once every `operand` seconds: the first arrow after that hits.
+            "hit_interval" => previous / (operand * previous - 1e-9).ceil().max(1.0),
             // The enemy's increase adds to the player's increases.
             "enemy_increase_added" => {
                 let (before, increase) = player_increase.unwrap_or((previous, 0.0));
@@ -1102,6 +1105,44 @@ fn breakdown_formulas_end_at_the_displayed_value() {
 /// values, whose passes the displayed stats merge, and a crossbow whose
 /// reload lowers the rate. Their breakdowns go through the same checks, and
 /// each hand's own steps end at the value the merge starts from.
+/// Rain of Arrows hits as its arrows land: its rate starts from the landing
+/// rate, scaled by projectile speed (the lines listed), and the hit interval
+/// keeps one landing arrow in so many.
+#[test]
+fn a_rain_explains_its_rate_by_its_landing_arrows() {
+    ensure_data();
+    let request = serde_json::json!({
+        "character": { "class_name": "Ranger", "level": 90 },
+        "allocated_nodes": [],
+        "socket_groups": [{ "gems": [{ "skill_id": "RainOfArrowsPlayer", "level": 20, "quality": 0 }] }],
+        "items": [
+            { "slot": "weapon1", "text": "Rarity: NORMAL\nCrude Bow" },
+            { "slot": "ring1", "text": "Rarity: MAGIC\nIron Ring\n50% increased Projectile Speed" },
+        ],
+    });
+    let json: Value = serde_json::from_str(
+        &pobr_wasm::calculate_build_json(&request.to_string()).expect("calculate"),
+    )
+    .expect("valid json");
+    let stats = json["stats"].as_array().unwrap();
+    let shown = stats.iter().find(|s| s["id"] == "ActionRate").unwrap()["value"]
+        .as_f64()
+        .unwrap();
+    // 50% faster: an arrow every 0.0533 s, and every third one hits.
+    assert!(close(shown, 6.25), "ActionRate {shown}");
+    let breakdown = &json["breakdowns"]["ActionRate"];
+    let mut tally = FormulaTally::default();
+    check_formula(
+        "rain",
+        "ActionRate",
+        breakdown,
+        shown,
+        Some(stats),
+        &mut tally,
+    );
+    assert!(tally.ops.contains("hit_interval"), "{:?}", tally.ops);
+}
+
 #[test]
 fn breakdowns_merge_two_weapon_passes_and_show_the_reload() {
     ensure_data();

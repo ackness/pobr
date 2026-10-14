@@ -211,6 +211,7 @@ pub(super) fn stage_build_cfg(
                 .unwrap_or(&[]),
         ))
         .with_mode_effective(options.mode_effective)
+        .with_rain_hits_whenever_allowed(!options.rain_landings)
         // Vendor's buffMode is always "EFFECTIVE" outside CALCS mode
         // (CalcSetup.lua:583-597 → env.mode_buffs = true), so mode_buffs is always set
         // here — enabling buff_pass (the aura multiplier zone / curse priority+limit).

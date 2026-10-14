@@ -506,6 +506,7 @@ const DICT = {
   'calcs.step.off_hand_either': { 'en-US': 'Off hand: both weapons hit at once and either can crit', 'zh-TW': '副手：兩把武器同時擊中，任一暴擊即算', 'zh-CN': '副手：两把武器同时击中，任一暴击即算' },
   'calcs.step.off_hand_alternating': { 'en-US': 'Off hand: alternating weapons of different speed', 'zh-TW': '副手：輪流使用速度不同的武器', 'zh-CN': '副手：轮流使用速度不同的武器' },
   'calcs.step.reload': { 'en-US': 'Time spent reloading (see the table below)', 'zh-TW': '裝填所佔的時間（見下表）', 'zh-CN': '装填所占的时间（见下表）' },
+  'calcs.step.hit_interval': { 'en-US': 'Hit by the first arrow to land once it can be hit again', 'zh-TW': '能再次被命中後落下的第一支箭命中', 'zh-CN': '能再次被命中后落下的第一支箭命中' },
   'calcs.step.stronger_hand': { 'en-US': 'The stronger hand (see below)', 'zh-TW': '較強的一手（見下方）', 'zh-CN': '较强的一手（见下方）' },
   'calcs.step.stronger_share': { 'en-US': 'Share of active instances from the stronger hand (s)', 'zh-TW': '生效層數中來自較強一手的比例（s）', 'zh-CN': '生效层数中来自较强一手的比例（s）' },
   'calcs.step.weaker_hand': { 'en-US': 'The rest come from the weaker hand', 'zh-TW': '其餘來自較弱的一手', 'zh-CN': '其余来自较弱的一手' },

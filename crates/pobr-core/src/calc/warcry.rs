@@ -265,9 +265,9 @@ pub fn apply_warcry_uptime(env: &mut Env) {
     {
         Some(hand) => {
             let (cfg, input) = super::hand_pass::hand_scope(hand, &env.cfg, &input);
-            super::offence::resolve_action_rate(&env.player.mod_db, &cfg, &input)
+            super::offence::resolve_use_rate(&env.player.mod_db, &cfg, &input)
         }
-        None => super::offence::resolve_action_rate(&env.player.mod_db, &env.cfg, &input),
+        None => super::offence::resolve_use_rate(&env.player.mod_db, &env.cfg, &input),
     };
 
     let dbg = dbg_env!("POBR_DBG_WARCRY").is_some();

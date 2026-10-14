@@ -39,6 +39,8 @@ mod granted_skill_reservation;
 mod minions;
 #[path = "skills/quarterstaff_conditions.rs"]
 mod quarterstaff_conditions;
+#[path = "skills/rain.rs"]
+mod rain;
 #[path = "skills/runic_ward.rs"]
 mod runic_ward;
 #[path = "skills/skill_damage_dps.rs"]

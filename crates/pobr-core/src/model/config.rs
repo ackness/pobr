@@ -192,6 +192,11 @@ pub struct CalcConfig {
     /// that `with_config` overwrites cfg wholesale, so injection must happen
     /// after it).
     pub constants: RuntimeConstants,
+    /// Whether a rain hits an enemy whenever the enemy can be hit again, as
+    /// if an arrow landed at that moment, instead of with the first arrow to
+    /// land after it (`calc::rain`). Off by default; it is the basis of a
+    /// build code's reference values.
+    pub rain_hits_whenever_allowed: bool,
 }
 
 impl CalcConfig {
@@ -261,6 +266,13 @@ impl CalcConfig {
     /// Sets the effective-DPS mode toggle (see [`CalcConfig::mode_effective`]).
     pub fn with_mode_effective(mut self, mode_effective: bool) -> Self {
         self.mode_effective = mode_effective;
+        self
+    }
+
+    /// Sets how a rain's hits are counted (see
+    /// [`CalcConfig::rain_hits_whenever_allowed`]).
+    pub fn with_rain_hits_whenever_allowed(mut self, whenever_allowed: bool) -> Self {
+        self.rain_hits_whenever_allowed = whenever_allowed;
         self
     }
 

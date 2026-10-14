@@ -178,6 +178,11 @@ const GEMLING_COMET_CODE: &str = include_str!(
     "../../../examples/wasm-benchmark/builds/ninja-2026-10-11-mercenary-gemling-legionnaire-comet-c60ba778fabb/code.txt"
 );
 
+/// A Rain of Arrows with 169% increased Projectile Speed.
+const RAIN_OF_ARROWS_CODE: &str = include_str!(
+    "../../../examples/reference-builds/tuned/builds/ninja-2026-10-13-huntress-amazon-rain-of-arrows-0826116e6c98/code.txt"
+);
+
 fn repo_data_dir() -> std::path::PathBuf {
     pobr_gamedata::repo_data_root().join(pobr_gamedata::data_version())
 }
@@ -409,6 +414,47 @@ fn calculate_build_reports_a_triggered_spell_at_the_rate_of_triggers() {
     .unwrap();
     assert!(by_hand.output.energy_trigger.is_none());
     assert!(!by_hand.reference.unwrap().at_own_rate_of_use);
+}
+
+/// A rain is reported at the hits its landing arrows give, and compared with
+/// the code's reference by the exporter's count: a hit whenever the enemy can
+/// be hit again.
+#[test]
+fn calculate_build_reports_a_rain_by_its_landing_arrows() {
+    let report = calculate_build(&CalculateBuildRequest {
+        code: RAIN_OF_ARROWS_CODE.trim().to_string(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    })
+    .unwrap();
+    let rain = report
+        .output
+        .rain
+        .as_ref()
+        .expect("the main skill is a rain");
+    // 169% increased: an arrow every 0.08 / 2.69 s, and the fifth after a hit
+    // is the first to land once 0.12 s have passed.
+    assert!((rain.landing_interval - 0.08 / 2.69).abs() < 1e-9);
+    assert_eq!(rain.hit_interval, 0.12);
+    assert_eq!(rain.arrows_per_hit, 5.0);
+    assert_eq!(report.output.action_rate, rain.hits_per_second);
+
+    let reference = report
+        .reference
+        .expect("the code carries PlayerStat values");
+    assert!(reference.rain_hits_whenever_allowed);
+    assert!(!reference.at_own_rate_of_use);
+    // The exporter's hit rate, 1 / 0.12 s, is the one compared with it.
+    assert!(
+        reference
+            .differing
+            .iter()
+            .all(|row| row.stat != "ActionRate"),
+        "{:?}",
+        reference.differing
+    );
 }
 
 #[test]

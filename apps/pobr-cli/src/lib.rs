@@ -924,6 +924,10 @@ pub struct CalculateBuildOutput {
     /// and the DPS are by `triggers_per_second` when a source is named.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub energy_trigger: Option<EnergyTriggerOutput>,
+    /// Present when the main skill is a rain (Rain of Arrows): how its hits
+    /// come. `action_rate` and the DPS are by `hits_per_second`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rain: Option<RainOutput>,
 }
 
 /// How a meta gem triggers the main skill.
@@ -937,6 +941,20 @@ pub struct EnergyTriggerOutput {
     /// Energy one critical hit of that skill gives.
     pub energy_per_critical_hit: f64,
     pub triggers_per_second: f64,
+}
+
+/// How a rain's arrows turn into hits on an enemy.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct RainOutput {
+    /// Seconds between two arrows landing, after projectile speed.
+    pub landing_interval: f64,
+    /// Seconds before the enemy can be hit again.
+    pub hit_interval: f64,
+    /// The enemy is hit by one landing arrow in this many.
+    pub arrows_per_hit: f64,
+    /// Arrows one use fires.
+    pub arrows: f64,
+    pub hits_per_second: f64,
 }
 
 /// Passive-tree version reconciliation diagnostics (gap B): the build's
@@ -986,6 +1004,10 @@ pub struct ReferenceCheck {
     /// the rate the gem triggers it (`output.energy_trigger`), so its DPS and
     /// action rate are not the `pobr` values of the rows.
     pub at_own_rate_of_use: bool,
+    /// `true` when the main skill is a rain and the rows below count a hit
+    /// whenever the enemy can be hit again, as the exporter does; `output`
+    /// counts the hits of the arrows that land (`output.rain`).
+    pub rain_hits_whenever_allowed: bool,
     pub compared: usize,
     pub agreeing: usize,
     pub differing: Vec<ReferenceDifference>,
@@ -1075,6 +1097,13 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
             energy_per_critical_hit: out.energy_per_trigger_event,
             triggers_per_second: out.skill_trigger_rate,
         }),
+        rain: session.rain().map(|rain| RainOutput {
+            landing_interval: rain.landing_interval,
+            hit_interval: rain.hit_interval,
+            arrows_per_hit: rain.arrows_per_hit,
+            arrows: rain.arrows,
+            hits_per_second: rain.hits_per_second,
+        }),
     };
 
     // The reference was exported on the effective basis against the build's
@@ -1083,16 +1112,18 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
         req.mode_effective && req.enemy_level == 0 && req.enemy_tier == EnemyTier::Pinnacle;
     let compares = same_conditions && !import.reference_stats.is_empty();
     // The exporter has no Energy model: its numbers for a spell in a meta gem
-    // are at the spell's own rate of use. The comparison asks the same
-    // question, so it is made at that rate, not at the rate of triggers the
-    // output above reports.
-    let at_own_rate = (compares && out.energy_trigger_source.is_some())
+    // are at the spell's own rate of use. It counts a rain's hits whenever
+    // the enemy can be hit again. The comparison asks the same questions, so
+    // it is made on that basis, not at the rates the output above reports.
+    let at_own_rate = compares && out.energy_trigger_source.is_some();
+    let rain_hits_whenever_allowed = compares && output.rain.is_some();
+    let on_basis = (at_own_rate || rain_hits_whenever_allowed)
         .then(|| {
             calculate_with_data_session(&build, &build_data, &opts.clone().on_reference_basis())
         })
         .transpose()?;
     let reference = compares.then(|| {
-        let reference_out = at_own_rate.as_ref().map_or(out, |session| session.output());
+        let reference_out = on_basis.as_ref().map_or(out, |session| session.output());
         let rows = compare_to_reference(reference_out, &import.reference_stats);
         let differing: Vec<ReferenceDifference> = rows
             .iter()
@@ -1107,7 +1138,8 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
             .collect();
         ReferenceCheck {
             tolerance: REFERENCE_TOLERANCE,
-            at_own_rate_of_use: at_own_rate.is_some(),
+            at_own_rate_of_use: at_own_rate,
+            rain_hits_whenever_allowed,
             compared: rows.len(),
             agreeing: rows.len() - differing.len(),
             differing,

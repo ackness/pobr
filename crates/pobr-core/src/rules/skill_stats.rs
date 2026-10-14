@@ -113,6 +113,21 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
             Modifier::number("AttackSpeed", ModType::Inc, value)
                 .with_keyword_flags(KeywordFlags::TOTEM),
         ]),
+        // Rain of Arrows: "One arrow lands every {0} seconds", with
+        // "Modifiers to Projectile speed apply to arrow landing frequency"
+        // (`calc::rain`).
+        "rain_of_arrows_delay_per_arrow" => Some(vec![Modifier::number(
+            crate::calc::rain::LANDING_INTERVAL,
+            ModType::Base,
+            value,
+        )]),
+        // "Can Hit each enemy only once every {0} seconds", of what a rain or
+        // a storm drops. Only a rain whose landings the engine knows reads it.
+        "rain_hit_delay_ms" => Some(vec![Modifier::number(
+            crate::calc::rain::HIT_INTERVAL,
+            ModType::Base,
+            value,
+        )]),
         _ => None,
     }
 }

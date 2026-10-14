@@ -122,6 +122,13 @@ pub struct DataOrchestratorOptions {
     /// the basis of a build code's reference values, whose exporter has no
     /// Energy model, so a comparison with them asks the same question.
     pub energy_triggers: bool,
+    /// Whether a rain (Rain of Arrows) hits an enemy with the first arrow to
+    /// land once the enemy can be hit again, so that the hits come in steps
+    /// of the landing interval. Defaults to `true`, which is what the game's
+    /// numbers give. `false` counts a hit whenever the enemy can be hit
+    /// again, as if an arrow landed then: the basis of a build code's
+    /// reference values.
+    pub rain_landings: bool,
 }
 
 impl Default for DataOrchestratorOptions {
@@ -136,6 +143,7 @@ impl Default for DataOrchestratorOptions {
             stat_map_mode: StatMapMode::default(),
             stat_map_catalog: None,
             energy_triggers: true,
+            rain_landings: true,
         }
     }
 }
@@ -157,12 +165,15 @@ impl DataOrchestratorOptions {
     /// These options with the models the exporter of a build code's reference
     /// values does not have turned off, so that a comparison with those values
     /// asks the question they answer. The exporter has no Energy model: a
-    /// spell in a meta gem is counted at the spell's own rate of use.
+    /// spell in a meta gem is counted at the spell's own rate of use. It
+    /// counts a rain's hits as often as an enemy can be hit, whenever the
+    /// arrows land.
     ///
     /// A model added here is verified by its own tests, not by the reference.
     pub fn on_reference_basis(self) -> Self {
         Self {
             energy_triggers: false,
+            rain_landings: false,
             ..self
         }
     }

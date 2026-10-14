@@ -401,7 +401,7 @@ struct FormulaStepJson {
     /// `ailment_rate` / `enemy_increase_added` / `never_crit` /
     /// `no_crit_bonus` / `main_hand` / `off_hand_average` / `off_hand_added` /
     /// `off_hand_either` / `off_hand_alternating` / `stronger_hand` /
-    /// `stronger_share` / `weaker_hand` / `reload`.
+    /// `stronger_share` / `weaker_hand` / `reload` / `hit_interval`.
     op: &'static str,
     /// The amount the step applies (percentage points for `increased`,
     /// `converted`, `hit_chance`, `enemy_block`, `inevitable_penalty`,
@@ -419,7 +419,8 @@ struct FormulaStepJson {
     /// for `never_crit` and `no_crit_bonus`, a hand's own value for
     /// `main_hand`, the `off_hand_*` steps, `stronger_hand` and
     /// `weaker_hand`, the percentage of instances from the stronger hand for
-    /// `stronger_share`, a multiplier for `reload`, the amount added otherwise).
+    /// `stronger_share`, a multiplier for `reload`, the seconds before a
+    /// target can be hit again for `hit_interval`, the amount added otherwise).
     operand: f64,
     /// The running value after the step.
     result: f64,

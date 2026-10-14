@@ -132,6 +132,10 @@ pub enum FormulaOp {
     OffHandAlternating,
     /// Multiplies by `operand`: the share of time not spent reloading.
     Reload,
+    /// A target can be hit once every `operand` seconds: of the arrows
+    /// landing at the running rate, the first to land once that time has
+    /// passed hits, one in every `⌈operand × value⌉`.
+    HitInterval,
     /// Starts from the stronger hand's ailment damage per second, `operand`.
     StrongerHand,
     /// `operand` percent of the active instances come from the stronger hand.
@@ -203,6 +207,7 @@ impl FormulaOp {
             Self::OffHandEither => "off_hand_either",
             Self::OffHandAlternating => "off_hand_alternating",
             Self::Reload => "reload",
+            Self::HitInterval => "hit_interval",
             Self::StrongerHand => "stronger_hand",
             Self::StrongerShare => "stronger_share",
             Self::WeakerHand => "weaker_hand",

@@ -136,6 +136,8 @@ function formulaOperand(step: FormulaStep): string {
       return `×${n}`;
     case 'added_time':
       return `${signed}s`;
+    case 'hit_interval':
+      return `${n}s`;
     case 'override':
       return `= ${n}`;
     case 'cap':
