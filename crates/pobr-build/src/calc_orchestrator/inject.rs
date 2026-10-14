@@ -279,6 +279,17 @@ pub(super) fn inject_connected_support_counts(
     }
 }
 
+/// Whether `jewel` is a Grand Spectrum. The unique jewel has three bases,
+/// each with a single line counting the Grand Spectrums socketed: Maximum
+/// Life on the Ruby, Spirit on the Emerald, all Elemental Resistances on the
+/// Sapphire. Items do not keep their name, so the line identifies it.
+fn is_grand_spectrum(jewel: &pobr_data::item::Item) -> bool {
+    jewel
+        .modifier_texts
+        .iter()
+        .any(|line| line.ends_with("per socketed Grand Spectrum"))
+}
+
 /// Build-derived counts and equipment facts; actor-derived values belong to core.
 pub(super) fn inject_build_multipliers(
     session: &mut CalculationSession,
@@ -308,6 +319,10 @@ pub(super) fn inject_build_multipliers(
     let corrupted = build.items.values().filter(|item| item.corrupted).count();
     session.set_multiplier("CorruptedItem", corrupted as f64);
     session.set_multiplier("NonCorruptedItem", (build.items.len() - corrupted) as f64);
+    // "… per socketed Grand Spectrum": the Grand Spectrums among the jewels
+    // in the build's sockets, whatever their base.
+    let grand_spectrums = build.jewel_items().filter(|jewel| is_grand_spectrum(jewel));
+    session.set_multiplier("GrandSpectrum", grand_spectrums.count() as f64);
     // GrenadeTypes (matching vendor CalcPerform.lua:1238-1242: counts the number of
     // distinct granted effects among enabled active skills with `SkillType.Grenade`,
     // deduplicated) — the Demolitionist ascendancy's "… for every different Grenade

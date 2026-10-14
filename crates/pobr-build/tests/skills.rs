@@ -33,6 +33,8 @@ mod energy_triggers;
 mod equipment_affix_effects;
 #[path = "skills/gem_quality.rs"]
 mod gem_quality;
+#[path = "skills/grand_spectrum.rs"]
+mod grand_spectrum;
 #[path = "skills/granted_skill_reservation.rs"]
 mod granted_skill_reservation;
 #[path = "skills/limbs.rs"]
