@@ -47,6 +47,11 @@ impl CalculationSession {
         self.set_stat("Strength", str_total);
         self.set_stat("Dexterity", dex_total);
         self.set_stat("Intelligence", int_total);
+        // "per 5 of your lowest Attribute" (Jack of all Trades): the least of
+        // the three final attributes.
+        let lowest = str_total.min(dex_total).min(int_total);
+        self.set_multiplier("LowestAttribute", lowest);
+        self.set_stat("LowestAttribute", lowest);
         // (Pre-existing #7-4) The Spirit denominator = **the final pool value**
         // (calc_spirit_pool, including INC/MORE and conversion deductions) — vendor's
         // PerStat reads output.Spirit; BASE-only would under-count wolf-pack's Perfidy

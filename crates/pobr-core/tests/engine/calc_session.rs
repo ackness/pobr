@@ -44,6 +44,43 @@ fn per_attribute_modifiers_use_final_attributes_with_class_and_inc_more() {
     assert!((out.total_hit_avg - 106.0).abs() < 1e-9);
 }
 
+/// Jack of all Trades: "2% increased Damage per 5 of your lowest Attribute"
+/// reads the least of the three final attributes.
+#[test]
+fn per_lowest_attribute_modifiers_read_the_least_final_attribute() {
+    use pobr_core::{CalcConfig, CharacterBase, Modifier};
+    use pobr_data::prelude::ModType;
+
+    let class = CharacterBase {
+        level: 1,
+        strength: 10.0,
+        dexterity: 10.0,
+        intelligence: 10.0,
+    };
+    let mut s = session(MinimalInput {
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        ..Default::default()
+    })
+    .with_config(CalcConfig::spell());
+    s.add_modifiers(class.modifiers(&Default::default()));
+    // Final attributes: 40 Strength, 26 Dexterity, 30 Intelligence.
+    s.add_modifiers([
+        Modifier::number("Strength", ModType::Base, 30.0),
+        Modifier::number("Dexterity", ModType::Base, 16.0),
+        Modifier::number("Intelligence", ModType::Base, 20.0),
+    ]);
+    s.add_modifier_texts(["2% increased Damage per 5 of your lowest Attribute"])
+        .unwrap();
+    assert!(s.unsupported_modifier_texts().is_empty());
+    s.prepare_player_stats(1, Some(class));
+    let unprovided = s.unprovided_multipliers();
+    assert!(unprovided.iter().all(|(var, _)| *var != "LowestAttribute"));
+    // floor(26 / 5) = 5 steps of 2%.
+    let out = s.perform_minimal().unwrap();
+    assert!((out.total_hit_avg - 110.0).abs() < 1e-9);
+}
+
 #[test]
 fn completed_session_rejects_recalculation_without_mutating_derived_resources() {
     use pobr_core::{Modifier, calc::CalcError};
