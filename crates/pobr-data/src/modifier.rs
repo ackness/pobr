@@ -247,6 +247,59 @@ impl BitOrAssign for ModFlags {
     }
 }
 
+impl ModFlags {
+    /// The names of the single flags set here (`Attack`, `Hit`, `Bow` …), in
+    /// bit order, for messages. Bits without a name come last, in hex.
+    pub fn names(self) -> Vec<String> {
+        const NAMED: [(&str, ModFlags); 31] = [
+            ("Attack", ModFlags::ATTACK),
+            ("Spell", ModFlags::SPELL),
+            ("Hit", ModFlags::HIT),
+            ("Dot", ModFlags::DOT),
+            ("Cast", ModFlags::CAST),
+            ("Thorns", ModFlags::THORNS),
+            ("Melee", ModFlags::MELEE),
+            ("Area", ModFlags::AREA),
+            ("Projectile", ModFlags::PROJECTILE),
+            ("Ailment", ModFlags::AILMENT),
+            ("MeleeHit", ModFlags::MELEE_HIT),
+            ("Weapon", ModFlags::WEAPON),
+            ("Axe", ModFlags::AXE),
+            ("Bow", ModFlags::BOW),
+            ("Claw", ModFlags::CLAW),
+            ("Dagger", ModFlags::DAGGER),
+            ("Mace", ModFlags::MACE),
+            ("Staff", ModFlags::STAFF),
+            ("Sword", ModFlags::SWORD),
+            ("Wand", ModFlags::WAND),
+            ("Unarmed", ModFlags::UNARMED),
+            ("Fishing", ModFlags::FISHING),
+            ("Crossbow", ModFlags::CROSSBOW),
+            ("Flail", ModFlags::FLAIL),
+            ("Spear", ModFlags::SPEAR),
+            ("Warstaff", ModFlags::WARSTAFF),
+            ("Talisman", ModFlags::TALISMAN),
+            ("WeaponMelee", ModFlags::WEAPON_MELEE),
+            ("WeaponRanged", ModFlags::WEAPON_RANGED),
+            ("Weapon1H", ModFlags::WEAPON_1H),
+            ("Weapon2H", ModFlags::WEAPON_2H),
+        ];
+        let mut rest = self.0;
+        let mut names: Vec<String> = NAMED
+            .iter()
+            .filter(|(_, flag)| self.0 & flag.0 != 0)
+            .map(|(name, flag)| {
+                rest &= !flag.0;
+                (*name).to_string()
+            })
+            .collect();
+        if rest != 0 {
+            names.push(format!("{rest:#x}"));
+        }
+        names
+    }
+}
+
 impl fmt::Debug for ModFlags {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ModFlags({:#x})", self.0)
@@ -347,6 +400,44 @@ impl KeywordFlags {
             cfg_masked.intersects(mod_masked)
         }
     }
+
+    /// The names of the keywords set here (`Attack`, `Ignite` …), in bit
+    /// order, for messages; `MATCH_ALL` is left out. Bits without a name come
+    /// last, in hex.
+    pub fn names(self) -> Vec<String> {
+        const NAMED: [(&str, KeywordFlags); 16] = [
+            ("Aura", KeywordFlags::AURA),
+            ("Curse", KeywordFlags::CURSE),
+            ("Arrow", KeywordFlags::ARROW),
+            ("Totem", KeywordFlags::TOTEM),
+            ("Attack", KeywordFlags::ATTACK),
+            ("Spell", KeywordFlags::SPELL),
+            ("Hit", KeywordFlags::HIT),
+            ("Ailment", KeywordFlags::AILMENT),
+            ("Poison", KeywordFlags::POISON),
+            ("Bleed", KeywordFlags::BLEED),
+            ("Ignite", KeywordFlags::IGNITE),
+            ("PhysicalDot", KeywordFlags::PHYSICAL_DOT),
+            ("LightningDot", KeywordFlags::LIGHTNING_DOT),
+            ("ColdDot", KeywordFlags::COLD_DOT),
+            ("FireDot", KeywordFlags::FIRE_DOT),
+            ("ChaosDot", KeywordFlags::CHAOS_DOT),
+        ];
+        let keywords = self.without_match_all();
+        let mut rest = keywords.0;
+        let mut names: Vec<String> = NAMED
+            .iter()
+            .filter(|(_, flag)| keywords.0 & flag.0 != 0)
+            .map(|(name, flag)| {
+                rest &= !flag.0;
+                (*name).to_string()
+            })
+            .collect();
+        if rest != 0 {
+            names.push(format!("{rest:#x}"));
+        }
+        names
+    }
 }
 
 impl BitOr for KeywordFlags {
@@ -409,6 +500,19 @@ mod modflags_pob2_tests {
         assert_eq!(ModFlags::WEAPON_1H.bits(), 0x0000000400000000);
         assert_eq!(ModFlags::WEAPON_2H.bits(), 0x0000000800000000);
         assert_eq!(ModFlags::WEAPON_MASK.bits(), 0x0000000F5FFF0000);
+    }
+
+    /// Flags name their single bits; a bit without a name is kept in hex.
+    #[test]
+    fn flags_name_their_bits() {
+        assert_eq!(
+            (ModFlags::ATTACK | ModFlags::HIT | ModFlags::BOW).names(),
+            ["Attack", "Hit", "Bow"]
+        );
+        assert_eq!(ModFlags(0x40).names(), ["0x40"]);
+        assert!(ModFlags::NONE.names().is_empty());
+        let keywords = super::KeywordFlags::IGNITE | super::KeywordFlags::MATCH_ALL;
+        assert_eq!(keywords.names(), ["Ignite"]);
     }
 
     /// `SourceMask`/`WeaponMask` are unions of their member bits (per

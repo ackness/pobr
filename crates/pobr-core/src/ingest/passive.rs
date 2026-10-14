@@ -79,6 +79,17 @@ pub struct PassiveIngest {
 /// [`PassiveIngest::unsupported`] instead, matching `CalculationSession`'s
 /// semantics.
 ///
+/// The source the lines of node `node` are stored under: `node.<id>`, of
+/// kind [`SourceKind::AscendancyNode`] for an ascendancy node.
+pub fn node_source(node: u32, ascendancy: bool) -> SourceId {
+    let kind = if ascendancy {
+        SourceKind::AscendancyNode
+    } else {
+        SourceKind::PassiveNode
+    };
+    SourceId::new(kind, format!("node.{node}"))
+}
+
 /// Attribution convention: `SourceId.kind` = [`SourceKind::PassiveNode`] /
 /// [`SourceKind::AscendancyNode`], `SourceId.id` = `node.<NodeId>`, `raw_text`
 /// keeps the original modifier line; `stat_id` / `mod_type` are filled back
@@ -90,12 +101,7 @@ pub fn ingest_passive_nodes_with_ctx(
 ) -> Result<PassiveIngest, ParseError> {
     let mut ingest = PassiveIngest::default();
     for node in nodes {
-        let kind = if node.ascendancy {
-            SourceKind::AscendancyNode
-        } else {
-            SourceKind::PassiveNode
-        };
-        let source_id = SourceId::new(kind, format!("node.{}", node.node_id.0));
+        let source_id = node_source(node.node_id.0, node.ascendancy);
 
         for text in &node.modifier_texts {
             let outcome = ctx.parse(text)?;

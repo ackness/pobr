@@ -143,6 +143,8 @@ struct CompiledEntry {
     id: String,
     regex: Regex,
     verified: bool,
+    /// Registered as changing nothing a calculation reports (batch `S0`).
+    no_effect: bool,
     /// Instantiated as template mods (mutually exclusive with `handler_id`).
     template: Option<CompiledTemplate>,
     /// Handler routing (mutually exclusive with template).
@@ -200,6 +202,9 @@ pub struct SpecialMatch {
     /// Forwarded for the parity report (`verified:false` gets its own
     /// column).
     pub verified: bool,
+    /// The entry is registered as changing nothing a calculation reports
+    /// (batch `S0`): its line is recognised, not dropped.
+    pub no_effect: bool,
     /// Set when `handler_id` isn't registered (the match still hits but
     /// produces empty mods; used for reporting, never panics).
     pub unregistered_handler: Option<String>,
@@ -266,6 +271,7 @@ impl SpecialModRules {
                 id: def.id.clone(),
                 regex,
                 verified: def.verified,
+                no_effect: def.batch == "S0",
                 template,
                 handler_id: def.handler_id.clone(),
                 handler_args: def.handler_args.clone(),
@@ -342,6 +348,7 @@ impl SpecialModRules {
                         entry_id: entry.id.clone(),
                         mods: Vec::new(),
                         verified: entry.verified,
+                        no_effect: entry.no_effect,
                         unregistered_handler: Some(handler_id.clone()),
                     });
                 };
@@ -361,6 +368,7 @@ impl SpecialModRules {
                     entry_id: entry.id.clone(),
                     mods,
                     verified: entry.verified,
+                    no_effect: entry.no_effect,
                     unregistered_handler: None,
                 });
             }
@@ -373,6 +381,7 @@ impl SpecialModRules {
                     entry_id: entry.id.clone(),
                     mods: Vec::new(),
                     verified: entry.verified,
+                    no_effect: entry.no_effect,
                     unregistered_handler: None,
                 });
             };
@@ -381,6 +390,7 @@ impl SpecialModRules {
                 entry_id: entry.id.clone(),
                 mods,
                 verified: entry.verified,
+                no_effect: entry.no_effect,
                 unregistered_handler: None,
             });
         }

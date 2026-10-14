@@ -197,11 +197,66 @@ pub struct CalcConfig {
     /// land after it (`calc::rain`). Off by default; it is the basis of a
     /// build code's reference values.
     pub rain_hits_whenever_allowed: bool,
+    /// The conditions and multipliers asked for through [`Self::condition`]
+    /// and [`Self::multiplier`], once [`Self::track_reads`] turns it on. The
+    /// configs a stage narrows from this one are clones and share it.
+    reads: Option<VariableReads>,
+}
+
+/// What a calculation asked of a config's conditions and multipliers.
+#[derive(Debug, Clone, Default)]
+struct VariableReads(std::sync::Arc<std::sync::Mutex<ReadVariables>>);
+
+/// The condition and multiplier names a calculation asked for while reads
+/// were tracked ([`CalcConfig::read_variables`]).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ReadVariables {
+    pub conditions: std::collections::BTreeSet<String>,
+    pub multipliers: std::collections::BTreeSet<String>,
+}
+
+impl VariableReads {
+    fn note(&self, name: &str, condition: bool) {
+        let mut state = self
+            .0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let names = if condition {
+            &mut state.conditions
+        } else {
+            &mut state.multipliers
+        };
+        if !names.contains(name) {
+            names.insert(name.to_string());
+        }
+    }
 }
 
 impl CalcConfig {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Starts noting which conditions and multipliers the calculation asks
+    /// for, for diagnostics. A `Condition:<X>` or `Multiplier:<X>` modifier is
+    /// consumed through these maps rather than by a query of the database.
+    pub fn track_reads(&mut self) {
+        self.reads.get_or_insert_with(VariableReads::default);
+    }
+
+    /// The conditions and multipliers asked for since [`Self::track_reads`]
+    /// by this config or a config narrowed from it; empty when not tracked.
+    pub fn read_variables(&self) -> ReadVariables {
+        self.reads
+            .as_ref()
+            .map(|reads| {
+                reads
+                    .0
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .clone()
+            })
+            .unwrap_or_default()
     }
 
     pub fn attack() -> Self {
@@ -309,6 +364,9 @@ impl CalcConfig {
     }
 
     pub fn condition(&self, name: &str) -> bool {
+        if let Some(reads) = &self.reads {
+            reads.note(name, true);
+        }
         // A condition derived from PoB2's `mode_effective`: `Condition:Effective`
         // gates enemy-side debuffs (curse/exposure/self-inflicted slow) that only
         // apply in effective-DPS mode. An explicitly set `Effective` condition
@@ -326,7 +384,15 @@ impl CalcConfig {
     }
 
     pub fn multiplier(&self, name: &str) -> f64 {
-        self.multipliers.get(name).copied().unwrap_or(0.0)
+        self.multiplier_if_set(name).unwrap_or(0.0)
+    }
+
+    /// A multiplier's value when something set it.
+    pub fn multiplier_if_set(&self, name: &str) -> Option<f64> {
+        if let Some(reads) = &self.reads {
+            reads.note(name, false);
+        }
+        self.multipliers.get(name).copied()
     }
 
     /// Reads the already-computed stat snapshot (see [`CalcConfig::stats`]; missing key → 0).
@@ -379,5 +445,33 @@ impl CalcConfig {
             None if actor == crate::ActorRef::Player => self.multiplier(var),
             None => 0.0,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Reads are noted once tracking starts, by every config narrowed from
+    /// the tracked one, and not before.
+    #[test]
+    fn tracked_configs_note_the_variables_asked_for() {
+        let mut cfg = CalcConfig::default().with_condition("LowLife", true);
+        assert!(cfg.condition("LowLife"));
+        cfg.track_reads();
+        let narrowed = cfg.clone().with_condition("Effective", false);
+        assert!(!narrowed.condition("Moving"));
+        assert_eq!(cfg.multiplier("NearbyEnemies"), 0.0);
+        assert_eq!(cfg.multiplier_if_set("TriggerChance"), None);
+        let read = cfg.read_variables();
+        assert_eq!(read.conditions, ["Moving".to_string()].into());
+        assert_eq!(
+            read.multipliers,
+            ["NearbyEnemies".to_string(), "TriggerChance".to_string()].into()
+        );
+        assert_eq!(
+            CalcConfig::default().read_variables(),
+            ReadVariables::default()
+        );
     }
 }

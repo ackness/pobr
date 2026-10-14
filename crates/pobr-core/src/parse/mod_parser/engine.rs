@@ -131,6 +131,7 @@ fn parse_mod_engine_impl(
             special_meta: Some(SpecialMatchMeta {
                 entry_id: matched.entry_id,
                 verified: matched.verified,
+                no_effect: matched.no_effect,
             }),
         };
     }

@@ -1108,3 +1108,114 @@ fn unread_mods_are_the_stored_names_no_query_asked_for() {
     assert!(db.flag(&cfg, "CompanionDamageAppliesToPlayer"));
     assert!(db.unread_mods().is_empty());
 }
+
+/// The read log names the queries each stored name was asked in and the
+/// modifiers they counted; a modifier read and not counted says why.
+#[test]
+fn read_snapshot_names_the_queries_and_what_they_counted() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("Life", ModType::Base, 50.0));
+    db.add_mod(
+        Modifier::number("Life", ModType::Base, 30.0)
+            .with_tag(ModTag::condition("UsingShield", false)),
+    );
+    db.add_mod(
+        Modifier::number("Life", ModType::Inc, 10.0).with_tag(ModTag::multiplier(
+            "FrenzyCharge",
+            1.0,
+            None,
+        )),
+    );
+    db.add_mod(Modifier::flag("CannotBeStunned"));
+    db.add_mod(Modifier::number("Speed", ModType::Override, 1.0));
+    db.add_mod(Modifier::number("Speed", ModType::Override, 2.0));
+    db.add_mod(Modifier::number("Mana", ModType::Base, 20.0));
+    let cfg = CalcConfig::new();
+    let names = [ModName::from("Life"), ModName::from("MaximumLife")];
+
+    // Not tracked: nothing is noted.
+    db.sum(ModType::Base, &cfg, &names);
+    assert!(db.read_snapshot().sites.is_empty());
+
+    db.track_reads();
+    assert_eq!(db.sum(ModType::Base, &cfg, &names), 50.0);
+    assert_eq!(db.sum(ModType::Inc, &cfg, &names), 0.0);
+    assert!(db.flag(&cfg, "CannotBeStunned"));
+    assert_eq!(db.override_(&cfg, "Speed"), Some(2.0));
+    let reads = db.read_snapshot();
+
+    assert_eq!(
+        reads.sites["Life"],
+        ["BASE Life+MaximumLife", "INC Life+MaximumLife"]
+    );
+    assert_eq!(reads.sites["CannotBeStunned"], ["FLAG CannotBeStunned"]);
+    assert_eq!(reads.sites["Speed"], ["OVERRIDE Speed"]);
+    assert!(!reads.sites.contains_key("Mana"));
+
+    let ctx = pobr_core::EvalContext::new(&cfg);
+    let life: Vec<&Modifier> = db.named("Life").collect();
+    assert!(reads.counted(life[0]));
+    assert_eq!(life[0].unmet_requirement(&ctx), None);
+    assert!(!reads.counted(life[1]));
+    assert_eq!(
+        life[1].unmet_requirement(&ctx).as_deref(),
+        Some("Condition UsingShield not met")
+    );
+    // Matched, and its multiplier made it 0.
+    assert!(!reads.counted(life[2]));
+    assert_eq!(
+        life[2].unmet_requirement(&ctx).as_deref(),
+        Some("scaled to 0: Multiplier FrenzyCharge is 0")
+    );
+    // Only the winning override is used.
+    let speed: Vec<&Modifier> = db.named("Speed").collect();
+    assert!(!reads.counted(speed[0]));
+    assert!(reads.counted(speed[1]));
+    assert!(reads.counted(db.named("CannotBeStunned").next().unwrap()));
+
+    // A snapshot is of its moment; a query against a copy counts for the
+    // modifiers it was copied from.
+    let copy = db.filtered(|_| true);
+    let shield = CalcConfig::new().with_condition("UsingShield", true);
+    assert_eq!(copy.sum(ModType::Base, &shield, &names), 80.0);
+    assert!(!reads.counted(life[1]));
+    let later = db.read_snapshot();
+    assert!(later.counted(life[1]));
+    assert!(later.sites["Life"].contains(&"NAMED Life".to_string()));
+}
+
+/// A reason names what is unmet as the queries check it: flags first, then
+/// the tags in order, then a scaling that comes to 0.
+#[test]
+fn unmet_requirement_says_what_a_query_would_check() {
+    let cfg = CalcConfig::new()
+        .with_flags(ModFlags::ATTACK | ModFlags::HIT)
+        .with_damage_type(DamageType::Fire);
+    let ctx = pobr_core::EvalContext::new(&cfg);
+    let spell = Modifier::number("Damage", ModType::Inc, 20.0).with_flags(ModFlags::SPELL);
+    assert_eq!(
+        spell.unmet_requirement(&ctx).as_deref(),
+        Some("needs Spell")
+    );
+    let cold = Modifier::number("Damage", ModType::Inc, 20.0)
+        .with_tag(ModTag::DamageType(DamageType::Cold));
+    assert_eq!(
+        cold.unmet_requirement(&ctx).as_deref(),
+        Some("DamageType Cold (the query is Fire)")
+    );
+    let spells_only = Modifier::number("Damage", ModType::Inc, 20.0)
+        .with_tag(ModTag::SkillTypes(SkillTypes::SPELL));
+    assert_eq!(
+        spells_only.unmet_requirement(&ctx).as_deref(),
+        Some("SkillType Spell")
+    );
+    let close = Modifier::number("Damage", ModType::More, 20.0).with_tag(ModTag::DistanceRamp {
+        ramp: vec![(10.0, 1.0), (35.0, 0.0)],
+    });
+    assert_eq!(
+        close.unmet_requirement(&ctx).as_deref(),
+        Some("its distance ramp needs a configured enemy distance")
+    );
+    let attack = Modifier::number("Damage", ModType::Inc, 20.0).with_flags(ModFlags::ATTACK);
+    assert_eq!(attack.unmet_requirement(&ctx), None);
+}

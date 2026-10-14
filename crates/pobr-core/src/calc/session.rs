@@ -621,6 +621,14 @@ impl CalculationSession {
     pub fn track_modifier_reads(&mut self) {
         self.env.player.mod_db.track_reads();
         self.env.enemy.mod_db.track_reads();
+        self.env.cfg.track_reads();
+    }
+
+    /// The conditions and multipliers the calculation asked for
+    /// ([`CalcConfig::read_variables`]). Empty unless
+    /// [`Self::track_modifier_reads`] was called.
+    pub fn read_variables(&self) -> crate::ReadVariables {
+        self.env.cfg.read_variables()
     }
 
     /// Player modifiers that were parsed and stored but whose name the
@@ -635,6 +643,21 @@ impl CalculationSession {
     /// no calculation reads from one this build's skill had no use for.
     pub fn read_modifier_names(&self) -> Vec<ModName> {
         self.env.player.mod_db.read_names()
+    }
+
+    /// The queries the calculation asked of the stored player modifiers and
+    /// the modifiers they counted ([`crate::ModDb::read_snapshot`]). Empty unless
+    /// [`Self::track_modifier_reads`] was called. Take it as the calculation
+    /// ends: a breakdown of this session reads the same database.
+    pub fn modifier_reads(&self) -> crate::ReadSnapshot {
+        self.env.player.mod_db.read_snapshot()
+    }
+
+    /// The session config: the main skill's context (its flags, types and
+    /// name, the conditions and multipliers the calculation set), which the
+    /// per-hand, per-ailment and per-damage-type configs of the stages narrow.
+    pub fn config(&self) -> &CalcConfig {
+        &self.env.cfg
     }
 
     /// The condition and multiplier variables the tags of stored player and

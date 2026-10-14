@@ -326,6 +326,25 @@ pub fn classify_utility_item(item: &Item) -> UtilityItemKind {
     }
 }
 
+/// The key of a flask or charm slot (`Flask 1` → `flask1`): the slot its
+/// modifiers carry.
+fn flask_charm_slot_key(slot_name: &str) -> String {
+    slot_name
+        .to_lowercase()
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect()
+}
+
+/// The source the lines of the flask or charm in `slot_name` are stored
+/// under: `flask.<key>` (`Flask 1` → `flask.flask1`).
+pub fn flask_charm_source(slot_name: &str) -> SourceId {
+    SourceId::new(
+        SourceKind::Flask,
+        format!("flask.{}", flask_charm_slot_key(slot_name)),
+    )
+}
+
 /// Parses an **active** flask/charm's modifiers into a payload List mod (zero direct aggregation effect).
 ///
 /// - Attribution: `SourceId(SourceKind::Flask, "flask.<slot_key>")`, where
@@ -345,12 +364,8 @@ pub fn classify_utility_item(item: &Item) -> UtilityItemKind {
 ///   CalcPerform.lua:1634-1643 — `UsingCharm`/`UsingFlask` is set true based
 ///   on the active slot).
 pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'_>) -> ItemIngest {
-    let slot_key: String = slot_name
-        .to_lowercase()
-        .chars()
-        .filter(|c| !c.is_whitespace())
-        .collect();
-    let source_id = SourceId::new(SourceKind::Flask, format!("flask.{slot_key}"));
+    let slot_key = flask_charm_slot_key(slot_name);
+    let source_id = flask_charm_source(slot_name);
     let make_origin = |text: &str| {
         ModifierSource::new(source_id.clone())
             .with_slot(slot_key.clone())

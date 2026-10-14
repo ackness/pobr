@@ -254,10 +254,7 @@ mod tests {
     /// The reference's basis: a hit whenever the enemy can be hit again.
     #[test]
     fn on_the_reference_basis_a_hit_comes_whenever_one_is_allowed() {
-        let cfg = CalcConfig {
-            rain_hits_whenever_allowed: true,
-            ..CalcConfig::default()
-        };
+        let cfg = CalcConfig::default().with_rain_hits_whenever_allowed(true);
         let rain = hits(&rain(40.0, 169.0), &cfg, 2.0);
         assert!((rain.rate - 1.0 / 0.12).abs() < 1e-9);
         let formula = rain.formula(rain.rate);

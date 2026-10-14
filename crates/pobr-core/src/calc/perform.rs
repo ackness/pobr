@@ -1069,7 +1069,7 @@ fn trigger_chance_multiplier(
             }
         }
     }
-    if let Some(&pct) = cfg.multipliers.get("TriggerChance")
+    if let Some(pct) = cfg.multiplier_if_set("TriggerChance")
         && pct < 100.0
     {
         chance *= (pct / 100.0).clamp(0.0, 1.0);
