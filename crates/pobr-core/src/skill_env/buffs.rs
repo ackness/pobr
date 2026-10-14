@@ -53,19 +53,22 @@ pub fn herald_skill_names(groups: &dyn SocketGroupView, data: &dyn EffectLookup)
     names.into_iter().collect()
 }
 
-/// Derives a buff display name from `active_skill`'s stable snake_case name
-/// (`temporal_chains` → `Temporal Chains`; used for the `AffectedBy<name with spaces
-/// stripped>` condition and the curse priority `curse_base` lookup key). Falls back to
-/// the granted effect id when `active_skill` is missing.
-///
-/// Known discrepancy (buff_pass module doc's simplification (i)): apostrophe names
-/// can't be derived (`snipers_mark` → `Snipers Mark` ≠ vendor's `Sniper's Mark`) →
-/// falls back to a base value of 0 when `curse_base` lookup misses (matching vendor's
-/// `or 0` fallback semantics); doesn't affect the socket/slot/source weight segments.
+/// The name of the buff the skill `skill_id` gives: the name the game shows
+/// for it (`displayed_name`, "Sniper's Mark"; used for the `AffectedBy<name
+/// with spaces stripped>` condition and the curse priority `curse_base`
+/// lookup key). A name with a placeholder (a Companion's "Companion: {0}"),
+/// or a snapshot without displayed names, falls back to the `active_skill`'s
+/// snake_case name (`temporal_chains` → `Temporal Chains`), and that to the
+/// granted effect id.
 pub fn buff_skill_name(data: &dyn EffectLookup, skill_id: &str) -> String {
-    let snake = data
-        .effect(skill_id)
-        .and_then(|e| e.active_skill.as_deref());
+    let effect = data.effect(skill_id);
+    if let Some(name) = effect
+        .and_then(|e| e.displayed_name.as_deref())
+        .filter(|name| !name.contains('{'))
+    {
+        return name.to_string();
+    }
+    let snake = effect.and_then(|e| e.active_skill.as_deref());
     let Some(snake) = snake else {
         return skill_id.to_string();
     };

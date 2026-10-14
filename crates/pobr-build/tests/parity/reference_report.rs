@@ -255,10 +255,18 @@ const BASELINES: [Baseline; 3] = [
     // Damage from Hits is taken from your Damageable Companion's Life before
     // you" each: 80% instead of 20%, before 168,405 Life of fourteen
     // Companions. Its TotalEHP and five maximum hits agree.
+    //
+    // Then 22 builds and 1036 rows. A minion casting a spell deals the
+    // spell's own damage, its stat set resolved at the minion's level with
+    // the game's effectiveness growth, once per cast time and within its
+    // cooldown; a Command skill sets `CommandableSkill`, which Bidding's
+    // "30% more Damage with Command Skills" and the tree's lines for Command
+    // Skills wait for. The Disciple of Varashta's Water Djinn: 206,838 against
+    // 206,838.
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
-        dps_builds: 21,
-        agreeing_rows: 1035,
+        dps_builds: 22,
+        agreeing_rows: 1036,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //

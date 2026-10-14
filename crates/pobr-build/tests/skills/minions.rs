@@ -381,6 +381,47 @@ fn a_minion_attacks_with_the_skill_its_gem_picks() {
     assert_ne!(other.skill_id, first.skill_id);
 }
 
+/// The Water Djinn Navira, the Last Mirage summons, using `skill` (the
+/// gem's `skillMinionSkill`), with Bidding II in the group or not.
+fn water_djinn(data: &BuildData, skill: u32, bidding: bool) -> pobr_core::calc::MinionOutput {
+    let support = if bidding {
+        r#"<Gem skillId="SupportBiddingPlayerTwo" level="1" quality="0" enabled="true"/>"#
+    } else {
+        ""
+    };
+    let xml = format!(
+        r#"<PathOfBuilding2>
+<Build level="90" className="Sorceress" ascendClassName="Disciple of Varashta"/>
+<Skills defaultGemLevel="20" activeSkillSet="1"><SkillSet id="1"><Skill enabled="true"><Gem skillId="SummonWaterDjinnPlayer" level="20" quality="0" enabled="true" skillMinion="WaterDjinn" skillMinionSkill="{skill}"/>{support}</Skill></SkillSet></Skills>
+</PathOfBuilding2>"#
+    );
+    let build = pobr_build::parse_build(&xml).expect("parse synthetic build");
+    calculate_with_data(&build, data, &default_opts())
+        .expect("calculate")
+        .minions
+        .into_iter()
+        .find(|minion| minion.minion_id == "WaterDjinn")
+        .expect("the Water Djinn")
+}
+
+/// A minion casting a spell deals the spell's own damage, at the minion's
+/// level, once per cast time and no more often than its cooldown allows.
+/// Navira's Fracturing is a Command skill: Bidding II's "Supported Minions
+/// deal 30% more Damage with Command Skills" and 30% increased Cooldown
+/// Recovery Rate for them apply to it.
+#[test]
+fn a_minion_casts_its_spell_at_its_level() {
+    let data = load_data();
+    let spell = water_djinn(&data, 2, false);
+    assert_eq!(spell.skill_id, "ChilledGroundBurstWaterDjinn");
+    assert!(spell.dps > 0.0, "{spell:?}");
+
+    let bidding = water_djinn(&data, 2, true).dps / spell.dps;
+    // 1.3 times the damage, about 1.3 times as often (the cooldown is
+    // rounded to the server tick).
+    assert!((1.6..1.75).contains(&bidding), "{bidding}");
+}
+
 /// What reaches a companion's attack besides the lines for minions: the
 /// character's auras that affect only allies, a share of the character's
 /// main hand weapon, and physical damage gained as chaos damage.

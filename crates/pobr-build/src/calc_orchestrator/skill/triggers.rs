@@ -242,6 +242,7 @@ mod support_judgement_tests {
             id: id.into(),
             is_support,
             active_skill: (!is_support).then(|| id.to_string()),
+            displayed_name: None,
             cast_time: Some(1000),
             require_skill_types: v(require),
             add_skill_types: v(add),

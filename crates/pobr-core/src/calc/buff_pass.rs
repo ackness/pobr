@@ -60,11 +60,10 @@
 //!   (`:2294`/`:2899-2914`), and `CurseBuff`'s buffModList secondary scaling
 //!   (`:2318-2330`) are absent -- `CurseBuff` and every other unconsumed kind
 //!   take the "inject raw value directly" compatibility path.
-//! - (i) The buff name table: curse names are derived by the orchestration
-//!   layer from the `active_skill`'s snake_case name (`snipers_mark` →
-//!   `Snipers Mark`); when this doesn't match vendor's apostrophe name
-//!   (`Sniper's Mark`), `curse_base` fails to look it up → base value 0
-//!   (matching vendor's `data.cursePriority[curseName] or 0` fallback semantics).
+//! - (i) The buff name table: curse names are the names the game shows for
+//!   the skills (`ActiveSkills.DisplayedName`, `Sniper's Mark`); a name
+//!   `curse_base` doesn't have gets base value 0 (matching vendor's
+//!   `data.cursePriority[curseName] or 0` fallback semantics).
 //! - (j) Curse effect mods (the original "mods always empty" simplification
 //!   **has since been implemented**): the orchestration layer's
 //!   `buff_skill_specs` maps statset stats to enemy-side modifiers into

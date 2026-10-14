@@ -356,6 +356,33 @@ impl pobr_core::skill_env::StatSetLookup for BuildData {
         }
     }
 
+    fn effect_stats_at_user_level(
+        &self,
+        effect_id: &str,
+        level: u32,
+        user_level: u32,
+    ) -> pobr_core::skill_env::EffectStats {
+        let mut stats =
+            pobr_core::skill_env::StatSetLookup::effect_stats(self, effect_id, level, 0, None);
+        let Some(set) = self.select_stat_set(effect_id, None) else {
+            return stats;
+        };
+        let Some(row) = set
+            .levels
+            .iter()
+            .rfind(|l| l.gem_level <= level)
+            .or(set.levels.first())
+        else {
+            return stats;
+        };
+        for resolved in pobr_core::calc::minion::stats_at_user_level(set, row, user_level) {
+            if let Some(slot) = stats.base.iter_mut().find(|s| s.stat == resolved.stat) {
+                slot.value = resolved.value;
+            }
+        }
+        stats
+    }
+
     fn selected_set_key(&self, effect_id: &str, set_index: Option<u32>) -> Option<String> {
         self.selected_set_key(effect_id, set_index)
     }

@@ -4,10 +4,18 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
-use pobr_data::catalog::{SkillDamageStat, SkillStatSetDef, SkillStatSetLevel, StatSetDef};
+use pobr_data::catalog::{
+    SkillDamageStat, SkillStatSetDef, SkillStatSetLevel, StatSetDef, UserLevelScaling,
+};
 use serde::Deserialize;
 
 use crate::read_json;
+
+/// A set with fewer level rows than this is resolved at the level of whoever
+/// uses it (a gem's set has a row per gem level). The tables give each row
+/// an actor level and each stat an interpolation, but the export has
+/// neither column; PoB2 draws the line here too.
+const USER_LEVEL_ROWS: usize = 5;
 
 #[derive(Deserialize)]
 struct RawStatId {
@@ -36,6 +44,11 @@ struct RawStatSet {
     id: String,
     #[serde(rename = "BaseEffectiveness")]
     base_effectiveness: Option<f64>,
+    /// How the set's effectiveness grows per level of whoever uses it.
+    #[serde(rename = "IncrementalEffectiveness", default)]
+    incremental_effectiveness: Option<f64>,
+    #[serde(rename = "DamageIncrementalEffectiveness", default)]
+    damage_incremental_effectiveness: Option<f64>,
     /// Stats the set has without a value (`Stats` row indices): what its
     /// hits are rather than how much they deal, e.g. `base_is_projectile`,
     /// `is_area_damage`. Absent from an export made before the column was
@@ -72,6 +85,9 @@ struct RawStatSetPerLevel {
     float_stats: Vec<usize>,
     #[serde(rename = "BaseResolvedValues", default)]
     base_resolved_values: Vec<i64>,
+    /// `FloatStats[i]`'s value per point of the set's effectiveness.
+    #[serde(rename = "FloatStatsValues", default)]
+    float_stats_values: Vec<f64>,
     /// Additional stats (`Stats` row indices) and their values (positionally paired).
     #[serde(rename = "AdditionalStats", default)]
     additional_stats: Vec<usize>,
@@ -274,6 +290,32 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
             })
             .collect()
     };
+    // A row's float stats per point of effectiveness, for a set used at the
+    // level of whoever uses it.
+    let resolve_row_per_effectiveness = |row: &RawStatSetPerLevel| -> Vec<SkillDamageStat> {
+        row.float_stats
+            .iter()
+            .zip(row.float_stats_values.iter())
+            .filter_map(|(&stat_idx, &value)| {
+                stat_id
+                    .get(stat_idx)
+                    .filter(|s| !s.is_empty())
+                    .map(|sid| SkillDamageStat {
+                        stat: sid.clone(),
+                        value,
+                    })
+            })
+            .collect()
+    };
+    // The growth of a set of fewer than five level rows: such a set (a
+    // minion's skill) is resolved at the level of whoever uses it; a gem's
+    // set has a row per gem level, resolved at that level.
+    let user_level_scaling = |set: &RawStatSet, rows: &[&RawStatSetPerLevel]| {
+        (rows.len() < USER_LEVEL_ROWS).then(|| UserLevelScaling {
+            incremental_effectiveness: set.incremental_effectiveness.unwrap_or(0.0),
+            damage_incremental_effectiveness: set.damage_incremental_effectiveness.unwrap_or(0.0),
+        })
+    };
     // Positional-pairing resolution of constant stats.
     let resolve_constants = |set: &RawStatSet| -> Vec<SkillDamageStat> {
         set.constant_stats
@@ -351,6 +393,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
         let main_constants = resolve_constants(main_set);
         let main_implicit = resolve_implicit(&[], main_set);
         let main_rows = rows_by_set.get(&main_idx).map(Vec::as_slice).unwrap_or(&[]);
+        let main_scaling = user_level_scaling(main_set, main_rows);
 
         // Main set: parsed as-is, the same as the single-set era (the migration-invariant anchor).
         let mut main_levels = Vec::new();
@@ -361,12 +404,18 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
             let mut stats = resolve_row_stats(row);
             apply_ignored(&mut stats, &main_set.ignored_stats);
             let damage_multiplier = raw_multiplier(row);
+            let per_effectiveness = if main_scaling.is_some() {
+                resolve_row_per_effectiveness(row)
+            } else {
+                Vec::new()
+            };
             // Include level rows that have a stat or a non-trivial multiplier.
             if !stats.is_empty() || (damage_multiplier - 1.0).abs() > f64::EPSILON {
                 main_levels.push(SkillStatSetLevel {
                     gem_level,
                     damage_multiplier,
                     stats,
+                    per_effectiveness,
                 });
             }
         }
@@ -381,6 +430,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
             label: None,
             vendor_set_index: None,
             base_effectiveness: main_set.base_effectiveness.unwrap_or(0.0),
+            user_level_scaling: main_scaling,
             constant_stats: main_constants.clone(),
             // statSet baseMods (e.g. Flicker's `Speed MORE 285`) aren't in
             // GGG's `.dat` tables — they're PoB2's own built-in constants,
@@ -414,6 +464,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
             // by array position (:521 `skill.baseStatRow[indx]`), stats =
             // paired main row ++ this row (:541-549 tableConcat).
             let add_rows = rows_by_set.get(&add_idx).map(Vec::as_slice).unwrap_or(&[]);
+            let add_scaling = user_level_scaling(add_set, add_rows);
             let mut levels = Vec::new();
             for (indx, row) in add_rows.iter().enumerate() {
                 let Some(gem_level) = row.gem_level.filter(|&l| l > 0).map(|l| l as u32) else {
@@ -434,11 +485,21 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
                 } else {
                     paired.map(|p| raw_multiplier(p)).unwrap_or(1.0)
                 };
+                let per_effectiveness = if add_scaling.is_some() {
+                    let mut values = paired
+                        .map(|p| resolve_row_per_effectiveness(p))
+                        .unwrap_or_default();
+                    values.extend(resolve_row_per_effectiveness(row));
+                    values
+                } else {
+                    Vec::new()
+                };
                 if !stats.is_empty() || (damage_multiplier - 1.0).abs() > f64::EPSILON {
                     levels.push(SkillStatSetLevel {
                         gem_level,
                         damage_multiplier,
                         stats,
+                        per_effectiveness,
                     });
                 }
             }
@@ -448,6 +509,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
                 label: None,
                 vendor_set_index: None,
                 base_effectiveness,
+                user_level_scaling: add_scaling,
                 constant_stats,
                 skill_attack_speed_more: None,
                 dot_flags: Default::default(),

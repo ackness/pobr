@@ -205,9 +205,15 @@ impl Env {
                 )),
             );
         } else {
+            // A spell deals its own damage (added as the skill's stats) and
+            // is cast once per cast time.
             actor.base.hit_min = 0.0;
             actor.base.hit_max = 0.0;
-            actor.base.action_rate = 0.0;
+            actor.base.action_rate = if origin.skill.cast_time > 0.0 {
+                1.0 / origin.skill.cast_time
+            } else {
+                0.0
+            };
         }
         actor.is_companion = origin.is_companion;
         actor.minion = Some(MinionIdentity {

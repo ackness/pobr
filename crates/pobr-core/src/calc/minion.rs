@@ -61,6 +61,40 @@ pub fn monster_minion_damage_scaling(level: u32) -> [(&'static str, f64); 2] {
     ]
 }
 
+/// The game's `GameConstants.SkillDamageBaseEffectiveness`: a stat set's
+/// effectiveness per point of its `BaseEffectiveness` at user level 1. The
+/// snapshot does not export the `GameConstants` table; the value is the one
+/// PoB2's data carries, and it gives the resolved values the game's tables
+/// hold (Navira's Fracturing at level 1: 3.885209 × 14.25 × 0.8 = 44).
+pub const SKILL_DAMAGE_BASE_EFFECTIVENESS: f64 = 3.885209;
+
+/// The stats of `row` that grow with the level of whoever uses the skill,
+/// resolved for a user of `user_level`: each is its value per point of
+/// effectiveness times the set's effectiveness at that level (see
+/// [`pobr_data::catalog::UserLevelScaling`]), rounded. Empty for a set
+/// whose rows hold their resolved values (a gem's).
+pub fn stats_at_user_level(
+    set: &pobr_data::catalog::StatSetDef,
+    row: &pobr_data::catalog::SkillStatSetLevel,
+    user_level: u32,
+) -> Vec<pobr_data::catalog::SkillDamageStat> {
+    let Some(scaling) = set.user_level_scaling else {
+        return Vec::new();
+    };
+    let levels_above_first = f64::from(user_level.max(1) - 1);
+    let effectiveness = SKILL_DAMAGE_BASE_EFFECTIVENESS
+        * set.base_effectiveness
+        * (1.0 + scaling.incremental_effectiveness * levels_above_first)
+        * (1.0 + scaling.damage_incremental_effectiveness).powf(levels_above_first);
+    row.per_effectiveness
+        .iter()
+        .map(|stat| pobr_data::catalog::SkillDamageStat {
+            stat: stat.stat.clone(),
+            value: (effectiveness * stat.value).round(),
+        })
+        .collect()
+}
+
 /// A minion's virtual weapon default crit chance (`minionData.critChance`'s default value).
 /// Source: agent-docs/minions.md §1.3 / §1.5; PoB2 CalcActiveSkill.lua.
 pub const MINION_DEFAULT_WEAPON_CRIT_CHANCE: f64 = 5.0;
@@ -331,6 +365,12 @@ pub struct MinionSkill {
     pub id: String,
     /// The skill's types (`Attack`, `Melee`, …).
     pub types: Vec<String>,
+    /// The skill's cast time in seconds (0 when the data gives none): how
+    /// often a minion casting a spell uses it, before cast speed.
+    pub cast_time: f64,
+    /// Whether it is a Command skill
+    /// ([`crate::rules::skill_stats::COMMAND_SKILL_STAT`]).
+    pub command: bool,
 }
 
 impl MinionSkill {
@@ -340,9 +380,9 @@ impl MinionSkill {
     }
 
     /// Whether the minion hits with its monster's own damage: a monster's
-    /// attack is its weapon. A spell brings its own damage, which is not
-    /// modelled for minions yet, so a minion casting one deals none here. A
-    /// minion whose skill is not known is taken to attack.
+    /// attack is its weapon. A spell brings its own damage, the stats of its
+    /// set at the minion's level, and is cast once per cast time. A minion
+    /// whose skill is not known is taken to attack.
     pub fn uses_weapon(&self) -> bool {
         !self.is_known() || self.types.iter().any(|t| t == "Attack")
     }
@@ -758,6 +798,60 @@ mod tests {
             (monster * more / minion - 1.25).abs() < 1e-3,
             "{monster} x {more} against {minion}"
         );
+    }
+
+    /// A minion's skill has its damage at the minion's level: Navira's
+    /// Fracturing (base effectiveness 14.25, growing 25% and 4.15% a level)
+    /// deals 0.8 to 1.2 per point of effectiveness, 44 to 66 at level 1 as
+    /// the game's resolved values say, and 9613 to 14420 at level 64.
+    #[test]
+    fn a_minions_skill_deals_its_damage_at_the_minions_level() {
+        use pobr_data::catalog::{
+            SkillDamageStat, SkillStatSetLevel, StatSetDef, UserLevelScaling,
+        };
+        let stat = |stat: &str, value: f64| SkillDamageStat {
+            stat: stat.to_string(),
+            value,
+        };
+        let row = SkillStatSetLevel {
+            gem_level: 1,
+            damage_multiplier: 1.0,
+            stats: vec![
+                stat("spell_minimum_base_cold_damage", 44.0),
+                stat("spell_maximum_base_cold_damage", 66.0),
+            ],
+            per_effectiveness: vec![
+                stat("spell_minimum_base_cold_damage", 0.8),
+                stat("spell_maximum_base_cold_damage", 1.2),
+            ],
+        };
+        let mut set = StatSetDef {
+            set_id: "ChilledGroundBurstWaterDjinn".into(),
+            label: None,
+            vendor_set_index: None,
+            base_effectiveness: 14.25,
+            user_level_scaling: Some(UserLevelScaling {
+                incremental_effectiveness: 0.25,
+                damage_incremental_effectiveness: 0.0415,
+            }),
+            constant_stats: Vec::new(),
+            skill_attack_speed_more: None,
+            dot_flags: Default::default(),
+            explode_corpse: false,
+            implicit_stats: Vec::new(),
+            levels: vec![row.clone()],
+        };
+        let values = |set: &StatSetDef, level| -> Vec<f64> {
+            stats_at_user_level(set, &row, level)
+                .iter()
+                .map(|s| s.value)
+                .collect()
+        };
+        assert_eq!(values(&set, 1), [44.0, 66.0]);
+        assert_eq!(values(&set, 64), [9613.0, 14420.0]);
+        // A gem's set holds its resolved values.
+        set.user_level_scaling = None;
+        assert!(values(&set, 64).is_empty());
     }
 
     #[test]

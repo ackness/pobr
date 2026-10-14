@@ -94,6 +94,12 @@ pub struct GrantedEffectDef {
     /// Linked active-skill id (resolves `ActiveSkills.Id`; `None` for support
     /// effects).
     pub active_skill: Option<String>,
+    /// The name the game shows for the skill (`ActiveSkills.DisplayedName`,
+    /// e.g. "Sniper's Mark"; a Companion's is "Companion: {0}", `{0}` being
+    /// its monster's name). `None` for a support, or a snapshot adapted
+    /// before the adapter wrote it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub displayed_name: Option<String>,
     /// Cast/channel time in milliseconds. A raw value of 0 (instant/support)
     /// is normalized to `None`.
     pub cast_time: Option<u32>,
@@ -358,6 +364,13 @@ pub struct StatSetDef {
     /// quantities).
     #[serde(default, skip_serializing_if = "is_zero_f64")]
     pub base_effectiveness: f64,
+    /// How the set's damage grows with the level of whoever uses it, for a
+    /// set whose stats are resolved at that level rather than at its own
+    /// rows' (a set of fewer than five level rows, such as a minion's skill;
+    /// see [`SkillStatSetLevel::per_effectiveness`]). `None` for a gem's
+    /// set, whose rows hold their resolved values.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_level_scaling: Option<UserLevelScaling>,
     /// Level-independent constant stats (`ConstantStats` plus values; e.g. a
     /// support gem's `damage_+%_final` multiplier).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -464,6 +477,26 @@ pub struct SkillStatSetLevel {
     pub damage_multiplier: f64,
     /// Resolved damage stats at this level (stat id → value).
     pub stats: Vec<SkillDamageStat>,
+    /// For a set with [`StatSetDef::user_level_scaling`], the row's stats
+    /// that grow with the level of whoever uses the skill, each as its value
+    /// per point of the set's effectiveness (`FloatStatsValues`); `stats`
+    /// holds them resolved at the row's own level.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub per_effectiveness: Vec<SkillDamageStat>,
+}
+
+/// The game's effectiveness growth of a stat set
+/// (`GrantedEffectStatSets.IncrementalEffectiveness` and
+/// `DamageIncrementalEffectiveness`). At user level `L`, the set's
+/// effectiveness is `SkillDamageBaseEffectiveness × base_effectiveness ×
+/// (1 + incremental_effectiveness × (L − 1)) ×
+/// (1 + damage_incremental_effectiveness)^(L − 1)`.
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+pub struct UserLevelScaling {
+    #[serde(default, skip_serializing_if = "is_zero_f64")]
+    pub incremental_effectiveness: f64,
+    #[serde(default, skip_serializing_if = "is_zero_f64")]
+    pub damage_incremental_effectiveness: f64,
 }
 
 fn one_f64() -> f64 {
@@ -640,6 +673,7 @@ mod m4_t4_dot_flags_tests {
             label: None,
             vendor_set_index: None,
             base_effectiveness: 0.0,
+            user_level_scaling: None,
             constant_stats: Vec::new(),
             skill_attack_speed_more: None,
             dot_flags: DotFlags::default(),

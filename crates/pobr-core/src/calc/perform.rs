@@ -298,6 +298,9 @@ pub(crate) fn minion_cfg(env: &Env, minion: &super::Actor) -> CalcConfig {
             .with_skill_types(skill.type_bits())
             .with_skill_name(None)
             .with_damage_keywords(Vec::new());
+        if skill.command {
+            cfg = cfg.with_condition(crate::rules::skill_stats::COMMAND_SKILL, true);
+        }
     }
     let minion_limit = env.player.mod_db.get_multiplier("SummonedMinion", &env.cfg);
     if minion_limit > 0.0 {

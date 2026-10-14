@@ -97,7 +97,7 @@ pub use runtime::RuntimeConstants;
 pub use skills::{
     CostTypeDef, DotFlags, GemEffectDef, GemEffectsDef, GemQualityStatDef, GemQualityStatsDef,
     GrantedEffectDef, QualityStat, SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef,
-    SkillStatSetLevel, StatSetDef, StatSetLabelDef, StatSetLabelsDef,
+    SkillStatSetLevel, StatSetDef, StatSetLabelDef, StatSetLabelsDef, UserLevelScaling,
 };
 pub use tree::{
     PassiveAscendancy, PassiveClass, PassiveNodeDef, PassiveNodeKind, PassiveNodeVariant,

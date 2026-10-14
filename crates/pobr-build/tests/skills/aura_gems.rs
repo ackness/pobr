@@ -72,3 +72,17 @@ fn an_aura_gem_keeps_its_quality_and_gains_levels() {
         42.0
     );
 }
+
+/// A buff has the name the game shows for its skill (`Sniper's Mark`, which
+/// the curse priority table knows; `Arctic Armour`, whose skill is
+/// `new_new_arctic_armour`). A name with a placeholder, a Companion's
+/// "Companion: {0}", falls back to the skill's own name.
+#[test]
+fn a_buff_has_the_name_the_game_shows() {
+    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version())))
+        .expect("load repository data");
+    let name = |skill| pobr_core::skill_env::buff_skill_name(&data, skill);
+    assert_eq!(name("SnipersMarkPlayer"), "Sniper's Mark");
+    assert_eq!(name("ArcticArmourPlayer"), "Arctic Armour");
+    assert_eq!(name("SummonBeastPlayer"), "Summon Beast");
+}

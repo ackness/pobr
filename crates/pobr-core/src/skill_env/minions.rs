@@ -436,6 +436,11 @@ fn minion_skill(
         .map(|(id, effect)| crate::calc::MinionSkill {
             id: (*id).clone(),
             types: effect.skill_types.clone(),
+            cast_time: effect.cast_time.map_or(0.0, |ms| f64::from(ms) / 1000.0),
+            command: data
+                .effect_stats(id, 1, 0, None)
+                .all()
+                .any(|stat| stat.stat == skill_stats::COMMAND_SKILL_STAT),
         })
         .unwrap_or_default()
 }
@@ -459,12 +464,13 @@ fn minion_skill_level(data: &dyn MinionEnv, skill_id: &str, minion_level: u32) -
     level
 }
 
-/// What a minion's own skill gets: the stats of that skill, and of the
-/// supports in the summoning skill's group that can support it. A support
-/// on a minion gem supports the skills its minions use ("Supported Skills
-/// have 25% increased Attack Speed" is the minions' attack speed), judged by
-/// the minion skill's types; the minion skill is not a gem's, so a support
-/// for gems only does not apply.
+/// What a minion's own skill gets: the stats of that skill at the minion's
+/// level, its cooldown and stored uses, a spell's critical hit chance, and
+/// the stats of the supports in the summoning skill's group that can
+/// support it. A support on a minion gem supports the skills its minions use
+/// ("Supported Skills have 25% increased Attack Speed" is the minions'
+/// attack speed), judged by the minion skill's types; the minion skill is
+/// not a gem's, so a support for gems only does not apply.
 fn minion_skill_modifiers(
     group: &crate::skill_env::EnabledGroup<'_>,
     data: &dyn MinionEnv,
@@ -477,19 +483,31 @@ fn minion_skill_modifiers(
     let mut ctx = crate::skill_env::StatMapCtx::data(data.stat_map_catalog());
     let level = minion_skill_level(data, &skill.id, minion_level);
     let own: Vec<_> = data
-        .effect_stats(&skill.id, level, 0, None)
+        .effect_stats_at_user_level(&skill.id, level, minion_level)
         .all()
         .cloned()
         .collect();
     let set_key = data.selected_set_key(&skill.id, None);
-    let mut modifiers = crate::skill_env::mapped_stat_modifiers(
+    // An attack crits at the monster's weapon's chance.
+    let row = data.effect_level_row(&skill.id, level);
+    let mut modifiers = crate::skill_env::skill_base_modifiers(
+        &skill.id,
+        row.and_then(|row| row.cooldown_ms)
+            .map(|ms| f64::from(ms) / 1000.0),
+        row.and_then(|row| row.stored_uses),
+        None,
+        row.and_then(|row| row.crit_chance)
+            .filter(|_| !skill.uses_weapon()),
+        None,
+    );
+    modifiers.extend(crate::skill_env::mapped_stat_modifiers(
         &mut ctx,
         &own,
         SourceKind::SkillGem,
         &skill.id,
         &skill.id,
         set_key.as_deref(),
-    );
+    ));
     let judgement = group_judgement_from(group, data, &skill.id, false);
     for sup in &judgement.compatible {
         let gem = &group.gems[sup.gem_index];

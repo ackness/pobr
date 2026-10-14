@@ -593,6 +593,7 @@ mod tests {
                 label: None,
                 vendor_set_index: vendor_idx,
                 base_effectiveness: 0.0,
+                user_level_scaling: None,
                 constant_stats: Vec::new(),
                 skill_attack_speed_more: None,
                 dot_flags: Default::default(),
@@ -605,6 +606,7 @@ mod tests {
                         stat: stat.into(),
                         value,
                     }],
+                    per_effectiveness: Vec::new(),
                 }],
             }
         }
@@ -667,6 +669,7 @@ mod tests {
                 label: None,
                 vendor_set_index: vendor_idx,
                 base_effectiveness: 0.0,
+                user_level_scaling: None,
                 constant_stats: ds(constant_stats),
                 skill_attack_speed_more: None,
                 dot_flags: Default::default(),
@@ -676,6 +679,7 @@ mod tests {
                     gem_level: 1,
                     damage_multiplier: 1.0,
                     stats: ds(level_stats),
+                    per_effectiveness: Vec::new(),
                 }],
             }
         }

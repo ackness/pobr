@@ -160,6 +160,9 @@ const REQUIRED_EN: &[(&str, &[&str])] = &[
             // What a set's hits are (`base_is_projectile`, `is_area_damage`, …):
             // without the column every set is written without its valueless stats.
             "ImplicitStats",
+            // How a minion skill's damage grows with the minion's level.
+            "IncrementalEffectiveness",
+            "DamageIncrementalEffectiveness",
         ],
     ),
     (
@@ -175,6 +178,8 @@ const REQUIRED_EN: &[(&str, &[&str])] = &[
             "BaseMultiplier",
             "SpellCritChance",
             "AttackCritChance",
+            // A minion skill's stat per point of effectiveness.
+            "FloatStatsValues",
         ],
     ),
     (

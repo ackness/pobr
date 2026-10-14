@@ -1565,7 +1565,7 @@ fn ailment_of(stat: &str) -> Option<AilmentType> {
 /// Conditions a pass of the calculation works out for itself, for the hit
 /// or hand it is computing or from what the character has in effect. Absent
 /// from the condition map, they do not hold; nothing is missing.
-const CONDITIONS_SET_BY_A_PASS: [&str; 18] = [
+const CONDITIONS_SET_BY_A_PASS: [&str; 19] = [
     // `calc::offence` and `calc::crit_pass`: the critical and the
     // non-critical half of a hit.
     "CriticalStrike",
@@ -1597,6 +1597,8 @@ const CONDITIONS_SET_BY_A_PASS: [&str; 18] = [
     // other set's modifiers are not meant to apply.
     "WeaponSet1",
     "WeaponSet2",
+    // `calc::perform`: a minion using a Command skill.
+    crate::rules::skill_stats::COMMAND_SKILL,
 ];
 
 /// Whether a pass of the calculation sets `var` when it holds:

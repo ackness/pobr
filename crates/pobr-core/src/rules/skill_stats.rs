@@ -117,6 +117,16 @@ pub fn minion_modifiers(stat: &str, value: f64, minions: SummonedMinions) -> Opt
         }
         // "Supported Skills have {0}% increased Minion Attack Speed".
         "minion_attack_speed_+%" => Modifier::number("AttackSpeed", ModType::Inc, value),
+        // Bidding: "Supported Minions deal {0}% more Damage with Command
+        // Skills".
+        "support_command_skill_damage_+%_final" => Modifier::number("Damage", ModType::More, value)
+            .with_tag(ModTag::condition(COMMAND_SKILL, false)),
+        // "Minions have {0}% increased Cooldown Recovery Rate for Command
+        // Skills".
+        "minion_command_skill_cooldown_speed_+%" => {
+            Modifier::number("CooldownRecovery", ModType::Inc, value)
+                .with_tag(ModTag::condition(COMMAND_SKILL, false))
+        }
         // Muster: "Supported Minions deal {0}% more damage for each different
         // type of Reviving Minion you have summoned".
         "support_varied_troops_damage_+%_final_per_different_persistent_ominion" => {
@@ -130,6 +140,16 @@ pub fn minion_modifiers(stat: &str, value: f64, minions: SummonedMinions) -> Opt
     };
     Some(vec![modifier])
 }
+
+/// The valueless stat of a Command skill, a skill a minion uses when the
+/// character commands it (Navira's Fracturing, the Water Djinn's). What is
+/// said of Command skills ("Minions deal 20% increased Damage with Command
+/// Skills", Bidding's "Supported Minions deal 30% more Damage with Command
+/// Skills") holds while a minion uses one: the condition [`COMMAND_SKILL`].
+pub const COMMAND_SKILL_STAT: &str = "is_commandable_skill";
+
+/// The condition a minion's Command skill sets (`CommandableSkill`).
+pub const COMMAND_SKILL: &str = "CommandableSkill";
 
 /// Whether the stat `stat` is about the minions of the skill it is on (see
 /// [`minion_modifiers`]).
@@ -147,6 +167,8 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         // Granted to the skill's minions where they are created
         // (`skill_env::spawn_minions`).
         stat if is_minion_stat(stat) => Some(Vec::new()),
+        // Read where a minion's skill is chosen (`calc::MinionSkill`).
+        COMMAND_SKILL_STAT => Some(Vec::new()),
         // Efficiency: "Supported Skills have {0}% more Cost" / "less Cost",
         // of whatever the skill costs.
         "support_inspiration_cost_+%_final" => {
