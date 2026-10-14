@@ -374,6 +374,25 @@ fn parses_adds_damage_to_attacks_with_flag() {
     );
 }
 
+/// The passive tree words the skills Ascendancy notables grant with a style:
+/// "Grants Skill: <underline>{Sorcery Ward}" reads as "Grants Skill: Sorcery
+/// Ward".
+#[test]
+fn strips_the_style_markup_of_granted_skills() {
+    let o = parse_mod("Grants Skill: <underline>{Sorcery Ward}").unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed, "{o:?}");
+    assert!(
+        o.mods
+            .iter()
+            .any(|m| m.name == ModName::from("Condition:SorceryWard")),
+        "{:?}",
+        o.mods
+    );
+    // A `<` that is not a style stays part of the line.
+    let o = parse_mod("Grants Skill: <underline Sorcery Ward").unwrap();
+    assert_ne!(o.status, ParseStatus::Parsed);
+}
+
 #[test]
 fn strips_pob_bracket_markup() {
     // [internal|display] -> display name; expands compounds and aggregates.

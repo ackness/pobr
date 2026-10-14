@@ -38351,7 +38351,14 @@
     },
     {
       "text": "Grants Skill: <underline>{Sorcery Ward}",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:SorceryWard",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Grants Skill: <underline>{Summon Infernal Hound}",

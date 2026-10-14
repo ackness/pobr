@@ -77,7 +77,7 @@ pub fn parse_mod_engine_diag(
 /// Uses the same normalization as parsing; an unsupported-table entry can still
 /// prevent these candidates from being selected (inspect ParseOutcome for the winner).
 pub fn matching_special_entry_ids<'a>(text: &str, rules: &'a CompiledParserRules) -> Vec<&'a str> {
-    let normalized = normalize_spaces(&strip_pob_brackets(text.trim())).to_ascii_lowercase();
+    let normalized = normalize_spaces(&strip_display_markup(text.trim())).to_ascii_lowercase();
     rules.special.matching_entry_ids(&normalized)
 }
 
@@ -91,9 +91,9 @@ fn parse_mod_engine_impl(
         return unsupported(text);
     }
 
-    // 1. pre-pass: bracket stripping + whitespace normalization (keeps original case); the
-    // lowercase view is only for matching.
-    let cleaned = strip_pob_brackets(original);
+    // 1. pre-pass: display markup stripping + whitespace normalization (keeps original
+    // case); the lowercase view is only for matching.
+    let cleaned = strip_display_markup(original);
     let normalized = normalize_spaces(&cleaned);
     let lower = normalized.to_ascii_lowercase();
 
@@ -716,6 +716,48 @@ fn tail_unparsed(work: &str) -> Option<String> {
 // ---- pre-pass reuses legacy's semantics (step 1, no maintaining two implementations — these
 //      two functions are private to legacy, so the engine side replicates the same logic and
 //      keeps it byte-for-byte identical; dual-run catches any drift) ----
+
+/// The game's display markup reduced to the text it shows: a link
+/// `[Hit|Hits]` shows its last part, a style `<underline>{Sorcery Ward}` the
+/// text in its braces (the passive tree words "Grants Skill: <underline>{Sorcery
+/// Ward}" this way).
+fn strip_display_markup(text: &str) -> String {
+    strip_pob_brackets(&strip_style_markup(text))
+}
+
+/// `<style>{text}` → `text`, where the style is a word such as `underline`.
+/// Any other `<` stays as it is.
+fn strip_style_markup(text: &str) -> String {
+    if !text.contains(">{") {
+        return text.to_string();
+    }
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(open) = rest.find('<') {
+        let after = &rest[open + 1..];
+        let styled = after.find(">{").filter(|&close| {
+            close > 0
+                && after[..close]
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '_')
+        });
+        let inner = styled.and_then(|close| {
+            let start = close + 2;
+            let len = after[start..].find('}')?;
+            Some((start, len))
+        });
+        let Some((start, len)) = inner else {
+            out.push_str(&rest[..=open]);
+            rest = after;
+            continue;
+        };
+        out.push_str(&rest[..open]);
+        out.push_str(&after[start..start + len]);
+        rest = &after[start + len + 1..];
+    }
+    out.push_str(rest);
+    out
+}
 
 fn strip_pob_brackets(text: &str) -> String {
     if !text.contains('[') {

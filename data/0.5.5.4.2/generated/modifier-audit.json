@@ -30,7 +30,7 @@
       "0.5.5.4.2/generated/special_vendor.json": "51d520b5e9f26b57c4b1bfe5aa92bd4ee483f049cfba7fa152c95167628ba01e",
       "0.5.5.4.2/overlay/mod_parser_rules.json": "4ca754192ca4422982d7828b410a68723bfcdf1cc3cbea7f30c522d94fea6860",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
-      "overlay-common/special_mods.json": "7f46e6febea2c9ebe3b9c7a7925dad2c47e93e01aa04e0bd945dac2ff6dc5c58"
+      "overlay-common/special_mods.json": "a1be7540c7ef290b7ad519c10cc2908dbe0a19afe958ba01cbbd911b7de010ed"
     },
     "effective_rules": [
       {
@@ -1281,6 +1281,14 @@
       },
       {
         "id": "skills_critical_hit_chance_per_connected_blue_support_gem",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "bear_skills_convert_physical_to_fire",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -18203,8 +18211,8 @@
     "unsampled_translations": 170
   },
   "summary": {
-    "parsed": 14792,
-    "pobr_gap": 2438,
+    "parsed": 14795,
+    "pobr_gap": 2435,
     "recognized_empty": 330,
     "upstream_gap": 25137
   },
@@ -226030,25 +226038,44 @@
       "sources": [
         "stat:stat_descriptions:non_skill_physical_damage_%_to_convert_to_fire_with_bear_skills"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "PhysicalDamageConvertToFire"
+      ],
+      "special_rule_id": "bear_skills_convert_physical_to_fire",
+      "matching_special_rules": [
+        "bear_skills_convert_physical_to_fire"
+      ]
     },
     "Bear Skills Convert 17% of Physical Damage to Fire Damage": {
       "sources": [
         "translation:巨熊形态技能将 {0}% 的物理伤害转化为火焰伤害"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "PhysicalDamageConvertToFire"
+      ],
+      "special_rule_id": "bear_skills_convert_physical_to_fire",
+      "matching_special_rules": [
+        "bear_skills_convert_physical_to_fire"
+      ]
     },
     "Bear Skills Convert 80% of Physical Damage to Fire Damage": {
       "sources": [
+        "rule:bear_skills_convert_physical_to_fire",
         "unique:Fury of the King"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "PhysicalDamageConvertToFire"
+      ],
+      "special_rule_id": "bear_skills_convert_physical_to_fire",
+      "matching_special_rules": [
+        "bear_skills_convert_physical_to_fire"
+      ]
     },
     "Bear Spirit gains": {
       "sources": [
