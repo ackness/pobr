@@ -1489,3 +1489,27 @@ fn a_non_channelling_line_is_for_skills_that_are_not_channelled() {
         );
     }
 }
+
+/// "Bear Skills Convert 80% of Physical Damage to Fire Damage" (the game stat
+/// `non_skill_physical_damage_%_to_convert_to_fire_with_bear_skills`) is a
+/// conversion for the skills of the game type Bear, and for no other skill.
+#[test]
+fn a_bear_skills_conversion_is_for_bear_skills() {
+    let parsed = parse_mod("Bear Skills Convert 80% of Physical Damage to Fire Damage").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed, "{parsed:?}");
+    assert_eq!(parsed.mods.len(), 1);
+    let bear = SkillTypes::from_pob2_name("Bear").unwrap();
+    let modifier = &parsed.mods[0];
+    assert!(
+        modifier.tags.contains(&ModTag::SkillTypes(bear)),
+        "{modifier:?}"
+    );
+
+    let mut db = ModDb::new();
+    db.add_list(parsed.mods);
+    let names = [ModName::from("PhysicalDamageConvertToFire")];
+    let attack = CalcConfig::attack();
+    let bear_attack = attack.clone().with_skill_types(SkillTypes::ATTACK | bear);
+    assert_eq!(db.sum(ModType::Base, &bear_attack, &names), 80.0);
+    assert_eq!(db.sum(ModType::Base, &attack, &names), 0.0);
+}

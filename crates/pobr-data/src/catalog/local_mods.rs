@@ -48,6 +48,8 @@ pub struct LocalModsDef {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WeaponLocalModsDef {
     /// Clean-text suffixes that count as local on an `ends_with` match (lowercase).
+    /// The "% reduced" wording of the same line matches too: it is the same local
+    /// stat with a negative value.
     pub increased_suffixes: Vec<String>,
     /// Damage suffixes counted as local in the `adds N to M <suffix>` shape
     /// (lowercase, no leading space).

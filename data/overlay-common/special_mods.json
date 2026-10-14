@@ -3252,6 +3252,29 @@
         "Skills have 20% increased Critical Hit Chance per Connected Blue Support Gem"
       ],
       "source_note": "Game stat skills_gain_critical_strike_chance_+%_per_sockted_or_adjacent_blue_support_gem (Integrated Efficiency). The calculation counts the support gems of that colour connected to the skill it calculates."
+    },
+    {
+      "id": "bear_skills_convert_physical_to_fire",
+      "pattern": "bear skills convert (\\d+)% of physical damage to fire damage",
+      "mods": [
+        {
+          "name": "PhysicalDamageConvertToFire",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "SkillType:Bear"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "skill-type-conversion",
+      "examples": [
+        "Bear Skills Convert 80% of Physical Damage to Fire Damage"
+      ],
+      "source_note": "Game stat non_skill_physical_damage_%_to_convert_to_fire_with_bear_skills (Fury of the King): skills of the game type Bear convert that share of their Physical damage to Fire."
     }
   ]
 }

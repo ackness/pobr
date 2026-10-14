@@ -145,17 +145,9 @@ pub(crate) fn weapon_accuracy_multipliers(build: &crate::Build) -> Vec<(String, 
 ///
 /// The allowlist is injected via `rules` (`overlay/local_mods.json`, data-driven;
 /// falls back to [`WeaponLocalModsDef::default`], value-for-value matching the original
-/// hardcoded enum).
+/// hardcoded enum). The match is core's, which the weapon source folds by.
 pub(crate) fn is_weapon_local_mod(text: &str, rules: &WeaponLocalModsDef) -> bool {
-    let clean = clean_item_text(text);
-    rules
-        .increased_suffixes
-        .iter()
-        .any(|suffix| clean.ends_with(suffix.as_str()))
-        || rules
-            .adds_damage_suffixes
-            .iter()
-            .any(|suffix| parse_adds_with_suffix(&clean, suffix).is_some())
+    pobr_core::skill_env::is_weapon_local_mod(text, rules)
 }
 
 /// Parses an armour item's **local** "N% increased <combination of Armour/Evasion/Energy

@@ -398,3 +398,36 @@ fn weapon_local_added_damage_stays_on_its_own_hand() {
     assert!(out.main_hand.unwrap().average_hit > plain_mh);
     assert!(out.off_hand.unwrap().average_hit > plain_oh);
 }
+
+/// "N% reduced Attack Speed" on a weapon is the weapon's own attack speed
+/// (`local_attack_speed_+%` with a negative value), like the "increased" line:
+/// it scales that weapon's attacks before the character's increased Attack
+/// Speed instead of adding to it. On a ring the same line stays global.
+#[test]
+fn weapon_local_reduced_attack_speed_is_the_weapons_own() {
+    let data = load_build_data();
+    let global = opts(&["50% increased Attack Speed"]);
+    // The main hand's attacks per second with `weapon_lines` on its Wooden
+    // Club and `ring_lines` on a ring.
+    let speed = |weapon_lines: &[&str], ring_lines: &[&str]| {
+        let build = dual_build(None)
+            .set_item(EquipmentSlot::Weapon1, weapon("Wooden Club", weapon_lines))
+            .set_item(EquipmentSlot::Ring1, weapon("Sapphire Ring", ring_lines));
+        let out = calculate_with_data(&build, &data, &global).unwrap();
+        out.main_hand.unwrap().speed
+    };
+    let plain = speed(&[], &[]);
+    // 0.8 on the weapon, then 1.5 from the character: not 1.3 / 1.5.
+    let reduced = speed(&["20% reduced Attack Speed"], &[]);
+    assert!((reduced / plain - 0.8).abs() < 1e-9, "{reduced} / {plain}");
+    let increased = speed(&["20% increased Attack Speed"], &[]);
+    assert!(
+        (increased / plain - 1.2).abs() < 1e-9,
+        "{increased} / {plain}"
+    );
+    let on_ring = speed(&[], &["20% reduced Attack Speed"]);
+    assert!(
+        (on_ring / plain - 1.3 / 1.5).abs() < 1e-9,
+        "{on_ring} / {plain}"
+    );
+}

@@ -34,25 +34,35 @@ pub fn weapon_mod_texts(item: &Item) -> impl Iterator<Item = &String> {
         .chain(item.enchant_texts.iter())
 }
 
-/// Sum of "N% increased Physical Damage" (local mod) on the weapon.
+/// The value of a line that is exactly "N% increased <stat>", negative for
+/// "N% reduced <stat>": the game words a negative value of the same stat that
+/// way (the mace prefix `AbyssModAllMacesKurgalPrefixIncreasedPhysicalDamageReducedAttackSpeed`
+/// has `local_attack_speed_+%` = -15, "15% reduced Attack Speed"). `clean` is
+/// the line as [`clean_item_text`] returns it and `stat` the stat's name in the
+/// same lowercase form, e.g. `attack speed`.
+pub fn local_percent(clean: &str, stat: &str) -> Option<f64> {
+    let head = clean.strip_suffix(stat)?;
+    [("% increased ", 1.0), ("% reduced ", -1.0)]
+        .into_iter()
+        .find_map(|(wording, sign)| {
+            let value = head.strip_suffix(wording)?.trim().parse::<f64>().ok()?;
+            Some(value * sign)
+        })
+}
+
+/// Sum of the weapon's local "N% increased Physical Damage" ("reduced" counts
+/// negative).
 pub fn weapon_local_phys_inc(item: &Item) -> f64 {
     weapon_mod_texts(item)
-        .filter_map(|t| {
-            clean_item_text(t)
-                .strip_suffix("% increased physical damage")
-                .and_then(|n| n.trim().parse::<f64>().ok())
-        })
+        .filter_map(|t| local_percent(&clean_item_text(t), "physical damage"))
         .sum()
 }
 
-/// Sum of "N% increased Attack Speed" (local mod, no condition suffix) on the weapon.
+/// Sum of the weapon's local "N% increased Attack Speed" (no condition suffix;
+/// "reduced" counts negative).
 pub fn weapon_local_attack_speed(item: &Item) -> f64 {
     weapon_mod_texts(item)
-        .filter_map(|t| {
-            clean_item_text(t)
-                .strip_suffix("% increased attack speed")
-                .and_then(|n| n.trim().parse::<f64>().ok())
-        })
+        .filter_map(|t| local_percent(&clean_item_text(t), "attack speed"))
         .sum()
 }
 
@@ -109,15 +119,18 @@ pub fn parse_adds_with_suffix(clean: &str, suffix: &str) -> Option<(f64, f64)> {
 }
 
 /// Whether a mod text is a weapon-local mod (matches the `local_mods.weapon` rules).
+/// A "N% reduced" line is the same local stat as the "N% increased" line its
+/// rule names, with a negative value (see [`local_percent`]).
 pub fn is_weapon_local_mod(
     text: &str,
     rules: &pobr_data::catalog::local_mods::WeaponLocalModsDef,
 ) -> bool {
     let clean = clean_item_text(text);
+    let as_increased = clean.replacen("% reduced ", "% increased ", 1);
     rules
         .increased_suffixes
         .iter()
-        .any(|s| clean.ends_with(s.as_str()))
+        .any(|s| clean.ends_with(s.as_str()) || as_increased.ends_with(s.as_str()))
         || rules
             .adds_damage_suffixes
             .iter()
@@ -298,4 +311,38 @@ pub fn parse_has_per_level_defence(clean: &str) -> Option<[f64; 3]> {
         _ => return None,
     }
     Some(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pobr_data::catalog::local_mods::WeaponLocalModsDef;
+
+    #[test]
+    fn a_reduced_line_is_the_increased_one_with_a_negative_value() {
+        let speed = |line: &str| local_percent(line, "attack speed");
+        assert_eq!(speed("19% increased attack speed"), Some(19.0));
+        assert_eq!(speed("19% reduced attack speed"), Some(-19.0));
+        // Words around the number make it another line.
+        assert_eq!(speed("19% reduced attack speed while surrounded"), None);
+        assert_eq!(speed("minions have 19% reduced attack speed"), None);
+    }
+
+    #[test]
+    fn reduced_weapon_lines_are_local_like_increased_ones() {
+        let rules = WeaponLocalModsDef::default();
+        for line in [
+            "19% reduced Attack Speed",
+            "{enchant}19% increased Attack Speed",
+            "20% reduced Physical Damage",
+        ] {
+            assert!(is_weapon_local_mod(line, &rules), "{line}");
+        }
+        for line in [
+            "19% reduced Attack Speed while Surrounded",
+            "19% reduced Cast Speed",
+        ] {
+            assert!(!is_weapon_local_mod(line, &rules), "{line}");
+        }
+    }
 }
