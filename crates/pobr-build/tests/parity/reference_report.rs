@@ -246,10 +246,19 @@ const BASELINES: [Baseline; 3] = [
     // have", and "Gain #% of Physical Damage as Chaos Damage": 1,282,913
     // against 1,280,037. The Disciple of Varashta's minion casts a spell,
     // which is not modelled yet (0 against 206,838).
+    //
+    // Then 1035 rows. A support's buff is a buff of each skill it supports,
+    // a Companion's named after its monster, unless its payload names the
+    // buff (Refraction's "Refractive Plating"); and each group's summoning
+    // skill creates its own minions. The Spirit Walker has Loyalty or
+    // Romira's Requital on eight differently named Companions, "10% of
+    // Damage from Hits is taken from your Damageable Companion's Life before
+    // you" each: 80% instead of 20%, before 168,405 Life of fourteen
+    // Companions. Its TotalEHP and five maximum hits agree.
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
         dps_builds: 21,
-        agreeing_rows: 1029,
+        agreeing_rows: 1035,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //

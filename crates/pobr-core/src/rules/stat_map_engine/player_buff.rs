@@ -77,6 +77,37 @@ pub fn map_player_buff_stat(
     MappedOutcome::Mapped(items)
 }
 
+/// The name of the buff the stat's player buff payload belongs to, when the
+/// payload names one (`effectName`, e.g. Refraction's "Refractive Plating"):
+/// such a buff is one buff whatever skill it is granted with. `None` leaves
+/// it a buff of the skill.
+pub fn player_buff_effect_name(
+    catalog: &StatMapCatalog,
+    effect_id: &str,
+    set_key: Option<&str>,
+    stat: &str,
+) -> Option<String> {
+    fn named(element: &StatMapMod) -> Option<String> {
+        if element.kind == "group" {
+            return element.mods.iter().find_map(named);
+        }
+        element.tags.iter().find_map(|tag| {
+            let global =
+                matches!(tag.get("type"), Some(StatMapValue::Text(t)) if t == "GlobalEffect");
+            match tag.get("effectName") {
+                Some(StatMapValue::Text(name)) if global => Some(name.clone()),
+                _ => None,
+            }
+        })
+    }
+    let entry = catalog.lookup(effect_id, set_key, stat)?;
+    entry
+        .mods
+        .iter()
+        .filter(|element| is_player_buff_effect(element))
+        .find_map(named)
+}
+
 /// The elements of a player buff entry that could not be translated while
 /// others could: [`map_player_buff_stat`] reports such an entry as mapped, so
 /// these parts are otherwise dropped without a trace. Empty when the entry is

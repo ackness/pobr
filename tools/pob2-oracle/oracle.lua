@@ -1121,6 +1121,8 @@ local report = {
 	minionMainHand = build.calcsTab.mainEnv.minion and type(build.calcsTab.mainEnv.minion.output.MainHand) == "table"
 		and scalarsOf(build.calcsTab.mainEnv.minion.output.MainHand) or nil,
 	minionModList = minionModList,
+	-- The companions whose Life is taken before the character's (name, Life).
+	companionLifeList = build.calcsTab.mainEnv.player.companionLifeList,
 	-- Per-hand attack pass outputs (CalcOffence.lua:2371 output.MainHand = {}):
 	-- DoubleDamageChance / TripleDamageChance / ScaledDamageEffect / per-pass
 	-- CritChance live here for attacks (M4-T3 W-C1 oracle parity).

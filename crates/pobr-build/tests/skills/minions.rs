@@ -420,3 +420,51 @@ fn a_companion_attacks_with_what_the_character_gives_it() {
     let shared = quadrilla(&data, None, &line, true).dps;
     assert!(shared > spear * 1.01, "{spear} -> {shared}");
 }
+
+/// A Huntress whose tamed beast's gems, one group each, summon `beasts`,
+/// every group with Loyalty.
+fn loyal_companions(data: &BuildData, beasts: &[&str]) -> pobr_core::calc::CalculationSession {
+    let groups: String = beasts
+        .iter()
+        .map(|beast| {
+            format!(
+                r#"<Skill enabled="true"><Gem skillId="SummonBeastPlayer" level="20" quality="0" enabled="true" skillMinion="{beast}"/><Gem skillId="SupportLoyaltyPlayer" level="1" quality="0" enabled="true"/></Skill>"#
+            )
+        })
+        .collect();
+    let xml = format!(
+        r#"<PathOfBuilding2>
+<Build level="90" className="Huntress" ascendClassName="None"/>
+<Skills defaultGemLevel="20" activeSkillSet="1"><SkillSet id="1">{groups}</SkillSet></Skills>
+</PathOfBuilding2>"#
+    );
+    let build = pobr_build::parse_build(&xml).expect("parse synthetic build");
+    pobr_build::calculate_with_data_session(&build, data, &default_opts()).expect("calculate")
+}
+
+/// Every Companion counts, with its own supports: Loyalty is a buff of the
+/// Companion it supports, so on two different beasts it is two buffs, and
+/// on the same beast twice one. Each group's beast has its Life taken
+/// before the character's, though a second group of a beast does not add
+/// to how many minions the character has.
+#[test]
+fn every_companion_counts_with_its_own_supports() {
+    const WEREWOLF: &str = "Metadata/Monsters/Werewolves/WerewolfPack1";
+    let data = load_data();
+    let one = loyal_companions(&data, &[QUADRILLA]);
+    let share = one.base_sum("TakenFromCompanionBeforeYou");
+    assert!(share > 0.0);
+    let life = one.base_sum("TotalCompanionLife");
+    assert!(life > 0.0);
+
+    let two = loyal_companions(&data, &[QUADRILLA, WEREWOLF]);
+    assert_eq!(two.base_sum("TakenFromCompanionBeforeYou"), 2.0 * share);
+
+    let twice = loyal_companions(&data, &[QUADRILLA, QUADRILLA]);
+    assert_eq!(twice.base_sum("TakenFromCompanionBeforeYou"), share);
+    assert!((twice.base_sum("TotalCompanionLife") - 2.0 * life).abs() < 1e-6);
+    assert_eq!(
+        twice.base_sum("Multiplier:SummonedMinion"),
+        one.base_sum("Multiplier:SummonedMinion")
+    );
+}

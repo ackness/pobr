@@ -427,7 +427,9 @@ mod player_buff;
 pub use curse::has_exposure_inflict_payload;
 pub use curse::{curse_local_effect, has_curse_payload, map_curse_stat};
 pub use debuff::map_debuff_stat;
-pub use player_buff::{map_player_buff_stat, player_buff_rejected_elements};
+pub use player_buff::{
+    map_player_buff_stat, player_buff_effect_name, player_buff_rejected_elements,
+};
 
 // #12: minion domain (MinionModifier LIST payload -> inner minion mod)
 
@@ -3143,6 +3145,34 @@ mod tests {
             m.tags.is_empty(),
             "GlobalEffect (with effectName) should be stripped"
         );
+    }
+
+    /// A payload that names its buff (`effectName`) is that buff; one that
+    /// does not is left a buff of the skill it is granted with.
+    #[test]
+    fn player_buff_effect_name_is_the_payloads_own() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "SupportRefractionPlayerTwo": { "1": {
+                 "support_tempered_valour_%_armour_to_apply_to_elemental_damage": {
+                   "mods": [ { "kind": "mod", "name": "ArmourAppliesToFireDamageTaken", "mod_type": "BASE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff",
+                                           "effectName": "Refractive Plating" } ] } ] },
+                 "companion_takes_%_damage_before_you_from_support": {
+                   "mods": [ { "kind": "mod", "name": "TakenFromCompanionBeforeYou", "mod_type": "BASE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] } ] } } } } }"#,
+        );
+        let name = |stat: &str| {
+            player_buff_effect_name(&catalog, "SupportRefractionPlayerTwo", None, stat)
+        };
+        assert_eq!(
+            name("support_tempered_valour_%_armour_to_apply_to_elemental_damage").as_deref(),
+            Some("Refractive Plating")
+        );
+        assert_eq!(
+            name("companion_takes_%_damage_before_you_from_support"),
+            None
+        );
+        assert_eq!(name("no_such_stat"), None);
     }
 
     /// Mirrors War Banner's shape (GlobalEffect effectType=Aura + Condition

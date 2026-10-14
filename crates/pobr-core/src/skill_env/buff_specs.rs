@@ -23,7 +23,7 @@ use crate::skill_env::resolve::{
 };
 use crate::skill_env::stat_map::{
     StatMapCtx, curse_stat_modifiers, debuff_stat_modifiers, mapped_stat_modifiers,
-    player_buff_stat_modifiers,
+    player_buff_stat_modifiers, player_buff_stat_modifiers_by_stat,
 };
 use crate::skill_env::support::{GroupSupportJudgement, SupportCandidate, judge_group_supports};
 use crate::skill_env::{EnabledGroup, GemInput};
@@ -687,12 +687,12 @@ fn curse_local_effect_scale(
 /// [`BuffKind::Buff`], applied by buff_pass's Buff branch, which applies the
 /// BuffEffect multiplier zone before merging into the player db).
 ///
-/// Vendor semantics: a support's own statSet's statMap produces a `GlobalEffect
-/// effectType=Buff` mod, which applies to the player as the supported Persistent Buff
-/// skill (Herald/Malice/Banner…) activates. Applicability is data-driven:
-/// [`judge_group_supports`] is checked against every enabled active skill in the
-/// group, and the support is injected if any is compatible; the same support effect
-/// appearing in multiple groups is deduplicated by id.
+/// A support's buff is a buff of each skill it supports: it is named after
+/// that skill, a Companion's or a Spectre's after the monster it chose too,
+/// and buffs of one name keep the stronger of each modifier. So Loyalty on
+/// seven Companions is seven buffs, and on one skill in two groups is one.
+/// Applicability is data-driven: [`judge_group_supports`] is checked against
+/// every enabled active skill in the group.
 pub fn support_buff_specs(
     ctx: &mut StatMapCtx<'_>,
     groups: &dyn SocketGroupView,
@@ -700,7 +700,7 @@ pub fn support_buff_specs(
 ) -> Vec<BuffSpec> {
     use std::collections::HashSet;
     let mut specs = Vec::new();
-    let mut seen: HashSet<String> = HashSet::new();
+    let mut seen: HashSet<(String, String)> = HashSet::new();
     groups.for_each_enabled_group(&mut |group| {
         // The group's enabled active skills (known effect and non-support). Includes
         // additional granted effects (vendor builds an independent activeSkill for
@@ -721,19 +721,19 @@ pub fn support_buff_specs(
         if active_ids.is_empty() {
             return;
         }
-        // Included if compatible with any active skill (vendor: a support is judged
-        // against each active skill in the group individually).
-        let mut compatible: HashSet<(usize, String)> = HashSet::new();
+        // A support is judged against each active skill in the group.
+        let mut entries: Vec<(usize, String, String)> = Vec::new();
         for active_id in &active_ids {
+            let buff_name = supported_skill_buff_name(data, group.gems, active_id);
             for sup in group_judgement(&group, data, active_id).compatible {
-                compatible.insert((sup.gem_index, sup.effect_id));
+                entries.push((sup.gem_index, sup.effect_id, buff_name.clone()));
             }
         }
-        let mut entries: Vec<(usize, String)> = compatible.into_iter().collect();
         entries.sort_unstable();
-        for (idx, effect_id) in entries {
+        entries.dedup();
+        for (idx, effect_id, buff_name) in entries {
             let gem = &group.gems[idx];
-            if !seen.insert(effect_id.clone()) {
+            if !seen.insert((effect_id.clone(), buff_name.clone())) {
                 continue;
             }
             // An additionally-granted support half doesn't reuse the gem instance's
@@ -743,33 +743,67 @@ pub fn support_buff_specs(
                 .flatten();
             let es = data.effect_stats(&effect_id, gem.gem_level, gem.quality, set_index);
             let set_key = data.selected_set_key(&effect_id, set_index);
-            let mods = player_buff_stat_modifiers(
+            let mods = player_buff_stat_modifiers_by_stat(
                 ctx,
                 &es,
                 &effect_id,
                 set_key.as_deref(),
                 BuffSkill::default(),
             );
-            if mods.is_empty() {
-                continue;
+            // A payload that names its buff is that buff, whatever skill
+            // the support is on.
+            let mut buffs: Vec<(String, Vec<Modifier>)> = Vec::new();
+            for (stat, modifier) in mods {
+                let name = ctx
+                    .catalog
+                    .and_then(|catalog| {
+                        stat_map_engine::player_buff_effect_name(
+                            catalog,
+                            &effect_id,
+                            set_key.as_deref(),
+                            &stat,
+                        )
+                    })
+                    .unwrap_or_else(|| buff_name.clone());
+                match buffs.iter_mut().find(|(known, _)| *known == name) {
+                    Some((_, list)) => list.push(modifier),
+                    None => buffs.push((name, vec![modifier])),
+                }
             }
-            specs.push(BuffSpec {
-                name: buff_skill_name(data, &effect_id),
-                kind: BuffKind::Buff,
-                skill_id: effect_id.clone(),
-                mods,
-                magnitude: 1.0,
-                slot: group.slot.map(str::to_string),
-                socket_index: (idx + 1) as u32,
-                is_mark: false,
-                ignore_curse_limit: false,
-                local_effect_inc: 0.0,
-                local_effect_more: 1.0,
-                skill_types: pobr_data::skill::SkillTypes::NONE,
-            });
+            for (name, mods) in buffs {
+                specs.push(BuffSpec {
+                    name,
+                    kind: BuffKind::Buff,
+                    skill_id: effect_id.clone(),
+                    mods,
+                    magnitude: 1.0,
+                    slot: group.slot.map(str::to_string),
+                    socket_index: (idx + 1) as u32,
+                    is_mark: false,
+                    ignore_curse_limit: false,
+                    local_effect_inc: 0.0,
+                    local_effect_more: 1.0,
+                    skill_types: pobr_data::skill::SkillTypes::NONE,
+                });
+            }
         }
     });
     specs
+}
+
+/// The name of the buff a support grants as a buff of `active_id`: the
+/// skill's, and for a skill whose gem chose a monster (a Companion, a
+/// Spectre), the monster's too.
+fn supported_skill_buff_name(data: &dyn BuffEnv, gems: &[GemInput], active_id: &str) -> String {
+    let name = buff_skill_name(data, active_id);
+    match gems
+        .iter()
+        .find(|gem| gem.skill_id == active_id)
+        .and_then(|gem| gem.minion.as_deref())
+    {
+        Some(minion) => format!("{name}: {minion}"),
+        None => name,
+    }
 }
 
 /// Builds every **enabled warcry active skill** into a [`WarcrySpec`], injected via

@@ -136,8 +136,10 @@ pub fn spawn_minions(
 ) {
     use std::collections::BTreeSet;
 
-    // Deduplication: the same minion id (referenced by the same minion from different
-    // skills/groups) is only wired in once, to avoid double-counting.
+    // Every group's summoning skill creates its own minions, as each is a
+    // skill of its own (a Companion's Life is taken before the character's
+    // once per group). A kind of minion another group already summons does
+    // not add to how many minions the character has.
     let mut seen: BTreeSet<String> = BTreeSet::new();
     // Umbral Well: Skeletal Minions become Souls on the character instead.
     let umbral_well = session.has_flag(umbral_souls::UMBRAL_WELL);
@@ -317,9 +319,7 @@ pub fn spawn_minions(
             }
             let minion_level = crate::calc::minion_level_from_gem_level(effective_gem_level);
             for minion_id in minion_ids {
-                if !seen.insert(minion_id.clone()) {
-                    continue;
-                }
+                let counted = seen.insert(minion_id.clone());
                 let Some(def) = data.minion_def(minion_id) else {
                     // minion_list references a minion not in the catalog (the foreign
                     // key is verified to have zero dangling references — defensive
@@ -328,7 +328,11 @@ pub fn spawn_minions(
                 };
                 // The limit only affects `Multiplier:SummonedMinion` (per-minion mods +
                 // DPS aggregation count), not a single minion's life/defence.
-                let limit = own_count.unwrap_or_else(|| minion_limit(&*session, def));
+                let limit = if counted {
+                    own_count.unwrap_or_else(|| minion_limit(&*session, def))
+                } else {
+                    0
+                };
                 let def = def.clone();
                 let skill = minion_skill(data, &def, chosen_skill);
                 let mut minion_modifiers = group_minion_modifiers.clone();

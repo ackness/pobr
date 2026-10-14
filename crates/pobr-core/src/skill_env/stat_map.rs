@@ -533,6 +533,20 @@ pub fn player_buff_stat_modifiers(
     set_key: Option<&str>,
     skill: BuffSkill,
 ) -> Vec<Modifier> {
+    player_buff_stat_modifiers_by_stat(ctx, stats, skill_id, set_key, skill)
+        .into_iter()
+        .map(|(_, modifier)| modifier)
+        .collect()
+}
+
+/// [`player_buff_stat_modifiers`], each modifier with the stat it came from.
+pub fn player_buff_stat_modifiers_by_stat(
+    ctx: &mut StatMapCtx<'_>,
+    stats: &EffectStats,
+    skill_id: &str,
+    set_key: Option<&str>,
+    skill: BuffSkill,
+) -> Vec<(String, Modifier)> {
     let mut merged: Vec<(String, f64)> = Vec::new();
     for ds in stats.all() {
         match merged.iter_mut().find(|(stat, _)| *stat == ds.stat) {
@@ -592,7 +606,7 @@ pub fn player_buff_stat_modifiers(
                 format!("buff.{skill_id}.{stat}"),
             ))
             .with_raw_text(format!("buff {skill_id} {stat} ({value})"));
-            mods.push(modifier.with_origin(origin));
+            mods.push((stat.clone(), modifier.with_origin(origin)));
         }
     }
     mods
