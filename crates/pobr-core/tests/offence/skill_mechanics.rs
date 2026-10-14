@@ -335,6 +335,27 @@ fn cooldown_additional_uses_from_modifier() {
     assert!(!result.rounded_to_tick);
 }
 
+/// Temporalis's "Skills have -2.00 seconds to Cooldown" comes off a
+/// skill's cooldown before Cooldown Recovery Rate, and cannot bring it below
+/// 0.1 seconds; a skill without a cooldown gets none.
+#[test]
+fn seconds_off_a_cooldown_leave_at_least_a_tenth_of_a_second() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number(
+        pobr_core::calc::skill_mechanics::FLAT_COOLDOWN,
+        ModType::Base,
+        -2.0,
+    ));
+    let cfg = CalcConfig::attack();
+    // 4 - 2 = 2 seconds, then rounded to a frame.
+    let four = calc_cooldown(&db, &cfg, 4.0, 2);
+    assert!((four.cooldown - 2.0).abs() < 1e-9, "{four:?}");
+    // 0.5 - 2 is less than nothing: 0.1, with 82% Cooldown Recovery Rate too.
+    db.add_mod(Modifier::number("CooldownRecovery", ModType::Inc, 82.0));
+    assert_eq!(calc_cooldown(&db, &cfg, 0.5, 5).cooldown, 0.1);
+    assert_eq!(calc_cooldown(&db, &cfg, 0.0, 1).cooldown, 0.0);
+}
+
 /// No cooldown (base_cooldown_s=0.0, no addend) -> cooldown=0.0.
 #[test]
 fn cooldown_zero_when_no_cooldown() {

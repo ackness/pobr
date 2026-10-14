@@ -407,6 +407,18 @@ pub struct CooldownResult {
     pub rounded_to_tick: bool,
 }
 
+/// "Skills have -# seconds to Cooldown" (Temporalis, the game's
+/// `unique_cooldown_modifier_ms`), in seconds: added to a skill's cooldown
+/// before Cooldown Recovery Rate.
+pub const FLAT_COOLDOWN: &str = "CooldownRecoveryFromTemporalis";
+
+/// The shortest cooldown [`FLAT_COOLDOWN`] can bring a skill to: such
+/// modifiers cannot reduce a cooldown below 0.1 seconds (the game's wiki;
+/// since 0.1.1). Whether a Cooldown Recovery Rate applied after them may
+/// take it lower is not stated; it is kept at 0.1, as the exporting tool
+/// keeps it, which has not been measured in the game.
+pub const FLAT_COOLDOWN_MINIMUM: f64 = 0.1;
+
 /// Calculates skill cooldown.
 ///
 /// `base_cooldown_s`: the skill's inherent cooldown (seconds, 0 means no cooldown).
@@ -430,7 +442,13 @@ pub fn calc_cooldown(
 
     // Base cooldown modifier (adds/subtracts a millisecond-level value directly, PoB2 L327)
     let added_cooldown = db.sum(ModType::Base, cfg, &cd_recovery_names);
-    let cooldown_base = base_cooldown_s + added_cooldown;
+    // Only a skill with a cooldown of its own has seconds taken off it.
+    let flat_cooldown = if base_cooldown_s > 0.0 {
+        db.sum(ModType::Base, cfg, &[ModName::from(FLAT_COOLDOWN)])
+    } else {
+        0.0
+    };
+    let cooldown_base = base_cooldown_s + added_cooldown + flat_cooldown;
 
     // Override check (PoB2 L326)
     let override_val = db.override_(cfg, "CooldownRecovery");
@@ -464,6 +482,11 @@ pub fn calc_cooldown(
         cooldown_base / recovery_rate
     } else {
         0.0
+    };
+    let raw_cd = if flat_cooldown < 0.0 {
+        raw_cd.max(FLAT_COOLDOWN_MINIMUM)
+    } else {
+        raw_cd
     };
 
     let stored_uses = base_stored_uses

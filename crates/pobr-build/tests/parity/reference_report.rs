@@ -219,10 +219,15 @@ const BASELINES: [Baseline; 3] = [
     // leaves the 35% out of TotalDPS and CombinedDPS, and out of TotalDotDPS
     // and IgniteDPS, which follow the hit twice (about 1.35 squared): the
     // exporting tool counts only the minions of skills that name a limit stat.
+    //
+    // Then 349 rows. Temporalis's "Skills have -2.00 seconds to Cooldown"
+    // comes off a skill's cooldown before Cooldown Recovery Rate, down to 0.1
+    // seconds: the Oracle's Lightning Bolt (0.5 seconds) has 0.1, as its
+    // reference does, where the line was read by nothing (0.27).
     Baseline {
         corpus: "examples/wasm-benchmark/builds",
         dps_builds: 5,
-        agreeing_rows: 348,
+        agreeing_rows: 349,
     },
     // Was 22 builds and 1024 rows. A code whose main skill summons a minion
     // also carries `<MinionStat>` values for that minion, which were not
