@@ -769,14 +769,15 @@ pub fn minion_stat_breakdown(
     stat: &str,
 ) -> Option<StatBreakdown> {
     let rows = session.minion_stat_mods(index, stat);
-    if rows.is_empty() {
+    let formula = match stat {
+        "Life" => session.minion_life_formula(index),
+        _ => session.minion_stat_formula(index, stat),
+    }
+    .map(formula_steps);
+    if rows.is_empty() && formula.is_none() {
         return None;
     }
     let (base_total, inc_total, more_total) = session.minion_stat_totals(index, stat);
-    let formula = (stat == "Life")
-        .then(|| session.minion_life_formula(index))
-        .flatten()
-        .map(formula_steps);
     Some(StatBreakdown {
         base_total: base_total + 0.0,
         inc_total: inc_total + 0.0,

@@ -83,6 +83,10 @@ struct GemJson {
     /// The monster a minion gem summons, when the build chooses one.
     #[serde(skip_serializing_if = "Option::is_none")]
     minion: Option<String>,
+    /// Which of the minion's skills it uses (1-based), when the build
+    /// chooses one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    minion_skill: Option<u32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -242,6 +246,7 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
                         },
                         corrupted: gem.corrupted,
                         minion: gem.minion.clone(),
+                        minion_skill: gem.minion_skill,
                     })
                     .collect(),
             })
@@ -597,6 +602,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                 name_spec: None,
                 corrupted: false,
                 minion: None,
+                minion_skill: None,
             }];
             for support in &group.support_skills {
                 match cn_gem_effect_id(&data, &support.id) {
@@ -608,6 +614,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                         name_spec: None,
                         corrupted: false,
                         minion: None,
+                        minion_skill: None,
                     }),
                     None => unknown_gems += 1,
                 }

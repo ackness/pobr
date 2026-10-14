@@ -89,6 +89,54 @@ pub fn is_summoned_minion_count(stat: &str) -> bool {
     SUMMONED_MINION_COUNTS.contains(&stat)
 }
 
+/// What a summoning skill's minions are when its minion stats are judged:
+/// the facts about the character's minions those stats depend on.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct SummonedMinions {
+    /// How many different kinds of Reviving Minion the character summons:
+    /// the distinct skills of the `Minion` and `Persistent` types it uses.
+    pub reviving_kinds: u32,
+}
+
+/// The modifiers the stat `stat` of a summoning skill, or of a support that
+/// applies to it, grants that skill's minions at `value`, when this table
+/// defines the stat. The skill itself gets nothing from it.
+pub fn minion_modifiers(stat: &str, value: f64, minions: SummonedMinions) -> Option<Vec<Modifier>> {
+    let modifier = match stat {
+        // "Minions deal {0}% more damage", of the summoning skill itself.
+        "active_skill_minion_damage_+%_final"
+        // Feeding Frenzy: "Minions from Supported Skills deal {0}% more
+        // Damage".
+        | "feeding_frenzy_minion_damage_+%_final" => {
+            Modifier::number("Damage", ModType::More, value)
+        }
+        // Feeding Frenzy: "Minions from Supported Skills take {0}% more
+        // Damage".
+        "feeding_frenzy_minion_damage_taken_+%_final" => {
+            Modifier::number("DamageTaken", ModType::More, value)
+        }
+        // "Supported Skills have {0}% increased Minion Attack Speed".
+        "minion_attack_speed_+%" => Modifier::number("AttackSpeed", ModType::Inc, value),
+        // Muster: "Supported Minions deal {0}% more damage for each different
+        // type of Reviving Minion you have summoned".
+        "support_varied_troops_damage_+%_final_per_different_persistent_ominion" => {
+            Modifier::number(
+                "Damage",
+                ModType::More,
+                value * f64::from(minions.reviving_kinds),
+            )
+        }
+        _ => return None,
+    };
+    Some(vec![modifier])
+}
+
+/// Whether the stat `stat` is about the minions of the skill it is on (see
+/// [`minion_modifiers`]).
+pub fn is_minion_stat(stat: &str) -> bool {
+    minion_modifiers(stat, 0.0, SummonedMinions::default()).is_some()
+}
+
 /// The modifiers the stat `stat` of a skill, or of a support that applies to
 /// it, grants that skill at `value`, when this table defines the stat. `None`
 /// leaves the stat to the extracted stat map.
@@ -96,6 +144,9 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
     match stat {
         stat if inflicts_withered(stat) => Some(Vec::new()),
         stat if is_summoned_minion_count(stat) => Some(Vec::new()),
+        // Granted to the skill's minions where they are created
+        // (`skill_env::spawn_minions`).
+        stat if is_minion_stat(stat) => Some(Vec::new()),
         // Efficiency: "Supported Skills have {0}% more Cost" / "less Cost",
         // of whatever the skill costs.
         "support_inspiration_cost_+%_final" => {
@@ -820,5 +871,28 @@ mod tests {
         );
         let buff = player_buff_modifiers(WITCHTOAD_SPAWN_INTERVAL_MS, 250.0, BuffSkill::default());
         assert_eq!(buff, Some(Vec::new()));
+    }
+
+    /// Muster's more damage is per different kind of Reviving Minion; the
+    /// summoning skill's minion stats reach the minions, and the skill itself
+    /// is left nothing to report.
+    #[test]
+    fn minion_stats_are_for_the_minions() {
+        const MUSTER: &str =
+            "support_varied_troops_damage_+%_final_per_different_persistent_ominion";
+        let three = SummonedMinions { reviving_kinds: 3 };
+        let mut db = ModDb::new();
+        db.add_list(minion_modifiers(MUSTER, 7.0, three).expect("a rule"));
+        let damage = [ModName::from("Damage")];
+        assert!((db.more(&CalcConfig::new(), &damage) - 1.21).abs() < 1e-12);
+        let none = minion_modifiers(MUSTER, 7.0, SummonedMinions::default()).expect("a rule");
+        assert_eq!(none[0].value.as_number(), Some(0.0));
+
+        assert!(is_minion_stat("active_skill_minion_damage_+%_final"));
+        assert_eq!(
+            skill_modifiers("active_skill_minion_damage_+%_final", 50.0),
+            Some(Vec::new())
+        );
+        assert!(!is_minion_stat("active_skill_damage_+%_final"));
     }
 }

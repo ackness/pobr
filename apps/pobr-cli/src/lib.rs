@@ -949,6 +949,9 @@ pub struct MinionOutput {
     pub minion_id: String,
     /// The id of the skill that summoned it.
     pub summoned_by: String,
+    /// The id of the skill the minion uses, which its damage is for; empty
+    /// when it is not known.
+    pub skill_id: String,
     /// The minion's level (a monster level).
     pub level: u32,
     pub dps: f64,
@@ -1188,6 +1191,7 @@ pub fn calculate_build_detailed(
             .map(|minion| MinionOutput {
                 minion_id: minion.minion_id.clone(),
                 summoned_by: minion.summoned_by.clone(),
+                skill_id: minion.skill_id.clone(),
                 level: minion.level,
                 dps: minion.dps,
                 life: minion.life,

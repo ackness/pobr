@@ -86,7 +86,7 @@ pub use hand_pass::{
 };
 pub use minion::{
     AttributeInfusion, MinionBaseStats, MinionCategory, MinionContext, MinionData, MinionDef,
-    MinionInput, MinionLimitId, MinionModifierEntry, MinionOrigin, MinionWeaponData,
+    MinionInput, MinionLimitId, MinionModifierEntry, MinionOrigin, MinionSkill, MinionWeaponData,
     build_minion_context, build_minion_context_from_def, derive_minion_base_stats,
     extract_minion_modifier_entries, minion_level_from_gem_level, minion_modifier_applies,
     resolve_minion_level, write_summoned_minion_multipliers,

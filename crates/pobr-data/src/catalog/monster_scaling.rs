@@ -157,15 +157,9 @@ impl MonsterScalingTable {
 /// `base/monster_scaling.json` field by field (a migration invariant; the
 /// W2 test already locks JSON == this Rust source of truth).
 ///
-/// - The eight tables that have a pobr Rust source of truth (including
-///   `ally_life`, upgraded in #12 to reference
-///   `MONSTER_ALLY_LIFE_TABLE` — consumed for deriving minion base life)
-///   reference `crate::monster`'s existing consts directly (zero literal
-///   duplication);
-/// - `ally_damage` is vendor-only (nothing in calc consumes it yet), a
-///   literal transcribed from
-///   `vendor/PathOfBuilding-PoE2/src/Data/Misc.lua` L10 (same source, same
-///   value as `base/monster_scaling.json`; 2-decimal-place convention).
+/// Every table references `crate::monster`'s consts directly (zero literal
+/// duplication); `ally_life` and `ally_damage` are what minions are derived
+/// from.
 impl Default for MonsterScalingTable {
     fn default() -> Self {
         Self {
@@ -175,24 +169,7 @@ impl Default for MonsterScalingTable {
             life: MONSTER_LIFE_TABLE.to_vec(),
             ally_life: crate::monster::MONSTER_ALLY_LIFE_TABLE.to_vec(),
             damage: MONSTER_DAMAGE_TABLE.to_vec(),
-            ally_damage: vec![
-                3.11, 4.42, 5.82, 7.31, 8.92, 10.63, 12.46, 14.42, // lv1-8
-                16.51, 18.73, 21.1, 23.62, 26.31, 29.16, 32.19, 35.42, // lv9-16
-                38.83, 42.46, 46.31, 50.39, 54.71, 59.29, 64.14, 69.27, // lv17-24
-                74.69, 80.43, 86.5, 92.91, 99.69, 106.84, 114.4, 122.37, // lv25-32
-                130.79, 139.67, 149.04, 158.91, 169.32, 180.29, 191.86, 204.04, // lv33-40
-                216.86, 230.37, 244.6, 259.57, 275.32, 291.9, 309.34, 327.69, // lv41-48
-                346.98, 367.27, 388.59, 411.01, 434.57, 459.32, 485.33, 512.66, // lv49-56
-                541.35, 571.49, 603.14, 636.37, 671.26, 707.87, 746.3, 786.63, // lv57-64
-                828.94, 873.34, 919.91, 968.76, 1019.99, 1073.72, 1130.06, 1189.13, // lv65-72
-                1251.06, 1315.98, 1384.03, 1455.34, 1530.08, 1608.4, 1690.46,
-                1776.43, // lv73-80
-                1866.5, 1960.84, 2059.66, 2163.16, 2271.56, 2385.06, 2503.91,
-                2628.36, // lv81-88
-                2758.64, 2895.03, 3037.8, 3187.24, 3343.66, 3507.35, 3678.66,
-                3857.93, // lv89-96
-                4045.51, 4241.77, 4447.11, 4661.93, // lv97-100
-            ],
+            ally_damage: crate::monster::MONSTER_ALLY_DAMAGE_TABLE.to_vec(),
             ailment_threshold: MONSTER_AILMENT_THRESHOLD_TABLE.to_vec(),
             poise_threshold: MONSTER_POISE_THRESHOLD_TABLE.to_vec(),
         }

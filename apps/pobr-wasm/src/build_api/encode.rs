@@ -186,6 +186,7 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
                         },
                         corrupted: gem.corrupted,
                         minion: gem.minion.clone(),
+                        minion_skill: gem.minion_skill,
                     }
                 })
                 .collect();

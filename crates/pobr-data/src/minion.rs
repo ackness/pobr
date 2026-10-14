@@ -240,6 +240,11 @@ pub struct MinionDef {
     /// skill damage through this list).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub skill_list: Vec<String>,
+    /// The monster's own modifiers (Lua's `modList`), named as the source
+    /// data names them: Zekoa's "150% increased Critical Damage Bonus" is
+    /// `CritMultiplier` INC 150.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub mod_list: Vec<crate::catalog::actors::MinionModDef>,
 }
 
 // serde default-value helper functions (`#[serde(default = "...")]` needs a fn() signature)
@@ -305,6 +310,7 @@ pub fn minion_def_zombie() -> MinionDef {
             "undead".into(),
         ],
         skill_list: vec!["MinionMeleeStep".into()],
+        mod_list: Vec::new(),
     }
 }
 
@@ -340,6 +346,7 @@ pub fn minion_def_raging_spirit() -> MinionDef {
             "undead".into(),
         ],
         skill_list: vec!["MinionMeleeStep".into()],
+        mod_list: Vec::new(),
     }
 }
 
@@ -375,6 +382,7 @@ pub fn minion_def_skeletal_warrior() -> MinionDef {
             "undead".into(),
         ],
         skill_list: vec!["MinionMeleeStep".into()],
+        mod_list: Vec::new(),
     }
 }
 
@@ -413,6 +421,7 @@ pub fn minion_def_skeletal_storm_mage() -> MinionDef {
             "ArcSkeletonMageMinion".into(),
             "DeathStormSkeletonStormMageMinion".into(),
         ],
+        mod_list: Vec::new(),
     }
 }
 
@@ -447,6 +456,7 @@ pub fn minion_def_spectre_placeholder() -> MinionDef {
         hostile: false,
         monster_tags: vec![],
         skill_list: vec![],
+        mod_list: Vec::new(),
     }
 }
 
@@ -523,9 +533,7 @@ impl MinionDef {
     /// function is where the consumer-side defaults get materialized — see
     /// `MinionEntryDef`'s doc). The `limit` string is mapped through
     /// [`MinionLimitId::from_pob2`]; `monster_category` through
-    /// [`MinionCategory::from_pob2`]. `mod_list` isn't carried over for now
-    /// (the calc-side C3 assembly reads it directly from the entry, to
-    /// avoid modeling it twice).
+    /// [`MinionCategory::from_pob2`].
     pub fn from_entry(e: &crate::catalog::actors::MinionEntryDef) -> Self {
         Self {
             id: e.id.clone(),
@@ -554,6 +562,7 @@ impl MinionDef {
             hostile: false,
             monster_tags: e.monster_tags.clone(),
             skill_list: e.skill_list.clone(),
+            mod_list: e.mod_list.clone(),
         }
     }
 }
@@ -678,6 +687,7 @@ mod tests {
             hostile: false,
             monster_tags: vec![],
             skill_list: vec![],
+            mod_list: Vec::new(),
         };
         assert!(!no_limit.has_limit());
     }

@@ -83,6 +83,10 @@ pub struct Env {
     /// single-pipeline path identical to the historical behavior (fallback
     /// state, output unchanged value-for-value).
     pub hand_sources: Vec<super::hand_pass::HandSource>,
+    /// The physical damage range of the character's main hand weapon, after
+    /// its own modifiers, whatever skill is calculated: what a minion that
+    /// gains added damage equal to a share of it adds.
+    pub main_hand_weapon_damage: Option<(f64, f64)>,
     /// Skill data's `doubleHitsWhenDualWielding` (flips the combineStat
     /// DPS/CRIT mode, vendor CalcOffence.lua:2459-2545). The data channel is
     /// the skill_overrides extraction; always false until the orchestration
@@ -118,6 +122,7 @@ impl Env {
             ailment_terms: Vec::new(),
             crossbow_reload: None,
             hand_sources: Vec::new(),
+            main_hand_weapon_damage: None,
             double_hits_when_dual_wielding: false,
             high_precision: HighPrecisionRules::default(),
         }
@@ -170,12 +175,13 @@ impl Env {
         infusion: super::AttributeInfusion,
         origin: super::MinionOrigin,
     ) -> &mut Self {
-        let ctx = super::build_minion_context_from_def(
+        let ctx = super::minion::picked_minion_context(
             def,
             gem_level,
             minion_modifiers,
             ally_buff_mods,
             infusion,
+            origin.picked_monster,
         );
         super::write_summoned_minion_multipliers(&mut self.player.mod_db, limit, &def.id);
         let mut actor = minion_actor_from_context(&ctx);
@@ -183,10 +189,31 @@ impl Env {
         if self.player.mod_db.tracks_reads() {
             actor.mod_db.track_reads();
         }
+        if origin.skill.uses_weapon() {
+            // A monster's attack crits at its weapon's chance.
+            actor.mod_db.add_mod(
+                crate::Modifier::number(
+                    "CriticalStrikeChance",
+                    pobr_data::modifier::ModType::Base,
+                    ctx.base.weapon.crit_chance,
+                )
+                .with_origin(pobr_data::source::ModifierSource::new(
+                    pobr_data::source::SourceId::new(
+                        pobr_data::source::SourceKind::GameConstant,
+                        format!("minion.{}.crit_chance", def.id),
+                    ),
+                )),
+            );
+        } else {
+            actor.base.hit_min = 0.0;
+            actor.base.hit_max = 0.0;
+            actor.base.action_rate = 0.0;
+        }
         actor.is_companion = origin.is_companion;
         actor.minion = Some(MinionIdentity {
             minion_id: def.id.clone(),
             summoned_by: origin.summoned_by,
+            skill: origin.skill,
         });
         self.minions.push(actor);
         self

@@ -236,10 +236,20 @@ const BASELINES: [Baseline; 3] = [
     // Life agrees. Their Energy Shield (0) adds 2 rows. The Spirit Walker's
     // main skill is a tamed beast's, whose monster PoBR did not create
     // before; its rows are for the beast the gem chose.
+    //
+    // Then 21 builds and 1029 rows. A minion attacks with its own skill (the
+    // one `skillMinionSkill` picks, the first by default), with the skill's
+    // flags, its stats and the group's supports, the game's ally damage
+    // table, and its weapon's critical chance. The Spirit Walker's tamed beast
+    // also has the beast's hidden level scaling, the share of the character's
+    // main hand weapon "Companions gain", the auras "Allies in your Presence
+    // have", and "Gain #% of Physical Damage as Chaos Damage": 1,282,913
+    // against 1,280,037. The Disciple of Varashta's minion casts a spell,
+    // which is not modelled yet (0 against 206,838).
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
-        dps_builds: 20,
-        agreeing_rows: 1028,
+        dps_builds: 21,
+        agreeing_rows: 1029,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //

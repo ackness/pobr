@@ -116,3 +116,26 @@ fn a_chosen_minion_survives_export_and_decode() {
         json!({ "skill_id": "SummonBeastPlayer", "level": 20, "quality": 0, "minion": quadrilla })
     );
 }
+
+/// Which of its skills the minion uses (`skillMinionSkill`) is written to
+/// the build code and read back.
+#[test]
+fn a_chosen_minion_skill_survives_export_and_decode() {
+    init();
+    let quadrilla = "Metadata/Monsters/Quadrilla/Quadrilla";
+    let mut request = companion(Some(quadrilla));
+    request["socket_groups"][0]["gems"][0]["minion_skill"] = json!(3);
+    let code = pobr_wasm::encode_build_json(&request.to_string()).unwrap();
+    let xml = pobr_build::decode_pob_code(&code).unwrap();
+    assert!(xml.contains(r#"skillMinionSkill="3""#), "{xml}");
+    assert_eq!(
+        decode(&code)["socket_groups"][0]["gems"][0],
+        json!({
+            "skill_id": "SummonBeastPlayer",
+            "level": 20,
+            "quality": 0,
+            "minion": quadrilla,
+            "minion_skill": 3,
+        })
+    );
+}

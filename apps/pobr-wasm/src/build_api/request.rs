@@ -76,6 +76,9 @@ pub struct GemInput {
     /// The monster a minion gem summons (PoB `skillMinion`); a Companion's
     /// beast and a Spectre's monster set the Spirit it reserves.
     pub(crate) minion: Option<String>,
+    /// Which of the minion's skills it uses (PoB `skillMinionSkill`,
+    /// 1-based); omitted is the first.
+    pub(crate) minion_skill: Option<u32>,
 }
 
 impl Default for GemInput {
@@ -88,6 +91,7 @@ impl Default for GemInput {
             name_spec: None,
             corrupted: false,
             minion: None,
+            minion_skill: None,
         }
     }
 }
@@ -265,6 +269,7 @@ pub(super) fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData
             name_spec: None,
             corrupted: gem.corrupted,
             minion: gem.minion.clone(),
+            minion_skill: gem.minion_skill,
         });
         if let Some(gem_id) = gem_id {
             group.gem_ids.push(gem_id);

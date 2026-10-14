@@ -84,5 +84,7 @@ mise run builds:fetch examples/reference-builds/holdout --pick last
 | 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 14（61%） | 984/1079（91.2%） |
 | 2026-10-14（第二十七轮：角色的全部召唤物词条（天赋、升华、珠宝、配置，不只物品文本）交给召唤物，“Companions …” 只给同伴；“Your Minions are Gigantic”；“+# to Level of all Tamed Companion Skills” 提升驯服野兽的宝石） | `tuned/` | 23 | 20（87%） | 1028/1067（96.3%） |
 | 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 14（61%） | 985/1079（91.3%） |
+| 2026-10-14（第二十八轮：召唤物用它怪物自己的技能攻击（`skillMinionSkill`），游戏的友军伤害表，幽魂与驯服野兽的等级缩放，“Allies in your Presence …” 光环与主手武器份额交给召唤物，“Gain #% of X as Y” 计入额外伤害） | `tuned/` | 23 | 21（91%） | 1029/1067（96.4%） |
+| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 14（61%） | 985/1079（91.3%） |
 
 吻合行里有按游戏规则有意不同于参考值的行（例如护身符授予的技能不保留精魄，见 `reference_report.rs` 基线旁的说明），所以上限不是 100%。

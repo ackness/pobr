@@ -278,23 +278,33 @@ fn inject_companion_life(env: &mut Env) {
     );
 }
 
-/// Runs the same offence/defence pipeline for each minion, and collects key output snapshots
-/// into the player's `OutputTable.minions`. Minions reuse `calculate_minimal_vs_enemy` +
-/// `calc_defence`, no separate formula is written. Minions' hit chance against the enemy uses
-/// the same enemy config as the player (the same `env.enemy`).
-/// The context a minion's stats are calculated in. The minion count cap (the
+/// The context a minion's stats are calculated in: the character's, with the
+/// minion's skill in place of the character's. The minion count cap (the
 /// player's `Multiplier:SummonedMinion`, written by add_minion_from_def) is
 /// injected as a multiplier so minion mods like `Damage per Summoned Minion`
-/// can reference it; without it the player's context is used as is.
-pub(crate) fn minion_cfg(env: &Env) -> CalcConfig {
+/// can reference it. A minion whose skill is not known keeps the character's
+/// skill.
+pub(crate) fn minion_cfg(env: &Env, minion: &super::Actor) -> CalcConfig {
+    let mut cfg = env.cfg.clone();
+    if let Some(skill) = minion
+        .minion
+        .as_ref()
+        .map(|identity| &identity.skill)
+        .filter(|skill| skill.is_known())
+    {
+        cfg = cfg
+            .with_flags(skill.flags())
+            .with_keyword_flags(KeywordFlags::NONE)
+            .with_skill_types(skill.type_bits())
+            .with_skill_name(None)
+            .with_damage_keywords(Vec::new());
+    }
     let minion_limit = env.player.mod_db.get_multiplier("SummonedMinion", &env.cfg);
     if minion_limit > 0.0 {
-        env.cfg
-            .clone()
-            .with_multiplier("SummonedMinion", minion_limit)
+        cfg.with_multiplier("SummonedMinion", minion_limit)
             .with_multiplier("MinionPresenceCount", minion_limit)
     } else {
-        env.cfg.clone()
+        cfg
     }
 }
 
@@ -316,13 +326,93 @@ fn apply_gigantic(minion: &mut super::Actor, cfg: &CalcConfig) {
     ]);
 }
 
+/// "Companions gain added Attack damage equal to N% of your main hand
+/// Weapon's damage": a minion with `GainMainHandDmgFromParent` adds N% (the
+/// character's `MainHandDamageToAllies`) of the physical damage of the
+/// character's main hand weapon to its attacks.
+fn apply_main_hand_share(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env) {
+    let Some((min, max)) = env.main_hand_weapon_damage else {
+        return;
+    };
+    if !cfg.flags.intersects(ModFlags::ATTACK)
+        || !minion.mod_db.flag(cfg, "GainMainHandDmgFromParent")
+    {
+        return;
+    }
+    let share = env
+        .player
+        .mod_db
+        .get_multiplier("MainHandDamageToAllies", &env.cfg);
+    if share <= 0.0 {
+        return;
+    }
+    let origin = || {
+        ModifierSource::new(SourceId::new(SourceKind::Derived, "minion.main_hand_share"))
+            .with_raw_text(format!("{share}% of your main hand Weapon's damage"))
+    };
+    minion.mod_db.add_list([
+        Modifier::number("PhysicalDamageMin", ModType::Base, min * share / 100.0)
+            .with_origin(origin()),
+        Modifier::number("PhysicalDamageMax", ModType::Base, max * share / 100.0)
+            .with_origin(origin()),
+    ]);
+}
+
+/// "Allies in your Presence have …" (`ExtraAura`, an aura of the
+/// character's that affects only its allies): each minion has the aura's
+/// modifiers, scaled by the increased and more effect of buffs and auras on
+/// the minion itself. Not for a hidden monster, nor when the character's
+/// auras cannot affect allies.
+fn apply_extra_auras(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env) {
+    let player = &env.player.mod_db;
+    if player.flag(&env.cfg, "SelfAurasCannotAffectAllies")
+        || minion.mod_db.flag(cfg, "HiddenMonster")
+    {
+        return;
+    }
+    let auras: Vec<Modifier> = player
+        .named("ExtraAura")
+        .filter(|outer| outer.mod_type == ModType::List && outer.matches(&env.cfg))
+        .flat_map(|outer| {
+            outer
+                .value
+                .as_nested_mods()
+                .into_iter()
+                .flatten()
+                .map(|inner| {
+                    let mut inner = inner.clone();
+                    if inner.source.is_none() {
+                        inner.source = outer.source.clone();
+                    }
+                    if inner.origin.is_none() {
+                        inner.origin = outer.origin.clone();
+                    }
+                    inner
+                })
+        })
+        .collect();
+    if auras.is_empty() {
+        return;
+    }
+    let names = [
+        ModName::from("BuffEffectOnSelf"),
+        ModName::from("AuraEffectOnSelf"),
+    ];
+    let scale = (1.0 + minion.mod_db.sum(ModType::Inc, cfg, &names) / 100.0)
+        * minion.mod_db.more(cfg, &names);
+    for aura in auras {
+        minion
+            .mod_db
+            .scale_add_mod(aura, scale, &env.high_precision);
+    }
+}
+
 fn perform_minions(env: &mut Env) {
     if env.minions.is_empty() {
         return;
     }
 
     let minion_limit = env.player.mod_db.get_multiplier("SummonedMinion", &env.cfg);
-    let minion_cfg = minion_cfg(env);
 
     // Cross-Actor attribution: player source (the count cap) → minion output; builds one source
     // node for the trace DAG to connect to.
@@ -334,10 +424,14 @@ fn perform_minions(env: &mut Env) {
     );
 
     let mut snapshots = Vec::with_capacity(env.minions.len());
-    for minion in &mut env.minions {
+    let mut minions = std::mem::take(&mut env.minions);
+    for minion in &mut minions {
+        // Minions use their own skill and hit the same enemy as the player.
+        let minion_cfg = minion_cfg(env, minion);
         apply_gigantic(minion, &minion_cfg);
+        apply_extra_auras(minion, &minion_cfg, env);
+        apply_main_hand_share(minion, &minion_cfg, env);
         let mut input = MinimalInput::from(minion.base);
-        // Minions hit the same enemy as the player.
         input.enemy_evasion = super::setup_env::enemy_evasion(&env.enemy, &minion_cfg);
 
         let output =
@@ -356,6 +450,7 @@ fn perform_minions(env: &mut Env) {
         snapshots.push(MinionOutput {
             minion_id: identity.minion_id,
             summoned_by: identity.summoned_by,
+            skill_id: identity.skill.id,
             level: minion.level as u32,
             dps: minion.output.dps,
             life: minion.output.life,
@@ -364,6 +459,7 @@ fn perform_minions(env: &mut Env) {
             energy_shield: minion.output.energy_shield,
         });
     }
+    env.minions = minions;
     env.player.output.minions = snapshots;
 }
 

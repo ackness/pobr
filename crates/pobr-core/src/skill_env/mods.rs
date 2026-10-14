@@ -560,6 +560,9 @@ pub struct GemInput {
     /// The monster the gem summons when the player chooses it (a Companion's
     /// beast, a Spectre's monster): a monster variety id.
     pub minion: Option<String>,
+    /// Which of its monster's skills the minion uses, counting from 1;
+    /// `None` is the first.
+    pub minion_skill: Option<u32>,
 }
 
 /// Crossbow reload data channel (matching vendor `CalcOffence.lua:1118-1122`'s

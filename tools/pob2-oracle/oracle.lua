@@ -1117,6 +1117,9 @@ local report = {
 	-- The main skill's minion, whose output a build code's <MinionStat>
 	-- values describe; absent when the main skill has none.
 	minionOutput = build.calcsTab.mainEnv.minion and scalarsOf(build.calcsTab.mainEnv.minion.output) or nil,
+	-- The minion's attack pass (its per-type ranges and averages).
+	minionMainHand = build.calcsTab.mainEnv.minion and type(build.calcsTab.mainEnv.minion.output.MainHand) == "table"
+		and scalarsOf(build.calcsTab.mainEnv.minion.output.MainHand) or nil,
 	minionModList = minionModList,
 	-- Per-hand attack pass outputs (CalcOffence.lua:2371 output.MainHand = {}):
 	-- DoubleDamageChance / TripleDamageChance / ScaledDamageEffect / per-pass

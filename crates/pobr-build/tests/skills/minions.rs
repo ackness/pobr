@@ -321,3 +321,102 @@ fn a_tamed_beasts_gem_summons_the_beast_it_chose() {
         .expect("the chosen beast");
     assert_eq!(raised.level, beast.level + 4);
 }
+
+/// The Quadrilla a Huntress's tamed beast's gem summons: `skill` is the
+/// gem's `skillMinionSkill` (none: the default), `amulet` the lines of her
+/// amulet, and with `spear` she holds a Hardwood Spear in her main hand.
+fn quadrilla(
+    data: &BuildData,
+    skill: Option<u32>,
+    amulet: &[&str],
+    spear: bool,
+) -> pobr_core::calc::MinionOutput {
+    let skill = skill
+        .map(|index| format!(r#" skillMinionSkill="{index}""#))
+        .unwrap_or_default();
+    let (weapon, weapon_slot) = if spear {
+        (
+            "<Item id=\"2\">Rarity: NORMAL\nHardwood Spear\n</Item>",
+            "<Slot name=\"Weapon 1\" itemId=\"2\"/>",
+        )
+    } else {
+        ("", "")
+    };
+    let xml = format!(
+        r#"<PathOfBuilding2>
+<Build level="90" className="Huntress" ascendClassName="None"/>
+<Skills defaultGemLevel="20" activeSkillSet="1"><SkillSet id="1"><Skill enabled="true"><Gem skillId="SummonBeastPlayer" level="20" quality="0" enabled="true" skillMinion="{QUADRILLA}"{skill}/></Skill></SkillSet></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: RARE
+Test Beads
+Gold Amulet
+Implicits: 0
+{}
+</Item>{weapon}<ItemSet id="1"><Slot name="Amulet" itemId="1"/>{weapon_slot}</ItemSet></Items>
+</PathOfBuilding2>"#,
+        amulet.join("\n")
+    );
+    let build = pobr_build::parse_build(&xml).expect("parse synthetic build");
+    calculate_with_data(&build, data, &default_opts())
+        .expect("calculate")
+        .minions
+        .into_iter()
+        .find(|minion| minion.minion_id == QUADRILLA)
+        .expect("the chosen beast")
+}
+
+/// A minion attacks with one of its monster's skills: the first by default,
+/// or the one the gem's `skillMinionSkill` picks (1-based, among the
+/// monster's skills the data has).
+#[test]
+fn a_minion_attacks_with_the_skill_its_gem_picks() {
+    let data = load_data();
+    let first = quadrilla(&data, None, &[], false);
+    assert_eq!(first.skill_id, "GAQuadrillaSunder");
+    assert!(first.dps > 0.0, "{first:?}");
+    assert_eq!(
+        quadrilla(&data, Some(1), &[], false).skill_id,
+        first.skill_id
+    );
+    let other = quadrilla(&data, Some(3), &[], false);
+    assert_ne!(other.skill_id, first.skill_id);
+}
+
+/// What reaches a companion's attack besides the lines for minions: the
+/// character's auras that affect only allies, a share of the character's
+/// main hand weapon, and physical damage gained as chaos damage.
+#[test]
+fn a_companion_attacks_with_what_the_character_gives_it() {
+    let data = load_data();
+    let base = quadrilla(&data, None, &[], false).dps;
+
+    // "Allies in your Presence have …" is an aura for the allies alone.
+    let aura = quadrilla(
+        &data,
+        None,
+        &["Allies in your Presence have 20% increased Attack Speed"],
+        false,
+    )
+    .dps;
+    assert!((aura / base - 1.2).abs() < 1e-6, "{base} -> {aura}");
+
+    // "Gain #% of Physical Damage as Chaos Damage" adds damage, as "as
+    // extra Chaos Damage" does.
+    let chaos = quadrilla(
+        &data,
+        None,
+        &["Minions gain 20% of Physical Damage as Chaos Damage"],
+        false,
+    )
+    .dps;
+    assert!(chaos > base * 1.1, "{base} -> {chaos}");
+
+    // "Companions gain added Attack damage equal to #% of your main hand
+    // Weapon's damage" needs a weapon in the main hand.
+    let line =
+        ["Companions gain added Attack damage equal to 30% of your main hand Weapon's damage"];
+    let without_spear = quadrilla(&data, None, &line, false).dps;
+    assert_eq!(without_spear, base);
+    let spear = quadrilla(&data, None, &[], true).dps;
+    let shared = quadrilla(&data, None, &line, true).dps;
+    assert!(shared > spear * 1.01, "{spear} -> {shared}");
+}

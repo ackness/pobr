@@ -187,6 +187,7 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
                 name_spec: None,
                 corrupted: false,
                 minion: None,
+                minion_skill: None,
             }],
             main_active_skill: None,
             reservation_free_skill: None,

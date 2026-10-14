@@ -372,6 +372,8 @@ pub struct MinionOutput {
     pub minion_id: String,
     /// The id of the skill that summoned it; empty when no skill did.
     pub summoned_by: String,
+    /// The id of the skill the minion uses; empty when it is not known.
+    pub skill_id: String,
     /// Minion level (monster level).
     pub level: u32,
     /// Minion DPS (runs the same offence pipeline as the player).

@@ -339,6 +339,7 @@ describe('unresolved imported gem persistence', () => {
     ...[0, -1, 0.5, '1', 0x100000000].map(stat_set_index => ({ stat_set_index })),
     ...[1, true, [], {}].map(name_spec => ({ name_spec })),
     ...[1, 'true', [], {}].map(corrupted => ({ corrupted })),
+    ...[0, -1, 0.5, '2', []].map(minion_skill => ({ minion_skill })),
   ])('rejects malformed gem values in standalone and inactive workspace stages: %j', patch => {
     const invalid = structuredClone(unresolved);
     Object.assign(invalid.state.socketGroups[0].gems[1], patch);
@@ -376,6 +377,14 @@ describe('unresolved imported gem persistence', () => {
   test.each([undefined, null, '', 'Unleash'])('preserves optional source name metadata %j', name_spec => {
     const session = structuredClone(unresolved);
     session.state.socketGroups[0].gems[1].name_spec = name_spec;
+    expect(parseSaved(JSON.stringify(session))).toEqual(session);
+  });
+
+  test('keeps the minion and the minion skill a gem chose through a save', () => {
+    const session = structuredClone(unresolved);
+    Object.assign(session.state.socketGroups[0].gems[0], {
+      minion: 'Metadata/Monsters/Quadrilla/Quadrilla', minion_skill: 3,
+    });
     expect(parseSaved(JSON.stringify(session))).toEqual(session);
   });
 

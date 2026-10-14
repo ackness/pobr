@@ -61,6 +61,8 @@ pub struct MinionIdentity {
     pub minion_id: String,
     /// The id of the skill that summoned it; empty when no skill did.
     pub summoned_by: String,
+    /// The skill the minion uses.
+    pub skill: super::MinionSkill,
 }
 
 impl Actor {

@@ -38,6 +38,8 @@ pub(crate) struct XmlGem {
     pub corrupted: bool,
     /// The monster a minion gem summons (`skillMinion`).
     pub minion: Option<String>,
+    /// Which of the minion's skills it uses (`skillMinionSkill`, 1-based).
+    pub minion_skill: Option<u32>,
 }
 
 /// A socket group ready to write out (gem_id already reverse-looked-up).
@@ -237,6 +239,9 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
             }
             if let Some(minion) = &gem.minion {
                 w!(w, r#" skillMinion="{}""#, esc_attr(minion));
+            }
+            if let Some(index) = gem.minion_skill {
+                w!(w, r#" skillMinionSkill="{index}""#);
             }
             wln!(
                 w,

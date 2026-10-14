@@ -530,6 +530,12 @@ impl CalculationSession {
     /// Not called = empty, and `perform` takes the single-pipeline path
     /// identical to history (the fallback state). `double_hits` = skill
     /// data's `doubleHitsWhenDualWielding` (always false until the data channel lands).
+    /// Notes the physical damage range of the character's main hand weapon
+    /// (see [`Env::main_hand_weapon_damage`](super::Env)).
+    pub fn set_main_hand_weapon_damage(&mut self, min: f64, max: f64) {
+        self.env.main_hand_weapon_damage = Some((min, max));
+    }
+
     pub fn set_hand_sources(
         &mut self,
         sources: Vec<super::hand_pass::HandSource>,
@@ -1124,8 +1130,18 @@ impl CalculationSession {
         cfg: &CalcConfig,
         input: &super::MinimalInput,
     ) -> Option<super::StatFormula> {
+        self.actor_pass_formula(&self.env.player.mod_db, stat, cfg, input)
+    }
+
+    /// [`Self::pass_formula`] for the actor whose modifiers are `db`.
+    fn actor_pass_formula(
+        &self,
+        db: &crate::ModDb,
+        stat: &str,
+        cfg: &CalcConfig,
+        input: &super::MinimalInput,
+    ) -> Option<super::StatFormula> {
         use super::offence;
-        let db = &self.env.player.mod_db;
         let enemy = &self.env.enemy.mod_db;
         Some(match stat {
             "ActionRate" => offence::action_rate_terms(db, cfg, input).formula(),
@@ -1453,12 +1469,28 @@ impl CalculationSession {
     }
 
     /// The modifier names a minion's `stat` is built from: its Life pool
-    /// holds both the monster's base `Life` and the `MaximumLife` lines.
-    fn minion_stat_names(&self, stat: &str) -> Vec<ModName> {
+    /// holds both the monster's base `Life` and the `MaximumLife` lines, and
+    /// its speed is that of its own skill.
+    fn minion_stat_names(&self, cfg: &CalcConfig, stat: &str) -> Vec<ModName> {
         match stat {
             "Life" => vec![ModName::from("MaximumLife"), ModName::from("Life")],
+            "ActionRate" => super::skill_use_time::speed_names_for(cfg),
             _ => self.stat_mod_names(stat),
         }
+    }
+
+    /// The steps of minion `index`'s offence `stat` (`ActionRate`,
+    /// `HitChance`, `TotalHitAvg`, `TotalDPS`, `CritChance`,
+    /// `CritMultiplier`), as its calculation took them. `None` for any other
+    /// stat, or when the steps do not end at the minion's DPS.
+    pub fn minion_stat_formula(&self, index: usize, stat: &str) -> Option<super::StatFormula> {
+        let minion = self.env.minions.get(index)?;
+        let cfg = perform::minion_cfg(&self.env, minion);
+        let mut input = super::MinimalInput::from(minion.base);
+        input.enemy_evasion = super::setup_env::enemy_evasion(&self.env.enemy, &cfg);
+        let formula = self.actor_pass_formula(&minion.mod_db, stat, &cfg, &input)?;
+        let consistent = stat != "TotalDPS" || (formula.value - minion.output.dps).abs() <= 1e-6;
+        consistent.then_some(formula)
     }
 
     /// The modifiers of minion `index` (in the order the calculation created
@@ -1467,10 +1499,10 @@ impl CalculationSession {
         let Some(minion) = self.env.minions.get(index) else {
             return Vec::new();
         };
-        let cfg = perform::minion_cfg(&self.env);
+        let cfg = perform::minion_cfg(&self.env, minion);
         minion
             .mod_db
-            .evaluate_names(&cfg, &self.minion_stat_names(stat))
+            .evaluate_names(&cfg, &self.minion_stat_names(&cfg, stat))
     }
 
     /// `(BASE sum, INC sum, MORE product)` of [`Self::minion_stat_mods`].
@@ -1478,8 +1510,8 @@ impl CalculationSession {
         let Some(minion) = self.env.minions.get(index) else {
             return (0.0, 0.0, 1.0);
         };
-        let cfg = perform::minion_cfg(&self.env);
-        let names = self.minion_stat_names(stat);
+        let cfg = perform::minion_cfg(&self.env, minion);
+        let names = self.minion_stat_names(&cfg, stat);
         let db = &minion.mod_db;
         (
             db.sum(ModType::Base, &cfg, &names),
@@ -1491,7 +1523,7 @@ impl CalculationSession {
     /// The steps from minion `index`'s base Life to its maximum Life.
     pub fn minion_life_formula(&self, index: usize) -> Option<super::StatFormula> {
         let minion = self.env.minions.get(index)?;
-        let cfg = perform::minion_cfg(&self.env);
+        let cfg = perform::minion_cfg(&self.env, minion);
         Some(
             super::offence::pool_terms(&minion.mod_db, &cfg, minion.base.life, "MaximumLife")
                 .formula(),

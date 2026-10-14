@@ -337,6 +337,7 @@ fn apply_variant(
                 name_spec: None,
                 corrupted: gem.corrupted,
                 minion: gem.minion.clone(),
+                minion_skill: gem.minion_skill,
             });
             if let Some(effect) = data.gem_effects.get(&gem.skill_id) {
                 group.gem_ids.push(effect.gem_id.clone());

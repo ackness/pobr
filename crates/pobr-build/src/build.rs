@@ -58,6 +58,9 @@ pub struct GemSkillRef {
     /// `Metadata/Monsters/Quadrilla/Quadrilla`). A Companion's beast and a
     /// Spectre's monster set the Spirit the gem reserves.
     pub minion: Option<String>,
+    /// Which of its monster's skills the minion uses (PoB `<Gem
+    /// skillMinionSkill>`, counting from 1); `None` is the first.
+    pub minion_skill: Option<u32>,
 }
 
 /// A group of skill gems in the same socket (active skill + its supports). A simplified
@@ -126,6 +129,7 @@ impl SocketGroup {
                 stat_set_index: g.stat_set_index,
                 corrupted: g.corrupted,
                 minion: g.minion.clone(),
+                minion_skill: g.minion_skill,
             })
             .collect()
     }
@@ -212,6 +216,7 @@ impl SocketGroup {
             name_spec: None,
             corrupted: false,
             minion: None,
+            minion_skill: None,
         });
         self
     }
@@ -231,6 +236,7 @@ impl SocketGroup {
             name_spec: None,
             corrupted: false,
             minion: None,
+            minion_skill: None,
         });
         self
     }
@@ -507,6 +513,7 @@ impl pobr_core::skill_env::SocketGroupView for Build {
                     stat_set_index: g.stat_set_index,
                     corrupted: g.corrupted,
                     minion: g.minion.clone(),
+                    minion_skill: g.minion_skill,
                 })
                 .collect();
             f(pobr_core::skill_env::EnabledGroup {
