@@ -212,6 +212,29 @@ fn matrix_is_identity_without_conversion_mods() {
     assert_eq!(res.extra_mana, 0.0);
 }
 
+/// A set maximum is what converts: with "Maximum Life is 1" (Chaos
+/// Inoculation) "5% of Maximum Life Converted to Energy Shield" converts 5%
+/// of 1, not 5% of the Life the character would have had.
+#[test]
+fn conversion_from_a_set_maximum_converts_that_maximum() {
+    let converts = |life_is_one: bool| {
+        let mut db = ModDb::new();
+        db.add_list([
+            Modifier::number("MaximumLife", ModType::Base, 1000.0),
+            Modifier::number("LifeConvertToEnergyShield", ModType::Base, 5.0),
+        ]);
+        if life_is_one {
+            db.add_list([Modifier::number("MaximumLife", ModType::Override, 1.0)]);
+        }
+        let cfg = CalcConfig::new();
+        let ks = DefenceKeystones::from_db(&db, &cfg);
+        calc_defence_resources(&db, &cfg, &ActorBaseStats::default(), &ks).energy_shield
+    };
+    assert_eq!(converts(false), 50.0);
+    // At most the whole point 5% of 1 rounds to.
+    assert!(converts(true) <= 1.0, "{}", converts(true));
+}
+
 /// ConvertTo (defence -> defence): the slot base moves, slot by slot, into **the
 /// target's matching slot bucket** and picks up the target's multipliers; the source
 /// shrinks by (100-total)/100 (CalcDefence.lua:1340-1352).

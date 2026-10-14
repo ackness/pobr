@@ -454,7 +454,11 @@ pub(crate) fn defence_resource_terms(
         // `globalBase = Sum(BASE, source.mods) + source.globalBase`).
         let global_flat =
             db.sum_global_only(ModType::Base, cfg, &[ModName::from(global_base_names[s])]);
-        let global_s = base_inputs[s] + global_flat + received[s];
+        // A maximum that is set ("Maximum Life is 1") is the amount converted
+        // from: 5% of a Maximum Life of 1 converts next to nothing.
+        let global_s = db
+            .override_(cfg, global_base_names[s])
+            .unwrap_or(base_inputs[s] + global_flat + received[s]);
         // Total channel input = `<Src>Total` BASE + amounts converted in by earlier sources'
         // total (:1331/:1364, serial and structured the same way).
         let total_s =
