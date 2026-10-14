@@ -148,7 +148,7 @@ Web 的计算、市场目录和天赋树使用初始化时固定的数据版本�
 
 CLI 完整构筑与 marginal 结果包含数据版本、树版本和未支持词条，调用方必须保留诊断，不能把未支持内容视为零效果。`calculate-build` 另有 `missing_items`（构筑用到但导入器读不出的物品，结果是缺了这件装备的角色）和 `reference`（与构筑码内 `<PlayerStat>` 的差异；仅在请求沿用导出条件时给出）。WASM 的 `{ pob_code }` 请求把同类物品放进 `item_errors`。
 
-导入的损耗由 `pobr_build::ImportReport` 承载，与 `Build` 并列返回（`import_build*`）；`Build` 只描述计算输入，不携带诊断。`Build.jewels` 的每颗珠宝带 `JewelSocket`：树上自有插槽、被授予的插槽（Sinister / 含插槽的核心）或装备插槽，“珠宝插槽天赋效果”类词条只作用于第一种。
+导入的损耗由 `pobr_build::ImportReport` 承载，与 `Build` 并列返回（`import_build*`）；`Build` 只描述计算输入，不携带诊断。`Build.jewels` 的每颗珠宝带 `JewelSocket`：树上自有插槽、被授予的插槽（Sinister / 含插槽的核心）或装备插槽，“珠宝插槽天赋效果”类词条只作用于第一种。超越肢体（PoB 的 `Arm 1/2`、`Leg 1/2`，游戏物品类 `IncursionArm` / `IncursionLeg`）是与装备并列的一组栏位 `Build.limbs`（按 `LimbSlot`）：肢体的 stat 都是全局的，词条在装备之后注入并按栏位归因（`item.arm1.implicit`），宝石等级加成和 “Allocates” 等按文本读取的通道也包含它们。
 
 ## 计算引擎架构（pobr-core）
 

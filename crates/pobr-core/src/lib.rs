@@ -72,6 +72,7 @@ pub use ingest::campaign::{CampaignProgress, CampaignReward, CampaignState};
 pub use ingest::character::CharacterBase;
 pub use ingest::item::{
     ItemIngest, ItemModSection, apply_weapon_hand_conditions, ingest_item_with_ctx,
+    ingest_limb_with_ctx,
 };
 pub use ingest::item_text::{ItemTextError, parse_item_text, parse_pob_xml_item};
 pub use ingest::passive::{AllocatedNode, PassiveIngest, ingest_passive_nodes_with_ctx};

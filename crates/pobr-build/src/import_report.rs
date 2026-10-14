@@ -42,7 +42,7 @@ impl ImportReport {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnmodelledSlot {
-    /// The PoB slot name (`Arm 2`, `Leg 1`).
+    /// The PoB slot name, as the build wrote it.
     pub slot: String,
     /// The `<Item id>` in the build XML.
     pub item_id: u32,
@@ -54,8 +54,9 @@ pub struct UnmodelledSlot {
 pub struct SkippedItem {
     /// The `<Item id>` in the build XML.
     pub item_id: u32,
-    /// Where the active item set and passive spec use it: an equipment slot id
-    /// (`bodyarmour`), a PoB flask or jewel slot name, or `socket:<node>`.
+    /// Where the active item set and passive spec use it: an equipment or limb
+    /// slot id (`bodyarmour`, `arm1`), a PoB flask or jewel slot name, or
+    /// `socket:<node>`.
     pub used_in: Vec<String>,
     /// The item's name lines, for display. Empty when the block has none.
     pub name: String,

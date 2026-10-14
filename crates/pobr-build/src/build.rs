@@ -10,10 +10,10 @@
 //! dependency on SANDBOX-only types), carrying the stable id and enabled state of an
 //! "active skill + support gems" group.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use pobr_data::build_config::ViewMode;
-use pobr_data::item::{EquipmentSlot, Item};
+use pobr_data::item::{EquipmentSlot, Item, LimbSlot};
 use pobr_data::passive_tree::PassiveTreeSpec;
 
 use crate::build_config::BuildConfig;
@@ -337,6 +337,9 @@ pub struct Build {
     /// enters the calculation via `ingest_flask_charm` → env_finalize stage 3
     /// `merge_flasks_charms`.
     pub utility_slots: Vec<(String, Item)>,
+    /// The Transcendent limbs, by slot: a set of their own beside the
+    /// equipment. Their lines are global modifiers, attributed to the slot.
+    pub limbs: BTreeMap<LimbSlot, Item>,
     /// Skill gem groups.
     pub socket_groups: Vec<SocketGroup>,
     /// Main skill group index (PoB `<Build mainSocketGroup>`, **1-based**, indexes
@@ -407,6 +410,12 @@ impl Build {
     /// Sets the radius jewel geometric expansion list, returns a new copy.
     pub fn with_radius_jewels(mut self, radius_jewels: Vec<RadiusJewel>) -> Self {
         self.radius_jewels = radius_jewels;
+        self
+    }
+
+    /// Sets the limb in a slot, returns a new copy.
+    pub fn set_limb(mut self, slot: LimbSlot, item: Item) -> Self {
+        self.limbs.insert(slot, item);
         self
     }
 
@@ -491,12 +500,13 @@ impl pobr_core::skill_env::GemPropertyScanView for Build {
                 f(text);
             }
         }
-        for jewel in self.jewel_items() {
-            for text in jewel
+        // Jewels and limbs: their lines are global as an equipped item's.
+        for item in self.jewel_items().chain(self.limbs.values()) {
+            for text in item
                 .implicit_texts
                 .iter()
-                .chain(&jewel.modifier_texts)
-                .chain(&jewel.enchant_texts)
+                .chain(&item.modifier_texts)
+                .chain(&item.enchant_texts)
             {
                 f(text);
             }

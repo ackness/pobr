@@ -107,6 +107,22 @@ pub fn ingest_item_with_ctx(
     item: &Item,
     ctx: ParseCtx<'_>,
 ) -> Result<ItemIngest, ParseError> {
+    ingest_item_in(slot.id(), item, ctx)
+}
+
+/// Parses a Transcendent limb's modifier text, as [`ingest_item_with_ctx`]
+/// does an equipped item's, attributed to the limb's slot
+/// (`item.arm1.implicit`, …).
+pub fn ingest_limb_with_ctx(
+    slot: LimbSlot,
+    item: &Item,
+    ctx: ParseCtx<'_>,
+) -> Result<ItemIngest, ParseError> {
+    ingest_item_in(slot.id(), item, ctx)
+}
+
+/// An item's modifiers attributed to the slot whose stable id is `slot`.
+fn ingest_item_in(slot: &str, item: &Item, ctx: ParseCtx<'_>) -> Result<ItemIngest, ParseError> {
     let mut ingest = ItemIngest::default();
 
     ingest_section(
@@ -136,7 +152,7 @@ pub fn ingest_item_with_ctx(
 
 /// Parses one section's modifier text and appends it to `ingest`.
 fn ingest_section(
-    slot: EquipmentSlot,
+    slot: &str,
     section: ItemModSection,
     texts: &[String],
     ingest: &mut ItemIngest,
@@ -148,7 +164,7 @@ fn ingest_section(
 
     let source_id = SourceId::new(
         section.source_kind(),
-        format!("item.{}.{}", slot.id(), section.id_suffix()),
+        format!("item.{slot}.{}", section.id_suffix()),
     );
 
     for text in texts {
@@ -156,9 +172,9 @@ fn ingest_section(
         match outcome.status {
             ParseStatus::Parsed => {
                 for mut modifier in outcome.mods {
-                    substitute_slot_placeholder(&mut modifier, slot.id());
+                    substitute_slot_placeholder(&mut modifier, slot);
                     let origin = ModifierSource::new(source_id.clone())
-                        .with_slot(slot.id())
+                        .with_slot(slot)
                         .with_raw_text(text.clone());
                     ingest.modifiers.push(modifier.with_origin(origin));
                 }

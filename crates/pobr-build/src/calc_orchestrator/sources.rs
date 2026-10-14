@@ -9,7 +9,7 @@ use pobr_core::calc::{BuffSpec, CalculationSession};
 use pobr_core::mod_parser::ParseError;
 use pobr_core::passive::AllocatedNode;
 use pobr_core::skill_source::GemModSource;
-use pobr_data::item::{EquipmentSlot, Item};
+use pobr_data::item::{EquipmentSlot, Item, LimbSlot};
 use pobr_data::monster::EnemyTier;
 
 pub(super) struct SourceWriter {
@@ -42,6 +42,10 @@ impl SourceWriter {
 
     pub fn add_weapon_item(&mut self, slot: EquipmentSlot, item: &Item) -> Result<(), ParseError> {
         self.session.add_weapon_item(slot, item)
+    }
+
+    pub fn add_limb(&mut self, slot: LimbSlot, item: &Item) -> Result<(), ParseError> {
+        self.session.add_limb(slot, item)
     }
 
     pub fn add_flask_charm(&mut self, slot: &str, item: &Item) {

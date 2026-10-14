@@ -132,3 +132,58 @@ impl EquipmentSlot {
         }
     }
 }
+
+/// A slot for a Transcendent limb: two arms and two legs that the character
+/// wears beside the equipment (the game's item classes `IncursionArm` and
+/// `IncursionLeg`). A limb's modifiers are its own lines, global like a
+/// jewel's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum LimbSlot {
+    Arm1,
+    Arm2,
+    Leg1,
+    Leg2,
+}
+
+impl LimbSlot {
+    /// Every slot, in declaration order.
+    pub const ALL: [Self; 4] = [Self::Arm1, Self::Arm2, Self::Leg1, Self::Leg2];
+
+    /// Stable id used inside the engine, as for [`EquipmentSlot::id`].
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::Arm1 => "arm1",
+            Self::Arm2 => "arm2",
+            Self::Leg1 => "leg1",
+            Self::Leg2 => "leg2",
+        }
+    }
+
+    /// The slot named by a stable id.
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|slot| slot.id() == id)
+    }
+
+    /// The slot's name in a Path of Building build (`<Slot name="Arm 1">`).
+    pub fn pob_name(self) -> &'static str {
+        match self {
+            Self::Arm1 => "Arm 1",
+            Self::Arm2 => "Arm 2",
+            Self::Leg1 => "Leg 1",
+            Self::Leg2 => "Leg 2",
+        }
+    }
+
+    /// The slot a Path of Building build names.
+    pub fn from_pob_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|slot| slot.pob_name() == name)
+    }
+
+    /// The game's item class of the limbs this slot takes.
+    pub fn item_class(self) -> &'static str {
+        match self {
+            Self::Arm1 | Self::Arm2 => "IncursionArm",
+            Self::Leg1 | Self::Leg2 => "IncursionLeg",
+        }
+    }
+}

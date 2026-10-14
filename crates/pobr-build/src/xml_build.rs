@@ -38,7 +38,7 @@ use pobr_core::CampaignProgress;
 use pobr_core::item_text::parse_pob_xml_item;
 use pobr_core::rules::config_interpreter::{ConfigInputValue, RawConfigInputs};
 use pobr_data::build_config::CustomModifierBlock;
-use pobr_data::item::{EquipmentSlot, Item};
+use pobr_data::item::{EquipmentSlot, Item, LimbSlot};
 use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::{AttributeChoice, NodeId, PassiveTreeSpec};
 
@@ -50,12 +50,14 @@ use crate::loadout::{BuildSets, SetRef};
 use crate::xml_serde::parse_build_header;
 
 /// Slotted equipment + jewels (no fixed slot) + the active ItemSet's `useSecondWeaponSet` flag.
-type EquippedAndJewels = (
-    Vec<(EquipmentSlot, Item)>,
-    Vec<(JewelSocket, Item)>,
-    Vec<(String, Item)>,
-    bool,
-);
+/// The items the active `<ItemSet>` and the tree's sockets hold, by where
+/// each sits.
+struct ImportedItems {
+    equipment: Vec<(EquipmentSlot, Item)>,
+    jewels: Vec<(JewelSocket, Item)>,
+    flask_charms: Vec<(String, Item)>,
+    limbs: Vec<(LimbSlot, Item)>,
+}
 /// What the active `<ItemSet>` assigns, by item id.
 #[derive(Default)]
 struct SlotAssignments {
@@ -64,9 +66,11 @@ struct SlotAssignments {
     jewels: Vec<(u32, JewelSocket)>,
     /// Active Flask/Charm slots, by PoB slot name.
     flask_charms: Vec<(String, u32)>,
+    /// Transcendent limb slots.
+    limbs: Vec<(LimbSlot, u32)>,
     /// Slots that hold an item and that the engine has no model for, by PoB
-    /// slot name (`Arm 2`, `Leg 1`). The inactive weapon pair and inactive
-    /// flasks are left out on purpose and are not listed here.
+    /// slot name. The inactive weapon pair and inactive flasks are left out
+    /// on purpose and are not listed here.
     unmodelled: Vec<(String, u32)>,
     use_second_weapon_set: bool,
 }
@@ -158,8 +162,15 @@ fn parse_build_with_allocated_nodes_impl(
         .unwrap_or(imported_nodes);
     let allocated_set: std::collections::HashSet<u32> =
         allocated_nodes.iter().map(|n| n.0).collect();
-    let ((items, jewels, flask_charms, _), mut report) =
-        parse_items_and_slots(xml, &allocated_set)?;
+    let (
+        ImportedItems {
+            equipment: items,
+            jewels,
+            flask_charms,
+            limbs,
+        },
+        mut report,
+    ) = parse_items_and_slots(xml, &allocated_set)?;
     report.reference_stats = parse_reference_stats(xml)?;
     let attribute_overrides = parse_attribute_overrides(xml)?;
     let radius_jewels = parse_radius_jewels(xml, &allocated_set)?;
@@ -203,6 +214,9 @@ fn parse_build_with_allocated_nodes_impl(
     }
     if !flask_charms.is_empty() {
         build = build.with_utility_slots(flask_charms);
+    }
+    for (slot, limb) in limbs {
+        build = build.set_limb(slot, limb);
     }
     for group in socket_groups {
         build = build.add_socket_group(group);
@@ -882,14 +896,15 @@ fn parse_attribute_overrides(xml: &str) -> Result<HashMap<NodeId, AttributeChoic
 fn parse_items_and_slots(
     xml: &str,
     allocated: &std::collections::HashSet<u32>,
-) -> Result<(EquippedAndJewels, ImportReport), XmlError> {
+) -> Result<(ImportedItems, ImportReport), XmlError> {
     let ItemBlocks { items, rejected } = parse_item_blocks(xml)?;
     let SlotAssignments {
         equipment: slot_assignments,
         jewels: jewel_ids,
         flask_charms: flask_charm_ids,
+        limbs: limb_ids,
         unmodelled,
-        use_second_weapon_set,
+        use_second_weapon_set: _,
     } = parse_active_item_set(xml)?;
 
     // Where each item id is used, to say what a rejected block leaves empty.
@@ -902,6 +917,9 @@ fn parse_items_and_slots(
     }
     for (slot, item_id) in &flask_charm_ids {
         used_in.entry(*item_id).or_default().push(slot.clone());
+    }
+    for (slot, item_id) in &limb_ids {
+        used_in.entry(*item_id).or_default().push(slot.id().into());
     }
 
     let mut out: Vec<(EquipmentSlot, Item)> = Vec::new();
@@ -936,6 +954,10 @@ fn parse_items_and_slots(
         .iter()
         .filter_map(|(slot, id)| Some((slot.clone(), items.get(id).cloned()?)))
         .collect();
+    let limbs: Vec<(LimbSlot, Item)> = limb_ids
+        .iter()
+        .filter_map(|(slot, id)| Some((*slot, items.get(id).cloned()?)))
+        .collect();
     let skipped = rejected
         .into_iter()
         .map(|(item_id, name, reason)| SkippedItem {
@@ -954,7 +976,12 @@ fn parse_items_and_slots(
         })
         .collect();
     Ok((
-        (out, jewels, flask_charms, use_second_weapon_set),
+        ImportedItems {
+            equipment: out,
+            jewels,
+            flask_charms,
+            limbs,
+        },
         ImportReport {
             skipped_items: skipped,
             unmodelled_slots,
@@ -1062,6 +1089,8 @@ pub struct RawItemsView {
     pub socket_jewels: Vec<(u32, String)>,
     /// Active Flask/Charm: `(slot name, raw text block)`.
     pub flasks: Vec<(String, String)>,
+    /// Transcendent limbs: `(slot's stable id, raw text block)`, in slot order.
+    pub limbs: Vec<(String, String)>,
     /// The inactive weapon pair, kept separately from shared equipment.
     pub alternate_weapons: Vec<(String, String)>,
     pub active_weapon_set: u8,
@@ -1135,6 +1164,7 @@ pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
         equipment: slot_assignments,
         jewels: jewel_ids,
         flask_charms: flask_charm_ids,
+        limbs: mut limb_ids,
         use_second_weapon_set: second,
         ..
     } = parse_active_item_set(xml)?;
@@ -1178,11 +1208,17 @@ pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
         .into_iter()
         .filter_map(|(slot, id)| Some((slot, texts.get(&id)?.clone())))
         .collect();
+    limb_ids.sort();
+    let limbs = limb_ids
+        .into_iter()
+        .filter_map(|(slot, id)| Some((slot.id().to_string(), texts.get(&id)?.clone())))
+        .collect();
     Ok(RawItemsView {
         equipped,
         jewels,
         socket_jewels,
         flasks,
+        limbs,
         alternate_weapons,
         active_weapon_set: if second { 2 } else { 1 },
         weapon_set_nodes,
@@ -1480,6 +1516,8 @@ fn parse_item_set_for_weapons(
             if *active {
                 out.flask_charms.push((slot_name.clone(), *item_id));
             }
+        } else if let Some(slot) = LimbSlot::from_pob_name(slot_name) {
+            out.limbs.push((slot, *item_id));
         } else if !slot_name.starts_with("Weapon ") {
             // Not the inactive weapon pair: a slot this engine does not know.
             out.unmodelled.push((slot_name.clone(), *item_id));
@@ -2196,6 +2234,78 @@ Implicits: 0
             ],
             "only active, non-empty slots are included; inactive Flask 2 and empty Charm 2 are ignored"
         );
+    }
+
+    /// The arms and legs are a set of their own: imported by slot, not
+    /// listed as slots the engine has no model for.
+    #[test]
+    fn limbs_are_imported_into_their_own_slots() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<PathOfBuilding2>
+    <Build level="90" className="Ranger" ascendClassName="Pathfinder"/>
+    <Items activeItemSet="1">
+        <Item id="1">
+Rarity: NORMAL
+Combat Arm
+Implicits: 1
+6% increased Attack Speed
+        </Item>
+        <Item id="2">
+Rarity: NORMAL
+Evasive Leg
+Implicits: 1
+25% increased Evasion Rating
+        </Item>
+        <Item id="3">
+Rarity: NORMAL
+Iron Ring
+        </Item>
+        <ItemSet id="1">
+            <Slot name="Arm 1" itemId="1"/>
+            <Slot name="Leg 2" itemId="2"/>
+            <Slot name="Arm 2" itemId="0"/>
+            <Slot name="Graft 1" itemId="3"/>
+        </ItemSet>
+    </Items>
+</PathOfBuilding2>"#;
+        let ImportedBuild { build, report } = import_build(xml).expect("parse");
+        let limbs: Vec<(LimbSlot, String, Vec<String>)> = build
+            .limbs
+            .iter()
+            .map(|(slot, item)| (*slot, item.base.to_string(), item.implicit_texts.clone()))
+            .collect();
+        assert_eq!(
+            limbs,
+            vec![
+                (
+                    LimbSlot::Arm1,
+                    "Combat Arm".to_string(),
+                    vec!["6% increased Attack Speed".to_string()]
+                ),
+                (
+                    LimbSlot::Leg2,
+                    "Evasive Leg".to_string(),
+                    vec!["25% increased Evasion Rating".to_string()]
+                ),
+            ],
+            "the empty Arm 2 holds nothing"
+        );
+        assert!(build.equipped_items().is_empty());
+        let unmodelled: Vec<&str> = report
+            .unmodelled_slots
+            .iter()
+            .map(|slot| slot.slot.as_str())
+            .collect();
+        assert_eq!(
+            unmodelled,
+            ["Graft 1"],
+            "only a slot with no model is listed"
+        );
+
+        let view = parse_raw_items_view(xml).expect("items view");
+        let slots: Vec<&str> = view.limbs.iter().map(|(slot, _)| slot.as_str()).collect();
+        assert_eq!(slots, ["arm1", "leg2"]);
+        assert!(view.limbs[0].1.contains("Combat Arm"));
     }
 
     #[test]

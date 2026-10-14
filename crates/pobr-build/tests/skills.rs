@@ -35,6 +35,8 @@ mod equipment_affix_effects;
 mod gem_quality;
 #[path = "skills/granted_skill_reservation.rs"]
 mod granted_skill_reservation;
+#[path = "skills/limbs.rs"]
+mod limbs;
 #[path = "skills/minions.rs"]
 mod minions;
 #[path = "skills/quarterstaff_conditions.rs"]

@@ -225,14 +225,19 @@ pub(crate) fn granted_passive_defs<'d>(
 ) -> Vec<&'d pobr_data::catalog::PassiveNodeDef> {
     use pobr_core::ModValue;
 
-    // Collects granted names (all three equipment segments + jewel mods; a line that
-    // fails to parse is silently skipped — matching skip-and-collect semantics).
-    let item_texts = build.items.values().flat_map(|item| {
-        item.implicit_texts
-            .iter()
-            .chain(&item.modifier_texts)
-            .chain(&item.enchant_texts)
-    });
+    // Collects granted names (all three segments of equipment and limbs + jewel
+    // mods; a line that fails to parse is silently skipped — matching
+    // skip-and-collect semantics).
+    let item_texts = build
+        .items
+        .values()
+        .chain(build.limbs.values())
+        .flat_map(|item| {
+            item.implicit_texts
+                .iter()
+                .chain(&item.modifier_texts)
+                .chain(&item.enchant_texts)
+        });
     let jewel_texts = build.jewel_items().flat_map(|jewel| {
         jewel
             .implicit_texts
@@ -770,10 +775,12 @@ pub(crate) fn resolve_gems(build: &Build, data: &BuildData) -> Vec<GemModSource>
     gems
 }
 
-/// Collects the mod text of every equipped item (in deterministic slot order). Used by the text-only path.
+/// Collects the mod text of every equipped item and limb (in deterministic slot
+/// order). Used by the text-only path.
 pub(crate) fn collect_item_texts(build: &Build) -> Vec<String> {
     let mut texts = Vec::new();
-    for (_slot, item) in build.equipped_items() {
+    let equipped = build.equipped_items().into_iter().map(|(_, item)| item);
+    for item in equipped.chain(build.limbs.values()) {
         texts.extend(item.enchant_texts.iter().cloned());
         texts.extend(item.implicit_texts.iter().cloned());
         texts.extend(item.modifier_texts.iter().cloned());

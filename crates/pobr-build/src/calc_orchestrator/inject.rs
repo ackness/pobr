@@ -804,6 +804,24 @@ pub(super) fn inject_items(
     Ok(())
 }
 
+/// Stage 2a: the Transcendent limbs. Every stat a limb carries is global
+/// (`attack_speed_+%`, `evasion_rating_+%`, `block_chance_+%`, …, never a
+/// `local_` one), so its lines are taken as they read, attributed to the
+/// limb's slot. Lines no rule parses are listed as unsupported.
+pub(super) fn inject_limbs(
+    session: &mut SourceWriter,
+    build: &Build,
+    data: &BuildData,
+) -> Result<(), BuildError> {
+    for (slot, limb) in &build.limbs {
+        let filtered = filter_item_parseable(limb, engine_ctx(data), session, &[]);
+        session
+            .add_limb(*slot, &filtered)
+            .map_err(|e| BuildError::Parse(e.to_string()))?;
+    }
+    Ok(())
+}
+
 /// Mark's self offensive buff and non-main-group exposure support sources.
 pub(super) fn inject_self_buff_exposure(
     context: &mut CalculationContext,

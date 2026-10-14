@@ -6,7 +6,7 @@ use std::sync::Arc;
 use pobr_data::catalog::buffs::BuffDef;
 use pobr_data::prelude::*;
 
-use crate::item::ingest_item_with_ctx;
+use crate::item::{ingest_item_with_ctx, ingest_limb_with_ctx};
 use crate::mod_parser::{ParseCtx, ParseError, ParseStatus};
 use crate::passive::{AllocatedNode, ingest_passive_nodes_with_ctx};
 use crate::rules::HandlerRegistry;
@@ -341,6 +341,15 @@ impl CalculationSession {
     pub fn add_weapon_item(&mut self, slot: EquipmentSlot, item: &Item) -> Result<(), ParseError> {
         let mut ingest = ingest_item_with_ctx(slot, item, self.parse_ctx())?;
         crate::item::apply_weapon_hand_conditions(&mut ingest.modifiers, slot);
+        self.env.player.mod_db.add_list(ingest.modifiers);
+        self.unsupported_modifier_texts.extend(ingest.unsupported);
+        Ok(())
+    }
+
+    /// Wires in a Transcendent limb: its modifiers are global, attributed to
+    /// its slot, as an equipped item's are.
+    pub fn add_limb(&mut self, slot: LimbSlot, item: &Item) -> Result<(), ParseError> {
+        let ingest = ingest_limb_with_ctx(slot, item, self.parse_ctx())?;
         self.env.player.mod_db.add_list(ingest.modifiers);
         self.unsupported_modifier_texts.extend(ingest.unsupported);
         Ok(())

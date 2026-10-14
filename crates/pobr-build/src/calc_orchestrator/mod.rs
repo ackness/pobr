@@ -549,6 +549,9 @@ fn calculate_prepared_with_context(
         main_weapon_active,
     )?;
 
+    // 2a. Transcendent limbs: their lines are global modifiers.
+    inject_limbs(&mut session, build, data)?;
+
     // 2b. Jewels (passive tree/abyss sockets): mods injected globally.
     stage_inject_jewels(&mut session, &ctx)?;
 

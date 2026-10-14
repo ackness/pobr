@@ -30,7 +30,8 @@ pub struct BuildSnapshot {
     pub class_name: String,
     pub ascendancy_name: String,
     pub allocated_nodes: Vec<u32>,
-    /// (slot id, normalized mod text) pairs of equipped items, sorted by slot id.
+    /// (slot id, normalized mod text) pairs of equipped items, sorted by slot
+    /// id, then of the limbs in slot order.
     pub items: Vec<(String, Vec<String>)>,
     /// gem id sequences of enabled skill socket groups, order preserved within each group.
     pub socket_groups: Vec<Vec<String>>,
@@ -122,6 +123,7 @@ pub(crate) fn same_build(a: &Build, b: &Build) -> bool {
         granted_socket_jewels,
         radius_jewels,
         utility_slots,
+        limbs,
         socket_groups,
         main_socket_group,
         config,
@@ -154,6 +156,11 @@ pub(crate) fn same_build(a: &Build, b: &Build) -> bool {
             .iter()
             .zip(&b.utility_slots)
             .all(|(a, b)| a.0 == b.0 && same_item(&a.1, &b.1))
+        && limbs.len() == b.limbs.len()
+        && limbs
+            .iter()
+            .zip(&b.limbs)
+            .all(|(a, b)| a.0 == b.0 && same_item(a.1, b.1))
         && socket_groups == &b.socket_groups
         && main_socket_group == &b.main_socket_group
         && same_config(config, &b.config)
@@ -269,15 +276,19 @@ fn same_raw_inputs(
 }
 
 fn collect_items(build: &Build) -> Vec<(String, Vec<String>)> {
-    build
+    let equipped = build
         .equipped_items()
         .into_iter()
+        .map(|(slot, item)| (slot_tag(slot), item));
+    let limbs = build.limbs.iter().map(|(slot, limb)| (slot.id(), limb));
+    equipped
+        .chain(limbs)
         .map(|(slot, item)| {
             let mut texts: Vec<String> = Vec::new();
             texts.extend(item.enchant_texts.iter().cloned());
             texts.extend(item.implicit_texts.iter().cloned());
             texts.extend(item.modifier_texts.iter().cloned());
-            (slot_tag(slot).to_string(), texts)
+            (slot.to_string(), texts)
         })
         .collect()
 }
@@ -364,7 +375,7 @@ impl Fnv1a {
 mod tests {
     use super::*;
     use crate::build::{Build, CharacterIdentity, SocketGroup};
-    use pobr_data::item::{Item, ItemBaseId, ItemRarity, RolledDefence};
+    use pobr_data::item::{Item, ItemBaseId, ItemRarity, LimbSlot, RolledDefence};
     use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
 
     fn build_with_level(level: u32) -> Build {
@@ -467,6 +478,39 @@ mod tests {
             BuildSnapshot::from_build(&base).content_hash(),
             BuildSnapshot::from_build(&with_item).content_hash()
         );
+    }
+
+    #[test]
+    fn a_limb_is_part_of_the_identity_and_the_hash() {
+        let base = build_with_level(90);
+        let limb = |text: &str| Item {
+            base: ItemBaseId::from("Combat Arm"),
+            rarity: ItemRarity::Normal,
+            quality: 0,
+            corrupted: false,
+            implicit_texts: vec![text.into()],
+            modifier_texts: vec![],
+            enchant_texts: vec![],
+            rolled_defence: RolledDefence::default(),
+            socketed: Vec::new(),
+            parsed_stats: vec![],
+        };
+        let six = base
+            .clone()
+            .set_limb(LimbSlot::Arm1, limb("6% increased Attack Speed"));
+        let ten = base
+            .clone()
+            .set_limb(LimbSlot::Arm1, limb("10% increased Attack Speed"));
+        let other_arm = base
+            .clone()
+            .set_limb(LimbSlot::Arm2, limb("6% increased Attack Speed"));
+        assert!(!same_build(&base, &six));
+        assert!(!same_build(&six, &ten));
+        assert!(!same_build(&six, &other_arm));
+        let hash = |build: &Build| BuildSnapshot::from_build(build).content_hash();
+        assert_ne!(hash(&base), hash(&six));
+        assert_ne!(hash(&six), hash(&ten));
+        assert_ne!(hash(&six), hash(&other_arm));
     }
 
     #[test]
