@@ -501,6 +501,7 @@ fn is_metadata_line(line: &str) -> bool {
         "Spirit:",
         "Ward:",
         "Block:",
+        "Charm Slots:",
         "Quality:",
         "LevelReq:",
         "Unique ID:",

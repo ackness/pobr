@@ -5,16 +5,16 @@
     "note": "M6-T7 覆盖率报表；coverage_ratio 进 devs/ci/parse-coverage-baseline.json 棘轮"
   },
   "summary": {
-    "total": 4280,
-    "parsed": 3471,
+    "total": 4277,
+    "parsed": 3468,
     "unsupported": 809,
     "err": 0,
-    "coverage_ratio": 0.810981
+    "coverage_ratio": 0.810849
   },
   "by_source": [
     {
       "source": "C1_build",
-      "parsed": 1196,
+      "parsed": 1193,
       "unsupported": 510,
       "err": 0
     },

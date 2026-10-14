@@ -30,7 +30,7 @@
       "0.5.5.4.2/generated/special_vendor.json": "51d520b5e9f26b57c4b1bfe5aa92bd4ee483f049cfba7fa152c95167628ba01e",
       "0.5.5.4.2/overlay/mod_parser_rules.json": "4ca754192ca4422982d7828b410a68723bfcdf1cc3cbea7f30c522d94fea6860",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
-      "overlay-common/special_mods.json": "a1be7540c7ef290b7ad519c10cc2908dbe0a19afe958ba01cbbd911b7de010ed"
+      "overlay-common/special_mods.json": "e1ef44ca6b76b86f2f9a8232ec5513b43a7fbcaf8e424febb5a658269348ac6a"
     },
     "effective_rules": [
       {
@@ -123,14 +123,6 @@
       },
       {
         "id": "chance_for_damage_with_hits_to_be_lucky",
-        "files": [
-          "overlay-common/special_mods.json"
-        ],
-        "replaced_files": [],
-        "non_effective_fields": []
-      },
-      {
-        "id": "charm_slots_colon",
         "files": [
           "overlay-common/special_mods.json"
         ],

@@ -3,7 +3,7 @@
     "schema": "parsed_mods/v2",
     "generator": "precompile-mods --data",
     "note": "M6-T7 离线预解析；运行时（D-T8）作 text→Vec<Modifier> 缓存兜底，cache miss 回退在线 parse",
-    "corpus_lines": 4280,
+    "corpus_lines": 4277,
     "engine": "scan_engine+special"
   },
   "entries": [
@@ -35033,39 +35033,6 @@
     {
       "text": "Changeling Talisman",
       "status": "unsupported"
-    },
-    {
-      "text": "Charm Slots: 1",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "CharmLimit",
-          "type": "Base",
-          "value": 1.0
-        }
-      ]
-    },
-    {
-      "text": "Charm Slots: 2",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "CharmLimit",
-          "type": "Base",
-          "value": 2.0
-        }
-      ]
-    },
-    {
-      "text": "Charm Slots: 3",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "CharmLimit",
-          "type": "Base",
-          "value": 3.0
-        }
-      ]
     },
     {
       "text": "Charmed Shoes",

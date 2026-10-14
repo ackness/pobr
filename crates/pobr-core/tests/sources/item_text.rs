@@ -411,6 +411,31 @@ Adds 47 to 86 Physical Damage
 +26 to Strength
 ";
 
+/// A belt's "Charm Slots: N" is the item's property, its total Charm slots;
+/// the implicit "Has N Charm Slots" is what grants them.
+#[test]
+fn xml_belt_charm_slots_line_is_a_property() {
+    let item = parse_pob_xml_item(
+        "Rarity: UNIQUE
+Headhunter
+Heavy Belt
+Charm Slots: 2
+Item Level: 65
+LevelReq: 50
+Implicits: 2
+20% increased Stun Threshold
+Has 2 Charm Slots
++42 to maximum Life
+",
+    )
+    .expect("parse");
+    assert_eq!(
+        item.implicit_texts,
+        ["20% increased Stun Threshold", "Has 2 Charm Slots"]
+    );
+    assert_eq!(item.modifier_texts, ["+42 to maximum Life"]);
+}
+
 #[test]
 fn xml_item_parses_rarity_base_and_quality_without_separators() {
     let item = parse_pob_xml_item(XML_RARE_CROSSBOW).expect("xml crossbow parses");

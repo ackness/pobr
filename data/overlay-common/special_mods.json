@@ -238,21 +238,6 @@
       "source_note": "ModParser.lua:4255（探针求值自动转写；样本：20% chance for Damage with Hits to be Lucky）"
     },
     {
-      "id": "charm_slots_colon",
-      "pattern": "charm slots: (\\d+)",
-      "vendor_pattern": "h?a?s? ?+?(%d+) charm slots?",
-      "mods": [
-        {
-          "name": "CharmLimit",
-          "type": "BASE",
-          "value": "$1"
-        }
-      ],
-      "verified": false,
-      "batch": "S1",
-      "source_note": "ModParser.lua:5453（CharmLimit；冒号格式 'Charm Slots: N'，与 has_charm_slots 互补，命中 18 build 首位缺口）"
-    },
-    {
       "id": "ci_maximum_life_is_1",
       "pattern": "maximum life is 1",
       "mods": [
