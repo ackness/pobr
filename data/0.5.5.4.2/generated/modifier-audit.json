@@ -27,8 +27,8 @@
     "scope": "Special-rule schemas, handlers, captures, operations and scopes; generic parser schema/compile. StatId is open; recognition is not calculation support. Overlap audit covers sampled source text only.",
     "input_sha256": {
       "0.5.5.4.2/generated/special_derived.json": "d18157d99c7620f096aa485d1f93d33166a578d45a9e4a064817d629e023a105",
-      "0.5.5.4.2/generated/special_vendor.json": "f3926c0c036113b4ab50d56fd81acfa6e7ae0024d9ab6b0f79da5b34d8fb93c8",
-      "0.5.5.4.2/overlay/mod_parser_rules.json": "4ca754192ca4422982d7828b410a68723bfcdf1cc3cbea7f30c522d94fea6860",
+      "0.5.5.4.2/generated/special_vendor.json": "476b36b1d1ee0ac1450dbec397f3c4fe151e8233beada967f790501d8f1136b7",
+      "0.5.5.4.2/overlay/mod_parser_rules.json": "c719c7c3eeed65048067f264fd0a62f81cc20d89b917f05e2aa53753166242af",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
       "overlay-common/special_mods.json": "75f2f511a6d4937867e63c232d292191ffc862bd152b001f9262276fc5eec7f3"
     },
@@ -5142,6 +5142,16 @@
         "non_effective_fields": []
       },
       {
+        "id": "vnd_d_chance_to_attack_with_level_d_on_melee_fcaf137d",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": [
+          "mods[0].value: structured LIST has no interpreter consumer"
+        ]
+      },
+      {
         "id": "vnd_d_chance_to_block_attack_damage_for_d_se_8be80aaa",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
@@ -5164,6 +5174,16 @@
         ],
         "replaced_files": [],
         "non_effective_fields": []
+      },
+      {
+        "id": "vnd_d_chance_to_ct_ar_si_tg_g_e_r_level_d_on_72c8278a",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": [
+          "mods[0].value: structured LIST has no interpreter consumer"
+        ]
       },
       {
         "id": "vnd_d_chance_to_deal_double_damage_with_atta_dc353157",
@@ -5340,6 +5360,66 @@
         ],
         "replaced_files": [],
         "non_effective_fields": []
+      },
+      {
+        "id": "vnd_d_chance_to_trigger_level_d_on_melee_hit_1dfbe66c",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": [
+          "mods[0].value: structured LIST has no interpreter consumer"
+        ]
+      },
+      {
+        "id": "vnd_d_chance_to_trigger_level_d_ow_nh_e_n_y_1fcb0319",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": [
+          "mods[0].value: structured LIST has no interpreter consumer"
+        ]
+      },
+      {
+        "id": "vnd_d_chance_to_trigger_level_d_when_animate_18300fd8",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": [
+          "mods[0].value: structured LIST has no interpreter consumer"
+        ]
+      },
+      {
+        "id": "vnd_d_chance_to_trigger_level_d_when_you_gai_d32591f9",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": [
+          "mods[0].value: structured LIST has no interpreter consumer"
+        ]
+      },
+      {
+        "id": "vnd_d_chance_to_trigger_level_d_when_you_or_13b259d7",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": [
+          "mods[0].value: structured LIST has no interpreter consumer"
+        ]
+      },
+      {
+        "id": "vnd_d_chance_to_trigger_level_d_when_you_use_c560ea0b",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": [
+          "mods[0].value: structured LIST has no interpreter consumer"
+        ]
       },
       {
         "id": "vnd_d_energy_shield_gained_on_kill_per_level_b12f1660",

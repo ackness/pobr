@@ -9279,6 +9279,43 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_d_chance_to_attack_with_level_d_on_melee_fcaf137d",
+      "pattern": "(\\d+)% chance to attack with level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) on melee hit",
+      "vendor_pattern": "^(%d+)%% chance to attack with level (%d+) (.+) on melee hit$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$2",
+            "skillId": {
+              "enum": 3
+            },
+            "triggerChance": "$1",
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "3": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
       "id": "vnd_d_chance_to_block_attack_damage_for_d_se_8be80aaa",
       "pattern": "\\+(\\d+)% chance to block attack damage for \\d seconds? every \\d seconds",
       "vendor_pattern": "^%+(%d+)%% chance to block attack damage for %d seconds? every %d seconds$",
@@ -9341,6 +9378,43 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_d_chance_to_ct_ar_si_tg_g_e_r_level_d_on_72c8278a",
+      "pattern": "(\\d+)% chance to [ct][ar][si][tg]g?e?r? level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) on [a-z]+",
+      "vendor_pattern": "^(%d+)%% chance to [ct][ar][si][tg]g?e?r? level (%d+) (.+) on %a+$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$2",
+            "skillId": {
+              "enum": 3
+            },
+            "triggerChance": "$1",
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "3": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
     },
     {
       "id": "vnd_d_chance_to_deal_double_damage_with_atta_dc353157",
@@ -9800,6 +9874,228 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_chance_to_trigger_level_d_on_melee_hit_1dfbe66c",
+      "pattern": "(\\d+)% chance to trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) on melee hit",
+      "vendor_pattern": "^(%d+)%% chance to trigger level (%d+) (.+) on melee hit$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$2",
+            "skillId": {
+              "enum": 3
+            },
+            "triggerChance": "$1",
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "3": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_d_chance_to_trigger_level_d_ow_nh_e_n_y_1fcb0319",
+      "pattern": "(\\d+)% chance to trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) [ow][nh]e?n? ?y?o?u? kill ?a?n? ?e?n?e?m?y?",
+      "vendor_pattern": "^(%d+)%% chance to trigger level (%d+) (.+) [ow][nh]e?n? ?y?o?u? kill ?a?n? ?e?n?e?m?y?$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$2",
+            "skillId": {
+              "enum": 3
+            },
+            "triggerChance": "$1",
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "3": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_d_chance_to_trigger_level_d_when_animate_18300fd8",
+      "pattern": "(\\d+)% chance to trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when animated weapon kills an enemy",
+      "vendor_pattern": "^(%d+)%% chance to trigger level (%d+) (.+) when animated weapon kills an enemy$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$2",
+            "skillId": {
+              "enum": 3
+            },
+            "triggerChance": "$1",
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "3": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_d_chance_to_trigger_level_d_when_you_gai_d32591f9",
+      "pattern": "(\\d+)% chance to trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you gain avian's might or avian's flight",
+      "vendor_pattern": "^(%d+)%% chance to trigger level (%d+) (.+) when you gain avian's might or avian's flight$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$2",
+            "skillId": {
+              "enum": 3
+            },
+            "triggerChance": "$1",
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "3": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_d_chance_to_trigger_level_d_when_you_or_13b259d7",
+      "pattern": "(\\d+)% chance to trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you or a nearby ally kill an enemy, or hit a rare or unique enemy",
+      "vendor_pattern": "^(%d+)%% chance to trigger level (%d+) (.+) when you or a nearby ally kill an enemy, or hit a rare or unique enemy$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$2",
+            "skillId": {
+              "enum": 3
+            },
+            "triggerChance": "$1",
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "3": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_d_chance_to_trigger_level_d_when_you_use_c560ea0b",
+      "pattern": "(\\d+)% chance to trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you use a socketed skill",
+      "vendor_pattern": "^(%d+)%% chance to trigger level (%d+) (.+) when you use a socketed skill$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$2",
+            "skillId": {
+              "enum": 3
+            },
+            "triggerChance": "$1",
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "3": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
     },
     {
       "id": "vnd_d_energy_shield_gained_on_kill_per_level_b12f1660",
@@ -17764,14 +18060,7 @@
         {
           "name": "PhysicalDamageGainAsFire",
           "type": "BASE",
-          "value": {
-            "ref": "$1",
-            "ops": [
-              {
-                "base": 6.0
-              }
-            ]
-          },
+          "value": "$2",
           "tags": [
             {
               "type": "Condition",

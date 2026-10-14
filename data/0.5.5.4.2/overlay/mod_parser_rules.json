@@ -10953,7 +10953,7 @@
         {
           "type": "Multiplier",
           "div": "$1",
-          "limit": "$1:base(6)",
+          "limit": "$2",
           "limitTotal": true,
           "var": "ManaSpentRecently"
         }
@@ -13866,7 +13866,7 @@
         {
           "type": "PerStat",
           "div": "$1",
-          "limit": "$1:base(6)",
+          "limit": "$2",
           "limitTotal": true,
           "stat": "Accuracy"
         }
@@ -13941,7 +13941,7 @@
         {
           "type": "PerStat",
           "div": "$1",
-          "limit": "$1:base(6)",
+          "limit": "$2",
           "limitTotal": true,
           "stat": "Evasion"
         }
@@ -14039,7 +14039,7 @@
         {
           "type": "Multiplier",
           "div": "$1",
-          "limit": "$1:base(6)",
+          "limit": "$2",
           "limitTotal": true,
           "var": "ManaSpentRecently"
         }
@@ -14145,7 +14145,7 @@
         {
           "type": "PerStat",
           "div": "$1",
-          "limit": "$1:base(6)",
+          "limit": "$2",
           "limitTotal": true,
           "stat": "Mana"
         }
@@ -14159,7 +14159,7 @@
         {
           "type": "PerStat",
           "div": "$1",
-          "limit": "$1:base(6)",
+          "limit": "$2",
           "limitTotal": true,
           "stat": "Mana"
         }
@@ -14299,7 +14299,7 @@
         {
           "type": "PerStat",
           "div": "$1",
-          "limit": "$1:base(6)",
+          "limit": "$2",
           "limitTotal": true,
           "stat": "Spirit"
         }
@@ -14390,7 +14390,7 @@
         {
           "type": "PerStat",
           "div": "$1",
-          "limit": "$1:base(6)",
+          "limit": "$2",
           "limitTotal": true,
           "stat": "ManaUnreserved"
         }
@@ -14514,7 +14514,7 @@
         {
           "type": "PerStat",
           "div": "$1",
-          "globalLimit": "$1:base(6)",
+          "globalLimit": "$2",
           "globalLimitKey": "ReplicaNebulisCold",
           "stat": "MissingColdResist"
         }
@@ -14528,7 +14528,7 @@
         {
           "type": "PerStat",
           "div": "$1",
-          "globalLimit": "$1:base(6)",
+          "globalLimit": "$2",
           "globalLimitKey": "ReplicaNebulisFire",
           "stat": "MissingFireResist"
         }

@@ -6543,7 +6543,7 @@
           "type": "Inc",
           "value": 1.0,
           "tags": [
-            "Multiplier { var: \"Accuracy\", div: 400.0, limit: Some(400.0), actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: true }"
+            "Multiplier { var: \"Accuracy\", div: 400.0, limit: Some(20.0), actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: true }"
           ]
         }
       ]
@@ -28585,14 +28585,7 @@
     },
     {
       "text": "60% increased effect of Socketed Augment Items",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "SocketedAugmentItemEffect",
-          "type": "Inc",
-          "value": 60.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "60% of your current [EnergyShield|Energy Shield] is added to your [Armour] for\ndetermining your Physical Damage Reduction from [Armour]",
@@ -30749,14 +30742,7 @@
     },
     {
       "text": "88% increased effect of Socketed Augment Items",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "SocketedAugmentItemEffect",
-          "type": "Inc",
-          "value": 88.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "89 to 100 Physical Thorns damage",
@@ -34827,7 +34813,7 @@
     },
     {
       "text": "Can roll Marksman modifiers",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Can tattoo [Rune|Runes] onto your body, gaining\nadditional [Rune]-only sockets:\n• 1 Helmet socket\n• 2 Body Armour sockets\n• 1 Gloves socket\n• 1 Boots socket",
@@ -35522,7 +35508,7 @@
     },
     {
       "text": "Destroys all Augment Sockets on the item to create a Jewel Socket",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Diamond",
@@ -39808,14 +39794,7 @@
     },
     {
       "text": "Only Soul Cores can be Socketed in this item",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "SocketedSoulCoresOnly",
-          "type": "Flag",
-          "value": true
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "Only affects Passives in Medium Ring",
@@ -40643,7 +40622,7 @@
     },
     {
       "text": "Remnants can be collected from 20% further away",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Remnants you create have 10% increased effect",
@@ -47096,19 +47075,19 @@
     },
     {
       "text": "[Remnant|Remnants] can be collected from 20% further away",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Remnant|Remnants] can be collected from 25% further away",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Remnant|Remnants] can be collected from 30% further away",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Remnant|Remnants] can be collected from 50% further away",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Remnant|Remnants] you create have 10% increased effect",

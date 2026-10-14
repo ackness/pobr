@@ -401,9 +401,51 @@ impl SpecialModRules {
 /// Anchors the whole line (doesn't double-wrap if the pattern already has
 /// `^`/`$`).
 fn anchor_pattern(pattern: &str) -> String {
+    let pattern = ascii_digits(pattern);
     let head = if pattern.starts_with('^') { "" } else { "^" };
     let tail = if pattern.ends_with('$') { "" } else { "$" };
     format!("{head}{pattern}{tail}")
+}
+
+/// `\d` as the ASCII digits the rules mean (the source patterns' `%d`, and
+/// the digits of every modifier line). Rust's `\d` is every Unicode decimal
+/// digit, whose automaton for two thousand rules exceeds the regex size limit.
+fn ascii_digits(pattern: &str) -> String {
+    let mut out = String::with_capacity(pattern.len());
+    let mut chars = pattern.chars();
+    let mut in_class = false;
+    while let Some(c) = chars.next() {
+        match c {
+            '\\' => match chars.next() {
+                Some('d') if in_class => out.push_str("0-9"),
+                Some('d') => out.push_str("[0-9]"),
+                Some(next) => {
+                    out.push('\\');
+                    out.push(next);
+                }
+                None => out.push('\\'),
+            },
+            '[' if !in_class => {
+                in_class = true;
+                out.push(c);
+                // A `]` or `^]` right after the opening bracket is a literal.
+                let rest = chars.as_str();
+                for prefix in ["^]", "]"] {
+                    if let Some(after) = rest.strip_prefix(prefix) {
+                        out.push_str(prefix);
+                        chars = after.chars();
+                        break;
+                    }
+                }
+            }
+            ']' if in_class => {
+                in_class = false;
+                out.push(c);
+            }
+            _ => out.push(c),
+        }
+    }
+    out
 }
 
 fn parse_mod_type(literal: &str) -> Option<ModType> {
@@ -1154,6 +1196,18 @@ mod tests {
 
     fn rules(defs: Vec<SpecialTemplateDef>) -> SpecialModRules {
         SpecialModRules::compile(&defs, &HandlerRegistry::new()).unwrap()
+    }
+
+    /// A rule's `\d` is an ASCII digit, inside a class too; an escaped
+    /// backslash and a literal bracket stay as written.
+    #[test]
+    fn a_rule_digit_is_an_ascii_digit() {
+        assert_eq!(ascii_digits(r"(\d+)% more"), "([0-9]+)% more");
+        assert_eq!(ascii_digits(r"([\d.]+) metres"), "([0-9.]+) metres");
+        assert_eq!(ascii_digits(r"a\\d []\d] \[\d"), r"a\\d []0-9] \[[0-9]");
+        let rule = Regex::new(&anchor_pattern(r"(\d+)% more")).unwrap();
+        assert!(rule.is_match("25% more"));
+        assert!(!rule.is_match("٢٥% more"));
     }
 
     /// Numeric capture + operator chain: `(\d+)% increased X` → INC,

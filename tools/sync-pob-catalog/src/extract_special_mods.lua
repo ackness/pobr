@@ -273,6 +273,8 @@ inferValue = function(a, b, capsA, capsB)
 		if a == b then
 			return a
 		end
+		-- 先在全部捕获上找原值 / 相反数，再试偏移与倍数：两组哨兵相邻捕获的差相同
+		-- （79 − 73 = 103 − 97），第 2 个捕获的原值也是第 1 个捕获加常数。
 		for i = 1, #capsA do
 			local na, nb = tonumber(capsA[i]), tonumber(capsB[i])
 			if na and nb then
@@ -282,6 +284,11 @@ inferValue = function(a, b, capsA, capsB)
 				if a == -na and b == -nb then
 					return "$" .. i .. ":negate"
 				end
+			end
+		end
+		for i = 1, #capsA do
+			local na, nb = tonumber(capsA[i]), tonumber(capsB[i])
+			if na and nb then
 				local c = a - na
 				if c ~= 0 and c % 1 == 0 and b - nb == c then
 					return "$" .. i .. ":base(" .. string.format("%d", c) .. ")"
