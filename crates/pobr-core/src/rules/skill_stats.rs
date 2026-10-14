@@ -273,8 +273,46 @@ pub fn player_buff_modifiers(stat: &str, value: f64, skill: BuffSkill) -> Option
             .chain(every_element_contributes_to_every_elemental_ailment())
             .collect(),
         ),
+        // Charged Staff: "Buff grants {0} to {1} Added Quarterstaff Attack
+        // Lightning damage per Power Charge Consumed, up to your maximum
+        // Power Charges".
+        "charged_staff_attack_minimum_added_lightning_damage_per_stack" => {
+            Some(vec![charged_staff_added_lightning(
+                "LightningDamageMin",
+                value,
+                skill,
+            )])
+        }
+        "charged_staff_attack_maximum_added_lightning_damage_per_stack" => {
+            Some(vec![charged_staff_added_lightning(
+                "LightningDamageMax",
+                value,
+                skill,
+            )])
+        }
+        // "Buff duration is {0} seconds per Power Charge Consumed": how long
+        // the buff lasts, with no effect on what it grants while it is up.
+        "charged_staff_buff_duration_per_stack_ms" => Some(Vec::new()),
         _ => None,
     }
+}
+
+/// One end of the Lightning damage Charged Staff adds to Quarterstaff
+/// attacks, `value` per Power Charge consumed: `LightningDamageMin` or
+/// `LightningDamageMax`, shaped as the line "Adds # to # Lightning Damage to
+/// Quarterstaff Attacks" parses. The skill consumes every Power Charge the
+/// character can lose, so the count is the charges above the minimum. The
+/// text caps it at the maximum Power Charges, so a charge that only counts
+/// as consumed ("Quarterstaff Skills that consume Power Charges count as
+/// consuming an additional Power Charge") adds nothing at the maximum;
+/// below it, that charge is not modelled.
+fn charged_staff_added_lightning(name: &str, value: f64, skill: BuffSkill) -> Modifier {
+    let per_charge = value * skill.consumed_charge_benefit();
+    Modifier::number(name, ModType::Base, per_charge)
+        .with_flags(ModFlags::STAFF)
+        .with_tag(ModTag::DamageType(DamageType::Lightning))
+        .with_tag(ModTag::condition("UsingQuarterstaff", false))
+        .with_tag(ModTag::multiplier("RemovablePowerCharge", 1.0, None))
 }
 
 /// What "Skill Speed" is: the speed of attacks and casts, of Warcries and of
@@ -409,6 +447,51 @@ mod tests {
         assert!((more(20.0) - 1.72).abs() < 1e-12);
         assert!((more(100.0) - 2.2).abs() < 1e-12);
         assert!((more(250.0) - 2.2).abs() < 1e-12);
+    }
+
+    /// Charged Staff at level 23, 2 to 30 per stack, after consuming six
+    /// Power Charges: 12 to 180 Lightning damage for Quarterstaff attacks.
+    #[test]
+    fn charged_staff_adds_lightning_to_quarterstaff_attacks_per_consumed_power_charge() {
+        let mut db = ModDb::new();
+        for (stat, value) in [
+            (
+                "charged_staff_attack_minimum_added_lightning_damage_per_stack",
+                2.0,
+            ),
+            (
+                "charged_staff_attack_maximum_added_lightning_damage_per_stack",
+                30.0,
+            ),
+        ] {
+            db.add_list(player_buff_modifiers(stat, value, BuffSkill::default()).expect("a rule"));
+        }
+        let added = |cfg: &CalcConfig| {
+            (
+                db.sum(ModType::Base, cfg, &[ModName::from("LightningDamageMin")]),
+                db.sum(ModType::Base, cfg, &[ModName::from("LightningDamageMax")]),
+            )
+        };
+        let quarterstaff_attack = |consumed: f64| {
+            CalcConfig::new()
+                .with_flags(ModFlags::ATTACK | ModFlags::HIT | ModFlags::STAFF)
+                .with_damage_type(DamageType::Lightning)
+                .with_condition("UsingQuarterstaff", true)
+                .with_multiplier("RemovablePowerCharge", consumed)
+        };
+        assert_eq!(added(&quarterstaff_attack(6.0)), (12.0, 180.0));
+        // No charge consumed, nothing added.
+        assert_eq!(added(&quarterstaff_attack(0.0)), (0.0, 0.0));
+        // Only Quarterstaff attacks gain it.
+        let other_weapon = quarterstaff_attack(6.0).with_condition("UsingQuarterstaff", false);
+        assert_eq!(added(&other_weapon), (0.0, 0.0));
+        // The buff's duration grants nothing while the buff is up.
+        let duration = player_buff_modifiers(
+            "charged_staff_buff_duration_per_stack_ms",
+            6000.0,
+            BuffSkill::default(),
+        );
+        assert_eq!(duration, Some(Vec::new()));
     }
 
     #[test]

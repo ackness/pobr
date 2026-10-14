@@ -369,6 +369,21 @@ pub fn spirit_reservation_modifiers(
                 &gem_cfg,
                 &[pobr_data::prelude::ModName::from("ExtraSpirit")],
             );
+            // A skill whose minions each reserve (`MultipleReservation`)
+            // reserves its base amount once per minion it keeps:
+            // `skill_desired_initial_amount` of them, one when the skill does
+            // not say. "First {0} minions summoned have no base spirit
+            // reservation" (`first_X_minions_have_0_base_spirit_reservation`)
+            // takes that many out: Skeletal Warriors keep two and exempt two,
+            // so they reserve nothing. The Spirit that supports add is taken
+            // as part of the base.
+            if has("MultipleReservation") {
+                let stat =
+                    |id: &str| -> f64 { es.all().filter(|s| s.stat == id).map(|s| s.value).sum() };
+                let minions = stat("skill_desired_initial_amount").max(1.0);
+                let exempt = stat("first_X_minions_have_0_base_spirit_reservation");
+                flat *= (minions - exempt).max(0.0);
+            }
             // PoB2 truncates the reservation multiplier product to 4 decimal places before multiplying by base (floor(x, 4)).
             let mult = (mult * 10000.0).floor() / 10000.0;
             // Spirit→Life conversion branch (vendor CalcDefence.lua:248-254 + the
