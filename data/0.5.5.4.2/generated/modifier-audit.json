@@ -30,7 +30,7 @@
       "0.5.5.4.2/generated/special_vendor.json": "51d520b5e9f26b57c4b1bfe5aa92bd4ee483f049cfba7fa152c95167628ba01e",
       "0.5.5.4.2/overlay/mod_parser_rules.json": "4ca754192ca4422982d7828b410a68723bfcdf1cc3cbea7f30c522d94fea6860",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
-      "overlay-common/special_mods.json": "af6d38ae3560c460598f907a23bc0db55b5a7f68aaf89611150e81d256a34480"
+      "overlay-common/special_mods.json": "1a38554c7cf2df7dfb4560e737301fb3d2b9a1b0c9db123acd921b5f01d2ffa6"
     },
     "effective_rules": [
       {
@@ -881,6 +881,14 @@
       },
       {
         "id": "blood_mage_additional_life_from_body_es",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "life_loss_from_hits_prevented_then_share_lost_over_4s",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -18235,8 +18243,8 @@
     "unsampled_translations": 170
   },
   "summary": {
-    "parsed": 14805,
-    "pobr_gap": 2427,
+    "parsed": 14806,
+    "pobr_gap": 2426,
     "recognized_empty": 330,
     "upstream_gap": 25135
   },
@@ -410973,9 +410981,16 @@
         "stat:passive_skill_stat_descriptions:keystone_amanamus_defiance",
         "translation:受到击中的生命损失的 20% 被阻挡，并在 4 秒内逐渐丧失该阻挡值 150% 的生命"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "LifeLossLost",
+        "LifeLossPrevented"
+      ],
+      "special_rule_id": "life_loss_from_hits_prevented_then_share_lost_over_4s",
+      "matching_special_rules": [
+        "life_loss_from_hits_prevented_then_share_lost_over_4s"
+      ]
     },
     "When used in the Synthesiser, the new item will have an additional Herald Modifier": {
       "sources": [

@@ -614,3 +614,31 @@ fn a_spell_costs_a_share_of_maximum_life() {
     let attacks = "Attacks cost an additional 6% of your maximum Mana";
     assert_eq!(calculate("Fireball", attacks).mana_cost, plain.mana_cost);
 }
+
+/// Sacrifice of Flesh: "When taking damage from Hits, N% of Life Loss is
+/// prevented, then M% of Life Loss prevented this way is Lost over 4
+/// seconds". A hit takes the same share of the Life loss off as "N% of Life
+/// Loss from Hits is Prevented, then that much Life is lost over 4 seconds
+/// instead", whatever is lost later.
+#[test]
+fn a_share_of_life_loss_from_hits_is_prevented() {
+    let data = data();
+    let options = DataOrchestratorOptions::default();
+    let max_hit = |lines: &str| {
+        let build = with_custom_modifiers(LEVEL_20, lines);
+        calculate_with_data(&build, &data, &options)
+            .expect("calculate")
+            .physical_max_hit
+    };
+    let plain = max_hit("");
+    let sacrifice = max_hit(
+        "When taking damage from Hits, 20% of Life Loss is prevented, then 150% of Life Loss prevented this way is Lost over 4 seconds",
+    );
+    assert!(sacrifice > plain, "{plain} -> {sacrifice}");
+    assert_eq!(
+        sacrifice,
+        max_hit(
+            "20% of Life Loss from Hits is Prevented, then that much Life is lost over 4 seconds instead"
+        )
+    );
+}

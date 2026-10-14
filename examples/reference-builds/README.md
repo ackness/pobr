@@ -74,5 +74,7 @@ mise run builds:fetch examples/reference-builds/holdout --pick last
 | 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 16（70%） | 981/1073（91.4%） |
 | 2026-10-14（第二十二轮：“Spells / Attacks cost an additional N% of your maximum Life / Mana”） | `tuned/` | 23 | 22（96%） | 1023/1061（96.4%） |
 | 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 16（70%） | 981/1073（91.4%） |
+| 2026-10-14（第二十三轮：Sacrifice of Flesh 预防命中造成的部分生命损失） | `tuned/` | 23 | 22（96%） | 1023/1061（96.4%） |
+| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 16（70%） | 986/1073（91.9%） |
 
 吻合行里有按游戏规则有意不同于参考值的行（例如护身符授予的技能不保留精魄，见 `reference_report.rs` 基线旁的说明），所以上限不是 100%。

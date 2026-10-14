@@ -222,7 +222,7 @@ const BASELINES: [Baseline; 3] = [
     Baseline {
         corpus: "examples/wasm-benchmark/builds",
         dps_builds: 5,
-        agreeing_rows: 342,
+        agreeing_rows: 348,
     },
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
@@ -240,7 +240,7 @@ const BASELINES: [Baseline; 3] = [
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
         dps_builds: 16,
-        agreeing_rows: 981,
+        agreeing_rows: 986,
     },
 ];
 

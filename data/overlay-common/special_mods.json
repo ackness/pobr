@@ -2118,6 +2118,29 @@
       "source_note": "ModParser.lua:2834（-- Blood Mage specialModList，mod(Life,BASE,1,PerStat{stat=EnergyShieldOnBody Armour,div=100/N}）；legacy.rs:1796-1810 同形（MaximumLife BASE 1 × Multiplier:EnergyShieldOnbodyarmour，div=100/N，slot 倍率经 orchestrator per_slot_defence_multipliers 填充 = Body Armour 件级最终 ES）。本条钉 N=100（升华恒 100%，corpus 唯一形）→ div=1；special 整行命中在 pre_flag 剥 `gain` 前。需 special_mod.rs 字面 Multiplier tag 支持。fork-a 补 engine special 通道（blood-mage Life→EHP/MaxHit 级联）"
     },
     {
+      "id": "life_loss_from_hits_prevented_then_share_lost_over_4s",
+      "pattern": "when taking damage from hits, (\\d+(?:\\.\\d+)?)% of life loss is prevented, then (\\d+(?:\\.\\d+)?)% of life loss prevented this way is lost over 4 seconds",
+      "mods": [
+        {
+          "name": "LifeLossPrevented",
+          "type": "BASE",
+          "value": {
+            "ref": "$1"
+          }
+        },
+        {
+          "name": "LifeLossLost",
+          "type": "BASE",
+          "value": {
+            "ref": "$2"
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "基石 Sacrifice of Flesh（Amanamu 的永恒珠宝，“When taking damage from Hits, {0}% of Life Loss is prevented, then {1}% of Life Loss prevented this way is Lost over 4 seconds”）：命中时预防的比例同 life_loss_from_hits_prevented_over_4s（LifeLossPrevented）；之后损失的比例记为 LifeLossLost（之后按 4 秒扣血的速率尚未建模，诊断列为未读取）"
+    },
+    {
       "id": "life_loss_from_hits_prevented_over_4s",
       "pattern": "(\\d+(?:\\.\\d+)?)% of life loss from hits is prevented, then that much life is lost over 4 seconds instead",
       "vendor_pattern": "(%d+)%% of life loss from hits is prevented, then that much life is lost over 4 seconds instead",
