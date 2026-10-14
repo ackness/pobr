@@ -6,8 +6,8 @@
 
 | 目录 | 用途 | 规则 |
 |------|------|------|
-| `tuned/` | 找差异、修引擎。`mise run accuracy examples/reference-builds/tuned/builds` 看每个构筑的差异，`mise run diagnose <构筑>` 看丢掉的输入 | 修完后上调 `reference_report.rs` 里的基线 |
-| `holdout/` | 只测量。它的总数回答“没人调过的构筑上 PoBR 有多准” | 不对其中的构筑运行 `diagnose`，不按它的差异挑选要修的内容；只看 `mise run accuracy` 的总数 |
+| `tuned/` | 找差异、修引擎。`mise run accuracy examples/reference-builds/tuned/builds` 看每个构筑的差异，`mise run diagnose <构筑>` 看丢掉的输入，`mise run compare <构筑>` 与钉定的 PoB2 逐个 stat 对照 | 修完后上调 `reference_report.rs` 里的基线 |
+| `holdout/` | 只测量。它的总数回答“没人调过的构筑上 PoBR 有多准” | 不对其中的构筑运行 `diagnose` 或 `compare`，不按它的差异挑选要修的内容；只看 `mise run accuracy` 的总数 |
 
 `examples/wasm-benchmark/builds` 的 8 个构筑同样已被逐个修过，属于前一类。
 

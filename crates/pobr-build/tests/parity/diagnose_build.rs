@@ -8,8 +8,8 @@
 //! it lists what the import dropped, where the result differs from the
 //! reference values the build code carries, and every input the calculation
 //! lost on the way (`pobr_build::diagnose`). Only when that list does not
-//! explain a difference is a component-level comparison with the pinned
-//! oracle (`tools/pob2-oracle`) the next step.
+//! explain a difference is a comparison with the pinned PoB2 the next step
+//! (`mise run compare`, which runs `tools/pob2-oracle`).
 
 use std::path::{Path, PathBuf};
 

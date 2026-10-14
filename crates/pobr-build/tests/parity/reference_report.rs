@@ -14,8 +14,8 @@
 //!
 //! The exporting tool's version is unknown and its numbers are a reference,
 //! not the game's: a row that differs is a lead to investigate, with
-//! `mise run diagnose`, the pinned oracle (`tools/pob2-oracle`) and the game's
-//! own modifier text as the next steps.
+//! `mise run diagnose`, `mise run compare` (the pinned PoB2, stat by stat) and
+//! the game's own modifier text as the next steps.
 //!
 //! The committed sets have different jobs (see `examples/reference-builds`):
 //! differences are investigated and fixed on the worked sets, and the holdout

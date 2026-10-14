@@ -1,6 +1,6 @@
 ---
 name: run-pobr
-description: Bootstrap, build, test, and drive the pobr (Path of Building in Rust) Cargo workspace from a clean machine. Use when asked to run, build, test, set up, bootstrap, or smoke-test pobr; clone the PoB2 vendor reference; run the parity gate / version-bump-drill; or look up a PoB2 (Path of Building) formula in vendor Lua.
+description: Bootstrap, build, test, and drive the pobr (Path of Building in Rust) Cargo workspace from a clean machine. Use when asked to run, build, test, set up, bootstrap, or smoke-test pobr; clone the PoB2 vendor reference; run the parity gate / version-bump-drill; diagnose a build's numbers or compare them with PoB2; look up a skill, stat, base item, passive node or unique in the game data; or look up a PoB2 (Path of Building) formula in vendor Lua.
 ---
 
 pobr is a Rust workspace with a Web frontend. Read the validation policy in
@@ -102,17 +102,34 @@ comparison against PoB2:
 mise run diagnose <build dir | code file | committed build name fragment>
 mise run accuracy                        # totals of every committed set
 mise run accuracy <dir of */code.txt>    # one set, with each build's differences
+cargo run -q -p pobr-cli -- calculate-build --file <code.txt> --breakdown TotalDPS,Life
+mise run lookup <skill id | stat id | base item | passive node | unique> [--level N]
+mise run compare <build dir | code file | committed build name fragment> [Stat ...]
 ```
 
 `diagnose` prints what the import dropped, where the result differs from the
 reference values the build code carries, the main skill and level actually
 calculated, and every input the calculation lost: lines no rule parses, gem
 stats the stat map rejected, modifiers that scale by a multiplier nothing set,
-and modifiers stored under a name nothing reads. It needs no vendor checkout or
-LuaJIT. Only a difference that list does not explain needs the component-level
-oracle (`tools/pob2-oracle/run.sh`). A reference is another tool's number, not
-the game's: judge a disagreement by the game's own modifier text and data. See
-"排查数值差异" in the maintainer guide.
+modifiers that wait for a condition nothing sets (those a config option sets
+are listed apart as "config: off"), and modifiers stored under a name nothing
+reads. It needs no vendor checkout or LuaJIT.
+
+`calculate-build --breakdown <stats>` prints how each stat arrives: its steps
+and every modifier line it reads (`--reference-basis` for the reference's
+basis, `--json` for the report). `lookup` prints the game data records of an
+id or a name (a skill's types, stat sets and, with `--level`, its level row; a
+stat's descriptions and engine meaning; a base item's implicits; a passive
+node's stats; a unique's text) instead of searching the data files by hand.
+
+Only a difference that list does not explain needs PoB2: `compare` calculates
+the build with the engine and with the pinned oracle and prints, per stat, both
+totals, their BASE / INC / MORE sums and the modifier lines only one side has
+or has with another value, matched by source. It needs the vendor checkout and
+LuaJIT and caches the oracle's result per build code under `.cache/pob2-oracle/`.
+A reference is another tool's number, not the game's: judge a disagreement by
+the game's own modifier text and data. See "排查数值差异" in the maintainer
+guide.
 
 For PoB2 formula adjudication, read the pinned local Lua source:
 

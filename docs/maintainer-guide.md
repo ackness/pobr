@@ -53,6 +53,10 @@ mise run test build parity parity_baseline_report -- --ignored --nocapture
 
 # 数值不对时的第一步：一个构筑的导入损耗、与构筑码自带参考值的差异、计算中丢掉的全部输入
 mise run diagnose <构筑目录 | 构筑码文件 | 已入库构筑名片段>
+# 清单解释不了的差异：同一构筑与钉定 PoB2 逐个 stat 对照（需 vendor 与 luajit；PoB2 结果按构筑码缓存）
+mise run compare <构筑目录 | 构筑码文件 | 已入库构筑名片段> [Stat ...]
+# 一个 id 或名字在游戏数据里的记录：技能、stat、物品基底、天赋节点、暗金
+mise run lookup <IceShotPlayer | stat id | "Fox Idol" | 节点编号或名字 | 暗金名> [--level N]
 # 构筑码对照它们自带的参考值（无需 vendor / luajit）：不带参数给出每组已入库构筑的总数，带目录给出该组每个构筑的差异
 mise run accuracy [含 */code.txt 的目录]
 # 从 poe.ninja 抓一组当前赛季构筑（每个升华一个，选择不依赖计算结果）
@@ -60,6 +64,7 @@ mise run builds:fetch <组目录> [--pick first|last]
 
 # CLI（apps/pobr-cli，二进制名 pobr）
 cargo run -p pobr-cli -- calculate --base-life 1000 --mod "+50 to maximum Life"
+cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakdown TotalDPS,Life  # 所列 stat 的计算步骤与读到的词条
 cargo run -p pobr-cli -- decode-code <pob_code>        # PoB Build Code → XML
 cargo run -p pobr-cli -- parse-mod "20% increased Fire Damage"
 
@@ -146,7 +151,7 @@ schema 3 的 `manifest.json` 列出运行时文件及 SHA-256；`BuildData::load
 
 Web 的计算、市场目录和天赋树使用初始化时固定的数据版本；重新初始化清除翻译与词缀层级缓存。节点规划逐节点计算，不能按原始词条文本共享包含位置/半径效应的结果。缺少历史树展示元数据时保留导入和计算，禁用不可靠的历史树编辑/规划。存档导入校验嵌套结构，非法存档不覆盖当前内容；启动失败保留原始字节并提供下载恢复。
 
-CLI 完整构筑与 marginal 结果包含数据版本、树版本和未支持词条，调用方必须保留诊断，不能把未支持内容视为零效果。`calculate-build` 另有 `missing_items`（构筑用到但导入器读不出的物品，结果是缺了这件装备的角色）和 `reference`（与构筑码内 `<PlayerStat>` 的差异；仅在请求沿用导出条件时给出）。WASM 的 `{ pob_code }` 请求把同类物品放进 `item_errors`。
+CLI 完整构筑与 marginal 结果包含数据版本、树版本和未支持词条，调用方必须保留诊断，不能把未支持内容视为零效果。`calculate-build` 另有 `missing_items`（构筑用到但导入器读不出的物品，结果是缺了这件装备的角色）和 `reference`（与构筑码内 `<PlayerStat>` 的差异；仅在请求沿用导出条件时给出）；`--breakdown <stats>` 时还有 `breakdowns`（每个 stat 的计算步骤和读到的词条，与 Web 的分解同源，见 `pobr_build::breakdown`）和 `main_skill`，`--reference-basis` 时 `output` 与分解都按参考值口径（`reference_basis`）。WASM 的 `{ pob_code }` 请求把同类物品放进 `item_errors`。
 
 导入的损耗由 `pobr_build::ImportReport` 承载，与 `Build` 并列返回（`import_build*`）；`Build` 只描述计算输入，不携带诊断。`Build.jewels` 的每颗珠宝带 `JewelSocket`：树上自有插槽、被授予的插槽（Sinister / 含插槽的核心）或装备插槽，“珠宝插槽天赋效果”类词条只作用于第一种。超越肢体（PoB 的 `Arm 1/2`、`Leg 1/2`，游戏物品类 `IncursionArm` / `IncursionLeg`）是与装备并列的一组栏位 `Build.limbs`（按 `LimbSlot`）：肢体的 stat 都是全局的，词条在装备之后注入并按栏位归因（`item.arm1.implicit`），宝石等级加成和 “Allocates” 等按文本读取的通道也包含它们。`Build.weapon_set` 是 `items` 里那组武器所属的武器组（导入时取当前物品集的 `useSecondWeaponSet`；WASM 请求带 `weapon_swap` 时取它的 `active`），编排据此设置 `WeaponSet1` / `WeaponSet2` 条件，“使用武器组 1/2 时”的词条（例如 Rigwald's Ferocity 的 `support_rigwald_*_in_weapon_set_*`）只在对应的组生效。
 
@@ -246,15 +251,18 @@ PoB2 对照值与逻辑回归都使用活动数据版本，没有单独钉住的
 | 导入（XML → `Build`） | 物品块被拒、物品所在装备槽没有模型 | `ImportReport::skipped_items` / `unmodelled_slots` |
 | 文本 → Modifier | 没有规则能解析的词条行（物品、珠宝、已分配天赋 `Tree:<节点>: …`、配置行 `Config: …`） | `unsupported_modifier_texts` |
 | 宝石 stat → Modifier | stat map 有条目但引擎拒绝（未知 mod 名、不支持的 tag）；完全没有条目的 stat 多数是展示或动画数据，按所属宝石列出供查找缺失的机制 | `Diagnosis::unmapped_stats` / `unknown_stats` |
-| Modifier → 计算 | 存入的名字从未被查询；依赖的 `Multiplier` 没有任何地方赋值 | `Diagnosis::unread_modifiers` / `unprovided_multipliers` |
+| Modifier → 计算 | 存入的名字从未被查询；依赖的 `Multiplier` 没有任何地方赋值（含从角色快照读取的 `actor: player` 类，例如 “per non-Idol Augment in your Equipment”）；等待的条件不在条件表里，也没有计算阶段推导它 | `Diagnosis::unread_modifiers` / `unprovided_multipliers` / `unset_conditions` |
 
 `pobr_build::diagnose` 运行同一条计算管线并返回以上全部，外加实际计算的主技能及其等级（技能或等级选错不会丢输入，所以单独列出）。它打开 `ModDb::track_reads` 并以 Compare 模式记录 stat 映射，结果与普通计算逐位相同（`diagnosis_does_not_change_the_result` 对全部已入库构筑断言），但更慢，只用于排查。
 
+条件不在条件表里时，有两类不是线索：计算阶段自己推导、成立时才写入的（暴击的一半、主副手、怒气与战斗、敌人的冰缓与感电、诅咒与标记、Elusive、Surrounded、所用武器组、内置 buff 附带的条件、`AffectedBy*`、`Using*Flask` / `Using*Charm`，见 `calc/session.rs::CONDITIONS_SET_BY_A_PASS`），以及编排按构筑本身设置、换一个构筑才会成立的（武器类型、盾、主技能的战斗条件、首领、同伴、普通胸甲、辅助宝石颜色，见 `diagnosis.rs::SET_BY_THE_ORCHESTRATION`）。其余条件中有配置项能设置的标为 “config: off”，由用户决定是否打开；没有任何来源的才是丢掉的输入。新增由计算阶段或编排设置的条件时登记进对应清单，否则其他构筑会误报它。
+
 排查顺序：
 
-1. `mise run diagnose <构筑>`。第 1 节是导入损耗，第 2 节是与构筑码自带参考值的差异，第 3–8 节是丢掉的输入。多数差异在这里就能对上原因。
-2. 清单解释不了的差异，再用 `tools/pob2-oracle` 逐分量对照钉定的 PoB2。
-3. 参考值不是真值。构筑码内的 `<PlayerStat>` 是导出工具当时的结果（版本未知，可能早于当前数据）；PoB2 自身也有假设和缺陷。两边不一致时，以游戏自己的词条文本和数据判断谁对，再决定改哪一边。
+1. `mise run diagnose <构筑>`。第 1 节是导入损耗，第 2 节是与构筑码自带参考值的差异，第 3–9 节是丢掉的输入（第 6 节是等待无人设置的条件的词条，配置项能设置的条件另列为 “config: off”）。多数差异在这里就能对上原因。
+2. 看一个 stat 怎么算出来：`cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakdown <Stat,...>` 打印计算步骤和读到的每条词条（`--reference-basis` 按参考值口径，`--json` 输出 JSON）；技能、stat、基底、天赋或暗金在游戏数据里的记录用 `mise run lookup <id 或名字>`，不必逐个打开数据文件。
+3. 清单解释不了的差异，用 `mise run compare <构筑> [Stat ...]` 对照钉定的 PoB2：每个 stat 两边的总值与比值、BASE / INC / MORE 合计，以及按来源（天赋节点、装备槽、技能、角色基础与属性、配置、任务奖励）对齐后只有一边有或数值不同的词条。不给 stat 时比较构筑码参考值中不一致的行。PoB2 的结果按构筑码缓存在 `.cache/pob2-oracle/`，重跑只重算 PoBR（`--refresh` 两边都重算）。更细的中间值仍可直接用 `tools/pob2-oracle/run.sh`。
+4. 参考值不是真值。构筑码内的 `<PlayerStat>` 是导出工具当时的结果（版本未知，可能早于当前数据）；PoB2 自身也有假设和缺陷。两边不一致时，以游戏自己的词条文本和数据判断谁对，再决定改哪一边。
 
 “未被读取”是线索不是结论：攻击技能不读法术伤害是正常的。报告用全部已入库构筑的读取并集区分“任何构筑都不读（没有读取方）”和“本构筑的技能用不上”。
 
@@ -264,7 +272,7 @@ PoB2 对照值与逻辑回归都使用活动数据版本，没有单独钉住的
 
 配置行指任务奖励与自定义词条。其中解析不了的行以 `Config: <行>` 记入未支持清单，其余行照常生效；任务奖励选项的 “None”（未领取）不是词条行。对任何计算输出都没有影响的词条在 `overlay-common/special_mods.json` 里登记为只识别、不产生 modifier 的条目（`"mods": []`、`"batch": "S0"`，例如游戏 stat `experience_gain_+%` 的 “5% increased Experience Gain”；其他批次的条目必须产生 modifier 或挂 handler，`pobr-gamedata` 的 `non_s0_has_traceable_provenance` 检查），它不是丢失的输入；尚未实现的机制不能用这种条目消掉，必须留在未支持清单里。
 
-`examples/demo-bd-test/builds/` 是回归门禁语料，构筑抓取于 2026-06（上一赛季开服第一周），不包含之后的物品和机制；门禁全绿只说明这批构筑没有回退。当前赛季的构筑分三组，都用构筑码自带的参考值衡量：`examples/wasm-benchmark/builds/`（8 个）和 `examples/reference-builds/tuned/`（每个升华一个）用来找差异、修引擎；`examples/reference-builds/holdout/`（每个升华另一个）只测量，不对它运行 `diagnose`，也不按它的差异挑选要修的内容，它的总数回答“没人调过的构筑上有多准”。`mise run accuracy` 不带参数打印三组的总数。`reference_agreement_does_not_regress` 断言每组的吻合数（`TotalDPS` 吻合的构筑数、吻合的行数）不低于 `reference_report.rs` 里记录的基线。改动提升了吻合数就上调基线，不为通过而下调；数据版本变化使数字移动时按 `ninja_parity` 的做法重录。参考值被游戏自己的词条或数据证明有误时（例如导出工具当时没有实现某条规则），引擎按游戏实现，基线随“吻合了错误值”的行数下降，并在基线旁写明是哪些构筑、哪条规则、凭什么判断参考值有误。这个门禁防的是退步，不证明正确：参考值可能本身有误，构筑也可能因为错误的原因吻合。需要新一轮目标或新赛季开始时，用 `mise run builds:fetch` 重新抓取（见 [reference-builds](../examples/reference-builds/README.md)）：原来的 holdout 并入 tuned，新抓的一批作 holdout。
+`examples/demo-bd-test/builds/` 是回归门禁语料，构筑抓取于 2026-06（上一赛季开服第一周），不包含之后的物品和机制；门禁全绿只说明这批构筑没有回退。当前赛季的构筑分三组，都用构筑码自带的参考值衡量：`examples/wasm-benchmark/builds/`（8 个）和 `examples/reference-builds/tuned/`（每个升华一个）用来找差异、修引擎；`examples/reference-builds/holdout/`（每个升华另一个）只测量，不对它运行 `diagnose` 或 `compare`，也不按它的差异挑选要修的内容，它的总数回答“没人调过的构筑上有多准”。`mise run accuracy` 不带参数打印三组的总数。`reference_agreement_does_not_regress` 断言每组的吻合数（`TotalDPS` 吻合的构筑数、吻合的行数）不低于 `reference_report.rs` 里记录的基线。改动提升了吻合数就上调基线，不为通过而下调；数据版本变化使数字移动时按 `ninja_parity` 的做法重录。参考值被游戏自己的词条或数据证明有误时（例如导出工具当时没有实现某条规则），引擎按游戏实现，基线随“吻合了错误值”的行数下降，并在基线旁写明是哪些构筑、哪条规则、凭什么判断参考值有误。这个门禁防的是退步，不证明正确：参考值可能本身有误，构筑也可能因为错误的原因吻合。需要新一轮目标或新赛季开始时，用 `mise run builds:fetch` 重新抓取（见 [reference-builds](../examples/reference-builds/README.md)）：原来的 holdout 并入 tuned，新抓的一批作 holdout。
 
 ## 游戏机制资料库（agent-docs/）
 
