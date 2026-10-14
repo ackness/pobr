@@ -30,7 +30,7 @@
       "0.5.5.4.2/generated/special_vendor.json": "51d520b5e9f26b57c4b1bfe5aa92bd4ee483f049cfba7fa152c95167628ba01e",
       "0.5.5.4.2/overlay/mod_parser_rules.json": "4ca754192ca4422982d7828b410a68723bfcdf1cc3cbea7f30c522d94fea6860",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
-      "overlay-common/special_mods.json": "1a38554c7cf2df7dfb4560e737301fb3d2b9a1b0c9db123acd921b5f01d2ffa6"
+      "overlay-common/special_mods.json": "618f3e367068143ff2e6160ba69648d96272273b71beeede8da2a7d70a90dfa2"
     },
     "effective_rules": [
       {
@@ -1289,6 +1289,30 @@
       },
       {
         "id": "experience_gain",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "item_can_roll_modifiers",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "rune_creates_jewel_socket",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "remnant_pickup_range",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -18245,8 +18269,8 @@
   "summary": {
     "parsed": 14806,
     "pobr_gap": 2426,
-    "recognized_empty": 330,
-    "upstream_gap": 25135
+    "recognized_empty": 351,
+    "upstream_gap": 25114
   },
   "entries": {
     "% of spent Runic Ward granted as Guard@100%": {
@@ -237317,84 +237341,123 @@
         "stat:stat_descriptions:warping_rune_add_item_tag_3",
         "translation:可以重置盛怒词缀"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "item_can_roll_modifiers",
+      "matching_special_rules": [
+        "item_can_roll_modifiers"
+      ]
     },
     "Can roll Chronomancy modifiers": {
       "sources": [
         "stat:stat_descriptions:warping_rune_add_item_tag_1",
         "translation:可以重置塑时术师词缀"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "item_can_roll_modifiers",
+      "matching_special_rules": [
+        "item_can_roll_modifiers"
+      ]
     },
     "Can roll Decay modifiers": {
       "sources": [
         "stat:stat_descriptions:warping_rune_add_item_tag_5",
         "translation:可以重置腐蚀词缀"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "item_can_roll_modifiers",
+      "matching_special_rules": [
+        "item_can_roll_modifiers"
+      ]
     },
     "Can roll Destruction modifiers": {
       "sources": [
         "stat:stat_descriptions:warping_rune_add_item_tag_6",
         "translation:可以选取毁灭词缀"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "item_can_roll_modifiers",
+      "matching_special_rules": [
+        "item_can_roll_modifiers"
+      ]
     },
     "Can roll Marksman modifiers": {
       "sources": [
+        "rule:item_can_roll_modifiers",
         "stat:stat_descriptions:warping_rune_add_item_tag_4",
         "translation:可以重置神射手词缀"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "item_can_roll_modifiers",
+      "matching_special_rules": [
+        "item_can_roll_modifiers"
+      ]
     },
     "Can roll Minion Modifiers": {
       "sources": [
         "stat:stat_descriptions:display_item_generation_can_roll_minion_affixes",
         "translation:可以附加召唤词缀"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "item_can_roll_modifiers",
+      "matching_special_rules": [
+        "item_can_roll_modifiers"
+      ]
     },
     "Can roll Ring Modifiers": {
       "sources": [
         "bases:Grasping Mail",
         "bases:Runefather's Grasping Mail",
         "bases:Runeforged Grasping Mail",
+        "rule:item_can_roll_modifiers",
         "stat:stat_descriptions:display_item_can_also_roll_ring_mods",
         "translation:可以重置戒指词缀"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "item_can_roll_modifiers",
+      "matching_special_rules": [
+        "item_can_roll_modifiers"
+      ]
     },
     "Can roll Soul modifiers": {
       "sources": [
+        "rule:item_can_roll_modifiers",
         "stat:stat_descriptions:warping_rune_add_item_tag_2",
         "translation:可以重置灵魂词缀"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "item_can_roll_modifiers",
+      "matching_special_rules": [
+        "item_can_roll_modifiers"
+      ]
     },
     "Can roll Totem Modifiers": {
       "sources": [
         "stat:stat_descriptions:display_item_generation_can_roll_totem_affixes",
         "translation:可以附加图腾词缀"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "item_can_roll_modifiers",
+      "matching_special_rules": [
+        "item_can_roll_modifiers"
+      ]
     },
     "Can store +17 Bolts": {
       "sources": [
@@ -257923,12 +257986,17 @@
     },
     "Destroys all Augment Sockets on the item to create a Jewel Socket": {
       "sources": [
+        "rule:rune_creates_jewel_socket",
         "stat:stat_descriptions:dummy_display_stat_rune_create_jewel_socket",
         "translation:摧毁该物品上的所有增幅器插槽，以生成一个珠宝插槽"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "rune_creates_jewel_socket",
+      "matching_special_rules": [
+        "rune_creates_jewel_socket"
+      ]
     },
     "Determination has 1% increased Aura Effect": {
       "sources": [
@@ -363310,95 +363378,140 @@
       "sources": [
         "stat:stat_descriptions:remnant_pickup_range_+%"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants can be collected from 1% further away if you have at least 100 Tribute": {
       "sources": [
         "stat:stat_descriptions:remnant_pickup_range_+%_if_you_have_at_least_100_tribute"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants can be collected from 17% further away": {
       "sources": [
         "translation:残片收集距离延长 {0}%"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants can be collected from 17% further away if you have at least 100 Tribute": {
       "sources": [
         "translation:至少有 100 个贡品时，收集残片的距离延长 {0}%"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants can be collected from 19% further away": {
       "sources": [
         "mods:equipment:RemnantPickupRadiusIncrease1",
         "search_mods:breach:RemnantPickupRadiusIncrease1"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants can be collected from 27% further away": {
       "sources": [
         "mods:equipment:RemnantPickupRadiusIncrease2",
         "search_mods:breach:RemnantPickupRadiusIncrease2"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants can be collected from 30% further away": {
       "sources": [
         "search_mods:desecrated:AbyssModRingAmuletAmanamuSuffixRemnantCollectionRange"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants can be collected from 35% further away": {
       "sources": [
         "mods:equipment:RemnantPickupRadiusIncrease3",
         "search_mods:breach:RemnantPickupRadiusIncrease3"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants can be collected from 43% further away": {
       "sources": [
         "mods:equipment:RemnantPickupRadiusIncrease4",
         "search_mods:breach:RemnantPickupRadiusIncrease4"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants can be collected from 50% further away": {
       "sources": [
         "mods:equipment:AlloyRemnantPickupRange1",
+        "rule:remnant_pickup_range",
         "search_mods:alloy:AlloyRemnantPickupRange1"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants can be collected from 51% further away": {
       "sources": [
         "mods:equipment:RemnantPickupRadiusIncrease5",
         "search_mods:breach:RemnantPickupRadiusIncrease5"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants created by Supported Skills can be collected from 17% further away": {
       "sources": [

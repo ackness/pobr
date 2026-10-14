@@ -3267,6 +3267,41 @@
       "source_note": "Game text of the stat experience_gain_+%, which an item, a rune and a quest reward carry. How fast a character gains experience is part of nothing a calculation reports, so the line is recognised and adds no modifier: it is not an input the calculation dropped."
     },
     {
+      "id": "item_can_roll_modifiers",
+      "pattern": "can (?:also )?roll [a-z ]+ modifiers",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "examples": [
+        "Can roll Marksman modifiers",
+        "Can roll Soul modifiers",
+        "Can roll Ring Modifiers"
+      ],
+      "source_note": "Game text of the item generation stats display_item_generation_can_roll_*, display_item_can_also_roll_ring_mods and warping_rune_add_item_tag_<n>, which a rune or an item base carries. They decide which modifiers crafting can add to the item, and nothing a calculation reports, so the line is recognised and adds no modifier."
+    },
+    {
+      "id": "rune_creates_jewel_socket",
+      "pattern": "destroys all augment sockets on the item to create a jewel socket",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "examples": [
+        "Destroys all Augment Sockets on the item to create a Jewel Socket"
+      ],
+      "source_note": "Game text of the display stat dummy_display_stat_rune_create_jewel_socket. The jewel socket it creates and the jewel in it are part of the imported build; the line itself changes nothing a calculation reports."
+    },
+    {
+      "id": "remnant_pickup_range",
+      "pattern": "remnants can be collected from (?:\\d+(?:\\.\\d+)?)% (?:further|closer) away(?: if you have at least \\d+ tribute)?",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "examples": [
+        "Remnants can be collected from 50% further away"
+      ],
+      "source_note": "Game text of the stats remnant_pickup_range_+% and remnant_pickup_range_+%_if_you_have_at_least_100_tribute: how far away Remnants can be picked up, which nothing a calculation reports depends on."
+    },
+    {
       "id": "skills_damage_per_connected_red_support_gem",
       "pattern": "skills deal (\\d+)% increased damage per connected red support gem",
       "vendor_pattern": "^skills deal (%d+)%% increased damage per connected red support gem$",
