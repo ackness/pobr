@@ -298,6 +298,16 @@ fn dedup_seed(m: &Modifier) -> DedupSeed {
 /// Idempotent: skipped when a non-List Flask-sourced mod already exists in
 /// the player db (repeated perform within the same Env doesn't re-merge).
 /// No-op safe: writes no state without any payload / when `mode_combat == false` (a D1 migration invariant anchor).
+/// The character's Charm slots: "Has N Charm Slots" on the belt and "+N Charm
+/// Slot" from elsewhere (`CharmLimit`), at most three; "Cannot use Charms"
+/// leaves none.
+pub(crate) fn charm_slots(db: &crate::ModDb, cfg: &crate::CalcConfig) -> f64 {
+    let name = ModName::from("CharmLimit");
+    db.override_(cfg, name.as_str())
+        .unwrap_or_else(|| db.sum(ModType::Base, cfg, &[name]))
+        .min(cfg.constants.game().charm_limit_cap)
+}
+
 pub fn merge_flasks_charms(env: &mut Env) {
     use std::collections::BTreeMap;
 
@@ -374,11 +384,7 @@ pub fn merge_flasks_charms(env: &mut Env) {
     let rules = &env.high_precision;
     let flask_effect_inc = db.sum(ModType::Inc, cfg, &[ModName::from("FlaskEffect")]);
     let charm_effect_inc = db.sum(ModType::Inc, cfg, &[ModName::from("CharmEffect")]);
-    let charm_limit_name = ModName::from("CharmLimit");
-    let mut charm_budget = db
-        .override_(cfg, charm_limit_name.as_str())
-        .unwrap_or_else(|| db.sum(ModType::Base, cfg, &[charm_limit_name]))
-        .min(cfg.constants.game().charm_limit_cap);
+    let mut charm_budget = charm_slots(db, cfg);
     let flasks_do_not_apply = db.flag(cfg, "FlasksDoNotApplyToPlayer");
     let cannot_recover_life = db.flag(cfg, "CannotRecoverLifeOutsideLeech");
 

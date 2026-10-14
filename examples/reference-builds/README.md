@@ -62,5 +62,7 @@ mise run builds:fetch examples/reference-builds/holdout --pick last
 | 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 16（70%） | 979/1073（91.2%） |
 | 2026-10-14（第十六轮：盾牌自身的格挡词条先作用于盾牌的格挡率，再乘角色的“increased Block chance”；Magma Barrier 给予的格挡率） | `tuned/` | 23 | 22（96%） | 1009/1061（95.1%） |
 | 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 16（70%） | 979/1073（91.2%） |
+| 2026-10-14（第十七轮：腰带的 “Charm Slots: N” 是物品的总数，不再与 “Has N Charm Slots” 重复计入；“for each of your empty Charm slots” 按空着的护符栏计数） | `tuned/` | 23 | 22（96%） | 1010/1061（95.2%） |
+| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 16（70%） | 980/1073（91.3%） |
 
 吻合行里有按游戏规则有意不同于参考值的行（例如护身符授予的技能不保留精魄，见 `reference_report.rs` 基线旁的说明），所以上限不是 100%。

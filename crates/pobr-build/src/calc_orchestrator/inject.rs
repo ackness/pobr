@@ -355,6 +355,15 @@ pub(super) fn inject_build_multipliers(
     let (idols, others) = augments_in_equipment(build, data);
     session.set_multiplier("IdolsInEquipment", idols as f64);
     session.set_multiplier("NonIdolAugmentsInEquipment", others as f64);
+    // "for each of your empty Charm slots": the charms in the Charm slots.
+    // The build keeps only the charms a PoB2 build marks active, so an
+    // unticked charm's slot counts as empty, as PoB2 counts it.
+    let charms = build
+        .utility_slots
+        .iter()
+        .filter(|(slot, _)| slot.starts_with("Charm "))
+        .count();
+    session.set_empty_charm_slots(charms);
     // GrenadeTypes (matching vendor CalcPerform.lua:1238-1242: counts the number of
     // distinct granted effects among enabled active skills with `SkillType.Grenade`,
     // deduplicated) — the Demolitionist ascendancy's "… for every different Grenade

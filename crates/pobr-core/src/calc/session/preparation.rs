@@ -193,6 +193,19 @@ impl CalculationSession {
         }
     }
 
+    /// Counts the empty Charm slots, for "for each of your empty Charm slots"
+    /// (`EmptyCharms`): the character's Charm slots less the `charms` in
+    /// them. Call after the sources are finished and before
+    /// [`prepare_player_stats`](Self::prepare_player_stats): Spirit can scale
+    /// on the count, as the Shaman's "+40 to Spirit for each of your empty
+    /// Charm slots" does.
+    pub fn set_empty_charm_slots(&mut self, charms: usize) {
+        let slots = crate::calc::env_finalize::charm_slots(&self.env.player.mod_db, &self.env.cfg);
+        let empty = (slots - charms as f64).max(0.0);
+        self.set_multiplier("EmptyCharms", empty);
+        self.set_stat("EmptyCharms", empty);
+    }
+
     /// Counts the minions in the character's Presence, for "for each Minion
     /// in your Presence" (`MinionPresenceCount`): the minions the calculation
     /// created ([`add_minion_from_def`](Self::add_minion_from_def)), or the
