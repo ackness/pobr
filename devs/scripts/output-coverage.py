@@ -27,7 +27,7 @@ DEFAULT_SETS = (
 )
 EXCLUDED = re.compile(
     r"dodge|suppression|brand|darkness|seal|pvp|loot|impale|corruptingblood|"
-    r"devotion|tribute|soulcost|soulgainprevention|^Spec:|^QuantityMultiplier$",
+    r"devotion|tribute|soulcost|soulgainprevention|^Spec:",
     re.IGNORECASE,
 )
 

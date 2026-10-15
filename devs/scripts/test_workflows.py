@@ -1263,13 +1263,14 @@ class OutputCoverageTests(unittest.TestCase):
             { stat = "Life" },
             { stat = "Life" },
             { stat = "MainHand", childStat = "Accuracy" },
+            { stat = "QuantityMultiplier" },
             { stat = "PvpTotalDPS" },
             { stat = "Spec:LifeInc" },
             { stat = "SpellDodgeChance" },
             -- { stat = "OldStat" },
             local minionDisplayStats = { { stat = "MinionOnly" } }
         ''')
-        self.assertEqual(sidebar, {"Life", "MainHand.Accuracy"})
+        self.assertEqual(sidebar, {"Life", "MainHand.Accuracy", "QuantityMultiplier"})
 
     def test_agreement_handles_missing_zero_nonfinite_and_aliases(self):
         builds = [
