@@ -6,9 +6,11 @@ export function prettySkillId(id: string): string {
 }
 
 export function gemDisplayName(entry: GemCatalogEntry, lang: Lang): string {
-  if (lang === 'zh-CN') return entry.name_zh_cn ?? entry.name_zh_tw ?? entry.name;
-  if (lang === 'zh-TW') return entry.name_zh_tw ?? entry.name_zh_cn ?? entry.name;
-  return entry.name;
+  const name = lang === 'zh-CN' ? entry.name_zh_cn ?? entry.name_zh_tw ?? entry.name
+    : lang === 'zh-TW' ? entry.name_zh_tw ?? entry.name_zh_cn ?? entry.name : entry.name;
+  // Companion and Spectre names reserve a suffix for the chosen monster.
+  // Generic gem labels omit it; the minion controls show the monster's name.
+  return name.replace(/[:：]\s*\{0\}$/, '').trim();
 }
 
 /** Resolve secondary skills through the data's gem links, without inventing picker entries. */

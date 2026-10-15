@@ -19,6 +19,7 @@ import type {
   ConfigOption,
   SkillMetricsResponse,
   GemCatalogEntry,
+  MinionCatalog,
   ItemLineJson,
   NodePowerResponse,
   OptimizeVariantsRequest,
@@ -89,6 +90,7 @@ export interface PobrBackend {
   loadClassNames(): Promise<ClassNames>;
   /** 宝石目录（手动技能编辑选择器）。 */
   gemCatalog(): Promise<GemCatalogEntry[]>;
+  minionCatalog(): Promise<MinionCatalog>;
   /** 内置配置目录（Config 页分区开关）。 */
   loadConfigOptions(): Promise<ConfigOption[]>;
   /** 英文词条行 → 简中显示（模板反查；不认识原样返回）。 */

@@ -73,6 +73,8 @@ fn generate_web_fixtures() {
     // The gem catalog (used by the manual skill-editing picker).
     let catalog = pobr_wasm::gem_catalog_json().expect("gem catalog");
     std::fs::write(out.join("gem_catalog.json"), pretty(&catalog)).unwrap();
+    let minions = pobr_wasm::minion_catalog_json().expect("minion catalog");
+    std::fs::write(out.join("minion_catalog.json"), pretty(&minions)).unwrap();
 
     // The built-in config catalog (Config page): mock only needs a subset —
     // take the first 5 entries per section.

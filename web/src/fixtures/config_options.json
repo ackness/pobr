@@ -114,6 +114,7 @@
       }
     ],
     "section": "When In Combat",
+    "tooltip": "Controls how the chance on hit to ignore enemy physical damage reduction is calculated:\n\tMinimum: never ignores unless chance is at least 100%\n\tAverage: damage is based on the average application\n\tMax Effect: always ignores if you have any chance",
     "var": "ChanceToIgnoreEnemyPhysicalDamageReductionMode",
     "verified": true,
     "visibility": {
@@ -145,11 +146,15 @@
     "input_type": "count",
     "label": "^xADAA47Chill ^7Stacks",
     "section": "For Effective DPS",
+    "tooltip": "Amount of stacks of ^xADAA47Chill ^7applied to the enemy.",
     "var": "ChillStacks",
     "verified": true,
     "visibility": {
       "if_flag": [
         "ChillCanStack"
+      ],
+      "if_option": [
+        "conditionEnemyChilled"
       ]
     }
   },
@@ -197,6 +202,7 @@
     "input_type": "check",
     "label": "Disable EHP gain on block/suppress:",
     "section": "General",
+    "tooltip": "Sets the EHP calc to not apply gain on block and suppress effects",
     "var": "DisableEHPGainOnBlock",
     "verified": true,
     "visibility": {
@@ -215,6 +221,7 @@
     "input_type": "check",
     "label": "Ignore Skill Hit Damage?",
     "section": "For Effective DPS",
+    "tooltip": "This option prevents EE from being reset by the hit damage of your main skill.",
     "var": "EEIgnoreHitDamage",
     "verified": true,
     "visibility": {
@@ -244,6 +251,7 @@
       }
     ],
     "section": "General",
+    "tooltip": "Sets the EHP calc to pretend its unlucky and reduce the effects of random events such as\n\tBlock/Spell Block Chance\n\tDodge/Spell Dodge Chance\n\tSpell Suppression Chance\n\tAvoidance Chance",
     "var": "EHPUnluckyWorstOf",
     "verified": true
   },
@@ -311,6 +319,7 @@
     "input_type": "check",
     "label": "Do you have Everlasting Sacrifice?",
     "section": "When In Combat",
+    "tooltip": "This option enables the Everlasting Sacrifice buff that grants +5% to all maximum resists.",
     "var": "EverlastingSacrifice",
     "verified": true,
     "visibility": {
@@ -460,6 +469,7 @@
       ]
     },
     "section": "When In Combat",
+    "tooltip": "This option sets the Movement Speed from Gamblesprint boots.",
     "var": "GamblesprintMovementSpeed",
     "verified": true,
     "visibility": {
@@ -489,6 +499,7 @@
     "input_type": "count",
     "label": "^x3F6DB3Hoarfrost ^7Stacks",
     "section": "For Effective DPS",
+    "tooltip": "Amount of stacks of ^x3F6DB3Hoarfrost ^7applied to the enemy.",
     "var": "HoarfrostStacks",
     "verified": true,
     "visibility": {
@@ -546,11 +557,15 @@
     "input_type": "count_allow_zero",
     "label": "^xB97123Scorch ^7Stacks",
     "section": "For Effective DPS",
+    "tooltip": "Amount of stacks of ^xB97123Scorch ^7applied to the enemy.",
     "var": "ScorchStacks",
     "verified": true,
     "visibility": {
       "if_flag": [
         "ScorchCanStack"
+      ],
+      "if_option": [
+        "conditionEnemyScorched"
       ]
     }
   },
@@ -577,11 +592,15 @@
     "input_type": "count",
     "label": "^xADAA47Shock ^7Stacks",
     "section": "For Effective DPS",
+    "tooltip": "Amount of stacks of ^xADAA47Shock ^7applied to the enemy.",
     "var": "ShockStacks",
     "verified": true,
     "visibility": {
       "if_flag": [
         "ShockCanStack"
+      ],
+      "if_option": [
+        "conditionEnemyShocked"
       ]
     }
   },
@@ -599,6 +618,7 @@
       }
     ],
     "section": "General",
+    "tooltip": "Controls how the base damage for applying Ailments is calculated:\n\tAverage: damage is based on the average application, including both crits and non-crits\n\tCrits Only: damage is based solely on Ailments inflicted with crits",
     "var": "ailmentMode",
     "verified": true
   },
@@ -639,6 +659,7 @@
       "MIN": []
     },
     "section": "General",
+    "tooltip": "Controls how Defending with Double Armour is calculated:\n\tMinimum: never Defend with Double Armour\n\tAverage: Damage Reduction from Defending with Double Armour is proportional to chance\n\tMaximum: always Defend with Double Armour\nThis setting has no effect if you have 100% chance to Defend with Double Armour.",
     "var": "armourCalculationMode",
     "verified": true,
     "visibility": {
@@ -666,6 +687,7 @@
     "input_type": "check",
     "label": "Is the enemy Rare?",
     "section": "Enemy Stats",
+    "tooltip": "The enemy will automatically be considered to be Unique if they are a Boss.\nUsed to set base Culling Strike Threshold.",
     "var": "conditionEnemyRareOrUnique",
     "verified": true,
     "visibility": {
@@ -828,6 +850,7 @@
       ]
     },
     "section": "Enemy Stats",
+    "tooltip": "Delirium scales enemy 'less Damage Taken' as well as enemy 'increased Damage dealt'\nAt 100% effect:\nEnemies Deal 30% Increased Damage\nEnemies take 80% Less Damage",
     "var": "deliriousPercentage",
     "verified": true
   },
@@ -891,6 +914,7 @@
     "input_type": "check",
     "label": "Act 1: Clearfell",
     "section": "Quest Rewards",
+    "tooltip": "^x88FFFFBeira^7\n+10% to Cold Resistance",
     "var": "questAct 1ClearfellBeira",
     "verified": true
   },
@@ -913,6 +937,7 @@
     "input_type": "check",
     "label": "Act 1: Freythorn",
     "section": "Quest Rewards",
+    "tooltip": "^x88FFFFKing In The Mists^7\n+30 to Spirit",
     "var": "questAct 1FreythornKing In The Mists",
     "verified": true
   },
@@ -935,6 +960,7 @@
     "input_type": "check",
     "label": "Act 1: Ogham Manor",
     "section": "Quest Rewards",
+    "tooltip": "^x88FFFFCandlemass^7\n+20 to maximum Life",
     "var": "questAct 1Ogham ManorCandlemass",
     "verified": true
   },
@@ -957,6 +983,7 @@
     "input_type": "check",
     "label": "Act 2: Spires of Deshar",
     "section": "Quest Rewards",
+    "tooltip": "^x88FFFFSisters of Garukhan Shrine^7\n+10% to Lightning Resistance",
     "var": "questAct 2Spires of DesharSisters of Garukhan Shrine",
     "verified": true
   },
@@ -1028,6 +1055,7 @@
       "None": []
     },
     "section": "Quest Rewards",
+    "tooltip": "^x88FFFFMedallion^7\nOne of the following:\n30% increased Charm Charges Gained\n\t+1 Charm Slot\n30% increased Charm Effect Duration\n\t+1 Charm Slot",
     "var": "questAct 2Valley of the TitansMedallion",
     "verified": true
   }

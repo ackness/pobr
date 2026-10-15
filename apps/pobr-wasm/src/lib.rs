@@ -25,8 +25,9 @@ pub use build_api::{
     attribution_json, calculate_build_json, classify_item_lines_json, decode_build_file_json,
     decode_build_json, decode_build_loadout_json, encode_build_json, gem_catalog_json,
     import_trade_items_json, item_augment_info_json, item_crafting_catalog_json, line_usage_json,
-    manage_loadout_json, node_power_json, normalize_item_draft_json, optimize_variants_json,
-    reforge_runes_json, rune_catalog_json, skill_metrics_json, translate_lines_to_zh_cn_json,
+    manage_loadout_json, minion_catalog_json, node_power_json, normalize_item_draft_json,
+    optimize_variants_json, reforge_runes_json, rune_catalog_json, skill_metrics_json,
+    translate_lines_to_zh_cn_json,
 };
 pub use i18n::translate;
 pub use session::calculate_json;
@@ -130,6 +131,11 @@ pub mod wasm {
     #[wasm_bindgen(js_name = gemCatalogJson)]
     pub fn gem_catalog_json() -> Result<String, JsError> {
         crate::build_api::gem_catalog_json().map_err(|err| JsError::new(&err))
+    }
+
+    #[wasm_bindgen(js_name = minionCatalogJson)]
+    pub fn minion_catalog_json() -> Result<String, JsError> {
+        crate::build_api::minion_catalog_json().map_err(|err| JsError::new(&err))
     }
 
     /// JS entry point: `decodeBuildLoadoutJson(requestJson) -> string` —

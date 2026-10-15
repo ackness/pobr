@@ -1,6 +1,9 @@
 {
   "breakdowns": {
     "Accuracy": {
+      "actor": {
+        "kind": "player"
+      },
       "base_total": 918.0,
       "formula": {
         "steps": [
@@ -36,6 +39,9 @@
       "more_total": 1.0
     },
     "ActionRate": {
+      "actor": {
+        "kind": "player"
+      },
       "base_total": 0.0,
       "formula": {
         "steps": [
@@ -171,6 +177,9 @@
       "more_total": 1.0
     },
     "Armour": {
+      "actor": {
+        "kind": "player"
+      },
       "base_total": 0.0,
       "formula": {
         "steps": [
@@ -197,6 +206,9 @@
       "more_total": 1.0
     },
     "ColdResist": {
+      "actor": {
+        "kind": "player"
+      },
       "base_total": 95.0,
       "formula": {
         "steps": [
@@ -273,6 +285,9 @@
       "more_total": 1.0
     },
     "CombinedDPS": {
+      "actor": {
+        "kind": "player"
+      },
       "base_total": 0.0,
       "formula": {
         "steps": [
@@ -294,6 +309,9 @@
       "more_total": 1.0
     },
     "CritChance": {
+      "actor": {
+        "kind": "player"
+      },
       "base_total": 0.0,
       "formula": {
         "steps": [
@@ -533,6 +551,9 @@
       "more_total": 1.0
     },
     "CritMultiplier": {
+      "actor": {
+        "kind": "player"
+      },
       "base_total": 0.0,
       "formula": {
         "steps": [
@@ -740,6 +761,9 @@
       "more_total": 1.0
     },
     "EnergyShield": {
+      "actor": {
+        "kind": "player"
+      },
       "base_total": 1730.0,
       "formula": {
         "steps": [
@@ -1033,6 +1057,9 @@
       ]
     },
     "Evasion": {
+      "actor": {
+        "kind": "player"
+      },
       "base_total": 7.0,
       "formula": {
         "steps": [
@@ -1105,6 +1132,9 @@
       "more_total": 1.0
     },
     "FireResist": {
+      "actor": {
+        "kind": "player"
+      },
       "base_total": 114.0,
       "formula": {
         "steps": [
@@ -1190,6 +1220,9 @@
       "more_total": 1.0
     },
     "HitChance": {
+      "actor": {
+        "kind": "player"
+      },
       "base_total": 918.0,
       "formula": {
         "steps": [
@@ -1225,6 +1258,9 @@
       "more_total": 1.0
     },
     "IgniteDPS": {
+      "actor": {
+        "kind": "player"
+      },
       "ailment": {
         "apply_chance": 0.7127397,
         "base_duration": 4.0,
@@ -1306,6 +1342,9 @@
       "more_total": 1.0
     },
     "Life": {
+      "actor": {
+        "kind": "player"
+      },
       "base_total": 1552.0,
       "formula": {
         "steps": [
@@ -1395,6 +1434,9 @@
       "more_total": 1.0
     },
     "LightningResist": {
+      "actor": {
+        "kind": "player"
+      },
       "base_total": 91.0,
       "formula": {
         "steps": [
@@ -1471,6 +1513,9 @@
       "more_total": 1.0
     },
     "Mana": {
+      "actor": {
+        "kind": "player"
+      },
       "base_total": 1715.0,
       "formula": {
         "steps": [
@@ -1592,6 +1637,9 @@
       "more_total": 1.0
     },
     "Spirit": {
+      "actor": {
+        "kind": "player"
+      },
       "base_total": 343.0,
       "formula": {
         "steps": [
@@ -1654,6 +1702,9 @@
       "more_total": 1.0
     },
     "TotalDPS": {
+      "actor": {
+        "kind": "player"
+      },
       "base_total": 0.0,
       "formula": {
         "steps": [
@@ -1837,6 +1888,9 @@
       "more_total": 1.0
     },
     "TotalDotDPS": {
+      "actor": {
+        "kind": "player"
+      },
       "base_total": 0.0,
       "formula": {
         "steps": [
@@ -1853,6 +1907,9 @@
       "more_total": 1.0
     },
     "TotalHitAvg": {
+      "actor": {
+        "kind": "player"
+      },
       "base_total": 0.0,
       "damage": {
         "damage_effect": 1.0,
@@ -2257,6 +2314,7 @@
     }
   },
   "item_errors": [],
+  "main_minion_index": null,
   "main_skill": {
     "active_skill_index": 1,
     "combined_dps": 6269.869668456,
@@ -2291,7 +2349,83 @@
     "hit_dps": 6265.33506007,
     "skill_id": "FrostBombPlayer"
   },
+  "minions": [],
   "stats": [
+    {
+      "category": "DotDamage",
+      "id": "DecayDPS",
+      "value": 0.0
+    },
+    {
+      "category": "DotDamage",
+      "id": "MirageBurningGroundDPS",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "ReservationDPS",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "NetWardRegen",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "MirageDPS",
+      "value": 0.0
+    },
+    {
+      "category": "DotDamage",
+      "id": "BurningGroundDPS",
+      "value": 0.0
+    },
+    {
+      "category": "Defence",
+      "id": "EffectiveMovementSpeedMod",
+      "value": 1.426
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "MovementSpeedWhileUsingSkill",
+      "value": 0.42777
+    },
+    {
+      "category": "Defence",
+      "id": "PresenceRadiusMetres",
+      "value": 4.9
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "AuraEffectMod",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "CurseEffectMod",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "ActiveMinionLimit",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "ExplodeChance",
+      "value": -0.0
+    },
+    {
+      "category": "Offence",
+      "id": "CombinedAvgToMonsterLife",
+      "value": 19.011212101195532
+    },
+    {
+      "category": "Offence",
+      "id": "CritBifurcates",
+      "value": 0.0
+    },
     {
       "category": "Offence",
       "id": "AverageDamage",

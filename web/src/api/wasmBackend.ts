@@ -19,6 +19,7 @@ import type {
   ConfigCatalogFile,
   SkillMetricsResponse,
   GemCatalogEntry,
+  MinionCatalog,
   ItemLineJson,
   NodePowerResponse,
   OptimizeVariantsResponse,
@@ -48,6 +49,7 @@ interface WasmModule {
   attributionJson(requestJson: string): string;
   lineUsageJson(requestJson: string): string;
   gemCatalogJson(): string;
+  minionCatalogJson(): string;
   translateLinesToZhCn(linesJson: string): string;
   classifyItemLinesJson(text: string): string;
   runeCatalogJson(itemText: string): string;
@@ -239,6 +241,9 @@ export async function createWasmBackend(): Promise<PobrBackend> {
       } catch {
         return null; // 美术未生成（未跑 build-tree-art）→ 回退纯圆点。
       }
+    },
+    async minionCatalog() {
+      return JSON.parse(wasm.minionCatalogJson()) as MinionCatalog;
     },
     async gemCatalog() {
       return JSON.parse(wasm.gemCatalogJson()) as GemCatalogEntry[];

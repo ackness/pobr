@@ -330,6 +330,73 @@ fn translate_lines_impl(lines_json: &str) -> Result<String, super::ApiError> {
     Ok(serde_json::to_string(&out).map_err(|e| format!("serialize: {e}"))?)
 }
 
+/// The engine's monster identities and the ordered skills it can resolve.
+pub fn minion_catalog_json() -> Result<String, String> {
+    let data = state::build_data().map_err(|e| super::ApiError::not_initialized(e).into_json())?;
+    #[derive(Serialize)]
+    struct Skill {
+        index: usize,
+        skill_id: String,
+        name: Option<String>,
+    }
+    #[derive(Serialize)]
+    struct Monster {
+        id: String,
+        name: String,
+        beast: bool,
+        spectre: bool,
+        skills: Vec<Skill>,
+    }
+    #[derive(Serialize)]
+    struct Summoner {
+        skill_id: String,
+        choice: Option<&'static str>,
+        minion_ids: Vec<String>,
+    }
+    let mut monsters: Vec<_> = data
+        .minions
+        .values()
+        .map(|minion| Monster {
+            id: minion.id.clone(),
+            name: minion.name.clone(),
+            beast: minion.monster_tags.iter().any(|tag| tag == "beast"),
+            spectre: minion.id.starts_with("Metadata/Monsters/"),
+            // skillMinionSkill counts only skills available to this evaluator.
+            skills: minion
+                .skill_list
+                .iter()
+                .filter_map(|id| data.granted_effects.get(id).map(|skill| (id, skill)))
+                .enumerate()
+                .map(|(index, (id, skill))| Skill {
+                    index: index + 1,
+                    skill_id: id.clone(),
+                    name: skill.displayed_name.clone(),
+                })
+                .collect(),
+        })
+        .collect();
+    monsters.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
+    let mut summoners: Vec<_> = data
+        .granted_effects
+        .values()
+        .filter_map(|effect| {
+            let choice = match effect.active_skill.as_deref() {
+                Some("summon_beast") => Some("beast"),
+                Some("summon_spectre") => Some("spectre"),
+                _ => None,
+            };
+            (!effect.minion_list.is_empty() || choice.is_some()).then(|| Summoner {
+                skill_id: effect.id.clone(),
+                choice,
+                minion_ids: effect.minion_list.clone(),
+            })
+        })
+        .collect();
+    summoners.sort_by(|a, b| a.skill_id.cmp(&b.skill_id));
+    serde_json::to_string(&serde_json::json!({"monsters": monsters, "summoners": summoners}))
+        .map_err(|e| format!("serialize minion catalog: {e}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

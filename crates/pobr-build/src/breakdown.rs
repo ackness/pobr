@@ -69,7 +69,16 @@ pub struct BreakdownMod {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum BreakdownActor {
+    Player,
+    Minion { index: usize },
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct StatBreakdown {
+    /// The actor whose modifiers and formula this breakdown describes.
+    pub actor: BreakdownActor,
     /// The active BASE mod-line total (no class/base injection).
     pub base_total: f64,
     /// The active INC mod-line total (in percentage points).
@@ -603,6 +612,7 @@ fn hand_breakdowns(session: &CalculationSession, stat: &str) -> Vec<HandBreakdow
             .map(|(pass, (hand, terms))| HandBreakdown {
                 hand: hand_label(*hand),
                 detail: StatBreakdown {
+                    actor: BreakdownActor::Player,
                     base_total: base_total + 0.0,
                     inc_total: inc_total + 0.0,
                     more_total,
@@ -635,6 +645,7 @@ fn hand_breakdowns(session: &CalculationSession, stat: &str) -> Vec<HandBreakdow
             HandBreakdown {
                 hand: hand_label(hand),
                 detail: StatBreakdown {
+                    actor: BreakdownActor::Player,
                     base_total: base_total + 0.0,
                     inc_total: inc_total + 0.0,
                     more_total,
@@ -762,6 +773,7 @@ pub fn stat_breakdown(session: &CalculationSession, stat: &str) -> Option<StatBr
     let entries = mod_entries(&rows);
     let (base_total, inc_total, more_total) = session.stat_totals(stat);
     Some(StatBreakdown {
+        actor: BreakdownActor::Player,
         // An empty float sum is `-0.0`; adding zero keeps it out of the JSON.
         base_total: base_total + 0.0,
         inc_total: inc_total + 0.0,
@@ -798,6 +810,7 @@ pub fn minion_stat_breakdown(
     }
     let (base_total, inc_total, more_total) = session.minion_stat_totals(index, stat);
     Some(StatBreakdown {
+        actor: BreakdownActor::Minion { index },
         base_total: base_total + 0.0,
         inc_total: inc_total + 0.0,
         more_total,

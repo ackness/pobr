@@ -148,6 +148,8 @@ fn calculate_build_json_shape() {
             "unsupported_modifiers",
             "breakdowns",
             "main_skill",
+            "minions",
+            "main_minion_index",
             "item_errors",
             "tree_effects",
         ],
@@ -282,6 +284,7 @@ fn calculate_build_json_shape() {
     assert_keys(
         es_bd,
         &[
+            "actor",
             "base_total",
             "inc_total",
             "more_total",
@@ -4356,6 +4359,84 @@ fn full_dps_cache_survives_switching_the_inspected_effect() {
     assert_ne!(
         first["main_skill"]["skill_id"],
         second["main_skill"]["skill_id"]
+    );
+}
+
+#[test]
+fn minion_selection_catalog_output_and_actor_breakdowns_round_trip() {
+    ensure_data();
+    let monster = "Metadata/Monsters/Quadrilla/Quadrilla";
+    let catalog: Value = serde_json::from_str(&pobr_wasm::minion_catalog_json().unwrap()).unwrap();
+    let quadrilla = catalog["monsters"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["id"] == monster)
+        .unwrap();
+    assert_eq!(quadrilla["name"], "Quadrilla");
+    assert_eq!(quadrilla["beast"], true);
+    assert!(quadrilla["skills"].as_array().unwrap().len() >= 3);
+    assert_eq!(quadrilla["skills"][2]["index"], 3);
+    let gem = |level| {
+        serde_json::json!({ "skill_id": "SummonBeastPlayer", "level": level, "quality": 0,
+        "minion": monster, "minion_skill": 3 })
+    };
+    let mut disabled_gem = gem(1);
+    disabled_gem["enabled"] = serde_json::json!(false);
+    let request = serde_json::json!({ "character": { "level": 90, "class_name": "Huntress" }, "main_socket_group": 2,
+        "socket_groups": [ { "enabled": false, "gems": [{ "skill_id": "FireballPlayer", "level": 20 }] },
+            { "enabled": true, "gems": [gem(1)] }, { "enabled": true, "gems": [disabled_gem, gem(20)] } ] });
+    let code = pobr_wasm::encode_build_json(&request.to_string()).unwrap();
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).unwrap()).unwrap();
+    assert_eq!(decoded["socket_groups"][2]["gems"][0]["enabled"], false);
+    assert_eq!(decoded["socket_groups"][2]["gems"][1]["minion"], monster);
+    assert_eq!(decoded["socket_groups"][2]["gems"][1]["minion_skill"], 3);
+    let calc = |req: Value| -> Value {
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&req.to_string()).unwrap()).unwrap()
+    };
+    let direct = calc(request.clone());
+    let mut disabled_main = request;
+    disabled_main["main_socket_group"] = serde_json::json!(1);
+    disabled_main["socket_groups"][1]["enabled"] = serde_json::json!(false);
+    assert!(calc(disabled_main)["main_minion_index"].is_null());
+    assert_eq!(direct["main_minion_index"], 1);
+    let minions = direct["minions"].as_array().unwrap();
+    assert_eq!(minions.len(), 2);
+    let main = &minions[1];
+    assert_eq!(main["minion_id"], monster);
+    assert_eq!(main["name"], "Quadrilla");
+    assert_eq!(main["summoned_by"], "SummonBeastPlayer");
+    assert_eq!(main["skill_id"], quadrilla["skills"][2]["skill_id"]);
+    assert!(main["life"].as_f64().unwrap() > minions[0]["life"].as_f64().unwrap());
+    assert!(main["dps"].as_f64().unwrap() > 0.0);
+    assert_eq!(
+        main["breakdowns"]["TotalDPS"]["formula"]["value"],
+        main["dps"]
+    );
+    assert_eq!(
+        main["breakdowns"]["Life"]["actor"],
+        serde_json::json!({ "kind": "minion", "index": 1 })
+    );
+    assert_eq!(
+        direct["breakdowns"]["Life"]["actor"],
+        serde_json::json!({ "kind": "player" })
+    );
+    assert!(
+        (main["breakdowns"]["Life"]["formula"]["value"]
+            .as_f64()
+            .unwrap()
+            - main["life"].as_f64().unwrap())
+        .abs()
+            < 1e-6
+    );
+    assert!(
+        main["stats"].get("FireResist").is_none(),
+        "unmodeled resistance must not be reported as zero"
+    );
+    assert_eq!(
+        direct["minions"],
+        calc(serde_json::json!({"pob_code": code}))["minions"]
     );
 }
 

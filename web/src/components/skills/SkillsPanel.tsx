@@ -15,6 +15,7 @@ import { AppSelect } from '../shared/AppSelect';
 import { loadTradeCatalog } from '../../lib/tradeOptimizer';
 import { eligibleSupports, lineageAvailable, supportSetsCompatible, usableSupportLevel, type SupportMetadata } from '../../lib/supportOptimizer';
 import { supportText } from '../../lib/supportI18n';
+import { MinionSelection } from './MinionSelection';
 import { SkillFormControls } from './SkillFormControls';
 import './skills.css';
 
@@ -305,6 +306,8 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                   </li>
                 ))}
               </ul>
+              {group.gems.map((gem, gemIndex) => <MinionSelection key={gemIndex} session={session} lang={lang}
+                groupIndex={idx} gemIndex={gemIndex} gemName={gemLabel(gem)} />)}
               </div>
               )}
               {active && isOpen && (

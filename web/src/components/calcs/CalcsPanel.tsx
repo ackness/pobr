@@ -3,6 +3,7 @@ import { formatApiError } from '../../api/error';
 import { useMemo, useRef, useState } from 'react';
 import type {
   AttributionResponse,
+  MinionOutput,
   Breakdown,
   BreakdownMod,
   FormulaStep,
@@ -31,6 +32,7 @@ import { getBackend } from '../../api/backend';
 import { useEffect } from 'react';
 import { useSkillName, useSkillCatalog } from '../../hooks/useSkillName';
 import './calcs.css';
+import { AppSelect } from '../shared/AppSelect';
 import { SkillFormControls } from '../skills/SkillFormControls';
 import { highestDpsSkill } from '../../lib/skillSelection';
 
@@ -958,6 +960,11 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
   const tt = bindT(lang);
   const calc = session.calcError ? null : session.calc;
   const [open, setOpen] = useState<string | null>(null);
+  const [actor, setActor] = useState('player');
+  const actorKey = (minion: MinionOutput) =>
+    `${minion.index}:${minion.minion_id}:${minion.summoned_by}`;
+  const selectedMinion = calc?.minions?.find(minion => actorKey(minion) === actor);
+  const actorBreakdowns = selectedMinion?.breakdowns ?? calc?.breakdowns ?? {};
 
   // 侧边栏跳转：展开目标 breakdown 并滚动到可视区（渲染提交后再滚）。
   // 消费后立即让父级清空 focus——否则切走再切回本页签会带着旧 focus 重新
@@ -965,9 +972,15 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
   useEffect(() => {
     if (!focus) return;
     const overview = focus.id === 'skill-metrics';
-    if (!overview) setOpen(focus.id);
+    const minionFocus = /^Minion:(\d+):(.+)$/.exec(focus.id);
+    const stat = minionFocus?.[2] ?? focus.id;
+    if (!overview) {
+      const minion = minionFocus && calc?.minions?.find(row => row.index === Number(minionFocus[1]));
+      setActor(minion ? actorKey(minion) : 'player');
+      setOpen(stat);
+    }
     const frame = requestAnimationFrame(() => {
-      const target = document.getElementById(overview ? 'skill-metrics-heading' : `breakdown-${focus.id}`);
+      const target = document.getElementById(overview ? 'skill-metrics-heading' : `breakdown-${stat}`);
       if (overview) target?.focus({ preventScroll: true });
       target?.scrollIntoView({ block: 'start', behavior: 'smooth' });
       onFocusConsumed?.();
@@ -985,7 +998,7 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
     const catOf = new Map<string, DisplayStatCategory>(calc.stats.map((s) => [s.id, s.category]));
     const catalogOrder = new Map<string, number>(calc.stats.map((s, i) => [s.id, i]));
     const q = query.trim().toLowerCase();
-    const names = Object.keys(calc.breakdowns)
+    const names = Object.keys(actorBreakdowns)
       .filter(
         (name) =>
           q === '' ||
@@ -1012,9 +1025,9 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
       category,
       names: byCat.get(category)!,
     }));
-  }, [calc, query, lang]);
+  }, [calc, query, lang, selectedMinion]);
 
-  const values = statMap(calc?.stats ?? []);
+  const values = selectedMinion ? new Map(Object.entries(selectedMinion.stats)) : statMap(calc?.stats ?? []);
 
   return (
     <section className="ui-page calcs-page" aria-labelledby="calcs-heading">
@@ -1037,7 +1050,14 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
       />
       </div>
       <SkillMetricsView session={session} lang={lang} />
+      {(calc?.minions?.length ?? 0) > 0 && <label className="calcs-actor-picker">{tt('minion.actor')}
+        <AppSelect ariaLabel={tt('minion.actor')} value={selectedMinion ? actorKey(selectedMinion) : 'player'}
+          options={[{ value: 'player', label: tt('minion.player') }, ...(calc?.minions ?? []).map(minion => ({ value: actorKey(minion),
+            label: `${tt('minion.title')}: ${minion.name || tt('minion.unavailable')} · ${minion.index + 1}` }))]}
+          onChange={value => { setActor(value); setOpen(null); }} />
+      </label>}
       <div className="calcs-breakdowns">
+      {selectedMinion && Object.keys(actorBreakdowns).length === 0 && <p>{tt('minion.noBreakdown')}</p>}
       {query.trim() && sections.length === 0 && <div className="search-empty" role="status">
         <p>{tt('common.noResults')}</p>
         <button onClick={() => setQuery('')}>{tt('common.clearSearch')}</button>
@@ -1047,7 +1067,7 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
           <h3 className="calcs-section-title">{statCategoryLabel(lang, category)}</h3>
           <div className="breakdown-list">
             {names.map((name) => {
-              const breakdown = calc!.breakdowns[name];
+              const breakdown = actorBreakdowns[name];
               const isOpen = open === name;
               return (
                 <div
@@ -1061,7 +1081,7 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
                     onClick={() => setOpen(isOpen ? null : name)}
                   >
                     <span className="row-caret" aria-hidden>▸</span>
-                    <span className="breakdown-name">{statNameLabel(lang, name)}</span>
+                    <span className="breakdown-name">{selectedMinion && `${tt('minion.title')}: `}{statNameLabel(lang, name)}</span>
                     <span className="breakdown-value">
                       {values.has(name) ? formatStatValue(values.get(name) ?? null, 'float2') : ''}
                     </span>

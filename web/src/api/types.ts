@@ -246,6 +246,29 @@ export interface JewelInput {
   text: string;
 }
 
+export interface MinionCatalog {
+  monsters: Array<{ id: string; name: string; beast: boolean; spectre: boolean;
+    skills: Array<{ index: number; skill_id: string; name: string | null }> }>;
+  summoners: Array<{ skill_id: string; choice: 'beast' | 'spectre' | null; minion_ids: string[] }>;
+}
+
+export type BreakdownActor = { kind: 'player' } | { kind: 'minion'; index: number };
+export interface MinionOutput {
+  index: number;
+  minion_id: string;
+  name: string;
+  summoned_by: string;
+  skill_id: string;
+  level: number;
+  dps: number;
+  life: number;
+  armour: number;
+  evasion: number;
+  energy_shield: number;
+  stats: Record<string, number>;
+  breakdowns: Record<string, Breakdown>;
+}
+
 /** 宝石目录条目（gem_catalog_json）。 */
 export interface SkillForm {
   index: number;
@@ -545,6 +568,7 @@ export interface BreakdownFormula {
 }
 
 export interface Breakdown {
+  actor?: BreakdownActor;
   /** Totals cover active lines only. */
   base_total: number;
   inc_total: number;
@@ -785,6 +809,8 @@ export interface FullDpsSkill {
 export interface CalculateBuildResponse {
   /** Present only when config_context was requested. */
   config_context?: ConfigContext;
+  minions?: MinionOutput[];
+  main_minion_index?: number | null;
   full_dps?: { dps: number; dot_dps: number; skills: FullDpsSkill[] };
   stats: DisplayStatValue[];
   /**

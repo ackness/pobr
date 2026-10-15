@@ -22,6 +22,7 @@ import skillMetricsFixture from '../fixtures/skill_metrics.json';
 import treeFixture from '../fixtures/tree.json';
 import treeMetaFixture from '../fixtures/tree_meta.json';
 import gemCatalogFixture from '../fixtures/gem_catalog.json';
+import minionCatalogFixture from '../fixtures/minion_catalog.json';
 import configOptionsFixture from '../fixtures/config_options.json';
 
 export function createMockBackend(): PobrBackend {
@@ -78,6 +79,7 @@ export function createMockBackend(): PobrBackend {
     async loadClassNames() {
       return { classes: {}, ascendancies: {} };
     },
+    async minionCatalog() { return minionCatalogFixture as unknown as import('./types').MinionCatalog; },
     async gemCatalog() {
       return gemCatalogFixture as unknown as GemCatalogEntry[];
     },

@@ -18,6 +18,8 @@ use crate::state;
 
 #[derive(Debug, Serialize)]
 struct CalculateBuildResponse {
+    minions: Vec<MinionOutputJson>,
+    main_minion_index: Option<usize>,
     /// Absent unless requested. Rows include counts and their allocated DPS.
     #[serde(skip_serializing_if = "Option::is_none")]
     full_dps: Option<pobr_core::calc::output::FullDpsOutput>,
@@ -39,6 +41,89 @@ struct CalculateBuildResponse {
     /// everything parsed successfully.
     item_errors: Vec<super::request::SlotIssue>,
     tree_effects: pobr_build::jewel_tree::PassiveJewelState,
+}
+
+#[derive(Debug, Serialize)]
+struct MinionOutputJson {
+    index: usize,
+    minion_id: String,
+    name: String,
+    summoned_by: String,
+    skill_id: String,
+    level: u32,
+    dps: f64,
+    life: f64,
+    armour: f64,
+    evasion: f64,
+    energy_shield: f64,
+    stats: BTreeMap<String, f64>,
+    breakdowns: BTreeMap<String, StatBreakdown>,
+}
+
+fn minion_outputs(
+    session: &pobr_core::calc::CalculationSession,
+    data: &pobr_build::BuildData,
+) -> Vec<MinionOutputJson> {
+    session
+        .output()
+        .minions
+        .iter()
+        .enumerate()
+        .map(|(index, minion)| {
+            let breakdowns: BTreeMap<_, _> = [
+                "Life",
+                "Armour",
+                "Evasion",
+                "EnergyShield",
+                "TotalDPS",
+                "TotalHitAvg",
+                "ActionRate",
+                "HitChance",
+                "CritChance",
+                "CritMultiplier",
+                "Accuracy",
+            ]
+            .into_iter()
+            .filter_map(|stat| {
+                pobr_build::breakdown::minion_stat_breakdown(session, index, stat)
+                    .map(|value| (stat.to_string(), value))
+            })
+            .collect();
+            let mut stats: BTreeMap<_, _> = [
+                ("Life", minion.life),
+                ("Armour", minion.armour),
+                ("Evasion", minion.evasion),
+                ("EnergyShield", minion.energy_shield),
+                ("TotalDPS", minion.dps),
+            ]
+            .into_iter()
+            .map(|(stat, value)| (stat.to_string(), value))
+            .collect();
+            for (stat, breakdown) in &breakdowns {
+                if let Some(formula) = &breakdown.formula {
+                    stats.entry(stat.clone()).or_insert(formula.value);
+                }
+            }
+            MinionOutputJson {
+                index,
+                minion_id: minion.minion_id.clone(),
+                name: data
+                    .minion_def(&minion.minion_id)
+                    .map(|def| def.name.clone())
+                    .unwrap_or_default(),
+                summoned_by: minion.summoned_by.clone(),
+                skill_id: minion.skill_id.clone(),
+                level: minion.level,
+                dps: minion.dps,
+                life: minion.life,
+                armour: minion.armour,
+                evasion: minion.evasion,
+                energy_shield: minion.energy_shield,
+                stats,
+                breakdowns,
+            }
+        })
+        .collect()
 }
 
 /// 0.2 + 0.3: full build calculation -> the full display_catalog key/values
@@ -127,7 +212,19 @@ fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
         .iter()
         .filter_map(|name| stat_breakdown(&session, name).map(|b| (name.to_string(), b)))
         .collect();
+    let main_minion_index =
+        pobr_build::reference_check::main_skill_minion(&build, &data, session.output()).and_then(
+            |main| {
+                session
+                    .output()
+                    .minions
+                    .iter()
+                    .position(|minion| std::ptr::eq(main, minion))
+            },
+        );
     let response = CalculateBuildResponse {
+        minions: minion_outputs(&session, &data),
+        main_minion_index,
         full_dps: session.output().full_dps.clone(),
         stats,
         config_context,
