@@ -22,6 +22,8 @@ use pobr_core::rules::{Handler, HandlerOutcome, HandlerRegistry};
 use pobr_data::modifier::ModType;
 use pobr_data::monster::EnemyTier;
 
+mod combat_config;
+
 /// Upper budget for config-domain handlers (542 entries × 10% ≈ 54).
 pub const CONFIG_HANDLER_BUDGET: usize = 54;
 /// Upper budget for buff-domain handlers.
@@ -60,6 +62,7 @@ pub fn build_registry() -> HandlerRegistry {
     // T1 append point: config handlers
     register_config_handlers(&mut registry);
     register_config_handlers_batch2(&mut registry);
+    combat_config::register(&mut registry);
     // T2 append point: buff handlers
     pobr_core::rules::buff_expander::register_handlers(&mut registry)
         .expect("startup-time buff handler registration should not conflict");

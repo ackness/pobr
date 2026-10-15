@@ -60,6 +60,9 @@ pub fn env_finalize(env: &mut Env) {
     // Stage 6.8: Blind on whichever side is stated to be Blinded, after the
     // modifiers to its effect have reached that side.
     super::blind::apply_blind(env);
+    super::armour_break::apply_armour_break(env);
+    super::crit::apply_inexorable_critical(env);
+    super::configured_damage::apply(env);
     // Stage 6.9: what Bear form gives a character the main skill puts in it.
     super::bear_form::apply_bear_form(env);
     // Stage 7 (T4): applies non-damaging ailments (Chill/Shock → enemy db).

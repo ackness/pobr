@@ -152,6 +152,7 @@ impl CalculationSession {
     /// its existing precedence.
     pub fn bridge_player_conditions(&mut self) {
         for (flag, condition) in [
+            ("Condition:CanBeElusive", "CanBeElusive"),
             ("Condition:CanUseBondedModifiers", "CanUseBondedModifiers"),
             ("Condition:ArcaneSurge", "AffectedByArcaneSurge"),
             ("ChaosInoculation", "FullLife"),

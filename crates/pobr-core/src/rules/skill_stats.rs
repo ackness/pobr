@@ -239,6 +239,46 @@ pub fn crushes_on_hit(stat: &str) -> bool {
 /// leaves the stat to the extracted stat map.
 pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
     match stat {
+        // Dark Pact adds a percentage of the target skeleton's maximum Life.
+        "skeletal_chains_aoe_%_health_dealt_as_chaos_damage" => Some(vec![Modifier::number(
+            "DarkPactLifeAsChaos",
+            ModType::Base,
+            value,
+        )]),
+        // The burning stat is a percentage per minute, not per second.
+        "herald_of_ash_burning_%_overkill_damage_per_minute" => Some(vec![Modifier::number(
+            "HeraldOfAshBurningPerMinute",
+            ModType::Base,
+            value,
+        )]),
+        "support_inevitable_criticals_critical_strike_chance_+%_per_second" => {
+            Some(vec![Modifier::number(
+                "InexorableCritChancePerSecond",
+                ModType::Base,
+                value,
+            )])
+        }
+        "support_inevitable_criticals_critical_strike_chance_+%_cap" => {
+            Some(vec![Modifier::number(
+                "InexorableCritChanceCap",
+                ModType::Base,
+                value,
+            )])
+        }
+        "support_inevitable_criticals_critical_strike_multiplier_+%_final_per_second" => {
+            Some(vec![Modifier::number(
+                "InexorableCritBonusPerSecond",
+                ModType::Base,
+                value,
+            )])
+        }
+        "support_inevitable_criticals_critical_strike_multiplier_+%_final_cap" => {
+            Some(vec![Modifier::number(
+                "InexorableCritBonusCap",
+                ModType::Base,
+                value,
+            )])
+        }
         stat if inflicts_withered(stat) => Some(Vec::new()),
         stat if is_summoned_minion_count(stat) => Some(Vec::new()),
         // Granted to the skill's minions where they are created

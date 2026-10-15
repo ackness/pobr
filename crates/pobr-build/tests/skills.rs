@@ -19,6 +19,8 @@ mod charge_consuming_buffs;
 mod charge_regulation;
 #[path = "skills/charm_slots.rs"]
 mod charm_slots;
+#[path = "skills/config_handlers.rs"]
+mod config_handlers;
 #[path = "skills/configured_lines.rs"]
 mod configured_lines;
 #[path = "skills/corpse_explosion.rs"]

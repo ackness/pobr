@@ -67,11 +67,13 @@ fn blind_percent(db: &ModDb, cfg: &CalcConfig) -> Option<f64> {
         return None;
     }
     let effect = [ModName::from("BlindEffect")];
-    let magnitude = (BLIND_LESS_ACCURACY_AND_EVASION
-        * (1.0 + db.sum(ModType::Inc, cfg, &effect) / 100.0)
-        * db.more(cfg, &effect))
-    .floor()
-    .clamp(0.0, 100.0);
+    let maximum = (1.0 + db.sum(ModType::Inc, cfg, &effect) / 100.0) * db.more(cfg, &effect);
+    let scale = db.override_(cfg, "BlindEffect").map_or(maximum, |value| {
+        (value / 100.0).clamp(0.0, maximum.max(0.0))
+    });
+    let magnitude = (BLIND_LESS_ACCURACY_AND_EVASION * scale)
+        .floor()
+        .clamp(0.0, 100.0);
     Some(if db.flag(cfg, "BlindEffectReversed") {
         magnitude
     } else {
@@ -173,6 +175,26 @@ mod tests {
         );
         assert_eq!(player_more(&env, "Accuracy"), 1.2);
         assert_eq!(player_more(&env, "Evasion"), 1.2);
+    }
+
+    #[test]
+    fn overridden_effect_is_a_percentage_and_cannot_exceed_the_available_blind() {
+        for (effect, accuracy, evasion) in [
+            (50.0, 900.0, 1800.0),
+            (100.0, 800.0, 1600.0),
+            (200.0, 800.0, 1600.0),
+        ] {
+            let env = run(
+                vec![],
+                vec![
+                    enemy_blinded(),
+                    Modifier::number("BlindEffect", ModType::Override, effect),
+                ],
+                true,
+            );
+            assert_eq!(enemy_accuracy(&env.enemy, &env.cfg), accuracy);
+            assert_eq!(enemy_evasion(&env.enemy, &env.cfg), evasion);
+        }
     }
 
     #[test]

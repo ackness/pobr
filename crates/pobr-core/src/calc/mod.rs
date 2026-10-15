@@ -1,10 +1,12 @@
 pub mod actor;
 pub mod ailment;
 pub mod ailment_apply;
+mod armour_break;
 pub mod bear_form;
 pub mod blind;
 pub mod breakdown;
 pub mod buff_pass;
+mod configured_damage;
 pub mod crit;
 pub mod crit_pass;
 pub mod damage;
