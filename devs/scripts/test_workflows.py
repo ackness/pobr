@@ -981,14 +981,16 @@ class TriageTests(unittest.TestCase):
         xml = ("<PathOfBuilding2><Items><Item id=\"1\">Rarity: UNIQUE\nVoid\nLament Amulet\n"
                "Grants Skill: Level 20 Cast on Minion Death\n</Item></Items></PathOfBuilding2>")
         report = {"reference": {"compared": 1, "differing": [
-            {"stat": "SpiritUnreserved", "pobr": -26, "reference": -56, "pob_key": "SpiritUnreserved"}]},
+            {"stat": "SpiritUnreserved", "pobr": -26, "reference": -56, "pob_key": "SpiritUnreserved"},
+            {"stat": "SpiritUnreservedPercent", "pobr": -26, "reference": -56,
+             "pob_key": "SpiritUnreservedPercent"}]},
             "breakdowns": [{"stat": "SkillSpiritReservationBase",
                             **reserved(("MetaCastOnMinionDeathPlayer", 30.0))}]}
-        oracle = {"mainOutput": {"SpiritUnreserved": -56},
+        oracle = {"mainOutput": {"SpiritUnreserved": -56, "SpiritUnreservedPercent": -56},
                   "spiritReservedBreakdown": [{"skillName": "Cast on Minion Death", "total": 60}]}
         result = self.triage.analyse("build", "set", report, oracle, xml, [])
         self.assertEqual([(row["stat"], row["class"]) for row in result["rows"]],
-                         [("SpiritUnreserved", "known")])
+                         [("SpiritUnreserved", "known"), ("SpiritUnreservedPercent", "known")])
 
     def test_leads_are_gathered_across_builds(self):
         lead = self.triage.lead
