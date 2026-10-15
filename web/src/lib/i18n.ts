@@ -16,6 +16,17 @@ export const LANGS: Lang[] = ['en-US', 'zh-TW', 'zh-CN'];
 type Entry = { 'en-US': string; 'zh-TW': string; 'zh-CN': string };
 
 const DICT = {
+  "namedSets.skill": { "en-US": "Skill set", "zh-TW": "技能組合", "zh-CN": "技能组合" },
+  "namedSets.config": {"en-US": "Config set", "zh-TW": "配置組", "zh-CN": "配置组"},
+  "namedSets.create": {"en-US": "New set", "zh-TW": "新增組合", "zh-CN": "新建组合"},
+  "namedSets.duplicate": {"en-US": "Copy set", "zh-TW": "複製組合", "zh-CN": "复制组合"},
+  "namedSets.rename": {"en-US": "Rename set", "zh-TW": "重新命名", "zh-CN": "重命名"},
+  "namedSets.remove": {"en-US": "Delete set", "zh-TW": "刪除組合", "zh-CN": "删除组合"},
+  "namedSets.name": {"en-US": "Set name", "zh-TW": "組名稱", "zh-CN": "组名称"},
+  "namedSets.save": {"en-US": "Save name", "zh-TW": "儲存名稱", "zh-CN": "保存名称"},
+  "namedSets.cancel": {"en-US": "Cancel", "zh-TW": "取消", "zh-CN": "取消"},
+  "namedSets.confirmDelete": {"en-US": "Delete this set? Its saved values will be removed.", "zh-TW": "刪除此組？其中已儲存的值也會刪除。", "zh-CN": "删除此组？其中已保存的值也会删除。"},
+
   "tab.compare": {"en-US": "Compare", "zh-TW": "對比", "zh-CN": "对比"},
   "compare.title": {"en-US": "Compare builds and stages", "zh-TW": "對比構築與階段", "zh-CN": "对比构筑与阶段"},
   "compare.hint": {"en-US": "Choose A and B to inspect saved builds. Only Apply changes A; B stays untouched.", "zh-TW": "選擇 A 與 B 檢視已儲存構築。只有套用會修改 A，B 保持不變。", "zh-CN": "选择 A 与 B 查看已保存构筑。只有应用会修改 A，B 保持不变。"},
@@ -853,7 +864,7 @@ const DICT = {
   'lib.filterSlot': { 'en-US': 'Current slot only', 'zh-TW': '只看當前槽位', 'zh-CN': '只看当前槽位' },
   'lib.noMatch': { 'en-US': 'No matching items', 'zh-TW': '無符合物品', 'zh-CN': '没有匹配的物品' },
   'lib.useJewel': { 'en-US': 'Use', 'zh-TW': '使用', 'zh-CN': '使用' },
-  'sets.title': { 'en-US': 'Skill sets', 'zh-TW': '技能組套裝', 'zh-CN': '技能组套装' },
+  'sets.title': { 'en-US': 'Reusable skill sets', 'zh-TW': '可重用技能組合', 'zh-CN': '可复用技能组合' },
   'sets.save': { 'en-US': 'Save current as set', 'zh-TW': '保存當前為套裝', 'zh-CN': '保存当前为套装' },
   'sets.namePlaceholder': { 'en-US': 'Set name…', 'zh-TW': '套裝名稱…', 'zh-CN': '套装名称…' },
   'sets.apply': { 'en-US': 'Apply', 'zh-TW': '套用', 'zh-CN': '套用' },

@@ -37,6 +37,18 @@ pub fn merge_active_sets(base: &str, edited: &str) -> String {
     }
     merge_active_config(&mut out, edited);
 
+    // Legacy flat Skills must be materialized before replacing its active set.
+    if nth_element(&out, "SkillSet", 1).is_none()
+        && let Some(range) = nth_element(edited, "Skills", 1)
+    {
+        let mut skills = edited[range].to_string();
+        if let Some(old) = nth_element(&out, "Skills", 1) {
+            skills = preserve_skill_metadata(&out[old.clone()], &skills);
+            skills = merge_attrs(&out[old], &skills, "Skills");
+        }
+        replace_global(&mut out, &skills, "Skills");
+    }
+
     // Tree sockets reference the same item pool as equipment slots.
     let renumbered = renumber_items(edited, max_item_id(&out));
 
@@ -47,11 +59,20 @@ pub fn merge_active_sets(base: &str, edited: &str) -> String {
     ] {
         let (Some(new_el), Some(old)) = (
             nth_element(&renumbered, tag, 1),
-            nth_element(&out, tag, idx),
+            if tag == "SkillSet" {
+                element_by_id(&out, tag, idx)
+            } else {
+                nth_element(&out, tag, idx)
+            },
         ) else {
             continue;
         };
-        let merged = merge_attrs(&out[old.clone()], &renumbered[new_el], tag);
+        let content = if tag == "SkillSet" {
+            preserve_skill_metadata(&out[old.clone()], &renumbered[new_el])
+        } else {
+            renumbered[new_el].to_string()
+        };
+        let merged = merge_attrs(&out[old.clone()], &content, tag);
         out.replace_range(old, &merged);
     }
 
@@ -85,7 +106,15 @@ fn merge_active_config(out: &mut String, edited: &str) {
     };
     let base = &out[base_range.clone()];
     let Some(first_set) = nth_element(base, "ConfigSet", 1) else {
-        replace_global(out, edited, "Config");
+        let start = base.find('>').map_or(base.len(), |at| at + 1);
+        let end = base.rfind("</Config>").unwrap_or(start);
+        let wrapped = format!(
+            "<Config activeConfigSet=\"1\"><ConfigSet id=\"1\" title=\"Default\">{}</ConfigSet></Config>",
+            &base[start..end]
+        );
+        let wrapped = merge_attrs(base, &wrapped, "Config");
+        out.replace_range(base_range, &wrapped);
+        merge_active_config(out, edited);
         return;
     };
     let config_open = &base[..base.find('>').unwrap_or(0)];
@@ -123,11 +152,126 @@ fn merge_active_config(out: &mut String, edited: &str) {
             }
         })
         .unwrap_or_else(|| "<ConfigSet id=\"1\" title=\"Default\"/>".to_string());
+    let edited_set = preserve_config_metadata(&base[selected.clone()], &edited_set);
     let merged = merge_attrs(&base[selected.clone()], &edited_set, "ConfigSet");
     out.replace_range(
         base_range.start + selected.start..base_range.start + selected.end,
         &merged,
     );
+}
+
+// Keep extension attributes/children for inputs this editor does not model.
+// Known scalar inputs omitted by an edit are intentionally removed.
+fn preserve_config_metadata(old: &str, edited: &str) -> String {
+    let mut out = edited.to_string();
+    let mut n = 1;
+    while let Some(range) = nth_element(old, "Input", n) {
+        let element = &old[range];
+        let attributes = attrs(&element[..element.find('>').unwrap_or(element.len())]);
+        let name = attributes.iter().find(|(key, _)| key == "name");
+        let mut replacement = None;
+        let mut index = 1;
+        while let Some(range) = nth_element(&out, "Input", index) {
+            let candidate = &out[range.clone()];
+            let candidate_attrs =
+                attrs(&candidate[..candidate.find('>').unwrap_or(candidate.len())]);
+            if name.is_some() && candidate_attrs.iter().find(|(key, _)| key == "name") == name {
+                replacement = Some(range);
+                break;
+            }
+            index += 1;
+        }
+        if let Some(range) = replacement {
+            let candidate = &out[range.clone()];
+            let candidate_attrs =
+                attrs(&candidate[..candidate.find('>').unwrap_or(candidate.len())]);
+            let scalar = |values: &[(String, String)]| {
+                values
+                    .iter()
+                    .find(|(key, _)| matches!(key.as_str(), "boolean" | "number" | "string"))
+                    .cloned()
+            };
+            if let (Some((old_type, old_value)), Some((new_type, new_value))) =
+                (scalar(&attributes), scalar(&candidate_attrs))
+                && old_type == new_type
+                && (old_value == new_value
+                    || old_type == "number"
+                        && old_value
+                            .parse::<f64>()
+                            .ok()
+                            .zip(new_value.parse::<f64>().ok())
+                            .is_some_and(|(a, b)| a == b))
+            {
+                // Keep the original spelling and opaque payload of unchanged inputs.
+                out.replace_range(range, element);
+                n += 1;
+                continue;
+            }
+            // A changed scalar type must not leave two competing values.
+            let mut old = element.to_string();
+            for (key, value) in &attributes {
+                if matches!(key.as_str(), "boolean" | "number" | "string") {
+                    old = old.replace(&format!(" {key}=\"{value}\""), "");
+                }
+            }
+            let merged = merge_attrs(&old, &out[range.clone()], "Input");
+            out.replace_range(range, &merged);
+        } else if !attributes
+            .iter()
+            .any(|(key, _)| matches!(key.as_str(), "boolean" | "number" | "string"))
+        {
+            append_child(&mut out, "ConfigSet", element);
+        }
+        n += 1;
+    }
+    // Unknown direct children are not editable inputs or modifier blocks.
+    let mut reader = quick_xml::Reader::from_str(old);
+    let mut depth = 0;
+    let mut start = None;
+    loop {
+        let before = reader.buffer_position() as usize;
+        match reader.read_event() {
+            Ok(quick_xml::events::Event::Start(e)) => {
+                if depth == 1 && !matches!(e.name().as_ref(), "Input" | "CustomModifierBlock") {
+                    start = Some(before);
+                }
+                depth += 1;
+            }
+            Ok(quick_xml::events::Event::Empty(e))
+                if depth == 1 && !matches!(e.name().as_ref(), "Input" | "CustomModifierBlock") =>
+            {
+                append_child(
+                    &mut out,
+                    "ConfigSet",
+                    &old[before..reader.buffer_position() as usize],
+                );
+            }
+            Ok(quick_xml::events::Event::End(_)) => {
+                depth -= 1;
+                if depth == 1
+                    && let Some(begin) = start.take()
+                {
+                    append_child(
+                        &mut out,
+                        "ConfigSet",
+                        &old[begin..reader.buffer_position() as usize],
+                    );
+                }
+            }
+            Ok(quick_xml::events::Event::Eof) | Err(_) => break,
+            _ => {}
+        }
+    }
+    out
+}
+
+fn append_child(out: &mut String, tag: &str, child: &str) {
+    if let Some(at) = out.rfind(&format!("</{tag}>")) {
+        out.insert_str(at, child);
+    } else if out.ends_with("/>") {
+        out.truncate(out.len() - 2);
+        out.push_str(&format!(">{child}</{tag}>"));
+    }
 }
 
 fn replace_global(out: &mut String, edited: &str, tag: &str) {
@@ -173,6 +317,158 @@ fn nth_element(xml: &str, tag: &str, n: usize) -> Option<std::ops::Range<usize>>
         from = end;
     }
     None
+}
+
+/// Find an ID-selected set without assuming that IDs equal document order.
+pub(crate) fn element_by_id(xml: &str, tag: &str, id: usize) -> Option<std::ops::Range<usize>> {
+    let mut n = 1;
+    while let Some(range) = nth_element(xml, tag, n) {
+        let element = &xml[range.clone()];
+        let value = attrs(&element[..element.find('>')?])
+            .into_iter()
+            .find(|(key, _)| key == "id")
+            .and_then(|(_, value)| value.parse::<usize>().ok())
+            .unwrap_or(n);
+        if value == id {
+            return Some(range);
+        }
+        n += 1;
+    }
+    None
+}
+
+/// The build header is the active main group for external consumers. Remember
+/// it on the outgoing set and restore the incoming set's own selection.
+pub(crate) fn select_skill_main(xml: &str, id: usize) -> String {
+    let mut out = xml.to_string();
+    let active = active_selection(xml).skill.unwrap_or(1);
+    if let Some(range) = element_by_id(&out, "SkillSet", active) {
+        let main =
+            crate::loadout::read_tag_attr(&out[range.clone()], "<SkillSet", "mainSocketGroup")
+                .or_else(|| crate::loadout::read_tag_attr(xml, "<Build", "mainSocketGroup"))
+                .unwrap_or(0);
+        let saved =
+            crate::loadout::set_tag_attr(&out[range.clone()], "<SkillSet", "mainSocketGroup", main);
+        out.replace_range(range, &saved);
+    }
+    if let Some(range) = element_by_id(&out, "SkillSet", id) {
+        let main =
+            crate::loadout::read_tag_attr(&out[range], "<SkillSet", "mainSocketGroup").unwrap_or(1);
+        out = crate::loadout::set_tag_attr(&out, "<Build", "mainSocketGroup", main);
+    }
+    out
+}
+
+// Preserve extension attributes on retained skill groups and gems. Match by
+// stable effect/source identity so deleting a group cannot inherit its label.
+fn preserve_skill_metadata(old: &str, edited: &str) -> String {
+    fn identity(element: &str, tag: &str) -> Vec<String> {
+        let open = &element[..element.find('>').unwrap_or(element.len())];
+        let attributes = attrs(open);
+        if tag == "Gem" {
+            return attributes
+                .iter()
+                .find(|(key, value)| key == "skillId" && !value.is_empty())
+                .or_else(|| attributes.iter().find(|(key, _)| key == "nameSpec"))
+                .map(|(key, value)| vec![format!("{key}={value}")])
+                .unwrap_or_default();
+        }
+        let mut key: Vec<_> = attributes
+            .into_iter()
+            .filter(|(key, _)| matches!(key.as_str(), "source" | "slot"))
+            .map(|(key, value)| format!("{key}={value}"))
+            .collect();
+        let mut n = 1;
+        while let Some(range) = nth_element(element, "Gem", n) {
+            key.extend(identity(&element[range], "Gem"));
+            n += 1;
+        }
+        key.sort();
+        key
+    }
+    fn merge_children(old: &str, edited: &str, tag: &str, known: &[&str]) -> String {
+        let mut originals = Vec::new();
+        while let Some(range) = nth_element(old, tag, originals.len() + 1) {
+            originals.push(&old[range]);
+        }
+        let mut edited_count = 0;
+        while nth_element(edited, tag, edited_count + 1).is_some() {
+            edited_count += 1;
+        }
+        let mut used = vec![false; originals.len()];
+        let mut out = edited.to_string();
+        let mut n = 1;
+        while let Some(range) = nth_element(&out, tag, n) {
+            let current = &out[range.clone()];
+            let key = identity(current, tag);
+            let matches: Vec<_> = originals
+                .iter()
+                .enumerate()
+                .filter(|(i, element)| !used[*i] && identity(element, tag) == key)
+                .map(|(i, _)| i)
+                .collect();
+            let matched = if originals.len() == edited_count && matches.contains(&(n - 1)) {
+                Some(n - 1)
+            } else if matches.len() == 1 {
+                Some(matches[0])
+            } else {
+                None
+            };
+            if let Some(index) = matched {
+                used[index] = true;
+                let original = originals[index];
+                let mut source = original.to_string();
+                for (key, value) in attrs(&original[..original.find('>').unwrap_or(original.len())])
+                {
+                    if known.contains(&key.as_str()) {
+                        source = source.replacen(&format!(" {key}=\"{value}\""), "", 1);
+                    }
+                }
+                let current = if tag == "Skill" {
+                    merge_children(
+                        original,
+                        current,
+                        "Gem",
+                        &[
+                            "skillId",
+                            "gemId",
+                            "nameSpec",
+                            "level",
+                            "quality",
+                            "enabled",
+                            "count",
+                            "enableGlobal1",
+                            "enableGlobal2",
+                            "statSetIndex",
+                            "skillMinion",
+                            "skillMinionSkill",
+                            "corrupted",
+                        ],
+                    )
+                } else {
+                    current.to_string()
+                };
+                out.replace_range(range, &merge_attrs(&source, &current, tag));
+            }
+            n += 1;
+        }
+        out
+    }
+    merge_children(
+        old,
+        edited,
+        "Skill",
+        &[
+            "enabled",
+            "set1",
+            "set2",
+            "source",
+            "slot",
+            "mainActiveSkill",
+            "includeInFullDPS",
+            "groupCount",
+        ],
+    )
 }
 
 /// Keep the target set's identity and metadata while replacing its editable content.
@@ -289,12 +585,13 @@ fn item_blocks(xml: &str) -> Vec<String> {
     out
 }
 
-/// The three set categories that can form a group.
+/// The set categories that can form a loadout.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SetKind {
     Tree,
     Skill,
     Item,
+    Config,
 }
 
 impl SetKind {
@@ -303,8 +600,125 @@ impl SetKind {
             SetKind::Tree => "Spec",
             SetKind::Skill => "SkillSet",
             SetKind::Item => "ItemSet",
+            SetKind::Config => "ConfigSet",
         }
     }
+}
+
+/// Manage one named category without changing the other active sets. IDs are
+/// stable even when the imported document has gaps or a different order.
+pub fn manage_named_set(
+    xml: &str,
+    kind: SetKind,
+    op: &str,
+    id: usize,
+    title: &str,
+) -> Result<String, String> {
+    if !matches!(kind, SetKind::Config | SetKind::Skill) {
+        return Err("unsupported named set kind".into());
+    }
+    let tag = kind.tag();
+    let mut out = xml.to_string();
+    let (container, active_attr) = match kind {
+        SetKind::Config => ("Config", "activeConfigSet"),
+        _ => ("Skills", "activeSkillSet"),
+    };
+    // A flat legacy category becomes the first editable named set.
+    if nth_element(&out, tag, 1).is_none() {
+        let original = nth_element(&out, container, 1).map(|range| out[range].to_string());
+        let inner = original
+            .as_deref()
+            .map(|element| {
+                let start = element.find('>').map_or(element.len(), |at| at + 1);
+                let end = element.rfind(&format!("</{container}>")).unwrap_or(start);
+                &element[start..end]
+            })
+            .unwrap_or_default();
+        let wrapped = format!(
+            "<{container} {active_attr}=\"1\"><{tag} id=\"1\" title=\"Default\">{inner}</{tag}></{container}>"
+        );
+        let wrapped = original.map_or(wrapped.clone(), |old| {
+            merge_attrs(&old, &wrapped, container)
+        });
+        replace_global(&mut out, &wrapped, container);
+    }
+    if kind == SetKind::Skill {
+        out = select_skill_main(&out, active_selection(&out).skill.unwrap_or(1));
+    }
+    let mut ranges = Vec::new();
+    while let Some(range) = nth_element(&out, tag, ranges.len() + 1) {
+        ranges.push(range);
+    }
+    let ids: Vec<usize> = ranges
+        .iter()
+        .enumerate()
+        .map(|(i, range)| {
+            attrs(&out[range.start..range.start + out[range.clone()].find('>').unwrap_or(0)])
+                .iter()
+                .find(|(name, _)| name == "id")
+                .and_then(|(_, value)| value.parse().ok())
+                .unwrap_or(i + 1)
+        })
+        .collect();
+    let index = ids
+        .iter()
+        .position(|value| *value == id)
+        .ok_or("set does not exist")?;
+    let range = ranges[index].clone();
+    let selected = match op {
+        "create" | "duplicate" => {
+            let next = ids
+                .iter()
+                .max()
+                .unwrap_or(&0)
+                .checked_add(1)
+                .ok_or("set id overflow")?;
+            let content = if op == "create" {
+                if kind == SetKind::Skill {
+                    format!("<{tag} mainSocketGroup=\"0\"/>")
+                } else {
+                    format!("<{tag}/>")
+                }
+            } else {
+                out[range].to_string()
+            };
+            let content = set_title(&content, tag, title);
+            let content = crate::loadout::set_tag_attr(&content, &format!("<{tag}"), "id", next);
+            out.insert_str(ranges.last().unwrap().end, &content);
+            next
+        }
+        "rename" => {
+            out.replace_range(range.clone(), &set_title(&out[range], tag, title));
+            id
+        }
+        "remove" => {
+            if ranges.len() <= 1 {
+                return Err("cannot remove the last set".into());
+            }
+            out.replace_range(range, "");
+            let selection = active_selection(&out);
+            let active = if kind == SetKind::Config {
+                selection.config
+            } else {
+                selection.skill
+            }
+            .unwrap_or(1);
+            if active == id {
+                ids[usize::from(index == 0)]
+            } else {
+                active
+            }
+        }
+        _ => return Err(format!("unknown op: {op}")),
+    };
+    Ok(crate::loadout::select_sets(
+        &out,
+        &crate::loadout::SetSelection {
+            config: (kind == SetKind::Config).then_some(selected),
+            skill: (kind == SetKind::Skill).then_some(selected),
+            ..Default::default()
+        },
+    ))
 }
 
 /// Duplicates the `index`-th set and appends it to the end of its category, setting the

@@ -79,5 +79,7 @@ pub use xml_build::{
     parse_build_sets, parse_build_with_allocated_nodes, parse_custom_modifier_blocks, parse_notes,
     parse_raw_items_view, quest_reward_lines, radius_jewel_from_text,
 };
-pub use xml_merge::{SetKind, duplicate_set, merge_active_sets, remove_set, rename_set};
+pub use xml_merge::{
+    SetKind, duplicate_set, manage_named_set, merge_active_sets, remove_set, rename_set,
+};
 pub use xml_serde::{ParsedBuildHeader, is_pob_xml, parse_build_header};

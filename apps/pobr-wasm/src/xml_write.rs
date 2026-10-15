@@ -208,7 +208,11 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
 
     // Skills.
     wln!(w, r#"  <Skills activeSkillSet="1">"#);
-    wln!(w, r#"    <SkillSet id="1">"#);
+    wln!(
+        w,
+        r#"    <SkillSet id="1" mainSocketGroup="{}">"#,
+        input.main_socket_group.map_or(0, |main| main + 1)
+    );
     for group in &input.socket_groups {
         w!(
             w,

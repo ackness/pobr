@@ -28,6 +28,7 @@ import type {
   SkillMetricsResponse,
   JewelInput,
   LoadoutJson,
+  SetSelection,
   PassiveTreeMeta,
   SlotItemInput,
   SocketGroupInput,
@@ -74,6 +75,19 @@ interface BuildState {
   /** 局部注释（key 约定见 lib/annotations）；不参与计算，分享时嵌入 <Notes>。 */
   annotations: Annotations;
   params: CalcParams;
+}
+
+/** Only configuration moves; unsaved edits in every other dimension stay local. */
+export function applyNamedConfig(state: BuildState, decoded: BuildJson & { code: string }): BuildState {
+  return { ...state, pobCode: decoded.code, sourceBackfillComplete: true,
+    params: { ...paramsFromDecoded(decoded), main_socket_group: state.params.main_socket_group } };
+}
+
+/** Skill sets own groups and their main selection; configuration and gear stay local. */
+export function applyNamedSkills(state: BuildState, decoded: BuildJson & { code: string }): BuildState {
+  return { ...state, pobCode: decoded.code, sourceBackfillComplete: true,
+    socketGroups: materialize(decoded).socketGroups,
+    params: { ...state.params, main_socket_group: decoded.main_socket_group ?? undefined } };
 }
 
 export type ImportDestination = 'newBuild' | 'currentStage';
@@ -138,9 +152,10 @@ export interface BuildSession {
   importSession: (json: string, destination?: ImportDestination) => void;
   importCode: (code: string, options?: ImportOptions) => Promise<boolean>;
   /** 切到指定 loadout（成组换天赋/装备/技能）；会覆盖本地编辑。 */
-  switchLoadout: (sel: { tree: number; item: number | null; skill: number | null }) => Promise<void>;
+  switchLoadout: (sel: SetSelection) => Promise<void>;
   /** 当前 build 的 loadout 清单（导入后可用；手搓 build 为空）。 */
   loadouts: LoadoutJson[];
+  changeNamedSet: (kind: 'config' | 'skill', op: 'select' | 'create' | 'duplicate' | 'rename' | 'remove', id: number, name?: string) => Promise<void>;
   /** 当前选中的 loadout 下标。 */
   activeLoadout: number | null;
   /** 复制 / 重命名 / 删除当前 loadout（同名写进三类 set；随后整份重载）。 */
@@ -924,7 +939,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
    * 时无从重解析，直接忽略。
    */
   const switchLoadout = useCallback(
-    async (sel: { tree: number; item: number | null; skill: number | null }) => {
+    async (sel: SetSelection) => {
       const code = state?.pobCode;
       if (!code) return;
       setPendingOperations(count => count + 1);
@@ -980,7 +995,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
           op,
           name,
           current
-            ? { tree: current.tree, item: current.item, skill: current.skill }
+            ? { tree: current.tree, item: current.item, skill: current.skill, config: current.config }
             : undefined,
         );
         await importCode(nextCode);
@@ -1293,6 +1308,32 @@ export function useBuildSession(configContextActive = false): BuildSession {
     });
   }, [state, notes]);
 
+  const changeNamedSet = useCallback(async (kind: 'config' | 'skill', op: 'select' | 'create' | 'duplicate' | 'rename' | 'remove', id: number, name?: string) => {
+    const current = stateRef.current;
+    if (!current) return;
+    setPendingOperations(count => count + 1);
+    setOperationError(null);
+    try {
+      const backend = await getBackend();
+      // Flush the active slice before changing the XML selection; other sets
+      // remain in the export base, including fields this app cannot interpret.
+      let code = await backend.encodeBuild({ ...toRequest(current), socket_groups: current.socketGroups,
+        weapon_swap: current.weaponSwap, notes: composeNotes(notesRef.current, current.annotations),
+        base_code: current.pobCode ?? undefined });
+      if (op !== 'select') code = await backend.manageLoadout(code, op, name, { kind, [kind]: id });
+      const decoded = await backend.switchLoadout(code, op === 'select' ? { [kind]: id } : {});
+      // A response from a stage that has been left must not overwrite the new stage.
+      if (stateRef.current !== current) return;
+      setBuild(decoded);
+      if (kind === 'skill') setSocketGroupRevision(value => value + 1);
+      apply(kind === 'config' ? applyNamedConfig(current, decoded) : applyNamedSkills(current, decoded));
+    } catch (err) {
+      if (stateRef.current === current) setOperationError(formatApiError(err));
+    } finally {
+      setPendingOperations(count => count - 1);
+    }
+  }, [apply]);
+
   const restoreSession = useCallback((saved: SavedSession, drafts: Record<string, string>) => {
     setSocketGroupRevision(value => value + 1);
     setBuild(null);
@@ -1531,6 +1572,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
     importCode,
     switchLoadout,
     manageLoadout,
+    changeNamedSet,
     loadouts: build?.loadouts ?? [],
     activeLoadout: build?.active_loadout ?? null,
     newBuild,

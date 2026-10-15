@@ -58,6 +58,10 @@ fn decode_build_json_shape() {
             "notes",
             "loadouts",
             "active_loadout",
+            "config_sets",
+            "active_config_set",
+            "skill_sets",
+            "active_skill_set",
             "weapon_swap",
         ],
         "BuildJson",
@@ -3239,7 +3243,11 @@ fn real_build_exposes_a_single_default_loadout() {
 
     let loadouts = json["loadouts"].as_array().expect("loadouts array");
     assert_eq!(loadouts.len(), 1);
-    assert_keys(&loadouts[0], &["name", "tree", "item", "skill"], "loadout");
+    assert_keys(
+        &loadouts[0],
+        &["name", "tree", "item", "skill", "config"],
+        "loadout",
+    );
     assert_eq!(loadouts[0]["tree"], 1);
     assert!(loadouts[0]["item"].is_null(), "single-set exemption");
     assert_eq!(json["active_loadout"], 0);

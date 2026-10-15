@@ -142,6 +142,10 @@ struct BuildJson {
     main_socket_group: Option<usize>,
     /// The raw `<Config>` input key/values (the initial state shown/edited on the Config page).
     config_inputs: BTreeMap<String, serde_json::Value>,
+    config_sets: Vec<NamedSetJson>,
+    active_config_set: usize,
+    skill_sets: Vec<NamedSetJson>,
+    active_skill_set: usize,
     /// Editable groups from the selected ConfigSet, including disabled text.
     custom_modifier_blocks: Vec<pobr_data::build_config::CustomModifierBlock>,
     /// Free-text `<Notes>` (PoB's notes page; `null` if that section is absent).
@@ -155,6 +159,12 @@ struct BuildJson {
     active_loadout: Option<usize>,
 }
 
+#[derive(Debug, Serialize)]
+struct NamedSetJson {
+    id: usize,
+    title: String,
+}
+
 /// A single switchable loadout. `tree`/`item`/`skill` are 1-based document
 /// indices; passing them back as `decodeBuildJson`'s selection switches to
 /// it; `null` means that category didn't participate in the binding (the single-set exemption).
@@ -164,6 +174,7 @@ struct LoadoutJson {
     tree: usize,
     item: Option<usize>,
     skill: Option<usize>,
+    config: Option<usize>,
 }
 
 fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
@@ -180,14 +191,46 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
             tree: l.tree,
             item: l.item,
             skill: l.skill,
+            config: l.config,
         })
         .collect();
     let active_loadout = loadouts.iter().position(|l| {
         l.tree == active.tree.unwrap_or(1)
             && l.item.is_none_or(|i| Some(i) == active.item)
             && l.skill.is_none_or(|s| Some(s) == active.skill)
+            && l.config.is_none_or(|s| s == active.config.unwrap_or(1))
     });
     Ok(BuildJson {
+        skill_sets: if sets.skills.is_empty() {
+            vec![NamedSetJson {
+                id: 1,
+                title: "Default".into(),
+            }]
+        } else {
+            sets.skills
+                .into_iter()
+                .map(|s| NamedSetJson {
+                    id: s.id,
+                    title: s.title,
+                })
+                .collect()
+        },
+        active_skill_set: active.skill.unwrap_or(1),
+        config_sets: if sets.configs.is_empty() {
+            vec![NamedSetJson {
+                id: 1,
+                title: "Default".into(),
+            }]
+        } else {
+            sets.configs
+                .into_iter()
+                .map(|s| NamedSetJson {
+                    id: s.id,
+                    title: s.title,
+                })
+                .collect()
+        },
+        active_config_set: active.config.unwrap_or(1),
         weapon_swap: Some(super::request::WeaponSwapInput {
             active: raw_items.active_weapon_set,
             alternate_items: raw_items
@@ -323,6 +366,8 @@ struct LoadoutRequest {
     item: Option<usize>,
     #[serde(default)]
     skill: Option<usize>,
+    #[serde(default)]
+    config: Option<usize>,
 }
 
 #[derive(Serialize)]
@@ -341,6 +386,7 @@ fn decode_loadout_impl(request_json: &str) -> Result<String, super::ApiError> {
             tree: req.tree,
             item: req.item,
             skill: req.skill,
+            config: req.config,
         },
     )?;
     let selected = SelectedLoadoutJson {
@@ -368,6 +414,8 @@ pub fn manage_loadout_json(request_json: &str) -> Result<String, String> {
 
 #[derive(Debug, Deserialize)]
 struct ManageRequest {
+    #[serde(default)]
+    kind: Option<String>,
     code: String,
     op: String,
     #[serde(default)]
@@ -378,6 +426,8 @@ struct ManageRequest {
     item: Option<usize>,
     #[serde(default)]
     skill: Option<usize>,
+    #[serde(default)]
+    config: Option<usize>,
 }
 
 fn manage_loadout_impl(request_json: &str) -> Result<String, super::ApiError> {
@@ -386,14 +436,79 @@ fn manage_loadout_impl(request_json: &str) -> Result<String, super::ApiError> {
     let xml = decode_pob_code(req.code.trim())
         .map_err(|e| super::ApiError::decode_error(format!("decode build code: {e}")))?;
     let active = active_selection(&xml);
+    if let Some(kind) = &req.kind {
+        let (kind, id) = match kind.as_str() {
+            "config" => (SetKind::Config, req.config.or(active.config).unwrap_or(1)),
+            "skill" => (SetKind::Skill, req.skill.or(active.skill).unwrap_or(1)),
+            _ => return Err(super::ApiError::bad_request("unknown set kind")),
+        };
+        let title = req.name.as_deref().unwrap_or("").trim();
+        if req.op != "remove" && title.is_empty() {
+            return Err(super::ApiError::bad_request("name is required"));
+        }
+        let out = pobr_build::manage_named_set(&xml, kind, &req.op, id, title)
+            .map_err(super::ApiError::bad_request)?;
+        return Ok(serde_json::to_string(
+            &pobr_build::encode_pob_code(&out).map_err(|e| format!("encode: {e}"))?,
+        )
+        .map_err(|e| format!("serialize: {e}"))?);
+    }
     let targets = [
         (SetKind::Tree, req.tree.or(active.tree).unwrap_or(1)),
         (SetKind::Item, req.item.or(active.item).unwrap_or(1)),
         (SetKind::Skill, req.skill.or(active.skill).unwrap_or(1)),
+        (SetKind::Config, req.config.or(active.config).unwrap_or(1)),
     ];
 
     let mut out = xml;
     for (kind, index) in targets {
+        if matches!(kind, SetKind::Config | SetKind::Skill) {
+            let sets = parse_build_sets(&out).map_err(|e| format!("parse sets: {e}"))?;
+            if (if kind == SetKind::Config {
+                sets.configs
+            } else {
+                sets.skills
+            })
+            .is_empty()
+            {
+                continue;
+            }
+            let original = active_selection(&out);
+            out = pobr_build::manage_named_set(
+                &out,
+                kind,
+                &req.op,
+                index,
+                req.name.as_deref().unwrap_or("Default"),
+            )
+            .or_else(|error| {
+                if req.op == "remove" && error == "cannot remove the last set" {
+                    Ok(out.clone())
+                } else {
+                    Err(error)
+                }
+            })
+            .map_err(super::ApiError::bad_request)?;
+            if req.op != "remove" {
+                out = select_sets(
+                    &out,
+                    &SetSelection {
+                        config: if kind == SetKind::Config {
+                            original.config
+                        } else {
+                            None
+                        },
+                        skill: if kind == SetKind::Skill {
+                            original.skill
+                        } else {
+                            None
+                        },
+                        ..Default::default()
+                    },
+                );
+            }
+            continue;
+        }
         let applied = match req.op.as_str() {
             "duplicate" => {
                 let name = req.name.as_deref().ok_or_else(|| {
@@ -428,7 +543,27 @@ fn manage_loadout_impl(request_json: &str) -> Result<String, super::ApiError> {
 fn decode_selected(code: &str, sel: &SetSelection) -> Result<(BuildJson, String), super::ApiError> {
     let raw = decode_pob_code(code.trim())
         .map_err(|e| super::ApiError::decode_error(format!("decode build code: {e}")))?;
-    let xml = select_sets(&raw, sel);
+    let mut selection = sel.clone();
+    if let Some(id) = sel.config {
+        let sets =
+            parse_build_sets(&raw).map_err(|e| super::ApiError::decode_error(e.to_string()))?;
+        if !(sets.configs.iter().any(|set| set.id == id) || sets.configs.is_empty() && id == 1) {
+            return Err(super::ApiError::bad_request("config set does not exist"));
+        }
+    }
+    if let Some(id) = sel.skill {
+        let sets =
+            parse_build_sets(&raw).map_err(|e| super::ApiError::decode_error(e.to_string()))?;
+        if !(sets.skills.iter().any(|set| set.id == id) || sets.skills.is_empty() && id == 1) {
+            return Err(super::ApiError::bad_request("skill set does not exist"));
+        }
+        // A flat legacy Skills section already is its sole set; adding an
+        // active marker without a wrapper would hide those legacy groups.
+        if sets.skills.is_empty() {
+            selection.skill = None;
+        }
+    }
+    let xml = select_sets(&raw, &selection);
     let build = parse_build(&xml)
         .map_err(|e| super::ApiError::decode_error(format!("parse build xml: {e}")))?;
     let json = build_to_json(&build, &xml)?;
@@ -683,6 +818,10 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
         socket_groups,
         main_socket_group: None,
         config_inputs: BTreeMap::new(),
+        config_sets: vec![NamedSetJson { id: 1, title: "Default".into() }],
+        active_config_set: 1,
+        skill_sets: vec![NamedSetJson { id: 1, title: "Default".into() }],
+        active_skill_set: 1,
         custom_modifier_blocks: Vec::new(),
         notes: (!file.name.trim().is_empty()).then(|| {
             let mut note = file.name.trim().to_string();
@@ -705,6 +844,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
             tree: 1,
             item: None,
             skill: None,
+            config: None,
         }],
         active_loadout: Some(0),
     };

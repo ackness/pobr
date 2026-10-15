@@ -14,6 +14,7 @@ import type {
   AttributionResponse,
   LineUsageResponse,
   BuildJson,
+  SetSelection,
   SelectedLoadoutJson,
   CalculateBuildRequest,
   CalculateBuildResponse,
@@ -53,7 +54,7 @@ export interface PobrBackend {
    */
   switchLoadout(
     pobCode: string,
-    sel: { tree: number; item: number | null; skill: number | null },
+    sel: SetSelection,
   ): Promise<SelectedLoadoutJson>;
   /**
    * 组管理：复制 / 重命名 / 删除一个 loadout，返回**新的 build code**。
@@ -61,9 +62,9 @@ export interface PobrBackend {
    */
   manageLoadout(
     pobCode: string,
-    op: 'duplicate' | 'rename' | 'remove',
+    op: 'create' | 'duplicate' | 'rename' | 'remove',
     name?: string,
-    target?: { tree: number; item: number | null; skill: number | null },
+    target?: SetSelection & { kind?: 'config' | 'skill' },
   ): Promise<string>;
   /** 解析国服导出的 `.build` 文件（JSON 文本）。 */
   decodeBuildFile(content: string): Promise<BuildJson>;

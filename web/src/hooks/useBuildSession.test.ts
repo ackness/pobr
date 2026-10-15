@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { toRequest, backfillFromDecoded, materialize, paramsFromDecoded, parseSaved, prepareTreePlan, skillMetricsForState, type SavedSession } from './useBuildSession';
+import { applyNamedSkills, applyNamedConfig, toRequest, backfillFromDecoded, materialize, paramsFromDecoded, parseSaved, prepareTreePlan, skillMetricsForState, type SavedSession } from './useBuildSession';
 import type { BuildJson, CalculateBuildRequest, SkillMetricsResponse } from '../api/types';
 import { parseWorkspace, createWorkspace } from '../lib/buildWorkspace';
 
@@ -482,4 +482,41 @@ test('complete comparison edits survive saved-session parsing without source con
   expect(parseSaved(JSON.stringify({ ...edited, state: { ...edited.state, sourceBackfillComplete: 'invalid' } }))).toBeNull();
   expect(backfillFromDecoded(restored.state, { config_inputs: { conditionLowLife: true } } as unknown as BuildJson)).toBe(restored.state);
   expect(restored.state.params.config_inputs).toEqual({ zero: 0 });
+});
+
+test('selecting a named config changes only configuration and its persisted XML base', () => {
+  const current = { ...saved.state, params: { ...saved.state.params, main_socket_group: 4, extra_modifiers: ['old'] } };
+  const decoded = { code: 'selected-code', config_inputs: { enemyIsBoss: 'Pinnacle', future: false },
+    custom_modifier_blocks: [{ title: 'New', enabled: false, text: 'keep' }] } as unknown as BuildJson & { code: string };
+  const next = applyNamedConfig(current, decoded);
+  expect(next.params).toEqual({ config_inputs: { future: false }, enemy_tier: 'pinnacle',
+    custom_modifier_blocks: decoded.custom_modifier_blocks, main_socket_group: 4 });
+  expect(next.pobCode).toBe('selected-code');
+  for (const key of ['character', 'socketGroups', 'items', 'flasks', 'limbs', 'jewels', 'allocatedNodes', 'attributeChoices', 'weaponSwap', 'annotations'] as const) {
+    expect(next[key]).toBe(current[key]);
+  }
+  expect(parseSaved(JSON.stringify({ ...saved, state: next }))?.state.params).toEqual(next.params);
+  expect(toRequest(next).config_inputs).toEqual({ future: false });
+  expect(toRequest(next).enemy_tier).toBe('pinnacle');
+});
+
+test('selecting a named skill set replaces its main group and bindings while keeping other edits', () => {
+  const current = { ...saved.state, params: { ...saved.state.params, main_socket_group: 4, extra_modifiers: ['keep'] } };
+  const decoded = { code: 'skill-code', main_socket_group: 1, tree: {}, items: { equipped: [] },
+    socket_groups: [
+      { enabled: true, weapon_set: 2, gems: [{ skill_id: 'SparkPlayer', level: 10, quality: 5, enable_global_1: false, enable_global_2: true }] },
+      { enabled: true, weapon_set: 1, main_active_skill: 2, gems: [{ skill_id: 'FireballPlayer', level: 9, quality: 0 }] },
+    ] } as unknown as BuildJson & { code: string };
+  const next = applyNamedSkills(current, decoded);
+  expect(next.params).toEqual({ ...current.params, main_socket_group: 1 });
+  expect(next.socketGroups[0]).toMatchObject({ weapon_set: 2, gems: [{ skill_id: 'SparkPlayer', level: 10, enable_global_2: true }] });
+  expect(next.socketGroups[1]).toMatchObject({ weapon_set: 1, main_active_skill: 2 });
+  expect(next.pobCode).toBe('skill-code');
+  for (const key of ['character', 'items', 'flasks', 'limbs', 'jewels', 'allocatedNodes', 'attributeChoices', 'weaponSwap', 'annotations'] as const) {
+    expect(next[key]).toBe(current[key]);
+  }
+  const restored = parseSaved(JSON.stringify({ ...saved, state: next }));
+  expect(restored?.state.socketGroups).toEqual(next.socketGroups);
+  expect(toRequest(next).main_socket_group).toBe(1);
+  expect(toRequest(next).config_inputs).toEqual(current.params.config_inputs);
 });

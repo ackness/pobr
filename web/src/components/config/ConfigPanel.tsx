@@ -1,3 +1,4 @@
+import { NamedSets } from '../shared/NamedSets';
 import { PageHeader } from '../shared/PageHeader';
 import { useEffect, useMemo, useState } from 'react';
 import { getBackend } from '../../api/backend';
@@ -334,6 +335,7 @@ export function ConfigPanel({ session, lang }: Props) {
   return (
     <section className="ui-page config-page" aria-labelledby="config-heading">
       <PageHeader id="config-heading" title={tt('config.title')} description={tt('ui.configHint')} />
+      <NamedSets session={session} lang={lang} />
 
       <div className="config-toolbar">
         <label className="config-row">

@@ -9,7 +9,7 @@
  * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
  * 任何破坏性形状变更两侧同时 +1；boot 时握手校验（见 wasmBackend.ts）。
  */
-export const EXPECTED_SCHEMA_VERSION = 9;
+export const EXPECTED_SCHEMA_VERSION = 11;
 
 // ---------------------------------------------------------------------------
 // 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）
@@ -146,7 +146,14 @@ export interface CustomModifierBlock {
   text: string;
 }
 
+export interface NamedSetJson { id: number; title: string }
+export interface SetSelection { tree?: number | null; item?: number | null; skill?: number | null; config?: number | null }
+
 export interface BuildJson {
+  config_sets?: NamedSetJson[];
+  active_config_set?: number;
+  skill_sets?: NamedSetJson[];
+  active_skill_set?: number;
   custom_modifier_blocks?: CustomModifierBlock[];
   weapon_swap?: WeaponSwap | null;
   character: CharacterJson;
@@ -177,6 +184,7 @@ export interface SelectedLoadoutJson extends BuildJson {
  * 一套属多组）。某类只有一套时该类不参与绑定，对应字段为 null。
  */
 export interface LoadoutJson {
+  config?: number | null;
   name: string;
   /** 1-based 文档序，回传 `switchLoadout` 用。 */
   tree: number;
