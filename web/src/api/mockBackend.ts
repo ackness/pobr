@@ -116,6 +116,8 @@ export function createMockBackend(): PobrBackend {
       // mock 无符文目录；面板隐藏符文编辑器。
       return [];
     },
+    async itemCraftingCatalog() { return { bases: [], mods: [] }; },
+    async normalizeItemDraft(text) { return text; },
     async reforgeRunes(text) {
       return text;
     },

@@ -1,0 +1,8 @@
+.item-crafter { padding: 1rem; margin-block: 1rem; min-width: 0; }
+.item-crafter-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: .75rem; margin-block: 1rem; }
+.item-crafter-fields label { display: grid; gap: .4rem; min-width: 0; }
+.item-crafter-fields input { min-width: 0; width: 100%; }
+.item-crafter-base { border-left: 2px solid var(--border); padding-left: 1rem; margin-block: 1rem; }
+.item-crafter-base p { margin: .35rem 0; }
+.item-draft-workbench { margin-top: 1rem; min-width: 0; }
+.item-draft-workbench > .replacement-affix-editor { margin-bottom: 1rem; }

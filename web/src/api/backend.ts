@@ -1,3 +1,4 @@
+import type { CraftingMetadata } from './itemCrafting';
 /**
  * API 层唯一入口：组件层只 import 这里，看不到 wasm。
  *
@@ -77,6 +78,8 @@ export interface PobrBackend {
   loadPassiveTree(treeVersion?: string | null): Promise<PassiveNode[]>;
   /** Catalog from the same immutable data snapshot used by calculation. */
   loadTradeCatalog(): Promise<unknown>;
+  itemCraftingCatalog(): Promise<CraftingMetadata>;
+  normalizeItemDraft(text: string): Promise<string>;
   loadJewelBases(): Promise<JewelBase[]>;
   /** 天赋树节点美术边车（未生成时返回 null，界面回退纯 SVG 圆点）。 */
   loadTreeArt(): Promise<TreeArt | null>;

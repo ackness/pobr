@@ -1,3 +1,4 @@
+import type { CraftingMetadata } from './itemCrafting';
 /**
  * wasm 后端：wasm-pack 产物加载 + 游戏数据 fetch/注入 + JSON 契约调用。
  *
@@ -52,6 +53,8 @@ interface WasmModule {
   runeCatalogJson(itemText: string): string;
   itemAugmentInfoJson(itemText: string): string;
   reforgeRunesJson(requestJson: string): string;
+  itemCraftingCatalogJson(): string;
+  normalizeItemDraftJson(text: string): string;
   nodePowerJson(requestJson: string): string;
   optimizeVariantsJson(requestJson: string): string;
   supportGroupsCompatibleJson(requestJson: string): string;
@@ -266,6 +269,12 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     },
     async itemAugmentInfo(text) {
       return JSON.parse(wasm.itemAugmentInfoJson(text)) as ItemAugmentInfo;
+    },
+    async itemCraftingCatalog() {
+      return JSON.parse(wasm.itemCraftingCatalogJson()) as CraftingMetadata;
+    },
+    async normalizeItemDraft(text) {
+      return (JSON.parse(wasm.normalizeItemDraftJson(text)) as { text: string }).text;
     },
     async reforgeRunes(text, runes, sockets) {
       const out = JSON.parse(

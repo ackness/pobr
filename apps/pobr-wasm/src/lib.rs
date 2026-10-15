@@ -24,9 +24,9 @@ pub use build_api::support_groups_compatible_json;
 pub use build_api::{
     attribution_json, calculate_build_json, classify_item_lines_json, decode_build_file_json,
     decode_build_json, decode_build_loadout_json, encode_build_json, gem_catalog_json,
-    import_trade_items_json, item_augment_info_json, line_usage_json, manage_loadout_json,
-    node_power_json, optimize_variants_json, reforge_runes_json, rune_catalog_json,
-    skill_metrics_json, translate_lines_to_zh_cn_json,
+    import_trade_items_json, item_augment_info_json, item_crafting_catalog_json, line_usage_json,
+    manage_loadout_json, node_power_json, normalize_item_draft_json, optimize_variants_json,
+    reforge_runes_json, rune_catalog_json, skill_metrics_json, translate_lines_to_zh_cn_json,
 };
 pub use i18n::translate;
 pub use session::calculate_json;
@@ -187,6 +187,16 @@ pub mod wasm {
     }
 
     /// JS entry point: `reforgeRunesJson(requestJson) -> string` (re-socket runes -> rewritten item text).
+    #[wasm_bindgen(js_name = itemCraftingCatalogJson)]
+    pub fn item_crafting_catalog_json() -> Result<String, JsError> {
+        crate::build_api::item_crafting_catalog_json().map_err(|err| JsError::new(&err))
+    }
+
+    #[wasm_bindgen(js_name = normalizeItemDraftJson)]
+    pub fn normalize_item_draft_json(text: &str) -> Result<String, JsError> {
+        crate::build_api::normalize_item_draft_json(text).map_err(|err| JsError::new(&err))
+    }
+
     #[wasm_bindgen(js_name = reforgeRunesJson)]
     pub fn reforge_runes_json(request_json: &str) -> Result<String, JsError> {
         crate::build_api::reforge_runes_json(request_json).map_err(|err| JsError::new(&err))

@@ -1,3 +1,5 @@
+import { ItemCrafter } from './ItemCrafter';
+import { craftT } from '../../lib/itemCraftingText';
 import { WeaponSetControl } from '../shared/WeaponSetControl';
 import { SlotSymbol } from '../shared/SlotSymbol';
 import { PageHeader } from '../shared/PageHeader';
@@ -173,6 +175,7 @@ const itemDraftKey = (slot: string, weaponSet: number) =>
 
 /** 装备页：PoB2 式人形槽位布局；点槽位在下方编辑 PoB 文本，保存即重算。 */
 export function ItemsPanel({ session, lang, onUpgrade }: Props) {
+  const [crafting, setCrafting] = useState(false);
   const tt = bindT(lang);
   const [selected, setSelected] = useState<string | null>(() => ALL_SLOTS
     .find(slot => session.editorDrafts[itemDraftKey(slot, session.activeWeaponSet)] !== undefined) ?? null);
@@ -423,9 +426,11 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
     <section className="ui-page items-page" aria-labelledby="items-heading">
       <PageHeader id="items-heading" title={tt('items.title')} description={tt('ui.itemsHint')}>
         <WeaponSetControl session={session} lang={lang} />
+        <button aria-expanded={crafting} onClick={() => setCrafting(value => !value)}>{craftT(lang, crafting ? 'close' : 'craft')}</button>
         {onUpgrade && <button onClick={() => onUpgrade(selected && !isLimbSlot(selected) ? selected : "weapon1")}>{tt("trade.findBetter")} ↗</button>}
       </PageHeader>
       <p className="weapon-set-hint">{tt('weapons.hint')}</p>
+      {crafting && <ItemCrafter session={session} lang={lang} />}
       <div className="items-workspace">
       <article className="ui-card items-equipped">
       <h3 className="section-heading">{tt('ui.equipped')}</h3>
