@@ -348,3 +348,190 @@ fn lazy_minion_details_keep_values_and_actor_identity() {
         }
     }
 }
+
+#[test]
+fn energy_trigger_details_config_and_full_dps_share_the_calculated_rate() {
+    init();
+    for (meta, config, extra) in [
+        (
+            "MetaCastOnElementalAilmentPlayer",
+            json!({}),
+            vec!["100% chance to Shock"],
+        ),
+        (
+            "MetaCastOnBlockPlayer",
+            json!({"energyIncomingHitRate":8}),
+            vec!["+50% to Block chance"],
+        ),
+        ("MetaSpellslingerPlayer", json!({}), vec![]),
+        (
+            "MetaCastOnMinionDeathPlayer",
+            json!({"energyMinionDeathsPerSecond":6}),
+            vec![],
+        ),
+        (
+            "MetaElementalInvocationPlayer",
+            json!({}),
+            vec!["100% chance to Shock"],
+        ),
+    ] {
+        let request = json!({
+            "character":{"class_name":"Sorceress","level":90},
+            "socket_groups":[
+                {"main_active_skill":2,"include_in_full_dps":true,"gems":[
+                    {"skill_id":meta,"level":20},{"skill_id":"CometPlayer","level":20}]},
+                {"gems":[{"skill_id":"SparkPlayer","level":20}]}],
+            "config_inputs":config,"extra_modifiers":extra,
+            "full_dps":true,"breakdowns":["SkillTriggerRate","TriggerRateCap","TotalDPS"]
+        });
+        let result = calculate(request);
+        let stats: std::collections::BTreeMap<_, _> = result["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|row| (row["id"].as_str().unwrap(), &row["value"]))
+            .collect();
+        let terms = &result["energy_trigger"];
+        assert_eq!(terms["at_own_rate"], false, "{meta}");
+        assert!(
+            terms["triggers_per_second"].as_f64().unwrap() > 0.0,
+            "{meta}: {result}"
+        );
+        for id in ["SkillTriggerRate", "TriggerRateCap"] {
+            let derived = &result["breakdowns"][id]["derived"];
+            let inputs = derived["inputs"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|row| (row["id"].as_str().unwrap(), &row["value"]))
+                .collect();
+            let expected = evaluate(derived["formula"].as_str().unwrap(), &inputs);
+            close(stats[id].as_f64().unwrap(), expected, id);
+        }
+        let dps = stats["TotalDPS"].as_f64().unwrap();
+        close(
+            result["breakdowns"]["TotalDPS"]["formula"]["value"]
+                .as_f64()
+                .unwrap(),
+            dps,
+            meta,
+        );
+        let comet = result["full_dps"]["skills"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["skill_id"] == "CometPlayer")
+            .unwrap();
+        close(comet["hit_dps"].as_f64().unwrap(), dps, meta);
+    }
+}
+
+#[test]
+fn missing_energy_sources_explain_the_own_rate_fallback_and_explicit_zero_stops() {
+    init();
+    for (meta, missing, zero_input) in [
+        ("MetaCastOnCritPlayer", "EnergyNeedsCriticalHits", None),
+        (
+            "MetaCastOnElementalAilmentPlayer",
+            "EnergyNeedsAilments",
+            None,
+        ),
+        (
+            "MetaCastOnBlockPlayer",
+            "EnergyNeedsIncomingHits",
+            Some("energyIncomingHitRate"),
+        ),
+        (
+            "MetaCastOnMinionDeathPlayer",
+            "EnergyNeedsMinionDeaths",
+            Some("energyMinionDeathsPerSecond"),
+        ),
+        (
+            "MetaSpellslingerPlayer",
+            "EnergyNeedsSpellCasts",
+            Some("energyInvocationUsesPerSecond"),
+        ),
+        (
+            "MetaElementalInvocationPlayer",
+            "EnergyNeedsAilments",
+            Some("energyInvocationUsesPerSecond"),
+        ),
+    ] {
+        let mut request = json!({
+            "character":{"class_name":"Sorceress","level":90},
+            "socket_groups":[{"main_active_skill":2,"include_in_full_dps":true,"gems":[
+                {"skill_id":meta,"level":20},{"skill_id":"CometPlayer","level":20}]}],
+            "config_inputs":{}, "full_dps":true,
+            "breakdowns":["SkillTriggerRate","TriggerRateCap","EffectiveActionRate","TotalDPS"]
+        });
+        let result = calculate(request.clone());
+        let terms = &result["energy_trigger"];
+        assert_eq!(terms["at_own_rate"], true, "{meta}");
+        assert!(terms["source"].is_null(), "{meta}");
+        assert_eq!(terms["missing_source"], missing, "{meta}");
+        assert_eq!(terms["rate_multiplier"], 1.0, "{meta}");
+        let dps = result["breakdowns"]["TotalDPS"]["formula"]["value"]
+            .as_f64()
+            .unwrap();
+        assert!(dps > 0.0, "{meta}");
+        for id in ["SkillTriggerRate", "TriggerRateCap"] {
+            let derived = &result["breakdowns"][id]["derived"];
+            assert_eq!(derived["formula"], "0 * EnergyAtOwnRate", "{meta}: {id}");
+            assert!(derived["inputs"][0]["value"].as_f64().unwrap() > 0.0);
+            assert_eq!(derived["context"][0]["id"], missing, "{meta}: {id}");
+        }
+        let payload_dps = |response: &Value| {
+            response["full_dps"]["skills"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|skill| skill["skill_id"] == "CometPlayer")
+                .unwrap()["hit_dps"]
+                .as_f64()
+                .unwrap()
+        };
+        close(payload_dps(&result), dps, meta);
+        if let Some(input) = zero_input {
+            request["config_inputs"][input] = json!(0);
+            let zero = calculate(request);
+            assert_eq!(zero["energy_trigger"]["at_own_rate"], false, "{meta}");
+            let total = zero["stats"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|stat| stat["id"] == "TotalDPS")
+                .unwrap();
+            assert_eq!(total["value"], 0.0, "{meta}");
+            assert_eq!(payload_dps(&zero), 0.0, "{meta}");
+        }
+    }
+}
+
+#[test]
+fn energy_config_context_uses_meta_gems_anywhere_in_the_build() {
+    init();
+    let metas = [
+        "MetaCastOnBlockPlayer",
+        "MetaCastOnMinionDeathPlayer",
+        "MetaSpellslingerPlayer",
+        "MetaElementalInvocationPlayer",
+    ];
+    for skill in metas
+        .into_iter()
+        .chain(["MetaCastOnCritPlayer", "SparkPlayer"])
+    {
+        let result = calculate(json!({
+            "character":{"class_name":"Sorceress","level":90},
+            "main_socket_group":0,"config_context":true,
+            "socket_groups":[{"gems":[{"skill_id":"SparkPlayer","level":20}]},
+                {"gems":[{"skill_id":skill,"level":20}]}]
+        }));
+        for meta in metas {
+            assert_eq!(
+                result["config_context"]["predicates"]["if_skill"][meta],
+                skill == meta,
+                "{skill}: {meta}"
+            );
+        }
+    }
+}

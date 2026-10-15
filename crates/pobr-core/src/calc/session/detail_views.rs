@@ -400,7 +400,11 @@ impl CalculationSession {
                 }
             }
             "EffectiveActionRate" => {
-                if out.energy_trigger_source.is_some() {
+                if out
+                    .energy_trigger
+                    .as_ref()
+                    .is_some_and(|terms| !terms.at_own_rate)
+                {
                     one("SkillTriggerRate", out.skill_trigger_rate)
                 } else if out.action_rate > 0.0 {
                     one("ActionRate", out.action_rate)

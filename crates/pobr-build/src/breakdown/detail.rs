@@ -23,7 +23,9 @@ pub fn detail_kind(stat: &str) -> DetailKind {
         return DetailKind::Derived;
     }
     match stat {
-        "LifeUnreservedPercent"
+        "SkillTriggerRate"
+        | "TriggerRateCap"
+        | "LifeUnreservedPercent"
         | "ManaUnreservedPercent"
         | "SpiritUnreservedPercent"
         | "LifeLeechGainRate"

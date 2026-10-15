@@ -646,6 +646,7 @@ const DICT = {
   'calcs.step.off_hand_added': { 'en-US': 'Off hand, added: the skill hits with both weapons at once', 'zh-TW': '副手，相加：技能同時以兩把武器擊中', 'zh-CN': '副手，相加：技能同时以两把武器击中' },
   'calcs.step.off_hand_either': { 'en-US': 'Off hand: both weapons hit at once and either can crit', 'zh-TW': '副手：兩把武器同時擊中，任一暴擊即算', 'zh-CN': '副手：两把武器同时击中，任一暴击即算' },
   'calcs.step.off_hand_alternating': { 'en-US': 'Off hand: alternating weapons of different speed', 'zh-TW': '副手：輪流使用速度不同的武器', 'zh-CN': '副手：轮流使用速度不同的武器' },
+  'calcs.step.energy_trigger': { 'en-US': 'Energy trigger rate / own use rate', 'zh-TW': '能量觸發頻率 / 自身使用頻率', 'zh-CN': '能量触发频率 / 自身使用频率' },
   'calcs.step.reload': { 'en-US': 'Time spent reloading (see the table below)', 'zh-TW': '裝填所佔的時間（見下表）', 'zh-CN': '装填所占的时间（见下表）' },
   'calcs.step.hit_interval': { 'en-US': 'Hit by the first arrow to land once it can be hit again', 'zh-TW': '能再次被命中後落下的第一支箭命中', 'zh-CN': '能再次被命中后落下的第一支箭命中' },
   'calcs.step.stronger_hand': { 'en-US': 'The stronger hand (see below)', 'zh-TW': '較強的一手（見下方）', 'zh-CN': '较强的一手（见下方）' },

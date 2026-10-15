@@ -27,6 +27,8 @@ struct CalculateBuildResponse {
     /// Absent unless requested. Rows include counts and their allocated DPS.
     #[serde(skip_serializing_if = "Option::is_none")]
     full_dps: Option<pobr_core::calc::output::FullDpsOutput>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    energy_trigger: Option<pobr_core::calc::energy::EnergyTriggerTerms>,
     /// The full set of display_catalog Computed fields (id/value/category).
     stats: Vec<pobr_data::display_stat::DisplayStatValue>,
     /// Only requested by a client displaying configuration applicability.
@@ -252,6 +254,7 @@ fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
         minions: minion_outputs(&session, &data, &req),
         main_minion_index,
         full_dps: session.output().full_dps.clone(),
+        energy_trigger: session.output().energy_trigger.clone(),
         stats,
         config_context,
         unsupported_modifiers: session.unsupported_modifier_texts().to_vec(),

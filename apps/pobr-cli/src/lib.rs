@@ -980,11 +980,12 @@ pub struct MinionOutput {
 pub struct EnergyTriggerOutput {
     /// Energy the gem needs to trigger its spells.
     pub maximum_energy: f64,
-    /// The skill whose critical hits fill the gem most often; absent when no
-    /// skill of the build can, and the main skill keeps its own rate.
+    /// The source skill or external event that fills the gem most often.
     pub source_skill: Option<String>,
-    /// Energy one critical hit of that skill gives.
+    /// Legacy name for Energy per event. Prefer `terms.energy_per_event`.
     pub energy_per_critical_hit: f64,
+    /// Generic event terms; the critical-hit field above remains for JSON compatibility.
+    pub terms: Option<pobr_core::calc::energy::EnergyTriggerTerms>,
     pub triggers_per_second: f64,
 }
 
@@ -1236,6 +1237,7 @@ pub fn calculate_build_detailed(
             maximum_energy: out.energy_trigger_maximum,
             source_skill: out.energy_trigger_source.clone(),
             energy_per_critical_hit: out.energy_per_trigger_event,
+            terms: out.energy_trigger.clone(),
             triggers_per_second: out.skill_trigger_rate,
         }),
         rain: session.rain().map(|rain| RainOutput {
@@ -1290,7 +1292,11 @@ pub fn calculate_build_detailed(
     // are at the spell's own rate of use. It counts a rain's hits whenever
     // the enemy can be hit again. The comparison asks the same questions, so
     // it is made on that basis, not at the rates the output above reports.
-    let at_own_rate = compares && out.energy_trigger_source.is_some();
+    let at_own_rate = compares
+        && out
+            .energy_trigger
+            .as_ref()
+            .is_some_and(|terms| !terms.at_own_rate);
     let rain_hits_whenever_allowed = compares && output.rain.is_some();
     let periodic_hits_assume_sustained = compares && session.has_periodic_hits();
     let on_basis = (!detail.reference_basis

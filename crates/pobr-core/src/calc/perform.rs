@@ -1014,6 +1014,10 @@ fn fill_crossbow_reload(env: &mut Env) {
 /// present) is preferred, otherwise the single-stack expected DPS. With no skill DoT and no
 /// ailment DoT, the output is all zero and the contract fields stay at their neutral Default.
 fn fill_skill_dot_stage(env: &mut Env) {
+    if env.player.output.energy_trigger.is_some() && env.player.output.effective_action_rate == 0.0
+    {
+        return;
+    }
     let terms = skill_dot_terms(env);
     // Culling Strike removes the last part of the enemy's Life. The same
     // threshold multiplier already contributes to CombinedDPS.
@@ -1635,6 +1639,7 @@ fn damaging_ailment_for_pass(
         magnitude_dps: out.magnitude_dps,
         expected_dps: out.expected_dps,
         apply_chance: probe_out.chance,
+        application_source_damage: probe_out.source_damage,
         apply_chance_rolled: out.chance,
         hit_chance: ctx.hit_chance,
         duration,
@@ -1822,6 +1827,10 @@ fn copy_projectile_speed_as_damage(
 }
 
 fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
+    if env.player.output.energy_trigger.is_some() && env.player.output.effective_action_rate == 0.0
+    {
+        return;
+    }
     let cfg = &env.cfg;
 
     let crit_mult = if env.player.output.crit_multiplier > 0.0 {

@@ -502,6 +502,12 @@ fn check_formula(
         .unwrap()
         .iter()
         .any(|step| step["op"] == "reload");
+    let energy_factor = formula["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|step| step["op"] == "energy_trigger")
+        .map_or(1.0, |step| step["operand"].as_f64().unwrap());
     let mut stronger_share = 1.0;
     // The value before the `increased` step and that step's operand.
     let mut player_increase = None;
@@ -569,7 +575,10 @@ fn check_formula(
                 } else {
                     operand
                 };
-                assert!(matches_shown("ActionRate", rate), "{at}: rate");
+                assert!(
+                    matches_shown("ActionRate", rate * energy_factor),
+                    "{at}: rate"
+                );
                 previous * operand
             }
             "chance_to_hit" => {
@@ -667,6 +676,7 @@ fn check_formula(
                 assert!(close(operand, least), "{at}: weaker hand {least}");
                 previous + operand * (1.0 - stronger_share)
             }
+            "energy_trigger" => previous * operand,
             "reload" => {
                 assert!(close(operand, reload_factor()), "{at}: reload factor");
                 previous * operand

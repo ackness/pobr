@@ -565,6 +565,7 @@ export type FormulaOp =
   | 'off_hand_either'
   | 'off_hand_alternating'
   | 'reload'
+  | 'energy_trigger'
   | 'hit_interval'
   | 'stronger_hand'
   | 'stronger_share'
@@ -836,12 +837,30 @@ export interface FullDpsSkill {
   error: string | null;
 }
 
+export interface EnergyTriggerTerms {
+  maximum_energy: number;
+  energy_per_trigger: number;
+  source: string | null;
+  at_own_rate: boolean;
+  missing_source: string | null;
+  events_per_second: number;
+  energy_per_event: number;
+  refund_half_chance: number;
+  events_per_trigger: number;
+  energy_limited_rate: number;
+  trigger_rate_cap: number;
+  triggers_per_second: number;
+  invocation: boolean;
+  rate_multiplier: number;
+}
+
 export interface CalculateBuildResponse {
   /** Present only when config_context was requested. */
   config_context?: ConfigContext;
   minions?: MinionOutput[];
   main_minion_index?: number | null;
   full_dps?: { dps: number; dot_dps: number; skills: FullDpsSkill[] };
+  energy_trigger?: EnergyTriggerTerms;
   stats: DisplayStatValue[];
   /**
    * Lines the calculation could not apply, so their effect is missing from the

@@ -2,6 +2,13 @@ import type { Lang } from './i18n';
 
 /** Modifier input names for optional Calcs details; no calculation logic. */
 export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
+  EnergyAtOwnRate: { 'en-US': "Spell's own uses per second (Energy source unavailable)", 'zh-TW': '法術自身每秒使用次數（缺少能量來源）', 'zh-CN': '法术自身每秒使用次数（缺少能量来源）' },
+  EnergyNeedsIncomingHits: { 'en-US': "Using the spell's own rate. Set Incoming blockable hits per second or Enemy attack / cast time in Config to calculate Energy triggers.", 'zh-TW': '目前使用法術自身頻率。請在配置設定每秒可格擋來襲命中數，或敵人攻擊／施法時間，以計算能量觸發。', 'zh-CN': '当前使用法术自身频率。请在配置设置每秒可格挡来袭命中数，或敌人攻击／施法时间，以计算能量触发。' },
+  EnergyNeedsBlockChance: { 'en-US': "Using the spell's own rate. A chance to block is needed to calculate Energy triggers.", 'zh-TW': '目前使用法術自身頻率。需要格擋機率才能計算能量觸發。', 'zh-CN': '当前使用法术自身频率。需要格挡几率才能计算能量触发。' },
+  EnergyNeedsMinionDeaths: { 'en-US': "Using the spell's own rate. Set Minions killed per second in Config to calculate Energy triggers.", 'zh-TW': '目前使用法術自身頻率。請在配置設定每秒被擊殺召喚物數，以計算能量觸發。', 'zh-CN': '当前使用法术自身频率。请在配置设置每秒被击杀召唤物数，以计算能量触发。' },
+  EnergyNeedsCriticalHits: { 'en-US': "Using the spell's own rate. Enable a self-used skill that can critically hit to supply Energy.", 'zh-TW': '目前使用法術自身頻率。請啟用可暴擊的自行使用技能來提供能量。', 'zh-CN': '当前使用法术自身频率。请启用可暴击的自行使用技能来提供能量。' },
+  EnergyNeedsSpellCasts: { 'en-US': "Using the spell's own rate. Enable a self-cast spell to supply Energy.", 'zh-TW': '目前使用法術自身頻率。請啟用自行施放的法術來提供能量。', 'zh-CN': '当前使用法术自身频率。请启用自行施放的法术来提供能量。' },
+  EnergyNeedsAilments: { 'en-US': "Using the spell's own rate. Enable a self-used skill that can Ignite, Shock or Freeze to supply Energy.", 'zh-TW': '目前使用法術自身頻率。請啟用可點燃、感電或凍結的自行使用技能來提供能量。', 'zh-CN': '当前使用法术自身频率。请启用可点燃、感电或冻结的自行使用技能来提供能量。' },
   LegacyImmunePool: { 'en-US': 'Legacy resource pool with full immunity', 'zh-TW': '完全免疫時的舊版資源池', 'zh-CN': '完全免疫时的旧版资源池' },
   LegacyPhysicalMaxHit: { 'en-US': 'Legacy physical max hit', 'zh-TW': '舊版物理最大承受擊中', 'zh-CN': '旧版物理最大承受击中' },
   LegacyFireMaxHit: { 'en-US': 'Legacy fire max hit', 'zh-TW': '舊版火焰最大承受擊中', 'zh-CN': '旧版火焰最大承受击中' },

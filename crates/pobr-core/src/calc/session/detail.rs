@@ -67,6 +67,18 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "CWCAddsCastTime",
             "EnergyTriggerMaximum",
             "EnergyPerPowerOnCrit",
+            "EnergyTriggerCost",
+            "EnergyPerBlock",
+            "EnergyPerMinionPower",
+            "EnergyPerCastMillisecond",
+            "EnergyPerIgnitePower",
+            "EnergyPerShockPower",
+            "EnergyPerFreezePower",
+            "EnergyInvocationCooldown",
+            "Multiplier:EnergyIncomingHitRate",
+            "Multiplier:EnergyMinionDeathsPerSecond",
+            "Multiplier:EnergyMinionPower",
+            "Multiplier:EnergyInvocationUsesPerSecond",
             "EnergyGenerated",
             "Multiplier:EnemyPower",
             "EnergyRefundHalfChance",
@@ -467,7 +479,14 @@ impl CalculationSession {
             })
             .map(|name| {
                 let mut query_cfg = cfg.clone();
-                if stat == "SkillTriggerRate" && name == "EnergyGenerated" {
+                if stat == "SkillTriggerRate"
+                    && name == "EnergyGenerated"
+                    && db.sum(
+                        ModType::Base,
+                        &cfg,
+                        &[ModName::from("EnergyPerPowerOnCrit")],
+                    ) > 0.0
+                {
                     query_cfg.conditions.insert("CritRecently".into(), true);
                 }
                 if stat == "Rage" && name == "Multiplier:RageStack" {
@@ -513,12 +532,64 @@ impl CalculationSession {
     }
 
     pub fn derived_detail(&self, stat: &str) -> Option<DerivedDetail> {
+        if let Some(terms) = &self.output().energy_trigger {
+            if terms.at_own_rate && matches!(stat, "SkillTriggerRate" | "TriggerRateCap") {
+                return Some(DerivedDetail {
+                    // No trigger rate was resolved; DPS uses the payload's own rate.
+                    formula: "0 * EnergyAtOwnRate".into(),
+                    inputs: vec![(
+                        "EnergyAtOwnRate".into(),
+                        self.output().effective_action_rate,
+                    )],
+                    context: terms
+                        .missing_source
+                        .map(|reason| vec![(reason.into(), 1.0)])
+                        .unwrap_or_default(),
+                });
+            }
+            if stat == "SkillTriggerRate" {
+                let formula = if terms.events_per_trigger > 0.0 {
+                    "round(min(EnergyEventRate / EventsPerTrigger, TriggerRateCap), 9)"
+                } else {
+                    "0 * EnergyEventRate"
+                };
+                return Some(DerivedDetail {
+                    formula: formula.into(),
+                    inputs: vec![
+                        ("EnergyEventRate".into(), terms.events_per_second),
+                        ("EventsPerTrigger".into(), terms.events_per_trigger),
+                        ("TriggerRateCap".into(), terms.trigger_rate_cap),
+                    ],
+                    context: vec![
+                        ("MaximumEnergy".into(), terms.maximum_energy),
+                        ("EnergyPerTrigger".into(), terms.energy_per_trigger),
+                        ("EnergyPerEvent".into(), terms.energy_per_event),
+                        ("EnergyRefundHalfChance".into(), terms.refund_half_chance),
+                    ],
+                });
+            }
+            if stat == "TriggerRateCap" {
+                return Some(DerivedDetail {
+                    formula: "EnergyTriggerRateCap".into(),
+                    inputs: vec![("EnergyTriggerRateCap".into(), terms.trigger_rate_cap)],
+                    context: vec![],
+                });
+            }
+        }
         if DERIVED_STATS.contains(&stat) {
             return self.derived_view(stat);
         }
         let out = self.output();
         let mut context = Vec::new();
         let (formula, inputs): (String, Vec<(String, f64)>) = match stat {
+            "SkillTriggerRate" => (
+                "ResolvedTriggerRate".into(),
+                vec![("ResolvedTriggerRate".into(), out.skill_trigger_rate)],
+            ),
+            "TriggerRateCap" => (
+                "ResolvedTriggerRateCap".into(),
+                vec![("ResolvedTriggerRateCap".into(), out.trigger_rate_cap)],
+            ),
             "Duration" | "DurationSecondary" | "AuraDuration" | "ReserveDuration" => {
                 let t = super::super::skill_mechanics::duration_terms(
                     &self.env.player.mod_db,

@@ -596,6 +596,9 @@ pub struct TriggerSourceStats {
     /// mitigation (0 = unknown). What an Energy meta gem gains from the hit
     /// depends on it (`calc::energy`).
     pub crit_hit_damage: f64,
+    pub ailments: super::energy::AilmentSourceStats,
+    /// Hit cadence, which can differ from the cast cadence for periodic skills.
+    pub hit_rate: f64,
 }
 
 impl TriggerSourceStats {

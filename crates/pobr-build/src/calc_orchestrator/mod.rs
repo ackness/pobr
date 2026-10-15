@@ -125,7 +125,7 @@ pub struct DataOrchestratorOptions {
     /// (already loaded alongside the data pack by `BuildData::load`); when neither is
     /// present, the data channel treats everything as a miss.
     pub stat_map_catalog: Option<std::sync::Arc<StatMapCatalog>>,
-    /// Whether a spell in a meta gem that fills with Energy (Cast on Critical)
+    /// Whether a spell in a meta gem that fills with Energy
     /// is used as often as the gem triggers it. Defaults to `true`, which is
     /// what happens in the game. `false` gives the spell its own rate of use:
     /// the basis of a build code's reference values, whose exporter has no

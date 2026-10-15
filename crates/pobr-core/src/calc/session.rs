@@ -1164,6 +1164,19 @@ impl CalculationSession {
                 }
                 _ => formula,
             };
+            let formula = if matches!(stat, "ActionRate" | "TotalDPS")
+                && let Some(terms) = &output.energy_trigger
+            {
+                let scaled = formula.value * terms.rate_multiplier;
+                formula.then(
+                    super::FormulaOp::EnergyTrigger,
+                    terms.rate_multiplier,
+                    scaled,
+                    scaled,
+                )
+            } else {
+                formula
+            };
             return ((formula.value - displayed).abs() <= 1e-6).then_some(super::StatFormula {
                 value: displayed,
                 ..formula
@@ -1414,10 +1427,18 @@ impl CalculationSession {
         let db = &env.player.mod_db;
         let enemy = &env.enemy.mod_db;
         let hit = super::offence::hit_pass(db, enemy, cfg, input);
-        let dps = self
-            .pass_value("TotalDPS", pass)
-            .unwrap_or(env.player.output.dps);
-        ((hit.dps - dps).abs() <= 1e-6)
+        let (expected, dps) = if let Some(dps) = self.pass_value("TotalDPS", pass) {
+            (hit.dps, dps)
+        } else {
+            let factor = env
+                .player
+                .output
+                .energy_trigger
+                .as_ref()
+                .map_or(1.0, |terms| terms.rate_multiplier);
+            (hit.dps * factor, env.player.output.dps)
+        };
+        ((expected - dps).abs() <= 1e-6)
             .then(|| hit.mitigation_terms(db, enemy, cfg))
             .flatten()
     }
@@ -1506,6 +1527,11 @@ impl CalculationSession {
                 })
                 .collect(),
         }
+    }
+
+    /// Application probabilities and newly inflicted damage for Energy sources.
+    pub fn energy_source_ailments(&self) -> super::energy::AilmentSourceStats {
+        super::energy::source_ailments(&self.env)
     }
 
     /// What the ailment stage computed `stat` (`BleedDPS` / `IgniteDPS` /
