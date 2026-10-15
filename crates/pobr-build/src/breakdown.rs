@@ -45,12 +45,6 @@ pub const BREAKDOWN_STATS: &[&str] = &[
     "CritMultiplier",
     "Accuracy",
     "HitChance",
-    "TotalEHP",
-    "PhysicalMaximumHitTaken",
-    "FireMaximumHitTaken",
-    "ColdMaximumHitTaken",
-    "LightningMaximumHitTaken",
-    "ChaosMaximumHitTaken",
 ];
 
 #[derive(Debug, Clone, Serialize)]
@@ -669,6 +663,10 @@ fn hand_breakdowns(session: &CalculationSession, stat: &str) -> Vec<HandBreakdow
 /// neither modifier lines nor steps for it, or the stat is a damaging
 /// ailment the skill does not apply.
 pub fn stat_breakdown(session: &CalculationSession, stat: &str) -> Option<StatBreakdown> {
+    // EHP and the maximum hits list the enemy inputs they use, which are
+    // other names than the stat. Their lines do not add up to a total of
+    // the stat, so these stats are not in `BREAKDOWN_STATS` (the panel shows
+    // a base total); a caller asks for them by name.
     let rows = match stat {
         "TotalEHP" => session.enemy_hit_mods(true),
         "PhysicalMaximumHitTaken"
