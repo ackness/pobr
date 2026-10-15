@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-mercenary-gemling-legionnaire-twister-682f26ed1957",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/18407716211-5700/ALLMIGHTY_VICI",
+    "account": "18407716211-5700",
+    "character": "ALLMIGHTY_VICI",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:47:50+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=18407716211-5700&name=ALLMIGHTY_VICI&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Gemling+Legionnaire",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Gemling Legionnaire",
+    "level": 100,
+    "main_skill": "Twister"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 13,
+    "code_sha256": "471ff6c59721867f627d3644b76941ae214f36555c2e66e902675317f4e624b0",
+    "code_chars": 14868,
+    "decoded_bytes": 58201
+  }
+}

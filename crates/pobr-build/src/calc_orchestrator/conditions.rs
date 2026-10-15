@@ -119,10 +119,11 @@ pub(crate) fn apply_condition_implications(mut cfg: CalcConfig) -> CalcConfig {
     cfg
 }
 
-/// Equipped weapon categories → weapon type / grip conditions. PoE2's GGG
-/// item class for Quarterstaff is `Warstaff`. Grip and melee use vendor's
-/// `weaponTypeInfo` predicates (CalcPerform.lua:305-351), independently of
-/// `ModFlags::Weapon1H/2H` used by per-skill weapon matching.
+/// Equipped weapon categories → weapon type / grip conditions. The game's
+/// item class for a Quarterstaff is `Warstaff`; the caster `Staff` class is
+/// not a weapon type and sets nothing. Whether a weapon is one- or two-handed
+/// and melee comes from the weapon type table (`weapon_types.json`),
+/// independently of `ModFlags::Weapon1H/2H` used by per-skill weapon matching.
 pub(crate) fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'static str> {
     let Some(item) = build.items.get(&EquipmentSlot::Weapon1) else {
         return Vec::new();
@@ -148,19 +149,22 @@ pub(crate) fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'s
     .into_iter()
     .flatten()
     {
-        let category = match info.flag.as_str() {
-            "Staff" => Some("UsingQuarterstaff"),
-            "Mace" => Some("UsingMace"),
-            "Crossbow" => Some("UsingCrossbow"),
-            "Bow" => Some("UsingBow"),
-            "Spear" => Some("UsingSpear"),
-            "Dagger" => Some("UsingDagger"),
-            _ => None,
+        // The names the parser rules test for a weapon type. A Quarterstaff
+        // has two: "with Quarterstaves" modifiers test `UsingQuarterstaff`,
+        // "while wielding a Quarterstaff" ones test `UsingStaff`.
+        let categories: &[&'static str] = match info.flag.as_str() {
+            "Staff" => &["UsingQuarterstaff", "UsingStaff"],
+            "Mace" => &["UsingMace"],
+            "Crossbow" => &["UsingCrossbow"],
+            "Bow" => &["UsingBow"],
+            "Spear" => &["UsingSpear"],
+            "Dagger" => &["UsingDagger"],
+            _ => &[],
         };
-        if let Some(var) = category
-            && !vars.contains(&var)
-        {
-            vars.push(var);
+        for &var in categories {
+            if !vars.contains(&var) {
+                vars.push(var);
+            }
         }
         if info.melee {
             let grip = if info.one_hand {
@@ -258,34 +262,50 @@ pub(crate) fn grenade_type_count(build: &Build, data: &BuildData) -> f64 {
     seen.len() as f64
 }
 
-/// Combat conditions derived from the main skill (read directly from vendor
-/// `CalcPerform.lua:242-266`, the `if env.mode_combat` section).
+/// Combat conditions that follow from the character using the main skill, by its
+/// final skill types:
 ///
-/// Line-by-line comparison against vendor:
-/// - **Exemption** (:248 `not skillData.triggered and not trap/mine/totem`): the PoE2
-///   data-token equivalents are `Triggered`/`InbuiltTrigger` (triggered, same
-///   determination as `trigger_modifiers`), `RemoteMined` (mine), `SummonsTotem`
-///   (totem); trap has no token in PoE2's cataloged data (0 hits), so there's no
-///   matching exemption for it.
-/// - attack → `AttackedRecently` **else if** spell → `CastSpellRecently` (:249-253,
-///   the mutually-exclusive branches carried over verbatim);
-/// - `SkillType.Movement` → `UsedMovementSkillRecently` (:254-256);
-/// - minion and not duration → `UsedMinionSkillRecently` (:257-259, matching vendor's
-///   `skillFlags.minion and not skillFlags.duration` → the `Minion` token present and no
-///   `Duration` token);
-/// - `SkillType.Vaal` → `UsedVaalSkillRecently` (:260-262; PoE2's cataloged data has no
-///   `Vaal` token, kept to match vendor, but never actually triggers);
-/// - `SkillType.Channel` → `Channelling` (:264-266, an existing consumer on offence's
-///   channelling branch in `offence.rs`).
+/// - a skill that hits → `HitRecently`, and a spell that hits also
+///   `HitSpellRecently` ("if you've Hit an Enemy Recently"): the hits of the
+///   skills the character uses or triggers are its own, those of its mines and
+///   totems are not;
+/// - **Exemption**: a triggered skill (`Triggered`/`InbuiltTrigger`, the same
+///   determination as `trigger_modifiers`) or a mine (`RemoteMined`) is not the
+///   character using it, and gives nothing below. Traps have no skill type in
+///   the game data.
+/// - an attack → `AttackedRecently`, otherwise a spell → `CastSpellRecently`;
+/// - `Movement` → `UsedMovementSkillRecently`;
+/// - `Minion` without `Duration` → `UsedMinionSkillRecently`;
+/// - `Vaal` → `UsedVaalSkillRecently` (no skill in the game data has the type);
+/// - `Channel` → `Channelling` (read by offence's channelling branch);
+/// - `Shapeshift`, a skill that shapeshifts its user → `Shapeshifted`, and with
+///   `Bear`, the form it takes → `BearForm` (what the form gives:
+///   [`pobr_core::calc::bear_form`]).
+///
+/// A skill a totem uses ([`used_by_totem`]) is not the character attacking or
+/// casting. For it to be in use the character has summoned the totem, so it
+/// has a totem and has summoned one recently.
 pub(crate) fn combat_conditions(
     skill_types: &[String],
     skill_flags: ModFlags,
 ) -> Vec<&'static str> {
     let has = |t: &str| skill_types.iter().any(|x| x == t);
-    if has("Triggered") || has("InbuiltTrigger") || has("RemoteMined") || has("SummonsTotem") {
+    if used_by_totem(skill_types) {
+        return vec!["HaveTotem", "SummonedTotemRecently"];
+    }
+    if has("RemoteMined") {
         return Vec::new();
     }
     let mut conds = Vec::new();
+    if skill_flags.intersects(ModFlags::HIT) {
+        conds.push("HitRecently");
+        if skill_flags.intersects(ModFlags::SPELL) {
+            conds.push("HitSpellRecently");
+        }
+    }
+    if has("Triggered") || has("InbuiltTrigger") {
+        return conds;
+    }
     if skill_flags.intersects(ModFlags::ATTACK) {
         conds.push("AttackedRecently");
     } else if skill_flags.intersects(ModFlags::SPELL) {
@@ -303,7 +323,22 @@ pub(crate) fn combat_conditions(
     if has("Channel") {
         conds.push("Channelling");
     }
+    if has("Shapeshift") {
+        conds.push("Shapeshifted");
+        if has("Bear") {
+            conds.push(pobr_core::calc::bear_form::BEAR_FORM);
+        }
+    }
     conds
+}
+
+/// Whether a totem uses the skill with these final types: the skill of a totem
+/// gem itself, a skill socketed in a meta totem gem (whose support half adds
+/// the game's `UsedByTotem`), or the skill that places the totem.
+pub(crate) fn used_by_totem(skill_types: &[String]) -> bool {
+    skill_types
+        .iter()
+        .any(|skill_type| skill_type == "UsedByTotem" || skill_type == "SummonsTotem")
 }
 
 #[cfg(test)]
@@ -353,6 +388,7 @@ mod weapon_condition_tests {
                 modifier_texts: vec![],
                 enchant_texts: vec![],
                 rolled_defence: RolledDefence::default(),
+                socketed: Vec::new(),
                 parsed_stats: vec![],
             },
         )
@@ -365,7 +401,10 @@ mod weapon_condition_tests {
             ("Bow", vec!["UsingBow"]),
             ("Crossbow", vec!["UsingCrossbow"]),
             ("Wand", vec![]),
-            ("Warstaff", vec!["UsingQuarterstaff", "UsingTwoHandedMelee"]),
+            (
+                "Warstaff",
+                vec!["UsingQuarterstaff", "UsingStaff", "UsingTwoHandedMelee"],
+            ),
             ("Staff", vec![]),
             ("Talisman", vec!["UsingTwoHandedMelee"]),
             ("FishingRod", vec!["UsingTwoHandedMelee"]),

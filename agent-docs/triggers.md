@@ -53,12 +53,14 @@ PoB2 `isTriggered()` 把「被触发技能」识别为：`triggered` / `SkillTyp
 ### 2.1 最大能量 (Maximum Energy)
 
 ```
-最大能量 = Σ(插槽法术基础施法时间 / 0.1s) × 10        -- 每 0.1s 基础施法时间 = 10 能量
+最大能量 = Σ 插槽法术 (基础施法时间 + 2 × 技能自带的总施法时间追加) / 0.1s × 10
+         = Σ (100 × 基础施法时间秒数 + 200 × 追加的总施法时间秒数)
 ```
 
-- PoB2 stat：`generic_ongoing_trigger_1_maximum_energy_per_Xms_total_cast_time = 10`、`generic_ongoing_trigger_maximum_energy_is_total_of_socketed_skills`[^pob2-other]。
+- 游戏数据：宝石的支援半（`SupportMetaCastOnCritPlayer` 等）带常量 stat `generic_ongoing_trigger_1_maximum_energy_per_Xms_total_cast_time = 10`（`base/granted_effect_stat_sets.json`）。PoB2 的技能数据里另列有 `generic_ongoing_trigger_maximum_energy_is_total_of_socketed_skills`[^pob2-other]。
 - 即「Has 10 maximum Energy per 0.1 seconds of base cast time of Socketed Spells」[^poe2wiki-coc]。基础施法时间越长 → 最大能量越高 → 越难触发。
-- **关键陷阱**：计算最大能量（与产能消耗）时，**对「总使用时间」的修饰词按 2 倍计算**（"modifiers to Total use time are treated as though they were double the value"）[^poe2db-energy][^poe2wiki-coc]。
+- **关键陷阱**：游戏术语表 Energy 条目原文：“When calculating Energy gain or consumption from the use time of a Skill, modifiers to Total use time are treated as though they were double the value.”[^poe2db-energy] 技能自带的 `total_cast_time_+_ms` 就是这种修饰。
+- 例：Comet 基础施法 1.00 秒、`total_cast_time_+_ms = 1000` → 100 + 200 = **300**；同一颗宝石里再放 Spark（0.70 秒）→ **370**[^poe2wiki-coc]。
 - 部分 Invocation（手动触发）用**固定最大能量**而非按施法时间，如 **Barrier Invocation 最大能量 500**[^game8-trigger]。
 
 ### 2.2 能量获取 (Energy Gain) — 0.5.0 重制核心
@@ -73,6 +75,9 @@ PoB2 `isTriggered()` 把「被触发技能」识别为：`triggered` / `SkillTyp
 
 - **要可靠触发，暴击伤害需约为怪物异常阈值的 10 倍**。异常阈值随怪物等级**指数增长**，故进高等级区域后若伤害没跟上，触发会突然失效[^poe2wiki-coc]。
 - 与 PoE1 不同：**独立于怪物生命**，改看异常阈值。
+- 游戏文本只说“按暴击将造成的伤害占敌人异常阈值的百分比修正”；“减免前伤害 ÷ 阈值、线性、不封顶”是玩家测得的公式[^poe2wiki-coc]，游戏没有公布。
+- **阈值数值以入库的游戏数据为准**：`data/<版本>/base/monster_scaling.json::ailment_threshold`（按怪物等级）。当前数据里 65 级 9,649、80 级 65,527、82 级 71,303；Wiki 表格里的 9,723 / 26,029 / 29,684 是旧版本的数值（1–60 级两边相同，高等级后来被上调）。首领比地图等级高 2 级。
+- 游戏 stat 表里有 `ailment_threshold_pluspercent_final_for_map_boss`，说明地图首领的阈值可能另有乘数，取值不在已入库数据里；PoBR 与 PoB2 都只按等级取表。
 
 **Cast on Ailment / Ignite 类**：`能量 = Monster Power × (点燃 magnitude / 阈值占比)`（点燃看强度，shock/freeze 多为定值）[^game8-trigger]。注意不同条件的 centienergy 基数差异很大（核对自 `act_int.lua`）：
 
@@ -87,7 +92,7 @@ PoB2 `isTriggered()` 把「被触发技能」识别为：`triggered` / `SkillTyp
 
 ### 2.3 Monster Power（与 meta-gems.md 交叉，补充范围）
 
-`Power = 内部生命乘数 × 稀有度系数`。内部乘数一般 **0.5–3**（弱小怪 ~0.5，大型威胁怪 ~3）；稀有度系数 **普通 1 / 魔法 2 / 稀有 5 / 独特固定 20**[^mobalytics-monsterpower][^poe2wiki-coc]。
+`Power = 内部生命乘数 × 稀有度系数`。内部乘数一般 **0.5–3**（弱小怪 ~0.5，大型威胁怪 ~3）；稀有度系数 **普通 1 / 魔法 2 / 稀有 5 / 独特固定 20**[^mobalytics-monsterpower][^poe2wiki-coc]。游戏术语表 Monster Power 条目原文：“An average monster has a Power of 1, strong monsters can have Power of 2 to 3”，“Unique monsters always have 20 Power”[^poe2db-energy]。
 
 - **设计意图**：一整波怪的**总 Power 常落在 15–20**（不论 Boss / 魔法群 / 稀有群 / 杂兵群），让触发在不同遭遇下一致。
 - **推论**：只打**单个**弱小怪时产能约比满波少 **~30 倍**——单体触发慢、群怪触发快。
@@ -95,6 +100,7 @@ PoB2 `isTriggered()` 把「被触发技能」识别为：`triggered` / `SkillTyp
 ### 2.4 能量消耗与触发
 
 - 达到最大能量 → **触发所有插槽法术，能量清零**[^poe2db-energy]。**一次命中只能触发一次**，溢出能量丢弃[^poe2wiki-coc]。
+- 天赋 Energise「25% chance for Trigger skills to refund half of Energy Spent」（stat `trigger_skills_refund_half_energy_spent_chance_%`）：四分之一的回合从半满开始，连续近似下触发频率 ×1/(1 − 0.25 × 0.5) ≈ +14.28%[^poe2wiki-coc]。
 - **Invocation（手动触发）**可在能量够时一次**触发多次**（每次扣对应能量），如 Barrier Invocation；普通 Cast on X 每次触发只清零一次。
 - **触发仍需支付资源成本**（通常法力）——但所有 Cast on X 的被触发法术带 `no_cost`，故元宝石侧免费，成本在元宝石的 Spirit 保留上[^pob2-other]。
 - **gem 等级**只缩放 `energy_generated_+%`（1 级 +0% → 每级 +3%，20 级约 +57%）[^poe2wiki-coc][^pob2-actint]——等级**不改产能基数也不改最大能量**，只加快攒能量速度。
@@ -276,11 +282,21 @@ spiritReservationFlat = 100 (CoC);  Socketed Skills deal 20% less Damage
 
 > ⚠️ 因 POB2 对能量驱动元宝石伤害计算**尚不完整**，pobr 实现时不应盲目以 POB2 数值为唯一基准，需对照游戏内 / PoE2DB / Wiki 的一手能量公式，并保留来源说明。
 
+### PoBR 的现状（`pobr-core/src/calc/energy.rs`）
+
+第 2 条已按上面的规则实现，范围是**靠暴击充能的 meta 宝石（Cast on Critical）**：
+
+- 上限取自支援半的 stat 与各插槽法术的施法时间（追加的总施法时间计两倍）；每点 Power 的能量取自 `cast_on_crit_gain_X_centienergy_per_monster_power_on_crit`；`energy_generated_+%`（宝石等级、天赋、珠宝）相加，“more Energy”相乘。
+- 充能来源是角色自己使用的其他伤害技能（被触发的技能不算），逐个子计算后取填满最快的一个：`触发频率 = 每秒暴击次数 ÷ ⌈上限 ÷ 每次暴击能量⌉`，`每次暴击能量 = 每点 Power 能量 × 敌人 Power × 减免前平均暴击伤害 ÷ 敌人异常阈值 × 能量获取修正`。敌人 Power：首领档位 20，其余 1。
+- 被触发法术的 DPS 与使用速率改用触发频率；没有来源时保持法术自身速率。`DataOrchestratorOptions::energy_triggers = false` 回到自身速率口径，用于与 PoB2 导出的参考值比较。
+- 未实测的假设：比例线性且不封顶；每次暴击取平均暴击伤害；每次使用按命中一次算（多投射物多次命中会更快）；首领阈值不另加乘数；能量获取时视为“近期造成过暴击”。
+- 尚未覆盖：Cast on Elemental Ailment / Minion Death / Dodge / Block 等其他充能条件，“Supported Meta Gems have #% increased Maximum Energy”，Invocation 类宝石。
+
 ---
 
 ## 参考来源
 
-[^poe2db-energy]: PoE2DB — Energy（能量机制、独立计数、不能从触发技能直接效果产能、total use time ×2、Invocation 多次触发、Barrier Invocation 最大能量 500）。https://poe2db.tw/Energy
+[^poe2db-energy]: PoE2DB — Keywords（游戏客户端术语表的 Energy / Monster Power 条目：独立计数、“Energy cannot be gained from direct effects of Triggered Skills”、total use time 修饰按两倍、独特怪 Power 恒为 20）。https://poe2db.tw/us/Keywords
 [^poe2db-coc]: PoE2DB — Cast on Critical（ID、tags、stat 列表）。https://poe2db.tw/us/Cast_on_Critical
 [^poe2wiki-coc]: PoE2 Wiki — Cast on Critical Strike（能量公式 = MonsterPower × 原始伤害/异常阈值、10× 阈值、10 maximum Energy per 0.1s base cast time、20% less Damage、100 Spirit、等级能量进度、Monster Power 范围与一波总 Power 15–20、0.5.0 patch note）。https://www.poe2wiki.net/wiki/Cast_on_Critical_Strike
 [^mobalytics-monsterpower]: Mobalytics — PoE 2 Guide: Monster Power（base Power 0.5–3、稀有度系数 1/2/5/独特 20）。https://mobalytics.gg/poe-2/guides/monster-power

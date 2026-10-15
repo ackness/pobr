@@ -34,25 +34,62 @@ pub fn weapon_mod_texts(item: &Item) -> impl Iterator<Item = &String> {
         .chain(item.enchant_texts.iter())
 }
 
-/// Sum of "N% increased Physical Damage" (local mod) on the weapon.
+/// The value of a line that is exactly "N% increased <stat>", negative for
+/// "N% reduced <stat>": the game words a negative value of the same stat that
+/// way (the mace prefix `AbyssModAllMacesKurgalPrefixIncreasedPhysicalDamageReducedAttackSpeed`
+/// has `local_attack_speed_+%` = -15, "15% reduced Attack Speed"). `clean` is
+/// the line as [`clean_item_text`] returns it and `stat` the stat's name in the
+/// same lowercase form, e.g. `attack speed`.
+pub fn local_percent(clean: &str, stat: &str) -> Option<f64> {
+    let head = clean.strip_suffix(stat)?;
+    [("% increased ", 1.0), ("% reduced ", -1.0)]
+        .into_iter()
+        .find_map(|(wording, sign)| {
+            let value = head.strip_suffix(wording)?.trim().parse::<f64>().ok()?;
+            Some(value * sign)
+        })
+}
+
+/// Sum of the weapon's local "N% increased Physical Damage" ("reduced" counts
+/// negative).
 pub fn weapon_local_phys_inc(item: &Item) -> f64 {
     weapon_mod_texts(item)
-        .filter_map(|t| {
-            clean_item_text(t)
-                .strip_suffix("% increased physical damage")
-                .and_then(|n| n.trim().parse::<f64>().ok())
-        })
+        .filter_map(|t| local_percent(&clean_item_text(t), "physical damage"))
         .sum()
 }
 
-/// Sum of "N% increased Attack Speed" (local mod, no condition suffix) on the weapon.
+/// Sum of the weapon's local "N% increased Attack Speed" (no condition suffix;
+/// "reduced" counts negative).
 pub fn weapon_local_attack_speed(item: &Item) -> f64 {
     weapon_mod_texts(item)
-        .filter_map(|t| {
-            clean_item_text(t)
-                .strip_suffix("% increased attack speed")
-                .and_then(|n| n.trim().parse::<f64>().ok())
-        })
+        .filter_map(|t| local_percent(&clean_item_text(t), "attack speed"))
+        .sum()
+}
+
+/// A weapon's own reload speed, in percent: the game's `local_reload_speed_+%`,
+/// which reads "N% increased Reload Speed" or "N% reduced Reload Speed" on a
+/// crossbow (The Last Lament's "42% reduced Reload Speed").
+pub fn parse_local_reload_speed(clean: &str) -> Option<f64> {
+    local_percent(clean, "reload speed")
+}
+
+/// A shield's own Block chance line, local to the item like its base Block
+/// chance: "+N% to Block chance" (`local_additional_block_chance_%`, BASE) or
+/// "N% increased Block chance" (`local_block_chance_+%`, INC, "reduced"
+/// negative). `clean` is the line as [`clean_item_text`] returns it.
+pub fn parse_local_block_chance(clean: &str) -> Option<(ModType, f64)> {
+    if let Some(increased) = local_percent(clean, "block chance") {
+        return Some((ModType::Inc, increased));
+    }
+    let added = clean.strip_suffix("% to block chance")?;
+    let value = added.trim().trim_start_matches('+').parse::<f64>().ok()?;
+    Some((ModType::Base, value))
+}
+
+/// Sum of the weapon's own reload speed lines (see [`parse_local_reload_speed`]).
+pub fn weapon_local_reload_speed(item: &Item) -> f64 {
+    weapon_mod_texts(item)
+        .filter_map(|text| parse_local_reload_speed(&clean_item_text(text)))
         .sum()
 }
 
@@ -109,15 +146,18 @@ pub fn parse_adds_with_suffix(clean: &str, suffix: &str) -> Option<(f64, f64)> {
 }
 
 /// Whether a mod text is a weapon-local mod (matches the `local_mods.weapon` rules).
+/// A "N% reduced" line is the same local stat as the "N% increased" line its
+/// rule names, with a negative value (see [`local_percent`]).
 pub fn is_weapon_local_mod(
     text: &str,
     rules: &pobr_data::catalog::local_mods::WeaponLocalModsDef,
 ) -> bool {
     let clean = clean_item_text(text);
+    let as_increased = clean.replacen("% reduced ", "% increased ", 1);
     rules
         .increased_suffixes
         .iter()
-        .any(|s| clean.ends_with(s.as_str()))
+        .any(|s| clean.ends_with(s.as_str()) || as_increased.ends_with(s.as_str()))
         || rules
             .adds_damage_suffixes
             .iter()
@@ -231,6 +271,26 @@ pub fn item_local_defence_flat(item: &Item) -> [f64; 3] {
     out
 }
 
+/// A local Runic Ward increase, in percent: the game's `local_ward_+%`, which
+/// reads "N% increased Runic Ward" and scales the Runic Ward of the item it is
+/// on. "N% increased maximum Runic Ward" is `maximum_ward_+%`, a modifier to
+/// the character's total, and is not matched.
+pub fn parse_local_ward_inc(clean: &str) -> Option<f64> {
+    let (number, sign) = if let Some(number) = clean.strip_suffix("% increased runic ward") {
+        (number, 1.0)
+    } else {
+        (clean.strip_suffix("% reduced runic ward")?, -1.0)
+    };
+    number.trim().parse::<f64>().ok().map(|value| sign * value)
+}
+
+/// Sum of the local Runic Ward increases on the item.
+pub fn item_local_ward_inc(item: &Item) -> f64 {
+    weapon_mod_texts(item)
+        .filter_map(|text| parse_local_ward_inc(&clean_item_text(text)))
+        .sum()
+}
+
 /// Whether a mod text is a local Spirit mod (matches `+N to Spirit` / `N% increased Spirit` /
 /// `N% reduced Spirit`).
 pub fn is_local_spirit_mod(clean: &str) -> bool {
@@ -278,4 +338,62 @@ pub fn parse_has_per_level_defence(clean: &str) -> Option<[f64; 3]> {
         _ => return None,
     }
     Some(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pobr_data::catalog::local_mods::WeaponLocalModsDef;
+
+    #[test]
+    fn a_reduced_line_is_the_increased_one_with_a_negative_value() {
+        let speed = |line: &str| local_percent(line, "attack speed");
+        assert_eq!(speed("19% increased attack speed"), Some(19.0));
+        assert_eq!(speed("19% reduced attack speed"), Some(-19.0));
+        // Words around the number make it another line.
+        assert_eq!(speed("19% reduced attack speed while surrounded"), None);
+        assert_eq!(speed("minions have 19% reduced attack speed"), None);
+    }
+
+    #[test]
+    fn reduced_weapon_lines_are_local_like_increased_ones() {
+        let rules = WeaponLocalModsDef::default();
+        for line in [
+            "19% reduced Attack Speed",
+            "{enchant}19% increased Attack Speed",
+            "20% reduced Physical Damage",
+        ] {
+            assert!(is_weapon_local_mod(line, &rules), "{line}");
+        }
+        for line in [
+            "19% reduced Attack Speed while Surrounded",
+            "19% reduced Cast Speed",
+        ] {
+            assert!(!is_weapon_local_mod(line, &rules), "{line}");
+        }
+    }
+
+    #[test]
+    fn local_reload_speed_reads_increased_and_reduced() {
+        let parse = |text: &str| parse_local_reload_speed(&clean_item_text(text));
+        assert_eq!(parse("42% reduced Reload Speed"), Some(-42.0));
+        assert_eq!(parse("15% increased Reload Speed"), Some(15.0));
+        assert_eq!(parse("15% increased Attack Speed"), None);
+    }
+
+    #[test]
+    fn local_block_chance_reads_added_and_increased() {
+        let parse = |text: &str| parse_local_block_chance(&clean_item_text(text));
+        assert_eq!(
+            parse("{enchant}{rune}30% increased Block chance"),
+            Some((ModType::Inc, 30.0))
+        );
+        assert_eq!(
+            parse("15% reduced Block chance"),
+            Some((ModType::Inc, -15.0))
+        );
+        assert_eq!(parse("+5% to Block chance"), Some((ModType::Base, 5.0)));
+        assert_eq!(parse("+5% to maximum Block chance"), None);
+        assert_eq!(parse("30% increased Block chance while Surrounded"), None);
+    }
 }

@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-warrior-smith-of-kitava-detonate-dead-9ccf22876b03",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%ED%95%9C%EC%82%B4%EB%95%8C%EC%96%BC%EC%A7%B1-0154/%EC%99%80%EC%B4%8C%EC%9E%90%EB%91%90",
+    "account": "한살때얼짱-0154",
+    "character": "와촌자두",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:53:03+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=%ED%95%9C%EC%82%B4%EB%95%8C%EC%96%BC%EC%A7%B1-0154&name=%EC%99%80%EC%B4%8C%EC%9E%90%EB%91%90&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Smith+of+Kitava",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Smith of Kitava",
+    "level": 97,
+    "main_skill": "Detonate Dead"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 1,
+    "code_sha256": "2e5c4bd1856f6b7fa2ce3516de41b2444ef01df518f136557cbb086dd2715650",
+    "code_chars": 12688,
+    "decoded_bytes": 45790
+  }
+}

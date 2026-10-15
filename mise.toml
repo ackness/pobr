@@ -85,6 +85,30 @@ run = "bash devs/scripts/driver.sh verify"
 description = "Compile one suite with Cargo HTML timings: `mise run timings build parity`"
 run = "bash devs/scripts/driver.sh timings"
 
+[tasks.diagnose]
+description = "One build's dropped inputs and reference differences: `mise run diagnose <build dir | code file | name>`"
+run = "bash devs/scripts/driver.sh diagnose"
+
+[tasks.compare]
+description = "One build against the pinned PoB2, stat by stat: `mise run compare <build dir | code file | name> [Stat ...]` (needs `mise run vendor` and LuaJIT)"
+run = "bash devs/scripts/driver.sh compare"
+
+[tasks.triage]
+description = "Every worked build against its reference and the pinned PoB2 at once, differences gathered across builds: `mise run triage [set dir | build dir ...]` (needs `mise run vendor` and LuaJIT)"
+run = "bash devs/scripts/driver.sh triage"
+
+[tasks.lookup]
+description = "The game data records of an id or a name: `mise run lookup <skill id | stat id | base item | passive node | unique> [--level N]`"
+run = "bash devs/scripts/driver.sh lookup"
+
+[tasks.accuracy]
+description = "Build codes against the reference values they carry: totals of every committed set, or `mise run accuracy <dir>` for one set's differences"
+run = "bash devs/scripts/driver.sh accuracy"
+
+[tasks."builds:fetch"]
+description = "One poe.ninja build per ascendancy into a reference set: `mise run builds:fetch <set dir> [--pick first|last]`"
+run = "python3 devs/scripts/fetch-reference-builds.py"
+
 [tasks.build]
 description = "Build the game CLI, or forward explicit Cargo selectors"
 run = "bash devs/scripts/driver.sh build"

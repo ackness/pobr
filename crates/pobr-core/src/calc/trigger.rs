@@ -1,5 +1,7 @@
-//! Trigger domain: cooldown-gated trigger rate caps + energy-driven meta-gem model +
-//! multi-skill rotation + CWC.
+//! Trigger domain: cooldown-gated trigger rate caps + multi-skill rotation + CWC.
+//!
+//! A meta gem that triggers its spells by filling with Energy has no cooldown
+//! to gate it; that model is [`super::energy`].
 //!
 //! ## Structure
 //!
@@ -9,19 +11,6 @@
 //! cooldown as a divisor.
 //! Source: PoB2 `CalcTriggers.lua` (`modActionCooldown / rateCapAdjusted / SkillTriggerRate`),
 //!       PoB2 `Data.lua` (`ServerTickTime = 0.033`).
-//!
-//! ### §2  Energy-driven (Energy / Meta Gem) model
-//! Cast on X (Cast on Critical, Cast on Ailment, etc.) uses an Energy counter to decide when to
-//! trigger.
-//! - `max_energy = Σ(socketed base_cast_time / 0.1) × 10`; total-use-time modifiers count double.
-//! - Generation: `centienergy_per_hit = MonsterPower × baseCentienergy × scale`, Crit/Ignite/Shock=100,
-//!   Freeze=1000 (centienergy = 1/100 energy); CoC additionally multiplies by (raw damage / ailment
-//!   threshold).
-//! - Level bonus: `energy_generated_+%` boosts the generation rate (doesn't change the base or cap).
-//! - Trigger frequency estimate: `≈ source_rate × energy_per_event / max_energy`, capped at
-//!   `trigger_rate_cap`.
-//!
-//! Source: agent-docs/triggers.md §2; PoB2 `act_int.lua` / `other.lua`; PoE2 Wiki CoC; PoE2DB Energy.
 //!
 //! ### §3  Multi-skill rotation
 //! Ports PoB2 `calcMultiSpellRotationImpact`: a deterministic simulation of 1000 trigger
@@ -41,17 +30,6 @@
 //! `TriggeredDamage` INC/MORE act as a Damage factor on the triggered skill (not injected here,
 //! left for the integration layer to reference).
 //! Source: agent-docs/triggers.md §4.2; PoB2 `CalcTriggers.lua::CWCHandler`.
-//!
-//! ## Parallel-safety
-//! This module **only touches trigger.rs and tests/trigger.rs**, never perform/output/offence/env/actor/mod_db.
-//! New pub functions are re-exported via `calc/mod.rs` (append only, never edit existing
-//! re-export lines).
-//!
-//! ## Deferred
-//! Full Monte Carlo precision alignment for the energy model (would need frame-by-frame server-tick
-//! simulation) is left for a golden fixture; PoB2's own support for energy-driven meta gems "needs
-//! an entire overhaul", so pobr's current energy-trigger-rate estimate is a **deterministic
-//! approximation** — see the deviation notes on `EnergyTriggerRate`.
 
 use super::round;
 
@@ -162,262 +140,6 @@ pub fn resolve_trigger_rate(
         trigger_rate_cap: round(cap),
         skill_trigger_rate: round(skill_rate),
         limited_by_source,
-    }
-}
-
-// §2  Energy-driven meta-gem model
-
-/// The trigger-condition type — determines the centienergy base and how generation is computed.
-///
-/// Source: agent-docs/triggers.md §2.2; PoB2 `act_int.lua` centienergy constant table.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TriggerCondition {
-    /// Cast on Critical: centienergy = MonsterPower × 100 × (hit_damage / ailment_threshold).
-    /// Since 0.5.0 this also depends on the ratio of the critical hit's raw damage to the
-    /// ailment threshold.
-    CriticalStrike,
-    /// Cast on Ignite: centienergy = MonsterPower × 100 (adjusted by the ignite magnitude/threshold ratio).
-    Ignite,
-    /// Cast on Shock: centienergy = MonsterPower × 100.
-    Shock,
-    /// Cast on Freeze: centienergy = MonsterPower × 1000 (the freeze base is 10× Crit/Ignite/Shock).
-    Freeze,
-    /// Cast on Melee Kill / Cast on Minion Death / Hit, etc. — a fixed amount of energy per
-    /// event (centienergy=100 by default).
-    Other,
-}
-
-impl TriggerCondition {
-    /// The base centienergy (1/100 energy) for this trigger condition, per MonsterPower per event.
-    ///
-    /// Source: agent-docs/triggers.md §2.2 table; PoB2 act_int.lua
-    /// `cast_on_crit_gain_X_centienergy_per_monster_power_on_crit = 100`,
-    /// `cast_on_freeze_gain_X_centienergy_per_monster_power_on_freeze = 1000`.
-    pub fn base_centienergy(self) -> f64 {
-        match self {
-            TriggerCondition::CriticalStrike
-            | TriggerCondition::Ignite
-            | TriggerCondition::Shock
-            | TriggerCondition::Other => 100.0,
-            TriggerCondition::Freeze => 1000.0,
-        }
-    }
-}
-
-/// Parameters for the max-energy calculation (each socketed spell's base cast time +
-/// total-use-time modifier).
-///
-/// Source: agent-docs/triggers.md §2.1; PoB2 other.lua
-/// `generic_ongoing_trigger_1_maximum_energy_per_Xms_total_cast_time = 10`,
-/// `generic_ongoing_trigger_maximum_energy_is_total_of_socketed_skills`.
-#[derive(Debug, Clone, PartialEq)]
-pub struct SocketedSpellInfo {
-    /// This slot's spell's base cast time (seconds).
-    pub base_cast_time: f64,
-    /// The total-use-time modifier percentage (%); counted ×2 when computing max energy.
-    /// Source: agent-docs/triggers.md §2.1 "modifiers to Total use time are treated as though
-    /// they were double the value".
-    pub use_time_increase_pct: f64,
-}
-
-impl SocketedSpellInfo {
-    pub fn new(base_cast_time: f64) -> Self {
-        Self {
-            base_cast_time,
-            use_time_increase_pct: 0.0,
-        }
-    }
-
-    pub fn with_use_time_increase(mut self, pct: f64) -> Self {
-        self.use_time_increase_pct = pct;
-        self
-    }
-
-    /// The "effective total use time" used for the max-energy calculation:
-    /// `base_cast_time × (1 + use_time_increase_pct/100 × 2)`.
-    ///
-    /// The total-use-time modifier counts double in the energy calculation (effectively
-    /// amplifying the penalty for casting slower).
-    /// Source: agent-docs/triggers.md §2.1; PoE2 Wiki CoC; PoE2DB Energy.
-    pub fn effective_cast_time_for_energy(&self) -> f64 {
-        self.base_cast_time * (1.0 + self.use_time_increase_pct / 100.0 * 2.0)
-    }
-}
-
-/// Computes the max energy of an energy-driven meta gem: `Σ(effective_cast_time / 0.1) × 10`.
-///
-/// Equivalent to `Σ effective_cast_time × 100` (10 energy per 0.1s of base cast time).
-/// Higher max energy → harder to trigger (has to build up to the cap before firing).
-///
-/// Source: agent-docs/triggers.md §2.1; PoB2 other.lua
-/// `generic_ongoing_trigger_1_maximum_energy_per_Xms_total_cast_time = 10`, i.e. "Has 10 maximum
-/// Energy per 0.1 seconds of base cast time of Socketed Spells".
-pub fn calc_max_energy(socketed_spells: &[SocketedSpellInfo]) -> f64 {
-    if socketed_spells.is_empty() {
-        return 0.0;
-    }
-    let total: f64 = socketed_spells
-        .iter()
-        .map(|s| (s.effective_cast_time_for_energy() / 0.1) * 10.0)
-        .sum();
-    round(total)
-}
-
-/// Energy generated per trigger event (hit/crit/kill/etc.), not centienergy.
-///
-/// Formula (CoC): `energy = MonsterPower × (hit_damage / ailment_threshold) × scale`
-/// where `scale = energy_generated_pct_bonus / 100` (gem-level bonus, ≥ 1.0).
-///
-/// Other conditions (Ignite/Shock/Freeze/Other):
-/// - `energy = MonsterPower × base_centienergy / 100 × scale`.
-/// - CoC additionally multiplies by "raw damage / ailment threshold" (more damage → more energy).
-///
-/// Source: agent-docs/triggers.md §2.2; PoE2 Wiki CoC 0.5.0 formula.
-///
-/// # Parameters
-/// - `condition`: the trigger condition type (determines the centienergy base).
-/// - `monster_power`: the enemy's power (usually 0.5–3; rare monsters multiply by a rarity factor
-///   of 1/2/5, unique=20).
-/// - `hit_damage`: the raw damage of this hit (before mitigation); only meaningful for CoC, pass
-///   0 for other conditions.
-/// - `ailment_threshold`: the monster's ailment threshold; only meaningful for CoC, pass 1.0 for
-///   other conditions to avoid division by zero.
-/// - `energy_generated_scale`: the gem level's "energy_generated_+%"/100 + 1 (i.e. the multiplier,
-///   e.g. 1.57).
-pub fn calc_energy_per_event(
-    condition: TriggerCondition,
-    monster_power: f64,
-    hit_damage: f64,
-    ailment_threshold: f64,
-    energy_generated_scale: f64,
-) -> f64 {
-    let base_centienergy = condition.base_centienergy();
-    let monster_power = monster_power.max(0.0);
-    let scale = energy_generated_scale.max(1.0);
-
-    let centienergy = match condition {
-        TriggerCondition::CriticalStrike => {
-            // CoC 0.5.0: generation also depends on raw damage / the monster's ailment threshold.
-            // For reliable triggering, crit damage needs to be roughly 10× the monster's ailment threshold.
-            let threshold = ailment_threshold.max(1.0);
-            let damage_ratio = (hit_damage / threshold).max(0.0);
-            monster_power * base_centienergy * damage_ratio * scale
-        }
-        _ => {
-            // Ignite/Shock/Freeze/Other: generation scales linearly with MonsterPower × base_centienergy.
-            monster_power * base_centienergy * scale
-        }
-    };
-    // centienergy / 100 = energy.
-    round(centienergy / 100.0)
-}
-
-/// Settlement result of the energy-driven trigger rate.
-///
-/// **Note (deviation from PoB2)**: the current implementation is a **deterministic
-/// approximation** (not a frame-by-frame Monte Carlo simulation).
-/// - Assumes each "trigger event" (each hit/crit) generates a constant amount of energy (a mean
-///   value stands in for the distribution).
-/// - `effective_trigger_rate` = `source_rate × energy_per_event / max_energy`, capped at
-///   `trigger_rate_cap` (cooldown gating).
-/// - PoB2's precise version is a "server-tick × frame-by-frame simulation" — deviations show up
-///   in high-damage-variance scenarios (widely spread crit damage) or with non-uniform MonsterPower.
-/// - Full Monte Carlo precision alignment is deferred (the golden fixture test framework is kept
-///   in place for it).
-///
-/// Source: agent-docs/triggers.md §2, §"Implications for pobr" #2;
-///       PoE2 Wiki CoC; PoE2DB Energy; PoB2 DeepWiki (the "needs an entire overhaul" warning).
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct EnergyTriggerRate {
-    /// The meta gem's max energy.
-    pub max_energy: f64,
-    /// Energy generated per trigger event (mean value, used for the rate estimate).
-    pub energy_per_event: f64,
-    /// Total energy generated per second (`energy_per_event × source_rate`).
-    pub energy_per_second: f64,
-    /// Estimated raw energy-driven trigger frequency (triggers/second): `energy_per_second / max_energy`.
-    pub raw_trigger_rate: f64,
-    /// The effective trigger rate (triggers/second) after clamping to the cooldown cap.
-    pub effective_trigger_rate: f64,
-    /// The cooldown-driven trigger rate cap (triggers/second); used to clamp the energy rate.
-    pub cooldown_rate_cap: f64,
-    /// Whether the cooldown cap is the clamping factor (energy generation outpaces the cooldown).
-    pub limited_by_cooldown: bool,
-}
-
-/// End-to-end trigger rate estimate for an energy-driven meta gem (deterministic approximation).
-///
-/// # Parameters
-/// - `socketed_spells`: cast-time info for each socketed spell (determines max_energy).
-/// - `condition`: the trigger condition (Crit/Ignite/Shock/Freeze/Other).
-/// - `monster_power`: the enemy's power (per event); for a pack of monsters, pass the combined
-///   power (15–20).
-/// - `hit_damage`: the hit's raw damage (used by CoC; pass 0 for other conditions).
-/// - `ailment_threshold`: the monster's ailment threshold (used by CoC; pass 1.0 for other conditions).
-/// - `energy_generated_scale`: the gem-level bonus multiplier (1.0 + energy_generated_+%/100).
-/// - `source_rate`: the source skill's (hit/attack/channel) events per second.
-/// - `trigger_cd`: the trigger gem's own cooldown (seconds; used for the cooldown-gated cap).
-/// - `triggered_cd`: the triggered skill's cooldown (seconds; pass 0 if none).
-/// - `icdr`: the cooldown-recovery-rate multiplier (≥ 1.0).
-///
-/// Source: agent-docs/triggers.md §2; PoE2DB Energy; PoE2 Wiki CoC 0.5.0.
-#[allow(clippy::too_many_arguments)]
-pub fn calc_energy_trigger_rate(
-    socketed_spells: &[SocketedSpellInfo],
-    condition: TriggerCondition,
-    monster_power: f64,
-    hit_damage: f64,
-    ailment_threshold: f64,
-    energy_generated_scale: f64,
-    source_rate: f64,
-    trigger_cd: f64,
-    triggered_cd: f64,
-    icdr: f64,
-    tick_seconds: f64,
-) -> EnergyTriggerRate {
-    let max_energy = calc_max_energy(socketed_spells);
-    let energy_per_event = calc_energy_per_event(
-        condition,
-        monster_power,
-        hit_damage,
-        ailment_threshold,
-        energy_generated_scale,
-    );
-
-    let source = source_rate.max(0.0);
-    let energy_per_second = round(energy_per_event * source);
-    let raw_rate = if max_energy > 0.0 {
-        round(energy_per_second / max_energy)
-    } else {
-        0.0
-    };
-
-    // Cooldown-gated cap (can't exceed the cap determined by the cooldown).
-    let cd = action_cooldown(trigger_cd, triggered_cd, icdr);
-    let tick_rate = server_tick_rate(tick_seconds);
-    let rate_cap_cd = round_cooldown_to_tick(cd, tick_rate);
-    let cd_cap = if rate_cap_cd > 0.0 {
-        round(1.0 / rate_cap_cd)
-    } else {
-        // No cooldown → gated only by the energy rate, no cap clamping.
-        f64::INFINITY
-    };
-
-    let effective_rate = raw_rate.min(cd_cap);
-    let limited_by_cooldown = cd_cap.is_finite() && raw_rate > cd_cap;
-
-    EnergyTriggerRate {
-        max_energy,
-        energy_per_event,
-        energy_per_second,
-        raw_trigger_rate: raw_rate,
-        effective_trigger_rate: round(effective_rate),
-        cooldown_rate_cap: if cd_cap.is_finite() {
-            round(cd_cap)
-        } else {
-            0.0
-        },
-        limited_by_cooldown,
     }
 }
 
@@ -775,73 +497,6 @@ pub fn resolve_trigger_rate_traced(
     (result, rate_node)
 }
 
-/// The attributed version of the energy-driven trigger rate: adds max_energy, energy_per_event,
-/// source_rate to the TraceGraph.
-///
-/// Returns `(EnergyTriggerRate, effective_trigger_rate_node)`.
-#[allow(clippy::too_many_arguments)]
-pub fn calc_energy_trigger_rate_traced(
-    socketed_spells: &[SocketedSpellInfo],
-    condition: TriggerCondition,
-    monster_power: f64,
-    hit_damage: f64,
-    ailment_threshold: f64,
-    energy_generated_scale: f64,
-    source_rate: f64,
-    trigger_cd: f64,
-    triggered_cd: f64,
-    icdr: f64,
-    tick_seconds: f64,
-    trace: &mut TraceGraph,
-) -> (EnergyTriggerRate, TraceNodeId) {
-    let result = calc_energy_trigger_rate(
-        socketed_spells,
-        condition,
-        monster_power,
-        hit_damage,
-        ailment_threshold,
-        energy_generated_scale,
-        source_rate,
-        trigger_cd,
-        triggered_cd,
-        icdr,
-        tick_seconds,
-    );
-
-    let max_energy_node = trace.add_source_node(
-        "max energy (socketed spell cast times)",
-        result.max_energy,
-        SourceId::new(SourceKind::SkillGem, "energy.max"),
-    );
-    let energy_per_event_node = trace.add_source_node(
-        "energy per event (MonsterPower × baseCentienergy / 100)",
-        result.energy_per_event,
-        SourceId::new(SourceKind::CharacterBase, "energy.per_event"),
-    );
-    let source_rate_node = trace.add_source_node(
-        "source rate (events/s)",
-        source_rate,
-        SourceId::new(SourceKind::CharacterBase, "source.rate"),
-    );
-    let raw_rate_node = trace.add_node(
-        "raw energy trigger rate (energy_per_second / max_energy)",
-        result.raw_trigger_rate,
-        TraceOperation::Multiply,
-    );
-    trace.add_edge(max_energy_node, raw_rate_node);
-    trace.add_edge(energy_per_event_node, raw_rate_node);
-    trace.add_edge(source_rate_node, raw_rate_node);
-
-    let effective_node = trace.add_node(
-        "effective trigger rate (min(raw, cd_cap))",
-        result.effective_trigger_rate,
-        TraceOperation::Cap,
-    );
-    trace.add_edge(raw_rate_node, effective_node);
-
-    (result, effective_node)
-}
-
 /// The attributed version of the CWC trigger rate: adds trigger_time, triggered_cd,
 /// adds_cast_time, icdr to the TraceGraph.
 ///
@@ -937,6 +592,10 @@ pub struct TriggerSourceStats {
     /// The source skill's crit rate (fraction 0-1; 0 = not injected/not applicable, consumer
     /// skips folding it in).
     pub crit_chance: f64,
+    /// The average damage of the source skill's critical hit before the enemy's
+    /// mitigation (0 = unknown). What an Energy meta gem gains from the hit
+    /// depends on it (`calc::energy`).
+    pub crit_hit_damage: f64,
 }
 
 impl TriggerSourceStats {
@@ -1021,141 +680,6 @@ mod tests {
         let r = resolve_trigger_rate(0.3, 0.0, 1.0, 100.0, SERVER_TICK_SECONDS);
         assert!(!r.limited_by_source);
         assert!((r.skill_trigger_rate - r.trigger_rate_cap).abs() < 1e-9);
-    }
-
-    // §2  Energy model tests
-
-    #[test]
-    fn max_energy_single_spell_0_5s() {
-        // base_cast_time = 0.5s → effective = 0.5s → (0.5/0.1)×10 = 50.
-        let spells = [SocketedSpellInfo::new(0.5)];
-        assert!((calc_max_energy(&spells) - 50.0).abs() < 1e-6);
-    }
-
-    #[test]
-    fn max_energy_two_spells() {
-        // 0.3s + 0.6s = 0.9s → 90 energy.
-        let spells = [SocketedSpellInfo::new(0.3), SocketedSpellInfo::new(0.6)];
-        assert!((calc_max_energy(&spells) - 90.0).abs() < 1e-6);
-    }
-
-    #[test]
-    fn max_energy_use_time_penalty_doubled() {
-        // base=0.5s, use_time_increase=20% → effective = 0.5 × (1 + 0.20 × 2) = 0.5 × 1.4 = 0.7s.
-        // max_energy = (0.7/0.1)×10 = 70.
-        let spell = SocketedSpellInfo::new(0.5).with_use_time_increase(20.0);
-        assert!((spell.effective_cast_time_for_energy() - 0.7).abs() < 1e-9);
-        let spells = [spell];
-        assert!((calc_max_energy(&spells) - 70.0).abs() < 1e-6);
-    }
-
-    #[test]
-    fn energy_per_event_freeze_10x_crit_same_ratio() {
-        // Freeze base_centienergy=1000 vs Crit base_centienergy=100 (at ratio=1) → 10x.
-        // At CoC ratio=1 (hit_damage=ailment_threshold): crit = 1×100×1/100 = 1.
-        // Freeze: freeze = 1×1000/100 = 10.
-        let crit_ratio1 =
-            calc_energy_per_event(TriggerCondition::CriticalStrike, 1.0, 100.0, 100.0, 1.0);
-        let freeze = calc_energy_per_event(TriggerCondition::Freeze, 1.0, 0.0, 1.0, 1.0);
-        assert!(
-            (crit_ratio1 - 1.0).abs() < 1e-6,
-            "crit_ratio1={crit_ratio1}"
-        );
-        assert!((freeze - 10.0).abs() < 1e-6, "freeze={freeze}");
-        assert!(
-            (freeze / crit_ratio1 - 10.0).abs() < 1e-3,
-            "freeze={freeze} crit={crit_ratio1}"
-        );
-    }
-
-    #[test]
-    fn energy_per_event_coc_damage_ratio() {
-        // CoC: MonsterPower=1, hit_damage=500, threshold=100 → ratio=5 → energy=1×100×5/100=5.
-        let e = calc_energy_per_event(TriggerCondition::CriticalStrike, 1.0, 500.0, 100.0, 1.0);
-        assert!((e - 5.0).abs() < 1e-6);
-    }
-
-    #[test]
-    fn energy_per_event_scale_increases_gain() {
-        // energy_generated_scale=1.57 (lvl20 +57%) should generate 57% more energy than 1.0.
-        let base = calc_energy_per_event(TriggerCondition::Shock, 2.0, 0.0, 1.0, 1.0);
-        let scaled = calc_energy_per_event(TriggerCondition::Shock, 2.0, 0.0, 1.0, 1.57);
-        assert!((scaled / base - 1.57).abs() < 1e-3);
-    }
-
-    #[test]
-    fn energy_trigger_rate_increases_with_source_rate() {
-        // effective_trigger_rate is monotonically non-decreasing as source_rate increases
-        // (clamped by the cooldown cap).
-        let spells = [SocketedSpellInfo::new(0.5)];
-        let low = calc_energy_trigger_rate(
-            &spells,
-            TriggerCondition::Shock,
-            5.0,
-            0.0,
-            1.0,
-            1.0,
-            2.0,
-            0.3,
-            0.0,
-            1.0,
-            SERVER_TICK_SECONDS,
-        );
-        let high = calc_energy_trigger_rate(
-            &spells,
-            TriggerCondition::Shock,
-            5.0,
-            0.0,
-            1.0,
-            1.0,
-            5.0,
-            0.3,
-            0.0,
-            1.0,
-            SERVER_TICK_SECONDS,
-        );
-        assert!(high.effective_trigger_rate >= low.effective_trigger_rate);
-    }
-
-    #[test]
-    fn energy_trigger_rate_limited_by_cooldown() {
-        // Very high source_rate and ample energy → should be clamped by the cooldown cap.
-        let spells = [SocketedSpellInfo::new(0.1)]; // max_energy=10 (small → fast generation)
-        let r = calc_energy_trigger_rate(
-            &spells,
-            TriggerCondition::Freeze,
-            20.0, // High MonsterPower
-            0.0,
-            1.0,
-            1.0,
-            100.0, // Very high source rate
-            0.5,   // Trigger gem cooldown 0.5s → cap ≈ 2/s
-            0.0,
-            1.0,
-            SERVER_TICK_SECONDS,
-        );
-        assert!(r.limited_by_cooldown, "should be limited by cooldown cap");
-        // effective ≤ cd_cap.
-        assert!(r.effective_trigger_rate <= r.cooldown_rate_cap + 1e-6);
-    }
-
-    #[test]
-    fn energy_trigger_rate_no_spells_yields_zero() {
-        let r = calc_energy_trigger_rate(
-            &[],
-            TriggerCondition::Shock,
-            5.0,
-            0.0,
-            1.0,
-            1.0,
-            3.0,
-            0.3,
-            0.0,
-            1.0,
-            SERVER_TICK_SECONDS,
-        );
-        assert_eq!(r.max_energy, 0.0);
-        assert_eq!(r.effective_trigger_rate, 0.0);
     }
 
     // §3  Multi-skill rotation tests
@@ -1310,28 +834,6 @@ mod tests {
     }
 
     #[test]
-    fn trace_graph_energy_trigger_rate() {
-        let spells = [SocketedSpellInfo::new(0.5)];
-        let mut trace = TraceGraph::new();
-        let (result, node) = calc_energy_trigger_rate_traced(
-            &spells,
-            TriggerCondition::Shock,
-            5.0,
-            0.0,
-            1.0,
-            1.0,
-            3.0,
-            0.3,
-            0.0,
-            1.0,
-            SERVER_TICK_SECONDS,
-            &mut trace,
-        );
-        let n = trace.node(node).unwrap();
-        assert!((n.value - result.effective_trigger_rate).abs() < 1e-9);
-    }
-
-    #[test]
     fn trace_graph_cwc_trigger_rate() {
         let mut trace = TraceGraph::new();
         let (result, node) =
@@ -1351,6 +853,7 @@ mod tests {
             action_rate: 3.0,
             hit_chance: 0.80,
             crit_chance: 0.35,
+            ..Default::default()
         };
         assert!((stats.chance_multiplier(true) - 0.28).abs() < 1e-9);
         // A non-triggerOnCrit path only folds in the hit chance.
@@ -1366,6 +869,7 @@ mod tests {
             action_rate: 2.0,
             hit_chance: 1.0,
             crit_chance: 1.0,
+            ..Default::default()
         };
         assert_eq!(full.chance_multiplier(true), 1.0);
     }
@@ -1378,6 +882,7 @@ mod tests {
             action_rate: 2.0,
             hit_chance: 0.9,
             crit_chance: 0.2,
+            ..Default::default()
         };
         let high_crit = TriggerSourceStats {
             crit_chance: 0.5,

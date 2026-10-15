@@ -196,7 +196,19 @@ cargo nextest run -p pobr-build --test parity
 mise run test build parity parity_baseline_report -- --ignored --nocapture
 mise run test build parity effective_switch_dual_run_report -- --ignored --nocapture
 mise run test build parity ehp_dual_run_report -- --ignored --nocapture
+
+mise run triage [set dir | build dir ...]                         # Every worked build at once: whose differences, and their shared causes
+mise run diagnose <build dir | code file | committed build name>   # One build's dropped inputs
+mise run compare <build> [Stat ...]                               # One build against the pinned PoB2, stat by stat
+mise run lookup <id or name> [--level N]                          # Game data records of a skill, stat, base, node or unique
+mise run accuracy [dir of */code.txt]                             # A corpus against the reference its codes carry
+cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakdown TotalDPS,Life   # How the stats asked for arrive
 ```
+
+`triage` 是数值差异的第一步，一次对照基准组与 tuned 组的全部构筑，`diagnose` / `compare` 只用于它解释不了的单个构筑；
+流程见 [AGENTS.md](../AGENTS.md#accuracy-workflow) 和[维护者指南的“排查数值差异”](maintainer-guide.md#排查数值差异诊断闭环)。
+`triage` 与 `compare` 需要 vendor 与 LuaJIT，PoB2 的结果按构筑码缓存在 `.cache/pob2-oracle/`，两者共用；`lookup` 只读
+当前数据版本（`POBR_DATA_ROOT` / `POBR_DATA_VERSION` / `CURRENT`，或 `--version`），二者都只用 Python 标准库。
 
 `--timings` 显示编译单元耗时与依赖等待。使用重定向后的 target 时按 Cargo 输出定位报告。
 不要为了测量清缓存。测试目标由 `mise run targets` 读取当前 manifest；深层 tests 文件通常是
@@ -211,7 +223,7 @@ nextest 按用例启动独立进程，进程间不共享 `OnceLock`；大量游�
 
 - `bash devs/scripts/driver.sh smoke`：聚合、解析、Build Code 的代表测试，不先构建整个工作区；不能替代完整门禁。
 - 本地 `.agents/skills/run-pobr/driver.sh` 转发到同一驱动（`.agents` 按仓库规则不入库）。`smoke` 是环境检查，已有相关测试通过后无需再补一次。
-- `python3 devs/scripts/test_workflows.py`：检查脚本失败传递、临时目录清理与工作区保护，不调用真实 Cargo。
+- `python3 devs/scripts/test_workflows.py`：检查脚本失败传递、临时目录清理与工作区保护，以及 `compare` 的来源对齐和 `lookup` 的查找（用合成数据），不调用真实 Cargo。
 - `devs/scripts/regen-check.sh` 在临时副本中重生成，保留 `overlay-common` 与 examples 语料，不写入或恢复工作区文件。
 - `node web/scripts/bench-calc.mjs` measures uncached real-WASM calculation and 16-item batches on three committed builds. It requires built WASM and synced data; `--reference <old-pkg>` additionally checks complete output equality for behavior-preserving optimizations. Reports stay under ignored `.cache/`; this benchmark is opt-in, outside the CI gate.
 - `pnpm --dir web package-wasm`：将已准备 WASM 与同步数据打包到 `.cache/wasm-release/`；`pnpm --dir web smoke-wasm-package` 解压后执行真实计算。`build-wasm` 校验源码、工具链、构建设置和产物凭据，未变时直接复用；`pnpm --dir web build-wasm --force` 显式重建但不清 Cargo 缓存。打包继续校验源码/绑定指纹、实际 schema 和数据快照，来源 commit 保留编译时值。脚本改动运行 `node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs`；发布流程见 [WASM 打包说明](wasm-package.md)。tag CI 在 Rust/Web 门禁通过后自动附加 Release 资产，手动 CI 仅保存 Actions artifact。

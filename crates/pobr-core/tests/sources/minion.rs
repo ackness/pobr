@@ -164,9 +164,16 @@ fn channel_3_strength_infusion_injects_base_str() {
     let str_base = ctx.mod_db.sum(
         ModType::Base,
         &CalcConfig::attack(),
-        &[ModName::from("Str")],
+        &[ModName::from("Strength")],
     );
     assert_eq!(str_base, 300.0);
+    // "+2 to maximum Life per Strength": the minion's only Strength.
+    let life_flat = ctx.mod_db.sum(
+        ModType::Base,
+        &CalcConfig::attack(),
+        &[ModName::from("MaximumLife")],
+    );
+    assert_eq!(life_flat, 600.0);
 }
 
 #[test]
@@ -183,7 +190,7 @@ fn channel_3_half_strength_infusion() {
     let str_base = ctx.mod_db.sum(
         ModType::Base,
         &CalcConfig::attack(),
-        &[ModName::from("Str")],
+        &[ModName::from("Strength")],
     );
     assert_eq!(str_base, 150.0);
 }

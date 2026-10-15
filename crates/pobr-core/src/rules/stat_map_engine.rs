@@ -427,7 +427,9 @@ mod player_buff;
 pub use curse::has_exposure_inflict_payload;
 pub use curse::{curse_local_effect, has_curse_payload, map_curse_stat};
 pub use debuff::map_debuff_stat;
-pub use player_buff::map_player_buff_stat;
+pub use player_buff::{
+    map_player_buff_stat, player_buff_effect_name, player_buff_rejected_elements,
+};
 
 // #12: minion domain (MinionModifier LIST payload -> inner minion mod)
 
@@ -977,23 +979,8 @@ fn translate_keyword_flags(
             extra_mod_flags |= ModFlags::SPELL;
             continue;
         }
-        let bit = match token.as_str() {
-            "Aura" => KeywordFlags::AURA,
-            "Curse" => KeywordFlags::CURSE,
-            "Arrow" => KeywordFlags::ARROW,
-            "Hit" => KeywordFlags::HIT,
-            "Ailment" => KeywordFlags::AILMENT,
-            "Poison" => KeywordFlags::POISON,
-            "Bleed" => KeywordFlags::BLEED,
-            "Ignite" => KeywordFlags::IGNITE,
-            "PhysicalDot" => KeywordFlags::PHYSICAL_DOT,
-            "LightningDot" => KeywordFlags::LIGHTNING_DOT,
-            "ColdDot" => KeywordFlags::COLD_DOT,
-            "FireDot" => KeywordFlags::FIRE_DOT,
-            "ChaosDot" => KeywordFlags::CHAOS_DOT,
-            _ => {
-                return Err(UnsupportedReason::UnsupportedKeywordFlags(tokens.join("|")));
-            }
+        let Some(bit) = KeywordFlags::from_name(token) else {
+            return Err(UnsupportedReason::UnsupportedKeywordFlags(tokens.join("|")));
         };
         flags = flags | bit;
     }
@@ -2045,10 +2032,15 @@ mod tests {
             vec!["SkillSpeed", "WarcrySpeed", "TotemPlacementSpeed"]
         );
         assert!(mods.iter().all(|m| m.value.as_number() == Some(20.0)));
-        // A Warcry keyword on a non-inert name is still rejected (no
-        // corresponding KeywordFlags bit).
+        // A Warcry keyword on any other name keeps it to warcries.
         let entry = entry_json(
             r#"{ "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "INC", "keyword_flags": ["Warcry"] } ] }"#,
+        );
+        let mods = expect_modifiers(map_entry(&entry, 1.0));
+        assert_eq!(mods[0].keyword_flags, KeywordFlags::WARCRY);
+        // A name that is no keyword is rejected.
+        let entry = entry_json(
+            r#"{ "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "INC", "keyword_flags": ["Shapeshift"] } ] }"#,
         );
         assert!(matches!(
             map_entry(&entry, 1.0),
@@ -3145,6 +3137,34 @@ mod tests {
         );
     }
 
+    /// A payload that names its buff (`effectName`) is that buff; one that
+    /// does not is left a buff of the skill it is granted with.
+    #[test]
+    fn player_buff_effect_name_is_the_payloads_own() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "SupportRefractionPlayerTwo": { "1": {
+                 "support_tempered_valour_%_armour_to_apply_to_elemental_damage": {
+                   "mods": [ { "kind": "mod", "name": "ArmourAppliesToFireDamageTaken", "mod_type": "BASE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff",
+                                           "effectName": "Refractive Plating" } ] } ] },
+                 "companion_takes_%_damage_before_you_from_support": {
+                   "mods": [ { "kind": "mod", "name": "TakenFromCompanionBeforeYou", "mod_type": "BASE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] } ] } } } } }"#,
+        );
+        let name = |stat: &str| {
+            player_buff_effect_name(&catalog, "SupportRefractionPlayerTwo", None, stat)
+        };
+        assert_eq!(
+            name("support_tempered_valour_%_armour_to_apply_to_elemental_damage").as_deref(),
+            Some("Refractive Plating")
+        );
+        assert_eq!(
+            name("companion_takes_%_damage_before_you_from_support"),
+            None
+        );
+        assert_eq!(name("no_such_stat"), None);
+    }
+
     /// Mirrors War Banner's shape (GlobalEffect effectType=Aura + Condition
     /// BannerPlanted): Aura-type player-side buffs are collected the same
     /// way, and the Condition tag translates directly and is kept.
@@ -3341,6 +3361,42 @@ mod tests {
             ],
             "all six <El>Can<Ailment> flags should be produced; scalar Damage MORE injects zero"
         );
+    }
+
+    /// An entry that maps in part is reported as mapped. The parts that were
+    /// rejected are still retrievable, so a diagnosis can show the half of a
+    /// buff that was dropped.
+    #[test]
+    fn player_buff_reports_the_rejected_parts_of_a_partly_mapped_entry() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "X": { "1": {
+                 "part": { "mods": [
+                     { "kind": "mod", "name": "NoSuchName", "mod_type": "MORE",
+                       "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] },
+                     { "kind": "flag", "name": "ColdCanIgnite", "mod_type": "FLAG", "value": true,
+                       "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] } ] },
+                 "whole": { "mods": [
+                     { "kind": "flag", "name": "ColdCanShock", "mod_type": "FLAG", "value": true,
+                       "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] } ] },
+                 "none": { "mods": [
+                     { "kind": "mod", "name": "NoSuchName", "mod_type": "MORE",
+                       "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] } ] } } } } }"#,
+        );
+        let rejected =
+            |stat: &str| player_buff_rejected_elements(&catalog, "X", Some("1"), stat, 10.0);
+        assert_eq!(
+            rejected("part"),
+            vec![UnsupportedReason::UnknownModName("NoSuchName".into())]
+        );
+        // Wholly mapped: nothing rejected. Wholly rejected: the outcome
+        // itself already says so. Unknown stat: there is no entry.
+        assert!(rejected("whole").is_empty());
+        assert!(rejected("none").is_empty());
+        assert!(rejected("absent").is_empty());
+        assert!(matches!(
+            map_player_buff_stat(&catalog, "X", Some("1"), "none", 10.0),
+            MappedOutcome::Unsupported(UnsupportedReason::UnknownModName(_))
+        ));
     }
 
     /// A flag outside the `<Type>Can<Ailment>` family (e.g. the behaviour

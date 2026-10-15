@@ -44,6 +44,95 @@ fn per_attribute_modifiers_use_final_attributes_with_class_and_inc_more() {
     assert!((out.total_hit_avg - 106.0).abs() < 1e-9);
 }
 
+/// Jack of all Trades: "2% increased Damage per 5 of your lowest Attribute"
+/// reads the least of the three final attributes.
+#[test]
+fn per_lowest_attribute_modifiers_read_the_least_final_attribute() {
+    use pobr_core::{CalcConfig, CharacterBase, Modifier};
+    use pobr_data::prelude::ModType;
+
+    let class = CharacterBase {
+        level: 1,
+        strength: 10.0,
+        dexterity: 10.0,
+        intelligence: 10.0,
+    };
+    let mut s = session(MinimalInput {
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        ..Default::default()
+    })
+    .with_config(CalcConfig::spell());
+    s.add_modifiers(class.modifiers(&Default::default()));
+    // Final attributes: 40 Strength, 26 Dexterity, 30 Intelligence.
+    s.add_modifiers([
+        Modifier::number("Strength", ModType::Base, 30.0),
+        Modifier::number("Dexterity", ModType::Base, 16.0),
+        Modifier::number("Intelligence", ModType::Base, 20.0),
+    ]);
+    s.add_modifier_texts(["2% increased Damage per 5 of your lowest Attribute"])
+        .unwrap();
+    assert!(s.unsupported_modifier_texts().is_empty());
+    s.prepare_player_stats(1, Some(class));
+    let unprovided = s.unprovided_multipliers();
+    assert!(unprovided.iter().all(|(var, _)| *var != "LowestAttribute"));
+    // floor(26 / 5) = 5 steps of 2%.
+    let out = s.perform_minimal().unwrap();
+    assert!((out.total_hit_avg - 110.0).abs() < 1e-9);
+}
+
+/// "for each Minion in your Presence" counts the minions the calculation
+/// created, or the configured "# of Minions in your Presence".
+#[test]
+fn minions_in_presence_are_the_minions_created_or_the_configured_number() {
+    use pobr_core::calc::minion::{AttributeInfusion, MinionOrigin};
+    use pobr_core::{CalcConfig, ModTag, Modifier};
+    use pobr_data::minion::minion_def_zombie;
+    use pobr_data::prelude::ModType;
+
+    let attack_hit = |zombies: u32, configured: Option<f64>| {
+        let mut s = session(MinimalInput {
+            base_hit_min: 100.0,
+            base_hit_max: 100.0,
+            ..Default::default()
+        })
+        .with_config(CalcConfig::attack().with_mode_combat(true));
+        s.add_modifier_texts([
+            "5% increased Attack Damage for each Minion in your Presence, up to a maximum of 80%",
+        ])
+        .unwrap();
+        assert!(s.unsupported_modifier_texts().is_empty());
+        if let Some(count) = configured {
+            // What the config option adds: a combat input.
+            let name = "Multiplier:MinionPresenceCount";
+            let modifier = Modifier::number(name, ModType::Override, count)
+                .with_tag(ModTag::condition("Combat", false));
+            s.add_modifiers([modifier]);
+        }
+        s.prepare_player_stats(1, None);
+        if zombies > 0 {
+            s.add_minion_from_def(
+                &minion_def_zombie(),
+                20,
+                zombies,
+                Vec::new(),
+                Vec::new(),
+                AttributeInfusion::default(),
+                MinionOrigin::default(),
+            );
+        }
+        s.bridge_minion_presence();
+        s.perform_minimal().unwrap().total_hit_avg
+    };
+    // Three Raised Zombies: 15%.
+    assert!((attack_hit(3, None) - 115.0).abs() < 1e-9);
+    // Twenty reach the maximum of 80%.
+    assert!((attack_hit(20, None) - 180.0).abs() < 1e-9);
+    assert!((attack_hit(0, None) - 100.0).abs() < 1e-9);
+    // The configured number is the count.
+    assert!((attack_hit(3, Some(5.0)) - 125.0).abs() < 1e-9);
+}
+
 #[test]
 fn completed_session_rejects_recalculation_without_mutating_derived_resources() {
     use pobr_core::{Modifier, calc::CalcError};
@@ -132,6 +221,74 @@ fn player_condition_bridge_preserves_explicit_low_life_choice() {
     }
 }
 
+/// Five enemies make a character Surrounded before "Require N fewer enemies to
+/// be Surrounded"; the calculation is against one, so only a requirement
+/// lowered to a single enemy makes it Surrounded. A configured choice is kept.
+#[test]
+fn player_condition_bridge_derives_surrounded_from_the_required_enemies() {
+    use pobr_core::CalcConfig;
+
+    for (fewer, configured, surrounded) in [
+        (Some(4), None, true),
+        (Some(3), None, false),
+        (None, None, false),
+        (Some(4), Some(false), false),
+        (None, Some(true), true),
+    ] {
+        let mut cfg = CalcConfig::default();
+        if let Some(value) = configured {
+            cfg = cfg.with_condition("Surrounded", value);
+        }
+        let mut s = session(MinimalInput::default()).with_config(cfg);
+        let lines = fewer
+            .map(|n| format!("Require {n} fewer enemies to be Surrounded"))
+            .into_iter()
+            .chain(["20% increased Armour while Surrounded".to_string()]);
+        s.add_modifier_texts(lines).unwrap();
+        assert!(
+            s.unsupported_modifier_texts().is_empty(),
+            "{:?}",
+            s.unsupported_modifier_texts()
+        );
+        s.prepare_player_stats(1, None);
+        s.bridge_player_conditions();
+        let (_, increased, _) = s.stat_totals("Armour");
+        assert_eq!(
+            increased,
+            if surrounded { 20.0 } else { 0.0 },
+            "{fewer:?} fewer, configured {configured:?}"
+        );
+    }
+}
+
+/// Sorcery Ward is an Ascendancy skill: "Grants Skill: Sorcery Ward" (the
+/// Witchhunter's Obsessive Rituals) gives it to the character, and its
+/// Barrier reads the condition that line sets. A skill group that lists the
+/// gem without the grant gives no Barrier.
+#[test]
+fn player_condition_bridge_sets_sorcery_ward_from_its_grant() {
+    use pobr_core::{ModTag, Modifier};
+    use pobr_data::prelude::ModType;
+
+    for granted in [false, true] {
+        let mut s = session(MinimalInput::default());
+        if granted {
+            s.add_modifier_texts(["Grants Skill: Sorcery Ward"])
+                .unwrap();
+        }
+        s.add_modifiers([Modifier::number("Armour", ModType::Inc, 20.0)
+            .with_tag(ModTag::condition("SorceryWard", false))]);
+        s.prepare_player_stats(1, None);
+        s.bridge_player_conditions();
+        let (_, increased, _) = s.stat_totals("Armour");
+        assert_eq!(
+            increased,
+            if granted { 20.0 } else { 0.0 },
+            "granted {granted}"
+        );
+    }
+}
+
 #[test]
 fn per_mana_damage_uses_the_pool_after_defence_conversion() {
     use pobr_core::{ModTag, Modifier};
@@ -155,6 +312,37 @@ fn per_mana_damage_uses_the_pool_after_defence_conversion() {
     let output = session.perform_minimal().expect("perform");
     assert_eq!(output.mana, 300.0);
     assert!((output.total_hit_avg - 130.0).abs() < 1e-10);
+}
+
+/// "1% increased Damage per 1% Chance to Block" reads the chance to Block
+/// the defences give: rounded, capped at the maximum.
+#[test]
+fn per_block_chance_damage_reads_the_capped_chance_to_block() {
+    use pobr_core::{ModTag, Modifier};
+    use pobr_data::prelude::ModType;
+
+    let mut session = session(MinimalInput {
+        base_life: 100.0,
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        ..Default::default()
+    });
+    session.add_modifiers([
+        Modifier::number("BlockChance", ModType::Base, 90.0),
+        Modifier::number("Damage", ModType::Inc, 1.0).with_tag(ModTag::multiplier(
+            "BlockChance",
+            1.0,
+            None,
+        )),
+    ]);
+    session.prepare_player_stats(1, None);
+    let output = session.perform_minimal().expect("perform");
+    // The chance to Block is at most 50%.
+    assert!(
+        (output.total_hit_avg - 150.0).abs() < 1e-10,
+        "{}",
+        output.total_hit_avg
+    );
 }
 
 #[test]
@@ -405,4 +593,205 @@ fn projectile_speed_applies_to_bow_damage_conversion() {
     non_bow.add_modifiers([Modifier::flag("ProjectileSpeedAppliesToBowDamage")]);
     let non_bow_out = non_bow.perform_minimal().expect("perform");
     assert_eq!(non_bow_out.total_hit_avg, 100.0);
+}
+
+/// A line can parse and still do nothing: its name has no reader, or it scales
+/// by a variable nothing sets. Diagnostics name both instead of leaving a
+/// number quietly short.
+#[test]
+fn session_reports_modifiers_that_parsed_and_did_nothing() {
+    use pobr_core::{ActorRef, ModTag, Modifier};
+    use pobr_data::prelude::ModType;
+
+    // A count read from an actor's snapshot, as PoB2 writes "per Idol in
+    // your Equipment" (`actor = "player"`).
+    let read_from = |actor: ActorRef, var: &str| {
+        let mut tag = ModTag::multiplier(var, 1.0, None);
+        if let ModTag::Multiplier { actor: read, .. } = &mut tag {
+            *read = Some(actor);
+        }
+        tag
+    };
+    let mut s = session(MinimalInput {
+        base_life: 100.0,
+        ..Default::default()
+    });
+    s.add_modifiers([
+        Modifier::number("MaximumLife", ModType::Base, 50.0),
+        Modifier::flag("NothingReadsThisFlag").with_source("Synthetic keystone"),
+        Modifier::number("MaximumLife", ModType::Base, 5.0).with_tag(ModTag::multiplier(
+            "NothingSetsThis",
+            1.0,
+            None,
+        )),
+        // The offence pass sets this one for the hit it computes.
+        Modifier::number("CriticalStrikeChance", ModType::Base, 0.25).with_tag(ModTag::multiplier(
+            "ExcessHitChance",
+            1.0,
+            None,
+        )),
+        // Nothing fills the player's snapshot, so this reads 0 as well.
+        Modifier::number("MaximumLife", ModType::Base, 6.0)
+            .with_tag(read_from(ActorRef::Player, "IdolsInEquipment")),
+        // A parent's count is not the player's to provide.
+        Modifier::number("MaximumLife", ModType::Base, 7.0)
+            .with_tag(read_from(ActorRef::Parent, "Virulence")),
+    ]);
+    s.track_modifier_reads();
+    let output = s.perform_minimal().unwrap();
+
+    // The per-multiplier line reads as 0: only the plain +50 arrived.
+    assert_eq!(output.life, 150.0);
+    let unread: Vec<&str> = s
+        .unread_modifiers()
+        .iter()
+        .map(|modifier| modifier.name.as_str())
+        .collect();
+    assert_eq!(unread, ["NothingReadsThisFlag"]);
+    assert!(
+        s.read_modifier_names()
+            .iter()
+            .any(|name| name.as_str() == "MaximumLife")
+    );
+    let unprovided: Vec<(&str, &str, f64)> = s
+        .unprovided_multipliers()
+        .into_iter()
+        .map(|(variable, modifier)| {
+            (
+                variable,
+                modifier.name.as_str(),
+                modifier.value.as_number().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        unprovided,
+        [
+            ("IdolsInEquipment", "MaximumLife", 6.0),
+            ("NothingSetsThis", "MaximumLife", 5.0)
+        ]
+    );
+}
+
+/// A modifier that waits for a condition the calculation never decided does
+/// nothing, and the session says which condition. What the config decided,
+/// either way, is not listed; neither is what a pass works out for itself,
+/// nor a modifier that applies while a condition does not hold. A condition
+/// read on the player's side is decided only by the player's snapshot.
+#[test]
+fn session_reports_conditions_nothing_decided() {
+    use pobr_core::{ActorRef, CalcConfig, ModTag, Modifier};
+    use pobr_data::prelude::{DamageType, ModType};
+
+    let life = |value: f64, tag: ModTag| {
+        Modifier::number("MaximumLife", ModType::Base, value).with_tag(tag)
+    };
+    let player_side = |var: &str| ModTag::Condition {
+        var: var.to_string(),
+        negated: false,
+        actor: Some(ActorRef::Player),
+    };
+    let any_of = |vars: [&str; 2]| ModTag::ConditionAnyOf {
+        vars: vars.iter().map(|var| var.to_string()).collect(),
+        negated: false,
+    };
+    let mut s = session(MinimalInput {
+        base_life: 100.0,
+        ..Default::default()
+    })
+    .with_config(
+        CalcConfig::attack()
+            .with_damage_type(DamageType::Physical)
+            .with_condition("SwitchedOff", false)
+            .with_actor_multiplier(ActorRef::Player, "InThePlayerSnapshot", 1.0),
+    );
+    s.set_condition("SwitchedOn", true);
+    s.add_modifiers([
+        life(1.0, ModTag::condition("NothingSetsThis", false)),
+        life(2.0, ModTag::condition("SwitchedOff", false)),
+        life(4.0, ModTag::condition("SwitchedOn", false)),
+        // Passes set these when they hold: for the critical half of a hit,
+        // while a Life flask is in use, for the weapon set in use.
+        life(8.0, ModTag::condition("CriticalStrike", false)),
+        life(512.0, ModTag::condition("UsingLifeFlask", false)),
+        life(1024.0, ModTag::condition("WeaponSet2", false)),
+        // Unset, it does not hold, and this one applies.
+        life(16.0, ModTag::condition("NothingSetsThisEither", true)),
+        life(32.0, player_side("InThePlayerSnapshot")),
+        // Set in the condition map, which a player-side read does not look at.
+        life(64.0, player_side("SwitchedOn")),
+        // Either would do; one is off and nothing sets the other.
+        life(128.0, any_of(["SwitchedOff", "NorThis"])),
+        life(256.0, any_of(["SwitchedOn", "NotNeeded"])),
+    ]);
+    let output = s.perform_minimal().unwrap();
+
+    // 4 + 16 + 32 + 256 arrived.
+    assert_eq!(output.life, 408.0);
+    let unset: Vec<(&str, f64)> = s
+        .unset_conditions()
+        .into_iter()
+        .map(|(condition, modifier)| (condition, modifier.value.as_number().unwrap()))
+        .collect();
+    assert_eq!(
+        unset,
+        [
+            ("NorThis", 128.0),
+            ("NothingSetsThis", 1.0),
+            ("SwitchedOn", 64.0)
+        ]
+    );
+}
+
+/// Without tracking, nothing is reported and nothing is paid for.
+#[test]
+fn session_reports_no_unread_modifiers_unless_reads_are_tracked() {
+    use pobr_core::Modifier;
+
+    let mut s = session(MinimalInput::default());
+    s.add_modifiers([Modifier::flag("NothingReadsThisFlag")]);
+    s.perform_minimal().unwrap();
+    assert!(s.unread_modifiers().is_empty());
+    assert!(s.read_modifier_names().is_empty());
+}
+
+/// "per 50 current Life" counts the Life that is not reserved. Nothing set
+/// that amount for a modifier to read, so such lines scaled by zero.
+#[test]
+fn per_unreserved_life_modifiers_read_the_pool_less_its_reservation() {
+    use pobr_core::{ModTag, Modifier};
+    use pobr_data::prelude::ModType;
+
+    let mut session = session(MinimalInput {
+        base_life: 1000.0,
+        base_mana: 500.0,
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        ..Default::default()
+    });
+    session.add_modifiers([
+        Modifier::number("LifeReservedPercent", ModType::Inc, 40.0),
+        Modifier::number("ManaReserved", ModType::Base, 200.0),
+        // 600 unreserved Life / 50 = 12 steps of 5%.
+        Modifier::number("Damage", ModType::Inc, 5.0).with_tag(ModTag::multiplier(
+            "LifeUnreserved",
+            50.0,
+            None,
+        )),
+        // 300 unreserved Mana / 100 = 3 steps of 10%.
+        Modifier::number("Damage", ModType::Inc, 10.0).with_tag(ModTag::multiplier(
+            "ManaUnreserved",
+            100.0,
+            None,
+        )),
+    ]);
+    session.prepare_player_stats(1, None);
+    session.track_modifier_reads();
+    let output = session.perform_minimal().expect("perform");
+    assert!(
+        (output.total_hit_avg - 190.0).abs() < 1e-10,
+        "{}",
+        output.total_hit_avg
+    );
+    assert!(session.unprovided_multipliers().is_empty());
 }

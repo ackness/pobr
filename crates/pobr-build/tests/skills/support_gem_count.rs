@@ -94,10 +94,10 @@ fn red_support_gem_count_activates_threshold_line() {
     );
 }
 
-/// Gemling "Integrated Efficiency" scales with the supports connected to the
-/// calculated skill (CalcOffence.lua:835-873). Oracle on the gemling fixture with
-/// the three lines added as custom modifiers: TotalDPS 86211.36 → 89596.91
-/// (×1.03927, from the red supports; Speed and CritChance unchanged).
+/// The Gemling Legionnaire's Integrated Efficiency scales with the supports
+/// connected to the calculated skill. Oracle on the gemling fixture with the
+/// three lines added as custom modifiers: TotalDPS 86211.36 → 89596.91
+/// (×1.03927, from the red supports; the skill has no green or blue support).
 #[test]
 fn integrated_efficiency_scales_with_connected_supports() {
     let data = load_build_data();
@@ -129,4 +129,59 @@ fn integrated_efficiency_scales_with_connected_supports() {
     assert!((ratio - 1.03927).abs() < 5e-4, "dps ratio = {ratio}");
     assert_eq!(with.action_rate, base.action_rate);
     assert_eq!(with.crit_chance, base.crit_chance);
+}
+
+/// A Fireball connected to Fork and Pierce (green), Magnified Effect (blue)
+/// and Inspiration (red), with or without `lines`.
+fn fireball_with_connected_supports(lines: &[&str]) -> pobr_core::calc::OutputTable {
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<PathOfBuilding2>
+  <Build level="90" className="Sorceress" ascendClassName="" mainSocketGroup="1"/>
+  <Skills activeSkillSet="1">
+    <SkillSet id="1">
+      <Skill enabled="true" slot="weapon1">
+        <Gem enabled="true" gemId="Metadata/Items/Gems/Fireball" skillId="FireballPlayer" level="20" quality="0"/>
+        <Gem enabled="true" gemId="Metadata/Items/Gems/SupportGemFork" skillId="SupportForkPlayer" level="1" quality="0"/>
+        <Gem enabled="true" gemId="Metadata/Items/Gems/SupportGemPierce" skillId="SupportPiercePlayer" level="1" quality="0"/>
+        <Gem enabled="true" gemId="Metadata/Items/Gems/SupportGemMagnifiedEffect" skillId="SupportMagnifiedAreaPlayer" level="1" quality="0"/>
+        <Gem enabled="true" gemId="Metadata/Items/Gems/SupportGemInspiration" skillId="SupportEfficiencyPlayer" level="1" quality="0"/>
+      </Skill>
+    </SkillSet>
+  </Skills>
+</PathOfBuilding2>"#;
+    let build = parse_build(xml).expect("parse");
+    let opts = DataOrchestratorOptions {
+        base_input: MinimalInput::default(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::None,
+        mode_effective: false,
+        extra_modifier_texts: lines.iter().map(|line| line.to_string()).collect(),
+        ..Default::default()
+    };
+    calculate_with_data(&build, &load_build_data(), &opts).expect("calc")
+}
+
+/// Each line counts the supports of its colour connected to the skill: two
+/// green raise Skill Speed by 12%, one blue Critical Hit Chance by 20%, one
+/// red damage by 20%. Nothing else increases them on this bare character.
+#[test]
+fn integrated_efficiency_counts_each_colour_of_connected_support() {
+    let base = fireball_with_connected_supports(&[]);
+    let speed = fireball_with_connected_supports(&[
+        "Skills have 6% increased Skill Speed per Connected Green Support Gem",
+    ]);
+    let ratio = speed.action_rate / base.action_rate;
+    assert!((ratio - 1.12).abs() < 1e-3, "speed ratio {ratio}");
+
+    let crit = fireball_with_connected_supports(&[
+        "Skills have 20% increased Critical Hit Chance per Connected Blue Support Gem",
+    ]);
+    let ratio = crit.crit_chance / base.crit_chance;
+    assert!((ratio - 1.2).abs() < 1e-3, "crit ratio {ratio}");
+
+    let damage = fireball_with_connected_supports(&[
+        "Skills deal 20% increased Damage per Connected Red Support Gem",
+    ]);
+    let ratio = damage.total_hit_avg / base.total_hit_avg;
+    assert!((ratio - 1.2).abs() < 1e-3, "damage ratio {ratio}");
 }

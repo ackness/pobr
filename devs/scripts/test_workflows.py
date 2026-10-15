@@ -1,6 +1,9 @@
 """Check script failure propagation and working-tree preservation without Cargo."""
 
+import base64
+import contextlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -9,6 +12,7 @@ import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
+import zlib
 
 
 REPO = Path(__file__).resolve().parents[2]
@@ -231,7 +235,8 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         for args in [["test", "core"], ["lint", "core"], ["timings"],
                      ["verify", "core"], ["verify", "core", "--workspace"],
                      ["verify", "core", "lib", "--workspace"], ["ci"],
-                     ["ci", "feature/x", "--unknown"]]:
+                     ["ci", "feature/x", "--unknown"], ["compare"], ["compare", "--refresh"],
+                     ["lookup"], ["lookup", "--level", "20"]]:
             with self.subTest(args=args):
                 result = self.run_script("devs/scripts/driver.sh", *args)
                 self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
@@ -545,6 +550,530 @@ pathlib.Path(sys.argv[sys.argv.index("-o") + 1]).write_text("{}", encoding="utf-
         self.assertEqual((vendor / "keep.txt").read_text(encoding="utf-8"), "user edit\n")
         self.assertFalse((self.root / "fetch-root").exists())
         self.assertEqual((self.root / "vendor/.pob2-version.txt").read_text(encoding="utf-8"), "previous\n")
+
+
+class ReferenceBuildSelectionTests(unittest.TestCase):
+    """The selection never depends on a calculation, and never repeats a character."""
+
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location(
+            "fetch_reference_builds", REPO / "devs/scripts/fetch-reference-builds.py")
+        self.fetch = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.fetch)
+        self.rows = [{"account": account, "character": name}
+                     for account, name in (("a", "one"), ("b", "two"), ("c", "three"))]
+
+    def test_first_and_last_skip_committed_characters(self):
+        taken = {("a", "one"), ("c", "three")}
+        self.assertEqual(self.fetch.choose(self.rows, set(), "first")["account"], "a")
+        self.assertEqual(self.fetch.choose(self.rows, set(), "last")["account"], "c")
+        self.assertEqual(self.fetch.choose(self.rows, taken, "first")["account"], "b")
+        self.assertEqual(self.fetch.choose(self.rows, taken, "last")["account"], "b")
+        self.assertIsNone(self.fetch.choose(self.rows, taken | {("b", "two")}, "first"))
+
+    def test_base_classes_are_not_ascendancies(self):
+        self.assertEqual(self.fetch.ascendancies(["Witch", "Lich", "Monk", "Invoker"]),
+                         ["Invoker", "Lich"])
+
+    def test_committed_characters_are_read_from_every_set(self):
+        with tempfile.TemporaryDirectory() as temp:
+            examples = Path(temp)
+            for corpus, account in (("one/builds/x", "a"), ("two/nested/builds/y", "b")):
+                folder = examples / corpus
+                folder.mkdir(parents=True)
+                (folder / "meta.json").write_text(json.dumps(
+                    {"source": {"account": account, "character": "name"}}), encoding="utf-8")
+            (examples / "one/builds/z").mkdir()
+            (examples / "one/builds/z/meta.json").write_text("{}", encoding="utf-8")
+            self.assertEqual(self.fetch.committed_characters(examples),
+                             {("a", "name"), ("b", "name")})
+
+
+def breakdown_line(mod_type, value, kind=None, ident=None, text=None, slot=None, active=True):
+    """One engine breakdown line (`BreakdownMod`)."""
+    return {"mod_type": mod_type, "value": value, "active": active, "source_text": text,
+            "origin_kind": kind, "origin_id": ident, "slot": slot}
+
+
+def oracle_record(name, mod_type, value, source, tags=None):
+    """One line of the PoB2 oracle's tabulated lists."""
+    record = {"queryName": name, "name": name, "type": mod_type, "rawValue": value,
+              "evalValue": value, "source": source}
+    if tags:
+        record["tags"] = tags
+    return record
+
+
+class CompareBuildTests(unittest.TestCase):
+    """The engine's and PoB2's lines meet on one key per source, and only what
+    differs between them is reported."""
+
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location(
+            "compare_build", REPO / "devs/scripts/compare-build.py")
+        self.compare = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.compare)
+
+    def test_sources_of_both_sides_meet_on_one_key(self):
+        slots = {"23": "item:gloves", "13": "flask:charm1"}
+        pairs = [
+            ("Tree:12345", {"origin_kind": "PassiveNode", "origin_id": "node.12345"}),
+            ("Tree:777", {"origin_kind": "AscendancyNode", "origin_id": "node.777"}),
+            ("Item:23:Kraken Grasp, Sirenscale Gloves",
+             {"origin_kind": "ItemAffix", "origin_id": "item.gloves.explicit", "slot": "gloves"}),
+            ("Item:23:Kraken Grasp, Sirenscale Gloves",
+             {"origin_kind": "ItemImplicit", "origin_id": "item.gloves.implicit"}),
+            ("Item:13:Thawing Charm", {"origin_kind": "Flask", "origin_id": "flask.charm1"}),
+            ("Skill:IceShotPlayer",
+             {"origin_kind": "SkillGem", "origin_id": "skill.active_skill_chill_effect_+%_final"}),
+            ("Skill:IceShotPlayer",
+             {"origin_kind": "SkillGem", "origin_id": "skill.IceShotPlayer.set2.base_number_of_projectiles"}),
+            ("Skill:SupportFooPlayer",
+             {"origin_kind": "SupportGem", "origin_id": "SupportFooPlayer.support_foo_damage_+%_final"}),
+            ("Skill:SupportFooPlayer",
+             {"origin_kind": "SupportGem", "origin_id": "support.SupportFooPlayer.manaMultiplier"}),
+            ("Skill:ArchmagePlayer", {"origin_kind": "Buff", "origin_id": "aura.ArchmagePlayer"}),
+            ("Strength", {"origin_kind": "CharacterBase", "origin_id": "base.attr_derived"}),
+            ("Base", {"origin_kind": "GameConstant", "origin_id": "game.constant"}),
+            ("Quest:Kill the boss: Act 1", {"origin_kind": "CampaignReward", "origin_id": "campaign.life"}),
+            ("Config", {"origin_kind": "ConfigOption", "origin_id": "config.conditionMoving"}),
+        ]
+        for pob2, pobr in pairs:
+            with self.subTest(pob2=pob2, pobr=pobr):
+                self.assertEqual(self.compare.pob2_source_key(pob2, slots),
+                                 self.compare.pobr_source_key(pobr, "IceShotPlayer"))
+        # The jewels meet as one source: PoB2 names them, the engine numbers them.
+        self.assertEqual(self.compare.pob2_source_key("Item:2:Prism of Belief, Diamond", slots), "jewel")
+        self.assertEqual(self.compare.pobr_source_key(
+            {"origin_kind": "Jewel", "origin_id": "jewel.2"}, "IceShotPlayer"), "jewel")
+        self.assertEqual(self.compare.pobr_source_key(
+            {"origin_kind": "Config", "origin_id": "config.custom"}, "IceShotPlayer"),
+            self.compare.pob2_source_key("Custom", slots))
+        # A line without an origin is keyed by its text.
+        self.assertEqual(self.compare.pobr_source_key({"source_text": "+8 to Strength"}, "IceShotPlayer"),
+                         "text:+8 to Strength")
+
+    def test_items_are_keyed_by_their_slot_in_the_active_set(self):
+        xml = ('<PathOfBuilding2><Items activeItemSet="2">'
+               '<ItemSet id="1"><Slot name="Gloves" itemId="5"/></ItemSet>'
+               '<ItemSet id="2" useSecondWeaponSet="true">'
+               '<Slot name="Weapon 1 Swap" itemId="2"/><Slot name="Body Armour" itemId="3"/>'
+               '<Slot name="Ring 2" itemId="0"/><Slot name="Gloves Jewel Socket 1" itemId="4"/>'
+               '<Slot name="Charm 2" itemId="6"/><Slot name="Arm 1" itemId="7"/>'
+               '</ItemSet></Items></PathOfBuilding2>')
+        self.assertEqual(self.compare.item_slot_keys(xml), {
+            "2": "item:weapon1", "3": "item:bodyarmour", "6": "flask:charm2", "7": "item:arm1"})
+
+    def test_lines_are_compared_by_type_and_source(self):
+        line = self.compare.Line
+        pobr = [
+            line("BASE", "tree:1", 100.0, "a"),
+            line("INC", "item:gloves", 10.0, "b"),
+            line("INC", "text:8% increased maximum Life", 8.0, "c"),
+            line("INC", "tree:9", 7.0, "d", active=False),
+            line("MORE", "skill:S", 10.0, "e"),
+            line("MORE", "skill:S", 10.0, "f"),
+            line("INC", "tree:5", 3.0, "g"),
+        ]
+        pob2 = [
+            line("BASE", "tree:1", 100.0, "A"),
+            line("INC", "item:gloves", 15.0, "B"),
+            line("INC", "custom", 8.0, "C"),
+            line("INC", "tree:9", 7.0, "D"),
+            # Two 10% more lines are 21% more.
+            line("MORE", "skill:S", 21.0, "E"),
+        ]
+        result = self.compare.compare(pobr, pob2)
+        self.assertEqual([(group.mod_type, group.key) for group in result.only_pob2], [("INC", "tree:9")])
+        # The engine has that line and does not count it.
+        self.assertEqual([found.label for found in result.inactive[("INC", "tree:9")]], ["d"])
+        self.assertEqual([(group.mod_type, group.key) for group in result.only_pobr], [("INC", "tree:5")])
+        self.assertEqual([(ours.key, ours.value, theirs.value) for ours, theirs in result.different],
+                         [("item:gloves", 10.0, 15.0)])
+        self.assertEqual([(ours.key, theirs.key) for ours, theirs in result.renamed],
+                         [("text:8% increased maximum Life", "custom")])
+        totals = self.compare.sums(pobr)
+        self.assertEqual((totals["BASE"], totals["INC"]), (100.0, 21.0))
+        self.assertAlmostEqual(totals["MORE"], 1.21)
+
+    def test_build_codes_decode_with_or_without_padding(self):
+        xml = '<PathOfBuilding2><Build level="90" className="Ranger"/></PathOfBuilding2>'
+        code = base64.urlsafe_b64encode(zlib.compress(xml.encode("utf-8"))).decode("ascii")
+        for variant in (code, code.rstrip("="), code[:10] + "\n" + code[10:],
+                        code.replace("-", "+").replace("_", "/")):
+            with self.subTest(variant=variant):
+                self.assertEqual(self.compare.decode_code(variant), xml)
+
+    def report(self, folder, *arguments):
+        """The comparison of the build in `folder` with its two saved outputs."""
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            status = self.compare.main([str(folder), *arguments,
+                                        "--engine-json", str(folder / "engine.json"),
+                                        "--oracle-json", str(folder / "oracle.json")])
+        self.assertEqual(status, 0)
+        return output.getvalue()
+
+    def test_a_build_is_compared_stat_by_stat_from_both_outputs(self):
+        xml = ('<PathOfBuilding2><Build level="99"/><Items activeItemSet="1">'
+               '<ItemSet id="1"><Slot name="Gloves" itemId="23"/></ItemSet></Items></PathOfBuilding2>')
+        engine = {
+            "data_version": "test",
+            "build": {"class_name": "Huntress", "ascendancy_name": "Spirit Walker", "level": 99},
+            "unsupported_modifiers": [], "missing_items": [],
+            "reference": {"tolerance": 0.05, "compared": 10, "agreeing": 8, "differing": [
+                {"stat": "Life", "pob_key": "Life", "pobr": 4000, "reference": 4500, "ratio": 0.889},
+                {"stat": "TotalDPS", "pob_key": "TotalDPS", "pobr": 1000, "reference": 1200,
+                 "ratio": 0.833}]},
+            "main_skill": {"skill_id": "IceShotPlayer"},
+            "breakdowns": [
+                {"stat": "Life", "value": 4000, "pob_key": "Life", "reference": 4500, "breakdown": {
+                    "base_total": 300, "inc_total": 60, "more_total": 1.0, "formula": None, "mods": [
+                        breakdown_line("BASE", 100, "PassiveNode", "node.12345", "+100 to maximum Life"),
+                        breakdown_line("INC", 10, "ItemAffix", "item.gloves.explicit",
+                                       "10% increased maximum Life", "gloves"),
+                        breakdown_line("INC", 50, text="50% increased maximum Life"),
+                        breakdown_line("INC", 7, "PassiveNode", "node.999",
+                                       "7% increased maximum Life while X", active=False),
+                    ]}},
+                {"stat": "TotalDPS", "value": 1000, "pob_key": "TotalDPS", "reference": 1200,
+                 "breakdown": None},
+                {"stat": "TotalHitAvg", "value": 500, "pob_key": "AverageHit", "breakdown": {
+                    "base_total": 0, "inc_total": 0, "more_total": 1, "mods": [], "formula": None,
+                    "damage": {"sources": [], "damage_effect": 1.0, "shared_mods": [
+                        breakdown_line("INC", 120, "PassiveNode", "node.2", "120% increased Damage")],
+                        "rows": [{"damage_type": "Cold", "base_min": 10, "base_max": 20, "increased": 150,
+                                  "more": 1.0, "min": 30, "max": 60, "avg": 45, "mods": [
+                                      breakdown_line("INC", 30, "PassiveNode", "node.1",
+                                                     "30% increased Cold Damage")]}]}}},
+                {"stat": "ActionRate", "value": 2.5, "pob_key": "Speed", "breakdown": None},
+            ]}
+        oracle = {
+            "mainOutput": {"Life": 4400, "TotalDPS": 1150, "AverageHit": 560, "Speed": 2.5},
+            "skillInfo": {"grantedEffectId": "IceShotPlayer", "activeGemName": "Ice Shot"},
+            "components": {"Cold": {"Min": 33, "Max": 66, "HitAverage": 50}},
+            "extraModList": {
+                "BASE": {"Life": [oracle_record("Life", "BASE", 100, "Tree:12345")]},
+                "INC": {"Life": [oracle_record("Life", "INC", 15, "Item:23:Kraken Grasp, Sirenscale Gloves"),
+                                 oracle_record("Life", "INC", 50, "Item:2:Prism of Belief, Diamond"),
+                                 oracle_record("Life", "INC", 7, "Tree:999", ["Condition:X"])]},
+                "MORE": {}, "OVERRIDE": {}},
+            "damageModList": {"INC": {
+                "Damage": [oracle_record("Damage", "INC", 120, "Tree:2")],
+                "ColdDamage": [oracle_record("ColdDamage", "INC", 30, "Tree:1")],
+                "ElementalDamage": [oracle_record("ElementalDamage", "INC", 25, "Tree:3")]},
+                "MORE": {}},
+            "critModList": {"INC": {}, "MORE": {}, "BASE": {}},
+        }
+        with tempfile.TemporaryDirectory() as temp:
+            folder = Path(temp) / "build"
+            folder.mkdir()
+            (folder / "code.txt").write_text(base64.urlsafe_b64encode(
+                zlib.compress(xml.encode("utf-8"))).decode("ascii"), encoding="utf-8")
+            (folder / "engine.json").write_text(json.dumps(engine), encoding="utf-8")
+            (folder / "oracle.json").write_text(json.dumps(oracle), encoding="utf-8")
+
+            # Without stats: the reference rows that differ.
+            text = self.report(folder)
+            self.assertIn("Reference rows that differ (on the reference's basis, tolerance 5%): 2 of 10",
+                          text)
+            self.assertIn("== Life: PoBR 4,000 · PoB2 4,400 (Life) · PoBR/PoB2 0.909 · "
+                          "code reference 4,500", text)
+            self.assertIn("item:gloves: PoBR +10% · PoB2 +15%", text)
+            self.assertIn("PoBR has it, inactive: +7%  7% increased maximum Life while X", text)
+            self.assertIn("PoBR text:50% increased maximum Life · PoB2 jewel", text)
+            self.assertIn("-- Cold: PoBR 30–60 (average 45; base 10–20) · PoB2 33–66 (average 50)", text)
+            self.assertIn("+25%  tree:3  Tree:3  [ElementalDamage]", text)
+
+            # A PoB2 output name asks for the stat it names.
+            text = self.report(folder, "Speed")
+            self.assertIn("== ActionRate: PoBR 2.5 · PoB2 2.5 (Speed)", text)
+            self.assertNotIn("Reference rows", text)
+
+            # Without reference rows: the panel stats where the two disagree.
+            del engine["reference"]
+            (folder / "engine.json").write_text(json.dumps(engine), encoding="utf-8")
+            self.assertIn("comparing the panel stats where PoBR and PoB2 disagree by more than 5%: "
+                          "Life, TotalDPS, TotalHitAvg", self.report(folder))
+
+
+LOOKUP_DATA = {
+    "base/granted_effects.json": [
+        {"id": "IceShotPlayer", "is_support": False, "active_skill": "ice_shot", "cast_time": 1000,
+         "additional_stat_set_ids": ["IceShotShardPlayer"], "cost_types": [0],
+         "skill_types": ["Attack", "Projectile", "Cold"]}],
+    "base/granted_effect_levels.json": {"IceShotPlayer": [
+        {"level": 1, "cost_amounts": [6], "attack_speed_multiplier": -10.0},
+        {"level": 20, "cost_amounts": [31], "attack_speed_multiplier": -10.0}]},
+    "base/cost_types.json": [{"id": "Mana", "divisor": 1}],
+    "base/granted_effect_stat_sets.json": [{"effect_id": "IceShotPlayer", "sets": [{
+        "set_id": "IceShotPlayer", "base_effectiveness": 1.0,
+        "constant_stats": [{"stat": "active_skill_chill_effect_+%_final", "value": 50.0}],
+        "implicit_stats": ["base_is_projectile"],
+        "levels": [{"gem_level": 1, "damage_multiplier": 0.95, "stats": []},
+                   {"gem_level": 20, "damage_multiplier": 1.3599999999999999,
+                    "stats": [{"stat": "base_number_of_projectiles", "value": 1.0}]}]}]}],
+    "base/skill_gems.json": [
+        {"id": "Metadata/Items/Gem/SkillGemIceShot", "gem_effect_id": "IceShot",
+         "granted_effect_id": "IceShotPlayer", "gem_tags": ["attack", "projectile", "cold"]}],
+    "base/stats.json": [{"id": "base_number_of_projectiles", "is_local": False},
+                        {"id": "support_rigwald_damage_+%_final_in_weapon_set_two", "is_local": False}],
+    "base/base_items.json": [
+        {"id": "Metadata/Items/Rings/Ring2", "name": "Ruby Ring", "item_class": "Ring", "drop_level": 1,
+         "width": 1, "height": 1, "tags": ["ring"], "implicits": ["FireResistImplicitRing1"]},
+        {"id": "Metadata/Items/SoulCores/TalismanFox", "name": "Fox Idol", "item_class": "SoulCore",
+         "drop_level": 65, "width": 1, "height": 1, "tags": ["idol"], "implicits": []}],
+    "base/mods.json": [{"id": "FireResistImplicitRing1",
+                        "stats": [{"stat_id": "base_fire_damage_resistance_%", "min": 20, "max": 30}]}],
+    "base/passive_tree.json": [
+        {"skill": 1143, "id": "spell_criticals7", "name": "Spell Critical Damage", "kind": "normal",
+         "stats": ["15% increased [CriticalDamageBonus|Critical Spell Damage Bonus]"],
+         "connections": [50084],
+         "variants": [{"class": "Druid", "variant_skill": 57726, "name": "Life Regeneration",
+                       "stats": ["Regenerate 0.2% of maximum Life per second"]}]}],
+    "overlay/uniques.json": {"uniques": [
+        {"name": "Astramentis", "base": "Stellar Amulet", "item_type": "amulet",
+         "raw": "Astramentis\nStellar Amulet\nImplicits: 1\n{tags:attribute}+(5-7) to all Attributes\n"
+                "{variant:2}{tags:attribute}+(50-100) to all Attributes\n"}]},
+    "overlay/runes.json": {"runes": [{"name": "Fox Idol", "slots": {"body armour": {
+        "kind": "Idol", "lines": ["Idols socketed in this item gain the benefits of their Bonded modifiers",
+                                  "Bonded: +5% to Quality of all Skills"]}}}]},
+    "overlay/stat_descriptions.json": {"scopes": {"stat_descriptions": {
+        "single": {"base_number_of_projectiles": ["1 additional\nProjectile"]}}}},
+    "overlay/skill_stat_map.json": {
+        "global": {"base_number_of_projectiles": {"mods": [
+            {"kind": "mod", "name": "ProjectileCount", "mod_type": "BASE"}]}},
+        "per_stat_set": {"IceShotPlayer": {"1": {"base_number_of_projectiles": {"mods": []}}}}},
+}
+
+
+class TriageTests(unittest.TestCase):
+    """`mise run triage` files each reference row that differs by what the
+    pinned PoB2 says today, and gathers what explains the engine's rows."""
+
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location("triage", REPO / "devs/scripts/triage.py")
+        self.triage = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.triage)
+
+    def test_rows_are_filed_by_what_pob2_says_today(self):
+        classify = self.triage.classify
+        self.assertEqual(classify(100.0, 120.0, 101.0), "reference")
+        self.assertEqual(classify(100.0, 120.0, 119.0), "engine")
+        self.assertEqual(classify(100.0, 120.0, 150.0), "both")
+        self.assertEqual(classify(100.0, 120.0, None), "no oracle")
+
+    def test_known_differences_name_a_build_and_its_rows(self):
+        known = [{"build": "deadeye-ice-shot", "stats": ["TotalDPS"], "reason": "Rhoa"}]
+        name = "ninja-2026-10-11-ranger-deadeye-ice-shot-0123456789ab"
+        self.assertEqual(self.triage.known_reason(known, name, "TotalDPS"), "Rhoa")
+        self.assertIsNone(self.triage.known_reason(known, name, "Life"))
+        self.assertEqual(self.triage.short(name), "ranger-deadeye-ice-shot")
+        for entry in self.triage.load_known():
+            with self.subTest(build=entry.get("build")):
+                self.assertTrue(entry["build"] and entry["stats"] and entry["reason"])
+
+    def test_lines_meet_across_rolls_and_places(self):
+        template = self.triage.template
+        self.assertEqual(template("Tree:5332: 22% Chance to gain a Charge"),
+                         template("19% Chance to gain a Charge"))
+        self.assertEqual(template("Config: +1.5% to all Resistances"), "#% to all Resistances")
+
+    def test_the_holdout_set_is_not_triaged(self):
+        with self.assertRaises(SystemExit) as raised:
+            self.triage.build_dirs(["examples/reference-builds/holdout/builds"])
+        self.assertIn("mise run accuracy", str(raised.exception))
+
+    def test_skills_meet_by_id_and_pob2_name(self):
+        key = self.triage.skill_key
+        self.assertEqual(key("SummonSkeletalReaversPlayer"), key("Skeletal Reaver Minion"))
+        self.assertEqual(key("SummonSpectrePlayer"), key("Spectre: Quill Crab"))
+        self.assertEqual(key("SummonBeastPlayer"), key("Companion: Quadrilla"))
+
+    def test_the_ledger_of_lines_is_gathered_across_builds(self):
+        usage = lambda reads, lines, conditions=(): {
+            "reads": {name: [] for name in reads}, "lines": lines,
+            "conditions": list(conditions), "gem_stats": []}
+        line = lambda status, text, *names: {
+            "status": status, "text": text, "source_id": "item.ring1.explicit",
+            "holder": "Ruby Ring", "reason": "rule r", "modifiers": [
+                {"name": name, "status": "unread"} for name in names]}
+        first = self.triage.ledger_findings(usage(
+            ["Damage"],
+            [line("unread", "16% increased Rarity of Items found", "LootRarity"),
+             line("unread", "10% increased Spell Damage", "SpellDamage"),
+             line("unmodelled", "60% increased Effect of Suffixes"),
+             line("no_effect", "Config", "Condition:TargetingBrandedEnemy")],
+            [{"condition": "OnConsecratedGround", "config_option": None,
+              "modifiers": [{"source": "PassiveNode:node.1 | line"}]},
+             {"condition": "LowLife", "config_option": "conditionLowLife", "modifiers": []}]))
+        second = self.triage.ledger_findings(usage(
+            ["SpellDamage"], [line("unmodelled", "58% increased Effect of Suffixes")]))
+        self.assertEqual(first["unmodelled"][0]["source"], "item.ring1.explicit (Ruby Ring)")
+        results = [{"short": "a", "rows": [{"class": "engine"}], "ledger": first},
+                   {"short": "b", "rows": [], "ledger": second}]
+        unmodelled = self.triage.gather_lines(results, "unmodelled")
+        self.assertEqual(len(unmodelled), 1)
+        self.assertEqual(unmodelled[0][1]["builds"], {"a", "b"})
+        self.assertEqual(unmodelled[0][1]["actionable"], {"a"})
+        # A name no build reads comes before one another build reads.
+        self.assertEqual([(name, entry["read_elsewhere"])
+                          for name, entry in self.triage.gather_unread(results)],
+                         [("LootRarity", False), ("SpellDamage", True)])
+        # Only the conditions nothing sets: one a config option sets is the user's choice.
+        self.assertEqual([name for name, _ in self.triage.gather_conditions(results)],
+                         ["OnConsecratedGround"])
+        self.assertEqual(self.triage.ledger_findings(None)["unread"], [])
+
+    def test_spirit_is_compared_skill_by_skill(self):
+        reserved = lambda *rows: {"breakdown": {"mods": [
+            {"value": value, "origin_kind": "SkillGem", "origin_id": "spirit." + skill}
+            for skill, value in rows]}}
+        entries = {"Spirit": {"value": 100.0},
+                   "SkillSpiritReservationBase": reserved(("SummonSkeletalReaversPlayer", 30.0),
+                                                          ("BlinkPlayer", 60.0))}
+        oracle = {"mainOutput": {"Spirit": 130.0}, "spiritReservedBreakdown": [
+            {"skillName": "Skeletal Reaver Minion", "total": 25},
+            {"skillName": "Blink", "total": 60},
+            {"skillName": "Trinity", "total": 100}]}
+        self.assertEqual(
+            [(found["kind"], found["key"], found["pobr"], found["pob2"])
+             for found in self.triage.spirit_leads(entries, oracle)],
+            [("total", "Spirit", 100.0, 130.0),
+             ("different", "Skeletal Reaver Minion", 30.0, 25.0),
+             ("only PoB2", "Trinity", None, 100.0)])
+
+        # PoB2 also reserves the skill a reservation-free amulet grants: known.
+        xml = ("<PathOfBuilding2><Items><Item id=\"1\">Rarity: UNIQUE\nVoid\nLament Amulet\n"
+               "Grants Skill: Level 20 Cast on Minion Death\n</Item></Items></PathOfBuilding2>")
+        report = {"reference": {"compared": 1, "differing": [
+            {"stat": "SpiritUnreserved", "pobr": -26, "reference": -56, "pob_key": "SpiritUnreserved"}]},
+            "breakdowns": [{"stat": "SkillSpiritReservationBase",
+                            **reserved(("MetaCastOnMinionDeathPlayer", 30.0))}]}
+        oracle = {"mainOutput": {"SpiritUnreserved": -56},
+                  "spiritReservedBreakdown": [{"skillName": "Cast on Minion Death", "total": 60}]}
+        result = self.triage.analyse("build", "set", report, oracle, xml, [])
+        self.assertEqual([(row["stat"], row["class"]) for row in result["rows"]],
+                         [("SpiritUnreserved", "known")])
+
+    def test_leads_are_gathered_across_builds(self):
+        lead = self.triage.lead
+        results = [
+            {"short": "a", "rows": [], "unsupported": ["Tree:1: 10% increased Damage"], "leads": [
+                dict(lead("Life", "only PoB2", "INC", "tree:1", pob2=5.0), stat="Life")]},
+            {"short": "b", "rows": [{"class": "engine"}], "unsupported": ["12% increased Damage"],
+             "leads": [dict(lead("Life", "only PoB2", "INC", "tree:1", pob2=5.0), stat="Life"),
+                       dict(lead("Mana", "only PoBR", "BASE", "item:ring1", pobr=9.0), stat="Mana")]},
+        ]
+        gathered = self.triage.gather_leads(results)
+        self.assertEqual([(key, sorted(entry["builds"])) for key, entry in gathered],
+                         [(("only PoB2", "INC", "tree:1"), ["a", "b"]),
+                          (("only PoBR", "BASE", "item:ring1"), ["b"])])
+        [(template, entry)] = self.triage.gather_unsupported(results)
+        self.assertEqual((template, sorted(entry["builds"]), sorted(entry["actionable"])),
+                         ("#% increased Damage", ["a", "b"], ["b"]))
+
+
+class LookupTests(unittest.TestCase):
+    """`mise run lookup` prints the records an id or a name has in the data the
+    engine reads, and the names that contain it when nothing is exact."""
+
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location("lookup", REPO / "devs/scripts/lookup.py")
+        self.lookup = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.lookup)
+        temp = tempfile.TemporaryDirectory(prefix="pobr lookup tests ")
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+        (self.root / "CURRENT").write_text("test\n", encoding="utf-8")
+        for relative, content in LOOKUP_DATA.items():
+            path = self.root / "test" / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(content), encoding="utf-8")
+        # The engine's own stat meanings, with the stat on line 2.
+        self.skill_stats = self.root / "skill_stats.rs"
+        self.skill_stats.write_text(
+            'fn rules() {\n    "support_rigwald_damage_+%_final_in_weapon_set_two" => more(),\n}\n',
+            encoding="utf-8")
+
+    def lookup_output(self, *arguments, version=None):
+        output = io.StringIO()
+        with patch.dict(os.environ, {"POBR_DATA_ROOT": str(self.root)}), \
+                patch.object(self.lookup, "SKILL_STATS_RS", self.skill_stats), \
+                contextlib.redirect_stdout(output):
+            os.environ.pop("POBR_DATA_VERSION", None)
+            if version:
+                os.environ["POBR_DATA_VERSION"] = version
+            status = self.lookup.main(list(arguments))
+        return status, output.getvalue()
+
+    def test_a_skill_is_found_by_its_effect_or_gem_id(self):
+        for query in ("IceShotPlayer", "iceshot", "SkillGemIceShot"):
+            with self.subTest(query=query):
+                status, text = self.lookup_output(query)
+                self.assertEqual(status, 0)
+                self.assertTrue(text.startswith("data test\n"), text)
+                self.assertIn("== granted effect IceShotPlayer", text)
+                self.assertIn("gem Metadata/Items/Gem/SkillGemIceShot · tags attack, projectile, cold", text)
+                self.assertIn("constant: active_skill_chill_effect_+%_final = 50", text)
+                self.assertIn("implicit: base_is_projectile", text)
+                self.assertIn("per level: base_number_of_projectiles", text)
+        status, text = self.lookup_output("IceShotPlayer", "--level", "20")
+        self.assertIn("level 20: cost 31 Mana, attack_speed_multiplier -10", text)
+        self.assertIn("level 20: damage multiplier 1.36; base_number_of_projectiles = 1", text)
+        self.assertIn("level 30: no row", self.lookup_output("IceShotPlayer", "--level", "30")[1])
+
+    def test_a_stat_shows_its_description_meaning_and_carriers(self):
+        status, text = self.lookup_output("base_number_of_projectiles")
+        self.assertEqual(status, 0)
+        self.assertIn("== stat base_number_of_projectiles", text)
+        self.assertIn("description: stat_descriptions: 1 additional Projectile", text)
+        self.assertIn('stat map, global: [{"kind": "mod", "name": "ProjectileCount"', text)
+        self.assertIn("stat map, per stat set: IceShotPlayer/1", text)
+        self.assertIn("in stat sets: IceShotPlayer", text)
+        status, text = self.lookup_output("support_rigwald_damage_+%_final_in_weapon_set_two")
+        self.assertIn("description: none in overlay/stat_descriptions.json", text)
+        self.assertIn(f"engine meaning: {self.skill_stats}:2", text)
+
+    def test_a_base_item_shows_its_implicits_and_what_it_grants_socketed(self):
+        text = self.lookup_output("Ruby Ring")[1]
+        self.assertIn("== base item Ruby Ring (Metadata/Items/Rings/Ring2)", text)
+        self.assertIn("implicit FireResistImplicitRing1: base_fire_damage_resistance_% 20–30", text)
+        text = self.lookup_output("fox idol")[1]
+        self.assertIn("implicits: none", text)
+        self.assertIn("socketed in body armour (Idol): Idols socketed in this item gain the benefits of "
+                      "their Bonded modifiers / Bonded: +5% to Quality of all Skills", text)
+
+    def test_a_passive_node_is_found_by_number_name_or_variant(self):
+        for query in ("1143", "spell critical damage", "spell_criticals7", "57726"):
+            with self.subTest(query=query):
+                status, text = self.lookup_output(query)
+                self.assertEqual(status, 0)
+                self.assertIn("== passive node 1143 Spell Critical Damage (spell_criticals7, normal)", text)
+                self.assertIn("   15% increased Critical Spell Damage Bonus\n", text)
+                self.assertIn("as Druid (57726): Life Regeneration — Regenerate 0.2% of maximum Life "
+                              "per second", text)
+
+    def test_a_unique_shows_its_item_text(self):
+        text = self.lookup_output("astramentis")[1]
+        self.assertIn("== unique Astramentis (Stellar Amulet, amulet)", text)
+        self.assertIn("   +(5-7) to all Attributes\n", text)
+        self.assertIn("   {variant:2}+(50-100) to all Attributes\n", text)
+
+    def test_nothing_exact_lists_the_names_that_contain_the_query(self):
+        status, text = self.lookup_output("shot")
+        self.assertEqual(status, 1)
+        self.assertIn("the names that contain it (1)", text)
+        self.assertIn("granted effect IceShotPlayer", text)
+        status, text = self.lookup_output("nothing like it")
+        self.assertEqual(status, 1)
+        self.assertIn("nothing is named 'nothing like it'", text)
+
+    def test_the_data_version_is_the_engines(self):
+        self.assertTrue(self.lookup_output("Ruby Ring", version="test")[1].startswith("data test\n"))
+        with self.assertRaises(SystemExit):
+            self.lookup_output("Ruby Ring", version="missing")
+        self.assertEqual(self.lookup_output("Ruby Ring", "--version", "test")[0], 0)
 
 
 if __name__ == "__main__":

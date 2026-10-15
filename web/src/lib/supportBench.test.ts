@@ -5,7 +5,7 @@ import { env } from 'node:process';
 import type { CalculateBuildRequest, CalculateBuildResponse, GemInput, OptimizeVariantsResponse, SocketGroupInput } from '../api/types';
 import { compareObjectiveStats, evaluateVariants, scoreOf, type Objective } from './optimize';
 import { applySupportPlan, eligibleSupports, optimizeSupports, supportSetCompatible, supportSetsCompatible, supportVariant, usableSupportLevel, type SupportMetadata } from './supportOptimizer';
-import { groupsForWeaponSet, switchWeapons, type WeaponSetState } from './weaponSets';
+import { groupsForWeaponSet, switchWeapons, weaponSetRequest, type WeaponSetState } from './weaponSets';
 import type { TradeCatalog } from './tradeOptimizer';
 
 const bridge = vi.hoisted(() => ({ optimize: undefined as undefined | ((input: string) => string), judge: undefined as undefined | ((input: string) => string) }));
@@ -167,7 +167,7 @@ describe.skipIf(env.POBR_UPGRADE_BENCH !== '1')('real WASM support planner compa
       const afterAlternate = switchWeapons(afterEditor, 2);
       expect(afterAlternate.items).toEqual(beforeAlternate.items);
       const alternateRequest = (state: WeaponSetState): CalculateBuildRequest => ({ ...request, items: state.items,
-        socket_groups: groupsForWeaponSet(state.socketGroups, 2), main_socket_group: 1 });
+        ...weaponSetRequest(state), main_socket_group: 1 });
       sameStats(statsOf(calculate(alternateRequest(afterAlternate))), statsOf(calculate(alternateRequest(beforeAlternate))));
 
       const spell = fixture.skill === 'FireballPlayer';

@@ -61,6 +61,12 @@ timings—not an equivalent-mechanics or universal engine-speed comparison:
 
 All 15 builds report zero item parse errors.
 
+> Later correction: the measured version did not report an item it could not read for a
+> `{ pob_code }` request. The Stormweaver's body armour (`Rarity: RELIC`) was dropped at the
+> time, so its defences and damage are those of a character without it. That rarity is now
+> read, and any other unreadable item appears in `item_errors`. The figures in this section
+> are the original measurements.
+
 <details>
 <summary>Historical comparison cohort: 7 builds</summary>
 

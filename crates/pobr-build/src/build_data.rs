@@ -13,7 +13,7 @@
 //! and passed in by the caller; this module only reads its per-domain loaders and lands
 //! the result as a deterministic in-memory structure.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use pobr_core::HighPrecisionRules;
@@ -90,15 +90,21 @@ pub struct BuildData {
     /// Per-level **damage stat sets** for granted effects, keyed by `GrantedEffects.Id`
     /// (resolved damage stats for each level).
     pub skill_stat_sets: HashMap<String, SkillStatSetDef>,
+    /// Whether the stat sets list the game's valueless stats, so that a set
+    /// says what its hits are (`base_is_projectile`, `is_area_damage`). False
+    /// for a snapshot adapted before the adapter read them: there the types
+    /// of the skill are all there is to go by.
+    pub stat_sets_mark_hits: bool,
     /// Gem quality stat slopes (`overlay/gem_quality_stats.json`), keyed by
     /// `GrantedEffects.Id`. Empty when an old data pack lacks this overlay domain
     /// (quality produces no stats, backward compatible).
     pub gem_quality_stats: HashMap<String, Vec<QualityStat>>,
-    /// Gem → granted-effect links (`overlay/gem_effects.json`), keyed by the **primary
-    /// effect id** (`granted_effect_id`) — used by meta/composite gem expansion (T5.6)
-    /// to look up additional effects forward from a socket group's gem `skill_id` (= the
-    /// primary effect id). Empty when an old data pack lacks this overlay domain (no
-    /// expansion, backward compatible).
+    /// Gem → granted-effect links, keyed by the **primary effect id**
+    /// (`granted_effect_id`) — used by meta/composite gem expansion (T5.6) to look up
+    /// additional effects forward from a socket group's gem `skill_id` (= the primary
+    /// effect id). Built from the gems' own links (the game's `GemEffects` table), with
+    /// `overlay/gem_effects.json` overriding where it lists an effect; empty when a data
+    /// pack has neither (no expansion, backward compatible).
     pub gem_effects: HashMap<String, GemEffectDef>,
     /// Cost resource type table (indexed by `CostTypes`, ascending; empty means an old
     /// data pack lacks this domain).
@@ -124,6 +130,10 @@ pub struct BuildData {
     /// Falls back to the built-in [`LocalModsDef::default`] when a data pack lacks this
     /// overlay file (a mirror that matches the JSON value-for-value, no behavior change).
     pub local_mods: LocalModsDef,
+    /// Names of the base items whose granted skills reserve no Spirit
+    /// (`overlay/item_granted_skills.json`): the Lament, Portent and Absent
+    /// Amulets. Empty when a data pack lacks the file.
+    pub reservation_free_grant_bases: HashSet<String>,
     /// statmap data catalog (`overlay/skill_stat_map.json` → [`StatMapCatalog`], the data
     /// source for the [`crate::StatMapMode::Data`] channel once switched to default).
     /// `calculate_with_data` falls back to this when the orchestrator options don't
@@ -171,6 +181,13 @@ pub struct BuildData {
     /// path). Empty when the overlay file is missing (old data pack) — no minions,
     /// backward compatible. Only queried by consumers through [`Self::minion_def`].
     pub minions: HashMap<String, MinionDef>,
+    /// What can be put in an item's sockets (Runes, Idols, Soul Cores), keyed
+    /// by name (`overlay/runes.json`): its kind and the lines it gives each
+    /// class of item. The calculation reads an item's modifiers from the item's
+    /// own text; this table says which of them belong to an Idol
+    /// (`calc_orchestrator::item::bonded`). Empty when the overlay file is
+    /// missing: no line is attributed to an Idol.
+    pub augments: HashMap<String, pobr_data::catalog::RuneDef>,
     /// Data-driven ModParser engine rules (the sole parser): `overlay/mod_parser_rules.json`
     /// compiled via [`CompiledParserRules::compile_with_special`] (the special channel
     /// reuses `special_mods` + `special_derived`, concatenated). Injected by
@@ -184,6 +201,24 @@ pub struct BuildData {
     pub parser_rules: Option<Arc<pobr_core::mod_parser::CompiledParserRules>>,
 }
 
+/// One `stats` entry per text line. The tree export packs a node's lines into
+/// a single newline-joined entry for some nodes (most keystones, some notables)
+/// and writes one entry per line for the rest; every reader of `stats` parses
+/// an entry as one modifier line, so a packed entry parsed as nothing.
+fn one_stat_per_line(mut node: PassiveNodeDef) -> PassiveNodeDef {
+    if node.stats.iter().any(|stat| stat.contains('\n')) {
+        node.stats = node
+            .stats
+            .iter()
+            .flat_map(|stat| stat.lines())
+            .map(str::trim)
+            .filter(|line| !line.is_empty())
+            .map(String::from)
+            .collect();
+    }
+    node
+}
+
 impl BuildData {
     /// Loads and projects every domain the orchestrator needs from an already-constructed [`GameData`].
     ///
@@ -195,7 +230,7 @@ impl BuildData {
         let passive_nodes = data
             .passive_nodes()?
             .into_iter()
-            .map(|node| (node.skill, node))
+            .map(|node| (node.skill, one_stat_per_line(node)))
             .collect();
 
         // Historical league trees (mirroring PoB2's multi-version TreeData):
@@ -207,12 +242,15 @@ impl BuildData {
             if let Some(nodes) = data.passive_nodes_versioned(&version)? {
                 versioned_passive_nodes.insert(
                     version,
-                    nodes.into_iter().map(|node| (node.skill, node)).collect(),
+                    nodes
+                        .into_iter()
+                        .map(|node| (node.skill, one_stat_per_line(node)))
+                        .collect(),
                 );
             }
         }
 
-        let skill_gems = data
+        let skill_gems: HashMap<String, SkillGemDef> = data
             .skill_gems()?
             .into_iter()
             .map(|gem| (gem.id.clone(), gem))
@@ -242,11 +280,19 @@ impl BuildData {
 
         let granted_effect_levels = data.granted_effect_levels()?.into_iter().collect();
 
-        let skill_stat_sets = data
+        let skill_stat_sets: HashMap<String, SkillStatSetDef> = data
             .skill_stat_sets()?
             .into_iter()
             .map(|set| (set.effect_id.clone(), set))
             .collect();
+        let stat_sets_mark_hits = skill_stat_sets
+            .values()
+            .flat_map(|def| &def.sets)
+            .any(|set| {
+                set.implicit_stats
+                    .iter()
+                    .any(|stat| stat == pobr_core::skill_env::STAT_IS_PROJECTILE)
+            });
 
         // Quality stat slopes (overlay domain): missing file = empty table (quality produces no stats, backward compatible).
         let gem_quality_stats = data
@@ -259,17 +305,33 @@ impl BuildData {
             })
             .unwrap_or_default();
 
-        // Gem → effect links (overlay domain, T5.1): indexed by primary effect id (the
-        // forward lookup key for meta expansion). Missing file = empty table (no expansion, backward compatible).
-        let gem_effects = data
-            .gem_effects()?
-            .map(|def| {
-                def.gems
-                    .into_iter()
-                    .map(|g| (g.granted_effect_id.clone(), g))
-                    .collect()
-            })
-            .unwrap_or_default();
+        // Gem → effect links, indexed by primary effect id (the forward lookup key for meta
+        // expansion). A gem comes with the game's link; an effect several gems grant is
+        // indexed under the first of them. `overlay/gem_effects.json` holds the links of a
+        // snapshot adapted before the adapter joined the game's `GemEffects` table, and
+        // where it lists an effect its gem stands for it.
+        let mut linked_gems: Vec<&SkillGemDef> = skill_gems.values().collect();
+        linked_gems.sort_by(|a, b| a.id.cmp(&b.id));
+        let mut gem_effects: HashMap<String, GemEffectDef> = HashMap::new();
+        for gem in linked_gems {
+            let Some(effect_id) = &gem.granted_effect_id else {
+                continue;
+            };
+            gem_effects
+                .entry(effect_id.clone())
+                .or_insert_with(|| GemEffectDef {
+                    gem_id: gem.id.clone(),
+                    variant_id: gem.gem_effect_id.clone().unwrap_or_default(),
+                    granted_effect_id: effect_id.clone(),
+                    additional_granted_effect_ids: gem.additional_granted_effect_ids.clone(),
+                    additional_stat_set_ids: Vec::new(),
+                });
+        }
+        if let Some(def) = data.gem_effects()? {
+            for link in def.gems {
+                gem_effects.insert(link.granted_effect_id.clone(), link);
+            }
+        }
 
         let cost_types = data.cost_types()?;
 
@@ -319,6 +381,18 @@ impl BuildData {
                 if source.kind() == std::io::ErrorKind::NotFound =>
             {
                 LocalModsDef::default()
+            }
+            Err(e) => return Err(e),
+        };
+
+        // The same tolerance for the rules of item-granted skills: a data pack
+        // without the file knows no base whose granted skills reserve nothing.
+        let reservation_free_grant_bases = match data.item_granted_skills() {
+            Ok(def) => def.reservation_free_bases.into_iter().collect(),
+            Err(LoadError::Io { ref source, .. })
+                if source.kind() == std::io::ErrorKind::NotFound =>
+            {
+                HashSet::new()
             }
             Err(e) => return Err(e),
         };
@@ -382,6 +456,16 @@ impl BuildData {
                 minions.insert(entry.id.clone(), MinionDef::from_entry(entry));
             }
         }
+        let augments = data
+            .runes()?
+            .map(|table| {
+                table
+                    .runes
+                    .into_iter()
+                    .map(|augment| (augment.name.clone(), augment))
+                    .collect()
+            })
+            .unwrap_or_default();
         // The special entry array (RuleSet's three-source concatenation) — compiled into the engine's special channel.
         let special_entries = ruleset.special_mods.unwrap_or_default();
 
@@ -411,6 +495,7 @@ impl BuildData {
             granted_effects,
             granted_effect_levels,
             skill_stat_sets,
+            stat_sets_mark_hits,
             gem_quality_stats,
             gem_effects,
             cost_types,
@@ -419,6 +504,7 @@ impl BuildData {
             jewel_radii,
             passive_jewels: data.passive_jewels()?.unwrap_or_default(),
             local_mods,
+            reservation_free_grant_bases,
             stat_map_catalog,
             buff_definitions,
             curse_priority,
@@ -426,6 +512,7 @@ impl BuildData {
             trigger_configs,
             high_precision,
             minions,
+            augments,
             parser_rules,
         })
     }
@@ -443,6 +530,7 @@ impl BuildData {
             granted_effects: HashMap::new(),
             granted_effect_levels: HashMap::new(),
             skill_stat_sets: HashMap::new(),
+            stat_sets_mark_hits: false,
             gem_quality_stats: HashMap::new(),
             gem_effects: HashMap::new(),
             cost_types: Vec::new(),
@@ -451,6 +539,7 @@ impl BuildData {
             jewel_radii: JewelRadiiDef::default(),
             passive_jewels: Default::default(),
             local_mods: LocalModsDef::default(),
+            reservation_free_grant_bases: HashSet::new(),
             stat_map_catalog: None,
             buff_definitions: Vec::new(),
             curse_priority: None,
@@ -458,6 +547,7 @@ impl BuildData {
             trigger_configs: HashMap::new(),
             high_precision: HighPrecisionRules::default(),
             minions: HashMap::new(),
+            augments: HashMap::new(),
             parser_rules: None,
         }
     }
@@ -503,6 +593,7 @@ mod tests {
                 label: None,
                 vendor_set_index: vendor_idx,
                 base_effectiveness: 0.0,
+                user_level_scaling: None,
                 constant_stats: Vec::new(),
                 skill_attack_speed_more: None,
                 dot_flags: Default::default(),
@@ -515,6 +606,7 @@ mod tests {
                         stat: stat.into(),
                         value,
                     }],
+                    per_effectiveness: Vec::new(),
                 }],
             }
         }
@@ -577,6 +669,7 @@ mod tests {
                 label: None,
                 vendor_set_index: vendor_idx,
                 base_effectiveness: 0.0,
+                user_level_scaling: None,
                 constant_stats: ds(constant_stats),
                 skill_attack_speed_more: None,
                 dot_flags: Default::default(),
@@ -586,6 +679,7 @@ mod tests {
                     gem_level: 1,
                     damage_multiplier: 1.0,
                     stats: ds(level_stats),
+                    per_effectiveness: Vec::new(),
                 }],
             }
         }

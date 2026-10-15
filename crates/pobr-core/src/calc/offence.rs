@@ -229,8 +229,9 @@ pub(crate) fn resolve_resistance(
         max_names.push(ModName::from("ElementalResistMax"));
     }
 
-    let flat = db.sum(ModType::Base, cfg, &res_names);
-    let inc = db.sum(ModType::Inc, cfg, &res_names);
+    let shared = shared_fire_resistance(db, cfg, element);
+    let flat = db.sum(ModType::Base, cfg, &res_names) + shared.flat;
+    let inc = db.sum(ModType::Inc, cfg, &res_names) + shared.inc;
     let more = db.more(cfg, &res_names);
     let override_total = db
         .override_(cfg, long.as_str())
@@ -246,8 +247,9 @@ pub(crate) fn resolve_resistance(
         .unwrap_or_else(|| {
             //  The default max resistance / hard cap now reads from the injected constants pack (fallback == old const, value unchanged).
             (cfg.constants.character().base_maximum_all_resistances_pct
-                + db.sum(ModType::Base, cfg, &max_names))
-            .min(cfg.constants.game().resist_hard_cap)
+                + db.sum(ModType::Base, cfg, &max_names)
+                + shared.max)
+                .min(cfg.constants.game().resist_hard_cap)
         });
     let floor = cfg.constants.game().resist_floor;
     ResistanceResolution {
@@ -261,6 +263,61 @@ pub(crate) fn resolve_resistance(
         override_total,
         floor,
     }
+}
+
+/// What Cold or Lightning Resistance gains from the modifiers to Fire
+/// Resistance (Smith of Kitava): "Modifiers to Fire Resistance also grant
+/// Cold and Lightning Resistance at {0}% of their value" and "Modifiers to
+/// Maximum Fire Resistance also grant Maximum Cold and Lightning
+/// Resistance". The elemental resistance penalty is not a modifier to Fire
+/// Resistance, and "all Elemental Resistances" already grants the others.
+struct SharedResistance {
+    flat: f64,
+    inc: f64,
+    max: f64,
+}
+
+fn shared_fire_resistance(db: &ModDb, cfg: &CalcConfig, element: &str) -> SharedResistance {
+    let mut shared = SharedResistance {
+        flat: 0.0,
+        inc: 0.0,
+        max: 0.0,
+    };
+    if !matches!(element, "Cold" | "Lightning") {
+        return shared;
+    }
+    let total = |names: &[ModName], mod_type: ModType| -> f64 {
+        db.evaluate_names(cfg, names)
+            .into_iter()
+            .filter(|row| row.active && row.modifier.mod_type == mod_type)
+            .filter(|row| {
+                row.modifier.origin.as_ref().is_none_or(|origin| {
+                    origin.source_id.id != crate::ingest::campaign::RESISTANCE_PENALTY_SOURCE
+                })
+            })
+            .filter_map(|row| row.value)
+            .sum()
+    };
+    let rate = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("FireResistanceAlsoGrantsColdAndLightning")],
+    ) / 100.0;
+    if rate > 0.0 {
+        let fire = [ModName::from("FireResistance"), ModName::from("FireResist")];
+        shared.flat = total(&fire, ModType::Base) * rate;
+        shared.inc = total(&fire, ModType::Inc) * rate;
+    }
+    if db.flag(cfg, "MaximumFireResistanceAlsoGrantsColdAndLightning") {
+        shared.max = total(
+            &[
+                ModName::from("MaximumFireResistance"),
+                ModName::from("FireResistMax"),
+            ],
+            ModType::Base,
+        );
+    }
+    shared
 }
 
 /// The old three-parameter entry point: equivalent to computing against an
@@ -285,11 +342,16 @@ pub fn calculate_minimal(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> 
 /// CalcOffence L2827's additive denominator + the end-of-pipeline action
 /// speed), and finally the cooldown speed cap + the server tick cap.
 ///
-/// Split into its own function for two shared call sites: `calculate_minimal_vs_enemy`'s
-/// main chain, and the warcry uptime budget (`calc::warcry` -- vendor's
-/// warcry section reads this same `globalOutput.Speed`, CalcOffence.lua:3235).
+/// The rate a skill's hits come at, which is its rate of use except for a
+/// rain: the hits of a rain come as its arrows land (`calc::rain`).
 pub(crate) fn resolve_action_rate(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> f64 {
     action_rate_terms(db, cfg, input).value
+}
+
+/// How often the skill is used, even where its hits come at another rate:
+/// what the warcry uptime budget counts (`calc::warcry`).
+pub(crate) fn resolve_use_rate(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> f64 {
+    action_rate_terms(db, cfg, input).uses
 }
 
 /// The action rate with the intermediate values of each stage of
@@ -309,12 +371,21 @@ pub(crate) struct ActionRateTerms {
     cooled: f64,
     /// After the server tick cap, before rounding.
     ticked: f64,
+    /// Uses per second.
+    pub(crate) uses: f64,
+    /// How the uses turn into hits, for a rain.
+    rain: Option<super::rain::RainHits>,
+    /// The rate the hits come at: the uses, or the hits of a rain.
     pub(crate) value: f64,
 }
 
 impl ActionRateTerms {
-    /// The steps from the weapon or skill base rate to `value`.
+    /// The steps from the weapon or skill base rate to `value`. A rain's
+    /// steps start from its arrows instead.
     pub(crate) fn formula(&self) -> StatFormula {
+        if let Some(rain) = &self.rain {
+            return rain.formula(self.value);
+        }
         let mut steps = FormulaBuilder::default();
         steps.scaled(self.base, 0.0, self.inc, self.more);
         if self.timed != self.scaled {
@@ -333,11 +404,47 @@ impl ActionRateTerms {
     }
 }
 
+/// How often something other than the character uses the skill, in uses per
+/// second: a skill triggered by what another skill creates (`SkillUseRate`).
+/// The character's cast, attack and action speed do not change it.
+fn fixed_use_rate(db: &ModDb, cfg: &CalcConfig) -> Option<f64> {
+    let rate = db.sum(ModType::Base, cfg, &[ModName::from("SkillUseRate")]);
+    (rate > 0.0).then_some(rate)
+}
+
 pub(crate) fn action_rate_terms(
     db: &ModDb,
     cfg: &CalcConfig,
     input: &MinimalInput,
 ) -> ActionRateTerms {
+    let mut terms = use_rate_terms(db, cfg, input);
+    terms.rain = super::rain::rain_hits(db, cfg, terms.uses);
+    if let Some(rain) = &terms.rain {
+        terms.value = round(rain.rate);
+    }
+    terms
+}
+
+/// How often the skill is used.
+fn use_rate_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> ActionRateTerms {
+    if let Some(rate) = fixed_use_rate(db, cfg) {
+        let cooled = apply_cooldown_cap(db, cfg, rate);
+        let ticked = apply_server_tick_cap(db, cfg, cooled);
+        return ActionRateTerms {
+            base: rate,
+            inc: 0.0,
+            more: 1.0,
+            scaled: rate,
+            timed: rate,
+            action_speed: 1.0,
+            uncapped: rate,
+            cooled,
+            ticked,
+            uses: round(ticked),
+            rain: None,
+            value: round(ticked),
+        };
+    }
     let speed_names = super::skill_use_time::speed_names_for(cfg);
     let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
     let inc_speed = db.sum(ModType::Inc, cfg, &speed_names);
@@ -370,6 +477,8 @@ pub(crate) fn action_rate_terms(
         uncapped: uncapped_action_rate,
         cooled,
         ticked,
+        uses: round(ticked),
+        rain: None,
         value: round(ticked),
     }
 }
@@ -428,6 +537,21 @@ pub(crate) struct HitChanceTerms {
     enemy_block: f64,
     /// Chance to hit (fraction).
     pub(crate) value: f64,
+    /// Percentage points of chance to hit beyond 100, for a character whose
+    /// chance to hit with attacks can exceed 100%; otherwise 0.
+    pub(crate) excess: f64,
+}
+
+impl HitChanceTerms {
+    /// `cfg` as the hit's critical hit chance reads it: "Critical Hit Chance
+    /// equal to N% of excess chance to Hit" scales by the excess of this hit.
+    pub(crate) fn crit_cfg<'a>(&self, cfg: &'a CalcConfig) -> std::borrow::Cow<'a, CalcConfig> {
+        if self.excess > 0.0 {
+            std::borrow::Cow::Owned(cfg.clone().with_multiplier("ExcessHitChance", self.excess))
+        } else {
+            std::borrow::Cow::Borrowed(cfg)
+        }
+    }
 }
 
 impl HitChanceTerms {
@@ -485,6 +609,14 @@ pub(crate) fn hit_chance_terms(
     } else {
         0.0
     };
+    // "Chance to Hit with Attacks can exceed 100%": the accuracy check has no
+    // upper limit, and what it gives beyond a certain hit is the excess.
+    let excess = if !always_hits && db.flag(cfg, "Condition:HitChanceCanExceed100") {
+        (super::defence::hit_chance_uncapped_percent(input.enemy_evasion, accuracy) - 100.0)
+            .max(0.0)
+    } else {
+        0.0
+    };
     HitChanceTerms {
         accuracy,
         enemy_evasion: input.enemy_evasion,
@@ -492,6 +624,7 @@ pub(crate) fn hit_chance_terms(
         accuracy_chance,
         enemy_block,
         value: round(accuracy_chance * (1.0 - enemy_block)),
+        excess,
     }
 }
 
@@ -599,7 +732,7 @@ pub(crate) fn hit_pass(
     let crit = resolve_crit(
         db,
         enemy_db,
-        cfg,
+        &hit_terms.crit_cfg(cfg),
         accuracy_hit_chance,
         0.0,
         cfg.mode_effective,
@@ -1112,7 +1245,7 @@ fn total_dps_traced(
     let (crit, crit_node) = resolve_crit_traced(
         db,
         enemy_db,
-        cfg,
+        &hit_chance_terms(db, enemy_db, cfg, input).crit_cfg(cfg),
         accuracy_hit_chance,
         0.0,
         cfg.mode_effective,
@@ -1259,38 +1392,73 @@ fn total_dps_traced(
     // separate factor multiplied in on its own; finally capped by the
     // inherent cooldown speed limit (min(rate, 1/effective_cooldown)) --
     // matching the non-traced path.
-    let speed_names = super::skill_use_time::speed_names_for(cfg);
-    let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
-    let base_rate_node = trace.add_source_node(
-        "base action rate",
-        input.base_action_rate,
-        SourceId::new(SourceKind::CharacterBase, "base.ActionRate"),
-    );
-    let inc_speed = db.sum_traced(
-        ModType::Inc,
-        cfg,
-        &speed_names,
-        trace,
-        "Speed INC modifier sum (Attack/Cast/Skill)",
-    );
-    let more_speed = more_factor_traced(db, cfg, &speed_names, "Speed MORE factor", trace);
-    let action_speed_mod = (1.0 + db.sum(ModType::Inc, cfg, &action_speed_names) / 100.0)
-        * db.more(cfg, &action_speed_names);
-    let scaled_rate = apply_total_time(
-        db,
-        cfg,
-        input.base_action_rate * (1.0 + inc_speed.value / 100.0) * more_speed.value,
-    );
-    let uncapped_rate = scaled_rate * action_speed_mod;
-    let action_rate = round(apply_server_tick_cap(
-        db,
-        cfg,
-        apply_cooldown_cap(db, cfg, uncapped_rate),
-    ));
-    let action_rate_node = trace.add_node("action rate", action_rate, TraceOperation::Multiply);
-    trace.add_edge(base_rate_node, action_rate_node);
-    trace.add_edge(inc_speed.node_id, action_rate_node);
-    trace.add_edge(more_speed.node_id, action_rate_node);
+    let (use_rate, use_rate_node) = if fixed_use_rate(db, cfg).is_some() {
+        // Used by something other than the character: no speed scales it.
+        let use_rate = db.sum_traced(
+            ModType::Base,
+            cfg,
+            &[ModName::from("SkillUseRate")],
+            trace,
+            "Skill use rate (not the character's)",
+        );
+        let action_rate = action_rate_terms(db, cfg, input).uses;
+        let node = trace.add_node("action rate", action_rate, TraceOperation::Multiply);
+        trace.add_edge(use_rate.node_id, node);
+        (action_rate, node)
+    } else {
+        let speed_names = super::skill_use_time::speed_names_for(cfg);
+        let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
+        let base_rate_node = trace.add_source_node(
+            "base action rate",
+            input.base_action_rate,
+            SourceId::new(SourceKind::CharacterBase, "base.ActionRate"),
+        );
+        let inc_speed = db.sum_traced(
+            ModType::Inc,
+            cfg,
+            &speed_names,
+            trace,
+            "Speed INC modifier sum (Attack/Cast/Skill)",
+        );
+        let more_speed = more_factor_traced(db, cfg, &speed_names, "Speed MORE factor", trace);
+        let action_speed_mod = (1.0 + db.sum(ModType::Inc, cfg, &action_speed_names) / 100.0)
+            * db.more(cfg, &action_speed_names);
+        let scaled_rate = apply_total_time(
+            db,
+            cfg,
+            input.base_action_rate * (1.0 + inc_speed.value / 100.0) * more_speed.value,
+        );
+        let uncapped_rate = scaled_rate * action_speed_mod;
+        let action_rate = round(apply_server_tick_cap(
+            db,
+            cfg,
+            apply_cooldown_cap(db, cfg, uncapped_rate),
+        ));
+        let node = trace.add_node("action rate", action_rate, TraceOperation::Multiply);
+        trace.add_edge(base_rate_node, node);
+        trace.add_edge(inc_speed.node_id, node);
+        trace.add_edge(more_speed.node_id, node);
+        (action_rate, node)
+    };
+    // A rain hits as its arrows land, which projectile speed hastens
+    // (`calc::rain`); the uses only limit it.
+    let (action_rate, action_rate_node) = match super::rain::rain_hits(db, cfg, use_rate) {
+        Some(rain) => {
+            let landing_speed = db.sum_traced(
+                ModType::Inc,
+                cfg,
+                &[ModName::from("ProjectileSpeed")],
+                trace,
+                "Projectile speed INC (how often the arrows land)",
+            );
+            let rate = round(rain.rate);
+            let node = trace.add_node("rain hit rate", rate, TraceOperation::Multiply);
+            trace.add_edge(landing_speed.node_id, node);
+            trace.add_edge(use_rate_node, node);
+            (rate, node)
+        }
+        None => (use_rate, use_rate_node),
+    };
 
     // TotalDPS final
     let end = dps_end_factors(db, cfg, None);
@@ -1424,7 +1592,11 @@ fn enemy_mitigation_terms(
             enemy_physical_reduction(player_db, enemy_db, &type_cfg, raw_hit),
         )
     } else {
-        let mut resist = enemy_resist_final(enemy_db, &type_cfg, damage_type);
+        let enemy_resist = enemy_resist_final(enemy_db, &type_cfg, damage_type);
+        // Penetration lowers the resistance it names: the one the enemy
+        // meets this damage with.
+        let resisting = enemy_resisting_element(enemy_db, &type_cfg, damage_type);
+        let mut resist = enemy_resist;
         // A hit treats enemy elemental resistance as inverted (Rakiata's
         // Flow etc., vendor CalcOffence.lua:4145-4148):
         // `invertChance = clamp(Sum(CHANCE, "HitsInvertEleResChance"), 0, 1)`,
@@ -1445,7 +1617,40 @@ fn enemy_mitigation_terms(
                 invert_share = invert;
             }
         }
-        let effective_resist = apply_penetration(player_db, &type_cfg, damage_type, resist);
+        // A hit that ignores the enemy's resistance to this type is neither
+        // reduced nor increased by it: `hits_ignore_enemy_fire_resistance`,
+        // `critical_strikes_ignore_lightning_resistance` (which holds on the
+        // critical leg only), the enemy's own "resistance does not affect
+        // damage taken". "Cannot penetrate or ignore elemental resistances"
+        // (`cannot_penetrate_or_ignore_elemental_resistances`) overrides it.
+        let ignores_resist = (player_db.flag(&type_cfg, &format!("Ignore{type_prefix}Resistance"))
+            || enemy_db.flag(&type_cfg, &format!("SelfIgnore{type_prefix}Resistance"))
+            || damage_type.is_elemental()
+                && player_db.flag(&type_cfg, "IgnoreElementalResistances"))
+            && !(damage_type.is_elemental() && player_db.flag(&type_cfg, "CannotElePenIgnore"));
+        // A hit that ignores a non-negative elemental resistance
+        // (`critical_strikes_ignore_positive_elemental_resistances`, which
+        // holds on the critical leg only) is not reduced by a resistance of
+        // zero or more, and there is nothing for penetration to lower. A
+        // negative resistance still raises the hit. Each hit meets the
+        // resistance as it is or inverted, so the two cases are judged apart.
+        let ignores_non_negative = damage_type.is_elemental()
+            && player_db.flag(&type_cfg, "IgnoreNonNegativeEleRes")
+            && !player_db.flag(&type_cfg, "CannotElePenIgnore");
+        let effective_resist = if ignores_resist {
+            0.0
+        } else if ignores_non_negative {
+            let against = |resist: f64| {
+                if resist >= 0.0 {
+                    0.0
+                } else {
+                    apply_penetration(player_db, &type_cfg, resisting, resist)
+                }
+            };
+            (1.0 - invert_share) * against(enemy_resist) + invert_share * against(-enemy_resist)
+        } else {
+            apply_penetration(player_db, &type_cfg, resisting, resist)
+        };
         // Diagnostics: dumps the enemy mitigation breakdown per type when
         // POBR_DBG_ENEMYMIT=1 (for comparison against the oracle's
         // enemyMitigation: resistBase/pen/takenInc/takenMore).
@@ -1577,11 +1782,65 @@ pub(crate) fn enemy_mitigation_lines<'a>(
 /// FLAG is set (config's "Enemy Max Resistance is always 75%",
 /// ConfigOptions.lua:2158-2159). Physical doesn't go through this function
 /// (its armour/PDR path is [`enemy_physical_multiplier`]).
+///
+/// An enemy that resists elemental damage by its lowest elemental resistance
+/// ([`enemy_resisting_element`]) meets each element with that resistance.
 pub(crate) fn enemy_resist_final(
     enemy_db: &ModDb,
     type_cfg: &CalcConfig,
     damage_type: DamageType,
 ) -> f64 {
+    let resisting = enemy_resisting_element(enemy_db, type_cfg, damage_type);
+    if resisting == damage_type {
+        enemy_own_resist(enemy_db, type_cfg, damage_type)
+    } else {
+        enemy_own_resist(
+            enemy_db,
+            &type_cfg.clone().with_damage_type(resisting),
+            resisting,
+        )
+    }
+}
+
+/// The enemy flag of "Enemies in your Presence Resist Elemental Damage based
+/// on their Lowest Resistance"
+/// (`enemies_in_presence_elemental_damage_resisted_by_lowest_elemental_resistance`).
+pub(crate) const RESISTS_ELEMENTS_BY_LOWEST: &str = "ElementalDamageResistedByLowestResistance";
+
+/// The element whose resistance the enemy meets `damage_type` with: its own,
+/// or for an element, while the enemy resists elemental damage by its
+/// lowest elemental resistance, the element of the lowest of the three. A
+/// tie keeps the damage's own element.
+pub(crate) fn enemy_resisting_element(
+    enemy_db: &ModDb,
+    type_cfg: &CalcConfig,
+    damage_type: DamageType,
+) -> DamageType {
+    if !damage_type.is_elemental() || !enemy_db.flag(type_cfg, RESISTS_ELEMENTS_BY_LOWEST) {
+        return damage_type;
+    }
+    let mut lowest = (
+        enemy_own_resist(enemy_db, type_cfg, damage_type),
+        damage_type,
+    );
+    for element in [DamageType::Fire, DamageType::Cold, DamageType::Lightning] {
+        if element == damage_type {
+            continue;
+        }
+        let resist = enemy_own_resist(
+            enemy_db,
+            &type_cfg.clone().with_damage_type(element),
+            element,
+        );
+        if resist < lowest.0 {
+            lowest = (resist, element);
+        }
+    }
+    lowest.1
+}
+
+/// The enemy's own resistance to `damage_type`; see [`enemy_resist_final`].
+fn enemy_own_resist(enemy_db: &ModDb, type_cfg: &CalcConfig, damage_type: DamageType) -> f64 {
     debug_assert!(
         damage_type != DamageType::Physical,
         "physical has no resistance path"
@@ -1957,9 +2216,8 @@ pub(crate) fn apply_cooldown_cap(db: &ModDb, cfg: &CalcConfig, uncapped_rate: f6
     uncapped_rate.min(repeats(db, cfg) / cd)
 }
 
-/// Skill repeat count Repeats (PoB2 CalcOffence L981: `1 + RepeatCount`,
-/// default 1). This exceeds 1 once multistrike / skill-repeat mods inject
-/// BASE `RepeatCount`; currently always 1 while unwired.
+/// How many times one use of the skill casts it: `1 + RepeatCount` (Spell
+/// Echo's echoes, see `rules::skill_stats`).
 fn repeats(db: &ModDb, cfg: &CalcConfig) -> f64 {
     1.0 + db
         .sum(ModType::Base, cfg, &[ModName::from("RepeatCount")])
@@ -2242,6 +2500,161 @@ mod speed_tests {
             enemy_physical_multiplier(&wrong_side, &plain_enemy, &cfg, 100.0),
             1.0
         );
+    }
+    /// "Critical Hits ignore non-negative Enemy Monster Elemental
+    /// Resistances": a resistance of zero or more does nothing to the hit; a
+    /// negative one still raises it.
+    #[test]
+    fn a_hit_that_ignores_a_non_negative_resistance_keeps_a_negative_one() {
+        let multiplier = |player: &ModDb, enemy: &ModDb, cfg: &CalcConfig, ty: DamageType| {
+            enemy_damage_multiplier(player, enemy, cfg, ty, 100.0)
+        };
+        let cfg = CalcConfig::spell();
+        let crit = cfg.clone().with_condition("CriticalStrike", true);
+        let hit = cfg.clone().with_condition("CriticalStrike", false);
+        let mut player = ModDb::new();
+        player.add_mod(
+            Modifier::flag("IgnoreNonNegativeEleRes")
+                .with_tag(crate::ModTag::condition("CriticalStrike", false)),
+        );
+        player.add_mod(Modifier::number("ColdPenetration", ModType::Base, 24.0));
+
+        let mut resistant = ModDb::new();
+        resistant.add_mod(Modifier::number("ColdResist", ModType::Base, 50.0));
+        resistant.add_mod(Modifier::number("ChaosResist", ModType::Base, 50.0));
+        // The ordinary hit meets 50 less the 24 penetrated; the critical one meets nothing.
+        assert!((multiplier(&player, &resistant, &hit, DamageType::Cold) - 0.74).abs() < 1e-9);
+        assert_eq!(
+            multiplier(&player, &resistant, &crit, DamageType::Cold),
+            1.0
+        );
+        // Chaos resistance is not elemental.
+        assert!((multiplier(&player, &resistant, &crit, DamageType::Chaos) - 0.5).abs() < 1e-9);
+
+        // A negative resistance is not ignored.
+        let mut exposed = ModDb::new();
+        exposed.add_mod(Modifier::number("ColdResist", ModType::Base, -20.0));
+        let on_hit = multiplier(&player, &exposed, &hit, DamageType::Cold);
+        assert!(on_hit > 1.0);
+        assert_eq!(
+            multiplier(&player, &exposed, &crit, DamageType::Cold),
+            on_hit
+        );
+
+        // Nor is one a hit treats as negated: 50 is met as -50.
+        let mut inverting = player.clone();
+        inverting.add_mod(Modifier::number(
+            "HitsInvertEleResChance",
+            ModType::Base,
+            1.0,
+        ));
+        assert_eq!(
+            multiplier(&inverting, &resistant, &crit, DamageType::Cold),
+            multiplier(&inverting, &resistant, &hit, DamageType::Cold)
+        );
+        assert!(multiplier(&inverting, &resistant, &crit, DamageType::Cold) > 1.0);
+
+        // "Cannot penetrate or ignore elemental resistances" overrides it.
+        let mut bound = player.clone();
+        bound.add_mod(Modifier::flag("CannotElePenIgnore"));
+        assert_eq!(
+            multiplier(&bound, &resistant, &crit, DamageType::Cold),
+            multiplier(&bound, &resistant, &hit, DamageType::Cold)
+        );
+    }
+
+    /// "Enemies in your Presence Resist Elemental Damage based on their
+    /// Lowest Resistance": every element meets the lowest of the three
+    /// elemental resistances, lowered by the penetration of the one used;
+    /// chaos keeps its own.
+    #[test]
+    fn an_enemy_resisting_by_its_lowest_resistance_meets_every_element_with_it() {
+        let multiplier = |player: &ModDb, enemy: &ModDb, ty: DamageType| {
+            enemy_damage_multiplier(player, enemy, &CalcConfig::spell(), ty, 100.0)
+        };
+        let mut enemy = ModDb::new();
+        enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
+        enemy.add_mod(Modifier::number("ColdResist", ModType::Base, 20.0));
+        enemy.add_mod(Modifier::number("LightningResist", ModType::Base, 40.0));
+        enemy.add_mod(Modifier::number("ChaosResist", ModType::Base, 10.0));
+        let plain = ModDb::new();
+        assert!((multiplier(&plain, &enemy, DamageType::Fire) - 0.5).abs() < 1e-9);
+
+        enemy.add_mod(Modifier::flag(RESISTS_ELEMENTS_BY_LOWEST));
+        for element in [DamageType::Fire, DamageType::Cold, DamageType::Lightning] {
+            assert!((multiplier(&plain, &enemy, element) - 0.8).abs() < 1e-9);
+        }
+        assert!((multiplier(&plain, &enemy, DamageType::Chaos) - 0.9).abs() < 1e-9);
+        // Fire damage met with cold resistance: cold penetration lowers it,
+        // fire penetration does not.
+        let mut cold_pen = ModDb::new();
+        cold_pen.add_mod(Modifier::number("ColdPenetration", ModType::Base, 10.0));
+        assert!((multiplier(&cold_pen, &enemy, DamageType::Fire) - 0.9).abs() < 1e-9);
+        let mut fire_pen = ModDb::new();
+        fire_pen.add_mod(Modifier::number("FirePenetration", ModType::Base, 10.0));
+        assert!((multiplier(&fire_pen, &enemy, DamageType::Fire) - 0.8).abs() < 1e-9);
+        // Damage over time and ailments read the same resistance.
+        assert_eq!(
+            enemy_resist_final(&enemy, &CalcConfig::spell(), DamageType::Lightning),
+            20.0
+        );
+    }
+
+    /// A hit that ignores a resistance is not changed by it, whichever way
+    /// the resistance points; a critical-only ignore leaves the other leg alone.
+    #[test]
+    fn a_hit_that_ignores_resistance_is_unchanged_by_it() {
+        let lightning = |player: &ModDb, enemy: &ModDb, cfg: &CalcConfig| {
+            enemy_damage_multiplier(player, enemy, cfg, DamageType::Lightning, 100.0)
+        };
+        let cfg = CalcConfig::spell();
+        let mut enemy = ModDb::new();
+        enemy.add_mod(Modifier::number("LightningResist", ModType::Base, 40.0));
+        let plain = ModDb::new();
+        assert!((lightning(&plain, &enemy, &cfg) - 0.6).abs() < 1e-9);
+
+        let mut ignores = ModDb::new();
+        ignores.add_mod(Modifier::flag("IgnoreLightningResistance"));
+        assert_eq!(lightning(&ignores, &enemy, &cfg), 1.0);
+        // The other elements still meet their own resistance.
+        enemy.add_mod(Modifier::number("FireResist", ModType::Base, 40.0));
+        assert!(
+            (enemy_damage_multiplier(&ignores, &enemy, &cfg, DamageType::Fire, 100.0) - 0.6).abs()
+                < 1e-9
+        );
+        let mut elemental = ModDb::new();
+        elemental.add_mod(Modifier::flag("IgnoreElementalResistances"));
+        assert_eq!(
+            enemy_damage_multiplier(&elemental, &enemy, &cfg, DamageType::Fire, 100.0),
+            1.0
+        );
+
+        // Negative resistance is ignored too: no bonus from it.
+        let mut exposed = ModDb::new();
+        exposed.add_mod(Modifier::number("LightningResist", ModType::Base, -30.0));
+        assert!((lightning(&plain, &exposed, &cfg) - 1.3).abs() < 1e-9);
+        assert_eq!(lightning(&ignores, &exposed, &cfg), 1.0);
+
+        // "Critical Hits ignore ...": only the critical leg.
+        let mut crit_only = ModDb::new();
+        crit_only.add_mod(
+            Modifier::flag("IgnoreLightningResistance")
+                .with_tag(crate::ModTag::condition("CriticalStrike", false)),
+        );
+        let crit = cfg.clone().with_condition("CriticalStrike", true);
+        let hit = cfg.clone().with_condition("CriticalStrike", false);
+        assert_eq!(lightning(&crit_only, &enemy, &crit), 1.0);
+        assert!((lightning(&crit_only, &enemy, &hit) - 0.6).abs() < 1e-9);
+
+        // The enemy's own "resistance does not affect damage taken".
+        let mut indifferent = ModDb::new();
+        indifferent.add_mod(Modifier::number("LightningResist", ModType::Base, 40.0));
+        indifferent.add_mod(Modifier::flag("SelfIgnoreLightningResistance"));
+        assert_eq!(lightning(&plain, &indifferent, &cfg), 1.0);
+
+        // "Cannot penetrate or ignore elemental resistances" wins.
+        ignores.add_mod(Modifier::flag("CannotElePenIgnore"));
+        assert!((lightning(&ignores, &enemy, &cfg) - 0.6).abs() < 1e-9);
     }
     use crate::Modifier;
 

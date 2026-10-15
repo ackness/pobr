@@ -1604,6 +1604,11 @@
           }
         },
         {
+          "name": "ColdCanIgnite",
+          "type": "FLAG",
+          "value": true
+        },
+        {
           "name": "ExtraAura",
           "type": "LIST",
           "value": {
@@ -1615,6 +1620,11 @@
               }
             ]
           }
+        },
+        {
+          "name": "LightningCanIgnite",
+          "type": "FLAG",
+          "value": true
         },
         {
           "name": "ExtraAura",
@@ -1630,6 +1640,11 @@
           }
         },
         {
+          "name": "ChaosCanIgnite",
+          "type": "FLAG",
+          "value": true
+        },
+        {
           "name": "ExtraAura",
           "type": "LIST",
           "value": {
@@ -1641,6 +1656,11 @@
               }
             ]
           }
+        },
+        {
+          "name": "PhysicalCanIgnite",
+          "type": "FLAG",
+          "value": true
         }
       ],
       "verified": false,
@@ -1666,6 +1686,11 @@
           }
         },
         {
+          "name": "ColdCanIgnite",
+          "type": "FLAG",
+          "value": true
+        },
+        {
           "name": "ExtraAura",
           "type": "LIST",
           "value": {
@@ -1677,6 +1702,11 @@
               }
             ]
           }
+        },
+        {
+          "name": "LightningCanIgnite",
+          "type": "FLAG",
+          "value": true
         },
         {
           "name": "ExtraAura",
@@ -1692,6 +1722,11 @@
           }
         },
         {
+          "name": "ChaosCanIgnite",
+          "type": "FLAG",
+          "value": true
+        },
+        {
           "name": "ExtraAura",
           "type": "LIST",
           "value": {
@@ -1703,6 +1738,11 @@
               }
             ]
           }
+        },
+        {
+          "name": "PhysicalCanIgnite",
+          "type": "FLAG",
+          "value": true
         }
       ],
       "verified": false,
@@ -2418,6 +2458,17 @@
               }
             ]
           },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "KilledPoisonedLast2Seconds"
+            }
+          ]
+        },
+        {
+          "name": "LifeRegen",
+          "type": "BASE",
+          "value": "$1",
           "tags": [
             {
               "type": "Condition",
@@ -3419,6 +3470,24 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_attack_skills_can_have_d_additional_tote_cf83bbd4",
+      "pattern": "attack skills can have (\\d+) additional totems? summoned at a time",
+      "vendor_pattern": "^attack skills can have (%d+) additional totems? summoned at a time$",
+      "mods": [
+        {
+          "name": "ActiveTotemLimit",
+          "type": "BASE",
+          "value": "$1",
+          "keyword_flags": [
+            "Attack"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_attack_skills_cost_life_instead_of_d_of_15fea2b7",
@@ -7709,6 +7778,17 @@
               }
             ]
           }
+        },
+        {
+          "name": "LifeRegenerationRecoversEnergyShield",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "OnConsecratedGround"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -7738,6 +7818,17 @@
               }
             ]
           }
+        },
+        {
+          "name": "ElementalAilmentImmune",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "OnConsecratedGround"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -9279,6 +9370,43 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_d_chance_to_attack_with_level_d_on_melee_fcaf137d",
+      "pattern": "(\\d+)% chance to attack with level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) on melee hit",
+      "vendor_pattern": "^(%d+)%% chance to attack with level (%d+) (.+) on melee hit$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$2",
+            "skillId": {
+              "enum": 3
+            },
+            "triggerChance": "$1",
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "3": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
       "id": "vnd_d_chance_to_block_attack_damage_for_d_se_8be80aaa",
       "pattern": "\\+(\\d+)% chance to block attack damage for \\d seconds? every \\d seconds",
       "vendor_pattern": "^%+(%d+)%% chance to block attack damage for %d seconds? every %d seconds$",
@@ -9341,6 +9469,43 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_d_chance_to_ct_ar_si_tg_g_e_r_level_d_on_72c8278a",
+      "pattern": "(\\d+)% chance to [ct][ar][si][tg]g?e?r? level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) on [a-z]+",
+      "vendor_pattern": "^(%d+)%% chance to [ct][ar][si][tg]g?e?r? level (%d+) (.+) on %a+$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$2",
+            "skillId": {
+              "enum": 3
+            },
+            "triggerChance": "$1",
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "3": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
     },
     {
       "id": "vnd_d_chance_to_deal_double_damage_with_atta_dc353157",
@@ -9800,6 +9965,228 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_chance_to_trigger_level_d_on_melee_hit_1dfbe66c",
+      "pattern": "(\\d+)% chance to trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) on melee hit",
+      "vendor_pattern": "^(%d+)%% chance to trigger level (%d+) (.+) on melee hit$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$2",
+            "skillId": {
+              "enum": 3
+            },
+            "triggerChance": "$1",
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "3": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_d_chance_to_trigger_level_d_ow_nh_e_n_y_1fcb0319",
+      "pattern": "(\\d+)% chance to trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) [ow][nh]e?n? ?y?o?u? kill ?a?n? ?e?n?e?m?y?",
+      "vendor_pattern": "^(%d+)%% chance to trigger level (%d+) (.+) [ow][nh]e?n? ?y?o?u? kill ?a?n? ?e?n?e?m?y?$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$2",
+            "skillId": {
+              "enum": 3
+            },
+            "triggerChance": "$1",
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "3": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_d_chance_to_trigger_level_d_when_animate_18300fd8",
+      "pattern": "(\\d+)% chance to trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when animated weapon kills an enemy",
+      "vendor_pattern": "^(%d+)%% chance to trigger level (%d+) (.+) when animated weapon kills an enemy$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$2",
+            "skillId": {
+              "enum": 3
+            },
+            "triggerChance": "$1",
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "3": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_d_chance_to_trigger_level_d_when_you_gai_d32591f9",
+      "pattern": "(\\d+)% chance to trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you gain avian's might or avian's flight",
+      "vendor_pattern": "^(%d+)%% chance to trigger level (%d+) (.+) when you gain avian's might or avian's flight$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$2",
+            "skillId": {
+              "enum": 3
+            },
+            "triggerChance": "$1",
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "3": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_d_chance_to_trigger_level_d_when_you_or_13b259d7",
+      "pattern": "(\\d+)% chance to trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you or a nearby ally kill an enemy, or hit a rare or unique enemy",
+      "vendor_pattern": "^(%d+)%% chance to trigger level (%d+) (.+) when you or a nearby ally kill an enemy, or hit a rare or unique enemy$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$2",
+            "skillId": {
+              "enum": 3
+            },
+            "triggerChance": "$1",
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "3": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_d_chance_to_trigger_level_d_when_you_use_c560ea0b",
+      "pattern": "(\\d+)% chance to trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you use a socketed skill",
+      "vendor_pattern": "^(%d+)%% chance to trigger level (%d+) (.+) when you use a socketed skill$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$2",
+            "skillId": {
+              "enum": 3
+            },
+            "triggerChance": "$1",
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "3": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
     },
     {
       "id": "vnd_d_energy_shield_gained_on_kill_per_level_b12f1660",
@@ -11900,6 +12287,42 @@
                 "Purifying Flame"
               ]
             }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_of_damage_dealt_by_y_o_u_r_mines_is_le_b9733f78",
+      "pattern": "([\\d.]+)% of damage dealt by y?o?u?r? ?mines is leeched to you as life",
+      "vendor_pattern": "^([%d%.]+)%% of damage dealt by y?o?u?r? ?mines is leeched to you as life$",
+      "mods": [
+        {
+          "name": "DamageLifeLeechToPlayer",
+          "type": "BASE",
+          "value": "$1",
+          "keyword_flags": [
+            "Mine"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_of_damage_dealt_by_y_o_u_r_totems_is_l_2f9e57f5",
+      "pattern": "([\\d.]+)% of damage dealt by y?o?u?r? ?totems is leeched to you as life",
+      "vendor_pattern": "^([%d%.]+)%% of damage dealt by y?o?u?r? ?totems is leeched to you as life$",
+      "mods": [
+        {
+          "name": "DamageLifeLeechToPlayer",
+          "type": "BASE",
+          "value": "$1",
+          "keyword_flags": [
+            "Totem"
           ]
         }
       ],
@@ -15911,27 +16334,6 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
-      "id": "vnd_enemies_in_your_presence_resist_elementa_a8b68d4f",
-      "pattern": "enemies in your presence resist elemental damage based on their lowest resistance",
-      "vendor_pattern": "^enemies in your presence resist elemental damage based on their lowest resistance$",
-      "mods": [
-        {
-          "name": "ElementalDamageUsesLowestResistance",
-          "type": "FLAG",
-          "value": true,
-          "tags": [
-            {
-              "type": "Condition",
-              "var": "EnemyInPresence"
-            }
-          ]
-        }
-      ],
-      "verified": false,
-      "batch": "V0",
-      "source_note": "vendor specialModList 批量抽取（静态表）"
-    },
-    {
       "id": "vnd_enemies_maimed_by_you_take_d_increased_d_277915f0",
       "pattern": "enemies maimed by you take (\\d+)% increased damage over time",
       "vendor_pattern": "^enemies maimed by you take (%d+)%% increased damage over time$",
@@ -17785,14 +18187,7 @@
         {
           "name": "PhysicalDamageGainAsFire",
           "type": "BASE",
-          "value": {
-            "ref": "$1",
-            "ops": [
-              {
-                "base": 6.0
-              }
-            ]
-          },
+          "value": "$2",
           "tags": [
             {
               "type": "Condition",
@@ -22171,6 +22566,17 @@
               "var": "KilledUniqueEnemy"
             }
           ]
+        },
+        {
+          "name": "HasShapersPresence",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "KilledUniqueEnemy"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -24549,6 +24955,17 @@
               "var": "ConsumedCorpseRecently"
             }
           ]
+        },
+        {
+          "name": "LifeRegenPercent",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "ConsumedCorpseRecently"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -24600,6 +25017,17 @@
               "var": "BlockedRecently"
             }
           ]
+        },
+        {
+          "name": "LifeRegenPercent",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "BlockedRecently"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -24629,6 +25057,17 @@
               "var": "AttackedRecently"
             }
           ]
+        },
+        {
+          "name": "BlockChance",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "AttackedRecently"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -24652,6 +25091,17 @@
               }
             ]
           },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "CastSpellRecently"
+            }
+          ]
+        },
+        {
+          "name": "SpellBlockChance",
+          "type": "BASE",
+          "value": "$1",
           "tags": [
             {
               "type": "Condition",
@@ -24727,6 +25177,17 @@
               "var": "ImpaledRecently"
             }
           ]
+        },
+        {
+          "name": "Armour",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "ImpaledRecently"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -24758,6 +25219,17 @@
           ]
         },
         {
+          "name": "Speed",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsedWarcryRecently"
+            }
+          ]
+        },
+        {
           "name": "ExtraAura",
           "type": "LIST",
           "value": {
@@ -24769,6 +25241,17 @@
               }
             ]
           },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsedWarcryRecently"
+            }
+          ]
+        },
+        {
+          "name": "MovementSpeed",
+          "type": "INC",
+          "value": "$1",
           "tags": [
             {
               "type": "Condition",
@@ -24801,6 +25284,20 @@
               }
             ]
           },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsedWarcryRecently"
+            }
+          ]
+        },
+        {
+          "name": "Speed",
+          "type": "INC",
+          "value": "$1",
+          "flags": [
+            "Attack"
+          ],
           "tags": [
             {
               "type": "Condition",
@@ -32539,6 +33036,24 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_movement_skills_cost_no_mana_ba4488c2",
+      "pattern": "movement skills cost no mana",
+      "vendor_pattern": "^movement skills cost no mana$",
+      "mods": [
+        {
+          "name": "ManaCost",
+          "type": "MORE",
+          "value": -100.0,
+          "keyword_flags": [
+            "Movement"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_movement_speed_cannot_be_modified_to_bel_c40e853d",
       "pattern": "movement speed cannot be modified to below base value",
       "vendor_pattern": "^movement speed cannot be modified to below base value$",
@@ -34664,6 +35179,33 @@
           "name": "PhysicalEnergyShieldBypass",
           "type": "BASE",
           "value": 100.0
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_physical_spell_critical_hits_build_pin_67287472",
+      "pattern": "physical spell critical hits build pin",
+      "vendor_pattern": "^physical spell critical hits build pin$",
+      "mods": [
+        {
+          "name": "CanPin",
+          "type": "FLAG",
+          "value": true,
+          "flags": [
+            "Spell"
+          ],
+          "keyword_flags": [
+            "Physical"
+          ],
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "CriticalStrike"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -37256,6 +37798,41 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_retaliation_skills_have_d_increased_spee_5e75fcae",
+      "pattern": "retaliation skills have (\\d+)% increased speed",
+      "vendor_pattern": "^retaliation skills have (%d+)%% increased speed$",
+      "mods": [
+        {
+          "name": "Speed",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "Retaliation"
+            }
+          ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "INC",
+          "value": "$1",
+          "keyword_flags": [
+            "Warcry"
+          ],
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "Retaliation"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_rolling_magma_fires_an_additional_projec_c87c5d6c",
       "pattern": "rolling magma fires an additional projectile",
       "vendor_pattern": "^rolling magma fires an additional projectile",
@@ -38304,21 +38881,6 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
-      "id": "vnd_skills_deal_d_increased_damage_per_conne_9ad70288",
-      "pattern": "skills deal (\\d+)% increased damage per connected red support gem",
-      "vendor_pattern": "^skills deal (%d+)%% increased damage per connected red support gem$",
-      "mods": [
-        {
-          "name": "SkillDamageIncreasedPerRedSupport",
-          "type": "FLAG",
-          "value": "$1"
-        }
-      ],
-      "verified": false,
-      "batch": "V0",
-      "source_note": "vendor specialModList 批量抽取（闭包探针）"
-    },
-    {
       "id": "vnd_skills_deal_d_more_damage_for_each_warcr_8eeb51b1",
       "pattern": "skills deal (\\d+)% more damage for each warcry exerting them",
       "vendor_pattern": "^skills deal (%d+)%% more damage for each warcry exerting them$",
@@ -38487,36 +39049,6 @@
               "skillType": "Cooldown"
             }
           ]
-        }
-      ],
-      "verified": false,
-      "batch": "V0",
-      "source_note": "vendor specialModList 批量抽取（闭包探针）"
-    },
-    {
-      "id": "vnd_skills_have_d_increased_critical_hit_cha_bdb76eac",
-      "pattern": "skills have (\\d+)% increased critical hit chance per connected blue support gem",
-      "vendor_pattern": "^skills have (%d+)%% increased critical hit chance per connected blue support gem$",
-      "mods": [
-        {
-          "name": "SkillCritChanceIncreasedPerBlueSupport",
-          "type": "FLAG",
-          "value": "$1"
-        }
-      ],
-      "verified": false,
-      "batch": "V0",
-      "source_note": "vendor specialModList 批量抽取（闭包探针）"
-    },
-    {
-      "id": "vnd_skills_have_d_increased_skill_speed_per_2143701b",
-      "pattern": "skills have (\\d+)% increased skill speed per connected green support gem",
-      "vendor_pattern": "^skills have (%d+)%% increased skill speed per connected green support gem$",
-      "mods": [
-        {
-          "name": "SkillSpeedIncreasedPerGreenSupport",
-          "type": "FLAG",
-          "value": "$1"
         }
       ],
       "verified": false,
@@ -39253,6 +39785,31 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_spells_consume_a_power_charge_if_able_to_d4c12975",
+      "pattern": "spells consume a power charge if able to deal (\\d+)% more damage",
+      "vendor_pattern": "^spells consume a power charge if able to deal (%d+)%% more damage$",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "MORE",
+          "value": "$1",
+          "keyword_flags": [
+            "Spell"
+          ],
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 1.0,
+              "var": "RemovablePowerCharge"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_spells_deal_added_chaos_damage_equal_to_835ed7e3",
       "pattern": "spells deal added chaos damage equal to (\\d+)% of your maximum life",
       "vendor_pattern": "^spells deal added chaos damage equal to (%d+)%% of your maximum life$",
@@ -39883,6 +40440,35 @@
           "name": "DealNoPhysical",
           "type": "FLAG",
           "value": true,
+          "tags": [
+            {
+              "type": "SkillName",
+              "includeTransfigured": true,
+              "skillNameList": [
+                "Stormblast Mine",
+                "Icicle Mine",
+                "Pyroclast Mine"
+              ]
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_stormblast_icicle_and_pyroclast_mine_hav_cf8f1e1a",
+      "pattern": "stormblast, icicle and pyroclast mine have (\\d+)% increased aura effect",
+      "vendor_pattern": "^stormblast, icicle and pyroclast mine have (%d+)%% increased aura effect$",
+      "mods": [
+        {
+          "name": "AuraEffect",
+          "type": "INC",
+          "value": "$1",
+          "keyword_flags": [
+            "Mine"
+          ],
           "tags": [
             {
               "type": "SkillName",
@@ -41481,6 +42067,24 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_totems_fire_d_additional_projectiles_9daba9ef",
+      "pattern": "totems fire (\\d+) additional projectiles",
+      "vendor_pattern": "^totems fire (%d+) additional projectiles$",
+      "mods": [
+        {
+          "name": "ProjectileCount",
+          "type": "BASE",
+          "value": "$1",
+          "keyword_flags": [
+            "Totem"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_totems_gain_d_to_all_elemental_resistanc_c58f165c",
       "pattern": "totems gain \\+(\\d+)% to all elemental resistances",
       "vendor_pattern": "^totems gain %+(%d+)%% to all elemental resistances$",
@@ -41852,6 +42456,81 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_traps_and_mines_deal_d_d_additional_phys_3f72e1d2",
+      "pattern": "traps and mines deal (\\d+)-(\\d+) additional physical damage",
+      "vendor_pattern": "^traps and mines deal (%d+)%-(%d+) additional physical damage$",
+      "mods": [
+        {
+          "name": "PhysicalMin",
+          "type": "BASE",
+          "value": "$1",
+          "keyword_flags": [
+            "Trap",
+            "Mine"
+          ]
+        },
+        {
+          "name": "PhysicalMax",
+          "type": "BASE",
+          "value": "$2",
+          "keyword_flags": [
+            "Trap",
+            "Mine"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_traps_and_mines_deal_d_to_d_additional_p_9dff66d3",
+      "pattern": "traps and mines deal (\\d+) to (\\d+) additional physical damage",
+      "vendor_pattern": "^traps and mines deal (%d+) to (%d+) additional physical damage$",
+      "mods": [
+        {
+          "name": "PhysicalMin",
+          "type": "BASE",
+          "value": "$1",
+          "keyword_flags": [
+            "Trap",
+            "Mine"
+          ]
+        },
+        {
+          "name": "PhysicalMax",
+          "type": "BASE",
+          "value": "$2",
+          "keyword_flags": [
+            "Trap",
+            "Mine"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_traps_and_mines_have_a_d_chance_to_poiso_048ddc76",
+      "pattern": "traps and mines have a (\\d+)% chance to poison on hit",
+      "vendor_pattern": "^traps and mines have a (%d+)%% chance to poison on hit$",
+      "mods": [
+        {
+          "name": "PoisonChance",
+          "type": "BASE",
+          "value": "$1",
+          "keyword_flags": [
+            "Trap",
+            "Mine"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_trigger_ancestral_spirits_when_you_summo_f39710f4",
@@ -44090,6 +44769,24 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_warcries_cost_no_mana_96440526",
+      "pattern": "warcries cost no mana",
+      "vendor_pattern": "^warcries cost no mana$",
+      "mods": [
+        {
+          "name": "ManaCost",
+          "type": "MORE",
+          "value": -100.0,
+          "keyword_flags": [
+            "Warcry"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_warcries_count_as_having_d_additional_ne_c64d05e2",
       "pattern": "warcries count as having (\\d+) additional nearby enemies",
       "vendor_pattern": "^warcries count as having (%d+) additional nearby enemies$",
@@ -44253,6 +44950,42 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_warcry_skills_cooldown_time_is_d_seconds_57057c0e",
+      "pattern": "warcry skills' cooldown time is (\\d+) seconds",
+      "vendor_pattern": "^warcry skills' cooldown time is (%d+) seconds$",
+      "mods": [
+        {
+          "name": "CooldownRecovery",
+          "type": "OVERRIDE",
+          "value": "$1",
+          "keyword_flags": [
+            "Warcry"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_warcry_skills_have_d_seconds_to_cooldown_73d48ff5",
+      "pattern": "warcry skills have (\\+\\d+) seconds to cooldown",
+      "vendor_pattern": "^warcry skills have (%+%d+) seconds to cooldown$",
+      "mods": [
+        {
+          "name": "CooldownRecovery",
+          "type": "BASE",
+          "value": "$1",
+          "keyword_flags": [
+            "Warcry"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_wave_of_conviction_s_exposure_applies_an_e55f9a79",
@@ -44456,6 +45189,17 @@
               }
             ]
           },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsedWarcryRecently"
+            }
+          ]
+        },
+        {
+          "name": "Onslaught",
+          "type": "FLAG",
+          "value": true,
           "tags": [
             {
               "type": "Condition",
@@ -44709,6 +45453,18 @@
               "var": "NearbyAlly"
             }
           ]
+        },
+        {
+          "name": "Onslaught",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 5.0,
+              "var": "NearbyAlly"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -44739,6 +45495,18 @@
               "var": "NearbyAlly"
             }
           ]
+        },
+        {
+          "name": "Damage",
+          "type": "MORE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 1.0,
+              "var": "NearbyAlly"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -44762,6 +45530,18 @@
               }
             ]
           },
+          "tags": [
+            {
+              "type": "Condition",
+              "neg": true,
+              "var": "LowMana"
+            }
+          ]
+        },
+        {
+          "name": "Condition:UnholyMight",
+          "type": "FLAG",
+          "value": true,
           "tags": [
             {
               "type": "Condition",
@@ -45241,6 +46021,18 @@
               "var": "NearbyCorpse"
             }
           ]
+        },
+        {
+          "name": "Damage",
+          "type": "MORE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 1.0,
+              "var": "NearbyCorpse"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -45481,6 +46273,21 @@
               }
             ]
           }
+        },
+        {
+          "name": "LifeRegenPercent",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "AffectedByPlacedBanner"
+            },
+            {
+              "type": "Multiplier",
+              "var": "BannerValour"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -45514,6 +46321,21 @@
               }
             ]
           }
+        },
+        {
+          "name": "LifeRegenPercent",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "AffectedByPlacedBanner"
+            },
+            {
+              "type": "Multiplier",
+              "var": "BannerValour"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -45534,6 +46356,35 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_you_and_your_totems_regenerate_d_of_life_5a64579e",
+      "pattern": "you and your totems regenerate ([\\d.]+)% of life per second for each summoned totem",
+      "vendor_pattern": "^you and your totems regenerate ([%d%.]+)%% of life per second for each summoned totem$",
+      "mods": [
+        {
+          "name": "LifeRegenPercent",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PerStat",
+              "stat": "TotemsSummoned"
+            }
+          ]
+        },
+        {
+          "name": "LifeRegenPercent",
+          "type": "BASE",
+          "value": "$1",
+          "keyword_flags": [
+            "Totem"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_you_are_at_maximum_chance_to_block_attac_64adc18e",

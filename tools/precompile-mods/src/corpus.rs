@@ -244,6 +244,7 @@ fn is_item_metadata(line: &str) -> bool {
         "Evasion Rating:",
         "Evasion:",
         "Ward:",
+        "Charm Slots:",
         "Physical Damage:",
         "Elemental Damage:",
         "Chaos Damage:",

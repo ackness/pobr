@@ -30,7 +30,7 @@
 
 use pobr_data::prelude::*;
 
-use crate::{ModDb, ModTag, Modifier};
+use crate::{CalcConfig, ModDb, ModTag, Modifier};
 
 use super::{Actor, Env};
 
@@ -38,6 +38,28 @@ use super::{Actor, Env};
 /// tell an enemy's inherent stats apart from our applied debuffs).
 fn enemy_source(id: &str) -> ModifierSource {
     ModifierSource::new(SourceId::new(SourceKind::EnemyConfig, id))
+}
+
+/// The enemy's Evasion Rating, which the chance to hit it is checked against:
+/// its base with the increases and multipliers on the enemy.
+pub(crate) fn enemy_evasion(enemy: &Actor, cfg: &CalcConfig) -> f64 {
+    enemy_rating(enemy, cfg, "Evasion", enemy.base.evasion)
+}
+
+/// The enemy's Accuracy Rating, which the chances to evade and to deflect its
+/// hits are checked against.
+pub(crate) fn enemy_accuracy(enemy: &Actor, cfg: &CalcConfig) -> f64 {
+    enemy_rating(enemy, cfg, "Accuracy", enemy.base.accuracy)
+}
+
+fn enemy_rating(enemy: &Actor, cfg: &CalcConfig, name: &str, scalar: f64) -> f64 {
+    let names = [ModName::from(name)];
+    let db = &enemy.mod_db;
+    // An environment built without `setup_enemy` holds the rating only as
+    // the actor's scalar.
+    let stored = db.sum(ModType::Base, cfg, &names);
+    let base = if stored > 0.0 { stored } else { scalar };
+    base * (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)
 }
 
 /// Injects a numeric modifier attributed to `EnemyConfig` into the enemy modDB.
@@ -418,7 +440,7 @@ fn inject_ehp_damage_placeholder(
 /// Attributed to an exposure sub-source under `EnemyConfig`.
 ///
 /// Sources: agent-docs/debuffs.md §Exposure; PoB2 CalcPerform.lua:3215-3247.
-pub fn reduce_enemy_exposure(db: &mut ModDb, player_db: &ModDb, cfg: &crate::CalcConfig) {
+pub fn reduce_enemy_exposure(db: &mut ModDb, player_db: &ModDb, cfg: &CalcConfig) {
     // `exposureEffectOnSelf = enemyDB:More(nil, "ExposureEffectOnSelf")` (:3224):
     // a Boss's `MORE -50` → 0.5. This mod is gated by `Condition:Effective`,
     // which doesn't match in the panel view (`mode_effective == false`) →
@@ -429,7 +451,19 @@ pub fn reduce_enemy_exposure(db: &mut ModDb, player_db: &ModDb, cfg: &crate::Cal
         ("Cold", "ColdExposure", "ColdResist"),
         ("Lightning", "LightningExposure", "LightningResist"),
     ] {
-        let raw = db.max_of(ModType::Base, cfg, &[ModName::from(exposure_name)]);
+        // Refraction III: "Banner applies {0}% Elemental Exposure per 1000
+        // Armour" (`support_tempered_valour_banner_applies_%_elemental_exposure_per_1000_armour`),
+        // per whole 1000 of the character's Armour.
+        let per_armour = player_db.sum(
+            ModType::Base,
+            cfg,
+            &[ModName::from(
+                crate::rules::skill_stats::ELEMENTAL_EXPOSURE_PER_1000_ARMOUR,
+            )],
+        ) * (cfg.stats.get("Armour").copied().unwrap_or(0.0) / 1000.0).floor();
+        let raw = db
+            .max_of(ModType::Base, cfg, &[ModName::from(exposure_name)])
+            .max(per_armour);
         if raw <= 0.0 {
             continue;
         }

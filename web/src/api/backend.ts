@@ -10,6 +10,7 @@ import type {
   AttributionRequest,
   ClassNames,
   AttributionResponse,
+  LineUsageResponse,
   BuildJson,
   SelectedLoadoutJson,
   CalculateBuildRequest,
@@ -24,7 +25,6 @@ import type {
   PassiveNode,
   PassiveTreeMeta,
   TreeArt,
-  WeaponSwap,
   RuneCatalogEntry,
   ItemAugmentInfo,
 } from './types';
@@ -67,12 +67,12 @@ export interface PobrBackend {
   importTradeItems(items: unknown[]): Promise<{ text?: string; warnings?: string[]; error?: string }[]>;
   calculateBuild(request: CalculateBuildRequest): Promise<CalculateBuildResponse>;
   /** 编辑态 → PoB2 分享 code（请求同 calculateBuild + 可选 notes）。 */
-  encodeBuild(
-    request: CalculateBuildRequest & { notes?: string; base_code?: string; weapon_swap?: WeaponSwap | null },
-  ): Promise<string>;
+  encodeBuild(request: CalculateBuildRequest & { notes?: string; base_code?: string }): Promise<string>;
   /** Independent metrics for every active effect, including utility and unavailable skills. */
   skillMetrics(request: CalculateBuildRequest): Promise<SkillMetricsResponse>;
   attribution(request: AttributionRequest): Promise<AttributionResponse>;
+  /** 构筑每一行词条在计算中的去向（比计算更慢，按需调用）。 */
+  lineUsage(request: CalculateBuildRequest): Promise<LineUsageResponse>;
   /** 天赋树静态数据（静态资产，不经 wasm）。 */
   loadPassiveTree(treeVersion?: string | null): Promise<PassiveNode[]>;
   /** Catalog from the same immutable data snapshot used by calculation. */

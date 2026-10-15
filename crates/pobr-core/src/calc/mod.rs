@@ -1,6 +1,8 @@
 pub mod actor;
 pub mod ailment;
 pub mod ailment_apply;
+pub mod bear_form;
+pub mod blind;
 pub mod breakdown;
 pub mod buff_pass;
 pub mod crit;
@@ -9,6 +11,7 @@ pub mod damage;
 pub mod defence;
 pub mod defence_panels;
 pub mod ehp;
+pub mod energy;
 pub mod env;
 pub mod env_finalize;
 pub mod error;
@@ -22,9 +25,12 @@ pub mod output;
 pub mod perform;
 pub mod pool_damage;
 pub mod pool_setup;
+pub mod rage;
+pub mod rain;
 pub mod scaled_damage;
 pub mod session;
 pub mod setup_env;
+pub mod shared_modifiers;
 pub mod skill_dot;
 pub mod skill_mechanics;
 pub mod skill_use_time;
@@ -34,8 +40,9 @@ pub mod survivability;
 pub mod taken;
 pub mod trigger;
 pub mod warcry;
+pub mod withered;
 
-pub use actor::{Actor, ActorBaseStats};
+pub use actor::{Actor, ActorBaseStats, MinionIdentity};
 pub use ailment::{
     AilmentSourcePart, AilmentStageTerms, AilmentTerms, HandAilmentMerge, bleed_instance,
     corrupted_blood_instance, ignite_instance, poison_instance, shock_effect,
@@ -79,10 +86,10 @@ pub use hand_pass::{
 };
 pub use minion::{
     AttributeInfusion, MinionBaseStats, MinionCategory, MinionContext, MinionData, MinionDef,
-    MinionInput, MinionLimitId, MinionModifierEntry, MinionWeaponData, build_minion_context,
-    build_minion_context_from_def, derive_minion_base_stats, extract_minion_modifier_entries,
-    minion_level_from_gem_level, minion_modifier_applies, resolve_minion_level,
-    write_summoned_minion_multipliers,
+    MinionInput, MinionLimitId, MinionModifierEntry, MinionOrigin, MinionSkill, MinionWeaponData,
+    build_minion_context, build_minion_context_from_def, derive_minion_base_stats,
+    extract_minion_modifier_entries, minion_level_from_gem_level, minion_modifier_applies,
+    resolve_minion_level, write_summoned_minion_multipliers,
 };
 pub use offence::{
     EnemyMitigationLines, HitDamagePart, HitDamageTerms, HitMitigationPart, MinimalInput,
@@ -129,12 +136,10 @@ pub use taken::{
 pub use warcry::WarcrySpec;
 
 pub use trigger::{
-    CwcTriggerRate, EnergyTriggerRate, RotationResult, RotationSkill, SocketedSpellInfo,
-    TriggerCondition, TriggerRate, TriggerSourceStats, action_cooldown, calc_cwc_trigger_rate,
-    calc_cwc_trigger_rate_traced, calc_energy_per_event, calc_energy_trigger_rate,
-    calc_energy_trigger_rate_traced, calc_max_energy, calc_multi_spell_rotation,
-    resolve_trigger_rate, resolve_trigger_rate_traced, round_cooldown_to_tick, server_tick_rate,
-    spell_cast_time_added_to_cooldown, trigger_rate_cap,
+    CwcTriggerRate, RotationResult, RotationSkill, TriggerRate, TriggerSourceStats,
+    action_cooldown, calc_cwc_trigger_rate, calc_cwc_trigger_rate_traced,
+    calc_multi_spell_rotation, resolve_trigger_rate, resolve_trigger_rate_traced,
+    round_cooldown_to_tick, server_tick_rate, spell_cast_time_added_to_cooldown, trigger_rate_cap,
 };
 
 pub(crate) fn round(value: f64) -> f64 {

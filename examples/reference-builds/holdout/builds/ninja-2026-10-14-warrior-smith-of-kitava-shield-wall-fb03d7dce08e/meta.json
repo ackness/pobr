@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-14-warrior-smith-of-kitava-shield-wall-fb03d7dce08e",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%ED%94%84%EB%A1%9C%EB%9D%BC%EA%B3%A0-5012/FR_TangJung",
+    "account": "프로라고-5012",
+    "character": "FR_TangJung",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-14T17:05:05+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/character?account=%ED%94%84%EB%A1%9C%EB%9D%BC%EA%B3%A0-5012&name=FR_TangJung&overview=forbidden-rites",
+    "snapshot": "1457-20261014-11300",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/search?overview=forbidden-rites&class=Smith+of+Kitava",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Smith of Kitava",
+    "level": 97,
+    "main_skill": "Shield Wall"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 8,
+    "code_sha256": "67779e4ae7926f24459e768c8cc5e792b15874696bc4ad54937b04c19f641afc",
+    "code_chars": 12528,
+    "decoded_bytes": 45443
+  }
+}

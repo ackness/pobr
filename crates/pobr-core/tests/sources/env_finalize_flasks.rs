@@ -31,6 +31,7 @@ fn utility_item(base: &str, explicits: &[&str]) -> Item {
         modifier_texts: explicits.iter().map(|t| (*t).to_string()).collect(),
         enchant_texts: Vec::new(),
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: Vec::new(),
     }
 }

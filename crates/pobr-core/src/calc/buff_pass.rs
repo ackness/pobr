@@ -60,11 +60,10 @@
 //!   (`:2294`/`:2899-2914`), and `CurseBuff`'s buffModList secondary scaling
 //!   (`:2318-2330`) are absent -- `CurseBuff` and every other unconsumed kind
 //!   take the "inject raw value directly" compatibility path.
-//! - (i) The buff name table: curse names are derived by the orchestration
-//!   layer from the `active_skill`'s snake_case name (`snipers_mark` →
-//!   `Snipers Mark`); when this doesn't match vendor's apostrophe name
-//!   (`Sniper's Mark`), `curse_base` fails to look it up → base value 0
-//!   (matching vendor's `data.cursePriority[curseName] or 0` fallback semantics).
+//! - (i) The buff name table: curse names are the names the game shows for
+//!   the skills (`ActiveSkills.DisplayedName`, `Sniper's Mark`); a name
+//!   `curse_base` doesn't have gets base value 0 (matching vendor's
+//!   `data.cursePriority[curseName] or 0` fallback semantics).
 //! - (j) Curse effect mods (the original "mods always empty" simplification
 //!   **has since been implemented**): the orchestration layer's
 //!   `buff_skill_specs` maps statset stats to enemy-side modifiers into
@@ -250,8 +249,20 @@ fn scale_buff_mod(
     fallback_source_id: &str,
 ) -> Modifier {
     let mut out = modifier.clone();
-    if let ModValue::Number(v) = out.value {
-        out.value = ModValue::Number(scale_value(rules, out.name.as_str(), out.mod_type, v, mult));
+    match &mut out.value {
+        ModValue::Number(v) => {
+            *v = scale_value(rules, out.name.as_str(), out.mod_type, *v, mult);
+        }
+        // What a buff grants others (an aura only allies have) is scaled
+        // with it.
+        ModValue::NestedMods(nested) => {
+            for inner in nested.iter_mut() {
+                if let ModValue::Number(v) = &mut inner.value {
+                    *v = scale_value(rules, inner.name.as_str(), inner.mod_type, *v, mult);
+                }
+            }
+        }
+        _ => {}
     }
     let scale_note = format!("buff effect ×{mult:.4}");
     match out.origin.as_mut() {
@@ -353,7 +364,11 @@ pub fn buff_pass(env: &mut Env) {
                 // type bits (vendor's skillCfg), so scoped mods (e.g.
                 // "Banner Skills have N% increased Aura Magnitudes"'s
                 // SkillTypes(Banner) tag) only match the corresponding aura.
-                let aura_cfg = env.cfg.clone().with_skill_types(spec.skill_types);
+                let aura_cfg = env
+                    .cfg
+                    .clone()
+                    .with_skill_types(spec.skill_types)
+                    .with_keyword_flags(crate::skill_env::skill_keyword_flags(spec.skill_types));
                 let names: Vec<ModName> = AURA_SELF_EFFECT_NAMES
                     .iter()
                     .map(|n| ModName::from(*n))
@@ -402,8 +417,31 @@ pub fn buff_pass(env: &mut Env) {
                     ModName::from("BuffEffect"),
                     ModName::from("BuffEffectOnSelf"),
                 ];
-                let inc = env.player.mod_db.sum(ModType::Inc, &env.cfg, &inc_names);
-                let more = env.player.mod_db.more(&env.cfg, &more_names) * spec.magnitude;
+                // The skill's own and its supports' increase of its buff
+                // (Sacrificial Offering's "Supported Offering Skills have
+                // 30% increased Buff effect") adds to the character's. The
+                // buff of a skill's Remnants (Into the Breach's Flames of
+                // Chayula) has what raises the Remnants the character
+                // creates too ("Remnants you create have 15% increased
+                // effect").
+                // "increased Warcry Effect" is a Buff effect of warcries:
+                // the buff's own skill says which keywords it has.
+                let buff_cfg = env
+                    .cfg
+                    .clone()
+                    .with_keyword_flags(crate::skill_env::skill_keyword_flags(spec.skill_types));
+                let mut inc = env.player.mod_db.sum(ModType::Inc, &buff_cfg, &inc_names)
+                    + spec.local_effect_inc;
+                let mut more = env.player.mod_db.more(&buff_cfg, &more_names)
+                    * spec.magnitude
+                    * spec.local_effect_more;
+                if SkillTypes::from_pob2_name("GeneratesRemnants")
+                    .is_some_and(|remnants| spec.skill_types.contains(remnants))
+                {
+                    let names = [ModName::from("RemnantEffect")];
+                    inc += env.player.mod_db.sum(ModType::Inc, &env.cfg, &names);
+                    more *= env.player.mod_db.more(&env.cfg, &names);
+                }
                 let mult = (1.0 + inc / 100.0) * more;
                 // vendor :1955: `modDB.conditions["AffectedBy"..buff.name] = true`.
                 conditions.push(affected_by_condition(&spec.name));
@@ -761,7 +799,7 @@ mod tests {
             default_high_precision: 1,
             more_default_round_decimals: 2,
             mods: BTreeMap::from([
-                ("CritChance".to_string(), entry("BASE", 2)),
+                ("CriticalStrikeChance".to_string(), entry("BASE", 2)),
                 ("LifeRegen".to_string(), entry("BASE", 1)),
                 ("LifeRegenPercent".to_string(), entry("BASE", 2)),
                 ("PhysicalDamageLifeLeech".to_string(), entry("BASE", 2)),
@@ -794,9 +832,9 @@ mod tests {
         );
         // Non-integer raw value → defaultHighPrecision = 1 (Data.lua:413): 1.5 × 1.3 = 1.95 → 1.9.
         assert_eq!(scale_value(&rules, "Damage", ModType::Inc, 1.5, 1.3), 1.9);
-        // CritChance BASE → precision 2 (Data.lua:416-418): 5 × 1.234 = 6.17.
+        // Critical Hit Chance BASE → precision 2: 5 × 1.234 = 6.17.
         assert_eq!(
-            scale_value(&rules, "CritChance", ModType::Base, 5.0, 1.234),
+            scale_value(&rules, "CriticalStrikeChance", ModType::Base, 5.0, 1.234),
             6.17
         );
         // LifeRegen BASE → precision 1: 7 × 1.15 = 8.05 → 8.0 (floor truncation).
@@ -837,9 +875,9 @@ mod tests {
         assert_eq!(scale_value(&rules, "Damage", ModType::Inc, 33.0, 1.1), 36.0);
         // Non-integer raw values still take default_high_precision = 1 (independent of the exception table).
         assert_eq!(scale_value(&rules, "Damage", ModType::Inc, 1.5, 1.3), 1.9);
-        // No exception table → CritChance's integer raw value falls to the default branch (5 × 1.234 = 6.17 → trunc 6).
+        // No exception table → Critical Hit Chance's integer raw value falls to the default branch (5 × 1.234 = 6.17 → trunc 6).
         assert_eq!(
-            scale_value(&rules, "CritChance", ModType::Base, 5.0, 1.234),
+            scale_value(&rules, "CriticalStrikeChance", ModType::Base, 5.0, 1.234),
             6.0
         );
     }

@@ -74,7 +74,7 @@ fn decode_build_json_shape() {
     );
     assert_keys(
         &json["items"],
-        &["equipped", "jewels", "socket_jewels", "flasks"],
+        &["equipped", "jewels", "socket_jewels", "flasks", "limbs"],
         "items",
     );
     assert_keys(
@@ -498,6 +498,9 @@ fn check_formula(
                 assert!(close(operand, reload_factor()), "{at}: reload factor");
                 previous * operand
             }
+            // Arrows land `previous` times a second and an enemy can be hit
+            // once every `operand` seconds: the first arrow after that hits.
+            "hit_interval" => previous / (operand * previous - 1e-9).ceil().max(1.0),
             // The enemy's increase adds to the player's increases.
             "enemy_increase_added" => {
                 let (before, increase) = player_increase.unwrap_or((previous, 0.0));
@@ -886,7 +889,8 @@ fn check_formula(
                     .product::<f64>()
         };
         let near = |a: f64, b: f64| (a - b).abs() <= 0.02 * a.abs().max(b.abs()).max(1.0);
-        let duration = n("base_duration") * scale("duration_mods") * n("enemy_duration");
+        let duration =
+            n("base_duration") * scale("duration_mods") * n("enemy_duration") / n("rate");
         assert!(
             near(n("duration"), duration),
             "{at}: duration {} != {duration} from its lines",
@@ -1102,6 +1106,44 @@ fn breakdown_formulas_end_at_the_displayed_value() {
 /// values, whose passes the displayed stats merge, and a crossbow whose
 /// reload lowers the rate. Their breakdowns go through the same checks, and
 /// each hand's own steps end at the value the merge starts from.
+/// Rain of Arrows hits as its arrows land: its rate starts from the landing
+/// rate, scaled by projectile speed (the lines listed), and the hit interval
+/// keeps one landing arrow in so many.
+#[test]
+fn a_rain_explains_its_rate_by_its_landing_arrows() {
+    ensure_data();
+    let request = serde_json::json!({
+        "character": { "class_name": "Ranger", "level": 90 },
+        "allocated_nodes": [],
+        "socket_groups": [{ "gems": [{ "skill_id": "RainOfArrowsPlayer", "level": 20, "quality": 0 }] }],
+        "items": [
+            { "slot": "weapon1", "text": "Rarity: NORMAL\nCrude Bow" },
+            { "slot": "ring1", "text": "Rarity: MAGIC\nIron Ring\n50% increased Projectile Speed" },
+        ],
+    });
+    let json: Value = serde_json::from_str(
+        &pobr_wasm::calculate_build_json(&request.to_string()).expect("calculate"),
+    )
+    .expect("valid json");
+    let stats = json["stats"].as_array().unwrap();
+    let shown = stats.iter().find(|s| s["id"] == "ActionRate").unwrap()["value"]
+        .as_f64()
+        .unwrap();
+    // 50% faster: an arrow every 0.0533 s, and every third one hits.
+    assert!(close(shown, 6.25), "ActionRate {shown}");
+    let breakdown = &json["breakdowns"]["ActionRate"];
+    let mut tally = FormulaTally::default();
+    check_formula(
+        "rain",
+        "ActionRate",
+        breakdown,
+        shown,
+        Some(stats),
+        &mut tally,
+    );
+    assert!(tally.ops.contains("hit_interval"), "{:?}", tally.ops);
+}
+
 #[test]
 fn breakdowns_merge_two_weapon_passes_and_show_the_reload() {
     ensure_data();
@@ -1766,6 +1808,91 @@ fn manual_flasks_override_utility_slots() {
         .iter()
         .any(|e| e["kind"] == "flask" && e["id"] == "Charm 1");
     assert!(has_flask_entry, "attribution should list the charm slot");
+}
+
+/// The Transcendent limbs: a request's `limbs` (slot ids `arm1` … `leg2`)
+/// are written into the code's arm and leg slots, decoded back into
+/// `items.limbs`, calculated from the code as from the request, and listed
+/// by the attribution view.
+#[test]
+fn limbs_round_trip_and_calculate_from_code_and_request() {
+    ensure_data();
+    let request = serde_json::json!({
+        "character": { "class_name": "Ranger", "level": 90 },
+        "allocated_nodes": [],
+        "items": [{ "slot": "bodyarmour", "text": "Rarity: NORMAL\nStrider Vest" }],
+        "limbs": [
+            {
+                "slot": "arm1",
+                "text": "Rarity: NORMAL\nCombat Arm\nImplicits: 1\n6% increased Attack Speed",
+            },
+            {
+                "slot": "leg2",
+                "text": "Rarity: NORMAL\nEvasive Leg\nImplicits: 1\n25% increased Evasion Rating",
+            },
+        ],
+    });
+    let calc = |request: &Value| -> Value {
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).expect("calc"))
+            .unwrap()
+    };
+    let stat = |resp: &Value, id: &str| -> f64 {
+        resp["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["id"] == id)
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+
+    let worn = calc(&request);
+    let mut bare = request.clone();
+    bare["limbs"] = serde_json::json!([]);
+    let ratio = stat(&worn, "Evasion") / stat(&calc(&bare), "Evasion");
+    assert!((ratio - 1.25).abs() < 0.01, "Evasive Leg: {ratio}");
+
+    let code = pobr_wasm::encode_build_json(&request.to_string()).expect("encode");
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).expect("decode")).unwrap();
+    let limbs: Vec<(&str, bool)> = decoded["items"]["limbs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|limb| {
+            let text = limb["text"].as_str().unwrap();
+            (
+                limb["slot"].as_str().unwrap(),
+                text.contains(" Arm") || text.contains(" Leg"),
+            )
+        })
+        .collect();
+    assert_eq!(limbs, [("arm1", true), ("leg2", true)]);
+    assert_eq!(decoded["items"]["equipped"].as_array().unwrap().len(), 1);
+    let via_code = calc(&serde_json::json!({ "pob_code": code }));
+    assert_eq!(stat(&via_code, "Evasion"), stat(&worn, "Evasion"));
+
+    let mut bad = request.clone();
+    bad["limbs"] = serde_json::json!([{ "slot": "arm3", "text": "Rarity: NORMAL\nCombat Arm" }]);
+    let err = pobr_wasm::calculate_build_json(&bad.to_string()).unwrap_err();
+    assert!(err.contains("unknown limb slot"), "unexpected: {err}");
+
+    let attr: Value = serde_json::from_str(
+        &pobr_wasm::attribution_json(
+            &serde_json::json!({ "request": request, "fields": ["Evasion"] }).to_string(),
+        )
+        .expect("attribution"),
+    )
+    .unwrap();
+    assert!(
+        attr["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|e| e["kind"] == "limb" && e["id"] == "leg2"),
+        "attribution should list the leg: {attr}"
+    );
 }
 
 /// Equipment-granted skills: a `Grants Skill: Level N X` mod line
@@ -2693,6 +2820,89 @@ fn materialized_request_matches_pob_code_calculation() {
     }
 }
 
+/// A request without a code names the weapon set its weapons belong to,
+/// `weapon_swap.active`, and modifiers "while using Weapon Set 1/2" follow it
+/// in the panel calculation and in each skill overview row. Rigwald's
+/// Ferocity: 30% increased Attack Speed and 15% less Damage in the first set,
+/// 10% reduced Attack Speed and 30% more Damage in the second. A code without
+/// `weapon_swap` keeps the set its active item set names.
+#[test]
+fn weapon_swap_active_is_the_weapon_set_calculated() {
+    ensure_data();
+    let request = |active: Option<u8>| {
+        let mut body = serde_json::json!({
+            "character": { "class_name": "Ranger", "level": 90 },
+            "items": [{ "slot": "weapon1", "text": "Rarity: NORMAL\nCrude Bow" }],
+            "socket_groups": [{ "slot": "weapon1", "gems": [
+                { "skill_id": "IceShotPlayer", "level": 20, "quality": 0 },
+                { "skill_id": "SupportRigwaldsFerocityPlayer", "level": 1, "quality": 0 },
+            ] }],
+            "main_socket_group": 0,
+            "mode_effective": false,
+        });
+        if let Some(active) = active {
+            body["weapon_swap"] = serde_json::json!({
+                "active": active,
+                "alternate_items": [],
+                "exclusive_nodes": [[], []],
+            });
+        }
+        body
+    };
+    let calculate = |request: &Value| -> Value {
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap()
+    };
+    let stat = |response: &Value, id: &str| {
+        response["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|entry| entry["id"] == id)
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+
+    let first = calculate(&request(Some(1)));
+    let second = calculate(&request(Some(2)));
+    let speed = stat(&first, "ActionRate") / stat(&second, "ActionRate");
+    assert!((speed - 1.30 / 0.90).abs() < 1e-9, "{speed}");
+    let damage = stat(&second, "TotalHitAvg") / stat(&first, "TotalHitAvg");
+    assert!((damage - 1.30 / 0.85).abs() < 1e-6, "{damage}");
+    // A new build that names no set uses the first.
+    let unnamed = calculate(&request(None));
+    for id in ["ActionRate", "TotalHitAvg"] {
+        assert!(close(stat(&unnamed, id), stat(&first, id)), "{id}");
+    }
+
+    // The skill overview evaluates each set's rows with that set.
+    let row_rate = |active: u8| {
+        let json = pobr_wasm::skill_metrics_json(&request(Some(active)).to_string()).unwrap();
+        let report: Value = serde_json::from_str(&json).unwrap();
+        report["skills"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["skill_id"] == "IceShotPlayer")
+            .unwrap()["metrics"]["action_rate"]
+            .as_f64()
+            .unwrap()
+    };
+    let speed = row_rate(1) / row_rate(2);
+    assert!((speed - 1.30 / 0.90).abs() < 1e-9, "{speed}");
+
+    // The exported code's item set names the second set, and the code keeps it.
+    let code = pobr_wasm::encode_build_json(&request(Some(2)).to_string()).unwrap();
+    let from_code = serde_json::json!({ "pob_code": code, "mode_effective": false });
+    let kept = stat(&calculate(&from_code), "ActionRate");
+    assert!(close(kept, stat(&second, "ActionRate")), "{kept}");
+
+    let rejected = pobr_wasm::calculate_build_json(&request(Some(3)).to_string()).unwrap_err();
+    let error: Value = serde_json::from_str(&rejected).unwrap();
+    assert_eq!(error["code"], "bad_request", "{error}");
+}
+
 /// The v2 error contract: the Err side is `{code, message, slot?}` JSON; a
 /// single item's text failing to parse degrades to the response's
 /// `item_errors` (that item is skipped, everything else still calculates), no longer erroring the whole call.
@@ -2747,6 +2957,38 @@ fn structured_errors_and_item_degrade() {
         .as_f64()
         .unwrap();
     assert!(life > 50.0, "good ring still applies: Life={life}");
+}
+
+/// A `{ pob_code }` request reports an item its code uses but the importer
+/// cannot read; it used to be calculated without that item and say nothing.
+#[test]
+fn pob_code_request_reports_an_item_the_code_lost() {
+    ensure_data();
+    let xml = pobr_build::decode_pob_code(&demo_code()).unwrap();
+    // Item 2 is in the Gloves slot of the demo code.
+    let gloves = xml.find("<Item id=\"2\">").expect("item 2");
+    let broken = format!(
+        "{}{}",
+        &xml[..gloves],
+        xml[gloves..].replacen("Rarity: ", "Rarity: UNREADABLE ", 1)
+    );
+    let code = pobr_build::encode_pob_code(&broken).unwrap();
+
+    let calculate = |request: Value| -> Value {
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap()
+    };
+    let issues = calculate(serde_json::json!({ "pob_code": code }))["item_errors"].clone();
+    assert_eq!(issues.as_array().unwrap().len(), 1, "{issues}");
+    assert_eq!(issues[0]["slot"], "gloves");
+    assert!(issues[0]["message"].as_str().unwrap().contains("rarity"));
+
+    // The request's own equipment replaces the code's, lost item included.
+    let replaced = calculate(serde_json::json!({ "pob_code": code, "items": [] }));
+    assert_eq!(replaced["item_errors"], serde_json::json!([]));
+
+    let intact = calculate(serde_json::json!({ "pob_code": demo_code() }));
+    assert_eq!(intact["item_errors"], serde_json::json!([]));
 }
 
 /// The entry-level response cache: a second call with the same request string hits the cache and the response is byte-identical.
@@ -3156,6 +3398,84 @@ fn custom_modifier_blocks_roundtrip_and_calculate_once() {
     assert_eq!(
         life(serde_json::json!({ "pob_code": cleared_code })),
         baseline
+    );
+}
+
+/// A gem level bonus typed into a group of custom modifiers reaches the gems:
+/// the request's enabled groups are lines of the character like an item's.
+#[test]
+fn custom_modifier_blocks_raise_gem_levels() {
+    ensure_data();
+    let dps = |level: u32, blocks: Value| -> f64 {
+        let request = serde_json::json!({
+            "character": { "class_name": "Sorceress", "level": 80 },
+            "socket_groups": [{ "enabled": true, "gems": [
+                { "skill_id": "FireballPlayer", "level": level, "quality": 0 }
+            ] }],
+            "main_socket_group": 0,
+            "custom_modifier_blocks": blocks,
+        });
+        let result: Value =
+            serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+                .unwrap();
+        result["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|entry| entry["id"] == "TotalDPS")
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+    let block = |enabled: bool| {
+        serde_json::json!([{ "title": "Levels", "enabled": enabled,
+            "text": "+1 to Level of all Spell Skills" }])
+    };
+    let level_20 = dps(20, serde_json::json!([]));
+    let level_21 = dps(21, serde_json::json!([]));
+    assert!(level_20 > 0.0 && level_21 > level_20);
+    assert_eq!(dps(20, block(true)), level_21);
+    assert_eq!(dps(20, block(false)), level_20);
+}
+
+/// A configured line the calculation could not apply is listed with the
+/// unsupported lines, marked `Config:`. A quest reward left untaken is not a
+/// line, so it is not listed.
+#[test]
+fn unsupported_modifiers_list_configuration_lines() {
+    ensure_data();
+    let configured = |extra: Value| -> Vec<String> {
+        let mut request = serde_json::json!({
+            "character": { "class_name": "Warrior", "level": 80 },
+        });
+        for (key, value) in extra.as_object().unwrap() {
+            request[key] = value.clone();
+        }
+        let result: Value =
+            serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+                .unwrap();
+        result["unsupported_modifiers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|line| line.as_str().unwrap().to_string())
+            .filter(|line| line.starts_with("Config:"))
+            .collect()
+    };
+    assert_eq!(configured(serde_json::json!({})), [""; 0]);
+    assert_eq!(
+        configured(serde_json::json!({ "custom_modifier_blocks": [{
+            "title": "Notes", "enabled": true,
+            "text": "Zorblax the unknowable 12%\n+100 to maximum Life",
+        }] })),
+        ["Config: Zorblax the unknowable 12%"]
+    );
+    assert_eq!(
+        configured(serde_json::json!({ "config_inputs": {
+            "questAct 3Venom CryptsVenom Draught": "None",
+            "questInterlude 2QimahSeven Pillars": "5% increased Experience Gain\n\t3% reduced Movement Speed",
+        } })),
+        [""; 0]
     );
 }
 

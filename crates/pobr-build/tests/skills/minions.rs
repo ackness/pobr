@@ -195,6 +195,7 @@ fn minion_increased_damage_raises_minion_dps() {
         modifier_texts: vec!["Minions deal 50% increased Damage".into()],
         enchant_texts: vec![],
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: vec![],
     };
     let buffed_build = zombie_build(20).set_item(EquipmentSlot::Ring1, ring);
@@ -225,4 +226,286 @@ fn minion_limit_reads_completed_player_sources() {
     let limit = session.base_sum("ActiveZombieLimit");
     assert!(limit >= 3.0);
     assert_eq!(session.base_sum("Multiplier:SummonedMinion"), limit);
+}
+
+/// Cackling Companions: "Summons {0} Hyenas", seven at gem level 7. The
+/// character has that many minions, though nothing raises the Hyenas' own
+/// limit.
+#[test]
+fn cackling_companions_creates_as_many_hyenas_as_it_says() {
+    let data = load_data();
+    let build = Build::new()
+        .with_character(CharacterIdentity {
+            level: 90,
+            class_name: "Witch".into(),
+            ascendancy_name: String::new(),
+        })
+        .add_socket_group(
+            SocketGroup::new()
+                .with_slot("weapon1")
+                .with_gem_skill("FireballPlayer", 20),
+        )
+        .add_socket_group(SocketGroup::new().with_gem_skill("HyenaCacklePlayer", 7));
+    let options = default_opts();
+    let session = pobr_build::calculate_with_data_session(&build, &data, &options).unwrap();
+    assert_eq!(session.base_sum("Multiplier:SummonedMinion"), 7.0);
+    assert_eq!(session.base_sum("Multiplier:MinionPresenceCount"), 7.0);
+}
+
+/// The zombie's Life with `lines` among the character's modifiers.
+fn zombie_life_with(data: &BuildData, lines: &[&str]) -> f64 {
+    let mut options = default_opts();
+    options
+        .extra_modifier_texts
+        .extend(lines.iter().map(|line| line.to_string()));
+    let out = calculate_with_data(&zombie_build(20), data, &options).expect("calculate");
+    out.minions[0].life
+}
+
+/// What the character grants minions reaches them from any source, not only
+/// from item text, and a line for Companions only reaches Companions.
+#[test]
+fn the_characters_minion_modifiers_reach_its_minions() {
+    let data = load_data();
+    let base = zombie_life_with(&data, &[]);
+    let more = zombie_life_with(&data, &["Minions have 50% increased maximum Life"]);
+    assert!((more / base - 1.5).abs() < 1e-3, "{base} -> {more}");
+    let companions = zombie_life_with(&data, &["Companions have 50% increased maximum Life"]);
+    assert_eq!(companions, base, "a zombie is no Companion");
+    // "Your Minions are Gigantic": 20% more Life.
+    let gigantic = zombie_life_with(&data, &["Your Minions are Gigantic"]);
+    assert!((gigantic / base - 1.2).abs() < 1e-3, "{base} -> {gigantic}");
+}
+
+const QUADRILLA: &str = "Metadata/Monsters/Quadrilla/Quadrilla";
+
+/// The minions of a Huntress with one tamed beast's gem, `lines` on her
+/// amulet.
+fn tamed_beast_minions(data: &BuildData, lines: &[&str]) -> Vec<pobr_core::calc::MinionOutput> {
+    let xml = format!(
+        r#"<PathOfBuilding2>
+<Build level="90" className="Huntress" ascendClassName="None"/>
+<Skills defaultGemLevel="20" activeSkillSet="1"><SkillSet id="1"><Skill enabled="true"><Gem skillId="SummonBeastPlayer" level="20" quality="0" enabled="true" skillMinion="{QUADRILLA}"/></Skill></SkillSet></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: RARE
+Test Beads
+Gold Amulet
+Implicits: 0
+{}
+</Item><ItemSet id="1"><Slot name="Amulet" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#,
+        lines.join("\n")
+    );
+    let build = pobr_build::parse_build(&xml).expect("parse synthetic build");
+    calculate_with_data(&build, data, &default_opts())
+        .expect("calculate")
+        .minions
+}
+
+/// A tamed beast's gem summons the monster the player chose for it, and
+/// "+# to Level of all Tamed Companion Skills" (Prism of Belief) raises that
+/// gem: two levels are four monster levels.
+#[test]
+fn a_tamed_beasts_gem_summons_the_beast_it_chose() {
+    let data = load_data();
+    let minions = tamed_beast_minions(&data, &[]);
+    let beast = minions
+        .iter()
+        .find(|minion| minion.minion_id == QUADRILLA)
+        .expect("the chosen beast");
+    assert_eq!(beast.summoned_by, "SummonBeastPlayer");
+
+    let raised = tamed_beast_minions(&data, &["+2 to Level of all Tamed Companion Skills"]);
+    let raised = raised
+        .iter()
+        .find(|minion| minion.minion_id == QUADRILLA)
+        .expect("the chosen beast");
+    assert_eq!(raised.level, beast.level + 4);
+}
+
+/// The Quadrilla a Huntress's tamed beast's gem summons: `skill` is the
+/// gem's `skillMinionSkill` (none: the default), `amulet` the lines of her
+/// amulet, and with `spear` she holds a Hardwood Spear in her main hand.
+fn quadrilla(
+    data: &BuildData,
+    skill: Option<u32>,
+    amulet: &[&str],
+    spear: bool,
+) -> pobr_core::calc::MinionOutput {
+    let skill = skill
+        .map(|index| format!(r#" skillMinionSkill="{index}""#))
+        .unwrap_or_default();
+    let (weapon, weapon_slot) = if spear {
+        (
+            "<Item id=\"2\">Rarity: NORMAL\nHardwood Spear\n</Item>",
+            "<Slot name=\"Weapon 1\" itemId=\"2\"/>",
+        )
+    } else {
+        ("", "")
+    };
+    let xml = format!(
+        r#"<PathOfBuilding2>
+<Build level="90" className="Huntress" ascendClassName="None"/>
+<Skills defaultGemLevel="20" activeSkillSet="1"><SkillSet id="1"><Skill enabled="true"><Gem skillId="SummonBeastPlayer" level="20" quality="0" enabled="true" skillMinion="{QUADRILLA}"{skill}/></Skill></SkillSet></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: RARE
+Test Beads
+Gold Amulet
+Implicits: 0
+{}
+</Item>{weapon}<ItemSet id="1"><Slot name="Amulet" itemId="1"/>{weapon_slot}</ItemSet></Items>
+</PathOfBuilding2>"#,
+        amulet.join("\n")
+    );
+    let build = pobr_build::parse_build(&xml).expect("parse synthetic build");
+    calculate_with_data(&build, data, &default_opts())
+        .expect("calculate")
+        .minions
+        .into_iter()
+        .find(|minion| minion.minion_id == QUADRILLA)
+        .expect("the chosen beast")
+}
+
+/// A minion attacks with one of its monster's skills: the first by default,
+/// or the one the gem's `skillMinionSkill` picks (1-based, among the
+/// monster's skills the data has).
+#[test]
+fn a_minion_attacks_with_the_skill_its_gem_picks() {
+    let data = load_data();
+    let first = quadrilla(&data, None, &[], false);
+    assert_eq!(first.skill_id, "GAQuadrillaSunder");
+    assert!(first.dps > 0.0, "{first:?}");
+    assert_eq!(
+        quadrilla(&data, Some(1), &[], false).skill_id,
+        first.skill_id
+    );
+    let other = quadrilla(&data, Some(3), &[], false);
+    assert_ne!(other.skill_id, first.skill_id);
+}
+
+/// The Water Djinn Navira, the Last Mirage summons, using `skill` (the
+/// gem's `skillMinionSkill`), with Bidding II in the group or not.
+fn water_djinn(data: &BuildData, skill: u32, bidding: bool) -> pobr_core::calc::MinionOutput {
+    let support = if bidding {
+        r#"<Gem skillId="SupportBiddingPlayerTwo" level="1" quality="0" enabled="true"/>"#
+    } else {
+        ""
+    };
+    let xml = format!(
+        r#"<PathOfBuilding2>
+<Build level="90" className="Sorceress" ascendClassName="Disciple of Varashta"/>
+<Skills defaultGemLevel="20" activeSkillSet="1"><SkillSet id="1"><Skill enabled="true"><Gem skillId="SummonWaterDjinnPlayer" level="20" quality="0" enabled="true" skillMinion="WaterDjinn" skillMinionSkill="{skill}"/>{support}</Skill></SkillSet></Skills>
+</PathOfBuilding2>"#
+    );
+    let build = pobr_build::parse_build(&xml).expect("parse synthetic build");
+    calculate_with_data(&build, data, &default_opts())
+        .expect("calculate")
+        .minions
+        .into_iter()
+        .find(|minion| minion.minion_id == "WaterDjinn")
+        .expect("the Water Djinn")
+}
+
+/// A minion casting a spell deals the spell's own damage, at the minion's
+/// level, once per cast time and no more often than its cooldown allows.
+/// Navira's Fracturing is a Command skill: Bidding II's "Supported Minions
+/// deal 30% more Damage with Command Skills" and 30% increased Cooldown
+/// Recovery Rate for them apply to it.
+#[test]
+fn a_minion_casts_its_spell_at_its_level() {
+    let data = load_data();
+    let spell = water_djinn(&data, 2, false);
+    assert_eq!(spell.skill_id, "ChilledGroundBurstWaterDjinn");
+    assert!(spell.dps > 0.0, "{spell:?}");
+
+    let bidding = water_djinn(&data, 2, true).dps / spell.dps;
+    // 1.3 times the damage, about 1.3 times as often (the cooldown is
+    // rounded to the server tick).
+    assert!((1.6..1.75).contains(&bidding), "{bidding}");
+}
+
+/// What reaches a companion's attack besides the lines for minions: the
+/// character's auras that affect only allies, a share of the character's
+/// main hand weapon, and physical damage gained as chaos damage.
+#[test]
+fn a_companion_attacks_with_what_the_character_gives_it() {
+    let data = load_data();
+    let base = quadrilla(&data, None, &[], false).dps;
+
+    // "Allies in your Presence have …" is an aura for the allies alone.
+    let aura = quadrilla(
+        &data,
+        None,
+        &["Allies in your Presence have 20% increased Attack Speed"],
+        false,
+    )
+    .dps;
+    assert!((aura / base - 1.2).abs() < 1e-6, "{base} -> {aura}");
+
+    // "Gain #% of Physical Damage as Chaos Damage" adds damage, as "as
+    // extra Chaos Damage" does.
+    let chaos = quadrilla(
+        &data,
+        None,
+        &["Minions gain 20% of Physical Damage as Chaos Damage"],
+        false,
+    )
+    .dps;
+    assert!(chaos > base * 1.1, "{base} -> {chaos}");
+
+    // "Companions gain added Attack damage equal to #% of your main hand
+    // Weapon's damage" needs a weapon in the main hand.
+    let line =
+        ["Companions gain added Attack damage equal to 30% of your main hand Weapon's damage"];
+    let without_spear = quadrilla(&data, None, &line, false).dps;
+    assert_eq!(without_spear, base);
+    let spear = quadrilla(&data, None, &[], true).dps;
+    let shared = quadrilla(&data, None, &line, true).dps;
+    assert!(shared > spear * 1.01, "{spear} -> {shared}");
+}
+
+/// A Huntress whose tamed beast's gems, one group each, summon `beasts`,
+/// every group with Loyalty.
+fn loyal_companions(data: &BuildData, beasts: &[&str]) -> pobr_core::calc::CalculationSession {
+    let groups: String = beasts
+        .iter()
+        .map(|beast| {
+            format!(
+                r#"<Skill enabled="true"><Gem skillId="SummonBeastPlayer" level="20" quality="0" enabled="true" skillMinion="{beast}"/><Gem skillId="SupportLoyaltyPlayer" level="1" quality="0" enabled="true"/></Skill>"#
+            )
+        })
+        .collect();
+    let xml = format!(
+        r#"<PathOfBuilding2>
+<Build level="90" className="Huntress" ascendClassName="None"/>
+<Skills defaultGemLevel="20" activeSkillSet="1"><SkillSet id="1">{groups}</SkillSet></Skills>
+</PathOfBuilding2>"#
+    );
+    let build = pobr_build::parse_build(&xml).expect("parse synthetic build");
+    pobr_build::calculate_with_data_session(&build, data, &default_opts()).expect("calculate")
+}
+
+/// Every Companion counts, with its own supports: Loyalty is a buff of the
+/// Companion it supports, so on two different beasts it is two buffs, and
+/// on the same beast twice one. Each group's beast has its Life taken
+/// before the character's, though a second group of a beast does not add
+/// to how many minions the character has.
+#[test]
+fn every_companion_counts_with_its_own_supports() {
+    const WEREWOLF: &str = "Metadata/Monsters/Werewolves/WerewolfPack1";
+    let data = load_data();
+    let one = loyal_companions(&data, &[QUADRILLA]);
+    let share = one.base_sum("TakenFromCompanionBeforeYou");
+    assert!(share > 0.0);
+    let life = one.base_sum("TotalCompanionLife");
+    assert!(life > 0.0);
+
+    let two = loyal_companions(&data, &[QUADRILLA, WEREWOLF]);
+    assert_eq!(two.base_sum("TakenFromCompanionBeforeYou"), 2.0 * share);
+
+    let twice = loyal_companions(&data, &[QUADRILLA, QUADRILLA]);
+    assert_eq!(twice.base_sum("TakenFromCompanionBeforeYou"), share);
+    assert!((twice.base_sum("TotalCompanionLife") - 2.0 * life).abs() < 1e-6);
+    assert_eq!(
+        twice.base_sum("Multiplier:SummonedMinion"),
+        one.base_sum("Multiplier:SummonedMinion")
+    );
 }

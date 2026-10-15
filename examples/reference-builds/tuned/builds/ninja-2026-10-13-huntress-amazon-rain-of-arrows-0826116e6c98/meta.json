@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-huntress-amazon-rain-of-arrows-0826116e6c98",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Acremis-7999/Riohou",
+    "account": "Acremis-7999",
+    "character": "Riohou",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:47:50+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=Acremis-7999&name=Riohou&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Amazon",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Amazon",
+    "level": 97,
+    "main_skill": "Rain of Arrows"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "28a3d9e1527c7c3d6c4a4306bf200b2667354f4759b36764f3fda7e6e2ff6997",
+    "code_chars": 12240,
+    "decoded_bytes": 47125
+  }
+}

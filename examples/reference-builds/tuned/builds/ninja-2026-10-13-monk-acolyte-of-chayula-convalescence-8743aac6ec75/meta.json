@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-monk-acolyte-of-chayula-convalescence-8743aac6ec75",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/0091RaedB-4163/RRRRxs",
+    "account": "0091RaedB-4163",
+    "character": "RRRRxs",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:47:50+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=0091RaedB-4163&name=RRRRxs&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Acolyte+of+Chayula",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Acolyte of Chayula",
+    "level": 99,
+    "main_skill": "Convalescence"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 8,
+    "code_sha256": "779048851cb9799ad3044edcd6748af69280eaf379e020eb77a165fb80d1b6d0",
+    "code_chars": 11076,
+    "decoded_bytes": 38708
+  }
+}

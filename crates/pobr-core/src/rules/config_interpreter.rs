@@ -244,12 +244,7 @@ fn interpret_entry(
     // customMods text lane (the sole text-type entry).
     if def.input_type == ConfigInputType::Text {
         if let ConfigInputValue::Text(text) = &display_value {
-            outcome.custom_mod_lines.extend(
-                text.lines()
-                    .map(strip_escapes)
-                    .map(|line| line.trim().to_string())
-                    .filter(|line| !line.is_empty()),
-            );
+            outcome.custom_mod_lines.extend(custom_modifier_lines(text));
         }
         return;
     }
@@ -633,6 +628,15 @@ fn attach_origin(modifier: Modifier, def: &ConfigOptionDef, target: EffectTarget
 }
 
 /// Vendor `StripEscapes`: strips `^x RRGGBB` colour codes and `^<digit>` shorthand codes.
+/// The lines of a custom modifier text as the calculation reads them: one
+/// modifier per line, colour codes stripped, blank lines dropped.
+pub fn custom_modifier_lines(text: &str) -> impl Iterator<Item = String> + '_ {
+    text.lines()
+        .map(strip_escapes)
+        .map(|line| line.trim().to_string())
+        .filter(|line| !line.is_empty())
+}
+
 fn strip_escapes(line: &str) -> String {
     let mut out = String::with_capacity(line.len());
     let mut chars = line.chars().peekable();

@@ -30,7 +30,8 @@ pub struct BuildSnapshot {
     pub class_name: String,
     pub ascendancy_name: String,
     pub allocated_nodes: Vec<u32>,
-    /// (slot id, normalized mod text) pairs of equipped items, sorted by slot id.
+    /// (slot id, normalized mod text) pairs of equipped items, sorted by slot
+    /// id, then of the limbs in slot order.
     pub items: Vec<(String, Vec<String>)>,
     /// gem id sequences of enabled skill socket groups, order preserved within each group.
     pub socket_groups: Vec<Vec<String>>,
@@ -122,6 +123,8 @@ pub(crate) fn same_build(a: &Build, b: &Build) -> bool {
         granted_socket_jewels,
         radius_jewels,
         utility_slots,
+        limbs,
+        weapon_set,
         socket_groups,
         main_socket_group,
         config,
@@ -138,7 +141,11 @@ pub(crate) fn same_build(a: &Build, b: &Build) -> bool {
         && attribute_overrides == &b.tree.attribute_overrides
         && tree_version == &b.tree_version
         && same_item_map(items, &b.items)
-        && same_items(jewels, &b.jewels)
+        && jewels.len() == b.jewels.len()
+        && jewels
+            .iter()
+            .zip(&b.jewels)
+            .all(|(a, b)| a.0 == b.0 && same_item(&a.1, &b.1))
         && granted_socket_jewels.len() == b.granted_socket_jewels.len()
         && granted_socket_jewels
             .iter()
@@ -150,6 +157,12 @@ pub(crate) fn same_build(a: &Build, b: &Build) -> bool {
             .iter()
             .zip(&b.utility_slots)
             .all(|(a, b)| a.0 == b.0 && same_item(&a.1, &b.1))
+        && limbs.len() == b.limbs.len()
+        && limbs
+            .iter()
+            .zip(&b.limbs)
+            .all(|(a, b)| a.0 == b.0 && same_item(a.1, b.1))
+        && weapon_set == &b.weapon_set
         && socket_groups == &b.socket_groups
         && main_socket_group == &b.main_socket_group
         && same_config(config, &b.config)
@@ -162,10 +175,6 @@ fn same_item_map(
     a.len() == b.len()
         && a.iter()
             .all(|(slot, item)| b.get(slot).is_some_and(|other| same_item(item, other)))
-}
-
-fn same_items(a: &[pobr_data::item::Item], b: &[pobr_data::item::Item]) -> bool {
-    a.len() == b.len() && a.iter().zip(b).all(|(a, b)| same_item(a, b))
 }
 
 fn same_item(a: &pobr_data::item::Item, b: &pobr_data::item::Item) -> bool {
@@ -181,6 +190,7 @@ fn same_item(a: &pobr_data::item::Item, b: &pobr_data::item::Item) -> bool {
         modifier_texts,
         enchant_texts,
         rolled_defence,
+        socketed,
         parsed_stats,
     } = a;
     let pobr_data::item::RolledDefence {
@@ -189,7 +199,6 @@ fn same_item(a: &pobr_data::item::Item, b: &pobr_data::item::Item) -> bool {
         energy_shield,
         spirit,
         ward,
-        sockets_filled,
     } = rolled_defence;
     base == &b.base
         && rarity == &b.rarity
@@ -203,7 +212,7 @@ fn same_item(a: &pobr_data::item::Item, b: &pobr_data::item::Item) -> bool {
         && bits(*energy_shield, b.rolled_defence.energy_shield)
         && bits(*spirit, b.rolled_defence.spirit)
         && bits(*ward, b.rolled_defence.ward)
-        && sockets_filled == &b.rolled_defence.sockets_filled
+        && socketed == &b.socketed
         && parsed_stats == &b.parsed_stats
 }
 
@@ -269,15 +278,19 @@ fn same_raw_inputs(
 }
 
 fn collect_items(build: &Build) -> Vec<(String, Vec<String>)> {
-    build
+    let equipped = build
         .equipped_items()
         .into_iter()
+        .map(|(slot, item)| (slot_tag(slot), item));
+    let limbs = build.limbs.iter().map(|(slot, limb)| (slot.id(), limb));
+    equipped
+        .chain(limbs)
         .map(|(slot, item)| {
             let mut texts: Vec<String> = Vec::new();
             texts.extend(item.enchant_texts.iter().cloned());
             texts.extend(item.implicit_texts.iter().cloned());
             texts.extend(item.modifier_texts.iter().cloned());
-            (slot_tag(slot).to_string(), texts)
+            (slot.to_string(), texts)
         })
         .collect()
 }
@@ -364,7 +377,7 @@ impl Fnv1a {
 mod tests {
     use super::*;
     use crate::build::{Build, CharacterIdentity, SocketGroup};
-    use pobr_data::item::{Item, ItemBaseId, ItemRarity, RolledDefence};
+    use pobr_data::item::{Item, ItemBaseId, ItemRarity, LimbSlot, RolledDefence};
     use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
 
     fn build_with_level(level: u32) -> Build {
@@ -391,6 +404,9 @@ mod tests {
             notable_effect_inc: 0,
             small_effect_inc: 0,
             tree_texts: vec![],
+            rarity: pobr_data::item::ItemRarity::Rare,
+            corrupted: false,
+            socket: crate::build::JewelSocket::Tree,
         });
         assert!(!same_build(&a, &b));
         b = a.clone();
@@ -404,6 +420,9 @@ mod tests {
         assert!(!same_build(&b, &c));
         b = c.clone();
         b.socket_groups[0].gem_skills[0].name_spec = Some("Spark".into());
+        assert!(!same_build(&b, &c));
+        b = c.clone();
+        b.socket_groups[0].gem_skills[0].corrupted = true;
         assert!(!same_build(&b, &c));
     }
 
@@ -453,6 +472,7 @@ mod tests {
                 modifier_texts: vec!["+10 to maximum Life".into()],
                 enchant_texts: vec![],
                 rolled_defence: RolledDefence::default(),
+                socketed: Vec::new(),
                 parsed_stats: vec![],
             },
         );
@@ -460,6 +480,39 @@ mod tests {
             BuildSnapshot::from_build(&base).content_hash(),
             BuildSnapshot::from_build(&with_item).content_hash()
         );
+    }
+
+    #[test]
+    fn a_limb_is_part_of_the_identity_and_the_hash() {
+        let base = build_with_level(90);
+        let limb = |text: &str| Item {
+            base: ItemBaseId::from("Combat Arm"),
+            rarity: ItemRarity::Normal,
+            quality: 0,
+            corrupted: false,
+            implicit_texts: vec![text.into()],
+            modifier_texts: vec![],
+            enchant_texts: vec![],
+            rolled_defence: RolledDefence::default(),
+            socketed: Vec::new(),
+            parsed_stats: vec![],
+        };
+        let six = base
+            .clone()
+            .set_limb(LimbSlot::Arm1, limb("6% increased Attack Speed"));
+        let ten = base
+            .clone()
+            .set_limb(LimbSlot::Arm1, limb("10% increased Attack Speed"));
+        let other_arm = base
+            .clone()
+            .set_limb(LimbSlot::Arm2, limb("6% increased Attack Speed"));
+        assert!(!same_build(&base, &six));
+        assert!(!same_build(&six, &ten));
+        assert!(!same_build(&six, &other_arm));
+        let hash = |build: &Build| BuildSnapshot::from_build(build).content_hash();
+        assert_ne!(hash(&base), hash(&six));
+        assert_ne!(hash(&six), hash(&ten));
+        assert_ne!(hash(&six), hash(&other_arm));
     }
 
     #[test]

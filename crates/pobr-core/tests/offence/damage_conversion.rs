@@ -183,6 +183,23 @@ fn gain_as_extra_does_not_reduce_source() {
     assert_eq!(total, 187.5);
 }
 
+/// "Gain 25% of Physical Damage as Lightning Damage" (`PhysicalDamageAsLightning`)
+/// adds as much as the same line with "as extra Lightning Damage": both are a
+/// share to add as the other type, and the source keeps its damage.
+#[test]
+fn gain_without_extra_adds_as_much_as_gain_as_extra() {
+    let mut db = ModDb::new();
+    db.add_mod(
+        Modifier::number("PhysicalDamageAsLightning", ModType::Base, 25.0)
+            .with_flags(ModFlags::ATTACK),
+    );
+    let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
+    let phys = component(&output, DamageType::Physical);
+    assert_eq!((phys.min, phys.max), (100.0, 200.0));
+    let lightning = component(&output, DamageType::Lightning);
+    assert_eq!((lightning.min, lightning.max), (25.0, 50.0));
+}
+
 /// PoE2 semantics: after physical gain-as-fire, the extra fire component only takes
 /// **final-type** FireDamage inc, **not** the source PhysicalDamage inc (same semantics as
 /// conversion — PoB2 calcDamage's typeFlags contains only the final type; oracle-verified).
@@ -467,4 +484,22 @@ fn physical_random_gain_as_only_from_physical_source() {
     let cold = component(&output, DamageType::Cold);
     assert_eq!(cold.min, 10.0);
     assert_eq!(cold.max, 20.0);
+}
+
+/// Embitter: "all sources of Damage Gained [are] instead … treated as Damage
+/// Gained as extra Cold". Gains of every type land on Cold.
+#[test]
+fn embitter_gains_every_extra_damage_as_cold() {
+    let mut db = ModDb::new();
+    db.add_list([
+        Modifier::number("DamageGainAsFire", ModType::Base, 30.0),
+        Modifier::number("DamageGainAsChaos", ModType::Base, 20.0),
+        Modifier::number("DamageGainAsCold", ModType::Base, 10.0),
+        Modifier::flag(pobr_core::rules::skill_stats::GAINS_ONLY_COLD),
+    ]);
+    let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
+    let cold = component(&output, DamageType::Cold);
+    assert_eq!((cold.min, cold.max), (60.0, 120.0));
+    assert!(find(&output, DamageType::Fire).is_none_or(|fire| fire.max == 0.0));
+    assert!(find(&output, DamageType::Chaos).is_none_or(|chaos| chaos.max == 0.0));
 }

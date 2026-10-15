@@ -50,6 +50,18 @@ pub fn env_finalize(env: &mut Env) {
     merge_keystones(env);
     // Stage 6 (T2): equivalent to doActorMisc (flag → buff_definitions → mods).
     expand_misc_buffs(env);
+    // Stage 6.5: Rage, after the buffs that change its maximum and effect.
+    super::rage::apply_rage(env);
+    // Stage 6.6: modifiers to something else that also apply to the player.
+    super::shared_modifiers::apply_companion_damage_to_player(env);
+    // Stage 6.7: the Withered the enemy is stated to hold, once the skills,
+    // items and buffs that can inflict it are all in.
+    super::withered::apply_withered(env);
+    // Stage 6.8: Blind on whichever side is stated to be Blinded, after the
+    // modifiers to its effect have reached that side.
+    super::blind::apply_blind(env);
+    // Stage 6.9: what Bear form gives a character the main skill puts in it.
+    super::bear_form::apply_bear_form(env);
     // Stage 7 (T4): applies non-damaging ailments (Chill/Shock → enemy db).
     apply_nondamaging_ailments(env);
     // Stage 7.5: bridges enemy-side condition flags → cfg conditions (vendor
@@ -66,14 +78,9 @@ pub fn env_finalize(env: &mut Env) {
     // `Condition:*` flags already have their own dedicated bridge
     // (config/ailments), extend one by one as needed.
     bridge_enemy_condition_flags(env);
-    // Stage 8: exposure reduction (vendor CalcPerform.lua:3214-3247 "Apply
-    // exposures", after the buff loop / before offence) -- reduces every
-    // `<El>Exposure BASE` in the enemy db (from config injection + buff_pass's
-    // Debuff path, e.g. Frost Bomb) down to the single strongest one, folded
-    // into `<El>Resist BASE -magnitude`. **The sole reduction point**:
-    // `CalculationSession::apply_enemy_exposure` only injects, never reduces
-    // (reducing twice = double-deducting resistance). A no-op without any exposure mod (every value unchanged).
-    super::setup_env::reduce_enemy_exposure(&mut env.enemy.mod_db, &env.player.mod_db, &env.cfg);
+    // Exposure is reduced in `perform` once the character's defences are
+    // known (`setup_env::reduce_enemy_exposure`): a banner's exposure can be
+    // "per 1000 Armour".
 }
 
 /// Stages 1/5 (T5 implementation): injects keystones granted by
@@ -142,11 +149,8 @@ pub fn forward_enemy_modifiers(env: &mut Env) {
     let source_dbs =
         std::iter::once(&env.player.mod_db).chain(env.minions.iter().map(|m| &m.mod_db));
     for db in source_dbs {
-        for outer in db.iter_mods() {
-            if outer.name != enemy_modifier
-                || outer.mod_type != ModType::List
-                || !outer.matches(&env.cfg)
-            {
+        for outer in db.named(enemy_modifier.as_str()) {
+            if outer.mod_type != ModType::List || !outer.matches(&env.cfg) {
                 continue;
             }
             let Some(nested) = outer.value.as_nested_mods() else {
@@ -289,6 +293,16 @@ fn dedup_seed(m: &Modifier) -> DedupSeed {
 /// Idempotent: skipped when a non-List Flask-sourced mod already exists in
 /// the player db (repeated perform within the same Env doesn't re-merge).
 /// No-op safe: writes no state without any payload / when `mode_combat == false` (a D1 migration invariant anchor).
+/// The character's Charm slots: "Has N Charm Slots" on the belt and "+N Charm
+/// Slot" from elsewhere (`CharmLimit`), at most three; "Cannot use Charms"
+/// leaves none.
+pub(crate) fn charm_slots(db: &crate::ModDb, cfg: &crate::CalcConfig) -> f64 {
+    let name = ModName::from("CharmLimit");
+    db.override_(cfg, name.as_str())
+        .unwrap_or_else(|| db.sum(ModType::Base, cfg, &[name]))
+        .min(cfg.constants.game().charm_limit_cap)
+}
+
 pub fn merge_flasks_charms(env: &mut Env) {
     use std::collections::BTreeMap;
 
@@ -341,12 +355,10 @@ pub fn merge_flasks_charms(env: &mut Env) {
     let carriers: Vec<Modifier> = env
         .player
         .mod_db
-        .iter_mods()
+        .named(flask_list.as_str())
+        .chain(env.player.mod_db.named(charm_list.as_str()))
         .filter(|m| {
-            m.mod_type == ModType::List
-                && (m.name == flask_list || m.name == charm_list)
-                && m.matches(&env.cfg)
-                && m.value.as_nested_mods().is_some()
+            m.mod_type == ModType::List && m.matches(&env.cfg) && m.value.as_nested_mods().is_some()
         })
         .cloned()
         .collect();
@@ -367,11 +379,7 @@ pub fn merge_flasks_charms(env: &mut Env) {
     let rules = &env.high_precision;
     let flask_effect_inc = db.sum(ModType::Inc, cfg, &[ModName::from("FlaskEffect")]);
     let charm_effect_inc = db.sum(ModType::Inc, cfg, &[ModName::from("CharmEffect")]);
-    let charm_limit_name = ModName::from("CharmLimit");
-    let mut charm_budget = db
-        .override_(cfg, charm_limit_name.as_str())
-        .unwrap_or_else(|| db.sum(ModType::Base, cfg, &[charm_limit_name]))
-        .min(cfg.constants.game().charm_limit_cap);
+    let mut charm_budget = charm_slots(db, cfg);
     let flasks_do_not_apply = db.flag(cfg, "FlasksDoNotApplyToPlayer");
     let cannot_recover_life = db.flag(cfg, "CannotRecoverLifeOutsideLeech");
 

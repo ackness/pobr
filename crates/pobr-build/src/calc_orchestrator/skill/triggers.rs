@@ -121,6 +121,7 @@ impl pobr_core::skill_env::TriggerSubCalc for OrchestratorSubCalc<'_> {
             action_rate,
             hit_chance: out.hit_chance,
             crit_chance: out.crit_chance,
+            crit_hit_damage: out.crit_hit_avg,
         };
         if let Some(memo) = &self.context.trigger_memo {
             memo.borrow_mut().insert(sub_build, stats);
@@ -198,6 +199,7 @@ pub(crate) fn trigger_modifiers(
         condition: &|name| build_cfg.condition(name),
         is_trigger_source,
         class_name: &build.character.class_name,
+        energy_triggers: options.energy_triggers,
     };
     pobr_core::skill_env::trigger_modifiers(
         &mut ctx,
@@ -240,6 +242,7 @@ mod support_judgement_tests {
             id: id.into(),
             is_support,
             active_skill: (!is_support).then(|| id.to_string()),
+            displayed_name: None,
             cast_time: Some(1000),
             require_skill_types: v(require),
             add_skill_types: v(add),

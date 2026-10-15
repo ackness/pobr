@@ -64,6 +64,8 @@ struct ItemsJson {
     /// Tree-socketed jewels (editable: maintained per-socket on the passive tree page).
     socket_jewels: Vec<SocketJewelJson>,
     flasks: Vec<SlotItemJson>,
+    /// Transcendent limbs, by stable slot id (`arm1` … `leg2`).
+    limbs: Vec<SlotItemJson>,
 }
 
 #[derive(Debug, Serialize)]
@@ -75,6 +77,16 @@ struct GemJson {
     stat_set_index: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     name_spec: Option<String>,
+    /// Written only for a corrupted gem.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    corrupted: bool,
+    /// The monster a minion gem summons, when the build chooses one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    minion: Option<String>,
+    /// Which of the minion's skills it uses (1-based), when the build
+    /// chooses one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    minion_skill: Option<u32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -203,6 +215,11 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
                 .into_iter()
                 .map(|(slot, text)| SlotItemJson { slot, text })
                 .collect(),
+            limbs: raw_items
+                .limbs
+                .into_iter()
+                .map(|(slot, text)| SlotItemJson { slot, text })
+                .collect(),
         },
         socket_groups: build
             .socket_groups
@@ -227,6 +244,9 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
                         } else {
                             None
                         },
+                        corrupted: gem.corrupted,
+                        minion: gem.minion.clone(),
+                        minion_skill: gem.minion_skill,
                     })
                     .collect(),
             })
@@ -580,6 +600,9 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                 quality: 0,
                 stat_set_index: None,
                 name_spec: None,
+                corrupted: false,
+                minion: None,
+                minion_skill: None,
             }];
             for support in &group.support_skills {
                 match cn_gem_effect_id(&data, &support.id) {
@@ -589,6 +612,9 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                         quality: 0,
                         stat_set_index: None,
                         name_spec: None,
+                        corrupted: false,
+                        minion: None,
+                        minion_skill: None,
                     }),
                     None => unknown_gems += 1,
                 }
@@ -622,6 +648,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
             jewels: Vec::new(),
             socket_jewels: Vec::new(),
             flasks: Vec::new(),
+            limbs: Vec::new(),
         },
         socket_groups,
         main_socket_group: None,

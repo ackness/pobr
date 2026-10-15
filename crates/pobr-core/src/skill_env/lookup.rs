@@ -33,6 +33,20 @@ pub trait StatSetLookup {
         set_index: Option<u32>,
     ) -> EffectStats;
 
+    /// Returns the main set's stats for `effect_id` at `level`, used by an
+    /// actor of `user_level`: a set resolved at its user's level (a minion's
+    /// skill) has the stats that grow with effectiveness resolved at
+    /// `user_level` ([`crate::calc::minion::stats_at_user_level`]).
+    fn effect_stats_at_user_level(
+        &self,
+        effect_id: &str,
+        level: u32,
+        user_level: u32,
+    ) -> EffectStats {
+        let _ = user_level;
+        self.effect_stats(effect_id, level, 0, None)
+    }
+
     /// Returns the selected statSet's override key for `effect_id`.
     fn selected_set_key(&self, effect_id: &str, set_index: Option<u32>) -> Option<String>;
 
@@ -158,6 +172,10 @@ pub struct EnabledGroup<'a> {
     pub active_skill_id: Option<&'a str>,
     /// The fallback active gem level paired with `active_skill_id`.
     pub active_gem_level: u32,
+    /// The skill of this group that an item grants without reservation (the
+    /// Lament, Portent and Absent Amulets waive the Spirit of the skill they
+    /// grant). It is in effect like any other skill of the group.
+    pub reservation_free_skill: Option<&'a str>,
 }
 
 /// Weapon base stats lookup (the `base_items` + `weapon_types` domains).

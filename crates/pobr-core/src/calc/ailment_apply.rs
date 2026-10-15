@@ -134,6 +134,7 @@ pub fn apply_nondamaging_ailments(env: &mut Env) {
 }
 
 /// The kind of a player db source mod (vendor Tabulate's three names).
+#[derive(Clone, Copy)]
 enum SourceKind3 {
     Base,
     Override,
@@ -281,22 +282,19 @@ fn collect_player_sources(
     let base_name = ModName::from(format!("{}Base", spec.name));
     let override_name = ModName::from(format!("{}Override", spec.name));
     let minimum_name = ModName::from(format!("{}Minimum", spec.name));
-    player
-        .iter_mods()
-        .filter(|modifier| modifier.mod_type == ModType::Base && modifier.matches(cfg))
-        .filter_map(|modifier| {
-            let kind = if modifier.name == base_name {
-                SourceKind3::Base
-            } else if modifier.name == override_name {
-                SourceKind3::Override
-            } else if modifier.name == minimum_name {
-                SourceKind3::Minimum
-            } else {
-                return None;
-            };
-            Some((kind, modifier.effective_number(cfg)?))
-        })
-        .collect()
+    [
+        (SourceKind3::Base, &base_name),
+        (SourceKind3::Override, &override_name),
+        (SourceKind3::Minimum, &minimum_name),
+    ]
+    .into_iter()
+    .flat_map(|(kind, name)| {
+        player
+            .named(name.as_str())
+            .filter(|modifier| modifier.mod_type == ModType::Base && modifier.matches(cfg))
+            .filter_map(move |modifier| Some((kind, modifier.effective_number(cfg)?)))
+    })
+    .collect()
 }
 
 /// Magnitude multiplier (:3144-3146): skill side

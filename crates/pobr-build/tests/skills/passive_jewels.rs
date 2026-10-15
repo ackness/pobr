@@ -179,6 +179,30 @@ fn from_nothing_uses_named_keystone_center_and_rejects_unknown_centers() {
 }
 
 #[test]
+fn from_nothing_reads_its_line_as_the_item_text_wraps_it() {
+    let mut data = data();
+    data.passive_nodes = [
+        node(900001, "socket", "Socket", "jewel_socket", 10000.0, &[]),
+        node(2, "key", "Future Keystone", "keystone", 0.0, &[]),
+        node(3, "near_key", "Near Key", "normal", 100.0, &[]),
+    ]
+    .into_iter()
+    .map(|n| (n.skill, n))
+    .collect();
+    // The game's text of the stat breaks before "without".
+    let text = jewel(
+        "Passives in Radius of Future Keystone can be Allocated\nwithout being connected to your tree",
+    );
+    let radius = radius_jewel_from_text(900001, &text).unwrap();
+    assert!(radius.tree_texts.contains(
+        &"Passives in Radius of Future Keystone can be Allocated without being connected to your tree"
+            .to_string()
+    ));
+    let state = passive_jewel_state(&build(&text, &[900001]), &data);
+    assert_eq!(state.allocation_grants[0].nodes, vec![3]);
+}
+
+#[test]
 fn variants_and_rolls_are_normalized_before_jewel_tree_directives() {
     let text = "Rarity: UNIQUE\nControlled Metamorphosis\nDiamond\nVariant: Small\nVariant: Large\nSelected Variant: 2\nRadius: Variable\nImplicits: 0\n{variant:1}Only affects Passives in Small Ring\n{variant:2}Only affects Passives in Large Ring\nPassives in Radius can be Allocated without being connected to your tree\n{range:0.5}-(20-10)% to all Elemental Resistances";
     let radius = radius_jewel_from_text(1, text).unwrap();
@@ -223,7 +247,7 @@ fn kalguur_keystones_replace_old_stats_and_remove_inherent_attribute_bonuses() {
             "Remembrancing 1234 songworthy deeds by the line of {conqueror}\nPassives in radius are Conquered by the Kalguur\nHistoric"
         ));
         let mut changed = base.clone();
-        changed.jewels = vec![parse_pob_xml_item(&text).unwrap()];
+        changed = changed.with_jewels(vec![parse_pob_xml_item(&text).unwrap()]);
         changed.radius_jewels = vec![radius_jewel_from_text(900001, &text).unwrap()];
         assert_eq!(passive_jewel_state(&changed, &data).nodes[&2].name, name);
         let calc = calculate_with_data_session(&changed, &data, &options).unwrap();

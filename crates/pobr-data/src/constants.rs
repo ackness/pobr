@@ -179,6 +179,42 @@ pub const BLOCK_CHANCE_CAP: f64 = 90.0;
 /// 20, agent-docs/ailments.md §Shock).
 pub const SHOCK_MIN_EFFECT: f64 = 20.0;
 
+/// Maximum Rage before modifiers: the game constant `BaseMaximumRage`.
+pub const BASE_MAXIMUM_RAGE: f64 = 30.0;
+
+/// Percent more Attack damage per effective Rage: the character's inherent
+/// stat `attack_damage_final_permyriad_per_rage = 100`, and a permyriad is a
+/// hundredth of a percent.
+pub const ATTACK_DAMAGE_MORE_PER_RAGE: f64 = 1.0;
+
+/// Percent increased Chaos Damage taken per stack of Withered, and the most
+/// stacks a target holds: the game's definition of the debuff ("Withered
+/// applies 5% increased Chaos Damage taken, and can be inflicted up to 10
+/// times"). The committed data carries no buff definitions, so the two
+/// numbers are stated here.
+pub const WITHERED_CHAOS_DAMAGE_TAKEN_PER_STACK: f64 = 5.0;
+pub const WITHERED_MAXIMUM_STACKS: f64 = 10.0;
+
+/// Percent less Accuracy Rating and Evasion Rating of whoever is Blinded: the
+/// game's definition of the debuff ("Being Blinded causes 20% less Accuracy
+/// Rating and Evasion Rating").
+pub const BLIND_LESS_ACCURACY_AND_EVASION: f64 = 20.0;
+
+/// Enemies that must be near a character for it to be Surrounded, before
+/// modifiers: the game constant `BaseRequiredEnemiesToBeConsideredSurrounded`.
+/// The stat `required_enemies_to_be_considered_surrounded_offset` changes it
+/// ("Require 4 fewer enemies to be Surrounded"). The committed game constants
+/// do not include it, so the number is stated here.
+pub const BASE_REQUIRED_ENEMIES_TO_BE_SURROUNDED: f64 = 5.0;
+
+/// Armour per character level, and the percent of Armour that also applies to
+/// Elemental damage, of a character in Bear form: the game's definition of the
+/// form ("While in Bear form, you gain: +10 to Armour per level; 30% of Armour
+/// also applies to Elemental Damage Types"). The committed data carries no
+/// form definitions, so the two numbers are stated here.
+pub const BEAR_FORM_ARMOUR_PER_LEVEL: f64 = 10.0;
+pub const BEAR_FORM_ARMOUR_ALSO_APPLIES_TO_ELEMENTAL: f64 = 30.0;
+
 /// Global DoT DPS cap (`(2^31 - 1) / 60`, roughly 3.579×10^7).
 ///
 /// Source: PoB2 `src/Modules/Data.lua`:

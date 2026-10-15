@@ -9,7 +9,10 @@
 //! additive bucket):
 //! 1. clean text ending in `% increased physical damage`;
 //! 2. clean text ending in `% increased attack speed`;
-//! 3. the `adds N to M physical damage` shape (`parse_adds_physical`).
+//! 3. clean text ending in `% increased reload speed` or `% reduced reload
+//!    speed` (the game's `local_reload_speed_+%`, folded into the crossbow's
+//!    reload time);
+//! 4. the `adds N to M physical damage` shape (`parse_adds_physical`).
 //!
 //! Vendor comparison (discrepancies are recorded only, not fixed here):
 //! PoB2's locality check is
@@ -48,6 +51,8 @@ pub struct LocalModsDef {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WeaponLocalModsDef {
     /// Clean-text suffixes that count as local on an `ends_with` match (lowercase).
+    /// The "% reduced" wording of the same line matches too: it is the same local
+    /// stat with a negative value.
     pub increased_suffixes: Vec<String>,
     /// Damage suffixes counted as local in the `adds N to M <suffix>` shape
     /// (lowercase, no leading space).
@@ -62,6 +67,10 @@ impl Default for WeaponLocalModsDef {
             increased_suffixes: vec![
                 "% increased physical damage".to_string(),
                 "% increased attack speed".to_string(),
+                // A crossbow's own reload speed (`local_reload_speed_+%`):
+                // part of the weapon's reload time.
+                "% increased reload speed".to_string(),
+                "% reduced reload speed".to_string(),
             ],
             adds_damage_suffixes: vec!["physical damage".to_string()],
         }

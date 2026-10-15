@@ -10,6 +10,7 @@ use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 use crate::Modifier;
 use crate::calc::{BuffKind, BuffSpec, WarcrySpec};
+use crate::rules::skill_stats::{self, BuffSkill};
 use crate::rules::stat_map_engine;
 use crate::skill_env::buff_stat_map::map_aura_buff_stat;
 use crate::skill_env::buffs::buff_skill_name;
@@ -22,7 +23,7 @@ use crate::skill_env::resolve::{
 };
 use crate::skill_env::stat_map::{
     StatMapCtx, curse_stat_modifiers, debuff_stat_modifiers, mapped_stat_modifiers,
-    player_buff_stat_modifiers,
+    player_buff_stat_modifiers, player_buff_stat_modifiers_by_stat,
 };
 use crate::skill_env::support::{GroupSupportJudgement, SupportCandidate, judge_group_supports};
 use crate::skill_env::{EnabledGroup, GemInput};
@@ -78,6 +79,26 @@ pub fn group_judgement<'a>(
     )
 }
 
+/// [`group_judgement`] for each effect of the gem whose primary effect is
+/// `gem_skill_id`, the primary first: what [`support_granted_gem_levels`] and
+/// [`crate::skill_env::support_granted_gem_quality`] take, since a support on
+/// any of a gem's effects modifies the gem.
+pub fn gem_judgements<'a>(
+    group: &EnabledGroup<'a>,
+    data: &'a (dyn BuffEnv + 'a),
+    gem_skill_id: &str,
+) -> Vec<GroupSupportJudgement> {
+    let secondary = data
+        .additional_effects(gem_skill_id)
+        .iter()
+        .map(String::as_str)
+        .filter(|id| data.effect(id).is_some_and(|e| !e.is_support));
+    std::iter::once(gem_skill_id)
+        .chain(secondary)
+        .map(|id| group_judgement(group, data, id))
+        .collect()
+}
+
 /// Injects the **compatible** support gems' modifiers for `active_skill_id` in `group`
 /// (the support-side half of the skill-group → modifier translation).
 ///
@@ -125,7 +146,7 @@ fn support_modifiers_observed(
 ) -> Vec<Modifier> {
     let judgement = group_judgement(group, data, active_skill_id);
     let mut host_set_key = None;
-    let mut mods = Vec::new();
+    let mut mods = granting_support_modifiers(group, data, active_skill_id);
     for sup in &judgement.compatible {
         let gem = &group.gems[sup.gem_index];
         let set_index = support_stat_set_index(sup, group.gems);
@@ -190,6 +211,47 @@ fn support_modifiers_observed(
     mods
 }
 
+/// What the support that grants `active_skill_id` says about it.
+///
+/// A support gem can grant an active skill beside its support effect. That
+/// support applies to the skills it is socketed with, not to the skill it
+/// grants, yet some of its stats describe the granted skill: the Witchtoads of
+/// Doedre's Undoing are what use Dark Consequences.
+fn granting_support_modifiers(
+    group: &EnabledGroup<'_>,
+    data: &dyn BuffEnv,
+    active_skill_id: &str,
+) -> Vec<Modifier> {
+    let mut mods = Vec::new();
+    for gem in group.gems {
+        let grants_it = gem.skill_id != active_skill_id
+            && data.effect(&gem.skill_id).is_some_and(|e| e.is_support)
+            && data
+                .additional_effects(&gem.skill_id)
+                .iter()
+                .any(|id| id == active_skill_id);
+        if !grants_it {
+            continue;
+        }
+        let stats = data
+            .effect_stats(&gem.skill_id, gem.gem_level, 0, gem.stat_set_index)
+            .base;
+        for ds in &stats {
+            let origin = ModifierSource::new(SourceId::new(
+                SourceKind::SupportGem,
+                format!("{}.{}", gem.skill_id, ds.stat),
+            ))
+            .with_raw_text(format!("{} {} ({})", gem.skill_id, ds.stat, ds.value));
+            mods.extend(
+                skill_stats::granted_skill_modifiers(&ds.stat, ds.value, &stats)
+                    .into_iter()
+                    .map(|modifier| modifier.with_origin(origin.clone())),
+            );
+        }
+    }
+    mods
+}
+
 /// Builds every enabled active skill's buff spec (aura defensive / player-side buff /
 /// enemy-side debuff / curse), matching vendor's buffList assembly
 /// (`CalcActiveSkill.lua:976-1046` → `CalcPerform.lua:1949-2316`).
@@ -239,6 +301,17 @@ pub fn buff_skill_specs(
                 if effect.is_support {
                     continue;
                 }
+                // The level the effect runs at: the gem's, with every
+                // applicable "+N to Level of all <X> Skills" and the levels
+                // the group's supports grant it ("+3 to level of Supported
+                // Skills if no other Supports are modifying them").
+                let level = gem.gem_level
+                    + additional_gem_levels(gem_level_bonuses, data, skill_id, gem.corrupted)
+                    + support_granted_gem_levels(
+                        &gem_judgements(&group, data, &gem.skill_id),
+                        group.gems,
+                        data,
+                    );
                 let has_type = |t: &str| effect.skill_types.iter().any(|x| x == t);
                 let is_aura = has_type("Aura");
                 let is_mark = has_type("Mark");
@@ -247,23 +320,27 @@ pub fn buff_skill_specs(
                 if !is_aura && !is_curse {
                     // Debuff branch + player-side Buff branch (see the orchestrator's
                     // doc for the vendor mapping; both payloads are empty for most skills).
-                    let es = effect_stats(skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
+                    let es_buff = effect_stats(skill_id, level, gem.quality, gem.stat_set_index);
                     let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
-                    let debuff_mods = debuff_stat_modifiers(ctx, &es, skill_id, set_key.as_deref());
-                    // Player-side Buff payload: the fetch level = gem level + any
-                    // applicable `+N to Level of all <X> Skills` (vendor's applyGemMods
-                    // applies to every gem effect, CalcSetup.lua:410-435; confirmed
-                    // with Sigil: 20→32). The level granted by a support isn't modeled;
-                    // noted as a residual gap.
-                    let buff_level =
-                        gem.gem_level + additional_gem_levels(gem_level_bonuses, data, skill_id);
-                    let es_buff = if buff_level == gem.gem_level {
-                        es
-                    } else {
-                        effect_stats(skill_id, buff_level, gem.quality, gem.stat_set_index)
+                    let debuff_mods =
+                        debuff_stat_modifiers(ctx, &es_buff, skill_id, set_key.as_deref());
+                    let buff_skill = BuffSkill {
+                        consumed_charge_benefit_double_chance: stat_on_skill_and_supports(
+                            &group,
+                            data,
+                            gem,
+                            skill_id,
+                            level,
+                            skill_stats::CONSUMED_CHARGE_BENEFIT_DOUBLE_CHANCE,
+                        ),
                     };
-                    let buff_mods =
-                        player_buff_stat_modifiers(ctx, &es_buff, skill_id, set_key.as_deref());
+                    let buff_mods = player_buff_stat_modifiers(
+                        ctx,
+                        &es_buff,
+                        skill_id,
+                        set_key.as_deref(),
+                        buff_skill,
+                    );
                     if (debuff_mods.is_empty() && buff_mods.is_empty())
                         || !seen.insert(skill_id.to_string())
                     {
@@ -296,42 +373,56 @@ pub fn buff_skill_specs(
                             socket_index,
                             is_mark: false,
                             ignore_curse_limit: false,
-                            local_effect_inc: 0.0,
+                            local_effect_inc: [
+                                skill_stats::OFFERING_BUFF_EFFECT,
+                                skill_stats::REMNANT_EFFECT,
+                            ]
+                            .into_iter()
+                            .map(|stat| {
+                                stat_on_skill_and_supports(&group, data, gem, skill_id, level, stat)
+                            })
+                            .sum(),
                             local_effect_more: 1.0,
-                            skill_types: pobr_data::skill::SkillTypes::NONE,
+                            skill_types: skill_type_bits(&effect.skill_types),
                         });
                     }
                     continue;
                 }
-                if !seen.insert(skill_id.to_string()) {
+                // A curse is judged among its copies below; an aura is the
+                // character's once.
+                if !is_curse && !seen.insert(skill_id.to_string()) {
                     continue;
                 }
                 if is_aura {
                     // Aura defensive buff: the same stat→mod mapping and SkillGem
                     // attribution as aura_buff_modifiers (buff_pass scaling preserves
                     // origin, not dropped in trace).
-                    let es = effect_stats(skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
-                    let mut mods = Vec::new();
+                    // An aura gem gains levels like any other skill gem.
+                    let es = effect_stats(skill_id, level, gem.quality, gem.stat_set_index);
+                    // Quality adds to the stat the gem already has. The two
+                    // are one value: as separate modifiers of one name the
+                    // weaker would be dropped as a duplicate buff.
+                    let mut totals: Vec<(&str, f64)> = Vec::new();
                     for ds in es.all() {
-                        for mapped in map_aura_buff_stat(&ds.stat) {
-                            if ds.value == 0.0 {
+                        match totals.iter_mut().find(|(stat, _)| *stat == ds.stat) {
+                            Some((_, value)) => *value += ds.value,
+                            None => totals.push((ds.stat.as_str(), ds.value)),
+                        }
+                    }
+                    let mut mods = Vec::new();
+                    for (stat, value) in totals {
+                        for mapped in map_aura_buff_stat(stat) {
+                            if value == 0.0 {
                                 continue;
                             }
                             let origin = ModifierSource::new(SourceId::new(
                                 SourceKind::SkillGem,
-                                format!("aura.{}.{}", gem.skill_id, ds.stat),
+                                format!("aura.{}.{}", gem.skill_id, stat),
                             ))
-                            .with_raw_text(format!(
-                                "aura {} {} ({})",
-                                gem.skill_id, ds.stat, ds.value
-                            ));
+                            .with_raw_text(format!("aura {} {} ({})", gem.skill_id, stat, value));
                             mods.push(
-                                Modifier::number(
-                                    mapped.mod_name.as_str(),
-                                    mapped.mod_type,
-                                    ds.value,
-                                )
-                                .with_origin(origin),
+                                Modifier::number(mapped.mod_name.as_str(), mapped.mod_type, value)
+                                    .with_origin(origin),
                             );
                         }
                     }
@@ -345,6 +436,7 @@ pub fn buff_skill_specs(
                         &es,
                         skill_id,
                         set_key.as_deref(),
+                        BuffSkill::default(),
                     ));
                     specs.push(BuffSpec {
                         name: buff_skill_name(data, skill_id),
@@ -368,12 +460,8 @@ pub fn buff_skill_specs(
                     // Curse effect mods: statset stats mapped through the statmap curse
                     // domain into enemy-side modifiers, applied by buff_pass's
                     // CurseEffect multiplier zone + Condition:Effective before entering
-                    // the enemy db. Fetch level = gem level + any applicable `+N to
-                    // Level of all <X> Skills` (vendor's applyGemMods applies to every
-                    // gem effect — confirmed with EW: 19+8→27, payload -58→-66).
-                    let curse_level =
-                        gem.gem_level + additional_gem_levels(gem_level_bonuses, data, skill_id);
-                    let es = effect_stats(skill_id, curse_level, gem.quality, gem.stat_set_index);
+                    // the enemy db, at the effect's level.
+                    let es = effect_stats(skill_id, level, gem.quality, gem.stat_set_index);
                     let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
                     // Vendor's registration precondition: buffList is built purely
                     // from GlobalEffect payloads, and a curse table entry is only
@@ -400,8 +488,8 @@ pub fn buff_skill_specs(
                     // the **compatible** supports in the group's payload, pre-scaled
                     // via the statmap global segment `curse_local_effect`.
                     let (local_effect_inc, local_effect_more) =
-                        curse_local_effect_scale(ctx, &group, data, gem, skill_id, curse_level);
-                    specs.push(BuffSpec {
+                        curse_local_effect_scale(ctx, &group, data, gem, skill_id, level);
+                    let spec = BuffSpec {
                         name: buff_skill_name(data, skill_id),
                         kind: BuffKind::Curse,
                         skill_id: skill_id.to_string(),
@@ -414,12 +502,185 @@ pub fn buff_skill_specs(
                         local_effect_inc,
                         local_effect_more,
                         skill_types: pobr_data::skill::SkillTypes::NONE,
-                    });
+                    };
+                    // "Debuffs of the same type do not stack, and only the copy
+                    // with the strongest effect applies": of the groups that
+                    // use the same curse, the one whose curse is strongest
+                    // before the character's and the enemy's shared factors.
+                    match specs
+                        .iter_mut()
+                        .find(|other| other.kind == BuffKind::Curse && other.skill_id == skill_id)
+                    {
+                        Some(other) if curse_strength(&spec) > curse_strength(other) => {
+                            *other = spec;
+                        }
+                        Some(_) => {}
+                        None => specs.push(spec),
+                    }
                 }
             }
         }
     });
     specs
+}
+
+/// How strong a curse is before the factors every copy of it shares (the
+/// character's curse effect, the enemy's): its modifiers' total size, scaled
+/// by its own and its supports' effect.
+fn curse_strength(spec: &BuffSpec) -> f64 {
+    let size: f64 = spec
+        .mods
+        .iter()
+        .filter_map(|m| m.value.as_number())
+        .map(f64::abs)
+        .sum();
+    size * (1.0 + spec.local_effect_inc / 100.0) * spec.local_effect_more
+}
+
+/// The total of the game stat `stat` on the active skill `skill_id` (at
+/// `level`) and on the supports in its group that apply to it: what a support
+/// says about "Supported Skills" and the skill says about itself.
+fn stat_on_skill_and_supports(
+    group: &EnabledGroup<'_>,
+    data: &dyn BuffEnv,
+    gem: &GemInput,
+    skill_id: &str,
+    level: u32,
+    stat: &str,
+) -> f64 {
+    let total_of = |effect_id: &str, level: u32, quality: u32, set_index: Option<u32>| -> f64 {
+        data.effect_stats(effect_id, level, quality, set_index)
+            .all()
+            .filter(|ds| ds.stat == stat)
+            .map(|ds| ds.value)
+            .sum()
+    };
+    let own = total_of(skill_id, level, gem.quality, gem.stat_set_index);
+    let judgement = group_judgement(group, data, skill_id);
+    let supports: f64 = judgement
+        .compatible
+        .iter()
+        .map(|sup| {
+            let host = &group.gems[sup.gem_index];
+            total_of(
+                &sup.effect_id,
+                host.gem_level,
+                host.quality,
+                support_stat_set_index(sup, group.gems),
+            )
+        })
+        .sum();
+    own + supports
+}
+
+/// The first enabled active skill of the build that inflicts Withered, by
+/// its own stats or by those of a support that applies to it
+/// ([`skill_stats::inflicts_withered`]). Any of the character's skills can
+/// put Withered on the enemy the calculated skill then hits.
+pub fn skill_inflicting_withered(
+    groups: &dyn SocketGroupView,
+    data: &dyn BuffEnv,
+) -> Option<String> {
+    let inflicts = |effect_id: &str, level: u32, quality: u32, set_index: Option<u32>| {
+        data.effect_stats(effect_id, level, quality, set_index)
+            .all()
+            .any(|ds| ds.value != 0.0 && skill_stats::inflicts_withered(&ds.stat))
+    };
+    let mut found = None;
+    groups.for_each_enabled_group(&mut |group| {
+        if found.is_some() {
+            return;
+        }
+        for gem in group.gems {
+            let effect_ids = std::iter::once(gem.skill_id.as_str()).chain(
+                data.additional_effects(&gem.skill_id)
+                    .iter()
+                    .map(String::as_str),
+            );
+            for skill_id in effect_ids {
+                if data.effect(skill_id).is_none_or(|effect| effect.is_support) {
+                    continue;
+                }
+                let by_support = || {
+                    group_judgement(&group, data, skill_id)
+                        .compatible
+                        .iter()
+                        .any(|sup| {
+                            let host = &group.gems[sup.gem_index];
+                            inflicts(
+                                &sup.effect_id,
+                                host.gem_level,
+                                host.quality,
+                                support_stat_set_index(sup, group.gems),
+                            )
+                        })
+                };
+                if inflicts(skill_id, gem.gem_level, gem.quality, gem.stat_set_index)
+                    || by_support()
+                {
+                    found = Some(skill_id.to_string());
+                    return;
+                }
+            }
+        }
+    });
+    found
+}
+
+/// The stat behind "N% increased Blind Effect" on a skill or a support gem
+/// (Blind II's 20%): the effect of the Blinds that skill inflicts.
+const BLIND_EFFECT: &str = "blind_effect_+%";
+
+/// The build's strongest Blind, as `(skill, increased effect)`: the enabled
+/// active skill whose own stats and those of the supports that apply to it
+/// increase the effect of its Blinds the most (`blind_effect_+%`). Blind
+/// does not stack, so the enemy carries one skill's Blind, the strongest.
+/// `None` when no skill has such a stat.
+pub fn strongest_skill_blind(
+    groups: &dyn SocketGroupView,
+    data: &dyn BuffEnv,
+) -> Option<(String, f64)> {
+    let increase = |effect_id: &str, level: u32, quality: u32, set_index: Option<u32>| -> f64 {
+        data.effect_stats(effect_id, level, quality, set_index)
+            .all()
+            .filter(|ds| ds.stat == BLIND_EFFECT)
+            .map(|ds| ds.value)
+            .sum()
+    };
+    let mut strongest: Option<(String, f64)> = None;
+    groups.for_each_enabled_group(&mut |group| {
+        for gem in group.gems {
+            let effect_ids = std::iter::once(gem.skill_id.as_str()).chain(
+                data.additional_effects(&gem.skill_id)
+                    .iter()
+                    .map(String::as_str),
+            );
+            for skill_id in effect_ids {
+                if data.effect(skill_id).is_none_or(|effect| effect.is_support) {
+                    continue;
+                }
+                let by_supports: f64 = group_judgement(&group, data, skill_id)
+                    .compatible
+                    .iter()
+                    .map(|sup| {
+                        let host = &group.gems[sup.gem_index];
+                        increase(
+                            &sup.effect_id,
+                            host.gem_level,
+                            host.quality,
+                            support_stat_set_index(sup, group.gems),
+                        )
+                    })
+                    .sum();
+                let total = increase(skill_id, gem.gem_level, gem.quality, gem.stat_set_index)
+                    + by_supports;
+                if total != 0.0 && strongest.as_ref().is_none_or(|(_, best)| total > *best) {
+                    strongest = Some((skill_id.to_string(), total));
+                }
+            }
+        }
+    });
+    strongest
 }
 
 /// A curse skill's **skill-local** CurseEffect multiplier-zone segment (matching vendor
@@ -477,12 +738,12 @@ fn curse_local_effect_scale(
 /// [`BuffKind::Buff`], applied by buff_pass's Buff branch, which applies the
 /// BuffEffect multiplier zone before merging into the player db).
 ///
-/// Vendor semantics: a support's own statSet's statMap produces a `GlobalEffect
-/// effectType=Buff` mod, which applies to the player as the supported Persistent Buff
-/// skill (Herald/Malice/Banner…) activates. Applicability is data-driven:
-/// [`judge_group_supports`] is checked against every enabled active skill in the
-/// group, and the support is injected if any is compatible; the same support effect
-/// appearing in multiple groups is deduplicated by id.
+/// A support's buff is a buff of each skill it supports: it is named after
+/// that skill, a Companion's or a Spectre's after the monster it chose too,
+/// and buffs of one name keep the stronger of each modifier. So Loyalty on
+/// seven Companions is seven buffs, and on one skill in two groups is one.
+/// Applicability is data-driven: [`judge_group_supports`] is checked against
+/// every enabled active skill in the group.
 pub fn support_buff_specs(
     ctx: &mut StatMapCtx<'_>,
     groups: &dyn SocketGroupView,
@@ -490,7 +751,7 @@ pub fn support_buff_specs(
 ) -> Vec<BuffSpec> {
     use std::collections::HashSet;
     let mut specs = Vec::new();
-    let mut seen: HashSet<String> = HashSet::new();
+    let mut seen: HashSet<(String, String)> = HashSet::new();
     groups.for_each_enabled_group(&mut |group| {
         // The group's enabled active skills (known effect and non-support). Includes
         // additional granted effects (vendor builds an independent activeSkill for
@@ -511,19 +772,19 @@ pub fn support_buff_specs(
         if active_ids.is_empty() {
             return;
         }
-        // Included if compatible with any active skill (vendor: a support is judged
-        // against each active skill in the group individually).
-        let mut compatible: HashSet<(usize, String)> = HashSet::new();
+        // A support is judged against each active skill in the group.
+        let mut entries: Vec<(usize, String, String)> = Vec::new();
         for active_id in &active_ids {
+            let buff_name = supported_skill_buff_name(data, group.gems, active_id);
             for sup in group_judgement(&group, data, active_id).compatible {
-                compatible.insert((sup.gem_index, sup.effect_id));
+                entries.push((sup.gem_index, sup.effect_id, buff_name.clone()));
             }
         }
-        let mut entries: Vec<(usize, String)> = compatible.into_iter().collect();
         entries.sort_unstable();
-        for (idx, effect_id) in entries {
+        entries.dedup();
+        for (idx, effect_id, buff_name) in entries {
             let gem = &group.gems[idx];
-            if !seen.insert(effect_id.clone()) {
+            if !seen.insert((effect_id.clone(), buff_name.clone())) {
                 continue;
             }
             // An additionally-granted support half doesn't reuse the gem instance's
@@ -533,27 +794,67 @@ pub fn support_buff_specs(
                 .flatten();
             let es = data.effect_stats(&effect_id, gem.gem_level, gem.quality, set_index);
             let set_key = data.selected_set_key(&effect_id, set_index);
-            let mods = player_buff_stat_modifiers(ctx, &es, &effect_id, set_key.as_deref());
-            if mods.is_empty() {
-                continue;
+            let mods = player_buff_stat_modifiers_by_stat(
+                ctx,
+                &es,
+                &effect_id,
+                set_key.as_deref(),
+                BuffSkill::default(),
+            );
+            // A payload that names its buff is that buff, whatever skill
+            // the support is on.
+            let mut buffs: Vec<(String, Vec<Modifier>)> = Vec::new();
+            for (stat, modifier) in mods {
+                let name = ctx
+                    .catalog
+                    .and_then(|catalog| {
+                        stat_map_engine::player_buff_effect_name(
+                            catalog,
+                            &effect_id,
+                            set_key.as_deref(),
+                            &stat,
+                        )
+                    })
+                    .unwrap_or_else(|| buff_name.clone());
+                match buffs.iter_mut().find(|(known, _)| *known == name) {
+                    Some((_, list)) => list.push(modifier),
+                    None => buffs.push((name, vec![modifier])),
+                }
             }
-            specs.push(BuffSpec {
-                name: buff_skill_name(data, &effect_id),
-                kind: BuffKind::Buff,
-                skill_id: effect_id.clone(),
-                mods,
-                magnitude: 1.0,
-                slot: group.slot.map(str::to_string),
-                socket_index: (idx + 1) as u32,
-                is_mark: false,
-                ignore_curse_limit: false,
-                local_effect_inc: 0.0,
-                local_effect_more: 1.0,
-                skill_types: pobr_data::skill::SkillTypes::NONE,
-            });
+            for (name, mods) in buffs {
+                specs.push(BuffSpec {
+                    name,
+                    kind: BuffKind::Buff,
+                    skill_id: effect_id.clone(),
+                    mods,
+                    magnitude: 1.0,
+                    slot: group.slot.map(str::to_string),
+                    socket_index: (idx + 1) as u32,
+                    is_mark: false,
+                    ignore_curse_limit: false,
+                    local_effect_inc: 0.0,
+                    local_effect_more: 1.0,
+                    skill_types: pobr_data::skill::SkillTypes::NONE,
+                });
+            }
         }
     });
     specs
+}
+
+/// The name of the buff a support grants as a buff of `active_id`: the
+/// skill's, and for a skill whose gem chose a monster (a Companion, a
+/// Spectre), the monster's too.
+fn supported_skill_buff_name(data: &dyn BuffEnv, gems: &[GemInput], active_id: &str) -> String {
+    let name = buff_skill_name(data, active_id);
+    match gems
+        .iter()
+        .find(|gem| gem.skill_id == active_id)
+        .and_then(|gem| gem.minion.as_deref())
+    {
+        Some(minion) => format!("{name}: {minion}"),
+        None => name,
+    }
 }
 
 /// Builds every **enabled warcry active skill** into a [`WarcrySpec`], injected via
@@ -598,10 +899,13 @@ pub fn warcry_skill_specs(
             // supports' granted levels (smith's Fire Mastery
             // `supported_fire_skill_gem_level_+` → Infernal Cry 21→22 level, gain
             // 51+q11=62, matching oracle exactly).
-            let judgement = group_judgement(&group, data, &gem.skill_id);
             let level = gem.gem_level
-                + additional_gem_levels(gem_level_bonuses, data, &gem.skill_id)
-                + support_granted_gem_levels(&judgement, group.gems, data);
+                + additional_gem_levels(gem_level_bonuses, data, &gem.skill_id, gem.corrupted)
+                + support_granted_gem_levels(
+                    &gem_judgements(&group, data, &gem.skill_id),
+                    group.gems,
+                    data,
+                );
             let es = data.effect_stats(&gem.skill_id, level, gem.quality, gem.stat_set_index);
             let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
             let stats: Vec<pobr_data::catalog::SkillDamageStat> = es.all().cloned().collect();

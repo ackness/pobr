@@ -239,6 +239,10 @@ fn committed_legacy_export_preserves_character_tree_items_and_skills() {
             "SupportMusterPlayer",
             "SupportTulsStillnessPlayer",
         ],
+        // The Djinn's commands are gems of their own in the export; the
+        // game's `GemEffects` links them to their skills.
+        &["CommandWaterDjinnGroundBurstPlayer"],
+        &["CommandSandDjinnExplosiveTeleportPlayer"],
         &[
             "PurityOfLightningPlayer",
             "SupportUpwellingPlayerTwo",

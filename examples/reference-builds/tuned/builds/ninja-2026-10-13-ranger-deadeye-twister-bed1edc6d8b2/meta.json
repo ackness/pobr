@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-ranger-deadeye-twister-bed1edc6d8b2",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/595962488-8017/%E5%8D%B7%E5%8D%B7%E5%90%83%E6%92%91%E6%AD%BB%E4%BA%86",
+    "account": "595962488-8017",
+    "character": "卷卷吃撑死了",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:47:50+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=595962488-8017&name=%E5%8D%B7%E5%8D%B7%E5%90%83%E6%92%91%E6%AD%BB%E4%BA%86&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Deadeye",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Ranger",
+    "ascendancy": "Deadeye",
+    "level": 99,
+    "main_skill": "Twister"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 11,
+    "code_sha256": "125c714833fb7ebd6db723e1543539e0996f5d33f4167e8fa6aa9ecfe7bb11f4",
+    "code_chars": 14336,
+    "decoded_bytes": 59870
+  }
+}

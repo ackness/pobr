@@ -231,6 +231,36 @@ fn explicit_charge_overrides_reach_multipliers_with_reference_boundaries() {
     }
 }
 
+/// A skill that consumes charges takes every charge above the minimum. The
+/// count is what "per charge consumed" effects scale by.
+#[test]
+fn consumable_charges_are_the_charges_above_the_minimum() {
+    use pobr_core::calc::survivability::charge_multipliers_panel_default;
+    let mut db = ModDb::new();
+    db.add_mod(make_modifier("PowerChargesMax", ModType::Base, 1.0));
+    db.add_mod(make_modifier("FrenzyChargesMin", ModType::Base, 1.0));
+
+    let using = CalcConfig::new()
+        .with_condition("UsePowerCharges", true)
+        .with_condition("UseFrenzyCharges", true);
+    let resolved = charge_multipliers_panel_default(&db, &using);
+    // 3 + 1 Power Charges, none held back; 3 Frenzy Charges, 1 always held.
+    assert_eq!(resolved.multiplier("PowerCharge"), 4.0);
+    assert_eq!(resolved.multiplier("RemovablePowerCharge"), 4.0);
+    assert_eq!(resolved.multiplier("RemovableFrenzyCharge"), 2.0);
+    assert_eq!(resolved.multiplier("RemovableEnduranceCharge"), 0.0);
+    assert_eq!(resolved.multiplier("RemovableTotalCharges"), 6.0);
+
+    // A character not using charges holds only the minimum: nothing to consume.
+    let idle = charge_multipliers_panel_default(&db, &CalcConfig::new());
+    assert_eq!(idle.multiplier("FrenzyCharge"), 1.0);
+    assert_eq!(idle.multiplier("RemovableFrenzyCharge"), 0.0);
+    assert_eq!(idle.multiplier("RemovableTotalCharges"), 0.0);
+    // Present even at zero, so a modifier scaling by it is not reported as
+    // scaling by something the engine never provides.
+    assert!(idle.multipliers.contains_key("RemovablePowerCharge"));
+}
+
 #[test]
 fn charge_override_combat_projection_does_not_activate_other_effects() {
     use pobr_core::calc::survivability::charge_multipliers_panel_default;

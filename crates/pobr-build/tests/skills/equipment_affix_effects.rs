@@ -22,6 +22,7 @@ fn item(base: &str, mods: &[&str]) -> Item {
         modifier_texts: mods.iter().map(|s| (*s).into()).collect(),
         enchant_texts: vec![],
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: vec![],
     }
 }
@@ -111,7 +112,10 @@ Implicits: 0
     };
     let baseline = life("1234", 0, "", "future_tree");
     let mut direct = pobr_build::parse_build(&xml("1234", 0, "", "future_tree")).unwrap();
-    direct.jewels.push(item("Ruby", &["+100 to maximum Life"]));
+    direct.jewels.push((
+        pobr_build::build::JewelSocket::Tree,
+        item("Ruby", &["+100 to maximum Life"]),
+    ));
     let life_scale = (run(&direct, &data).output().life - baseline) / 100.0;
     assert!(life_scale > 0.0);
     close(
@@ -391,6 +395,74 @@ fn every_stun_threshold_roll_uses_final_energy_shield() {
     }
 }
 
+/// The Adorned names one jewel rarity. It scales the corrupted jewels of that
+/// rarity and no others; the rare form used to be two unsupported lines.
+#[test]
+fn the_adorned_scales_corrupted_jewels_of_the_rarity_it_names() {
+    let data = data();
+    let baseline = build("SparkPlayer");
+    let life = |jewels: Vec<Item>| {
+        let result = run(&baseline.clone().with_jewels(jewels), &data);
+        assert!(
+            result.unsupported_modifier_texts().is_empty(),
+            "{:?}",
+            result.unsupported_modifier_texts()
+        );
+        result.output().life
+    };
+    let jewel = |rarity: ItemRarity, corrupted: bool| {
+        let mut jewel = item("Sapphire", &["+100 to maximum Life"]);
+        jewel.rarity = rarity;
+        jewel.corrupted = corrupted;
+        jewel
+    };
+    let adorned = |named: &str| {
+        let mut adorned = item(
+            "Diamond",
+            &[
+                "50% increased Effect of Jewel Socket Passive Skills",
+                &format!("containing Corrupted {named} Jewels"),
+            ],
+        );
+        adorned.rarity = ItemRarity::Unique;
+        adorned
+    };
+
+    let without = life(vec![]);
+    for (named, scaled, other) in [
+        ("Rare", ItemRarity::Rare, ItemRarity::Magic),
+        ("Magic", ItemRarity::Magic, ItemRarity::Rare),
+    ] {
+        let plain = life(vec![jewel(scaled, true)]) - without;
+        assert!(plain > 0.0);
+        close(
+            life(vec![jewel(scaled, true), adorned(named)]) - without,
+            plain * 1.5,
+        );
+        // Not corrupted, or the other rarity: unchanged.
+        close(
+            life(vec![jewel(scaled, false), adorned(named)]) - without,
+            plain,
+        );
+        close(
+            life(vec![jewel(other, true), adorned(named)]) - without,
+            plain,
+        );
+    }
+
+    // Only the tree's own sockets are "Jewel Socket Passive Skills": a jewel
+    // in a socket something grants, or in a socket on equipment, is not scaled.
+    let plain = life(vec![jewel(ItemRarity::Rare, true)]) - without;
+    for socket in [
+        pobr_build::build::JewelSocket::Granted,
+        pobr_build::build::JewelSocket::Equipment,
+    ] {
+        let mut build = baseline.clone().with_jewels(vec![adorned("Rare")]);
+        build.jewels.push((socket, jewel(ItemRarity::Rare, true)));
+        close(run(&build, &data).output().life - without, plain);
+    }
+}
+
 #[test]
 fn gem_level_affixes_use_their_dedicated_consumer_without_diagnostic_errors() {
     let data = data();
@@ -623,7 +695,7 @@ fn real_equipment_unknown_affix_remains_visible() {
             .any(|text| text == line)
     );
     assert!(result.output().dps > 0.0);
-    let jewel_line = "Meta Skills gain 8% increased Energy";
+    let jewel_line = "Gain additional Ailment Threshold equal to 7% of maximum Energy Shield";
     let jewel = run(
         &build("SparkPlayer").with_jewels(vec![item("Sapphire", &[jewel_line])]),
         &data,
@@ -757,6 +829,85 @@ fn time_lost_jewels_use_selected_geometry_radius_upgrades_and_combined_effects()
     );
 }
 
+/// The Adorned makes everything a qualifying jewel grants stronger, the
+/// grants to passives in its radius included; the node the grant lands on
+/// then scales it by its own effect.
+#[test]
+fn the_adorned_scales_what_a_radius_jewel_grants() {
+    let mut data = data();
+    let mut nodes = std::collections::HashMap::new();
+    for (skill, kind, x) in [(900040, "jewel_socket", 0.0), (900041, "notable", 100.0)] {
+        nodes.insert(skill, serde_json::from_value(serde_json::json!({
+            "skill": skill, "id": format!("fixture_{skill}"), "kind": kind, "x": x, "y": 0.0, "stats": []
+        })).unwrap());
+    }
+    data.passive_nodes = nodes;
+    let base = build("SparkPlayer").with_tree(pobr_data::passive_tree::PassiveTreeSpec {
+        allocated_nodes: vec![
+            pobr_data::passive_tree::NodeId(900040),
+            pobr_data::passive_tree::NodeId(900041),
+        ],
+        ..Default::default()
+    });
+    let baseline = run(&base, &data).output().life;
+    let life_scale = (run(
+        &base.clone().set_item(
+            EquipmentSlot::Ring1,
+            item("Sapphire Ring", &["+100 to maximum Life"]),
+        ),
+        &data,
+    )
+    .output()
+    .life
+        - baseline)
+        / 100.0;
+
+    let mut adorned = item(
+        "Diamond",
+        &[
+            "50% increased Effect of Jewel Socket Passive Skills",
+            "containing Corrupted Rare Jewels",
+        ],
+    );
+    adorned.rarity = ItemRarity::Unique;
+    // `notable_effect`% on the notable itself; `state` is the jewel's last line.
+    let gained = |state: &str, notable_effect: u32, socket: pobr_build::build::JewelSocket| {
+        let effect_line = if notable_effect > 0 {
+            format!("{notable_effect}% increased Effect of Notable Passive Skills in Radius\n")
+        } else {
+            String::new()
+        };
+        let text = format!(
+            "Rarity: RARE\nReference\nTime-Lost Ruby\nRadius: Small\nImplicits: 0\n{effect_line}Notable Passive Skills in Radius also grant +20 to maximum Life\n{state}"
+        );
+        let mut radius = pobr_build::radius_jewel_from_text(900040, &text).unwrap();
+        radius.socket = socket;
+        let mut build = base.clone().with_jewels(vec![adorned.clone()]);
+        build
+            .jewels
+            .push((socket, pobr_core::parse_pob_xml_item(&text).unwrap()));
+        let result = run(&build.with_radius_jewels(vec![radius]), &data);
+        assert!(
+            result.unsupported_modifier_texts().is_empty(),
+            "{:?}",
+            result.unsupported_modifier_texts()
+        );
+        (result.output().life - baseline) / life_scale
+    };
+    let tree = pobr_build::build::JewelSocket::Tree;
+
+    // Corrupted and rare: 20 * 1.5 = 30.
+    close(gained("Corrupted", 0, tree), 30.0);
+    // Then the notable's own 50%: 30 * 1.5 = 45.
+    close(gained("Corrupted", 50, tree), 45.0);
+    // Not corrupted, or not in one of the tree's own sockets: 20.
+    close(gained("", 0, tree), 20.0);
+    close(
+        gained("Corrupted", 0, pobr_build::build::JewelSocket::Granted),
+        20.0,
+    );
+}
+
 #[test]
 fn time_lost_scaling_preserves_fractional_recovery_and_both_damage_endpoints() {
     let mut data = data();
@@ -862,4 +1013,89 @@ fn overlapping_time_lost_jewels_share_the_last_local_effect_per_node() {
             expected * life_scale,
         );
     }
+}
+
+/// "… per Idol in your Equipment" and "… per non-Idol Augment in your
+/// Equipment" count what the equipment's sockets hold. Every augment is a
+/// `SoulCore` among the game's base items and an Idol is tagged `idol`; a
+/// socket entry that is no augment (a skill a Talisman grants) is neither.
+#[test]
+fn augments_in_equipment_are_counted_by_kind() {
+    let data = data();
+    let lines = [
+        "+10 to maximum Life per Idol in your Equipment",
+        "-4% to all Elemental Resistances per non-Idol Augment in your Equipment",
+    ];
+    let with_sockets = |socketed: &[&str]| {
+        let mut chest = item("Plate Vest", &lines);
+        chest.socketed = socketed.iter().map(|name| (*name).into()).collect();
+        let session = run(
+            &build("FireballPlayer").set_item(EquipmentSlot::BodyArmour, chest),
+            &data,
+        );
+        (session.output().life, session.output().fire_resistance)
+    };
+    let (life, fire) = with_sockets(&[]);
+    let (socketed_life, socketed_fire) = with_sockets(&[
+        "Fox Idol",
+        "Soul Core of Cholotl",
+        "Greater Rune of Leadership",
+        "Cackling Companions",
+    ]);
+    // One Idol, two other augments.
+    close(socketed_life - life, 10.0);
+    close(socketed_fire - fire, -8.0);
+}
+
+/// A keystone an item grants ("Giant's Blood" on a jewel) applies before
+/// the attributes are derived: its "Inherent Life granted by Strength is
+/// halved" makes 100 Strength grant 100 Life instead of 200.
+#[test]
+fn item_granted_keystone_changes_what_attributes_grant() {
+    let data = data();
+    let life = |lines: &[&str]| {
+        let session = run(
+            &build("FireballPlayer").set_item(EquipmentSlot::Ring1, item("Iron Ring", lines)),
+            &data,
+        );
+        session.output().life
+    };
+    close(life(&["+100 to Strength"]) - life(&[]), 200.0);
+    close(
+        life(&["+100 to Strength", "Giant's Blood"]) - life(&["Giant's Blood"]),
+        100.0,
+    );
+}
+
+/// "+7 to all Attributes per Socket filled" scales on the runes socketed in
+/// its item, and the attributes it gives grant Life and Mana like any other:
+/// each point of Strength grants Life and each point of Intelligence grants
+/// Mana at the game's rates (`base/character_constants.json`).
+#[test]
+fn attributes_per_socket_filled_grant_life_and_mana() {
+    let data = data();
+    let runes = ["Iron Rune", "Glacial Rune"];
+    let with_lines = |lines: &[&str]| {
+        let mut chest = item("Plate Vest", lines);
+        chest.socketed = runes.iter().map(|name| (*name).into()).collect();
+        let session = run(
+            &build("FireballPlayer").set_item(EquipmentSlot::BodyArmour, chest),
+            &data,
+        );
+        (session.output().life, session.output().mana)
+    };
+    let (life, mana) = with_lines(&[]);
+    let (per_socket_life, per_socket_mana) =
+        with_lines(&["+7 to all Attributes per Socket filled"]);
+    // Two filled sockets: 14 of each attribute.
+    let attribute = 7.0 * runes.len() as f64;
+    let constants = &data.constants.character_constants;
+    close(
+        per_socket_life - life,
+        attribute * constants.life_per_strength,
+    );
+    close(
+        per_socket_mana - mana,
+        attribute * constants.mana_per_intelligence,
+    );
 }

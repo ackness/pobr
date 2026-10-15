@@ -102,12 +102,10 @@ pub(crate) struct ResolvedConfig {
     ///   `enemyModList:NewMod(..., "BASE", val, "EnemyConfig")` shape,
     ///   ConfigOptions.lua:2143-2157 / 1892-1894 / 1782-1842).
     pub enemy_mods: Vec<Modifier>,
-    /// The customMods line channel (commit ④, matching vendor ConfigOptions.lua:2278-2296:
-    /// StripEscapes + parseMod per line, source=Custom): raw text lines with color codes
-    /// stripped by the interpreter, fed by the build layer into
-    /// `session.add_modifier_texts` — unparseable lines naturally fall into the
-    /// `ParseStatus::Unsupported` visibility channel (structurally hard-failing lines are
-    /// skipped via filter_parseable, the same as every other text injection channel).
+    /// The build's custom modifiers: one modifier a line, colour codes stripped
+    /// by the interpreter. The calculation stores the lines a rule parses whole,
+    /// reads gem level and quality bonuses where gem levels are settled, and
+    /// records the rest as unsupported (`Config: <line>`).
     /// Empty when the catalog is missing (the legacy path never consumed customMods).
     pub custom_mod_lines: Vec<String>,
 }

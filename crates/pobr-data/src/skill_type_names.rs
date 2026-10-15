@@ -55,6 +55,14 @@ mod tests {
     }
 
     #[test]
+    fn names_invert_the_lookup() {
+        use crate::skill::SkillTypes;
+        let types = SkillTypes::ATTACK | SkillTypes::from_pob2_name("Persistent").unwrap();
+        assert_eq!(types.names(), ["Attack", "Persistent"]);
+        assert!(SkillTypes::NONE.names().is_empty());
+    }
+
+    #[test]
     fn table_is_full_vendor_enum() {
         // A coarse check on the full extraction: vendor 0.5.x has 290 enum entries;
         // vendor upgrades only ever add, never remove.

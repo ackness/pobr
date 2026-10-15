@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-monk-martial-artist-quarterstaff-strike-3bfac6cd6482",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%ED%8F%AC%EC%BC%AD-3398/Pokhyup",
+    "account": "포켭-3398",
+    "character": "Pokhyup",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:53:03+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=%ED%8F%AC%EC%BC%AD-3398&name=Pokhyup&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Martial+Artist",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Martial Artist",
+    "level": 99,
+    "main_skill": "Quarterstaff Strike"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "d13e3a98d33a3735630bbfb7a59531701a706036a10dd32db33958f2c4e303c5",
+    "code_chars": 13496,
+    "decoded_bytes": 53335
+  }
+}

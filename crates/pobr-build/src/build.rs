@@ -10,10 +10,10 @@
 //! dependency on SANDBOX-only types), carrying the stable id and enabled state of an
 //! "active skill + support gems" group.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use pobr_data::build_config::ViewMode;
-use pobr_data::item::{EquipmentSlot, Item};
+use pobr_data::item::{EquipmentSlot, Item, LimbSlot};
 use pobr_data::passive_tree::PassiveTreeSpec;
 
 use crate::build_config::BuildConfig;
@@ -49,6 +49,18 @@ pub struct GemSkillRef {
     /// that fail to resolve are silently skipped at every consumption point because
     /// `granted_effects.get("")` comes up empty.
     pub name_spec: Option<String>,
+    /// Whether the gem is corrupted (PoB `<Gem corrupted>`). What corruption did
+    /// to its level is already in `gem_level`; this is the state that "all
+    /// Corrupted Skill Gems" modifiers test.
+    pub corrupted: bool,
+    /// The monster a minion gem summons, when the player chooses it (PoB `<Gem
+    /// skillMinion>`, a monster variety id such as
+    /// `Metadata/Monsters/Quadrilla/Quadrilla`). A Companion's beast and a
+    /// Spectre's monster set the Spirit the gem reserves.
+    pub minion: Option<String>,
+    /// Which of its monster's skills the minion uses (PoB `<Gem
+    /// skillMinionSkill>`, counting from 1); `None` is the first.
+    pub minion_skill: Option<u32>,
 }
 
 /// A group of skill gems in the same socket (active skill + its supports). A simplified
@@ -90,6 +102,19 @@ pub struct SocketGroup {
     /// Effects granted by support gems also count. `None` selects the first effect;
     /// an invalid explicit ordinal is not clamped or replaced with another skill.
     pub main_active_skill: Option<usize>,
+    /// The skill of this group that an item grants without reservation: the
+    /// Lament, Portent and Absent Amulets waive the Spirit their granted skill
+    /// reserves as a gem. A build does not state this; the calculation works
+    /// it out from the items when it prepares the build
+    /// (`calc_orchestrator::granted_skills`).
+    pub reservation_free_skill: Option<String>,
+    /// The level an item grants this group's first skill at (`Grants Skill:
+    /// Level N X`): the skill is used at the highest level up to it whose
+    /// character level and attribute requirements the character meets. A
+    /// build does not state this either; the calculation works it out from
+    /// the items when it prepares the build
+    /// (`calc_orchestrator::granted_skills`).
+    pub granted_level: Option<u32>,
 }
 
 impl SocketGroup {
@@ -109,6 +134,9 @@ impl SocketGroup {
                 gem_level: g.gem_level,
                 quality: g.quality,
                 stat_set_index: g.stat_set_index,
+                corrupted: g.corrupted,
+                minion: g.minion.clone(),
+                minion_skill: g.minion_skill,
             })
             .collect()
     }
@@ -125,6 +153,7 @@ impl SocketGroup {
             slot: self.slot.as_deref(),
             active_skill_id: self.active_skill_id.as_deref(),
             active_gem_level: self.active_gem_level.unwrap_or(1),
+            reservation_free_skill: self.reservation_free_skill.as_deref(),
         }
     }
 
@@ -140,6 +169,8 @@ impl SocketGroup {
             active_gem_quality: None,
             gem_skills: Vec::new(),
             main_active_skill: None,
+            reservation_free_skill: None,
+            granted_level: None,
         }
     }
 
@@ -191,6 +222,9 @@ impl SocketGroup {
             quality,
             stat_set_index: None,
             name_spec: None,
+            corrupted: false,
+            minion: None,
+            minion_skill: None,
         });
         self
     }
@@ -208,6 +242,9 @@ impl SocketGroup {
             quality: 0,
             stat_set_index: Some(stat_set_index),
             name_spec: None,
+            corrupted: false,
+            minion: None,
+            minion_skill: None,
         });
         self
     }
@@ -254,6 +291,52 @@ pub struct RadiusJewel {
     pub small_effect_inc: u32,
     /// Normalized active modifier lines for allocation and conquest consumers.
     pub tree_texts: Vec<String>,
+    /// The jewel's rarity and corruption, and the kind of socket it sits in:
+    /// what an effect on "Jewel Socket Passive Skills containing Corrupted
+    /// Rare Jewels" asks of a jewel before it scales what the jewel grants.
+    pub rarity: pobr_data::item::ItemRarity,
+    pub corrupted: bool,
+    pub socket: JewelSocket,
+}
+
+/// Where a jewel is socketed. Effects on "Jewel Socket Passive Skills" (The
+/// Adorned) reach only the tree's own sockets (vendor CalcSetup.lua:120-126).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum JewelSocket {
+    /// One of the passive tree's own jewel sockets, allocated.
+    Tree,
+    /// A socket an item or another jewel grants: a Sinister socket, or a
+    /// notable that holds a socket.
+    Granted,
+    /// Outside the tree: an equipment jewel socket.
+    Equipment,
+}
+
+/// Which of the character's two weapon sets is in use.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub enum WeaponSet {
+    #[default]
+    First,
+    Second,
+}
+
+impl WeaponSet {
+    /// The set's number, 1 or 2 (PoB's `set1` / `set2`, `useSecondWeaponSet`).
+    pub fn number(self) -> u8 {
+        match self {
+            Self::First => 1,
+            Self::Second => 2,
+        }
+    }
+
+    /// The set numbered `number`, 1 or 2.
+    pub fn from_number(number: u8) -> Option<Self> {
+        match number {
+            1 => Some(Self::First),
+            2 => Some(Self::Second),
+            _ => None,
+        }
+    }
 }
 
 /// In-memory state of a PoB Build.
@@ -281,10 +364,10 @@ pub struct Build {
     /// determinism (`EquipmentSlot` only implements `Hash`, not `Ord`, and we can't
     /// change the REAL type).
     pub items: HashMap<EquipmentSlot, Item>,
-    /// Jewels (passive tree / abyss sockets, no fixed [`EquipmentSlot`]). Their mods are
+    /// Active jewels with where each sits (no fixed [`EquipmentSlot`]). Their mods are
     /// injected as global. Radius directives are consumed separately below,
     /// using the selected tree's geometry and allocated nodes.
-    pub jewels: Vec<Item>,
+    pub jewels: Vec<(JewelSocket, Item)>,
     /// Jewels in sockets not explicitly allocated by the imported tree. Their
     /// activation depends on item grants and the selected tree data, so XML parsing
     /// preserves them until calculation instead of pinning numeric node IDs.
@@ -303,6 +386,12 @@ pub struct Build {
     /// enters the calculation via `ingest_flask_charm` → env_finalize stage 3
     /// `merge_flasks_charms`.
     pub utility_slots: Vec<(String, Item)>,
+    /// The Transcendent limbs, by slot: a set of their own beside the
+    /// equipment. Their lines are global modifiers, attributed to the slot.
+    pub limbs: BTreeMap<LimbSlot, Item>,
+    /// The weapon set in use; its weapons are the ones in `items`. Modifiers
+    /// "while using Weapon Set 2" apply to it.
+    pub weapon_set: WeaponSet,
     /// Skill gem groups.
     pub socket_groups: Vec<SocketGroup>,
     /// Main skill group index (PoB `<Build mainSocketGroup>`, **1-based**, indexes
@@ -356,15 +445,29 @@ impl Build {
         self
     }
 
-    /// Sets the jewel list, returns a new copy.
+    /// Sets the jewel list to `jewels` in the tree's own sockets, returns a new copy.
     pub fn with_jewels(mut self, jewels: Vec<Item>) -> Self {
-        self.jewels = jewels;
+        self.jewels = jewels
+            .into_iter()
+            .map(|jewel| (JewelSocket::Tree, jewel))
+            .collect();
         self
+    }
+
+    /// Every active jewel, wherever it sits.
+    pub fn jewel_items(&self) -> impl Iterator<Item = &Item> {
+        self.jewels.iter().map(|(_, jewel)| jewel)
     }
 
     /// Sets the radius jewel geometric expansion list, returns a new copy.
     pub fn with_radius_jewels(mut self, radius_jewels: Vec<RadiusJewel>) -> Self {
         self.radius_jewels = radius_jewels;
+        self
+    }
+
+    /// Sets the limb in a slot, returns a new copy.
+    pub fn set_limb(mut self, slot: LimbSlot, item: Item) -> Self {
+        self.limbs.insert(slot, item);
         self
     }
 
@@ -416,6 +519,9 @@ impl pobr_core::skill_env::SocketGroupView for Build {
                     gem_level: g.gem_level,
                     quality: g.quality,
                     stat_set_index: g.stat_set_index,
+                    corrupted: g.corrupted,
+                    minion: g.minion.clone(),
+                    minion_skill: g.minion_skill,
                 })
                 .collect();
             f(pobr_core::skill_env::EnabledGroup {
@@ -424,6 +530,7 @@ impl pobr_core::skill_env::SocketGroupView for Build {
                 slot: group.slot.as_deref(),
                 active_skill_id: group.active_skill_id.as_deref(),
                 active_gem_level: group.active_gem_level.unwrap_or(1),
+                reservation_free_skill: group.reservation_free_skill.as_deref(),
             });
         }
     }
@@ -447,12 +554,13 @@ impl pobr_core::skill_env::GemPropertyScanView for Build {
                 f(text);
             }
         }
-        for jewel in &self.jewels {
-            for text in jewel
+        // Jewels and limbs: their lines are global as an equipped item's.
+        for item in self.jewel_items().chain(self.limbs.values()) {
+            for text in item
                 .implicit_texts
                 .iter()
-                .chain(&jewel.modifier_texts)
-                .chain(&jewel.enchant_texts)
+                .chain(&item.modifier_texts)
+                .chain(&item.enchant_texts)
             {
                 f(text);
             }
@@ -475,6 +583,7 @@ mod tests {
             modifier_texts: vec!["+10 to maximum Life".into()],
             enchant_texts: vec![],
             rolled_defence: RolledDefence::default(),
+            socketed: Vec::new(),
             parsed_stats: vec![],
         }
     }

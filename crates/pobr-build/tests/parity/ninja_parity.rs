@@ -26,8 +26,7 @@
 
 use pobr_build::corpus::{CorpusLine, LineSource};
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
-use pobr_core::calc::{MinimalInput, OutputTable};
-use pobr_data::monster::EnemyTier;
+use pobr_core::calc::OutputTable;
 use pobr_gamedata::GameData;
 use std::path::{Path, PathBuf};
 
@@ -124,13 +123,8 @@ fn run_build_mode(dir: &Path, data: &BuildData, mode_effective: bool) -> Option<
     let code = std::fs::read_to_string(dir.join("code.txt")).ok()?;
     let build = parse_build_from_code(code.trim()).ok()?;
     let opts = DataOrchestratorOptions {
-        base_input: MinimalInput::default(),
-        inject_character_base: true,
-        enemy_level: 0,
-        enemy_tier: EnemyTier::Pinnacle,
         mode_effective,
-        extra_modifier_texts: vec![],
-        ..Default::default()
+        ..DataOrchestratorOptions::reference_conditions()
     };
     calculate_with_data(&build, data, &opts).ok()
 }
@@ -628,7 +622,7 @@ const BASELINE_DEF_CORE_HIT5: usize = 144; // After #14's long-tail triage: 144/
 // **Re-recorded for the per-socket-filled fix (+1 @5%/@10%)**: gemling-legionnaire's
 // body armour Morior Invictus's `+14 to Spirit per Socket filled` (×5 sockets)
 // wired in via a `RunesSocketedIn{SlotName}` Multiplier -> Spirit 180->250
-// (0.72x->1.00x, flips to correct). See collect.rs::filter_parseable's gate +
+// (0.72x->1.00x, flips to correct). See collect.rs::gate_parses +
 // the legacy/engine per-socket suffix + ingest's {SlotName} substitution +
 // per_slot_socket_multipliers pre-fill for details.
 // **Re-recorded for the charm base buff fix (+3 @5% / +2 @10%)**:
@@ -832,8 +826,27 @@ const BASELINE_DEF_CORE_HIT5: usize = 144; // After #14's long-tail triage: 144/
 //    average block switched to the four-way mean (:1067, no longer missing
 //    SpellProjectileBlock=max(spell,proj)): 2 slots for smith+titan TotalEHP.
 //    The remaining 6 slots are all wolf-pack (#13's territory).
-const BASELINE_DEF_HIT5: usize = 450; // #13+#14 merged, measured 450/450 = 100% (#13 alone: 437, wolf-pack fully cleared; #14 alone: 444, long tail 12 slots + four-way block; migration baseline: 343; 0.5.0=415)
-const BASELINE_DEF_HIT10: usize = 450; // #13+#14 merged, measured 450/450 = 100% (migration baseline: 361; 0.5.0=432)
+//
+// 449 of 450 since the Absent Amulet's granted skill reserves nothing: one cell
+// differs from the pinned PoB2 on purpose. blood-mage coiling-bolts wears an
+// Absent Amulet that grants Cast on Critical, and the game's table of
+// item-granted skills flags that base `NoReservation`. PoB2 lists the granted
+// skill a second time as a gem and reserves its Spirit, recording
+// SpiritUnreserved = -48 for a character with 340 Spirit; a character cannot
+// reserve more Spirit than it has. PoBR counts the skill once, without
+// reservation (`skills::granted_skill_reservation`).
+//
+// 448 at 5% since a granted skill takes the level its requirements allow: a
+// second cell differs on purpose. stormweaver-comet's Purity of Fire is
+// granted at level 17, which needs 39 Strength; the character has 38, so both
+// PoBR and the pinned PoB2 use it at level 16 (37% instead of 38% Fire
+// Resistance). Its helmet and gloves each hold a Soul Core of Citaqualotl
+// whose line reads "+5% to all Elemental Resistances"; PoB2 takes +6% from
+// its own rune table, PoBR the item's text. The 2% between them, which the
+// skill's extra level hid before, puts FireMaxHit at 0.94 of PoB2's: still
+// within 10%.
+const BASELINE_DEF_HIT5: usize = 448; // 448/450: every cell but the two above (#13+#14 merged measured 450/450; #13 alone: 437, wolf-pack fully cleared; #14 alone: 444, long tail 12 slots + four-way block; migration baseline: 343; 0.5.0=415)
+const BASELINE_DEF_HIT10: usize = 449; // 449/450: every cell but the one above (migration baseline: 361; 0.5.0=432)
 // **Re-recorded for expanding additional granted effects (+3 @10%)**: a gem's
 // additionalGrantedEffectId1..N (a foreign key in overlay/gem_effects.json --
 // e.g. a banner's buff-side effect: the primary slot is the reservation-side
@@ -1338,7 +1351,7 @@ fn parity_baseline_report() {
 
 /// Collects a build's full mod-text corpus lines (all three gear text
 /// blocks + jewels + **allocated tree nodes**) for unsupported
-/// classification. **Bypasses** `filter_parseable` / the tree-side gate --
+/// classification. **Bypasses** the calculation's gate on what it stores --
 /// classifies the raw lines directly so gap corpus is visible (method A-1 §1;
 /// tree behaviour folded in per A2 -- after B3, the gate/ingest share the
 /// same engine, so tree-side gaps are production gaps too).
@@ -1381,8 +1394,7 @@ fn collect_corpus_lines(dir: &Path, data: &BuildData) -> Vec<CorpusLine> {
     // selected tree data is available. This is a parser corpus, not an assertion
     // that every stored socket is active in the calculation.
     for jewel in build
-        .jewels
-        .iter()
+        .jewel_items()
         .chain(build.granted_socket_jewels.iter().map(|(_, item, _)| item))
     {
         push_item(jewel, LineSource::Jewel, &mut lines);

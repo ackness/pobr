@@ -181,6 +181,12 @@ const DICT = {
   'skills.removeGem': { 'en-US': 'Remove gem', 'zh-TW': '移除寶石', 'zh-CN': '移除宝石' },
   'skills.level': { 'en-US': 'Level', 'zh-TW': '等級', 'zh-CN': '等级' },
   'skills.quality': { 'en-US': 'Quality', 'zh-TW': '品質', 'zh-CN': '品质' },
+  'skills.corrupted': { 'en-US': 'Corrupted', 'zh-TW': '已腐化', 'zh-CN': '已腐化' },
+  'skills.corruptedHint': {
+    'en-US': 'A corrupted gem gains modifiers that name Corrupted Skill Gems, such as "+1 to Level of all Corrupted Skill Gems".',
+    'zh-TW': '已腐化的寶石會獲得只對腐化技能寶石生效的詞綴，例如腐化技能寶石的等級加成。',
+    'zh-CN': '已腐化的宝石会获得只对被腐化技能宝石生效的词缀，例如“所有被腐化技能宝石等级提高 +1”。',
+  },
   'picker.all': { 'en-US': 'All', 'zh-TW': '全部', 'zh-CN': '全部' },
   'picker.noResults': { 'en-US': 'No matches', 'zh-TW': '無匹配', 'zh-CN': '无匹配' },
   'picker.active': { 'en-US': 'Active', 'zh-TW': '主動', 'zh-CN': '主动' },
@@ -420,6 +426,7 @@ const DICT = {
   'items.cancel': { 'en-US': 'Cancel', 'zh-TW': '取消', 'zh-CN': '取消' },
   'items.empty': { 'en-US': '(empty)', 'zh-TW': '（空）', 'zh-CN': '（空）' },
   "items.flasks": {"en-US": "Flasks / Charms", "zh-TW": "藥劑 / 護符", "zh-CN": "药剂 / 护符"},
+  'items.limbs': { 'en-US': 'Limbs', 'zh-TW': '肢體', 'zh-CN': '肢体' },
   'items.switcher': { 'en-US': 'Switch item', 'zh-TW': '切換裝備', 'zh-CN': '切换装备' },
   'items.runes': { 'en-US': 'Rune sockets', 'zh-TW': '符文插槽', 'zh-CN': '符文插槽' },
   'items.socketAdd': { 'en-US': 'Add socket', 'zh-TW': '加孔', 'zh-CN': '加孔' },
@@ -500,6 +507,7 @@ const DICT = {
   'calcs.step.off_hand_either': { 'en-US': 'Off hand: both weapons hit at once and either can crit', 'zh-TW': '副手：兩把武器同時擊中，任一暴擊即算', 'zh-CN': '副手：两把武器同时击中，任一暴击即算' },
   'calcs.step.off_hand_alternating': { 'en-US': 'Off hand: alternating weapons of different speed', 'zh-TW': '副手：輪流使用速度不同的武器', 'zh-CN': '副手：轮流使用速度不同的武器' },
   'calcs.step.reload': { 'en-US': 'Time spent reloading (see the table below)', 'zh-TW': '裝填所佔的時間（見下表）', 'zh-CN': '装填所占的时间（见下表）' },
+  'calcs.step.hit_interval': { 'en-US': 'Hit by the first arrow to land once it can be hit again', 'zh-TW': '能再次被命中後落下的第一支箭命中', 'zh-CN': '能再次被命中后落下的第一支箭命中' },
   'calcs.step.stronger_hand': { 'en-US': 'The stronger hand (see below)', 'zh-TW': '較強的一手（見下方）', 'zh-CN': '较强的一手（见下方）' },
   'calcs.step.stronger_share': { 'en-US': 'Share of active instances from the stronger hand (s)', 'zh-TW': '生效層數中來自較強一手的比例（s）', 'zh-CN': '生效层数中来自较强一手的比例（s）' },
   'calcs.step.weaker_hand': { 'en-US': 'The rest come from the weaker hand', 'zh-TW': '其餘來自較弱的一手', 'zh-CN': '其余来自较弱的一手' },
@@ -530,6 +538,7 @@ const DICT = {
   'calcs.ailment.maxStacks': { 'en-US': 'Most that deal damage at once', 'zh-TW': '最多同時造成傷害的層數', 'zh-CN': '最多同时造成伤害的层数' },
   'calcs.ailment.baseDuration': { 'en-US': 'Duration before modifiers', 'zh-TW': '未計詞條的持續時間', 'zh-CN': '未计词条的持续时间' },
   'calcs.ailment.enemyDuration': { 'en-US': 'Duration multiplier from effects on the enemy', 'zh-TW': '敵人身上效果帶來的持續時間倍率', 'zh-CN': '敌人身上效果带来的持续时间倍率' },
+  'calcs.ailment.rate': { 'en-US': 'Deals its damage faster', 'zh-TW': '更快造成傷害', 'zh-CN': '更快造成伤害' },
   'calcs.ailment.sourceTitle': { 'en-US': 'The hit that applies it, by damage type', 'zh-TW': '施加它的擊中傷害（各類型）', 'zh-CN': '施加它的击中伤害（各类型）' },
   'calcs.ailment.sourceHitShort': { 'en-US': 'Non-critical', 'zh-TW': '非暴擊', 'zh-CN': '非暴击' },
   'calcs.ailment.sourceCritShort': { 'en-US': 'Critical', 'zh-TW': '暴擊', 'zh-CN': '暴击' },
@@ -790,9 +799,14 @@ const DICT = {
   "config.groupUntitled": {"en-US": "Untitled group", "zh-TW": "未命名分組", "zh-CN": "未命名分组"},
   'config.extraModsHint': {
     'en-US':
-      'One modifier per line (PoB text, e.g. "20% increased Fire Damage"); Only enabled groups apply; text is saved when you leave the field. Unparsable lines show up in the Build tab unsupported list.',
-    'zh-TW': '一行一條詞綴（PoB 文本，如「20% increased Fire Damage」），僅啟用的分組生效，離開輸入框即儲存；無法解析的行會出現在構築頁的不支援清單。',
-    'zh-CN': '一行一条词缀（PoB 文本，如「20% increased Fire Damage」），仅启用的分组生效，离开输入框即保存；无法解析的行会出现在构筑页的不支持列表。',
+      'One modifier per line (PoB text, e.g. "20% increased Fire Damage"); only enabled groups apply; text is saved when you leave the field. A line the calculation cannot apply is listed below the groups and in the Build tab unsupported list.',
+    'zh-TW': '一行一條詞綴（PoB 文本，如「20% increased Fire Damage」），僅啟用的分組生效，離開輸入框即儲存；計算無法套用的行會列在分組下方，也會出現在構築頁的不支援清單。',
+    'zh-CN': '一行一条词缀（PoB 文本，如「20% increased Fire Damage」），仅启用的分组生效，离开输入框即保存；计算无法应用的行会列在分组下方，也会出现在构筑页的不支持列表。',
+  },
+  'config.unappliedLines': {
+    'en-US': 'Not applied. The calculation does not understand these lines:',
+    'zh-TW': '以下行未生效，計算無法識別：',
+    'zh-CN': '以下行未生效，计算无法识别：',
   },
 
   // Notes 页
@@ -846,6 +860,10 @@ const SLOT_LABELS: Record<string, Entry> = {
   'Charm 1': { 'en-US': 'Charm 1', 'zh-TW': '護符 1', 'zh-CN': '护符 1' },
   'Charm 2': { 'en-US': 'Charm 2', 'zh-TW': '護符 2', 'zh-CN': '护符 2' },
   'Charm 3': { 'en-US': 'Charm 3', 'zh-TW': '護符 3', 'zh-CN': '护符 3' },
+  arm1: { 'en-US': 'Arm 1', 'zh-TW': '手臂 1', 'zh-CN': '手臂 1' },
+  arm2: { 'en-US': 'Arm 2', 'zh-TW': '手臂 2', 'zh-CN': '手臂 2' },
+  leg1: { 'en-US': 'Leg 1', 'zh-TW': '腿 1', 'zh-CN': '腿 1' },
+  leg2: { 'en-US': 'Leg 2', 'zh-TW': '腿 2', 'zh-CN': '腿 2' },
 };
 
 /** 装备槽稳定 id → 本地化槽位名。 */

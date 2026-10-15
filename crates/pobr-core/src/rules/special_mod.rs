@@ -37,12 +37,15 @@ use pobr_data::catalog::parser_rules::{
 };
 use pobr_data::catalog::value_expr::ValueExpr;
 use pobr_data::constants::DamageType;
+use pobr_data::item::EquipmentSlot;
 use pobr_data::modifier::{KeywordFlags, ModFlags, ModType};
 use pobr_data::skill::SkillTypes;
 use regex::{Regex, RegexSet};
 
 use crate::modifier::{ActorRef, ModTag, ModValue, Modifier};
-use crate::parse::mod_parser::template::{normalize_attribute_var, normalize_perstat_slot_suffix};
+use crate::parse::mod_parser::template::{
+    normalize_attribute_var, normalize_perstat_slot_suffix, slot_name_to_id,
+};
 use crate::rules::registry::{HandlerCtx, HandlerRegistry};
 use crate::rules::stat_map_engine::damage_bound_mod_name;
 use crate::rules::value_expr::eval;
@@ -140,6 +143,8 @@ struct CompiledEntry {
     id: String,
     regex: Regex,
     verified: bool,
+    /// Registered as changing nothing a calculation reports (batch `S0`).
+    no_effect: bool,
     /// Instantiated as template mods (mutually exclusive with `handler_id`).
     template: Option<CompiledTemplate>,
     /// Handler routing (mutually exclusive with template).
@@ -197,6 +202,9 @@ pub struct SpecialMatch {
     /// Forwarded for the parity report (`verified:false` gets its own
     /// column).
     pub verified: bool,
+    /// The entry is registered as changing nothing a calculation reports
+    /// (batch `S0`): its line is recognised, not dropped.
+    pub no_effect: bool,
     /// Set when `handler_id` isn't registered (the match still hits but
     /// produces empty mods; used for reporting, never panics).
     pub unregistered_handler: Option<String>,
@@ -263,6 +271,7 @@ impl SpecialModRules {
                 id: def.id.clone(),
                 regex,
                 verified: def.verified,
+                no_effect: def.batch == "S0",
                 template,
                 handler_id: def.handler_id.clone(),
                 handler_args: def.handler_args.clone(),
@@ -339,6 +348,7 @@ impl SpecialModRules {
                         entry_id: entry.id.clone(),
                         mods: Vec::new(),
                         verified: entry.verified,
+                        no_effect: entry.no_effect,
                         unregistered_handler: Some(handler_id.clone()),
                     });
                 };
@@ -358,6 +368,7 @@ impl SpecialModRules {
                     entry_id: entry.id.clone(),
                     mods,
                     verified: entry.verified,
+                    no_effect: entry.no_effect,
                     unregistered_handler: None,
                 });
             }
@@ -370,6 +381,7 @@ impl SpecialModRules {
                     entry_id: entry.id.clone(),
                     mods: Vec::new(),
                     verified: entry.verified,
+                    no_effect: entry.no_effect,
                     unregistered_handler: None,
                 });
             };
@@ -378,6 +390,7 @@ impl SpecialModRules {
                 entry_id: entry.id.clone(),
                 mods,
                 verified: entry.verified,
+                no_effect: entry.no_effect,
                 unregistered_handler: None,
             });
         }
@@ -388,9 +401,51 @@ impl SpecialModRules {
 /// Anchors the whole line (doesn't double-wrap if the pattern already has
 /// `^`/`$`).
 fn anchor_pattern(pattern: &str) -> String {
+    let pattern = ascii_digits(pattern);
     let head = if pattern.starts_with('^') { "" } else { "^" };
     let tail = if pattern.ends_with('$') { "" } else { "$" };
     format!("{head}{pattern}{tail}")
+}
+
+/// `\d` as the ASCII digits the rules mean (the source patterns' `%d`, and
+/// the digits of every modifier line). Rust's `\d` is every Unicode decimal
+/// digit, whose automaton for two thousand rules exceeds the regex size limit.
+fn ascii_digits(pattern: &str) -> String {
+    let mut out = String::with_capacity(pattern.len());
+    let mut chars = pattern.chars();
+    let mut in_class = false;
+    while let Some(c) = chars.next() {
+        match c {
+            '\\' => match chars.next() {
+                Some('d') if in_class => out.push_str("0-9"),
+                Some('d') => out.push_str("[0-9]"),
+                Some(next) => {
+                    out.push('\\');
+                    out.push(next);
+                }
+                None => out.push('\\'),
+            },
+            '[' if !in_class => {
+                in_class = true;
+                out.push(c);
+                // A `]` or `^]` right after the opening bracket is a literal.
+                let rest = chars.as_str();
+                for prefix in ["^]", "]"] {
+                    if let Some(after) = rest.strip_prefix(prefix) {
+                        out.push_str(prefix);
+                        chars = after.chars();
+                        break;
+                    }
+                }
+            }
+            ']' if in_class => {
+                in_class = false;
+                out.push(c);
+            }
+            _ => out.push(c),
+        }
+    }
+    out
 }
 
 fn parse_mod_type(literal: &str) -> Option<ModType> {
@@ -512,18 +567,8 @@ fn compile_flags(names: &[String]) -> ModFlags {
 }
 
 fn keyword_bit(name: &str) -> Option<KeywordFlags> {
-    Some(match name {
-        "Aura" => KeywordFlags::AURA,
-        "Curse" => KeywordFlags::CURSE,
-        "Arrow" => KeywordFlags::ARROW,
-        "Hit" => KeywordFlags::HIT,
-        "Ailment" => KeywordFlags::AILMENT,
-        "Poison" => KeywordFlags::POISON,
-        "Bleed" => KeywordFlags::BLEED,
-        "Ignite" => KeywordFlags::IGNITE,
-        // Validation rejects unknown keywords before compilation.
-        _ => return None,
-    })
+    // Validation rejects unknown keywords before compilation.
+    KeywordFlags::from_name(name)
 }
 
 fn compile_keyword_flags(names: &[String]) -> KeywordFlags {
@@ -645,8 +690,17 @@ fn compile_literal_tag(tag: &TemplateTagDef) -> Option<ModTag> {
                 let bare = name.strip_prefix("SkillType:").unwrap_or(name);
                 SkillTypes::from_pob2_name(bare)
             };
+            // `neg`: the skill has none of the types ("Non-Channelling Spells").
+            let neg = tag.fields.get("neg").and_then(scalar_bool).unwrap_or(false);
+            let tag_of = |types| {
+                if neg {
+                    ModTag::SkillTypesNeg(types)
+                } else {
+                    ModTag::SkillTypes(types)
+                }
+            };
             if let Some(v) = tag.fields.get("skillType") {
-                return lookup(&scalar_text(v)?).map(ModTag::SkillTypes);
+                return lookup(&scalar_text(v)?).map(tag_of);
             }
             // `skillTypeList` (vendor OR over multiple types — the ModStore
             // SkillType branch fires on any match) → folded into a single
@@ -660,7 +714,7 @@ fn compile_literal_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             for name in items {
                 acc |= lookup(name)?;
             }
-            (!acc.is_empty()).then_some(ModTag::SkillTypes(acc))
+            (!acc.is_empty()).then_some(tag_of(acc))
         }
         "DamageType" => {
             let name = scalar_text(tag.fields.get("damageType")?)?;
@@ -738,6 +792,17 @@ fn compile_literal_tag(tag: &TemplateTagDef) -> Option<ModTag> {
                 return None;
             }
             Some(ModTag::SkillName { names })
+        }
+        "SlotName" => {
+            // The equipment slot the modifier is scoped to, by the name the
+            // game's text uses (`Body Armour`, `Helmet`, …). A line naming
+            // several slots is one modifier per slot. A name that is not a
+            // slot would never match an item, so it is rejected.
+            let slot = slot_name_to_id(&scalar_text(tag.fields.get("slotName")?)?);
+            EquipmentSlot::ALL
+                .iter()
+                .any(|known| known.id() == slot)
+                .then_some(ModTag::SlotName(slot))
         }
         "MultiplierThreshold" => {
             // Literal var/threshold/upper (vendor's `thresholdVar`/`actor`
@@ -1123,6 +1188,18 @@ mod tests {
         SpecialModRules::compile(&defs, &HandlerRegistry::new()).unwrap()
     }
 
+    /// A rule's `\d` is an ASCII digit, inside a class too; an escaped
+    /// backslash and a literal bracket stay as written.
+    #[test]
+    fn a_rule_digit_is_an_ascii_digit() {
+        assert_eq!(ascii_digits(r"(\d+)% more"), "([0-9]+)% more");
+        assert_eq!(ascii_digits(r"([\d.]+) metres"), "([0-9.]+) metres");
+        assert_eq!(ascii_digits(r"a\\d []\d] \[\d"), r"a\\d []0-9] \[[0-9]");
+        let rule = Regex::new(&anchor_pattern(r"(\d+)% more")).unwrap();
+        assert!(rule.is_match("25% more"));
+        assert!(!rule.is_match("٢٥% more"));
+    }
+
     /// Numeric capture + operator chain: `(\d+)% increased X` → INC,
     /// capture referenced directly.
     #[test]
@@ -1498,6 +1575,21 @@ mod tests {
         );
     }
 
+    /// A negated SkillType tag: the skill has none of the types.
+    #[test]
+    fn negated_skill_type_tag() {
+        let d = def(r#"{"id":"t","pattern":"not channelled","mods":[
+                {"name":"X","type":"BASE","value":1,
+                 "tags":[{"type":"SkillType","skillType":"SkillType:Channel","neg":true}]}],"batch":"S2"}"#);
+        let r = rules(vec![d]);
+        let reg = HandlerRegistry::new();
+        let m = r.try_match("not channelled", &reg).unwrap();
+        assert!(matches!(
+            &m.mods[0].tags[0],
+            ModTag::SkillTypesNeg(types) if Some(*types) == SkillTypes::from_pob2_name("Channel")
+        ));
+    }
+
     /// Literal Multiplier tag mapping (fork-a: Blood Mage's
     /// `MaximumLife BASE 1 × Multiplier`).
     #[test]
@@ -1514,6 +1606,23 @@ mod tests {
             &m.mods[0].tags[0],
             ModTag::Multiplier { var, div, .. } if var == "EnergyShieldOnbodyarmour" && *div == 1.0
         ));
+    }
+
+    /// A slot tag scopes the modifier to the item in that slot, under the
+    /// slot's stable id.
+    #[test]
+    fn slot_name_tag() {
+        let d = def(
+            r#"{"id":"t","pattern":"evasion from body armour is halved","mods":[
+                {"name":"Evasion","type":"MORE","value":-50,
+                 "tags":[{"type":"SlotName","slotName":"Body Armour"}]}],"batch":"S2"}"#,
+        );
+        let r = rules(vec![d]);
+        let reg = HandlerRegistry::new();
+        let m = r
+            .try_match("evasion from body armour is halved", &reg)
+            .unwrap();
+        assert_eq!(m.mods[0].slot_name(), Some("bodyarmour"));
     }
 
     #[test]

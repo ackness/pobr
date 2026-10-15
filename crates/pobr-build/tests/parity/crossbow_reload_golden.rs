@@ -43,6 +43,7 @@ fn bare_weapon(base_name: &str) -> Item {
         modifier_texts: vec![],
         enchant_texts: vec![],
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: vec![],
     }
 }
@@ -116,6 +117,32 @@ fn constructed_crossbow_build_applies_reload_cycle() {
         out.dps > 0.0,
         "the crossbow build's DPS should be non-zero: {}",
         out.dps
+    );
+}
+
+/// The crossbow's own "42% reduced Reload Speed" (the game's
+/// `local_reload_speed_+%`, as on The Last Lament) and "19% increased Attack
+/// Speed" change the weapon's reload time, 0.8 / (1 - 0.42 + 0.19) = 1.039
+/// seconds; neither is a modifier to the character's reload speed.
+#[test]
+fn the_crossbows_own_reload_and_attack_speed_change_its_reload_time() {
+    let data = load_build_data();
+    let mut weapon = bare_weapon("Makeshift Crossbow");
+    weapon.modifier_texts = vec![
+        "42% reduced Reload Speed".to_string(),
+        "19% increased Attack Speed".to_string(),
+    ];
+    let build = crossbow_build().set_item(EquipmentSlot::Weapon1, weapon);
+    let out = calculate_with_data(&build, &data, &opts()).expect("calculate");
+
+    let sut = out.skill_use_time.expect("skill use time present");
+    let firing_rate = sut.tooltip_rate;
+    let reload = 0.8 / (1.0 - 0.42 + 0.19);
+    let expected = 12.0 / (12.0 / firing_rate + reload);
+    assert!(
+        (out.effective_action_rate - expected).abs() < 1e-2,
+        "reload-cycle average rate: {} vs {expected} (firing_rate={firing_rate})",
+        out.effective_action_rate
     );
 }
 

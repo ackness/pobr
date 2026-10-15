@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-sorceress-chronomancer-mana-remnants-859e60e18169",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/1066961902-5936/%E7%BB%99%E8%80%A6%E6%93%A6%E7%9A%AE%E9%9E%8B",
+    "account": "1066961902-5936",
+    "character": "给耦擦皮鞋",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:47:50+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=1066961902-5936&name=%E7%BB%99%E8%80%A6%E6%93%A6%E7%9A%AE%E9%9E%8B&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Chronomancer",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Chronomancer",
+    "level": 97,
+    "main_skill": "Mana Remnants"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "51eb6158a224dbd6fd797dcfde756f2c1e9e6bbb5227cdcb72c0228fdc35d4ac",
+    "code_chars": 9848,
+    "decoded_bytes": 32113
+  }
+}

@@ -105,6 +105,8 @@ const REQUIRED_EN: &[(&str, &[&str])] = &[
             "StrengthRequirementPercent",
             "DexterityRequirementPercent",
             "IntelligenceRequirementPercent",
+            "GemEffects",
+            "ItemExperienceType",
         ],
     ),
     (
@@ -156,6 +158,12 @@ const REQUIRED_EN: &[(&str, &[&str])] = &[
             // RemoveStats: a DoT-variant set removes the main set's hit
             // damage stat (a missing column means it isn't removed, causing phantom hit damage to reappear).
             "IgnoredStats",
+            // What a set's hits are (`base_is_projectile`, `is_area_damage`, …):
+            // without the column every set is written without its valueless stats.
+            "ImplicitStats",
+            // How a minion skill's damage grows with the minion's level.
+            "IncrementalEffectiveness",
+            "DamageIncrementalEffectiveness",
         ],
     ),
     (
@@ -167,9 +175,12 @@ const REQUIRED_EN: &[(&str, &[&str])] = &[
             "BaseResolvedValues",
             "AdditionalStats",
             "AdditionalStatsValues",
+            "AdditionalFlags",
             "BaseMultiplier",
             "SpellCritChance",
             "AttackCritChance",
+            // A minion skill's stat per point of effectiveness.
+            "FloatStatsValues",
         ],
     ),
     (
@@ -181,6 +192,17 @@ const REQUIRED_EN: &[(&str, &[&str])] = &[
     // actually-present `_index` / `Id` are asserted.
     ("ActiveSkillType.json", &["_index", "Id"]),
     ("CostTypes.json", &["_index", "Id", "Divisor", "PerMinute"]),
+    // What a gem grants and what kind of gem it is.
+    (
+        "GemEffects.json",
+        &["Id", "GrantedEffect", "AdditionalGrantedEffects", "GemTags"],
+    ),
+    ("GemTags.json", &["Id"]),
+    // The character level each gem level requires.
+    (
+        "ItemExperiencePerLevel.json",
+        &["ItemExperienceType", "ItemCurrentLevel", "Level"],
+    ),
 ];
 
 /// Traditional Chinese sidecar tables -> required columns.

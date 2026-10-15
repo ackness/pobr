@@ -93,3 +93,35 @@ fn guard_line_does_not_extend_hit_pool() {
         "the guard line should not change physical max hit (actual delta {delta})"
     );
 }
+
+/// `line_usage_json` takes the request `calculate_build_json` takes and names
+/// the holder of every line: the unmodelled guard line is listed under its
+/// charm, and the immunities the charm grants are applied.
+#[test]
+fn the_ledger_names_the_charm_holding_each_line() {
+    let dir = repo_data_root().join(pobr_gamedata::data_version());
+    pobr_wasm::init_data_from_dir(dir.to_str().unwrap()).expect("init data");
+
+    let request = json!({
+        "character": { "level": 90, "class_name": "Monk", "ascendancy_name": "" },
+        "allocated_nodes": [],
+        "socket_groups": [],
+        "items": [{ "slot": "belt", "text": BELT }],
+        "flasks": [{ "slot": "Charm 1", "text": CHARM }],
+        "config_inputs": {},
+    });
+    let out = pobr_wasm::line_usage_json(&request.to_string()).expect("line usage");
+    let response: Value = serde_json::from_str(&out).expect("parse");
+    assert_eq!(response["item_errors"], json!([]));
+    let lines = response["usage"]["lines"].as_array().expect("lines");
+    let line = |text: &str| {
+        lines
+            .iter()
+            .find(|line| line["source_id"] == "flask.charm1" && line["text"] == text)
+            .unwrap_or_else(|| panic!("`{text}` is not listed under the charm: {lines:#?}"))
+    };
+    let guard = line("Also grants 481 Guard");
+    assert_eq!(guard["status"], "unparsed");
+    assert_eq!(guard["holder"], "Golden Charm");
+    assert_eq!(line("Immune to Ignite")["status"], "applied");
+}

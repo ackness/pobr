@@ -15,7 +15,7 @@ use crate::skill_env::lookup::{
 };
 use crate::skill_env::mods::{
     GemPropertyBonus, GemPropertyKind, clean_grant_text, gem_level_category_matches,
-    parse_gem_property_bonus,
+    gem_tags_match_category, parse_gem_property_bonus,
 };
 use crate::skill_env::support::{CompatibleSupport, GroupSupportJudgement};
 
@@ -282,15 +282,29 @@ pub fn gem_property_applies(
     data: &dyn GemPropertyLookup,
     skill_types: &[String],
     skill_id: &str,
+    corrupted: bool,
 ) -> bool {
-    if !gem_level_category_matches(&bonus.category, skill_types, skill_id) {
+    if bonus.corrupted_only && !corrupted {
+        return false;
+    }
+    let gem_def = data.gem_def_for_effect(skill_id);
+    // A kind is a kind of gem, which the gem's tags say. The types of the
+    // skill stand in where the tags do not: a snapshot without them, and a
+    // support gem, whose tags name the skills it supports and the skill it
+    // grants (Impending Doom is tagged `spell` for Doom Blast, which runs at
+    // the level of the supported skill).
+    let of_kind = match gem_def.filter(|gem| !gem.is_support && !gem.gem_tags.is_empty()) {
+        Some(gem) => gem_tags_match_category(&bonus.category, &gem.gem_tags, skill_id),
+        None => gem_level_category_matches(&bonus.category, skill_types, skill_id),
+    };
+    if !of_kind {
         return false;
     }
     match bonus.attr_req {
         None => true,
         Some(attr) => {
             // Granted effect → gem base → attribute requirement weight (matching vendor's `effect.gemData[reqX] > 0`).
-            let Some(gem_def) = data.gem_def_for_effect(skill_id) else {
+            let Some(gem_def) = gem_def else {
                 return false;
             };
             match attr {
@@ -304,11 +318,13 @@ pub fn gem_property_applies(
 }
 
 /// The sum of "`+N to Level of all <X> Skills`" level bonuses that apply to `skill_id`
-/// (the Level dimension of [`gem_property_bonuses`], filtered and summed).
+/// on a gem that is `corrupted` or not (the Level dimension of
+/// [`gem_property_bonuses`], filtered and summed).
 pub fn additional_gem_levels(
     bonuses: &[GemPropertyBonus],
     data: &dyn GemPropertyLookup,
     skill_id: &str,
+    corrupted: bool,
 ) -> u32 {
     let skill_types = data
         .effect(skill_id)
@@ -317,7 +333,7 @@ pub fn additional_gem_levels(
     bonuses
         .iter()
         .filter(|b| b.kind == GemPropertyKind::Level)
-        .filter(|b| gem_property_applies(b, data, skill_types, skill_id))
+        .filter(|b| gem_property_applies(b, data, skill_types, skill_id, corrupted))
         .map(|b| b.value)
         .sum()
 }
@@ -329,18 +345,40 @@ pub fn additional_gem_levels(
 /// Chaos Mastery's "granting them an additional level"; this was the root cause of
 /// blood-mage's Coiling Bolts being 1 level short (L30→31, pinned by oracle per-source A/B).
 ///
-/// - Compatibility: the caller supplies the group's [`GroupSupportJudgement`] (the
-///   four-stage judgement, the same basis as vendor's effectList gate); a typed variant
-///   (chaos/fire/…) matches against the post-judgement `final_skill_types` (including
-///   the addSkillTypes fixed point).
+/// - Compatibility: the caller supplies the group's [`GroupSupportJudgement`] for
+///   each effect of the gem, primary first (the four-stage judgement); a support
+///   compatible with any of them modifies the gem. A typed variant (chaos/fire/…)
+///   matches against the post-judgement `final_skill_types` (including the
+///   addSkillTypes fixed point) of an effect the support supports.
 /// - A support does not receive granted levels itself (the caller skips support ids).
+/// - Uhtred's lineage supports grant theirs by how many other supports modify
+///   the skill: "+3 to level of Supported Skills if no other Supports are
+///   modifying them" (`supported_active_skill_gem_level_+_if_no_other_supports`),
+///   "… if exactly one other Support is …" and "… if exactly two other
+///   Supports are …".
 pub fn support_granted_gem_levels(
-    judgement: &GroupSupportJudgement,
+    judgements: &[GroupSupportJudgement],
     gems: &[GemInput],
     data: &dyn StatSetLookup,
 ) -> u32 {
+    const BY_OTHER_SUPPORTS: [(&str, usize); 3] = [
+        ("supported_active_skill_gem_level_+_if_no_other_supports", 0),
+        ("supported_active_skill_gem_level_+_if_one_other_support", 1),
+        (
+            "supported_active_skill_gem_level_+_if_two_other_supports",
+            2,
+        ),
+    ];
+    let modifying = modifying_supports(judgements);
+    // Supports are support gems: a meta gem's trigger (Cast on Elemental
+    // Ailment's) is a second effect of a skill gem, not a Support.
+    let other_supports = modifying
+        .iter()
+        .filter(|(sup, _)| gems[sup.gem_index].skill_id == sup.effect_id)
+        .count()
+        .saturating_sub(1);
     let mut total = 0u32;
-    for sup in &judgement.compatible {
+    for (sup, supported) in &modifying {
         let host = &gems[sup.gem_index];
         let set_index = support_stat_set_index(sup, gems);
         let stats = data.effect_stats(
@@ -350,6 +388,12 @@ pub fn support_granted_gem_levels(
             set_index,
         );
         for s in &stats.base {
+            if let Some((_, others)) = BY_OTHER_SUPPORTS.iter().find(|(id, _)| s.stat == *id) {
+                if *others == other_supports && s.value > 0.0 {
+                    total += s.value as u32;
+                }
+                continue;
+            }
             let Some(rest) = s.stat.strip_prefix("supported_") else {
                 continue;
             };
@@ -362,7 +406,10 @@ pub fn support_granted_gem_levels(
                     .map(|f| f.to_ascii_uppercase().to_string() + c.as_str())
                     .unwrap_or_default()
             };
-            if (kind == "active" || judgement.final_skill_types.contains(&type_name))
+            if (kind == "active"
+                || supported
+                    .iter()
+                    .any(|j| j.final_skill_types.contains(&type_name)))
                 && s.value > 0.0
             {
                 total += s.value as u32;
@@ -372,18 +419,41 @@ pub fn support_granted_gem_levels(
     total
 }
 
+/// The supports modifying a gem, each once, with the judgements of the gem's
+/// effects it supports: `judgements` holds one per effect of the gem, its
+/// primary effect first. A support that supports any of the gem's effects
+/// modifies the gem, and what it grants the gem's level or quality applies to
+/// all of them (Physical Mastery supports Iron Ward's Physical nova, and Iron
+/// Ward's buff has the level too).
+fn modifying_supports(
+    judgements: &[GroupSupportJudgement],
+) -> Vec<(&CompatibleSupport, Vec<&GroupSupportJudgement>)> {
+    let mut modifying: Vec<(&CompatibleSupport, Vec<&GroupSupportJudgement>)> = Vec::new();
+    for judgement in judgements {
+        for sup in &judgement.compatible {
+            match modifying.iter_mut().find(|(seen, _)| {
+                seen.gem_index == sup.gem_index && seen.effect_id == sup.effect_id
+            }) {
+                Some((_, supported)) => supported.push(judgement),
+                None => modifying.push((sup, vec![judgement])),
+            }
+        }
+    }
+    modifying
+}
+
 /// The +N% gem quality granted by a **compatible** support in the same group (vendor
 /// SkillStatMap.lua:3097 `supported_active_skill_gem_quality_%` → a
 /// `SupportedGemProperty LIST {key=quality}`), the quality half of
 /// [`support_granted_gem_levels`] — e.g. Dialla's Desire's +5% (gemling's Trinity
 /// 34→39, pinned by oracle per-skill quality).
 pub fn support_granted_gem_quality(
-    judgement: &GroupSupportJudgement,
+    judgements: &[GroupSupportJudgement],
     gems: &[GemInput],
     data: &dyn StatSetLookup,
 ) -> u32 {
     let mut total = 0u32;
-    for sup in &judgement.compatible {
+    for (sup, _) in modifying_supports(judgements) {
         let host = &gems[sup.gem_index];
         let set_index = support_stat_set_index(sup, gems);
         let stats = data.effect_stats(

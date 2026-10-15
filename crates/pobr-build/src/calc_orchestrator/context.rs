@@ -1,5 +1,6 @@
 //! Execution state owned by one calculation, including trigger sub-calculations.
 
+use super::sources::ReceivedLine;
 use super::{
     BuildData, DataOrchestratorOptions, StatMapCatalog, StatMapCompareRecord, StatMapMode,
 };
@@ -16,6 +17,12 @@ pub(super) struct CalculationContext {
     pub support_limits: Vec<String>,
     pub is_trigger_source: bool,
     pub trigger_memo: Option<Rc<RefCell<TriggerMemo>>>,
+    /// Note which stored modifiers the calculation reads, and keep the lines
+    /// of the build as they arrive (`diagnosis::diagnose`).
+    pub track_reads: bool,
+    /// With `track_reads`: the build's lines as the calculation received
+    /// them, with what became of each.
+    pub received_lines: Vec<ReceivedLine>,
 }
 
 impl CalculationContext {
@@ -45,6 +52,8 @@ impl CalculationContext {
             support_limits: Vec::new(),
             is_trigger_source: false,
             trigger_memo: None,
+            track_reads: false,
+            received_lines: Vec::new(),
         }
     }
 
@@ -56,6 +65,8 @@ impl CalculationContext {
             support_limits: Vec::new(),
             is_trigger_source: true,
             trigger_memo: None,
+            track_reads: false,
+            received_lines: Vec::new(),
         }
     }
 }

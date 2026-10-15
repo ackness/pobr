@@ -100,3 +100,47 @@ fn crits_without_extra_damage_say_so() {
     let chance = session.stat_formula("CritChance").expect("chance formula");
     assert_eq!(chance.value, 10.0);
 }
+
+/// "Chance to Hit with Attacks can exceed 100%" and "Gain additional Critical
+/// Hit Chance equal to 25% of excess chance to Hit with Attacks": 3000
+/// accuracy against 968 evasion is 3750 / 3290.4 = 114% to hit, so 14 in
+/// excess and 3.5% more chance to crit on a base of 5%.
+#[test]
+fn excess_chance_to_hit_becomes_critical_hit_chance() {
+    use pobr_core::ModTag;
+
+    let crit_chance = |cfg: CalcConfig, can_exceed: bool| {
+        let mut mods = vec![
+            Modifier::number("Accuracy", ModType::Base, 3000.0),
+            Modifier::number("CriticalStrikeChance", ModType::Base, 5.0),
+            Modifier::number("CriticalStrikeChance", ModType::Base, 0.25)
+                .with_tag(ModTag::multiplier("ExcessHitChance", 1.0, None)),
+        ];
+        if can_exceed {
+            mods.push(Modifier::flag("Condition:HitChanceCanExceed100"));
+        }
+        let mut session = CalculationSession::new(MinimalInput {
+            base_life: 100.0,
+            base_mana: 0.0,
+            base_fire_resistance: 0.0,
+            base_cold_resistance: 0.0,
+            base_lightning_resistance: 0.0,
+            base_accuracy: 0.0,
+            enemy_evasion: 968.0,
+            base_hit_min: 100.0,
+            base_hit_max: 200.0,
+            base_action_rate: 1.0,
+        })
+        .with_config(cfg);
+        session.add_modifiers(mods);
+        session.perform_minimal().expect("perform").crit_chance
+    };
+    let close = |actual: f64, expected: f64| {
+        assert!((actual - expected).abs() < 1e-9, "{actual} != {expected}");
+    };
+    close(crit_chance(CalcConfig::attack(), true), 0.085);
+    // The chance to hit of a character without it stops at 100%.
+    close(crit_chance(CalcConfig::attack(), false), 0.05);
+    // A spell makes no accuracy check: it has no chance to hit to exceed.
+    close(crit_chance(CalcConfig::spell(), true), 0.05);
+}

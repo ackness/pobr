@@ -147,10 +147,15 @@ pub(super) fn adapt_effects(
                 resolved
             })
             .collect();
+        let displayed_name = active_idx
+            .and_then(|i| active_skills.get(i))
+            .and_then(|a| a.displayed_name.clone())
+            .filter(|name| !name.is_empty());
         effects.push(GrantedEffectDef {
             id: raw.id,
             is_support: raw.is_support.unwrap_or(false),
             active_skill,
+            displayed_name,
             cast_time,
             require_skill_types: resolve_type_tokens(&raw.allowed_active_skill_types),
             add_skill_types: resolve_type_tokens(&raw.added_active_skill_types),

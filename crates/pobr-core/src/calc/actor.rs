@@ -49,6 +49,20 @@ pub struct Actor {
     /// time). `TotalCompanionLife` (vendor CalcPerform.lua:3364-3370) only sums
     /// minions with this flag set; always `false` for the player actor.
     pub is_companion: bool,
+    /// A minion's catalog id and the skill that summoned it; `None` for the
+    /// player and the enemy.
+    pub minion: Option<MinionIdentity>,
+}
+
+/// Which minion an actor is.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct MinionIdentity {
+    /// The minion's catalog id (`MinionDef::id`).
+    pub minion_id: String,
+    /// The id of the skill that summoned it; empty when no skill did.
+    pub summoned_by: String,
+    /// The skill the minion uses.
+    pub skill: super::MinionSkill,
 }
 
 impl Actor {
@@ -60,6 +74,7 @@ impl Actor {
             output: OutputTable::default(),
             breakdown: BreakdownTable::default(),
             is_companion: false,
+            minion: None,
         }
     }
 }

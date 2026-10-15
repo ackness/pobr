@@ -69,6 +69,76 @@ pub fn map_player_buff_stat(
     if entry.unextractable {
         return MappedOutcome::Unsupported(UnsupportedReason::Unextractable);
     }
+    let (items, mut failures) = translate_player_buff_entry(entry, stat_value);
+    if items.is_empty() && !failures.is_empty() {
+        // Every matching element failed -> report Unsupported.
+        return MappedOutcome::Unsupported(failures.swap_remove(0));
+    }
+    MappedOutcome::Mapped(items)
+}
+
+/// The name of the buff the stat's player buff payload belongs to, when the
+/// payload names one (`effectName`, e.g. Refraction's "Refractive Plating"):
+/// such a buff is one buff whatever skill it is granted with. `None` leaves
+/// it a buff of the skill.
+pub fn player_buff_effect_name(
+    catalog: &StatMapCatalog,
+    effect_id: &str,
+    set_key: Option<&str>,
+    stat: &str,
+) -> Option<String> {
+    fn named(element: &StatMapMod) -> Option<String> {
+        if element.kind == "group" {
+            return element.mods.iter().find_map(named);
+        }
+        element.tags.iter().find_map(|tag| {
+            let global =
+                matches!(tag.get("type"), Some(StatMapValue::Text(t)) if t == "GlobalEffect");
+            match tag.get("effectName") {
+                Some(StatMapValue::Text(name)) if global => Some(name.clone()),
+                _ => None,
+            }
+        })
+    }
+    let entry = catalog.lookup(effect_id, set_key, stat)?;
+    entry
+        .mods
+        .iter()
+        .filter(|element| is_player_buff_effect(element))
+        .find_map(named)
+}
+
+/// The elements of a player buff entry that could not be translated while
+/// others could: [`map_player_buff_stat`] reports such an entry as mapped, so
+/// these parts are otherwise dropped without a trace. Empty when the entry is
+/// unknown, wholly mapped or wholly rejected.
+pub fn player_buff_rejected_elements(
+    catalog: &StatMapCatalog,
+    effect_id: &str,
+    set_key: Option<&str>,
+    stat: &str,
+    stat_value: f64,
+) -> Vec<UnsupportedReason> {
+    let Some(entry) = catalog.lookup(effect_id, set_key, stat) else {
+        return Vec::new();
+    };
+    if entry.unextractable {
+        return Vec::new();
+    }
+    let (items, failures) = translate_player_buff_entry(entry, stat_value);
+    if items.is_empty() {
+        Vec::new()
+    } else {
+        failures
+    }
+}
+
+/// Translates each player buff element of `entry` on its own: the items that
+/// translated, and the reason for each element that did not.
+fn translate_player_buff_entry(
+    entry: &StatMapEntry,
+    stat_value: f64,
+) -> (Vec<MappedItem>, Vec<UnsupportedReason>) {
     let entry_params = MergeParams {
         div: entry.div,
         mult: entry.mult,
@@ -76,7 +146,7 @@ pub fn map_player_buff_stat(
         value: entry.value,
     };
     let mut items = Vec::new();
-    let mut first_failure: Option<UnsupportedReason> = None;
+    let mut failures = Vec::new();
     for element in entry.mods.iter().filter(|e| is_player_buff_effect(e)) {
         // Each element is handled independently (see the function doc): a
         // failed element injects nothing and doesn't drag down its siblings.
@@ -85,18 +155,10 @@ pub fn map_player_buff_stat(
         let mut element_items = Vec::new();
         match collect_player_buff_element(element, &entry_params, stat_value, &mut element_items) {
             Ok(()) => items.append(&mut element_items),
-            Err(reason) => {
-                first_failure.get_or_insert(reason);
-            }
+            Err(reason) => failures.push(reason),
         }
     }
-    if items.is_empty()
-        && let Some(reason) = first_failure
-    {
-        // Every matching element failed -> report Unsupported.
-        return MappedOutcome::Unsupported(reason);
-    }
-    MappedOutcome::Mapped(items)
+    (items, failures)
 }
 
 /// Player-side ModName allow-list (buff domain). Checked family by family
@@ -123,7 +185,7 @@ pub fn map_player_buff_stat(
 ///   convention anyway.
 /// - The self-buff ailment-duration family (Coolheaded/Warmblooded/
 ///   StrongHearted's `*_duration_on_self_+%_final`), the flask domain
-///   (Herbalism/Alchemist's Boon), and non-mod rage/incision payloads
+///   (Herbalism/Alchemist's Boon), and non-mod incision payloads
 ///   (kind=flag/scalar) -- no consumer yet, so they stay reported as
 ///   `UnknownModName`/`UnsupportedKind` (skip rather than miscompute).
 fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, UnsupportedReason> {
@@ -221,6 +283,13 @@ fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, Unsup
         // companion-first-absorbs-damage layer (CalcDefence.lua:2961-2965 /
         // :3656-3663).
         "TakenFromCompanionBeforeYou" => Ok(vec!["TakenFromCompanionBeforeYou"]),
+        // Rage: a buff's Maximum Rage (Berserk's `berserk_maximum_rage_granted_+`),
+        // its effect (`skill_base_rage_effect_+%_to_apply`) and a regeneration
+        // that lets the character gain Rage at all (Eternal Rage). Consumer =
+        // `calc::rage::apply_rage`.
+        "MaximumRage" => Ok(vec!["MaximumRage"]),
+        "RageEffect" => Ok(vec!["RageEffect"]),
+        "RageRegen" => Ok(vec!["RageRegen"]),
         other => Err(UnsupportedReason::UnknownModName(other.to_string())),
     }
 }
@@ -289,7 +358,10 @@ fn collect_player_buff_flag(
     let name = element.name.as_deref().unwrap_or("?");
     // `SequentialProjectiles` (Barrage buff, act_dex.lua:219): consumer = the
     // Barrage-repeats gate in `dps_end_factors` (vendor CalcOffence.lua:962).
-    if !is_cross_type_ailment_flag(name) && name != "SequentialProjectiles" {
+    // `Condition:CanGainRage` (Eternal Rage): consumer = `calc::rage::apply_rage`.
+    if !is_cross_type_ailment_flag(name)
+        && !matches!(name, "SequentialProjectiles" | "Condition:CanGainRage")
+    {
         return Err(UnsupportedReason::UnknownModName(format!("flag:{name}")));
     }
     if !element.flags.is_empty() {

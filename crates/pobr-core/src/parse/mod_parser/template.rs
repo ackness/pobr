@@ -246,7 +246,14 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
             // assert loudly (surfaced for A2), release builds conservatively drop the tag.
             let st = SkillTypes::from_pob2_name(bare);
             debug_assert!(st.is_some(), "unknown SkillType name: {bare}");
-            st.map(ModTag::SkillTypes)
+            // "Non-Channelling Spells …", "effect of Non-Curse Auras": the
+            // rule names the type the skill must not have.
+            let neg = f.get("neg").and_then(field_bool).unwrap_or(false);
+            st.map(if neg {
+                ModTag::SkillTypesNeg
+            } else {
+                ModTag::SkillTypes
+            })
         }
         "SkillName" => {
             // Named-skill qualifier (vendor's single `skillName` / list `skillNameList`,
@@ -538,20 +545,7 @@ pub fn compile_flags(names: &[String]) -> ModFlags {
 
 /// KeywordFlag name → bit (matches special_mod::keyword_bit's coverage).
 pub fn keyword_bit(name: &str) -> Option<KeywordFlags> {
-    Some(match name {
-        "Aura" => KeywordFlags::AURA,
-        "Curse" => KeywordFlags::CURSE,
-        "Arrow" => KeywordFlags::ARROW,
-        "Totem" => KeywordFlags::TOTEM,
-        "Attack" => KeywordFlags::ATTACK,
-        "Spell" => KeywordFlags::SPELL,
-        "Hit" => KeywordFlags::HIT,
-        "Ailment" => KeywordFlags::AILMENT,
-        "Poison" => KeywordFlags::POISON,
-        "Bleed" => KeywordFlags::BLEED,
-        "Ignite" => KeywordFlags::IGNITE,
-        _ => return None,
-    })
+    KeywordFlags::from_name(name)
 }
 
 /// Keyword-name array → bit set.
@@ -567,7 +561,7 @@ pub fn compile_keyword_flags(names: &[String]) -> KeywordFlags {
 /// Vendor slot name → legacy's stable slot ID (lowercase + spaces stripped; off-hand-family
 /// slots map to `weapon2`, main-hand-family to `weapon1`, matching legacy's
 /// `slot_words_to_id` coverage).
-fn slot_name_to_id(name: &str) -> String {
+pub(crate) fn slot_name_to_id(name: &str) -> String {
     match name.to_ascii_lowercase().as_str() {
         "body armour" => "bodyarmour".to_string(),
         "focus" | "shield" | "quiver" | "off hand" | "weapon 2" => "weapon2".to_string(),

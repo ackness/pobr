@@ -120,7 +120,15 @@ pub fn build_pool_ctx(
 /// before-you layers like frost shield / spectre / totem / soul link have no
 /// source in vendor either without them equipped, and the structure is left
 /// in place for future additions.
-pub fn build_pool_state(db: &ModDb, cfg: &CalcConfig, base: &PoolBaseStats) -> PoolState {
+///
+/// `deflect_chance` is the character's chance to Deflect a Hit (%), for what
+/// a companion takes of the damage from Deflected Hits.
+pub fn build_pool_state(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    base: &PoolBaseStats,
+    deflect_chance: f64,
+) -> PoolState {
     // Aegis (:2860-2877): modDB:Max takes the single strongest source (not a sum).
     let aegis_shared = db.max_of(ModType::Base, cfg, &[ModName::from("AegisValue")]);
     let aegis_shared_elemental =
@@ -160,20 +168,23 @@ pub fn build_pool_state(db: &ModDb, cfg: &CalcConfig, base: &PoolBaseStats) -> P
             0.0
         };
     }
-    // Companion before-you layer (#12; setup at CalcDefence.lua:2961-2965 +
-    // :493-495/:3087-3088's EHP table + :3656-3663's max-hit): when
-    // `TakenFromCompanionBeforeYou` ≠ 0, takes `TotalCompanionLife` (config
-    // Override takes priority, otherwise the BASE sum injected by perform).
-    // The deflected term (`TakenFromCompanionBeforeYouFromDeflected ×
-    // DeflectChance`, :2962-2963) is not modeled -- the 18-build corpus has
-    // no source for it (the wolf-pack oracle's pinned mitigation is exactly
-    // 10, i.e. the pure-hits term); add it here when a source shows up.
+    // Companion before-you layer: "N% of Damage from Hits is taken from your
+    // Damageable Companion's Life before you", and "N% of Damage from
+    // Deflected Hits is taken from Damageable Companion's Life before you"
+    // for the share of Hits the character Deflects. The pool is
+    // `TotalCompanionLife` (config Override takes priority, otherwise the
+    // BASE sum injected by perform).
     let mut allies = Vec::new();
     let companion_rate = db.sum(
         ModType::Base,
         cfg,
         &[ModName::from("TakenFromCompanionBeforeYou")],
-    );
+    ) + db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("TakenFromCompanionBeforeYouFromDeflected")],
+    ) * deflect_chance.clamp(0.0, 100.0)
+        / 100.0;
     if companion_rate != 0.0 {
         let companion_life_name = ModName::from("TotalCompanionLife");
         let companion_life = db
@@ -510,7 +521,7 @@ mod tests {
         let cfg = CalcConfig::new();
 
         // Act
-        let state = build_pool_state(&db, &cfg, &base_stats());
+        let state = build_pool_state(&db, &cfg, &base_stats(), 0.0);
 
         // Assert
         assert_eq!(state.aegis_shared, 700.0);
@@ -534,7 +545,7 @@ mod tests {
         let cfg = CalcConfig::new();
         // No mitigation → empty.
         assert!(
-            build_pool_state(&ModDb::new(), &cfg, &base_stats())
+            build_pool_state(&ModDb::new(), &cfg, &base_stats(), 0.0)
                 .allies
                 .is_empty()
         );
@@ -544,7 +555,7 @@ mod tests {
             Modifier::number("TakenFromCompanionBeforeYou", ModType::Base, 10.0),
             Modifier::number("TotalCompanionLife", ModType::Base, 2262.0),
         ]);
-        let state = build_pool_state(&db, &cfg, &base_stats());
+        let state = build_pool_state(&db, &cfg, &base_stats(), 0.0);
         assert_eq!(state.allies.len(), 1);
         assert_eq!(state.allies[0].id, "companion");
         assert_eq!(state.allies[0].remaining, 2262.0);
@@ -557,7 +568,7 @@ mod tests {
             Modifier::number("TotalCompanionLife", ModType::Base, 2262.0),
             Modifier::number("TotalCompanionLife", ModType::Override, 500.0),
         ]);
-        let state2 = build_pool_state(&db2, &cfg, &base_stats());
+        let state2 = build_pool_state(&db2, &cfg, &base_stats(), 0.0);
         assert_eq!(state2.allies[0].remaining, 500.0);
         // Mitigation present but life 0 → empty (gated by vendor :3656's `TotalCompanionLife > 0`).
         let mut db3 = ModDb::new();
@@ -567,10 +578,32 @@ mod tests {
             10.0,
         )]);
         assert!(
-            build_pool_state(&db3, &cfg, &base_stats())
+            build_pool_state(&db3, &cfg, &base_stats(), 0.0)
                 .allies
                 .is_empty()
         );
+    }
+
+    /// "15% of Damage from Deflected Hits is taken from Damageable
+    /// Companion's Life before you" on a character that Deflects 40% of Hits
+    /// adds 6% to what its companion takes.
+    #[test]
+    fn a_companion_takes_its_share_of_the_deflected_hits() {
+        let cfg = CalcConfig::new();
+        let mut db = ModDb::new();
+        db.add_list([
+            Modifier::number("TakenFromCompanionBeforeYou", ModType::Base, 85.0),
+            Modifier::number(
+                "TakenFromCompanionBeforeYouFromDeflected",
+                ModType::Base,
+                15.0,
+            ),
+            Modifier::number("TotalCompanionLife", ModType::Base, 2262.0),
+        ]);
+        let state = build_pool_state(&db, &cfg, &base_stats(), 40.0);
+        assert_eq!(state.allies[0].mitigation_pct, 91.0);
+        let none = build_pool_state(&db, &cfg, &base_stats(), 0.0);
+        assert_eq!(none.allies[0].mitigation_pct, 85.0);
     }
 
     /// MinimumBypass = the min across all types (:2709-2721).

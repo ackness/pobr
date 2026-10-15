@@ -238,21 +238,6 @@
       "source_note": "ModParser.lua:4255（探针求值自动转写；样本：20% chance for Damage with Hits to be Lucky）"
     },
     {
-      "id": "charm_slots_colon",
-      "pattern": "charm slots: (\\d+)",
-      "vendor_pattern": "h?a?s? ?+?(%d+) charm slots?",
-      "mods": [
-        {
-          "name": "CharmLimit",
-          "type": "BASE",
-          "value": "$1"
-        }
-      ],
-      "verified": false,
-      "batch": "S1",
-      "source_note": "ModParser.lua:5453（CharmLimit；冒号格式 'Charm Slots: N'，与 has_charm_slots 互补，命中 18 build 首位缺口）"
-    },
-    {
       "id": "ci_maximum_life_is_1",
       "pattern": "maximum life is 1",
       "mods": [
@@ -390,6 +375,105 @@
       "verified": false,
       "batch": "S2",
       "source_note": "ModParser.lua:2616/:2619（Defend with N% of Armour [during effect] → ArmourDefense BASE N-100；pobr 准源 legacy.rs:1715。during effect 变体同无条件，消费侧 max_of）"
+    },
+    {
+      "id": "defend_with_pct_of_armour_while_not_on_low_energy_shield",
+      "pattern": "defend with (\\d+(?:\\.\\d+)?)% of armour while not on low energy shield",
+      "mods": [
+        {
+          "name": "ArmourDefense",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "base": -100.0
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "neg": true,
+              "var": "LowEnergyShield"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "游戏 stat defend_with_%_of_armour_while_not_on_low_energy_shield（“Defend with {0}% of Armour while not on Low Energy Shield”，天赋 Barrier of Venarius）：不在低能量护盾时按护甲的 N% 防御，ArmourDefense BASE N-100"
+    },
+    {
+      "id": "non_channelling_spells_cost_pct_of_maximum_life",
+      "pattern": "non-channelling spells cost an additional (\\d+)% of your maximum life",
+      "mods": [
+        {
+          "name": "LifeCostPercentOfMaximumLife",
+          "type": "BASE",
+          "value": {
+            "ref": "$1"
+          },
+          "flags": [
+            "Spell"
+          ],
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "SkillType:Channel",
+              "neg": true
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "游戏 stat base_life_cost_+_with_non_channelling_spells_%_maximum_life（“Non-Channelling Spells cost an additional {0}% of your maximum Life”）：非引导法术额外消耗最大生命的 N%，按最大值取整后加到技能的基础消耗（skill_mechanics::cost_from_maximum_pool）"
+    },
+    {
+      "id": "attacks_cost_pct_of_maximum_mana",
+      "pattern": "attacks cost an additional (\\d+)% of your maximum mana",
+      "mods": [
+        {
+          "name": "ManaCostPercentOfMaximumMana",
+          "type": "BASE",
+          "value": {
+            "ref": "$1"
+          },
+          "flags": [
+            "Attack"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "游戏 stat attacks_base_mana_cost_+_%_of_maximum_mana（“Attacks cost an additional {0}% of your maximum Mana”）：攻击额外消耗最大魔力的 N%，按最大值取整后加到技能的基础消耗（skill_mechanics::cost_from_maximum_pool）"
+    },
+    {
+      "id": "non_channelling_attacks_cost_pct_of_maximum_mana",
+      "pattern": "non-channelling attacks cost an additional (\\d+)% of your maximum mana",
+      "mods": [
+        {
+          "name": "ManaCostPercentOfMaximumMana",
+          "type": "BASE",
+          "value": {
+            "ref": "$1"
+          },
+          "flags": [
+            "Attack"
+          ],
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "SkillType:Channel",
+              "neg": true
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "游戏 stat base_mana_cost_+_with_non_channelling_attacks_%_maximum_mana（“Non-Channelling Attacks cost an additional {0}% of your maximum Mana”）：非引导攻击额外消耗最大魔力的 N%，按最大值取整后加到技能的基础消耗（skill_mechanics::cost_from_maximum_pool）"
     },
     {
       "id": "double_activation_delay_of_curses",
@@ -2034,6 +2118,29 @@
       "source_note": "ModParser.lua:2834（-- Blood Mage specialModList，mod(Life,BASE,1,PerStat{stat=EnergyShieldOnBody Armour,div=100/N}）；legacy.rs:1796-1810 同形（MaximumLife BASE 1 × Multiplier:EnergyShieldOnbodyarmour，div=100/N，slot 倍率经 orchestrator per_slot_defence_multipliers 填充 = Body Armour 件级最终 ES）。本条钉 N=100（升华恒 100%，corpus 唯一形）→ div=1；special 整行命中在 pre_flag 剥 `gain` 前。需 special_mod.rs 字面 Multiplier tag 支持。fork-a 补 engine special 通道（blood-mage Life→EHP/MaxHit 级联）"
     },
     {
+      "id": "life_loss_from_hits_prevented_then_share_lost_over_4s",
+      "pattern": "when taking damage from hits, (\\d+(?:\\.\\d+)?)% of life loss is prevented, then (\\d+(?:\\.\\d+)?)% of life loss prevented this way is lost over 4 seconds",
+      "mods": [
+        {
+          "name": "LifeLossPrevented",
+          "type": "BASE",
+          "value": {
+            "ref": "$1"
+          }
+        },
+        {
+          "name": "LifeLossLost",
+          "type": "BASE",
+          "value": {
+            "ref": "$2"
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "基石 Sacrifice of Flesh（Amanamu 的永恒珠宝，“When taking damage from Hits, {0}% of Life Loss is prevented, then {1}% of Life Loss prevented this way is Lost over 4 seconds”）：命中时预防的比例同 life_loss_from_hits_prevented_over_4s（LifeLossPrevented）；之后损失的比例记为 LifeLossLost（之后按 4 秒扣血的速率尚未建模，诊断列为未读取）"
+    },
+    {
       "id": "life_loss_from_hits_prevented_over_4s",
       "pattern": "(\\d+(?:\\.\\d+)?)% of life loss from hits is prevented, then that much life is lost over 4 seconds instead",
       "vendor_pattern": "(%d+)%% of life loss from hits is prevented, then that much life is lost over 4 seconds instead",
@@ -2753,6 +2860,691 @@
         "Gain no inherent bonus from Dexterity"
       ],
       "source_note": "LegionPassives.lua Circular Teachings; CalcPerform.lua NoDexBonusToAccuracy. Consumed by pobr-build inject_attribute_derivation; tested with transformed keystone and complete character attributes."
+    },
+    {
+      "id": "spell_damage_with_spells_that_cost_life",
+      "pattern": "(\\d+)% increased spell damage with spells that cost life",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "flags": [
+            "Spell"
+          ],
+          "tags": [
+            {
+              "type": "StatThreshold",
+              "stat": "LifeCost",
+              "threshold": 1.0
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "cost",
+      "examples": [
+        "40% increased Spell Damage with Spells that cost Life"
+      ],
+      "source_note": "Game text of the Blood Mage passives (e.g. 40% / 12% / 6% increased Spell Damage with Spells that cost Life). A spell costs Life when its Life cost, after conversions, is at least 1: the engine's LifeCost stat, set before damage by calc::perform. PoB2 reads the same condition as a StatThreshold over LifeCost; used only as a cross-check."
+    },
+    {
+      "id": "attacks_add_physical_damage_from_weapon_accuracy",
+      "pattern": "attacks using your weapons have added physical damage equal to (\\d+)% of the accuracy rating on the weapon",
+      "mods": [
+        {
+          "name": "PhysicalDamageMin",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "div": 100.0
+              }
+            ]
+          },
+          "flags": [
+            "Attack"
+          ],
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "AccuracyOnweapon1",
+              "div": 1
+            },
+            {
+              "type": "Condition",
+              "var": "MainHandAttack"
+            }
+          ]
+        },
+        {
+          "name": "PhysicalDamageMax",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "div": 100.0
+              }
+            ]
+          },
+          "flags": [
+            "Attack"
+          ],
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "AccuracyOnweapon1",
+              "div": 1
+            },
+            {
+              "type": "Condition",
+              "var": "MainHandAttack"
+            }
+          ]
+        },
+        {
+          "name": "PhysicalDamageMin",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "div": 100.0
+              }
+            ]
+          },
+          "flags": [
+            "Attack"
+          ],
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "AccuracyOnweapon2",
+              "div": 1
+            },
+            {
+              "type": "Condition",
+              "var": "OffHandAttack"
+            }
+          ]
+        },
+        {
+          "name": "PhysicalDamageMax",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "div": 100.0
+              }
+            ]
+          },
+          "flags": [
+            "Attack"
+          ],
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "AccuracyOnweapon2",
+              "div": 1
+            },
+            {
+              "type": "Condition",
+              "var": "OffHandAttack"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "amazon",
+      "examples": [
+        "Attacks using your Weapons have Added Physical Damage equal to 25% of the Accuracy Rating on the Weapon"
+      ],
+      "source_note": "Game text of the Amazon passive Penetrate. Each weapon adds to its own attacks: the Accuracy Rating on a weapon is the total of that item's own '+N to Accuracy Rating' lines (AccuracyOn<slot>, set by pobr-build inject_build_multipliers), and the added damage applies in that hand's pass (MainHandAttack / OffHandAttack). The same amount is added to minimum and maximum. PoB2 models it the same way; used only as a cross-check."
+    },
+    {
+      "id": "minions_inflict_withered_on_hit",
+      "pattern": "minions have (\\d+)% chance to inflict withered on hit",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:CanWither",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "withered",
+      "examples": [
+        "Minions have 10% chance to inflict Withered on Hit"
+      ],
+      "source_note": "Game text of the passive Wither Away's neighbours. The chance is the minions': a character without minions cannot inflict Withered with it, so the flag goes to the minions (read by calc::withered::apply_withered from each minion). PoB2 gives the flag to the player, which applies the configured Withered stacks to a character with no minions; PoBR differs on purpose."
+    },
+    {
+      "id": "spells_inflict_withered_on_hit",
+      "pattern": "spells have a (\\d+)% chance to inflict withered for (\\d+) seconds on hit",
+      "mods": [
+        {
+          "name": "Condition:CanWither",
+          "type": "FLAG",
+          "value": true,
+          "flags": [
+            "Spell"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "withered",
+      "examples": [
+        "Spells have a 25% chance to inflict Withered for 4 seconds on Hit"
+      ],
+      "source_note": "Game text of The Wicked Quill. Only the character's spells inflict the Withered, so the flag carries the Spell flag and is read under the calculated skill's flags by calc::withered::apply_withered. The chance and the duration say how fast stacks build, which the stated stack count (config) stands for."
+    },
+    {
+      "id": "evasion_from_helmet_gloves_boots_doubled",
+      "pattern": "evasion rating from equipped helmet, gloves and boots is doubled",
+      "mods": [
+        {
+          "name": "Evasion",
+          "type": "MORE",
+          "value": 100,
+          "tags": [
+            {
+              "type": "SlotName",
+              "slotName": "Helmet"
+            }
+          ]
+        },
+        {
+          "name": "Evasion",
+          "type": "MORE",
+          "value": 100,
+          "tags": [
+            {
+              "type": "SlotName",
+              "slotName": "Gloves"
+            }
+          ]
+        },
+        {
+          "name": "Evasion",
+          "type": "MORE",
+          "value": 100,
+          "tags": [
+            {
+              "type": "SlotName",
+              "slotName": "Boots"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "stalking-panther",
+      "examples": [
+        "Evasion Rating from Equipped Helmet, Gloves and Boots is doubled"
+      ],
+      "source_note": "Game text of the Amazon notable Stalking Panther (passive_tree.json node 63254). Doubled is 100% more of the Evasion Rating each of the three items provides: the amount goes into the slot's own bucket, so it multiplies with the global increases the item's Evasion Rating already receives."
+    },
+    {
+      "id": "evasion_from_body_armour_halved",
+      "pattern": "evasion rating from equipped body armour is halved",
+      "mods": [
+        {
+          "name": "Evasion",
+          "type": "MORE",
+          "value": -50,
+          "tags": [
+            {
+              "type": "SlotName",
+              "slotName": "Body Armour"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "stalking-panther",
+      "examples": [
+        "Evasion Rating from Equipped Body Armour is halved"
+      ],
+      "source_note": "Game text of the Amazon notable Stalking Panther (passive_tree.json node 63254), the other half of evasion_from_helmet_gloves_boots_doubled: 50% less of the Evasion Rating the Body Armour provides."
+    },
+    {
+      "id": "meta_skills_gain_increased_energy",
+      "pattern": "meta skills gain (\\d+)% increased energy",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "energy",
+      "examples": [
+        "Meta Skills gain 8% increased Energy"
+      ],
+      "source_note": "Game text of the passive skills that speed up meta gems (14 nodes of the passive tree and jewel modifiers read \"Meta Skills gain #% increased Energy\"). A meta gem's Energy is the counter that triggers its socketed spells (calc/energy.rs); the modifier adds to the gem's own \"#% increased Energy gained\" (energy_generated_+%)."
+    },
+    {
+      "id": "meta_skills_gain_more_energy",
+      "pattern": "meta skills gain (\\d+)% more energy",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "MORE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "energy",
+      "examples": [
+        "Meta Skills gain 35% more Energy"
+      ],
+      "source_note": "Game text of a passive skill; the multiplicative form of meta_skills_gain_increased_energy."
+    },
+    {
+      "id": "meta_skills_gain_reduced_energy",
+      "pattern": "meta skills gain (\\d+)% reduced energy",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "energy",
+      "examples": [
+        "Meta Skills gain 20% reduced Energy"
+      ],
+      "source_note": "The negative form of the game's stat energy_generated_+% (\"Meta Skills gain 1% increased Energy\"), which an item can roll below zero."
+    },
+    {
+      "id": "meta_skills_gain_increased_energy_while_on_full_mana",
+      "pattern": "meta skills gain (\\d+)% increased energy while on full mana",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "FullMana"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "energy",
+      "examples": [
+        "Meta Skills gain 25% increased Energy while on Full Mana"
+      ],
+      "source_note": "Game text of the stat energy_generated_+%_on_full_mana: meta_skills_gain_increased_energy under the condition the parser's \"while on Full Mana\" sets."
+    },
+    {
+      "id": "energy_generation_is_doubled",
+      "pattern": "energy generation is doubled",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "MORE",
+          "value": 100
+        }
+      ],
+      "verified": false,
+      "batch": "energy",
+      "examples": [
+        "Energy Generation is doubled"
+      ],
+      "source_note": "Game text of the stat energy_generation_is_doubled: twice the Energy a meta gem gains, on top of every increase."
+    },
+    {
+      "id": "meta_skills_gain_increased_energy_if_crit_recently",
+      "pattern": "meta skills gain (\\d+)% increased energy if you've dealt a critical hit recently",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "CritRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "energy",
+      "examples": [
+        "Meta Skills gain 30% increased Energy if you've dealt a Critical Hit Recently"
+      ],
+      "source_note": "Game text of a passive skill: meta_skills_gain_increased_energy under the condition the configuration states as \"have you Crit Recently\"."
+    },
+    {
+      "id": "trigger_skills_refund_half_of_energy_spent",
+      "pattern": "(\\d+)% chance for trigger skills to refund half of energy spent",
+      "mods": [
+        {
+          "name": "EnergyRefundHalfChance",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "energy",
+      "examples": [
+        "25% chance for Trigger skills to refund half of Energy Spent"
+      ],
+      "source_note": "Game text of the notable Energise. A meta gem spends all its Energy when it triggers, so with this chance it starts the next round half full (calc/energy.rs)."
+    },
+    {
+      "id": "experience_gain",
+      "pattern": "(?:\\d+(?:\\.\\d+)?)% (?:increased|reduced) experience gain",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "examples": [
+        "5% increased Experience gain"
+      ],
+      "source_note": "Game text of the stat experience_gain_+%, which an item, a rune and a quest reward carry. How fast a character gains experience is part of nothing a calculation reports, so the line is recognised and adds no modifier: it is not an input the calculation dropped."
+    },
+    {
+      "id": "item_can_roll_modifiers",
+      "pattern": "can (?:also )?roll [a-z ]+ modifiers",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "examples": [
+        "Can roll Marksman modifiers",
+        "Can roll Soul modifiers",
+        "Can roll Ring Modifiers"
+      ],
+      "source_note": "Game text of the item generation stats display_item_generation_can_roll_*, display_item_can_also_roll_ring_mods and warping_rune_add_item_tag_<n>, which a rune or an item base carries. They decide which modifiers crafting can add to the item, and nothing a calculation reports, so the line is recognised and adds no modifier."
+    },
+    {
+      "id": "rune_creates_jewel_socket",
+      "pattern": "destroys all augment sockets on the item to create a jewel socket",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "examples": [
+        "Destroys all Augment Sockets on the item to create a Jewel Socket"
+      ],
+      "source_note": "Game text of the display stat dummy_display_stat_rune_create_jewel_socket. The jewel socket it creates and the jewel in it are part of the imported build; the line itself changes nothing a calculation reports."
+    },
+    {
+      "id": "remnant_pickup_range",
+      "pattern": "remnants can be collected from (?:\\d+(?:\\.\\d+)?)% (?:further|closer) away(?: if you have at least \\d+ tribute)?",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "examples": [
+        "Remnants can be collected from 50% further away"
+      ],
+      "source_note": "Game text of the stats remnant_pickup_range_+% and remnant_pickup_range_+%_if_you_have_at_least_100_tribute: how far away Remnants can be picked up, which nothing a calculation reports depends on."
+    },
+    {
+      "id": "item_affix_effect_in_item_text",
+      "pattern": "\\d+% (?:increased|reduced) effect of (?:suffixes|prefixes)",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "examples": [
+        "59% increased Effect of Suffixes",
+        "46% increased Effect of Prefixes"
+      ],
+      "source_note": "Game text of local_suffix_effect_+% / local_prefix_effect_+% and local_non_unique_item_explicit_suffix_mod_magnitudes_+% / _prefix_: they scale the item's own suffixes or prefixes, and the item text the game copies shows those lines with the effect applied. A Sapphire with 59% increased Effect of Suffixes reads 30% increased Critical Damage Bonus, above the 10-20% range of the suffix JewelCriticalDamage (base mods.json); the line is recognised and adds no modifier: applying it again would count it twice."
+    },
+    {
+      "id": "socketed_item_effect_in_item_text",
+      "pattern": "\\d+% (?:increased|reduced) effect of socketed (?:augment items|runes|soul cores)",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "examples": [
+        "24% increased effect of Socketed Augment Items",
+        "200% increased effect of Socketed Runes",
+        "50% increased effect of Socketed Soul Cores"
+      ],
+      "source_note": "Game text of local_socketed_items_effect_+%, local_rune_effect_+% and local_soul_core_effect_+%: they scale the lines the item's runes and soul cores add, and the item text lists those lines with the effect applied. Runeseeker's Call (200% increased effect of Socketed Runes) reads Bonded: Archon recovery period expires 90% faster for Hedgewitch Assandra's Rune of Wisdom, whose line is 30% (runes.json); the line is recognised and adds no modifier: applying it again would count it twice."
+    },
+    {
+      "id": "item_crafting_properties",
+      "pattern": "(?:raven-touched|[+-]\\d+ (?:prefix|suffix) modifiers? allowed|\\+\\d+% to maximum quality|only (?:runes|soul cores) can be socketed in this item)",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "examples": [
+        "Raven-Touched",
+        "+1 Suffix Modifier allowed",
+        "-1 Prefix Modifier allowed",
+        "+20% to Maximum Quality",
+        "Only Runes can be Socketed in this item"
+      ],
+      "source_note": "Game text of local_item_can_be_instilled, local_maximum_prefixes_allowed_+ / local_maximum_suffixes_allowed_+, local_maximum_quality_+, local_can_only_socket_runes and local_can_only_socket_soul_cores. They decide how the item can be crafted, how much quality it can take and what can be socketed in it; the item's lines, quality and socketed items are part of the imported item, and the lines change nothing a calculation reports."
+    },
+    {
+      "id": "timeless_jewel_description",
+      "pattern": "(?:historic|passives in radius are conquered by the [a-z ]+)",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "examples": [
+        "Historic",
+        "Passives in radius are Conquered by the Kalguur"
+      ],
+      "source_note": "Game text of local_is_alternate_tree_jewel and the conqueror line of a timeless jewel. Which passives the jewel conquers, and how, is read from its Remembrancing line (pobr-build jewel_tree); these lines describe the jewel and change nothing a calculation reports."
+    },
+    {
+      "id": "titan_inventory_chest",
+      "pattern": "carry a chest which adds \\d+ inventory slots",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "examples": [
+        "Carry a Chest which adds 20 Inventory Slots"
+      ],
+      "source_note": "Game text of titan_additional_inventory / titan_expanded_main_inventory (Colossal Capacity). Inventory space is part of nothing a calculation reports."
+    },
+    {
+      "id": "skills_damage_per_connected_red_support_gem",
+      "pattern": "skills deal (\\d+)% increased damage per connected red support gem",
+      "vendor_pattern": "^skills deal (%d+)%% increased damage per connected red support gem$",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "ConnectedRedSupportGems"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "connected-supports",
+      "examples": [
+        "Skills deal 20% increased Damage per Connected Red Support Gem"
+      ],
+      "source_note": "Game stat skills_gain_damage_+%_per_sockted_or_adjacent_red_support_gem (the Gemling Legionnaire's Integrated Efficiency). The calculation counts the support gems of that colour connected to the skill it calculates."
+    },
+    {
+      "id": "skills_skill_speed_per_connected_green_support_gem",
+      "pattern": "skills have (\\d+)% increased skill speed per connected green support gem",
+      "vendor_pattern": "^skills have (%d+)%% increased skill speed per connected green support gem$",
+      "mods": [
+        {
+          "name": "SkillSpeed",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "ConnectedGreenSupportGems"
+            }
+          ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "ConnectedGreenSupportGems"
+            }
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "ConnectedGreenSupportGems"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "connected-supports",
+      "examples": [
+        "Skills have 6% increased Skill Speed per Connected Green Support Gem"
+      ],
+      "source_note": "Game stat skills_gain_skill_speed_+%_per_sockted_or_adjacent_green_support_gem (Integrated Efficiency): Skill Speed, under the names the line '#% increased Skill Speed' gives. The calculation counts the support gems of that colour connected to the skill it calculates."
+    },
+    {
+      "id": "skills_critical_hit_chance_per_connected_blue_support_gem",
+      "pattern": "skills have (\\d+)% increased critical hit chance per connected blue support gem",
+      "vendor_pattern": "^skills have (%d+)%% increased critical hit chance per connected blue support gem$",
+      "mods": [
+        {
+          "name": "CriticalStrikeChance",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "ConnectedBlueSupportGems"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "connected-supports",
+      "examples": [
+        "Skills have 20% increased Critical Hit Chance per Connected Blue Support Gem"
+      ],
+      "source_note": "Game stat skills_gain_critical_strike_chance_+%_per_sockted_or_adjacent_blue_support_gem (Integrated Efficiency). The calculation counts the support gems of that colour connected to the skill it calculates."
+    },
+    {
+      "id": "bear_skills_convert_physical_to_fire",
+      "pattern": "bear skills convert (\\d+)% of physical damage to fire damage",
+      "mods": [
+        {
+          "name": "PhysicalDamageConvertToFire",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "SkillType:Bear"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "skill-type-conversion",
+      "examples": [
+        "Bear Skills Convert 80% of Physical Damage to Fire Damage"
+      ],
+      "source_note": "Game stat non_skill_physical_damage_%_to_convert_to_fire_with_bear_skills (Fury of the King): skills of the game type Bear convert that share of their Physical damage to Fire."
+    },
+    {
+      "id": "enemies_in_presence_resist_elemental_damage_by_lowest_resistance",
+      "pattern": "enemies in your presence resist elemental damage based on their lowest resistance",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ElementalDamageResistedByLowestResistance",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "EnemyInPresence"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "lowest-resistance",
+      "examples": [
+        "Enemies in your Presence Resist Elemental Damage based on their Lowest Resistance"
+      ],
+      "source_note": "Game stat enemies_in_presence_elemental_damage_resisted_by_lowest_elemental_resistance: an enemy in your Presence meets fire, cold and lightning damage with the lowest of its three elemental resistances. It is the enemy's property, so it reaches every elemental hit, damage over time and ailment through the enemy's resistance (calc::offence::enemy_resist_final); penetration lowers the resistance it names, the one the enemy uses."
+    },
+    {
+      "id": "fire_resistance_also_grants_cold_and_lightning_resistance",
+      "pattern": "modifiers to fire resistance also grant cold and lightning resistance at (\\d+)% of their value",
+      "mods": [
+        {
+          "name": "FireResistanceAlsoGrantsColdAndLightning",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "resistance-sharing",
+      "examples": [
+        "Modifiers to Fire Resistance also grant Cold and Lightning Resistance at 50% of their value"
+      ],
+      "source_note": "Game stat modifiers_to_fire_resistance_also_apply_to_cold_lightning_resistance_at_%_value (Smith of Kitava's Coal Stoker): every modifier to Fire Resistance adds this share of its value to Cold and Lightning Resistance; the elemental resistance penalty is not a modifier (calc::offence::resolve_resistance)."
+    },
+    {
+      "id": "maximum_fire_resistance_also_grants_maximum_cold_and_lightning_resistance",
+      "pattern": "modifiers to maximum fire resistance also grant maximum cold and lightning resistance",
+      "mods": [
+        {
+          "name": "MaximumFireResistanceAlsoGrantsColdAndLightning",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "resistance-sharing",
+      "examples": [
+        "Modifiers to Maximum Fire Resistance also grant Maximum Cold and Lightning Resistance"
+      ],
+      "source_note": "Game stat modifiers_to_maximum_fire_resistance_apply_to_maximum_cold_and_lightning_resistance (Smith of Kitava's Forged in Flame): every modifier to Maximum Fire Resistance also adds its value to Maximum Cold and Lightning Resistance (calc::offence::resolve_resistance)."
     }
   ]
 }

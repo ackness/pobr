@@ -5,23 +5,23 @@
     "note": "M6-T7 覆盖率报表；coverage_ratio 进 devs/ci/parse-coverage-baseline.json 棘轮"
   },
   "summary": {
-    "total": 4280,
-    "parsed": 3459,
-    "unsupported": 821,
+    "total": 4277,
+    "parsed": 3480,
+    "unsupported": 797,
     "err": 0,
-    "coverage_ratio": 0.808178
+    "coverage_ratio": 0.813654
   },
   "by_source": [
     {
       "source": "C1_build",
       "parsed": 1196,
-      "unsupported": 510,
+      "unsupported": 507,
       "err": 0
     },
     {
       "source": "C2_tree",
-      "parsed": 2230,
-      "unsupported": 311,
+      "parsed": 2251,
+      "unsupported": 290,
       "err": 0
     },
     {
@@ -34,11 +34,6 @@
   "gaps_top_n": [
     {
       "text": "10% chance to gain [Volatility] on Kill",
-      "status": "unsupported",
-      "source": "C2_tree"
-    },
-    {
-      "text": "12% increased [Spell] Damage with [Spell|Spells] that cost Life",
       "status": "unsupported",
       "source": "C2_tree"
     },
@@ -88,22 +83,12 @@
       "source": "C2_tree"
     },
     {
-      "text": "40% increased [Spell] Damage with [Spell|Spells] that cost Life",
-      "status": "unsupported",
-      "source": "C2_tree"
-    },
-    {
       "text": "5% chance to gain [Volatility] on Kill",
       "status": "unsupported",
       "source": "C2_tree"
     },
     {
       "text": "50% chance to gain [Volatility] when you are [Stun|Stunned]",
-      "status": "unsupported",
-      "source": "C2_tree"
-    },
-    {
-      "text": "6% increased [Spell] Damage with [Spell|Spells] that cost Life",
       "status": "unsupported",
       "source": "C2_tree"
     },
@@ -229,6 +214,21 @@
     },
     {
       "text": "Apocalypse Desire",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Apocalypse Hope",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Apocalypse Pelt",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Apocalypse Vessel",
       "status": "unsupported",
       "source": "C1_build"
     }

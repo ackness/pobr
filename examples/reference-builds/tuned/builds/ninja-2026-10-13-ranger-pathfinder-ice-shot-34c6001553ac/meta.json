@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-ranger-pathfinder-ice-shot-34c6001553ac",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%EB%A3%A8%EC%B9%B4%ED%8E%98%EB%A5%B4-1689/pale_for",
+    "account": "루카페르-1689",
+    "character": "pale_for",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:53:03+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=%EB%A3%A8%EC%B9%B4%ED%8E%98%EB%A5%B4-1689&name=pale_for&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Pathfinder",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Ranger",
+    "ascendancy": "Pathfinder",
+    "level": 99,
+    "main_skill": "Ice Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "4d4dd8a7c4175d61a632963ee0bbadc8c6f572ee47cfb730a660e5f1ea37532b",
+    "code_chars": 14032,
+    "decoded_bytes": 53221
+  }
+}

@@ -1122,7 +1122,7 @@ pub fn fill_ehp_pob2(
             ward: out.ward,
         };
         let ctx = build_pool_ctx(db, cfg, keystones, &base);
-        let pools = build_pool_state(db, cfg, &base);
+        let pools = build_pool_state(db, cfg, &base, out.deflect_chance);
         let mom = mom_hit_pools(&ctx, &base);
 
         // Mitigation snapshot (the Track B contract; deflect is folded into Track D's output, :2433)

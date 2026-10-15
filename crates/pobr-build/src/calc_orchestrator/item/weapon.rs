@@ -109,6 +109,35 @@ pub(crate) fn weapon_mod_texts(item: &Item) -> impl Iterator<Item = &String> {
         .chain(&item.enchant_texts)
 }
 
+/// The Accuracy Rating on an item: the total of its own "+N to Accuracy
+/// Rating" lines. Lines that are conditional or of another form are not the
+/// item's rating.
+pub(crate) fn item_accuracy_rating(item: &Item) -> f64 {
+    weapon_mod_texts(item)
+        .filter_map(|text| {
+            clean_item_text(text)
+                .strip_prefix('+')?
+                .strip_suffix(" to accuracy rating")?
+                .trim()
+                .parse::<f64>()
+                .ok()
+        })
+        .sum()
+}
+
+/// The Accuracy Rating on each equipped weapon, as `AccuracyOn<slot>`: what
+/// "N% of the Accuracy Rating on the Weapon" scales by.
+pub(crate) fn weapon_accuracy_multipliers(build: &crate::Build) -> Vec<(String, f64)> {
+    use pobr_data::item::EquipmentSlot;
+    [EquipmentSlot::Weapon1, EquipmentSlot::Weapon2]
+        .into_iter()
+        .filter_map(|slot| {
+            let rating = item_accuracy_rating(build.items.get(&slot)?);
+            Some((format!("AccuracyOn{}", slot.id()), rating))
+        })
+        .collect()
+}
+
 /// Whether a mod is a **weapon-local** mod that should be stripped from the global set
 /// (already counted in the weapon source's multiplier zone): local physical
 /// increased/added + local attack speed (the latter applies to weapon attack speed, not
@@ -116,17 +145,9 @@ pub(crate) fn weapon_mod_texts(item: &Item) -> impl Iterator<Item = &String> {
 ///
 /// The allowlist is injected via `rules` (`overlay/local_mods.json`, data-driven;
 /// falls back to [`WeaponLocalModsDef::default`], value-for-value matching the original
-/// hardcoded enum).
+/// hardcoded enum). The match is core's, which the weapon source folds by.
 pub(crate) fn is_weapon_local_mod(text: &str, rules: &WeaponLocalModsDef) -> bool {
-    let clean = clean_item_text(text);
-    rules
-        .increased_suffixes
-        .iter()
-        .any(|suffix| clean.ends_with(suffix.as_str()))
-        || rules
-            .adds_damage_suffixes
-            .iter()
-            .any(|suffix| parse_adds_with_suffix(&clean, suffix).is_some())
+    pobr_core::skill_env::is_weapon_local_mod(text, rules)
 }
 
 /// Parses an armour item's **local** "N% increased <combination of Armour/Evasion/Energy

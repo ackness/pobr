@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-monk-invoker-flicker-strike-e3b8bfa3a005",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%ED%9B%88%EB%AC%B4%EB%A3%A9-2138/%ED%9B%88%EB%B3%B4%ED%81%AC",
+    "account": "훈무룩-2138",
+    "character": "훈보크",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:53:03+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=%ED%9B%88%EB%AC%B4%EB%A3%A9-2138&name=%ED%9B%88%EB%B3%B4%ED%81%AC&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Invoker",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Invoker",
+    "level": 96,
+    "main_skill": "Flicker Strike"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 11,
+    "code_sha256": "5c4ef12474cd67e52a4ba480e6f1793e89dcf294aebb279449a249e396014981",
+    "code_chars": 12380,
+    "decoded_bytes": 51515
+  }
+}

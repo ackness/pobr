@@ -31,6 +31,9 @@ pub(super) struct ResolvedMainSkill<'a> {
     pub main_skill_types: Vec<String>,
     pub skill_flags: ModFlags,
     pub skill_type_bits: SkillTypes,
+    /// The support gems connected to the main skill, counted by colour: red,
+    /// green, blue.
+    pub connected_supports: [u32; 3],
 }
 
 pub(super) struct ResolvedWeapons {
@@ -72,14 +75,20 @@ pub(super) fn stage_resolve_main_skill<'a>(
     // `Triggered` to the triggered spell, making the "Triggered Spells deal …" mod
     // family hit + the combat-condition trigger exemption apply per vendor :248).
     // Sorted for determinism.
+    let main_supports = main_skill
+        .as_ref()
+        .map(|(_, group, skill_id)| judge_group_supports(group, data, skill_id, group.from_gem()));
+    let connected_supports = match (&main_skill, &main_supports) {
+        (Some((_, group, _)), Some(supports)) => {
+            connected_support_colours(group, data, &supports.compatible)
+        }
+        _ => [0; 3],
+    };
     let main_skill_types = main_skill
         .as_ref()
-        .map(|(_, group, skill_id)| {
-            let mut types: Vec<String> =
-                judge_group_supports(group, data, skill_id, group.from_gem())
-                    .final_skill_types
-                    .into_iter()
-                    .collect();
+        .zip(main_supports)
+        .map(|((_, group, skill_id), supports)| {
+            let mut types: Vec<String> = supports.final_skill_types.into_iter().collect();
             // A meta trigger shell's `Triggered`: vendor injects this from the gem's
             // **support half** (e.g. Cast on Critical → SupportMetaCastOnCritPlayer's
             // addSkillTypes=[Triggered]); PoBR's cataloged data doesn't model a gem's
@@ -99,6 +108,16 @@ pub(super) fn stage_resolve_main_skill<'a>(
     let skill_flags = main_effect
         .map(|_| skill_type_flags(&main_skill_types))
         .unwrap_or(ModFlags::NONE);
+    // Whether the hits are a projectile's and whether they are area damage is
+    // for the stat set in use to say, where the data has the game's marks.
+    let main_stat_set = main_skill
+        .as_ref()
+        .filter(|_| data.stat_sets_mark_hits)
+        .and_then(|(_, _, skill_id)| data.select_stat_set(skill_id, main_stat_set_index));
+    let skill_flags = match main_stat_set {
+        Some(set) => pobr_core::skill_env::stat_set_hit_flags(skill_flags, &set.implicit_stats),
+        None => skill_flags,
+    };
     // Main skill type → `cfg.skill_types` classification bits: `is_attack()` drives the
     // hit-chance check (only attacks do an accuracy/evasion check, vendor
     // CalcOffence.lua:2611); see skill_type_bits's doc.
@@ -112,7 +131,30 @@ pub(super) fn stage_resolve_main_skill<'a>(
         main_skill_types,
         skill_flags,
         skill_type_bits,
+        connected_supports,
     }
+}
+
+/// The supports `compatible` with a skill of `group`, counted by the colour
+/// of their gems: red, green, blue.
+fn connected_support_colours(
+    group: &SocketGroup,
+    data: &BuildData,
+    compatible: &[pobr_core::skill_env::CompatibleSupport],
+) -> [u32; 3] {
+    use pobr_core::skill_env::GemDefLookup;
+    let mut counts = [0; 3];
+    for support in compatible {
+        let colour = group
+            .gem_skills
+            .get(support.gem_index)
+            .and_then(|gem| data.gem_def_for_effect(&gem.skill_id))
+            .and_then(|gem| gem.gem_colour);
+        if let Some(colour @ 1..=3) = colour {
+            counts[colour as usize - 1] += 1;
+        }
+    }
+    counts
 }
 
 /// Stage 2: closes out config consumption (the primary-path switch) — goes through
@@ -201,6 +243,7 @@ pub(super) fn stage_build_cfg(
                 .unwrap_or(&[]),
         ))
         .with_mode_effective(options.mode_effective)
+        .with_rain_hits_whenever_allowed(!options.rain_landings)
         // Vendor's buffMode is always "EFFECTIVE" outside CALCS mode
         // (CalcSetup.lua:583-597 → env.mode_buffs = true), so mode_buffs is always set
         // here — enabling buff_pass (the aura multiplier zone / curse priority+limit).
@@ -238,6 +281,10 @@ pub(super) fn stage_build_cfg(
         })
         .flatten();
     cfg = cfg.with_skill_distance(skill_distance);
+    // What the main skill is a skill of: "Damage with Warcries", "with Fire
+    // Skills" and "Curse Skills" ask its types.
+    cfg.keyword_flags =
+        cfg.keyword_flags | pobr_core::skill_env::skill_keyword_flags(main.skill_type_bits);
     // SkillStatMap's skill_can_fire_arrows -> skillFlags.arrow ->
     // CalcActiveSkill's KeywordFlag.Arrow. Use the selected stat set, since
     // secondary projectiles need not be arrows even when fired from a bow.
@@ -249,15 +296,39 @@ pub(super) fn stage_build_cfg(
     }) {
         cfg.keyword_flags = cfg.keyword_flags | pobr_data::modifier::KeywordFlags::ARROW;
     }
-    // Main skill-derived combat conditions (read directly from vendor
-    // CalcPerform.lua:242-266's `if env.mode_combat` section): attack/spell/Movement/
-    // Minion/Vaal/Channel → "...Recently"/Channelling conditions;
-    // triggered/trap/mine/totem exempted (using the **final** type set — a meta
-    // support's addSkillTypes `Triggered` makes the exemption apply, matching vendor :248).
+    // A skill a totem uses. What is said of totems ("Totem Damage", "Spells
+    // Cast by Totems have …") is said of it, and of the skill that places the
+    // totem.
+    let uses_totem = super::conditions::used_by_totem(&main.main_skill_types);
+    if uses_totem {
+        cfg.keyword_flags = cfg.keyword_flags | pobr_data::modifier::KeywordFlags::TOTEM;
+    }
+    // How many totems are summoned is the player's to say ("# of Summoned
+    // Totems"). Unsaid, the totem using the main skill is: the limit of a
+    // totem gem is not modelled, so nothing here assumes it is reached.
+    let configured_totems = resolved_config.player_mods.iter().find_map(|m| {
+        match (m.name.as_str(), m.mod_type, &m.value) {
+            ("TotemsSummoned", ModType::Override, pobr_core::ModValue::Number(n)) => Some(*n),
+            _ => None,
+        }
+    });
+    if let Some(totems) = configured_totems.or(uses_totem.then_some(1.0)) {
+        cfg = cfg.with_multiplier("TotemsSummoned", totems);
+    }
+    // Combat conditions from using the main skill (attack/spell/Movement/Minion/Vaal →
+    // "...Recently", Channel → Channelling, Shapeshift → Shapeshifted and its form),
+    // read from the **final** type set: a meta support's added `Triggered` exempts
+    // the skill like any triggered skill.
     if main.main_effect.is_some() {
         for cond in combat_conditions(&main.main_skill_types, main.skill_flags) {
             cfg = cfg.with_condition(cond, true);
         }
+    }
+    // "Skills from Corrupted Gems have 50% of Mana Costs Converted to Life Costs".
+    if let Some((_, group, _)) = &main.main_skill
+        && super::skill::resolve::from_corrupted_gem(data, group)
+    {
+        cfg = cfg.with_condition("GemCorrupted", true);
     }
     // Enemy tier (19-G3 wiring): the build XML Config's explicitly saved `enemyIsBoss`
     // takes priority; falls back to the caller's orchestrator option when omitted
@@ -351,6 +422,10 @@ pub(super) fn stage_build_cfg(
     for var in weapon_type_conditions(build, data) {
         cfg = cfg.with_condition(var, true);
     }
+    // The weapon set in use: "Supported Skills deal 30% more Damage while
+    // using Weapon Set 2" (`support_rigwald_damage_+%_final_in_weapon_set_two`)
+    // and the other modifiers of one set.
+    cfg = cfg.with_condition(format!("WeaponSet{}", build.weapon_set.number()), true);
     // Main-hand weapon bits → cfg.flags: derived from the **same source**
     // (weapon_type_info table) with the **same gating** as the Using* conditions above
     // — the mod-side dual-written weapon-bit channel doesn't get a separate activation

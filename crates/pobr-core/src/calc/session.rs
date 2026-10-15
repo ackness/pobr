@@ -6,7 +6,7 @@ use std::sync::Arc;
 use pobr_data::catalog::buffs::BuffDef;
 use pobr_data::prelude::*;
 
-use crate::item::ingest_item_with_ctx;
+use crate::item::{ingest_item_with_ctx, ingest_limb_with_ctx};
 use crate::mod_parser::{ParseCtx, ParseError, ParseStatus};
 use crate::passive::{AllocatedNode, ingest_passive_nodes_with_ctx};
 use crate::rules::HandlerRegistry;
@@ -346,6 +346,15 @@ impl CalculationSession {
         Ok(())
     }
 
+    /// Wires in a Transcendent limb: its modifiers are global, attributed to
+    /// its slot, as an equipped item's are.
+    pub fn add_limb(&mut self, slot: LimbSlot, item: &Item) -> Result<(), ParseError> {
+        let ingest = ingest_limb_with_ctx(slot, item, self.parse_ctx())?;
+        self.env.player.mod_db.add_list(ingest.modifiers);
+        self.unsupported_modifier_texts.extend(ingest.unsupported);
+        Ok(())
+    }
+
     /// Wires in an **active-state** flask/charm: its mods are packed by
     /// [`crate::item::ingest_flask_charm`] into a `FlaskBuff`/`CharmBuff`
     /// payload List mod and injected (List mods don't participate in
@@ -440,7 +449,7 @@ impl CalculationSession {
         minion_modifiers: Vec<super::MinionModifierEntry>,
         ally_buff_mods: Vec<Modifier>,
         infusion: super::AttributeInfusion,
-        is_companion: bool,
+        origin: super::MinionOrigin,
     ) {
         self.env.add_minion_from_def(
             def,
@@ -449,7 +458,7 @@ impl CalculationSession {
             minion_modifiers,
             ally_buff_mods,
             infusion,
-            is_companion,
+            origin,
         );
     }
 
@@ -521,6 +530,12 @@ impl CalculationSession {
     /// Not called = empty, and `perform` takes the single-pipeline path
     /// identical to history (the fallback state). `double_hits` = skill
     /// data's `doubleHitsWhenDualWielding` (always false until the data channel lands).
+    /// Notes the physical damage range of the character's main hand weapon
+    /// (see [`Env::main_hand_weapon_damage`](super::Env)).
+    pub fn set_main_hand_weapon_damage(&mut self, min: f64, max: f64) {
+        self.env.main_hand_weapon_damage = Some((min, max));
+    }
+
     pub fn set_hand_sources(
         &mut self,
         sources: Vec<super::hand_pass::HandSource>,
@@ -606,9 +621,221 @@ impl CalculationSession {
         self.unsupported_modifier_texts.push(text);
     }
 
+    /// Starts noting which stored modifier names the calculation reads
+    /// ([`ModDb::track_reads`]). Call once every source is written and before
+    /// [`Self::perform_minimal`]; it is for diagnostics, not for normal runs.
+    pub fn track_modifier_reads(&mut self) {
+        self.env.player.mod_db.track_reads();
+        self.env.enemy.mod_db.track_reads();
+        self.env.cfg.track_reads();
+    }
+
+    /// The conditions and multipliers the calculation asked for
+    /// ([`CalcConfig::read_variables`]). Empty unless
+    /// [`Self::track_modifier_reads`] was called.
+    pub fn read_variables(&self) -> crate::ReadVariables {
+        self.env.cfg.read_variables()
+    }
+
+    /// Player modifiers that were parsed and stored but whose name the
+    /// calculation never read ([`ModDb::unread_mods`]): the line parsed, and
+    /// did nothing. Empty unless [`Self::track_modifier_reads`] was called.
+    pub fn unread_modifiers(&self) -> Vec<&Modifier> {
+        self.env.player.mod_db.unread_mods()
+    }
+
+    /// The stored player modifier names the calculation read, sorted. With
+    /// [`Self::unread_modifiers`] across several builds it separates a name
+    /// no calculation reads from one this build's skill had no use for.
+    pub fn read_modifier_names(&self) -> Vec<ModName> {
+        self.env.player.mod_db.read_names()
+    }
+
+    /// The queries the calculation asked of the stored player modifiers and
+    /// the modifiers they counted ([`crate::ModDb::read_snapshot`]). Empty unless
+    /// [`Self::track_modifier_reads`] was called. Take it as the calculation
+    /// ends: a breakdown of this session reads the same database.
+    pub fn modifier_reads(&self) -> crate::ReadSnapshot {
+        self.env.player.mod_db.read_snapshot()
+    }
+
+    /// The session config: the main skill's context (its flags, types and
+    /// name, the conditions and multipliers the calculation set), which the
+    /// per-hand, per-ailment and per-damage-type configs of the stages narrow.
+    pub fn config(&self) -> &CalcConfig {
+        &self.env.cfg
+    }
+
+    /// The condition and multiplier variables the tags of stored player and
+    /// enemy modifiers refer to. A `Condition:<X>` or `Multiplier:<X>`
+    /// modifier is consumed through the config's own maps rather than by a
+    /// query, so it has a use exactly when `<X>` is in this set (or when
+    /// engine code asks for `<X>` by name).
+    pub fn referenced_variables(&self) -> std::collections::BTreeSet<&str> {
+        let mut variables = std::collections::BTreeSet::new();
+        for modifier in self
+            .env
+            .player
+            .mod_db
+            .iter_mods()
+            .chain(self.env.enemy.mod_db.iter_mods())
+        {
+            for tag in &modifier.tags {
+                match tag {
+                    crate::ModTag::Condition { var, .. }
+                    | crate::ModTag::MultiplierThreshold { var, .. } => {
+                        variables.insert(var.as_str());
+                    }
+                    crate::ModTag::ConditionAnyOf { vars, .. } => {
+                        variables.extend(vars.iter().map(String::as_str));
+                    }
+                    crate::ModTag::Multiplier { var, limit_var, .. } => {
+                        variables.insert(var.as_str());
+                        variables.extend(limit_var.as_deref());
+                    }
+                    _ => {}
+                }
+            }
+        }
+        variables
+    }
+
+    /// `(variable, modifier)` for each stored player modifier that scales by,
+    /// or is gated on, a multiplier nothing set: no `Multiplier:<variable>`
+    /// modifier and no value in the calculation's config. Such a multiplier
+    /// reads as 0, so the modifier contributes nothing however it parsed. A
+    /// multiplier that a config option could set but did not is listed too.
+    ///
+    /// A multiplier read on the player's side (`actor: player`, PoB2's form
+    /// of "per Idol in your Equipment") is read from the player's entry in
+    /// [`CalcConfig::actor_multipliers`], or without one from the
+    /// configuration's own multipliers
+    /// ([`CalcConfig::actor_multiplier`]), so either provides it.
+    /// Multipliers read from another actor are not this report's.
+    /// Ordered by variable, then modifier name.
+    pub fn unprovided_multipliers(&self) -> Vec<(&str, &Modifier)> {
+        // Worked out by a calculation pass, so neither the config nor a
+        // stored modifier ever holds them.
+        const SET_BY_A_PASS: [&str; 2] = [
+            // `calc::offence`: what the accuracy check gives beyond a certain hit.
+            "ExcessHitChance",
+            // The lowest of the three attributes, set while the character is prepared.
+            "LowestAttribute",
+        ];
+        let db = &self.env.player.mod_db;
+        let cfg = &self.env.cfg;
+        let provided = |var: &str| {
+            SET_BY_A_PASS.contains(&var)
+                || cfg.multipliers.contains_key(var)
+                || db.has_name(&format!("Multiplier:{var}"))
+        };
+        let in_player_snapshot = |var: &str| {
+            cfg.actor_multipliers
+                .contains_key(&format!("{}.{var}", crate::ActorRef::Player.key()))
+        };
+        let mut out: Vec<(&str, &Modifier)> = db
+            .iter_mods()
+            .flat_map(|modifier| {
+                modifier.tags.iter().filter_map(move |tag| match tag {
+                    crate::ModTag::Multiplier {
+                        var, actor: None, ..
+                    }
+                    | crate::ModTag::MultiplierThreshold { var, .. } => {
+                        Some((var.as_str(), false, modifier))
+                    }
+                    crate::ModTag::Multiplier {
+                        var,
+                        actor: Some(crate::ActorRef::Player),
+                        ..
+                    } => Some((var.as_str(), true, modifier)),
+                    _ => None,
+                })
+            })
+            .filter(|&(var, player_side, _)| {
+                if player_side {
+                    !in_player_snapshot(var)
+                        && !SET_BY_A_PASS.contains(&var)
+                        && !cfg.multipliers.contains_key(var)
+                } else {
+                    !provided(var)
+                }
+            })
+            .map(|(var, _, modifier)| (var, modifier))
+            .collect();
+        sort_by_variable(&mut out);
+        out
+    }
+
+    /// `(condition, modifier)` for each stored player modifier that applies
+    /// only while a condition holds which the calculation never decided: the
+    /// condition is not in its condition map, and no pass of the calculation
+    /// works it out for itself (the critical half of a hit, a hand's pass, a
+    /// flask in use, an aura in effect: `condition_set_by_a_pass`). Such a
+    /// modifier never applies, however it parsed. A stored `Condition:<X>`
+    /// flag does not decide `<X>` by itself: only the flags a bridge copies
+    /// into the condition map do.
+    ///
+    /// A condition read on the player's side (`actor: player`) is read from
+    /// the player's entry in [`CalcConfig::actor_multipliers`], and only that
+    /// entry decides it. Conditions of another actor, and modifiers that apply
+    /// while a condition does *not* hold (unset, they apply), are not this
+    /// report's. The orchestration decides more conditions from what a build
+    /// has (its weapons, its enemy); a condition it would have set for another
+    /// build is listed here, and telling those apart is the caller's. Ordered
+    /// by condition, then modifier name.
+    pub fn unset_conditions(&self) -> Vec<(&str, &Modifier)> {
+        let cfg = &self.env.cfg;
+        let decided = |var: &str| {
+            // `Effective` falls back to the effective-DPS mode when unset.
+            var == "Effective"
+                || cfg.conditions.contains_key(var)
+                || condition_set_by_a_pass(var, &self.env.buff_definitions)
+        };
+        let in_player_snapshot = |var: &str| {
+            cfg.actor_multipliers
+                .contains_key(&format!("{}.{var}", crate::ActorRef::Player.key()))
+        };
+        let mut out: Vec<(&str, &Modifier)> = Vec::new();
+        for modifier in self.env.player.mod_db.iter_mods() {
+            for tag in &modifier.tags {
+                match tag {
+                    crate::ModTag::Condition {
+                        var,
+                        negated: false,
+                        actor: None,
+                    } if !decided(var) => out.push((var.as_str(), modifier)),
+                    crate::ModTag::Condition {
+                        var,
+                        negated: false,
+                        actor: Some(crate::ActorRef::Player),
+                    } if !in_player_snapshot(var) => out.push((var.as_str(), modifier)),
+                    // Any one of them holding is enough: the modifier is
+                    // dropped only while none of them is set.
+                    crate::ModTag::ConditionAnyOf {
+                        vars,
+                        negated: false,
+                    } if !vars.iter().any(|var| cfg.condition(var)) => out.extend(
+                        vars.iter()
+                            .filter(|var| !decided(var))
+                            .map(|var| (var.as_str(), modifier)),
+                    ),
+                    _ => {}
+                }
+            }
+        }
+        sort_by_variable(&mut out);
+        out
+    }
+
     /// Gets the sum of a ModName's BASE in the player ModDb for the current cfg.
     /// This excludes actor bases and INC/MORE scaling; use [`Self::attribute_total`]
     /// when a consumer needs a final attribute value.
+    pub fn minion_modifiers_for(&self, skill_types: SkillTypes) -> Vec<super::MinionModifierEntry> {
+        let mut cfg = self.env.cfg.clone();
+        cfg.skill_types = skill_types;
+        super::minion::granted_minion_modifiers(&self.env.player.mod_db, &cfg)
+    }
+
     pub fn base_sum(&self, name: &str) -> f64 {
         self.env
             .player
@@ -624,15 +851,7 @@ impl CalculationSession {
     /// read during damage aggregation -- equivalent to vendor CalcOffence's
     /// order of computing cost before damage.
     pub fn life_cost_snapshot(&self) -> f64 {
-        let base_mc = self.base_sum("SkillManaCostBase");
-        let base_lc = self.base_sum("SkillLifeCostBase");
-        super::skill_mechanics::calc_life_cost_hybrid(
-            &self.env.player.mod_db,
-            &self.env.cfg,
-            base_lc,
-            base_mc,
-        )
-        .final_cost
+        super::skill_mechanics::skill_costs(&self.env.player.mod_db, &self.env.cfg).life
     }
 
     /// Final total attribute value (PoB2's `calculateAttributes`,
@@ -685,6 +904,21 @@ impl CalculationSession {
         &self.env.player.output
     }
 
+    /// How the main skill's hits come when it is a rain (`calc::rain`):
+    /// its `ActionRate` is the rate of these hits, not of its uses.
+    pub fn rain(&self) -> Option<super::rain::RainSummary> {
+        let env = &self.env;
+        let input = perform::player_input(env);
+        let hand = perform::main_hand_scope(env);
+        let (cfg, hand_input) = match &hand {
+            Some((cfg, input)) => (cfg, input),
+            None => (&env.cfg, &input),
+        };
+        let db = &env.player.mod_db;
+        let uses = super::offence::resolve_use_rate(db, cfg, hand_input);
+        super::rain::rain_hits(db, cfg, uses).map(|rain| rain.summary())
+    }
+
     /// Diagnostic helper: lists every modifier named `name` in the player
     /// modDB (including ones that don't match cfg), for parity debugging to
     /// check each source's contribution.
@@ -716,6 +950,10 @@ impl CalculationSession {
             "ColdResist" => &["ColdResistance", "ColdResist", "ElementalResist"],
             "LightningResist" => &["LightningResistance", "LightningResist", "ElementalResist"],
             "ChaosResist" => &["ChaosResistance", "ChaosResist"],
+            // A rain's hits come as its arrows land, at projectile speed.
+            "ActionRate" if super::rain::is_rain(&self.env.player.mod_db, &self.env.cfg) => {
+                &["ProjectileSpeed"]
+            }
             "ActionRate" => return super::skill_use_time::speed_names_for(&self.env.cfg),
             "CritChance" => &["CriticalStrikeChance"],
             "CritMultiplier" => &["CriticalStrikeMultiplier"],
@@ -892,8 +1130,18 @@ impl CalculationSession {
         cfg: &CalcConfig,
         input: &super::MinimalInput,
     ) -> Option<super::StatFormula> {
+        self.actor_pass_formula(&self.env.player.mod_db, stat, cfg, input)
+    }
+
+    /// [`Self::pass_formula`] for the actor whose modifiers are `db`.
+    fn actor_pass_formula(
+        &self,
+        db: &crate::ModDb,
+        stat: &str,
+        cfg: &CalcConfig,
+        input: &super::MinimalInput,
+    ) -> Option<super::StatFormula> {
         use super::offence;
-        let db = &self.env.player.mod_db;
         let enemy = &self.env.enemy.mod_db;
         Some(match stat {
             "ActionRate" => offence::action_rate_terms(db, cfg, input).formula(),
@@ -1205,6 +1453,83 @@ impl CalculationSession {
         )
     }
 
+    /// How many minions the calculation created.
+    pub fn minion_count(&self) -> usize {
+        self.env.minions.len()
+    }
+
+    /// The modifier names any minion's calculation read, when reads are
+    /// noted ([`Self::track_modifier_reads`]).
+    pub fn minion_read_names(&self) -> std::collections::BTreeSet<ModName> {
+        self.env
+            .minions
+            .iter()
+            .flat_map(|minion| minion.mod_db.read_names())
+            .collect()
+    }
+
+    /// The modifier names a minion's `stat` is built from: its Life pool
+    /// holds both the monster's base `Life` and the `MaximumLife` lines, and
+    /// its speed is that of its own skill.
+    fn minion_stat_names(&self, cfg: &CalcConfig, stat: &str) -> Vec<ModName> {
+        match stat {
+            "Life" => vec![ModName::from("MaximumLife"), ModName::from("Life")],
+            "ActionRate" => super::skill_use_time::speed_names_for(cfg),
+            _ => self.stat_mod_names(stat),
+        }
+    }
+
+    /// The steps of minion `index`'s offence `stat` (`ActionRate`,
+    /// `HitChance`, `TotalHitAvg`, `TotalDPS`, `CritChance`,
+    /// `CritMultiplier`), as its calculation took them. `None` for any other
+    /// stat, or when the steps do not end at the minion's DPS.
+    pub fn minion_stat_formula(&self, index: usize, stat: &str) -> Option<super::StatFormula> {
+        let minion = self.env.minions.get(index)?;
+        let cfg = perform::minion_cfg(&self.env, minion);
+        let mut input = super::MinimalInput::from(minion.base);
+        input.enemy_evasion = super::setup_env::enemy_evasion(&self.env.enemy, &cfg);
+        let formula = self.actor_pass_formula(&minion.mod_db, stat, &cfg, &input)?;
+        let consistent = stat != "TotalDPS" || (formula.value - minion.output.dps).abs() <= 1e-6;
+        consistent.then_some(formula)
+    }
+
+    /// The modifiers of minion `index` (in the order the calculation created
+    /// it) that its `stat` reads, evaluated in the minion's own context.
+    pub fn minion_stat_mods(&self, index: usize, stat: &str) -> Vec<crate::ModEvaluation<'_>> {
+        let Some(minion) = self.env.minions.get(index) else {
+            return Vec::new();
+        };
+        let cfg = perform::minion_cfg(&self.env, minion);
+        minion
+            .mod_db
+            .evaluate_names(&cfg, &self.minion_stat_names(&cfg, stat))
+    }
+
+    /// `(BASE sum, INC sum, MORE product)` of [`Self::minion_stat_mods`].
+    pub fn minion_stat_totals(&self, index: usize, stat: &str) -> (f64, f64, f64) {
+        let Some(minion) = self.env.minions.get(index) else {
+            return (0.0, 0.0, 1.0);
+        };
+        let cfg = perform::minion_cfg(&self.env, minion);
+        let names = self.minion_stat_names(&cfg, stat);
+        let db = &minion.mod_db;
+        (
+            db.sum(ModType::Base, &cfg, &names),
+            db.sum(ModType::Inc, &cfg, &names),
+            db.more(&cfg, &names),
+        )
+    }
+
+    /// The steps from minion `index`'s base Life to its maximum Life.
+    pub fn minion_life_formula(&self, index: usize) -> Option<super::StatFormula> {
+        let minion = self.env.minions.get(index)?;
+        let cfg = perform::minion_cfg(&self.env, minion);
+        Some(
+            super::offence::pool_terms(&minion.mod_db, &cfg, minion.base.life, "MaximumLife")
+                .formula(),
+        )
+    }
+
     /// Every modifier in the player ModDb (for diagnostics,
     /// `POBR_DBG_ALLMODS`): used to diff the full mod set between the engine
     /// vs legacy ingest paths (fork(a) locating ingest divergence).
@@ -1235,4 +1560,68 @@ fn ailment_of(stat: &str) -> Option<AilmentType> {
         "PoisonDPS" => Some(AilmentType::Poison),
         _ => None,
     }
+}
+
+/// Conditions a pass of the calculation works out for itself, for the hit
+/// or hand it is computing or from what the character has in effect. Absent
+/// from the condition map, they do not hold; nothing is missing.
+const CONDITIONS_SET_BY_A_PASS: [&str; 19] = [
+    // `calc::offence` and `calc::crit_pass`: the critical and the
+    // non-critical half of a hit.
+    "CriticalStrike",
+    // `calc::hand_pass`: the main-hand and the off-hand pass of an attack.
+    "MainHandAttack",
+    "OffHandAttack",
+    // Projected by `calc::rage` and the charge counts for their own queries;
+    // the orchestration bridges the config entries gated on combat.
+    "Combat",
+    "CanGainRage",
+    "HaveMaximumRage",
+    // `calc::ailment_apply`: Chill and Shock on the enemy.
+    "Chilled",
+    "Shocked",
+    // `calc::buff_pass`: curses and marks on the enemy.
+    "EnemyCursed",
+    "EnemyMarked",
+    // `env_finalize`: the enemy's own Intimidated flag.
+    "EnemyIntimidated",
+    // `rules::buff_expander`: the Elusive handler.
+    "Elusive",
+    // `bridge_player_conditions`: from the flag of what grants it.
+    "CanUseBondedModifiers",
+    "SorceryWard",
+    "CeremonialAblution",
+    // Set while the character is prepared (`session/preparation.rs`).
+    "Surrounded",
+    // The weapon set in use, set from the build before the calculation; the
+    // other set's modifiers are not meant to apply.
+    "WeaponSet1",
+    "WeaponSet2",
+    // `calc::perform`: a minion using a Command skill.
+    crate::rules::skill_stats::COMMAND_SKILL,
+];
+
+/// Whether a pass of the calculation sets `var` when it holds:
+/// [`CONDITIONS_SET_BY_A_PASS`], a condition a built-in buff sets alongside
+/// itself, each aura or buff in effect (`calc::buff_pass`: `AffectedByAura`,
+/// `AffectedBy<name>`) and each flask or charm in use (`env_finalize`:
+/// `UsingFlask`, `UsingLifeFlask`, `Using<base>`).
+fn condition_set_by_a_pass(var: &str, buffs: &[BuffDef]) -> bool {
+    CONDITIONS_SET_BY_A_PASS.contains(&var)
+        || buffs
+            .iter()
+            .any(|buff| buff.conditions_set.iter().any(|set| set == var))
+        || var.starts_with("AffectedBy")
+        || (var.starts_with("Using") && (var.ends_with("Flask") || var.ends_with("Charm")))
+}
+
+/// Orders `(variable, modifier)` entries by variable, then modifier name and source.
+fn sort_by_variable(entries: &mut [(&str, &Modifier)]) {
+    entries.sort_by(|a, b| {
+        (a.0, a.1.name.as_str(), a.1.source.as_deref()).cmp(&(
+            b.0,
+            b.1.name.as_str(),
+            b.1.source.as_deref(),
+        ))
+    });
 }

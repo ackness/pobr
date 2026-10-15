@@ -100,11 +100,10 @@ pub fn scaled_damage_effect(
         .min(100.0);
     // The ratio is an injected BASE mod rather than a defaulted output: its
     // presence (not its nonzero value) is the vendor globalOutput gate.
-    if db.iter_mods().any(|m| {
-        m.name.as_str() == "IntimidatingUpTimeRatio"
-            && m.mod_type == ModType::Base
-            && m.matches(cfg)
-    }) {
+    if db
+        .named("IntimidatingUpTimeRatio")
+        .any(|m| m.mod_type == ModType::Base && m.matches(cfg))
+    {
         if db.flag(cfg, "Condition:WarcryMaxHit") || cfg.condition("WarcryMaxHit") {
             double_chance = 100.0;
         } else {

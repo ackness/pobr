@@ -124,7 +124,8 @@ pub enum ModTag {
         /// Cross-actor value read (PoB2 ModStore.lua:347-353 `tag.actor`).
         /// `None` (default) reads the current `cfg.multiplier(var)`, unchanged
         /// from before this field existed; `Some(actor)` reads
-        /// `cfg.actor_multipliers["<actor>.<var>"]` (missing key → 0).
+        /// [`CalcConfig::actor_multiplier`](crate::CalcConfig::actor_multiplier)
+        /// (missing key → 0, except the player's own count).
         actor: Option<ActorRef>,
         /// Dynamic limit variable (PoB2 ModStore.lua:369 `tag.limitVar`:
         /// `limit = tag.limit or GetMultiplier(limitTarget, tag.limitVar)` —
@@ -185,7 +186,8 @@ pub enum ModTag {
     /// `limit`/`floor` forms aren't implemented in this batch (blocked by the
     /// DSL whitelist, so `base` is always 0).
     PercentStat {
-        /// The output-table stat name (e.g. `Life`/`EnergyShield`).
+        /// The output-table stat name (e.g. `Life`/`EnergyShield`), or several
+        /// joined by `|` (`Armour|Evasion`) for a percentage of their sum.
         stat: String,
         /// Percentage (vendor `tag.percent`); defaults to the or-1 side of
         /// vendor's `(percent and percent/100 or 1)` (mult = the stat itself).
@@ -341,6 +343,177 @@ impl ModTag {
             limit_total: false,
         }
     }
+
+    /// Whether this tag lets its modifier apply in `cfg`: the tag part of
+    /// [`Modifier::matches`].
+    #[inline]
+    fn holds(&self, cfg: &CalcConfig) -> bool {
+        match self {
+            ModTag::Condition {
+                var,
+                negated,
+                actor,
+            } => {
+                // Cross-actor condition (PoB2 ActorCondition): checks the
+                // truthiness of the actor_multipliers snapshot (≠0 is true,
+                // missing key is false — equivalent to PoB2's conservative
+                // behavior of the mod not applying when getActor fails). The
+                // player's own conditions are not read here: the exposure
+                // config entries depend on that (see `config_resolve`).
+                let enabled = match actor {
+                    None => cfg.condition(var),
+                    Some(actor) => cfg.actor_snapshot(*actor, var) != 0.0,
+                };
+                if *negated { !enabled } else { enabled }
+            }
+            // OR condition (vendor varList): matches if any var is true, then neg applies.
+            ModTag::ConditionAnyOf { vars, negated } => {
+                let enabled = vars.iter().any(|v| cfg.condition(v));
+                if *negated { !enabled } else { enabled }
+            }
+            // Value-scaling / cumulative-cap / distance-interpolation tags don't
+            // participate in match filtering (consumed during evaluation).
+            ModTag::Multiplier { .. }
+            | ModTag::PerStat { .. }
+            | ModTag::PercentStat { .. }
+            | ModTag::GlobalLimit { .. }
+            | ModTag::DistanceRamp { .. } => true,
+            // Threshold gate (vendor ModStore.lua:559-573): doesn't apply when
+            // the stat lands on the wrong side.
+            ModTag::MultiplierThreshold {
+                var,
+                threshold,
+                upper,
+            } => {
+                let stat = cfg.multiplier(var);
+                if *upper {
+                    stat <= *threshold
+                } else {
+                    stat >= *threshold
+                }
+            }
+            // Structurally identical gate, reading from the stats snapshot instead (vendor :556-573 GetStat branch).
+            ModTag::StatThreshold {
+                stat,
+                threshold,
+                upper,
+            } => {
+                let value = cfg.stat(stat);
+                if *upper {
+                    value <= *threshold
+                } else {
+                    value >= *threshold
+                }
+            }
+            ModTag::DamageType(damage_type) => cfg.damage_type == Some(*damage_type),
+            ModTag::SkillTypes(skill_types) => {
+                skill_types.is_empty() || skill_types.intersects(cfg.skill_types)
+            }
+            // Negated: matching any bit against cfg means it does NOT apply
+            // (vendor inverts neg; an empty bitset always applies, matching
+            // vendor's `skillTypes[nil]=false → not false`).
+            ModTag::SkillTypesNeg(skill_types) => !skill_types.intersects(cfg.skill_types),
+            // Named-skill restriction (vendor ModStore.lua:752-780): matches
+            // if the main skill name hits any entry; no main skill name on
+            // cfg → doesn't match (conservative).
+            ModTag::SkillName { names } => cfg
+                .skill_name
+                .as_deref()
+                .is_some_and(|sn| names.iter().any(|n| n.eq_ignore_ascii_case(sn))),
+            // Slot restriction is transparent to normal filtering (handled
+            // explicitly by ModDb's per-slot query paths).
+            ModTag::SlotName(_) => true,
+        }
+    }
+
+    /// What this tag requires, for one that does not [`hold`](Self::holds)
+    /// in `cfg`, with what `cfg` has instead where that helps.
+    fn unmet(&self, cfg: &CalcConfig) -> String {
+        let actor_key =
+            |actor: &Option<ActorRef>| actor.map_or(String::new(), |a| format!("{}.", a.key()));
+        let bound = |upper: bool| if upper { "at most" } else { "at least" };
+        let type_names = |types: SkillTypes| {
+            let names = types.names();
+            if names.is_empty() {
+                format!("{types:?}")
+            } else {
+                names.join(" or ")
+            }
+        };
+        match self {
+            ModTag::Condition {
+                var,
+                negated: false,
+                actor,
+            } => format!("Condition {}{var} not met", actor_key(actor)),
+            ModTag::Condition { var, actor, .. } => {
+                format!(
+                    "Condition {}{var} holds (applies only without it)",
+                    actor_key(actor)
+                )
+            }
+            ModTag::ConditionAnyOf {
+                vars,
+                negated: false,
+            } => format!("none of Conditions {} met", vars.join(", ")),
+            ModTag::ConditionAnyOf { vars, .. } => {
+                let holding: Vec<&str> = vars
+                    .iter()
+                    .filter(|var| cfg.condition(var))
+                    .map(String::as_str)
+                    .collect();
+                format!(
+                    "Condition {} holds (applies only without it)",
+                    holding.join(", ")
+                )
+            }
+            ModTag::MultiplierThreshold {
+                var,
+                threshold,
+                upper,
+            } => format!(
+                "Multiplier {var} is {}, needs {} {threshold}",
+                cfg.multiplier(var),
+                bound(*upper)
+            ),
+            ModTag::StatThreshold {
+                stat,
+                threshold,
+                upper,
+            } => format!(
+                "Stat {stat} is {}, needs {} {threshold}",
+                cfg.stat(stat),
+                bound(*upper)
+            ),
+            ModTag::DamageType(damage_type) => match cfg.damage_type {
+                Some(current) => format!("DamageType {damage_type:?} (the query is {current:?})"),
+                None => format!("DamageType {damage_type:?} (the query is of no one type)"),
+            },
+            ModTag::SkillTypes(types) => format!("SkillType {}", type_names(*types)),
+            // The types of the list the skill has.
+            ModTag::SkillTypesNeg(types) => {
+                let had: Vec<&str> = types
+                    .names()
+                    .into_iter()
+                    .filter(|name| {
+                        SkillTypes::from_pob2_name(name)
+                            .is_some_and(|bit| bit.intersects(cfg.skill_types))
+                    })
+                    .collect();
+                if had.is_empty() {
+                    format!("not SkillType {}", type_names(*types))
+                } else {
+                    format!("not SkillType {}", had.join(" or "))
+                }
+            }
+            ModTag::SkillName { names } => match cfg.skill_name.as_deref() {
+                Some(skill) => format!("SkillName {} (the skill is {skill})", names.join(" or ")),
+                None => format!("SkillName {} (no skill)", names.join(" or ")),
+            },
+            // The tags that always hold.
+            other => format!("{other:?}"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -430,80 +603,102 @@ impl Modifier {
             return false;
         }
 
-        self.tags.iter().all(|tag| match tag {
-            ModTag::Condition {
-                var,
-                negated,
-                actor,
-            } => {
-                // Cross-actor condition (PoB2 ActorCondition): checks the
-                // truthiness of the actor_multipliers snapshot (≠0 is true,
-                // missing key is false — equivalent to PoB2's conservative
-                // behavior of the mod not applying when getActor fails).
-                let enabled = match actor {
-                    None => cfg.condition(var),
-                    Some(actor) => cfg.actor_multiplier(*actor, var) != 0.0,
-                };
-                if *negated { !enabled } else { enabled }
+        self.tags.iter().all(|tag| tag.holds(cfg))
+    }
+
+    /// Why a query in `ctx` would not count this modifier, or `None` when it
+    /// would. The first requirement [`matches`](Self::matches) finds unmet,
+    /// in its order: the damage flags (`needs Spell`), the keywords, then the
+    /// tags (`Condition UsingShield not met`, `SkillType Spell`, `Multiplier
+    /// enemyDistance is 0, needs at least 50`). A modifier that matches can
+    /// still come to nothing in [`effective_number`](Self::effective_number):
+    /// a distance ramp without a configured enemy distance drops it, and a
+    /// scaling tag whose count is 0 makes a stored non-zero number 0
+    /// (`scaled to 0: Multiplier FrenzyCharge is 0`); both are reasons too.
+    /// A stored 0, and a value that is not a number, need only the match.
+    pub fn unmet_requirement(&self, ctx: &EvalContext<'_>) -> Option<String> {
+        let cfg = ctx.cfg;
+        if !self.flags.is_subset_of(cfg.flags) {
+            let missing = self.flags.without(cfg.flags).names().join(", ");
+            return Some(format!("needs {missing}"));
+        }
+        if !self.keyword_flags.matches_context(cfg.keyword_flags) {
+            let keywords = self.keyword_flags.names().join(", ");
+            return Some(if self.keyword_flags.requires_match_all() {
+                format!("needs every keyword of {keywords}")
+            } else {
+                format!("needs a keyword of {keywords}")
+            });
+        }
+        if let Some(tag) = self.tags.iter().find(|tag| !tag.holds(cfg)) {
+            return Some(tag.unmet(cfg));
+        }
+        let stored = self.value.as_number()?;
+        match self.effective_number_ref(ctx) {
+            Some(value) if value == 0.0 && stored != 0.0 => Some(self.zero_scaling(ctx)),
+            Some(_) => None,
+            None if cfg.skill_distance.is_none() => {
+                Some("its distance ramp needs a configured enemy distance".to_string())
             }
-            // OR condition (vendor varList): matches if any var is true, then neg applies.
-            ModTag::ConditionAnyOf { vars, negated } => {
-                let enabled = vars.iter().any(|v| cfg.condition(v));
-                if *negated { !enabled } else { enabled }
+            None => Some("its distance ramp has no points".to_string()),
+        }
+    }
+
+    /// The scaling tags that bring this modifier's number to 0 in `ctx`: the
+    /// ones whose count is 0. Read as [`effective_number`](Self::effective_number)
+    /// reads them; a count that is not 0 but capped to 0 is said as a limit.
+    fn zero_scaling(&self, ctx: &EvalContext<'_>) -> String {
+        let cfg = ctx.cfg;
+        let actor_key =
+            |actor: &Option<ActorRef>| actor.map_or(String::new(), |a| format!("{}.", a.key()));
+        let per = |what: String, base: f64, div: f64| {
+            if div == 1.0 {
+                format!("{what} is {base}")
+            } else {
+                format!("{what} is {base}, per {div}")
             }
-            // Value-scaling / cumulative-cap / distance-interpolation tags don't
-            // participate in match filtering (consumed during evaluation).
-            ModTag::Multiplier { .. }
-            | ModTag::PerStat { .. }
-            | ModTag::PercentStat { .. }
-            | ModTag::GlobalLimit { .. }
-            | ModTag::DistanceRamp { .. } => true,
-            // Threshold gate (vendor ModStore.lua:559-573): doesn't apply when
-            // the stat lands on the wrong side.
-            ModTag::MultiplierThreshold {
-                var,
-                threshold,
-                upper,
-            } => {
-                let stat = cfg.multiplier(var);
-                if *upper {
-                    stat <= *threshold
-                } else {
-                    stat >= *threshold
+        };
+        let zero_count =
+            |base: f64, div: f64| (base / div.max(f64::EPSILON) + 0.0001).floor() == 0.0;
+        let reads: Vec<String> = self
+            .tags
+            .iter()
+            .filter_map(|tag| match tag {
+                ModTag::Multiplier {
+                    var, div, actor, ..
+                } => {
+                    let base: f64 = var
+                        .split('|')
+                        .map(|v| match actor {
+                            None => cfg.multiplier(v),
+                            Some(actor) => cfg.actor_multiplier(*actor, v),
+                        })
+                        .sum();
+                    zero_count(base, *div)
+                        .then(|| per(format!("Multiplier {}{var}", actor_key(actor)), base, *div))
                 }
-            }
-            // Structurally identical gate, reading from the stats snapshot instead (vendor :556-573 GetStat branch).
-            ModTag::StatThreshold {
-                stat,
-                threshold,
-                upper,
-            } => {
-                let value = cfg.stat(stat);
-                if *upper {
-                    value <= *threshold
-                } else {
-                    value >= *threshold
+                ModTag::PerStat {
+                    stat, div, actor, ..
+                } => {
+                    let base = match actor {
+                        None => ctx.stat(stat),
+                        Some(actor) => cfg.actor_snapshot(*actor, stat),
+                    };
+                    zero_count(base, *div)
+                        .then(|| per(format!("Stat {}{stat}", actor_key(actor)), base, *div))
                 }
-            }
-            ModTag::DamageType(damage_type) => cfg.damage_type == Some(*damage_type),
-            ModTag::SkillTypes(skill_types) => {
-                skill_types.is_empty() || skill_types.intersects(cfg.skill_types)
-            }
-            // Negated: matching any bit against cfg means it does NOT apply
-            // (vendor inverts neg; an empty bitset always applies, matching
-            // vendor's `skillTypes[nil]=false → not false`).
-            ModTag::SkillTypesNeg(skill_types) => !skill_types.intersects(cfg.skill_types),
-            // Named-skill restriction (vendor ModStore.lua:752-780): matches
-            // if the main skill name hits any entry; no main skill name on
-            // cfg → doesn't match (conservative).
-            ModTag::SkillName { names } => cfg
-                .skill_name
-                .as_deref()
-                .is_some_and(|sn| names.iter().any(|n| n.eq_ignore_ascii_case(sn))),
-            // Slot restriction is transparent to normal filtering (handled
-            // explicitly by ModDb's per-slot query paths).
-            ModTag::SlotName(_) => true,
-        })
+                ModTag::PercentStat { stat, .. } => {
+                    let base: f64 = stat.split('|').map(|part| ctx.stat(part)).sum();
+                    (base == 0.0).then(|| format!("Stat {stat} is 0"))
+                }
+                _ => None,
+            })
+            .collect();
+        if reads.is_empty() {
+            "scaled to 0 by a limit of its scaling".to_string()
+        } else {
+            format!("scaled to 0: {}", reads.join("; "))
+        }
     }
 
     /// This modifier's slot restriction (if it has a [`ModTag::SlotName`]).
@@ -619,7 +814,7 @@ impl Modifier {
                     // the actor_multipliers snapshot with Multiplier.
                     let base = match actor {
                         None => ctx.stat(stat),
-                        Some(actor) => cfg.actor_multiplier(*actor, stat),
+                        Some(actor) => cfg.actor_snapshot(*actor, stat),
                     };
                     // vendor :460 `mult = m_floor(base / (tag.div or 1) + 0.0001)`.
                     let count = (base / div.max(f64::EPSILON) + 0.0001).floor();
@@ -635,8 +830,10 @@ impl Modifier {
                     // always 0 since it's blocked by the DSL whitelist; ceil
                     // applies to the final contribution (vendor likewise settles
                     // tag by tag when multiple tags chain, and this loop preserves
-                    // that order).
-                    let base = ctx.stat(stat);
+                    // that order). A `|`-joined stat is a percentage of the stats'
+                    // sum ("equal to 30% of your Armour and Evasion Rating"), with
+                    // one ceil for the total.
+                    let base: f64 = stat.split('|').map(|part| ctx.stat(part)).sum();
                     let mult = base * percent.map_or(1.0, |p| p / 100.0);
                     value = (value * mult).ceil();
                 }
@@ -783,6 +980,20 @@ mod tests {
             limit_total: false,
         });
         assert_eq!(missing.effective_number(&cfg), Some(0.0));
+
+        // The player without a snapshot entry is this configuration's own count.
+        let player = Modifier::number("Life", ModType::Base, 10.0).with_tag(ModTag::Multiplier {
+            var: "IdolsInEquipment".into(),
+            div: 1.0,
+            limit: None,
+            actor: Some(ActorRef::Player),
+            limit_var: None,
+            limit_actor: None,
+            invert: false,
+            limit_total: false,
+        });
+        let own = CalcConfig::new().with_multiplier("IdolsInEquipment", 2.0);
+        assert_eq!(player.effective_number(&own), Some(20.0));
     }
 
     /// Dynamic limit: static `limit` takes priority over `limit_var` (PoB2

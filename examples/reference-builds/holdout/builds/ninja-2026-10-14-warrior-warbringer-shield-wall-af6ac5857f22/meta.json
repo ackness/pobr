@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-14-warrior-warbringer-shield-wall-af6ac5857f22",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/zhang-1173/%E9%97%AA%E5%9B%9E%E4%B9%8B%E5%BD%B1",
+    "account": "zhang-1173",
+    "character": "闪回之影",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-14T17:05:05+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/character?account=zhang-1173&name=%E9%97%AA%E5%9B%9E%E4%B9%8B%E5%BD%B1&overview=forbidden-rites",
+    "snapshot": "1457-20261014-11300",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/search?overview=forbidden-rites&class=Warbringer",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Warbringer",
+    "level": 98,
+    "main_skill": "Shield Wall"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 8,
+    "code_sha256": "77af7a1b75645fdf3eec548e8395654657ff4b9bd6e06eeb8d0ecd90739ae266",
+    "code_chars": 11492,
+    "decoded_bytes": 42006
+  }
+}

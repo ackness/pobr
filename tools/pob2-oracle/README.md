@@ -15,6 +15,9 @@ PoB 自己的 `.busted` 配置就是靠 `lpath = "../runtime/lua/?.lua"` 解决�
 
 **解法**：把 `runtime/lua/` 加进 `LUA_PATH` 即可，无需 luarocks。`shim/` 只放一个纯 Lua 的
 `lua-utf8`，排在 vendor 运行时之前，替代本平台缺失的原生模块。
+`run-parsemod.sh` 和 `sync-pob-catalog extract-lua` 的 headless 抽取（parser-rules /
+special-mods / config-options，`extract_lua::headless_lua_path`）用同一条 `LUA_PATH`；少了
+`shim/` 时 PoB2 的主模块加载失败，报错是 `modLib.parseMod missing after bootstrap`。
 `HeadlessWrapper.lua` 已经把 `lcurl.safe` stub 成 no-op，所以不需要 lcurl。
 
 需要：

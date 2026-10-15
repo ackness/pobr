@@ -29,6 +29,10 @@ pub struct OutputTable {
     /// Non-crit hit components split by damage type; summing gives total non-crit hit damage.
     pub damage_components: Vec<DamageComponent>,
     pub total_hit_avg: f64,
+    /// The average damage of a critical hit before the enemy's mitigation, all
+    /// damage types together (written by `perform`; 0 for a skill that does
+    /// not hit).
+    pub crit_hit_avg: f64,
     pub hit_chance: f64,
     /// Accuracy rating in the main-hand pass (filled by `perform`; `0.0` from the minimal entry point).
     pub accuracy: f64,
@@ -110,8 +114,16 @@ pub struct OutputTable {
     // Triggers (Lane4: trigger rate cap / actual trigger rate; written by perform, 0 when not applicable)
     /// Trigger rate cap (per second).
     pub trigger_rate_cap: f64,
-    /// Actual trigger rate (per second) = min(cap, effective source rate).
+    /// Actual trigger rate (per second) = min(cap, effective source rate). For a
+    /// skill in an Energy meta gem, how often the gem fills (`calc::energy`).
     pub skill_trigger_rate: f64,
+    /// Maximum Energy of the meta gem that holds the main skill (0 outside one).
+    pub energy_trigger_maximum: f64,
+    /// Energy one event of the chosen source gives that gem.
+    pub energy_per_trigger_event: f64,
+    /// The skill whose critical hits fill the gem most often; `None` when the
+    /// main skill is not in an Energy meta gem or nothing can fill it.
+    pub energy_trigger_source: Option<String>,
 
     // Defence recovery extensions (Lane A: charges / leech / Recoup; written
     // by perform fill, neutral 0 with no source)
@@ -356,6 +368,12 @@ pub struct HandOutput {
 /// A single minion's output snapshot (same structure as the subset of the player's key offence/defence output).
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct MinionOutput {
+    /// The minion's catalog id.
+    pub minion_id: String,
+    /// The id of the skill that summoned it; empty when no skill did.
+    pub summoned_by: String,
+    /// The id of the skill the minion uses; empty when it is not known.
+    pub skill_id: String,
     /// Minion level (monster level).
     pub level: u32,
     /// Minion DPS (runs the same offence pipeline as the player).
@@ -395,6 +413,7 @@ impl Default for OutputTable {
             crit_multiplier: 0.0,
             damage_components: Vec::new(),
             total_hit_avg: 0.0,
+            crit_hit_avg: 0.0,
             hit_chance: 0.0,
             action_rate: 0.0,
             dps: 0.0,
@@ -443,6 +462,9 @@ impl Default for OutputTable {
             minions: Vec::new(),
             trigger_rate_cap: 0.0,
             skill_trigger_rate: 0.0,
+            energy_trigger_maximum: 0.0,
+            energy_per_trigger_event: 0.0,
+            energy_trigger_source: None,
             // Lane A: charges / leech / Recoup default to neutral 0 (no effect on the panel without a source mod).
             charge_power_current: 0.0,
             charge_power_maximum: 0,

@@ -127,6 +127,68 @@ cmd_verify() {
   cmd_test "$@" && cmd_lint "$1" "$2"
 }
 
+# One build: what its import dropped, where the result differs from the
+# reference its code carries, and every input the calculation lost on the way.
+cmd_diagnose() {
+  if [[ $# -ne 1 || "$1" == -* ]]; then
+    echo "usage: mise run diagnose <build dir | code file | committed build name fragment>" >&2
+    return 2
+  fi
+  local target="$1"
+  # A relative path is the caller's; the test binary runs from its crate.
+  if [[ -e "$target" && "$target" != /* ]]; then target="$PWD/$target"; fi
+  POBR_DIAGNOSE="$target" cargo test -q -p pobr-build --test parity \
+    diagnose_build::diagnose_build -- --ignored --nocapture
+}
+
+# One build against the pinned PoB2, stat by stat: both totals and the
+# modifier lines only one side has or has with another value.
+cmd_compare() {
+  if [[ $# -lt 1 || "$1" == -* ]]; then
+    echo "usage: mise run compare <build dir | code file | committed build name fragment> [Stat ...] [--refresh]" >&2
+    return 2
+  fi
+  local target="$1"
+  shift
+  if [[ -e "$target" && "$target" != /* ]]; then target="$PWD/$target"; fi
+  python3 devs/scripts/compare-build.py "$target" "$@"
+}
+
+# Every worked build (the benchmark and tuned sets by default) against its
+# reference and the pinned PoB2 at once: which differing rows are the
+# engine's, and what explains them across builds.
+cmd_triage() {
+  local args=() arg
+  for arg in "$@"; do
+    if [[ -e "$arg" && "$arg" != /* ]]; then arg="$PWD/$arg"; fi
+    args+=("$arg")
+  done
+  python3 devs/scripts/triage.py ${args[@]+"${args[@]}"}
+}
+
+# The game data records an id or a name has: a granted effect, stat, base
+# item, passive node or unique.
+cmd_lookup() {
+  if [[ $# -lt 1 || "$1" == -* ]]; then
+    echo "usage: mise run lookup <skill id | stat id | base item | passive node | unique> [--level N] [--version V]" >&2
+    return 2
+  fi
+  python3 devs/scripts/lookup.py "$@"
+}
+
+# Builds against the reference values their codes carry: the totals of every
+# committed set, or one directory with each build's differences.
+cmd_accuracy() {
+  if [[ $# -gt 1 || "${1:-}" == -* ]]; then
+    echo "usage: mise run accuracy [dir of */code.txt; default: totals of every committed set]" >&2
+    return 2
+  fi
+  local corpus="${1:-}"
+  if [[ -n "$corpus" && "$corpus" != /* ]]; then corpus="$PWD/$corpus"; fi
+  ${corpus:+env POBR_REFERENCE_BUILDS="$corpus"} cargo test -q -p pobr-build --test parity \
+    reference_report::reference_report -- --ignored --nocapture
+}
+
 cmd_timings() {
   select_targets "$@" || return $?
   say "Compile only; Cargo writes target/cargo-timings/cargo-timing.html"
@@ -179,6 +241,12 @@ PoBR development commands (mise tasks; without mise run this script with the sam
   mise run test core parser [filter]         Test one suite (or use 'lib')
   mise run lint build skills                fmt + targeted Clippy
   mise run timings build parity             Compile only, with HTML timings
+  mise run diagnose <build>                 One build: import losses, reference differences, dropped inputs
+  mise run compare <build> [Stat ...]       One build against the pinned PoB2: totals and differing modifier lines
+  mise run triage [set or build dir ...]    Every worked build at once: whose differences, and their shared causes
+  mise run lookup <id or name> [--level N]  Game data records of a skill, stat, base item, passive node or unique
+  mise run accuracy [corpus dir]            Totals of every committed set, or one set's builds against their reference
+  mise run builds:fetch <set dir> [--pick first|last]  One poe.ninja build per ascendancy into a reference set
   mise run build [-p <crate>]               Build application CLI by default
   mise run smoke                            Representative environment checks
   mise run full                             Explicit full local Rust gate
@@ -294,6 +362,11 @@ case "${1:-}" in
   lint)      shift; cmd_lint "$@" ;;
   verify)    shift; cmd_verify "$@" ;;
   timings)   shift; cmd_timings "$@" ;;
+  diagnose)  shift; cmd_diagnose "$@" ;;
+  compare)   shift; cmd_compare "$@" ;;
+  triage)    shift; cmd_triage "$@" ;;
+  lookup)    shift; cmd_lookup "$@" ;;
+  accuracy)  shift; cmd_accuracy "$@" ;;
   targets)   cmd_targets ;;
   cache)     shift; cmd_cache "$@" ;;
   ci)        shift; cmd_ci "$@" ;;

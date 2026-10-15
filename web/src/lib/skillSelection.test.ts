@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import type { GemCatalogEntry, SkillMetricsEntry, SocketGroupInput } from '../api/types';
-import { activeSkillEffects, highestDpsSkill, preserveSkillSelection, removeSkillGem } from './skillSelection';
+import { activeSkillEffects, highestDpsSkill, preserveSkillSelection, removeSkillGem, withGemCorrupted } from './skillSelection';
 
 const gemDefaults = {
   name: 'Fixture', name_zh_tw: null, name_zh_cn: null, colour: null,
@@ -78,4 +78,14 @@ test('default skill keeps the earliest row on ties and utility-only builds', () 
 
 test('no calculable skill leaves the selection empty', () => {
   expect(highestDpsSkill([metricsRow(0, 1, null), metricsRow(2, 1, 10)], groupStates)).toBeNull();
+});
+
+test('a gem carries its corrupted state only while corrupted, so toggling it back restores the saved shape', () => {
+  const gem: SocketGroupInput['gems'][number] = { skill_id: 'Curse', level: 20, quality: 12, stat_set_index: 2 };
+  const corrupted = withGemCorrupted(gem, true);
+  expect(corrupted).toEqual({ ...gem, corrupted: true });
+  expect(withGemCorrupted(corrupted, true)).toEqual(corrupted);
+  expect(withGemCorrupted(corrupted, false)).toEqual(gem);
+  expect('corrupted' in withGemCorrupted(corrupted, false)).toBe(false);
+  expect(gem).toEqual({ skill_id: 'Curse', level: 20, quality: 12, stat_set_index: 2 });
 });

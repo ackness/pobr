@@ -1,14 +1,29 @@
-import { describe, expect, test } from 'vitest';
-import { backfillFromDecoded, paramsFromDecoded, parseSaved, prepareTreePlan, type SavedSession } from './useBuildSession';
-import type { BuildJson, CalculateBuildRequest } from '../api/types';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { backfillFromDecoded, materialize, paramsFromDecoded, parseSaved, prepareTreePlan, skillMetricsForState, type SavedSession } from './useBuildSession';
+import type { BuildJson, CalculateBuildRequest, SkillMetricsResponse } from '../api/types';
 import { parseWorkspace, createWorkspace } from '../lib/buildWorkspace';
+
+// The engine answers a skill overview request with a row for each group the
+// request enables, named after the weapon set the request names.
+const engine = vi.hoisted(() => ({ requests: [] as CalculateBuildRequest[] }));
+vi.mock('../api/backend', () => ({ getBackend: async () => ({
+  skillMetrics: async (request: CalculateBuildRequest): Promise<SkillMetricsResponse> => {
+    engine.requests.push(request);
+    return { item_errors: [], skills: (request.socket_groups ?? []).flatMap((group, group_index) => group.enabled ? [{
+      group_index, active_skill_index: 1, skill_id: `${group.gems[0].skill_id} in set ${request.weapon_swap?.active}`,
+      status: 'calculated' as const, unsupported_modifiers: [], error: null,
+      metrics: { hit_dps: 0, dot_dps: 0, combined_dps: 0, average_hit: 0, action_rate: 0, mana_cost: 0, life_cost: 0, cooldown: 0 },
+    }] : []) };
+  },
+}) }));
 
 const saved: SavedSession = {
   version: 1, notes: 'Keep this build', state: {
     character: { class_name: 'Witch', ascendancy_name: '', level: 1 }, pobCode: null,
     treeVersion: '0_1', allocatedNodes: [770], attributeChoices: { '770': 'int' },
     socketGroups: [{ enabled: true, gems: [{ skill_id: 'IceNovaPlayer', level: 20, quality: 0, stat_set_index: 2 }] }],
-    items: [{ slot: 'ring1', text: 'Rarity: NORMAL\nSapphire Ring' }], flasks: [], jewels: [],
+    items: [{ slot: 'ring1', text: 'Rarity: NORMAL\nSapphire Ring' }], flasks: [],
+    limbs: [{ slot: 'arm1', text: 'Rarity: NORMAL\nCombat Arm\nImplicits: 1\n6% increased Attack Speed' }], jewels: [],
     annotations: {}, params: { config_inputs: { conditionFullLife: false, multiplier: 0 } },
   },
 };
@@ -25,8 +40,8 @@ describe('complete jewel/passive plan application', () => {
   const expected: CalculateBuildRequest = {
     tree_version: current.treeVersion, character: current.character,
     allocated_nodes: current.allocatedNodes, attribute_choices: current.attributeChoices,
-    socket_groups: current.socketGroups, items: current.items, flasks: current.flasks,
-    jewels: current.jewels, main_socket_group: current.params.main_socket_group,
+    socket_groups: current.socketGroups, weapon_swap: current.weaponSwap, items: current.items, flasks: current.flasks,
+    limbs: current.limbs, jewels: current.jewels, main_socket_group: current.params.main_socket_group,
     enemy_tier: current.params.enemy_tier, extra_modifiers: current.params.extra_modifiers,
     custom_modifier_blocks: current.params.custom_modifier_blocks,
     config_inputs: current.params.config_inputs,
@@ -43,7 +58,7 @@ describe('complete jewel/passive plan application', () => {
       attributeChoices: { '770': 'int', '12': 'dex' },
     });
     expect(next?.attributeChoices).not.toHaveProperty('99');
-    for (const key of ['character', 'socketGroups', 'items', 'flasks', 'weaponSwap', 'params', 'annotations', 'pobCode'] as const) {
+    for (const key of ['character', 'socketGroups', 'items', 'flasks', 'limbs', 'weaponSwap', 'params', 'annotations', 'pobCode'] as const) {
       expect(next?.[key]).toBe(current[key]);
     }
     expect(current.jewels).toEqual([{ socket_node: 99, text: 'Old Jewel' }]);
@@ -58,6 +73,38 @@ describe('complete jewel/passive plan application', () => {
     expect(prepareTreePlan(current, expected, { ...plan, jewels: [plan.jewels[0], plan.jewels[0]] }, false)).toBeNull();
     expect(prepareTreePlan(current, expected, { ...plan, attributeChoices: { '12': 'invalid' } as never }, false)).toBeNull();
     expect(current.allocatedNodes).toEqual([770, 99]);
+  });
+});
+
+describe('skill overview across weapon sets', () => {
+  const gem = (skill_id: string) => ({ skill_id, level: 20, quality: 0 });
+  const state: SavedSession['state'] = {
+    ...saved.state,
+    items: [{ slot: 'weapon1', text: 'Bow' }, { slot: 'ring1', text: 'Ring' }],
+    socketGroups: [
+      { enabled: true, gems: [gem('Shared')] },
+      { enabled: true, weapon_set: 2, gems: [gem('Second')] },
+      { enabled: true, weapon_set: 1, gems: [gem('First')] },
+    ],
+    weaponSwap: { active: 1, alternate_items: [{ slot: 'weapon1', text: 'Staff' }], exclusive_nodes: [[], []] },
+  };
+  beforeEach(() => { engine.requests.length = 0; });
+
+  test('each set is calculated by a request that names it, with that set\'s weapons and groups', async () => {
+    const report = await skillMetricsForState(state);
+    expect(engine.requests.map(request => request.weapon_swap?.active)).toEqual([1, 2]);
+    expect(engine.requests.map(request => request.items?.find(item => item.slot === 'weapon1')?.text)).toEqual(['Bow', 'Staff']);
+    expect(engine.requests.map(request => request.socket_groups?.map(group => group.enabled)))
+      .toEqual([[true, false, true], [true, true, false]]);
+    // The group bound to the set not in use is calculated in that set; a shared
+    // group only in the set in use.
+    expect(report.skills.map(row => row.skill_id)).toEqual(['Shared in set 1', 'Second in set 2', 'First in set 1']);
+  });
+
+  test('a build that never swapped weapons names the first set', async () => {
+    await skillMetricsForState({ ...state, socketGroups: [state.socketGroups[0]], weaponSwap: undefined });
+    expect(engine.requests.map(request => request.weapon_swap))
+      .toEqual([{ active: 1, alternate_items: [], exclusive_nodes: [[], []] }]);
   });
 });
 
@@ -146,12 +193,24 @@ describe('saved-session validation', () => {
 
   test('normalizes omitted legacy fields and partial params before they reach rendering', () => {
     const restored = parseState({ treeVersion: undefined, params: {}, attributeChoices: undefined,
-      flasks: undefined, jewels: undefined, annotations: undefined });
+      flasks: undefined, limbs: undefined, jewels: undefined, annotations: undefined });
     expect(restored?.state.params.config_inputs).toEqual({});
     expect(Object.keys(restored!.state.params.config_inputs)).toEqual([]);
     expect(restored?.state.attributeChoices).toEqual({});
     expect(restored?.state.flasks).toEqual([]);
+    expect(restored?.state.limbs).toEqual([]);
     expect(restored?.state.jewels).toEqual([]);
+  });
+
+  test('materializes the decoded limbs as a set of their own', () => {
+    const limb = { slot: 'leg2', text: 'Rarity: NORMAL\nEvasive Leg\nImplicits: 1\n25% increased Evasion Rating' };
+    const items = { equipped: [], socket_jewels: [], flasks: [] };
+    const decoded = (limbs?: unknown[]) => ({
+      config_inputs: {}, tree: {}, socket_groups: [], items: limbs ? { ...items, limbs } : items,
+    }) as unknown as BuildJson;
+    expect(materialize(decoded([limb])).limbs).toEqual([limb]);
+    expect(materialize(decoded([limb])).items).toEqual([]);
+    expect(materialize(decoded()).limbs).toEqual([]);
   });
 
   test.each([
@@ -167,6 +226,9 @@ describe('saved-session validation', () => {
     { items: [{ slot: 'ring1', text: {} }] },
     { items: [{ slot: 'unknown', text: '' }] },
     { flasks: {} },
+    { limbs: {} },
+    { limbs: [{ slot: 'Arm 1', text: '' }] },
+    { limbs: [{ slot: 'arm3', text: '' }] },
     { jewels: [{ socket_node: '770', text: '' }] },
     { annotations: [] },
     { annotations: { note: {} } },
@@ -276,6 +338,8 @@ describe('unresolved imported gem persistence', () => {
     ...[-1, 0.5, '0', 0x100000000].map(quality => ({ quality })),
     ...[0, -1, 0.5, '1', 0x100000000].map(stat_set_index => ({ stat_set_index })),
     ...[1, true, [], {}].map(name_spec => ({ name_spec })),
+    ...[1, 'true', [], {}].map(corrupted => ({ corrupted })),
+    ...[0, -1, 0.5, '2', []].map(minion_skill => ({ minion_skill })),
   ])('rejects malformed gem values in standalone and inactive workspace stages: %j', patch => {
     const invalid = structuredClone(unresolved);
     Object.assign(invalid.state.socketGroups[0].gems[1], patch);
@@ -314,6 +378,31 @@ describe('unresolved imported gem persistence', () => {
     const session = structuredClone(unresolved);
     session.state.socketGroups[0].gems[1].name_spec = name_spec;
     expect(parseSaved(JSON.stringify(session))).toEqual(session);
+  });
+
+  test('keeps the minion and the minion skill a gem chose through a save', () => {
+    const session = structuredClone(unresolved);
+    Object.assign(session.state.socketGroups[0].gems[0], {
+      minion: 'Metadata/Monsters/Quadrilla/Quadrilla', minion_skill: 3,
+    });
+    expect(parseSaved(JSON.stringify(session))).toEqual(session);
+  });
+
+  test('keeps whether a gem is corrupted through a save and an import', () => {
+    const session = structuredClone(unresolved);
+    session.state.socketGroups[0].gems[0].corrupted = true;
+    expect(parseSaved(JSON.stringify(session))).toEqual(session);
+    // A gem saved as not corrupted is the same as one that does not say.
+    const clean = structuredClone(unresolved);
+    (clean.state.socketGroups[0].gems[0] as { corrupted?: boolean }).corrupted = false;
+    expect(parseSaved(JSON.stringify(clean))).toEqual(unresolved);
+
+    const decoded = {
+      config_inputs: {}, tree: {}, items: { equipped: [], socket_jewels: [], flasks: [] },
+      socket_groups: session.state.socketGroups,
+    } as unknown as BuildJson;
+    const gems = materialize(decoded).socketGroups[0].gems;
+    expect(gems.map(gem => gem.corrupted)).toEqual([true, undefined, undefined]);
   });
 
   test('backfills an old unnamed slot only for intact gem order and keeps deliberate name edits', () => {

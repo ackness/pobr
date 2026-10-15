@@ -1,0 +1,480 @@
+{
+  "selection": "ascendancy-first-v1",
+  "league": {
+    "name": "Forbidden Rites",
+    "url": "forbiddenrites",
+    "displayName": "Forbidden Rites",
+    "hardcore": false,
+    "indexed": false
+  },
+  "snapshot": {
+    "url": "forbiddenrites",
+    "name": "Forbidden Rites",
+    "timeMachineLabels": [
+      "hour-6",
+      "hour-18",
+      "week-3",
+      "week-2",
+      "week-4",
+      "week-1",
+      "day-6",
+      "hour-3",
+      "week-5",
+      "day-4",
+      "hour-12",
+      "day-2",
+      "day-5",
+      "day-3",
+      "day-1"
+    ],
+    "version": "1333-20261013-24736",
+    "snapshotName": "forbidden-rites",
+    "overviewType": 0,
+    "passiveTree": "PassiveTree-0.5"
+  },
+  "snapshot_url": "https://poe.ninja/poe2/api/data/index-state",
+  "class_dictionary_url": "https://poe.ninja/poe2/api/builds/dictionary/4b3dfeccb2f4aa52ccc458925cd87f4575a4c25b",
+  "candidates": [
+    {
+      "account": "2TEST78-6909",
+      "character": "浮士德贰号",
+      "index_ascendancy": "Abyssal Lich",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Abyssal+Lich",
+      "index_sha256": "cc50417548a3a0171c2cc9de17c2aafaaaa6d6c35b958e49c287dc67b09bb49e",
+      "index_rows": 100,
+      "base_class": "Witch"
+    },
+    {
+      "account": "0091RaedB-4163",
+      "character": "RRRRxs",
+      "index_ascendancy": "Acolyte of Chayula",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Acolyte+of+Chayula",
+      "index_sha256": "f1b294704bfcf6aefb3a348a5ef140d70a0fa95ee57302880226dc457e6c9c48",
+      "index_rows": 100,
+      "base_class": "Monk"
+    },
+    {
+      "account": "Acremis-7999",
+      "character": "Riohou",
+      "index_ascendancy": "Amazon",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Amazon",
+      "index_sha256": "6a192c48b76b6eda2a40388cf66288dc041a84eeb1e0856797f3e892fcc785c1",
+      "index_rows": 100,
+      "base_class": "Huntress"
+    },
+    {
+      "account": "285004818-3401",
+      "character": "梦兰知意月满楼",
+      "index_ascendancy": "Blood Mage",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Blood+Mage",
+      "index_sha256": "a96dbadc071ee4fa223ef106f4cf78f7f762f7fbb115fcfa7fc0c7644a65fd86",
+      "index_rows": 100,
+      "base_class": "Witch"
+    },
+    {
+      "account": "1066961902-5936",
+      "character": "给耦擦皮鞋",
+      "index_ascendancy": "Chronomancer",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Chronomancer",
+      "index_sha256": "10a5f9f92b157c17c45af10102ee887b86eb4e77aaae40ffeb1d18a55bb0f965",
+      "index_rows": 100,
+      "base_class": "Sorceress"
+    },
+    {
+      "account": "595962488-8017",
+      "character": "卷卷吃撑死了",
+      "index_ascendancy": "Deadeye",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Deadeye",
+      "index_sha256": "80395cdd5072eb43661e51eb56671f83b715988ce685d684843c00d1c72dd36a",
+      "index_rows": 100,
+      "base_class": "Ranger"
+    },
+    {
+      "account": "13202611705-0139",
+      "character": "刷漆吗",
+      "index_ascendancy": "Disciple of Varashta",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Disciple+of+Varashta",
+      "index_sha256": "45787393daca91235ac5581dbbefc325ce9f2d50c069339b8b87cbbaac9272ef",
+      "index_rows": 100,
+      "base_class": "Sorceress"
+    },
+    {
+      "account": "18407716211-5700",
+      "character": "ALLMIGHTY_VICI",
+      "index_ascendancy": "Gemling Legionnaire",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Gemling+Legionnaire",
+      "index_sha256": "936db0a8a2b9b61442f262dcddb05290cc566bd8a8bacd72829d5210ecc0b304",
+      "index_rows": 100,
+      "base_class": "Mercenary"
+    },
+    {
+      "account": "1074573011-8524",
+      "character": "牢气气气气车",
+      "index_ascendancy": "Infernalist",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Infernalist",
+      "index_sha256": "e5798b612030e40dc6e2392029b586bc1f4461fa999c5c28ac7f9eb9b05725d3",
+      "index_rows": 100,
+      "base_class": "Witch"
+    },
+    {
+      "account": "1209866469-1863",
+      "character": "超级小黑僧",
+      "index_ascendancy": "Invoker",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Invoker",
+      "index_sha256": "df7c5289e9210dfb2d57667dd66ec545ab2181e8c7adaad570aa43a04c4ff332",
+      "index_rows": 100,
+      "base_class": "Monk"
+    },
+    {
+      "account": "05anhbaophan-3100",
+      "character": "YAGBlue",
+      "index_ascendancy": "Lich",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Lich",
+      "index_sha256": "a6a5a92efb51586f43b8219e97073610e4b0eb394a3f217826f9e256d1c79504",
+      "index_rows": 100,
+      "base_class": "Witch"
+    },
+    {
+      "account": "15077170922-5749",
+      "character": "用我的雙手成就你的夢想",
+      "index_ascendancy": "Martial Artist",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Martial+Artist",
+      "index_sha256": "bf559cbe0dc45dd4b086c9e20f8a53cde8d738bb422c95d907342803e5e2d3d4",
+      "index_rows": 100,
+      "base_class": "Monk"
+    },
+    {
+      "account": "0786555526-3799",
+      "character": "kaiserwbbb",
+      "index_ascendancy": "Oracle",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Oracle",
+      "index_sha256": "35c5b21528c5dc9ad8506f7d827a5cce52230b38149c2c6345ae64b0c88f546c",
+      "index_rows": 100,
+      "base_class": "Druid"
+    },
+    {
+      "account": "13306001850-0087",
+      "character": "一阿克一",
+      "index_ascendancy": "Pathfinder",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Pathfinder",
+      "index_sha256": "d93cb1354d125ce60da7a498f8c11f019b660e29a4048018c2533a1fabff9278",
+      "index_rows": 100,
+      "base_class": "Ranger"
+    },
+    {
+      "account": "1605981374-6725",
+      "character": "全部毁灭叭",
+      "index_ascendancy": "Ritualist",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Ritualist",
+      "index_sha256": "991c3ce45777264bf5d5cf880a22c21195c5ca99ebd1560d2aa26b5ef9972929",
+      "index_rows": 100,
+      "base_class": "Huntress"
+    },
+    {
+      "account": "1020918742-4327",
+      "character": "AmoDepresso",
+      "index_ascendancy": "Shaman",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Shaman",
+      "index_sha256": "fc3bdacefa54ede1d43cdee2c790d05a1172d8287d1acb613e19b95ae3e71754",
+      "index_rows": 100,
+      "base_class": "Druid"
+    },
+    {
+      "account": "AlexThrow-6387",
+      "character": "Throwarris",
+      "index_ascendancy": "Smith of Kitava",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Smith+of+Kitava",
+      "index_sha256": "fb78a419e2a2f627bf0aca34da7c1880ef596396a932883583b54f181a4e1624",
+      "index_rows": 100,
+      "base_class": "Warrior"
+    },
+    {
+      "account": "1148839945-5369",
+      "character": "干霖酿鸡掰",
+      "index_ascendancy": "Spirit Walker",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Spirit+Walker",
+      "index_sha256": "ddf3009ce152fbfdaa9c74910e634bd76d7bc6b4b7bb2d7f00c8ee1592c543f5",
+      "index_rows": 100,
+      "base_class": "Huntress"
+    },
+    {
+      "account": "412264100-8395",
+      "character": "豐乳肥臀莉莉絲丨法師",
+      "index_ascendancy": "Stormweaver",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Stormweaver",
+      "index_sha256": "59ef54d84df7cff64e166ae6b28921efee5b4258567150b516dd8058f41096d0",
+      "index_rows": 100,
+      "base_class": "Sorceress"
+    },
+    {
+      "account": "123-9568",
+      "character": "TTKQA",
+      "index_ascendancy": "Tactician",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Tactician",
+      "index_sha256": "5af96c4115d8993b9579bc3a66400b6106305351e4b41baf088edb2f8468da68",
+      "index_rows": 100,
+      "base_class": "Mercenary"
+    },
+    {
+      "account": "383988854-4972",
+      "character": "大大大血牛",
+      "index_ascendancy": "Titan",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Titan",
+      "index_sha256": "0fbd08debdcabf7a86300b55a749b361a45e3e8c860fb9694e0a6b84aa72d1cb",
+      "index_rows": 100,
+      "base_class": "Warrior"
+    },
+    {
+      "account": "ArtiLaw-4634",
+      "character": "ДубинаРитуалыч",
+      "index_ascendancy": "Warbringer",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Warbringer",
+      "index_sha256": "724d04246165afee8ba6f1a7a4c0b9b60c18c5771975f7aa0c0a8ba14bde1b8b",
+      "index_rows": 100,
+      "base_class": "Warrior"
+    },
+    {
+      "account": "276558043-6675",
+      "character": "万金油大哥",
+      "index_ascendancy": "Witchhunter",
+      "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Witchhunter",
+      "index_sha256": "d89f9e051b368e0db8b843a68e41c9bbedbeb938dfbad171c7cd1e8a98b3135b",
+      "index_rows": 100,
+      "base_class": "Mercenary"
+    }
+  ],
+  "failures": [],
+  "fetched_at": "2026-10-13T13:47:50+00:00",
+  "fixtures": [
+    {
+      "fixture": "ninja-2026-10-13-witch-abyssal-lich-twister-4028d0b52984",
+      "character": {
+        "class": "Witch",
+        "ascendancy": "Abyssal Lich",
+        "level": 99,
+        "main_skill": "Twister"
+      },
+      "code_sha256": "1cb57ce7f4ddd93ce7ff4c939de28eddfdb81145d8a9d3374cb2a6e7d00a94ce"
+    },
+    {
+      "fixture": "ninja-2026-10-13-monk-acolyte-of-chayula-convalescence-8743aac6ec75",
+      "character": {
+        "class": "Monk",
+        "ascendancy": "Acolyte of Chayula",
+        "level": 99,
+        "main_skill": "Convalescence"
+      },
+      "code_sha256": "779048851cb9799ad3044edcd6748af69280eaf379e020eb77a165fb80d1b6d0"
+    },
+    {
+      "fixture": "ninja-2026-10-13-huntress-amazon-rain-of-arrows-0826116e6c98",
+      "character": {
+        "class": "Huntress",
+        "ascendancy": "Amazon",
+        "level": 97,
+        "main_skill": "Rain of Arrows"
+      },
+      "code_sha256": "28a3d9e1527c7c3d6c4a4306bf200b2667354f4759b36764f3fda7e6e2ff6997"
+    },
+    {
+      "fixture": "ninja-2026-10-13-witch-blood-mage-comet-bc750d615159",
+      "character": {
+        "class": "Witch",
+        "ascendancy": "Blood Mage",
+        "level": 98,
+        "main_skill": "Comet"
+      },
+      "code_sha256": "51f4c913eef5f1b3a629ba6ee4f4d233dbfb02a3d4f56ecea2bcc2c4ce6199fd"
+    },
+    {
+      "fixture": "ninja-2026-10-13-sorceress-chronomancer-mana-remnants-859e60e18169",
+      "character": {
+        "class": "Sorceress",
+        "ascendancy": "Chronomancer",
+        "level": 97,
+        "main_skill": "Mana Remnants"
+      },
+      "code_sha256": "51eb6158a224dbd6fd797dcfde756f2c1e9e6bbb5227cdcb72c0228fdc35d4ac"
+    },
+    {
+      "fixture": "ninja-2026-10-13-ranger-deadeye-twister-bed1edc6d8b2",
+      "character": {
+        "class": "Ranger",
+        "ascendancy": "Deadeye",
+        "level": 99,
+        "main_skill": "Twister"
+      },
+      "code_sha256": "125c714833fb7ebd6db723e1543539e0996f5d33f4167e8fa6aa9ecfe7bb11f4"
+    },
+    {
+      "fixture": "ninja-2026-10-13-sorceress-disciple-of-varashta-navira-the-last-mirage-5e2f54a69182",
+      "character": {
+        "class": "Sorceress",
+        "ascendancy": "Disciple of Varashta",
+        "level": 99,
+        "main_skill": "Navira, the Last Mirage"
+      },
+      "code_sha256": "c8e0ad01e03f609e1f3869e9e06f451dcf62ec2129cbb5a7a446dd798331b026"
+    },
+    {
+      "fixture": "ninja-2026-10-13-mercenary-gemling-legionnaire-twister-682f26ed1957",
+      "character": {
+        "class": "Mercenary",
+        "ascendancy": "Gemling Legionnaire",
+        "level": 100,
+        "main_skill": "Twister"
+      },
+      "code_sha256": "471ff6c59721867f627d3644b76941ae214f36555c2e66e902675317f4e624b0"
+    },
+    {
+      "fixture": "ninja-2026-10-13-witch-infernalist-convalescence-6e6130dfbff5",
+      "character": {
+        "class": "Witch",
+        "ascendancy": "Infernalist",
+        "level": 100,
+        "main_skill": "Convalescence"
+      },
+      "code_sha256": "9d94cbf855956112ee9d776bbb3387bc6d19dcde2f04eedaadb7b8d6320f7211"
+    },
+    {
+      "fixture": "ninja-2026-10-13-monk-invoker-grim-pillars-19a4efbb971d",
+      "character": {
+        "class": "Monk",
+        "ascendancy": "Invoker",
+        "level": 96,
+        "main_skill": "Grim Pillars"
+      },
+      "code_sha256": "72886358e6abf7a1cf3697d9f735ee46d04a0617fcec8cf3e45aa7618a0295af"
+    },
+    {
+      "fixture": "ninja-2026-10-13-witch-lich-blasphemy-c72f0f283724",
+      "character": {
+        "class": "Witch",
+        "ascendancy": "Lich",
+        "level": 98,
+        "main_skill": "Blasphemy"
+      },
+      "code_sha256": "160c459ba1e5a7b8c21d441f22c1b7e430869891df7b3b0d84959f7bb7bfd9fc"
+    },
+    {
+      "fixture": "ninja-2026-10-13-monk-martial-artist-flicker-strike-5ee3a736caa1",
+      "character": {
+        "class": "Monk",
+        "ascendancy": "Martial Artist",
+        "level": 100,
+        "main_skill": "Flicker Strike"
+      },
+      "code_sha256": "83f9d5d2e63a161b782018b48fc11913eb9868cc277992a8fc9254e6bd6f83b5"
+    },
+    {
+      "fixture": "ninja-2026-10-13-druid-oracle-grim-pillars-f74c11ce4b4d",
+      "character": {
+        "class": "Druid",
+        "ascendancy": "Oracle",
+        "level": 99,
+        "main_skill": "Grim Pillars"
+      },
+      "code_sha256": "418d267b54f1a2a70d7a41ae9932beeca4661e1771bbf17820b444f93ee97df0"
+    },
+    {
+      "fixture": "ninja-2026-10-13-ranger-pathfinder-ice-shot-728cbde29279",
+      "character": {
+        "class": "Ranger",
+        "ascendancy": "Pathfinder",
+        "level": 99,
+        "main_skill": "Ice Shot"
+      },
+      "code_sha256": "e1cc3935771474c8a6b3ddd229833daf23ded1b4e4588b5d7820b7776d1b5e4d"
+    },
+    {
+      "fixture": "ninja-2026-10-13-huntress-ritualist-twister-882c4b7d4c91",
+      "character": {
+        "class": "Huntress",
+        "ascendancy": "Ritualist",
+        "level": 100,
+        "main_skill": "Twister"
+      },
+      "code_sha256": "7b08aa61ec0edd49ea5f3e18b2a9ac0d3fdeb50a618a27011099a0622f701f9e"
+    },
+    {
+      "fixture": "ninja-2026-10-13-druid-shaman-comet-dd7f512456b6",
+      "character": {
+        "class": "Druid",
+        "ascendancy": "Shaman",
+        "level": 99,
+        "main_skill": "Comet"
+      },
+      "code_sha256": "c062a1d080dc892e15173f38e2301ae34b8c7867d079b8ccc37ae551787534af"
+    },
+    {
+      "fixture": "ninja-2026-10-13-warrior-smith-of-kitava-maul-f3d9b042531d",
+      "character": {
+        "class": "Warrior",
+        "ascendancy": "Smith of Kitava",
+        "level": 98,
+        "main_skill": "Maul"
+      },
+      "code_sha256": "f18984d5d0df48a038d1002c0ade3fea86f8ef19cb7940819ab0be23321027ca"
+    },
+    {
+      "fixture": "ninja-2026-10-13-huntress-spirit-walker-companion-zekoa-the-headcrusher-14d04f6ecc92",
+      "character": {
+        "class": "Huntress",
+        "ascendancy": "Spirit Walker",
+        "level": 99,
+        "main_skill": "Companion: Zekoa, the Headcrusher"
+      },
+      "code_sha256": "bfd4260c518994faa9eb6b5b6ccef4dad6c5c8c29e930f5d2e6f06370b32ef49"
+    },
+    {
+      "fixture": "ninja-2026-10-13-sorceress-stormweaver-comet-da46400e2a52",
+      "character": {
+        "class": "Sorceress",
+        "ascendancy": "Stormweaver",
+        "level": 99,
+        "main_skill": "Comet"
+      },
+      "code_sha256": "acc549555c923cd7143734d920fb7ff7fbeefa445ca3af5ea5ab38724f89e1b7"
+    },
+    {
+      "fixture": "ninja-2026-10-13-mercenary-tactician-shockwave-totem-8468096e8b99",
+      "character": {
+        "class": "Mercenary",
+        "ascendancy": "Tactician",
+        "level": 100,
+        "main_skill": "Shockwave Totem"
+      },
+      "code_sha256": "0cbd06242cf67503759e0b0a1bf9449283ccc637641098ecedf19ec6e5321cfd"
+    },
+    {
+      "fixture": "ninja-2026-10-13-warrior-titan-seismic-cry-3e588bde3126",
+      "character": {
+        "class": "Warrior",
+        "ascendancy": "Titan",
+        "level": 100,
+        "main_skill": "Seismic Cry"
+      },
+      "code_sha256": "d56aed6339faa2b0426cb251c64805c8a0653e201908a4b0666975f47c7f44fa"
+    },
+    {
+      "fixture": "ninja-2026-10-13-warrior-warbringer-shield-wall-1e4e329e5e5c",
+      "character": {
+        "class": "Warrior",
+        "ascendancy": "Warbringer",
+        "level": 97,
+        "main_skill": "Shield Wall"
+      },
+      "code_sha256": "0ad98f5d1b6a9bd5e23975df436fbedc54688bba9ee6cf5f14dca688918cfae0"
+    },
+    {
+      "fixture": "ninja-2026-10-13-mercenary-witchhunter-crossbow-shot-084d3b2ad49a",
+      "character": {
+        "class": "Mercenary",
+        "ascendancy": "Witchhunter",
+        "level": 98,
+        "main_skill": "Crossbow Shot"
+      },
+      "code_sha256": "470f637ee430a0b02c56b0809f954f21ddb4c42aa5c25101f8be46d4ab3ede34"
+    }
+  ]
+}

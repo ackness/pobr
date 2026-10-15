@@ -42,7 +42,7 @@ use std::borrow::Cow;
 use pobr_core::calc::{CalculationSession, MinimalInput, OutputTable};
 use pobr_core::rules::stat_map_engine::StatMapCatalog;
 use pobr_core::{CalcConfig, CharacterBase, Modifier};
-use pobr_data::item::{EquipmentSlot, Item};
+use pobr_data::item::EquipmentSlot;
 use pobr_data::modifier::{ModFlags, ModType};
 use pobr_data::monster::EnemyTier;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
@@ -69,8 +69,15 @@ mod prepare;
 use prepare::*;
 mod context;
 use context::CalculationContext;
+mod diagnosis;
+pub(crate) use collect::engine_ctx;
+pub(crate) use diagnosis::read_outside_the_database;
+pub use diagnosis::{
+    Diagnosis, MainSkillSummary, ModifierRef, UnmappedStat, UnsetCondition, diagnose,
+};
 mod sources;
 use sources::SourceWriter;
+pub use sources::{LineFate, ReceivedLine};
 mod inject;
 use inject::*;
 
@@ -114,6 +121,19 @@ pub struct DataOrchestratorOptions {
     /// (already loaded alongside the data pack by `BuildData::load`); when neither is
     /// present, the data channel treats everything as a miss.
     pub stat_map_catalog: Option<std::sync::Arc<StatMapCatalog>>,
+    /// Whether a spell in a meta gem that fills with Energy (Cast on Critical)
+    /// is used as often as the gem triggers it. Defaults to `true`, which is
+    /// what happens in the game. `false` gives the spell its own rate of use:
+    /// the basis of a build code's reference values, whose exporter has no
+    /// Energy model, so a comparison with them asks the same question.
+    pub energy_triggers: bool,
+    /// Whether a rain (Rain of Arrows) hits an enemy with the first arrow to
+    /// land once the enemy can be hit again, so that the hits come in steps
+    /// of the landing interval. Defaults to `true`, which is what the game's
+    /// numbers give. `false` counts a hit whenever the enemy can be hit
+    /// again, as if an arrow landed then: the basis of a build code's
+    /// reference values.
+    pub rain_landings: bool,
 }
 
 impl Default for DataOrchestratorOptions {
@@ -127,7 +147,46 @@ impl Default for DataOrchestratorOptions {
             mode_effective: false,
             stat_map_mode: StatMapMode::default(),
             stat_map_catalog: None,
+            energy_triggers: true,
+            rain_landings: true,
         }
+    }
+}
+
+impl DataOrchestratorOptions {
+    /// The enemy and mode a build code's reference values (its `<PlayerStat>`
+    /// rows) were exported under: the exporter's main panel is its EFFECTIVE
+    /// mode against its default enemy, a Pinnacle boss. Everything the engine
+    /// models stays on; this is the build as the game plays it against that
+    /// enemy.
+    pub fn against_reference_enemy() -> Self {
+        Self {
+            enemy_tier: EnemyTier::Pinnacle,
+            mode_effective: true,
+            ..Self::default()
+        }
+    }
+
+    /// These options with the models the exporter of a build code's reference
+    /// values does not have turned off, so that a comparison with those values
+    /// asks the question they answer. The exporter has no Energy model: a
+    /// spell in a meta gem is counted at the spell's own rate of use. It
+    /// counts a rain's hits as often as an enemy can be hit, whenever the
+    /// arrows land.
+    ///
+    /// A model added here is verified by its own tests, not by the reference.
+    pub fn on_reference_basis(self) -> Self {
+        Self {
+            energy_triggers: false,
+            rain_landings: false,
+            ..self
+        }
+    }
+
+    /// What a build code's reference values are compared under: their enemy
+    /// and mode, on their basis.
+    pub fn reference_conditions() -> Self {
+        Self::against_reference_enemy().on_reference_basis()
     }
 }
 
@@ -270,7 +329,7 @@ pub fn calculate_skill_metrics(
 ) -> Result<SkillMetricsReport, BuildError> {
     // Share exactly the panel's equipment gates, granted skills, name resolution
     // and quality preparation. Reusing this view avoids applying quality twice.
-    let prepared = stage_build_view(build, data);
+    let prepared = prepared_build_view(build, data, options);
     let mut scoped = prepared.as_ref().clone();
     let mut skills = Vec::new();
     for (group_index, group) in prepared.socket_groups.iter().enumerate() {
@@ -402,9 +461,115 @@ fn calculate_with_context(
     options: &DataOrchestratorOptions,
     context: &mut CalculationContext,
 ) -> Result<CalculationSession, BuildError> {
-    // Stage 0: build view transformation (Ring3 gate → item-granted skill synthesis → quality conversion)
-    let build = stage_build_view(build, data);
+    let build = prepared_build_view(build, data, options);
     calculate_prepared_with_context(&build, data, options, context)
+}
+
+/// Stage 0: the build as a calculation under `options` reads it. Its lines
+/// first ([`with_extra_gem_bonuses`]), then the view of them
+/// ([`stage_build_view`]: Ring 3 gate → item-granted skills → quality).
+pub(crate) fn prepared_build_view<'a>(
+    build: &'a Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+) -> Cow<'a, Build> {
+    let view = match with_extra_gem_bonuses(build, options) {
+        Cow::Borrowed(build) => stage_build_view(build, data),
+        Cow::Owned(build) => Cow::Owned(stage_build_view(&build, data).into_owned()),
+    };
+    // A skill an item grants is used at the level the character meets the
+    // requirements of, which depends on the attributes its items and passives
+    // give it: settled from the view without its skills.
+    match scale_granted_skills(&view, data, || {
+        attributes_without_skills(&view, data, options)
+    }) {
+        Some(scaled) => Cow::Owned(scaled),
+        None => view,
+    }
+}
+
+/// The character's Strength, Dexterity and Intelligence from everything but
+/// its skills: its class, equipment, limbs, jewels, configuration, passive
+/// tree and extra lines, sourced as [`calculate_prepared_with_context`]
+/// sources them. A skill's level is settled before any skill is calculated,
+/// so a skill's own effects don't count. A build the calculation can't
+/// source has no limit on its attributes.
+fn attributes_without_skills(
+    build: &Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+) -> [f64; 3] {
+    let sourced = || -> Result<[f64; 3], BuildError> {
+        let main = stage_resolve_main_skill(build, data);
+        let (resolved_config, base_cfg) = stage_resolve_config(build, data, options);
+        let (cfg, enemy_tier) =
+            stage_build_cfg(build, data, options, &main, &resolved_config, base_cfg);
+        let weapons = stage_weapon_bases(build, data, &main, options.base_input);
+        let ctx = StageCtx {
+            build,
+            data,
+            options,
+            main,
+            weapons,
+            resolved_config,
+            enemy_tier,
+        };
+        let mut session = stage_create_session(&ctx, cfg);
+        inject_character_base(&mut session, build, data, options, &ctx.resolved_config);
+        let main_weapon_active = ctx
+            .main
+            .main_effect
+            .is_some_and(|e| e.is_attack() && !e.is_non_weapon_attack());
+        inject_items(
+            &mut session,
+            build,
+            data,
+            ctx.weapons.off_hand_weapon.is_some(),
+            main_weapon_active,
+        )?;
+        inject_limbs(&mut session, build, data)?;
+        stage_inject_jewels(&mut session, &ctx)?;
+        stage_inject_radius_jewels(&mut session, &ctx)?;
+        stage_inject_config_mods(&mut session, &ctx)?;
+        stage_inject_passives(&mut session, &ctx)?;
+        stage_inject_extra_texts(&mut session, &ctx)?;
+        let mut session = session.finish_sources();
+        inject_build_multipliers(&mut session, build, data);
+        let class = character_base(build, data).filter(|_| options.inject_character_base);
+        let bases = class.map_or([0.0; 3], |c| [c.strength, c.dexterity, c.intelligence]);
+        Ok([
+            session.attribute_total("Strength", bases[0]),
+            session.attribute_total("Dexterity", bases[1]),
+            session.attribute_total("Intelligence", bases[2]),
+        ])
+    };
+    sourced().unwrap_or([f64::INFINITY; 3])
+}
+
+/// `build` with the gem level and quality bonuses among the extra modifier
+/// texts added to its own lines. A gem's level is settled from the build's
+/// lines before any modifier is stored, so a bonus given only as an extra text
+/// would arrive too late; as a line of the build it counts like the same line
+/// on an item. The stages that store lines leave gem bonuses out, so each is
+/// read once, where gem levels are settled.
+pub(crate) fn with_extra_gem_bonuses<'a>(
+    build: &'a Build,
+    options: &DataOrchestratorOptions,
+) -> Cow<'a, Build> {
+    let bonuses: Vec<&String> = options
+        .extra_modifier_texts
+        .iter()
+        .filter(|line| skill::resolve::parse_gem_property_bonus(line).is_some())
+        .collect();
+    if bonuses.is_empty() {
+        return Cow::Borrowed(build);
+    }
+    let mut build = build.clone();
+    build
+        .config
+        .global_modifier_texts
+        .extend(bonuses.into_iter().cloned());
+    Cow::Owned(build)
 }
 
 /// Calculates a prepared build view. Trigger sources change only skill selection,
@@ -431,6 +596,9 @@ fn calculate_prepared_with_context(
     };
 
     let mut session = stage_create_session(&ctx, cfg);
+    if context.track_reads {
+        session.keep_received_lines();
+    }
     stage_hand_sources(&mut session, &ctx);
     stage_cooldown_bypass(&mut session, &ctx);
 
@@ -455,6 +623,9 @@ fn calculate_prepared_with_context(
         ctx.weapons.off_hand_weapon.is_some(),
         main_weapon_active,
     )?;
+
+    // 2a. Transcendent limbs: their lines are global modifiers.
+    inject_limbs(&mut session, build, data)?;
 
     // 2b. Jewels (passive tree/abyss sockets): mods injected globally.
     stage_inject_jewels(&mut session, &ctx)?;
@@ -508,7 +679,12 @@ fn calculate_prepared_with_context(
 
     // All source writes are complete. Consuming the writer enables ModDb reads;
     // reservation must see equipment, passives, config, and extra modifier texts.
+    context.received_lines = session.received_lines();
     let mut session = session.finish_sources();
+    if context.track_reads {
+        session.track_modifier_reads();
+    }
+    inject_build_multipliers(&mut session, build, data);
     inject_spirit_reservation(&mut session, build, data);
 
     // Core owns actor-derived values; build supplies starting attributes and equipment facts.
@@ -521,16 +697,13 @@ fn calculate_prepared_with_context(
         })
     });
     session.prepare_player_stats(build.character.level, class);
-    inject_build_multipliers(&mut session, build, data);
 
     // 6c2. Equipped support gems counted by color (matching PoB2
     //      CalcSetup.lua:2015-2044) → Red/Green/BlueSupportGems multipliers (the
     //      denominator for pinned MultiplierThreshold entries like "if you have at
     //      least 10 <color> Support Gems Socketed").
     inject_support_gem_counts(&mut session, build, data);
-    if let Some((_, group, skill_id)) = &ctx.main.main_skill {
-        inject_integrated_efficiency(&mut session, data, group, skill_id);
-    }
+    inject_connected_support_counts(&mut session, ctx.main.connected_supports);
 
     session.bridge_player_conditions();
 
@@ -544,7 +717,10 @@ fn calculate_prepared_with_context(
     // `OutputTable.minions`. Gate: only wired in when some active skill resolves a
     // nonempty minion_list — a non-summoning build never triggers this, zero behavior
     // impact on the existing 18 builds.
-    spawn_minions(&mut session, build, data, &options.extra_modifier_texts);
+    spawn_minions(&mut session, build, data);
+    // "for each Minion in your Presence" counts the minions just created, or
+    // the configured number.
+    session.bridge_minion_presence();
 
     // perform fills env.player.output entirely (including every fill-stage field of
     // calc_defence — armour/evasion/ES, ailments, EHP, etc.); the full OutputTable is
@@ -583,6 +759,13 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
         build = Cow::Owned(gated);
     }
 
+    // Bonded modifiers of socketed Runes and Idols: the ones in effect become
+    // ordinary lines of their item and the rest are removed, before anything
+    // reads an item's lines.
+    if let Some(resolved) = item::bonded::resolve_bonded_modifiers(&build, data) {
+        build = Cow::Owned(resolved);
+    }
+
     if let Some(resolved) = collect::resolve_granted_socket_jewels(&build, data) {
         build = Cow::Owned(resolved);
     }
@@ -593,6 +776,20 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
     // a PoB2-XML-pre-expanded group already exists).
     if let Some(augmented) = augment_item_granted_skills(&build, data) {
         build = Cow::Owned(augmented);
+    }
+
+    // The groups of the skills the passive tree grants, at the level the
+    // character's level allows; an ordinary group listing the same skill
+    // stands for it.
+    if let Some(resolved) = resolve_tree_granted_skills(&build, data) {
+        build = Cow::Owned(resolved);
+    }
+
+    // The groups that are skills the equipment grants (their level, and the
+    // ones granted without reservation), while gem qualities are still the
+    // build's own: the next steps add quality to every gem.
+    if let Some(marked) = mark_item_granted_skills(&build, data) {
+        build = Cow::Owned(marked);
     }
 
     // nameSpec-only gem references → skill_id backfilled (matching PoB2 SkillsTab
@@ -783,14 +980,6 @@ fn stage_cooldown_bypass(session: &mut SourceWriter, ctx: &StageCtx<'_>) {
                 .with_raw_text("skill bypasses cooldown (consumes charges on use)");
         session.add_modifiers(vec![Modifier::flag("CooldownBypass").with_origin(origin)]);
     }
-}
-
-/// The value of The Adorned's "N% increased Effect of Jewel Socket Passive Skills
-/// containing Corrupted Magic Jewels" among the jewel list (this mod wraps across two
-/// physical lines in the XML; matched after joining with a space; vendor parses it as
-/// `JewelData{corruptedMagicJewelIncEffect}`). Returns `None` when this jewel isn't present.
-fn adorned_corrupted_magic_jewel_inc(jewels: &[Item]) -> Option<f64> {
-    pobr_core::skill_env::adorned_corrupted_magic_jewel_inc(jewels)
 }
 
 /// Vendor's `ModStore:ScaleAddMod` numeric scaling semantics (ModStore.lua:70-79):

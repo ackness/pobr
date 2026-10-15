@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-14-sorceress-stormweaver-comet-32a7d948edf8",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%E7%8C%AB%E6%B1%B0%E3%81%A4-2733/%E3%81%A1%E3%82%85%E3%81%AA%E3%81%B4",
+    "account": "猫汰つ-2733",
+    "character": "ちゅなぴ",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-14T17:05:05+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/character?account=%E7%8C%AB%E6%B1%B0%E3%81%A4-2733&name=%E3%81%A1%E3%82%85%E3%81%AA%E3%81%B4&overview=forbidden-rites",
+    "snapshot": "1457-20261014-11300",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/search?overview=forbidden-rites&class=Stormweaver",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Stormweaver",
+    "level": 98,
+    "main_skill": "Comet"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 12,
+    "code_sha256": "8f4d2a39d7cbb47b519f4efb7604a357e1028bc0a83e955c3c59ba1ba32a834e",
+    "code_chars": 12944,
+    "decoded_bytes": 51009
+  }
+}

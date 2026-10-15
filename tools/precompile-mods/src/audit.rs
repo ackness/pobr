@@ -16,9 +16,20 @@ type Corpus = BTreeMap<String, BTreeSet<String>>;
 #[serde(rename_all = "snake_case")]
 pub enum Status {
     Parsed,
+    /// Matched by a rule registered as changing nothing a calculation
+    /// reports (batch S0): complete, like a parsed line.
+    NoEffect,
     RecognizedEmpty,
     Partial,
     Unsupported,
+}
+
+impl Status {
+    /// Whether the line is fully handled: parsed into modifiers, or
+    /// registered as changing nothing a calculation reports.
+    fn handled(self) -> bool {
+        matches!(self, Status::Parsed | Status::NoEffect)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -337,7 +348,15 @@ fn parse_entry(
     } else if outcome.status == ParseStatus::Unsupported {
         Status::Unsupported
     } else if outcome.mods.is_empty() {
-        Status::RecognizedEmpty
+        if outcome
+            .special_meta
+            .as_ref()
+            .is_some_and(|meta| meta.no_effect)
+        {
+            Status::NoEffect
+        } else {
+            Status::RecognizedEmpty
+        }
     } else {
         Status::Parsed
     };
@@ -376,6 +395,7 @@ pub fn build(data: &Path, oracle: Option<&Path>) -> Result<Audit, String> {
         let entry = parse_entry(&text, sources, &rules, vendor_status);
         let class = match (entry.status, vendor_status) {
             (Status::Parsed, _) => "parsed",
+            (Status::NoEffect, _) => "no_effect",
             (Status::RecognizedEmpty, _) => "recognized_empty",
             (_, Some(Status::Parsed)) => "pobr_gap",
             (_, Some(_)) => "upstream_gap",
@@ -446,8 +466,8 @@ pub fn compare(current: &Audit, previous: &Audit) -> Delta {
         .collect();
     for (text, entry) in &current.entries {
         let old = previous.entries.get(text);
-        if entry.status != Status::Parsed {
-            let regressions = if old.is_some_and(|e| e.status == Status::Parsed) {
+        if !entry.status.handled() {
+            let regressions = if old.is_some_and(|e| e.status.handled()) {
                 entry.sources.clone()
             } else if old.is_none() {
                 entry
@@ -464,7 +484,7 @@ pub fn compare(current: &Audit, previous: &Audit) -> Delta {
             if old.is_none() {
                 delta.new_gaps.insert(text.clone());
             }
-        } else if old.is_some_and(|e| e.status != Status::Parsed) {
+        } else if old.is_some_and(|e| !e.status.handled()) {
             delta.resolved.insert(text.clone());
         }
     }
@@ -635,6 +655,8 @@ mod tests {
             ("resolved wording", "stat:resolved", Status::Unsupported),
             ("removed bonus", "stat:removed", Status::Parsed),
             ("conditional", "stat:condition", Status::Parsed),
+            ("crafting property", "stat:crafting", Status::Parsed),
+            ("no effect yet", "stat:no_effect", Status::RecognizedEmpty),
         ]);
         let after = snapshot(&[
             ("new wording", "stat:stable_id", Status::Unsupported),
@@ -642,6 +664,9 @@ mod tests {
             ("new mechanic", "unique:existing", Status::Unsupported),
             ("resolved wording", "stat:resolved", Status::Parsed),
             ("conditional", "stat:condition", Status::Partial),
+            // Registered as changing nothing a calculation reports.
+            ("crafting property", "stat:crafting", Status::NoEffect),
+            ("no effect yet", "stat:no_effect", Status::NoEffect),
         ]);
         let delta = compare(&after, &before);
         assert_eq!(
@@ -654,6 +679,7 @@ mod tests {
         );
         assert!(delta.new_gaps.contains("new mechanic"));
         assert!(delta.resolved.contains("resolved wording"));
+        assert!(delta.resolved.contains("no effect yet"));
         assert!(delta.removed.contains("removed bonus"));
         assert!(compare(&before, &before).regressions.is_empty());
     }

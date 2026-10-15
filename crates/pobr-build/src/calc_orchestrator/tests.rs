@@ -67,6 +67,7 @@ mod ring3_tests {
             modifier_texts: vec!["+30 to maximum Life".into()],
             enchant_texts: vec![],
             rolled_defence: RolledDefence::default(),
+            socketed: Vec::new(),
             parsed_stats: vec![],
         }
     }
@@ -197,6 +198,7 @@ fn life_item(amount: &str) -> Item {
         modifier_texts: vec![format!("+{amount} to maximum Life")],
         enchant_texts: vec![],
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: vec![],
     }
 }
@@ -214,6 +216,7 @@ fn selected_tree_controls_gem_properties_and_equipment_effects() {
             value: 10,
             kind: GemPropertyKind::Quality,
             category: String::new(),
+            corrupted_only: false,
             attr_req: None,
         })
     );
@@ -283,6 +286,7 @@ fn granted_anoint_notable_feeds_gem_property_scan() {
         modifier_texts: vec![],
         enchant_texts: vec!["Allocates Paragon".into()],
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: vec![],
     };
     let build = Build::new().set_item(EquipmentSlot::Amulet, amulet);
@@ -302,6 +306,7 @@ fn granted_anoint_notable_feeds_gem_property_scan() {
             value: 5,
             kind: GemPropertyKind::Quality,
             category: String::new(),
+            corrupted_only: false,
             attr_req: None,
         }),
         "granting Paragon should produce a catch-all Quality +5 mod, got {bonuses:?}"
@@ -587,6 +592,9 @@ fn radius_small_grant_excludes_attribute_nodes() {
         notable_effect_inc: 0,
         small_effect_inc: 0,
         tree_texts: vec![],
+        rarity: pobr_data::item::ItemRarity::Rare,
+        corrupted: false,
+        socket: crate::build::JewelSocket::Tree,
     };
     let build = Build::new()
         .with_tree(PassiveTreeSpec {
@@ -604,6 +612,70 @@ fn radius_small_grant_excludes_attribute_nodes() {
     assert_eq!(
         count, 1,
         "attribute-choice nodes should not count toward the Small grant tally, got {mods:?}"
+    );
+}
+
+/// A Notable an item allocates ("Allocates <Notable>") shows as allocated on
+/// the passive tree, so a jewel's "Notable Passive Skills in Radius" include
+/// it. A Notable in the radius that nothing allocates stays out.
+#[test]
+fn radius_notable_grant_includes_notables_allocated_by_items() {
+    let socket = 200u32;
+    let notable = |skill: u32, name: &str, x: f64| pobr_data::catalog::PassiveNodeDef {
+        name: Some(name.into()),
+        kind: pobr_data::catalog::PassiveNodeKind::Notable,
+        ..normal_node_at(skill, x, 0.0, vec!["+5 to maximum Life".into()])
+    };
+    // The real data supplies the rule that reads "Allocates <Notable>"; the
+    // nodes all sit near the socket (distance << any radius tier).
+    let mut data = repo_data();
+    data.passive_nodes = HashMap::from([
+        (socket, normal_node_at(socket, 0.0, 0.0, vec![])),
+        (201, notable(201, "Item Allocated Test Notable", 50.0)),
+        (202, notable(202, "Unallocated Test Notable", -50.0)),
+    ]);
+
+    let grant = "Notable Passive Skills in Radius also grant +10 to maximum Mana";
+    let jewel = RadiusJewel {
+        socket_node: socket,
+        radius_label: Some("Large".into()),
+        grant_lines: vec![grant.into()],
+        notable_effect_inc: 0,
+        small_effect_inc: 0,
+        tree_texts: vec![],
+        rarity: pobr_data::item::ItemRarity::Rare,
+        corrupted: false,
+        socket: crate::build::JewelSocket::Tree,
+    };
+    let amulet = Item {
+        base: ItemBaseId::from("Solar Amulet"),
+        rarity: ItemRarity::Rare,
+        quality: 0,
+        corrupted: false,
+        implicit_texts: vec![],
+        modifier_texts: vec![],
+        enchant_texts: vec!["Allocates Item Allocated Test Notable".into()],
+        rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
+        parsed_stats: vec![],
+    };
+    // Only the jewel socket is allocated with a passive point.
+    let build = Build::new()
+        .set_item(EquipmentSlot::Amulet, amulet)
+        .with_tree(PassiveTreeSpec {
+            allocated_nodes: vec![NodeId(socket)],
+            ..Default::default()
+        })
+        .with_radius_jewels(vec![jewel]);
+
+    let mods = radius_jewel_grant_modifiers(&build, &data);
+    let count = mods
+        .iter()
+        .filter(|m| m.name.as_str() == "MaximumMana" && m.value.as_number() == Some(10.0))
+        .count();
+    assert_eq!(
+        count, 1,
+        "only the Notable the amulet allocates should receive the grant, got {mods:?}"
     );
 }
 
@@ -642,8 +714,11 @@ fn gems_classified_and_do_not_error() {
             dex_pct: 0,
             int_pct: 0,
             is_support: false,
+            gem_effect_id: None,
             granted_effect_id: None,
             additional_granted_effect_ids: Vec::new(),
+            gem_tags: Vec::new(),
+            level_requirements: Vec::new(),
         },
     );
     skill_gems.insert(
@@ -657,8 +732,11 @@ fn gems_classified_and_do_not_error() {
             dex_pct: 0,
             int_pct: 0,
             is_support: true,
+            gem_effect_id: None,
             granted_effect_id: None,
             additional_granted_effect_ids: Vec::new(),
+            gem_tags: Vec::new(),
+            level_requirements: Vec::new(),
         },
     );
     let data = BuildData {
@@ -1136,6 +1214,48 @@ fn additional_effect_preserves_selected_gem_quality_and_level_provenance() {
     assert_eq!(boosted, baseline);
 }
 
+/// A support gem has no levels. The active effect it grants runs at the
+/// level of the skill the support is applied to, bonuses included; it used to
+/// run at the support's own level 1, which put a level-1 skill on an endgame
+/// character.
+#[test]
+fn support_granted_effect_takes_the_level_of_the_supported_skill() {
+    let data = repo_data();
+    // Doedre's Undoing grants Dark Consequences (`ChaosFrogExplosionPlayer`).
+    let group = SocketGroup::new()
+        .with_gem_skill("ElementalWeaknessPlayer", 17)
+        .with_gem_skill("SupportDoedresUndoingPlayer", 1)
+        .with_main_active_skill(2);
+    let mut build = Build::new()
+        .add_socket_group(group)
+        .with_main_socket_group(1);
+    let at = |level| {
+        pobr_core::skill_env::resolve_skill_level(&data, "ChaosFrogExplosionPlayer", level, None)
+            .expect("level row")
+    };
+    assert_ne!(at(1), at(17), "the effect scales with level");
+
+    let summary = super::skill::resolve::main_skill_summary(&build, &data).unwrap();
+    assert_eq!(summary.skill_id, "ChaosFrogExplosionPlayer");
+    assert_eq!(summary.gem_id, "ElementalWeaknessPlayer");
+    assert_eq!((summary.gem_level, summary.bonus_levels), (17, 0));
+    let resolved = super::skill::resolve::resolve_main_skill(&build, &data)
+        .unwrap()
+        .0;
+    assert_eq!(resolved, at(17));
+
+    // A level the supported skill gains is a level the granted effect gains.
+    let mut item = life_item("0");
+    item.modifier_texts = vec!["+2 to Level of all Spell Skills".into()];
+    build.items.insert(EquipmentSlot::Ring1, item);
+    let summary = super::skill::resolve::main_skill_summary(&build, &data).unwrap();
+    assert_eq!((summary.gem_level, summary.bonus_levels), (17, 2));
+    let boosted = super::skill::resolve::resolve_main_skill(&build, &data)
+        .unwrap()
+        .0;
+    assert_eq!(boosted, at(19));
+}
+
 #[test]
 fn builder_additional_effect_keeps_primary_gem_level_bonus_provenance() {
     let mut data = repo_data();
@@ -1250,6 +1370,7 @@ fn synth_stat_set(set_id: &str, vendor_idx: Option<u32>) -> pobr_data::catalog::
         label: None,
         vendor_set_index: vendor_idx,
         base_effectiveness: 0.0,
+        user_level_scaling: None,
         constant_stats: Vec::new(),
         skill_attack_speed_more: None,
         dot_flags: Default::default(),
@@ -1262,6 +1383,7 @@ fn synth_stat_set(set_id: &str, vendor_idx: Option<u32>) -> pobr_data::catalog::
                 stat: "synth_stat_+%".into(),
                 value: 25.0,
             }],
+            per_effectiveness: Vec::new(),
         }],
     }
 }
@@ -1631,6 +1753,7 @@ fn slot_bonus_effect_scales_covers_equipped_quiver() {
         modifier_texts: vec!["53% increased Damage with Bow Skills".into()],
         enchant_texts: vec![],
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: vec![],
     };
     let tree = PassiveTreeSpec {
@@ -2230,6 +2353,16 @@ fn combat_conditions_follow_vendor_branches() {
         combat_conditions(&types(&["Spell", "Channel"]), ModFlags::SPELL),
         vec!["CastSpellRecently", "Channelling"]
     );
+    // A skill that shapeshifts its user puts the character in the form it
+    // names; only Bear form has modelled effects.
+    assert_eq!(
+        combat_conditions(&types(&["Attack", "Shapeshift", "Bear"]), ModFlags::ATTACK),
+        vec!["AttackedRecently", "Shapeshifted", "BearForm"]
+    );
+    assert_eq!(
+        combat_conditions(&types(&["Attack", "Shapeshift", "Wolf"]), ModFlags::ATTACK),
+        vec!["AttackedRecently", "Shapeshifted"]
+    );
     // minion and not duration (:257-259).
     assert_eq!(
         combat_conditions(&types(&["Spell", "Minion"]), ModFlags::SPELL),
@@ -2240,11 +2373,32 @@ fn combat_conditions_follow_vendor_branches() {
         vec!["CastSpellRecently"],
         "Duration suppresses UsedMinionSkillRecently"
     );
-    // Exemptions (:248): triggered / mine / totem clear the whole set.
-    for exempt in ["Triggered", "InbuiltTrigger", "RemoteMined", "SummonsTotem"] {
+    // Exemptions (:248): triggered / mine clear the whole set.
+    for exempt in ["Triggered", "InbuiltTrigger", "RemoteMined"] {
         assert!(
             combat_conditions(&types(&["Attack", exempt]), ModFlags::ATTACK).is_empty(),
             "{exempt} should be exempt from combat conditions"
+        );
+    }
+    // A skill that hits: the character has hit an enemy recently, also when
+    // the skill is triggered, but not with its mines.
+    let hit = ModFlags::ATTACK | ModFlags::HIT;
+    assert_eq!(
+        combat_conditions(&types(&["Attack"]), hit),
+        vec!["HitRecently", "AttackedRecently"]
+    );
+    let spell_hit = ModFlags::SPELL | ModFlags::HIT;
+    assert_eq!(
+        combat_conditions(&types(&["Spell", "Triggered"]), spell_hit),
+        vec!["HitRecently", "HitSpellRecently"]
+    );
+    assert!(combat_conditions(&types(&["Spell", "RemoteMined"]), spell_hit).is_empty());
+    // A totem uses the skill: the character neither attacks nor casts, and
+    // has summoned the totem.
+    for totem in ["SummonsTotem", "UsedByTotem"] {
+        assert_eq!(
+            combat_conditions(&types(&["Spell", totem]), spell_hit),
+            vec!["HaveTotem", "SummonedTotemRecently"]
         );
     }
 }
@@ -2345,6 +2499,7 @@ fn meta_gem_expands_additional_granted_effect_as_main_skill() {
         id: id.into(),
         is_support: false,
         active_skill: Some(id.to_string()),
+        displayed_name: None,
         cast_time: Some(1000),
         require_skill_types: vec![],
         add_skill_types: vec![],
@@ -2454,6 +2609,7 @@ fn trigger_modifiers_gates_on_triggered_skill_type() {
             id: "TrigSkill".into(),
             is_support: false,
             active_skill: Some("TrigSkill".into()),
+            displayed_name: None,
             cast_time: Some(1000),
             require_skill_types: vec![],
             add_skill_types: vec![],
@@ -2477,6 +2633,7 @@ fn trigger_modifiers_gates_on_triggered_skill_type() {
             id: "NormalSkill".into(),
             is_support: false,
             active_skill: Some("NormalSkill".into()),
+            displayed_name: None,
             cast_time: Some(1000),
             require_skill_types: vec![],
             add_skill_types: vec![],
@@ -2539,8 +2696,11 @@ fn trigger_modifiers_gates_on_triggered_skill_type() {
     );
 }
 
-// trigger_configs recognition + source-rate sub-calc
+// The calculation of the skill that fills a meta gem with Energy
 
+/// A Fireball in a Cast on Critical, and `source_skill` listed in the same
+/// group. The gem does not trigger an attack, so the character uses it itself
+/// and its critical hits fill the gem.
 fn trigger_boundary_build(source_skill: &str) -> Build {
     Build::new()
         .with_character(CharacterIdentity {
@@ -2558,17 +2718,27 @@ fn trigger_boundary_build(source_skill: &str) -> Build {
         .with_main_socket_group(1)
 }
 
+/// What the calculation holds of the one skill that fills the meta gem: its
+/// uses per second, chance to hit and chance to hit critically.
 fn trigger_source_values(session: &CalculationSession) -> [f64; 3] {
+    use pobr_core::calc::energy;
+    let sources = session.mods_named(energy::ENERGY_SOURCE);
+    let [source] = sources.as_slice() else {
+        panic!("one Energy source, got {}", sources.len());
+    };
+    let pobr_core::ModValue::NestedMods(stats) = &source.value else {
+        panic!("an Energy source lists its skill's numbers");
+    };
     [
-        "TriggerSourceRate",
-        "TriggerSourceHitChance",
-        "TriggerSourceCritChance",
+        energy::SOURCE_RATE,
+        energy::SOURCE_HIT_CHANCE,
+        energy::SOURCE_CRIT_CHANCE,
     ]
     .map(|name| {
-        session
-            .mods_named(name)
+        stats
             .iter()
-            .map(|modifier| modifier.value.as_number().expect("numeric source stat"))
+            .filter(|stat| stat.name.as_str() == name)
+            .map(|stat| stat.value.as_number().expect("numeric source stat"))
             .sum()
     })
 }
@@ -2590,7 +2760,7 @@ fn assert_trigger_source_matches_direct(
     };
     assert_eq!(
         trigger_source_values(triggered),
-        [rate, source.hit_chance * 100.0, source.crit_chance * 100.0],
+        [rate, source.hit_chance, source.crit_chance],
         "trigger source stats must match selecting the source directly"
     );
 }
@@ -2738,17 +2908,12 @@ fn trigger_subcalc_applies_quality_bonuses_once() {
     assert_eq!(cache.get_or_compute(&explicit).unwrap(), *q4.output());
 }
 
-/// CoC fixture (a named gate item): group = [attack, MetaCastOnCritPlayer,
-/// spell], main skill = spell. `trigger_configs`'s `match_effect_ids`
-/// recognizes the CoC trigger relationship (the trigger panel no longer
-/// degrades to self-cast 0), folding in the source hit/crit.
+/// A Fireball in a Cast on Critical, with an attack listed in the same group:
+/// the gem triggers the spell, the attack's critical hits fill the gem, and
+/// the spell happens less often than the attack is used.
 #[test]
 fn coc_group_recognized_and_trigger_rate_filled() {
     let data = repo_data();
-    assert!(
-        data.trigger_configs.contains_key("MetaCastOnCritPlayer"),
-        "trigger_configs overlay should include the CoC join key"
-    );
     let build = Build::new()
         .with_character(CharacterIdentity {
             level: 80,
@@ -2768,10 +2933,14 @@ fn coc_group_recognized_and_trigger_rate_filled() {
 
     assert!(
         out.skill_trigger_rate > 0.0,
-        "after CoC recognition, the trigger rate should not be the placeholder 0, got {}",
+        "the gem's spell is triggered, got a rate of {}",
         out.skill_trigger_rate
     );
-    // Crit folded in (trigger_on_crit): the trigger rate should be noticeably lower than the source's attack rate (source crit chance ≪ 100%).
+    assert_eq!(
+        out.energy_trigger_source.as_deref(),
+        Some("ArmourBreakerPlayer")
+    );
+    // Only critical hits give Energy, and the attack's chance of one is far below 100%.
     let source_stats = trigger_source_stats(
         &mut test_context(&data),
         &build,
@@ -2784,7 +2953,7 @@ fn coc_group_recognized_and_trigger_rate_filled() {
     .expect("source sub-calc");
     assert!(
         out.skill_trigger_rate < source_stats.action_rate,
-        "CoC trigger rate {} should be discounted by the source's crit chance to below source rate {}",
+        "the trigger rate {} should be below the source's rate of use {}",
         out.skill_trigger_rate,
         source_stats.action_rate
     );
@@ -2867,9 +3036,8 @@ fn trigger_subcalc_preserves_outer_exposure_supports() {
     assert_eq!(repeated.session.output(), report.session.output());
 }
 
-/// CoC directional assertion: source skill +100% attack speed → trigger rate
-/// (the rate factor feeding DPS) rises in step — a regression guard for
-/// 14-G2's "source rate didn't scale with attack speed" bug.
+/// The skill that fills the gem attacking twice as fast fills it twice as
+/// often: the source's rate is its calculated one, not its base one.
 #[test]
 fn coc_directional_attack_speed_raises_trigger_rate() {
     let data = repo_data();
@@ -2898,7 +3066,7 @@ fn coc_directional_attack_speed_raises_trigger_rate() {
     let fast_out = calculate_with_data(&mk_build(), &data, &fast_opts).expect("coc fast");
     assert!(
         fast_out.skill_trigger_rate > base_out.skill_trigger_rate * 1.5,
-        "+100% attack speed should nearly double the trigger rate (14-G2 fix): {} → {}",
+        "+100% attack speed should nearly double the trigger rate: {} → {}",
         base_out.skill_trigger_rate,
         fast_out.skill_trigger_rate
     );
@@ -3004,6 +3172,7 @@ fn trigger_config_requires_condition_gates_injection() {
             id: "UnseenStrikePlayer".into(),
             is_support: false,
             active_skill: Some("UnseenStrikePlayer".into()),
+            displayed_name: None,
             cast_time: Some(1000),
             require_skill_types: vec![],
             add_skill_types: vec![],
@@ -3158,7 +3327,10 @@ fn weapon_type_conditions_match_vendor_type_info() {
     let mut data = BuildData::empty();
     let cases: &[(&str, &[&str])] = &[
         // GGG `Warstaff` (quarterstaff) → table key `Staff` (label=Quarterstaff).
-        ("Warstaff", &["UsingQuarterstaff", "UsingTwoHandedMelee"]),
+        (
+            "Warstaff",
+            &["UsingQuarterstaff", "UsingStaff", "UsingTwoHandedMelee"],
+        ),
         ("One Hand Mace", &["UsingMace", "UsingOneHandedMelee"]),
         ("Two Hand Mace", &["UsingMace", "UsingTwoHandedMelee"]),
         ("Bow", &["UsingBow"]),
@@ -3192,6 +3364,7 @@ fn weapon_type_conditions_match_vendor_type_info() {
                 modifier_texts: vec![],
                 enchant_texts: vec![],
                 rolled_defence: RolledDefence::default(),
+                socketed: Vec::new(),
                 parsed_stats: vec![],
             },
         );
@@ -3221,6 +3394,7 @@ fn weapon_cfg_flags_dual_write_channel() {
             modifier_texts: vec![],
             enchant_texts: vec![],
             rolled_defence: RolledDefence::default(),
+            socketed: Vec::new(),
             parsed_stats: vec![],
         },
     );

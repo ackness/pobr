@@ -126,6 +126,17 @@ pub fn calc_defence(actor: &mut Actor, cfg: &CalcConfig, enemy_accuracy: f64) ->
     }
 }
 
+/// The chance to hit the accuracy formula gives, in whole percent, with no
+/// upper limit: what a character whose "Chance to Hit with Attacks can exceed
+/// 100%" has. Against no evasion the formula tops out at 125%.
+pub fn hit_chance_uncapped_percent(evasion: f64, accuracy: f64) -> f64 {
+    if accuracy <= 0.0 {
+        return 5.0;
+    }
+    let raw = accuracy * 1.25 / (accuracy + evasion.max(0.0) * 0.3) * 100.0;
+    raw.round().max(5.0)
+}
+
 /// The player's chance to hit a monster with an attack (offensive side, `calcs.hitChance`).
 ///
 /// PoE2 formula (CalcDefence.lua `calcs.hitChance`, agent-docs/accuracy-and-enemy.md §2):
@@ -338,6 +349,10 @@ impl DefenceTerms {
             );
         }
         steps.add(FormulaOp::FlatAfter, self.flat_after);
+        let rounded = steps.current().round();
+        if rounded != steps.current() {
+            steps.set(FormulaOp::Round, 0.0, rounded);
+        }
         steps.finish(self.value)
     }
 }
@@ -443,7 +458,11 @@ pub(crate) fn defence_resource_terms(
         // `globalBase = Sum(BASE, source.mods) + source.globalBase`).
         let global_flat =
             db.sum_global_only(ModType::Base, cfg, &[ModName::from(global_base_names[s])]);
-        let global_s = base_inputs[s] + global_flat + received[s];
+        // A maximum that is set ("Maximum Life is 1") is the amount converted
+        // from: 5% of a Maximum Life of 1 converts next to nothing.
+        let global_s = db
+            .override_(cfg, global_base_names[s])
+            .unwrap_or(base_inputs[s] + global_flat + received[s]);
         // Total channel input = `<Src>Total` BASE + amounts converted in by earlier sources'
         // total (:1331/:1364, serial and structured the same way).
         let total_s =
@@ -557,7 +576,9 @@ pub(crate) fn defence_resource_terms(
         }
         // The Total direct-add channel isn't multiplied by inc/more (vendor :1394 `… + res.totalBase`).
         total += kept_total[s] + total_received[s];
-        *value = round(total);
+        // A rating, like the Energy Shield pool, is a whole number, as the
+        // character sheet shows it: the nearest one.
+        *value = total.round().max(0.0);
         terms[s].gained_after += received[s] + slot_total(&slots[s]);
         terms[s].inc = global_inc;
         terms[s].more = global_more;
@@ -1092,7 +1113,7 @@ pub fn fill_evade_stun(env: &mut Env, keystones: &crate::rules::DefenceKeystones
     let enemy_hit_mult = (1.0 + env.enemy.mod_db.sum(ModType::Inc, &env.cfg, &hit_names) / 100.0)
         * env.enemy.mod_db.more(&env.cfg, &hit_names);
     let enemy_cannot_be_evaded = env.enemy.mod_db.flag(&env.cfg, "CannotBeEvaded");
-    let enemy_accuracy = env.enemy.base.accuracy;
+    let enemy_accuracy = super::setup_env::enemy_accuracy(&env.enemy, &env.cfg);
 
     let suite = calc_evade_suite(
         &env.player.mod_db,

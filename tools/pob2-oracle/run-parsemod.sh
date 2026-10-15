@@ -70,6 +70,7 @@ if [[ "$HAS_MODE" -eq 0 ]]; then
 	ARGS=("--mode" "parsemod" "${ARGS[@]}")
 fi
 
+# The same pure-Lua shims as run.sh (the vendor requires lua-utf8).
 cd "$POB_SRC"
-LUA_PATH="$RUNTIME/?.lua;$RUNTIME/?/init.lua;./?.lua;;" CI=true \
+LUA_PATH="$SCRIPT_DIR/shim/?.lua;$RUNTIME/?.lua;$RUNTIME/?/init.lua;./?.lua;;" CI=true \
 	"$LUAJIT" "$SCRIPT_DIR/oracle.lua" "${ARGS[@]}"

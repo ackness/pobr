@@ -10,7 +10,7 @@ import { activeWorkspaceStage, addWorkspaceBuild, createWorkspace, duplicateWork
 import { formatApiError } from '../api/error';
 import { resolveBuildInput } from '../api/import';
 import { reconcileJewelAllocation } from '../lib/passiveGraph';
-import { groupsForWeaponSet, skillWeaponSet, switchWeapons, validWeaponSwap } from '../lib/weaponSets';
+import { skillWeaponSet, switchWeapons, validWeaponSwap, weaponSetRequest } from '../lib/weaponSets';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getBackend } from '../api/backend';
 import { composeNotes, splitNotes, type Annotations } from '../lib/annotations';
@@ -64,6 +64,8 @@ interface BuildState {
   items: SlotItemInput[];
   /** 激活态药剂/护符（槽名 `Flask 1/2`、`Charm 1..3` + PoB 文本；整份覆盖上行）。 */
   flasks: SlotItemInput[];
+  /** 超越肢体（槽 `arm1`/`arm2`/`leg1`/`leg2` + PoB 文本；与装备并列的一组栏位，整份覆盖上行）。 */
+  limbs: SlotItemInput[];
   /** 树插槽珠宝（插槽号 + PoB 文本；插槽加点才生效）。 */
   jewels: JewelInput[];
   /** 局部注释（key 约定见 lib/annotations）；不参与计算，分享时嵌入 <Notes>。 */
@@ -103,6 +105,7 @@ export interface BuildSession {
   socketGroupRevision: number;
   items: SlotItemInput[];
   flasks: SlotItemInput[];
+  limbs: SlotItemInput[];
   jewels: JewelInput[];
   calc: CalculateBuildResponse | null;
   calcParams: CalcParams;
@@ -167,6 +170,8 @@ export interface BuildSession {
   setItems: (items: SlotItemInput[]) => void;
   /** 整份替换激活态药剂/护符（Items 编辑器）。 */
   setFlasks: (flasks: SlotItemInput[]) => void;
+  /** 整份替换超越肢体（Items 编辑器）。 */
+  setLimbs: (limbs: SlotItemInput[]) => void;
   /** 整份替换树插槽珠宝（Tree 页珠宝编辑器）。 */
   setJewels: (jewels: JewelInput[]) => void;
   /** Apply a complete shared-tree jewel/passive plan against its original request. */
@@ -184,15 +189,17 @@ export interface BuildSession {
 // 计算请求不带 pob_code：导入时 XML 内容已全量物化进 state（materialize +
 // config_inputs/main_socket_group），再带 code 只是让 Rust 每次重算都白解码
 // 一遍然后立刻被覆盖项冲掉。state.pobCode 仅存档用（恢复会话时重建 build 视图）。
+// 请求按 state 的武器组物化技能组，并以 weapon_swap.active 写明计算哪一组。
 function toRequest(state: BuildState): CalculateBuildRequest {
   return {
     tree_version: state.treeVersion,
     character: state.character,
     allocated_nodes: state.allocatedNodes,
     attribute_choices: state.attributeChoices,
-    socket_groups: groupsForWeaponSet(state.socketGroups, state.weaponSwap?.active ?? 1),
+    ...weaponSetRequest(state),
     items: state.items,
     flasks: state.flasks,
+    limbs: state.limbs,
     jewels: state.jewels,
     main_socket_group: state.params.main_socket_group,
     enemy_tier: state.params.enemy_tier,
@@ -347,10 +354,15 @@ export function parseSaved(json: string): SavedSession | null {
       for (const gem of group.gems) {
         // PoB imports retain unresolved slots as an empty stable ID, including level 0.
         if (!record(gem) || typeof gem.skill_id !== 'string' || !uint(gem.level) || gem.level === 0 && gem.skill_id !== ''
-          || !uint(gem.quality) || !optionalIndex(gem.stat_set_index, 1) || !optionalText(gem.name_spec)) return null;
+          || !uint(gem.quality) || !optionalIndex(gem.stat_set_index, 1) || !optionalText(gem.name_spec)
+          || !optionalText(gem.minion) || !optionalIndex(gem.minion_skill, 1)
+          || gem.corrupted != null && typeof gem.corrupted !== 'boolean') return null;
         gems.push({ skill_id: gem.skill_id, level: gem.level, quality: gem.quality,
           ...(gem.stat_set_index != null ? { stat_set_index: Number(gem.stat_set_index) } : {}),
-          ...(gem.name_spec !== undefined ? { name_spec: gem.name_spec as string | null } : {}) });
+          ...(gem.name_spec !== undefined ? { name_spec: gem.name_spec as string | null } : {}),
+          ...(typeof gem.minion === 'string' ? { minion: gem.minion } : {}),
+          ...(gem.minion_skill != null ? { minion_skill: Number(gem.minion_skill) } : {}),
+          ...(gem.corrupted === true ? { corrupted: true } : {}) });
       }
       socketGroups.push({ enabled: group.enabled == null ? true : group.enabled as boolean,
         slot: group.slot as string | null | undefined, source: group.source as string | null | undefined,
@@ -358,11 +370,13 @@ export function parseSaved(json: string): SavedSession | null {
         main_active_skill: group.main_active_skill as number | null | undefined, gems });
     }
     const flasks = state.flasks ?? [];
+    // Saved before limbs were modelled: none.
+    const limbs = state.limbs ?? [];
     const jewels = state.jewels ?? [];
     const annotations = state.annotations ?? {};
     const attributeChoices = state.attributeChoices ?? {};
     const params = state.params ?? {};
-    if (!itemList(flasks, /^(Flask [12]|Charm [123])$/)
+    if (!itemList(flasks, /^(Flask [12]|Charm [123])$/) || !itemList(limbs, /^(arm|leg)[12]$/)
       || !Array.isArray(jewels) || !jewels.every(jewel => record(jewel) && uint(jewel.socket_node) && typeof jewel.text === 'string')
       || !textMap(annotations) || !record(attributeChoices)
       || !Object.entries(attributeChoices).every(([node, choice]) => /^\d+$/.test(node) && uint(Number(node)) && typeof choice === 'string' && ['str', 'dex', 'int'].includes(choice))
@@ -390,6 +404,7 @@ export function parseSaved(json: string): SavedSession | null {
         items: state.items,
         weaponSwap,
         flasks,
+        limbs,
         jewels: jewels as JewelInput[],
         annotations: annotations as Annotations,
         params: paramsFromConfigInputs(configInputs as Record<string, ConfigInputValue>, {
@@ -471,9 +486,9 @@ export function backfillFromDecoded(state: BuildState, decoded: BuildJson): Buil
 }
 
 /** 解码结果 → 可编辑技能组/装备状态（物化，之后全走覆盖）。 */
-function materialize(
+export function materialize(
   decoded: BuildJson,
-): Pick<BuildState, 'treeVersion' | 'socketGroups' | 'items' | 'flasks' | 'jewels' | 'weaponSwap'> {
+): Pick<BuildState, 'treeVersion' | 'socketGroups' | 'items' | 'flasks' | 'limbs' | 'jewels' | 'weaponSwap'> {
   return {
     treeVersion: decoded.tree.tree_version,
     weaponSwap: decoded.weapon_swap,
@@ -489,10 +504,14 @@ function materialize(
         quality: gem.quality,
         stat_set_index: gem.stat_set_index,
         ...(gem.name_spec !== undefined ? { name_spec: gem.name_spec } : {}),
+        ...(gem.minion ? { minion: gem.minion } : {}),
+        ...(gem.minion_skill != null ? { minion_skill: gem.minion_skill } : {}),
+        ...(gem.corrupted ? { corrupted: true } : {}),
       })),
     })),
     items: decoded.items.equipped.map((item) => ({ slot: item.slot, text: item.text })),
     flasks: (decoded.items.flasks ?? []).map((f) => ({ slot: f.slot, text: f.text })),
+    limbs: (decoded.items.limbs ?? []).map((limb) => ({ slot: limb.slot, text: limb.text })),
     jewels: (decoded.items.socket_jewels ?? []).map((j) => ({
       socket_node: j.socket_node,
       text: j.text,
@@ -500,7 +519,8 @@ function materialize(
   };
 }
 
-async function skillMetricsForState(state: BuildState): Promise<SkillMetricsResponse> {
+/** Each weapon set's rows come from a request that materializes and names that set. */
+export async function skillMetricsForState(state: BuildState): Promise<SkillMetricsResponse> {
   const backend = await getBackend();
   const active = state.weaponSwap?.active ?? 1;
   const sets = new Set<1 | 2>([active]);
@@ -729,6 +749,7 @@ export function useBuildSession(): BuildSession {
           socketGroups: [],
           items: [],
           flasks: [],
+          limbs: [],
           jewels: [],
           annotations: {},
           params: { config_inputs: {} },
@@ -950,6 +971,7 @@ export function useBuildSession(): BuildSession {
         socketGroups: [],
         items: [],
         flasks: [],
+        limbs: [],
         jewels: [],
         annotations: {},
         params: { config_inputs: {} },
@@ -987,6 +1009,14 @@ export function useBuildSession(): BuildSession {
     (flasks: SlotItemInput[]) => {
       if (!state) return;
       apply({ ...state, flasks });
+    },
+    [apply, state],
+  );
+
+  const setLimbs = useCallback(
+    (limbs: SlotItemInput[]) => {
+      if (!state) return;
+      apply({ ...state, limbs });
     },
     [apply, state],
   );
@@ -1287,7 +1317,7 @@ export function useBuildSession(): BuildSession {
     if (!workspaceRef.current || !stateRef.current || busy || !name.trim()) return;
     const saved: SavedSession = { version: 1, notes: '', state: {
       pobCode: null, character: { ...stateRef.current.character, level: 1 },
-      allocatedNodes: [], attributeChoices: {}, socketGroups: [], items: [], flasks: [], jewels: [], annotations: {}, params: { config_inputs: {} },
+      allocatedNodes: [], attributeChoices: {}, socketGroups: [], items: [], flasks: [], limbs: [], jewels: [], annotations: {}, params: { config_inputs: {} },
     } };
     workspaceRef.current = addWorkspaceBuild(workspaceRef.current, name, saved);
     restoreSession(saved, {});
@@ -1423,6 +1453,7 @@ export function useBuildSession(): BuildSession {
     socketGroupRevision,
     items: state?.items ?? [],
     flasks: state?.flasks ?? [],
+    limbs: state?.limbs ?? [],
     jewels: state?.jewels ?? [],
     calc,
     calcParams: state?.params ?? { config_inputs: {} },
@@ -1452,6 +1483,7 @@ export function useBuildSession(): BuildSession {
     setSocketGroups,
     setItems,
     setFlasks,
+    setLimbs,
     setJewels,
     applyTreePlan,
     removeJewelSocket,
@@ -1460,7 +1492,7 @@ export function useBuildSession(): BuildSession {
     isDirty: stateVersion > cleanVersionRef.current || notes !== cleanNotesRef.current || hasDrafts,
     hasBuildContent: !!build || hasDrafts || !!notes.trim() || !!state && Boolean(
       state.character.level > 1 || state.character.ascendancy_name
-      || state.items.length || state.flasks.length || state.jewels.length
+      || state.items.length || state.flasks.length || state.limbs.length || state.jewels.length
       || state.socketGroups.length || state.allocatedNodes.length
       || state.weaponSwap?.alternate_items.length
       || state.weaponSwap?.exclusive_nodes.some(nodes => nodes.length > 0)

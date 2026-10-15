@@ -22,6 +22,7 @@ fn helmet(texts: &[&str]) -> Item {
         modifier_texts: texts.iter().map(|t| (*t).to_string()).collect(),
         enchant_texts: Vec::new(),
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: Vec::new(),
     }
 }
@@ -126,6 +127,7 @@ fn ingest_item_distinguishes_implicit_explicit_enchant_sections() {
         modifier_texts: vec!["+40 to maximum Life".to_string()],
         enchant_texts: vec!["+25% to Cold Resistance".to_string()],
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: Vec::new(),
     };
 
@@ -170,6 +172,7 @@ fn ingest_item_collects_unsupported_texts_across_sections() {
         modifier_texts: vec!["+40 to maximum Life".to_string(), "mirrored".to_string()],
         enchant_texts: Vec::new(),
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: Vec::new(),
     };
 
@@ -193,6 +196,7 @@ fn ingested_item_modifiers_attribute_back_to_slot() {
         modifier_texts: vec!["+25 to maximum Life".to_string()],
         enchant_texts: Vec::new(),
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: Vec::new(),
     };
 
@@ -224,6 +228,7 @@ fn ingested_implicit_attributes_to_item_implicit_source() {
         modifier_texts: Vec::new(),
         enchant_texts: Vec::new(),
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: Vec::new(),
     };
 
@@ -262,6 +267,7 @@ fn session_add_item_feeds_minimal_calc() {
         ],
         enchant_texts: Vec::new(),
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: Vec::new(),
     };
 
@@ -315,6 +321,7 @@ fn bare_item(base: &str, slot_quality: u8) -> Item {
         modifier_texts: Vec::new(),
         enchant_texts: Vec::new(),
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: Vec::new(),
     }
 }
@@ -397,6 +404,7 @@ fn utility_item(base: &str, implicits: &[&str], explicits: &[&str]) -> Item {
         modifier_texts: explicits.iter().map(|t| (*t).to_string()).collect(),
         enchant_texts: Vec::new(),
         rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
         parsed_stats: Vec::new(),
     }
 }

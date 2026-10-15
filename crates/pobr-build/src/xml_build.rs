@@ -22,15 +22,15 @@
 //!
 //! Robustness: when a single item's text block fails to parse (a structural error),
 //! **that item is skipped** rather than aborting the whole import (matching PoB's
-//! error-tolerant semantics); unparseable mod lines themselves are filtered downstream
-//! by `calculate_with_data`.
+//! error-tolerant semantics) and listed in the [`ImportReport`] of [`import_build`];
+//! unparseable mod lines themselves are filtered downstream by `calculate_with_data`.
 //!
 //! Known gaps (noted, not blocking): `masteryEffects` selection, jewels embedded in a
 //! JewelSocket, the second weapon set's independent Spec, exact base-type normalization
 //! for `<Item>`, etc. are left for later.
 
 use quick_xml::Reader;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use quick_xml::events::{BytesRef, BytesStart, Event};
 
@@ -38,42 +38,64 @@ use pobr_core::CampaignProgress;
 use pobr_core::item_text::parse_pob_xml_item;
 use pobr_core::rules::config_interpreter::{ConfigInputValue, RawConfigInputs};
 use pobr_data::build_config::CustomModifierBlock;
-use pobr_data::item::{EquipmentSlot, Item};
+use pobr_data::item::{EquipmentSlot, Item, LimbSlot};
 use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::{AttributeChoice, NodeId, PassiveTreeSpec};
 
-use crate::build::{Build, CharacterIdentity, RadiusJewel, SocketGroup};
+use crate::build::{Build, CharacterIdentity, JewelSocket, RadiusJewel, SocketGroup, WeaponSet};
 use crate::build_code::decode_pob_code;
 use crate::error::{BuildError, XmlError};
+use crate::import_report::{ImportReport, ImportedBuild, SkippedItem, UnmodelledSlot};
 use crate::loadout::{BuildSets, SetRef};
 use crate::xml_serde::parse_build_header;
 
 /// Slotted equipment + jewels (no fixed slot) + the active ItemSet's `useSecondWeaponSet` flag.
-type EquippedAndJewels = (
-    Vec<(EquipmentSlot, Item)>,
-    Vec<Item>,
-    Vec<(String, Item)>,
-    bool,
-);
-/// Equipment slot assignments (slot → item_id) + jewel item_id list + active
-/// Flask/Charm `(slot name, item_id)` list + `useSecondWeaponSet` flag.
-type SlotAssignments = (
-    Vec<(EquipmentSlot, u32)>,
-    Vec<u32>,
-    Vec<(String, u32)>,
-    bool,
-);
+/// The items the active `<ItemSet>` and the tree's sockets hold, by where
+/// each sits.
+struct ImportedItems {
+    equipment: Vec<(EquipmentSlot, Item)>,
+    jewels: Vec<(JewelSocket, Item)>,
+    flask_charms: Vec<(String, Item)>,
+    limbs: Vec<(LimbSlot, Item)>,
+}
+/// What the active `<ItemSet>` assigns, by item id.
+#[derive(Default)]
+struct SlotAssignments {
+    equipment: Vec<(EquipmentSlot, u32)>,
+    /// ItemSet jewel slots, with the kind of socket the slot name says.
+    jewels: Vec<(u32, JewelSocket)>,
+    /// Active Flask/Charm slots, by PoB slot name.
+    flask_charms: Vec<(String, u32)>,
+    /// Transcendent limb slots.
+    limbs: Vec<(LimbSlot, u32)>,
+    /// Slots that hold an item and that the engine has no model for, by PoB
+    /// slot name. The inactive weapon pair and inactive flasks are left out
+    /// on purpose and are not listed here.
+    unmodelled: Vec<(String, u32)>,
+    use_second_weapon_set: bool,
+}
 
 /// Parses a PoB Build Code directly into a complete [`Build`] (decode → XML → parse).
 ///
 /// Equivalent to `parse_build(&decode_pob_code(code)?)`; the most common one-step entry point for import.
 pub fn parse_build_from_code(code: &str) -> Result<Build, BuildError> {
+    Ok(import_build_from_code(code)?.build)
+}
+
+/// [`parse_build_from_code`] with the [`ImportReport`]. Entry points that show a
+/// result to a person use this one, so a rejected item is never silent.
+pub fn import_build_from_code(code: &str) -> Result<ImportedBuild, BuildError> {
     let xml = decode_pob_code(code.trim())?;
-    Ok(parse_build(&xml)?)
+    Ok(import_build(&xml)?)
 }
 
 /// Parses a PoB Build XML into a complete [`Build`] (character + passive tree + equipment + skill gem groups).
 pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
+    Ok(import_build(xml)?.build)
+}
+
+/// [`parse_build`] with the [`ImportReport`].
+pub fn import_build(xml: &str) -> Result<ImportedBuild, XmlError> {
     parse_build_with_allocated_nodes_impl(xml, None)
 }
 
@@ -83,13 +105,47 @@ pub fn parse_build_with_allocated_nodes(
     xml: &str,
     allocated_nodes: &[u32],
 ) -> Result<Build, XmlError> {
+    Ok(import_build_with_allocated_nodes(xml, allocated_nodes)?.build)
+}
+
+/// [`parse_build_with_allocated_nodes`] with the [`ImportReport`].
+pub fn import_build_with_allocated_nodes(
+    xml: &str,
+    allocated_nodes: &[u32],
+) -> Result<ImportedBuild, XmlError> {
     parse_build_with_allocated_nodes_impl(xml, Some(allocated_nodes))
+}
+
+/// `<PlayerStat stat value>` (or `<MinionStat …>`, as `element` names) under
+/// `<Build>`: the exporting tool's own result. The first value of a repeated
+/// stat wins; a value that is not a number is dropped.
+fn parse_reference_stats(xml: &str, element: &str) -> Result<BTreeMap<String, f64>, XmlError> {
+    let mut reader = Reader::from_str(xml);
+    reader.config_mut().trim_text(true);
+    let mut stats = BTreeMap::new();
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(e)) | Ok(Event::Empty(e)) if element_name(&e) == element => {
+                if let (Some(stat), Some(value)) = (
+                    attr_value(&e, b"stat"),
+                    attr_value(&e, b"value").and_then(|v| v.parse::<f64>().ok()),
+                ) && !value.is_nan()
+                {
+                    stats.entry(stat).or_insert(value);
+                }
+            }
+            Ok(Event::Eof) => break,
+            Err(e) => return Err(XmlError::Parse(e.to_string())),
+            _ => {}
+        }
+    }
+    Ok(stats)
 }
 
 fn parse_build_with_allocated_nodes_impl(
     xml: &str,
     allocation_override: Option<&[u32]>,
-) -> Result<Build, XmlError> {
+) -> Result<ImportedBuild, XmlError> {
     let header = parse_build_header(xml)?;
 
     // The active ItemSet's `useSecondWeaponSet` determines which set of weapon-set-only
@@ -97,7 +153,7 @@ fn parse_build_with_allocated_nodes_impl(
     // flag semantics); the filtered allocated-node set then gates tree socket jewels
     // (jewel mods only enter the calculation through the modList of an allocated socket
     // node — PoB2 CalcSetup.lua:175-244 only walks `spec.allocNodes`).
-    let use_second_weapon_set = parse_active_item_set(xml)?.3;
+    let use_second_weapon_set = parse_active_item_set(xml)?.use_second_weapon_set;
     let ParsedPassives {
         allocated: imported_nodes,
         tree_version,
@@ -107,7 +163,17 @@ fn parse_build_with_allocated_nodes_impl(
         .unwrap_or(imported_nodes);
     let allocated_set: std::collections::HashSet<u32> =
         allocated_nodes.iter().map(|n| n.0).collect();
-    let (items, jewels, flask_charms, _) = parse_items_and_slots(xml, &allocated_set)?;
+    let (
+        ImportedItems {
+            equipment: items,
+            jewels,
+            flask_charms,
+            limbs,
+        },
+        mut report,
+    ) = parse_items_and_slots(xml, &allocated_set)?;
+    report.reference_stats = parse_reference_stats(xml, "PlayerStat")?;
+    report.minion_reference_stats = parse_reference_stats(xml, "MinionStat")?;
     let attribute_overrides = parse_attribute_overrides(xml)?;
     let radius_jewels = parse_radius_jewels(xml, &allocated_set)?;
     let socket_texts = parse_raw_item_texts(xml)?;
@@ -143,15 +209,19 @@ fn parse_build_with_allocated_nodes_impl(
     for (slot, item) in items {
         build = build.set_item(slot, item);
     }
-    build.granted_socket_jewels = granted_socket_jewels;
-    if !jewels.is_empty() {
-        build = build.with_jewels(jewels);
+    if use_second_weapon_set {
+        build.weapon_set = WeaponSet::Second;
     }
+    build.granted_socket_jewels = granted_socket_jewels;
+    build.jewels = jewels;
     if !radius_jewels.is_empty() {
         build = build.with_radius_jewels(radius_jewels);
     }
     if !flask_charms.is_empty() {
         build = build.with_utility_slots(flask_charms);
+    }
+    for (slot, limb) in limbs {
+        build = build.set_limb(slot, limb);
     }
     for group in socket_groups {
         build = build.add_socket_group(group);
@@ -177,7 +247,7 @@ fn parse_build_with_allocated_nodes_impl(
     build.config.campaign_progress = parsed.campaign_progress;
     build.config.enemy_tier = parsed.enemy_tier;
 
-    Ok(build)
+    Ok(ImportedBuild { build, report })
 }
 
 /// A mapping table for boolean config options that PoB2's `ConfigOptions.lua` sets
@@ -599,15 +669,17 @@ const DEFAULT_QUEST_STAT_REWARDS: &[(&str, &str)] = &[
     ("questInterlude 3Kriar VillageLythara", "+40 to Spirit"),
 ];
 
-/// Collects quest reward text line by line (matching PoB2's `applyModsFromString`
-/// splitting by line; multi-line options like Tribal Medicine chain several entries with `\n\t`).
+/// The modifier lines of a quest reward. An option with several rewards chains
+/// them with `\n\t` (Tribal Medicine); `None` is the option for taking no
+/// reward and is not a line.
+pub fn quest_reward_lines(text: &str) -> impl Iterator<Item = &str> {
+    text.lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && *line != "None")
+}
+
 fn push_quest_lines(out: &mut Vec<String>, text: &str) {
-    for line in text.lines() {
-        let line = line.trim();
-        if !line.is_empty() {
-            out.push(line.to_string());
-        }
-    }
+    out.extend(quest_reward_lines(text).map(String::from));
 }
 
 /// PoB2's charge-usage checkboxes (`use{Power,Frenzy,Endurance}Charges`) → the calc-side
@@ -829,10 +901,31 @@ fn parse_attribute_overrides(xml: &str) -> Result<HashMap<NodeId, AttributeChoic
 fn parse_items_and_slots(
     xml: &str,
     allocated: &std::collections::HashSet<u32>,
-) -> Result<EquippedAndJewels, XmlError> {
-    let items = parse_item_blocks(xml)?;
-    let (slot_assignments, jewel_ids, flask_charm_ids, use_second_weapon_set) =
-        parse_active_item_set(xml)?;
+) -> Result<(ImportedItems, ImportReport), XmlError> {
+    let ItemBlocks { items, rejected } = parse_item_blocks(xml)?;
+    let SlotAssignments {
+        equipment: slot_assignments,
+        jewels: jewel_ids,
+        flask_charms: flask_charm_ids,
+        limbs: limb_ids,
+        unmodelled,
+        use_second_weapon_set: _,
+    } = parse_active_item_set(xml)?;
+
+    // Where each item id is used, to say what a rejected block leaves empty.
+    let mut used_in: HashMap<u32, Vec<String>> = HashMap::new();
+    for (slot, item_id) in &slot_assignments {
+        used_in.entry(*item_id).or_default().push(slot.id().into());
+    }
+    for (item_id, _) in &jewel_ids {
+        used_in.entry(*item_id).or_default().push("jewel".into());
+    }
+    for (slot, item_id) in &flask_charm_ids {
+        used_in.entry(*item_id).or_default().push(slot.clone());
+    }
+    for (slot, item_id) in &limb_ids {
+        used_in.entry(*item_id).or_default().push(slot.id().into());
+    }
 
     let mut out: Vec<(EquipmentSlot, Item)> = Vec::new();
     for (slot, item_id) in slot_assignments {
@@ -843,27 +936,69 @@ fn parse_items_and_slots(
     out.sort_by_key(|(slot, _)| slot.id());
 
     // Tree jewels live in `<Tree><Spec><Sockets><Socket nodeId itemId/>` (not ItemSet),
-    // collected separately; only jewels in an allocated socket node are kept.
+    // collected separately; only jewels in an allocated socket node are kept. By item
+    // id, so one item is one jewel and the order is deterministic; an item in both
+    // places counts as the tree's.
     let socket_items = parse_socket_node_items(xml)?;
-    let mut all_jewel_ids = jewel_ids;
-    all_jewel_ids.extend(
-        socket_items
-            .into_iter()
-            .filter(|(node, _)| allocated.contains(node))
-            .map(|(_, item)| item),
-    );
-    all_jewel_ids.sort_unstable();
-    all_jewel_ids.dedup();
+    let mut all_jewels: BTreeMap<u32, JewelSocket> = jewel_ids.into_iter().collect();
+    for (node, item_id) in socket_items {
+        if allocated.contains(&node) {
+            used_in
+                .entry(item_id)
+                .or_default()
+                .push(format!("socket:{node}"));
+            all_jewels.insert(item_id, JewelSocket::Tree);
+        }
+    }
 
-    let jewels: Vec<Item> = all_jewel_ids
+    let jewels: Vec<(JewelSocket, Item)> = all_jewels
         .iter()
-        .filter_map(|id| items.get(id).cloned())
+        .filter_map(|(id, socket)| Some((*socket, items.get(id).cloned()?)))
         .collect();
     let flask_charms: Vec<(String, Item)> = flask_charm_ids
         .iter()
         .filter_map(|(slot, id)| Some((slot.clone(), items.get(id).cloned()?)))
         .collect();
-    Ok((out, jewels, flask_charms, use_second_weapon_set))
+    let limbs: Vec<(LimbSlot, Item)> = limb_ids
+        .iter()
+        .filter_map(|(slot, id)| Some((*slot, items.get(id).cloned()?)))
+        .collect();
+    let skipped = rejected
+        .into_iter()
+        .map(|(item_id, name, reason)| SkippedItem {
+            item_id,
+            used_in: used_in.remove(&item_id).unwrap_or_default(),
+            name,
+            reason,
+        })
+        .collect();
+    let unmodelled_slots = unmodelled
+        .into_iter()
+        .map(|(slot, item_id)| UnmodelledSlot {
+            name: items.get(&item_id).map(item_name).unwrap_or_default(),
+            slot,
+            item_id,
+        })
+        .collect();
+    Ok((
+        ImportedItems {
+            equipment: out,
+            jewels,
+            flask_charms,
+            limbs,
+        },
+        ImportReport {
+            skipped_items: skipped,
+            unmodelled_slots,
+            reference_stats: BTreeMap::new(),
+            minion_reference_stats: BTreeMap::new(),
+        },
+    ))
+}
+
+/// A parsed item's display name: its base, which is all a calculation item keeps.
+fn item_name(item: &Item) -> String {
+    item.base.to_string()
 }
 
 /// Parses tree socket `<Socket nodeId="N" itemId="M"/>` → `(socket_node, item_id)` (itemId≠0).
@@ -960,6 +1095,8 @@ pub struct RawItemsView {
     pub socket_jewels: Vec<(u32, String)>,
     /// Active Flask/Charm: `(slot name, raw text block)`.
     pub flasks: Vec<(String, String)>,
+    /// Transcendent limbs: `(slot's stable id, raw text block)`, in slot order.
+    pub limbs: Vec<(String, String)>,
     /// The inactive weapon pair, kept separately from shared equipment.
     pub alternate_weapons: Vec<(String, String)>,
     pub active_weapon_set: u8,
@@ -1029,9 +1166,16 @@ pub fn parse_build_sets(xml: &str) -> Result<BuildSets, XmlError> {
 /// Parses the raw item text view of the build XML (see [`RawItemsView`]).
 pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
     let texts = parse_raw_item_texts(xml)?;
-    let (slot_assignments, jewel_ids, flask_charm_ids, second) = parse_active_item_set(xml)?;
+    let SlotAssignments {
+        equipment: slot_assignments,
+        jewels: jewel_ids,
+        flask_charms: flask_charm_ids,
+        limbs: mut limb_ids,
+        use_second_weapon_set: second,
+        ..
+    } = parse_active_item_set(xml)?;
     let alternate_weapons = parse_item_set_for_weapons(xml, Some(!second))?
-        .0
+        .equipment
         .into_iter()
         .filter(|(slot, _)| matches!(slot, EquipmentSlot::Weapon1 | EquipmentSlot::Weapon2))
         .filter_map(|(slot, id)| Some((slot.id().to_string(), texts.get(&id)?.clone())))
@@ -1058,7 +1202,7 @@ pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
         .filter_map(|&(node, id)| Some((node, texts.get(&id)?.clone())))
         .collect();
     socket_jewels.sort_by_key(|(node, _)| *node);
-    let mut jewel_item_ids: Vec<u32> = jewel_ids;
+    let mut jewel_item_ids: Vec<u32> = jewel_ids.into_iter().map(|(id, _)| id).collect();
     jewel_item_ids.extend(socket_items.into_iter().map(|(_, id)| id));
     jewel_item_ids.sort_unstable();
     jewel_item_ids.dedup();
@@ -1070,15 +1214,46 @@ pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
         .into_iter()
         .filter_map(|(slot, id)| Some((slot, texts.get(&id)?.clone())))
         .collect();
+    limb_ids.sort();
+    let limbs = limb_ids
+        .into_iter()
+        .filter_map(|(slot, id)| Some((slot.id().to_string(), texts.get(&id)?.clone())))
+        .collect();
     Ok(RawItemsView {
         equipped,
         jewels,
         socket_jewels,
         flasks,
+        limbs,
         alternate_weapons,
         active_weapon_set: if second { 2 } else { 1 },
         weapon_set_nodes,
     })
+}
+
+/// The second line of a stat whose game text wraps, as an item's text keeps
+/// it: From Nothing's "Passives in Radius of <Keystone> can be Allocated" /
+/// "without being connected to your tree"
+/// (`local_unique_jewel_disconnected_passives_can_be_allocated_around_keystone_hash`).
+pub(crate) const WRAPPED_CONTINUATIONS: &[&str] = &["without being connected to your tree"];
+
+/// `lines` with each wrapped continuation ([`WRAPPED_CONTINUATIONS`]) joined
+/// to the line before it, so a stat reads as one line.
+fn join_wrapped_lines(lines: impl IntoIterator<Item = String>) -> Vec<String> {
+    let mut joined: Vec<String> = Vec::new();
+    for line in lines {
+        let continues = WRAPPED_CONTINUATIONS
+            .iter()
+            .any(|continuation| line.trim().eq_ignore_ascii_case(continuation));
+        match joined.last_mut() {
+            Some(previous) if continues => {
+                previous.push(' ');
+                previous.push_str(line.trim());
+            }
+            _ => joined.push(line),
+        }
+    }
+    joined
 }
 
 /// Extracts radius effects and allocation/transform directives from the selected
@@ -1086,12 +1261,13 @@ pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
 /// available separately for editing and export.
 pub fn radius_jewel_from_text(socket_node: u32, text: &str) -> Option<RadiusJewel> {
     let item = parse_pob_xml_item(text).ok()?;
-    let tree_texts: Vec<String> = item
-        .implicit_texts
-        .into_iter()
-        .chain(item.modifier_texts)
-        .chain(item.enchant_texts)
-        .collect();
+    let (rarity, corrupted) = (item.rarity, item.corrupted);
+    let tree_texts: Vec<String> = join_wrapped_lines(
+        item.implicit_texts
+            .into_iter()
+            .chain(item.modifier_texts)
+            .chain(item.enchant_texts),
+    );
     let grant_lines: Vec<String> = tree_texts
         .iter()
         .map(String::as_str)
@@ -1138,6 +1314,11 @@ pub fn radius_jewel_from_text(socket_node: u32, text: &str) -> Option<RadiusJewe
         notable_effect_inc,
         small_effect_inc,
         tree_texts,
+        rarity,
+        corrupted,
+        // The tree's own socket until the calculation finds the socket is one
+        // an item grants (`resolve_granted_socket_jewels`).
+        socket: JewelSocket::Tree,
     })
 }
 
@@ -1188,22 +1369,40 @@ fn strip_brace_tags(line: &str) -> String {
     s.to_string()
 }
 
+/// `id -> Item` for every `<Item>` block that parsed, and the blocks that did not.
+#[derive(Default)]
+struct ItemBlocks {
+    items: std::collections::HashMap<u32, Item>,
+    /// `(item id, name lines, reason)`, in document order.
+    rejected: Vec<(u32, String, String)>,
+}
+
+/// The lines between `Rarity:` and the first `Key: value` line of an item block.
+fn item_block_name(text: &str) -> String {
+    text.lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .skip_while(|line| line.starts_with("Rarity:"))
+        .take_while(|line| !line.contains(": "))
+        .take(2)
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
 /// Parses every `<Item id="N">…</Item>` text block into `id -> Item`.
 ///
 /// Item text is `<Item>`'s text content, interspersed with `<ModRange>` child elements
 /// (only the text portion is taken). A block that fails to parse is skipped (error
-/// tolerant), without aborting the rest of the parse.
-fn parse_item_blocks(xml: &str) -> Result<std::collections::HashMap<u32, Item>, XmlError> {
+/// tolerant), without aborting the rest of the parse, and listed in `rejected`.
+fn parse_item_blocks(xml: &str) -> Result<ItemBlocks, XmlError> {
     let mut reader = Reader::from_str(xml);
     // Preserve original newlines / indentation: item text blocks are parsed line by line.
     reader.config_mut().trim_text(false);
 
-    let mut result = std::collections::HashMap::new();
+    let mut result = ItemBlocks::default();
     let mut in_item = false;
     let mut current_id: u32 = 0;
     let mut current_text = String::new();
-    // Count of `<Item>` blocks skipped due to structural parse failure (a single diagnostic emitted at the end of the loop, see below).
-    let mut skipped: usize = 0;
 
     loop {
         match reader.read_event() {
@@ -1221,15 +1420,17 @@ fn parse_item_blocks(xml: &str) -> Result<std::collections::HashMap<u32, Item>, 
                 if current_id > 0 {
                     match parse_pob_xml_item(&current_text) {
                         Ok(item) => {
-                            result.insert(current_id, item);
+                            result.items.insert(current_id, item);
                         }
                         // A structural parse failure still skips this item (preserving
                         // PoB's error-tolerant semantics, without aborting the whole
-                        // import), but the count gets one diagnostic at the end of the
-                        // loop — to avoid a malformed custom item being silently
-                        // dropped, or participating in the calculation with wrong
-                        // attributes, with no signal at all.
-                        Err(_) => skipped += 1,
+                        // import). The caller reports it: a build silently calculated
+                        // without one of its items gives numbers nobody can trust.
+                        Err(error) => result.rejected.push((
+                            current_id,
+                            item_block_name(&current_text),
+                            error.to_string(),
+                        )),
                     }
                 }
             }
@@ -1237,9 +1438,6 @@ fn parse_item_blocks(xml: &str) -> Result<std::collections::HashMap<u32, Item>, 
             Err(e) => return Err(XmlError::Parse(e.to_string())),
             _ => {}
         }
-    }
-    if skipped > 0 {
-        eprintln!("[POBR_WARN] parse_item_blocks: skipped {skipped} unparseable <Item> block(s)");
     }
     Ok(result)
 }
@@ -1319,16 +1517,17 @@ fn parse_item_set_for_weapons(
     }
 
     let Some(first_set) = sets.first() else {
-        return Ok((Vec::new(), Vec::new(), Vec::new(), false));
+        return Ok(SlotAssignments::default());
     };
     let chosen = active_item_set
         .as_deref()
         .and_then(|id| sets.iter().find(|s| s.id == id))
         .unwrap_or(first_set);
 
-    let mut assignments = Vec::new();
-    let mut jewel_ids = Vec::new();
-    let mut flask_charm_ids = Vec::new();
+    let mut out = SlotAssignments {
+        use_second_weapon_set: chosen.use_second_weapon_set,
+        ..Default::default()
+    };
     for (slot_name, item_id, active) in &chosen.slots {
         if *item_id == 0 {
             continue;
@@ -1336,23 +1535,26 @@ fn parse_item_set_for_weapons(
         if let Some(slot) =
             slot_from_pob_name(slot_name, second.unwrap_or(chosen.use_second_weapon_set))
         {
-            assignments.push((slot, *item_id));
+            out.equipment.push((slot, *item_id));
         } else if is_jewel_slot(slot_name) {
-            jewel_ids.push(*item_id);
-        } else if *active && is_flask_charm_slot(slot_name) {
+            out.jewels
+                .push((*item_id, item_set_jewel_socket(slot_name)));
+        } else if is_flask_charm_slot(slot_name) {
             // Only **active** (`active="true"`) flasks/charms enter the calculation —
             // mirroring PoB2's flask/charm enable toggle (CalcSetup.lua:1014-1028's
             // `slot.active` gating of env.flasks/charms).
             // The slot name is kept too (for `SourceId(Flask, "flask.<slot>")` attribution + flask/charm classification).
-            flask_charm_ids.push((slot_name.clone(), *item_id));
+            if *active {
+                out.flask_charms.push((slot_name.clone(), *item_id));
+            }
+        } else if let Some(slot) = LimbSlot::from_pob_name(slot_name) {
+            out.limbs.push((slot, *item_id));
+        } else if !slot_name.starts_with("Weapon ") {
+            // Not the inactive weapon pair: a slot this engine does not know.
+            out.unmodelled.push((slot_name.clone(), *item_id));
         }
     }
-    Ok((
-        assignments,
-        jewel_ids,
-        flask_charm_ids,
-        chosen.use_second_weapon_set,
-    ))
+    Ok(out)
 }
 
 /// PoB flask/charm slot names (`Flask 1`/`Flask 2`/`Charm 1..3`).
@@ -1363,6 +1565,16 @@ fn is_flask_charm_slot(name: &str) -> bool {
 /// PoB jewel/abyss slot names (`Jewel 12345` / `… Abyssal Socket N` / `… Socket N`) → collected into the jewel list.
 fn is_jewel_slot(name: &str) -> bool {
     name.starts_with("Jewel") || name.contains("Socket")
+}
+
+/// `Jewel <node>` names a tree socket; every other jewel slot of an ItemSet
+/// (`Gloves Jewel Socket 1`, `… Abyssal Socket N`) is a socket on equipment.
+fn item_set_jewel_socket(name: &str) -> JewelSocket {
+    if name.starts_with("Jewel") {
+        JewelSocket::Tree
+    } else {
+        JewelSocket::Equipment
+    }
 }
 
 /// PoB `<Slot name>` → [`EquipmentSlot`]. Slot names outside the enum (Charm/Flask/armour
@@ -1464,9 +1676,22 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                             // attribute defaults to 0 (no quality), matching PoB2
                             // SkillsTab.lua's `quality` attribute read (default 0).
                             if skill_id.is_some() || name_spec.is_some() {
-                                let level = attr_value(&e, b"level")
+                                // The gem's own level plus its "+N Level from
+                                // Corruption" (`corruptLevel`, ±1; PoB2 writes the
+                                // literal "nil" for none; vendor CalcSetup.lua:2297-2299).
+                                // A gem without one keeps the level as written.
+                                let own_level = attr_value(&e, b"level")
                                     .and_then(|v| v.parse::<u32>().ok())
                                     .unwrap_or(1);
+                                let level = match attr_value(&e, b"corruptLevel")
+                                    .and_then(|v| v.parse::<i64>().ok())
+                                {
+                                    Some(corrupt_level) if corrupt_level != 0 => {
+                                        u32::try_from((i64::from(own_level) + corrupt_level).max(1))
+                                            .unwrap_or(own_level)
+                                    }
+                                    _ => own_level,
+                                };
                                 let quality = attr_value(&e, b"quality")
                                     .and_then(|v| v.parse::<u32>().ok())
                                     .unwrap_or(0);
@@ -1476,6 +1701,12 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                                 // primary set). `statSetIndexCalcs` (a separate
                                 // selection on the calcs page) is not handled, and ignored.
                                 let stat_set_index = attr_value(&e, b"statSetIndex")
+                                    .and_then(|v| v.parse::<u32>().ok());
+                                let corrupted =
+                                    attr_value(&e, b"corrupted").is_some_and(|v| v == "true");
+                                let minion = attr_value(&e, b"skillMinion")
+                                    .filter(|v| !v.is_empty() && v.as_str() != "nil");
+                                let minion_skill = attr_value(&e, b"skillMinionSkill")
                                     .and_then(|v| v.parse::<u32>().ok());
                                 // The first enabled gem in the group with a skillId is
                                 // treated as the active skill (PoB's Gem list has active
@@ -1495,6 +1726,9 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                                     quality,
                                     stat_set_index,
                                     name_spec: if name_spec_pending { name_spec } else { None },
+                                    corrupted,
+                                    minion,
+                                    minion_skill,
                                 });
                             }
                             if let Some(gem_id) = gem_id {
@@ -1858,6 +2092,29 @@ Item Level: 80
         assert!(texts.iter().any(|t| t == "+10% to Cold Resistance"));
     }
 
+    #[test]
+    fn a_quest_reward_left_untaken_adds_no_line() {
+        let xml = r#"<?xml version="1.0"?>
+<PathOfBuilding2>
+    <Build level="92" className="Ranger" ascendClassName="Deadeye" viewMode="TREE"/>
+    <Config>
+        <Input name="questAct 3Venom CryptsVenom Draught" string="None"/>
+        <Input name="questAct 2Valley of the TitansMedallion" string="30% increased Charm Charges Gained
+	+1 Charm Slot"/>
+    </Config>
+</PathOfBuilding2>"#;
+        let build = parse_build(xml).expect("parse");
+        let texts = &build.config.global_modifier_texts;
+        assert!(!texts.iter().any(|t| t == "None"), "{texts:?}");
+        // An option with several rewards gives a line each.
+        assert!(
+            texts
+                .iter()
+                .any(|t| t == "30% increased Charm Charges Gained")
+        );
+        assert!(texts.iter().any(|t| t == "+1 Charm Slot"));
+    }
+
     // Config resistancePenalty → CampaignProgress (19-G5 wiring)
 
     #[test]
@@ -2016,6 +2273,78 @@ Implicits: 0
         );
     }
 
+    /// The arms and legs are a set of their own: imported by slot, not
+    /// listed as slots the engine has no model for.
+    #[test]
+    fn limbs_are_imported_into_their_own_slots() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<PathOfBuilding2>
+    <Build level="90" className="Ranger" ascendClassName="Pathfinder"/>
+    <Items activeItemSet="1">
+        <Item id="1">
+Rarity: NORMAL
+Combat Arm
+Implicits: 1
+6% increased Attack Speed
+        </Item>
+        <Item id="2">
+Rarity: NORMAL
+Evasive Leg
+Implicits: 1
+25% increased Evasion Rating
+        </Item>
+        <Item id="3">
+Rarity: NORMAL
+Iron Ring
+        </Item>
+        <ItemSet id="1">
+            <Slot name="Arm 1" itemId="1"/>
+            <Slot name="Leg 2" itemId="2"/>
+            <Slot name="Arm 2" itemId="0"/>
+            <Slot name="Graft 1" itemId="3"/>
+        </ItemSet>
+    </Items>
+</PathOfBuilding2>"#;
+        let ImportedBuild { build, report } = import_build(xml).expect("parse");
+        let limbs: Vec<(LimbSlot, String, Vec<String>)> = build
+            .limbs
+            .iter()
+            .map(|(slot, item)| (*slot, item.base.to_string(), item.implicit_texts.clone()))
+            .collect();
+        assert_eq!(
+            limbs,
+            vec![
+                (
+                    LimbSlot::Arm1,
+                    "Combat Arm".to_string(),
+                    vec!["6% increased Attack Speed".to_string()]
+                ),
+                (
+                    LimbSlot::Leg2,
+                    "Evasive Leg".to_string(),
+                    vec!["25% increased Evasion Rating".to_string()]
+                ),
+            ],
+            "the empty Arm 2 holds nothing"
+        );
+        assert!(build.equipped_items().is_empty());
+        let unmodelled: Vec<&str> = report
+            .unmodelled_slots
+            .iter()
+            .map(|slot| slot.slot.as_str())
+            .collect();
+        assert_eq!(
+            unmodelled,
+            ["Graft 1"],
+            "only a slot with no model is listed"
+        );
+
+        let view = parse_raw_items_view(xml).expect("items view");
+        let slots: Vec<&str> = view.limbs.iter().map(|(slot, _)| slot.as_str()).collect();
+        assert_eq!(slots, ["arm1", "leg2"]);
+        assert!(view.limbs[0].1.contains("Combat Arm"));
+    }
+
     #[test]
     fn item_text_parsed_into_segments() {
         let build = parse_build(SAMPLE).expect("parse");
@@ -2061,6 +2390,31 @@ Implicits: 0
             "the grant source must be preserved, for precise de-duplication of item-granted skill groups"
         );
         assert_eq!(enabled[0].slot.as_deref(), Some("Weapon 1"));
+    }
+
+    /// A corrupted gem's level includes its "+1 Level from Corruption". The
+    /// attribute used to be ignored, so every such skill ran one level low.
+    #[test]
+    fn gem_level_includes_the_level_from_corruption() {
+        let gem_level = |attributes: &str| {
+            let xml = format!(
+                r#"<?xml version="1.0"?>
+<PathOfBuilding2><Build level="90" className="Ranger" ascendClassName="Deadeye"/>
+<Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true">
+<Gem skillId="IceShotPlayer" gemId="Metadata/Items/Gem/IceShot" enabled="true" {attributes}/>
+</Skill></SkillSet></Skills></PathOfBuilding2>"#
+            );
+            let build = parse_build(&xml).expect("parse");
+            let group = &build.socket_groups[0];
+            assert_eq!(group.active_gem_level, Some(group.gem_skills[0].gem_level));
+            group.gem_skills[0].gem_level
+        };
+        assert_eq!(gem_level(r#"level="20" corruptLevel="1""#), 21);
+        assert_eq!(gem_level(r#"level="20" corruptLevel="-1""#), 19);
+        assert_eq!(gem_level(r#"level="20" corruptLevel="0""#), 20);
+        assert_eq!(gem_level(r#"level="20" corruptLevel="nil""#), 20);
+        assert_eq!(gem_level(r#"level="20""#), 20);
+        assert_eq!(gem_level(r#"level="1" corruptLevel="-1""#), 1);
     }
 
     /// T5.4: `<Gem statSetIndex>` parsing — a number → Some(n); PoB2's default

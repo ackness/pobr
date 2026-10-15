@@ -222,7 +222,7 @@ pub(super) fn tag(tag: &TemplateTagDef, count: usize) -> Result<(), String> {
     let (required, allowed): (&[&str], &[&str]) = match tag.tag_type.as_str() {
         "Condition" => (&["var"], &["var", "neg"]),
         "ActorCondition" => (&["var", "actor"], &["var", "neg", "actor"]),
-        "SkillType" => (&[], &["skillType", "skillTypeList"]),
+        "SkillType" => (&[], &["skillType", "skillTypeList", "neg"]),
         "DamageType" => (&["damageType"], &["damageType"]),
         "Multiplier" => (&["var"], &["var", "div", "limit"]),
         "PerStat" => (&["stat"], &["stat", "div", "limit"]),
@@ -231,6 +231,7 @@ pub(super) fn tag(tag: &TemplateTagDef, count: usize) -> Result<(), String> {
         "StatThreshold" => (&["stat", "threshold"], &["stat", "threshold", "upper"]),
         "SkillName" => (&[], &["skillName", "skillNameList", "includeTransfigured"]),
         "DistanceRamp" => (&["ramp"], &["ramp"]),
+        "SlotName" => (&["slotName"], &["slotName"]),
         other => return Err(format!("unsupported tag {other}")),
     };
     for field in required {
@@ -361,6 +362,10 @@ mod tests {
             ),
             (
                 json!({"tags":[{"type":"DistanceRamp","ramp":["10 0.5","5 1"]}]}),
+                "tags",
+            ),
+            (
+                json!({"tags":[{"type":"SlotName","slotName":"Ring"}]}),
                 "tags",
             ),
         ] {

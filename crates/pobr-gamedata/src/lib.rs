@@ -349,12 +349,13 @@ impl GameData {
         self.load_json_at(self.root.join(format!("i18n/{lang}/mods.json")))
     }
 
-    /// Loads skill gem definitions (identity taken from the base id), and
-    /// merges `overlay/gem_effects.json`'s gem → granted-effect edges
-    /// (`granted_effect_id` / `additional_granted_effect_ids`, extracted
-    /// from vendor `Data/Gems.lua` — the `.dat`'s `GemEffects` table isn't
-    /// downloadable) onto the plain base data by `gem_id` (absent overlay
-    /// = plain base, with the edge fields left empty).
+    /// Loads skill gem definitions (identity taken from the base id). A
+    /// gem comes with the game's gem → granted-effect edge
+    /// (`granted_effect_id` / `additional_granted_effect_ids`) and tags. A
+    /// snapshot adapted before the adapter joined the game's `GemEffects`
+    /// table has neither: its edges are merged in by `gem_id` from
+    /// `overlay/gem_effects.json` (extracted from vendor `Data/Gems.lua`),
+    /// which says the same as the game's table for the gems both list.
     pub fn skill_gems(&self) -> Result<Vec<SkillGemDef>, LoadError> {
         let mut gems: Vec<SkillGemDef> = self.load_domain("skill_gems.json")?;
         if let Some(effects) = self.gem_effects()? {
@@ -369,8 +370,8 @@ impl GameData {
                     gem.granted_effect_id = Some(link.granted_effect_id.clone());
                     gem.additional_granted_effect_ids = link.additional_granted_effect_ids.clone();
                 }
-                // The gem isn't in the overlay (e.g. a monster-only or
-                // deprecated gem) → the edge fields stay empty, no error.
+                // The gem isn't in the overlay → it keeps what the base
+                // data says of it, no error.
             }
         }
         Ok(gems)

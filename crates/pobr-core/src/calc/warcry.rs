@@ -264,26 +264,27 @@ pub fn apply_warcry_uptime(env: &mut Env) {
         .or(env.hand_sources.first())
     {
         Some(hand) => {
-            let (cfg, input) = super::hand_pass::hand_scope(hand, &env.cfg, &input);
-            super::offence::resolve_action_rate(&env.player.mod_db, &cfg, &input)
+            let (cfg, input) =
+                super::hand_pass::hand_scope(&env.player.mod_db, hand, &env.cfg, &input);
+            super::offence::resolve_use_rate(&env.player.mod_db, &cfg, &input)
         }
-        None => super::offence::resolve_action_rate(&env.player.mod_db, &env.cfg, &input),
+        None => super::offence::resolve_use_rate(&env.player.mod_db, &env.cfg, &input),
     };
 
     let dbg = dbg_env!("POBR_DBG_WARCRY").is_some();
     let mut gain_mods: Vec<Modifier> = Vec::new();
     let mut intimidating_calculated = false;
     for spec in &env.warcry_skills {
-        // Per-skill scope cfg (vendor skillCfg): the warcry's own type bits;
-        // flags/keywords cleared (a warcry is neither an attack nor a spell,
-        // so the main skill's weapon bits must not leak into the
-        // cooldown/cast-speed sums).
+        // Per-skill scope cfg (vendor skillCfg): the warcry's own type bits
+        // and keywords (Warcry, its damage types); flags cleared (a warcry
+        // is neither an attack nor a spell, so the main skill's weapon bits
+        // must not leak into the cooldown/cast-speed sums).
         let scope_cfg = env
             .cfg
             .clone()
             .with_skill_types(spec.skill_types)
             .with_flags(ModFlags::NONE)
-            .with_keyword_flags(KeywordFlags::NONE);
+            .with_keyword_flags(crate::skill_env::skill_keyword_flags(spec.skill_types));
         let uptime = uptime_ratio(&env.player.mod_db, spec, &scope_cfg, &env.cfg, speed);
         // CalcOffence.lua:3510-3519 reads NumIntimidatingExerts from the
         // player (not the warcry's empowered attack count). Publish even a

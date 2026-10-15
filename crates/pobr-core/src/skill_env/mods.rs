@@ -5,7 +5,7 @@
 //! letting the same logic be reused by WASM, CLI, and test harnesses.
 
 use pobr_data::catalog::DotFlags;
-use pobr_data::modifier::ModType;
+use pobr_data::modifier::{KeywordFlags, ModType};
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 use crate::Modifier;
@@ -195,6 +195,68 @@ pub fn skill_type_flags(skill_types: &[String]) -> pobr_data::modifier::ModFlags
     flags
 }
 
+/// The keywords a skill of these types answers to: what "Damage with
+/// Warcries", "with Fire Skills", "of Movement Skills" or "Curse Skills"
+/// ask of the skill. A skill is a Fire skill when it has the Fire type, a
+/// Warcry when it has the Warcry type, and so on. Attack and Spell are damage
+/// flags ([`skill_type_flags`]); Hit, Arrow and Totem are set where the hit,
+/// the arrows and the totem are known.
+pub fn skill_keyword_flags(types: pobr_data::skill::SkillTypes) -> KeywordFlags {
+    const BY_TYPE: [(&str, KeywordFlags); 12] = [
+        ("Aura", KeywordFlags::AURA),
+        ("AppliesCurse", KeywordFlags::CURSE),
+        ("Warcry", KeywordFlags::WARCRY),
+        ("Movement", KeywordFlags::MOVEMENT),
+        ("Vaal", KeywordFlags::VAAL),
+        ("Physical", KeywordFlags::PHYSICAL),
+        ("Fire", KeywordFlags::FIRE),
+        ("Cold", KeywordFlags::COLD),
+        ("Lightning", KeywordFlags::LIGHTNING),
+        ("Chaos", KeywordFlags::CHAOS),
+        ("Trapped", KeywordFlags::TRAP),
+        ("RemoteMined", KeywordFlags::MINE),
+    ];
+    BY_TYPE
+        .iter()
+        .filter(|(name, _)| {
+            pobr_data::skill::SkillTypes::from_pob2_name(name).is_some_and(|t| types.intersects(t))
+        })
+        .fold(KeywordFlags::NONE, |flags, (_, keyword)| flags | *keyword)
+}
+
+/// The game's stat on a stat set whose hits are a projectile's: "Projectile
+/// Damage" is damage of such a hit.
+pub const STAT_IS_PROJECTILE: &str = "base_is_projectile";
+/// The game's stat on a stat set whose damage is area damage.
+pub const STAT_IS_AREA_DAMAGE: &str = "is_area_damage";
+
+/// The damage flags of a stat set that has the valueless `stats`, from the
+/// flags the types of its skill give (`by_types`).
+///
+/// A skill is of the `Projectile` or `Area` type when some part of it is:
+/// Fireball flies and explodes, and only the explosion is area damage;
+/// Falling Thunder slams and then fires projectiles. The game marks each
+/// stat set, so the set decides, also where the skill has neither type:
+/// the arrows of Rain of Arrows fall instead of flying, and their hits are
+/// projectile hits. Spell, attack and melee still come from the types.
+pub fn stat_set_hit_flags(
+    by_types: pobr_data::modifier::ModFlags,
+    stats: &[String],
+) -> pobr_data::modifier::ModFlags {
+    use pobr_data::modifier::ModFlags;
+    let has = |stat: &str| stats.iter().any(|s| s == stat);
+    let mut flags = by_types
+        .without(ModFlags::PROJECTILE)
+        .without(ModFlags::AREA);
+    if has(STAT_IS_PROJECTILE) {
+        flags |= ModFlags::PROJECTILE;
+    }
+    if has(STAT_IS_AREA_DAMAGE) {
+        flags |= ModFlags::AREA;
+    }
+    flags
+}
+
 /// Vendor `math.floor(value * scale * 100 + 0.5) / 100` scaling (PoB2's `modValue`
 /// rounding for radius jewel grants). Returns the truncated-to-integer result.
 pub fn vendor_scale_mod_value(value: f64, scale: f64) -> f64 {
@@ -223,6 +285,8 @@ pub struct GemPropertyBonus {
     pub kind: GemPropertyKind,
     /// The category (lowercase; empty = a bare "all Skills" matches unconditionally).
     pub category: String,
+    /// "all Corrupted ... Skill Gems": only a corrupted gem gains the bonus.
+    pub corrupted_only: bool,
     /// Attribute requirement filter (matching vendor's
     /// `gemRequirements[reqStr|reqDex|reqInt] ≥ 1`, the `with a <Attr> requirement`
     /// suffix): Some("str"|"dex"|"int").
@@ -262,7 +326,9 @@ pub fn clean_grant_text(text: &str) -> String {
 }
 
 /// Parses a `+N to [Level|Quality] of all <category> Skills [with a <Attr> requirement]`
-/// mod into a [`GemPropertyBonus`]. Returns `None` for any other form.
+/// mod into a [`GemPropertyBonus`]. Returns `None` for any other form. The game
+/// writes the kind either way, "all Cold Skills" or "all Nova Skill Gems"; both
+/// leave the kind alone as the category.
 pub fn parse_gem_property_bonus(text: &str) -> Option<GemPropertyBonus> {
     let clean = clean_grant_text(text);
     let body = clean.strip_prefix('+')?;
@@ -279,7 +345,11 @@ pub fn parse_gem_property_bonus(text: &str) -> Option<GemPropertyBonus> {
     };
     let mut rest = rest.trim();
     let mut attr_req = None;
-    if let Some((head, req)) = rest.split_once(" with a ") {
+    // "with an Intelligence requirement", "with a Strength requirement".
+    if let Some((head, req)) = rest
+        .split_once(" with an ")
+        .or_else(|| rest.split_once(" with a "))
+    {
         attr_req = Some(match req.trim() {
             "strength requirement" => "str",
             "dexterity requirement" => "dex",
@@ -288,11 +358,21 @@ pub fn parse_gem_property_bonus(text: &str) -> Option<GemPropertyBonus> {
         });
         rest = head.trim_end();
     }
-    let category = rest.strip_suffix("skills").unwrap_or(rest).trim();
+    // "Corrupted" names a state of the gem, not a kind of skill.
+    let (corrupted_only, rest) = match rest.strip_prefix("corrupted ") {
+        Some(rest) => (true, rest),
+        None => (false, rest),
+    };
+    let category = rest
+        .strip_suffix("skill gems")
+        .or_else(|| rest.strip_suffix("skills"))
+        .unwrap_or(rest)
+        .trim();
     Some(GemPropertyBonus {
         value,
         kind,
         category: category.to_string(),
+        corrupted_only,
         attr_req,
     })
 }
@@ -306,24 +386,84 @@ pub fn parse_gem_level_bonus(text: &str) -> Option<(u32, String)> {
         .then_some((bonus.value, bonus.category))
 }
 
-/// Whether a gem-level-bonus's `<category>` applies to the main skill. Matches PoB2
-/// semantics (`ModParser.lua:3480-3496`'s GemProperty construction +
-/// `CalcSetup.lua:404-435`'s `applyGemMods` + `CalcTools.lua:113-126`'s `gemIsType`):
-/// - a bare "all skills"/"skill gems" matches unconditionally;
-/// - the whole string = a skill name (PoB2's `gemIdLookup` match branch) → matches by
-///   the main skill's name (derived from the granted effect id);
-/// - otherwise, split on whitespace (PoB2's multi-word category = `keywordList`):
-///   **every** token must hit the main skill's `skill_types`.
-pub fn gem_level_category_matches(category: &str, skill_types: &[String], skill_id: &str) -> bool {
-    if category.is_empty() || category == "skill gems" {
+/// Whether the gem that grants the skill `skill_id`, with the game's
+/// `gem_tags`, is of the kind a gem bonus names (`category`, lowercase):
+/// - no kind ("all Skills", "all Corrupted Skill Gems") is every gem;
+/// - the name of the skill is that skill ("all Shield Wall Skills");
+/// - otherwise each word names a tag and the gem has to carry all of them
+///   ("all Cold Spell Skills": `cold` and `spell`).
+///
+/// The game ties each tag to the stat that raises its gems (`GemTags`:
+/// `projectile` to `projectile_skill_gem_level_+`, "+# to Level of all
+/// Projectile Skills"), so the tag decides, whatever the types of the skills
+/// the gem grants: Rain of Arrows is tagged `projectile` and its arrows are
+/// not of the `Projectile` skill type. "Elemental" is not a tag: the game's
+/// `elemental_skill_gem_level_+` is for the gems of the three elements.
+pub fn gem_tags_match_category(category: &str, gem_tags: &[String], skill_id: &str) -> bool {
+    if category.is_empty() {
         return true;
     }
-    if category == skill_name_from_id(skill_id) {
+    if names_skill(category, skill_id) {
+        return true;
+    }
+    let tagged = |tag: &str| gem_tags.iter().any(|gem_tag| gem_tag == tag);
+    category.split_whitespace().all(|word| match word {
+        "elemental" => tagged("fire") || tagged("cold") || tagged("lightning"),
+        tag => tagged(tag),
+    })
+}
+
+/// [`gem_tags_match_category`] for a skill whose gem has no tags to go by: a
+/// skill no gem in the data grants, or a snapshot adapted before gems
+/// carried their tags. The game's `skill_types` of the skill stand in for
+/// the tags (see [`kind_skill_types`]).
+pub fn gem_level_category_matches(category: &str, skill_types: &[String], skill_id: &str) -> bool {
+    if category.is_empty() {
+        return true;
+    }
+    if names_skill(category, skill_id) {
         return true;
     }
     category
         .split_whitespace()
-        .all(|tok| skill_types.iter().any(|t| t.eq_ignore_ascii_case(tok)))
+        .all(|word| match kind_skill_types(word) {
+            Some(named) => skill_types
+                .iter()
+                .any(|skill_type| named.contains(&skill_type.as_str())),
+            None => skill_types
+                .iter()
+                .any(|skill_type| skill_type.eq_ignore_ascii_case(word)),
+        })
+}
+
+/// The skill types a kind of gem goes by where the word a line uses is not the
+/// type's own name: a "Totem" gem is one that summons a totem, a "Curse" one
+/// that applies a curse, a "Strike" a melee attack on a single target, and an
+/// "Elemental" skill is of any of the three elements. Every other kind a line
+/// names (Nova, Cold, Spell, Herald, …) is a skill type of that name.
+fn kind_skill_types(word: &str) -> Option<&'static [&'static str]> {
+    match word {
+        "totem" => Some(&["SummonsTotem"]),
+        "curse" => Some(&["AppliesCurse"]),
+        "strike" => Some(&["MeleeSingleTarget"]),
+        "crossbow" => Some(&["CrossbowSkill", "CrossbowAmmoSkill"]),
+        "elemental" => Some(&["Fire", "Cold", "Lightning"]),
+        _ => None,
+    }
+}
+
+/// The names lines use for a skill whose name is not its id's
+/// (lowercase): Prism of Belief's "+# to Level of all {1} Skills"
+/// (`unique_jewel_specific_skill_level_+_skill`) names the skill a tamed
+/// beast's gem grants "Tamed Companion".
+const SKILL_NAMES: &[(&str, &str)] = &[("SummonBeastPlayer", "tamed companion")];
+
+/// Whether `category` is the name of the skill `skill_id`.
+fn names_skill(category: &str, skill_id: &str) -> bool {
+    category == skill_name_from_id(skill_id)
+        || SKILL_NAMES
+            .iter()
+            .any(|(id, name)| *id == skill_id && *name == category)
 }
 
 /// Derives a skill's display name from its granted effect id (lowercase, CamelCase
@@ -363,28 +503,68 @@ pub fn mk_trigger_flag(name: &str, label: &str) -> Modifier {
     Modifier::flag(name).with_origin(origin)
 }
 
-/// Finds the "N% increased Effect of Jewel Socket Passive Skills containing Corrupted
-/// Magic Jewels" value on a unique jewel (the Adorned). Returns `None` when no unique
-/// jewel carries the suffix.
-pub fn adorned_corrupted_magic_jewel_inc(jewels: &[pobr_data::item::Item]) -> Option<f64> {
-    const SUFFIX: &str =
-        "% increased Effect of Jewel Socket Passive Skills containing Corrupted Magic Jewels";
-    for jewel in jewels {
-        if jewel.rarity != pobr_data::item::ItemRarity::Unique {
-            continue;
-        }
-        let joined = jewel.modifier_texts.join(" ");
-        if let Some(pos) = joined.find(SUFFIX) {
-            let head = &joined[..pos];
-            let num_start = head
-                .rfind(|c: char| !c.is_ascii_digit())
-                .map_or(0, |i| i + 1);
-            if let Ok(v) = head[num_start..].parse::<f64>() {
-                return Some(v);
+/// The Adorned: "N% increased Effect of Jewel Socket Passive Skills containing
+/// Corrupted Magic Jewels" or "... Corrupted Rare Jewels". Each applies to the
+/// corrupted jewels of that rarity (vendor ModParser.lua:5644,
+/// CalcSetup.lua:120-126).
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct CorruptedJewelEffect {
+    pub magic: Option<f64>,
+    pub rare: Option<f64>,
+}
+
+impl CorruptedJewelEffect {
+    const MIDDLE: &str = "% increased Effect of Jewel Socket Passive Skills containing Corrupted ";
+
+    /// `(rarity, N)` when `line` is the whole modifier. Item text wraps it
+    /// after "Passive Skills", so a caller joins the two halves with a space.
+    pub fn parse_line(line: &str) -> Option<(pobr_data::item::ItemRarity, f64)> {
+        let (number, rest) = line.trim().split_once(Self::MIDDLE)?;
+        let rarity = match rest {
+            "Magic Jewels" => pobr_data::item::ItemRarity::Magic,
+            "Rare Jewels" => pobr_data::item::ItemRarity::Rare,
+            _ => return None,
+        };
+        Some((rarity, number.parse().ok()?))
+    }
+
+    /// The effects the unique jewels among `jewels` carry.
+    pub fn from_jewels<'a>(jewels: impl IntoIterator<Item = &'a pobr_data::item::Item>) -> Self {
+        let mut effect = Self::default();
+        for jewel in jewels {
+            if jewel.rarity != pobr_data::item::ItemRarity::Unique {
+                continue;
+            }
+            let lines = &jewel.modifier_texts;
+            let wrapped = lines.windows(2).map(|pair| pair.join(" "));
+            for line in lines.iter().cloned().chain(wrapped) {
+                match Self::parse_line(&line) {
+                    Some((pobr_data::item::ItemRarity::Magic, n)) => effect.magic = Some(n),
+                    Some((_, n)) => effect.rare = Some(n),
+                    None => {}
+                }
             }
         }
+        effect
     }
-    None
+
+    /// The percent increase to `jewel`'s own modifiers: it must be corrupted
+    /// and of a rarity an effect names.
+    pub fn increase_for(&self, jewel: &pobr_data::item::Item) -> Option<f64> {
+        self.increase(jewel.rarity, jewel.corrupted)
+    }
+
+    /// The percent increase for a jewel of this rarity and corruption.
+    pub fn increase(&self, rarity: pobr_data::item::ItemRarity, corrupted: bool) -> Option<f64> {
+        if !corrupted {
+            return None;
+        }
+        match rarity {
+            pobr_data::item::ItemRarity::Magic => self.magic,
+            pobr_data::item::ItemRarity::Rare => self.rare,
+            _ => None,
+        }
+    }
 }
 
 /// Vendor's `ModStore:ScaleAddMod` numeric scaling semantics (ModStore.lua:70-79):
@@ -404,6 +584,14 @@ pub struct GemInput {
     pub quality: u32,
     /// The gem's selected statSet index (0-based; `None` = default).
     pub stat_set_index: Option<u32>,
+    /// Whether the gem is corrupted.
+    pub corrupted: bool,
+    /// The monster the gem summons when the player chooses it (a Companion's
+    /// beast, a Spectre's monster): a monster variety id.
+    pub minion: Option<String>,
+    /// Which of its monster's skills the minion uses, counting from 1;
+    /// `None` is the first.
+    pub minion_skill: Option<u32>,
 }
 
 /// Crossbow reload data channel (matching vendor `CalcOffence.lua:1118-1122`'s
@@ -415,9 +603,10 @@ pub struct GemInput {
 ///   don't consume ammo);
 /// - `CrossbowReloadTimeBase` BASE (seconds) ← the main-hand weapon's
 ///   `weapon.reload_time_ms` (WeaponTypes' ReloadTime; falls back to the overlay's
-///   base_item_overrides, 33 crossbows already cataloged). When the weapon has no
-///   reload data (not holding a crossbow) → returns empty entirely (matching vendor's
-///   baseReloadTime nil semantics);
+///   base_item_overrides, 33 crossbows already cataloged), divided by
+///   `1 + (local reload speed + local attack speed) / 100` of that weapon. When the
+///   weapon has no reload data (not holding a crossbow) → returns empty entirely
+///   (matching vendor's baseReloadTime nil semantics);
 /// - `CrossbowBoltCount` BASE ← the stat `base_number_of_crossbow_bolts` from the
 ///   sibling ammo skill in the same group (either directly in the group, or linked via
 ///   gem_effects' additional effects) (matching vendor's ammo skill modList transfer
@@ -425,7 +614,9 @@ pub struct GemInput {
 ///   minimum magazine of 1).
 ///
 /// `ReloadSpeed`/`ChanceToNotConsumeAmmo`/`InstantReloadChance` mods go through the
-/// generic modifier bus, aggregated on the calc side (`fill_crossbow_reload`).
+/// generic modifier bus, aggregated on the calc side (`fill_crossbow_reload`). The
+/// weapon's own reload speed lines are not among them: they are local
+/// (`local_mods.weapon`) and stripped from the global pool.
 pub fn crossbow_reload_modifiers(
     effects: &dyn crate::skill_env::EffectLookup,
     weapons: &dyn crate::skill_env::WeaponBaseLookup,
@@ -441,15 +632,28 @@ pub fn crossbow_reload_modifiers(
     if !has_type("CrossbowSkill") || has_type("Grenade") || has_type("CrossbowAmmoSkill") {
         return Vec::new();
     }
-    // Weapon reload base value (main-hand only; matching vendor's `actor.weaponData1.ReloadTime`).
-    let Some(reload_ms) = equipment
-        .item(pobr_data::item::EquipmentSlot::Weapon1)
-        .and_then(|item| weapons.weapon_base(&item.base.to_string()))
+    // The main-hand weapon's reload time.
+    let Some(weapon) = equipment.item(pobr_data::item::EquipmentSlot::Weapon1) else {
+        return Vec::new();
+    };
+    let Some(reload_ms) = weapons
+        .weapon_base(&weapon.base.to_string())
         .and_then(|w| w.reload_time_ms)
         .filter(|&ms| ms > 0)
     else {
         return Vec::new();
     };
+    // The weapon's own reload speed (the game's `local_reload_speed_+%`) and
+    // its own attack speed, which changes reload time as attack speed does,
+    // change the weapon's reload time before the character's reload and
+    // attack speed apply to it (`calc::skill_use_time::crossbow_reload_time`).
+    let local_speed = super::item_text::weapon_local_reload_speed(weapon)
+        + super::item_text::weapon_local_attack_speed(weapon);
+    let local_multiplier = 1.0 + local_speed / 100.0;
+    let mut reload_s = f64::from(reload_ms) / 1000.0;
+    if local_multiplier > 0.0 {
+        reload_s /= local_multiplier;
+    }
     let mk = |name: &str, value: f64, label: String| {
         let origin = ModifierSource::new(SourceId::new(
             SourceKind::SkillGem,
@@ -460,8 +664,8 @@ pub fn crossbow_reload_modifiers(
     };
     let mut mods = vec![mk(
         "CrossbowReloadTimeBase",
-        f64::from(reload_ms) / 1000.0,
-        format!("crossbow weapon reload {reload_ms}ms"),
+        reload_s,
+        format!("crossbow weapon reload {reload_ms}ms, {local_speed:+}% on the weapon"),
     )];
     // Magazine capacity from the sibling ammo skill: the first `CrossbowAmmoSkill`
     // among the group's own gems or their additional granted effects, taking its

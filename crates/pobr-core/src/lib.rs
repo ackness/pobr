@@ -58,7 +58,9 @@ pub use model::{config, modifier};
 pub use parse::{apply_range, mod_cache, mod_parser};
 
 // Public API re-exports (names match the pre-reorg layout; paths point into the new layers)
-pub use aggregate::mod_db::{HighPrecisionRules, ModContribution, ModDb, ModEvaluation, ModList};
+pub use aggregate::mod_db::{
+    HighPrecisionRules, ModContribution, ModDb, ModEvaluation, ModList, ReadSnapshot,
+};
 pub use attribute::attribution::{
     AttributionEntry, AttributionGroup, AttributionMode, AttributionReport, AttributionRequest,
     attribute,
@@ -72,6 +74,7 @@ pub use ingest::campaign::{CampaignProgress, CampaignReward, CampaignState};
 pub use ingest::character::CharacterBase;
 pub use ingest::item::{
     ItemIngest, ItemModSection, apply_weapon_hand_conditions, ingest_item_with_ctx,
+    ingest_limb_with_ctx,
 };
 pub use ingest::item_text::{ItemTextError, parse_item_text, parse_pob_xml_item};
 pub use ingest::passive::{AllocatedNode, PassiveIngest, ingest_passive_nodes_with_ctx};
@@ -80,7 +83,7 @@ pub use ingest::skill_source::{
     SupportGemSpec, SupportIngestError, SupportJudgeInput, can_support, ingest_active_gem_with_ctx,
     ingest_gem_leveled, ingest_gem_with_ctx, ingest_support_gem_with_ctx, judge_support,
 };
-pub use model::config::{CalcConfig, EvalContext, StatLookup};
+pub use model::config::{CalcConfig, EvalContext, ReadVariables, StatLookup};
 pub use model::modifier::{ActorRef, ModTag, ModValue, Modifier};
 pub use rules::{
     DefenceKeystones, DuplicateHandlerError, Handler, HandlerCtx, HandlerOutcome, HandlerRegistry,

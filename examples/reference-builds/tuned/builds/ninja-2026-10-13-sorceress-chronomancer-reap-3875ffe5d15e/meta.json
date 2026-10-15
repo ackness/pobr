@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-sorceress-chronomancer-reap-3875ffe5d15e",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%EC%B0%B8%EC%B9%98%EC%9D%B4-7803/He_B",
+    "account": "참치이-7803",
+    "character": "He_B",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:53:03+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=%EC%B0%B8%EC%B9%98%EC%9D%B4-7803&name=He_B&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Chronomancer",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Chronomancer",
+    "level": 97,
+    "main_skill": "Reap"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "0dedb562109284bb2e57ec41d91149703720e75f3bbeb0f57d93a9109dbd360e",
+    "code_chars": 11884,
+    "decoded_bytes": 43896
+  }
+}

@@ -9,6 +9,8 @@ export function SlotSymbol({ slot }: { slot: string }) {
     : slot === 'boots' ? 'M8 3h9l-1 11 4 4v3H4v-4l5-4L8 3Zm1 5h7M4 17h10'
     : slot === 'belt' ? 'M3 8h18v9H3V8Zm6-1h6v11H9V7Zm3 5h5'
     : /^(Flask|Charm)/.test(slot) ? 'M9 3h6m-5 0v6L6 16v4h12v-4l-4-7V3M8 15h8'
+    : /^arm[12]$/.test(slot) ? 'M4 21v-5l5-4 2-7h4l-1 7-4 5v4M9 12l5 1'
+    : /^leg[12]$/.test(slot) ? 'M9 3h5l-1 9 1 6 5 1v2H9v-3l1-6-1-9Zm0 15h5'
     : 'M8 3 3 6l2 6 3-1v10h8V11l3 1 2-6-5-3c0 4-8 4-8 0Z';
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round"><path d={path} /></svg>;
 }

@@ -10,8 +10,8 @@ use std::collections::BTreeMap;
 
 use pobr_build::build::GemSkillRef;
 use pobr_build::{
-    Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup,
-    calculate_with_data_session, decode_pob_code, parse_build, parse_build_with_allocated_nodes,
+    Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup, WeaponSet,
+    calculate_with_data_session, decode_pob_code, import_build, import_build_with_allocated_nodes,
     radius_jewel_from_text,
 };
 use pobr_core::calc::{CalculationSession, MinimalInput};
@@ -22,7 +22,7 @@ use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::{AttributeChoice, NodeId};
 use serde::{Deserialize, Serialize};
 
-use super::{ApiError, localize_input_text, slot_from_id};
+use super::{ApiError, limb_slot_from_id, localize_input_text, slot_from_id};
 use crate::state;
 
 /// A degraded record for a single source item's **text** failing to parse:
@@ -71,6 +71,14 @@ pub struct GemInput {
     pub(crate) stat_set_index: Option<u32>,
     /// Source display metadata for unresolved slots; never used to resolve calculation effects.
     pub(crate) name_spec: Option<String>,
+    /// Whether the gem is corrupted; omitted means it is not.
+    pub(crate) corrupted: bool,
+    /// The monster a minion gem summons (PoB `skillMinion`); a Companion's
+    /// beast and a Spectre's monster set the Spirit it reserves.
+    pub(crate) minion: Option<String>,
+    /// Which of the minion's skills it uses (PoB `skillMinionSkill`,
+    /// 1-based); omitted is the first.
+    pub(crate) minion_skill: Option<u32>,
 }
 
 impl Default for GemInput {
@@ -81,6 +89,9 @@ impl Default for GemInput {
             quality: 0,
             stat_set_index: None,
             name_spec: None,
+            corrupted: false,
+            minion: None,
+            minion_skill: None,
         }
     }
 }
@@ -125,8 +136,11 @@ pub struct SlotItemInput {
 #[derive(Debug, Clone, Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct WeaponSwapInput {
+    /// The weapon set in use, 1 or 2; calculation reads only this field.
     pub(crate) active: u8,
+    /// The other set's weapons (export only).
     pub(crate) alternate_items: Vec<SlotItemInput>,
+    /// The passives allocated in only one set, per set (export only).
     pub(crate) exclusive_nodes: [Vec<u32>; 2],
 }
 
@@ -146,7 +160,9 @@ pub struct JewelInput {
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct CalculateBuildRequest {
-    /// Editable inactive equipment and weapon-set passives, used for export.
+    /// The weapon set in use (`active`, which calculation reads), plus the
+    /// editable inactive weapons and weapon-set passives that export writes.
+    /// `None` keeps the set of the code's active item set (a new build: 1).
     pub(crate) weapon_swap: Option<WeaponSwapInput>,
     pub(crate) pob_code: String,
     /// Preserve the imported passive tree instead of implicitly migrating it.
@@ -167,6 +183,9 @@ pub struct CalculateBuildRequest {
     /// The active-flask/charm override (wholesale replaces
     /// `utility_slots`; slot names are `Flask 1/2`, `Charm 1..3`).
     pub(crate) flasks: Option<Vec<SlotItemInput>>,
+    /// The Transcendent limb override (wholesale replaces `limbs`; slots are
+    /// `arm1`, `arm2`, `leg1`, `leg2`).
+    pub(crate) limbs: Option<Vec<SlotItemInput>>,
     /// The tree-socket jewel override (including radius jewels: `in Radius
     /// also grant` lines rewrite passive mod lines via geometric expansion).
     pub(crate) jewels: Option<Vec<JewelInput>>,
@@ -248,6 +267,9 @@ pub(super) fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData
             quality: gem.quality,
             stat_set_index: gem.stat_set_index,
             name_spec: None,
+            corrupted: gem.corrupted,
+            minion: gem.minion.clone(),
+            minion_skill: gem.minion_skill,
         });
         if let Some(gem_id) = gem_id {
             group.gem_ids.push(gem_id);
@@ -257,7 +279,8 @@ pub(super) fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData
 }
 
 /// Applies the request's overrides to a decoded/newly-created build
-/// (character / tree / skill groups / equipment / main socket group / config).
+/// (character / tree / skill groups / equipment and its weapon set / main
+/// socket group / config).
 pub(crate) fn apply_request_overrides(
     build: &mut Build,
     req: &CalculateBuildRequest,
@@ -313,6 +336,14 @@ pub(crate) fn apply_request_overrides(
             }
         }
     }
+    // The weapon set in use decides modifiers "while using Weapon Set 1/2".
+    // Without `weapon_swap` the build keeps its own set.
+    if let Some(swap) = &req.weapon_swap {
+        let active = swap.active;
+        build.weapon_set = WeaponSet::from_number(active).ok_or_else(|| {
+            ApiError::bad_request(format!("weapon_swap.active must be 1 or 2, got {active}"))
+        })?;
+    }
     if let Some(flasks) = &req.flasks {
         build.utility_slots.clear();
         for flask in flasks {
@@ -330,6 +361,23 @@ pub(crate) fn apply_request_overrides(
                 Ok(parsed) => build.utility_slots.push((flask.slot.clone(), parsed)),
                 Err(e) => issues.push(SlotIssue {
                     slot: flask.slot.clone(),
+                    message: format!("{e:?}"),
+                }),
+            }
+        }
+    }
+    if let Some(limbs) = &req.limbs {
+        build.limbs.clear();
+        for limb in limbs {
+            let slot = limb_slot_from_id(&limb.slot)
+                .map_err(|e| ApiError::bad_request(e).with_slot(limb.slot.as_str()))?;
+            let text = localize_input_text(&limb.text);
+            match parse_pob_xml_item(&text) {
+                Ok(parsed) => {
+                    build.limbs.insert(slot, parsed);
+                }
+                Err(e) => issues.push(SlotIssue {
+                    slot: limb.slot.clone(),
                     message: format!("{e:?}"),
                 }),
             }
@@ -362,7 +410,7 @@ pub(crate) fn apply_request_overrides(
                     .push((jewel.socket_node, parsed, radius_jewel));
                 continue;
             }
-            plain.push(parsed);
+            plain.push((pobr_build::build::JewelSocket::Tree, parsed));
             if let Some(rj) = radius_jewel {
                 radius.push(rj);
             }
@@ -425,12 +473,7 @@ pub(crate) fn apply_request_overrides(
         if key.starts_with("quest")
             && let ConfigInputValue::Text(s) = value
         {
-            quest_texts.extend(
-                s.lines()
-                    .map(str::trim)
-                    .filter(|l| !l.is_empty())
-                    .map(String::from),
-            );
+            quest_texts.extend(pobr_build::quest_reward_lines(s).map(String::from));
         }
     }
     build.config.global_modifier_texts = quest_texts;
@@ -461,6 +504,15 @@ pub(crate) fn orchestrator_options(
 }
 
 pub(crate) fn parse_build_from_request(req: &CalculateBuildRequest) -> Result<Build, ApiError> {
+    Ok(import_build_from_request(req)?.0)
+}
+
+/// The request's baseline build, with an issue for each item its code uses
+/// that could not be read and that the request does not replace. Without
+/// this a `{ pob_code }` request is calculated minus that gear, silently.
+pub(crate) fn import_build_from_request(
+    req: &CalculateBuildRequest,
+) -> Result<(Build, Vec<SlotIssue>), ApiError> {
     if req.pob_code.trim().is_empty() {
         // Starting a build from scratch (PoB2's "new build" semantics): an
         // empty build with no equipment/skill groups, with character
@@ -475,20 +527,45 @@ pub(crate) fn parse_build_from_request(req: &CalculateBuildRequest) -> Result<Bu
         // Quest rewards aren't injected here: they're uniformly rebuilt by
         // apply_request_overrides from the merged config inputs (the XML
         // and direct-construction paths share one basis, and rewards can be changed on the Config page after import).
-        return Ok(Build::new().with_character(CharacterIdentity {
+        let build = Build::new().with_character(CharacterIdentity {
             level: ch.level.unwrap_or(1),
             class_name,
             ascendancy_name: ch.ascendancy_name.clone().unwrap_or_default(),
-        }));
+        });
+        return Ok((build, Vec::new()));
     }
     let xml = decode_pob_code(req.pob_code.trim())
         .map_err(|e| ApiError::decode_error(format!("decode: {e}")))?;
-    let parsed = if let Some(nodes) = &req.allocated_nodes {
-        parse_build_with_allocated_nodes(&xml, nodes)
+    let imported = if let Some(nodes) = &req.allocated_nodes {
+        import_build_with_allocated_nodes(&xml, nodes)
     } else {
-        parse_build(&xml)
-    };
-    parsed.map_err(|e| ApiError::decode_error(format!("parse build: {e}")))
+        import_build(&xml)
+    }
+    .map_err(|e| ApiError::decode_error(format!("parse build: {e}")))?;
+
+    let mut issues = Vec::new();
+    for item in imported.report.missing_items() {
+        for used in &item.used_in {
+            // The request's own section replaces the code's; its items are
+            // reported by `apply_request_overrides`.
+            let (replaced, slot) = if let Some(node) = used.strip_prefix("socket:") {
+                (req.jewels.is_some(), format!("Jewel@{node}"))
+            } else if used == "jewel" {
+                (req.jewels.is_some(), "Jewel".to_string())
+            } else if used.starts_with("Flask ") || used.starts_with("Charm ") {
+                (req.flasks.is_some(), used.clone())
+            } else {
+                (req.items.is_some(), used.clone())
+            };
+            if !replaced {
+                issues.push(SlotIssue {
+                    slot,
+                    message: item.reason.clone(),
+                });
+            }
+        }
+    }
+    Ok((imported.build, issues))
 }
 
 pub(crate) fn run_session_for_build(

@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-ranger-deadeye-ice-shot-6c58b3d8bf40",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%EC%84%AD%EC%84%AD%EC%9D%B4-8365/%ED%99%9C%EC%9F%81%EC%9D%B4%EB%B3%B5%EA%B7%80",
+    "account": "섭섭이-8365",
+    "character": "활쟁이복귀",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:53:03+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=%EC%84%AD%EC%84%AD%EC%9D%B4-8365&name=%ED%99%9C%EC%9F%81%EC%9D%B4%EB%B3%B5%EA%B7%80&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Deadeye",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Ranger",
+    "ascendancy": "Deadeye",
+    "level": 99,
+    "main_skill": "Ice Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "4727898cf71bc29386ab1735291a2f7fe8405f130b42c7e9caab20764cad31e7",
+    "code_chars": 11664,
+    "decoded_bytes": 44281
+  }
+}

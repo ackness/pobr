@@ -161,6 +161,21 @@ pub fn assemble_overrides_document(meta: OverlayMeta, mut entries: Vec<SkillOver
     json
 }
 
+/// `LUA_PATH` for running the vendored PoB2 headless from its `src/`
+/// directory: the pure-Lua shims of `tools/pob2-oracle/shim` first (the
+/// vendor requires `lua-utf8`, a native module LuaJIT does not ship, and
+/// without it PoB2's main module never loads), then the vendor's runtime.
+/// The same path the calculation oracle (`tools/pob2-oracle/run.sh`) uses.
+pub fn headless_lua_path(vendor_src: &Path) -> io::Result<String> {
+    let shim = Path::new(env!("CARGO_MANIFEST_DIR")).join("../pob2-oracle/shim");
+    let runtime = vendor_src.canonicalize()?.join("../runtime/lua");
+    Ok(format!(
+        "{s}/?.lua;{r}/?.lua;{r}/?/init.lua;./?.lua;;",
+        s = shim.display(),
+        r = runtime.display()
+    ))
+}
+
 /// Spawn luajit to run the bootstrap script (piped via stdin), and parse its JSONL output
 fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<SkillOverride>> {
     invoke_luajit_jsonl(args, BOOTSTRAP_LUA)

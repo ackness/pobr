@@ -3,7 +3,7 @@
     "schema": "parsed_mods/v2",
     "generator": "precompile-mods --data",
     "note": "M6-T7 离线预解析；运行时（D-T8）作 text→Vec<Modifier> 缓存兜底，cache miss 回退在线 parse",
-    "corpus_lines": 4280,
+    "corpus_lines": 4277,
     "engine": "scan_engine+special"
   },
   "entries": [
@@ -6543,7 +6543,7 @@
           "type": "Inc",
           "value": 1.0,
           "tags": [
-            "Multiplier { var: \"Accuracy\", div: 400.0, limit: Some(400.0), actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: true }"
+            "Multiplier { var: \"Accuracy\", div: 400.0, limit: Some(20.0), actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: true }"
           ]
         }
       ]
@@ -6556,6 +6556,7 @@
           "name": "ChaosDamage",
           "type": "Inc",
           "value": 1.0,
+          "kw": 268435456,
           "tags": [
             "DamageType(Chaos)"
           ]
@@ -8100,7 +8101,8 @@
         {
           "name": "CriticalStrikeChance",
           "type": "Inc",
-          "value": 10.0
+          "value": 10.0,
+          "kw": 4096
         }
       ]
     },
@@ -8724,7 +8726,8 @@
         {
           "name": "Damage",
           "type": "Inc",
-          "value": 10.0
+          "value": 10.0,
+          "kw": 4096
         }
       ]
     },
@@ -8735,7 +8738,8 @@
         {
           "name": "CooldownRecovery",
           "type": "Inc",
-          "value": 10.0
+          "value": 10.0,
+          "kw": 4
         }
       ]
     },
@@ -9584,7 +9588,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 11.0
+          "value": 11.0,
+          "flags": 2
         }
       ]
     },
@@ -9927,7 +9932,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 12.0
+          "value": 12.0,
+          "flags": 2
         }
       ]
     },
@@ -10716,7 +10722,18 @@
     },
     {
       "text": "12% increased [Spell] Damage with [Spell|Spells] that cost Life",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "Inc",
+          "value": 12.0,
+          "flags": 2,
+          "tags": [
+            "StatThreshold { stat: \"LifeCost\", threshold: 1.0, upper: false }"
+          ]
+        }
+      ]
     },
     {
       "text": "12% increased [StunThreshold|Stun Threshold]",
@@ -11009,7 +11026,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 13.0
+          "value": 13.0,
+          "flags": 2
         }
       ]
     },
@@ -11169,7 +11187,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 14.0
+          "value": 14.0,
+          "flags": 2
         }
       ]
     },
@@ -11553,7 +11572,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 15.0
+          "value": 15.0,
+          "flags": 2
         }
       ]
     },
@@ -12452,7 +12472,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 15.0
+          "value": 15.0,
+          "flags": 2
         }
       ]
     },
@@ -13444,7 +13465,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 16.0
+          "value": 16.0,
+          "flags": 2
         }
       ]
     },
@@ -13488,7 +13510,8 @@
         {
           "name": "Damage",
           "type": "Inc",
-          "value": 16.0
+          "value": 16.0,
+          "kw": 4
         }
       ]
     },
@@ -13888,7 +13911,8 @@
         {
           "name": "WarcrySpeed",
           "type": "Inc",
-          "value": 16.0
+          "value": 16.0,
+          "kw": 4
         }
       ]
     },
@@ -14141,7 +14165,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 18.0
+          "value": 18.0,
+          "flags": 2
         }
       ]
     },
@@ -14309,7 +14334,8 @@
         {
           "name": "CooldownRecovery",
           "type": "Inc",
-          "value": 18.0
+          "value": 18.0,
+          "kw": 4
         }
       ]
     },
@@ -14397,7 +14423,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 19.0
+          "value": 19.0,
+          "flags": 2
         }
       ]
     },
@@ -14854,7 +14881,8 @@
         {
           "name": "ChainChance",
           "type": "Base",
-          "value": 20.0
+          "value": 20.0,
+          "kw": 128
         }
       ]
     },
@@ -14994,7 +15022,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 20.0
+          "value": 20.0,
+          "flags": 2
         }
       ]
     },
@@ -15059,7 +15088,8 @@
         {
           "name": "Damage",
           "type": "Inc",
-          "value": 20.0
+          "value": 20.0,
+          "kw": 4
         }
       ]
     },
@@ -16834,7 +16864,8 @@
         {
           "name": "WarcrySpeed",
           "type": "Inc",
-          "value": 20.0
+          "value": 20.0,
+          "kw": 4
         }
       ]
     },
@@ -17494,7 +17525,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 21.0
+          "value": 21.0,
+          "flags": 2
         }
       ]
     },
@@ -17750,7 +17782,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 22.0
+          "value": 22.0,
+          "flags": 2
         }
       ]
     },
@@ -18076,7 +18109,8 @@
         {
           "name": "WarcrySpeed",
           "type": "Inc",
-          "value": 24.0
+          "value": 24.0,
+          "kw": 4
         }
       ]
     },
@@ -18161,7 +18195,14 @@
     },
     {
       "text": "25% chance for [Trigger] skills to refund half of [Energy] Spent",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyRefundHalfChance",
+          "type": "Base",
+          "value": 25.0
+        }
+      ]
     },
     {
       "text": "25% chance on [Consume|Consuming] a [Shock] on an Enemy to reapply it",
@@ -18587,7 +18628,7 @@
           "flags": 8192,
           "tags": [
             "Condition { var: \"{Hand}Attack\", negated: false, actor: None }",
-            "SkillTypes(SkillTypes([0, 0, 137438953472, 0, 0]))"
+            "SkillTypesNeg(SkillTypes([0, 0, 137438953472, 0, 0]))"
           ]
         },
         {
@@ -18597,7 +18638,7 @@
           "flags": 8192,
           "tags": [
             "Condition { var: \"{Hand}Attack\", negated: false, actor: None }",
-            "SkillTypes(SkillTypes([0, 0, 137438953472, 0, 0]))"
+            "SkillTypesNeg(SkillTypes([0, 0, 137438953472, 0, 0]))"
           ]
         }
       ]
@@ -19103,7 +19144,8 @@
         {
           "name": "CriticalStrikeChance",
           "type": "Inc",
-          "value": 25.0
+          "value": 25.0,
+          "kw": 4096
         }
       ]
     },
@@ -19464,7 +19506,8 @@
         {
           "name": "Damage",
           "type": "Inc",
-          "value": 25.0
+          "value": 25.0,
+          "kw": 4096
         }
       ]
     },
@@ -19475,7 +19518,8 @@
         {
           "name": "CooldownRecovery",
           "type": "Inc",
-          "value": 25.0
+          "value": 25.0,
+          "kw": 4
         }
       ]
     },
@@ -19486,7 +19530,8 @@
         {
           "name": "WarcrySpeed",
           "type": "Inc",
-          "value": 25.0
+          "value": 25.0,
+          "kw": 4
         }
       ]
     },
@@ -20109,7 +20154,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 28.0
+          "value": 28.0,
+          "flags": 2
         }
       ]
     },
@@ -20409,7 +20455,8 @@
         {
           "name": "CastSpeed",
           "type": "Inc",
-          "value": 3.0
+          "value": 3.0,
+          "kw": 64
         }
       ]
     },
@@ -20693,12 +20740,14 @@
         {
           "name": "AttackSpeed",
           "type": "Inc",
-          "value": 3.0
+          "value": 3.0,
+          "kw": 224
         },
         {
           "name": "CastSpeed",
           "type": "Inc",
-          "value": 3.0
+          "value": 3.0,
+          "kw": 224
         }
       ]
     },
@@ -20709,12 +20758,14 @@
         {
           "name": "AttackSpeed",
           "type": "Inc",
-          "value": 3.0
+          "value": 3.0,
+          "kw": 128
         },
         {
           "name": "CastSpeed",
           "type": "Inc",
-          "value": 3.0
+          "value": 3.0,
+          "kw": 128
         }
       ]
     },
@@ -21186,7 +21237,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 30.0
+          "value": 30.0,
+          "flags": 2
         }
       ]
     },
@@ -22933,7 +22985,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 33.0
+          "value": 33.0,
+          "flags": 2
         }
       ]
     },
@@ -23379,7 +23432,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 36.0
+          "value": 36.0,
+          "flags": 2
         }
       ]
     },
@@ -24081,7 +24135,8 @@
         {
           "name": "Damage",
           "type": "Inc",
-          "value": 40.0
+          "value": 40.0,
+          "kw": 4
         }
       ]
     },
@@ -24912,7 +24967,18 @@
     },
     {
       "text": "40% increased [Spell] Damage with [Spell|Spells] that cost Life",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "Inc",
+          "value": 40.0,
+          "flags": 2,
+          "tags": [
+            "StatThreshold { stat: \"LifeCost\", threshold: 1.0, upper: false }"
+          ]
+        }
+      ]
     },
     {
       "text": "40% increased [StunRecovery|Stun Recovery]",
@@ -25955,12 +26021,14 @@
         {
           "name": "AttackSpeed",
           "type": "Inc",
-          "value": 5.0
+          "value": 5.0,
+          "kw": 224
         },
         {
           "name": "CastSpeed",
           "type": "Inc",
-          "value": 5.0
+          "value": 5.0,
+          "kw": 224
         }
       ]
     },
@@ -25971,12 +26039,14 @@
         {
           "name": "AttackSpeed",
           "type": "Inc",
-          "value": 5.0
+          "value": 5.0,
+          "kw": 128
         },
         {
           "name": "CastSpeed",
           "type": "Inc",
-          "value": 5.0
+          "value": 5.0,
+          "kw": 128
         }
       ]
     },
@@ -28159,7 +28229,18 @@
     },
     {
       "text": "6% increased [Spell] Damage with [Spell|Spells] that cost Life",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "Inc",
+          "value": 6.0,
+          "flags": 2,
+          "tags": [
+            "StatThreshold { stat: \"LifeCost\", threshold: 1.0, upper: false }"
+          ]
+        }
+      ]
     },
     {
       "text": "6% increased [Warcry|Warcry] Cooldown Recovery Rate",
@@ -28168,7 +28249,8 @@
         {
           "name": "CooldownRecovery",
           "type": "Inc",
-          "value": 6.0
+          "value": 6.0,
+          "kw": 4
         }
       ]
     },
@@ -28300,7 +28382,8 @@
         {
           "name": "ChainChance",
           "type": "Base",
-          "value": 60.0
+          "value": 60.0,
+          "kw": 128
         }
       ]
     },
@@ -28529,14 +28612,7 @@
     },
     {
       "text": "60% increased effect of Socketed Augment Items",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "SocketedAugmentItemEffect",
-          "type": "Inc",
-          "value": 60.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "60% of your current [EnergyShield|Energy Shield] is added to your [Armour] for\ndetermining your Physical Damage Reduction from [Armour]",
@@ -29404,7 +29480,8 @@
         {
           "name": "CastSpeed",
           "type": "Inc",
-          "value": 8.0
+          "value": 8.0,
+          "kw": 64
         }
       ]
     },
@@ -29878,12 +29955,14 @@
         {
           "name": "AttackSpeed",
           "type": "Inc",
-          "value": 8.0
+          "value": 8.0,
+          "kw": 128
         },
         {
           "name": "CastSpeed",
           "type": "Inc",
-          "value": 8.0
+          "value": 8.0,
+          "kw": 128
         }
       ]
     },
@@ -30300,7 +30379,8 @@
         {
           "name": "WarcrySpeed",
           "type": "Inc",
-          "value": 8.0
+          "value": 8.0,
+          "kw": 4
         }
       ]
     },
@@ -30693,14 +30773,7 @@
     },
     {
       "text": "88% increased effect of Socketed Augment Items",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "SocketedAugmentItemEffect",
-          "type": "Inc",
-          "value": 88.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "89 to 100 Physical Thorns damage",
@@ -30781,7 +30854,8 @@
         {
           "name": "CriticalStrikeMultiplier",
           "type": "Inc",
-          "value": 9.0
+          "value": 9.0,
+          "flags": 2
         }
       ]
     },
@@ -32484,6 +32558,11 @@
           ]
         },
         {
+          "name": "ColdCanIgnite",
+          "type": "Flag",
+          "value": true
+        },
+        {
           "name": "ExtraAura",
           "type": "List",
           "value": [
@@ -32493,6 +32572,11 @@
               "value": true
             }
           ]
+        },
+        {
+          "name": "LightningCanIgnite",
+          "type": "Flag",
+          "value": true
         },
         {
           "name": "ExtraAura",
@@ -32506,6 +32590,11 @@
           ]
         },
         {
+          "name": "ChaosCanIgnite",
+          "type": "Flag",
+          "value": true
+        },
+        {
           "name": "ExtraAura",
           "type": "List",
           "value": [
@@ -32515,6 +32604,11 @@
               "value": true
             }
           ]
+        },
+        {
+          "name": "PhysicalCanIgnite",
+          "type": "Flag",
+          "value": true
         }
       ]
     },
@@ -34770,7 +34864,7 @@
     },
     {
       "text": "Can roll Marksman modifiers",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Can tattoo [Rune|Runes] onto your body, gaining\nadditional [Rune]-only sockets:\n• 1 Helmet socket\n• 2 Body Armour sockets\n• 1 Gloves socket\n• 1 Boots socket",
@@ -34976,39 +35070,6 @@
     {
       "text": "Changeling Talisman",
       "status": "unsupported"
-    },
-    {
-      "text": "Charm Slots: 1",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "CharmLimit",
-          "type": "Base",
-          "value": 1.0
-        }
-      ]
-    },
-    {
-      "text": "Charm Slots: 2",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "CharmLimit",
-          "type": "Base",
-          "value": 2.0
-        }
-      ]
-    },
-    {
-      "text": "Charm Slots: 3",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "CharmLimit",
-          "type": "Base",
-          "value": 3.0
-        }
-      ]
     },
     {
       "text": "Charmed Shoes",
@@ -35431,7 +35492,17 @@
     },
     {
       "text": "Defend with 120% of [Armour] while not on [LowEnergyShield|Low Energy Shield]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArmourDefense",
+          "type": "Base",
+          "value": 20.0,
+          "tags": [
+            "Condition { var: \"LowEnergyShield\", negated: true, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Defend with 150% of [Armour] against [Hit|Hits] from Enemies that are further than 6m away",
@@ -35488,7 +35559,7 @@
     },
     {
       "text": "Destroys all Augment Sockets on the item to create a Jewel Socket",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Diamond",
@@ -38294,7 +38365,14 @@
     },
     {
       "text": "Grants Skill: <underline>{Sorcery Ward}",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:SorceryWard",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Grants Skill: <underline>{Summon Infernal Hound}",
@@ -39595,11 +39673,25 @@
     },
     {
       "text": "Modifiers to [MaximumResistances|Maximum Fire Resistance] also grant [MaximumResistances|Maximum Cold and Lightning Resistance]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MaximumFireResistanceAlsoGrantsColdAndLightning",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Modifiers to [Resistances|Fire Resistance] also grant [Resistances|Cold and Lightning Resistance] at 50% of their value",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "FireResistanceAlsoGrantsColdAndLightning",
+          "type": "Base",
+          "value": 50.0
+        }
+      ]
     },
     {
       "text": "Morbid Veil",
@@ -39767,14 +39859,7 @@
     },
     {
       "text": "Only Soul Cores can be Socketed in this item",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "SocketedSoulCoresOnly",
-          "type": "Flag",
-          "value": true
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "Only affects Passives in Medium Ring",
@@ -40602,7 +40687,7 @@
     },
     {
       "text": "Remnants can be collected from 20% further away",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Remnants you create have 10% increased effect",
@@ -40816,9 +40901,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "SkillDamageIncreasedPerRedSupport",
-          "type": "Flag",
-          "value": 20.0
+          "name": "Damage",
+          "type": "Inc",
+          "value": 20.0,
+          "tags": [
+            "Multiplier { var: \"ConnectedRedSupportGems\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+          ]
         }
       ]
     },
@@ -40899,9 +40987,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "SkillCritChanceIncreasedPerBlueSupport",
-          "type": "Flag",
-          "value": 20.0
+          "name": "CriticalStrikeChance",
+          "type": "Inc",
+          "value": 20.0,
+          "tags": [
+            "Multiplier { var: \"ConnectedBlueSupportGems\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+          ]
         }
       ]
     },
@@ -40914,9 +41005,28 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "SkillSpeedIncreasedPerGreenSupport",
-          "type": "Flag",
-          "value": 6.0
+          "name": "SkillSpeed",
+          "type": "Inc",
+          "value": 6.0,
+          "tags": [
+            "Multiplier { var: \"ConnectedGreenSupportGems\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+          ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 6.0,
+          "tags": [
+            "Multiplier { var: \"ConnectedGreenSupportGems\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "Inc",
+          "value": 6.0,
+          "tags": [
+            "Multiplier { var: \"ConnectedGreenSupportGems\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+          ]
         }
       ]
     },
@@ -41844,6 +41954,14 @@
           "tags": [
             "Condition { var: \"LowMana\", negated: true, actor: None }"
           ]
+        },
+        {
+          "name": "Condition:UnholyMight",
+          "type": "Flag",
+          "value": true,
+          "tags": [
+            "Condition { var: \"LowMana\", negated: true, actor: None }"
+          ]
         }
       ]
     },
@@ -42721,7 +42839,49 @@
     },
     {
       "text": "[Attack|Attacks] using your Weapons have Added [Physical] Damage equal\nto 25% of the [Accuracy] Rating on the Weapon",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "PhysicalDamageMin",
+          "type": "Base",
+          "value": 0.25,
+          "flags": 1,
+          "tags": [
+            "Multiplier { var: \"AccuracyOnweapon1\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }",
+            "Condition { var: \"MainHandAttack\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "PhysicalDamageMax",
+          "type": "Base",
+          "value": 0.25,
+          "flags": 1,
+          "tags": [
+            "Multiplier { var: \"AccuracyOnweapon1\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }",
+            "Condition { var: \"MainHandAttack\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "PhysicalDamageMin",
+          "type": "Base",
+          "value": 0.25,
+          "flags": 1,
+          "tags": [
+            "Multiplier { var: \"AccuracyOnweapon2\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }",
+            "Condition { var: \"OffHandAttack\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "PhysicalDamageMax",
+          "type": "Base",
+          "value": 0.25,
+          "flags": 1,
+          "tags": [
+            "Multiplier { var: \"AccuracyOnweapon2\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }",
+            "Condition { var: \"OffHandAttack\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Attack|Attacks] with [One-Handed] [MartialWeapon|Weapons] have 15% increased Chance to inflict [Ailments|Ailments]",
@@ -44070,7 +44230,17 @@
     },
     {
       "text": "[Evasion] Rating from Equipped Body Armour is halved",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Evasion",
+          "type": "More",
+          "value": -50.0,
+          "tags": [
+            "SlotName(\"bodyarmour\")"
+          ]
+        }
+      ]
     },
     {
       "text": "[Evasion] Rating from Equipped Helmet, Gloves and Boots is doubled",
@@ -44081,8 +44251,23 @@
           "type": "More",
           "value": 100.0,
           "tags": [
-            "SlotName(\"helmet\")",
-            "GlobalLimit { value: 100.0, key: \"EvasionDoubledLimit\" }"
+            "SlotName(\"helmet\")"
+          ]
+        },
+        {
+          "name": "Evasion",
+          "type": "More",
+          "value": 100.0,
+          "tags": [
+            "SlotName(\"gloves\")"
+          ]
+        },
+        {
+          "name": "Evasion",
+          "type": "More",
+          "value": 100.0,
+          "tags": [
+            "SlotName(\"boots\")"
           ]
         }
       ]
@@ -45194,27 +45379,72 @@
     },
     {
       "text": "[Meta] Skills gain 15% increased [Energy]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "Inc",
+          "value": 15.0
+        }
+      ]
     },
     {
       "text": "[Meta] Skills gain 20% increased [Energy]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "Inc",
+          "value": 20.0
+        }
+      ]
     },
     {
       "text": "[Meta] Skills gain 25% increased [Energy] if you've dealt a [Critical] [Hit] [Recently]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "Inc",
+          "value": 25.0,
+          "tags": [
+            "Condition { var: \"CritRecently\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Meta] Skills gain 35% more [Energy]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "More",
+          "value": 35.0
+        }
+      ]
     },
     {
       "text": "[Meta] Skills gain 4% increased [Energy]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "Inc",
+          "value": 4.0
+        }
+      ]
     },
     {
       "text": "[Meta] Skills gain 8% increased [Energy]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyGenerated",
+          "type": "Inc",
+          "value": 8.0
+        }
+      ]
     },
     {
       "text": "[Meta] Skills have 20% increased [Reservation] [Efficiency]",
@@ -45964,9 +46194,15 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Condition:CanWither",
-          "type": "Flag",
-          "value": true
+          "name": "MinionModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "Condition:CanWither",
+              "type": "Flag",
+              "value": true
+            }
+          ]
         }
       ]
     },
@@ -46586,7 +46822,19 @@
     },
     {
       "text": "[Physical] [Spell] [Critical] [Hit|Hits] build [Pinned|Pin]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CanPin",
+          "type": "Flag",
+          "value": true,
+          "flags": 2,
+          "kw": 16,
+          "tags": [
+            "Condition { var: \"CriticalStrike\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Pinned] Enemies cannot deal [Critical|Critical Hits]",
@@ -46912,19 +47160,19 @@
     },
     {
       "text": "[Remnant|Remnants] can be collected from 20% further away",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Remnant|Remnants] can be collected from 25% further away",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Remnant|Remnants] can be collected from 30% further away",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Remnant|Remnants] can be collected from 50% further away",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Remnant|Remnants] you create have 10% increased effect",
@@ -47163,7 +47411,18 @@
     },
     {
       "text": "[Spell|Spells] consume a [Charges|Power Charge] if able to deal 40% more Damage",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "More",
+          "value": 40.0,
+          "kw": 131072,
+          "tags": [
+            "MultiplierThreshold { var: \"RemovablePowerCharge\", threshold: 1.0, upper: false }"
+          ]
+        }
+      ]
     },
     {
       "text": "[StatConversion|Convert] 100% of maximum [EnergyShield|Energy Shield] to maximum Mana\nMana Costs are Doubled",

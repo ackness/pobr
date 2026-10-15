@@ -385,6 +385,9 @@ mod tests {
             notable_effect_inc: 0,
             small_effect_inc: 0,
             tree_texts: vec![],
+            rarity: pobr_data::item::ItemRarity::Rare,
+            corrupted: false,
+            socket: crate::build::JewelSocket::Tree,
         });
         let mut item = original.clone();
         item.items.insert(
@@ -398,13 +401,15 @@ mod tests {
                 modifier_texts: vec![],
                 enchant_texts: vec![],
                 rolled_defence: Default::default(),
+                socketed: Vec::new(),
                 parsed_stats: vec![],
             },
         );
         let mut jewel = original.clone();
-        jewel
-            .jewels
-            .push(item.items[&pobr_data::item::EquipmentSlot::Helmet].clone());
+        jewel.jewels.push((
+            crate::build::JewelSocket::Tree,
+            item.items[&pobr_data::item::EquipmentSlot::Helmet].clone(),
+        ));
         let mut config = original.clone();
         config
             .config
@@ -529,6 +534,7 @@ mod tests {
                 action_rate: 1.0,
                 hit_chance: 100.0,
                 crit_chance: 5.0,
+                ..Default::default()
             },
         );
         assert!(memo.get(&second).is_none());

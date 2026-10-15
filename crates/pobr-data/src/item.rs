@@ -47,11 +47,6 @@ pub struct RolledDefence {
     pub spirit: Option<f64>,
     /// Ward as rolled, from the `Ward:` line (`armourData.Ward` in PoB2).
     pub ward: Option<f64>,
-    /// How many sockets hold something, counted from the `Rune:` and
-    /// `Soul Core:` lines. Feeds the `RunesSocketedIn{SlotName}` multiplier that
-    /// `per Socket filled` and `per socketed rune or soul core` mods scale on
-    /// (ModParser.lua:1477-1478). Zero means nothing is socketed.
-    pub sockets_filled: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -71,9 +66,16 @@ pub struct Item {
     pub modifier_texts: Vec<String>,
     /// Enchant mod lines. Attributed to `SourceKind::ItemEnchant`.
     pub enchant_texts: Vec<String>,
-    /// Defence values as rolled. Armour pieces use these as their per-slot base
-    /// in preference to the base type's defaults.
+    /// Defence values as the item text states them. A piece whose base type is
+    /// in the data has its defences recomputed from that base, so these only
+    /// stand in for a base the data does not know.
     pub rolled_defence: RolledDefence,
+    /// What the item's sockets hold (Runes, Idols, Soul Cores), by name, from
+    /// the `Rune:` and `Soul Core:` lines; an empty socket is not listed. Their
+    /// modifiers are among the item's own lines. The names say how many
+    /// sockets are filled, which `per Socket filled` modifiers scale on, and
+    /// which of the item's `Bonded:` modifiers belong to an Idol.
+    pub socketed: Vec<String>,
     pub parsed_stats: Vec<StatId>,
 }
 
@@ -98,6 +100,21 @@ pub enum EquipmentSlot {
 }
 
 impl EquipmentSlot {
+    /// Every slot, in declaration order.
+    pub const ALL: [Self; 11] = [
+        Self::Weapon1,
+        Self::Weapon2,
+        Self::Helmet,
+        Self::BodyArmour,
+        Self::Gloves,
+        Self::Boots,
+        Self::Amulet,
+        Self::Ring1,
+        Self::Ring2,
+        Self::Ring3,
+        Self::Belt,
+    ];
+
     /// Stable id used inside the engine. Display text comes from `pobr-i18n`.
     pub fn id(self) -> &'static str {
         match self {
@@ -112,6 +129,61 @@ impl EquipmentSlot {
             Self::Ring2 => "ring2",
             Self::Ring3 => "ring3",
             Self::Belt => "belt",
+        }
+    }
+}
+
+/// A slot for a Transcendent limb: two arms and two legs that the character
+/// wears beside the equipment (the game's item classes `IncursionArm` and
+/// `IncursionLeg`). A limb's modifiers are its own lines, global like a
+/// jewel's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum LimbSlot {
+    Arm1,
+    Arm2,
+    Leg1,
+    Leg2,
+}
+
+impl LimbSlot {
+    /// Every slot, in declaration order.
+    pub const ALL: [Self; 4] = [Self::Arm1, Self::Arm2, Self::Leg1, Self::Leg2];
+
+    /// Stable id used inside the engine, as for [`EquipmentSlot::id`].
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::Arm1 => "arm1",
+            Self::Arm2 => "arm2",
+            Self::Leg1 => "leg1",
+            Self::Leg2 => "leg2",
+        }
+    }
+
+    /// The slot named by a stable id.
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|slot| slot.id() == id)
+    }
+
+    /// The slot's name in a Path of Building build (`<Slot name="Arm 1">`).
+    pub fn pob_name(self) -> &'static str {
+        match self {
+            Self::Arm1 => "Arm 1",
+            Self::Arm2 => "Arm 2",
+            Self::Leg1 => "Leg 1",
+            Self::Leg2 => "Leg 2",
+        }
+    }
+
+    /// The slot a Path of Building build names.
+    pub fn from_pob_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|slot| slot.pob_name() == name)
+    }
+
+    /// The game's item class of the limbs this slot takes.
+    pub fn item_class(self) -> &'static str {
+        match self {
+            Self::Arm1 | Self::Arm2 => "IncursionArm",
+            Self::Leg1 | Self::Leg2 => "IncursionLeg",
         }
     }
 }

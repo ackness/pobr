@@ -1,6 +1,6 @@
 use pobr_data::prelude::*;
 
-use crate::{CalcConfig, ModDb};
+use crate::{CalcConfig, ModDb, Modifier};
 
 use super::ailment::{
     AilmentSource, AilmentStageTerms, AilmentTerms, HandAilmentMerge, StackConfig,
@@ -12,7 +12,7 @@ use super::ailment::{
 };
 use super::output::StoredDamageRange;
 use super::skill_mechanics::{
-    calc_aoe, calc_cooldown, calc_mana_cost, calc_projectile_count, calc_spirit_reservation,
+    calc_aoe, calc_cooldown, calc_projectile_count, calc_spirit_reservation,
 };
 use super::trigger::{
     RotationSkill, TriggerSourceStats, calc_cwc_trigger_rate_traced, calc_multi_spell_rotation,
@@ -31,18 +31,7 @@ use crate::{TraceGraph, TraceOperation};
 /// The player's input to the offence pass: the actor base plus the enemy's evasion.
 pub(crate) fn player_input(env: &Env) -> MinimalInput {
     let mut input = MinimalInput::from(env.player.base);
-    // The source of enemy evasion for hit chance: prefers the enemy.mod_db's Evasion BASE
-    // (injected by setup_env, includes tier multipliers), falls back to the enemy.base.evasion
-    // scalar (for compatibility with old entry points that construct Env directly).
-    let enemy_evasion_from_db =
-        env.enemy
-            .mod_db
-            .sum(ModType::Base, &env.cfg, &[ModName::from("Evasion")]);
-    input.enemy_evasion = if enemy_evasion_from_db > 0.0 {
-        enemy_evasion_from_db
-    } else {
-        env.enemy.base.evasion
-    };
+    input.enemy_evasion = super::setup_env::enemy_evasion(&env.enemy, &env.cfg);
     input
 }
 
@@ -53,7 +42,7 @@ pub(crate) fn main_hand_scope(env: &Env) -> Option<(CalcConfig, MinimalInput)> {
         .iter()
         .find(|h| matches!(h.label, crate::HandTag::MainHand | crate::HandTag::Single))
         .or(env.hand_sources.first())
-        .map(|hand| super::hand_pass::hand_scope(hand, &env.cfg, &input))
+        .map(|hand| super::hand_pass::hand_scope(&env.player.mod_db, hand, &env.cfg, &input))
 }
 
 /// The scope of every offence pass, in the order `run_hand_passes` runs
@@ -67,7 +56,8 @@ pub(crate) fn pass_scopes(env: &Env) -> Vec<(crate::HandTag, CalcConfig, Minimal
         .iter()
         .take(2)
         .map(|hand| {
-            let (cfg, input) = super::hand_pass::hand_scope(hand, &env.cfg, &input);
+            let (cfg, input) =
+                super::hand_pass::hand_scope(&env.player.mod_db, hand, &env.cfg, &input);
             (hand.label, cfg, input)
         })
         .collect()
@@ -149,6 +139,16 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
             "LowestOfArmourAndEvasion".into(),
             resources.armour.min(resources.evasion),
         );
+        // "1% increased Damage per 1% Chance to Block": the chances to
+        // Block, as the defences give them.
+        let block = super::defence_panels::calc_block(&env.player.mod_db, &env.cfg);
+        for (name, value) in [
+            ("BlockChance", block.block_chance),
+            ("SpellBlockChance", block.spell_block_chance),
+        ] {
+            env.cfg.stats.insert(name.into(), value);
+            env.cfg.multipliers.insert(name.into(), value);
+        }
         // Refresh the initial actor snapshots after buffs and defence conversion.
         let (life_pool, mana_pool) = super::session::preparation::life_mana_pools(env);
         env.cfg.stats.insert("Life".into(), life_pool);
@@ -156,7 +156,34 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         // Multiplier and GetStat consumers must read the same post-conversion pools.
         env.cfg.multipliers.insert("Mana".into(), mana_pool);
         env.cfg.multipliers.insert("Life".into(), life_pool);
+        // "per N current Life / unreserved Mana": the pools less what is
+        // reserved. Current Life is not something a build states, so the
+        // character is taken to be at full unreserved Life.
+        let (life_res, mana_res) =
+            pool_reservations(&env.player.mod_db, &env.cfg, life_pool, mana_pool);
+        for (name, value) in [
+            ("LifeUnreserved", life_res.unreserved),
+            ("ManaUnreserved", mana_res.unreserved),
+        ] {
+            env.cfg.stats.insert(name.into(), value);
+            env.cfg.multipliers.insert(name.into(), value);
+        }
+        // What the skill costs in Life, now that buffs can add to it and the
+        // Mana pool they read is final: "per N Life cost" and "Skills that
+        // cost Life" scale and gate damage by it.
+        let life_cost = super::skill_mechanics::skill_costs(&env.player.mod_db, &env.cfg).life;
+        if life_cost > 0.0 || env.cfg.stats.contains_key("LifeCost") {
+            env.cfg.stats.insert("LifeCost".into(), life_cost);
+            env.cfg.multipliers.insert("LifeCost".into(), life_cost);
+        }
     }
+
+    // Exposure, after the buffs and debuffs that apply it and the defences
+    // some of it scales with: every `<El>Exposure` on the enemy comes down to
+    // the strongest, folded into its resistance. The sole reduction point:
+    // `CalculationSession::apply_enemy_exposure` only injects (reducing
+    // twice would lower the resistance twice).
+    super::setup_env::reduce_enemy_exposure(&mut env.enemy.mod_db, &env.player.mod_db, &env.cfg);
 
     // Warcry uptime machinery (backlog #9, vendor CalcOffence.lua:3203-3256): injects the
     // uptime-scaled warcry offensive effect (Infernal's `DamageGainAsFire`) into the player db
@@ -187,6 +214,7 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // family and main_hand=None, so it's captured here and passed to fill_ailments.
     let ailment_fallback_ranges = output.stored_ranges.clone();
     env.player.output = OutputTable::from(&output);
+    env.player.output.crit_hit_avg = output.stored_crit_avg.iter().map(|(_, avg)| avg).sum();
     env.player.output.main_hand = hand_pass.main_hand;
     env.player.output.off_hand = hand_pass.off_hand;
     // Backfill the curse panel (buff_pass produces this during env_finalize stage 4, before the
@@ -197,7 +225,8 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         env.player.output.curse_slots = curse.curse_slots.clone();
     }
     env.player.breakdown = BreakdownTable::from_steps(output.breakdown);
-    calc_defence(&mut env.player, &env.cfg, env.enemy.base.accuracy);
+    let enemy_accuracy = super::setup_env::enemy_accuracy(&env.enemy, &env.cfg);
+    calc_defence(&mut env.player, &env.cfg, enemy_accuracy);
 
     // Minions (Lane4): each minion is an independent Actor, reusing the player's same
     // offence/defence pipeline. This block is a no-op with no minions. Positioned **before**
@@ -214,6 +243,9 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // fill_ailments' stacking rate estimate / fill_skill_dot_stage's DPS base consume the
     // post-conversion value.
     fill_crossbow_reload(env);
+    // A spell in an Energy meta gem happens as often as the gem triggers it;
+    // the stages below read the rate.
+    super::energy::apply_energy_trigger(env);
     // Ailments: chance + crit weighting + magnitude + effMult. Damaging ailments (bleed/ignite/poison)
     // go through the Stored-family per-pass pipeline; non-damaging ailments (chill/shock/poise) use
     // the component approximation. Kept as its own block to avoid conflicting with the immutable
@@ -264,28 +296,144 @@ fn inject_companion_life(env: &mut Env) {
     );
 }
 
-/// Runs the same offence/defence pipeline for each minion, and collects key output snapshots
-/// into the player's `OutputTable.minions`. Minions reuse `calculate_minimal_vs_enemy` +
-/// `calc_defence`, no separate formula is written. Minions' hit chance against the enemy uses
-/// the same enemy config as the player (the same `env.enemy`).
+/// The context a minion's stats are calculated in: the character's, with the
+/// minion's skill in place of the character's. The minion count cap (the
+/// player's `Multiplier:SummonedMinion`, written by add_minion_from_def) is
+/// injected as a multiplier so minion mods like `Damage per Summoned Minion`
+/// can reference it. A minion whose skill is not known keeps the character's
+/// skill.
+pub(crate) fn minion_cfg(env: &Env, minion: &super::Actor) -> CalcConfig {
+    let mut cfg = env.cfg.clone();
+    if let Some(skill) = minion
+        .minion
+        .as_ref()
+        .map(|identity| &identity.skill)
+        .filter(|skill| skill.is_known())
+    {
+        cfg = cfg
+            .with_flags(skill.flags())
+            .with_keyword_flags(crate::skill_env::skill_keyword_flags(skill.type_bits()))
+            .with_skill_types(skill.type_bits())
+            .with_skill_name(None)
+            .with_damage_keywords(Vec::new());
+        if skill.command {
+            cfg = cfg.with_condition(crate::rules::skill_stats::COMMAND_SKILL, true);
+        }
+    }
+    let minion_limit = env.player.mod_db.get_multiplier("SummonedMinion", &env.cfg);
+    if minion_limit > 0.0 {
+        cfg.with_multiplier("SummonedMinion", minion_limit)
+            .with_multiplier("MinionPresenceCount", minion_limit)
+    } else {
+        cfg
+    }
+}
+
+/// "Your Minions are Gigantic" (`minions_are_gigantic`, the minion's
+/// `is_gigantic`): "Gigantic Minions have 20% more Maximum Life, 20% more
+/// Damage and 20% increased size". The snapshot's game data gives no
+/// magnitude for it (`is_gigantic_magnitude` has no value).
+fn apply_gigantic(minion: &mut super::Actor, cfg: &CalcConfig) {
+    if !minion.mod_db.flag(cfg, super::minion::GIGANTIC) {
+        return;
+    }
+    let origin = || {
+        ModifierSource::new(SourceId::new(SourceKind::GameConstant, "minion.gigantic"))
+            .with_raw_text("Gigantic")
+    };
+    minion.mod_db.add_list([
+        Modifier::number("MaximumLife", ModType::More, 20.0).with_origin(origin()),
+        Modifier::number("Damage", ModType::More, 20.0).with_origin(origin()),
+    ]);
+}
+
+/// "Companions gain added Attack damage equal to N% of your main hand
+/// Weapon's damage": a minion with `GainMainHandDmgFromParent` adds N% (the
+/// character's `MainHandDamageToAllies`) of the physical damage of the
+/// character's main hand weapon to its attacks.
+fn apply_main_hand_share(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env) {
+    let Some((min, max)) = env.main_hand_weapon_damage else {
+        return;
+    };
+    if !cfg.flags.intersects(ModFlags::ATTACK)
+        || !minion.mod_db.flag(cfg, "GainMainHandDmgFromParent")
+    {
+        return;
+    }
+    let share = env
+        .player
+        .mod_db
+        .get_multiplier("MainHandDamageToAllies", &env.cfg);
+    if share <= 0.0 {
+        return;
+    }
+    let origin = || {
+        ModifierSource::new(SourceId::new(SourceKind::Derived, "minion.main_hand_share"))
+            .with_raw_text(format!("{share}% of your main hand Weapon's damage"))
+    };
+    minion.mod_db.add_list([
+        Modifier::number("PhysicalDamageMin", ModType::Base, min * share / 100.0)
+            .with_origin(origin()),
+        Modifier::number("PhysicalDamageMax", ModType::Base, max * share / 100.0)
+            .with_origin(origin()),
+    ]);
+}
+
+/// "Allies in your Presence have …" (`ExtraAura`, an aura of the
+/// character's that affects only its allies): each minion has the aura's
+/// modifiers, scaled by the increased and more effect of buffs and auras on
+/// the minion itself. Not for a hidden monster, nor when the character's
+/// auras cannot affect allies.
+fn apply_extra_auras(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env) {
+    let player = &env.player.mod_db;
+    if player.flag(&env.cfg, "SelfAurasCannotAffectAllies")
+        || minion.mod_db.flag(cfg, "HiddenMonster")
+    {
+        return;
+    }
+    let auras: Vec<Modifier> = player
+        .named("ExtraAura")
+        .filter(|outer| outer.mod_type == ModType::List && outer.matches(&env.cfg))
+        .flat_map(|outer| {
+            outer
+                .value
+                .as_nested_mods()
+                .into_iter()
+                .flatten()
+                .map(|inner| {
+                    let mut inner = inner.clone();
+                    if inner.source.is_none() {
+                        inner.source = outer.source.clone();
+                    }
+                    if inner.origin.is_none() {
+                        inner.origin = outer.origin.clone();
+                    }
+                    inner
+                })
+        })
+        .collect();
+    if auras.is_empty() {
+        return;
+    }
+    let names = [
+        ModName::from("BuffEffectOnSelf"),
+        ModName::from("AuraEffectOnSelf"),
+    ];
+    let scale = (1.0 + minion.mod_db.sum(ModType::Inc, cfg, &names) / 100.0)
+        * minion.mod_db.more(cfg, &names);
+    for aura in auras {
+        minion
+            .mod_db
+            .scale_add_mod(aura, scale, &env.high_precision);
+    }
+}
+
 fn perform_minions(env: &mut Env) {
     if env.minions.is_empty() {
         return;
     }
 
-    // The minion count cap (the player's `Multiplier:SummonedMinion`, written by
-    // add_minion_from_def). Injected into cfg's multiplier so minion mods like `Damage per
-    // Summoned Minion` can reference it (PoB2). 0 when there's no such multiplier (doesn't affect
-    // any output, backward compatible).
     let minion_limit = env.player.mod_db.get_multiplier("SummonedMinion", &env.cfg);
-    let minion_cfg = if minion_limit > 0.0 {
-        env.cfg
-            .clone()
-            .with_multiplier("SummonedMinion", minion_limit)
-            .with_multiplier("MinionPresenceCount", minion_limit)
-    } else {
-        env.cfg.clone()
-    };
 
     // Cross-Actor attribution: player source (the count cap) → minion output; builds one source
     // node for the trace DAG to connect to.
@@ -297,32 +445,33 @@ fn perform_minions(env: &mut Env) {
     );
 
     let mut snapshots = Vec::with_capacity(env.minions.len());
-    for minion in &mut env.minions {
+    let mut minions = std::mem::take(&mut env.minions);
+    for minion in &mut minions {
+        // Minions use their own skill and hit the same enemy as the player.
+        let minion_cfg = minion_cfg(env, minion);
+        apply_gigantic(minion, &minion_cfg);
+        apply_extra_auras(minion, &minion_cfg, env);
+        apply_main_hand_share(minion, &minion_cfg, env);
         let mut input = MinimalInput::from(minion.base);
-        // Minion hits against the enemy: same as the player, enemy evasion prefers the
-        // enemy.mod_db's Evasion BASE.
-        let enemy_evasion_from_db =
-            env.enemy
-                .mod_db
-                .sum(ModType::Base, &minion_cfg, &[ModName::from("Evasion")]);
-        input.enemy_evasion = if enemy_evasion_from_db > 0.0 {
-            enemy_evasion_from_db
-        } else {
-            env.enemy.base.evasion
-        };
+        input.enemy_evasion = super::setup_env::enemy_evasion(&env.enemy, &minion_cfg);
 
         let output =
             calculate_minimal_vs_enemy(&minion.mod_db, &env.enemy.mod_db, &minion_cfg, &input);
         minion.output = OutputTable::from(&output);
         minion.breakdown = BreakdownTable::from_steps(output.breakdown);
-        calc_defence(minion, &minion_cfg, env.enemy.base.accuracy);
+        let enemy_accuracy = super::setup_env::enemy_accuracy(&env.enemy, &minion_cfg);
+        calc_defence(minion, &minion_cfg, enemy_accuracy);
 
         // Cross-Actor trace edge: player count cap → this minion's DPS output (player-source → minion-output).
         let minion_dps_node =
             trace.add_node("minion dps", minion.output.dps, TraceOperation::Aggregate);
         trace.add_edge(player_limit_node, minion_dps_node);
 
+        let identity = minion.minion.clone().unwrap_or_default();
         snapshots.push(MinionOutput {
+            minion_id: identity.minion_id,
+            summoned_by: identity.summoned_by,
+            skill_id: identity.skill.id,
             level: minion.level as u32,
             dps: minion.output.dps,
             life: minion.output.life,
@@ -331,12 +480,55 @@ fn perform_minions(env: &mut Env) {
             energy_shield: minion.output.energy_shield,
         });
     }
+    env.minions = minions;
     env.player.output.minions = snapshots;
 }
 
 /// Fill stage: on top of base offence + defence, writes skill-use-time / ailment / EHP /
 /// reservation / regen / defensive chances into [`OutputTable`]. Purely additive, doesn't
 /// change existing fields.
+/// What the character's reservations take from its Life and Mana pools.
+///
+/// (13-G11): ReservationMultiplier more and Reservation Efficiency division semantics
+/// (CalcDefence.lua:197/:240-241/:249-258) — mult = floor(More(ReservationMultiplier), 4);
+/// efficiency inc/more acts as a **divisor**; the divisor is floored at a tiny positive
+/// number: when efficiency is −100%, the raw value diverges, and reservation's [0, pool]
+/// clamp resolves it to "the pool is fully reserved", matching vendor's semantics.
+fn pool_reservations(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    life: f64,
+    mana: f64,
+) -> (
+    super::survivability::Reservation,
+    super::survivability::Reservation,
+) {
+    let reservation_mult =
+        (db.more(cfg, &[ModName::from("ReservationMultiplier")]) * 10_000.0).floor() / 10_000.0;
+    let res_eff_divisor = |kind: &str| -> f64 {
+        let names = [
+            ModName::from(format!("{kind}ReservationEfficiency").as_str()),
+            ModName::from("ReservationEfficiency"),
+        ];
+        let inc = db.sum(ModType::Inc, cfg, &names).max(-100.0);
+        ((1.0 + inc / 100.0) * db.more(cfg, &names)).max(1e-12)
+    };
+    let life_factor = reservation_mult / res_eff_divisor("Life");
+    let mana_factor = reservation_mult / res_eff_divisor("Mana");
+    (
+        reservation(
+            life,
+            db.sum(ModType::Base, cfg, &[ModName::from("LifeReserved")]) * life_factor,
+            db.sum(ModType::Inc, cfg, &[ModName::from("LifeReservedPercent")]) * life_factor,
+        ),
+        reservation(
+            mana,
+            db.sum(ModType::Base, cfg, &[ModName::from("ManaReserved")]) * mana_factor,
+            db.sum(ModType::Inc, cfg, &[ModName::from("ManaReservedPercent")]) * mana_factor,
+        ),
+    )
+}
+
 fn fill_mechanics(env: &mut Env) {
     // Read the enemy's crit chance/damage up front (avoids a later conflict between a mutable
     // borrow of player.mod_db and an immutable borrow of enemy).
@@ -513,33 +705,8 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.total_ehp_lowest_max_hit = ehp.total_ehp;
 
     // Reservation / remaining
-    // (13-G11): adds ReservationMultiplier more and Reservation Efficiency division semantics
-    // (CalcDefence.lua:197/:240-241/:249-258) — mult = floor(More(ReservationMultiplier), 4);
-    // efficiency inc/more acts as a **divisor**; the divisor is floored at a tiny positive
-    // number: when efficiency is −100%, the raw value diverges, and reservation's [0, pool]
-    // clamp resolves it to "the pool is fully reserved", matching vendor's semantics.
-    let reservation_mult =
-        (db.more(cfg, &[ModName::from("ReservationMultiplier")]) * 10_000.0).floor() / 10_000.0;
-    let res_eff_divisor = |kind: &str| -> f64 {
-        let names = [
-            ModName::from(format!("{kind}ReservationEfficiency").as_str()),
-            ModName::from("ReservationEfficiency"),
-        ];
-        let inc = db.sum(ModType::Inc, cfg, &names).max(-100.0);
-        ((1.0 + inc / 100.0) * db.more(cfg, &names)).max(1e-12)
-    };
-    let life_factor = reservation_mult / res_eff_divisor("Life");
-    let mana_factor = reservation_mult / res_eff_divisor("Mana");
-    let life_res = reservation(
-        env.player.output.life,
-        db.sum(ModType::Base, cfg, &[ModName::from("LifeReserved")]) * life_factor,
-        db.sum(ModType::Inc, cfg, &[ModName::from("LifeReservedPercent")]) * life_factor,
-    );
-    let mana_res = reservation(
-        env.player.output.mana,
-        db.sum(ModType::Base, cfg, &[ModName::from("ManaReserved")]) * mana_factor,
-        db.sum(ModType::Inc, cfg, &[ModName::from("ManaReservedPercent")]) * mana_factor,
-    );
+    let (life_res, mana_res) =
+        pool_reservations(db, cfg, env.player.output.life, env.player.output.mana);
     env.player.output.life_reserved = life_res.reserved;
     env.player.output.life_unreserved = life_res.unreserved;
     env.player.output.mana_reserved = mana_res.reserved;
@@ -633,17 +800,16 @@ fn fill_mechanics(env: &mut Env) {
             calc_leech_from_db(db, scope, pool, physical_hit, resource).display_rate_per_second
         })
     };
-    let has_leech_source = db.iter_mods().any(|modifier| {
-        matches!(
-            modifier.name.as_str(),
-            "LifeLeech"
-                | "ManaLeech"
-                | "EnergyShieldLeech"
-                | "PhysicalDamageLifeLeech"
-                | "PhysicalDamageManaLeech"
-                | "PhysicalDamageEnergyShieldLeech"
-        )
-    });
+    let has_leech_source = [
+        "LifeLeech",
+        "ManaLeech",
+        "EnergyShieldLeech",
+        "PhysicalDamageLifeLeech",
+        "PhysicalDamageManaLeech",
+        "PhysicalDamageEnergyShieldLeech",
+    ]
+    .iter()
+    .any(|name| db.named(name).next().is_some());
     let leech_rates = if !has_leech_source {
         // Most build variants have no leech: avoid cloning per-hand scopes.
         [0.0; 3]
@@ -662,7 +828,7 @@ fn fill_mechanics(env: &mut Env) {
             // Damage is already calculated in HandOutput; only reuse the
             // hand scope here, so the returned input is deliberately unused.
             let (mut hand_cfg, _) =
-                super::hand_pass::hand_scope(source, cfg, &MinimalInput::default());
+                super::hand_pass::hand_scope(db, source, cfg, &player_input(env));
             hand_cfg.conditions.insert(
                 "MainHandAttack".into(),
                 matches!(
@@ -827,8 +993,8 @@ pub(super) fn skill_dot_terms(env: &Env) -> super::skill_dot::SkillDotTerms {
 /// Trigger rate fill (Lane B): reads cooldown-gated / CWC trigger mods, writes `trigger_rate_cap` /
 /// `skill_trigger_rate`.
 ///
-/// Two trigger models that mods can drive immediately (the energy-driven model needs the build
-/// layer to inject socketed-spell data, deferred):
+/// Two trigger models with a cooldown or a cadence of their own (a meta gem that fills with
+/// Energy has neither; it is `energy::apply_energy_trigger`, a later stage):
 /// - **Cooldown-gated** (`TriggerCooldownBase` BASE, seconds): the source skill itself has a
 ///   trigger cooldown. `action_cd = max(TriggeredSkillCooldown, TriggerCooldownBase / icdr)`,
 ///   `cap = 1/ceil_tick(action_cd)`, `rate = min(cap, effective_action_rate)`.
@@ -894,6 +1060,7 @@ fn fill_trigger(env: &mut Env) {
             cfg,
             &[ModName::from("TriggerSourceCritChance")],
         ) / 100.0,
+        ..Default::default()
     };
     let has_source_stats = source_stats.hit_chance > 0.0 || source_stats.crit_chance > 0.0;
     // triggerOnCrit (the CoC path): either a cfg condition (the legacy channel) or the build
@@ -1046,7 +1213,7 @@ fn trigger_chance_multiplier(
             }
         }
     }
-    if let Some(&pct) = cfg.multipliers.get("TriggerChance")
+    if let Some(pct) = cfg.multiplier_if_set("TriggerChance")
         && pct < 100.0
     {
         chance *= (pct / 100.0).clamp(0.0, 1.0);
@@ -1098,26 +1265,11 @@ fn fill_skill_mechanics(env: &mut Env) {
         env.player.output.cooldown_stored_uses = cd.stored_uses;
     }
 
-    // Cost: each resource needs its corresponding base-value BASE mod. Skipped if absent (stays 0).
-    // The hybrid mana→life conversion (`HybridManaAndLifeCost_Life`, e.g. Atalui's Bloodletting /
-    // the Blood-Magic family): the Life side takes mana's finalBase × hybrid, the Mana side's
-    // chain tail is `floor((1-hybrid)×ManaCost)` (vendor CalcOffence.lua:2090-2104 + :2160-2162).
-    let hybrid = crate::calc::skill_mechanics::hybrid_life_cost_share(db, cfg);
-    let base_mc = db.sum(ModType::Base, cfg, &[ModName::from("SkillManaCostBase")]);
-    if base_mc > 0.0 {
-        let mana = calc_mana_cost(db, cfg, base_mc).final_cost;
-        env.player.output.mana_cost = if hybrid > 0.0 {
-            ((1.0 - hybrid) * mana).floor().max(0.0)
-        } else {
-            mana
-        };
-    }
-    let base_lc = db.sum(ModType::Base, cfg, &[ModName::from("SkillLifeCostBase")]);
-    if base_lc > 0.0 || (hybrid > 0.0 && base_mc > 0.0) {
-        env.player.output.life_cost =
-            crate::calc::skill_mechanics::calc_life_cost_hybrid(db, cfg, base_lc, base_mc)
-                .final_cost;
-    }
+    // Cost: each resource needs a base cost, its own or one moved to it; one
+    // without stays 0.
+    let costs = crate::calc::skill_mechanics::skill_costs(db, cfg);
+    env.player.output.mana_cost = costs.mana;
+    env.player.output.life_cost = costs.life;
     let base_sr = db.sum(
         ModType::Base,
         cfg,
@@ -1125,6 +1277,17 @@ fn fill_skill_mechanics(env: &mut Env) {
     );
     if base_sr > 0.0 {
         env.player.output.spirit_reserved = calc_spirit_reservation(db, cfg, base_sr).final_cost;
+    }
+    // Skills that reserve a share of the pool (Companions): the shares add
+    // up, and the pool reserves that share of itself, rounded up.
+    let share = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("SkillSpiritReservationPercent")],
+    );
+    if share > 0.0 {
+        let pool = crate::calc::defence_panels::calc_spirit_pool(db, cfg);
+        env.player.output.spirit_reserved += (pool * share / 100.0).ceil();
     }
 }
 
@@ -1232,17 +1395,20 @@ fn damaging_ailment_for_pass(
     }
     // Stacking mods use the ailment-scoped cfg (vendor :5024's cfg = that ailment's dotCfg).
     let scoped_cfg = super::ailment::ailment_scoped_cfg(cfg, kind);
-    // Ailment duration folds in debuffDurationMult (vendor :5040
-    // `durationBase * durationMod / rateMod * debuffDurationMult` — Temporal Chains' negative
-    // `BuffExpireFaster MORE` on the enemy side stretches the duration, which feeds into DPS via
-    // the active-stack estimate).
+    // How long an instance lasts: its duration, stretched by how slowly
+    // effects on the enemy expire (Temporal Chains), and shortened by
+    // "Damaging Ailments deal damage #% faster" — the same damage in less
+    // time, so fewer instances are active at once.
+    let rate = ailment_rate_mod(player, enemy, cfg, name);
+    let duration = ailment_duration(kind, player, cfg) * debuff_duration_mult(enemy, cfg)
+        / if rate > 0.0 { rate } else { 1.0 };
     let stack = resolve_stack_config(
         player,
         &scoped_cfg,
         name,
         ctx.hit_chance,
         probe_out.chance,
-        ailment_duration(kind, player, cfg) * debuff_duration_mult(enemy, cfg),
+        duration,
         ctx.speed,
     );
     let sp = stack_potential(&stack);
@@ -1250,7 +1416,7 @@ fn damaging_ailment_for_pass(
         eprintln!(
             "[POBR_AILMENT] {name}: hit50={hit50:.2} crit50={crit50:.2} probe_chance={:.4} duration={:.4} speed={:.4} hit_chance={:.4} active={:.4} max={} sp={sp:.4}",
             probe_out.chance,
-            ailment_duration(kind, player, cfg) * debuff_duration_mult(enemy, cfg),
+            duration,
             ctx.speed,
             ctx.hit_chance,
             stack.active_stacks,
@@ -1287,14 +1453,14 @@ fn damaging_ailment_for_pass(
         apply_chance: probe_out.chance,
         apply_chance_rolled: out.chance,
         hit_chance: ctx.hit_chance,
-        duration: ailment_duration(kind, player, cfg) * debuff_duration_mult(enemy, cfg),
+        duration,
         hits_per_second: ctx.speed,
         base_duration: super::ailment::ailment_base_duration(kind, cfg).unwrap_or(0.0),
         enemy_duration: debuff_duration_mult(enemy, cfg),
         stacks: stack.active_stacks,
         max_stacks: stack.max_stacks as f64,
         effect: ailment_effect_mod(player, cfg),
-        rate: ailment_rate_mod(player, enemy, cfg, name),
+        rate,
         cap: cfg.constants.game().dot_dps_cap,
         dps: 0.0,
     };
@@ -1447,12 +1613,8 @@ fn copy_projectile_speed_as_damage(
     let copies: Vec<crate::Modifier> = env
         .player
         .mod_db
-        .iter_mods()
-        .filter(|m| {
-            m.name == proj_speed
-                && m.mod_type == ModType::Inc
-                && m.flags.is_subset_of(source_subset)
-        })
+        .named(proj_speed.as_str())
+        .filter(|m| m.mod_type == ModType::Inc && m.flags.is_subset_of(source_subset))
         .map(|m| {
             let mut copy = m.clone();
             copy.name = damage.clone();
@@ -1757,7 +1919,7 @@ fn enemy_poise_threshold_effective(enemy: &ModDb, cfg: &CalcConfig, level: u8) -
 /// `EnemyAilmentThreshold` is aggregated as INC/MORE into a multiplier (PoB2's `calcLib.mod`).
 /// Degenerates to the bare table value with no enemy mod_db (compatible with old entry points
 /// that construct Env directly).
-fn enemy_ailment_threshold_effective(enemy: &ModDb, cfg: &CalcConfig, level: u8) -> f64 {
+pub(super) fn enemy_ailment_threshold_effective(enemy: &ModDb, cfg: &CalcConfig, level: u8) -> f64 {
     let base = enemy_ailment_threshold(level as u32) as f64;
     let inc = enemy.sum(ModType::Inc, cfg, &[ModName::from("EnemyAilmentThreshold")]);
     let more = enemy.more(cfg, &[ModName::from("EnemyAilmentThreshold")]);

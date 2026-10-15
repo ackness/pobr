@@ -189,7 +189,9 @@ test('changing the selected skill hides stale attribution until a new calculatio
   await page.getByRole('listbox', { name: 'Inspected skill', exact: true })
     .getByRole('option', { name: '2. Fireball', exact: true }).click();
   await expect(page.locator('.attribution-table')).toHaveCount(0);
-  await expect(page.getByRole('main').getByRole('status')).toContainText('Run attribution again');
+  // The skill overview recalculates at the same time and shows its own status.
+  await expect(page.getByRole('region', { name: 'Source Attribution', exact: true }).getByRole('status'))
+    .toContainText('Run attribution again');
   await page.getByRole('button', { name: 'Run attribution', exact: true }).click();
   await expect(page.locator('.attribution-table')).toBeVisible();
   await expect(page.locator('.attribution-table')).toContainText('Group 2 · Fireball');

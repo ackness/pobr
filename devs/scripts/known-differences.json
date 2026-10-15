@@ -1,0 +1,40 @@
+{
+  "_doc": "Reference rows `mise run triage` files as known: differences the repository already explains, so a triage lists only what is left to look at. `build` is a fragment of the build folder's name, `stats` the rows it explains, `reason` where the explanation is. Add an entry when a difference is documented as deliberate; remove it when the engine changes.",
+  "differences": [
+    {
+      "build": "ranger-deadeye-ice-shot",
+      "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "IgniteDPS"],
+      "reason": "Minion Pact II takes the Rhoa of Rhoa Mount as the nearby minion (baseline note, crates/pobr-build/tests/parity/reference_report.rs)"
+    },
+    {
+      "build": "druid-oracle-lightning-bolt",
+      "stats": ["TotalDPS", "CombinedDPS"],
+      "reason": "configured Withered stacks without a source of Withered (docs/maintainer-guide.md, Withered)"
+    },
+    {
+      "build": "huntress-amazon-rain-of-arrows",
+      "stats": ["EvadeChance", "MeleeEvadeChance", "ProjectileEvadeChance", "SpellEvadeChance", "SpellProjectileEvadeChance"],
+      "reason": "one Blind, the strongest of the character's skills (docs/maintainer-guide.md, Blind)"
+    },
+    {
+      "build": "mercenary-witchhunter-crossbow-shot",
+      "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "IgniteDPS"],
+      "reason": "Pounce's Predator's Mark counts the minions already in Presence, not the wolves Pounce summons (docs/maintainer-guide.md, Pounce)"
+    },
+    {
+      "build": "mercenary-gemling-legionnaire-twister-a479eff2b320",
+      "stats": ["TotalDotDPS", "IgniteDPS"],
+      "reason": "enemies in Presence resist each element with their lowest Elemental Resistance, ailments included (docs/maintainer-guide.md, Presence)"
+    },
+    {
+      "build": "witch-infernalist-comet",
+      "stats": ["Life", "LifeUnreserved", "LifeRecoverable"],
+      "reason": "the weapon's runes read as the item says, one \"45% less maximum Life\", not PoB2's two runes of 15% and 30% less (docs/maintainer-guide.md, runes)"
+    },
+    {
+      "build": "huntress-ritualist-purity-of-fire",
+      "stats": ["CritMultiplier"],
+      "reason": "an aura is not a spell: increased Critical Spell Damage Bonus does not apply to Purity of Fire (docs/maintainer-guide.md, Purity of Fire)"
+    }
+  ]
+}

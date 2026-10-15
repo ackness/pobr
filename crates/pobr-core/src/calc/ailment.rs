@@ -247,10 +247,13 @@ pub fn ailment_base_duration(ailment: AilmentType, cfg: &CalcConfig) -> Option<f
 }
 
 /// The modifier names [`ailment_duration`] scales the base duration by.
-pub(crate) fn duration_mod_names(ailment: AilmentType) -> [ModName; 2] {
+/// "increased duration of Ailments you inflict" reads as
+/// `EnemyAilmentDuration`; supports' stats map to `AilmentDuration`.
+pub(crate) fn duration_mod_names(ailment: AilmentType) -> [ModName; 3] {
     [
         ModName::from(format!("{}Duration", ailment_mod_name(ailment))),
         ModName::from("AilmentDuration"),
+        ModName::from("EnemyAilmentDuration"),
     ]
 }
 
@@ -325,10 +328,7 @@ pub fn bleed_instance(
         gc.bleed_base_duration,
         db,
         cfg,
-        &[
-            ModName::from("BleedDuration"),
-            ModName::from("AilmentDuration"),
-        ],
+        &duration_mod_names(AilmentType::Bleed),
     );
     AilmentInstance {
         ailment: AilmentType::Bleed,
@@ -356,10 +356,7 @@ pub fn ignite_instance(
         gc.ignite_base_duration,
         db,
         cfg,
-        &[
-            ModName::from("IgniteDuration"),
-            ModName::from("AilmentDuration"),
-        ],
+        &duration_mod_names(AilmentType::Ignite),
     );
     AilmentInstance {
         ailment: AilmentType::Ignite,
@@ -384,10 +381,7 @@ pub fn poison_instance(pre_mitigation_hit: f64, db: &ModDb, cfg: &CalcConfig) ->
         gc.poison_base_duration,
         db,
         cfg,
-        &[
-            ModName::from("PoisonDuration"),
-            ModName::from("AilmentDuration"),
-        ],
+        &duration_mod_names(AilmentType::Poison),
     );
     AilmentInstance {
         ailment: AilmentType::Poison,
@@ -609,7 +603,8 @@ pub struct AilmentTerms {
     pub duration: f64,
     pub hits_per_second: f64,
     /// `duration` before modifiers, and the multiplier from how fast effects
-    /// expire on the enemy.
+    /// expire on the enemy. `duration` is also divided by `rate`: dealing
+    /// the damage faster ends the instance sooner.
     pub base_duration: f64,
     pub enemy_duration: f64,
     /// The estimate (0 = no hit rate to estimate from) and the most that can be active.

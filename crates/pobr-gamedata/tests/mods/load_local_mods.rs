@@ -29,8 +29,9 @@ fn json_matches_builtin_fallback_mirror() {
 }
 
 /// The weapon whitelist is value-equal to the original
-/// `is_weapon_local_mod` hardcoded enum (lowercase clean-text convention):
-/// two increased suffixes + one adds-damage suffix.
+/// `is_weapon_local_mod` hardcoded enum (lowercase clean-text convention)
+/// plus the crossbow's own reload speed (`local_reload_speed_+%`): four
+/// increased suffixes + one adds-damage suffix.
 #[test]
 fn weapon_whitelist_matches_original_hardcode() {
     let def = load();
@@ -39,6 +40,8 @@ fn weapon_whitelist_matches_original_hardcode() {
         vec![
             "% increased physical damage".to_string(),
             "% increased attack speed".to_string(),
+            "% increased reload speed".to_string(),
+            "% reduced reload speed".to_string(),
         ]
     );
     assert_eq!(

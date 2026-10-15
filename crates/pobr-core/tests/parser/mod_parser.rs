@@ -140,6 +140,34 @@ fn parses_accuracy_and_defence_stats() {
     assert_eq!(energy_shield.mods[0].mod_type, ModType::Base);
 }
 
+/// "Critical Spell Damage Bonus" is the bonus of spells only, as "Attack
+/// Critical Damage Bonus" is of attacks; the plain one is of every hit.
+#[test]
+fn critical_damage_bonus_keeps_its_scope() {
+    let scoped = |line: &str| {
+        let outcome = parse_mod(line).unwrap();
+        assert_eq!(outcome.mods.len(), 1, "{line}");
+        assert_eq!(
+            outcome.mods[0].name,
+            ModName::from("CriticalStrikeMultiplier"),
+            "{line}"
+        );
+        outcome.mods[0].flags
+    };
+    assert_eq!(
+        scoped("13% increased Critical Spell Damage Bonus"),
+        ModFlags::SPELL
+    );
+    assert_eq!(
+        scoped("13% increased Attack Critical Damage Bonus"),
+        ModFlags::ATTACK
+    );
+    assert_eq!(
+        scoped("13% increased Critical Damage Bonus"),
+        ModFlags::NONE
+    );
+}
+
 #[test]
 fn parses_attack_preflag_and_damage_type() {
     let outcome = parse_mod("Attacks deal 25% increased Physical Damage").unwrap();
@@ -344,6 +372,25 @@ fn parses_adds_damage_to_attacks_with_flag() {
         outcome.mods[0].flags.intersects(ModFlags::ATTACK),
         "'to Attacks' should set the Attack flag"
     );
+}
+
+/// The passive tree words the skills Ascendancy notables grant with a style:
+/// "Grants Skill: <underline>{Sorcery Ward}" reads as "Grants Skill: Sorcery
+/// Ward".
+#[test]
+fn strips_the_style_markup_of_granted_skills() {
+    let o = parse_mod("Grants Skill: <underline>{Sorcery Ward}").unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed, "{o:?}");
+    assert!(
+        o.mods
+            .iter()
+            .any(|m| m.name == ModName::from("Condition:SorceryWard")),
+        "{:?}",
+        o.mods
+    );
+    // A `<` that is not a style stays part of the line.
+    let o = parse_mod("Grants Skill: <underline Sorcery Ward").unwrap();
+    assert_ne!(o.status, ParseStatus::Parsed);
 }
 
 #[test]
@@ -1418,4 +1465,103 @@ fn parses_chance_to_block_is_lucky_variants() {
     ];
     assert_flags("Your Chance to Block is Lucky", &all_four);
     assert_flags("Chance to Block is Lucky", &all_four);
+}
+
+/// "Non-Channelling Spells …" names the type a skill must not have. The
+/// restriction is on the skill, so the line is for every spell that is not
+/// channelled and for no spell that is.
+#[test]
+fn a_non_channelling_line_is_for_skills_that_are_not_channelled() {
+    let parsed =
+        parse_mod("Non-Channelling Spells deal 6% increased Damage per 100 maximum Mana").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed, "{parsed:?}");
+    assert_eq!(parsed.mods.len(), 1);
+    let modifier = &parsed.mods[0];
+    assert!(
+        modifier
+            .tags
+            .contains(&ModTag::SkillTypesNeg(SkillTypes::CHANNEL)),
+        "{modifier:?}"
+    );
+
+    let mut db = ModDb::new();
+    db.add_list(parsed.mods);
+    let names = [ModName::from("SpellDamage"), ModName::from("Damage")];
+    let cast = CalcConfig::spell().with_multiplier("Mana", 1000.0);
+    let channelled = cast.clone().with_skill_types(SkillTypes::CHANNEL);
+    assert_eq!(db.sum(ModType::Inc, &cast, &names), 60.0);
+    assert_eq!(db.sum(ModType::Inc, &channelled, &names), 0.0);
+
+    // The other phrasings carry the same restriction.
+    for line in [
+        "Non-Channelling Skills have 3% increased Spell Critical Hit Chance per 100 maximum Mana",
+        "20% increased effect of Non-Curse Auras from your Skills",
+    ] {
+        let parsed = parse_mod(line).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed, "{line}: {parsed:?}");
+        assert!(
+            parsed.mods.iter().all(|modifier| modifier
+                .tags
+                .iter()
+                .any(|tag| matches!(tag, ModTag::SkillTypesNeg(_)))),
+            "{line}: {parsed:?}"
+        );
+    }
+}
+
+/// "Bear Skills Convert 80% of Physical Damage to Fire Damage" (the game stat
+/// `non_skill_physical_damage_%_to_convert_to_fire_with_bear_skills`) is a
+/// conversion for the skills of the game type Bear, and for no other skill.
+#[test]
+fn a_bear_skills_conversion_is_for_bear_skills() {
+    let parsed = parse_mod("Bear Skills Convert 80% of Physical Damage to Fire Damage").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed, "{parsed:?}");
+    assert_eq!(parsed.mods.len(), 1);
+    let bear = SkillTypes::from_pob2_name("Bear").unwrap();
+    let modifier = &parsed.mods[0];
+    assert!(
+        modifier.tags.contains(&ModTag::SkillTypes(bear)),
+        "{modifier:?}"
+    );
+
+    let mut db = ModDb::new();
+    db.add_list(parsed.mods);
+    let names = [ModName::from("PhysicalDamageConvertToFire")];
+    let attack = CalcConfig::attack();
+    let bear_attack = attack.clone().with_skill_types(SkillTypes::ATTACK | bear);
+    assert_eq!(db.sum(ModType::Base, &bear_attack, &names), 80.0);
+    assert_eq!(db.sum(ModType::Base, &attack, &names), 0.0);
+}
+
+/// "Damage with Warcries" is damage of warcries and "with Fire Skills" of
+/// skills with the Fire type: a skill answers to the keywords of its types.
+#[test]
+fn skill_keywords_restrict_to_the_skills_of_those_types() {
+    use pobr_data::skill::SkillTypes;
+    let warcry = parse_mod("40% increased Damage with Warcries")
+        .unwrap()
+        .mods;
+    let fire = parse_mod("20% increased Damage with Fire Skills")
+        .unwrap()
+        .mods;
+    assert_eq!(warcry[0].keyword_flags, KeywordFlags::WARCRY);
+    assert_eq!(fire[0].keyword_flags, KeywordFlags::FIRE);
+
+    let types = |names: &[&str]| {
+        names
+            .iter()
+            .filter_map(|name| SkillTypes::from_pob2_name(name))
+            .fold(SkillTypes::NONE, |all, one| all | one)
+    };
+    let skill = |names: &[&str]| {
+        CalcConfig::new()
+            .with_keyword_flags(pobr_core::skill_env::skill_keyword_flags(types(names)))
+    };
+    let infernal_cry = skill(&["Warcry", "Fire", "Area"]);
+    let detonate_dead = skill(&["Spell", "Fire", "Physical", "Area"]);
+    let ice_shot = skill(&["Attack", "Cold", "Projectile"]);
+    assert!(warcry[0].matches(&infernal_cry));
+    assert!(!warcry[0].matches(&detonate_dead));
+    assert!(fire[0].matches(&detonate_dead));
+    assert!(!fire[0].matches(&ice_shot));
 }

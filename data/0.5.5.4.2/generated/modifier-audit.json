@@ -22,15 +22,15 @@
     }
   },
   "rule_validation": {
-    "engine_version": "0.0.35",
+    "engine_version": "0.0.36",
     "data_version": "0.5.5.4.2",
     "scope": "Special-rule schemas, handlers, captures, operations and scopes; generic parser schema/compile. StatId is open; recognition is not calculation support. Overlap audit covers sampled source text only.",
     "input_sha256": {
       "0.5.5.4.2/generated/special_derived.json": "d18157d99c7620f096aa485d1f93d33166a578d45a9e4a064817d629e023a105",
-      "0.5.5.4.2/generated/special_vendor.json": "32375584467211b9e271e6dcd949dab194adc87d3955d7518bb141031054746c",
-      "0.5.5.4.2/overlay/mod_parser_rules.json": "a85d60c3c20b8e10e2f0672625d46822c1f27878f59c6171ef42cce21bc4db7b",
+      "0.5.5.4.2/generated/special_vendor.json": "c202035c54924c23ce48559538a8d2068b444d9571a2f986fe43105276e37426",
+      "0.5.5.4.2/overlay/mod_parser_rules.json": "c719c7c3eeed65048067f264fd0a62f81cc20d89b917f05e2aa53753166242af",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
-      "overlay-common/special_mods.json": "240034443fd6d5c526e8c808e451da13e45dfc5084f48e37978da8b70312d773"
+      "overlay-common/special_mods.json": "78a620024785808373e836c8b8763c28315ece1004406220b308e657997e9a84"
     },
     "effective_rules": [
       {
@@ -130,14 +130,6 @@
         "non_effective_fields": []
       },
       {
-        "id": "charm_slots_colon",
-        "files": [
-          "overlay-common/special_mods.json"
-        ],
-        "replaced_files": [],
-        "non_effective_fields": []
-      },
-      {
         "id": "ci_maximum_life_is_1",
         "files": [
           "overlay-common/special_mods.json"
@@ -189,6 +181,38 @@
       },
       {
         "id": "defend_with_pct_of_armour",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "defend_with_pct_of_armour_while_not_on_low_energy_shield",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "non_channelling_spells_cost_pct_of_maximum_life",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "attacks_cost_pct_of_maximum_mana",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "non_channelling_attacks_cost_pct_of_maximum_mana",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -864,6 +888,14 @@
         "non_effective_fields": []
       },
       {
+        "id": "life_loss_from_hits_prevented_then_share_lost_over_4s",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
         "id": "life_loss_from_hits_prevented_over_4s",
         "files": [
           "overlay-common/special_mods.json"
@@ -1145,6 +1177,238 @@
       },
       {
         "id": "no_dexterity_inherent_bonus",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "spell_damage_with_spells_that_cost_life",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "attacks_add_physical_damage_from_weapon_accuracy",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "minions_inflict_withered_on_hit",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "spells_inflict_withered_on_hit",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "evasion_from_helmet_gloves_boots_doubled",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "evasion_from_body_armour_halved",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "meta_skills_gain_increased_energy",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "meta_skills_gain_more_energy",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "meta_skills_gain_reduced_energy",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "meta_skills_gain_increased_energy_while_on_full_mana",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "energy_generation_is_doubled",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "meta_skills_gain_increased_energy_if_crit_recently",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "trigger_skills_refund_half_of_energy_spent",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "experience_gain",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "item_can_roll_modifiers",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "rune_creates_jewel_socket",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "remnant_pickup_range",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "item_affix_effect_in_item_text",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "socketed_item_effect_in_item_text",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "item_crafting_properties",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "timeless_jewel_description",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "titan_inventory_chest",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "skills_damage_per_connected_red_support_gem",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "skills_skill_speed_per_connected_green_support_gem",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "skills_critical_hit_chance_per_connected_blue_support_gem",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "bear_skills_convert_physical_to_fire",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "enemies_in_presence_resist_elemental_damage_by_lowest_resistance",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "fire_resistance_also_grants_cold_and_lightning_resistance",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "maximum_fire_resistance_also_grants_maximum_cold_and_lightning_resistance",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -2685,6 +2949,14 @@
       },
       {
         "id": "vnd_attack_projectiles_always_inflict_bleedi_e803a8c2",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_attack_skills_can_have_d_additional_tote_cf83bbd4",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
         ],
@@ -4894,6 +5166,16 @@
         "non_effective_fields": []
       },
       {
+        "id": "vnd_d_chance_to_attack_with_level_d_on_melee_fcaf137d",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": [
+          "mods[0].value: structured LIST has no interpreter consumer"
+        ]
+      },
+      {
         "id": "vnd_d_chance_to_block_attack_damage_for_d_se_8be80aaa",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
@@ -4916,6 +5198,16 @@
         ],
         "replaced_files": [],
         "non_effective_fields": []
+      },
+      {
+        "id": "vnd_d_chance_to_ct_ar_si_tg_g_e_r_level_d_on_72c8278a",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": [
+          "mods[0].value: structured LIST has no interpreter consumer"
+        ]
       },
       {
         "id": "vnd_d_chance_to_deal_double_damage_with_atta_dc353157",
@@ -5092,6 +5384,66 @@
         ],
         "replaced_files": [],
         "non_effective_fields": []
+      },
+      {
+        "id": "vnd_d_chance_to_trigger_level_d_on_melee_hit_1dfbe66c",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": [
+          "mods[0].value: structured LIST has no interpreter consumer"
+        ]
+      },
+      {
+        "id": "vnd_d_chance_to_trigger_level_d_ow_nh_e_n_y_1fcb0319",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": [
+          "mods[0].value: structured LIST has no interpreter consumer"
+        ]
+      },
+      {
+        "id": "vnd_d_chance_to_trigger_level_d_when_animate_18300fd8",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": [
+          "mods[0].value: structured LIST has no interpreter consumer"
+        ]
+      },
+      {
+        "id": "vnd_d_chance_to_trigger_level_d_when_you_gai_d32591f9",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": [
+          "mods[0].value: structured LIST has no interpreter consumer"
+        ]
+      },
+      {
+        "id": "vnd_d_chance_to_trigger_level_d_when_you_or_13b259d7",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": [
+          "mods[0].value: structured LIST has no interpreter consumer"
+        ]
+      },
+      {
+        "id": "vnd_d_chance_to_trigger_level_d_when_you_use_c560ea0b",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": [
+          "mods[0].value: structured LIST has no interpreter consumer"
+        ]
       },
       {
         "id": "vnd_d_energy_shield_gained_on_kill_per_level_b12f1660",
@@ -5715,6 +6067,22 @@
       },
       {
         "id": "vnd_d_of_consecrated_path_and_purifying_flam_d204c2ed",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_d_of_damage_dealt_by_y_o_u_r_mines_is_le_b9733f78",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_d_of_damage_dealt_by_y_o_u_r_totems_is_l_2f9e57f5",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
         ],
@@ -7089,14 +7457,6 @@
       },
       {
         "id": "vnd_enemies_in_your_presence_have_no_element_9d8d6f2f",
-        "files": [
-          "0.5.5.4.2/generated/special_vendor.json"
-        ],
-        "replaced_files": [],
-        "non_effective_fields": []
-      },
-      {
-        "id": "vnd_enemies_in_your_presence_resist_elementa_a8b68d4f",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
         ],
@@ -12504,6 +12864,14 @@
         "non_effective_fields": []
       },
       {
+        "id": "vnd_movement_skills_cost_no_mana_ba4488c2",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
         "id": "vnd_movement_speed_cannot_be_modified_to_bel_c40e853d",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
@@ -13193,6 +13561,14 @@
       },
       {
         "id": "vnd_physical_damage_taken_bypasses_energy_sh_449fd55f",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_physical_spell_critical_hits_build_pin_67287472",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
         ],
@@ -14136,6 +14512,14 @@
         "non_effective_fields": []
       },
       {
+        "id": "vnd_retaliation_skills_have_d_increased_spee_5e75fcae",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
         "id": "vnd_rolling_magma_fires_an_additional_projec_c87c5d6c",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
@@ -14480,14 +14864,6 @@
         "non_effective_fields": []
       },
       {
-        "id": "vnd_skills_deal_d_increased_damage_per_conne_9ad70288",
-        "files": [
-          "0.5.5.4.2/generated/special_vendor.json"
-        ],
-        "replaced_files": [],
-        "non_effective_fields": []
-      },
-      {
         "id": "vnd_skills_deal_d_more_damage_for_each_warcr_8eeb51b1",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
@@ -14561,22 +14937,6 @@
       },
       {
         "id": "vnd_skills_have_d_chance_to_not_consume_a_co_d1d537d1",
-        "files": [
-          "0.5.5.4.2/generated/special_vendor.json"
-        ],
-        "replaced_files": [],
-        "non_effective_fields": []
-      },
-      {
-        "id": "vnd_skills_have_d_increased_critical_hit_cha_bdb76eac",
-        "files": [
-          "0.5.5.4.2/generated/special_vendor.json"
-        ],
-        "replaced_files": [],
-        "non_effective_fields": []
-      },
-      {
-        "id": "vnd_skills_have_d_increased_skill_speed_per_2143701b",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
         ],
@@ -14844,6 +15204,14 @@
         ]
       },
       {
+        "id": "vnd_spells_consume_a_power_charge_if_able_to_d4c12975",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
         "id": "vnd_spells_deal_added_chaos_damage_equal_to_835ed7e3",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
@@ -15029,6 +15397,14 @@
       },
       {
         "id": "vnd_stormblast_icicle_and_pyroclast_mine_dea_ac088fd2",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_stormblast_icicle_and_pyroclast_mine_hav_cf8f1e1a",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
         ],
@@ -15538,6 +15914,14 @@
         "non_effective_fields": []
       },
       {
+        "id": "vnd_totems_fire_d_additional_projectiles_9daba9ef",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
         "id": "vnd_totems_gain_d_to_all_elemental_resistanc_c58f165c",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
@@ -15667,6 +16051,30 @@
       },
       {
         "id": "vnd_transfiguration_of_soul_f80fe778",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_traps_and_mines_deal_d_d_additional_phys_3f72e1d2",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_traps_and_mines_deal_d_to_d_additional_p_9dff66d3",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_traps_and_mines_have_a_d_chance_to_poiso_048ddc76",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
         ],
@@ -16404,6 +16812,14 @@
         "non_effective_fields": []
       },
       {
+        "id": "vnd_warcries_cost_no_mana_96440526",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
         "id": "vnd_warcries_count_as_having_d_additional_ne_c64d05e2",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
@@ -16485,6 +16901,22 @@
       },
       {
         "id": "vnd_warcries_have_minimum_of_d_power_6aff18b1",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_warcry_skills_cooldown_time_is_d_seconds_57057c0e",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_warcry_skills_have_d_seconds_to_cooldown_73d48ff5",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
         ],
@@ -16905,6 +17337,14 @@
       },
       {
         "id": "vnd_you_and_nearby_party_members_gain_d_rage_5a718604",
+        "files": [
+          "0.5.5.4.2/generated/special_vendor.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "vnd_you_and_your_totems_regenerate_d_of_life_5a64579e",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
         ],
@@ -18086,15 +18526,16 @@
     "search_mods": 1633,
     "stat": 10722,
     "translation": 28307,
-    "unique": 2388,
+    "unique": 2389,
     "unrendered_stats": 54,
     "unsampled_translations": 170
   },
   "summary": {
-    "parsed": 14757,
-    "pobr_gap": 2446,
-    "recognized_empty": 326,
-    "upstream_gap": 25157
+    "no_effect": 84,
+    "parsed": 14803,
+    "pobr_gap": 2410,
+    "recognized_empty": 291,
+    "upstream_gap": 25114
   },
   "entries": {
     "% of spent Runic Ward granted as Guard@100%": {
@@ -18852,11 +19293,12 @@
         "mods:jewel:CraftedJewelAdditionalPrefixAllowed",
         "stat:stat_descriptions:local_maximum_prefixes_allowed_+"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_prefix_modifiers_allowed_6a07e0b4",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_prefix_modifiers_allowed_6a07e0b4"
       ]
     },
@@ -18921,13 +19363,15 @@
         "bases:Gloam Amulet",
         "bases:Gloam Ring",
         "mods:jewel:CraftedJewelAdditionalSuffixAllowed",
+        "rule:item_crafting_properties",
         "stat:stat_descriptions:local_maximum_suffixes_allowed_+"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_suffix_modifiers_allowed_408ae344",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_suffix_modifiers_allowed_408ae344"
       ]
     },
@@ -24525,11 +24969,12 @@
       "sources": [
         "stat:stat_descriptions:local_maximum_quality_+"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_to_maximum_quality_96ce4da2",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_to_maximum_quality_96ce4da2"
       ]
     },
@@ -28300,11 +28745,12 @@
       "sources": [
         "translation:允许的前缀 {0:+d}"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_prefix_modifiers_allowed_6a07e0b4",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_prefix_modifiers_allowed_6a07e0b4"
       ]
     },
@@ -28312,11 +28758,12 @@
       "sources": [
         "translation:允许的前缀 {0:+d}"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_prefix_modifiers_allowed_6a07e0b4",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_prefix_modifiers_allowed_6a07e0b4"
       ]
     },
@@ -28371,11 +28818,12 @@
       "sources": [
         "translation:允许的后缀 {0:+d}"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_suffix_modifiers_allowed_408ae344",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_suffix_modifiers_allowed_408ae344"
       ]
     },
@@ -28383,11 +28831,12 @@
       "sources": [
         "translation:允许的后缀 {0:+d}"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_suffix_modifiers_allowed_408ae344",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_suffix_modifiers_allowed_408ae344"
       ]
     },
@@ -37167,11 +37616,12 @@
       "sources": [
         "translation:品质上限 {:+d}%"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_to_maximum_quality_96ce4da2",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_to_maximum_quality_96ce4da2"
       ]
     },
@@ -38324,11 +38774,12 @@
         "bases:Penumbra Amulet",
         "bases:Penumbra Ring"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_prefix_modifiers_allowed_6a07e0b4",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_prefix_modifiers_allowed_6a07e0b4"
       ]
     },
@@ -38337,11 +38788,12 @@
         "bases:Tenebrous Amulet",
         "bases:Tenebrous Ring"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_suffix_modifiers_allowed_408ae344",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_suffix_modifiers_allowed_408ae344"
       ]
     },
@@ -39339,13 +39791,15 @@
       "sources": [
         "bases:Breach Ring",
         "mods:equipment:EssenceBreach",
+        "rule:item_crafting_properties",
         "search_mods:essence:EssenceBreach"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_to_maximum_quality_96ce4da2",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_to_maximum_quality_96ce4da2"
       ]
     },
@@ -40205,11 +40659,12 @@
       "sources": [
         "bases:Refined Breach Ring"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_to_maximum_quality_96ce4da2",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_to_maximum_quality_96ce4da2"
       ]
     },
@@ -45949,13 +46404,15 @@
         "bases:Gloam Amulet",
         "bases:Gloam Ring",
         "bases:Lament Amulet",
-        "bases:Twisted Amulet"
+        "bases:Twisted Amulet",
+        "rule:item_crafting_properties"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_prefix_modifiers_allowed_6a07e0b4",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_prefix_modifiers_allowed_6a07e0b4"
       ]
     },
@@ -45967,11 +46424,12 @@
         "bases:Dusk Ring",
         "bases:Portent Amulet"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_suffix_modifiers_allowed_408ae344",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_suffix_modifiers_allowed_408ae344"
       ]
     },
@@ -46338,11 +46796,12 @@
         "bases:Tenebrous Amulet",
         "bases:Tenebrous Ring"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_prefix_modifiers_allowed_6a07e0b4",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_prefix_modifiers_allowed_6a07e0b4"
       ]
     },
@@ -46351,11 +46810,12 @@
         "bases:Penumbra Amulet",
         "bases:Penumbra Ring"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_suffix_modifiers_allowed_408ae344",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_d_suffix_modifiers_allowed_408ae344"
       ]
     },
@@ -48397,9 +48857,15 @@
       "sources": [
         "stat:stat_descriptions:trigger_skills_refund_half_energy_spent_chance_%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnergyRefundHalfChance"
+      ],
+      "special_rule_id": "trigger_skills_refund_half_of_energy_spent",
+      "matching_special_rules": [
+        "trigger_skills_refund_half_of_energy_spent"
+      ]
     },
     "1% chance for transforming to add a Link to the largest group of Linked Sockets": {
       "sources": [
@@ -64010,11 +64476,12 @@
         "stat:stat_descriptions:local_non_unique_item_explicit_prefix_mod_magnitudes_+%",
         "stat:stat_descriptions:local_prefix_effect_+%"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14",
+      "special_rule_id": "item_affix_effect_in_item_text",
       "matching_special_rules": [
+        "item_affix_effect_in_item_text",
         "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14"
       ]
     },
@@ -64113,11 +64580,12 @@
         "stat:stat_descriptions:local_non_unique_item_explicit_suffix_mod_magnitudes_+%",
         "stat:stat_descriptions:local_suffix_effect_+%"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14",
+      "special_rule_id": "item_affix_effect_in_item_text",
       "matching_special_rules": [
+        "item_affix_effect_in_item_text",
         "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14"
       ]
     },
@@ -65511,9 +65979,13 @@
         "stat:stat_descriptions:experience_gain_+%",
         "stat:stat_descriptions:map_experience_gain_+%"
       ],
-      "status": "partial",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "experience_gain",
+      "matching_special_rules": [
+        "experience_gain"
+      ]
     },
     "1% increased Explicit Ailment Modifier magnitudes": {
       "sources": [
@@ -74313,9 +74785,15 @@
       "sources": [
         "stat:stat_descriptions:spell_damage_+%_with_spells_that_cost_life"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "Damage"
+      ],
+      "special_rule_id": "spell_damage_with_spells_that_cost_life",
+      "matching_special_rules": [
+        "spell_damage_with_spells_that_cost_life"
+      ]
     },
     "1% increased Spell Elemental Damage": {
       "sources": [
@@ -76487,30 +76965,36 @@
       "sources": [
         "stat:stat_descriptions:local_socketed_items_effect_+%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedAugmentItemEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "1% increased effect of Socketed Runes": {
       "sources": [
         "stat:stat_descriptions:local_rune_effect_+%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedRuneEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "1% increased effect of Socketed Soul Cores": {
       "sources": [
         "stat:stat_descriptions:local_soul_core_effect_+%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedSoulCoreEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "1% increased effect of Sorcery Ward": {
@@ -84882,20 +85366,24 @@
       "sources": [
         "unique:Darkness Enthroned"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedAugmentItemEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "100% increased effect of Socketed Soul Cores": {
       "sources": [
         "unique:Mahuxotl's Machination"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedSoulCoreEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "100% increased for each time you've been": {
@@ -95762,9 +96250,15 @@
       "sources": [
         "translation:触发技能有 {0}% 的几率返还消耗能量的一半"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnergyRefundHalfChance"
+      ],
+      "special_rule_id": "trigger_skills_refund_half_of_energy_spent",
+      "matching_special_rules": [
+        "trigger_skills_refund_half_of_energy_spent"
+      ]
     },
     "17% chance for Waystones found in your Maps to be Rare and Corrupted": {
       "sources": [
@@ -114042,11 +114536,12 @@
       "sources": [
         "translation:前缀效果提高 {0}%"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14",
+      "special_rule_id": "item_affix_effect_in_item_text",
       "matching_special_rules": [
+        "item_affix_effect_in_item_text",
         "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14"
       ]
     },
@@ -114184,11 +114679,12 @@
       "sources": [
         "translation:后缀效果提高 {0}%"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14",
+      "special_rule_id": "item_affix_effect_in_item_text",
       "matching_special_rules": [
+        "item_affix_effect_in_item_text",
         "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14"
       ]
     },
@@ -115990,9 +116486,13 @@
       "sources": [
         "translation:获得的经验值提高 {0}%"
       ],
-      "status": "partial",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "experience_gain",
+      "matching_special_rules": [
+        "experience_gain"
+      ]
     },
     "17% increased Experience gain in Map": {
       "sources": [
@@ -126614,9 +127114,15 @@
       "sources": [
         "translation:消耗生命的法术造成的法术伤害提高 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "Damage"
+      ],
+      "special_rule_id": "spell_damage_with_spells_that_cost_life",
+      "matching_special_rules": [
+        "spell_damage_with_spells_that_cost_life"
+      ]
     },
     "17% increased Spell Elemental Damage": {
       "sources": [
@@ -130194,30 +130700,36 @@
       "sources": [
         "translation:镶嵌的增幅器物品效果提高 {0}%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedAugmentItemEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "17% increased effect of Socketed Runes": {
       "sources": [
         "translation:镶嵌的符文效果提高 {0}%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedRuneEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "17% increased effect of Socketed Soul Cores": {
       "sources": [
         "translation:镶嵌的灵核效果提高 {0}%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedSoulCoreEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "17% increased effect of Sorcery Ward": {
@@ -148929,11 +149441,12 @@
       "sources": [
         "translation:前缀效果降低 {0}%"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14",
+      "special_rule_id": "item_affix_effect_in_item_text",
       "matching_special_rules": [
+        "item_affix_effect_in_item_text",
         "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14"
       ]
     },
@@ -149071,11 +149584,12 @@
       "sources": [
         "translation:后缀效果降低 {0}%"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14",
+      "special_rule_id": "item_affix_effect_in_item_text",
       "matching_special_rules": [
+        "item_affix_effect_in_item_text",
         "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14"
       ]
     },
@@ -150720,9 +151234,13 @@
       "sources": [
         "translation:获得的经验值降低 {0}%"
       ],
-      "status": "partial",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "experience_gain",
+      "matching_special_rules": [
+        "experience_gain"
+      ]
     },
     "17% reduced Experience gain in Map": {
       "sources": [
@@ -163504,30 +164022,36 @@
       "sources": [
         "translation:镶嵌的增幅器物品效果降低 {0}%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedAugmentItemEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "17% reduced effect of Socketed Runes": {
       "sources": [
         "translation:镶嵌的符文效果降低 {0}%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedRuneEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "17% reduced effect of Socketed Soul Cores": {
       "sources": [
         "translation:镶嵌的灵核效果降低 {0}%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedSoulCoreEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "17% reduced effect of Sorcery Ward": {
@@ -164268,9 +164792,15 @@
       "sources": [
         "search_mods:desecrated:AbyssModStaffAmanamuPrefixSpellDamageWithSpellsThatCostLife"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "Damage"
+      ],
+      "special_rule_id": "spell_damage_with_spells_that_cost_life",
+      "matching_special_rules": [
+        "spell_damage_with_spells_that_cost_life"
+      ]
     },
     "179% increased Physical Damage": {
       "sources": [
@@ -169009,12 +169539,15 @@
     },
     "200% increased effect of Socketed Runes": {
       "sources": [
+        "rule:socketed_item_effect_in_item_text",
         "unique:Runeseeker's Call"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedRuneEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "2000 Mana, no more than once every 2 seconds": {
@@ -169986,6 +170519,18 @@
         "FullyBrokenArmourEffect"
       ]
     },
+    "24% increased effect of Socketed Augment Items": {
+      "sources": [
+        "rule:socketed_item_effect_in_item_text"
+      ],
+      "status": "no_effect",
+      "vendor_status": "parsed",
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
+      ]
+    },
     "24% increased maximum": {
       "sources": [
         "passive:62984"
@@ -170162,6 +170707,20 @@
       "status": "partial",
       "vendor_status": "unsupported",
       "mod_names": []
+    },
+    "25% chance for Trigger skills to refund half of Energy Spent": {
+      "sources": [
+        "rule:trigger_skills_refund_half_of_energy_spent"
+      ],
+      "status": "parsed",
+      "vendor_status": "unsupported",
+      "mod_names": [
+        "EnergyRefundHalfChance"
+      ],
+      "special_rule_id": "trigger_skills_refund_half_of_energy_spent",
+      "matching_special_rules": [
+        "trigger_skills_refund_half_of_energy_spent"
+      ]
     },
     "25% chance for an Ulaman pit near the Map Boss to have the Incubator Queen": {
       "sources": [
@@ -175780,10 +176339,12 @@
         "mods:equipment:AlloyEffectOfSocketedAugments1",
         "search_mods:alloy:AlloyEffectOfSocketedAugments1"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedAugmentItemEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "30% increased for": {
@@ -177015,10 +177576,12 @@
       "sources": [
         "unique:Mahuxotl's Machination"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedSoulCoreEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "34% increased Attack Damage": {
@@ -180052,6 +180615,20 @@
         "SpellDamage"
       ]
     },
+    "40% increased Spell Damage with Spells that cost Life": {
+      "sources": [
+        "rule:spell_damage_with_spells_that_cost_life"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "Damage"
+      ],
+      "special_rule_id": "spell_damage_with_spells_that_cost_life",
+      "matching_special_rules": [
+        "spell_damage_with_spells_that_cost_life"
+      ]
+    },
     "40% increased Stun Buildup": {
       "sources": [
         "bases:Blunt Quiver",
@@ -181275,6 +181852,19 @@
         "CriticalStrikeChance"
       ]
     },
+    "46% increased Effect of Prefixes": {
+      "sources": [
+        "rule:item_affix_effect_in_item_text"
+      ],
+      "status": "no_effect",
+      "vendor_status": "unsupported",
+      "mod_names": [],
+      "special_rule_id": "item_affix_effect_in_item_text",
+      "matching_special_rules": [
+        "item_affix_effect_in_item_text",
+        "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14"
+      ]
+    },
     "46% increased Projectile Speed": {
       "sources": [
         "mods:equipment:ProjectileSpeed5"
@@ -181965,11 +182555,16 @@
     },
     "5% increased Experience gain": {
       "sources": [
+        "rule:experience_gain",
         "unique:Cornathaum"
       ],
-      "status": "partial",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "experience_gain",
+      "matching_special_rules": [
+        "experience_gain"
+      ]
     },
     "5% increased Intelligence": {
       "sources": [
@@ -183920,10 +184515,24 @@
       "sources": [
         "unique:Darkness Enthroned"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedAugmentItemEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
+      ]
+    },
+    "50% increased effect of Socketed Soul Cores": {
+      "sources": [
+        "rule:socketed_item_effect_in_item_text"
+      ],
+      "status": "no_effect",
+      "vendor_status": "parsed",
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "50% increased if has started in the past 2 seconds": {
@@ -185254,6 +185863,19 @@
         "BowDamage"
       ]
     },
+    "59% increased Effect of Suffixes": {
+      "sources": [
+        "rule:item_affix_effect_in_item_text"
+      ],
+      "status": "no_effect",
+      "vendor_status": "unsupported",
+      "mod_names": [],
+      "special_rule_id": "item_affix_effect_in_item_text",
+      "matching_special_rules": [
+        "item_affix_effect_in_item_text",
+        "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14"
+      ]
+    },
     "59% increased Fire Damage if you've collected a Fire Infusion in the last 8 seconds": {
       "sources": [
         "mods:equipment:GenesisTreeBeltFireDamageIfFireInfusionCollectedLast8SecondsCrafted",
@@ -186341,11 +186963,12 @@
       "sources": [
         "mods:jewel:CraftedJewelPrefixEffect"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14",
+      "special_rule_id": "item_affix_effect_in_item_text",
       "matching_special_rules": [
+        "item_affix_effect_in_item_text",
         "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14"
       ]
     },
@@ -186353,11 +186976,12 @@
       "sources": [
         "mods:jewel:CraftedJewelSuffixEffect"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14",
+      "special_rule_id": "item_affix_effect_in_item_text",
       "matching_special_rules": [
+        "item_affix_effect_in_item_text",
         "vnd_d_ir_ne_cd_ru_ec_ae_sd_e_d_effect_of_sp_65cb1c14"
       ]
     },
@@ -186629,10 +187253,12 @@
         "mods:equipment:EssenceLocalRuneAndSoulCoreEffect1",
         "search_mods:essence:EssenceLocalRuneAndSoulCoreEffect1"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedAugmentItemEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "60% increased from Equipped": {
@@ -187038,10 +187664,12 @@
       "sources": [
         "unique:Mahuxotl's Machination"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedSoulCoreEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "666% increased Armour and Energy Shield": {
@@ -187058,10 +187686,12 @@
       "sources": [
         "unique:Mahuxotl's Machination"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedSoulCoreEffect"
+      "mod_names": [],
+      "special_rule_id": "socketed_item_effect_in_item_text",
+      "matching_special_rules": [
+        "socketed_item_effect_in_item_text"
       ]
     },
     "67% increased Armour": {
@@ -190041,9 +190671,15 @@
       "sources": [
         "search_mods:desecrated:AbyssModWandAmanamuPrefixSpellDamageWithSpellsThatCostLife"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "Damage"
+      ],
+      "special_rule_id": "spell_damage_with_spells_that_cost_life",
+      "matching_special_rules": [
+        "spell_damage_with_spells_that_cost_life"
+      ]
     },
     "89% increased Spell Physical Damage": {
       "sources": [
@@ -222457,25 +223093,43 @@
       "sources": [
         "stat:stat_descriptions:attacks_base_mana_cost_+_%_of_maximum_mana"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "ManaCostPercentOfMaximumMana"
+      ],
+      "special_rule_id": "attacks_cost_pct_of_maximum_mana",
+      "matching_special_rules": [
+        "attacks_cost_pct_of_maximum_mana"
+      ]
     },
     "Attacks cost an additional 17% of your maximum Mana": {
       "sources": [
         "translation:攻击额外消耗 {0}% 的魔力上限"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "ManaCostPercentOfMaximumMana"
+      ],
+      "special_rule_id": "attacks_cost_pct_of_maximum_mana",
+      "matching_special_rules": [
+        "attacks_cost_pct_of_maximum_mana"
+      ]
     },
     "Attacks cost an additional 6% of your maximum Mana": {
       "sources": [
         "unique:Mind of the Council"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "ManaCostPercentOfMaximumMana"
+      ],
+      "special_rule_id": "attacks_cost_pct_of_maximum_mana",
+      "matching_special_rules": [
+        "attacks_cost_pct_of_maximum_mana"
+      ]
     },
     "Attacks deal no Physical Damage": {
       "sources": [
@@ -223001,6 +223655,21 @@
       "status": "unsupported",
       "vendor_status": "unsupported",
       "mod_names": []
+    },
+    "Attacks using your Weapons have Added Physical Damage equal to 25% of the Accuracy Rating on the Weapon": {
+      "sources": [
+        "rule:attacks_add_physical_damage_from_weapon_accuracy"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "PhysicalDamageMax",
+        "PhysicalDamageMin"
+      ],
+      "special_rule_id": "attacks_add_physical_damage_from_weapon_accuracy",
+      "matching_special_rules": [
+        "attacks_add_physical_damage_from_weapon_accuracy"
+      ]
     },
     "Attacks with Axes or Swords grant 1 Rage on Hit, no more than once every second": {
       "sources": [
@@ -225822,25 +226491,44 @@
       "sources": [
         "stat:stat_descriptions:non_skill_physical_damage_%_to_convert_to_fire_with_bear_skills"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "PhysicalDamageConvertToFire"
+      ],
+      "special_rule_id": "bear_skills_convert_physical_to_fire",
+      "matching_special_rules": [
+        "bear_skills_convert_physical_to_fire"
+      ]
     },
     "Bear Skills Convert 17% of Physical Damage to Fire Damage": {
       "sources": [
         "translation:巨熊形态技能将 {0}% 的物理伤害转化为火焰伤害"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "PhysicalDamageConvertToFire"
+      ],
+      "special_rule_id": "bear_skills_convert_physical_to_fire",
+      "matching_special_rules": [
+        "bear_skills_convert_physical_to_fire"
+      ]
     },
     "Bear Skills Convert 80% of Physical Damage to Fire Damage": {
       "sources": [
+        "rule:bear_skills_convert_physical_to_fire",
         "unique:Fury of the King"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "PhysicalDamageConvertToFire"
+      ],
+      "special_rule_id": "bear_skills_convert_physical_to_fire",
+      "matching_special_rules": [
+        "bear_skills_convert_physical_to_fire"
+      ]
     },
     "Bear Spirit gains": {
       "sources": [
@@ -237032,84 +237720,123 @@
         "stat:stat_descriptions:warping_rune_add_item_tag_3",
         "translation:可以重置盛怒词缀"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "item_can_roll_modifiers",
+      "matching_special_rules": [
+        "item_can_roll_modifiers"
+      ]
     },
     "Can roll Chronomancy modifiers": {
       "sources": [
         "stat:stat_descriptions:warping_rune_add_item_tag_1",
         "translation:可以重置塑时术师词缀"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "item_can_roll_modifiers",
+      "matching_special_rules": [
+        "item_can_roll_modifiers"
+      ]
     },
     "Can roll Decay modifiers": {
       "sources": [
         "stat:stat_descriptions:warping_rune_add_item_tag_5",
         "translation:可以重置腐蚀词缀"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "item_can_roll_modifiers",
+      "matching_special_rules": [
+        "item_can_roll_modifiers"
+      ]
     },
     "Can roll Destruction modifiers": {
       "sources": [
         "stat:stat_descriptions:warping_rune_add_item_tag_6",
         "translation:可以选取毁灭词缀"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "item_can_roll_modifiers",
+      "matching_special_rules": [
+        "item_can_roll_modifiers"
+      ]
     },
     "Can roll Marksman modifiers": {
       "sources": [
+        "rule:item_can_roll_modifiers",
         "stat:stat_descriptions:warping_rune_add_item_tag_4",
         "translation:可以重置神射手词缀"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "item_can_roll_modifiers",
+      "matching_special_rules": [
+        "item_can_roll_modifiers"
+      ]
     },
     "Can roll Minion Modifiers": {
       "sources": [
         "stat:stat_descriptions:display_item_generation_can_roll_minion_affixes",
         "translation:可以附加召唤词缀"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "item_can_roll_modifiers",
+      "matching_special_rules": [
+        "item_can_roll_modifiers"
+      ]
     },
     "Can roll Ring Modifiers": {
       "sources": [
         "bases:Grasping Mail",
         "bases:Runefather's Grasping Mail",
         "bases:Runeforged Grasping Mail",
+        "rule:item_can_roll_modifiers",
         "stat:stat_descriptions:display_item_can_also_roll_ring_mods",
         "translation:可以重置戒指词缀"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "item_can_roll_modifiers",
+      "matching_special_rules": [
+        "item_can_roll_modifiers"
+      ]
     },
     "Can roll Soul modifiers": {
       "sources": [
+        "rule:item_can_roll_modifiers",
         "stat:stat_descriptions:warping_rune_add_item_tag_2",
         "translation:可以重置灵魂词缀"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "item_can_roll_modifiers",
+      "matching_special_rules": [
+        "item_can_roll_modifiers"
+      ]
     },
     "Can roll Totem Modifiers": {
       "sources": [
         "stat:stat_descriptions:display_item_generation_can_roll_totem_affixes",
         "translation:可以附加图腾词缀"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "item_can_roll_modifiers",
+      "matching_special_rules": [
+        "item_can_roll_modifiers"
+      ]
     },
     "Can store +17 Bolts": {
       "sources": [
@@ -239331,15 +240058,17 @@
     "Carry a Chest which adds 20 Inventory Slots": {
       "sources": [
         "passive:60634",
+        "rule:titan_inventory_chest",
         "stat:stat_descriptions:titan_additional_inventory",
         "stat:stat_descriptions:titan_expanded_main_inventory",
         "translation:携带一个箱子，附加 20 个物品栏位"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_carry_a_chest_which_adds_d_inventory_slo_343ad014",
+      "special_rule_id": "titan_inventory_chest",
       "matching_special_rules": [
+        "titan_inventory_chest",
         "vnd_carry_a_chest_which_adds_d_inventory_slo_343ad014"
       ]
     },
@@ -248106,7 +248835,8 @@
         "search_mods:corrupted:CorruptionJewelCorruptedBloodImmunity1",
         "search_mods:desecrated:AbyssModBootsUlamanSuffixCorruptedBloodImmunity",
         "stat:stat_descriptions:cannot_be_inflicted_by_corrupted_blood",
-        "translation:腐化之血无法施加于你"
+        "translation:腐化之血无法施加于你",
+        "unique:Zerphi's Genesis"
       ],
       "status": "parsed",
       "vendor_status": "parsed",
@@ -256254,9 +256984,15 @@
       "sources": [
         "stat:stat_descriptions:defend_with_%_of_armour_while_not_on_low_energy_shield"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "ArmourDefense"
+      ],
+      "special_rule_id": "defend_with_pct_of_armour_while_not_on_low_energy_shield",
+      "matching_special_rules": [
+        "defend_with_pct_of_armour_while_not_on_low_energy_shield"
+      ]
     },
     "Defend with 1% of Armour while on Low Energy Shield": {
       "sources": [
@@ -256334,9 +257070,15 @@
       "sources": [
         "translation:护甲值在非低能量护盾的状态下以 {0}% 进行防御"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "ArmourDefense"
+      ],
+      "special_rule_id": "defend_with_pct_of_armour_while_not_on_low_energy_shield",
+      "matching_special_rules": [
+        "defend_with_pct_of_armour_while_not_on_low_energy_shield"
+      ]
     },
     "Defend with 17% of Armour while on Low Energy Shield": {
       "sources": [
@@ -257625,12 +258367,17 @@
     },
     "Destroys all Augment Sockets on the item to create a Jewel Socket": {
       "sources": [
+        "rule:rune_creates_jewel_socket",
         "stat:stat_descriptions:dummy_display_stat_rune_create_jewel_socket",
         "translation:摧毁该物品上的所有增幅器插槽，以生成一个珠宝插槽"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "rune_creates_jewel_socket",
+      "matching_special_rules": [
+        "rune_creates_jewel_socket"
+      ]
     },
     "Determination has 1% increased Aura Effect": {
       "sources": [
@@ -264257,6 +265004,7 @@
     },
     "Enemies in your Presence Resist Elemental Damage based on their Lowest Resistance": {
       "sources": [
+        "rule:enemies_in_presence_resist_elemental_damage_by_lowest_resistance",
         "stat:stat_descriptions:enemies_in_presence_elemental_damage_resisted_by_lowest_elemental_resistance",
         "translation:在场的敌人根据最低的抗性抵抗元素伤害",
         "unique:Sacred Flame"
@@ -264264,11 +265012,11 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "ElementalDamageUsesLowestResistance"
+        "EnemyModifier"
       ],
-      "special_rule_id": "vnd_enemies_in_your_presence_resist_elementa_a8b68d4f",
+      "special_rule_id": "enemies_in_presence_resist_elemental_damage_by_lowest_resistance",
       "matching_special_rules": [
-        "vnd_enemies_in_your_presence_resist_elementa_a8b68d4f"
+        "enemies_in_presence_resist_elemental_damage_by_lowest_resistance"
       ]
     },
     "Enemies in your Presence are Blinded": {
@@ -266724,13 +267472,20 @@
     },
     "Energy Generation is doubled": {
       "sources": [
+        "rule:energy_generation_is_doubled",
         "stat:stat_descriptions:energy_generation_is_doubled",
         "translation:产生的能量翻倍",
         "unique:Seeing Stars"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnergyGenerated"
+      ],
+      "special_rule_id": "energy_generation_is_doubled",
+      "matching_special_rules": [
+        "energy_generation_is_doubled"
+      ]
     },
     "Energy Shield": {
       "sources": [
@@ -267891,22 +268646,34 @@
     },
     "Evasion Rating from Equipped Body Armour is halved": {
       "sources": [
+        "rule:evasion_from_body_armour_halved",
         "stat:stat_descriptions:halve_evasion_rating_from_body",
         "translation:装备胸甲的闪避值减半"
       ],
-      "status": "unsupported",
-      "vendor_status": "parsed",
-      "mod_names": []
-    },
-    "Evasion Rating from Equipped Helmet, Gloves and Boots is doubled": {
-      "sources": [
-        "stat:stat_descriptions:double_evasion_rating_from_gloves_helmets_boots",
-        "translation:装备头盔、手套和鞋子的闪避值翻倍"
-      ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "Evasion"
+      ],
+      "special_rule_id": "evasion_from_body_armour_halved",
+      "matching_special_rules": [
+        "evasion_from_body_armour_halved"
+      ]
+    },
+    "Evasion Rating from Equipped Helmet, Gloves and Boots is doubled": {
+      "sources": [
+        "rule:evasion_from_helmet_gloves_boots_doubled",
+        "stat:stat_descriptions:double_evasion_rating_from_gloves_helmets_boots",
+        "translation:装备头盔、手套和鞋子的闪避值翻倍"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "Evasion"
+      ],
+      "special_rule_id": "evasion_from_helmet_gloves_boots_doubled",
+      "matching_special_rules": [
+        "evasion_from_helmet_gloves_boots_doubled"
       ]
     },
     "Evasion Rating is doubled if you have not been Hit Recently": {
@@ -285961,7 +286728,8 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "ExtraAura"
+        "ExtraAura",
+        "HasShapersPresence"
       ],
       "special_rule_id": "vnd_gain_shaper_s_presence_for_10_seconds_wh_d648d057",
       "matching_special_rules": [
@@ -300704,16 +301472,18 @@
     },
     "Historic": {
       "sources": [
+        "rule:timeless_jewel_description",
         "stat:stat_descriptions:local_is_alternate_tree_jewel",
         "translation:史实",
         "unique:Heroic Tragedy",
         "unique:Undying Hate"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_historic_ec4b36ed",
+      "special_rule_id": "timeless_jewel_description",
       "matching_special_rules": [
+        "timeless_jewel_description",
         "vnd_historic_ec4b36ed"
       ]
     },
@@ -303872,7 +304642,9 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "ExtraAura"
+        "ExtraAura",
+        "MovementSpeed",
+        "SkillSpeed"
       ],
       "special_rule_id": "vnd_if_you_ve_warcried_recently_you_and_near_42b3bb98",
       "matching_special_rules": [
@@ -303886,7 +304658,9 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "ExtraAura"
+        "ExtraAura",
+        "MovementSpeed",
+        "SkillSpeed"
       ],
       "special_rule_id": "vnd_if_you_ve_warcried_recently_you_and_near_42b3bb98",
       "matching_special_rules": [
@@ -304913,7 +305687,7 @@
         "stat:passive_skill_stat_descriptions:keystone_chaos_inoculation",
         "translation:生命上限变成 1\n免疫混沌伤害和流血"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "parsed",
       "mod_names": [],
       "special_rule_id": "immune_to_chaos_damage_and_bleeding",
@@ -323447,9 +324221,15 @@
       "sources": [
         "stat:stat_descriptions:energy_generated_+%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnergyGenerated"
+      ],
+      "special_rule_id": "meta_skills_gain_increased_energy",
+      "matching_special_rules": [
+        "meta_skills_gain_increased_energy"
+      ]
     },
     "Meta Skills gain 1% increased Energy for each Critical Hit you've dealt with Spells Recently": {
       "sources": [
@@ -323463,33 +324243,57 @@
       "sources": [
         "stat:stat_descriptions:energy_generated_+%_if_crit_recently"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnergyGenerated"
+      ],
+      "special_rule_id": "meta_skills_gain_increased_energy_if_crit_recently",
+      "matching_special_rules": [
+        "meta_skills_gain_increased_energy_if_crit_recently"
+      ]
     },
     "Meta Skills gain 1% increased Energy while on Full Mana": {
       "sources": [
         "stat:stat_descriptions:energy_generated_+%_on_full_mana"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnergyGenerated"
+      ],
+      "special_rule_id": "meta_skills_gain_increased_energy_while_on_full_mana",
+      "matching_special_rules": [
+        "meta_skills_gain_increased_energy_while_on_full_mana"
+      ]
     },
     "Meta Skills gain 1% more Energy": {
       "sources": [
         "stat:stat_descriptions:ascendancy_energy_generated_+%_final"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnergyGenerated"
+      ],
+      "special_rule_id": "meta_skills_gain_more_energy",
+      "matching_special_rules": [
+        "meta_skills_gain_more_energy"
+      ]
     },
     "Meta Skills gain 17% increased Energy": {
       "sources": [
         "translation:非凡技能获得的能量提高 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnergyGenerated"
+      ],
+      "special_rule_id": "meta_skills_gain_increased_energy",
+      "matching_special_rules": [
+        "meta_skills_gain_increased_energy"
+      ]
     },
     "Meta Skills gain 17% increased Energy for each Critical Hit you've dealt with Spells Recently": {
       "sources": [
@@ -323503,17 +324307,29 @@
       "sources": [
         "translation:若你近期造成暴击击中，非凡技能获得的能量提高 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnergyGenerated"
+      ],
+      "special_rule_id": "meta_skills_gain_increased_energy_if_crit_recently",
+      "matching_special_rules": [
+        "meta_skills_gain_increased_energy_if_crit_recently"
+      ]
     },
     "Meta Skills gain 17% increased Energy while on Full Mana": {
       "sources": [
         "translation:满魔时，非凡技能获得的能量提高 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnergyGenerated"
+      ],
+      "special_rule_id": "meta_skills_gain_increased_energy_while_on_full_mana",
+      "matching_special_rules": [
+        "meta_skills_gain_increased_energy_while_on_full_mana"
+      ]
     },
     "Meta Skills gain 17% less Energy": {
       "sources": [
@@ -323527,17 +324343,29 @@
       "sources": [
         "translation:非凡技能获得的能量总增 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnergyGenerated"
+      ],
+      "special_rule_id": "meta_skills_gain_more_energy",
+      "matching_special_rules": [
+        "meta_skills_gain_more_energy"
+      ]
     },
     "Meta Skills gain 17% reduced Energy": {
       "sources": [
         "translation:非凡技能获得的能量降低 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnergyGenerated"
+      ],
+      "special_rule_id": "meta_skills_gain_reduced_energy",
+      "matching_special_rules": [
+        "meta_skills_gain_reduced_energy"
+      ]
     },
     "Meta Skills gain 17% reduced Energy for each Critical Hit you've dealt with Spells Recently": {
       "sources": [
@@ -323563,13 +324391,76 @@
       "vendor_status": "unsupported",
       "mod_names": []
     },
+    "Meta Skills gain 20% reduced Energy": {
+      "sources": [
+        "rule:meta_skills_gain_reduced_energy"
+      ],
+      "status": "parsed",
+      "vendor_status": "unsupported",
+      "mod_names": [
+        "EnergyGenerated"
+      ],
+      "special_rule_id": "meta_skills_gain_reduced_energy",
+      "matching_special_rules": [
+        "meta_skills_gain_reduced_energy"
+      ]
+    },
+    "Meta Skills gain 25% increased Energy while on Full Mana": {
+      "sources": [
+        "rule:meta_skills_gain_increased_energy_while_on_full_mana"
+      ],
+      "status": "parsed",
+      "vendor_status": "unsupported",
+      "mod_names": [
+        "EnergyGenerated"
+      ],
+      "special_rule_id": "meta_skills_gain_increased_energy_while_on_full_mana",
+      "matching_special_rules": [
+        "meta_skills_gain_increased_energy_while_on_full_mana"
+      ]
+    },
+    "Meta Skills gain 30% increased Energy if you've dealt a Critical Hit Recently": {
+      "sources": [
+        "rule:meta_skills_gain_increased_energy_if_crit_recently"
+      ],
+      "status": "parsed",
+      "vendor_status": "unsupported",
+      "mod_names": [
+        "EnergyGenerated"
+      ],
+      "special_rule_id": "meta_skills_gain_increased_energy_if_crit_recently",
+      "matching_special_rules": [
+        "meta_skills_gain_increased_energy_if_crit_recently"
+      ]
+    },
+    "Meta Skills gain 35% more Energy": {
+      "sources": [
+        "rule:meta_skills_gain_more_energy"
+      ],
+      "status": "parsed",
+      "vendor_status": "unsupported",
+      "mod_names": [
+        "EnergyGenerated"
+      ],
+      "special_rule_id": "meta_skills_gain_more_energy",
+      "matching_special_rules": [
+        "meta_skills_gain_more_energy"
+      ]
+    },
     "Meta Skills gain 8% increased Energy": {
       "sources": [
-        "mods:jewel:JewelEnergy"
+        "mods:jewel:JewelEnergy",
+        "rule:meta_skills_gain_increased_energy"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnergyGenerated"
+      ],
+      "special_rule_id": "meta_skills_gain_increased_energy",
+      "matching_special_rules": [
+        "meta_skills_gain_increased_energy"
+      ]
     },
     "Meta Skills have 1% increased Reservation Efficiency": {
       "sources": [
@@ -327687,10 +328578,11 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "Condition:CanWither"
+        "MinionModifier"
       ],
-      "special_rule_id": "vnd_minions_have_d_chance_to_inflict_withere_d4338b18",
+      "special_rule_id": "minions_inflict_withered_on_hit",
       "matching_special_rules": [
+        "minions_inflict_withered_on_hit",
         "vnd_minions_have_d_chance_to_inflict_withere_d4338b18"
       ]
     },
@@ -328031,6 +328923,21 @@
       "status": "partial",
       "vendor_status": "unsupported",
       "mod_names": []
+    },
+    "Minions have 10% chance to inflict Withered on Hit": {
+      "sources": [
+        "rule:minions_inflict_withered_on_hit"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "MinionModifier"
+      ],
+      "special_rule_id": "minions_inflict_withered_on_hit",
+      "matching_special_rules": [
+        "minions_inflict_withered_on_hit",
+        "vnd_minions_have_d_chance_to_inflict_withere_d4338b18"
+      ]
     },
     "Minions have 10% increased Attack and Cast Speed": {
       "sources": [
@@ -328412,10 +329319,11 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "Condition:CanWither"
+        "MinionModifier"
       ],
-      "special_rule_id": "vnd_minions_have_d_chance_to_inflict_withere_d4338b18",
+      "special_rule_id": "minions_inflict_withered_on_hit",
       "matching_special_rules": [
+        "minions_inflict_withered_on_hit",
         "vnd_minions_have_d_chance_to_inflict_withere_d4338b18"
       ]
     },
@@ -330828,17 +331736,43 @@
       "sources": [
         "stat:stat_descriptions:modifiers_to_fire_resistance_also_apply_to_cold_lightning_resistance_at_%_value"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "FireResistanceAlsoGrantsColdAndLightning"
+      ],
+      "special_rule_id": "fire_resistance_also_grants_cold_and_lightning_resistance",
+      "matching_special_rules": [
+        "fire_resistance_also_grants_cold_and_lightning_resistance"
+      ]
     },
     "Modifiers to Fire Resistance also grant Cold and Lightning Resistance at 17% of their value": {
       "sources": [
         "translation:火焰抗性修正的 {}% 也作用于冰霜和闪电抗性"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "FireResistanceAlsoGrantsColdAndLightning"
+      ],
+      "special_rule_id": "fire_resistance_also_grants_cold_and_lightning_resistance",
+      "matching_special_rules": [
+        "fire_resistance_also_grants_cold_and_lightning_resistance"
+      ]
+    },
+    "Modifiers to Fire Resistance also grant Cold and Lightning Resistance at 50% of their value": {
+      "sources": [
+        "rule:fire_resistance_also_grants_cold_and_lightning_resistance"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "FireResistanceAlsoGrantsColdAndLightning"
+      ],
+      "special_rule_id": "fire_resistance_also_grants_cold_and_lightning_resistance",
+      "matching_special_rules": [
+        "fire_resistance_also_grants_cold_and_lightning_resistance"
+      ]
     },
     "Modifiers to Ignite Duration on you apply to all Elemental Ailments": {
       "sources": [
@@ -330921,12 +331855,19 @@
     },
     "Modifiers to Maximum Fire Resistance also grant Maximum Cold and Lightning Resistance": {
       "sources": [
+        "rule:maximum_fire_resistance_also_grants_maximum_cold_and_lightning_resistance",
         "stat:stat_descriptions:modifiers_to_maximum_fire_resistance_apply_to_maximum_cold_and_lightning_resistance",
         "translation:火焰抗性上限修正也作用于冰霜和闪电抗性上限"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "MaximumFireResistanceAlsoGrantsColdAndLightning"
+      ],
+      "special_rule_id": "maximum_fire_resistance_also_grants_maximum_cold_and_lightning_resistance",
+      "matching_special_rules": [
+        "maximum_fire_resistance_also_grants_maximum_cold_and_lightning_resistance"
+      ]
     },
     "Modifiers to Melee Strike Range also apply to this Skill's Area radius": {
       "sources": [
@@ -335876,9 +336817,15 @@
         "stat:stat_descriptions:movement_skills_cost_no_mana",
         "translation:位移技能不消耗魔力"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "ManaCost"
+      ],
+      "special_rule_id": "vnd_movement_skills_cost_no_mana_ba4488c2",
+      "matching_special_rules": [
+        "vnd_movement_skills_cost_no_mana_ba4488c2"
+      ]
     },
     "Movement Skills deal no Physical Damage": {
       "sources": [
@@ -338808,17 +339755,29 @@
       "sources": [
         "stat:stat_descriptions:base_mana_cost_+_with_non_channelling_attacks_%_maximum_mana"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ManaCostPercentOfMaximumMana"
+      ],
+      "special_rule_id": "non_channelling_attacks_cost_pct_of_maximum_mana",
+      "matching_special_rules": [
+        "non_channelling_attacks_cost_pct_of_maximum_mana"
+      ]
     },
     "Non-Channelling Attacks cost an additional 17% of your maximum Mana": {
       "sources": [
         "translation:非吟唱攻击额外消耗 {0}% 的魔力上限"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ManaCostPercentOfMaximumMana"
+      ],
+      "special_rule_id": "non_channelling_attacks_cost_pct_of_maximum_mana",
+      "matching_special_rules": [
+        "non_channelling_attacks_cost_pct_of_maximum_mana"
+      ]
     },
     "Non-Channelling Attacks have Added Lightning Damage equal to 1% of maximum Mana": {
       "sources": [
@@ -338994,9 +339953,15 @@
       "sources": [
         "stat:stat_descriptions:base_life_cost_+_with_non_channelling_spells_%_maximum_life"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "LifeCostPercentOfMaximumLife"
+      ],
+      "special_rule_id": "non_channelling_spells_cost_pct_of_maximum_life",
+      "matching_special_rules": [
+        "non_channelling_spells_cost_pct_of_maximum_life"
+      ]
     },
     "Non-Channelling Spells cost an additional 17% of maximum Energy Shield": {
       "sources": [
@@ -339010,9 +339975,15 @@
       "sources": [
         "translation:非吟唱法术额外消耗 {0}% 的生命上限"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "LifeCostPercentOfMaximumLife"
+      ],
+      "special_rule_id": "non_channelling_spells_cost_pct_of_maximum_life",
+      "matching_special_rules": [
+        "non_channelling_spells_cost_pct_of_maximum_life"
+      ]
     },
     "Non-Channelling Spells cost an additional 17% of your maximum Mana": {
       "sources": [
@@ -339026,9 +339997,15 @@
       "sources": [
         "unique:Rathpith Globe"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "LifeCostPercentOfMaximumLife"
+      ],
+      "special_rule_id": "non_channelling_spells_cost_pct_of_maximum_life",
+      "matching_special_rules": [
+        "non_channelling_spells_cost_pct_of_maximum_life"
+      ]
     },
     "Non-Channelling Spells deal 1% increased Damage per 100 maximum Life": {
       "sources": [
@@ -341992,19 +342969,31 @@
       "sources": [
         "translation:范围内的核心天赋同时提供 非凡技能获得的能量提高 {0:d}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "radius_grant": "Meta Skills gain 17% increased Energy",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "EnergyGenerated"
+      ],
+      "special_rule_id": "meta_skills_gain_increased_energy",
+      "matching_special_rules": [
+        "meta_skills_gain_increased_energy"
+      ]
     },
     "Notable Passive Skills in Radius also grant Meta Skills gain 4% increased Energy": {
       "sources": [
         "mods:jewel:JewelRadiusEnergy"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "radius_grant": "Meta Skills gain 4% increased Energy",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "EnergyGenerated"
+      ],
+      "special_rule_id": "meta_skills_gain_increased_energy",
+      "matching_special_rules": [
+        "meta_skills_gain_increased_energy"
+      ]
     },
     "Notable Passive Skills in Radius also grant Minions Revive 7% faster": {
       "sources": [
@@ -343614,17 +344603,17 @@
     },
     "Only Runes can be Socketed in this item": {
       "sources": [
+        "rule:item_crafting_properties",
         "stat:stat_descriptions:local_can_only_socket_runes",
         "translation:该物品仅能镶嵌符文",
         "unique:Runeseeker's Call"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedRunesOnly"
-      ],
-      "special_rule_id": "vnd_only_runes_can_be_socketed_in_this_item_20f3b9f5",
+      "mod_names": [],
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_only_runes_can_be_socketed_in_this_item_20f3b9f5"
       ]
     },
@@ -343643,13 +344632,12 @@
         "translation:该物品仅能镶嵌灵核",
         "unique:Atziri's Splendour"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SocketedSoulCoresOnly"
-      ],
-      "special_rule_id": "vnd_only_soul_cores_can_be_socketed_in_this_39e2f356",
+      "mod_names": [],
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_only_soul_cores_can_be_socketed_in_this_39e2f356"
       ]
     },
@@ -345030,11 +346018,12 @@
         "translation:赞颂以阿曼娜姆之名（阿曼娜姆-乌拉曼）亵渎的 {1} 个灵魂\n范围内的天赋被深渊抑制\n渎灵会使物品不稳定。",
         "unique:Undying Hate"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_passives_in_radius_are_conquered_by_the_7f743382",
+      "special_rule_id": "timeless_jewel_description",
       "matching_special_rules": [
+        "timeless_jewel_description",
         "vnd_passives_in_radius_are_conquered_by_the_7f743382"
       ]
     },
@@ -345049,16 +346038,18 @@
         "translation:用 {1} 枚金币纪念维多里奥\n范围内的天赋被永恒帝国抑制",
         "translation:用 {1} 枚金币纪念维多里奥（卡迪罗 - 维多里奥）\n范围内的天赋被永恒帝国抑制"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_passives_in_radius_are_conquered_by_the_7f743382",
+      "special_rule_id": "timeless_jewel_description",
       "matching_special_rules": [
+        "timeless_jewel_description",
         "vnd_passives_in_radius_are_conquered_by_the_7f743382"
       ]
     },
     "Passives in radius are Conquered by the Kalguur": {
       "sources": [
+        "rule:timeless_jewel_description",
         "translation:纪念 {1} 件梅德维德世系值得传唱的事迹\n范围内的天赋被卡古兰抑制",
         "translation:纪念 {1} 件梅德维德（沃拉娜-欧罗什）世系值得传唱的事迹\n范围内的天赋被卡古兰抑制",
         "translation:纪念 {1} 件欧罗什世系值得传唱的事迹\n范围内的天赋被卡古兰抑制",
@@ -345067,11 +346058,12 @@
         "translation:纪念 {1} 件沃拉娜（沃拉娜-欧罗什）世系值得传唱的事迹\n范围内的天赋被卡古兰抑制",
         "unique:Heroic Tragedy"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_passives_in_radius_are_conquered_by_the_7f743382",
+      "special_rule_id": "timeless_jewel_description",
       "matching_special_rules": [
+        "timeless_jewel_description",
         "vnd_passives_in_radius_are_conquered_by_the_7f743382"
       ]
     },
@@ -345086,11 +346078,12 @@
         "translation:获得阿克雅麾下 {1} 名武士的领导权\n范围内的天赋被卡鲁抑制",
         "translation:获得阿克雅（阿克雅 - 拉凯尔塔）麾下 {1} 名武士的领导权\n范围内的天赋被卡鲁抑制"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_passives_in_radius_are_conquered_by_the_7f743382",
+      "special_rule_id": "timeless_jewel_description",
       "matching_special_rules": [
+        "timeless_jewel_description",
         "vnd_passives_in_radius_are_conquered_by_the_7f743382"
       ]
     },
@@ -345105,11 +346098,12 @@
         "translation:在迪虚瑞特的阿卡拉中指派 {1} 名德卡拉的服务\n范围中的天赋被马拉克斯抑制",
         "translation:在迪虚瑞特（安赛娜丝 - 娜斯玛）的阿卡拉中指派 {1} 名德卡拉的服务\n范围中的天赋被马拉克斯抑制"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_passives_in_radius_are_conquered_by_the_7f743382",
+      "special_rule_id": "timeless_jewel_description",
       "matching_special_rules": [
+        "timeless_jewel_description",
         "vnd_passives_in_radius_are_conquered_by_the_7f743382"
       ]
     },
@@ -345124,11 +346118,12 @@
         "translation:赞美 {1} 名被神主阿瓦留斯转化的新信徒\n范围内的天赋被圣堂教团抑制",
         "translation:赞美 {1} 名被神主阿瓦留斯（神主阿瓦留斯 - 玛萨留斯）转化的新信徒\n范围内的天赋被圣堂教团抑制"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_passives_in_radius_are_conquered_by_the_7f743382",
+      "special_rule_id": "timeless_jewel_description",
       "matching_special_rules": [
+        "timeless_jewel_description",
         "vnd_passives_in_radius_are_conquered_by_the_7f743382"
       ]
     },
@@ -345144,11 +346139,12 @@
         "translation:以阿华纳的名义用 {1} 名祭品之血浸染\n范围内的天赋被瓦尔抑制",
         "translation:以阿华纳（阿华纳 - 夏巴夸亚）的名义用 {1} 名祭品之血浸染 \n范围内的天赋被瓦尔抑制"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_passives_in_radius_are_conquered_by_the_7f743382",
+      "special_rule_id": "timeless_jewel_description",
       "matching_special_rules": [
+        "timeless_jewel_description",
         "vnd_passives_in_radius_are_conquered_by_the_7f743382"
       ]
     },
@@ -346319,9 +347315,15 @@
         "stat:stat_descriptions:physical_spell_damage_can_pin_on_critical_hit",
         "translation:物理法术暴击击中造成定身积蓄"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "CanPin"
+      ],
+      "special_rule_id": "vnd_physical_spell_critical_hits_build_pin_67287472",
+      "matching_special_rules": [
+        "vnd_physical_spell_critical_hits_build_pin_67287472"
+      ]
     },
     "Physical Stun buildup modifier@17%": {
       "sources": [
@@ -356889,16 +357891,18 @@
     },
     "Raven-Touched": {
       "sources": [
+        "rule:item_crafting_properties",
         "stat:stat_descriptions:local_item_can_be_instilled",
         "translation:渡鸦触碰",
         "unique:Horror's Flight",
         "unique:The Auspex"
       ],
-      "status": "recognized_empty",
+      "status": "no_effect",
       "vendor_status": "unsupported",
       "mod_names": [],
-      "special_rule_id": "vnd_raven_touched_9faa2143",
+      "special_rule_id": "item_crafting_properties",
       "matching_special_rules": [
+        "item_crafting_properties",
         "vnd_raven_touched_9faa2143"
       ]
     },
@@ -362817,95 +363821,140 @@
       "sources": [
         "stat:stat_descriptions:remnant_pickup_range_+%"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants can be collected from 1% further away if you have at least 100 Tribute": {
       "sources": [
         "stat:stat_descriptions:remnant_pickup_range_+%_if_you_have_at_least_100_tribute"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants can be collected from 17% further away": {
       "sources": [
         "translation:残片收集距离延长 {0}%"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants can be collected from 17% further away if you have at least 100 Tribute": {
       "sources": [
         "translation:至少有 100 个贡品时，收集残片的距离延长 {0}%"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants can be collected from 19% further away": {
       "sources": [
         "mods:equipment:RemnantPickupRadiusIncrease1",
         "search_mods:breach:RemnantPickupRadiusIncrease1"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants can be collected from 27% further away": {
       "sources": [
         "mods:equipment:RemnantPickupRadiusIncrease2",
         "search_mods:breach:RemnantPickupRadiusIncrease2"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants can be collected from 30% further away": {
       "sources": [
         "search_mods:desecrated:AbyssModRingAmuletAmanamuSuffixRemnantCollectionRange"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants can be collected from 35% further away": {
       "sources": [
         "mods:equipment:RemnantPickupRadiusIncrease3",
         "search_mods:breach:RemnantPickupRadiusIncrease3"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants can be collected from 43% further away": {
       "sources": [
         "mods:equipment:RemnantPickupRadiusIncrease4",
         "search_mods:breach:RemnantPickupRadiusIncrease4"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants can be collected from 50% further away": {
       "sources": [
         "mods:equipment:AlloyRemnantPickupRange1",
+        "rule:remnant_pickup_range",
         "search_mods:alloy:AlloyRemnantPickupRange1"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants can be collected from 51% further away": {
       "sources": [
         "mods:equipment:RemnantPickupRadiusIncrease5",
         "search_mods:breach:RemnantPickupRadiusIncrease5"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "remnant_pickup_range",
+      "matching_special_rules": [
+        "remnant_pickup_range"
+      ]
     },
     "Remnants created by Supported Skills can be collected from 17% further away": {
       "sources": [
@@ -370874,11 +371923,11 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "SkillDamageIncreasedPerRedSupport"
+        "Damage"
       ],
-      "special_rule_id": "vnd_skills_deal_d_increased_damage_per_conne_9ad70288",
+      "special_rule_id": "skills_damage_per_connected_red_support_gem",
       "matching_special_rules": [
-        "vnd_skills_deal_d_increased_damage_per_conne_9ad70288"
+        "skills_damage_per_connected_red_support_gem"
       ]
     },
     "Skills deal 1% more Damage for each Warcry Empowering them": {
@@ -370945,11 +371994,11 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "SkillDamageIncreasedPerRedSupport"
+        "Damage"
       ],
-      "special_rule_id": "vnd_skills_deal_d_increased_damage_per_conne_9ad70288",
+      "special_rule_id": "skills_damage_per_connected_red_support_gem",
       "matching_special_rules": [
-        "vnd_skills_deal_d_increased_damage_per_conne_9ad70288"
+        "skills_damage_per_connected_red_support_gem"
       ]
     },
     "Skills deal 17% increased damage": {
@@ -371024,6 +372073,20 @@
       "vendor_status": "parsed",
       "mod_names": [
         "Damage"
+      ]
+    },
+    "Skills deal 20% increased Damage per Connected Red Support Gem": {
+      "sources": [
+        "rule:skills_damage_per_connected_red_support_gem"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "Damage"
+      ],
+      "special_rule_id": "skills_damage_per_connected_red_support_gem",
+      "matching_special_rules": [
+        "skills_damage_per_connected_red_support_gem"
       ]
     },
     "Skills deal 20% increased Damage per Red": {
@@ -371758,11 +372821,11 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "SkillCritChanceIncreasedPerBlueSupport"
+        "CriticalStrikeChance"
       ],
-      "special_rule_id": "vnd_skills_have_d_increased_critical_hit_cha_bdb76eac",
+      "special_rule_id": "skills_critical_hit_chance_per_connected_blue_support_gem",
       "matching_special_rules": [
-        "vnd_skills_have_d_increased_critical_hit_cha_bdb76eac"
+        "skills_critical_hit_chance_per_connected_blue_support_gem"
       ]
     },
     "Skills have 1% increased Skill Speed per Connected Green Support Gem": {
@@ -371772,11 +372835,13 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "SkillSpeedIncreasedPerGreenSupport"
+        "SkillSpeed",
+        "TotemPlacementSpeed",
+        "WarcrySpeed"
       ],
-      "special_rule_id": "vnd_skills_have_d_increased_skill_speed_per_2143701b",
+      "special_rule_id": "skills_skill_speed_per_connected_green_support_gem",
       "matching_special_rules": [
-        "vnd_skills_have_d_increased_skill_speed_per_2143701b"
+        "skills_skill_speed_per_connected_green_support_gem"
       ]
     },
     "Skills have 1% longer Perfect Timing window during effect": {
@@ -372004,11 +373069,11 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "SkillCritChanceIncreasedPerBlueSupport"
+        "CriticalStrikeChance"
       ],
-      "special_rule_id": "vnd_skills_have_d_increased_critical_hit_cha_bdb76eac",
+      "special_rule_id": "skills_critical_hit_chance_per_connected_blue_support_gem",
       "matching_special_rules": [
-        "vnd_skills_have_d_increased_critical_hit_cha_bdb76eac"
+        "skills_critical_hit_chance_per_connected_blue_support_gem"
       ]
     },
     "Skills have 17% increased Skill Speed per Connected Green Support Gem": {
@@ -372018,11 +373083,13 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "SkillSpeedIncreasedPerGreenSupport"
+        "SkillSpeed",
+        "TotemPlacementSpeed",
+        "WarcrySpeed"
       ],
-      "special_rule_id": "vnd_skills_have_d_increased_skill_speed_per_2143701b",
+      "special_rule_id": "skills_skill_speed_per_connected_green_support_gem",
       "matching_special_rules": [
-        "vnd_skills_have_d_increased_skill_speed_per_2143701b"
+        "skills_skill_speed_per_connected_green_support_gem"
       ]
     },
     "Skills have 17% less maximum Life": {
@@ -372092,6 +373159,20 @@
       "vendor_status": "parsed",
       "mod_names": [
         "AreaOfEffect"
+      ]
+    },
+    "Skills have 20% increased Critical Hit Chance per Connected Blue Support Gem": {
+      "sources": [
+        "rule:skills_critical_hit_chance_per_connected_blue_support_gem"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "CriticalStrikeChance"
+      ],
+      "special_rule_id": "skills_critical_hit_chance_per_connected_blue_support_gem",
+      "matching_special_rules": [
+        "skills_critical_hit_chance_per_connected_blue_support_gem"
       ]
     },
     "Skills have 20% increased Duration": {
@@ -372244,6 +373325,22 @@
       "vendor_status": "parsed",
       "mod_names": [
         "AreaOfEffect"
+      ]
+    },
+    "Skills have 6% increased Skill Speed per Connected Green Support Gem": {
+      "sources": [
+        "rule:skills_skill_speed_per_connected_green_support_gem"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "SkillSpeed",
+        "TotemPlacementSpeed",
+        "WarcrySpeed"
+      ],
+      "special_rule_id": "skills_skill_speed_per_connected_green_support_gem",
+      "matching_special_rules": [
+        "skills_skill_speed_per_connected_green_support_gem"
       ]
     },
     "Skills have 6% increased per Green": {
@@ -381720,9 +382817,15 @@
       "sources": [
         "stat:passive_skill_stat_descriptions:ascendancy_lich_spells_consume_power_charges_for_spell_damage_+%_final"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "Damage"
+      ],
+      "special_rule_id": "vnd_spells_consume_a_power_charge_if_able_to_d4c12975",
+      "matching_special_rules": [
+        "vnd_spells_consume_a_power_charge_if_able_to_d4c12975"
+      ]
     },
     "Spells consume a Power Charge if able to deal 17% less Damage": {
       "sources": [
@@ -381736,9 +382839,15 @@
       "sources": [
         "translation:法术可以消耗一个暴击球，使造成的伤害总增 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "Damage"
+      ],
+      "special_rule_id": "vnd_spells_consume_a_power_charge_if_able_to_d4c12975",
+      "matching_special_rules": [
+        "vnd_spells_consume_a_power_charge_if_able_to_d4c12975"
+      ]
     },
     "Spells deal 17% increased Area Damage while in Blood Stance": {
       "sources": [
@@ -382008,9 +383117,15 @@
       "sources": [
         "stat:stat_descriptions:spells_have_x%_chance_inflict_withered_on_hit"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "Condition:CanWither"
+      ],
+      "special_rule_id": "spells_inflict_withered_on_hit",
+      "matching_special_rules": [
+        "spells_inflict_withered_on_hit"
+      ]
     },
     "Spells have a 1% chance to not pay costs when cast": {
       "sources": [
@@ -382034,9 +383149,15 @@
       "sources": [
         "translation:法术击中时有 {0}% 的几率造成 4 秒的死亡凋零"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "Condition:CanWither"
+      ],
+      "special_rule_id": "spells_inflict_withered_on_hit",
+      "matching_special_rules": [
+        "spells_inflict_withered_on_hit"
+      ]
     },
     "Spells have a 17% chance to not pay costs when cast": {
       "sources": [
@@ -382048,11 +383169,18 @@
     },
     "Spells have a 25% chance to inflict Withered for 4 seconds on Hit": {
       "sources": [
+        "rule:spells_inflict_withered_on_hit",
         "unique:The Wicked Quill"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "Condition:CanWither"
+      ],
+      "special_rule_id": "spells_inflict_withered_on_hit",
+      "matching_special_rules": [
+        "spells_inflict_withered_on_hit"
+      ]
     },
     "Spells inflict Withered for 4 seconds on Hit": {
       "sources": [
@@ -383830,17 +384958,29 @@
       "sources": [
         "stat:stat_descriptions:stormblast_icicle_pyroclast_mine_aura_effect_+%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "AuraEffect"
+      ],
+      "special_rule_id": "vnd_stormblast_icicle_and_pyroclast_mine_hav_cf8f1e1a",
+      "matching_special_rules": [
+        "vnd_stormblast_icicle_and_pyroclast_mine_hav_cf8f1e1a"
+      ]
     },
     "Stormblast, Icicle and Pyroclast Mine have 17% increased Aura Effect": {
       "sources": [
         "translation:雷暴地雷、冰锥地雷和火屑地雷的光环效果提高 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "AuraEffect"
+      ],
+      "special_rule_id": "vnd_stormblast_icicle_and_pyroclast_mine_hav_cf8f1e1a",
+      "matching_special_rules": [
+        "vnd_stormblast_icicle_and_pyroclast_mine_hav_cf8f1e1a"
+      ]
     },
     "Stormblast, Icicle and Pyroclast Mine havee has 17% reduced Aura Effect": {
       "sources": [
@@ -402002,9 +403142,15 @@
       "sources": [
         "translation:图腾发射 {0} 个额外投射物"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "ProjectileCount"
+      ],
+      "special_rule_id": "vnd_totems_fire_d_additional_projectiles_9daba9ef",
+      "matching_special_rules": [
+        "vnd_totems_fire_d_additional_projectiles_9daba9ef"
+      ]
     },
     "Totems gain +1% to Chaos Resistance": {
       "sources": [
@@ -402558,28 +403704,44 @@
         "compound:stat_descriptions:trap_and_mine_minimum_added_physical_damage",
         "translation:陷阱和地雷造成 {0} - {1} 额外物理伤害"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "PhysicalDamageMax",
         "PhysicalDamageMin"
+      ],
+      "special_rule_id": "vnd_traps_and_mines_deal_d_to_d_additional_p_9dff66d3",
+      "matching_special_rules": [
+        "vnd_traps_and_mines_deal_d_to_d_additional_p_9dff66d3"
       ]
     },
     "Traps and Mines have a 1% chance to Poison on Hit": {
       "sources": [
         "stat:stat_descriptions:traps_and_mines_%_chance_to_poison"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "PoisonChance"
+      ],
+      "special_rule_id": "vnd_traps_and_mines_have_a_d_chance_to_poiso_048ddc76",
+      "matching_special_rules": [
+        "vnd_traps_and_mines_have_a_d_chance_to_poiso_048ddc76"
+      ]
     },
     "Traps and Mines have a 17% chance to Poison on Hit": {
       "sources": [
         "translation:陷阱和地雷击中时，有 {0}% 的几率使敌人中毒"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "PoisonChance"
+      ],
+      "special_rule_id": "vnd_traps_and_mines_have_a_d_chance_to_poiso_048ddc76",
+      "matching_special_rules": [
+        "vnd_traps_and_mines_have_a_d_chance_to_poiso_048ddc76"
+      ]
     },
     "Traps are thrown randomly around targeted location": {
       "sources": [
@@ -409441,17 +410603,29 @@
       "sources": [
         "stat:stat_descriptions:warcry_cooldown_modifier_ms"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "CooldownRecovery"
+      ],
+      "special_rule_id": "vnd_warcry_skills_have_d_seconds_to_cooldown_73d48ff5",
+      "matching_special_rules": [
+        "vnd_warcry_skills_have_d_seconds_to_cooldown_73d48ff5"
+      ]
     },
     "Warcry Skills have +17 seconds to Cooldown": {
       "sources": [
         "translation:战吼技能冷却时间 {:+d} 秒"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "CooldownRecovery"
+      ],
+      "special_rule_id": "vnd_warcry_skills_have_d_seconds_to_cooldown_73d48ff5",
+      "matching_special_rules": [
+        "vnd_warcry_skills_have_d_seconds_to_cooldown_73d48ff5"
+      ]
     },
     "Warcry Skills have 1% increased Area of Effect": {
       "sources": [
@@ -409530,9 +410704,15 @@
         "stat:stat_descriptions:warcry_skills_cooldown_is_4_seconds",
         "translation:战吼技能的冷却时间为 4秒"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "CooldownRecovery"
+      ],
+      "special_rule_id": "vnd_warcry_skills_cooldown_time_is_d_seconds_57057c0e",
+      "matching_special_rules": [
+        "vnd_warcry_skills_cooldown_time_is_d_seconds_57057c0e"
+      ]
     },
     "Warcry duration is 17 second": {
       "sources": [
@@ -410421,9 +411601,16 @@
         "stat:passive_skill_stat_descriptions:keystone_amanamus_defiance",
         "translation:受到击中的生命损失的 20% 被阻挡，并在 4 秒内逐渐丧失该阻挡值 150% 的生命"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "LifeLossLost",
+        "LifeLossPrevented"
+      ],
+      "special_rule_id": "life_loss_from_hits_prevented_then_share_lost_over_4s",
+      "matching_special_rules": [
+        "life_loss_from_hits_prevented_then_share_lost_over_4s"
+      ]
     },
     "When used in the Synthesiser, the new item will have an additional Herald Modifier": {
       "sources": [
@@ -410708,7 +411895,8 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "ExtraAura"
+        "ExtraAura",
+        "Onslaught"
       ],
       "special_rule_id": "vnd_when_you_warcry_you_and_nearby_allies_ga_0541be15",
       "matching_special_rules": [
@@ -411260,7 +412448,8 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "ExtraAura"
+        "ExtraAura",
+        "Onslaught"
       ],
       "special_rule_id": "vnd_while_there_are_at_least_five_nearby_all_c0e94049",
       "matching_special_rules": [
@@ -411274,6 +412463,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
+        "Damage",
         "ExtraAura"
       ],
       "special_rule_id": "vnd_while_there_is_at_least_one_nearby_ally_9e0b8b1a",
@@ -411296,6 +412486,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
+        "Damage",
         "ExtraAura"
       ],
       "special_rule_id": "vnd_while_there_is_at_least_one_nearby_ally_9e0b8b1a",
@@ -411328,6 +412519,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
+        "Condition:UnholyMight",
         "ExtraAura"
       ],
       "special_rule_id": "vnd_while_you_are_not_on_low_mana_you_and_al_d6d386df",
@@ -413220,6 +414412,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
+        "Damage",
         "ExtraAura"
       ],
       "special_rule_id": "vnd_with_at_least_one_nearby_corpse_you_and_860f4ddf",
@@ -413242,6 +414435,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
+        "Damage",
         "ExtraAura"
       ],
       "special_rule_id": "vnd_with_at_least_one_nearby_corpse_you_and_860f4ddf",

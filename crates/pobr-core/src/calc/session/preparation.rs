@@ -5,6 +5,7 @@
 //! Both snapshots use the same core pool calculation; build only supplies source facts.
 
 use super::*;
+use pobr_data::constants::BASE_REQUIRED_ENEMIES_TO_BE_SURROUNDED;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 pub(in crate::calc) fn life_mana_pools(env: &Env) -> (f64, f64) {
@@ -18,10 +19,16 @@ pub(in crate::calc) fn life_mana_pools(env: &Env) -> (f64, f64) {
 
 impl CalculationSession {
     /// Derives attribute bonuses and captures the initial actor stat/multiplier values.
-    /// Call once after source injection and before build counters and condition bridging.
+    /// Call once after source injection and the build's equipment facts (attributes can
+    /// scale on them, as "per Socket filled" does), and before condition bridging.
     /// `class` contains the starting attributes already baked into CharacterBase mods;
     /// `None` disables attribute derivation for callers supplying their own base input.
     pub fn prepare_player_stats(&mut self, level: u32, class: Option<crate::CharacterBase>) {
+        // A keystone an item grants (a jewel's "Giant's Blood") can change
+        // what the attributes grant ("Inherent Life granted by Strength is
+        // halved"), so it joins before they are derived; the merges of
+        // `perform` skip the keystones already added.
+        crate::calc::keystone_merge::merge_keystones(&mut self.env);
         let bases = class.map_or([0.0; 3], |c| [c.strength, c.dexterity, c.intelligence]);
         let attributes = [
             self.attribute_total("Strength", bases[0]),
@@ -40,6 +47,11 @@ impl CalculationSession {
         self.set_stat("Strength", str_total);
         self.set_stat("Dexterity", dex_total);
         self.set_stat("Intelligence", int_total);
+        // "per 5 of your lowest Attribute" (Jack of all Trades): the least of
+        // the three final attributes.
+        let lowest = str_total.min(dex_total).min(int_total);
+        self.set_multiplier("LowestAttribute", lowest);
+        self.set_stat("LowestAttribute", lowest);
         // (Pre-existing #7-4) The Spirit denominator = **the final pool value**
         // (calc_spirit_pool, including INC/MORE and conversion deductions) — vendor's
         // PerStat reads output.Spirit; BASE-only would under-count wolf-pack's Perfidy
@@ -135,18 +147,81 @@ impl CalculationSession {
         ]);
     }
 
-    /// Bridges source-granted flags and reservation-derived LowLife after all counters
-    /// are present. Explicit LowLife configuration retains its existing precedence.
+    /// Bridges source-granted flags, reservation-derived LowLife and Surrounded after
+    /// all counters are present. Explicit LowLife or Surrounded configuration retains
+    /// its existing precedence.
     pub fn bridge_player_conditions(&mut self) {
         for (flag, condition) in [
             ("Condition:CanUseBondedModifiers", "CanUseBondedModifiers"),
             ("Condition:ArcaneSurge", "AffectedByArcaneSurge"),
             ("ChaosInoculation", "FullLife"),
+            // "Grants Skill: Sorcery Ward" and "Sorcery Ward's Barrier can
+            // also take Physical and Chaos Damage from Hits": read by the
+            // Barrier's modifiers.
+            (
+                "Condition:SorceryWard",
+                crate::rules::skill_stats::SORCERY_WARD,
+            ),
+            (
+                "Condition:CeremonialAblution",
+                crate::rules::skill_stats::CEREMONIAL_ABLUTION,
+            ),
         ] {
             if self.has_flag(flag) {
                 self.set_condition(condition, true);
             }
         }
         self.bridge_low_pool_conditions();
+        self.bridge_surrounded();
+    }
+
+    /// Surrounded: as many enemies near the character as the game requires,
+    /// [`BASE_REQUIRED_ENEMIES_TO_BE_SURROUNDED`] changed by the stat
+    /// `required_enemies_to_be_considered_surrounded_offset` (`SurroundedMinimum`,
+    /// "Require 4 fewer enemies to be Surrounded"). The calculation is against one
+    /// enemy, taken to be near the character as it is for `EnemyInPresence`, so the
+    /// character is Surrounded once a single enemy is enough. There is no distance
+    /// model: the Surrounded radius and "increased Surrounded Area of Effect" are
+    /// not compared with anything.
+    fn bridge_surrounded(&mut self) {
+        if self.env.cfg.conditions.contains_key("Surrounded") {
+            return;
+        }
+        let required = BASE_REQUIRED_ENEMIES_TO_BE_SURROUNDED + self.base_sum("SurroundedMinimum");
+        if required <= 1.0 {
+            self.set_condition("Surrounded", true);
+        }
+    }
+
+    /// Counts the empty Charm slots, for "for each of your empty Charm slots"
+    /// (`EmptyCharms`): the character's Charm slots less the `charms` in
+    /// them. Call after the sources are finished and before
+    /// [`prepare_player_stats`](Self::prepare_player_stats): Spirit can scale
+    /// on the count, as the Shaman's "+40 to Spirit for each of your empty
+    /// Charm slots" does.
+    pub fn set_empty_charm_slots(&mut self, charms: usize) {
+        let slots = crate::calc::env_finalize::charm_slots(&self.env.player.mod_db, &self.env.cfg);
+        let empty = (slots - charms as f64).max(0.0);
+        self.set_multiplier("EmptyCharms", empty);
+        self.set_stat("EmptyCharms", empty);
+    }
+
+    /// Counts the minions in the character's Presence, for "for each Minion
+    /// in your Presence" (`MinionPresenceCount`): the minions the calculation
+    /// created ([`add_minion_from_def`](Self::add_minion_from_def)), or the
+    /// configured "# of Minions in your Presence", a combat input read as in
+    /// combat when the calculation is. Call once, after the last minion is
+    /// created: the count is read from the context, never again from the
+    /// modifiers it came from. No minions leave it unset, so a line that
+    /// counts them still shows as unprovided.
+    pub fn bridge_minion_presence(&mut self) {
+        let mut cfg = self.env.cfg.clone();
+        let in_combat = cfg.mode_combat;
+        cfg.conditions.entry("Combat".into()).or_insert(in_combat);
+        let db = &self.env.player.mod_db;
+        let count = db.get_multiplier("MinionPresenceCount", &cfg);
+        if count != 0.0 {
+            self.set_multiplier("MinionPresenceCount", count);
+        }
     }
 }

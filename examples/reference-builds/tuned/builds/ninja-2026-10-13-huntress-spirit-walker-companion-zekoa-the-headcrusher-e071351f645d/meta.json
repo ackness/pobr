@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-huntress-spirit-walker-companion-zekoa-the-headcrusher-e071351f645d",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%EC%8A%AC%EB%A6%B0%EC%9D%B4-0786/slinbbb",
+    "account": "슬린이-0786",
+    "character": "slinbbb",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:53:03+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=%EC%8A%AC%EB%A6%B0%EC%9D%B4-0786&name=slinbbb&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Spirit+Walker",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Spirit Walker",
+    "level": 99,
+    "main_skill": "Companion: Zekoa, the Headcrusher"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 15,
+    "code_sha256": "8221519a84400a3caa82f4ed925a4f365a295f0c1982ae714a3f408a3cfac1c3",
+    "code_chars": 13040,
+    "decoded_bytes": 57764
+  }
+}

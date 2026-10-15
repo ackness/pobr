@@ -41,6 +41,9 @@ use super::offence::{MinimalInput, MinimalOutput, calculate_minimal_vs_enemy};
 use super::output::HandOutput;
 use super::{BreakdownStep, round};
 
+/// The stat a hand's Accuracy Rating is read by ("per 400 Accuracy Rating").
+const HAND_ACCURACY: &str = "Accuracy";
+
 /// One hand's weapon base contribution (assembled by the orchestration
 /// layer, already folded to exactly the same semantics as the current
 /// `MinimalInput` injection: local mods × quality × skill baseMultiplier /
@@ -239,7 +242,7 @@ fn run_single_pass(
     hand: &HandSource,
     input: &MinimalInput,
 ) -> MinimalOutput {
-    let (hand_cfg, hand_input) = hand_scope(hand, cfg, input);
+    let (hand_cfg, hand_input) = hand_scope(db, hand, cfg, input);
     calculate_minimal_vs_enemy(db, enemy_db, &hand_cfg, &hand_input)
 }
 
@@ -249,7 +252,13 @@ fn run_single_pass(
 /// budget (`calc::warcry` needs to resolve Speed against the main-hand scope,
 /// since vendor CalcOffence.lua:3235 reads that same pass's `globalOutput.Speed`),
 /// guaranteeing the two rates agree bit-for-bit.
+///
+/// The scope's stat snapshot carries this hand's Accuracy Rating: a weapon's
+/// local accuracy and the hand's conditions make it a value of the hand, and
+/// "1% increased Attack Speed per 400 Accuracy Rating" on an attack reads the
+/// rating of the weapon it attacks with.
 pub(crate) fn hand_scope(
+    db: &ModDb,
     hand: &HandSource,
     cfg: &CalcConfig,
     input: &MinimalInput,
@@ -270,6 +279,10 @@ pub(crate) fn hand_scope(
     // segment with that hand's weapon flags (empty = identity, zero behavior
     // change for legacy flag tables / non-weapon-attack sources).
     hand_cfg.flags = hand_cfg.flags.replace_weapon_flags(hand.weapon.flags);
+    let accuracy = super::offence::accuracy_terms(db, &hand_cfg, &hand_input).value;
+    // Rules state "per N <stat>" as a multiplier of that name.
+    hand_cfg.stats.insert(HAND_ACCURACY.into(), accuracy);
+    hand_cfg.multipliers.insert(HAND_ACCURACY.into(), accuracy);
     (hand_cfg, hand_input)
 }
 

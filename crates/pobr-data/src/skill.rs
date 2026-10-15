@@ -118,6 +118,17 @@ impl SkillTypes {
         crate::skill_type_names::lookup(name).map(Self::from_pob2_index)
     }
 
+    /// The names of the types set here, the inverse of
+    /// [`from_pob2_name`](Self::from_pob2_name), sorted by name. For
+    /// messages; a bit outside the name table is left out.
+    pub fn names(self) -> Vec<&'static str> {
+        crate::skill_type_names::SKILL_TYPE_IDS
+            .iter()
+            .filter(|(_, id)| self.intersects(Self::from_pob2_index(*id)))
+            .map(|(name, _)| *name)
+            .collect()
+    }
+
     pub fn is_empty(self) -> bool {
         self.0 == [0; SKILL_TYPE_WORDS]
     }

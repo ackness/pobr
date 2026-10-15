@@ -678,10 +678,10 @@ end
 -- Tabulate one (modType, name) over the main skill modList. Returns the array
 -- of per-mod records. evalValue is the post-EvalMod value PoB actually uses
 -- (so conditional mods that fail evaluate to 0 / are dropped by Tabulate).
-local function tabulateModList(modType, name)
+local function tabulateIn(list, cfg, modType, name)
 	local out = {}
-	if not sml then return out end
-	local ok, modTable = pcall(function() return sml:Tabulate(modType, skillCfg, name) end)
+	if not list then return out end
+	local ok, modTable = pcall(function() return list:Tabulate(modType, cfg, name) end)
 	if not ok or not modTable then return out end
 	for _, entry in ipairs(modTable) do
 		local mod = entry.mod
@@ -702,6 +702,46 @@ local function tabulateModList(modType, name)
 		}
 	end
 	return out
+end
+
+local function tabulateModList(modType, name)
+	return tabulateIn(sml, skillCfg, modType, name)
+end
+
+-- The main skill's minion: the skill it uses and every source of the stats
+-- that set its damage and Life, from that skill's mod list (which holds the
+-- minion's own modifiers and what the character grants it).
+-- ORACLE_MINION_STATS="Name,Name" adds more names.
+local minionModList
+do
+	local minion = build.calcsTab.mainEnv.minion
+	if minion then
+		local mskill = minion.mainSkill
+		local effect = mskill and mskill.activeEffect
+		local list = mskill and mskill.skillModList or minion.modDB
+		local cfg = mskill and mskill.skillCfg or nil
+		minionModList = {
+			skill = effect and effect.grantedEffect and effect.grantedEffect.id or nil,
+			skillLevel = effect and effect.level or nil,
+			level = minion.level,
+		}
+		local names = { "Life", "Damage", "AttackDamage", "SpellDamage", "MeleeDamage", "AreaDamage",
+			"PhysicalDamage", "FireDamage", "ColdDamage", "LightningDamage", "ChaosDamage", "ElementalDamage",
+			"Speed", "CritChance", "CritMultiplier", "Accuracy" }
+		local extra = os.getenv("ORACLE_MINION_STATS")
+		if extra then
+			for name in extra:gmatch("[^,%s]+") do names[#names + 1] = name end
+		end
+		for _, name in ipairs(names) do
+			for _, mt in ipairs({ "BASE", "INC", "MORE", "OVERRIDE" }) do
+				local l = tabulateIn(list, cfg, mt, name)
+				if #l > 0 then
+					minionModList[mt] = minionModList[mt] or {}
+					minionModList[mt][name] = l
+				end
+			end
+		end
+	end
 end
 
 -- Names that feed the generic + per-type increased/more damage chain in PoBR's
@@ -742,14 +782,21 @@ end
 -- Ad-hoc stat tabulation: ORACLE_EXTRA_STATS="CooldownRecovery,Speed" dumps the
 -- per-source mod list for any vendor stat names (same shape as critModList),
 -- keyed under extraModList. Zero cost when the env var is unset.
+-- ORACLE_EXTRA_CFG=weapon1 (or weapon2) queries with that hand's attack
+-- configuration, which an attack's speed and damage are read with.
 local extraModList
 do
 	local names = os.getenv("ORACLE_EXTRA_STATS")
 	if names and #names > 0 then
-		extraModList = { INC = {}, MORE = {}, BASE = {}, OVERRIDE = {} }
+		local hand = os.getenv("ORACLE_EXTRA_CFG")
+		local cfg = skillCfg
+		if hand and mainSkill and mainSkill[hand .. "Cfg"] then
+			cfg = mainSkill[hand .. "Cfg"]
+		end
+		extraModList = { INC = {}, MORE = {}, BASE = {}, OVERRIDE = {}, FLAG = {} }
 		for name in names:gmatch("[^,%s]+") do
-			for _, mt in ipairs({ "BASE", "INC", "MORE", "OVERRIDE" }) do
-				local list = tabulateModList(mt, name)
+			for _, mt in ipairs({ "BASE", "INC", "MORE", "OVERRIDE", "FLAG" }) do
+				local list = tabulateIn(sml, cfg, mt, name)
 				if #list > 0 then extraModList[mt][name] = list end
 			end
 		end
@@ -778,6 +825,22 @@ for _, dt in ipairs(damageTypes) do
 		Max = mainOutput[dt .. "Max"],
 		HitAverage = mainOutput[dt .. "HitAverage"],
 	}
+end
+
+----------------------------------------------------------------------
+-- Every active skill's granted effect, level and quality: a gem at another
+-- level changes what its buff or aura gives, which no output names.
+----------------------------------------------------------------------
+local skillLevels = {}
+for _, as in ipairs(mainEnv.player.activeSkillList or {}) do
+	local ae = as.activeEffect
+	if ae and ae.grantedEffect and ae.grantedEffect.id then
+		skillLevels[#skillLevels + 1] = {
+			skillId = ae.grantedEffect.id,
+			level = ae.level,
+			quality = ae.quality,
+		}
+	end
 end
 
 ----------------------------------------------------------------------
@@ -1057,7 +1120,9 @@ do
 				end
 				itemDump[tostring(id)] = { title = item.title, baseName = item.baseName, lines = lines, mods = mods,
 					armourData = item.armourData, quality = item.quality,
-					baseArmour = item.base and item.base.armour or nil }
+					baseArmour = item.base and item.base.armour or nil,
+					-- The weapon's local values (attack rate, damage, crit) per slot.
+					weaponData = item.weaponData and item.weaponData[1] and scalarsOf(item.weaponData[1]) or nil }
 			end
 		end
 	end
@@ -1074,6 +1139,15 @@ local report = {
 	auraEffectList = auraEffectList,
 	mainOutput = scalarsOf(mainOutput),
 	calcsOutput = scalarsOf(calcsOutput),
+	-- The main skill's minion, whose output a build code's <MinionStat>
+	-- values describe; absent when the main skill has none.
+	minionOutput = build.calcsTab.mainEnv.minion and scalarsOf(build.calcsTab.mainEnv.minion.output) or nil,
+	-- The minion's attack pass (its per-type ranges and averages).
+	minionMainHand = build.calcsTab.mainEnv.minion and type(build.calcsTab.mainEnv.minion.output.MainHand) == "table"
+		and scalarsOf(build.calcsTab.mainEnv.minion.output.MainHand) or nil,
+	minionModList = minionModList,
+	-- The companions whose Life is taken before the character's (name, Life).
+	companionLifeList = build.calcsTab.mainEnv.player.companionLifeList,
 	-- Per-hand attack pass outputs (CalcOffence.lua:2371 output.MainHand = {}):
 	-- DoubleDamageChance / TripleDamageChance / ScaledDamageEffect / per-pass
 	-- CritChance live here for attacks (M4-T3 W-C1 oracle parity).
@@ -1093,6 +1167,7 @@ local report = {
 	damageTypeBreakdown = damageTypeBreakdown,
 	conversionTable = conversionTable,
 	skillInfo = skillInfo,
+	skillLevels = skillLevels,
 	enemyMitigation = enemyMitigation,
 }
 

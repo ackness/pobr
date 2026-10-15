@@ -256,3 +256,25 @@ fn reservation_reads_extra_modifiers_after_all_sources_are_injected() {
     assert!(session.unsupported_modifier_texts().is_empty());
     assert_eq!(session.output().spirit_reserved, 15.0);
 }
+
+/// Skeletal Warriors reserve for each minion (`MultipleReservation`) and keep
+/// two (`skill_desired_initial_amount` = 2), and "First {0} minions summoned
+/// have no base spirit reservation" (`first_X_minions_have_0_base_spirit_reservation`
+/// = 2) exempts both: the gem's 20 Spirit at level 20 is never reserved.
+#[test]
+fn the_first_two_skeletal_warriors_reserve_no_spirit() {
+    let data = repo_data();
+    let build =
+        build_with_group(SocketGroup::new().with_gem_skill("SummonSkeletalWarriorsPlayer", 20));
+    assert_eq!(calc(&build, &data), 0.0);
+}
+
+/// Skeletal Clerics reserve for each minion too, keep one and exempt none:
+/// the gem's 20 Spirit at level 20.
+#[test]
+fn a_minion_skill_without_exempt_minions_reserves_for_its_minion() {
+    let data = repo_data();
+    let build =
+        build_with_group(SocketGroup::new().with_gem_skill("SummonSkeletalClericsPlayer", 20));
+    assert_eq!(calc(&build, &data), 20.0);
+}

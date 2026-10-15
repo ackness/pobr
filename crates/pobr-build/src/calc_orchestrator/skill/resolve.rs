@@ -106,6 +106,131 @@ pub fn resolve_main_skill_selection(
     ))
 }
 
+/// The gem whose level an effect runs at, that gem's own level, and the
+/// levels items, passives and supports add to it.
+///
+/// An effect takes the level of the gem it comes from. A support gem has no
+/// levels of its own, so an active effect a support grants takes the level of
+/// the skill that support is applied to; with no such skill in the group it
+/// keeps the support's.
+fn level_source<'a>(
+    build: &Build,
+    data: &BuildData,
+    group: &'a SocketGroup,
+    effect: &pobr_core::skill_env::ActiveEffect<'a>,
+) -> (&'a str, u32, u32) {
+    let (gem_id, gem_level, corrupted) = source_gem(data, group, effect);
+    let bonus = additional_gem_levels(build, data, gem_id, corrupted)
+        .saturating_add(support_granted_gem_levels(group, data, gem_id));
+    (gem_id, gem_level, bonus)
+}
+
+/// Whether the main skill of `group` comes from a corrupted gem: "Skills
+/// from Corrupted Gems have …". The gem is the one [`level_source`] takes
+/// the level of.
+pub(crate) fn from_corrupted_gem(data: &BuildData, group: &SocketGroup) -> bool {
+    selected_group_effect(data, group).is_some_and(|effect| source_gem(data, group, &effect).2)
+}
+
+/// The gem an effect comes from: its id, its own level and whether it is
+/// corrupted.
+fn source_gem<'a>(
+    data: &BuildData,
+    group: &'a SocketGroup,
+    effect: &pobr_core::skill_env::ActiveEffect<'a>,
+) -> (&'a str, u32, bool) {
+    let own = group
+        .gem_skills
+        .get(effect.gem_index)
+        .map(|gem| gem.skill_id.as_str())
+        .or(group.active_skill_id.as_deref())
+        .unwrap_or(effect.skill_id);
+    let granted_by_support = own != effect.skill_id
+        && data
+            .granted_effects
+            .get(own)
+            .is_some_and(|granting| granting.is_support);
+    let own_corrupted = group
+        .gem_skills
+        .get(effect.gem_index)
+        .is_some_and(|gem| gem.corrupted);
+    granted_by_support
+        .then(|| supported_skill(group, data, effect.gem_index))
+        .flatten()
+        .map_or((own, effect.gem_level, own_corrupted), |host| {
+            (host.skill_id.as_str(), host.gem_level, host.corrupted)
+        })
+}
+
+/// The first active skill of `group` that the support at `support_index` applies to.
+fn supported_skill<'a>(
+    group: &'a SocketGroup,
+    data: &BuildData,
+    support_index: usize,
+) -> Option<&'a crate::build::GemSkillRef> {
+    group.gem_skills.iter().find(|gem| {
+        data.granted_effects
+            .get(&gem.skill_id)
+            .is_some_and(|effect| !effect.is_support)
+            && crate::support::judge_group_supports(group, data, &gem.skill_id, group.from_gem())
+                .compatible
+                .iter()
+                .any(|support| support.gem_index == support_index)
+    })
+}
+
+/// What a calculation is of: the selected effect and the level it runs at.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MainSkillSummary {
+    pub skill_id: String,
+    /// The gem whose level the effect runs at: the gem it comes from, or for
+    /// an effect a support grants, the skill that support is applied to.
+    pub gem_id: String,
+    /// That gem's own level, corruption included.
+    pub gem_level: u32,
+    /// Levels items, passives and supports add to that gem.
+    pub bonus_levels: u32,
+    pub quality: u32,
+    pub stat_set_index: Option<u32>,
+}
+
+/// The main skill as the calculation resolves it, on the prepared build view
+/// (`calc_orchestrator::prepared_build_view`).
+pub(crate) fn main_skill_summary(prepared: &Build, data: &BuildData) -> Option<MainSkillSummary> {
+    let (_, group, _, _) = resolve_main_skill(prepared, data)?;
+    let effect = selected_group_effect(data, group)?;
+    let (gem_id, gem_level, bonus_levels) = level_source(prepared, data, group, &effect);
+    Some(MainSkillSummary {
+        skill_id: effect.skill_id.to_string(),
+        gem_id: gem_id.to_string(),
+        gem_level,
+        bonus_levels,
+        quality: effect.quality,
+        stat_set_index: effect.stat_set_index,
+    })
+}
+
+/// Every active effect of the enabled groups, each at the level and quality
+/// it runs at, as [`main_skill_summary`] resolves the main one (on the same
+/// prepared build view).
+pub(crate) fn skill_summaries(prepared: &Build, data: &BuildData) -> Vec<MainSkillSummary> {
+    let mut skills = Vec::new();
+    for group in prepared.socket_groups.iter().filter(|group| group.enabled) {
+        for effect in group_active_effects(data, group) {
+            let (gem_id, gem_level, bonus_levels) = level_source(prepared, data, group, &effect);
+            skills.push(MainSkillSummary {
+                skill_id: effect.skill_id.to_string(),
+                gem_id: gem_id.to_string(),
+                gem_level,
+                bonus_levels,
+                quality: effect.quality,
+                stat_set_index: effect.stat_set_index,
+            });
+        }
+    }
+    skills
+}
+
 /// Level bonuses belong to the originating gem, not the selected additional
 /// effect's type or a same-id gem elsewhere in the group/build. The resulting
 /// level is used to resolve this exact effect's own selected stat set.
@@ -116,24 +241,44 @@ pub(crate) fn resolve_skill_level_with_gem_bonus(
     effect: pobr_core::skill_env::ActiveEffect<'_>,
 ) -> Option<ResolvedSkillLevel> {
     let skill_id = effect.skill_id;
-    let base_level = effect.gem_level;
-    let gem_id = group
-        .gem_skills
-        .get(effect.gem_index)
-        .map(|gem| gem.skill_id.as_str())
-        .or(group.active_skill_id.as_deref())
-        .unwrap_or(skill_id);
-    let bonus = additional_gem_levels(build, data, gem_id)
-        .saturating_add(support_granted_gem_levels(group, data, gem_id));
+    let (_, base_level, bonus) = level_source(build, data, group, &effect);
     if pobr_core::dbg_env!("POBR_DBG_GEMLVL").is_some() {
         eprintln!("[POBR_GEMLVL] {skill_id} base={base_level} bonus={bonus}");
     }
-    pobr_core::skill_env::resolve_skill_level(
+    let mut resolved = pobr_core::skill_env::resolve_skill_level(
         data,
         skill_id,
         base_level.saturating_add(bonus),
         effect.stat_set_index,
-    )
+    )?;
+    if resolved.cooldown_s.is_none() {
+        adopt_support_cooldown(group, data, skill_id, &mut resolved);
+    }
+    Some(resolved)
+}
+
+/// A support that gives the skills it supports a cooldown (Breachlord's
+/// Amalgam: "Supports … skills … which do not already have cooldowns, adding
+/// a cooldown"): its level row holds the cooldown and the stored uses, which
+/// the supported skill takes. Only a skill without a cooldown of its own
+/// reaches here, as such a support supports no other.
+fn adopt_support_cooldown(
+    group: &SocketGroup,
+    data: &BuildData,
+    skill_id: &str,
+    resolved: &mut ResolvedSkillLevel,
+) {
+    use pobr_core::skill_env::StatSetLookup;
+    let judgement = crate::support::judge_group_supports(group, data, skill_id, group.from_gem());
+    let row = judgement.compatible.iter().find_map(|support| {
+        let level = group.gem_skills.get(support.gem_index)?.gem_level;
+        data.effect_level_row(&support.effect_id, level)
+            .filter(|row| row.cooldown_ms.is_some_and(|ms| ms > 0))
+    });
+    if let Some(row) = row {
+        resolved.cooldown_s = row.cooldown_ms.map(|ms| f64::from(ms) / 1000.0);
+        resolved.stored_uses = row.stored_uses;
+    }
 }
 
 /// The +N gem level granted by a **compatible** support gem in the same group (matching
@@ -147,9 +292,10 @@ pub(crate) fn resolve_skill_level_with_gem_bonus(
 ///   selected disabled group. Repeated skill ids in other groups cannot contribute.
 ///   A support does not receive granted levels itself.
 /// - Compatibility: goes through [`crate::support::judge_group_supports`]'s
-///   four-stage judgement (an incompatible support's grant doesn't apply, matching
-///   vendor's effectList gate); a typed variant (chaos/fire/…) matches against the
-///   post-judgement `final_skill_types` (including the addSkillTypes fixed point), the same basis as vendor's tag evaluation.
+///   four-stage judgement for each of the gem's effects (an incompatible support's
+///   grant doesn't apply; one compatible with any effect modifies the gem); a typed
+///   variant (chaos/fire/…) matches against the post-judgement `final_skill_types`
+///   (including the addSkillTypes fixed point) of an effect it supports.
 pub(crate) fn support_granted_gem_levels(
     group: &SocketGroup,
     data: &BuildData,
@@ -162,9 +308,32 @@ pub(crate) fn support_granted_gem_levels(
     {
         return 0;
     }
-    let judgement = crate::support::judge_group_supports(group, data, skill_id, group.from_gem());
     let gems = group.gem_inputs();
-    pobr_core::skill_env::support_granted_gem_levels(&judgement, &gems, data)
+    pobr_core::skill_env::support_granted_gem_levels(
+        &gem_judgements(group, data, skill_id),
+        &gems,
+        data,
+    )
+}
+
+/// The group's support judgement for each effect of the gem whose primary
+/// effect is `skill_id`, the primary first: a support on any of a gem's
+/// effects modifies the gem.
+fn gem_judgements(
+    group: &SocketGroup,
+    data: &BuildData,
+    skill_id: &str,
+) -> Vec<pobr_core::skill_env::GroupSupportJudgement> {
+    use pobr_core::skill_env::EffectLookup;
+    let secondary = data
+        .additional_effects(skill_id)
+        .iter()
+        .map(String::as_str)
+        .filter(|id| data.granted_effects.get(*id).is_some_and(|e| !e.is_support));
+    std::iter::once(skill_id)
+        .chain(secondary)
+        .map(|id| crate::support::judge_group_supports(group, data, id, group.from_gem()))
+        .collect()
 }
 
 /// The quality half of [`support_granted_gem_levels`] (same scope and compatibility rules).
@@ -180,22 +349,24 @@ pub(crate) fn support_granted_gem_quality(
     {
         return 0;
     }
-    let judgement = crate::support::judge_group_supports(group, data, skill_id, group.from_gem());
     let gems = group.gem_inputs();
-    pobr_core::skill_env::support_granted_gem_quality(&judgement, &gems, data)
+    pobr_core::skill_env::support_granted_gem_quality(
+        &gem_judgements(group, data, skill_id),
+        &gems,
+        data,
+    )
 }
 
-/// Scans every GemProperty mod source (equipment implicit/explicit/enchant + jewels +
-/// **allocated tree node stats** — vendor's GemProperty LIST goes into the global
-/// modDB, and the tree is one of its main carriers: e.g. the "Skill Gem Quality" small
-/// passive's `+2% to Quality of all Skills`, "Motoric Implants"'s `+2 to Level of all
-/// Skills with a Dexterity requirement`), returning the parsed results.
+/// The gem level and quality bonuses the character has ("+1 to Level of all
+/// Spell Skills", "+2% to Quality of all Skills"), from every place a line of
+/// the character can be: equipment and jewels, allocated passive nodes (the
+/// "Skill Gem Quality" small passives, "Neurological Implants"), notables an
+/// item allocates, and the lines the build's configuration adds. No rule
+/// stores such a line as a modifier; this is where it counts.
 pub(crate) fn gem_property_bonuses(build: &Build, data: &BuildData) -> Vec<GemPropertyBonus> {
-    // Anointed notables (`Allocates <name>` enchant → GrantedPassive, parsed by the
-    // same logic as append_granted_passives): vendor puts a granted node's modList
-    // into the global modDB the same as an allocated node (CalcSetup.lua:1322-1331),
-    // so the GemProperty scan must cover it equally (e.g. the gemling ascendancy's
-    // "Allocates Paragon"'s `+5% to Quality of all Skills`).
+    use pobr_core::rules::config_interpreter::{ConfigInputValue, custom_modifier_lines};
+    // A notable an item allocates ("Allocates <name>") counts like an
+    // allocated one, e.g. the "+5% to Quality of all Skills" of Paragon.
     let allocated: std::collections::HashSet<u32> =
         build.tree.allocated_nodes.iter().map(|id| id.0).collect();
     let granted_stats: Vec<String> = granted_passive_defs(build, data)
@@ -204,12 +375,28 @@ pub(crate) fn gem_property_bonuses(build: &Build, data: &BuildData) -> Vec<GemPr
         .flat_map(|def| def.stats.iter().cloned())
         .collect();
     let allocated_ids: Vec<u32> = build.tree.allocated_nodes.iter().map(|id| id.0).collect();
-    pobr_core::skill_env::gem_property_bonuses(
+    let mut bonuses = pobr_core::skill_env::gem_property_bonuses(
         build,
         &allocated_ids,
         &granted_stats,
         data.passive_nodes_for(build.tree_version.as_deref()),
-    )
+    );
+    // The configuration's lines: quest rewards and, read with a config
+    // catalog only (as the calculation reads them), custom modifiers.
+    let config = &build.config;
+    bonuses.extend(
+        config
+            .global_modifier_texts
+            .iter()
+            .filter_map(|line| parse_gem_property_bonus(line)),
+    );
+    if data.config_catalog.is_some()
+        && let Some(ConfigInputValue::Text(text)) = config.raw_inputs.values.get("customMods")
+    {
+        bonuses
+            .extend(custom_modifier_lines(text).filter_map(|line| parse_gem_property_bonus(&line)));
+    }
+    bonuses
 }
 
 /// Whether the build carries the GemlingQuality flag (matching vendor
@@ -242,15 +429,22 @@ pub(crate) fn gem_property_applies(
     data: &BuildData,
     skill_types: &[String],
     skill_id: &str,
+    corrupted: bool,
 ) -> bool {
-    pobr_core::skill_env::gem_property_applies(bonus, data, skill_types, skill_id)
+    pobr_core::skill_env::gem_property_applies(bonus, data, skill_types, skill_id, corrupted)
 }
 
 /// The sum of "`+N to Level of all <X> Skills`" level bonuses that apply to the main
-/// skill (the Level dimension of [`gem_property_bonuses`], filtered against the main skill and summed).
-pub(crate) fn additional_gem_levels(build: &Build, data: &BuildData, skill_id: &str) -> u32 {
+/// skill on a gem that is `corrupted` or not (the Level dimension of
+/// [`gem_property_bonuses`], filtered against the main skill and summed).
+pub(crate) fn additional_gem_levels(
+    build: &Build,
+    data: &BuildData,
+    skill_id: &str,
+    corrupted: bool,
+) -> u32 {
     let bonuses = gem_property_bonuses(build, data);
-    pobr_core::skill_env::additional_gem_levels(&bonuses, data, skill_id)
+    pobr_core::skill_env::additional_gem_levels(&bonuses, data, skill_id, corrupted)
 }
 
 /// Applies gem quality bonuses (matching vendor's `applyGemMods`, which stacks
@@ -284,7 +478,9 @@ pub(crate) fn apply_gem_quality_bonuses(build: &Build, data: &BuildData) -> Opti
                         .unwrap_or(&[]);
                     let from_mods: u32 = bonuses
                         .iter()
-                        .filter(|b| gem_property_applies(b, data, skill_types, &gem.skill_id))
+                        .filter(|b| {
+                            gem_property_applies(b, data, skill_types, &gem.skill_id, gem.corrupted)
+                        })
                         .map(|b| b.value)
                         .sum();
                     from_mods + support_granted_gem_quality(group, data, &gem.skill_id)
@@ -425,6 +621,7 @@ mod kalandra_tests {
             modifier_texts: texts.iter().map(|s| s.to_string()).collect(),
             enchant_texts: vec![],
             rolled_defence: RolledDefence::default(),
+            socketed: Vec::new(),
             parsed_stats: vec![],
         }
     }
@@ -482,6 +679,7 @@ mod gem_level_tests {
                 value: 2,
                 kind: GemPropertyKind::Quality,
                 category: String::new(),
+                corrupted_only: false,
                 attr_req: None,
             })
         );
@@ -491,6 +689,7 @@ mod gem_level_tests {
                 value: 2,
                 kind: GemPropertyKind::Level,
                 category: String::new(),
+                corrupted_only: false,
                 attr_req: Some("dex"),
             })
         );
@@ -498,6 +697,32 @@ mod gem_level_tests {
         assert_eq!(
             parse_gem_level_bonus("+2 to Level of all Skills with a [Dexterity] requirement"),
             None
+        );
+    }
+
+    /// "Corrupted" is a state of the gem, not a kind of skill: the bonus is
+    /// for every skill gem that is corrupted.
+    #[test]
+    fn parses_a_bonus_for_corrupted_skill_gems() {
+        assert_eq!(
+            parse_gem_property_bonus("+1 to Level of all Corrupted Skill Gems"),
+            Some(GemPropertyBonus {
+                value: 1,
+                kind: GemPropertyKind::Level,
+                category: String::new(),
+                corrupted_only: true,
+                attr_req: None,
+            })
+        );
+        assert_eq!(
+            parse_gem_property_bonus("+2 to Level of all Corrupted Spell Skills"),
+            Some(GemPropertyBonus {
+                value: 2,
+                kind: GemPropertyKind::Level,
+                category: "spell".into(),
+                corrupted_only: true,
+                attr_req: None,
+            })
         );
     }
 
@@ -553,7 +778,55 @@ mod gem_level_tests {
         ));
         // A bare "all skills" (empty category) matches unconditionally.
         assert!(gem_level_category_matches("", &grenade, ""));
-        assert!(gem_level_category_matches("skill gems", &grenade, ""));
+    }
+
+    /// The game words a kind as "all Cold Skills" or as "all Nova Skill Gems".
+    #[test]
+    fn a_kind_of_skill_gems_is_the_kind_of_skills() {
+        let bonus = |line: &str| parse_gem_property_bonus(line).expect("a gem bonus");
+        let nova = bonus("+1 to Level of all Nova Skill Gems");
+        assert_eq!((nova.value, nova.category.as_str()), (1, "nova"));
+        assert!(!nova.corrupted_only);
+        let corrupted_spell = bonus("+2 to Level of all Corrupted Spell Skill Gems");
+        assert_eq!(corrupted_spell.category, "spell");
+        assert!(corrupted_spell.corrupted_only);
+        let corrupted = bonus("+1 to Level of all Corrupted Skill Gems");
+        assert_eq!(corrupted.category, "");
+        assert!(corrupted.corrupted_only);
+        assert_eq!(bonus("+1 to Level of all Skills").category, "");
+        assert_eq!(
+            bonus("+3 to Level of all Cold Spell Skills").category,
+            "cold spell"
+        );
+    }
+
+    /// A kind whose word is not the name of a skill type goes by the types
+    /// that make a gem of that kind.
+    #[test]
+    fn a_kind_named_differently_from_its_skill_type_still_matches() {
+        let kind = |word: &str, skill_types: &[&str]| {
+            gem_level_category_matches(word, &types(skill_types), "")
+        };
+        // Spell Totem summons a totem; the spell socketed in it does not.
+        assert!(kind("totem", &["SummonsTotem", "Meta", "Duration"]));
+        assert!(!kind(
+            "totem",
+            &["Spell", "Cold", "Totemable", "UsedByTotem"]
+        ));
+        assert!(kind("curse", &["Spell", "AppliesCurse", "Area"]));
+        assert!(!kind("curse", &["Spell", "Area"]));
+        assert!(kind("strike", &["Attack", "Melee", "MeleeSingleTarget"]));
+        assert!(!kind("strike", &["Attack", "Melee", "Slam"]));
+        assert!(kind("crossbow", &["Attack", "CrossbowSkill"]));
+        assert!(kind("crossbow", &["Attack", "CrossbowAmmoSkill"]));
+        assert!(!kind("crossbow", &["Attack", "Bow"]));
+        for element in ["Fire", "Cold", "Lightning"] {
+            assert!(kind("elemental", &["Spell", element]));
+        }
+        assert!(!kind("elemental", &["Spell", "Chaos", "Physical"]));
+        // Both words of a kind still have to hold.
+        assert!(kind("elemental spell", &["Spell", "Fire"]));
+        assert!(!kind("elemental spell", &["Attack", "Fire"]));
     }
 
     #[test]
@@ -591,11 +864,9 @@ mod gem_level_tests {
             &fireball,
             "FireballPlayer"
         ));
-        // A category like "corrupted skill gems" that contains a non-type token stays
-        // non-matching (consistent with PoB2's corrupted special case being missing —
-        // better to skip than to miscalculate).
+        // A word that names no kind of skill matches nothing.
         assert!(!gem_level_category_matches(
-            "corrupted skill",
+            "zorblax spell",
             &comet,
             "CometPlayer"
         ));

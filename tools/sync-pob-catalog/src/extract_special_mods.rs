@@ -308,8 +308,7 @@ pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
 fn invoke_headless_jsonl(args: &ExtractLuaArgs) -> io::Result<Vec<RawRow>> {
     // Canonicalize: cwd switches to vendor src/, and a relative vendor_root would break LUA_PATH.
     let vendor_root = args.vendor_root.canonicalize()?;
-    let runtime = vendor_root.join("../runtime/lua");
-    let lua_path = format!("{r}/?.lua;{r}/?/init.lua;./?.lua;;", r = runtime.display());
+    let lua_path = crate::extract_lua::headless_lua_path(&vendor_root)?;
     let mut child = Command::new(&args.luajit)
         .arg("-")
         .arg(&vendor_root)
@@ -1100,7 +1099,33 @@ fn collect_diffs(
 
 fn transform_mods(v: &serde_json::Value) -> Result<Vec<ModTemplateDef>, String> {
     let arr = v.as_array().ok_or("mods_not_array")?;
-    arr.iter().map(transform_mod).collect()
+    let mods = arr
+        .iter()
+        .map(transform_mod)
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(mods.into_iter().flat_map(character_share_of_aura).collect())
+}
+
+/// An `ExtraAura` is what the character's allies have. The entries that
+/// reach here are "you and allies …" (an aura only for allies has a mixed
+/// value and is rejected), so the character has the same modifiers, under
+/// the aura's own conditions.
+fn character_share_of_aura(m: ModTemplateDef) -> Vec<ModTemplateDef> {
+    let own = match (&m.name, &m.value) {
+        (TemplateNameDef::Literal(name), TemplateValueDef::Nested { mods })
+            if name == "ExtraAura" =>
+        {
+            mods.iter()
+                .cloned()
+                .map(|mut inner| {
+                    inner.tags.extend(m.tags.iter().cloned());
+                    inner
+                })
+                .collect()
+        }
+        _ => Vec::new(),
+    };
+    std::iter::once(m).chain(own).collect()
 }
 
 /// Equivalent rewrite for a captured PercentStat percent: `value × stat ×
@@ -1767,6 +1792,23 @@ mod tests {
             &inner[0].name,
             TemplateNameDef::Literal(n) if n == "FireExposure"
         ));
+    }
+
+    #[test]
+    fn the_character_shares_an_aura_of_you_and_allies() {
+        // "All Damage from you and Allies in your Presence contributes to
+        // Flammability and Ignite Magnitudes": the allies' aura and the
+        // character's own flag, under the aura's conditions.
+        let raw = serde_json::json!([{
+            "name": "ExtraAura", "type": "LIST",
+            "value": { "mod": { "name": "ColdCanIgnite", "type": "FLAG", "value": true } },
+            "tags": [{ "type": "Condition", "var": "LowMana", "neg": true }]
+        }]);
+        let mods = transform_mods(&raw).unwrap();
+        assert_eq!(mods.len(), 2);
+        assert!(matches!(&mods[0].name, TemplateNameDef::Literal(n) if n == "ExtraAura"));
+        assert!(matches!(&mods[1].name, TemplateNameDef::Literal(n) if n == "ColdCanIgnite"));
+        assert_eq!(mods[1].tags, mods[0].tags);
     }
 
     #[test]

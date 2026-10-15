@@ -16,7 +16,8 @@
 //! decoding), [`request`] (calculation request DTOs plus shared assembly),
 //! [`calculate`] (full calculation / full DPS), [`analysis`] (node power /
 //! variant optimization / attribution), [`encode`] (edit state -> a share
-//! code), [`catalog`] (gem/rune catalogs, per-line coloring, translation).
+//! code), [`catalog`] (gem/rune catalogs, per-line coloring, translation),
+//! [`usage`] (what the calculation does with each line of a build).
 //! Small shared utilities stay in this file.
 
 mod analysis;
@@ -27,7 +28,9 @@ mod decode;
 mod encode;
 mod request;
 mod support;
+mod usage;
 pub use support::support_groups_compatible_json;
+pub use usage::line_usage_json;
 
 pub use analysis::{AttributionRequest, attribution_json, node_power_json, optimize_variants_json};
 pub use augments::{item_augment_info_json, reforge_runes_json, rune_catalog_json};
@@ -42,7 +45,7 @@ pub use request::{
     CalculateBuildRequest, CharacterOverride, GemInput, JewelInput, SlotItemInput, SocketGroupInput,
 };
 
-use pobr_data::item::EquipmentSlot;
+use pobr_data::item::{EquipmentSlot, LimbSlot};
 use serde::Serialize;
 
 use crate::state;
@@ -118,22 +121,15 @@ impl From<String> for ApiError {
 
 /// Stable equipment-slot id -> [`EquipmentSlot`] (the inverse of `EquipmentSlot::id()`).
 fn slot_from_id(id: &str) -> Result<EquipmentSlot, String> {
-    const ALL: [EquipmentSlot; 11] = [
-        EquipmentSlot::Weapon1,
-        EquipmentSlot::Weapon2,
-        EquipmentSlot::Helmet,
-        EquipmentSlot::BodyArmour,
-        EquipmentSlot::Gloves,
-        EquipmentSlot::Boots,
-        EquipmentSlot::Amulet,
-        EquipmentSlot::Ring1,
-        EquipmentSlot::Ring2,
-        EquipmentSlot::Ring3,
-        EquipmentSlot::Belt,
-    ];
-    ALL.into_iter()
+    EquipmentSlot::ALL
+        .into_iter()
         .find(|s| s.id() == id)
         .ok_or_else(|| format!("unknown equipment slot: {id}"))
+}
+
+/// A Transcendent limb slot by its stable id (`arm1` … `leg2`).
+fn limb_slot_from_id(id: &str) -> Result<LimbSlot, String> {
+    LimbSlot::from_id(id).ok_or_else(|| format!("unknown limb slot: {id}"))
 }
 
 /// Chinese input preprocessing (Phase 7.1): a line containing CJK attempts

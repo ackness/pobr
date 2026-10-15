@@ -78,3 +78,54 @@ test('custom modifier groups retain titles, text, order and disabled state throu
   await page.reload();
   await expect(groups).toHaveCount(0, { timeout: 90_000 });
 });
+
+// A level 20 Comet and nothing else, so a custom modifier is the only thing
+// that can change its level.
+const caster = `<PathOfBuilding2>
+  <Build level="90" className="Sorceress" mainSocketGroup="1"/>
+  <Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
+  <Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true" mainActiveSkill="1">
+    <Gem skillId="CometPlayer" gemId="Metadata/Items/Gems/SkillGemComet" level="20" quality="0" enabled="true"/>
+  </Skill></SkillSet></Skills>
+  <Items/>
+  <Config/>
+</PathOfBuilding2>`;
+
+test('a custom modifier raises gem levels, and a line the calculation cannot apply is listed under the groups', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
+  await page.getByRole('button', { name: 'Build', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(deflateSync(caster).toString('base64url'));
+  await page.locator('.import-submit').click();
+  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+
+  const dps = page.locator('.main-skill-section .stat-row dd').first();
+  const number = async () => Number((await dps.innerText()).replaceAll(',', ''));
+  await expect.poll(number).toBeGreaterThan(0);
+  const plain = await number();
+
+  await page.getByRole('button', { name: 'Config', exact: true }).click();
+  const groups = page.locator('.config-modifier-block');
+  const unapplied = page.locator('.config-unapplied');
+  await expect(unapplied).toHaveCount(0);
+  if (await groups.count() === 0) await page.locator('.config-modifier-add').click();
+  const text = groups.first().locator('.config-extra-mods');
+  const leave = () => groups.first().locator('.config-modifier-title input').click();
+
+  await text.fill('+1 to Level of all Cold Skills\nZorblax the unknowable 12%');
+  await leave();
+  await expect.poll(number).toBeGreaterThan(plain);
+  const raised = await number();
+  await expect(unapplied.locator('li')).toHaveText(['Zorblax the unknowable 12%']);
+
+  // The same bonus for skills Comet is not leaves it alone; the notice goes with the line.
+  await text.fill('+1 to Level of all Fire Skills');
+  await leave();
+  await expect.poll(number).toBe(plain);
+  await expect(unapplied).toHaveCount(0);
+
+  await text.fill('+1 to Level of all Spell Skills');
+  await leave();
+  await expect.poll(number).toBe(raised);
+});
+

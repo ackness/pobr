@@ -24,7 +24,7 @@
 
 use pobr_data::prelude::*;
 
-use crate::{ModDb, Modifier};
+use crate::{CalcConfig, ModDb, Modifier};
 
 use super::round;
 
@@ -36,6 +36,64 @@ pub use pobr_data::minion::{MinionCategory, MinionDef, MinionLimitId};
 /// (`MONSTER_BASE_CRIT_DAMAGE_BONUS`=30) + this intrinsic (70) = 100.
 /// Source: agent-docs/minions.md §1.5; PoB2 Misc.lua / CalcPerform.lua L1007.
 pub const MINION_INTRINSIC_CRIT_DAMAGE_BONUS: f64 = 70.0;
+
+/// "spectre_tamed_beast_inherent_damage_+%_final": how much more damage a
+/// Spectre or a tamed beast deals than the monster it was. The game data in
+/// the snapshot has the stat but not its value, which the server applies;
+/// 25 is what PoB2 measured in the game.
+pub const SPECTRE_TAMED_BEAST_INHERENT_DAMAGE: f64 = 25.0;
+
+/// The more damage a Spectre or a tamed beast of `level` deals: it keeps the
+/// damage of the monster it was, and the game scales that to a minion of
+/// its level (the minion damage table over the monster damage table, both
+/// the game's `DefaultMonsterStats`) and by
+/// [`SPECTRE_TAMED_BEAST_INHERENT_DAMAGE`]. Applying the scaling as more
+/// damage, it scales all their damage, added damage included.
+pub fn monster_minion_damage_scaling(level: u32) -> [(&'static str, f64); 2] {
+    let level_scaling =
+        pobr_data::monster::monster_ally_damage(level) / pobr_data::monster::monster_damage(level);
+    [
+        ("minion.level_scaling", (level_scaling - 1.0) * 100.0),
+        (
+            "spectre_tamed_beast_inherent_damage_+%_final",
+            SPECTRE_TAMED_BEAST_INHERENT_DAMAGE,
+        ),
+    ]
+}
+
+/// The game's `GameConstants.SkillDamageBaseEffectiveness`: a stat set's
+/// effectiveness per point of its `BaseEffectiveness` at user level 1. The
+/// snapshot does not export the `GameConstants` table; the value is the one
+/// PoB2's data carries, and it gives the resolved values the game's tables
+/// hold (Navira's Fracturing at level 1: 3.885209 × 14.25 × 0.8 = 44).
+pub const SKILL_DAMAGE_BASE_EFFECTIVENESS: f64 = 3.885209;
+
+/// The stats of `row` that grow with the level of whoever uses the skill,
+/// resolved for a user of `user_level`: each is its value per point of
+/// effectiveness times the set's effectiveness at that level (see
+/// [`pobr_data::catalog::UserLevelScaling`]), rounded. Empty for a set
+/// whose rows hold their resolved values (a gem's).
+pub fn stats_at_user_level(
+    set: &pobr_data::catalog::StatSetDef,
+    row: &pobr_data::catalog::SkillStatSetLevel,
+    user_level: u32,
+) -> Vec<pobr_data::catalog::SkillDamageStat> {
+    let Some(scaling) = set.user_level_scaling else {
+        return Vec::new();
+    };
+    let levels_above_first = f64::from(user_level.max(1) - 1);
+    let effectiveness = SKILL_DAMAGE_BASE_EFFECTIVENESS
+        * set.base_effectiveness
+        * (1.0 + scaling.incremental_effectiveness * levels_above_first)
+        * (1.0 + scaling.damage_incremental_effectiveness).powf(levels_above_first);
+    row.per_effectiveness
+        .iter()
+        .map(|stat| pobr_data::catalog::SkillDamageStat {
+            stat: stat.stat.clone(),
+            value: (effectiveness * stat.value).round(),
+        })
+        .collect()
+}
 
 /// A minion's virtual weapon default crit chance (`minionData.critChance`'s default value).
 /// Source: agent-docs/minions.md §1.3 / §1.5; PoB2 CalcActiveSkill.lua.
@@ -86,6 +144,10 @@ pub struct MinionData {
     /// Whether base damage ignores attack speed (Zombie/RagingSpirit=true:
     /// attack speed only affects DPS, not per-hit damage).
     pub base_damage_ignores_attack_speed: bool,
+    /// Whether the minion is a monster the player picked (a Spectre or a
+    /// tamed beast), which deals the damage of a monster of its level and
+    /// is then scaled to a minion's (see [`monster_minion_damage_scaling`]).
+    pub picked_monster: bool,
 }
 
 impl Default for MinionData {
@@ -104,6 +166,7 @@ impl Default for MinionData {
             lightning_resist: 0.0,
             chaos_resist: 0.0,
             base_damage_ignores_attack_speed: false,
+            picked_monster: false,
         }
     }
 }
@@ -132,6 +195,7 @@ impl MinionData {
             lightning_resist: s.lightning_resist,
             chaos_resist: s.chaos_resist,
             base_damage_ignores_attack_speed: s.base_damage_ignores_attack_speed,
+            picked_monster: false,
         }
     }
 }
@@ -249,6 +313,94 @@ pub fn extract_minion_modifier_entries<'a>(
     entries
 }
 
+/// What the character's `MinionModifier` lists in `db` grant the minions of
+/// a skill: the inner modifier of every list whose own tags hold under `cfg`,
+/// which carries that skill's types ("Companions deal …" is for the minions
+/// of a Companion skill only). Each keeps the line it came from.
+pub fn granted_minion_modifiers(db: &ModDb, cfg: &CalcConfig) -> Vec<MinionModifierEntry> {
+    let mut entries = Vec::new();
+    for outer in db.named("MinionModifier") {
+        if outer.mod_type != ModType::List || !outer.matches(cfg) {
+            continue;
+        }
+        for inner in outer.value.as_nested_mods().into_iter().flatten() {
+            let mut inner = inner.clone();
+            if inner.source.is_none() {
+                inner.source = outer.source.clone();
+            }
+            if inner.origin.is_none() {
+                inner.origin = outer.origin.clone();
+            }
+            entries.push(MinionModifierEntry {
+                inner,
+                minion_type: None,
+            });
+        }
+    }
+    entries
+}
+
+/// What summoned a minion.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct MinionOrigin {
+    /// The id of the skill that summoned it (`SummonBeastPlayer`); empty
+    /// when no skill did.
+    pub summoned_by: String,
+    /// Whether it is a damageable companion: the skill has
+    /// `SkillType.Companion` and not `MinionsAreUndamagable`.
+    /// `TotalCompanionLife` only sums these minions.
+    pub is_companion: bool,
+    /// The skill the minion uses, which its damage is calculated for.
+    pub skill: MinionSkill,
+    /// Whether it is a monster the player picked: a Spectre or a tamed beast.
+    pub picked_monster: bool,
+}
+
+/// The skill a minion uses: one of its monster's skills, chosen by the
+/// player (PoB's `<Gem skillMinionSkill>`).
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct MinionSkill {
+    /// The skill's granted effect id (`MeleeAtAnimationSpeedUnique`); empty
+    /// when the minion's skill is not known.
+    pub id: String,
+    /// The skill's types (`Attack`, `Melee`, …).
+    pub types: Vec<String>,
+    /// The skill's cast time in seconds (0 when the data gives none): how
+    /// often a minion casting a spell uses it, before cast speed.
+    pub cast_time: f64,
+    /// Whether it is a Command skill
+    /// ([`crate::rules::skill_stats::COMMAND_SKILL_STAT`]).
+    pub command: bool,
+}
+
+impl MinionSkill {
+    /// Whether the minion's skill is known.
+    pub fn is_known(&self) -> bool {
+        !self.id.is_empty()
+    }
+
+    /// Whether the minion hits with its monster's own damage: a monster's
+    /// attack is its weapon. A spell brings its own damage, the stats of its
+    /// set at the minion's level, and is cast once per cast time. A minion
+    /// whose skill is not known is taken to attack.
+    pub fn uses_weapon(&self) -> bool {
+        !self.is_known() || self.types.iter().any(|t| t == "Attack")
+    }
+
+    /// The damage flags of the skill's hits.
+    pub fn flags(&self) -> ModFlags {
+        crate::skill_env::skill_type_flags(&self.types)
+    }
+
+    /// The skill's types as the bitset a calculation context carries.
+    pub fn type_bits(&self) -> pobr_data::skill::SkillTypes {
+        self.types
+            .iter()
+            .filter_map(|name| pobr_data::skill::SkillTypes::from_pob2_name(name))
+            .fold(pobr_data::skill::SkillTypes::NONE, |all, one| all | one)
+    }
+}
+
 /// Attribute infusion: flag-driven player attributes → minion BASE injection.
 ///
 /// A minion's base attributes default to 0 and don't inherit the player's;
@@ -300,10 +452,16 @@ pub fn derive_minion_base_stats(gem_level: u32, data: &MinionData) -> MinionBase
     // Life-to-ES: the energy_shield share × 100 = LifeConvertToEnergyShield BASE; folded directly into the ES base here.
     let energy_shield = round(life * data.energy_shield);
 
-    // Virtual weapon damage base: the damage table × the normalization
-    // multiplier, further multiplied by the attack interval when
+    // Virtual weapon damage base: the game's minion damage table (a picked
+    // monster's: the monster table) × the normalization multiplier, further
+    // multiplied by the attack interval when
     // base_damage_ignores_attack_speed=false.
-    let mut damage = row.damage * data.damage;
+    let table = if data.picked_monster {
+        pobr_data::monster::monster_damage(level)
+    } else {
+        pobr_data::monster::monster_ally_damage(level)
+    };
+    let mut damage = table * data.damage;
     if !data.base_damage_ignores_attack_speed {
         damage *= data.attack_time;
     }
@@ -312,7 +470,7 @@ pub fn derive_minion_base_stats(gem_level: u32, data: &MinionData) -> MinionBase
         physical_max: round(damage * (1.0 + data.damage_spread)),
         crit_chance: data.crit_chance,
         attack_rate: if data.attack_time > 0.0 {
-            round(1.0 / data.attack_time)
+            1.0 / data.attack_time
         } else {
             0.0
         },
@@ -386,23 +544,34 @@ fn write_intrinsics(db: &mut ModDb, base: &MinionBaseStats) {
     }
 }
 
-/// Writes attribute infusion (flag-driven) into the minion ModDb's `Str`/`Dex` BASE.
+/// Maximum Life a point of Strength grants, a minion's as the character's.
+pub const LIFE_PER_STRENGTH: f64 = 2.0;
+
+/// Writes attribute infusion (flag-driven) into the minion ModDb's
+/// `Strength` / `Dexterity` BASE, with the Life the Strength grants: a minion
+/// has no attributes of its own, so what it gains is all it has.
 fn write_attribute_infusion(db: &mut ModDb, infusion: &AttributeInfusion) {
     let src = |id: &str| ModifierSource::new(SourceId::new(SourceKind::Config, id.to_string()));
-    if infusion.strength_added {
-        db.add_mod(
-            Modifier::number("Str", ModType::Base, round(infusion.player_strength))
-                .with_origin(src("minion.infusion.strength")),
-        );
+    let strength = if infusion.strength_added {
+        Some((round(infusion.player_strength), "minion.infusion.strength"))
     } else if infusion.half_strength_added {
+        Some((
+            round(infusion.player_strength * 0.5),
+            "minion.infusion.half_strength",
+        ))
+    } else {
+        None
+    };
+    if let Some((strength, id)) = strength {
+        db.add_mod(Modifier::number("Strength", ModType::Base, strength).with_origin(src(id)));
         db.add_mod(
-            Modifier::number("Str", ModType::Base, round(infusion.player_strength * 0.5))
-                .with_origin(src("minion.infusion.half_strength")),
+            Modifier::number("MaximumLife", ModType::Base, strength * LIFE_PER_STRENGTH)
+                .with_origin(src(id)),
         );
     }
     if infusion.dexterity_added {
         db.add_mod(
-            Modifier::number("Dex", ModType::Base, round(infusion.player_dexterity))
+            Modifier::number("Dexterity", ModType::Base, round(infusion.player_dexterity))
                 .with_origin(src("minion.infusion.dexterity")),
         );
     }
@@ -429,6 +598,16 @@ pub fn build_minion_context(input: &MinionInput) -> MinionContext {
 
     // Intrinsics + monster-style base stats.
     write_intrinsics(&mut db, &base);
+    if input.data.picked_monster {
+        for (id, more) in monster_minion_damage_scaling(base.level) {
+            db.add_mod(
+                Modifier::number("Damage", ModType::More, more).with_origin(
+                    ModifierSource::new(SourceId::new(SourceKind::GameConstant, id))
+                        .with_raw_text("Spectres and tamed beasts deal a minion's damage"),
+                ),
+            );
+        }
+    }
 
     // Channel 1: MinionModifier (with type restriction).
     for entry in &input.minion_modifiers {
@@ -447,6 +626,11 @@ pub fn build_minion_context(input: &MinionInput) -> MinionContext {
 
     MinionContext { base, mod_db: db }
 }
+
+/// The flag of a Gigantic minion ("Your Minions are Gigantic", the
+/// `companions_are_gigantic` of Tangmazu's Thurible; see
+/// `calc::perform::apply_gigantic`).
+pub const GIGANTIC: &str = "Gigantic";
 
 // Count limit / per-minion multiplier (agent-docs/minions.md §4.1)
 
@@ -489,6 +673,55 @@ pub fn resolve_minion_level(gem_level: u32) -> u32 {
     minion_level_from_gem_level(gem_level)
 }
 
+/// The modifiers of its monster's own that a minion has: the entries of
+/// `def.mod_list` the engine has a reader for, under the engine's names
+/// (Zekoa's `CritMultiplier` INC 150 is "150% increased Critical Damage
+/// Bonus"). An entry with conditions, with keyword flags, or of a name the
+/// engine does not read is left out.
+pub fn definition_modifiers(def: &MinionDef) -> Vec<Modifier> {
+    use pobr_data::catalog::actors::LuaValueDef;
+    let number = |value: &Option<LuaValueDef>| match value {
+        None => Some(0.0),
+        Some(LuaValueDef::Number(n)) => Some(*n),
+        Some(_) => None,
+    };
+    let mut modifiers = Vec::new();
+    for entry in &def.mod_list {
+        let (Some(flags), Some(0.0), LuaValueDef::Number(value), true) = (
+            number(&entry.flags),
+            number(&entry.keyword_flags),
+            &entry.value,
+            entry.tags.is_empty(),
+        ) else {
+            continue;
+        };
+        let mod_type = match entry.mod_type.as_str() {
+            "BASE" => ModType::Base,
+            "INC" => ModType::Inc,
+            "MORE" => ModType::More,
+            _ => continue,
+        };
+        // The source data's flag bit 1 is "with attacks".
+        let name = match (entry.name.as_str(), flags) {
+            ("CritMultiplier", 0.0) => "CriticalStrikeMultiplier",
+            ("PhysicalDamage", 0.0) => "PhysicalDamage",
+            ("DamageTaken", 0.0) => "DamageTaken",
+            ("Speed", 1.0) => "AttackSpeed",
+            _ => continue,
+        };
+        let origin = ModifierSource::new(SourceId::new(
+            SourceKind::GameConstant,
+            format!("minion.{}", def.id),
+        ))
+        .with_raw_text(format!(
+            "{}: {} {} {}",
+            def.name, entry.name, entry.mod_type, value
+        ));
+        modifiers.push(Modifier::number(name, mod_type, *value).with_origin(origin));
+    }
+    modifiers
+}
+
 /// Builds a minion `MinionContext`, accepting a `MinionDef` instead of a hand-filled `MinionData`.
 ///
 /// This is a convenience entry point relative to `build_minion_context`: it
@@ -503,15 +736,40 @@ pub fn build_minion_context_from_def(
     ally_buff_mods: Vec<Modifier>,
     attribute_infusion: AttributeInfusion,
 ) -> MinionContext {
+    picked_minion_context(
+        def,
+        gem_level,
+        minion_modifiers,
+        ally_buff_mods,
+        attribute_infusion,
+        false,
+    )
+}
+
+/// [`build_minion_context_from_def`] for a minion that is a monster the
+/// player picked (`picked_monster`, see [`MinionData::picked_monster`]) or not.
+pub(crate) fn picked_minion_context(
+    def: &MinionDef,
+    gem_level: u32,
+    minion_modifiers: Vec<MinionModifierEntry>,
+    ally_buff_mods: Vec<Modifier>,
+    attribute_infusion: AttributeInfusion,
+    picked_monster: bool,
+) -> MinionContext {
     let input = MinionInput {
         gem_level,
-        data: MinionData::from_def(def),
+        data: MinionData {
+            picked_monster,
+            ..MinionData::from_def(def)
+        },
         minion_modifiers,
         ally_buff_mods,
         attribute_infusion,
         minion_type: Some(def.id.clone()),
     };
-    build_minion_context(&input)
+    let mut ctx = build_minion_context(&input);
+    ctx.mod_db.add_list(definition_modifiers(def));
+    ctx
 }
 
 #[cfg(test)]
@@ -527,6 +785,89 @@ mod tests {
         assert_eq!(minion_level_from_gem_level(40), 80);
         assert_eq!(minion_level_from_gem_level(0), 2);
         assert_eq!(minion_level_from_gem_level(999), 80);
+    }
+
+    /// A Spectre or a tamed beast keeps the damage of the monster it was,
+    /// which the game scales to a minion of its level and by the inherent
+    /// 25% more: its virtual weapon is the monster table's, and with the two
+    /// more lines it deals 1.25 times what a summoned minion of the same
+    /// level deals.
+    #[test]
+    fn a_picked_monster_deals_a_minions_damage_and_more() {
+        let gem_level = 38;
+        let level = minion_level_from_gem_level(gem_level);
+        let picked = MinionData {
+            picked_monster: true,
+            ..MinionData::default()
+        };
+        let monster = derive_minion_base_stats(gem_level, &picked)
+            .weapon
+            .physical_max;
+        let minion = derive_minion_base_stats(gem_level, &MinionData::default())
+            .weapon
+            .physical_max;
+        let more: f64 = monster_minion_damage_scaling(level)
+            .iter()
+            .map(|(_, value)| 1.0 + value / 100.0)
+            .product();
+        assert!(
+            (monster * more / minion - 1.25).abs() < 1e-3,
+            "{monster} x {more} against {minion}"
+        );
+    }
+
+    /// A minion's skill has its damage at the minion's level: Navira's
+    /// Fracturing (base effectiveness 14.25, growing 25% and 4.15% a level)
+    /// deals 0.8 to 1.2 per point of effectiveness, 44 to 66 at level 1 as
+    /// the game's resolved values say, and 9613 to 14420 at level 64.
+    #[test]
+    fn a_minions_skill_deals_its_damage_at_the_minions_level() {
+        use pobr_data::catalog::{
+            SkillDamageStat, SkillStatSetLevel, StatSetDef, UserLevelScaling,
+        };
+        let stat = |stat: &str, value: f64| SkillDamageStat {
+            stat: stat.to_string(),
+            value,
+        };
+        let row = SkillStatSetLevel {
+            gem_level: 1,
+            damage_multiplier: 1.0,
+            stats: vec![
+                stat("spell_minimum_base_cold_damage", 44.0),
+                stat("spell_maximum_base_cold_damage", 66.0),
+            ],
+            per_effectiveness: vec![
+                stat("spell_minimum_base_cold_damage", 0.8),
+                stat("spell_maximum_base_cold_damage", 1.2),
+            ],
+        };
+        let mut set = StatSetDef {
+            set_id: "ChilledGroundBurstWaterDjinn".into(),
+            label: None,
+            vendor_set_index: None,
+            base_effectiveness: 14.25,
+            user_level_scaling: Some(UserLevelScaling {
+                incremental_effectiveness: 0.25,
+                damage_incremental_effectiveness: 0.0415,
+            }),
+            constant_stats: Vec::new(),
+            skill_attack_speed_more: None,
+            dot_flags: Default::default(),
+            explode_corpse: false,
+            implicit_stats: Vec::new(),
+            levels: vec![row.clone()],
+        };
+        let values = |set: &StatSetDef, level| -> Vec<f64> {
+            stats_at_user_level(set, &row, level)
+                .iter()
+                .map(|s| s.value)
+                .collect()
+        };
+        assert_eq!(values(&set, 1), [44.0, 66.0]);
+        assert_eq!(values(&set, 64), [9613.0, 14420.0]);
+        // A gem's set holds its resolved values.
+        set.user_level_scaling = None;
+        assert!(values(&set, 64).is_empty());
     }
 
     #[test]

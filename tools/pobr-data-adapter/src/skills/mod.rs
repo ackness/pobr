@@ -101,9 +101,9 @@ pub fn adapt_skills(en: &Path, tw: &Path) -> Result<SkillsBundle, String> {
             .map(|r| r.id)
             .collect();
 
-    let (gems, gems_total) = gems::adapt_gems(en, &base_ids)?;
     let (effects, effects_total, effect_id_by_index) =
         effects::adapt_effects(en, &active_skills, &skill_type_names)?;
+    let (gems, gems_total) = gems::adapt_gems(en, &base_ids, &effect_id_by_index)?;
     // Crit chance lives at the stat-set level, so build the lookup first and then join by (effect, level).
     let crit_by_effect = stat_sets::crit_from_statset_levels(en)?;
     let (levels, level_rows_total) =

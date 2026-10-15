@@ -94,12 +94,20 @@ export interface ItemsJson {
   /** 树插槽珠宝（天赋树页可编辑）。 */
   socket_jewels: SocketJewelJson[];
   flasks: SlotItemJson[];
+  /** 超越肢体（槽 `arm1`/`arm2`/`leg1`/`leg2`）：与装备并列的一组栏位，词条为全局词条。 */
+  limbs: SlotItemJson[];
 }
 
 export interface GemJson {
   stat_set_index?: number | null;
   /** Raw PoB name for an unresolved slot; display/export metadata, never calculation identity. */
   name_spec?: string | null;
+  /** Present and true only for a corrupted gem. */
+  corrupted?: boolean;
+  /** The monster a minion gem summons (PoB skillMinion); a Companion's beast or a Spectre's monster sets its Spirit reservation. */
+  minion?: string;
+  /** Which of the minion's skills it uses (PoB skillMinionSkill, 1-based); omitted is the first. */
+  minion_skill?: number;
   skill_id: string;
   level: number;
   quality: number;
@@ -187,6 +195,12 @@ export interface GemInput {
   stat_set_index?: number | null;
   /** Raw PoB name for an unresolved slot; display/export metadata, never calculation identity. */
   name_spec?: string | null;
+  /** Whether the gem is corrupted ("all Corrupted Skill Gems" modifiers test it); omitted means not. */
+  corrupted?: boolean;
+  /** The monster a minion gem summons (PoB skillMinion), passed through from decode. */
+  minion?: string | null;
+  /** Which of the minion's skills it uses (PoB skillMinionSkill, 1-based), passed through from decode. */
+  minion_skill?: number | null;
   skill_id: string;
   level: number;
   quality: number;
@@ -364,8 +378,15 @@ export interface CalculateBuildRequest {
   socket_groups?: SocketGroupInput[];
   /** 整份替换装备槽（手动编辑）。 */
   items?: SlotItemInput[];
+  /**
+   * `active` 是这次计算使用的武器组（1/2），“使用武器组 1/2 时”的词条按它生效；
+   * 另一组武器与武器组专属天赋只用于导出。省略时沿用构筑码的武器组（新构筑为 1）。
+   */
+  weapon_swap?: WeaponSwap | null;
   /** 整份替换激活态药剂/护符（槽名 `Flask 1/2`、`Charm 1..3`）。 */
   flasks?: SlotItemInput[];
+  /** 整份替换超越肢体（槽 `arm1`/`arm2`/`leg1`/`leg2`）。 */
+  limbs?: SlotItemInput[];
   /** 整份替换树插槽珠宝。 */
   jewels?: JewelInput[];
   main_socket_group?: number;
@@ -475,13 +496,14 @@ export type FormulaOp =
   | 'off_hand_either'
   | 'off_hand_alternating'
   | 'reload'
+  | 'hit_interval'
   | 'stronger_hand'
   | 'stronger_share'
   | 'weaker_hand';
 
 export interface FormulaStep {
   op: FormulaOp;
-  /** Amount applied: percentage points (increased, converted, hit_chance, chance_to_hit, crit_hits, enemy_block, the bonus and penalty steps), the enemy's evasion (vs_evasion), a multiplier (more, action_speed, enemy_mitigation, uses_per_second, dps_multiplier, ailment_effect, ailment_rate), seconds (added_time), the limit, the number of rolls (lucky, bifurcate), the starting damage per second (skill_dot, hit_dps), the hit an ailment starts from (ailment_source), the percentage of it dealt per second (per_second), the number of instances (active_stacks), the chance in percent (chance_to_apply), a hand's own value (main_hand, the off_hand steps, stronger_hand, weaker_hand), the percentage of instances from the stronger hand (stronger_share), a multiplier (reload) or the amount added. */
+  /** Amount applied: percentage points (increased, converted, hit_chance, chance_to_hit, crit_hits, enemy_block, the bonus and penalty steps), the enemy's evasion (vs_evasion), a multiplier (more, action_speed, enemy_mitigation, uses_per_second, dps_multiplier, ailment_effect, ailment_rate), seconds (added_time), the limit, the number of rolls (lucky, bifurcate), the starting damage per second (skill_dot, hit_dps), the hit an ailment starts from (ailment_source), the percentage of it dealt per second (per_second), the number of instances (active_stacks), the chance in percent (chance_to_apply), a hand's own value (main_hand, the off_hand steps, stronger_hand, weaker_hand), the percentage of instances from the stronger hand (stronger_share), a multiplier (reload), the seconds before a target can be hit again (hit_interval) or the amount added. */
   operand: number;
   /** Running value after the step. */
   result: number;
@@ -566,8 +588,10 @@ export interface AilmentDetail {
   source: { damage_type: string; hit: number; crit: number }[];
   /** `duration` before modifiers, in seconds. */
   base_duration: number;
-  /** Multiplier from how fast effects expire on the enemy; `duration` is `base_duration` scaled by `duration_mods`, times this. */
+  /** Multiplier from how fast effects expire on the enemy; `duration` is `base_duration` scaled by `duration_mods`, times this, divided by `rate`. */
   enemy_duration: number;
+  /** How much faster the ailment deals its damage (the `ailment_rate` step): the same damage in less time. */
+  rate: number;
   /** The player's lines behind `apply_chance`, `duration`, the `ailment_effect` step and the `ailment_rate` step. Modifiers on the enemy are not listed. */
   chance_mods: BreakdownMod[];
   duration_mods: BreakdownMod[];
@@ -718,6 +742,12 @@ export interface MainSkillInfo {
 
 export interface CalculateBuildResponse {
   stats: DisplayStatValue[];
+  /**
+   * Lines the calculation could not apply, so their effect is missing from the
+   * numbers. An item's line is given as written; a passive node's as
+   * `Tree:<node>: <line>`; a configuration line (custom modifier, quest reward)
+   * as `Config: <line>`.
+   */
   unsupported_modifiers: string[];
   /** 键 = 聚合 ModName（Life / EnergyShield / FireResist / ...）。 */
   breakdowns: Record<string, Breakdown>;
@@ -755,11 +785,11 @@ export interface AttributionRequest {
   fields?: string[];
 }
 
-export type AttributionSourceKind = 'item' | 'socket_group' | 'flask';
+export type AttributionSourceKind = 'item' | 'socket_group' | 'flask' | 'limb';
 
 export interface AttributionEntry {
   kind: AttributionSourceKind;
-  /** 装备槽 id / 技能组下标（字符串）/ 药剂槽名。 */
+  /** 装备槽 id / 技能组下标（字符串）/ 药剂槽名 / 肢体槽 id。 */
   id: string;
   /** 字段 → 边际贡献（baseline - 移除后值；正 = 增益）。 */
   deltas: Record<string, number>;
@@ -768,6 +798,157 @@ export interface AttributionEntry {
 export interface AttributionResponse {
   baseline: Record<string, number>;
   entries: AttributionEntry[];
+}
+
+// ---------------------------------------------------------------------------
+// line_usage_json（请求同 calculate_build_json）：构筑每一行词条在计算中的去向
+// ---------------------------------------------------------------------------
+
+/**
+ * 一行的去向。有 modifier 入库时按它们：全部生效 `applied`、部分 `partial`、
+ * 被读取但未计入 `inactive`、从未被读取 `unread`。没有 modifier 时：
+ * 入库前被拿走并由 `reason` 所写的读取方使用 `outside`（物品自身防御/伤害、宝石等级、珠宝半径），
+ * 登记为不影响任何输出 `no_effect`，有规则识别但没有实现 `unmodelled`，
+ * 没有规则能解析 `unparsed`，解析出了 modifier 却没有入库 `no_modifier`；
+ * 被本次计算排除时为 `inactive` 并写明原因。
+ */
+export type LineUsageStatus =
+  | 'applied'
+  | 'partial'
+  | 'inactive'
+  | 'unread'
+  | 'outside'
+  | 'no_effect'
+  | 'unmodelled'
+  | 'unparsed'
+  | 'no_modifier';
+
+/** 一条入库 modifier 的去向；`outside` = 在 modifier 库之外被 `reason` 所写的消费者读取。 */
+export type LineUsageModifierStatus = 'applied' | 'inactive' | 'unread' | 'outside';
+
+export interface LineUsageModifier {
+  name: string;
+  /** BASE / INC / MORE / FLAG / OVERRIDE / LIST。 */
+  mod_type: string;
+  /** 入库的值：数值、布尔、文本或 `[nested N]`。 */
+  value: number | boolean | string;
+  /** 生效数值在主技能上下文中的值（已应用缩放 tag）；否则 null。 */
+  applied: number | null;
+  status: LineUsageModifierStatus;
+  /** inactive：未满足的条件；outside：消费者。 */
+  reason: string | null;
+  /** 列出它（生效且非 0）的分解 stat id。 */
+  used_in: string[];
+}
+
+export interface LineUsageLine {
+  /** 归因来源类别（ItemAffix / ItemImplicit / PassiveNode / Jewel / Flask / Config …）。 */
+  source_kind: string | null;
+  /** 来源 id：`item.<槽>.<段>`、`node.<id>`、`jewel.<n>`、`flask.<槽>`、`quest`、`config.custom`。 */
+  source_id: string | null;
+  slot: string | null;
+  /** 持有者名称：天赋节点名、物品基底。 */
+  holder: string | null;
+  /** 原文；不来自某一行的 modifier（如宝石 stat）为 null。 */
+  text: string | null;
+  status: LineUsageStatus;
+  /** 没有 modifier 入库的行：读取方、排除原因或解析结果。 */
+  reason: string | null;
+  /** 任一 modifier 到达的分解 stat id。 */
+  used_in: string[];
+  modifiers: LineUsageModifier[];
+}
+
+export interface LineUsageSource {
+  /** PassiveNode / Config / Item / Limb / Flask / Jewel。 */
+  kind: string;
+  id: string | null;
+  holder: string | null;
+}
+
+export interface LineUsageUnparsed {
+  text: string;
+  count: number;
+  sources: LineUsageSource[];
+}
+
+export interface LineUsageGemStat {
+  stat: string;
+  owner: string;
+  /** `unmapped`：映射存在但被引擎拒绝（见 reason）；`unknown`：没有映射。 */
+  status: 'unmapped' | 'unknown';
+  reason: string | null;
+}
+
+export interface LineUsageRef {
+  name: string;
+  mod_type: string;
+  value: string;
+  /** `<来源类别>:<来源 id> | <原文>`。 */
+  source: string;
+}
+
+export interface LineUsageCondition {
+  condition: string;
+  /** 能设置它、但构筑没有打开的配置项；null = 没有任何来源设置它。 */
+  config_option: string | null;
+  flagged: boolean;
+  modifiers: LineUsageRef[];
+}
+
+export interface LineUsageMultiplier {
+  multiplier: string;
+  modifiers: LineUsageRef[];
+}
+
+export interface LineUsageSkill {
+  skill_id: string;
+  level: number;
+  quality: number;
+}
+
+export interface LineUsageSummary {
+  lines: number;
+  lines_applied: number;
+  lines_partial: number;
+  lines_inactive: number;
+  lines_unread: number;
+  lines_outside: number;
+  lines_no_effect: number;
+  lines_unmodelled: number;
+  lines_unparsed: number;
+  lines_no_modifier: number;
+  modifiers: number;
+  modifiers_applied: number;
+  modifiers_inactive: number;
+  modifiers_unread: number;
+  modifiers_outside: number;
+  unparsed: number;
+  unmapped_gem_stats: number;
+  unknown_gem_stats: number;
+  unset_conditions: number;
+  unprovided_multipliers: number;
+}
+
+export interface LineUsage {
+  summary: LineUsageSummary;
+  /** 计算的主技能；原因按它的上下文给出。 */
+  main_skill: string | null;
+  lines: LineUsageLine[];
+  /** 计算记录的全部未解析行；构筑中的那些也以精确来源出现在 `lines`。 */
+  unparsed: LineUsageUnparsed[];
+  gem_stats: LineUsageGemStat[];
+  conditions: LineUsageCondition[];
+  multipliers: LineUsageMultiplier[];
+  /** 启用组里的每个主动效果，以及它实际使用的等级（含加成）与品质。 */
+  skills: LineUsageSkill[];
+  /** 每个被读取的 modifier 名 → 读取它的查询（如 `INC Damage+FireDamage`）。 */
+  reads: Record<string, string[]>;
+}
+
+export interface LineUsageResponse {
+  usage: LineUsage;
+  item_errors: SlotIssue[];
 }
 
 // ---------------------------------------------------------------------------

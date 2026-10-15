@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-14-witch-abyssal-lich-bonestorm-be0d16c86268",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/xyjjc940-3497/%E5%BA%94%E5%B1%8A%E7%94%9F%E9%92%B1%E5%B0%8F%E8%8A%B1",
+    "account": "xyjjc940-3497",
+    "character": "应届生钱小花",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-14T17:05:05+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/character?account=xyjjc940-3497&name=%E5%BA%94%E5%B1%8A%E7%94%9F%E9%92%B1%E5%B0%8F%E8%8A%B1&overview=forbidden-rites",
+    "snapshot": "1457-20261014-11300",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/search?overview=forbidden-rites&class=Abyssal+Lich",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Abyssal Lich",
+    "level": 98,
+    "main_skill": "Bonestorm"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 8,
+    "code_sha256": "115a3e05ecbf3a05a4e24b45f68f8edcbe4edc3d45cf96c0dece5ef5972429eb",
+    "code_chars": 11924,
+    "decoded_bytes": 46208
+  }
+}

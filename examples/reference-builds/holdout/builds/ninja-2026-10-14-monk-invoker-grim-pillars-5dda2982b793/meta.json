@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-14-monk-invoker-grim-pillars-5dda2982b793",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%E4%BD%A0%E7%9F%A5%E9%81%93%E6%98%AF%E8%B0%81%E6%BB%8B%E4%BD%A0%E7%9A%84-4036/%E8%A6%81%E6%88%90%E4%B8%BA%E6%B5%B7%E8%B4%BC%E7%8E%8B%E7%9A%84%E6%AD%A6%E5%9C%A3",
+    "account": "你知道是谁滋你的-4036",
+    "character": "要成为海贼王的武圣",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-14T17:05:05+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/character?account=%E4%BD%A0%E7%9F%A5%E9%81%93%E6%98%AF%E8%B0%81%E6%BB%8B%E4%BD%A0%E7%9A%84-4036&name=%E8%A6%81%E6%88%90%E4%B8%BA%E6%B5%B7%E8%B4%BC%E7%8E%8B%E7%9A%84%E6%AD%A6%E5%9C%A3&overview=forbidden-rites",
+    "snapshot": "1457-20261014-11300",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1457-20261014-11300/search?overview=forbidden-rites&class=Invoker",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Invoker",
+    "level": 98,
+    "main_skill": "Grim Pillars"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 12,
+    "code_sha256": "9d80e8c1a463f8569e2ad51d264e7ad6d1e101a40e474e673b6206a570177af5",
+    "code_chars": 12056,
+    "decoded_bytes": 44826
+  }
+}

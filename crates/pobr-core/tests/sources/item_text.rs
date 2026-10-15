@@ -411,6 +411,31 @@ Adds 47 to 86 Physical Damage
 +26 to Strength
 ";
 
+/// A belt's "Charm Slots: N" is the item's property, its total Charm slots;
+/// the implicit "Has N Charm Slots" is what grants them.
+#[test]
+fn xml_belt_charm_slots_line_is_a_property() {
+    let item = parse_pob_xml_item(
+        "Rarity: UNIQUE
+Headhunter
+Heavy Belt
+Charm Slots: 2
+Item Level: 65
+LevelReq: 50
+Implicits: 2
+20% increased Stun Threshold
+Has 2 Charm Slots
++42 to maximum Life
+",
+    )
+    .expect("parse");
+    assert_eq!(
+        item.implicit_texts,
+        ["20% increased Stun Threshold", "Has 2 Charm Slots"]
+    );
+    assert_eq!(item.modifier_texts, ["+42 to maximum Life"]);
+}
+
 #[test]
 fn xml_item_parses_rarity_base_and_quality_without_separators() {
     let item = parse_pob_xml_item(XML_RARE_CROSSBOW).expect("xml crossbow parses");
@@ -464,7 +489,7 @@ fn xml_item_counts_filled_sockets_from_rune_lines() {
     // `Sockets: S S` declares 2 sockets, but only 1 `Rune:` line → filled count is 1
     // (PoB2's `RunesSocketedIn` counts runes/soul cores actually socketed, not total sockets).
     let item = parse_pob_xml_item(XML_RARE_CROSSBOW).expect("parse");
-    assert_eq!(item.rolled_defence.sockets_filled, 1);
+    assert_eq!(item.socketed.len(), 1);
 }
 
 #[test]
@@ -474,7 +499,7 @@ fn empty_rune_and_soul_core_placeholders_never_count_as_filled_sockets() {
             "Rarity: NORMAL\nGrand Regalia\n{separator}Sockets: S S S S S\nRune: None\nRune: \nSoul Core: none\nSoul Core: \nRune: Perfect Body Rune\nSoul Core: Soul Core of Tacati\nImplicits: 0\n+14 to Spirit per Socket filled"
         );
         let item = parse_pob_xml_item(&text).expect("parse");
-        assert_eq!(item.rolled_defence.sockets_filled, 2, "{text}");
+        assert_eq!(item.socketed.len(), 2, "{text}");
         assert_eq!(item.modifier_texts, ["+14 to Spirit per Socket filled"]);
     }
 }
@@ -499,7 +524,7 @@ Implicits: 0
 #[test]
 fn xml_item_counts_five_filled_sockets() {
     let item = parse_pob_xml_item(XML_FIVE_RUNE_BODY).expect("parse");
-    assert_eq!(item.rolled_defence.sockets_filled, 5);
+    assert_eq!(item.socketed.len(), 5);
     // Rune: lines are recognized as filled sockets and don't leak into a modifier section.
     let all: Vec<&String> = item
         .implicit_texts
@@ -562,6 +587,58 @@ Implicits: 1
         item.modifier_texts,
         vec!["+50 to maximum Life", "+25 to Dexterity"]
     );
+}
+
+/// A foil unique. An unknown rarity used to reject the whole block, so the
+/// build was calculated without the item.
+#[test]
+fn xml_item_reads_a_relic_as_a_unique() {
+    let item = parse_pob_xml_item(
+        "Rarity: RELIC\nMorior Invictus\nGrand Regalia\nArmour: 1241\nQuality: 20\nImplicits: 0\n+35 to Spirit",
+    )
+    .expect("relic parses");
+
+    assert_eq!(item.rarity, ItemRarity::Unique);
+    assert_eq!(item.base, ItemBaseId::from("Grand Regalia"));
+    assert_eq!(item.modifier_texts, ["+35 to Spirit"]);
+}
+
+/// Every state line PoB2 writes is read as state. `Twice Corrupted` used to
+/// reach the modifier parser, so the item was not corrupted and every build
+/// listed the line as an unsupported modifier.
+#[test]
+fn item_state_lines_are_state_not_modifiers() {
+    for (state, corrupted) in [
+        ("Corrupted", true),
+        ("Twice Corrupted", true),
+        ("Mirrored", false),
+        ("Sanctified", false),
+        ("Desecrated Prefix", false),
+        ("Desecrated Suffix", false),
+    ] {
+        for text in [
+            format!("Rarity: MAGIC\nSapphire\nImplicits: 0\n+10 to Strength\n{state}"),
+            format!("Rarity: MAGIC\nSapphire\n--------\n+10 to Strength\n--------\n{state}"),
+        ] {
+            let item = parse_pob_xml_item(&text).expect("parses");
+            assert_eq!(item.modifier_texts, ["+10 to Strength"], "{state}");
+            assert_eq!(item.corrupted, corrupted, "{state}");
+        }
+    }
+}
+
+/// The state words also begin real modifiers.
+#[test]
+fn a_modifier_that_begins_with_a_state_word_is_kept() {
+    let line = "Corrupted Blood cannot be inflicted on you";
+    for text in [
+        format!("Rarity: MAGIC\nSapphire\nImplicits: 0\n{line}"),
+        format!("Rarity: MAGIC\nSapphire\n--------\n{line}"),
+    ] {
+        let item = parse_pob_xml_item(&text).expect("parses");
+        assert_eq!(item.modifier_texts, [line]);
+        assert!(!item.corrupted);
+    }
 }
 
 #[test]

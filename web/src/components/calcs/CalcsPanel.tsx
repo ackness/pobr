@@ -136,6 +136,8 @@ function formulaOperand(step: FormulaStep): string {
       return `×${n}`;
     case 'added_time':
       return `${signed}s`;
+    case 'hit_interval':
+      return `${n}s`;
     case 'override':
       return `= ${n}`;
     case 'cap':
@@ -418,7 +420,7 @@ function SkillDotView({ rows, lang }: { rows: SkillDotRow[]; lang: Lang }) {
 /** The hit a damaging ailment comes from and the estimate of how many instances are active. */
 function AilmentView({ ailment, lang }: { ailment: AilmentDetail; lang: Lang }) {
   const tt = bindT(lang);
-  type Key = 'sourceHit' | 'sourceCrit' | 'critShare' | 'hitChance' | 'applyChance' | 'baseDuration' | 'enemyDuration' | 'duration' | 'hitsPerSecond' | 'stacks' | 'maxStacks';
+  type Key = 'sourceHit' | 'sourceCrit' | 'critShare' | 'hitChance' | 'applyChance' | 'baseDuration' | 'enemyDuration' | 'rate' | 'duration' | 'hitsPerSecond' | 'stacks' | 'maxStacks';
   const seconds = (value: number) => `${fmtNum(value)}${tt('calcs.ailment.seconds')}`;
   const rows: [Key, string][] = [
     ['sourceHit', fmtNum(ailment.source_hit)],
@@ -428,6 +430,7 @@ function AilmentView({ ailment, lang }: { ailment: AilmentDetail; lang: Lang }) 
     ['applyChance', `${fmtNum(ailment.apply_chance)}%`],
     ...(ailment.base_duration !== ailment.duration ? [['baseDuration', seconds(ailment.base_duration)] as [Key, string]] : []),
     ...(ailment.enemy_duration !== 1 ? [['enemyDuration', `×${fmtNum(ailment.enemy_duration)}`] as [Key, string]] : []),
+    ...(ailment.rate !== 1 ? [['rate', `÷${fmtNum(ailment.rate)}`] as [Key, string]] : []),
     ['duration', seconds(ailment.duration)],
     ['hitsPerSecond', fmtNum(ailment.hits_per_second)],
     ...(ailment.stacks > 0 ? [['stacks', fmtNum(ailment.stacks)] as [Key, string]] : []),
@@ -875,8 +878,7 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
         gem.skill_id ? skillName(gem.skill_id) : gem.name_spec || tt('skills.unresolved')).join(' + ');
       return `${tt('calcs.group')} ${Number(id) + 1}${gems ? ` · ${gems}` : ''}`;
     }
-    if (kind === 'item') return slotLabel(lang, id);
-    if (kind === 'flask') return slotLabel(lang, id);
+    if (kind === 'item' || kind === 'flask' || kind === 'limb') return slotLabel(lang, id);
     return id;
   };
 

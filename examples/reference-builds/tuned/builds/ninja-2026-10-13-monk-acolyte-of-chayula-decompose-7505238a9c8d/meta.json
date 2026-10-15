@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-monk-acolyte-of-chayula-decompose-7505238a9c8d",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%EC%88%98%EC%98%81%EC%9D%B4%EC%99%80%EB%82%98-4380/%EB%94%94%EB%B3%B4%EC%9D%B4",
+    "account": "수영이와나-4380",
+    "character": "디보이",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:53:03+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=%EC%88%98%EC%98%81%EC%9D%B4%EC%99%80%EB%82%98-4380&name=%EB%94%94%EB%B3%B4%EC%9D%B4&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Acolyte+of+Chayula",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Acolyte of Chayula",
+    "level": 99,
+    "main_skill": "Decompose"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "1de0121b3c96a7fb8d8c135c26799dab8ff2aeaeda1812a8a9f8b903f2b9517c",
+    "code_chars": 14116,
+    "decoded_bytes": 56673
+  }
+}

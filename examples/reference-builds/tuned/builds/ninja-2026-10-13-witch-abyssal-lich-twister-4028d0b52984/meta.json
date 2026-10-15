@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-13-witch-abyssal-lich-twister-4028d0b52984",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/2TEST78-6909/%E6%B5%AE%E5%A3%AB%E5%BE%B7%E8%B4%B0%E5%8F%B7",
+    "account": "2TEST78-6909",
+    "character": "浮士德贰号",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-13T13:47:50+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/character?account=2TEST78-6909&name=%E6%B5%AE%E5%A3%AB%E5%BE%B7%E8%B4%B0%E5%8F%B7&overview=forbidden-rites",
+    "snapshot": "1333-20261013-24736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1333-20261013-24736/search?overview=forbidden-rites&class=Abyssal+Lich",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Abyssal Lich",
+    "level": 99,
+    "main_skill": "Twister"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 14,
+    "code_sha256": "1cb57ce7f4ddd93ce7ff4c939de28eddfdb81145d8a9d3374cb2a6e7d00a94ce",
+    "code_chars": 14440,
+    "decoded_bytes": 53807
+  }
+}

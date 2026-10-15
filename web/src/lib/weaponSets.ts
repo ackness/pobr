@@ -37,6 +37,21 @@ export function groupsForWeaponSet(groups: SocketGroupInput[], active: 1 | 2): S
   return groups.map(group => ({ ...group, enabled: group.enabled && (!group.weapon_set || group.weapon_set === active) }));
 }
 
+/** The request fields for the weapon set in use: its enabled groups, and
+ * `weapon_swap`, whose `active` set the engine calculates, applying "while
+ * using Weapon Set 1/2" modifiers. A build that never swapped uses set 1.
+ */
+export function weaponSetRequest(state: Pick<WeaponSetState, 'socketGroups' | 'weaponSwap'>):
+  { socket_groups: SocketGroupInput[]; weapon_swap: WeaponSwap } {
+  const swap = state.weaponSwap;
+  const active = swap?.active ?? 1;
+  return {
+    socket_groups: groupsForWeaponSet(state.socketGroups, active),
+    // Only the fields the request schema knows; it rejects any other key.
+    weapon_swap: { active, alternate_items: swap?.alternate_items ?? [], exclusive_nodes: swap?.exclusive_nodes ?? [[], []] },
+  };
+}
+
 export function validWeaponSwap(value: unknown): WeaponSwap | undefined {
   if (!value || typeof value !== 'object') return undefined;
   const swap = value as WeaponSwap;

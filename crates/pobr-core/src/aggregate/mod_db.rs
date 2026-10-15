@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::hash::{Hash, Hasher};
 
 use pobr_data::catalog::high_precision_mods::HighPrecisionModsDef;
 use pobr_data::prelude::*;
@@ -155,9 +156,208 @@ pub struct ModContribution {
     pub clamped_from: Option<f64>,
 }
 
+/// How a query asks for its names, for the read log's labels. Built on every
+/// query, formatted only while reads are tracked.
+#[derive(Clone, Copy)]
+enum Query<'q> {
+    /// One type aggregated over a name set: `sum`, `more`, `contributions`.
+    Of(ModType, &'q [ModName]),
+    /// The same over the modifiers without a slot restriction.
+    Unslotted(ModType, &'q [ModName]),
+    /// The same over the modifiers restricted to one slot.
+    Slot(ModType, &'q [ModName], &'q str),
+    /// The strongest value of one type ([`ModDb::max_of`]).
+    Max(ModType, &'q [ModName]),
+    /// The per-slot BASE values of one name ([`ModDb::slot_bases`]).
+    SlotBases,
+    /// One type of one name: FLAG, OVERRIDE, LIST.
+    One(ModType),
+    /// A consumer that inspects the modifiers itself ([`ModDb::named`]).
+    Named,
+    /// A listing of how a query would treat them ([`ModDb::evaluate_names`]).
+    Evaluated(&'q [ModName]),
+}
+
+impl Query<'_> {
+    /// Tells queries apart without formatting them.
+    fn key(self) -> u64 {
+        let mut hasher = std::hash::DefaultHasher::new();
+        std::mem::discriminant(&self).hash(&mut hasher);
+        match self {
+            Self::Of(mod_type, names)
+            | Self::Unslotted(mod_type, names)
+            | Self::Max(mod_type, names) => (mod_type, names).hash(&mut hasher),
+            Self::Slot(mod_type, names, slot) => (mod_type, names, slot).hash(&mut hasher),
+            Self::One(mod_type) => mod_type.hash(&mut hasher),
+            Self::Evaluated(names) => names.hash(&mut hasher),
+            Self::SlotBases | Self::Named => {}
+        }
+        hasher.finish()
+    }
+
+    /// The query of `name` as a [`ReadSnapshot`] names it.
+    fn label(self, name: &str) -> String {
+        let joined = |names: &[ModName]| {
+            names
+                .iter()
+                .map(|asked| asked.as_str())
+                .collect::<Vec<_>>()
+                .join("+")
+        };
+        match self {
+            Self::Of(mod_type, names) => {
+                format!("{} {}", mod_type.as_trace_label(), joined(names))
+            }
+            Self::Unslotted(mod_type, names) => {
+                format!(
+                    "{} {} [unslotted]",
+                    mod_type.as_trace_label(),
+                    joined(names)
+                )
+            }
+            Self::Slot(mod_type, names, slot) => {
+                format!(
+                    "{} {} [slot {slot}]",
+                    mod_type.as_trace_label(),
+                    joined(names)
+                )
+            }
+            Self::Max(mod_type, names) => {
+                format!("MAX {} {}", mod_type.as_trace_label(), joined(names))
+            }
+            Self::SlotBases => format!("BASE {name} [per slot]"),
+            Self::One(mod_type) => format!("{} {name}", mod_type.as_trace_label()),
+            Self::Named => format!("NAMED {name}"),
+            Self::Evaluated(names) => format!("EVAL {}", joined(names)),
+        }
+    }
+}
+
+/// A key for `modifier` that its clones share, so a query against a copy of
+/// the db ([`ModDb::filtered`]) counts for the modifier it was copied from.
+/// Two modifiers alike in every field share a key; what one says of its use
+/// the other would.
+fn counted_key(modifier: &Modifier) -> u64 {
+    let mut hasher = std::hash::DefaultHasher::new();
+    modifier.name.hash(&mut hasher);
+    modifier.mod_type.hash(&mut hasher);
+    modifier.flags.hash(&mut hasher);
+    modifier.keyword_flags.hash(&mut hasher);
+    modifier.source.hash(&mut hasher);
+    if let Some(origin) = &modifier.origin {
+        origin.source_id.hash(&mut hasher);
+        origin.slot.hash(&mut hasher);
+        origin.raw_text.hash(&mut hasher);
+    }
+    match &modifier.value {
+        ModValue::Number(value) => value.to_bits().hash(&mut hasher),
+        ModValue::Bool(value) => value.hash(&mut hasher),
+        ModValue::Text(value) => value.hash(&mut hasher),
+        ModValue::NestedMods(nested) => nested.len().hash(&mut hasher),
+    }
+    for tag in &modifier.tags {
+        std::mem::discriminant(tag).hash(&mut hasher);
+        match tag {
+            ModTag::Condition { var, negated, .. } => (var, negated).hash(&mut hasher),
+            ModTag::ConditionAnyOf { vars, negated } => (vars, negated).hash(&mut hasher),
+            ModTag::Multiplier { var, div, .. } | ModTag::PerStat { stat: var, div, .. } => {
+                (var, div.to_bits()).hash(&mut hasher)
+            }
+            ModTag::PercentStat { stat, .. } => stat.hash(&mut hasher),
+            ModTag::GlobalLimit { key, .. } => key.hash(&mut hasher),
+            ModTag::MultiplierThreshold {
+                var,
+                threshold,
+                upper,
+            }
+            | ModTag::StatThreshold {
+                stat: var,
+                threshold,
+                upper,
+            } => (var, threshold.to_bits(), upper).hash(&mut hasher),
+            ModTag::DamageType(damage_type) => damage_type.hash(&mut hasher),
+            ModTag::SkillTypes(types) | ModTag::SkillTypesNeg(types) => types.hash(&mut hasher),
+            ModTag::SkillName { names } => names.hash(&mut hasher),
+            ModTag::SlotName(slot) => slot.hash(&mut hasher),
+            ModTag::DistanceRamp { ramp } => ramp.len().hash(&mut hasher),
+        }
+    }
+    hasher.finish()
+}
+
+/// What a calculation's queries asked for and counted. See [`ModDb::track_reads`].
+#[derive(Debug, Clone, Default)]
+struct ReadLog(std::sync::Arc<std::sync::Mutex<ReadState>>);
+
+#[derive(Debug, Default)]
+struct ReadState {
+    /// Per stored name asked for, its queries by [`Query::key`], labelled.
+    sites: HashMap<ModName, HashMap<u64, String>>,
+    /// The modifiers a query counted with an effect, by [`counted_key`].
+    counted: HashSet<u64>,
+}
+
+impl ReadLog {
+    fn state(&self) -> std::sync::MutexGuard<'_, ReadState> {
+        self.0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    fn note(&self, name: &str, query: Query<'_>) {
+        let key = query.key();
+        let mut state = self.state();
+        if !state.sites.contains_key(name) {
+            state.sites.insert(ModName::new(name), HashMap::new());
+        }
+        if let Some(queries) = state.sites.get_mut(name) {
+            queries.entry(key).or_insert_with(|| query.label(name));
+        }
+    }
+
+    fn count(&self, modifier: &Modifier) {
+        let key = counted_key(modifier);
+        self.state().counted.insert(key);
+    }
+
+    fn contains(&self, name: &ModName) -> bool {
+        self.state().sites.contains_key(name)
+    }
+}
+
+/// What the queries of a [`ModDb`] asked for and counted while reads were
+/// tracked, up to the moment [`ModDb::read_snapshot`] was taken.
+#[derive(Debug, Clone, Default)]
+pub struct ReadSnapshot {
+    /// Per stored name a query asked for, those queries, sorted. A query is
+    /// named by its kind and the names it asks for together: `INC
+    /// Damage+FireDamage+ElementalDamage`, `MORE MaximumLife`, `FLAG X`,
+    /// `OVERRIDE X`, `LIST X`, `MAX BASE X` (the strongest one counts); the
+    /// per-slot defence queries add `[unslotted]`, `[slot <id>]` or `[per
+    /// slot]`. `NAMED X` is a consumer that inspects the modifiers itself and
+    /// `EVAL …` a listing of how a query would treat them, which counts nothing.
+    pub sites: BTreeMap<ModName, Vec<String>>,
+    counted: HashSet<u64>,
+}
+
+impl ReadSnapshot {
+    /// Whether a query counted `modifier` with an effect: a non-zero number
+    /// in a sum or a product, the strongest of a `MAX` query, a flag that
+    /// sets, the override that wins, a listed value. What a `NAMED` consumer
+    /// did with the modifiers it inspected is not known here.
+    pub fn counted(&self, modifier: &Modifier) -> bool {
+        self.counted.contains(&counted_key(modifier))
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct ModDb {
     mods: HashMap<ModName, Vec<Modifier>>,
+    /// Which stored names queries have asked for, by which queries, and
+    /// which modifiers they counted, once [`Self::track_reads`] turns it on.
+    /// Clones and [`Self::filtered`] copies share the log, so a query against
+    /// a derived db counts for the db it was made from.
+    reads: Option<ReadLog>,
     /// Rounding-precision rules: vendor treats `data.highPrecisionMods` as
     /// global environment data, while pobr keeps it scoped to the db
     /// instance (the calc core stays zero-I/O; the orchestration layer
@@ -178,6 +378,126 @@ pub struct ModDb {
 impl ModDb {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Starts noting which stored names queries ask for, and which modifiers
+    /// they count ([`Self::read_snapshot`]). Off by default: it takes a lock
+    /// per query. Diagnostics turn it on to find modifiers that were parsed
+    /// and stored but that nothing in the calculation reads or counts.
+    pub fn track_reads(&mut self) {
+        self.reads.get_or_insert_with(ReadLog::default);
+    }
+
+    /// Whether [`Self::track_reads`] was called.
+    pub fn tracks_reads(&self) -> bool {
+        self.reads.is_some()
+    }
+
+    /// The queries asked of each stored name and the modifiers they counted
+    /// since [`Self::track_reads`] (see [`ReadSnapshot`]); empty when reads
+    /// are not tracked. The log goes on after it, so take it when the
+    /// calculation ends: inspecting the db afterwards, as a breakdown does,
+    /// adds reads of its own.
+    pub fn read_snapshot(&self) -> ReadSnapshot {
+        let Some(reads) = &self.reads else {
+            return ReadSnapshot::default();
+        };
+        let state = reads.state();
+        let sites = state
+            .sites
+            .iter()
+            .map(|(name, queries)| {
+                let mut labels: Vec<String> = queries.values().cloned().collect();
+                labels.sort();
+                labels.dedup();
+                (name.clone(), labels)
+            })
+            .collect();
+        ReadSnapshot {
+            sites,
+            counted: state.counted.clone(),
+        }
+    }
+
+    /// Notes that a query used `modifier` as stored (a flag that sets, the
+    /// winning override, a listed value), when reads are tracked.
+    #[inline]
+    fn note_used(&self, modifier: &Modifier) {
+        if let Some(reads) = &self.reads {
+            reads.count(modifier);
+        }
+    }
+
+    /// Notes that a query counted `modifier` as `value`, when reads are
+    /// tracked and the value has an effect: a 0 adds nothing to a sum and
+    /// multiplies a product by 1.
+    #[inline]
+    fn note_counted(&self, modifier: &Modifier, value: f64) {
+        if value != 0.0 {
+            self.note_used(modifier);
+        }
+    }
+
+    /// Stored modifiers whose name no query has asked for since
+    /// [`Self::track_reads`], by name and then insertion order. Empty when
+    /// reads are not tracked. A name can go unread because no code reads it
+    /// at all, or because this calculation had no use for it (spell damage on
+    /// an attack); whole-db iteration ([`Self::iter_mods`]) is not a read.
+    pub fn unread_mods(&self) -> Vec<&Modifier> {
+        let Some(reads) = &self.reads else {
+            return Vec::new();
+        };
+        let mut names: Vec<&ModName> = self
+            .mods
+            .keys()
+            .filter(|name| !reads.contains(name))
+            .collect();
+        names.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+        names
+            .into_iter()
+            .flat_map(|name| self.mods[name].iter())
+            .collect()
+    }
+
+    /// The stored names queries have asked for since [`Self::track_reads`],
+    /// sorted. Empty when reads are not tracked.
+    pub fn read_names(&self) -> Vec<ModName> {
+        let Some(reads) = &self.reads else {
+            return Vec::new();
+        };
+        let mut names: Vec<ModName> = self
+            .mods
+            .keys()
+            .filter(|name| reads.contains(name))
+            .cloned()
+            .collect();
+        names.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+        names
+    }
+
+    /// Every modifier stored under `name`, in insertion order, for a consumer
+    /// that inspects them itself. A read, unlike filtering [`Self::iter_mods`]
+    /// by name: prefer it, so diagnostics know the name has a reader.
+    pub fn named(&self, name: &str) -> impl Iterator<Item = &Modifier> {
+        self.bucket(name, Query::Named).into_iter().flatten()
+    }
+
+    /// Whether any modifier is stored under `name`. Not a read.
+    pub fn has_name(&self, name: &str) -> bool {
+        self.mods.get(name).is_some_and(|mods| !mods.is_empty())
+    }
+
+    /// The bucket for `name`, noting `query` when reads are tracked. Every
+    /// query takes its modifiers from here; writes and whole-db iteration do not.
+    #[inline]
+    fn bucket(&self, name: &str, query: Query<'_>) -> Option<&Vec<Modifier>> {
+        let bucket = self.mods.get(name);
+        if bucket.is_some()
+            && let Some(reads) = &self.reads
+        {
+            reads.note(name, query);
+        }
+        bucket
     }
 
     /// Maintains [`Self::global_limit_names`] (one tags scan per write, zero cost at query time).
@@ -357,6 +677,7 @@ impl ModDb {
             .collect();
         Self {
             mods,
+            reads: self.reads.clone(),
             high_precision: self.high_precision.clone(),
             // A copy of the full set (a stale false-positive is fine: a
             // filtered-out name just takes the slow path check once more).
@@ -383,12 +704,33 @@ impl ModDb {
         if self.names_have_global_limit(names) {
             return self.sum_with_global_limits(mod_type, ctx, names);
         }
+        if self.reads.is_some() {
+            return self.sum_noting_counts(mod_type, ctx, names);
+        }
+        let query = Query::Of(mod_type, names);
         names
             .iter()
-            .filter_map(|name| self.mods.get(name))
+            .filter_map(|name| self.bucket(name.as_str(), query))
             .flat_map(|mods| mods.iter())
             .filter(|modifier| modifier.mod_type == mod_type && modifier.matches(ctx.cfg))
             .filter_map(|modifier| modifier.effective_number_ref(&ctx))
+            .sum()
+    }
+
+    /// [`sum`](Self::sum)'s fast path while reads are tracked: the same
+    /// chain, so the same total, noting each modifier it counts.
+    fn sum_noting_counts(&self, mod_type: ModType, ctx: EvalContext<'_>, names: &[ModName]) -> f64 {
+        let query = Query::Of(mod_type, names);
+        names
+            .iter()
+            .filter_map(|name| self.bucket(name.as_str(), query))
+            .flat_map(|mods| mods.iter())
+            .filter(|modifier| modifier.mod_type == mod_type && modifier.matches(ctx.cfg))
+            .filter_map(|modifier| {
+                let value = modifier.effective_number_ref(&ctx)?;
+                self.note_counted(modifier, value);
+                Some(value)
+            })
             .sum()
     }
 
@@ -404,15 +746,18 @@ impl ModDb {
     ) -> f64 {
         let mut total = 0.0;
         let mut limits: GlobalLimits = None;
+        let query = Query::Of(mod_type, names);
         for name in names {
-            for modifier in self.mods.get(name).into_iter().flatten() {
+            for modifier in self.bucket(name.as_str(), query).into_iter().flatten() {
                 if modifier.mod_type != mod_type || !modifier.matches(ctx.cfg) {
                     continue;
                 }
                 let Some(value) = modifier.effective_number_ref(&ctx) else {
                     continue;
                 };
-                total += apply_global_limits(modifier, value, &mut limits).0;
+                let value = apply_global_limits(modifier, value, &mut limits).0;
+                self.note_counted(modifier, value);
+                total += value;
             }
         }
         total
@@ -428,13 +773,26 @@ impl ModDb {
     ///
     /// Source: agent-docs/debuffs.md §Exposure (exposure takes the strongest).
     pub fn max_of(&self, mod_type: ModType, cfg: &CalcConfig, names: &[ModName]) -> f64 {
-        names
+        let query = Query::Max(mod_type, names);
+        // The strongest one is the one that counts.
+        let mut strongest = None;
+        let max = names
             .iter()
-            .filter_map(|name| self.mods.get(name))
+            .filter_map(|name| self.bucket(name.as_str(), query))
             .flat_map(|mods| mods.iter())
             .filter(|modifier| modifier.mod_type == mod_type && modifier.matches(cfg))
-            .filter_map(|modifier| modifier.effective_number(cfg))
-            .fold(0.0_f64, f64::max)
+            .filter_map(|modifier| Some((modifier, modifier.effective_number(cfg)?)))
+            .fold(0.0_f64, |max, (modifier, value)| {
+                let next = f64::max(max, value);
+                if next != max {
+                    strongest = Some(modifier);
+                }
+                next
+            });
+        if let Some(modifier) = strongest {
+            self.note_used(modifier);
+        }
+        max
     }
 
     /// Matches [`sum`](Self::sum)'s semantics: emits an entry per modifier
@@ -449,8 +807,9 @@ impl ModDb {
         let ctx = ctx.into();
         let mut out = Vec::new();
         let mut limits: GlobalLimits = None;
+        let query = Query::Of(mod_type, names);
         for name in names {
-            for modifier in self.mods.get(name).into_iter().flatten() {
+            for modifier in self.bucket(name.as_str(), query).into_iter().flatten() {
                 if modifier.mod_type != mod_type || !modifier.matches(ctx.cfg) {
                     continue;
                 }
@@ -458,6 +817,7 @@ impl ModDb {
                     continue;
                 };
                 let (value, clamped_from) = apply_global_limits(modifier, raw, &mut limits);
+                self.note_counted(modifier, value);
                 out.push(ModContribution {
                     name: modifier.name.clone(),
                     mod_type: modifier.mod_type,
@@ -499,9 +859,10 @@ impl ModDb {
         // One accounting table per aggregated type: a limit shared by a BASE
         // and an INC row is consumed separately by the two queries.
         let mut limits: [GlobalLimits; 3] = [None, None, None];
+        let query = Query::Evaluated(names);
         names
             .iter()
-            .filter_map(|name| self.mods.get(name))
+            .filter_map(|name| self.bucket(name.as_str(), query))
             .flatten()
             .map(|modifier| {
                 let stored = modifier.value.as_number();
@@ -608,7 +969,7 @@ impl ModDb {
 
     /// The parameter is upgraded to `impl Into<EvalContext>` (same as [`sum`](Self::sum)).
     pub fn more<'a>(&self, ctx: impl Into<EvalContext<'a>>, names: &[ModName]) -> f64 {
-        self.more_rounded(ctx.into(), names, |_| true)
+        self.more_rounded(ctx.into(), names, Query::Of(ModType::More, names), |_| true)
     }
 
     /// PoB2's `MoreInternal` semantics (`ModDB.lua:156-190`, the bucketed
@@ -635,6 +996,7 @@ impl ModDb {
         &self,
         ctx: EvalContext<'_>,
         names: &[ModName],
+        query: Query<'_>,
         extra: impl Fn(&Modifier) -> bool,
     ) -> f64 {
         let cfg = ctx.cfg;
@@ -646,7 +1008,7 @@ impl ModDb {
         let mut limits: GlobalLimits = None;
         for name in names {
             let mut mod_result = 1.0;
-            for m in self.mods.get(name).into_iter().flatten() {
+            for m in self.bucket(name.as_str(), query).into_iter().flatten() {
                 if m.mod_type != ModType::More || !m.matches(cfg) || !extra(m) {
                     continue;
                 }
@@ -654,6 +1016,7 @@ impl ModDb {
                     continue;
                 };
                 let value = apply_global_limits(m, value, &mut limits).0;
+                self.note_counted(m, value);
                 mod_result *= 1.0 + value / 100.0;
                 // vendor ModDB.lua:175-180: modPrecision = max(prev, table value or prev).
                 let hit = self
@@ -733,16 +1096,21 @@ impl ModDb {
     /// [`sum_for_slot`](Self::sum_for_slot) on a matching slot. Corresponds
     /// to the global part of PoB2's `calcLib.mod`.
     pub fn sum_global_only(&self, mod_type: ModType, cfg: &CalcConfig, names: &[ModName]) -> f64 {
+        let query = Query::Unslotted(mod_type, names);
         names
             .iter()
-            .filter_map(|name| self.mods.get(name))
+            .filter_map(|name| self.bucket(name.as_str(), query))
             .flat_map(|mods| mods.iter())
             .filter(|modifier| {
                 modifier.mod_type == mod_type
                     && modifier.slot_name().is_none()
                     && modifier.matches(cfg)
             })
-            .filter_map(|modifier| modifier.effective_number(cfg))
+            .filter_map(|modifier| {
+                let value = modifier.effective_number(cfg)?;
+                self.note_counted(modifier, value);
+                Some(value)
+            })
             .sum()
     }
 
@@ -754,27 +1122,36 @@ impl ModDb {
         names: &[ModName],
         slot: &str,
     ) -> f64 {
+        let query = Query::Slot(mod_type, names, slot);
         names
             .iter()
-            .filter_map(|name| self.mods.get(name))
+            .filter_map(|name| self.bucket(name.as_str(), query))
             .flat_map(|mods| mods.iter())
             .filter(|modifier| {
                 modifier.mod_type == mod_type
                     && modifier.slot_name() == Some(slot)
                     && modifier.matches(cfg)
             })
-            .filter_map(|modifier| modifier.effective_number(cfg))
+            .filter_map(|modifier| {
+                let value = modifier.effective_number(cfg)?;
+                self.note_counted(modifier, value);
+                Some(value)
+            })
             .sum()
     }
 
     /// Multiplies only `More` modifiers **without a slot restriction** — the global more bucket for per-slot defence aggregation.
     pub fn more_global_only(&self, cfg: &CalcConfig, names: &[ModName]) -> f64 {
-        self.more_rounded(EvalContext::new(cfg), names, |m| m.slot_name().is_none())
+        let query = Query::Unslotted(ModType::More, names);
+        self.more_rounded(EvalContext::new(cfg), names, query, |m| {
+            m.slot_name().is_none()
+        })
     }
 
     /// Multiplies only `More` modifiers restricted to `slot` — the slot more bucket for per-slot defence aggregation.
     pub fn more_for_slot(&self, cfg: &CalcConfig, names: &[ModName], slot: &str) -> f64 {
-        self.more_rounded(EvalContext::new(cfg), names, |m| {
+        let query = Query::Slot(ModType::More, names, slot);
+        self.more_rounded(EvalContext::new(cfg), names, query, |m| {
             m.slot_name() == Some(slot)
         })
     }
@@ -785,29 +1162,39 @@ impl ModDb {
     /// the caller via [`sum_global_only`](Self::sum_global_only) (as the
     /// "slot-less base", which only benefits from the global multiplier bucket).
     pub fn slot_bases(&self, cfg: &CalcConfig, name: &str) -> Vec<(String, f64)> {
-        self.mods
-            .get(name)
+        self.bucket(name, Query::SlotBases)
             .into_iter()
             .flat_map(|mods| mods.iter())
             .filter(|modifier| modifier.mod_type == ModType::Base && modifier.matches(cfg))
             .filter_map(|modifier| {
                 let slot = modifier.slot_name()?.to_string();
                 let value = modifier.effective_number(cfg)?;
+                self.note_counted(modifier, value);
                 Some((slot, value))
             })
             .collect()
     }
 
     pub fn flag(&self, cfg: &CalcConfig, name: &str) -> bool {
-        self.mods
-            .get(name)
+        let mut setting = self
+            .bucket(name, Query::One(ModType::Flag))
             .into_iter()
             .flat_map(|mods| mods.iter())
-            .any(|modifier| {
+            .filter(|modifier| {
                 modifier.mod_type == ModType::Flag
                     && modifier.matches(cfg)
                     && modifier.value.as_bool().unwrap_or(false)
-            })
+            });
+        if self.reads.is_none() {
+            return setting.next().is_some();
+        }
+        // Tracked: every modifier that sets the flag is used, not only the first.
+        let mut set = false;
+        for modifier in setting {
+            self.note_used(modifier);
+            set = true;
+        }
+        set
     }
 
     /// Returns the attributed `SourceId` of the **first** modifier that
@@ -815,21 +1202,17 @@ impl ModDb {
     /// attribution path trace a flag's behavior back to its source (e.g.
     /// which passive/gem grants `CritChanceLucky`).
     pub fn flag_origin(&self, cfg: &CalcConfig, name: &str) -> Option<SourceId> {
-        self.mods
-            .get(name)
+        let first = self
+            .bucket(name, Query::One(ModType::Flag))
             .into_iter()
             .flat_map(|mods| mods.iter())
             .find(|modifier| {
                 modifier.mod_type == ModType::Flag
                     && modifier.matches(cfg)
                     && modifier.value.as_bool().unwrap_or(false)
-            })
-            .and_then(|modifier| {
-                modifier
-                    .origin
-                    .as_ref()
-                    .map(|origin| origin.source_id.clone())
-            })
+            })?;
+        self.note_used(first);
+        first.origin.as_ref().map(|origin| origin.source_id.clone())
     }
 
     /// The traced version of [`flag`](Self::flag): records a QueryFlag node
@@ -848,7 +1231,10 @@ impl ModDb {
             if active { 1.0 } else { 0.0 },
             TraceOperation::QueryFlag,
         );
-        let matching = self.mods.get(name).into_iter().flat_map(|mods| mods.iter());
+        let matching = self
+            .bucket(name, Query::One(ModType::Flag))
+            .into_iter()
+            .flat_map(|mods| mods.iter());
         for modifier in matching {
             if modifier.mod_type != ModType::Flag
                 || !modifier.matches(cfg)
@@ -874,13 +1260,14 @@ impl ModDb {
     }
 
     pub fn override_(&self, cfg: &CalcConfig, name: &str) -> Option<f64> {
-        self.mods
-            .get(name)
+        let (winning, value) = self
+            .bucket(name, Query::One(ModType::Override))
             .into_iter()
             .flat_map(|mods| mods.iter().rev())
             .filter(|modifier| modifier.mod_type == ModType::Override && modifier.matches(cfg))
-            .filter_map(|modifier| modifier.effective_number(cfg))
-            .next()
+            .find_map(|modifier| Some((modifier, modifier.effective_number(cfg)?)))?;
+        self.note_used(winning);
+        Some(value)
     }
 
     /// The equivalent primitive to PoB2's `ModStore:GetMultiplier(var, cfg)`
@@ -966,13 +1353,15 @@ impl ModDb {
     }
 
     pub fn list(&self, cfg: &CalcConfig, name: &str) -> Vec<String> {
-        self.mods
-            .get(name)
+        self.bucket(name, Query::One(ModType::List))
             .into_iter()
             .flat_map(|mods| mods.iter())
             .filter(|modifier| modifier.mod_type == ModType::List && modifier.matches(cfg))
             .filter_map(|modifier| match &modifier.value {
-                ModValue::Text(value) => Some(value.clone()),
+                ModValue::Text(value) => {
+                    self.note_used(modifier);
+                    Some(value.clone())
+                }
                 ModValue::Number(_) | ModValue::Bool(_) | ModValue::NestedMods(_) => None,
             })
             .collect()
@@ -990,12 +1379,15 @@ impl ModDb {
     /// without evaluating — the inner mods' `matches`/`effective_number` are
     /// settled by the target db's aggregation under its own context.
     pub fn list_nested(&self, cfg: &CalcConfig, name: &str) -> Vec<Modifier> {
-        self.mods
-            .get(name)
+        self.bucket(name, Query::One(ModType::List))
             .into_iter()
             .flat_map(|mods| mods.iter())
             .filter(|modifier| modifier.mod_type == ModType::List && modifier.matches(cfg))
-            .filter_map(|modifier| modifier.value.as_nested_mods())
+            .filter_map(|modifier| {
+                let nested = modifier.value.as_nested_mods()?;
+                self.note_used(modifier);
+                Some(nested)
+            })
             .flat_map(|nested| nested.iter().cloned())
             .collect()
     }

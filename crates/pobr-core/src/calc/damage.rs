@@ -814,24 +814,31 @@ fn conversion_names(from: DamageType, to: DamageType, skill: bool) -> Vec<ModNam
     names
 }
 
-/// The BASE names that add a share of `from` as extra `to`.
+/// The BASE names that add a share of `from` as extra `to`. "Gain 10% of
+/// Physical Damage as Chaos Damage" (`PhysicalDamageAsChaos`) adds as much
+/// as the same line with "as extra Chaos Damage": the game's stat for both
+/// is a share "to add as" the other type.
 fn gain_names(from: DamageType, to: DamageType) -> Vec<ModName> {
     let from_prefix = type_prefix(from);
     let to_prefix = type_prefix(to);
     let mut names = vec![
         ModName::from(format!("DamageGainAs{to_prefix}")),
+        ModName::from(format!("DamageAs{to_prefix}")),
         ModName::from(format!("{from_prefix}DamageGainAs{to_prefix}")),
+        ModName::from(format!("{from_prefix}DamageAs{to_prefix}")),
         ModName::from(format!("SkillDamageGainAs{to_prefix}")),
         ModName::from(format!("Skill{from_prefix}DamageGainAs{to_prefix}")),
     ];
     if from.is_elemental() {
         names.push(ModName::from(format!("ElementalDamageGainAs{to_prefix}")));
+        names.push(ModName::from(format!("ElementalDamageAs{to_prefix}")));
         names.push(ModName::from(format!(
             "SkillElementalDamageGainAs{to_prefix}"
         )));
     }
     if from != DamageType::Chaos {
         names.push(ModName::from(format!("NonChaosDamageGainAs{to_prefix}")));
+        names.push(ModName::from(format!("NonChaosDamageAs{to_prefix}")));
         names.push(ModName::from(format!(
             "SkillNonChaosDamageGainAs{to_prefix}"
         )));
@@ -884,6 +891,18 @@ fn build_gain_matrix(db: &ModDb, cfg: &CalcConfig) -> [[f64; 5]; 5] {
                     matrix[fi][ti] += pct / 3.0 / 100.0;
                 }
             }
+        }
+    }
+    // Embitter: every gain is gained as Cold instead.
+    if db.flag(cfg, crate::rules::skill_stats::GAINS_ONLY_COLD) {
+        let cold = DAMAGE_TYPES
+            .iter()
+            .position(|&t| t == DamageType::Cold)
+            .expect("Cold is a damage type");
+        for row in &mut matrix {
+            let total: f64 = row.iter().sum();
+            *row = [0.0; 5];
+            row[cold] = total;
         }
     }
     matrix

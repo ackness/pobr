@@ -51,6 +51,58 @@ fn zero_chance_ailments_do_not_report_active_stacks() {
     }
 }
 
+/// "Damaging Ailments deal damage #% faster" deals the same damage in less
+/// time: fewer instances are active at once, each dealing more per second.
+/// "increased duration of Ailments you inflict" makes more of them active.
+#[test]
+fn faster_ailments_end_sooner_and_longer_ones_overlap() {
+    use pobr_core::calc::{Actor, ActorBaseStats, Env, perform};
+
+    let run = |extra: &[Modifier]| {
+        let mut env = Env::new(Actor::new(
+            80,
+            ActorBaseStats {
+                life: 100.0,
+                hit_min: 100.0,
+                hit_max: 100.0,
+                action_rate: 1.0,
+                ..Default::default()
+            },
+        ));
+        env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+        env.player.mod_db.add_list([
+            Modifier::number("PoisonChance", ModType::Base, 100.0),
+            Modifier::flag("PoisonCanStack"),
+            Modifier::number("PoisonStacks", ModType::Base, 99.0),
+        ]);
+        env.player.mod_db.add_list(extra.iter().cloned());
+        perform(&mut env).unwrap();
+        (
+            env.player.output.poison_active_stacks,
+            env.player.output.poison_dps,
+        )
+    };
+    let (stacks, dps) = run(&[]);
+    let (faster_stacks, faster_dps) = run(&[Modifier::number("PoisonFaster", ModType::Inc, 100.0)]);
+    assert!(
+        (faster_stacks - stacks / 2.0).abs() < 1e-9,
+        "{faster_stacks} vs {stacks}"
+    );
+    assert!(
+        (faster_dps - dps).abs() <= dps * 1e-6,
+        "{faster_dps} vs {dps}"
+    );
+    let (longer_stacks, _) = run(&[Modifier::number(
+        "EnemyAilmentDuration",
+        ModType::Inc,
+        100.0,
+    )]);
+    assert!(
+        (longer_stacks - stacks * 2.0).abs() < 1e-9,
+        "{longer_stacks} vs {stacks}"
+    );
+}
+
 #[test]
 fn elemental_prohibitions_override_bonuses_without_disabling_other_ailments() {
     use pobr_core::calc::ailment::{poison_traced, shock_traced};

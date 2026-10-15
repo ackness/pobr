@@ -11,11 +11,14 @@
 //!   [`pobr_core::item::ingest_item_with_ctx`] to actually parse raw item
 //!   text, outputting JSON (the parsed modifiers / sections / unsupported text).
 //! - [`encode_code`] / [`decode_code`]: wrap PoB Build Code encoding/decoding.
+//! - [`calculate_build_detailed`]: a full build from its code, with the
+//!   breakdowns of the stats asked for ([`render_breakdowns`] prints them).
 
 use std::path::PathBuf;
 
 use pobr_build::{
-    Build, BuildData, DataOrchestratorOptions, calculate_with_data_session, diagnose_tree_version,
+    Build, BuildData, DataOrchestratorOptions, ImportedBuild, calculate_with_data_session,
+    compare_build_to_reference, diagnose_tree_version, import_build_from_code,
     parse_build_from_code,
 };
 use pobr_core::calc::{CalculationSession, MinimalInput, MinimalOutput, OutputTable};
@@ -29,6 +32,11 @@ use pobr_data::monster::EnemyTier;
 use pobr_gamedata::GameData;
 use serde::Serialize;
 use thiserror::Error;
+
+mod breakdown;
+mod usage;
+
+pub use breakdown::{BuildDetail, StatBreakdownEntry, render_breakdowns};
 
 /// The unified error type for the CLI library layer.
 #[derive(Debug, Error)]
@@ -919,6 +927,65 @@ pub struct CalculateBuildOutput {
     pub cooldown: f64,
     /// The main skill's mana cost (derived from its per-level cost).
     pub mana_cost: f64,
+    /// Present when the main skill sits in a meta gem that fills with Energy
+    /// (Cast on Critical): what the gem holds and what fills it. `action_rate`
+    /// and the DPS are by `triggers_per_second` when a source is named.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub energy_trigger: Option<EnergyTriggerOutput>,
+    /// Present when the main skill is a rain (Rain of Arrows): how its hits
+    /// come. `action_rate` and the DPS are by `hits_per_second`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rain: Option<RainOutput>,
+    /// Each minion the calculation created, in the order created: its own
+    /// offence and defence. Absent without minions.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub minions: Vec<MinionOutput>,
+}
+
+/// One minion's own output.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct MinionOutput {
+    /// The minion's catalog id.
+    pub minion_id: String,
+    /// The id of the skill that summoned it.
+    pub summoned_by: String,
+    /// The id of the skill the minion uses, which its damage is for; empty
+    /// when it is not known.
+    pub skill_id: String,
+    /// The minion's level (a monster level).
+    pub level: u32,
+    pub dps: f64,
+    pub life: f64,
+    pub armour: f64,
+    pub evasion: f64,
+    pub energy_shield: f64,
+}
+
+/// How a meta gem triggers the main skill.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct EnergyTriggerOutput {
+    /// Energy the gem needs to trigger its spells.
+    pub maximum_energy: f64,
+    /// The skill whose critical hits fill the gem most often; absent when no
+    /// skill of the build can, and the main skill keeps its own rate.
+    pub source_skill: Option<String>,
+    /// Energy one critical hit of that skill gives.
+    pub energy_per_critical_hit: f64,
+    pub triggers_per_second: f64,
+}
+
+/// How a rain's arrows turn into hits on an enemy.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct RainOutput {
+    /// Seconds between two arrows landing, after projectile speed.
+    pub landing_interval: f64,
+    /// Seconds before the enemy can be hit again.
+    pub hit_interval: f64,
+    /// The enemy is hit by one landing arrow in this many.
+    pub arrows_per_hit: f64,
+    /// Arrows one use fires.
+    pub arrows: f64,
+    pub hits_per_second: f64,
 }
 
 /// Passive-tree version reconciliation diagnostics (gap B): the build's
@@ -932,15 +999,92 @@ pub struct TreeVersionDiag {
     pub unknown_nodes: Vec<u32>,
 }
 
+/// An item the build uses that the importer could not read. The result is
+/// calculated without it.
+#[derive(Debug, Clone, Serialize)]
+pub struct MissingItem {
+    pub item_id: u32,
+    /// Equipment slot ids, PoB flask or jewel slot names, or `socket:<node>`.
+    pub used_in: Vec<String>,
+    pub name: String,
+    pub reason: String,
+}
+
+/// A stat that differs from the value the build code was exported with.
+#[derive(Debug, Clone, Serialize)]
+pub struct ReferenceDifference {
+    /// Display stat id.
+    pub stat: String,
+    /// The exporting tool's name for it.
+    pub pob_key: String,
+    pub pobr: f64,
+    pub reference: f64,
+    /// `pobr / reference`; absent when the reference is zero or not finite.
+    pub ratio: Option<f64>,
+}
+
+/// The result against the `<PlayerStat>` values the build code carries. Those
+/// are the exporting tool's numbers at export time (usually PoB2's): a
+/// reference, not the game's values. A difference says the tools disagree.
+#[derive(Debug, Clone, Serialize)]
+pub struct ReferenceCheck {
+    pub tolerance: f64,
+    /// `true` when the main skill is a spell in a meta gem that fills with
+    /// Energy and the rows below compare it at its own rate of use. The
+    /// exporter counts it so, having no Energy model; `output` reports it at
+    /// the rate the gem triggers it (`output.energy_trigger`), so its DPS and
+    /// action rate are not the `pobr` values of the rows.
+    pub at_own_rate_of_use: bool,
+    /// `true` when the main skill is a rain and the rows below count a hit
+    /// whenever the enemy can be hit again, as the exporter does; `output`
+    /// counts the hits of the arrows that land (`output.rain`).
+    pub rain_hits_whenever_allowed: bool,
+    pub compared: usize,
+    pub agreeing: usize,
+    pub differing: Vec<ReferenceDifference>,
+}
+
+/// Relative difference above which a stat is listed in [`ReferenceCheck::differing`].
+pub const REFERENCE_TOLERANCE: f64 = 0.05;
+
 /// The `calculate-build` report: Build summary plus calc output plus passive-tree version reconciliation diagnostics.
 #[derive(Debug, Clone, Serialize)]
 pub struct CalculateBuildReport {
     pub data_version: String,
     /// Rejected modifier text; successful calculation does not imply complete support.
     pub unsupported_modifiers: Vec<String>,
+    /// Items the build uses that could not be read. Not empty means the
+    /// numbers below are for a character without that gear.
+    pub missing_items: Vec<MissingItem>,
     pub build: BuildSummary,
     pub output: CalculateBuildOutput,
+    /// Absent when the code carries no reference values, or when the request
+    /// overrides the conditions they were exported under (panel basis, an
+    /// explicit enemy level, or an enemy tier other than PoB2's default).
+    pub reference: Option<ReferenceCheck>,
     pub tree_version: TreeVersionDiag,
+    /// `true` when calculated on the reference's basis
+    /// ([`BuildDetail::reference_basis`]): `output` and the breakdowns then
+    /// leave out the models the reference's exporter lacks.
+    #[serde(skip_serializing_if = "is_false")]
+    pub reference_basis: bool,
+    /// The stats asked for with [`BuildDetail::breakdown`], in that order.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub breakdowns: Vec<StatBreakdownEntry>,
+    /// With breakdowns: the main skill the calculation centres on and its
+    /// hit by damage type.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub main_skill: Option<pobr_build::breakdown::MainSkillBreakdown>,
+    /// With [`BuildDetail::usage`]: what the calculation did with each of the
+    /// build's lines. Always of the calculation with every model on, also
+    /// on the reference's basis: a model that basis turns off reads lines,
+    /// which would otherwise be reported as unused.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub usage: Option<pobr_build::usage::LineUsage>,
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 /// Computes end-to-end from a PoB Build Code: decode -> [`parse_build_from_code`]
@@ -951,7 +1095,19 @@ pub struct CalculateBuildReport {
 /// into the REAL calc engine, producing scalars that can be compared
 /// directly against PoB2's panel.
 pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildReport, CliError> {
-    let build = parse_build_from_code(&req.code)?;
+    calculate_build_detailed(req, &BuildDetail::default())
+}
+
+/// [`calculate_build`] with what `detail` asks for beyond the default
+/// output: the breakdowns of some stats, and the reference's basis.
+pub fn calculate_build_detailed(
+    req: &CalculateBuildRequest,
+    detail: &BuildDetail,
+) -> Result<CalculateBuildReport, CliError> {
+    let ImportedBuild {
+        build,
+        report: import,
+    } = import_build_from_code(&req.code)?;
 
     let game_data = GameData::new(req.data_dir.clone());
     let build_data = BuildData::load(&game_data)?;
@@ -965,7 +1121,26 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
         mode_effective: req.mode_effective,
         ..Default::default()
     };
-    let session = calculate_with_data_session(&build, &build_data, &opts)?;
+    // The ledger of lines comes from a diagnosis, which calculates exactly as
+    // a plain calculation does; with every model on, that is the report's.
+    let diagnosis = detail
+        .usage
+        .then(|| pobr_build::diagnose(&build, &build_data, &opts))
+        .transpose()?;
+    let usage = diagnosis
+        .as_ref()
+        .map(|diagnosis| pobr_build::usage::line_usage(diagnosis, &build, &build_data));
+    // On the reference's basis the models its exporter lacks are off for the
+    // whole report, so the output and the breakdowns answer its question.
+    let opts = if detail.reference_basis {
+        opts.on_reference_basis()
+    } else {
+        opts
+    };
+    let session = match diagnosis {
+        Some(diagnosis) if !detail.reference_basis => diagnosis.session,
+        _ => calculate_with_data_session(&build, &build_data, &opts)?,
+    };
     let out = session.output();
     let tree_report = diagnose_tree_version(&build, &build_data);
 
@@ -997,18 +1172,117 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
         action_rate: out.action_rate,
         cooldown: out.cooldown,
         mana_cost: out.mana_cost,
+        energy_trigger: (out.energy_trigger_maximum > 0.0).then(|| EnergyTriggerOutput {
+            maximum_energy: out.energy_trigger_maximum,
+            source_skill: out.energy_trigger_source.clone(),
+            energy_per_critical_hit: out.energy_per_trigger_event,
+            triggers_per_second: out.skill_trigger_rate,
+        }),
+        rain: session.rain().map(|rain| RainOutput {
+            landing_interval: rain.landing_interval,
+            hit_interval: rain.hit_interval,
+            arrows_per_hit: rain.arrows_per_hit,
+            arrows: rain.arrows,
+            hits_per_second: rain.hits_per_second,
+        }),
+        minions: out
+            .minions
+            .iter()
+            .map(|minion| MinionOutput {
+                minion_id: minion.minion_id.clone(),
+                summoned_by: minion.summoned_by.clone(),
+                skill_id: minion.skill_id.clone(),
+                level: minion.level,
+                dps: minion.dps,
+                life: minion.life,
+                armour: minion.armour,
+                evasion: minion.evasion,
+                energy_shield: minion.energy_shield,
+            })
+            .collect(),
     };
+
+    // The reference was exported on the effective basis against the build's
+    // own enemy; any other request compares two different questions.
+    let same_conditions =
+        req.mode_effective && req.enemy_level == 0 && req.enemy_tier == EnemyTier::Pinnacle;
+    let compares = same_conditions && !import.reference_stats.is_empty();
+    // The exporter has no Energy model: its numbers for a spell in a meta gem
+    // are at the spell's own rate of use. It counts a rain's hits whenever
+    // the enemy can be hit again. The comparison asks the same questions, so
+    // it is made on that basis, not at the rates the output above reports.
+    let at_own_rate = compares && out.energy_trigger_source.is_some();
+    let rain_hits_whenever_allowed = compares && output.rain.is_some();
+    let on_basis = (!detail.reference_basis && (at_own_rate || rain_hits_whenever_allowed))
+        .then(|| {
+            calculate_with_data_session(&build, &build_data, &opts.clone().on_reference_basis())
+        })
+        .transpose()?;
+    let reference = compares.then(|| {
+        let reference_out = on_basis.as_ref().map_or(out, |session| session.output());
+        let rows = compare_build_to_reference(&build, &build_data, reference_out, &import);
+        let differing: Vec<ReferenceDifference> = rows
+            .iter()
+            .filter(|row| !row.agrees(REFERENCE_TOLERANCE))
+            .map(|row| ReferenceDifference {
+                stat: row.id.clone(),
+                pob_key: row.pob_key.clone(),
+                pobr: row.pobr,
+                reference: row.reference,
+                ratio: row.ratio(),
+            })
+            .collect();
+        ReferenceCheck {
+            tolerance: REFERENCE_TOLERANCE,
+            at_own_rate_of_use: at_own_rate,
+            rain_hits_whenever_allowed,
+            compared: rows.len(),
+            agreeing: rows.len() - differing.len(),
+            differing,
+        }
+    });
+
+    let stats = breakdown::requested_stats(&detail.breakdown);
+    let breakdown_rows = if compares {
+        compare_build_to_reference(&build, &build_data, out, &import)
+    } else {
+        Vec::new()
+    };
+    let main_minion = pobr_build::main_skill_minion(&build, &build_data, out).and_then(|minion| {
+        out.minions
+            .iter()
+            .position(|other| std::ptr::eq(other, minion))
+            .map(|index| (index, minion))
+    });
+    let breakdowns = breakdown::breakdown_entries(&session, &stats, &breakdown_rows, main_minion);
+    let main_skill = (!stats.is_empty())
+        .then(|| pobr_build::breakdown::main_skill_breakdown(&build, &build_data, out))
+        .flatten();
 
     Ok(CalculateBuildReport {
         data_version: game_data.manifest()?.poe_version,
         unsupported_modifiers: session.unsupported_modifier_texts().to_vec(),
+        missing_items: import
+            .missing_items()
+            .map(|item| MissingItem {
+                item_id: item.item_id,
+                used_in: item.used_in.clone(),
+                name: item.name.clone(),
+                reason: item.reason.clone(),
+            })
+            .collect(),
         build: summary,
         output,
+        reference,
         tree_version: TreeVersionDiag {
             build_tree_version: tree_report.build_tree_version,
             unknown_node_count: tree_report.unknown_nodes.len(),
             unknown_nodes: tree_report.unknown_nodes,
         },
+        reference_basis: detail.reference_basis,
+        breakdowns,
+        main_skill,
+        usage,
     })
 }
 

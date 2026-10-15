@@ -48,6 +48,9 @@ pub struct SpecialMatchMeta {
     /// Whether this entry has been verified against the oracle
     /// (`verified:false` entries are listed separately in parity reports).
     pub verified: bool,
+    /// The entry is registered as changing nothing a calculation reports
+    /// (batch `S0`): its empty result is a recognised line, not a dropped one.
+    pub no_effect: bool,
 }
 
 /// A parse failure (keeps the input and the reason, for the caller to
