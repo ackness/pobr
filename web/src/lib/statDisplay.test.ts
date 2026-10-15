@@ -52,6 +52,11 @@ describe('STAT_SECTIONS', () => {
       'ManaUnreservedPercent', 'SpiritUnreservedPercent', 'PreEffectiveCritChance',
       'StoredUses', 'TotalDot', 'WithDotDPS',
       'FiringRate', 'ReloadTime', 'CullingDPS', 'ProjectileSpeedMod',
+      'LifeRegenRecovery', 'ManaRegenRecovery', 'EnergyShieldRegenRecovery',
+      'WardRegenRecovery', 'RageRegenRecovery', 'NetLifeRegen', 'NetManaRegen',
+      'NetEnergyShieldRegen', 'TotalNetRegen', 'TotalBuildDegen',
+      'LifeLeechGainRate', 'ManaLeechGainRate', 'EnergyShieldLeechGainRate',
+      'LifeLeechGainPerHit', 'ManaLeechGainPerHit', 'EnergyShieldLeechGainPerHit',
     ]) {
       expect(rows.has(id), id).toBe(true);
     }

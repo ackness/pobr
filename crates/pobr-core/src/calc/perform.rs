@@ -263,6 +263,8 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // current bleed/poison/ignite values from the ailment side (ailment.rs is untouched, per the T4 wave agreement).
     fill_skill_dot_stage(env);
 
+    super::recovery::fill_recovery(env, &output.stored_hit_avg, &output.stored_crit_avg);
+
     env.performed = true;
     Ok(())
 }

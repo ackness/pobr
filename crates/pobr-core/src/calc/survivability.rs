@@ -132,6 +132,18 @@ pub fn regen_with_rate(
 /// Source: agent-docs/recovery-charges-buffs.md §2.1;
 ///       PoB2 `src/Modules/CalcDefence.lua`'s regen section comments.
 pub fn calc_regen(db: &ModDb, cfg: &CalcConfig, pool: f64, stat: &str) -> f64 {
+    // "No inherent Mana Regeneration" removes only the character's base
+    // regeneration, not flat/percentage regeneration granted by other sources.
+    let mut inherent_cfg;
+    let cfg = if stat == "ManaRegen" && db.flag(cfg, "Condition:NoInherentManaRegen") {
+        inherent_cfg = cfg.clone();
+        inherent_cfg
+            .conditions
+            .insert("NoInherentManaRegen".into(), true);
+        &inherent_cfg
+    } else {
+        cfg
+    };
     let bare_name = ModName::from(stat);
     let flat = db.sum(ModType::Base, cfg, std::slice::from_ref(&bare_name));
     let percent = db.sum(

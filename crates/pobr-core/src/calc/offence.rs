@@ -1556,7 +1556,7 @@ fn total_dps_traced(
 ///
 /// `raw_hit` approximates this component's (unmitigated) average hit (PoB2
 /// uses the per-hit amount; the panel approximation is good enough), only needed for physical armour mitigation.
-fn enemy_damage_multiplier(
+pub(crate) fn enemy_damage_multiplier(
     player_db: &ModDb,
     enemy_db: &ModDb,
     cfg: &CalcConfig,

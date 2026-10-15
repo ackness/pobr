@@ -643,6 +643,26 @@ pub(super) fn inject_character_base(
     {
         // The derivation coefficients are read from the injected character_constants domain (value-for-value equal to Default).
         session.add_modifiers(base.modifiers(&data.constants.character_constants));
+        // character_inherent_mana_regeneration_rate_per_minute_% = 240:
+        // a character regenerates 4% of maximum Mana per second.
+        session.add_modifiers(vec![
+            Modifier::number(
+                "ManaRegenPercent",
+                ModType::Base,
+                data.constants
+                    .character()
+                    .mana_regeneration_rate_per_minute_pct
+                    / 60.0,
+            )
+            .with_tag(pobr_core::ModTag::condition("NoInherentManaRegen", true))
+            .with_origin(
+                ModifierSource::new(SourceId::new(
+                    SourceKind::CharacterBase,
+                    "base.ManaRegenPercent",
+                ))
+                .with_raw_text("character inherent Mana regeneration"),
+            ),
+        ]);
         // Elemental resistance penalty (fire/cold/lightning; chaos has no penalty): the
         // XML Config's explicit `resistancePenalty` tier takes priority; when omitted,
         // falls back to PoB2 CalcSetup.lua's `configInput.resistancePenalty or -60`

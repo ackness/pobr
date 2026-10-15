@@ -32,6 +32,7 @@ pub mod pool_damage;
 pub mod pool_setup;
 pub mod rage;
 pub mod rain;
+mod recovery;
 pub mod scaled_damage;
 pub mod session;
 pub mod setup_env;

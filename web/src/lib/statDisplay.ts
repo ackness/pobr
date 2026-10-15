@@ -97,6 +97,27 @@ export const STAT_SECTIONS: StatSectionDef[] = [
     ],
   },
   {
+    title: { 'en-US': 'Recovery', 'zh-TW': '恢復', 'zh-CN': '恢复' },
+    rows: [
+      { id: 'LifeRegenRecovery', label: { 'en-US': 'Life Regeneration and Recovery per Second', 'zh-TW': '每秒生命再生與恢復', 'zh-CN': '每秒生命再生与恢复' }, format: 'float2', hideZero: true },
+      { id: 'ManaRegenRecovery', label: { 'en-US': 'Mana Regeneration and Recovery per Second', 'zh-TW': '每秒魔力再生與恢復', 'zh-CN': '每秒魔力再生与恢复' }, format: 'float2', hideZero: true },
+      { id: 'EnergyShieldRegenRecovery', label: { 'en-US': 'Energy Shield Regeneration and Recovery per Second', 'zh-TW': '每秒能量護盾再生與恢復', 'zh-CN': '每秒能量护盾再生与恢复' }, format: 'float2', hideZero: true },
+      { id: 'WardRegenRecovery', label: { 'en-US': 'Runic Ward Regeneration and Recovery per Second', 'zh-TW': '每秒符文結界再生與恢復', 'zh-CN': '每秒符文结界再生与恢复' }, format: 'float2', hideZero: true },
+      { id: 'RageRegenRecovery', label: { 'en-US': 'Rage Regeneration and Recovery per Second', 'zh-TW': '每秒盛怒再生與恢復', 'zh-CN': '每秒怒气再生与恢复' }, format: 'float2', hideZero: true },
+      { id: 'NetLifeRegen', label: { 'en-US': 'Net Life Recovery per Second', 'zh-TW': '每秒生命淨恢復', 'zh-CN': '每秒生命净恢复' }, format: 'float2', hideZero: true },
+      { id: 'NetManaRegen', label: { 'en-US': 'Net Mana Recovery per Second', 'zh-TW': '每秒魔力淨恢復', 'zh-CN': '每秒魔力净恢复' }, format: 'float2', hideZero: true },
+      { id: 'NetEnergyShieldRegen', label: { 'en-US': 'Net Energy Shield Recovery per Second', 'zh-TW': '每秒能量護盾淨恢復', 'zh-CN': '每秒能量护盾净恢复' }, format: 'float2', hideZero: true },
+      { id: 'TotalNetRegen', label: { 'en-US': 'Total Net Recovery per Second', 'zh-TW': '每秒總淨恢復', 'zh-CN': '每秒总净恢复' }, format: 'float2', hideZero: true },
+      { id: 'TotalBuildDegen', label: { 'en-US': 'Build Resource Loss per Second', 'zh-TW': '每秒構築資源損失', 'zh-CN': '每秒构筑资源损失' }, format: 'float2', hideZero: true },
+      { id: 'LifeLeechGainRate', label: { 'en-US': 'Life Leech and Gain on Hit per Second', 'zh-TW': '每秒生命偷取與擊中獲得', 'zh-CN': '每秒生命偷取与击中获得' }, format: 'float2', hideZero: true },
+      { id: 'ManaLeechGainRate', label: { 'en-US': 'Mana Leech and Gain on Hit per Second', 'zh-TW': '每秒魔力偷取與擊中獲得', 'zh-CN': '每秒魔力偷取与击中获得' }, format: 'float2', hideZero: true },
+      { id: 'EnergyShieldLeechGainRate', label: { 'en-US': 'Energy Shield Leech and Gain on Hit per Second', 'zh-TW': '每秒能量護盾偷取與擊中獲得', 'zh-CN': '每秒能量护盾偷取与击中获得' }, format: 'float2', hideZero: true },
+      { id: 'LifeLeechGainPerHit', label: { 'en-US': 'Life Leeched and Gained per Hit', 'zh-TW': '每次擊中偷取與獲得生命', 'zh-CN': '每次击中偷取与获得生命' }, format: 'float2', hideZero: true },
+      { id: 'ManaLeechGainPerHit', label: { 'en-US': 'Mana Leeched and Gained per Hit', 'zh-TW': '每次擊中偷取與獲得魔力', 'zh-CN': '每次击中偷取与获得魔力' }, format: 'float2', hideZero: true },
+      { id: 'EnergyShieldLeechGainPerHit', label: { 'en-US': 'Energy Shield Leeched and Gained per Hit', 'zh-TW': '每次擊中偷取與獲得能量護盾', 'zh-CN': '每次击中偷取与获得能量护盾' }, format: 'float2', hideZero: true },
+    ],
+  },
+  {
     title: { 'en-US': 'Attributes', 'zh-TW': '屬性', 'zh-CN': '属性' },
     rows: [
       { id: 'Str', label: { 'en-US': 'Strength', 'zh-TW': '力量', 'zh-CN': '力量' }, format: 'int', hideZero: true },
