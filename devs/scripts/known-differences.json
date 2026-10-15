@@ -185,6 +185,36 @@
       "build": "spirit-walker-companion-zekoa-the-headcrusher",
       "stats": ["ActiveMinionLimit"],
       "reason": "the main skill's created minion limit; a companion without a limit stat is 1, PoB2 outputs 0 (docs/maintainer-guide.md, Wolf Pack)"
+    },
+    {
+      "build": "mercenary-gemling-legionnaire-twister-a479eff2b320",
+      "stats": ["RageRegenRecovery"],
+      "reason": "PoBR scales the Eternal Rage an Absent Amulet grants (\"Grants Skill: Level N Eternal Rage\") down to the level the character's attributes reach; PoB2 also keeps the plain gem group at the undowngraded level, and Rage regeneration follows the level (ceaseless_rage_base_rage_regeneration_per_minute, 300 at level 20) (docs/maintainer-guide.md, granted skills)"
+    },
+    {
+      "build": "monk-acolyte-of-chayula-decompose-7505238a9c8d",
+      "stats": ["RageRegenRecovery"],
+      "reason": "PoBR scales the Eternal Rage an Absent Amulet grants (\"Grants Skill: Level N Eternal Rage\") down to the level the character's attributes reach; PoB2 also keeps the plain gem group at the undowngraded level, and Rage regeneration follows the level (ceaseless_rage_base_rage_regeneration_per_minute, 300 at level 20) (docs/maintainer-guide.md, granted skills)"
+    },
+    {
+      "build": "ranger-pathfinder-ice-shot-728cbde29279",
+      "stats": ["RageRegenRecovery"],
+      "reason": "PoBR scales the Eternal Rage an Absent Amulet grants (\"Grants Skill: Level N Eternal Rage\") down to the level the character's attributes reach; PoB2 also keeps the plain gem group at the undowngraded level, and Rage regeneration follows the level (ceaseless_rage_base_rage_regeneration_per_minute, 300 at level 20) (docs/maintainer-guide.md, granted skills)"
+    },
+    {
+      "build": "witch-abyssal-lich-twister-9d1c51aef392",
+      "stats": ["RageRegenRecovery"],
+      "reason": "PoBR scales the Eternal Rage an Absent Amulet grants (\"Grants Skill: Level N Eternal Rage\") down to the level the character's attributes reach; PoB2 also keeps the plain gem group at the undowngraded level, and Rage regeneration follows the level (ceaseless_rage_base_rage_regeneration_per_minute, 300 at level 20) (docs/maintainer-guide.md, granted skills)"
+    },
+    {
+      "build": "ranger-pathfinder-mana-remnants-c84caa555533",
+      "stats": ["RageRegenRecovery"],
+      "reason": "PoBR scales the Eternal Rage an Absent Amulet grants (\"Grants Skill: Level N Eternal Rage\") down to the level the character's attributes reach; PoB2 also keeps the plain gem group at the undowngraded level, and Rage regeneration follows the level (ceaseless_rage_base_rage_regeneration_per_minute, 300 at level 20) (docs/maintainer-guide.md, granted skills)"
+    },
+    {
+      "build": "monk-martial-artist-ice-shot-71a879f43f2f",
+      "stats": ["RageRegenRecovery"],
+      "reason": "PoBR scales the Eternal Rage an Absent Amulet grants (\"Grants Skill: Level N Eternal Rage\") down to the level the character's attributes reach; PoB2 also keeps the plain gem group at the undowngraded level, and Rage regeneration follows the level (ceaseless_rage_base_rage_regeneration_per_minute, 300 at level 20) (docs/maintainer-guide.md, granted skills)"
     }
   ]
 }
