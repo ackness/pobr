@@ -9,7 +9,7 @@
  * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
  * 任何破坏性形状变更两侧同时 +1；boot 时握手校验（见 wasmBackend.ts）。
  */
-export const EXPECTED_SCHEMA_VERSION = 14;
+export const EXPECTED_SCHEMA_VERSION = 15;
 
 // ---------------------------------------------------------------------------
 // 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）
@@ -1231,6 +1231,29 @@ export interface TreeEditResult {
   weapon_points_max: number;
 }
 export interface TreeEditResponse { valid: boolean; reason: string | null; result: TreeEditResult | null }
+
+/** Conversion is a detached preview; the caller must explicitly apply its code. */
+export interface TreeConversionNode {
+  id: number;
+  name: string;
+  stats: string[];
+  reason: 'missing' | 'changed_identity' | 'socket_missing_or_changed' | 'disconnected' | null;
+  jewel_item_id: number | null;
+}
+export interface TreeConversionResponse {
+  code: string;
+  specs: {
+    index: number;
+    title: string;
+    from_version: string;
+    to_version: string;
+    kept: number[];
+    dropped: TreeConversionNode[];
+    disconnected: TreeConversionNode[];
+    disconnected_by_set: [number[], number[], number[]];
+    allocation: TreeAllocation;
+  }[];
+}
 
 export interface PartyMember {
   id: string;

@@ -28,7 +28,7 @@ fn pob_slot_name(slot: EquipmentSlot) -> &'static str {
 }
 
 /// The PoB2 tree tag for the data actually loaded into this instance.
-fn current_tree_version() -> Result<String, String> {
+pub(super) fn current_tree_version() -> Result<String, String> {
     let manifest = state::game_data()?
         .manifest()
         .map_err(|error| error.to_string())?;

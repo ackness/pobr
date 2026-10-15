@@ -127,3 +127,20 @@ update it when the behavior changes.
 Algorithm experiments: `POBR_UPGRADE_BENCH=1 pnpm --dir web test src/lib/upgradeBench.test.ts src/lib/supportBench.test.ts src/lib/passiveBench.test.ts` uses real WASM and synthetic fixtures, comparing finite exhaustive references and apply/recalculate equality. Benchmarks are opt-in and write ignored `.cache` reports. See `devs/docs/architecture/18-upgrade-guidance.md` for results and limits; no bounded planner is a proof of a global or budget optimum.
 
 Build references are temporarily hidden from navigation and saved-tab restoration. The panel, matching logic, fixtures and catalog generation remain for future player-shared builds. Its UI workflows are explicitly skipped while hidden; the saved-tab fallback and matching unit tests remain active. See `devs/docs/architecture/21-build-reference-guidance.md` for the retained behavior and `docs/reference-sources-and-engine-review.md` for source/API findings and the current PoB2 alignment review.
+
+### 历史天赋树转换
+
+Tree 的“转换为当前天赋树”先预览当前 Spec；勾选“全部天赋方案”则覆盖所有 Spec。
+`preview_tree_conversion_json({ code, all_specs })` 返回独立的 `code` 和逐 Spec 的
+`kept`、`dropped`（旧名、旧词条、移除原因、珠宝物品编号）、`disconnected` 与
+`disconnected_by_set`（共用、武器组 1、武器组 2）。schema 15 增加此入口。
+历史节点按编号及身份匹配；旧包无稳定 slug 时比较去除展示标记的名称与种类，
+词条数值变化不等于换节点。不可用的历史目录会报错，不能猜测转换。
+当前版本的 Spec 原文保持不变。
+
+预览、取消均不改动会话；只有确认才替换天赋状态和保存其他方案的完整 XML 底稿。
+会话版本变化后旧预览不可确认。仍存在的珠宝插槽与两组专属点保留，断路节点只报告，
+不自动退款；失效插槽的物品仍在 XML 物品池。导出及重新导入保持转换后的版本与分组。
+天赋加点、属性选择、方案应用和转换共用最多 30 步的内存撤销历史，转换撤销也恢复
+其他 Spec 和原始 XML；其他构筑编辑或切换阶段会结束该历史，避免回退之后的装备或配置。
+撤销历史不跨页面刷新持久化。

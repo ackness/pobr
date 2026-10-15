@@ -161,6 +161,25 @@ impl<'a> AllocationTree<'a> {
         connected.extend(free.intersection(allocated));
         connected
     }
+    /// Disconnected points in the shared path and each exclusive path. Inspection
+    /// never refunds them: conversion previews must show the player every loss.
+    pub fn disconnected(&self, a: &Allocation) -> [BTreeSet<u32>; 3] {
+        [
+            a.shared
+                .difference(&self.reachable(&a.shared))
+                .copied()
+                .collect(),
+            a.exclusive[0]
+                .difference(&self.reachable(&a.active(0)))
+                .copied()
+                .collect(),
+            a.exclusive[1]
+                .difference(&self.reachable(&a.active(1)))
+                .copied()
+                .collect(),
+        ]
+    }
+
     pub fn validate(&self, a: &Allocation) -> Result<(), String> {
         if !a.shared.is_disjoint(&a.exclusive[0])
             || !a.shared.is_disjoint(&a.exclusive[1])
@@ -283,7 +302,16 @@ impl<'a> AllocationTree<'a> {
         if mode > 2 {
             return Err("invalid_mode".into());
         }
-        self.validate(before)?;
+        if let Err(reason) = self.validate(before)
+            && !matches!(
+                reason.as_str(),
+                "disconnected_shared_path" | "disconnected_weapon_path"
+            )
+        {
+            return Err(reason);
+        }
+        // A historical conversion may retain disconnected points for review.
+        // Allow an explicit repair/refund, but validate the complete result below.
         if !self.nodes.contains_key(&target) {
             return Err("unknown_node".into());
         }

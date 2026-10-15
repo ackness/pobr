@@ -530,6 +530,26 @@ test('selecting a named skill set replaces its main group and bindings while kee
   expect(toRequest(next).config_inputs).toEqual(current.params.config_inputs);
 });
 
+test('tree conversion retains non-tree edits and replaces the complete export base', async () => {
+  const { convertedTreeState } = await import('./useBuildSession');
+  const current = { ...saved.state, pobCode: 'old-full-base',
+    weaponSwap: { active: 1 as const, alternate_items: [{ slot: 'weapon1', text: 'Keep raw weapon text' }], exclusive_nodes: [[770], [12]] as [number[], number[]] },
+    jewels: [{ socket_node: 7, text: 'Preserved Jewel' }, { socket_node: 8, text: 'Removed Socket Jewel' }] };
+  const decoded = { tree: { tree_version: '0_5', allocated_nodes: [7, 770], attribute_choices: { '770': 'int' } },
+    weapon_swap: { ...current.weaponSwap, alternate_items: [], exclusive_nodes: [[770], [13]] },
+    items: { socket_jewels: [{ socket_node: 7, text: '\nPreserved Jewel\n    ' }] } } as unknown as BuildJson;
+  const next = convertedTreeState(current, decoded, 'converted-all-specs-base');
+  expect(next.pobCode).toBe('converted-all-specs-base');
+  expect(next.treeVersion).toBe('0_5');
+  expect(next.weaponSwap?.exclusive_nodes).toEqual([[770], [13]]);
+  expect(next.weaponSwap?.alternate_items).toBe(current.weaponSwap.alternate_items);
+  expect(next.allocatedNodes).toEqual([7, 770]);
+  expect(next.jewels).toEqual([{ socket_node: 7, text: 'Preserved Jewel' }]);
+  for (const key of ['character', 'socketGroups', 'items', 'flasks', 'limbs', 'params', 'annotations'] as const) expect(next[key]).toBe(current[key]);
+  expect(current.pobCode).toBe('old-full-base');
+  expect(current.jewels).toHaveLength(2);
+});
+
 test('party members survive saved sessions and are passed to the calculation request', () => {
   const party = { members: [{ id: 'support', name: 'Support', enabled: false, blocks: { Aura: 'Discipline\n150\n100|Skill:DisciplinePlayer|EnergyShield|BASE|-|-|-\n---' }, warnings: [] }], exports: {} };
   const session = structuredClone(saved);

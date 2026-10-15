@@ -92,6 +92,17 @@ export function applyNamedSkills(state: BuildState, decoded: BuildJson & { code:
     params: { ...state.params, main_socket_group: decoded.main_socket_group ?? undefined } };
 }
 
+/** Conversion changes only passive state and the XML base holding other specs. */
+export function convertedTreeState(state: BuildState, decoded: BuildJson, code: string): BuildState {
+  const sockets = new Set((decoded.items.socket_jewels ?? []).map(j => j.socket_node));
+  return { ...state, pobCode: code, treeVersion: decoded.tree.tree_version,
+    allocatedNodes: decoded.tree.allocated_nodes,
+    attributeChoices: decoded.tree.attribute_choices ?? {},
+    weaponSwap: state.weaponSwap && decoded.weapon_swap
+      ? { ...state.weaponSwap, exclusive_nodes: decoded.weapon_swap.exclusive_nodes } : decoded.weapon_swap,
+    jewels: state.jewels.filter(jewel => sockets.has(jewel.socket_node)) };
+}
+
 export type ImportDestination = 'newBuild' | 'currentStage';
 export interface ImportOptions { destination: ImportDestination; name?: string }
 
@@ -169,6 +180,9 @@ export interface BuildSession {
   toggleNode: (skill: number, choice?: AttributeChoice) => void;
   /** 整体替换加点集合（树寻路一次点亮/熄灭整条路径）。 */
   setAllocatedNodes: (skills: number[], choices?: Record<string, AttributeChoice>) => void;
+  canUndoTree: boolean;
+  undoTree: () => void;
+  applyTreeConversion: (decoded: BuildJson, code: string, expectedVersion: number) => boolean;
   applyTreeEdit: (result: TreeEditResult, request: CalculateBuildRequest, choices?: Record<string, AttributeChoice>) => boolean;
   /** 整表替换属性三选一（批量调配 / 快捷键改单点）。 */
   setAttributeChoices: (choices: Record<string, AttributeChoice>) => void;
@@ -609,6 +623,9 @@ export function useBuildSession(configContextActive = false): BuildSession {
   const [classNames, setClassNames] = useState<ClassNames>({ classes: {}, ascendancies: {} });
   const [build, setBuild] = useState<BuildJson | null>(null);
   const [state, setState] = useState<BuildState | null>(null);
+  const buildRef = useRef(build);
+  buildRef.current = build;
+  const treeHistory = useRef<{ state: BuildState; build: BuildJson | null }[]>([]);
   const [calculated, setCalculated] = useState<{ version: number; result: CalculateBuildResponse } | null>(null);
   const [calculating, setCalculating] = useState(false);
   // Source operations can overlap a recalc or nest (manageLoadout imports its result).
@@ -712,8 +729,15 @@ export function useBuildSession(configContextActive = false): BuildSession {
 
   /** 应用新状态并触发重算 + 自动保存到浏览器。 */
   const apply = useCallback(
-    (next: BuildState, opts?: { clean?: boolean }) => {
+    (next: BuildState, opts?: { clean?: boolean; treeEdit?: boolean; undo?: boolean }) => {
       const previous = stateRef.current;
+      if (opts?.treeEdit && previous) {
+        treeHistory.current = [...treeHistory.current.slice(-29), { state: previous, build: buildRef.current }];
+      } else if (!opts?.undo) {
+        // Non-tree edits or stage changes end this tree transaction history, so
+        // Undo can never overwrite equipment/configuration edited afterwards.
+        treeHistory.current = [];
+      }
       if (!opts?.clean && previous?.weaponSwap && next.weaponSwap === previous.weaponSwap && next.allocatedNodes !== previous.allocatedNodes) {
         const index = previous.weaponSwap.active - 1;
         next = { ...next, weaponSwap: { ...previous.weaponSwap, exclusive_nodes: previous.weaponSwap.exclusive_nodes.map((nodes, i) => i === index ? nodes.filter(node => next.allocatedNodes.includes(node)) : nodes) as [number[], number[]] } };
@@ -1149,7 +1173,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
   const applyTreePlan = useCallback((expectedRequest: CalculateBuildRequest, plan: TreePlan): boolean => {
     const next = prepareTreePlan(stateRef.current, expectedRequest, plan, busy);
     if (!next) return false;
-    apply(next);
+    apply(next, { treeEdit: true });
     return true;
   }, [apply, busy]);
 
@@ -1180,7 +1204,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
       } else if (choice) {
         attributeChoices[String(skill)] = choice;
       }
-      apply({ ...state, allocatedNodes, attributeChoices });
+      apply({ ...state, allocatedNodes, attributeChoices }, { treeEdit: true });
     },
     [apply, state],
   );
@@ -1196,7 +1220,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
       const attributeChoices = Object.fromEntries(
         Object.entries({ ...state.attributeChoices, ...choices }).filter(([skill]) => kept.has(Number(skill))),
       );
-      apply({ ...state, allocatedNodes, attributeChoices });
+      apply({ ...state, allocatedNodes, attributeChoices }, { treeEdit: true });
     },
     [apply, state],
   );
@@ -1209,17 +1233,32 @@ export function useBuildSession(configContextActive = false): BuildSession {
     const kept = new Set([...result.allocation.shared, ...result.allocation.exclusive.flat()]);
     const attributeChoices = Object.fromEntries(Object.entries({ ...current.attributeChoices, ...choices })
       .filter(([id]) => kept.has(Number(id))));
-    apply({ ...next, attributeChoices, jewels: current.jewels.filter(jewel => kept.has(jewel.socket_node)) });
+    apply({ ...next, attributeChoices, jewels: current.jewels.filter(jewel => kept.has(jewel.socket_node)) }, { treeEdit: true });
     return true;
   }, [apply]);
 
   const setAttributeChoices = useCallback(
     (attributeChoices: Record<string, AttributeChoice>) => {
       if (!state) return;
-      apply({ ...state, attributeChoices });
+      apply({ ...state, attributeChoices }, { treeEdit: true });
     },
     [apply, state],
   );
+
+  const applyTreeConversion = useCallback((decoded: BuildJson, code: string, expectedVersion: number) => {
+    const current = stateRef.current;
+    if (!current || versionRef.current !== expectedVersion) return false;
+    apply(convertedTreeState(current, decoded, code), { treeEdit: true });
+    setBuild(decoded);
+    return true;
+  }, [apply]);
+
+  const undoTree = useCallback(() => {
+    const previous = treeHistory.current.pop();
+    if (!previous) return;
+    apply(previous.state, { undo: true });
+    setBuild(previous.build);
+  }, [apply]);
 
   const updateParams = useCallback(
     (patch: Partial<CalcParams>) => {
@@ -1602,6 +1641,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
     toggleNode,
     setAllocatedNodes,
     applyTreeEdit,
+    applyTreeConversion, undoTree, canUndoTree: treeHistory.current.length > 0,
     setAttributeChoices,
     setSocketGroups,
     setItems,

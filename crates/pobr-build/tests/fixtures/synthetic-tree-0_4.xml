@@ -1,0 +1,38 @@
+<PathOfBuilding2>
+<!-- Synthetic regression, NOT a historical player build or corpus capture.
+Constructed from data/0.5.5.4.2/base/passive_trees/0_4.json (all ids,
+names, kinds and stats). Level 80 Ranger, no ascendancy, 16 shared paid
+points plus one point in each weapon set, and the implicit Ranger start.
+The catalog omits topology. The two paths were cross-checked against the
+already-vendored TreeData/0_4/tree.json; no outside data was fetched.
+Topology file SHA256: db5bbb57d7a91776df5731f51a0001c57c74b8fbf4a3633a8d2c456d1b3e58c9
+Path to jewel 60735 and removed leaf 8194:
+50459,13828,1140,15507,48401,61312,21280,28050,63888,35901,60735,11825,8194
+Path to surviving leaf 56118:
+50459,13828,1140,15507,48401,10909,16489,48568,26786,42250,56118
+Shared allocation is the union minus leaves 8194 (weapon set 1) and
+56118 (weapon set 2). Every active set is connected on 0_4.
+0_5 removes 8194 (Stun Threshold if no recent Stun). All other ids retain
+identity after removing display markup. The 42250 to 56118 connection
+is absent on 0_5, so 56118 survives but becomes disconnected in set 2.
+Socket 60735 holds item 1. The second spec duplicates the original to test
+active-only versus all-spec conversion; both specs are synthetic.
+ -->
+<Build level="80" className="Ranger" ascendClassName="None"/>
+<Tree activeSpec="1">
+  <Spec title="Synthetic 0_4 mapping" treeVersion="0_4" nodes="1140,8194,10909,11825,13828,15507,16489,21280,26786,28050,35901,42250,48401,48568,50459,56118,60735,61312,63888">
+    <WeaponSet1 nodes="8194"/><WeaponSet2 nodes="56118"/>
+    <Overrides><AttributeOverride dexNodes="1140,15507,48401"/></Overrides>
+    <Sockets><Socket nodeId="60735" itemId="1"/></Sockets>
+  </Spec>
+  <Spec title="Synthetic 0_4 alternate" treeVersion="0_4" nodes="1140,8194,10909,11825,13828,15507,16489,21280,26786,28050,35901,42250,48401,48568,50459,56118,60735,61312,63888">
+    <WeaponSet1 nodes="8194"/><WeaponSet2 nodes="56118"/>
+    <Sockets><Socket nodeId="60735" itemId="1"/></Sockets>
+  </Spec>
+</Tree>
+<Items useSecondWeaponSet="false"><Item id="1">Rarity: RARE
+Synthetic Jewel
+Emerald
++10 to Dexterity</Item><ItemSet id="1" title="Fixture equipment"/></Items>
+<Skills/><Config/><Notes>Synthetic historical conversion regression.</Notes>
+</PathOfBuilding2>

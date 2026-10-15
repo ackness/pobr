@@ -187,3 +187,53 @@ fn a_mastery_cannot_be_added_without_an_effect_selection_or_used_as_travel() {
         "no_legal_path"
     );
 }
+
+#[test]
+fn conversion_disconnections_respect_sets_and_connected_jewel_grants() {
+    let n = nodes();
+    let mut t = tree(&n);
+    let a = Allocation {
+        shared: set(&[2, 6, 7]),
+        exclusive: [set(&[3, 4]), set(&[5])],
+    };
+    // Shared socket 6 cannot use weapon set 1's exclusive connector 3.
+    assert_eq!(t.disconnected(&a), [set(&[6, 7]), set(&[]), set(&[])]);
+    t.grants.push(Grant {
+        source: 6,
+        nodes: vec![7],
+        roots: vec![],
+    });
+    assert_eq!(t.disconnected(&a)[0], set(&[6, 7]));
+    let mut connected = a.clone();
+    connected.shared.insert(3);
+    connected.exclusive[0].remove(&3);
+    assert_eq!(t.disconnected(&connected), [set(&[]), set(&[]), set(&[])]);
+    assert_eq!(a.shared, set(&[2, 6, 7]));
+}
+
+#[test]
+fn disconnected_conversion_can_be_explicitly_repaired_or_refunded() {
+    let n = nodes();
+    let t = tree(&n);
+    let broken = Allocation {
+        shared: set(&[2, 4]),
+        ..Default::default()
+    };
+    let repair = t.edit(&broken, 4, 0, EditAction::Allocate).unwrap();
+    assert_eq!(repair.allocation.shared, set(&[2, 3, 4]));
+    assert_eq!(repair.added, vec![3]);
+    let refund = t.edit(&broken, 4, 0, EditAction::Refund).unwrap();
+    assert_eq!(refund.allocation.shared, set(&[2]));
+    assert_eq!(refund.removed, vec![4]);
+    assert_eq!(broken.shared, set(&[2, 4]));
+    // An unrelated edit must not silently remove or accept the broken path.
+    assert!(t.edit(&broken, 5, 0, EditAction::Allocate).is_err());
+    let unknown = Allocation {
+        shared: set(&[2, 999]),
+        ..Default::default()
+    };
+    assert_eq!(
+        t.edit(&unknown, 5, 0, EditAction::Allocate).unwrap_err(),
+        "unknown_node"
+    );
+}

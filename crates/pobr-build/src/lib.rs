@@ -45,6 +45,7 @@ pub mod party;
 pub mod reference_check;
 pub mod snapshot;
 pub mod support;
+pub mod tree_convert;
 pub mod usage;
 pub mod xml_build;
 pub mod xml_merge;

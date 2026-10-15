@@ -124,6 +124,9 @@ export function createMockBackend(): PobrBackend {
     async importTradeItems(items) {
       return items.map(() => ({ error: 'Trade item import requires the calculation backend' }));
     },
+    async previewTreeConversion() {
+      throw new Error('Tree conversion requires the calculation backend');
+    },
     async previewTreeEdit() {
       return { valid: false, reason: 'backend_unavailable', result: null };
     },

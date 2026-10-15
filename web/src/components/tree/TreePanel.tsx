@@ -1,3 +1,4 @@
+import { TreeConversionControls } from './TreeConversionControls';
 import { PageHeader } from '../shared/PageHeader';
 import { formatApiError } from '../../api/error';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -59,9 +60,9 @@ export function TreePanel(props: Props) {
       : lang === 'zh-TW'
         ? `此角色使用 ${session.treeVersion} 天賦樹。計算與匯出會保留該版本，歷史天賦樹暫不支援互動編輯和路線規劃。`
         : `此角色使用 ${session.treeVersion} 天赋树。计算与导出会保留该版本，历史天赋树暂不支持交互编辑和路线规划。`;
-    return <section className="ui-page"><p role="status">{text}</p></section>;
+    return <><TreeConversionControls session={session} lang={lang} /><section className="ui-page"><p role="status">{text}</p></section></>;
   }
-  return <EditableTreePanel key={JSON.stringify([session.dataVersion, session.treeVersion])} {...props} />;
+  return <>{active && <TreeConversionControls session={session} lang={lang} />}<EditableTreePanel key={JSON.stringify([session.dataVersion, session.treeVersion])} {...props} /></>;
 }
 
 /** Retain planner inputs and complete receipts, never the interactive canvas. */

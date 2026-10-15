@@ -29,7 +29,9 @@ pub use build_api::{
     rune_catalog_json, skill_metrics_json, translate_lines_to_zh_cn_json, unique_catalog_json,
     unique_item_draft_json,
 };
-pub use build_api::{preview_tree_edit_json, support_groups_compatible_json};
+pub use build_api::{
+    preview_tree_conversion_json, preview_tree_edit_json, support_groups_compatible_json,
+};
 pub use i18n::translate;
 pub use session::calculate_json;
 pub use state::{init_data_from_dir, init_staged_data, is_data_ready, stage_data_file};
@@ -40,7 +42,7 @@ pub use state::{init_data_from_dir, init_staged_data, is_data_ready, stage_data_
 /// compares them at boot (see [`wasm::schema_version`]); a mismatch prompts
 /// a hard refresh — closing the door on "stale frontend cache + new wasm
 /// assets" silently breaking.
-pub const SCHEMA_VERSION: u32 = 14;
+pub const SCHEMA_VERSION: u32 = 15;
 
 /// wasm-bindgen bindings: compiled only under the `wasm` feature, exposing
 /// functions with the same names as the host API to JS.
@@ -233,6 +235,13 @@ pub mod wasm {
     #[wasm_bindgen(js_name = previewTreeEditJson)]
     pub fn preview_tree_edit_json(request_json: &str) -> Result<String, JsError> {
         crate::build_api::preview_tree_edit_json(request_json).map_err(|err| JsError::new(&err))
+    }
+
+    /// Preview conversion of the active passive spec or every spec to current data.
+    #[wasm_bindgen(js_name = previewTreeConversionJson)]
+    pub fn preview_tree_conversion_json(request_json: &str) -> Result<String, JsError> {
+        crate::build_api::preview_tree_conversion_json(request_json)
+            .map_err(|err| JsError::new(&err))
     }
 
     /// JS entry point: `nodePowerJson(requestJson) -> string` (the tree node power heatmap).
