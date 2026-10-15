@@ -1246,5 +1246,58 @@ class SkillSweepTests(unittest.TestCase):
             self.sweep.oracle_result({"mainOutput": {"TotalDPS": "Infinity"}})
 
 
+class OutputCoverageTests(unittest.TestCase):
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location(
+            "output_coverage", REPO / "devs/scripts/output-coverage.py")
+        self.coverage = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.coverage)
+
+    def test_catalog_aliases_and_sidebar_exclusions(self):
+        catalog = self.coverage.catalog_stats('''
+            computed("TotalHitAvg", Cat::HitDamage, Vt::Number, "AverageHit"),
+            computed("Life", Cat::Resource, Vt::Number, "Life"),
+        ''')
+        self.assertEqual(catalog, {"TotalHitAvg": "AverageHit", "Life": "Life"})
+        sidebar = self.coverage.sidebar_stats('''
+            { stat = "Life" },
+            { stat = "Life" },
+            { stat = "MainHand", childStat = "Accuracy" },
+            { stat = "PvpTotalDPS" },
+            { stat = "Spec:LifeInc" },
+            { stat = "SpellDodgeChance" },
+            -- { stat = "OldStat" },
+            local minionDisplayStats = { { stat = "MinionOnly" } }
+        ''')
+        self.assertEqual(sidebar, {"Life", "MainHand.Accuracy"})
+
+    def test_agreement_handles_missing_zero_nonfinite_and_aliases(self):
+        builds = [
+            {"build": "near", "values": {"Avg": 95}, "oracle": {"calcsOutput": {"AverageHit": 100}}},
+            {"build": "far", "values": {"Avg": 80}, "oracle": {"calcsOutput": {"AverageHit": 100}}},
+            {"build": "zero", "values": {"Avg": 0}, "oracle": {"calcsOutput": {"AverageHit": 0}}},
+            {"build": "zero_ref", "values": {"Avg": 3}, "oracle": {"calcsOutput": {"AverageHit": 0}}},
+            {"build": "missing", "values": {}, "oracle": {"calcsOutput": {"AverageHit": 2}}},
+            {"build": "nan", "values": {"Avg": 2}, "oracle": {"calcsOutput": {"AverageHit": "nan"}}},
+        ]
+        row = self.coverage.summarize("Avg", "AverageHit", builds)
+        self.assertEqual((row["both"], row["nonzero"], row["within_5pct"], row["within_10pct"]), (4, 3, 2, 2))
+        self.assertEqual([pair["build"] for pair in row["worst"]], ["zero_ref", "far"])
+        self.assertEqual(self.coverage.oracle_value({"calcsMainHandOutput": {"Accuracy": 123}}, "MainHand.Accuracy"), 123)
+        self.assertIsNone(self.coverage.number(True))
+        self.assertIsNone(self.coverage.number("inf"))
+        json.dumps(row, allow_nan=False)
+
+    def test_holdout_and_nested_holdout_are_rejected(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / "holdout" / "build"
+            path.mkdir(parents=True)
+            (path / "code.txt").write_text("example")
+            with self.assertRaisesRegex(ValueError, "holdout"):
+                self.coverage.build_files([path])
+            with self.assertRaisesRegex(ValueError, "holdout"):
+                self.coverage.build_files([Path(root)])
+
+
 if __name__ == "__main__":
     unittest.main()
