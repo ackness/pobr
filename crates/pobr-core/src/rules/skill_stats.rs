@@ -297,7 +297,7 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
             Modifier::number("DamageGainAsFire", ModType::Base, value)
                 .with_tag(ModTag::multiplier(crate::calc::channel::STAGES, 1.0, None)),
         ]),
-        // Supporting Fire: "Fires {0} volleys" per command, each dealing
+        // Supporting Fire: "{0} Volleys" per command, each dealing
         // the attack's damage. Volley count changes DPS, not each hit.
         "death_from_above_number_of_volleys" => Some(vec![Modifier::number(
             "DPS",
@@ -1318,5 +1318,43 @@ mod tests {
             Some(Vec::new())
         );
         assert!(!is_minion_stat("active_skill_damage_+%_final"));
+    }
+
+    #[test]
+    fn minion_attribute_bonuses_count_complete_player_attribute_groups() {
+        let facts = SummonedMinions {
+            player_strength: 127.0,
+            player_dexterity: 19.0,
+            ..Default::default()
+        };
+        for (stat, divisor, name, expected) in [
+            (
+                "minion_1%_damage_+%_per_X_player_strength",
+                10.0,
+                "Damage",
+                12.0,
+            ),
+            (
+                "active_skill_minion_1%_attack_speed_+%_per_X_player_dexterity",
+                3.0,
+                "AttackSpeed",
+                6.0,
+            ),
+            (
+                "minion_1%_area_of_effect_+%_per_X_player_dexterity",
+                3.0,
+                "AreaOfEffect",
+                6.0,
+            ),
+        ] {
+            let mods = minion_modifiers(stat, divisor, facts).expect("minion stat");
+            assert_eq!(mods[0].name.as_str(), name);
+            assert_eq!(mods[0].value.as_number(), Some(expected));
+            assert_eq!(
+                skill_modifiers(stat, divisor),
+                Some(Vec::new()),
+                "the summoner gains nothing"
+            );
+        }
     }
 }
