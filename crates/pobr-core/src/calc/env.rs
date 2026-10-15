@@ -184,6 +184,20 @@ impl Env {
             origin.picked_monster,
         );
         super::write_summoned_minion_multipliers(&mut self.player.mod_db, limit, &def.id);
+        let kind_count = def.limit.to_pob2_str();
+        if !kind_count.is_empty() {
+            self.player.mod_db.add_mod(
+                crate::Modifier::number(
+                    format!("Multiplier:{kind_count}"),
+                    ModType::Base,
+                    f64::from(limit),
+                )
+                .with_origin(ModifierSource::new(SourceId::new(
+                    SourceKind::GameConstant,
+                    format!("minion.limit.{}", def.id),
+                ))),
+            );
+        }
         let mut actor = minion_actor_from_context(&ctx);
         // A minion created while the calculation notes its reads is noted too.
         if self.player.mod_db.tracks_reads() {

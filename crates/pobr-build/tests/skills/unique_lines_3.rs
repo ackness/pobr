@@ -168,12 +168,8 @@ fn temporary_minion_limit_increases_the_count_and_predators_mark_damage() {
             &["Temporary Minion Skills have +2 to Limit of Minions summoned"],
         );
         assert_eq!(
-            changed
-                .mod_db()
-                .get_multiplier("SummonedMinion", changed.config())
-                - base
-                    .mod_db()
-                    .get_multiplier("SummonedMinion", base.config()),
+            changed.config().multiplier("SummonedMinion")
+                - base.config().multiplier("SummonedMinion"),
             if temporary { 2.0 } else { 0.0 },
             "{skill}"
         );

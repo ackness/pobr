@@ -125,3 +125,6 @@ mod unique_lines_2;
 
 #[path = "skills/unique_lines_3.rs"]
 mod unique_lines_3;
+
+#[path = "skills/minion_counts.rs"]
+mod minion_counts;

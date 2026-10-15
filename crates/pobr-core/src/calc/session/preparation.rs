@@ -207,22 +207,10 @@ impl CalculationSession {
         self.set_stat("EmptyCharms", empty);
     }
 
-    /// Counts the minions in the character's Presence, for "for each Minion
-    /// in your Presence" (`MinionPresenceCount`): the minions the calculation
-    /// created ([`add_minion_from_def`](Self::add_minion_from_def)), or the
-    /// configured "# of Minions in your Presence", a combat input read as in
-    /// combat when the calculation is. Call once, after the last minion is
-    /// created: the count is read from the context, never again from the
-    /// modifiers it came from. No minions leave it unset, so a line that
-    /// counts them still shows as unprovided.
+    /// Resolve "per Minion" and "in your Presence" from the created minions or
+    /// explicit configuration. Call after the last minion is created; player and
+    /// minion calculations share the snapshot without adding its source again.
     pub fn bridge_minion_presence(&mut self) {
-        let mut cfg = self.env.cfg.clone();
-        let in_combat = cfg.mode_combat;
-        cfg.conditions.entry("Combat".into()).or_insert(in_combat);
-        let db = &self.env.player.mod_db;
-        let count = db.get_multiplier("MinionPresenceCount", &cfg);
-        if count != 0.0 {
-            self.set_multiplier("MinionPresenceCount", count);
-        }
+        super::super::minion::bridge_count_multipliers(&self.env.player.mod_db, &mut self.env.cfg);
     }
 }

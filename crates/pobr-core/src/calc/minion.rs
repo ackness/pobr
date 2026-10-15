@@ -642,20 +642,8 @@ pub const GIGANTIC: &str = "Gigantic";
 
 // Count limit / per-minion multiplier (agent-docs/minions.md §4.1)
 
-/// Reads the limit from a `MinionDef` and exposes it as `Multiplier:SummonedMinion` + `MinionPresenceCount`.
-///
-/// PoB2 `CalcPerform.lua`'s flow:
-/// ```lua
-/// limit = floor(Override(limitName) or (skillModList:Sum(limitName) * More(ActiveMinionLimit)))
-/// modDB:NewMod("Multiplier:SummonedMinion", "BASE", limit, ...)
-/// modDB:NewMod("Multiplier:MinionPresenceCount", "BASE", limit, ...)
-/// ```
-///
-/// This function is a simplified, pure-function version: given a final
-/// `limit` count, it writes these two Multiplier mods into the **player**
-/// `ModDb` (held by the caller), for "per Minion / per Minion in Presence" mods to reference.
-///
-/// Source: agent-docs/minions.md §4.1; PoB2 CalcPerform.lua's Limit→Multiplier section.
+/// Records the created population for "per Minion" and Presence modifiers.
+/// The calculation bridges these source values once before either actor is evaluated.
 pub fn write_summoned_minion_multipliers(player_db: &mut ModDb, limit: u32, def_id: &str) {
     let src = SourceId::new(SourceKind::GameConstant, format!("minion.limit.{}", def_id));
     let origin = ModifierSource::new(src);
@@ -671,6 +659,53 @@ pub fn write_summoned_minion_multipliers(player_db: &mut ModDb, limit: u32, def_
         )
         .with_origin(origin),
     );
+}
+
+/// Resolve counts into one snapshot shared by player and minion calculations.
+/// Explicit counts replace the created population; Presence can have its own count.
+/// An existing snapshot is not added to the source population again.
+pub(crate) fn bridge_count_multipliers(db: &ModDb, cfg: &mut CalcConfig) {
+    let mut scope = cfg.clone();
+    scope
+        .conditions
+        .entry("Combat".into())
+        .or_insert(scope.mode_combat);
+    let resolve = |var: &str| {
+        let name = format!("Multiplier:{var}");
+        db.override_(&scope, &name)
+            .or_else(|| scope.multiplier_if_set(var))
+            .or_else(|| {
+                let count = db.sum(ModType::Base, &scope, &[ModName::from(name)]);
+                (count != 0.0).then_some(count)
+            })
+    };
+    let summoned = resolve("SummonedMinion");
+    let presence = db
+        .override_(&scope, "Multiplier:MinionPresenceCount")
+        .or_else(|| scope.multiplier_if_set("MinionPresenceCount"))
+        .or(summoned)
+        .or_else(|| resolve("MinionPresenceCount"));
+    for (var, count) in [
+        ("SummonedMinion", summoned),
+        ("MinionPresenceCount", presence),
+    ] {
+        if let Some(count) = count {
+            cfg.multipliers.insert(var.into(), count);
+            cfg.stats.insert(var.into(), count);
+        }
+    }
+    // "per Summoned <kind>" uses that kind's created population, not the total.
+    for var in [
+        "ActiveGolemLimit",
+        "ActiveRagingSpiritLimit",
+        "ActiveSentinelOfPurityLimit",
+        "ActiveSkeletonLimit",
+    ] {
+        if let Some(count) = resolve(var) {
+            cfg.multipliers.insert(var.into(), count);
+            cfg.stats.insert(var.into(), count);
+        }
+    }
 }
 
 /// Derives the monster level corresponding to a summoning gem from

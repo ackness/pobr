@@ -798,3 +798,44 @@ fn per_unreserved_life_modifiers_read_the_pool_less_its_reservation() {
     );
     assert!(session.unprovided_multipliers().is_empty());
 }
+
+#[test]
+fn summoned_count_snapshot_is_idempotent_and_honors_zero_and_combat_overrides() {
+    use pobr_core::{CalcConfig, ModTag, Modifier};
+    use pobr_data::prelude::ModType;
+    for (combat, explicit, expected) in [
+        (true, None, 4.0),
+        (true, Some(0.0), 0.0),
+        (true, Some(2.0), 2.0),
+        (false, Some(2.0), 4.0),
+    ] {
+        let mut s = session(MinimalInput {
+            base_hit_min: 100.0,
+            base_hit_max: 100.0,
+            ..Default::default()
+        })
+        .with_config(CalcConfig::attack().with_mode_combat(combat));
+        s.add_modifiers([Modifier::number(
+            "Multiplier:SummonedMinion",
+            ModType::Base,
+            4.0,
+        )]);
+        if let Some(count) = explicit {
+            s.add_modifiers([Modifier::number(
+                "Multiplier:SummonedMinion",
+                ModType::Override,
+                count,
+            )
+            .with_tag(ModTag::condition("Combat", false))]);
+        }
+        s.add_modifier_texts(["10% increased Damage per Minion"])
+            .unwrap();
+        s.bridge_minion_presence();
+        s.bridge_minion_presence();
+        assert_eq!(s.config().multiplier("SummonedMinion"), expected);
+        assert_eq!(s.config().multiplier("MinionPresenceCount"), expected);
+        assert!(
+            (s.perform_minimal().unwrap().total_hit_avg - (100.0 + expected * 10.0)).abs() < 1e-9
+        );
+    }
+}

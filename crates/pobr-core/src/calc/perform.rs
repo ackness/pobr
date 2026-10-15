@@ -73,6 +73,8 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         ));
     }
 
+    super::minion::bridge_count_multipliers(&env.player.mod_db, &mut env.cfg);
+
     super::env_finalize::env_finalize(env); // M3 env-finalize stage (T0 is entirely no-op; blueprint §1 D1)
 
     // Projectile speed → projectile damage conversion (vendor CalcOffence.lua:840-845: when the
@@ -308,12 +310,9 @@ fn inject_companion_life(env: &mut Env) {
     );
 }
 
-/// The context a minion's stats are calculated in: the character's, with the
-/// minion's skill in place of the character's. The minion count cap (the
-/// player's `Multiplier:SummonedMinion`, written by add_minion_from_def) is
-/// injected as a multiplier so minion mods like `Damage per Summoned Minion`
-/// can reference it. A minion whose skill is not known keeps the character's
-/// skill.
+/// A minion keeps the resolved player count snapshot and uses its own skill.
+/// The count is already bridged: reading its source modifiers again would add
+/// the created population twice and discard the independent Presence override.
 pub(crate) fn minion_cfg(env: &Env, minion: &super::Actor) -> CalcConfig {
     let mut cfg = env.cfg.clone();
     if let Some(skill) = minion
@@ -332,13 +331,7 @@ pub(crate) fn minion_cfg(env: &Env, minion: &super::Actor) -> CalcConfig {
             cfg = cfg.with_condition(crate::rules::skill_stats::COMMAND_SKILL, true);
         }
     }
-    let minion_limit = env.player.mod_db.get_multiplier("SummonedMinion", &env.cfg);
-    if minion_limit > 0.0 {
-        cfg.with_multiplier("SummonedMinion", minion_limit)
-            .with_multiplier("MinionPresenceCount", minion_limit)
-    } else {
-        cfg
-    }
+    cfg
 }
 
 /// "Your Minions are Gigantic" (`minions_are_gigantic`, the minion's
@@ -452,7 +445,7 @@ fn perform_minions(env: &mut Env) {
         return;
     }
 
-    let minion_limit = env.player.mod_db.get_multiplier("SummonedMinion", &env.cfg);
+    let minion_limit = env.cfg.multiplier("SummonedMinion");
 
     // Cross-Actor attribution: player source (the count cap) → minion output; builds one source
     // node for the trace DAG to connect to.
