@@ -13,6 +13,7 @@ import {
   buildPassiveGraph,
   classStartSkill,
 } from '../../lib/passiveGraph';
+import { NODE_RADIUS, clampView, isAttributeNode as isAttrNode, passiveTreeEdges, treeExtent, type ViewBox } from '../../lib/treeGeometry';
 import { previewDiff, type DiffEntry } from '../../lib/compare';
 import { DiffList } from '../shared/DiffList';
 import { AppSelect } from '../shared/AppSelect';
@@ -29,15 +30,6 @@ interface Props {
   onJewelSearch?: (socket: number) => void;
 }
 
-const NODE_RADIUS: Record<string, number> = {
-  normal: 40,
-  notable: 65,
-  keystone: 90,
-  mastery: 50,
-  jewel_socket: 55,
-  ascendancy_start: 60,
-};
-
 /** 节点内技能图标半径 = 圆半径 × 此系数。 */
 const ICON_SCALE = 1.05;
 /** 精通徽记是自带外框的整盘，铺满节点。 */
@@ -51,41 +43,6 @@ const FRAME_SCALE: Record<string, number> = {
   jewel_socket: 1.7,
   ascendancy_start: 1.6,
 };
-
-interface ViewBox {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-/**
- * 钳制视口，防止把树平移到视野外露出大片空白。天赋树近似圆形，故约束视口中心到
- * 树中心的距离 ≤ 内切圆半径 −半视口（缩得比树大→锁中心；放大后可到边缘看边缘节点）。
- * 用圆形而非矩形，避免拖到（本就是空的）包围盒四角。
- */
-function clampView(v: ViewBox, extent: ViewBox): ViewBox {
-  const tcx = extent.x + extent.w / 2;
-  const tcy = extent.y + extent.h / 2;
-  const radius = Math.min(extent.w, extent.h) / 2;
-  const half = Math.max(v.w, v.h) / 2;
-  const maxOff = Math.max(0, radius - half * 0.5); // 允许边缘节点接近视口中心
-  const dx = v.x + v.w / 2 - tcx;
-  const dy = v.y + v.h / 2 - tcy;
-  const dist = Math.hypot(dx, dy);
-  if (dist <= maxOff || dist === 0) return v;
-  const cx = tcx + (dx / dist) * maxOff;
-  const cy = tcy + (dy / dist) * maxOff;
-  return { ...v, x: cx - v.w / 2, y: cy - v.h / 2 };
-}
-
-/** 属性小点判定（`+5 to any Attribute`）。 */
-function isAttrNode(node: PassiveNode): boolean {
-  return (
-    node.name === 'Attribute' &&
-    (node.stats ?? []).some((line) => line.includes('any') && line.includes('Attribute'))
-  );
-}
 
 const JEWEL_TEMPLATE = 'Rarity: RARE\nMy Jewel\nEmerald\n+50 to maximum Life';
 
@@ -472,33 +429,9 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
     session.setAttributeChoices(next);
   };
 
-  const edges = useMemo(() => {
-    const out: { from: number; to: number; x1: number; y1: number; x2: number; y2: number; active: boolean }[] = [];
-    // GGG 的 `connections` 是**单向 out 边**（每条只出现一次，方向任意）——
-    // 不能按 id 大小去重（会丢一半边），用无向键 seen 集合。
-    const seen = new Set<string>();
-    for (const node of placed) {
-      for (const target of node.connections ?? []) {
-        const other = byId.get(target);
-        if (!other) continue;
-        const key =
-          node.skill < target ? `${node.skill}:${target}` : `${target}:${node.skill}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        // 飞升与主树分区渲染在同一平面；跨区连线跳过（坐标相距过远的伪边）。
-        if ((node.ascendancy_id ?? null) !== (other.ascendancy_id ?? null)) continue;
-        out.push({
-          from: node.skill, to: target,
-          x1: node.x!,
-          y1: node.y!,
-          x2: other.x!,
-          y2: other.y!,
-          active: allocated.has(node.skill) && allocated.has(target),
-        });
-      }
-    }
-    return out;
-  }, [placed, byId, allocated]);
+  const edges = useMemo(() => passiveTreeEdges(placed).map(edge => ({ ...edge,
+    active: allocated.has(edge.from) && allocated.has(edge.to),
+  })), [placed, allocated]);
 
   // ── 渲染性能：节点/连线子树 memo 化 ─────────────────────────────────────
   // 拖拽/缩放/悬停每帧都 setState；若子树不 memo，React 每帧要 diff 近万个
@@ -661,17 +594,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
     );
   }, [placed, allocated, filledJewelSockets, searchHits, selectedSkill, heatStat, heatData, heatMax, handleNodeClick, art, plannedNodes, freeNodes, treeEffects, owner, previewNodes]);
 
-  const fullExtent = useMemo((): ViewBox | null => {
-    if (placed.length === 0) return null;
-    const xs = placed.map((n) => n.x!);
-    const ys = placed.map((n) => n.y!);
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
-    const pad = 400;
-    return { x: minX - pad, y: minY - pad, w: maxX - minX + pad * 2, h: maxY - minY + pad * 2 };
-  }, [placed]);
+  const fullExtent = useMemo(() => treeExtent(placed), [placed]);
 
   useEffect(() => {
     if (!plannedNodes || !fullExtent) return;

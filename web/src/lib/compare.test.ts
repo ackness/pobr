@@ -151,3 +151,38 @@ test('sidebar multiplier formats use percentage-point deltas and pierce all-targ
   expect(chance.percent).toBeCloseTo(50);
   expect(compareStats(stats([['PierceCount', 1]]), stats([['PierceCount', 100]]))[0]).toMatchObject({ delta: null, percent: null, changed: true });
 });
+
+import { compareTreeAllocations, treeAllocationTotals } from './compare';
+import type { PassiveNode } from '../api/types';
+
+const passive = (skill: number, patch: Partial<PassiveNode> = {}): PassiveNode => ({ skill, id: String(skill), kind: 'normal', x: skill * 100, y: 0, ...patch });
+
+describe('tree comparison', () => {
+  test('classifies a union without duplicate allocations and preserves jewels on both sides, including inactive sockets', () => {
+    const a = { ...state(), allocatedNodes: [1, 2, 2], jewels: [{ socket_node: 2, text: 'A jewel' }] };
+    const b = { ...state(), allocatedNodes: [2, 3], jewels: [{ socket_node: 2, text: 'B jewel' }, { socket_node: 4, text: 'Inactive' }] };
+    const snapshot = structuredClone([a, b]);
+    const nodes = [passive(1), passive(2, { kind: 'jewel_socket' }), passive(3), passive(4, { kind: 'jewel_socket' })];
+    const result = compareTreeAllocations(a, b, nodes, nodes, true);
+    expect(result.nodes.map(entry => [entry.key, entry.side])).toEqual([['1', 'a'], ['2', 'both'], ['3', 'b'], ['4', 'none']]);
+    expect(result.nodes[1]).toMatchObject({ jewelA: 'A jewel', jewelB: 'B jewel' });
+    expect(result.nodes[3]).toMatchObject({ side: 'none', jewelB: 'Inactive' });
+    expect([a, b]).toEqual(snapshot);
+  });
+  test('does not conflate matching numeric IDs or invent coordinates across tree versions', () => {
+    const a = { ...state(), allocatedNodes: [1, 99] }, b = { ...state(), allocatedNodes: [1] };
+    const current = passive(1, { name: 'Current' }), historical = passive(1, { name: 'Old', x: undefined, y: undefined });
+    const result = compareTreeAllocations(a, b, [current], [historical], false);
+    expect(result.nodes.map(entry => [entry.key, entry.side, entry.node.name])).toEqual([['a:1', 'a', 'Current'], ['b:1', 'b', 'Old']]);
+    expect(result.nodes[1].node.x).toBeUndefined();
+    expect(result.unplacedA).toEqual([99]);
+    expect(result.unplacedB).toEqual([1]);
+  });
+  test('counts unique passive/ascendancy points without starts, separates saved choices and diagnoses unknown IDs', () => {
+    const nodes = [passive(1, { name: 'RANGER' }), passive(2, { name: 'Attribute', stats: ['+5 to any Attribute'] }),
+      passive(3, { ascendancy_id: 'Deadeye', kind: 'ascendancy_start' }), passive(4, { ascendancy_id: 'Deadeye' }),
+      passive(5, { name: 'Attribute', stats: ['+5 to any Attribute'] }), passive(6, { kind: 'jewel_socket' })];
+    const build = { ...state(), allocatedNodes: [1, 2, 2, 3, 4, 5, 6, 99], attributeChoices: { '2': 'int' as const, '100': 'str' as const } };
+    expect(treeAllocationTotals(build, nodes)).toEqual({ passive: 3, ascendancy: 1, unknown: [99], attributes: { str: 0, dex: 0, int: 1, unassigned: 1 } });
+  });
+});

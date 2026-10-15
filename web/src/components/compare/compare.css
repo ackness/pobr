@@ -18,3 +18,27 @@
 .compare-line-after { background: #26835d33; color: #9fe8c3; }
 .compare-panel li { overflow-wrap: anywhere; margin: .25rem 0; }
 @media (max-width: 700px) { .compare-controls, .compare-pair { grid-template-columns: 1fr; } .compare-panel { padding: .6rem; } }
+.compare-tree-legend, .compare-tree-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
+.compare-tree-legend { list-style: none; padding: 0; }
+.compare-tree-legend [data-side="a"] { color: #ffba75; }
+.compare-tree-legend [data-side="b"] { color: #80cdff; }
+.compare-tree-legend [data-side="both"] { color: #ddadff; }
+.compare-tree-warning { color: #ffcc85; margin: .6rem 0; }
+.compare-tree-canvas { display: block; width: 100%; height: 520px; border: 1px solid var(--border-subtle); background: #101218; touch-action: none; cursor: grab; }
+.compare-tree-canvas:active { cursor: grabbing; }
+.compare-tree-edge { fill: none; stroke: #52596a; stroke-width: 10; }
+.compare-tree-edge[data-side="a"] { stroke: #ffba75; stroke-width: 20; }
+.compare-tree-edge[data-side="b"] { stroke: #80cdff; stroke-width: 20; stroke-dasharray: 40 20; }
+.compare-tree-edge[data-side="both"] { stroke: #ddadff; stroke-width: 24; }
+.compare-tree-node { cursor: pointer; fill: #242c3d; stroke: #70798c; stroke-width: 8; }
+.compare-tree-node[data-side="a"] { fill: #ffba75; stroke: #ffba75; }
+.compare-tree-node[data-side="b"] { fill: #80cdff; stroke: #80cdff; }
+.compare-tree-node[data-side="both"] { fill: #ddadff; stroke: #ddadff; }
+.compare-tree-node .compare-tree-ring { fill: none; }
+.compare-tree-node[data-selected], .compare-tree-node:focus { stroke: white; stroke-width: 18; outline: none; }
+.compare-tree-node [data-jewel="a"] { fill: #ffba75; stroke: #101218; stroke-width: 5; }
+.compare-tree-node [data-jewel="b"] { fill: #80cdff; stroke: #101218; stroke-width: 5; }
+.compare-tree-inspect { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1rem; }
+.compare-tree-inspect select { max-width: 100%; }
+.compare-node-details { margin-top: 1rem; padding: .75rem; background: #ffffff08; }
+@media (max-width: 700px) { .compare-tree-canvas { height: 380px; } }

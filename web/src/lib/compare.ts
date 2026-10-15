@@ -3,6 +3,8 @@
  * PoB2 的装备对比 / 天赋点收益提示都用这一个原语。
  */
 
+import { hasPosition, isAttributeNode } from './treeGeometry';
+import { classStartSkill } from './passiveGraph';
 import { STAT_SECTIONS, formatStatValue, type StatFormat, type Lang } from './statDisplay';
 import { switchWeapons } from './weaponSets';
 import { getBackend } from '../api/backend';
@@ -211,4 +213,57 @@ export function copySection(a: StageState, b: StageState, section: CopySection):
     }
   }
   return { ...a, socketGroups, annotations, params: { ...a.params, main_socket_group: main !== undefined && main >= 0 ? main : undefined } };
+}
+
+export type AllocationSide = 'a' | 'b' | 'both' | 'none';
+export interface OverlayNode {
+  key: string;
+  node: import('../api/types').PassiveNode;
+  side: AllocationSide;
+  a?: import('../api/types').PassiveNode;
+  b?: import('../api/types').PassiveNode;
+  jewelA?: string;
+  jewelB?: string;
+}
+
+/** IDs are shared identities only inside the same version. Missing coordinates stay missing. */
+export function compareTreeAllocations(a: StageState, b: StageState,
+  nodesA: import('../api/types').PassiveNode[], nodesB: import('../api/types').PassiveNode[], sameVersion: boolean) {
+  const aa = new Set(a.allocatedNodes), bb = new Set(b.allocatedNodes);
+  const byA = new Map(nodesA.map(node => [node.skill, node])), byB = new Map(nodesB.map(node => [node.skill, node]));
+  const jewelsA = new Map(a.jewels.map(jewel => [jewel.socket_node, jewel.text]));
+  const jewelsB = new Map(b.jewels.map(jewel => [jewel.socket_node, jewel.text]));
+  const nodes: OverlayNode[] = [];
+  if (sameVersion) {
+    for (const id of new Set([...byA.keys(), ...byB.keys()])) {
+      const nodeA = byA.get(id), nodeB = byB.get(id);
+      nodes.push({ key: String(id), node: nodeA ?? nodeB!, a: nodeA, b: nodeB,
+        side: aa.has(id) ? bb.has(id) ? 'both' : 'a' : bb.has(id) ? 'b' : 'none',
+        jewelA: jewelsA.get(id), jewelB: jewelsB.get(id) });
+    }
+  } else {
+    for (const [label, catalog, allocated, jewels] of [['a', nodesA, aa, jewelsA], ['b', nodesB, bb, jewelsB]] as const) {
+      for (const node of catalog) nodes.push({ key: `${label}:${node.skill}`, node, [label]: node,
+        side: allocated.has(node.skill) ? label : 'none', [label === 'a' ? 'jewelA' : 'jewelB']: jewels.get(node.skill) });
+    }
+  }
+  const missing = (ids: Set<number>, catalog: Map<number, import('../api/types').PassiveNode>) => [...ids].filter(id => {
+    const node = catalog.get(id);
+    return !node || !hasPosition(node);
+  }).sort((x, y) => x - y);
+  return { nodes, unplacedA: missing(aa, byA), unplacedB: missing(bb, byB) };
+}
+
+export function treeAllocationTotals(state: StageState, nodes: import('../api/types').PassiveNode[]) {
+  const byId = new Map(nodes.map(node => [node.skill, node]));
+  const starts = new Set(['Druid', 'Mercenary', 'Ranger', 'Warrior', 'Monk', 'Witch'].map(name => classStartSkill(nodes, name)));
+  const totals = { passive: 0, ascendancy: 0, unknown: [] as number[], attributes: { str: 0, dex: 0, int: 0, unassigned: 0 } };
+  for (const id of new Set(state.allocatedNodes)) {
+    const node = byId.get(id);
+    if (!node) { totals.unknown.push(id); continue; }
+    if (starts.has(id) || node.kind === 'ascendancy_start') continue;
+    if (node.ascendancy_id) totals.ascendancy++; else totals.passive++;
+    if (isAttributeNode(node)) totals.attributes[state.attributeChoices[String(id)] ?? 'unassigned']++;
+  }
+  return totals;
 }

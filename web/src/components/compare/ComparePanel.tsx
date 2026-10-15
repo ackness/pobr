@@ -4,12 +4,13 @@ import { toRequest } from '../../hooks/useBuildSession';
 import { useSkillCatalog } from '../../hooks/useSkillName';
 import { formatApiError } from '../../api/error';
 import type { SocketGroupInput } from '../../api/types';
-import { allocationDiff, compareBuilds, configDifferences, copySection, diffText, formatComparisonDelta, itemDifferences, resolvedTreeVersion, skillDifferences, weaponDifferences, type ConfigBasis, type CopySection } from '../../lib/compare';
+import { compareBuilds, configDifferences, copySection, diffText, formatComparisonDelta, itemDifferences, resolvedTreeVersion, skillDifferences, weaponDifferences, type ConfigBasis, type CopySection } from '../../lib/compare';
 import { bindT, t, type Lang } from '../../lib/i18n';
 import { skillDisplayName } from '../../lib/skillNames';
 import { STAT_SECTIONS, formatStatValue } from '../../lib/statDisplay';
 import { PageHeader } from '../shared/PageHeader';
 import './compare.css';
+import { TreeComparison } from './TreeComparison';
 
 export function ComparePanel({ session, lang }: { session: BuildSession; lang: Lang }) {
   const tt = bindT(lang);
@@ -135,13 +136,8 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
       ].filter(row => JSON.stringify(row.before) !== JSON.stringify(row.after)).map(row => <article className="compare-difference" key={row.key} data-config-key={row.key}>
         <header><h4>{row.key}</h4>{applyButton(row.action)}</header><div className="compare-pair"><pre>A · {showValue(row.before)}</pre><pre>B · {showValue(row.after)}</pre></div>
       </article>)}</section>
-      <section><h3>{tt('compare.passives')}</h3>
-        {resolvedTreeVersion(a.saved.state.treeVersion, session.dataVersion) !== resolvedTreeVersion(b.saved.state.treeVersion, session.dataVersion) && <p role="note">{tt('compare.treeMismatch')}</p>}
-        <p>A: {new Set(a.saved.state.allocatedNodes).size} · B: {new Set(b.saved.state.allocatedNodes).size}</p>
-        {Object.entries(allocationDiff(a.saved.state.allocatedNodes, b.saved.state.allocatedNodes)).map(([kind, nodes]) => <details key={kind}>
-          <summary>{tt(kind === 'added' ? 'compare.added' : kind === 'removed' ? 'compare.removed' : 'compare.both')} ({nodes.length})</summary><p>{nodes.join(', ') || '—'}</p>
-        </details>)}
-      </section>
+      <TreeComparison a={a.saved.state} b={b.saved.state} before={value?.before} after={value?.after}
+        dataVersion={session.dataVersion} meta={session.treeMeta} lang={lang} />
     </>}
   </section>;
 }
