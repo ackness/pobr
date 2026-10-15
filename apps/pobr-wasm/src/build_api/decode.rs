@@ -1,6 +1,6 @@
 //! Build decoding: PoB Build Code -> structured build JSON
-//! (`decode_build_json`), plus a China-server `.build` file -> an
-//! isomorphic `BuildJson` (`decode_build_file_json`).
+//! (`decode_build_json`), plus current game planner and legacy China-server
+//! `.build` files (`decode_build_file_json`).
 
 use std::collections::BTreeMap;
 
@@ -15,8 +15,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::state;
 
+#[path = "planner_file.rs"]
+mod planner_file;
 #[path = "wegame.rs"]
 mod wegame;
+pub use planner_file::encode_build_file_json;
 pub use wegame::import_trade_items_json;
 
 // 0.1 decode_build_json
@@ -659,6 +662,9 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
     }
     if value.get("format").is_some() {
         return wegame::decode(value);
+    }
+    if value.get("items").is_none() && value.get("name").is_some() {
+        return planner_file::decode(value);
     }
     let file: CnBuildFile = serde_json::from_value(value)
         .map_err(|e| super::ApiError::decode_error(format!("invalid .build json: {e}")))?;

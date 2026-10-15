@@ -59,6 +59,9 @@ export function createMockBackend(): PobrBackend {
         })),
       };
     },
+    async encodeBuildFile() {
+      throw new Error("Build Planner export requires the WASM backend");
+    },
     async encodeBuild() {
       return 'MOCK_POB_CODE';
     },

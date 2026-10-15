@@ -484,6 +484,15 @@ test('complete comparison edits survive saved-session parsing without source con
   expect(restored.state.params.config_inputs).toEqual({ zero: 0 });
 });
 
+test('planner source survives saves without entering calculation requests', () => {
+  const plannerSource = JSON.stringify({ name: 'Guide', inventory_slots: [{ inventory_id: 'Weapon1', additional_text: 'Choose a bow' }] });
+  const restored = parseState({ plannerSource })!;
+  expect(restored.state.plannerSource).toBe(plannerSource);
+  expect(toRequest(restored.state)).not.toHaveProperty('plannerSource');
+  const workspace = parseWorkspace(createWorkspace(restored), parseSaved)!;
+  expect(workspace.builds[0].stages[0].saved.state.plannerSource).toBe(plannerSource);
+});
+
 test('selecting a named config changes only configuration and its persisted XML base', () => {
   const current = { ...saved.state, params: { ...saved.state.params, main_socket_group: 4, extra_modifiers: ['old'] } };
   const decoded = { code: 'selected-code', config_inputs: { enemyIsBoss: 'Pinnacle', future: false },

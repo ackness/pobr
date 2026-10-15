@@ -9,7 +9,7 @@
  * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
  * 任何破坏性形状变更两侧同时 +1；boot 时握手校验（见 wasmBackend.ts）。
  */
-export const EXPECTED_SCHEMA_VERSION = 11;
+export const EXPECTED_SCHEMA_VERSION = 13;
 
 // ---------------------------------------------------------------------------
 // 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）
@@ -146,10 +146,13 @@ export interface CustomModifierBlock {
   text: string;
 }
 
+export interface BuildPlannerExport { files: { filename: string; content: string }[]; warnings: string[] }
+
 export interface NamedSetJson { id: number; title: string }
 export interface SetSelection { tree?: number | null; item?: number | null; skill?: number | null; config?: number | null }
 
 export interface BuildJson {
+  planner_source?: string;
   config_sets?: NamedSetJson[];
   active_config_set?: number;
   skill_sets?: NamedSetJson[];
@@ -318,7 +321,7 @@ export interface NodePowerEntry {
   skill: number;
   /** 单点试加后目标属性的增量（可为负）。 */
   delta: number;
-  /** 距已加点前沿的 BFS 步数（1 = 相邻）。 */
+  /** 距已加点前沿的 BFS 步数（1 = 相邻；显式单点探测为 0，路线成本由 planner 提供）。 */
   distance: number;
 }
 

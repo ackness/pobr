@@ -14,6 +14,7 @@ import type {
   AttributionResponse,
   LineUsageResponse,
   BuildJson,
+  BuildPlannerExport,
   SetSelection,
   SelectedLoadoutJson,
   CalculateBuildRequest,
@@ -66,7 +67,9 @@ export interface PobrBackend {
     name?: string,
     target?: SetSelection & { kind?: 'config' | 'skill' },
   ): Promise<string>;
-  /** 解析国服导出的 `.build` 文件（JSON 文本）。 */
+  /** Current game planner format, one file per selected source loadout. */
+  encodeBuildFile(request: { code: string; name: string; all_loadouts: boolean; source?: string }): Promise<BuildPlannerExport>;
+  /** Current planner and legacy China-server .build JSON. */
   decodeBuildFile(content: string): Promise<BuildJson>;
   importTradeItems(items: unknown[]): Promise<{ text?: string; warnings?: string[]; error?: string }[]>;
   calculateBuild(request: CalculateBuildRequest): Promise<CalculateBuildResponse>;
@@ -107,6 +110,7 @@ export interface PobrBackend {
     request: CalculateBuildRequest,
     powerStat: string,
     maxDepth: number,
+    nodes?: number[],
   ): Promise<NodePowerResponse>;
   /** 通用变体评估（寻优框架计算面：变体 → 全量重算 → 属性值；打分在前端）。 */
   optimizeVariants(request: OptimizeVariantsRequest): Promise<OptimizeVariantsResponse>;

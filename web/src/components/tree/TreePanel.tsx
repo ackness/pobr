@@ -21,6 +21,7 @@ import { NoteEditor } from '../shared/NoteEditor';
 import { TreeOptimizer, useTreeOptimizer, type TreeOptimizerState } from './TreeOptimizer';
 import type { PassivePlan } from '../../lib/passivePlanner';
 import './tree.css';
+import { NodePowerTable } from './NodePowerTable';
 
 interface Props {
   session: BuildSession;
@@ -266,7 +267,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
       'TotalDPS', 'Life', 'EnergyShield', 'TotalEHP', 'Mana',
       'Armour', 'Evasion', 'Spirit',
     ];
-    const present = new Set((session.calc?.stats ?? []).map((s) => s.id));
+    const present = new Set((session.calc?.stats ?? []).filter(s => Number.isFinite(s.value)).map((s) => s.id));
     return CANDIDATES.filter((id) => present.has(id));
   }, [session.calc]);
 
@@ -895,7 +896,8 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
             aria-label={tt('tree.heat')}
             onChange={(e) => {
               setHeatStat(e.target.value);
-              if (!e.target.value) setHeatData(null);
+              setHeatData(null);
+              setHeatVersion(-1);
             }}
           >
             <option value="">{tt('tree.heatOff')}</option>
@@ -1229,6 +1231,15 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
           </span>
       </div>
       {Boolean(treeEffects?.warnings.length) && <p className="tree-hint" role="status">{tt('tree.jewelSeedMissing')}</p>}
+      <NodePowerTable session={session} nodes={nodes ?? []} lang={lang}
+        stat={heatStat || 'Life'} stats={heatStatOptions}
+        onStat={stat => { setHeatStat(stat); setHeatData(null); setHeatVersion(-1); }}
+        onFocus={node => {
+          setSelectedSkill(node.skill); setAttributeDraft(null); setAttrPicker(null);
+          const w = Math.min(view.w, 6000), h = w / view.w * view.h;
+          setViewBox({ x: node.x! - w / 2, y: node.y! - h / 2, w, h });
+          svgRef.current?.scrollIntoView({ block: 'center' });
+        }} />
       <TreeOptimizer planner={planner} />
       {Object.keys(session.editorDrafts).filter(key => key.startsWith('jewel:')).map(key => (
         <button key={key} onClick={() => setJewelSocket(Number(key.slice(6)))}>

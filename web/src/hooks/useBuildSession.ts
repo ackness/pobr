@@ -53,6 +53,7 @@ export interface CalcParams {
 
 /** 会话完整可编辑状态（重算请求由此派生）。 */
 interface BuildState {
+  plannerSource?: string;
   /** Complete edited snapshot: source XML is metadata, not a source of missing overrides. */
   sourceBackfillComplete?: boolean;
   treeVersion?: string | null;
@@ -148,6 +149,7 @@ export interface BuildSession {
   exportSession: () => string;
   /** 编辑态 → PoB2 分享 code（可粘回 PoB2 / 二次导入）。 */
   exportCode: () => Promise<string>;
+  exportBuildFiles: (name: string, all: boolean) => Promise<import('../api/types').BuildPlannerExport>;
   /** 从导出的 JSON 恢复会话；非法输入抛错。 */
   importSession: (json: string, destination?: ImportDestination) => void;
   importCode: (code: string, options?: ImportOptions) => Promise<boolean>;
@@ -427,6 +429,7 @@ export function parseSaved(json: string): SavedSession | null {
       version: 1,
       state: {
         ...(state.sourceBackfillComplete === true ? { sourceBackfillComplete: true } : {}),
+        ...(typeof state.plannerSource === 'string' ? { plannerSource: state.plannerSource } : {}),
         treeVersion: state.treeVersion as string | null | undefined,
         pobCode: typeof state.pobCode === 'string' ? state.pobCode : null,
         character: { class_name: character.class_name, level: Number(character.level ?? 1),
@@ -522,8 +525,9 @@ export function backfillFromDecoded(state: BuildState, decoded: BuildJson): Buil
 /** 解码结果 → 可编辑技能组/装备状态（物化，之后全走覆盖）。 */
 export function materialize(
   decoded: BuildJson,
-): Pick<BuildState, 'treeVersion' | 'socketGroups' | 'items' | 'flasks' | 'limbs' | 'jewels' | 'weaponSwap'> {
+): Pick<BuildState, 'plannerSource' | 'treeVersion' | 'socketGroups' | 'items' | 'flasks' | 'limbs' | 'jewels' | 'weaponSwap'> {
   return {
+    ...(decoded.planner_source ? { plannerSource: decoded.planner_source } : {}),
     treeVersion: decoded.tree.tree_version,
     weaponSwap: decoded.weapon_swap,
     socketGroups: decoded.socket_groups.map((g) => ({
@@ -910,7 +914,8 @@ export function useBuildSession(configContextActive = false): BuildSession {
           params: { ...paramsFromDecoded(decoded), main_socket_group: decoded.main_socket_group ?? undefined },
         };
         if (options.destination === 'newBuild' && workspaceRef.current) {
-          const name = options.name?.trim() || decoded.character.ascendancy_name || decoded.character.class_name;
+          const plannerName: string | undefined = decoded.planner_source ? JSON.parse(decoded.planner_source).name : undefined;
+          const name = options.name?.trim() || plannerName?.trim() || decoded.character.ascendancy_name || decoded.character.class_name;
           workspaceRef.current = addWorkspaceBuild(workspaceRef.current, name, { version: 1, state: importedState, notes: overview });
         }
         // Do not persist imported notes into the stage being left behind.
@@ -1308,6 +1313,11 @@ export function useBuildSession(configContextActive = false): BuildSession {
     });
   }, [state, notes]);
 
+  const exportBuildFiles = useCallback(async (name: string, all: boolean) => {
+    const backend = await getBackend();
+    return backend.encodeBuildFile({ code: await exportCode(), name, all_loadouts: all, source: state?.plannerSource });
+  }, [exportCode, state?.plannerSource]);
+
   const changeNamedSet = useCallback(async (kind: 'config' | 'skill', op: 'select' | 'create' | 'duplicate' | 'rename' | 'remove', id: number, name?: string) => {
     const current = stateRef.current;
     if (!current) return;
@@ -1568,6 +1578,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
     removeSocketGroup,
     exportSession,
     exportCode,
+    exportBuildFiles,
     importSession,
     importCode,
     switchLoadout,

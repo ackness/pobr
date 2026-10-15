@@ -1,0 +1,17 @@
+.node-power { margin-top: var(--space-3); padding: var(--space-3); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-panel); min-width: 0; font-size: var(--text-sm); }
+.node-power > summary { color: var(--accent-gold); font-weight: 600; cursor: pointer; }
+.node-power p { color: var(--text-secondary); line-height: 1.6; overflow-wrap: anywhere; }
+.node-power-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.node-power-controls label { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.node-power-controls select, .node-power-controls input[type=search] { width: 100%; min-width: 0; box-sizing: border-box; }
+.node-power-controls .node-power-small { flex-direction: row; align-items: center; }
+.node-power-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: var(--space-3) 0; }
+.node-power-scroll { max-height: 460px; overflow: auto; border: 1px solid var(--border-subtle); }
+.node-power table { border-collapse: collapse; min-width: 630px; width: 100%; font-variant-numeric: tabular-nums; }
+.node-power th { position: sticky; top: 0; z-index: 1; background: var(--surface-panel); }
+.node-power td, .node-power th { padding: var(--space-2); text-align: right; border-bottom: 1px solid var(--border-subtle); }
+.node-power td:first-child { text-align: left; min-width: 155px; max-width: 220px; overflow-wrap: anywhere; }
+.node-power td:first-child button { white-space: normal; text-align: left; }
+.node-power small { display: block; color: var(--text-secondary); margin-top: var(--space-1); }
+.node-power [data-status=unsupported] small, .node-power [data-status=error] small { color: var(--accent-gold); }
+@media (min-width: 1281px) { .tree-workspace:has(.node-power[open]) { grid-template-columns: minmax(0, 1fr) minmax(420px, 48%); } }

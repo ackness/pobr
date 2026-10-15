@@ -44,8 +44,8 @@ pub use catalog::{
 };
 pub use crafting::{item_crafting_catalog_json, normalize_item_draft_json};
 pub use decode::{
-    decode_build_file_json, decode_build_json, decode_build_loadout_json, import_trade_items_json,
-    manage_loadout_json,
+    decode_build_file_json, decode_build_json, decode_build_loadout_json, encode_build_file_json,
+    import_trade_items_json, manage_loadout_json,
 };
 pub use encode::encode_build_json;
 pub use request::{

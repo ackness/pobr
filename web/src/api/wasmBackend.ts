@@ -42,6 +42,7 @@ interface WasmModule {
   decodeBuildJson(code: string): string;
   decodeBuildLoadoutJson(requestJson: string): string;
   manageLoadoutJson(requestJson: string): string;
+  encodeBuildFileJson(request: string): string;
   decodeBuildFileJson(content: string): string;
   importTradeItemsJson(input: string): string;
   calculateBuildJson(requestJson: string): string;
@@ -188,6 +189,9 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     async calculateBuild(request: CalculateBuildRequest) {
       return JSON.parse(wasm.calculateBuildJson(JSON.stringify(request))) as CalculateBuildResponse;
     },
+    async encodeBuildFile(request) {
+      return JSON.parse(wasm.encodeBuildFileJson(JSON.stringify(request)));
+    },
     async encodeBuild(request) {
       return wasm.encodeBuildJson(JSON.stringify(request));
     },
@@ -261,10 +265,10 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     async previewTreeEdit(request, node, mode, action) {
       return JSON.parse(wasm.previewTreeEditJson(JSON.stringify({ request, node, mode, action })));
     },
-    async nodePower(request, powerStat, maxDepth) {
+    async nodePower(request, powerStat, maxDepth, nodes) {
       return JSON.parse(
         wasm.nodePowerJson(
-          JSON.stringify({ request, power_stat: powerStat, max_depth: maxDepth }),
+          JSON.stringify({ request, power_stat: powerStat, max_depth: maxDepth, nodes }),
         ),
       ) as NodePowerResponse;
     },
