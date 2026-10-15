@@ -154,6 +154,11 @@
       "reason": "Archmage adds a cost to Dark Consequences itself: Atalui converts it to Life and Efficiency II reduces it to 199, paid for each of 8 explosions/s (1592). PoB2 multiplies by the spell cast speed of 2.14/s (425.86), not its explosion rate (docs/maintainer-guide.md, Doedre's Undoing)"
     },
     {
+      "build": "witch-blood-mage-impending-doom-add19135df93",
+      "stats": ["LifePerSecondCost"],
+      "reason": "Doedre's Undoing spawns one Witchtoad every 0.25 seconds in each of two Cursed Ground areas, so Dark Consequences pays Archmage's added cost at 8 explosions/s. Atalui, Efficiency II and cost efficiency give 103.225806452 Life per explosion and 825.806451616 Life/s. The reference charges the same cost at 1.98 casts/s (204.387096774); pinned PoB2 likewise charges at cast speed (207.9), not explosion frequency (docs/maintainer-guide.md, Doedre's Undoing; crates/pobr-build/tests/skills/cost_rate.rs)"
+    },
+    {
       "build": "witch-abyssal-lich-twister-4028d0b52984",
       "stats": ["TotalDPS", "CombinedDPS", "CritMultiplier", "TotalDotDPS", "IgniteDPS", "AverageDamage", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
       "reason": "the Lich's Crystalline Phylactery doubles its jewel, \"100% increased Effect of bonuses gained from Socketed Jewel\", which the reference leaves out (docs/maintainer-guide.md, Crystalline Phylactery)"
