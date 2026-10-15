@@ -309,6 +309,10 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         ]),
         // Reap: "Culling Strike" (`calc::skill_dot::cull_multiplier`).
         "kill_enemy_on_hit_if_under_10%_life" => Some(vec![Modifier::flag("CanCull")]),
+        // Detonate Living: "Your Spells have Culling Strike".
+        "spells_have_culling_strike" => {
+            Some(vec![Modifier::flag("CanCull").with_flags(ModFlags::SPELL)])
+        }
         // Put on the enemy whichever skill crushes it
         // (`skill_env::skill_crushing_on_hit`).
         stat if crushes_on_hit(stat) => Some(Vec::new()),
@@ -803,6 +807,14 @@ mod tests {
         assert_eq!(mods[0].name.as_str(), "Cost");
         assert_eq!(mods[0].mod_type, ModType::More);
         assert_eq!(mods[0].value.as_number(), Some(-100.0));
+    }
+
+    #[test]
+    fn spells_have_culling_strike_only_grants_culling_to_spells() {
+        let mut db = ModDb::new();
+        db.add_list(skill_modifiers("spells_have_culling_strike", 1.0).expect("defined"));
+        assert!(db.flag(&CalcConfig::new().with_flags(ModFlags::SPELL), "CanCull"));
+        assert!(!db.flag(&CalcConfig::new().with_flags(ModFlags::ATTACK), "CanCull"));
     }
 
     /// The damage type is in the stat id, or, for Fiery Death's
