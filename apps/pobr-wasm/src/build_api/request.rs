@@ -178,6 +178,8 @@ pub struct JewelInput {
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct CalculateBuildRequest {
+    /// Collect visibility facts for Config; ordinary calculations keep read tracking off.
+    pub(crate) config_context: bool,
     /// Opt in to evaluating all included effects; ordinary edits stay on the main-skill path.
     pub(crate) full_dps: bool,
     /// The weapon set in use (`active`, which calculation reads), plus the

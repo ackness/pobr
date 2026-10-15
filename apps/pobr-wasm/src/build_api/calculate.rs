@@ -9,8 +9,7 @@ use pobr_build::breakdown::{
 use serde::Serialize;
 
 use super::request::{
-    CalculateBuildRequest, apply_request_overrides, import_build_from_request,
-    orchestrator_options, run_session_for_build,
+    CalculateBuildRequest, apply_request_overrides, import_build_from_request, orchestrator_options,
 };
 use crate::state;
 
@@ -24,6 +23,9 @@ struct CalculateBuildResponse {
     full_dps: Option<pobr_core::calc::output::FullDpsOutput>,
     /// The full set of display_catalog Computed fields (id/value/category).
     stats: Vec<pobr_data::display_stat::DisplayStatValue>,
+    /// Only requested by a client displaying configuration applicability.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    config_context: Option<super::config_context::ConfigContext>,
     /// Unparsed modifier text and confirmed source-specific calculation limits,
     /// preserved verbatim for display and baseline-versus-edit comparison.
     unsupported_modifiers: Vec<String>,
@@ -90,7 +92,20 @@ fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
     let data = state::build_data().map_err(super::ApiError::not_initialized)?;
     let (mut build, mut item_errors) = import_build_from_request(&req)?;
     item_errors.extend(apply_request_overrides(&mut build, &req, &data)?);
-    let mut session = run_session_for_build(&build, &req)?;
+    let options = orchestrator_options(&req)?;
+    let (mut session, config_context) = if req.config_context {
+        let (session, prepared) =
+            pobr_build::calc_orchestrator::calculate_with_data_session_tracked(
+                &build, &data, &options,
+            )
+            .map_err(|e| format!("calculate: {e}"))?;
+        let context = super::config_context::collect(&prepared, &data, &session);
+        (session, Some(context))
+    } else {
+        let session = pobr_build::calculate_with_data_session(&build, &data, &options)
+            .map_err(|e| format!("calculate: {e}"))?;
+        (session, None)
+    };
     if req.full_dps {
         // Inspecting a different effect changes the main panel, not which effects
         // Full DPS includes. Reuse the roll-up across those selection changes.
@@ -115,6 +130,7 @@ fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
     let response = CalculateBuildResponse {
         full_dps: session.output().full_dps.clone(),
         stats,
+        config_context,
         unsupported_modifiers: session.unsupported_modifier_texts().to_vec(),
         breakdowns,
         main_skill: main_skill_breakdown(&build, &data, session.output()),

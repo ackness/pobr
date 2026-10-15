@@ -580,6 +580,7 @@ local function buildSchemaFields(entry, section)
 		section = section,
 	}
 	if type(entry.label) == "string" then def.label = entry.label end
+	if type(entry.tooltip) == "string" then def.tooltip = entry.tooltip end
 
 	local default = {}
 	if type(entry.defaultState) == "boolean" then default.state_bool = entry.defaultState end
@@ -602,6 +603,15 @@ local function buildSchemaFields(entry, section)
 
 	local visibility = {}
 	local visMap = {
+		ifStat = "if_stat",
+		ifEnemyStat = "if_enemy_stat",
+		ifPlayerFlag = "if_player_flag",
+		ifMinionFlag = "if_minion_flag",
+		ifSkillType = "if_skill_type",
+		ifSkillFlag = "if_skill_flag",
+		ifOption = "if_option",
+		ifNode = "if_node",
+		ifGemFamily = "if_gem_family",
 		ifCond = "if_cond",
 		ifMinionCond = "if_minion_cond",
 		ifEnemyCond = "if_enemy_cond",
@@ -619,6 +629,11 @@ local function buildSchemaFields(entry, section)
 		if arr then
 			visibility[jsonKey] = visibility[jsonKey] or {}
 			for _, item in ipairs(arr) do
+				if luaKey == "ifSkillType" then
+					for name, index in pairs(SkillType) do
+						if tostring(index) == item then item = name; break end
+					end
+				end
 				table.insert(visibility[jsonKey], item)
 			end
 		end

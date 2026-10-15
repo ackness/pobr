@@ -392,6 +392,8 @@ export interface ItemAugmentInfo {
 
 /** `pob_code` 与 `character` 至少给一个（无 code = PoB2 新建 build 语义）。 */
 export interface CalculateBuildRequest {
+  /** Collect configuration visibility facts; omitted keeps read tracking off. */
+  config_context?: boolean;
   /** Evaluate included effects; omitted keeps the single-skill calculation. */
   full_dps?: boolean;
   tree_version?: string | null;
@@ -781,6 +783,8 @@ export interface FullDpsSkill {
 }
 
 export interface CalculateBuildResponse {
+  /** Present only when config_context was requested. */
+  config_context?: ConfigContext;
   full_dps?: { dps: number; dot_dps: number; skills: FullDpsSkill[] };
   stats: DisplayStatValue[];
   /**
@@ -1093,9 +1097,31 @@ export interface ConfigOption {
   /** PoB2 Config 页分区名（如 "When In Combat"）。 */
   section?: string;
   label?: string;
+  tooltip?: string;
+  visibility?: ConfigVisibility;
   /** list 型的选项；default 的 {index} 是 1-based。 */
   list_options?: ConfigListOption[];
   default?: { index?: number; state_bool?: boolean; state_number?: number; placeholder_number?: number } | number | boolean | string;
+}
+
+/** Catalog predicate families are extensible; unknown families stay visible. */
+export interface ConfigVisibility {
+  [family: string]: string[] | undefined;
+  if_skill?: string[];
+  if_skill_type?: string[];
+  if_cond?: string[];
+  if_enemy_cond?: string[];
+  if_minion_cond?: string[];
+  if_stat?: string[];
+  if_flag?: string[];
+  if_option?: string[];
+}
+
+export interface ConfigContext {
+  main_skill: string | null;
+  skill_types: string[];
+  /** Null or absent means the engine cannot evaluate this visibility rule. */
+  predicates: Record<string, Record<string, boolean | null>>;
 }
 
 export interface ConfigCatalogFile {

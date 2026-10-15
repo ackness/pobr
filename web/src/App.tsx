@@ -22,7 +22,6 @@ export default function App() {
 }
 
 function BuildApp() {
-  const session = useBuildSession();
   const mainRef = useRef<HTMLElement>(null);
   const [statsOpen, setStatsOpen] = useState(false);
   const [reviewImportedConfig, setReviewImportedConfig] = useState(false);
@@ -37,6 +36,7 @@ function BuildApp() {
     const saved = localStorage.getItem('pobr-tab') as TabId | null;
     return saved && TAB_IDS.includes(saved) ? saved : 'build';
   });
+  const session = useBuildSession(tab === 'config');
   const [lang, setLangState] = useState<Lang>(
     () => (localStorage.getItem('pobr-lang') as Lang) || 'en-US',
   );

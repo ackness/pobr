@@ -635,7 +635,8 @@ impl CalculationSession {
 
     /// Starts noting which stored modifier names the calculation reads
     /// ([`ModDb::track_reads`]). Call once every source is written and before
-    /// [`Self::perform_minimal`]; it is for diagnostics, not for normal runs.
+    /// [`Self::perform_minimal`]. Diagnostics and configuration visibility use
+    /// it; numerical-only callers leave tracking off.
     pub fn track_modifier_reads(&mut self) {
         self.env.player.mod_db.track_reads();
         self.env.enemy.mod_db.track_reads();

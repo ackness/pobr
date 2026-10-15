@@ -559,7 +559,9 @@ export async function skillMetricsForState(state: BuildState): Promise<SkillMetr
   return { skills, item_errors };
 }
 
-export function useBuildSession(): BuildSession {
+export function useBuildSession(configContextActive = false): BuildSession {
+  const configContextActiveRef = useRef(configContextActive);
+  configContextActiveRef.current = configContextActive;
   const [dataVersion, setDataVersion] = useState<string | null>(null);
   const [workspace, setWorkspace] = useState<BuildWorkspace | null>(null);
   const workspaceRef = useRef<BuildWorkspace | null>(null);
@@ -649,10 +651,11 @@ export function useBuildSession(): BuildSession {
   const recalc = useCallback((next: BuildState) => {
     const seq = ++seqRef.current;
     const version = versionRef.current;
+    const request = { ...toRequest(next), ...(configContextActiveRef.current ? { config_context: true } : {}) };
     setCalculating(true);
     setCalcError(null);
     getBackend()
-      .then((backend) => backend.calculateBuild(toRequest(next)))
+      .then((backend) => backend.calculateBuild(request))
       .then((result) => {
         if (seqRef.current === seq) setCalculated({ version, result });
       })
@@ -663,6 +666,12 @@ export function useBuildSession(): BuildSession {
         if (seqRef.current === seq) setCalculating(false);
       });
   }, []);
+
+  // Opening Config refreshes context for the current inputs. The flag belongs to
+  // the view, never the saved build or planner/export requests.
+  useEffect(() => {
+    if (configContextActive && stateRef.current) recalc(stateRef.current);
+  }, [configContextActive, recalc]);
 
   /** 应用新状态并触发重算 + 自动保存到浏览器。 */
   const apply = useCallback(

@@ -435,6 +435,26 @@ pub fn calculate_with_data_session(
     calculate_with_data_report(build, data, options).map(|report| report.session)
 }
 
+/// Calculates once while recording the variables and modifier names read, for
+/// configuration visibility, together with the prepared build whose enabled
+/// and item-granted skills participated. Ordinary planners keep tracking off.
+pub fn calculate_with_data_session_tracked(
+    build: &Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+) -> Result<(CalculationSession, Build), BuildError> {
+    let mut context = CalculationContext::new(data, options);
+    context.track_reads = true;
+    let prepared = prepared_build_view(build, data, options);
+    let mut session = calculate_prepared_with_context(&prepared, data, options, &mut context)?;
+    if options.full_dps {
+        session.set_full_dps(full_dps::calculate_prepared(
+            build, &prepared, data, options,
+        )?);
+    }
+    Ok((session, prepared.into_owned()))
+}
+
 /// A completed calculation and its mapping diagnostics, including trigger sources.
 /// Each report owns its records; subsequent calculations cannot overwrite them.
 pub struct CalculationReport {

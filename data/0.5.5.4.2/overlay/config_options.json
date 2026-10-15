@@ -8,7 +8,7 @@
     "extracted_files": [
       "Modules/ConfigOptions.lua"
     ],
-    "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --vendor-root vendor/PathOfBuilding-PoE2/src --what config-options --out data/0.5.5.4.2/overlay/config_options.json"
+    "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --vendor-root vendor/PathOfBuilding-PoE2/src --what config-options"
   },
   "options": [
     {
@@ -110,6 +110,7 @@
       "input_type": "list",
       "section": "When In Combat",
       "label": "Chance To Ignore PDR Mode:",
+      "tooltip": "Controls how the chance on hit to ignore enemy physical damage reduction is calculated:\n\tMinimum: never ignores unless chance is at least 100%\n\tAverage: damage is based on the average application\n\tMax Effect: always ignores if you have any chance",
       "default": {
         "index": 2
       },
@@ -139,10 +140,14 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "^xADAA47Chill ^7Stacks",
+      "tooltip": "Amount of stacks of ^xADAA47Chill ^7applied to the enemy.",
       "default": {
         "placeholder_number": 1.0
       },
       "visibility": {
+        "if_option": [
+          "conditionEnemyChilled"
+        ],
         "if_flag": [
           "ChillCanStack"
         ]
@@ -227,6 +232,7 @@
       "input_type": "check",
       "section": "General",
       "label": "Disable EHP gain on block/suppress:",
+      "tooltip": "Sets the EHP calc to not apply gain on block and suppress effects",
       "visibility": {
         "if_mod": [
           "LifeOnBlock",
@@ -245,6 +251,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Ignore Skill Hit Damage?",
+      "tooltip": "This option prevents EE from being reset by the hit damage of your main skill.",
       "visibility": {
         "if_flag": [
           "ElementalEquilibrium"
@@ -257,6 +264,7 @@
       "input_type": "list",
       "section": "General",
       "label": "EHP calc unlucky:",
+      "tooltip": "Sets the EHP calc to pretend its unlucky and reduce the effects of random events such as\n\tBlock/Spell Block Chance\n\tDodge/Spell Dodge Chance\n\tSpell Suppression Chance\n\tAvoidance Chance",
       "list_options": [
         {
           "value": "1",
@@ -301,6 +309,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Do you have Everlasting Sacrifice?",
+      "tooltip": "This option enables the Everlasting Sacrifice buff that grants +5% to all maximum resists.",
       "visibility": {
         "if_flag": [
           "Condition:EverlastingSacrifice"
@@ -370,6 +379,7 @@
       "input_type": "list",
       "section": "When In Combat",
       "label": "Gamblesprint Movement Speed",
+      "tooltip": "This option sets the Movement Speed from Gamblesprint boots.",
       "default": {
         "index": 3
       },
@@ -519,6 +529,7 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "^x3F6DB3Hoarfrost ^7Stacks",
+      "tooltip": "Amount of stacks of ^x3F6DB3Hoarfrost ^7applied to the enemy.",
       "visibility": {
         "if_flag": [
           "HitsCanInflictHoarfrost"
@@ -574,6 +585,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "Damage mitigated:",
+      "tooltip": "Molten Shell reflects damage to the enemy,\nbased on the amount of damage it has mitigated.",
       "visibility": {
         "if_skill": [
           "Molten Shell"
@@ -588,10 +600,14 @@
       "input_type": "count_allow_zero",
       "section": "For Effective DPS",
       "label": "^xB97123Scorch ^7Stacks",
+      "tooltip": "Amount of stacks of ^xB97123Scorch ^7applied to the enemy.",
       "default": {
         "placeholder_number": 1.0
       },
       "visibility": {
+        "if_option": [
+          "conditionEnemyScorched"
+        ],
         "if_flag": [
           "ScorchCanStack"
         ]
@@ -619,6 +635,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "# of seconds since Inevitable Crit:",
+      "tooltip": "Also implies you've crit recently if the value is 3s or below",
       "default": {
         "state_number": 10.0
       },
@@ -637,10 +654,14 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "^xADAA47Shock ^7Stacks",
+      "tooltip": "Amount of stacks of ^xADAA47Shock ^7applied to the enemy.",
       "default": {
         "placeholder_number": 1.0
       },
       "visibility": {
+        "if_option": [
+          "conditionEnemyShocked"
+        ],
         "if_flag": [
           "ShockCanStack"
         ]
@@ -668,6 +689,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "# of Shotgunning Projectiles:",
+      "tooltip": "Maximum is limited by the number of Projectiles., default of 1, if Arrow nova then default of maximum projectiles",
       "visibility": {
         "if_skill": [
           "Shrapnel Ballista"
@@ -682,6 +704,7 @@
       "input_type": "count_allow_zero",
       "section": "Skill Options",
       "label": "Total Companion Life override:",
+      "tooltip": "Overrides the automatically calculated total Life of your damageable Companions\nthat can be taken before yours (e.g. Starkonja's Head, Loyalty)",
       "visibility": {
         "if_mod": [
           "TakenFromCompanionBeforeYou",
@@ -727,6 +750,7 @@
       "input_type": "count_allow_zero",
       "section": "Skill Options",
       "label": "Total Spectre Life override:",
+      "tooltip": "Overrides the automatically calculated total Life of your damageable Spectres that can be taken before yours",
       "visibility": {
         "if_mod": [
           "TakenFromSpectresBeforeYou"
@@ -749,7 +773,11 @@
       "input_type": "count_allow_zero",
       "section": "Skill Options",
       "label": "Total Totem Life:",
+      "tooltip": "The total life of your Totems (excluding Vaal Rejuvenation Totem) that can be taken before yours (used by totem mastery)",
       "visibility": {
+        "if_option": [
+          "conditionHaveTotem"
+        ],
         "if_mod": [
           "TakenFromTotemsBeforeYou"
         ]
@@ -771,6 +799,7 @@
       "input_type": "count_allow_zero",
       "section": "Skill Options",
       "label": "Total Vaal Rejuvenation Totem Life:",
+      "tooltip": "The total life of your Vaal Rejuvenation Totems that can be taken before yours",
       "visibility": {
         "if_skill": [
           "Vaal Rejuvenation Totem"
@@ -796,7 +825,11 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Summoned Totems (if not maximum):",
+      "tooltip": "This also implies that you have a Totem summoned.\nThis will affect all 'per Summoned Totem' modifiers, even for non-Totem skills.",
       "visibility": {
+        "if_stat": [
+          "TotemsSummoned"
+        ],
         "if_flag": [
           "totem"
         ]
@@ -885,6 +918,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "Damage mitigated:",
+      "tooltip": "Vaal Molten Shell reflects damage to the enemy,\nbased on the amount of damage it has mitigated in the last second.",
       "visibility": {
         "if_skill": [
           "Vaal Molten Shell"
@@ -916,6 +950,7 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Absolution: Count skill damage once",
+      "tooltip": "Your Absolution Skill Damage will not be scaled with Count setting.\nBy default it multiplies both minion count and skill hit count which leads to incorrect\nTotal DPS calculation since Absolution cannot inherently shotgun.\nDo not enable if you use Spell Totem support, Spell Cascade support or similar supports",
       "visibility": {
         "if_skill": [
           "Absolution"
@@ -942,6 +977,7 @@
       "input_type": "list",
       "section": "General",
       "label": "Ailment calculation mode:",
+      "tooltip": "Controls how the base damage for applying Ailments is calculated:\n\tAverage: damage is based on the average application, including both crits and non-crits\n\tCrits Only: damage is based solely on Ailments inflicted with crits",
       "list_options": [
         {
           "value": "AVERAGE",
@@ -959,6 +995,7 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Are you animating Lingering Blades?",
+      "tooltip": "Enables additional damage given to Lingering Blades\nThe exact weapon is unknown but should be similar to Glass Shank",
       "visibility": {
         "if_skill": [
           "Animate Weapon"
@@ -1006,6 +1043,7 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Include in ^x7070FFMana ^7spent Recently?",
+      "tooltip": "When enabled, the mana spent by Arcane Cloak used at full mana \nwill be added to the value provided in # of ^x7070FFMana ^7spent Recently.",
       "visibility": {
         "if_skill": [
           "Arcane Cloak"
@@ -1026,6 +1064,7 @@
       "input_type": "list",
       "section": "General",
       "label": "Armour calculation mode:",
+      "tooltip": "Controls how Defending with Double Armour is calculated:\n\tMinimum: never Defend with Double Armour\n\tAverage: Damage Reduction from Defending with Double Armour is proportional to chance\n\tMaximum: always Defend with Double Armour\nThis setting has no effect if you have 100% chance to Defend with Double Armour.",
       "list_options": [
         {
           "value": "MIN",
@@ -1188,6 +1227,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "Banner Valour:",
+      "tooltip": "The amount of valour consumed for the placed banner",
       "visibility": {
         "if_skill": [
           "Dread Banner",
@@ -1246,6 +1286,7 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Count Skill Reservation towards eHP?",
+      "tooltip": "Use this option to disable the skill reservation factoring into eHP calculations",
       "visibility": {
         "if_skill": [
           "Blood Sacrament"
@@ -1304,6 +1345,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Do you have Adrenaline?",
+      "tooltip": "This will enable the Adrenaline buff, which grants:\n\t100% increased Damage\n\t25% increased Attack, Cast and Movement Speed\n\t10% additional Physical Damage Reduction",
       "effects": [
         {
           "target": "player",
@@ -1325,6 +1367,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Do you have Alchemist's Genius?",
+      "tooltip": "This will enable the Alchemist's Genius buff:\n20% increased Flask Charges gained\n10% increased effect of Flasks",
       "visibility": {
         "if_flag": [
           "Condition:CanHaveAlchemistGenius"
@@ -1355,6 +1398,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Do you have Arcane Surge?",
+      "tooltip": "In addition to allowing any 'while you have Arcane Surge' modifiers to apply,\nthis will enable the Arcane Surge buff itself. (Grants 15% increased Cast Speed and 20% more Mana Regeneration rate)",
       "effects": [
         {
           "target": "player",
@@ -1402,6 +1446,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Do you have Chaotic Might?",
+      "tooltip": "This will enable the Chaotic Might buff.\n(Grants 30% of Physical Damage as Extra ^xD02090Chaos ^7Damage)",
       "effects": [
         {
           "target": "player",
@@ -1541,6 +1586,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Do you have Divinity?",
+      "tooltip": "This will enable the Divinity buff, which grants:\n\t50% more Elemental Damage\n\t20% less Elemental Damage taken",
       "visibility": {
         "if_cond": [
           "Divinity"
@@ -1567,6 +1613,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Are you Elusive?",
+      "tooltip": "In addition to allowing any 'while Elusive' modifiers to apply,\nthis will enable the Elusive buff itself:\n\t15% Chance to Avoid all Damage from Hits\n\t30% increased Movement Speed\nThe effect of Elusive decays over time.",
       "visibility": {
         "if_flag": [
           "Condition:CanBeElusive"
@@ -1613,6 +1660,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Do you have Fanaticism?",
+      "tooltip": "This will enable the Fanaticism buff itself. (Grants 75% more cast speed, reduced skill cost, and increased area of effect)",
       "visibility": {
         "if_flag": [
           "Condition:CanGainFanaticism"
@@ -1719,6 +1767,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Are you in Her Embrace?",
+      "tooltip": "This option is specific to Oni-Goroshi.",
       "visibility": {
         "if_cond": [
           "HerEmbrace"
@@ -1811,6 +1860,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Do you have Onslaught?",
+      "tooltip": "In addition to allowing any 'while you have Onslaught' modifiers to apply,\nthis will enable the Onslaught buff itself. (Grants 20% increased Attack, Cast, and Movement Speed)",
       "effects": [
         {
           "target": "player",
@@ -1916,6 +1966,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Do you have Quicksand Hourglass?",
+      "tooltip": "this will enable the Quicksand Hourglass buff itself.",
       "visibility": {
         "if_flag": [
           "Condition:CanGainQuicksandHourglass"
@@ -1942,6 +1993,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Do you have Unholy Might?",
+      "tooltip": "This will enable the Unholy Might buff.\n(Grants 30% of All Damage as extra ^xD02090Chaos ^7Damage)",
       "effects": [
         {
           "target": "player",
@@ -1963,6 +2015,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Do you have Vaal Arc's Lucky Buff?",
+      "tooltip": "Causes Damage with Arc Hits to be rolled twice, and the maximum roll used.",
       "visibility": {
         "if_flag": [
           "Condition:CanBeLucky"
@@ -2085,6 +2138,7 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Enemy ^xE05030Life ^7% higher than Player?",
+      "tooltip": "Does the Enemy have a higher percentage of ^xE05030Life ^7remaining than the player",
       "visibility": {
         "if_skill": [
           "Clash"
@@ -2207,6 +2261,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you Attacked Recently?",
+      "tooltip": "This also implies that you have used a Skill Recently.\nYou will automatically be considered to have Attacked Recently if your main skill is an attack,\nbut you can use this option to force it if necessary.",
       "visibility": {
         "if_cond": [
           "AttackedRecently"
@@ -2326,6 +2381,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you taken a Savage Hit Recently?",
+      "tooltip": "This also implies that you have been Hit Recently.",
       "visibility": {
         "if_cond": [
           "BeenSavageHitRecently"
@@ -2367,6 +2423,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy in your Link beams?",
+      "tooltip": "This option sets whether an enemy is between you and your linked target.",
       "visibility": {
         "if_enemy_cond": [
           "BetweenYouAndLinkedTarget"
@@ -2393,6 +2450,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the Bleed Aggravated?",
+      "tooltip": "Bleeding deals an extra 100% damage while the target is moving, or if the Bleeding is Aggravated",
       "visibility": {
         "if_mod": [
           "BleedChance"
@@ -2471,6 +2529,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you Blocked an Attack Recently?",
+      "tooltip": "This also implies that you have Blocked Recently.",
       "visibility": {
         "if_cond": [
           "BlockedAttackRecently"
@@ -2564,6 +2623,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you Blocked a Spell Recently?",
+      "tooltip": "This also implies that you have Blocked Recently.",
       "visibility": {
         "if_cond": [
           "BlockedSpellRecently"
@@ -2631,6 +2691,12 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "Effect of ^x3F6DB3Brittle:",
+      "tooltip": "This effect will only be applied while you can inflict ^x3F6DB3Brittle.",
+      "visibility": {
+        "if_option": [
+          "conditionEnemyBrittle"
+        ]
+      },
       "effects": [
         {
           "target": "enemy",
@@ -2749,6 +2815,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you Cast a Spell Recently?",
+      "tooltip": "This also implies that you have used a Skill Recently.\nYou will automatically be considered to have Cast a Spell Recently if your main skill is a spell,\nbut you can use this option to force it if necessary.",
       "visibility": {
         "if_cond": [
           "CastSpellRecently"
@@ -2819,6 +2886,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Changed Stance in the last 1s?",
+      "tooltip": "'Changing Stance' occurs by activating a Stance skill while it's toggled on",
       "visibility": {
         "if_cond": [
           "StanceChangeLastSecond"
@@ -2845,6 +2913,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Are you Channelling?",
+      "tooltip": "You will automatically be considered to be Channeling if your main skill is a channelled skill,\nbut you can use this option to force it if necessary.",
       "visibility": {
         "if_cond": [
           "Channelling"
@@ -2897,6 +2966,11 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "Effect of ^x3F6DB3Chill:",
+      "visibility": {
+        "if_option": [
+          "conditionChilled"
+        ]
+      },
       "effects": [
         {
           "target": "player",
@@ -2973,6 +3047,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Consumed a corpse in the past 2s?",
+      "tooltip": "This also implies you have 'Consumed a corpse Recently'",
       "visibility": {
         "if_cond": [
           "ConsumedCorpseInPast2Sec"
@@ -3061,6 +3136,11 @@
       "default": {
         "placeholder_number": 10.0
       },
+      "visibility": {
+        "if_gem_family": [
+          "Corrupting Cry"
+        ]
+      },
       "effects": [
         {
           "target": "player",
@@ -3111,6 +3191,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you Crit Recently?",
+      "tooltip": "This also implies that your Skills have Crit Recently.",
       "visibility": {
         "if_cond": [
           "CritRecently"
@@ -3165,6 +3246,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have your Herald Skills Crit Recently?",
+      "tooltip": "This also implies that your Skills have Crit Recently.",
       "visibility": {
         "if_cond": [
           "CritWithHeraldSkillRecently"
@@ -3271,6 +3353,7 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Is the skill Empowered?",
+      "tooltip": "Skills can be temporarily Empowered by certain buff skills.",
       "visibility": {
         "if_cond": [
           "Empowered"
@@ -3323,6 +3406,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is enemy Armour Broken?",
+      "tooltip": "Some Skills, Items, Support Gems and other effects can Break Armour, which lowers a target's Armour by a specified amount.\nIf this brings the target's Armour value to 0, their Armour is Fully Broken for 12 seconds.",
       "visibility": {
         "if_flag": [
           "Condition:CanArmourBreak"
@@ -3363,6 +3447,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy Blinded?",
+      "tooltip": "In addition to allowing 'against Blinded Enemies' modifiers to apply,\n Blind applies the following effects.\n -20% Less Accuracy \n -20% Less ^x33FF77Evasion",
       "effects": [
         {
           "target": "enemy",
@@ -3384,6 +3469,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy ^x3F6DB3Brittle?",
+      "tooltip": "Hits against ^x3F6DB3Brittle ^7enemies have up to +6% Critical Strike Chance.\nThis option will also allow you to input the effect of ^x3F6DB3Brittle.",
       "visibility": {
         "if_flag": [
           "inflictBrittle"
@@ -3519,6 +3605,11 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "Effect of ^x3F6DB3Chill:",
+      "visibility": {
+        "if_option": [
+          "conditionEnemyChilled"
+        ]
+      },
       "effects": [
         {
           "target": "enemy",
@@ -3543,6 +3634,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy Exposed to ^x3F6DB3Cold?",
+      "tooltip": "This applies -20% ^x3F6DB3Cold Resistance ^7to the enemy.",
       "visibility": {
         "if_flag": [
           "Condition:CanApplyColdExposure"
@@ -3577,6 +3669,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Enemy hit you with ^x3F6DB3Cold Damage^7?",
+      "tooltip": "This option sets whether or not the enemy has hit you with ^x3F6DB3Cold Damage^7 in the last 4 seconds.",
       "visibility": {
         "if_flag": [
           "Condition:HaveTrickstersSmile"
@@ -3611,6 +3704,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy covered in Ash?",
+      "tooltip": "Covered in Ash applies the following to the enemy:\n\t20% increased ^xB97123Fire ^7Damage taken\n\t20% less Movement Speed",
       "effects": [
         {
           "target": "player",
@@ -3630,6 +3724,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy covered in Frost?",
+      "tooltip": "Covered in Frost applies the following to the enemy:\n\t20% increased ^x3F6DB3Cold ^7Damage taken\n\t50% less Critical Strike Chance",
       "effects": [
         {
           "target": "player",
@@ -3649,6 +3744,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy Critically Weak",
+      "tooltip": "Hits against Critically Weak enemies have up to +10% Critical Strike Chance.\nThis option will also allow you to input the effect of Critical Weakness.",
       "visibility": {
         "if_flag": [
           "ApplyCriticalWeakness"
@@ -3675,6 +3771,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy Crushed?",
+      "tooltip": "Crushed enemies have 15% reduced Physical Damage Reduction.",
       "effects": [
         {
           "target": "enemy",
@@ -3696,6 +3793,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy Cursed?",
+      "tooltip": "The enemy will automatically be considered to be Cursed if you have at least one curse enabled,\nbut you can use this option to force it if necessary.",
       "visibility": {
         "if_enemy_cond": [
           "Cursed"
@@ -3722,6 +3820,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy Dazed?",
+      "tooltip": "Dazed enemies take 50% more stun buildup for 8 seconds.",
       "effects": [
         {
           "target": "enemy",
@@ -3743,6 +3842,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy Debilitated?",
+      "tooltip": "Debilitated enemies deal 10% less damage.",
       "visibility": {
         "if_mod": [
           "DebilitateChance"
@@ -3807,6 +3907,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Enemy exited Presence Recently?",
+      "tooltip": "Enemy has exited your Presence recently",
       "visibility": {
         "if_enemy_cond": [
           "ExitedPresenceRecently"
@@ -3833,6 +3934,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Enemy entered Presence Recently?",
+      "tooltip": "Enemy has entered your Presence recently",
       "visibility": {
         "if_enemy_cond": [
           "EnteredPresenceRecently"
@@ -3859,6 +3961,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy Exposed to ^xB97123Fire?",
+      "tooltip": "This applies -20% ^xB97123Fire Resistance ^7to the enemy.",
       "visibility": {
         "if_flag": [
           "Condition:CanApplyFireExposure"
@@ -3893,6 +3996,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Enemy hit you with ^xB97123Fire Damage^7?",
+      "tooltip": "This option sets whether or not the enemy has hit you with ^xB97123Fire Damage^7 in the last 4 seconds.",
       "visibility": {
         "if_flag": [
           "Condition:HaveTrickstersSmile"
@@ -4043,6 +4147,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy Heavy Stunned?",
+      "tooltip": "This also implies that the enemy is stunned.",
       "visibility": {
         "if_enemy_cond": [
           "HeavyStunned"
@@ -4119,6 +4224,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy ^xB97123Ignited?",
+      "tooltip": "This also implies that the enemy is ^xB97123Burning.",
       "visibility": {
         "if_enemy_cond": [
           "Ignited"
@@ -4148,6 +4254,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy Immobilised?",
+      "tooltip": "A target is immobilised if it cannot move, for example due to being Frozen, Pinned, Heavy Stunned, or Electrocuted.",
       "visibility": {
         "if_enemy_cond": [
           "Immobilised"
@@ -4226,6 +4333,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy Intimidated?",
+      "tooltip": "Intimidate is a Debuff that inflicts 10% increased damage taken and 10% reduced damage dealt.",
       "effects": [
         {
           "target": "enemy",
@@ -4247,6 +4355,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy Isolated?",
+      "tooltip": "A target is Isolated if none of its allies are within 6m of it.",
       "visibility": {
         "if_enemy_cond": [
           "Isolated"
@@ -4273,6 +4382,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy Exposed to ^xADAA47Lightning?",
+      "tooltip": "This applies -20% ^xADAA47Lightning Resistance ^7to the enemy.",
       "visibility": {
         "if_flag": [
           "Condition:CanApplyLightningExposure"
@@ -4307,6 +4417,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Enemy hit you with ^xADAA47Light. Damage^7?",
+      "tooltip": "This option sets whether or not the enemy has hit you with ^xADAA47Lightning Damage^7 in the last 4 seconds.",
       "visibility": {
         "if_flag": [
           "Condition:HaveTrickstersSmile"
@@ -4367,6 +4478,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy Maimed?",
+      "tooltip": "In addition to allowing 'against Maimed Enemies' modifiers to apply,\n Maim applies the following effects.\n -30% Reduced Movement Speed \n -15% Reduced ^x33FF77Evasion",
       "effects": [
         {
           "target": "enemy",
@@ -4388,6 +4500,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy Moving?",
+      "tooltip": "Bleeding deals an extra 100% damage while the target is moving, or if the Bleeding is Aggravated",
       "visibility": {
         "if_mod": [
           "BleedChance"
@@ -4414,6 +4527,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy on ^xADAA47Brittle ^7Ground?",
+      "tooltip": "This also implies that the enemy is ^xADAA47Brittle.",
       "visibility": {
         "if_enemy_cond": [
           "OnBrittleGround"
@@ -4452,6 +4566,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy on ^x3F6DB3Chilled ^7Ground?",
+      "tooltip": "This also implies that the enemy is ^x3F6DB3Chilled.",
       "visibility": {
         "if_enemy_cond": [
           "OnChilledGround"
@@ -4519,6 +4634,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy on Fungal Ground?",
+      "tooltip": "Enemies on your Fungal Ground have -10% to all Resistances.",
       "visibility": {
         "if_cond": [
           "OnFungalGround",
@@ -4546,6 +4662,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy on Profane Ground?",
+      "tooltip": "Enemies on Profane Ground receive the following modifiers:\n\t10% increased Effect of Curses\n\t100% increased chance to be Critically Hit",
       "visibility": {
         "if_flag": [
           "Condition:CreateProfaneGround"
@@ -4602,6 +4719,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy on ^xADAA47Sapped ^7Ground?",
+      "tooltip": "This also implies that the enemy is ^xADAA47Sapped.",
       "visibility": {
         "if_enemy_cond": [
           "OnSappedGround"
@@ -4640,6 +4758,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy on ^xB97123Scorched ^7Ground?",
+      "tooltip": "This also implies that the enemy is ^xB97123Scorched.",
       "visibility": {
         "if_enemy_cond": [
           "OnScorchedGround"
@@ -4678,6 +4797,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy on ^xADAA47Shocked ^7Ground?",
+      "tooltip": "This also implies that the enemy is ^xADAA47Shocked.",
       "visibility": {
         "if_enemy_cond": [
           "OnShockedGround"
@@ -4716,6 +4836,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy Pacified?",
+      "tooltip": "Enemies are Pacified after 60% of Pacify's duration has expired",
       "visibility": {
         "if_skill": [
           "Pacify"
@@ -4742,6 +4863,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy Pinned?",
+      "tooltip": "Pinned enemies cannot move and cannot evade 4 seconds.\n They are also Light Stunned when they become pinned.",
       "effects": [
         {
           "target": "enemy",
@@ -4825,6 +4947,7 @@
       "input_type": "check",
       "section": "Enemy Stats",
       "label": "Is the enemy Rare?",
+      "tooltip": "The enemy will automatically be considered to be Unique if they are a Boss.\nUsed to set base Culling Strike Threshold.",
       "visibility": {
         "if_flag": [
           "CanCull",
@@ -4852,6 +4975,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy ^xADAA47Sapped?",
+      "tooltip": "^xADAA47Sapped ^7enemies deal less damage, up to 20%.",
       "visibility": {
         "if_flag": [
           "inflictSap"
@@ -4890,6 +5014,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy ^xB97123Scorched?",
+      "tooltip": "^xB97123Scorched ^7enemies have lowered elemental resistances, up to -30%.\nThis option will also allow you to input the effect of ^xB97123Scorched.",
       "visibility": {
         "if_flag": [
           "inflictScorch"
@@ -4928,6 +5053,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy ^xADAA47Shocked?",
+      "tooltip": "In addition to allowing any 'against ^xADAA47Shocked ^7Enemies' modifiers to apply,\nthis will allow you to input the effect of the ^xADAA47Shock ^7applied to the enemy.",
       "effects": [
         {
           "target": "enemy",
@@ -5013,6 +5139,7 @@
       "input_type": "check",
       "section": "For Effective DPS",
       "label": "Is the enemy Unnerved?",
+      "tooltip": "Unnerved enemies take 10% increased Spell Damage.",
       "effects": [
         {
           "target": "enemy",
@@ -5302,6 +5429,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Do you have Iron Reflexes?",
+      "tooltip": "This option is specific to Arborix.",
       "visibility": {
         "if_flag": [
           "Condition:HaveArborix"
@@ -5334,6 +5462,7 @@
       "input_type": "list",
       "section": "When In Combat",
       "label": "Augyre rotating buff:",
+      "tooltip": "This option is specific to Augyre.",
       "list_options": [
         {
           "value": "EleOverload",
@@ -5418,6 +5547,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Do you have Manastorm's Buff?",
+      "tooltip": "This option enables Manastorm's ^xADAA47Lightning ^7Damage Buff.\n(When you cast a Spell, Sacrifice all ^x7070FFMana ^7to gain Added Maximum ^xADAA47Lightning ^7Damage\nequal to 50% of Sacrificed ^x7070FFMana ^7for 4 seconds)",
       "visibility": {
         "if_flag": [
           "Condition:HaveManaStorm"
@@ -5444,6 +5574,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Do you have a Totem summoned?",
+      "tooltip": "You will automatically be considered to have a Totem if your main skill is a Totem,\nbut you can use this option to force it if necessary.",
       "visibility": {
         "if_cond": [
           "HaveTotem"
@@ -5470,6 +5601,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Do you have Avatar Of Fire?",
+      "tooltip": "This option is specific to Vulconus.",
       "visibility": {
         "if_flag": [
           "Condition:HaveVulconus"
@@ -5502,6 +5634,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you been hit by ^x3F6DB3Cold ^7Recently?",
+      "tooltip": "This also implies that you have been Hit Recently.",
       "visibility": {
         "if_cond": [
           "HitByColdDamageRecently"
@@ -5543,6 +5676,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you been hit by ^xB97123Fire ^7Recently?",
+      "tooltip": "This also implies that you have been Hit Recently.",
       "visibility": {
         "if_cond": [
           "HitByFireDamageRecently"
@@ -5584,6 +5718,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you been hit by ^xADAA47Light. ^7Recently?",
+      "tooltip": "This also implies that you have been Hit Recently.",
       "visibility": {
         "if_cond": [
           "HitByLightningDamageRecently"
@@ -5625,6 +5760,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you taken Spell Damage Recently?",
+      "tooltip": "This also implies that you have been Hit Recently.",
       "visibility": {
         "if_cond": [
           "HitBySpellDamageRecently"
@@ -5666,6 +5802,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you Melee Hit Recently?",
+      "tooltip": "This also implies that you have Hit Recently.",
       "visibility": {
         "if_cond": [
           "HitMeleeRecently"
@@ -5707,6 +5844,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you Hit with a Proj. Att. Recently?",
+      "tooltip": "This also implies that you have Hit Recently.",
       "visibility": {
         "if_cond": [
           "HitProjectileRecently"
@@ -5748,6 +5886,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you Hit Recently?",
+      "tooltip": "You will automatically be considered to have Hit Recently if your main skill Hits and is self-cast,\nbut you can use this option to force it if necessary.",
       "visibility": {
         "if_cond": [
           "HitRecently"
@@ -5774,6 +5913,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you Hit Recently with Your Weapon?",
+      "tooltip": "This also implies that you have Hit Recently.",
       "visibility": {
         "if_cond": [
           "HitRecentlyWithWeapon"
@@ -5800,6 +5940,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you Hit with a Spell Recently?",
+      "tooltip": "This also implies that you have Hit Recently.",
       "visibility": {
         "if_cond": [
           "HitSpellRecently"
@@ -5919,6 +6060,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Are you ^xB97123Ignited?",
+      "tooltip": "This also implies that you are ^xB97123Burning.",
       "visibility": {
         "if_cond": [
           "Ignited"
@@ -6098,6 +6240,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you Killed in the last 3 Seconds?",
+      "tooltip": "This also implies that you have Killed Recently.",
       "visibility": {
         "if_cond": [
           "KilledLast3Seconds"
@@ -6127,6 +6270,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Killed a poisoned enemy in the last 2 Seconds?",
+      "tooltip": "This also implies that you have Killed Recently.",
       "visibility": {
         "if_cond": [
           "KilledPoisonedLast2Seconds"
@@ -6182,6 +6326,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Killed a ^xADAA47Shocked ^7enemy in the last 3 Seconds?",
+      "tooltip": "This also implies that you have Killed Recently.",
       "visibility": {
         "if_cond": [
           "KilledShockedLast3Seconds"
@@ -6212,6 +6357,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Killed a taunted enemy recently?",
+      "tooltip": "This also implies that you have killed and taunted recently.",
       "visibility": {
         "if_cond": [
           "KilledTauntedEnemyRecently"
@@ -6268,6 +6414,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Are you Leeching?",
+      "tooltip": "You will automatically be considered to be Leeching if you have '^xE05030Life ^7Leech effects are not removed at Full ^xE05030Life^7',\nbut you can use this option to force it if necessary.",
       "visibility": {
         "if_cond": [
           "Leeching"
@@ -6463,6 +6610,7 @@
       "input_type": "check",
       "section": "General",
       "label": "Are you always on Low ^x88FFFFEnergy Shield?",
+      "tooltip": "You will automatically be considered to be on Low ^x88FFFFEnergy Shield ^7if you have at least 50% ^x88FFFFES ^7reserved,\nbut you can use this option to force it if necessary.",
       "visibility": {
         "if_cond": [
           "LowEnergyShield"
@@ -6503,6 +6651,7 @@
       "input_type": "check",
       "section": "General",
       "label": "Are you always on Low ^x7070FFMana?",
+      "tooltip": "You will automatically be considered to be on Low ^x7070FFMana ^7if you have at least 50% ^x7070FFmana ^7reserved,\nbut you can use this option to force it if necessary.",
       "visibility": {
         "if_cond": [
           "LowMana"
@@ -6523,6 +6672,7 @@
       "input_type": "check",
       "section": "General",
       "label": "Are you on low ^xFFFF77Runic Ward?",
+      "tooltip": "You are on Low ^xFFFF77Runic Ward^7 if you have 35% of your maximum ^xFFFF77Runic Ward^7 or less.",
       "visibility": {
         "if_cond": [
           "LowRunicWard"
@@ -6667,6 +6817,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Are you out of Life Flask uses?",
+      "tooltip": "This is automatically enabled if you have a flask active,\nbut you can use this option to force it if necessary.",
       "visibility": {
         "if_cond": [
           "NoLifeFlaskUsesLeft"
@@ -6771,6 +6922,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Are you on ^xB97123Burning ^7Ground?",
+      "tooltip": "This also implies that you are ^xB97123Burning.",
       "visibility": {
         "if_cond": [
           "OnBurningGround"
@@ -6838,6 +6990,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Are you on ^x3F6DB3Chilled ^7Ground?",
+      "tooltip": "This also implies that you are ^x3F6DB3Chilled.",
       "visibility": {
         "if_cond": [
           "OnChilledGround"
@@ -6879,6 +7032,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Are you on Consecrated Ground?",
+      "tooltip": "In addition to allowing any 'while on Consecrated Ground' modifiers to apply,\nConsecrated Ground grants 5% ^xE05030Life ^7Regeneration to players and allies.",
       "effects": [
         {
           "target": "player",
@@ -6919,6 +7073,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Are you on Fungal Ground?",
+      "tooltip": "Allies on your Fungal Ground gain +25% ^xD02090Chaos ^7Resistance.",
       "visibility": {
         "if_cond": [
           "OnFungalGround",
@@ -6946,6 +7101,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Are you on ^xB97123Ignited ^7Ground?",
+      "tooltip": "This also implies that you are ^xB97123Ignited.",
       "visibility": {
         "if_cond": [
           "OnIgnitedGround"
@@ -6987,6 +7143,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Are you on ^xADAA47Shocked ^7Ground?",
+      "tooltip": "This also implies that you are ^xADAA47Shocked.",
       "visibility": {
         "if_cond": [
           "OnShockedGround"
@@ -7144,6 +7301,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Has Ravenous consumed a corpse?",
+      "tooltip": "Corpse must be the same type as the monster you're fighting.\nThis also implies you have 'Consumed a corpse Recently'",
       "visibility": {
         "if_skill": [
           "Ravenous"
@@ -7194,6 +7352,12 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "Effect of ^xADAA47Sap:",
+      "tooltip": "If you have a guaranteed source of ^xADAA47Sap^7,\nthe strongest one will apply instead unless this option would apply a stronger ^xADAA47Sap.",
+      "visibility": {
+        "if_option": [
+          "conditionEnemySapped"
+        ]
+      },
       "effects": [
         {
           "target": "enemy",
@@ -7270,6 +7434,12 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "Effect of ^xB97123Scorched:",
+      "tooltip": "This effect will only be applied while you can inflict ^xB97123Scorched.",
+      "visibility": {
+        "if_option": [
+          "conditionEnemyScorched"
+        ]
+      },
       "effects": [
         {
           "target": "enemy",
@@ -7293,6 +7463,11 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Did you ^x3F6DB3Chill ^7yourself?",
+      "visibility": {
+        "if_option": [
+          "conditionChilled"
+        ]
+      },
       "effects": [
         {
           "target": "player",
@@ -7314,6 +7489,13 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Shapeshifted to animal recently?",
+      "visibility": {
+        "if_skill_type": [
+          "Bear",
+          "Wolf",
+          "Wyvern"
+        ]
+      },
       "effects": [
         {
           "target": "player",
@@ -7423,6 +7605,12 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "Effect of ^xADAA47Shock^7 (if not maximum):",
+      "tooltip": "If you have a guaranteed source of ^xADAA47Shock^7,\nthe strongest one will apply instead unless this option would apply a stronger ^xADAA47Shock.",
+      "visibility": {
+        "if_option": [
+          "conditionEnemyShocked"
+        ]
+      },
       "effects": [
         {
           "target": "enemy",
@@ -7638,6 +7826,7 @@
       "input_type": "count",
       "section": "General",
       "label": "Time spent stationary",
+      "tooltip": "Applies mods that use `while stationary` and `per / every second while stationary`",
       "visibility": {
         "if_cond": [
           "Stationary"
@@ -7841,6 +8030,9 @@
       "section": "Skill Options",
       "label": "Summoned Spectre in past 8 Seconds?",
       "visibility": {
+        "if_skill_flag": [
+          "spectre"
+        ],
         "if_cond": [
           "SummonedSpectreInPast8Sec"
         ]
@@ -7866,6 +8058,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you Summoned a Totem Recently?",
+      "tooltip": "You will automatically be considered to have Summoned a Totem Recently if your main skill is a Totem,\nbut you can use this option to force it if necessary.",
       "visibility": {
         "if_cond": [
           "SummonedTotemRecently"
@@ -7947,6 +8140,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Are you surrounded?",
+      "tooltip": "You are surrounded if there are at least 5 Enemies within 3 metres of you",
       "visibility": {
         "if_cond": [
           "Surrounded"
@@ -7973,6 +8167,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Taken ^xB97123Fire ^7Damage from enemy Hit Recently?",
+      "tooltip": "This also implies that you have been Hit Recently.",
       "visibility": {
         "if_cond": [
           "TakenFireDamageFromEnemyHitRecently"
@@ -8092,6 +8287,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have your Totems Hit with a Spell Recently?",
+      "tooltip": "This also implies that you Totems have Hit Recently.",
       "visibility": {
         "if_cond": [
           "TotemsHitSpellRecently"
@@ -8206,6 +8402,7 @@
       "input_type": "list",
       "section": "Skill Options",
       "label": "Acolyte's Unravelling:",
+      "tooltip": "While affected by Unravelling, your ^xD02090Chaos^7 Damage randomly either also contributes to ^x3F6DB3Freeze^7 buildup,\n^xB97123Ignite^7 chance and magnitude, or ^xADAA47Shock^7 chance - changing which it contributes to every two seconds. ",
       "list_options": [
         {
           "value": "Cold",
@@ -8284,6 +8481,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you used a ^x3F6DB3Cold ^7Skill Recently?",
+      "tooltip": "This also implies that you have used a Skill Recently.",
       "visibility": {
         "if_cond": [
           "UsedColdSkillRecently"
@@ -8325,6 +8523,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you cast Dash Recently?",
+      "tooltip": "This also implies that you have used a Skill Recently..",
       "visibility": {
         "if_cond": [
           "CastDashRecently"
@@ -8392,6 +8591,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you used a ^xB97123Fire ^7Skill Recently?",
+      "tooltip": "This also implies that you have used a Skill Recently.",
       "visibility": {
         "if_cond": [
           "UsedFireSkillRecently"
@@ -8433,6 +8633,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you used a Minion Skill Recently?",
+      "tooltip": "This also implies that you have used a Skill Recently.\nYou will automatically be considered to have used a Minion skill Recently if your main skill is a Minion skill,\nbut you can use this option to force it if necessary.",
       "visibility": {
         "if_cond": [
           "UsedMinionSkillRecently"
@@ -8474,6 +8675,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you used a Movement Skill Recently?",
+      "tooltip": "This also implies that you have used a Skill Recently.\nYou will automatically be considered to have used a Movement skill Recently if your main skill is a movement skill,\nbut you can use this option to force it if necessary.",
       "visibility": {
         "if_cond": [
           "UsedMovementSkillRecently"
@@ -8541,6 +8743,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you used a Travel Skill Recently?",
+      "tooltip": "This also implies that you have used a Skill Recently..",
       "visibility": {
         "if_cond": [
           "UsedTravelSkillRecently"
@@ -8594,6 +8797,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you used a Vaal Skill Recently?",
+      "tooltip": "This also implies that you have used a Skill Recently.\nYou will automatically be considered to have used a Vaal skill Recently if your main skill is a Vaal skill,\nbut you can use this option to force it if necessary.",
       "visibility": {
         "if_cond": [
           "UsedVaalSkillRecently"
@@ -8661,6 +8865,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Have you used a Warcry Recently?",
+      "tooltip": "This also implies that you have used a Skill Recently.",
       "visibility": {
         "if_flag": [
           "warcry"
@@ -8715,6 +8920,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Do you have a Charm active?",
+      "tooltip": "This is automatically enabled if you have a charm active,\nbut you can use this option to force it if necessary.",
       "visibility": {
         "if_cond": [
           "UsingCharm"
@@ -8741,6 +8947,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Do you have a Flask active?",
+      "tooltip": "This is automatically enabled if you have a flask active,\nbut you can use this option to force it if necessary.",
       "visibility": {
         "if_cond": [
           "UsingFlask"
@@ -8767,6 +8974,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Boss's Faces Broken:",
+      "tooltip": "Boss's Face Broken refers to unique bosses defeated in the campaign that have a skull marker on the World Screen. Rare monster encounters with the skull marker do not count.",
       "visibility": {
         "if_mult": [
           "BossFaceBroken"
@@ -8789,6 +8997,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "# of Active Mist Ravens:",
+      "tooltip": "Sets the number of active Spiraling Conspiracy.\nThe maximum number of Spiraling Conspiracy is 30.",
       "visibility": {
         "if_skill": [
           "Spiraling Conspiracy"
@@ -8815,6 +9024,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "Total Resonance Count:",
+      "tooltip": "Sets the total Resonance Count.",
       "visibility": {
         "if_skill": [
           "Trinity"
@@ -8837,6 +9047,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "# of Active Spectral Wolves:",
+      "tooltip": "Sets the number of active Spectral Wolves.\nThe maximum number of Spectral Wolves is 10.",
       "visibility": {
         "if_skill": [
           "Summon Spectral Wolf"
@@ -8863,6 +9074,7 @@
       "input_type": "list",
       "section": "General",
       "label": "Cooldown calculation mode:",
+      "tooltip": "Controls how the cooldown for skills is calculated:\n\tBase: The cooldown is calculated with normal behavior.\n\tAverage: The cooldown is adjusted to reflect the average time between uses, factoring in effects such as a chance to not consume a cooldown.",
       "list_options": [
         {
           "value": "BASE",
@@ -8920,6 +9132,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "Skeleton ^xE05030Life:",
+      "tooltip": "Sets the maximum ^xE05030Life ^7of the Skeleton that is being targeted.",
       "visibility": {
         "if_skill": [
           "Dark Pact"
@@ -8954,6 +9167,7 @@
       "input_type": "list",
       "section": "Enemy Stats",
       "label": "Delirious Effect:",
+      "tooltip": "Delirium scales enemy 'less Damage Taken' as well as enemy 'increased Damage dealt'\nAt 100% effect:\nEnemies Deal 30% Increased Damage\nEnemies take 80% Less Damage",
       "list_options": [
         {
           "value": "0",
@@ -9132,6 +9346,7 @@
       "input_type": "count",
       "section": "General",
       "label": "Enemy Corpse ^xE05030Life:",
+      "tooltip": "Sets the maximum ^xE05030life ^7of the target corpse for Detonate Dead and similar skills.\nFor reference, a level 70 monster has 11148 base ^xE05030life^7, and a level 80 monster has 31065.",
       "visibility": {
         "if_skill_data": [
           "explodeCorpse"
@@ -9194,6 +9409,7 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Are you Sacrificing?",
+      "tooltip": "Sacrifice 5% ^x88FFFFEnergy Shield^7 when you cast a Spell to give that Spell 30% more Damage.",
       "visibility": {
         "if_flag": [
           "EldritchEmpowerment"
@@ -9444,8 +9660,14 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "Critical weakness stacks:",
+      "tooltip": "Each stack of critical weakness applies +0.5% to critical strike chance against the affected target",
       "default": {
         "placeholder_number": 20.0
+      },
+      "visibility": {
+        "if_option": [
+          "conditionEnemyCriticalWeakness"
+        ]
       },
       "effects": [
         {
@@ -9476,6 +9698,7 @@
       "input_type": "count_allow_zero",
       "section": "Enemy Stats",
       "label": "Enemy Skill Roll Range %:",
+      "tooltip": "The percentage of the roll range the enemy hits for \n eg at 100% the enemy deals its maximum damage",
       "default": {
         "placeholder_number": 70.0
       },
@@ -9491,6 +9714,7 @@
       "input_type": "list",
       "section": "Enemy Stats",
       "label": "Enemy Damage Type:",
+      "tooltip": "Controls which types of damage the EHP calculation uses:\n\tAverage: uses the Average of all typed damage types (except Damage Over Time and Untyped)\n\nIf a specific damage type is selected, that will be the only type used.",
       "list_options": [
         {
           "value": "Average",
@@ -9528,6 +9752,7 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "Distance to enemy:",
+      "tooltip": "10 units equals 1 metre\nPlayer and Minion Attacks incur an Accuracy penalty based on distance from the origin of the damage to the target,\nwith no penalty for targets within 2 metres and up to 90% less Accuracy for targets further than 12 metres away-",
       "default": {
         "placeholder_number": 20.0
       },
@@ -9627,6 +9852,7 @@
       "input_type": "list",
       "section": "Enemy Stats",
       "label": "Is the enemy a Boss?",
+      "tooltip": "Bosses' damage is monster damage scaled to an average damage of their attacks\nThis is divided by 4.40 to represent 4 damage types + some (40% as much) ^xD02090chaos\n^7Fill in the exact damage numbers if more precision is needed\n\nBosses' armour and evasion multiplier are calculated using the average of the boss type\n\nStandard Boss adds the following modifiers:\n\t+30% to enemy Elemental Resistances\n\t^790% of monster Damage of each type\n\t400% of monster Damage total\n\nGuardian / Pinnacle Boss adds the following modifiers:\n\t+50% to enemy Elemental Resistances\n\t^7150% of monster Armour\n\t124% of monster ^x33FF77Evasion\n\t^7181% of monster Damage of each type\n\t800% of monster Damage total\n\t3% penetration\n\nUber Pinnacle Boss adds the following modifiers:\n\t+50% to enemy Elemental Resistances\n\t^7125% of monster Armour\n\t116% of monster ^x33FF77Evasion\n\t^770% less to enemy Damage taken\n\t235% of monster Damage of each type\n\t1000% of monster Damage total\n\t8% penetration",
       "default": {
         "index": 3
       },
@@ -9657,6 +9883,7 @@
       "input_type": "count",
       "section": "Enemy Stats",
       "label": "Enemy Level:",
+      "tooltip": "This overrides the default enemy level used to estimate your hit, ^x33FF77evade ^7chance, and damage reduction.\n\nThe maximum level for normal enemies and all bosses is 85.\n\nThe default level of normal enemies and bosses scales with player level unless manually set.\n\nThe default and minimum level for pinnacle bosses and uber pinnacle bosses is 82.",
       "verified": true
     },
     {
@@ -9696,6 +9923,7 @@
       "input_type": "check",
       "section": "Enemy Stats",
       "label": "Enemy Max Resistance is always 75%",
+      "tooltip": "Enemy Maximum resistance is increased by the resistance configurations \nThis locks it at the default value",
       "effects": [
         {
           "target": "enemy",
@@ -9712,6 +9940,7 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "Enemy in Your Presence Duration",
+      "tooltip": "Number of seconds the enemy has been in your presence.",
       "visibility": {
         "if_enemy_mult": [
           "EnemyPresenceSeconds"
@@ -9740,6 +9969,7 @@
       "input_type": "count",
       "section": "Enemy Stats",
       "label": "Custom PvP Damage multiplier percent:",
+      "tooltip": "This multiplies the damage of a given skill in pvp, for instance any with damage multiplier specific to pvp (from skill or support or item like sire of shards)",
       "visibility": {
         "if_flag": [
           "isPvP"
@@ -9762,6 +9992,7 @@
       "input_type": "count_allow_zero",
       "section": "Enemy Stats",
       "label": "Enemy Skill Physical Damage:",
+      "tooltip": "This overrides the default damage amount used to estimate your damage reduction from armour.\nThe default is 1.5 times the enemy's base damage, which is the same value\nused in-game to calculate the estimate shown on the character sheet.",
       "default": {
         "placeholder_number": 7.0
       },
@@ -9797,6 +10028,7 @@
       "input_type": "count_allow_zero",
       "section": "Skill Options",
       "label": "Enemy radius:",
+      "tooltip": "Configure the radius of an enemy hitbox to calculate some area overlapping (shotgunning) effects.",
       "visibility": {
         "if_skill": [
           "Seismic Trap",
@@ -9825,6 +10057,7 @@
       "input_type": "list",
       "section": "Skill Options",
       "label": "Enemy size preset:",
+      "tooltip": "Configure the radius of an enemy hitbox which is used in calculating some area multi-hitting (shotgunning) effects.\n\nSmall sets the radius to 2.\n\tMost monsters and the players' character are this size.\nMedium sets the radius to 3.\n\tThis is the size of most humanoid bosses (i.e. The Maven; The Shaper; Izaro)\nLarge sets the radius to 5.\n\tThis is the size of some larger bosses (i.e. King Kaom; Vaal Oversoul)\nHuge sets the radius to 11.\n\tThis is the size of some of the largest bosses (i.e. Nucleus of the Maven; Tsoagoth, The Brine King)",
       "default": {
         "index": 2
       },
@@ -9872,6 +10105,7 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Eye of Winter gained ^x3F6DB3Cold^7 Damage:",
+      "tooltip": "Eye of Winter has passed over ^x3F6DB3Cold^7 Ground Effect or Orb.",
       "visibility": {
         "if_skill": [
           "Eye of Winter"
@@ -9892,6 +10126,7 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Eye of Winter gained ^xB97123Fire^7 Damage:",
+      "tooltip": "Eye of Winter has passed over ^xB97123Fire^7 Ground Effect or Orb.",
       "visibility": {
         "if_skill": [
           "Eye of Winter"
@@ -9912,6 +10147,7 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Eye of Winter gained ^xADAA47Lightning^7 Damage:",
+      "tooltip": "Eye of Winter has passed over ^xADAA47Lightning^7 Ground Effect or Orb.",
       "visibility": {
         "if_skill": [
           "Eye of Winter"
@@ -9952,6 +10188,11 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Lightning Infused?",
+      "visibility": {
+        "if_option": [
+          "flameWallAddedDamage"
+        ]
+      },
       "effects": [
         {
           "target": "player",
@@ -10015,6 +10256,7 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Is Slipstream active?:",
+      "tooltip": "Greater Harbinger of Time Slipstream buff grants:\n10% increased Action Speed\nBuff affects the player and allies\nBuff has a base duration of 8s with a 10s Cooldown",
       "visibility": {
         "if_skill": [
           "Summon Greater Harbinger of Time"
@@ -10035,6 +10277,7 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Is Slipstream active?:",
+      "tooltip": "Harbinger of Time Slipstream buff grants:\n10% increased Action Speed\nBuff affects the player, allies and enemies in a small radius\nBuff has a base duration of 8s with a 20s Cooldown",
       "visibility": {
         "if_skill": [
           "Summon Harbinger of Time"
@@ -10077,6 +10320,7 @@
       "input_type": "list",
       "section": "When In Combat",
       "label": "Highest damage type Override:",
+      "tooltip": "Determines whether modifiers that depend on the highest damage type apply.",
       "list_options": [
         {
           "value": "NONE",
@@ -10188,6 +10432,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "Overkill damage:",
+      "tooltip": "Herald of Ash's base ^xB97123Burning ^7damage is equal to 25% of Overkill damage.",
       "visibility": {
         "if_skill": [
           "Herald of Ash"
@@ -10216,6 +10461,7 @@
       "input_type": "check",
       "section": "General",
       "label": "Don't disable items",
+      "tooltip": "Ignore the effects of things which disable items, like Bringer of Rain",
       "visibility": {
         "if_tag_type": [
           "DisablesItem"
@@ -10228,6 +10474,7 @@
       "input_type": "check",
       "section": "General",
       "label": "Ignore Jewel Limits",
+      "tooltip": "Ignore the limits on jewels",
       "verified": true
     },
     {
@@ -10235,6 +10482,7 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Are you in Demon Form?",
+      "tooltip": "Players need a minimum of 2 ^xE05030Life ^7to enter Demon Form, so you cannot use it with Chaos Inoculation",
       "default": {
         "state_bool": true
       },
@@ -10318,6 +10566,7 @@
       "input_type": "list",
       "section": "General",
       "label": "^xE05030Life ^7regen calculation mode:",
+      "tooltip": "Controls how ^xE05030Life ^7regeneration is calculated:\n\tMinimum: does not include burst regen\n\tAverage: includes burst regen, averaged based on uptime\n\tBurst: includes full burst regen",
       "list_options": [
         {
           "value": "MIN",
@@ -10414,6 +10663,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "Missing Unreserved ^x7070FFMana^7 %:",
+      "tooltip": "Ignores values outside the 0-100 range, defaults to 100% if not specified. \nA more realistic value would be to match your Arcane Cloak spend %.",
       "visibility": {
         "if_skill": [
           "Manabond"
@@ -10448,6 +10698,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Mines per throw:",
+      "tooltip": "This will override the number of Mines per throw",
       "visibility": {
         "if_flag": [
           "mine"
@@ -10476,6 +10727,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Do your minions have Onslaught?",
+      "tooltip": "In addition to allowing any 'while your minions have Onslaught' modifiers to apply,\nthis will enable the Onslaught buff itself. (Grants 20% increased Attack, Cast, and Movement Speed)",
       "visibility": {
         "if_flag": [
           "haveMinion"
@@ -10509,6 +10761,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Do your minions have Chaotic Might?",
+      "tooltip": "This will enable the Chaotic Might buff on your minions.\n(Grants 30% of Physical Damage as Extra ^xD02090Chaos ^7Damage)",
       "visibility": {
         "if_flag": [
           "haveMinion"
@@ -10542,6 +10795,7 @@
       "input_type": "check",
       "section": "When In Combat",
       "label": "Do your minions have Unholy Might?",
+      "tooltip": "This will enable the Unholy Might buff on your minions.\n\n(Grants 30% of All Damage as extra ^xD02090Chaos ^7Damage)",
       "visibility": {
         "if_flag": [
           "haveMinion"
@@ -10690,6 +10944,9 @@
       "section": "When In Combat",
       "label": "# of Endurance Charges (if not maximum):",
       "visibility": {
+        "if_option": [
+          "minionsUseEnduranceCharges"
+        ],
         "if_flag": [
           "haveMinion"
         ]
@@ -10725,6 +10982,9 @@
       "section": "When In Combat",
       "label": "# of Frenzy Charges (if not maximum):",
       "visibility": {
+        "if_option": [
+          "minionsUseFrenzyCharges"
+        ],
         "if_flag": [
           "haveMinion"
         ]
@@ -10760,6 +11020,9 @@
       "section": "When In Combat",
       "label": "# of Power Charges (if not maximum):",
       "visibility": {
+        "if_option": [
+          "minionsUsePowerCharges"
+        ],
         "if_flag": [
           "haveMinion"
         ]
@@ -10944,6 +11207,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Recently Applied Ailments:",
+      "tooltip": "Number of recently applied ailments",
       "visibility": {
         "if_mult": [
           "AppliedAilmentsRecently"
@@ -10972,6 +11236,12 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "# of Broken Armour (if not maximum):",
+      "tooltip": "Use this field to set a custom Armour Break value.\nIf left empty or set to 0, Fully Broken Armour will be assumed.\nArmour cannot be broken below 0 unless stated otherwise.\nIf so, Armour can be broken up to the inverse of its original value.",
+      "visibility": {
+        "if_option": [
+          "conditionEnemyArmourBroken"
+        ]
+      },
       "handler_id": "config:multiplierArmourBreak",
       "handler_reason": "apply 运行报错: Modules/ConfigOptions.lua:1694: attempt to call method 'ReplaceMod' (a nil value)",
       "verified": false
@@ -11080,6 +11350,7 @@
       "input_type": "count_allow_zero",
       "section": "For Effective DPS",
       "label": "# bolts reloaded past 6 seconds",
+      "tooltip": "Override number of bolts reloaded in the past 6 seconds.\nUsed to calculate damage bonus from Fresh Clip I support.\nAssumes calculated average if no value is specified.",
       "visibility": {
         "if_skill": [
           "Fresh Clip I"
@@ -11108,6 +11379,7 @@
       "input_type": "count_allow_zero",
       "section": "For Effective DPS",
       "label": "# bolts reloaded past 8 seconds",
+      "tooltip": "Override number of bolts reloaded in the past 8 seconds.\nUsed to calculate damage bonus from Fresh Clip II support.\nAssumes calculated average if no value is specified.",
       "visibility": {
         "if_skill": [
           "Fresh Clip II"
@@ -11136,6 +11408,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "How many spells cast in the last 8 seconds?",
+      "tooltip": "Only non-instant spells you cast count",
       "visibility": {
         "if_mult": [
           "CastLast8Seconds"
@@ -11164,6 +11437,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "Channeling for # seconds:",
+      "tooltip": "This also implies that you are channelling",
       "visibility": {
         "if_mult": [
           "ChannellingTime"
@@ -11247,6 +11521,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "Combo:",
+      "tooltip": "Some skills and effects require a certain Combo count to use.\nCombo is built by successfully Striking Enemies.",
       "visibility": {
         "if_mult": [
           "ComboStacks"
@@ -11318,6 +11593,7 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "# of Corrosion Stacks:",
+      "tooltip": "Each stack of Corrosion applies -5000 to total Armour and -1000 to total ^x33FF77Evasion Rating ^7to the enemy.\nCorrosion lasts 4 seconds and refreshes the duration of existing Corrosion stacks\nCorrosion has no stack limit",
       "visibility": {
         "if_flag": [
           "Condition:CanCorrode"
@@ -11388,6 +11664,7 @@
       "input_type": "count",
       "section": "General",
       "label": "Current ^x88FFFFEnergy Shield^7 percentage:",
+      "tooltip": "Used in calculations for ^xAF6025Silks of Veneration^7 and ^xAF6025The Mutable Star^7.\nOverflowed ^x88FFFFEnergy Shield^7 is allowed, up to 150%.",
       "default": {
         "placeholder_number": 100.0
       },
@@ -11536,6 +11813,7 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "# different Ammo Types Shot past 10s",
+      "tooltip": "Number of different Ammunition types used in tha past 10s",
       "default": {
         "placeholder_number": 1.0
       },
@@ -11567,6 +11845,7 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "# different Grenade Types Shot past 10s",
+      "tooltip": "Number of different Grenade types used in tha past 10s",
       "default": {
         "placeholder_number": 1.0
       },
@@ -11669,6 +11948,7 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "# of Ensnare Stacks:",
+      "tooltip": "While ensnared, enemies take increased Projectile Damage from Attack Hits\nEnsnared enemies always count as moving, and have less movement speed while trying to break the snare.",
       "visibility": {
         "if_skill": [
           "Ensnaring Arrow"
@@ -11683,6 +11963,7 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "# of Faerie Fire Stacks:",
+      "tooltip": "Each Faerie Fire Debuff causes Hits against the affected target to Gain 2% of damage as Extra Damage of a random Element.\nThe Debuff lasts 8 seconds, and up to 10 can be applied to each target.",
       "visibility": {
         "if_flag": [
           "Condition:CanInflictFaerieFire"
@@ -11847,6 +12128,9 @@
       "section": "Skill Options",
       "label": "Doom on Hex:",
       "visibility": {
+        "if_skill_flag": [
+          "hex"
+        ],
         "if_mult": [
           "MaxDoom"
         ]
@@ -11868,6 +12152,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Hits Suppressed Recently:",
+      "tooltip": "This also implies that you have Suppressed Recently.",
       "visibility": {
         "if_mult": [
           "HitsSuppressedRecently"
@@ -11998,6 +12283,7 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "# of Incision Stacks:",
+      "tooltip": "Incision applies 10% chance to Bleed the enemy, up to 10 stacks.",
       "visibility": {
         "if_flag": [
           "Condition:CanInflictIncision"
@@ -12030,6 +12316,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Enemies Killed Recently:",
+      "tooltip": "This also implies that you have Killed Recently.",
       "visibility": {
         "if_mult": [
           "EnemyKilledRecently"
@@ -12215,6 +12502,12 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "Minion ^xFF9922Rage:",
+      "tooltip": "Sets the Minion's current Rage.\nRage is capped at Minion's Maximum Rage.",
+      "visibility": {
+        "if_minion_flag": [
+          "Condition:CanGainRage"
+        ]
+      },
       "effects": [
         {
           "target": "player",
@@ -12249,6 +12542,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Minions in your Presence:",
+      "tooltip": "Use this to override the count if you do not have all your minions summoned",
       "visibility": {
         "if_mult": [
           "MinionPresenceCount"
@@ -12277,6 +12571,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Enemies Killed by Minions Recently:",
+      "tooltip": "This also implies that your Minions have Killed Recently.",
       "visibility": {
         "if_mult": [
           "EnemyKilledByMinionsRecently"
@@ -12404,6 +12699,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Non-Instant Spells Cast Recently:",
+      "tooltip": "Only the number of different spells you cast count",
       "visibility": {
         "if_mult": [
           "NonInstantSpellCastRecently"
@@ -12494,6 +12790,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Poison on You:",
+      "tooltip": "This also implies that you are Poisoned.",
       "visibility": {
         "if_mult": [
           "PoisonStacks"
@@ -12525,6 +12822,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "Custom PvP Damage multiplier percent:",
+      "tooltip": "This multiplies the damage of a given skill in pvp, for instance any with damage multiplier specific to pvp (from skill or support or item like sire of shards)",
       "visibility": {
         "if_flag": [
           "isPvP"
@@ -12548,6 +12846,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "PvP Tvalue override (ms):",
+      "tooltip": "Tvalue in milliseconds. This overrides the Tvalue of a given skill, for instance any with fixed Tvalues, or modified Tvalues",
       "visibility": {
         "if_flag": [
           "isPvP"
@@ -12576,6 +12875,12 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "^xFF9922Rage:",
+      "tooltip": "Base Maximum ^xFF9922Rage ^7is 30, and inherently grants 1% More Attack Damage per 1 ^xFF9922Rage^7\nYou lose 5 ^xFF9922Rage ^7every second if you have not been Hit or gained ^xFF9922Rage ^7in the last 4 seconds.",
+      "visibility": {
+        "if_player_flag": [
+          "Condition:CanGainRage"
+        ]
+      },
       "effects": [
         {
           "target": "player",
@@ -12603,6 +12908,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Rampage Kills:",
+      "tooltip": "Rampage grants the following, up to 1000 stacks:\n\t1% increased Movement Speed per 20 Rampage\n\t2% increased Damage per 20 Rampage\nYou lose Rampage if you do not get a Kill within 5 seconds.",
       "visibility": {
         "if_flag": [
           "Condition:Rampage"
@@ -12631,6 +12937,7 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "# of Rupture stacks?",
+      "tooltip": "Rupture applies more bleed damage and faster bleeds for 3 seconds, up to 3 stacks",
       "visibility": {
         "if_flag": [
           "Condition:CanInflictRupture"
@@ -12758,6 +13065,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Soul Eater Stacks:",
+      "tooltip": "Soul Eater grants the following, up to a base of 45 stacks:\n\t5% increased Attack Speed\n\t5% increased Cast Speed\n\t1% increased character size per stack.",
       "visibility": {
         "if_flag": [
           "Condition:CanHaveSoulEater"
@@ -12788,6 +13096,11 @@
       "label": "# of times Stunned Recently:",
       "default": {
         "placeholder_number": 1.0
+      },
+      "visibility": {
+        "if_option": [
+          "conditionStunnedRecently"
+        ]
       },
       "effects": [
         {
@@ -12820,6 +13133,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Summoned Minions (if not maximum):",
+      "tooltip": "Use this to override the count if you do not have all your minions summoned",
       "visibility": {
         "if_mult": [
           "SummonedMinion"
@@ -12848,6 +13162,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Tailwind Stacks:",
+      "tooltip": "Tailwind grants the following, up to a base of 10 stacks:\n\t1% increased movement speed\n\t3% increased Skill Speed\n\t15% increased Evasion Rating",
       "visibility": {
         "if_flag": [
           "Condition:CanHaveTailwind"
@@ -12876,6 +13191,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Enemies Killed by Totems Recently:",
+      "tooltip": "This also implies that your Totems have Killed Recently.",
       "visibility": {
         "if_mult": [
           "EnemyKilledByTotemsRecently"
@@ -12950,6 +13266,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "Warcry Power:",
+      "tooltip": "Power determines how strong your Warcry buffs will be, and is based on the total strength of nearby enemies.\nPower is assumed to be 20 if your target is a Boss, but you can override it here if necessary.\n\tEach Normal enemy grants 1 Power\n\tEach Magic enemy grants 2 Power\n\tEach Rare enemy grants 10 Power\n\tEach Unique enemy grants 20 Power",
       "visibility": {
         "if_flag": [
           "UsesWarcryPower"
@@ -12974,6 +13291,11 @@
       "label": "# of Warcries Used Recently:",
       "default": {
         "placeholder_number": 1.0
+      },
+      "visibility": {
+        "if_option": [
+          "conditionUsedWarcryRecently"
+        ]
       },
       "effects": [
         {
@@ -13006,6 +13328,7 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "# of Withered Stacks:",
+      "tooltip": "Withered applies 5% increased ^xD02090Chaos ^7Damage Taken to the enemy, up to 10 stacks.",
       "visibility": {
         "if_flag": [
           "Condition:CanWither"
@@ -13034,6 +13357,7 @@
       "input_type": "count_allow_zero",
       "section": "When In Combat",
       "label": "# of Withered Stacks on you:",
+      "tooltip": "Withered applies 5% increased ^xD02090Chaos ^7Damage Taken to the self, up to 10 stacks.",
       "default": {
         "placeholder_number": 15.0
       },
@@ -13139,6 +13463,11 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Blitz Charges (if not maximum):",
+      "visibility": {
+        "if_option": [
+          "useBlitzCharges"
+        ]
+      },
       "effects": [
         {
           "target": "player",
@@ -13190,6 +13519,12 @@
       "input_type": "count",
       "section": "For Effective DPS",
       "label": "Effect of Blind (if not maximum):",
+      "tooltip": "If you have a guaranteed source of Blind, the strongest one will apply.",
+      "visibility": {
+        "if_option": [
+          "conditionEnemyBlinded"
+        ]
+      },
       "handler_id": "config:overrideBuffBlinded",
       "handler_reason": "tag 类型 GlobalEffect 不在白名单",
       "verified": false
@@ -13199,6 +13534,12 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "Effect of Elusive (if not average):",
+      "tooltip": "If you have a guaranteed source of Elusive, the strongest one will apply. \nYou can change this to see various buff values",
+      "visibility": {
+        "if_option": [
+          "buffElusive"
+        ]
+      },
       "handler_id": "config:overrideBuffElusive",
       "handler_reason": "tag 类型 GlobalEffect 不在白名单",
       "verified": false
@@ -13208,6 +13549,11 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Challenger Charges (if not maximum):",
+      "visibility": {
+        "if_option": [
+          "useChallengerCharges"
+        ]
+      },
       "effects": [
         {
           "target": "player",
@@ -13259,6 +13605,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "Damage % (if not maximum):",
+      "tooltip": "Cruelty is a buff provided by Cruelty Support which grants\nup to 40% more damage over time to the skills it supports.",
       "visibility": {
         "if_skill": [
           "Cruelty"
@@ -13291,6 +13638,11 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Endurance Charges (if not maximum):",
+      "visibility": {
+        "if_option": [
+          "useEnduranceCharges"
+        ]
+      },
       "effects": [
         {
           "target": "player",
@@ -13314,6 +13666,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Fortification Stacks (if not maximum):",
+      "tooltip": "You have 1% less damage taken from hits per stack of fortification:\nHas a default cap of 20 stacks.",
       "visibility": {
         "if_flag": [
           "Condition:Fortified"
@@ -13342,6 +13695,11 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Frenzy Charges (if not maximum):",
+      "visibility": {
+        "if_option": [
+          "useFrenzyCharges"
+        ]
+      },
       "effects": [
         {
           "target": "player",
@@ -13365,6 +13723,11 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Ghost Shrouds (if not maximum):",
+      "visibility": {
+        "if_option": [
+          "useGhostShrouds"
+        ]
+      },
       "effects": [
         {
           "target": "player",
@@ -13416,6 +13779,11 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Power Charges (if not maximum):",
+      "visibility": {
+        "if_option": [
+          "usePowerCharges"
+        ]
+      },
       "effects": [
         {
           "target": "player",
@@ -13439,6 +13807,11 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Siphoning Charges (if not maximum):",
+      "visibility": {
+        "if_option": [
+          "useSiphoningCharges"
+        ]
+      },
       "effects": [
         {
           "target": "player",
@@ -13490,6 +13863,7 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Enemy has Parry Debuff",
+      "tooltip": "The Parry debuff grants:\n\tEnemies take 50% more Attack Damage",
       "visibility": {
         "if_flag": [
           "CanParry"
@@ -13510,6 +13884,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "# of Overlapping Spikes:",
+      "tooltip": "Affects the DPS of Perforate in Blood Stance.\nMaximum is limited by the number of Spikes of Perforate.",
       "visibility": {
         "if_skill": [
           "Perforate"
@@ -13524,6 +13899,7 @@
       "input_type": "list",
       "section": "General",
       "label": "Random element mode:",
+      "tooltip": "Controls how modifiers which choose a random element will function.\n\tAverage: Modifiers will grant one third of their value to ^xB97123Fire^7, ^x3F6DB3Cold^7, and ^xADAA47Lightning ^7simultaneously\n\t^xB97123Fire ^7/ ^x3F6DB3Cold ^7/ ^xADAA47Lightning^7: Modifiers will grant their full value as the specified element\nIf a modifier chooses between just two elements, the full value can only be given as those two elements.",
       "list_options": [
         {
           "value": "AVERAGE",
@@ -13706,6 +14082,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "Purple Flames collected:",
+      "tooltip": "Number of Purple Flames of Chayula collected (max 10).",
       "default": {
         "state_number": 10.0
       },
@@ -13735,6 +14112,7 @@
       "input_type": "check",
       "section": "Quest Rewards",
       "label": "Act 1: Clearfell",
+      "tooltip": "^x88FFFFBeira^7\n+10% to Cold Resistance",
       "default": {
         "state_bool": true
       },
@@ -13757,6 +14135,7 @@
       "input_type": "check",
       "section": "Quest Rewards",
       "label": "Act 1: Freythorn",
+      "tooltip": "^x88FFFFKing In The Mists^7\n+30 to Spirit",
       "default": {
         "state_bool": true
       },
@@ -13779,6 +14158,7 @@
       "input_type": "check",
       "section": "Quest Rewards",
       "label": "Act 1: Ogham Manor",
+      "tooltip": "^x88FFFFCandlemass^7\n+20 to maximum Life",
       "default": {
         "state_bool": true
       },
@@ -13801,6 +14181,7 @@
       "input_type": "check",
       "section": "Quest Rewards",
       "label": "Act 2: Spires of Deshar",
+      "tooltip": "^x88FFFFSisters of Garukhan Shrine^7\n+10% to Lightning Resistance",
       "default": {
         "state_bool": true
       },
@@ -13823,6 +14204,7 @@
       "input_type": "list",
       "section": "Quest Rewards",
       "label": "Act 2: Valley of the Titans",
+      "tooltip": "^x88FFFFMedallion^7\nOne of the following:\n30% increased Charm Charges Gained\n\t+1 Charm Slot\n30% increased Charm Effect Duration\n\t+1 Charm Slot",
       "default": {
         "index": 1
       },
@@ -13894,6 +14276,7 @@
       "input_type": "check",
       "section": "Quest Rewards",
       "label": "Act 3: Azak Bog",
+      "tooltip": "^x88FFFFIgnagduk^7\n+30 to Spirit",
       "default": {
         "state_bool": true
       },
@@ -13916,6 +14299,7 @@
       "input_type": "check",
       "section": "Quest Rewards",
       "label": "Act 3: Jiquani's Machinarium",
+      "tooltip": "^x88FFFFBlackjaw^7\n+10% to Fire Resistance",
       "default": {
         "state_bool": true
       },
@@ -13938,6 +14322,7 @@
       "input_type": "list",
       "section": "Quest Rewards",
       "label": "Act 3: Venom Crypts",
+      "tooltip": "^x88FFFFVenom Draught^7\nOne of the following:\n25% increased Stun Threshold\n30% increased Elemental Ailment Threshold\n25% increased Mana Regeneration Rate",
       "default": {
         "index": 1
       },
@@ -14005,6 +14390,7 @@
       "input_type": "list",
       "section": "Quest Rewards",
       "label": "Act 4: Abandoned Prison",
+      "tooltip": "^x88FFFFGoddess of Justice^7\nOne of the following:\n30% increased Life Recovery from Flasks\n30% increased Mana Recovery from Flasks",
       "default": {
         "index": 1
       },
@@ -14056,6 +14442,7 @@
       "input_type": "check",
       "section": "Quest Rewards",
       "label": "Act 4: Eye of Hinekora",
+      "tooltip": "^x88FFFFSilent Hall^7\n5% increased Maximum Mana",
       "default": {
         "state_bool": true
       },
@@ -14078,6 +14465,7 @@
       "input_type": "list",
       "section": "Quest Rewards",
       "label": "Act 4: Eye of Hinekora",
+      "tooltip": "^x88FFFFTribal Medicine^7\nOne of the following:\n30% increased Global Armour, Evasion and Energy Shield\n+15% of Armour also applies to Elemental Damage\n\tGain Deflection Rating equal to 12% of Evasion Rating\n\t12% faster start of Energy Shield Recharge",
       "default": {
         "index": 1
       },
@@ -14104,6 +14492,7 @@
       "input_type": "list",
       "section": "Quest Rewards",
       "label": "Act 4: Halls Of The Dead",
+      "tooltip": "^x88FFFFNgamahu's Test^7\nOne of the following:\n+5 to Strength\n+5% to Fire Resistance",
       "default": {
         "index": 1
       },
@@ -14155,6 +14544,7 @@
       "input_type": "list",
       "section": "Quest Rewards",
       "label": "Act 4: Halls Of The Dead",
+      "tooltip": "^x88FFFFTasalio's Test^7\nOne of the following:\n+5 to Intelligence\n+5% to Cold Resistance",
       "default": {
         "index": 1
       },
@@ -14206,6 +14596,7 @@
       "input_type": "list",
       "section": "Quest Rewards",
       "label": "Act 4: Halls Of The Dead",
+      "tooltip": "^x88FFFFTawhoa's Test^7\nOne of the following:\n+5 to Dexterity\n+5% to Lightning Resistance",
       "default": {
         "index": 1
       },
@@ -14257,6 +14648,7 @@
       "input_type": "check",
       "section": "Quest Rewards",
       "label": "Interlude 2: Khari Crossing",
+      "tooltip": "^x88FFFFMolten Shrine^7\n5% increased maximum Life",
       "default": {
         "state_bool": true
       },
@@ -14279,6 +14671,7 @@
       "input_type": "list",
       "section": "Quest Rewards",
       "label": "Interlude 2: Qimah",
+      "tooltip": "^x88FFFFSeven Pillars^7\nOne of the following:\n+5% to all Elemental Resistances\n3% increased Movement Speed\n15% increased Global Armour, Evasion and Energy Shield\n20% increased Presence Area Of Effect\n12% increased Cooldown Recovery Rate\n+5 to all Attributes\n5% increased Experience Gain\n\t-5% to all Elemental Resistances\n\t3% reduced Movement Speed\n\t15% reduced Global Armour, Evasion and Energy Shield\n\t20% reduced Presence Area Of Effect\n\t12% reduced Cooldown Recovery Rate\n\t5% reduced Attributes",
       "default": {
         "index": 1
       },
@@ -14325,6 +14718,7 @@
       "input_type": "check",
       "section": "Quest Rewards",
       "label": "Interlude 3: Kriar Village",
+      "tooltip": "^x88FFFFLythara^7\n+40 to Spirit",
       "default": {
         "state_bool": true
       },
@@ -14347,6 +14741,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "Blade Vortex blade count:",
+      "tooltip": "Sets the blade count for Blade Vortex skills used by spectres.\nDefault is 1; maximum is 5.",
       "visibility": {
         "if_skill": [
           "DemonModularBladeVortexSpectre",
@@ -14362,8 +14757,14 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Enable buffs:",
+      "tooltip": "Enable any buff skills that your spectres have.",
       "default": {
         "state_bool": true
+      },
+      "visibility": {
+        "if_skill_flag": [
+          "spectre"
+        ]
       },
       "handler_id": "config:raiseSpectreEnableBuffs",
       "handler_reason": "tag 类型 SkillType 不在白名单",
@@ -14374,8 +14775,14 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Enable curses:",
+      "tooltip": "Enable any curse skills that your spectres have.",
       "default": {
         "state_bool": true
+      },
+      "visibility": {
+        "if_skill_flag": [
+          "spectre"
+        ]
       },
       "handler_id": "config:raiseSpectreEnableCurses",
       "handler_reason": "tag 类型 SkillType 不在白名单",
@@ -14644,6 +15051,7 @@
       "input_type": "list",
       "section": "General",
       "label": "Resource gain calculation mode:",
+      "tooltip": "Controls how resource on hit/kill is calculated:\n\tMinimum: does not include chances\n\tAverage: includes chance gains, averaged based on uptime\n\tMaximum: treats all chances as certain",
       "default": {
         "index": 2
       },
@@ -14761,6 +15169,7 @@
       "input_type": "list",
       "section": "When In Combat",
       "label": "Ruthless Support Mode:",
+      "tooltip": "Controls how the hit/ailment effect of Ruthless Support is calculated:\n\tAverage: damage is based on the average application\n\tMax Effect: damage is based on maximum effect",
       "list_options": [
         {
           "value": "AVERAGE",
@@ -14881,6 +15290,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "# of Enemies affected:",
+      "tooltip": "Sets the number of enemies affected by Siphoning Trap.",
       "visibility": {
         "if_skill": [
           "Siphoning Trap"
@@ -14910,6 +15320,10 @@
       "section": "For Effective DPS",
       "label": "# of times Skill has Chained:",
       "visibility": {
+        "if_stat": [
+          "Chain",
+          "ChainRemaining"
+        ],
         "if_flag": [
           "chaining"
         ]
@@ -14966,6 +15380,9 @@
       "section": "For Effective DPS",
       "label": "# of times Skill has Pierced:",
       "visibility": {
+        "if_stat": [
+          "PiercedCount"
+        ],
         "if_flag": [
           "piercing"
         ]
@@ -14993,6 +15410,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "Steel Wards:",
+      "tooltip": "Steel Wards are gained from using Shattering Steel of Ammunition with at least 2 Steel Shards.\nYou can have up to 6 Steel Wards, and each grants +8% chance to Block Projectile Attack Damage.",
       "visibility": {
         "if_skill": [
           "Shattering Steel of Ammunition"
@@ -15015,6 +15433,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "Seconds building Stoicism:",
+      "tooltip": "Seconds since last reset. Stoicism I: 1%/s (full 20s). Stoicism II: 2%/s (full 10s).",
       "visibility": {
         "if_skill": [
           "Stoicism I",
@@ -15108,8 +15527,14 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Enable buffs:",
+      "tooltip": "Enable any buff skills that your Companions have.",
       "default": {
         "state_bool": true
+      },
+      "visibility": {
+        "if_skill_flag": [
+          "summonBeast"
+        ]
       },
       "handler_id": "config:summonCompanionEnableBuffs",
       "handler_reason": "tag 类型 SkillType 不在白名单",
@@ -15120,8 +15545,14 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Enable curses:",
+      "tooltip": "Enable any curse skills that your Companions have.",
       "default": {
         "state_bool": true
+      },
+      "visibility": {
+        "if_skill_flag": [
+          "summonBeast"
+        ]
       },
       "handler_id": "config:summonCompanionEnableCurses",
       "handler_reason": "tag 类型 SkillType 不在白名单",
@@ -15254,6 +15685,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "% chance for second proj to hit:",
+      "tooltip": "Override to the percent chance for the secondary projectiles to hit, default of 60% or 80% with helm enchant. (20% per secondary projectile)",
       "visibility": {
         "if_skill": [
           "Tornado Shot"
@@ -15268,8 +15700,14 @@
       "input_type": "count_allow_zero",
       "section": "Skill Options",
       "label": "Glorious Madness Stacks",
+      "tooltip": "Glorious Madness Stacks grants:\n\tEroding Touch: 6% inc Damage Taken per stack\n\tParalysing Touch: 6% reduced Action Speed per stack\n\tDiluting Touch: 9% reduced Flask charges gained and 9% reduced Flask Effect per stack\n\tWasting Touch: 9% reduced ^xE05030Life ^7and ^x88FFFFEnergy Shield ^7recovery rate per stack",
       "default": {
         "state_number": 10.0
+      },
+      "visibility": {
+        "if_option": [
+          "embraceMadnessActive"
+        ]
       },
       "handler_id": "config:touchedDebuffsCount",
       "handler_reason": "tag 类型 GlobalEffect 不在白名单",
@@ -15280,6 +15718,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "# of Overlapping Pods:",
+      "tooltip": "Maximum is limited by the number of Projectiles.",
       "visibility": {
         "if_skill": [
           "Toxic Rain"
@@ -15294,6 +15733,7 @@
       "input_type": "count",
       "section": "When In Combat",
       "label": "# of Traps per throw:",
+      "tooltip": "This will override the number of Traps per throw",
       "visibility": {
         "if_flag": [
           "trap"
@@ -15350,6 +15790,7 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Twister gained ^x3F6DB3Cold^7 Element:",
+      "tooltip": "Twister has passed over ^x3F6DB3Cold^7 Ground or consumed a ^x3F6DB3Cold^7 Whirlwind.",
       "visibility": {
         "if_skill": [
           "Twister"
@@ -15370,6 +15811,7 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Twister gained ^xB97123Fire^7 Element:",
+      "tooltip": "Twister has passed over ^xB97123Fire^7 Ground or consumed a ^xB97123Fire^7 Whirlwind.",
       "visibility": {
         "if_skill": [
           "Twister"
@@ -15390,6 +15832,7 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Twister gained ^xADAA47Lightning^7 Element:",
+      "tooltip": "Twister has passed over ^xADAA47Lightning^7 Ground or consumed a ^xADAA47Lightning^7 Whirlwind.",
       "visibility": {
         "if_skill": [
           "Twister"
@@ -15410,6 +15853,7 @@
       "input_type": "count",
       "section": "Skill Options",
       "label": "Power of Culled Enemy?",
+      "tooltip": "Offerings created by culling enemies gain 1% increased effect per Power.\nUnique enemies always have 20 Power.",
       "visibility": {
         "if_flag": [
           "UnwillingOffering"
@@ -15643,6 +16087,7 @@
       "input_type": "list",
       "section": "General",
       "label": "Boosted calc mode:",
+      "tooltip": "Controls how ancestrally boosted attacks are calculated:\nAverage: Averages out Boost usage with cast time, attack speed and cooldown.\nMax Hit: Shows maximum hit for lining up all sources of ancestral boost.",
       "list_options": [
         {
           "value": "AVERAGE",
@@ -15671,6 +16116,7 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Whirlwind gained ^x3F6DB3Cold^7 Element:",
+      "tooltip": "Whirlwind has passed over ^x3F6DB3Cold^7 Ground.",
       "visibility": {
         "if_skill": [
           "Whirlwind Lance",
@@ -15710,6 +16156,7 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Whirlwind gained ^xB97123Fire^7 Element:",
+      "tooltip": "Whirlwind has passed over ^xB97123Fire^7 Ground.",
       "visibility": {
         "if_skill": [
           "Whirlwind Lance",
@@ -15749,6 +16196,7 @@
       "input_type": "check",
       "section": "Skill Options",
       "label": "Whirlwind gained ^xADAA47Lightning^7 Element:",
+      "tooltip": "Whirlwind has passed over ^xADAA47Lightning^7 Ground.",
       "visibility": {
         "if_skill": [
           "Whirlwind Lance",

@@ -338,6 +338,83 @@ fn calculate_build_json_shape() {
     }
 }
 
+#[test]
+fn config_visibility_context_tracks_skills_and_reads_without_enabling_conditions() {
+    ensure_data();
+    let request = serde_json::json!({
+        "config_context": true,
+        "main_socket_group": 0,
+        "character": { "level": 30, "class_name": "Witch" },
+        "socket_groups": [{ "gems": [{ "skill_id": "FireballPlayer", "level": 5 }] }],
+        "extra_modifiers": ["20% increased Damage while on Low Life"],
+        "config_inputs": { "conditionLowLife": false, "ActiveBrands": 0 }
+    });
+    let result: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap();
+    // The response cache must distinguish opt-in from both false and omission.
+    let mut ordinary = request.clone();
+    ordinary["config_context"] = serde_json::json!(false);
+    let untracked: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&ordinary.to_string()).unwrap())
+            .unwrap();
+    assert!(untracked.get("config_context").is_none());
+    ordinary.as_object_mut().unwrap().remove("config_context");
+    let default: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&ordinary.to_string()).unwrap())
+            .unwrap();
+    assert_eq!(default, untracked);
+    let mut without_context = result.clone();
+    without_context
+        .as_object_mut()
+        .unwrap()
+        .remove("config_context");
+    assert_eq!(
+        without_context, untracked,
+        "tracking must not change calculation outputs"
+    );
+    assert_eq!(
+        serde_json::from_str::<Value>(
+            &pobr_wasm::calculate_build_json(&request.to_string()).unwrap()
+        )
+        .unwrap(),
+        result,
+        "the cached opt-in response keeps its context"
+    );
+    let context = &result["config_context"];
+    assert_keys(
+        context,
+        &["main_skill", "skill_types", "predicates"],
+        "ConfigContext",
+    );
+    assert_eq!(context["main_skill"], "fireball");
+    assert!(
+        context["skill_types"]
+            .as_array()
+            .unwrap()
+            .contains(&serde_json::json!("Spell"))
+    );
+    assert_eq!(context["predicates"]["if_skill"]["Armageddon Brand"], false);
+    assert_eq!(context["predicates"]["if_skill_type"]["Bear"], false);
+    assert_eq!(
+        context["predicates"]["if_cond"]["LowLife"], true,
+        "reads remain relevant while false"
+    );
+    assert!(
+        context["predicates"]["if_skill_data"]["explodeCorpse"].is_null(),
+        "unknown is not false"
+    );
+    let mut changed = request;
+    changed["socket_groups"][0]["gems"][0]["skill_id"] = serde_json::json!("FlameWallPlayer");
+    let result: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&changed.to_string()).unwrap())
+            .unwrap();
+    assert_eq!(
+        result["config_context"]["predicates"]["if_skill"]["Flame Wall"],
+        true
+    );
+}
+
 fn close(a: f64, b: f64) -> bool {
     (a - b).abs() <= 1e-6 * a.abs().max(b.abs()).max(1.0)
 }

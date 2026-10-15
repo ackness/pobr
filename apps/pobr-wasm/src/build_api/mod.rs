@@ -24,6 +24,7 @@ mod analysis;
 mod augments;
 mod calculate;
 mod catalog;
+mod config_context;
 mod crafting;
 mod decode;
 mod encode;
