@@ -84,7 +84,7 @@ pub(super) fn stage_resolve_main_skill<'a>(
         }
         _ => [0; 3],
     };
-    let main_skill_types = main_skill
+    let mut main_skill_types = main_skill
         .as_ref()
         .zip(main_supports)
         .map(|((_, group, skill_id), supports)| {
@@ -105,6 +105,19 @@ pub(super) fn stage_resolve_main_skill<'a>(
             types
         })
         .unwrap_or_default();
+    // `replace_off_hand_unarmed_attack_stats_with_shield_type`: shield
+    // bashes replace the unarmed source, even without NonWeaponAttack.
+    if main_skill.as_ref().is_some_and(|(skill, _, _)| {
+        skill
+            .base_damage
+            .iter()
+            .any(|stat| stat.stat == "replace_off_hand_unarmed_attack_stats_with_shield_type")
+    }) && !main_skill_types
+        .iter()
+        .any(|kind| kind == "NonWeaponAttack")
+    {
+        main_skill_types.push("NonWeaponAttack".into());
+    }
     let skill_flags = main_effect
         .map(|_| skill_type_flags(&main_skill_types))
         .unwrap_or(ModFlags::NONE);
@@ -487,6 +500,7 @@ pub(super) fn stage_weapon_bases(
     // (matching vendor's weapon2Attack pass, CalcOffence.lua:2369-2449).
     let off_weapon = weapon
         .as_ref()
+        .filter(|_| attacks_with_weapon(&main.main_skill_types))
         .and_then(|_| dual_wield_off_hand_contribution(build, data, main.main_effect));
     let asm = main
         .main_skill

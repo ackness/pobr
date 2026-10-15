@@ -521,10 +521,7 @@ fn attributes_without_skills(
         };
         let mut session = stage_create_session(&ctx, cfg);
         inject_character_base(&mut session, build, data, options, &ctx.resolved_config);
-        let main_weapon_active = ctx
-            .main
-            .main_effect
-            .is_some_and(|e| e.is_attack() && !e.is_non_weapon_attack());
+        let main_weapon_active = conditions::attacks_with_weapon(&ctx.main.main_skill_types);
         inject_items(
             &mut session,
             build,
@@ -617,10 +614,7 @@ fn calculate_prepared_with_context(
     inject_defence_base(&mut session, build, data);
 
     // 2. Equipment: attribution-path injection (per-item filter / Kalandra mirroring / local mod stripping / slot bonus numeric copies).
-    let main_weapon_active = ctx
-        .main
-        .main_effect
-        .is_some_and(|e| e.is_attack() && !e.is_non_weapon_attack());
+    let main_weapon_active = conditions::attacks_with_weapon(&ctx.main.main_skill_types);
     inject_items(
         &mut session,
         build,
@@ -932,9 +926,9 @@ fn stage_hand_sources(session: &mut SourceWriter, ctx: &StageCtx<'_>) {
     if let Some(wb) = ctx.weapons.hand_weapon {
         let is_off_hand_source = ctx
             .main
-            .main_effect
-            .map(|e| e.is_attack() && e.is_non_weapon_attack())
-            .unwrap_or(false);
+            .main_skill_types
+            .iter()
+            .any(|kind| kind == "NonWeaponAttack");
         let sources = if is_off_hand_source {
             vec![pobr_core::calc::HandSource::off_hand(wb)]
         } else if let Some(ohb) = ctx.weapons.off_hand_weapon {

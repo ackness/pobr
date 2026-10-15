@@ -73,12 +73,15 @@ pub fn weapon_contribution(
     if !effect.is_attack() {
         return None;
     }
-    // Non-weapon attack (e.g. Shield Wall): hit base damage comes from the skill's own
-    // off-hand stat-set (not the main-hand weapon), attack rate uses the skill's own
-    // attack time, crit uses the skill's own critChance. Matches PoB2's
-    // `skillFlags.shieldAttack`: source = off-hand, `setOffHandPhysical*` provides phys,
-    // `source.AttackRate = 1000/skillData.attackTime`.
-    if effect.is_non_weapon_attack() {
+    // Shield attacks use their own damage and attack time. Raise Shield and
+    // Parry declare that source with the game's replacement stat rather than
+    // the NonWeaponAttack type.
+    if effect.is_non_weapon_attack()
+        || skill
+            .base_damage
+            .iter()
+            .any(|stat| stat.stat == "replace_off_hand_unarmed_attack_stats_with_shield_type")
+    {
         return Some(non_weapon_attack_contribution(skill, equipment, data));
     }
     // No main-hand weapon → unarmed (PoB2's `data.unarmedWeaponData[classId]`): physical
@@ -216,11 +219,8 @@ pub fn non_weapon_attack_contribution(
         match ds.stat.as_str() {
             "off_hand_weapon_minimum_physical_damage" => phys_min += ds.value,
             "off_hand_weapon_maximum_physical_damage" => phys_max += ds.value,
-            // per-X scaled added physical (e.g. Shield Wall's
-            // `off_hand_min/max_added_physical_damage_per_15_shield_armour`): scaled by
-            // the off-hand shield's matching defence value ÷ N, then folded into base
-            // physical. Matches PoB2 SkillStatMap's
-            // `mod("PhysicalMin/Max","BASE",val,{PerStat,stat="ArmourOnWeapon 2",div=N})`.
+            // "Physical Damage per N Armour/Evasion on Shield": each
+            // complete group contributes to the shield attack's base damage.
             stat => {
                 if let Some((is_max, mult)) = per_shield_defence_scale(stat, equipment, data) {
                     if is_max {
@@ -250,7 +250,7 @@ pub fn non_weapon_attack_contribution(
 
 /// Parses a per-X added physical stat shaped like
 /// `off_hand_<minimum|maximum>_added_physical_damage_per_<N>_shield_<armour|evasion|...>`,
-/// returning `(whether it's maximum, scale factor = shield defence value / N)`. Returns
+/// returning `(whether it's maximum, scale factor = floor(shield defence value / N))`. Returns
 /// `None` for any other form.
 ///
 /// Matches PoB2 SkillStatMap's `{ type = "PerStat", stat = "ArmourOnWeapon 2", div = N }`
@@ -279,11 +279,11 @@ pub fn per_shield_defence_scale(
     }
     let defence_value = match defence {
         "armour" => off_hand_defence(equipment, data, 0),
-        "evasion" => off_hand_defence(equipment, data, 1),
+        "evasion" | "evasion_rating" => off_hand_defence(equipment, data, 1),
         "energy_shield" => off_hand_defence(equipment, data, 2),
         _ => return None,
     };
-    Some((is_max, defence_value / div))
+    Some((is_max, (defence_value / div).floor()))
 }
 
 /// The off-hand's own (the shield in [`EquipmentSlot::Weapon2`]) defence value (`idx`

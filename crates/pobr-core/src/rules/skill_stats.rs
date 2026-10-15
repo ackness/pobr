@@ -286,6 +286,9 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         stat if is_minion_stat(stat) => Some(Vec::new()),
         // Read where a minion's skill is chosen (`calc::MinionSkill`).
         COMMAND_SKILL_STAT => Some(Vec::new()),
+        // Read by the weapon source resolver: a shield's defence replaces
+        // the character's unarmed damage for Raise Shield and Parry.
+        "replace_off_hand_unarmed_attack_stats_with_shield_type" => Some(Vec::new()),
         // "Your Hits can't be Evaded" (including the implicit stat on palms).
         "global_always_hit" => Some(vec![Modifier::flag("CannotBeEvaded")]),
         // Mace Strike hits once with each weapon. Keep each hit's damage and
