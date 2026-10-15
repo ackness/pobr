@@ -190,14 +190,14 @@ export interface BuildSession {
 // config_inputs/main_socket_group），再带 code 只是让 Rust 每次重算都白解码
 // 一遍然后立刻被覆盖项冲掉。state.pobCode 仅存档用（恢复会话时重建 build 视图）。
 // 请求按 state 的武器组物化技能组，并以 weapon_swap.active 写明计算哪一组。
-function toRequest(state: BuildState): CalculateBuildRequest {
+export function toRequest(state: BuildState): CalculateBuildRequest {
   return {
     tree_version: state.treeVersion,
     character: state.character,
     allocated_nodes: state.allocatedNodes,
     attribute_choices: state.attributeChoices,
     ...weaponSetRequest(state),
-    ...(state.socketGroups.some(group => group.enabled && group.include_in_full_dps) ? { full_dps: true } : {}),
+    ...(state.socketGroups.some(group => group.include_in_full_dps) ? { full_dps: true } : {}),
     items: state.items,
     flasks: state.flasks,
     limbs: state.limbs,
@@ -361,6 +361,7 @@ export function parseSaved(json: string): SavedSession | null {
           || !uint(gem.quality) || !optionalIndex(gem.stat_set_index, 1) || !optionalText(gem.name_spec)
           || !optionalText(gem.minion) || !optionalIndex(gem.minion_skill, 1)
           || !optionalCount(gem.count) || !optionalBool(gem.enable_global_1) || !optionalBool(gem.enable_global_2)
+          || !optionalBool(gem.enabled)
           || gem.corrupted != null && typeof gem.corrupted !== 'boolean') return null;
         gems.push({ skill_id: gem.skill_id, level: gem.level, quality: gem.quality,
           ...(gem.stat_set_index != null ? { stat_set_index: Number(gem.stat_set_index) } : {}),
@@ -370,6 +371,7 @@ export function parseSaved(json: string): SavedSession | null {
           ...(gem.count != null ? { count: Number(gem.count) } : {}),
           ...(gem.enable_global_1 != null ? { enable_global_1: Boolean(gem.enable_global_1) } : {}),
           ...(gem.enable_global_2 != null ? { enable_global_2: Boolean(gem.enable_global_2) } : {}),
+          ...(gem.enabled === false ? { enabled: false } : {}),
           ...(gem.corrupted === true ? { corrupted: true } : {}) });
       }
       socketGroups.push({ enabled: group.enabled == null ? true : group.enabled as boolean,
@@ -521,6 +523,7 @@ export function materialize(
         ...(gem.enable_global_2 != null ? { enable_global_2: gem.enable_global_2 } : {}),
         ...(gem.minion ? { minion: gem.minion } : {}),
         ...(gem.minion_skill != null ? { minion_skill: gem.minion_skill } : {}),
+        ...(gem.enabled === false ? { enabled: false } : {}),
         ...(gem.corrupted ? { corrupted: true } : {}),
       })),
     })),

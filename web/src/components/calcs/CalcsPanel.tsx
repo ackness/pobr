@@ -29,8 +29,9 @@ import {
 } from '../../lib/i18n';
 import { getBackend } from '../../api/backend';
 import { useEffect } from 'react';
-import { useSkillName } from '../../hooks/useSkillName';
+import { useSkillName, useSkillCatalog } from '../../hooks/useSkillName';
 import './calcs.css';
+import { SkillFormControls } from '../skills/SkillFormControls';
 import { highestDpsSkill } from '../../lib/skillSelection';
 
 interface Props {
@@ -758,6 +759,7 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
   }, [stateVersion, runSkillMetrics]);
 
   const skillName = useSkillName(lang);
+  const catalog = useSkillCatalog();
   const mainIndex = session.calcParams.main_socket_group;
   const highest = report ? highestDpsSkill(report.skills, session.socketGroups) : null;
   const columns = [
@@ -773,6 +775,16 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
     <section className="ui-card attribution-view" aria-labelledby="skill-metrics-heading" aria-busy={running}>
       <h3 id="skill-metrics-heading" tabIndex={-1}>{tt('calcs.skillMetrics')}</h3>
       <p className="calcs-hint">{tt('calcs.skillMetricsHint')}</p>
+      {mainIndex !== undefined && <SkillFormControls session={session} lang={lang} groupIndex={mainIndex} catalog={catalog} />}
+      {session.calc?.full_dps && <div className="breakdown-scroll"><table className="breakdown-table full-dps-table">
+        <caption>{tt('calcs.fullDpsContribution')}</caption>
+        <thead><tr><th>{tt('calcs.skill')}</th><th>{tt('skills.count')}</th><th>{tt('calcs.fullDpsContribution')}</th><th>{tt('calcs.diagnostics')}</th></tr></thead>
+        <tbody>{session.calc.full_dps.skills.map(row => <tr key={`${row.group_index}-${row.active_skill_index}`}>
+          <th>{tt('calcs.group')} {row.group_index + 1} · {skillName(row.skill_id)}</th><td>{fmtNum(row.count)}</td>
+          <td>{row.error ? '—' : fmtNum(row.dps)}</td><td>{row.error}{row.unsupported_modifiers.length > 0 && <details><summary>{tt('calcs.unsupported')} ({row.unsupported_modifiers.length})</summary>
+            <ul>{row.unsupported_modifiers.map((issue, index) => <li key={index}>{issue}</li>)}</ul></details>}</td>
+        </tr>)}</tbody>
+      </table></div>}
       {running && <p className="calcs-hint" role="status">{tt('calcs.running')}</p>}
       {error && <div className="calc-error" role="alert">{error}</div>}
       {report?.item_errors.map((issue, index) => (

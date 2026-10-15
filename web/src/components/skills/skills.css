@@ -588,3 +588,15 @@
 @media (max-width: 443px) {
   .gem-column-labels > :first-child { visibility: hidden; }
 }
+
+.skill-full-dps-controls, .skill-form-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-block: var(--space-3); }
+.skill-full-dps-controls label, .skill-form-controls label, .skill-effect-control { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+.skill-full-dps-controls p { flex-basis: 100%; margin: 0; }
+.skill-full-dps-controls input[type='number'], .skill-form-controls input[type='number'] { width: 80px; }
+.gem-enabled, .gem-count { display: flex; align-items: center; gap: var(--space-1); font-size: var(--text-xs); }
+.skill-gem.is-disabled .gem-name { opacity: .5; }
+.skill-gem .gem-controls { flex: 0 1 auto; min-width: 0; max-width: 100%; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
+.gem-column-labels { display: none; }
+
+.gem-number { display: flex; align-items: center; gap: var(--space-1); font-size: var(--text-xs); }
+.skill-gem .gem-corrupted { width: auto; gap: var(--space-1); font-size: var(--text-xs); }

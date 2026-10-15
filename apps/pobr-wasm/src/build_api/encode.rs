@@ -181,6 +181,7 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
                         skill_id: gem.skill_id.clone(),
                         level: gem.level,
                         quality: gem.quality,
+                        enabled: gem.enabled,
                         stat_set_index: gem.stat_set_index,
                         name_spec: if gem.skill_id.is_empty() {
                             gem.name_spec.clone()

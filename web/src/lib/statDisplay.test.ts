@@ -39,6 +39,11 @@ describe('STAT_SECTIONS', () => {
     expect(STAT_SECTIONS.find(section => section.rows.some(row => row.id === 'FullDPS'))?.requiresSkill).not.toBe(true);
   });
 
+  test('requested Full DPS includes a computed zero DoT total', () => {
+    const rows = STAT_SECTIONS.flatMap(section => section.rows);
+    expect(rows.find(row => row.id === 'FullDotDPS')?.hideZero).not.toBe(true);
+  });
+
   test('双语标签齐全', () => {
     for (const section of STAT_SECTIONS) {
       for (const row of section.rows) {

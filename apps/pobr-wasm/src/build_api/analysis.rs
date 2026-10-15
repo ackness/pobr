@@ -330,6 +330,7 @@ fn apply_variant(
                 continue;
             }
             group.gem_skills.push(GemSkillRef {
+                enabled: gem.enabled,
                 count: gem.count,
                 enable_global_1: gem.enable_global_1,
                 enable_global_2: gem.enable_global_2,

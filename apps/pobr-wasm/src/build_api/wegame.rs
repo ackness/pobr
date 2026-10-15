@@ -398,6 +398,7 @@ fn gem(
         skill_id: id.clone(),
         level,
         quality: property(item, 6).unwrap_or(0),
+        enabled: true,
         stat_set_index: None,
         name_spec: None,
         // The same flag a corrupted piece of equipment carries.

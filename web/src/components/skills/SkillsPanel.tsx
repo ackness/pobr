@@ -7,7 +7,7 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, grantedSourceLabel, type Lang } from '../../lib/i18n';
 import { GemPicker } from './GemPicker';
 import { skillDisplayName } from '../../lib/skillNames';
-import { activeSkillEffects, removeSkillGem, withGemCorrupted } from '../../lib/skillSelection';
+import { activeSkillEffects, removeSkillGem, withGemCorrupted, withGemEnabled } from '../../lib/skillSelection';
 export { prettySkillId } from '../../lib/skillNames';
 import { GemOptimizer } from './GemOptimizer';
 import { NoteEditor } from '../shared/NoteEditor';
@@ -15,6 +15,7 @@ import { AppSelect } from '../shared/AppSelect';
 import { loadTradeCatalog } from '../../lib/tradeOptimizer';
 import { eligibleSupports, lineageAvailable, supportSetsCompatible, usableSupportLevel, type SupportMetadata } from '../../lib/supportOptimizer';
 import { supportText } from '../../lib/supportI18n';
+import { SkillFormControls } from './SkillFormControls';
 import './skills.css';
 
 interface Props {
@@ -217,16 +218,40 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                   options={[{ value: '0', label: tt('weapons.both') }, ...[1, 2].map(set => ({ value: String(set), label: `${tt('weapons.set')} ${set}` }))]}
                   disabled={session.busy} onChange={value => updateGroup(idx, { weapon_set: value === '0' ? null : Number(value) as 1 | 2 })} />
               </div>
+              <div className="skill-full-dps-controls">
+                <label><input type="checkbox" checked={group.include_in_full_dps ?? false} disabled={session.busy}
+                  onChange={event => updateGroup(idx, { include_in_full_dps: event.target.checked })} />{tt('skills.fullDps')}</label>
+                <label>{tt('skills.groupCount')}<input type="number" min={0} step="any" aria-label={tt('skills.groupCount')}
+                  value={group.group_count ?? ''} disabled={session.busy} onChange={event => {
+                    const value = event.target.value;
+                    if (!value || Number.isFinite(Number(value)) && Number(value) >= 0) updateGroup(idx, { group_count: value ? Number(value) : null });
+                  }} /></label>
+                <p className="skills-hint">{tt('skills.fullDpsHint')}</p>
+              </div>
+              {effects.length > 1 && <label className="skill-effect-control">{tt('skills.effect')}
+                <AppSelect ariaLabel={tt('skills.effect')} value={String(group.main_active_skill ?? 1)} disabled={session.busy}
+                  options={effects.map((effect, index) => ({ value: String(index + 1), label: `${index + 1} · ${gemName(effect.skillId)}` }))}
+                  onChange={value => updateGroup(idx, { main_active_skill: Number(value) })} />
+              </label>}
+              <SkillFormControls session={session} lang={lang} groupIndex={idx} catalog={byId} />
               <div className="gem-column-labels"><span>{tt('calcs.skill')}</span><span>{tt('skills.level')}</span><span>{tt('skills.quality')}</span><span>{tt('skills.corrupted')}</span><span /></div>
               <ul className="skill-gems">
                 {group.gems.map((gem, gemIdx) => (
-                  <li key={gemIdx} className={`skill-gem${gemIdx === 0 ? ' is-active' : ''}`}>
+                  <li key={gemIdx} className={`skill-gem${gemIdx === 0 ? ' is-active' : ''}${gem.enabled === false ? ' is-disabled' : ''}`}>
                     <span className="gem-name" title={gem.skill_id === '' ? tt('skills.unresolvedHint') : undefined}>
                       {gemLabel(gem)}
                       {byId.get(gem.skill_id)?.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
                     </span>
                     <span className="gem-controls">
-                      <input
+                      <label className="gem-enabled"><input type="checkbox" aria-label={tt('skills.gemEnabled')}
+                        checked={gem.enabled !== false} disabled={session.busy}
+                        onChange={event => updateGroup(idx, withGemEnabled(group, gemIdx, event.target.checked, byId))} />{tt('skills.gemEnabled')}</label>
+                      <label className="gem-count">{tt('skills.count')}<input type="number" min={0} step="any" value={gem.count ?? 1}
+                        aria-label={tt('skills.gemCount')} disabled={session.busy} onChange={event => {
+                          const count = Number(event.target.value);
+                          if (Number.isFinite(count) && count >= 0) updateGroup(idx, { gems: group.gems.map((item, index) => index === gemIdx ? { ...item, count } : item) });
+                        }} /></label>
+                      <label className="gem-number">{tt('skills.level')}<input
                         type="number"
                         min={1}
                         max={40}
@@ -240,8 +265,8 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                             gems: group.gems.map((g, i) => (i === gemIdx ? { ...g, level } : g)),
                           });
                         }}
-                      />
-                      <input
+                      /></label>
+                      <label className="gem-number">{tt('skills.quality')}<input
                         type="number"
                         min={0}
                         max={23}
@@ -255,8 +280,9 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                             gems: group.gems.map((g, i) => (i === gemIdx ? { ...g, quality } : g)),
                           });
                         }}
-                      />
+                      /></label>
                       <label className="gem-corrupted" title={tt('skills.corruptedHint')}>
+                        {tt('skills.corrupted')}
                         <input
                           type="checkbox"
                           checked={gem.corrupted === true}

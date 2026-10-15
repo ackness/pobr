@@ -29,34 +29,6 @@
     "effects": [
       {
         "mod_type": "BASE",
-        "name": "Multiplier:BlockedPast10Sec",
-        "tags": [
-          {
-            "type": "condition",
-            "var": "Combat"
-          }
-        ],
-        "target": "player",
-        "value": {
-          "kind": "input"
-        }
-      }
-    ],
-    "input_type": "count",
-    "label": "Number of times you've Blocked in the past 10s",
-    "section": "When In Combat",
-    "var": "BlockedPast10Sec",
-    "verified": true,
-    "visibility": {
-      "if_cond": [
-        "BlockedHitFromUniqueEnemyInPast10Sec"
-      ]
-    }
-  },
-  {
-    "effects": [
-      {
-        "mod_type": "BASE",
         "name": "Multiplier:ConfigBrandsAttachedToEnemy",
         "target": "player",
         "value": {
@@ -231,6 +203,7 @@
       "if_mod": [
         "LifeOnBlock",
         "ManaOnBlock",
+        "WardOnBlock",
         "EnergyShieldOnBlock",
         "EnergyShieldOnSpellBlock",
         "LifeOnSuppress",
@@ -525,6 +498,32 @@
     }
   },
   {
+    "effects": [
+      {
+        "mod_type": "FLAG",
+        "name": "Condition:LostNonVaalBuffRecently",
+        "tags": [
+          {
+            "type": "condition",
+            "var": "Combat"
+          }
+        ],
+        "target": "player",
+        "value_bool": true
+      }
+    ],
+    "input_type": "check",
+    "label": "Lost a Non-Vaal Guard Skill buff recently?",
+    "section": "When In Combat",
+    "var": "LostNonVaalBuffRecently",
+    "verified": true,
+    "visibility": {
+      "if_cond": [
+        "LostNonVaalBuffRecently"
+      ]
+    }
+  },
+  {
     "default": {
       "placeholder_number": 1.0
     },
@@ -678,7 +677,7 @@
   },
   {
     "handler_id": "config:custom_mods",
-    "handler_reason": "text 型走消费侧专用行通道（StripEscapes + mod_parser）",
+    "handler_reason": "Legacy customMods text input retained after PoB2 moved its editor to ConfigTab mod groups",
     "input_type": "text",
     "label": "",
     "section": "Custom Modifiers",

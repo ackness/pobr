@@ -99,6 +99,8 @@ export interface ItemsJson {
 }
 
 export interface GemJson {
+  /** Omitted means enabled. */
+  enabled?: boolean;
   count?: number | null;
   enable_global_1?: boolean | null;
   enable_global_2?: boolean | null;
@@ -197,6 +199,8 @@ export interface CharacterOverride {
 
 /** 手动技能组宝石条目（gem id 由后端按 skill_id 反查）。 */
 export interface GemInput {
+  /** Omitted means enabled. Disabled gems stay editable. */
+  enabled?: boolean;
   count?: number | null;
   enable_global_1?: boolean | null;
   enable_global_2?: boolean | null;
@@ -243,7 +247,16 @@ export interface JewelInput {
 }
 
 /** 宝石目录条目（gem_catalog_json）。 */
+export interface SkillForm {
+  index: number;
+  id: string;
+  label: string | null;
+  stage: { config_input: string; min: number; max: number; default: number } | null;
+}
+
 export interface GemCatalogEntry {
+  effect_forms?: Array<{ skill_id: string; stat_sets: SkillForm[] }>;
+
   skill_id: string;
   /** Secondary effects supplied by this gem; display aliases, not picker entries. */
   additional_skill_ids?: string[];

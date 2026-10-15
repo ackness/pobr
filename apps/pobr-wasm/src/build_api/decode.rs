@@ -68,8 +68,14 @@ struct ItemsJson {
     limbs: Vec<SlotItemJson>,
 }
 
+fn is_true(value: &bool) -> bool {
+    *value
+}
+
 #[derive(Debug, Serialize)]
 struct GemJson {
+    #[serde(skip_serializing_if = "is_true")]
+    enabled: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     count: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -251,6 +257,7 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
                         skill_id: gem.skill_id.clone(),
                         level: gem.gem_level,
                         quality: gem.quality,
+                        enabled: gem.enabled,
                         stat_set_index: gem.stat_set_index,
                         name_spec: if gem.skill_id.is_empty() {
                             gem.name_spec.clone()
@@ -614,6 +621,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                 skill_id: active.clone(),
                 level: 20,
                 quality: 0,
+                enabled: true,
                 stat_set_index: None,
                 name_spec: None,
                 corrupted: false,
@@ -629,6 +637,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                         skill_id: id,
                         level: 20,
                         quality: 0,
+                        enabled: true,
                         stat_set_index: None,
                         name_spec: None,
                         corrupted: false,

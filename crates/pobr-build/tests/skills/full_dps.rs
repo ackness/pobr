@@ -298,3 +298,41 @@ fn full_dps_preserves_fractional_instance_counts_and_omits_zero_counts() {
     assert!(full.skills.is_empty());
     assert_eq!(full.dps, 0.0);
 }
+
+#[test]
+fn disabled_gems_neither_support_nor_grant_full_dps_effects() {
+    let plain = base_build().add_socket_group(group("SparkPlayer", 1));
+    let options = DataOrchestratorOptions::default();
+    let original = calculate_with_data(&plain, data(), &options).unwrap();
+    let mut supported = plain.clone();
+    supported.socket_groups[0] = supported.socket_groups[0]
+        .clone()
+        .with_gem_skill("SupportControlledDestructionPlayer", 1);
+    let stronger = calculate_with_data(&supported, data(), &options).unwrap();
+    assert!(stronger.dps > original.dps);
+    supported.socket_groups[0].gem_skills[1].enabled = false;
+    close(
+        calculate_with_data(&supported, data(), &options)
+            .unwrap()
+            .dps,
+        original.dps,
+    );
+    supported.socket_groups[0] = supported.socket_groups[0]
+        .clone()
+        .with_gem_skill("FrostboltPlayer", 20);
+    supported.socket_groups[0].gem_skills[0].enabled = false;
+    supported.socket_groups[0].gem_skills[2].count = Some(2.5);
+    let full = full_dps::calculate(&supported, data(), &options).unwrap();
+    assert_eq!(full.skills.len(), 1);
+    assert_eq!(full.skills[0].skill_id, "FrostboltPlayer");
+    assert_eq!(full.skills[0].count, 2.5);
+    supported.socket_groups[0].gem_skills[2].enabled = false;
+    let output = calculate_with_data(&supported, data(), &options).unwrap();
+    assert_eq!(output.dps, 0.0);
+    assert!(
+        full_dps::calculate(&supported, data(), &options)
+            .unwrap()
+            .skills
+            .is_empty()
+    );
+}

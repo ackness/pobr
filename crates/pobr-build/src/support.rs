@@ -39,6 +39,7 @@ pub fn judge_group_supports(
         .gem_skills
         .iter()
         .enumerate()
+        .filter(|(_, gem)| gem.enabled)
         .flat_map(|(i, g)| {
             std::iter::once(g.skill_id.as_str())
                 .chain(
@@ -87,14 +88,14 @@ pub fn support_group_compatible(group: &SocketGroup, data: &BuildData) -> bool {
     if group
         .gem_skills
         .iter()
-        .any(|gem| !data.granted_effects.contains_key(&gem.skill_id))
+        .any(|gem| gem.enabled && !data.granted_effects.contains_key(&gem.skill_id))
     {
         return false;
     }
     let active: Vec<_> = group
         .gem_skills
         .iter()
-        .filter(|gem| !data.granted_effects[&gem.skill_id].is_support)
+        .filter(|gem| gem.enabled && !data.granted_effects[&gem.skill_id].is_support)
         .collect();
     if active.is_empty() {
         return false;
@@ -107,7 +108,7 @@ pub fn support_group_compatible(group: &SocketGroup, data: &BuildData) -> bool {
         .map(|support| support.gem_index)
         .collect();
     group.gem_skills.iter().enumerate().all(|(index, gem)| {
-        !data.granted_effects[&gem.skill_id].is_support || accepted.contains(&index)
+        !gem.enabled || !data.granted_effects[&gem.skill_id].is_support || accepted.contains(&index)
     })
 }
 

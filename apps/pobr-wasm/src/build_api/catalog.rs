@@ -105,6 +105,7 @@ struct GemCatalogEntry {
     /// Ordered active effects counted by the 1-based main_active_skill ordinal.
     /// Pure support gems have no active effects; stat-set aliases are excluded.
     active_effect_ids: Vec<String>,
+    effect_forms: Vec<EffectForms>,
     /// Secondary effect/stat-set IDs used to localize calculated skill names.
     /// They are aliases of this gem, not additional gem-picker entries.
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -129,6 +130,88 @@ struct GemCatalogEntry {
     /// connectives like `AND`/`OR`/`NOT` filtered out — those are gating-expression
     /// operators, not tags. The frontend picks readable entries to display via an allowlist.
     tags: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct EffectForms {
+    skill_id: String,
+    stat_sets: Vec<SkillForm>,
+}
+
+#[derive(Debug, Serialize)]
+struct SkillForm {
+    index: u32,
+    id: String,
+    label: Option<String>,
+    stage: Option<StageControl>,
+}
+
+#[derive(Debug, Serialize)]
+struct StageControl {
+    config_input: &'static str,
+    min: u32,
+    max: u32,
+    default: u32,
+}
+
+fn effect_forms(data: &pobr_build::BuildData, skill_id: &str) -> EffectForms {
+    let stat_sets = data
+        .skill_stat_sets
+        .get(skill_id)
+        .into_iter()
+        .flat_map(|def| &def.sets)
+        .filter_map(|set| {
+            let index = set.vendor_set_index?;
+            let stats = data.effect_stats(skill_id, 20, 0, Some(index));
+            // Only advertise stages consumed by the engine. A channel type alone
+            // does not imply a configurable stage count (e.g. Raise Shield).
+            let stage = [
+                (
+                    "flameblast_maximum_stages",
+                    "skillFlameblastStages",
+                    1,
+                    false,
+                ),
+                ("channelled_slam_max_stages", "skillChannelStages", 1, true),
+                (
+                    "detonating_arrow_max_number_of_stages",
+                    "skillChannelStages",
+                    1,
+                    true,
+                ),
+                (
+                    "incinerate_maximum_stages",
+                    "skillIncinerateStages",
+                    0,
+                    false,
+                ),
+            ]
+            .into_iter()
+            .find_map(|(stat, key, min, maximum_default)| {
+                let max = stats
+                    .all()
+                    .filter(|value| value.stat == stat)
+                    .map(|value| value.value)
+                    .sum::<f64>();
+                (max > 0.0).then_some(StageControl {
+                    config_input: key,
+                    min,
+                    max: max as u32,
+                    default: if maximum_default { max as u32 } else { min },
+                })
+            });
+            Some(SkillForm {
+                index,
+                id: set.set_id.clone(),
+                label: set.label.clone(),
+                stage,
+            })
+        })
+        .collect();
+    EffectForms {
+        skill_id: skill_id.into(),
+        stat_sets,
+    }
 }
 
 /// The gem catalog: `{skill_id, name, name_zh_tw, colour, is_support}`,
@@ -187,7 +270,7 @@ fn gem_catalog_impl() -> Result<String, super::ApiError> {
             .unwrap_or_else(|| gem.additional_granted_effect_ids.clone());
         additional_skill_ids.sort();
         additional_skill_ids.dedup();
-        let active_effect_ids = pobr_core::skill_env::group_active_effects(
+        let active_effect_ids: Vec<String> = pobr_core::skill_env::group_active_effects(
             std::iter::once((skill_id.as_str(), 1, 0, None)),
             data.as_ref(),
         )
@@ -195,6 +278,10 @@ fn gem_catalog_impl() -> Result<String, super::ApiError> {
         .collect();
         by_skill.entry(skill_id.clone()).or_insert(GemCatalogEntry {
             skill_id,
+            effect_forms: active_effect_ids
+                .iter()
+                .map(|id| effect_forms(&data, id))
+                .collect(),
             active_effect_ids,
             additional_skill_ids,
             name: name_by_gem_id

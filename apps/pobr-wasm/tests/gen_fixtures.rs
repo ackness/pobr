@@ -34,7 +34,7 @@ fn generate_web_fixtures() {
     std::fs::write(out.join("calculate.json"), pretty(&calculate)).unwrap();
 
     let attr_req = serde_json::json!({
-        "pob_code": code,
+        "request": { "pob_code": code },
         "fields": ["TotalDPS", "Life", "EnergyShield", "TotalEHP"],
     })
     .to_string();

@@ -769,6 +769,45 @@ struct StageCtx<'a> {
 fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
     let mut build = Cow::Borrowed(build);
 
+    // Keep disabled slots in the editable build; remove them from the prepared
+    // calculation view before any support, reservation, buff or grant is read.
+    if build
+        .socket_groups
+        .iter()
+        .any(|group| group.gem_skills.iter().any(|gem| !gem.enabled))
+    {
+        for group in &mut build.to_mut().socket_groups {
+            if group.gem_skills.iter().all(|gem| gem.enabled) {
+                continue;
+            }
+            group.gem_requirement_levels = group
+                .gem_requirement_levels
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| group.gem_skills.get(*i).is_some_and(|gem| gem.enabled))
+                .map(|(_, level)| *level)
+                .collect();
+            group.gem_skills.retain(|gem| gem.enabled);
+            group.gem_ids = group
+                .gem_skills
+                .iter()
+                .filter_map(|gem| {
+                    data.gem_effects
+                        .get(&gem.skill_id)
+                        .map(|link| link.gem_id.clone())
+                })
+                .collect();
+            let active = group.gem_skills.iter().find(|gem| {
+                data.granted_effects
+                    .get(&gem.skill_id)
+                    .is_some_and(|effect| !effect.is_support)
+            });
+            group.active_skill_id = active.map(|gem| gem.skill_id.clone());
+            group.active_gem_level = active.map(|gem| gem.gem_level);
+            group.active_gem_quality = active.map(|gem| gem.quality);
+        }
+    }
+
     // Ring 3 gate (PoB2 CalcSetup.lua:821): when "+1 Ring Slot" isn't allocated on the
     // tree (vendor's `AdditionalRingSlot` flag, ModParser.lua:3128; the Ritualist
     // ascendancy's "Unfurled Finger"), the Ring 3 item is ignored entirely — stripped

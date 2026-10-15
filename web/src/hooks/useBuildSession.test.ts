@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { backfillFromDecoded, materialize, paramsFromDecoded, parseSaved, prepareTreePlan, skillMetricsForState, type SavedSession } from './useBuildSession';
+import { toRequest, backfillFromDecoded, materialize, paramsFromDecoded, parseSaved, prepareTreePlan, skillMetricsForState, type SavedSession } from './useBuildSession';
 import type { BuildJson, CalculateBuildRequest, SkillMetricsResponse } from '../api/types';
 import { parseWorkspace, createWorkspace } from '../lib/buildWorkspace';
 
@@ -383,7 +383,7 @@ describe('unresolved imported gem persistence', () => {
   test('keeps Full DPS inclusion and instance counts through a save', () => {
     const session = structuredClone(unresolved);
     Object.assign(session.state.socketGroups[0], { include_in_full_dps: true, group_count: 4.5 });
-    Object.assign(session.state.socketGroups[0].gems[0], { count: 2.5, enable_global_1: false, enable_global_2: true });
+    Object.assign(session.state.socketGroups[0].gems[0], { enabled: false, count: 2.5, stat_set_index: 2, enable_global_1: false, enable_global_2: true });
     expect(parseSaved(JSON.stringify(session))).toEqual(session);
   });
 
@@ -464,4 +464,12 @@ describe('unresolved imported gem persistence', () => {
     const decoded = { config_inputs: {}, tree: {}, socket_groups: original } as unknown as BuildJson;
     expect(backfillFromDecoded(state, decoded).socketGroups).toEqual(expected);
   });
+});
+
+
+test('Full DPS is requested only for included groups, including a computed empty total', () => {
+  const state = structuredClone(saved.state);
+  expect(toRequest(state).full_dps).toBeUndefined();
+  Object.assign(state.socketGroups[0], { enabled: false, include_in_full_dps: true });
+  expect(toRequest(state).full_dps).toBe(true);
 });

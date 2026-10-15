@@ -65,6 +65,7 @@ pub struct CharacterOverride {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct GemInput {
+    pub(crate) enabled: bool,
     pub(crate) count: Option<f64>,
     pub(crate) enable_global_1: Option<bool>,
     pub(crate) enable_global_2: Option<bool>,
@@ -88,6 +89,7 @@ pub struct GemInput {
 impl Default for GemInput {
     fn default() -> Self {
         Self {
+            enabled: true,
             count: None,
             enable_global_1: None,
             enable_global_2: None,
@@ -276,12 +278,13 @@ pub(super) fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData
             .as_deref()
             .and_then(|id| data.is_support_gem(id))
             .unwrap_or(false);
-        if group.active_skill_id.is_none() && !is_support {
+        if gem.enabled && group.active_skill_id.is_none() && !is_support {
             group.active_skill_id = Some(gem.skill_id.clone());
             group.active_gem_level = Some(gem.level);
             group.active_gem_quality = Some(gem.quality);
         }
         group.gem_skills.push(GemSkillRef {
+            enabled: gem.enabled,
             count: gem.count,
             enable_global_1: gem.enable_global_1,
             enable_global_2: gem.enable_global_2,

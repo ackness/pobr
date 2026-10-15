@@ -30,8 +30,8 @@ export const STAT_SECTIONS: StatSectionDef[] = [
   {
     title: { 'en-US': 'Included skills', 'zh-TW': '納入的技能', 'zh-CN': '纳入的技能' },
     rows: [
-      { id: 'FullDPS', label: { 'en-US': 'Full DPS', 'zh-TW': '完整 DPS', 'zh-CN': '完整 DPS' }, format: 'float2', colorVar: 'accent-gold-bright', hideZero: true },
-      { id: 'FullDotDPS', label: { 'en-US': 'Full DoT DPS', 'zh-TW': '完整持續傷害 DPS', 'zh-CN': '完整持续伤害 DPS' }, format: 'float2', hideZero: true },
+      { id: 'FullDPS', label: { 'en-US': 'Full DPS', 'zh-TW': '完整 DPS', 'zh-CN': '完整 DPS' }, format: 'float2', colorVar: 'accent-gold-bright' },
+      { id: 'FullDotDPS', label: { 'en-US': 'Full DoT DPS', 'zh-TW': '完整持續傷害 DPS', 'zh-CN': '完整持续伤害 DPS' }, format: 'float2' },
     ],
   },
   {

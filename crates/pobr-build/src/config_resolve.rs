@@ -42,7 +42,7 @@
 use std::collections::HashMap;
 
 use pobr_core::modifier::Modifier;
-use pobr_core::rules::config_interpreter::{ConfigOutcome, interpret};
+use pobr_core::rules::config_interpreter::{ConfigInputValue, ConfigOutcome, interpret};
 use pobr_data::modifier::ModType;
 use pobr_gamedata::ruleset::ConfigCatalog;
 
@@ -114,6 +114,21 @@ pub(crate) struct ResolvedConfig {
 /// Resolves the consumption view of build config (see module doc for details).
 pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> ResolvedConfig {
     let mut config = build.config.clone();
+    // Explicit stage controls feed the same multipliers as the native API.
+    // Raw inputs also survive XML export; unset inputs retain engine defaults.
+    for (input, multiplier) in [
+        ("skillFlameblastStages", "FlameblastStage"),
+        ("skillChannelStages", "ChannelStages"),
+        ("skillIncinerateStages", "IncinerateStage"),
+    ] {
+        if let Some(ConfigInputValue::Number(value)) = config.raw_inputs.values.get(input)
+            && value.is_finite()
+            && *value >= 0.0
+        {
+            config.multipliers.insert(multiplier.into(), *value);
+        }
+    }
+
     let Some(catalog) = catalog else {
         // Keep legacy fields without a catalog, except for the explicit booleans below.
         apply_explicit_boolean_conditions(&mut config.conditions, build);

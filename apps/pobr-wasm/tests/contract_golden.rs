@@ -1661,6 +1661,7 @@ fn manual_skills_and_items_without_code() {
         &[
             "skill_id",
             "active_effect_ids",
+            "effect_forms",
             "name",
             "name_zh_tw",
             "name_zh_cn",
@@ -4279,4 +4280,65 @@ fn full_dps_cache_survives_switching_the_inspected_effect() {
         first["main_skill"]["skill_id"],
         second["main_skill"]["skill_id"]
     );
+}
+
+#[test]
+fn skill_forms_enabled_counts_and_stages_round_trip() {
+    ensure_data();
+    let request = serde_json::json!({
+        "character": { "level": 90, "class_name": "Witch" }, "full_dps": true,
+        "config_inputs": { "skillFlameblastStages": 4 },
+        "socket_groups": [{ "enabled": true, "include_in_full_dps": true, "group_count": 3.5,
+            "gems": [{ "skill_id": "IceNovaPlayer", "level": 20, "quality": 0, "stat_set_index": 2, "count": 1.5 },
+                { "skill_id": "SupportControlledDestructionPlayer", "level": 1, "quality": 0, "enabled": false }] }]
+    });
+    let code = pobr_wasm::encode_build_json(&request.to_string()).unwrap();
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).unwrap()).unwrap();
+    let group = &decoded["socket_groups"][0];
+    assert_eq!(group["gems"][0]["stat_set_index"], 2);
+    assert_eq!(group["gems"][0]["count"], 1.5);
+    assert_eq!(group["gems"][1]["enabled"], false);
+    assert_eq!(group["group_count"], 3.5);
+    assert_eq!(group["include_in_full_dps"], true);
+    assert_eq!(
+        decoded["config_inputs"]["skillFlameblastStages"].as_f64(),
+        Some(4.0)
+    );
+    let calc = |req: Value| -> Value {
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&req.to_string()).unwrap()).unwrap()
+    };
+    assert_eq!(
+        calc(request)["full_dps"],
+        calc(serde_json::json!({"pob_code": code, "full_dps": true}))["full_dps"]
+    );
+    let catalog: Value = serde_json::from_str(&pobr_wasm::gem_catalog_json().unwrap()).unwrap();
+    let ice = catalog
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["skill_id"] == "IceNovaPlayer")
+        .unwrap();
+    let forms = ice["effect_forms"][0]["stat_sets"].as_array().unwrap();
+    assert!(
+        forms
+            .iter()
+            .any(|form| form["index"] == 2 && form["label"] == "Cold-Infused")
+    );
+    let flame = catalog
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["skill_id"] == "FlameblastPlayer")
+        .unwrap();
+    assert_eq!(
+        flame["effect_forms"][0]["stat_sets"][0]["stage"]["config_input"],
+        "skillFlameblastStages"
+    );
+    let req = serde_json::json!({ "character": { "level": 90, "class_name": "Witch" },
+        "socket_groups": [{ "enabled": true, "gems": [{ "skill_id": "FlameblastPlayer", "level": 20 }] }] });
+    let baseline = calc(req.clone());
+    let mut stages = req;
+    stages["config_inputs"] = serde_json::json!({"skillFlameblastStages": 4});
+    assert_ne!(calc(stages)["stats"], baseline["stats"]);
 }

@@ -1755,9 +1755,8 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                         current = Some(group);
                     }
                     "Gem" if in_target_set => {
-                        if let Some(cur) = current.as_mut()
-                            && attr_bool_default_true(&e, b"enabled")
-                        {
+                        if let Some(cur) = current.as_mut() {
+                            let enabled = attr_bool_default_true(&e, b"enabled");
                             let gem_id = attr_value(&e, b"gemId").filter(|v| !v.is_empty());
                             let skill_id = attr_value(&e, b"skillId").filter(|v| !v.is_empty());
                             // A lineage support (e.g. Atziri's Communion) lacks
@@ -1765,7 +1764,7 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                             // name is kept, and the orchestrator's `stage_build_view`
                             // resolves it back to an id by looking it up against granted_effects.
                             let name_spec = attr_value(&e, b"nameSpec").filter(|v| !v.is_empty());
-                            // Captures skillId + level + quality for every enabled gem
+                            // Captures skillId + level + quality for every gem
                             // (both active and support). A missing/invalid quality
                             // attribute defaults to 0 (no quality), matching PoB2
                             // SkillsTab.lua's `quality` attribute read (default 0).
@@ -1807,6 +1806,7 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                                 // first; nameSpec-only references are always lineage
                                 // supports and don't factor into active-skill determination).
                                 if let Some(skill_id) = &skill_id
+                                    && enabled
                                     && cur.active_skill_id.is_none()
                                 {
                                     cur.active_skill_id = Some(skill_id.clone());
@@ -1816,6 +1816,7 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                                 let name_spec_pending = skill_id.is_none();
                                 cur.gem_requirement_levels.push(own_level);
                                 cur.gem_skills.push(crate::build::GemSkillRef {
+                                    enabled,
                                     count: attr_value(&e, b"count").and_then(|v| v.parse().ok()),
                                     enable_global_1: attr_value(&e, b"enableGlobal1")
                                         .map(|v| v == "true"),
@@ -2466,7 +2467,7 @@ Iron Ring
     #[test]
     fn parses_socket_groups_respecting_enabled() {
         let build = parse_build(SAMPLE).expect("parse");
-        // Two Skills: the first is enabled (2 enabled gems, 1 disabled gem skipped), the second is disabled.
+        // Two Skills: the first is enabled (2 enabled gems, 1 disabled gem retained), the second is disabled.
         assert_eq!(build.socket_groups.len(), 2);
         let enabled: Vec<&SocketGroup> = build.enabled_socket_groups().collect();
         assert_eq!(enabled.len(), 1, "only the first Skill is enabled");
@@ -2474,9 +2475,10 @@ Iron Ring
             enabled[0].gem_ids,
             vec![
                 "Metadata/Items/Gem/Active".to_string(),
-                "Metadata/Items/Gems/Support".to_string()
+                "Metadata/Items/Gems/Support".to_string(),
+                "Metadata/Items/Gems/Disabled".to_string()
             ],
-            "a disabled gem should be skipped"
+            "disabled gems remain editable"
         );
         // The first enabled gem's skillId + level is captured as the active skill (the key for resolving per-level parameters).
         assert_eq!(

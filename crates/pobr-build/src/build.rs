@@ -24,8 +24,10 @@ use crate::build_config::BuildConfig;
 ///
 /// Contract C4 scope: `quality` is the T1 share (default 0 = no quality),
 /// `stat_set_index` is the T5 share (form selection).
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GemSkillRef {
+    /// Disabled gems remain editable but supply no effects to calculations.
+    pub enabled: bool,
     /// Number of simultaneous instances for Full DPS (`Gem.count`); omitted is one.
     pub count: Option<f64>,
     /// Saved primary/secondary global-effect switches, preserved on export.
@@ -68,6 +70,25 @@ pub struct GemSkillRef {
     pub minion_skill: Option<u32>,
 }
 
+impl Default for GemSkillRef {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            count: None,
+            enable_global_1: None,
+            enable_global_2: None,
+            skill_id: String::new(),
+            gem_level: 0,
+            quality: 0,
+            stat_set_index: None,
+            name_spec: None,
+            corrupted: false,
+            minion: None,
+            minion_skill: None,
+        }
+    }
+}
+
 /// A group of skill gems in the same socket (active skill + its supports). A simplified
 /// equivalent represented by stable gem ids.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -103,7 +124,7 @@ pub struct SocketGroup {
     /// [`GemSkillRef::quality`] (T1.4: the data-fetch side actually looks up quality via
     /// `gem_skills`; this field exists to keep the builder/snapshot views consistent).
     pub active_gem_quality: Option<u32>,
-    /// Granted-effect references for **every enabled gem** in this group (in PoB Gem
+    /// Granted-effect references for **every gem** in this group (in PoB Gem
     /// list order, active and support included); used to resolve support gems' per-level
     /// stats (multipliers/added damage) and inject them into the supported skill.
     pub gem_skills: Vec<GemSkillRef>,
