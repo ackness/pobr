@@ -497,6 +497,15 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
             Modifier::number("AttackSpeed", ModType::Inc, value)
                 .with_keyword_flags(KeywordFlags::TOTEM),
         ]),
+        // Chayula's Will attacks every 200 ms while its tornado exists;
+        // the character's attack speed does not change that interval.
+        "archon_of_chayula_tornado_attack_interval_ms" if value > 0.0 => {
+            Some(vec![Modifier::number(
+                "SkillUseRate",
+                ModType::Base,
+                1000.0 / value,
+            )])
+        }
         // Rain of Arrows: "One arrow lands every {0} seconds", with
         // "Modifiers to Projectile speed apply to arrow landing frequency"
         // (`calc::rain`).
@@ -561,6 +570,15 @@ fn while_using_weapon_set(set: u8) -> ModTag {
 pub fn granted_skill_modifiers(stat: &str, value: f64, stats: &[SkillDamageStat]) -> Vec<Modifier> {
     let sibling = |id: &str| stats.iter().find(|ds| ds.stat == id).map(|ds| ds.value);
     match stat {
+        // Walking Calamity and The Stars Answer repeatedly trigger their
+        // granted meteor at this interval while the parent skill is active.
+        // This is the arrival rate for the selected meteor damage form,
+        // assuming a single target, rather than the character's attack rate.
+        "walking_calamity_spawn_meteor_every_ms" if value > 0.0 => vec![Modifier::number(
+            "SkillUseRate",
+            ModType::Base,
+            1000.0 / value,
+        )],
         // Doedre's Undoing: "Each Cursed Ground area from Supported Skills
         // spawns a Witchtoad every {0} seconds", with "Limit {0} areas of
         // Cursed Ground". The skill the gem grants, Dark Consequences, "is

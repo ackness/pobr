@@ -929,6 +929,10 @@ pub struct CalculateBuildOutput {
     pub poison_max_stacks: f64,
     /// The main skill's action rate (per second, derived from the gem's per-level cast/attack time).
     pub action_rate: f64,
+    /// Crossbow shots per second before reloading, or zero for other skills.
+    pub firing_rate: f64,
+    /// Seconds to reload the crossbow, or zero when the skill uses no ammunition.
+    pub reload_time: f64,
     /// The main skill's cooldown (seconds, derived from its per-level cooldown).
     pub cooldown: f64,
     /// The main skill's mana cost (derived from its per-level cost).
@@ -1224,6 +1228,8 @@ pub fn calculate_build_detailed(
         ignite_max_stacks: out.ignite_max_stacks,
         poison_max_stacks: out.poison_max_stacks,
         action_rate: out.action_rate,
+        firing_rate: out.firing_rate,
+        reload_time: out.reload_time,
         cooldown: out.cooldown,
         mana_cost: out.mana_cost,
         energy_trigger: (out.energy_trigger_maximum > 0.0).then(|| EnergyTriggerOutput {

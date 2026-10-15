@@ -601,6 +601,16 @@ pub(super) fn inject_main_skill_mods(
         //         consumed by perform's `fill_crossbow_reload`. Returns empty for a
         //         non-crossbow/grenade skill.
         session.add_modifiers(crossbow_reload_modifiers(build, data, group, skill_id));
+        if ctx
+            .main
+            .main_skill_types
+            .iter()
+            .any(|kind| kind == "NonWeaponAttack")
+        {
+            session.add_modifiers(pobr_core::skill_env::shield_elemental_damage_modifiers(
+                skill_id, skill, build, data,
+            ));
+        }
         session.add_modifiers(support_modifiers(
             context,
             group,

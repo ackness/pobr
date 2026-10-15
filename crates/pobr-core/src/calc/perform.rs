@@ -960,8 +960,11 @@ fn fill_crossbow_reload(env: &mut Env) {
     if firing_rate <= 0.0 {
         return;
     }
-    let reload_time = super::skill_use_time::crossbow_reload_time(db, cfg, base_reload);
     env.player.output.firing_rate = firing_rate;
+    if db.flag(cfg, "CrossbowHasNoAmmo") {
+        return;
+    }
+    let reload_time = super::skill_use_time::crossbow_reload_time(db, cfg, base_reload);
     env.player.output.reload_time = reload_time;
     let bolt_count = db.sum(ModType::Base, cfg, &[ModName::from("CrossbowBoltCount")]);
     let chance_not_consume = db.sum(
