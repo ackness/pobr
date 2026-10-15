@@ -166,6 +166,11 @@ cmd_triage() {
   python3 devs/scripts/triage.py ${args[@]+"${args[@]}"}
 }
 
+# Synthetic single-skill builds against both calculators; oracle results cached.
+cmd_skill_sweep() {
+  python3 devs/scripts/skill-sweep.py "$@"
+}
+
 # The game data records an id or a name has: a granted effect, stat, base
 # item, passive node or unique.
 cmd_lookup() {
@@ -244,6 +249,7 @@ PoBR development commands (mise tasks; without mise run this script with the sam
   mise run diagnose <build>                 One build: import losses, reference differences, dropped inputs
   mise run compare <build> [Stat ...]       One build against the pinned PoB2: totals and differing modifier lines
   mise run triage [set or build dir ...]    Every worked build at once: whose differences, and their shared causes
+  mise run skills:sweep [--jobs N]           Every primary player active skill against the pinned PoB2
   mise run lookup <id or name> [--level N]  Game data records of a skill, stat, base item, passive node or unique
   mise run accuracy [corpus dir]            Totals of every committed set, or one set's builds against their reference
   mise run builds:fetch <set dir> [--pick first|last]  One poe.ninja build per ascendancy into a reference set
@@ -365,6 +371,7 @@ case "${1:-}" in
   diagnose)  shift; cmd_diagnose "$@" ;;
   compare)   shift; cmd_compare "$@" ;;
   triage)    shift; cmd_triage "$@" ;;
+  skills:sweep) shift; cmd_skill_sweep "$@" ;;
   lookup)    shift; cmd_lookup "$@" ;;
   accuracy)  shift; cmd_accuracy "$@" ;;
   targets)   cmd_targets ;;

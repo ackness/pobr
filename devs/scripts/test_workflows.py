@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from unittest.mock import patch
 import zlib
 
@@ -207,6 +208,14 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         result = self.run_script("devs/scripts/driver.sh", "build")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [["build", "-p", "pobr-cli"]])
+
+    def test_skill_sweep_forwards_options_without_running_cargo_in_driver(self):
+        self.write("devs/scripts/skill-sweep.py", "import json, sys; print(json.dumps(sys.argv[1:]))\n")
+        result = self.run_script("devs/scripts/driver.sh", "skills:sweep", "--jobs", "4",
+                                 "--json", "report with spaces.json")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(result.stdout), ["--jobs", "4", "--json", "report with spaces.json"])
+        self.assertFalse((self.root / "calls.jsonl").exists())
 
     def test_cache_report_counts_files_without_building_or_following_symlinks(self):
         self.write("target/debug/incremental/session/object.o", "cache")
@@ -1074,6 +1083,167 @@ class LookupTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             self.lookup_output("Ruby Ring", version="missing")
         self.assertEqual(self.lookup_output("Ruby Ring", "--version", "test")[0], 0)
+
+
+class SkillSweepTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        spec = importlib.util.spec_from_file_location("skill_sweep", REPO / "devs/scripts/skill-sweep.py")
+        cls.sweep = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.sweep)
+        root = REPO / "data"
+        cls.data = root / (root / "CURRENT").read_text().strip()
+        cls.bases = cls.sweep.read_json(cls.data / "base/base_items.json")
+        # Fixed oracle identities make XML tests independent of the vendor checkout.
+        cls.vendor_gems = {
+            "FireballPlayer": [{"gameId": "Metadata/Items/Gem/SkillGemFireball",
+                                "variantId": "Fireball"}],
+            "IceStrikePlayer": [{"gameId": "Metadata/Items/Gems/SkillGemIceStrike",
+                                 "variantId": "IceStrike", "weaponRequirements": "Quarterstaff"}],
+        }
+        cls.cases, cls.skipped, cls.inventory = cls.sweep.skill_cases(
+            cls.data, cls.vendor_gems, set(cls.vendor_gems))
+
+    def case(self, effect_id):
+        return next(c for c in self.cases if c["skill_id"] == effect_id)
+
+    def test_fireball_uses_real_export_identity_and_explicit_main_selection(self):
+        xml, equipment = self.sweep.synthetic_xml(self.case("FireballPlayer"), self.bases)
+        root = ET.fromstring(xml)
+        self.assertEqual(root.tag, "PathOfBuilding2")
+        self.assertEqual(root.find("Build").get("level"), "90")
+        self.assertEqual(root.find("Build").get("mainSocketGroup"), "1")
+        self.assertEqual(root.find("Tree/Spec").get("classId"), "1")
+        skill = root.find("Skills/SkillSet/Skill")
+        self.assertEqual(skill.get("mainActiveSkill"), "1")
+        self.assertEqual(skill.get("mainActiveSkillCalcs"), "1")
+        gem = skill.find("Gem")
+        self.assertEqual(gem.get("gemId"), "Metadata/Items/Gem/SkillGemFireball")
+        self.assertEqual(gem.get("variantId"), "Fireball")
+        self.assertEqual(gem.get("skillId"), "FireballPlayer")
+        self.assertEqual((gem.get("level"), gem.get("quality")), ("20", "0"))
+        self.assertEqual(equipment, [])
+        self.assertEqual(root.findall("Items/Item"), [])
+        encoded = self.sweep.encode_code(xml)
+        self.assertEqual(zlib.decompress(base64.urlsafe_b64decode(encoded)).decode(), xml)
+
+    def test_attack_uses_a_normal_data_base_and_matching_equipped_slot(self):
+        xml, equipment = self.sweep.synthetic_xml(self.case("IceStrikePlayer"), self.bases)
+        root = ET.fromstring(xml)
+        self.assertEqual(equipment[0]["item_class"], "Warstaff")
+        item = root.find("Items/Item")
+        self.assertIn("Rarity: NORMAL\n" + equipment[0]["name"], item.text)
+        self.assertIn("Physical Damage:", item.text)
+        self.assertIn("Implicits: 0", item.text)
+        slot = root.find("Items/ItemSet/Slot")
+        self.assertEqual(slot.get("name"), "Weapon 1")
+        self.assertEqual(slot.get("itemId"), item.get("id"))
+
+    def test_exported_effect_order_selects_primary_after_secondary_and_support(self):
+        with tempfile.TemporaryDirectory() as temp:
+            vendor = Path(temp)
+            (vendor / "src/Data/Skills").mkdir(parents=True)
+            (vendor / "src/Data/Skills/act.lua").write_text(
+                'skills["Primary"] = {\n}\nskills["Support"] = {\n\tsupport = true,\n}\n'
+                'skills["Secondary"] = {\n}\n')
+            (vendor / "src/Data/Gems.lua").write_text(
+                'return {\n\t["Gem"] = {\n\t\tgrantedEffectId = "Primary",\n'
+                '\t\tgameId = "Gem",\n\t\tvariantId = "Variant",\n'
+                '\t\tadditionalGrantedEffectId1 = "Support",\n'
+                '\t\tadditionalGrantedEffectId2 = "Secondary",\n'
+                '\t\tgrantedEffectDisplayOrder = { 1, 2 },\n\t},\n}\n')
+            gems, effects = self.sweep.vendor_metadata(vendor)
+            self.assertEqual(effects, {"Primary", "Support", "Secondary"})
+            self.assertEqual(gems["Primary"][0]["primary_active_index"], 2)
+            case = {**self.case("FireballPlayer"), "oracle_gem": gems["Primary"][0]}
+            xml, _ = self.sweep.synthetic_xml(case, self.bases)
+            skill = ET.fromstring(xml).find("Skills/SkillSet/Skill")
+            self.assertEqual(skill.get("mainActiveSkill"), "2")
+            self.assertEqual(skill.get("mainActiveSkillCalcs"), "2")
+
+    def test_unknown_vendor_gem_uses_effect_id_without_invalid_gem_id(self):
+        xml, _ = self.sweep.synthetic_xml(self.case("Melee1HAxePlayer"), self.bases)
+        gem = ET.fromstring(xml).find("Skills/SkillSet/Skill/Gem")
+        self.assertEqual(gem.get("skillId"), "Melee1HAxePlayer")
+        self.assertIsNone(gem.get("gemId"))
+
+    def test_meta_gems_are_included_and_effect_ids_are_deduplicated(self):
+        all_cases = self.cases + self.skipped
+        self.assertEqual(len({c["skill_id"] for c in all_cases}), len(all_cases))
+        self.assertEqual(len(all_cases), self.inventory["primary_active_effects"])
+        self.assertEqual(self.case("MetaCastOnCritPlayer")["gem"]["gem_type"], 2)
+        self.assertIn("meta", self.case("MetaCastOnCritPlayer")["families"])
+        self.assertTrue(all(not c["gem"]["is_support"] for c in all_cases))
+        self.assertTrue(any(c["skill_id"] == "DoLiterallyNothingPlayer" for c in self.skipped))
+
+    def test_every_case_generates_a_valid_build_without_oracle(self):
+        for case in self.cases:
+            with self.subTest(skill=case["skill_id"]):
+                xml, equipment = self.sweep.synthetic_xml(case, self.bases)
+                root = ET.fromstring(xml)
+                self.assertEqual(len(root.findall("Skills/SkillSet/Skill/Gem")), 1)
+                self.assertEqual(len(root.findall("Items/Item")), len(equipment))
+
+    def result(self, dps, skill="FireballPlayer"):
+        return {"main_skill": skill, "metrics": dict.fromkeys(self.sweep.METRICS, dps), "minion": None}
+
+    def test_classification_checks_identity_before_zero_or_agreement(self):
+        classify = lambda a, b: self.sweep.classify("FireballPlayer", a, b)[0]
+        self.assertEqual(classify(self.result(100), self.result(100)), "agree")
+        self.assertEqual(classify(self.result(105), self.result(100)), "agree")
+        self.assertEqual(classify(self.result(106), self.result(100)), "differs")
+        self.assertEqual(classify(self.result(0), self.result(100)), "pobr_zero")
+        self.assertEqual(classify(self.result(100), self.result(0)), "pob2_zero")
+        self.assertEqual(classify(self.result(0), self.result(0)), "both_zero")
+        self.assertEqual(classify(self.result(0), self.result(0, "MeleeUnarmedPlayer")), "pob2_other_skill")
+        self.assertEqual(classify(self.result(100, "other"), self.result(100)), "error")
+
+    def test_average_hit_basis_and_hit_rate_do_not_create_false_differences(self):
+        left, right = self.result(100), self.result(100)
+        left["metrics"]["AverageHit"] = 200
+        right["metrics"]["Speed"] = 10
+        right["comparison_rate"] = 100
+        self.assertEqual(self.sweep.classify("FireballPlayer", left, right)[0], "agree")
+
+    def test_minion_damage_is_not_hidden_as_both_zero(self):
+        left, right = self.result(0), self.result(0)
+        right["minion"] = {"TotalDPS": 100, "skill_id": "minion_attack"}
+        self.assertEqual(self.sweep.classify("FireballPlayer", left, right)[0], "pobr_zero")
+
+    def test_cache_reuses_oracle_and_engine_failure_keeps_oracle_result(self):
+        case = self.case("FireballPlayer")
+        oracle = {"mainOutput": {"TotalDPS": 100}, "skillInfo": {"grantedEffectId": "FireballPlayer"}}
+        engine = {"output": {"dps": 100, "action_rate": 1, "total_hit_avg": 100, "crit_chance": 0},
+                  "main_skill": {"skill_id": "FireballPlayer", "combined_dps": 100}}
+        with tempfile.TemporaryDirectory() as temp, patch.object(self.sweep, "CACHE", Path(temp)):
+            with patch.object(self.sweep, "run", side_effect=[json.dumps(engine), json.dumps(oracle)]) as run:
+                first = self.sweep.measure(case, self.bases, Path("pobr"), "commit", b"wrapper", False)
+                self.assertEqual(run.call_count, 2)
+                self.assertFalse(first["oracle_cached"])
+            with patch.object(self.sweep, "run", return_value="{}") as run:
+                second = self.sweep.measure(case, self.bases, Path("pobr"), "commit", b"wrapper", False)
+                self.assertEqual(run.call_count, 1)
+                self.assertEqual(second["classification"], "error")
+                self.assertTrue(second["oracle_cached"])
+                self.assertEqual(second["pob2"]["main_skill"], "FireballPlayer")
+            with patch.object(self.sweep, "run", side_effect=[json.dumps(engine), json.dumps(oracle)]) as run:
+                refreshed = self.sweep.measure(case, self.bases, Path("pobr"), "commit", b"wrapper", True)
+                self.assertEqual(run.call_count, 2)
+                self.assertFalse(refreshed["oracle_cached"])
+
+    def test_cache_key_changes_with_xml_vendor_or_wrapper(self):
+        key = self.sweep.cache_key("xml", "commit", b"wrapper")
+        self.assertEqual(key, self.sweep.cache_key("xml", "commit", b"wrapper"))
+        for xml, commit, wrapper in [("changed", "commit", b"wrapper"),
+                                     ("xml", "changed", b"wrapper"), ("xml", "commit", b"changed")]:
+            self.assertNotEqual(key, self.sweep.cache_key(xml, commit, wrapper))
+
+    def test_oracle_attack_average_falls_back_to_average_damage(self):
+        result = self.sweep.oracle_result({"mainOutput": {"AverageDamage": 42}, "skillInfo": {}})
+        self.assertEqual(result["metrics"]["AverageHit"], 42)
+        self.assertEqual(result["average_hit_field"], "AverageDamage")
+        with self.assertRaises(ValueError):
+            self.sweep.oracle_result({"mainOutput": {"TotalDPS": "Infinity"}})
 
 
 if __name__ == "__main__":
