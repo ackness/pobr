@@ -51,6 +51,7 @@ use crate::build::Build;
 use crate::build_data::BuildData;
 use crate::error::BuildError;
 
+pub mod full_dps;
 mod granted_skills;
 pub(crate) mod item;
 mod skill;
@@ -140,6 +141,8 @@ pub struct DataOrchestratorOptions {
     /// Limit maintained orb/storm uptime by its duration and the use rate.
     /// The reference exporter assumes continuous exposure.
     pub periodic_uptime: bool,
+    /// Evaluate all groups marked includeInFullDPS. Defaults to false.
+    pub full_dps: bool,
 }
 
 impl Default for DataOrchestratorOptions {
@@ -156,6 +159,7 @@ impl Default for DataOrchestratorOptions {
             energy_triggers: true,
             rain_landings: true,
             periodic_uptime: true,
+            full_dps: false,
         }
     }
 }
@@ -470,8 +474,14 @@ fn calculate_with_context(
     options: &DataOrchestratorOptions,
     context: &mut CalculationContext,
 ) -> Result<CalculationSession, BuildError> {
-    let build = prepared_build_view(build, data, options);
-    calculate_prepared_with_context(&build, data, options, context)
+    let prepared = prepared_build_view(build, data, options);
+    let mut session = calculate_prepared_with_context(&prepared, data, options, context)?;
+    if options.full_dps && !context.is_trigger_source {
+        session.set_full_dps(full_dps::calculate_prepared(
+            build, &prepared, data, options,
+        )?);
+    }
+    Ok(session)
 }
 
 /// Stage 0: the build as a calculation under `options` reads it. Its lines

@@ -34,7 +34,9 @@ export function skillWeaponSet(state: WeaponSetState, index?: number): 1 | 2 {
  * their indices stable for the sidebar, skill metrics, and optimizer variants.
  */
 export function groupsForWeaponSet(groups: SocketGroupInput[], active: 1 | 2): SocketGroupInput[] {
-  return groups.map(group => ({ ...group, enabled: group.enabled && (!group.weapon_set || group.weapon_set === active) }));
+  return groups.map(group => ({ ...group,
+    ...(group.include_in_full_dps ? { full_dps_enabled: group.enabled } : {}),
+    enabled: group.enabled && (!group.weapon_set || group.weapon_set === active) }));
 }
 
 /** The request fields for the weapon set in use: its enabled groups, and

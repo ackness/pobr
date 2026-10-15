@@ -343,6 +343,8 @@ pub fn granted_minion_modifiers(db: &ModDb, cfg: &CalcConfig) -> Vec<MinionModif
 /// What summoned a minion.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct MinionOrigin {
+    /// Enabled-group ordinal and gem index (both 0-based) of this summoner.
+    pub summoner: Option<(usize, usize)>,
     /// The id of the skill that summoned it (`SummonBeastPlayer`); empty
     /// when no skill did.
     pub summoned_by: String,

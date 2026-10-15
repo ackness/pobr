@@ -68,6 +68,9 @@ pub fn compare_to_reference(
         .into_iter()
         .filter(|def| def.parity_status == ParityStatus::Computed)
         .filter(|def| !NOT_COMPARABLE.contains(&def.id.as_str()))
+        .filter(|def| {
+            output.full_dps.is_some() || !matches!(def.id.as_str(), "FullDPS" | "FullDotDPS")
+        })
         .filter_map(|def| {
             let mut pob_key = def.pob_key?;
             // PoB2 reports how often a skill is used as `Speed` and, where

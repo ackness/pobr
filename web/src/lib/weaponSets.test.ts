@@ -42,3 +42,11 @@ test('older saves start with an empty second set and reject malformed swap data'
   expect(validWeaponSwap({ active: 3 })).toBeUndefined();
   expect(validWeaponSwap(state.weaponSwap)).toBe(state.weaponSwap);
 });
+test('Full DPS keeps the original enabled state of an included alternate-set group', () => {
+  const groups = groupsForWeaponSet([
+    { enabled: true, weapon_set: 2, include_in_full_dps: true, gems: [] },
+    { enabled: false, weapon_set: 2, include_in_full_dps: true, gems: [] },
+  ], 1);
+  expect(groups.map(group => group.enabled)).toEqual([false, false]);
+  expect(groups.map(group => group.full_dps_enabled)).toEqual([true, false]);
+});

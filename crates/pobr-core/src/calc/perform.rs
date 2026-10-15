@@ -487,6 +487,7 @@ fn perform_minions(env: &mut Env) {
 
         let identity = minion.minion.clone().unwrap_or_default();
         snapshots.push(MinionOutput {
+            summoner: identity.summoner,
             minion_id: identity.minion_id,
             summoned_by: identity.summoned_by,
             skill_id: identity.skill.id,

@@ -234,6 +234,7 @@ impl Env {
         }
         actor.is_companion = origin.is_companion;
         actor.minion = Some(MinionIdentity {
+            summoner: origin.summoner,
             minion_id: def.id.clone(),
             summoned_by: origin.summoned_by,
             skill: origin.skill,

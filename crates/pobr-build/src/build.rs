@@ -24,8 +24,13 @@ use crate::build_config::BuildConfig;
 ///
 /// Contract C4 scope: `quality` is the T1 share (default 0 = no quality),
 /// `stat_set_index` is the T5 share (form selection).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct GemSkillRef {
+    /// Number of simultaneous instances for Full DPS (`Gem.count`); omitted is one.
+    pub count: Option<f64>,
+    /// Saved primary/secondary global-effect switches, preserved on export.
+    pub enable_global_1: Option<bool>,
+    pub enable_global_2: Option<bool>,
     /// Granted effect id (PoB `<Gem skillId>`, e.g. `SupportAddedLightningDamagePlayer`).
     pub skill_id: String,
     /// Gem level (PoB `<Gem level>`).
@@ -65,8 +70,12 @@ pub struct GemSkillRef {
 
 /// A group of skill gems in the same socket (active skill + its supports). A simplified
 /// equivalent represented by stable gem ids.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct SocketGroup {
+    /// Include all enabled active effects in the optional Full DPS calculation.
+    pub include_in_full_dps: bool,
+    /// Overrides each gem's instance count (`Skill.groupCount`).
+    pub group_count: Option<f64>,
     /// Exclusive weapon-set binding (1/2); None follows the active item set.
     /// A skill a weapon grants is bound to that weapon's set.
     pub weapon_set: Option<u8>,
@@ -163,6 +172,8 @@ impl SocketGroup {
 
     pub fn new() -> Self {
         Self {
+            include_in_full_dps: false,
+            group_count: None,
             weapon_set: None,
             source: None,
             slot: None,
@@ -230,6 +241,7 @@ impl SocketGroup {
             corrupted: false,
             minion: None,
             minion_skill: None,
+            ..Default::default()
         });
         self
     }
@@ -250,6 +262,7 @@ impl SocketGroup {
             corrupted: false,
             minion: None,
             minion_skill: None,
+            ..Default::default()
         });
         self
     }
@@ -411,6 +424,8 @@ pub struct Build {
     /// use it, so their "+N to Level of all Spell Skills" count for it and the
     /// weapons in `items` don't.
     pub other_weapons: HashMap<EquipmentSlot, Item>,
+    /// Allocations with the other weapon set active, before equipment grants.
+    pub other_weapon_set_nodes: Option<Vec<pobr_data::passive_tree::NodeId>>,
     /// Skill gem groups.
     pub socket_groups: Vec<SocketGroup>,
     /// Main skill group index (PoB `<Build mainSocketGroup>`, **1-based**, indexes

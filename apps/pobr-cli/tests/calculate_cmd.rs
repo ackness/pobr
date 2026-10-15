@@ -783,3 +783,46 @@ fn periodic_spells_compare_on_continuous_exposure_despite_short_duration() {
     assert!((on_basis.output.action_rate - 1.0 / 1.4).abs() < 1e-6);
     assert!(render_breakdowns(&game).contains("exporter's basis"));
 }
+
+#[test]
+fn full_dps_is_opt_in_and_the_json_contributions_sum_to_it() {
+    let xml = r#"<PathOfBuilding2><Build level="90" className="Witch"/>
+        <Skills><Skill includeInFullDPS="true"><Gem skillId="SparkPlayer" level="20" count="3"/></Skill></Skills>
+        </PathOfBuilding2>"#;
+    let request = CalculateBuildRequest {
+        code: pobr_build::encode_pob_code(xml).unwrap(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    };
+    assert!(
+        calculate_build_detailed(&request, &BuildDetail::default())
+            .unwrap()
+            .output
+            .full_dps
+            .is_none()
+    );
+    let report = calculate_build_detailed(
+        &request,
+        &BuildDetail {
+            breakdown: vec!["FullDPS".into(), "FullDotDPS".into()],
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(report.output.full_dps_skills.len(), 1);
+    assert_eq!(report.output.full_dps_skills[0].count, 3.0);
+    assert_eq!(
+        report.output.full_dps,
+        Some(
+            report
+                .output
+                .full_dps_skills
+                .iter()
+                .map(|row| row.dps)
+                .sum()
+        )
+    );
+    assert_eq!(report.breakdowns[0].value, report.output.full_dps);
+}

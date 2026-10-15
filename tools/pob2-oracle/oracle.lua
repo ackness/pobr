@@ -1172,6 +1172,9 @@ local report = {
 	spiritReservedBreakdown = spiritReservedBreakdown,
 	defenceModList = defenceModList,
 	auraEffectList = auraEffectList,
+	-- Full DPS components distinguish aggregation errors from an included skill's own calculation.
+	fullDPSSkills = mainOutput.SkillDPS,
+	calcsFullDPSSkills = calcsOutput.SkillDPS,
 	mainOutput = scalarsOf(mainOutput),
 	calcsOutput = scalarsOf(calcsOutput),
 	-- The main skill's minion, whose output a build code's <MinionStat>

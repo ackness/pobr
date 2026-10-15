@@ -894,6 +894,12 @@ pub struct BuildSummary {
 /// The key output fields from a `calculate-build` result.
 #[derive(Debug, Clone, Serialize)]
 pub struct CalculateBuildOutput {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub full_dps: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub full_dot_dps: Option<f64>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub full_dps_skills: Vec<pobr_core::calc::output::FullDpsSkill>,
     pub life: f64,
     pub mana: f64,
     pub energy_shield: f64,
@@ -1155,6 +1161,11 @@ pub fn calculate_build_detailed(
         enemy_level: req.enemy_level,
         enemy_tier: req.enemy_tier,
         mode_effective: req.mode_effective,
+        full_dps: detail.full_dps
+            || detail
+                .breakdown
+                .iter()
+                .any(|s| matches!(s.as_str(), "FullDPS" | "FullDotDPS")),
         ..Default::default()
     };
     // The ledger of lines comes from a diagnosis, which calculates exactly as
@@ -1174,7 +1185,7 @@ pub fn calculate_build_detailed(
         opts
     };
     let session = match diagnosis {
-        Some(diagnosis) if !detail.reference_basis => diagnosis.session,
+        Some(diagnosis) if !detail.reference_basis && !opts.full_dps => diagnosis.session,
         _ => calculate_with_data_session(&build, &build_data, &opts)?,
     };
     let out = session.output();
@@ -1182,6 +1193,13 @@ pub fn calculate_build_detailed(
 
     let summary = build_summary(&build);
     let output = CalculateBuildOutput {
+        full_dps: out.full_dps.as_ref().map(|full| full.dps),
+        full_dot_dps: out.full_dps.as_ref().map(|full| full.dot_dps),
+        full_dps_skills: out
+            .full_dps
+            .as_ref()
+            .map(|full| full.skills.clone())
+            .unwrap_or_default(),
         life: out.life,
         mana: out.mana,
         energy_shield: out.energy_shield,

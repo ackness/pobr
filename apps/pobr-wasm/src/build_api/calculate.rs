@@ -19,6 +19,9 @@ use crate::state;
 
 #[derive(Debug, Serialize)]
 struct CalculateBuildResponse {
+    /// Absent unless requested. Rows include counts and their allocated DPS.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    full_dps: Option<pobr_core::calc::output::FullDpsOutput>,
     /// The full set of display_catalog Computed fields (id/value/category).
     stats: Vec<pobr_data::display_stat::DisplayStatValue>,
     /// Unparsed modifier text and confirmed source-specific calculation limits,
@@ -87,13 +90,30 @@ fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
     let data = state::build_data().map_err(super::ApiError::not_initialized)?;
     let (mut build, mut item_errors) = import_build_from_request(&req)?;
     item_errors.extend(apply_request_overrides(&mut build, &req, &data)?);
-    let session = run_session_for_build(&build, &req)?;
+    let mut session = run_session_for_build(&build, &req)?;
+    if req.full_dps {
+        // Inspecting a different effect changes the main panel, not which effects
+        // Full DPS includes. Reuse the roll-up across those selection changes.
+        let full = state::cached_response_keyed(
+            "full_dps",
+            selection_cache_key(request_json, false),
+            || {
+                let full = super::request::full_dps_for_build(&build, &data, &req)
+                    .map_err(|e| e.into_json())?;
+                serde_json::to_string(&full).map_err(|e| format!("serialize Full DPS: {e}"))
+            },
+        )?;
+        session.set_full_dps(
+            serde_json::from_str(&full).map_err(|e| format!("read cached Full DPS: {e}"))?,
+        );
+    }
     let stats = pobr_core::extract_display_values(session.output());
     let breakdowns = BREAKDOWN_STATS
         .iter()
         .filter_map(|name| stat_breakdown(&session, name).map(|b| (name.to_string(), b)))
         .collect();
     let response = CalculateBuildResponse {
+        full_dps: session.output().full_dps.clone(),
         stats,
         unsupported_modifiers: session.unsupported_modifier_texts().to_vec(),
         breakdowns,

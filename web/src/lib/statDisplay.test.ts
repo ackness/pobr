@@ -35,6 +35,10 @@ describe('STAT_SECTIONS', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  test('Full DPS remains visible without a selected main skill', () => {
+    expect(STAT_SECTIONS.find(section => section.rows.some(row => row.id === 'FullDPS'))?.requiresSkill).not.toBe(true);
+  });
+
   test('双语标签齐全', () => {
     for (const section of STAT_SECTIONS) {
       for (const row of section.rows) {
@@ -100,7 +104,7 @@ describe('STAT_SECTIONS', () => {
       'MineThrowCount',
       'WarcryCastTime',
       'ChannelTime',
-      'StoredUses', 'TotalDot', 'WithDotDPS',
+      'StoredUses', 'TotalDot', 'WithDotDPS', 'FullDPS', 'FullDotDPS',
       'FiringRate', 'ReloadTime', 'CullingDPS', 'ProjectileSpeedMod',
       'LifeRegenRecovery', 'ManaRegenRecovery', 'EnergyShieldRegenRecovery',
       'WardRegenRecovery', 'RageRegenRecovery', 'NetLifeRegen', 'NetManaRegen',

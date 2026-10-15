@@ -392,6 +392,9 @@ fn gem(
         1
     });
     Some(GemJson {
+        count: None,
+        enable_global_1: None,
+        enable_global_2: None,
         skill_id: id.clone(),
         level,
         quality: property(item, 6).unwrap_or(0),
@@ -552,6 +555,8 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
             }
         }
         groups.push(SocketGroupJson {
+            include_in_full_dps: false,
+            group_count: None,
             main_active_skill: None,
             weapon_set: None,
             slot: None,

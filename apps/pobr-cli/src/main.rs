@@ -89,6 +89,9 @@ struct CalculateArgs {
 
 #[derive(Debug, Args)]
 struct CalculateBuildArgs {
+    /// Evaluate every skill marked for Full DPS (additional calculation work).
+    #[arg(long)]
+    full_dps: bool,
     /// The build code, given inline. Use this or --file; with neither, reads stdin.
     code: Option<String>,
     /// Read the build code from a file.
@@ -213,6 +216,7 @@ fn run(cli: Cli) -> Result<String, Box<dyn std::error::Error>> {
         Command::CalculateBuild(args) => {
             let as_text = (!args.breakdown.is_empty() || args.usage) && !args.json;
             let detail = pobr_cli::BuildDetail {
+                full_dps: args.full_dps,
                 breakdown: args.breakdown.clone(),
                 reference_basis: args.reference_basis,
                 usage: args.usage,

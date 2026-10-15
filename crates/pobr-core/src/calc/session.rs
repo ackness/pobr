@@ -907,6 +907,11 @@ impl CalculationSession {
     /// Includes armour/evasion/ES, ailments, EHP, skill mechanics, and every
     /// other fill-stage field -- `MinimalOutput` is only its attack/resistance
     /// subset; use this when the full output is needed.
+    /// Attaches the build orchestrator's multi-skill result after the main pass.
+    pub fn set_full_dps(&mut self, output: super::output::FullDpsOutput) {
+        self.env.player.output.full_dps = Some(output);
+    }
+
     pub fn output(&self) -> &OutputTable {
         &self.env.player.output
     }

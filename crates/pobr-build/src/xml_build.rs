@@ -233,6 +233,11 @@ fn parse_build_with_allocated_nodes_impl(
         build.weapon_set = WeaponSet::Second;
     }
     build.other_weapons = other_weapons;
+    build.other_weapon_set_nodes = Some(
+        allocation_override
+            .map(|nodes| nodes.iter().copied().map(NodeId).collect())
+            .unwrap_or(parse_passive_nodes(xml, !use_second_weapon_set)?.allocated),
+    );
     build.granted_socket_jewels = granted_socket_jewels;
     build.jewels = jewels;
     if !radius_jewels.is_empty() {
@@ -1704,6 +1709,10 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                     "Skill" if in_target_set => {
                         let enabled = attr_bool_default_true(&e, b"enabled");
                         let mut group = SocketGroup::new().with_enabled(enabled);
+                        group.include_in_full_dps =
+                            attr_value(&e, b"includeInFullDPS").is_some_and(|v| v == "true");
+                        group.group_count =
+                            attr_value(&e, b"groupCount").and_then(|v| v.parse().ok());
                         if let Some(source) = attr_value(&e, b"source") {
                             group = group.with_source(source);
                         }
@@ -1807,6 +1816,11 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                                 let name_spec_pending = skill_id.is_none();
                                 cur.gem_requirement_levels.push(own_level);
                                 cur.gem_skills.push(crate::build::GemSkillRef {
+                                    count: attr_value(&e, b"count").and_then(|v| v.parse().ok()),
+                                    enable_global_1: attr_value(&e, b"enableGlobal1")
+                                        .map(|v| v == "true"),
+                                    enable_global_2: attr_value(&e, b"enableGlobal2")
+                                        .map(|v| v == "true"),
                                     skill_id: skill_id.unwrap_or_default(),
                                     gem_level: level,
                                     quality,

@@ -2,8 +2,33 @@ use pobr_data::prelude::DamageType;
 
 use super::{DamageComponent, MinimalOutput, SkillUseTime};
 
+/// One included effect. `hit_dps` is per instance; `dot_dps` is its allocated
+/// share after stacking limits. `dps` includes count, DoT and culling, and the
+/// rows sum to FullDPS. Failures remain visible instead of disappearing.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct FullDpsSkill {
+    pub group_index: usize,
+    pub active_skill_index: usize,
+    pub skill_id: String,
+    pub count: f64,
+    pub hit_dps: f64,
+    pub dot_dps: f64,
+    pub dps: f64,
+    pub unsupported_modifiers: Vec<String>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct FullDpsOutput {
+    pub dps: f64,
+    pub dot_dps: f64,
+    pub skills: Vec<FullDpsSkill>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutputTable {
+    /// Optional because evaluating every included effect is a separate, opt-in pass.
+    pub full_dps: Option<FullDpsOutput>,
     pub strength: f64,
     pub dexterity: f64,
     pub intelligence: f64,
@@ -456,6 +481,8 @@ pub struct HandOutput {
 /// A single minion's output snapshot (same structure as the subset of the player's key offence/defence output).
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct MinionOutput {
+    /// Enabled-group ordinal and gem index (both 0-based) of this summoner.
+    pub summoner: Option<(usize, usize)>,
     /// The minion's catalog id.
     pub minion_id: String,
     /// The id of the skill that summoned it; empty when no skill did.
@@ -479,6 +506,7 @@ pub struct MinionOutput {
 impl Default for OutputTable {
     fn default() -> Self {
         Self {
+            full_dps: None,
             strength: 0.0,
             dexterity: 0.0,
             intelligence: 0.0,

@@ -485,6 +485,7 @@ dependencies = [
  "criterion",
  "pobr-data",
  "regex",
+ "serde",
  "serde_json",
 ]
 

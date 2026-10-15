@@ -172,7 +172,10 @@ pub fn spawn_minions(
         player_dexterity: session.attribute("Dexterity"),
     };
 
+    let mut enabled_group = 0;
     groups.for_each_enabled_group(&mut |group| {
+        let group_index = enabled_group;
+        enabled_group += 1;
         // This group's each **active skill** gem.
         // Prefers `gems` (the real import path, includes both active + support);
         // falls back to `active_skill_id` when empty (the builder/test path's
@@ -195,15 +198,18 @@ pub fn spawn_minions(
         } else {
             group.gems.to_vec()
         };
-        for GemInput {
-            skill_id,
-            gem_level,
-            quality,
-            stat_set_index,
-            corrupted,
-            minion: chosen,
-            minion_skill: chosen_skill,
-        } in candidates
+        for (
+            gem_index,
+            GemInput {
+                skill_id,
+                gem_level,
+                quality,
+                stat_set_index,
+                corrupted,
+                minion: chosen,
+                minion_skill: chosen_skill,
+            },
+        ) in candidates.into_iter().enumerate()
         {
             // A support itself doesn't summon — its addMinionList appends to the active
             // skill's minion_list, which is deferred; the first version only wires up
@@ -449,6 +455,7 @@ pub fn spawn_minions(
                     Vec::new(),
                     infusion,
                     crate::calc::MinionOrigin {
+                        summoner: Some((group_index, gem_index)),
                         summoned_by: skill_id.clone(),
                         is_companion,
                         skill,

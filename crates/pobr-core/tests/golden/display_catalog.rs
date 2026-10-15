@@ -47,7 +47,7 @@ fn catalog_entry_counts_locked() {
     );
     assert_eq!(
         catalog.len() - planned,
-        195,
+        197,
         "a change in Computed entry count needs explicit review"
     );
 }
@@ -229,7 +229,10 @@ fn extract_covers_every_computed_catalog_entry() {
         .iter()
         .filter(|def| def.parity_status == ParityStatus::Computed)
         .count();
-    let values = extract_display_values(&OutputTable::default());
+    let values = extract_display_values(&OutputTable {
+        full_dps: Some(Default::default()),
+        ..Default::default()
+    });
     assert_eq!(values.len(), computed);
 }
 
@@ -566,5 +569,27 @@ fn taken_multi_and_cost_entries_have_higher_is_better_false() {
         entry("EsRechargeDelay").higher_is_better,
         Some(false),
         "EsRechargeDelay should have higher_is_better=false"
+    );
+}
+
+#[test]
+fn full_dps_is_absent_until_requested_and_exposes_both_totals() {
+    let mut output = OutputTable::default();
+    assert!(
+        !extract_display_values(&output)
+            .iter()
+            .any(|row| row.id.as_str() == "FullDPS")
+    );
+    output.full_dps = Some(pobr_core::calc::output::FullDpsOutput {
+        dps: 1234.0,
+        dot_dps: 234.0,
+        skills: Vec::new(),
+    });
+    assert_eq!(display_value(&output, "FullDPS"), 1234.0);
+    assert_eq!(display_value(&output, "FullDotDPS"), 234.0);
+    assert!(
+        extract_display_values(&output)
+            .iter()
+            .any(|row| row.id.as_str() == "FullDPS")
     );
 }

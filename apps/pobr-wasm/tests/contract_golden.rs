@@ -111,6 +111,8 @@ fn decode_build_json_shape() {
             "enabled",
             "source",
             "active_skill_id",
+            "include_in_full_dps",
+            "group_count",
             "gems",
             "weapon_set",
         ],
@@ -118,7 +120,18 @@ fn decode_build_json_shape() {
     );
     let gems = groups[0]["gems"].as_array().unwrap();
     assert!(!gems.is_empty());
-    assert_keys(&gems[0], &["skill_id", "level", "quality"], "gems[0]");
+    assert_keys(
+        &gems[0],
+        &[
+            "skill_id",
+            "level",
+            "quality",
+            "count",
+            "enable_global_1",
+            "enable_global_2",
+        ],
+        "gems[0]",
+    );
 }
 
 #[test]
@@ -4160,4 +4173,110 @@ mod support_coverage {
         request["socket_groups"][0]["gems"][0]["stat_set_index"] = json!(999);
         assert_eq!(calc(&request), primary);
     }
+}
+
+#[test]
+fn full_dps_round_trip_preserves_inclusion_counts_and_global_switches() {
+    ensure_data();
+    let request = serde_json::json!({
+        "character": { "level": 90, "class_name": "Witch" }, "full_dps": true,
+        "socket_groups": [
+            { "enabled": true, "include_in_full_dps": true, "group_count": 4.5,
+              "gems": [{ "skill_id": "SparkPlayer", "level": 20, "quality": 0,
+                         "count": 2.5, "enable_global_1": false, "enable_global_2": true }] },
+            { "enabled": true, "include_in_full_dps": false,
+              "gems": [{ "skill_id": "FrostboltPlayer", "level": 20, "quality": 0, "count": 7 }] }
+        ]
+    });
+    let code = pobr_wasm::encode_build_json(&request.to_string()).unwrap();
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).unwrap()).unwrap();
+    let groups = &decoded["socket_groups"];
+    assert_eq!(groups[0]["include_in_full_dps"], true);
+    assert_eq!(groups[0]["group_count"].as_f64(), Some(4.5));
+    assert_eq!(groups[0]["gems"][0]["count"].as_f64(), Some(2.5));
+    assert_eq!(groups[0]["gems"][0]["enable_global_1"], false);
+    assert_eq!(groups[0]["gems"][0]["enable_global_2"], true);
+    assert_eq!(groups[1]["include_in_full_dps"], false);
+    let direct: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap();
+    let imported: Value = serde_json::from_str(
+        &pobr_wasm::calculate_build_json(
+            &serde_json::json!({ "pob_code": code, "full_dps": true }).to_string(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(direct["full_dps"], imported["full_dps"]);
+    assert_eq!(direct["full_dps"]["skills"].as_array().unwrap().len(), 1);
+    assert_eq!(direct["full_dps"]["skills"][0]["count"].as_f64(), Some(4.5));
+    assert!(direct["full_dps"]["dps"].as_f64().unwrap() > 0.0);
+    let ordinary: Value = serde_json::from_str(
+        &pobr_wasm::calculate_build_json(
+            &serde_json::json!({ "character": {"level":90, "class_name":"Witch"}, "full_dps": false }).to_string(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert!(ordinary.get("full_dps").is_none());
+}
+
+#[test]
+fn full_dps_unmasks_included_alternate_set_without_changing_the_main_panel() {
+    ensure_data();
+    let mut request = serde_json::json!({
+        "character": { "level": 90, "class_name": "Witch" },
+        "weapon_swap": { "active": 1, "alternate_items": [], "exclusive_nodes": [[], []] },
+        "main_socket_group": 0,
+        "socket_groups": [
+            { "enabled": true, "gems": [{ "skill_id": "SparkPlayer", "level": 20 }] },
+            { "enabled": false, "full_dps_enabled": true, "weapon_set": 2, "include_in_full_dps": true,
+              "gems": [{ "skill_id": "FrostboltPlayer", "level": 20, "count": 3 }] },
+            { "enabled": false, "full_dps_enabled": false, "weapon_set": 2, "include_in_full_dps": true,
+              "gems": [{ "skill_id": "CometPlayer", "level": 20 }] }
+        ]
+    });
+    let ordinary: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap();
+    request["full_dps"] = true.into();
+    let full: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap();
+    assert_eq!(full["main_skill"], ordinary["main_skill"]);
+    assert_eq!(full["full_dps"]["skills"].as_array().unwrap().len(), 1);
+    assert_eq!(full["full_dps"]["skills"][0]["skill_id"], "FrostboltPlayer");
+    let before = full["full_dps"]["dps"].as_f64().unwrap();
+    assert!(before > 0.0);
+    request["socket_groups"][1]["gems"][0]["count"] = 6.into();
+    let recounted: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap();
+    assert!((recounted["full_dps"]["dps"].as_f64().unwrap() / before - 2.0).abs() < 1e-6);
+}
+
+#[test]
+fn full_dps_cache_survives_switching_the_inspected_effect() {
+    ensure_data();
+    let mut request = serde_json::json!({
+        "character": { "level": 90, "class_name": "Witch" }, "full_dps": true,
+        "main_socket_group": 0,
+        "socket_groups": [{ "enabled": true, "include_in_full_dps": true, "main_active_skill": 1,
+            "gems": [{ "skill_id": "SparkPlayer", "level": 20 }, { "skill_id": "FrostboltPlayer", "level": 20 }] }]
+    });
+    let first: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap();
+    let hits = pobr_wasm::state::response_cache_hits();
+    request["socket_groups"][0]["main_active_skill"] = 2.into();
+    let second: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap();
+    assert!(pobr_wasm::state::response_cache_hits() > hits);
+    assert_eq!(first["full_dps"], second["full_dps"]);
+    assert_ne!(
+        first["main_skill"]["skill_id"],
+        second["main_skill"]["skill_id"]
+    );
 }

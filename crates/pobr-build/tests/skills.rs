@@ -111,6 +111,8 @@ mod uhtred_omen;
 
 #[path = "skills/channel.rs"]
 mod channel;
+#[path = "skills/full_dps.rs"]
+mod full_dps;
 #[path = "skills/unique_lines.rs"]
 mod unique_lines;
 

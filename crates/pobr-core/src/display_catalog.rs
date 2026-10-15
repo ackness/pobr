@@ -248,6 +248,8 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         // Offence
         computed("TotalDPS", Cat::Offence, Vt::Number, "TotalDPS"),
         computed("TotalHitAvg", Cat::HitDamage, Vt::Number, "AverageHit"),
+        computed("FullDPS", Cat::Offence, Vt::Number, "FullDPS"),
+        computed("FullDotDPS", Cat::DotDamage, Vt::Number, "FullDotDPS"),
         computed("CombinedDPS", Cat::Offence, Vt::Number, "CombinedDPS"),
         computed("Accuracy", Cat::Offence, Vt::Number, "Accuracy"),
         computed("HitChance", Cat::Offence, Vt::Percent, "HitChance"),
@@ -873,6 +875,9 @@ pub fn extract_display_values(output: &OutputTable) -> Vec<DisplayStatValue> {
     display_catalog()
         .into_iter()
         .filter(|def| def.parity_status == ParityStatus::Computed)
+        .filter(|def| {
+            output.full_dps.is_some() || !matches!(def.id.as_str(), "FullDPS" | "FullDotDPS")
+        })
         .map(|def| {
             let value = display_value(output, def.id.as_str());
             DisplayStatValue {
@@ -969,6 +974,8 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "EffectiveActionRate" => output.effective_action_rate,
         "CritChance" => output.crit_chance * 100.0,
         "CritMultiplier" => output.crit_multiplier,
+        "FullDPS" => output.full_dps.as_ref().map_or(0.0, |full| full.dps),
+        "FullDotDPS" => output.full_dps.as_ref().map_or(0.0, |full| full.dot_dps),
         "CombinedDPS" => output.combined_dps,
         "TotalDotDPS" => output.total_dot_dps,
         "BleedDPS" => output.bleed_dps,

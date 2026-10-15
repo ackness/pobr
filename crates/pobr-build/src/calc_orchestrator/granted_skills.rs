@@ -181,6 +181,8 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
         }
         synthesized.push(SocketGroup {
             gem_requirement_levels: Vec::new(),
+            include_in_full_dps: false,
+            group_count: None,
             weapon_set: None,
             source: Some(ITEM_SKILL_SOURCE.to_string()),
             slot: Some(slot),
@@ -198,6 +200,7 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
                 corrupted: false,
                 minion: None,
                 minion_skill: None,
+                ..Default::default()
             }],
             main_active_skill: None,
             reservation_free_skill: None,

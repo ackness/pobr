@@ -380,6 +380,13 @@ describe('unresolved imported gem persistence', () => {
     expect(parseSaved(JSON.stringify(session))).toEqual(session);
   });
 
+  test('keeps Full DPS inclusion and instance counts through a save', () => {
+    const session = structuredClone(unresolved);
+    Object.assign(session.state.socketGroups[0], { include_in_full_dps: true, group_count: 4.5 });
+    Object.assign(session.state.socketGroups[0].gems[0], { count: 2.5, enable_global_1: false, enable_global_2: true });
+    expect(parseSaved(JSON.stringify(session))).toEqual(session);
+  });
+
   test('keeps the minion and the minion skill a gem chose through a save', () => {
     const session = structuredClone(unresolved);
     Object.assign(session.state.socketGroups[0].gems[0], {

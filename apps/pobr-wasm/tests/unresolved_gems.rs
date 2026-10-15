@@ -69,7 +69,7 @@ fn committed_comet_decode_preserves_the_named_zero_level_slot() {
     let decoded = decode(COMET_CODE);
     assert_eq!(
         decoded["socket_groups"][8]["gems"][1],
-        json!({ "skill_id": "", "level": 0, "quality": 0, "name_spec": "Unleash" })
+        json!({ "skill_id": "", "level": 0, "quality": 0, "name_spec": "Unleash", "count": 1.0, "enable_global_1": true, "enable_global_2": true })
     );
     assert_eq!(
         decoded["socket_groups"][8]["gems"][0]["skill_id"],

@@ -174,6 +174,9 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
                         .map(|e| e.gem_id.clone())
                         .unwrap_or_default();
                     crate::xml_write::XmlGem {
+                        count: gem.count,
+                        enable_global_1: gem.enable_global_1,
+                        enable_global_2: gem.enable_global_2,
                         gem_id,
                         skill_id: gem.skill_id.clone(),
                         level: gem.level,
@@ -206,6 +209,8 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
                 }
             }
             crate::xml_write::XmlSkillGroup {
+                include_in_full_dps: g.include_in_full_dps,
+                group_count: g.group_count,
                 weapon_set: g.weapon_set,
                 slot: g.slot.clone(),
                 enabled: g.enabled,

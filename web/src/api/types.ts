@@ -99,6 +99,9 @@ export interface ItemsJson {
 }
 
 export interface GemJson {
+  count?: number | null;
+  enable_global_1?: boolean | null;
+  enable_global_2?: boolean | null;
   stat_set_index?: number | null;
   /** Raw PoB name for an unresolved slot; display/export metadata, never calculation identity. */
   name_spec?: string | null;
@@ -114,6 +117,8 @@ export interface GemJson {
 }
 
 export interface SocketGroupJson {
+  include_in_full_dps?: boolean;
+  group_count?: number | null;
   weapon_set?: 1 | 2 | null;
   slot: string | null;
   enabled: boolean;
@@ -192,6 +197,9 @@ export interface CharacterOverride {
 
 /** 手动技能组宝石条目（gem id 由后端按 skill_id 反查）。 */
 export interface GemInput {
+  count?: number | null;
+  enable_global_1?: boolean | null;
+  enable_global_2?: boolean | null;
   stat_set_index?: number | null;
   /** Raw PoB name for an unresolved slot; display/export metadata, never calculation identity. */
   name_spec?: string | null;
@@ -208,6 +216,10 @@ export interface GemInput {
 
 /** 手动技能组（整份替换 build 的 socket_groups）。 */
 export interface SocketGroupInput {
+  /** Original enabled state before masking for the inspected weapon set. */
+  full_dps_enabled?: boolean;
+  include_in_full_dps?: boolean;
+  group_count?: number | null;
   weapon_set?: 1 | 2 | null;
   slot?: string | null;
   enabled: boolean;
@@ -367,6 +379,8 @@ export interface ItemAugmentInfo {
 
 /** `pob_code` 与 `character` 至少给一个（无 code = PoB2 新建 build 语义）。 */
 export interface CalculateBuildRequest {
+  /** Evaluate included effects; omitted keeps the single-skill calculation. */
+  full_dps?: boolean;
   tree_version?: string | null;
   pob_code?: string;
   character?: CharacterOverride;
@@ -740,7 +754,21 @@ export interface MainSkillInfo {
   combined_dps: number;
 }
 
+export interface FullDpsSkill {
+  group_index: number;
+  active_skill_index: number;
+  skill_id: string;
+  count: number;
+  hit_dps: number;
+  dot_dps: number;
+  /** Total contribution, including count and culling; rows sum to FullDPS. */
+  dps: number;
+  unsupported_modifiers: string[];
+  error: string | null;
+}
+
 export interface CalculateBuildResponse {
+  full_dps?: { dps: number; dot_dps: number; skills: FullDpsSkill[] };
   stats: DisplayStatValue[];
   /**
    * Lines the calculation could not apply, so their effect is missing from the

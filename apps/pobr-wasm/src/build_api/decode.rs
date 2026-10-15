@@ -70,6 +70,12 @@ struct ItemsJson {
 
 #[derive(Debug, Serialize)]
 struct GemJson {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    count: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    enable_global_1: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    enable_global_2: Option<bool>,
     skill_id: String,
     level: u32,
     quality: u32,
@@ -91,6 +97,8 @@ struct GemJson {
 
 #[derive(Debug, Serialize)]
 struct SocketGroupJson {
+    include_in_full_dps: bool,
+    group_count: Option<f64>,
     weapon_set: Option<u8>,
     slot: Option<String>,
     enabled: bool,
@@ -225,6 +233,8 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
             .socket_groups
             .iter()
             .map(|g| SocketGroupJson {
+                include_in_full_dps: g.include_in_full_dps,
+                group_count: g.group_count,
                 weapon_set: g.weapon_set,
                 slot: g.slot.clone(),
                 enabled: g.enabled,
@@ -235,6 +245,9 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
                     .gem_skills
                     .iter()
                     .map(|gem| GemJson {
+                        count: gem.count,
+                        enable_global_1: gem.enable_global_1,
+                        enable_global_2: gem.enable_global_2,
                         skill_id: gem.skill_id.clone(),
                         level: gem.gem_level,
                         quality: gem.quality,
@@ -595,6 +608,9 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                 }
             };
             let mut gems = vec![GemJson {
+                count: None,
+                enable_global_1: None,
+                enable_global_2: None,
                 skill_id: active.clone(),
                 level: 20,
                 quality: 0,
@@ -607,6 +623,9 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
             for support in &group.support_skills {
                 match cn_gem_effect_id(&data, &support.id) {
                     Some(id) => gems.push(GemJson {
+                        count: None,
+                        enable_global_1: None,
+                        enable_global_2: None,
                         skill_id: id,
                         level: 20,
                         quality: 0,
@@ -620,6 +639,8 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                 }
             }
             Some(SocketGroupJson {
+                include_in_full_dps: false,
+                group_count: None,
                 weapon_set: None,
                 slot: None,
                 enabled: true,

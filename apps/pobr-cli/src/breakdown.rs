@@ -21,6 +21,8 @@ use crate::CalculateBuildReport;
 /// What `calculate-build` reports beyond its default output.
 #[derive(Debug, Clone, Default)]
 pub struct BuildDetail {
+    /// Evaluate all included effects, exposing FullDPS and its contributions.
+    pub full_dps: bool,
     /// The stats to break down, in the order wanted: display stat ids such
     /// as `TotalDPS` or `Life`, `all` for the panel's set
     /// ([`BREAKDOWN_STATS`]), or modifier names, which are aggregated under

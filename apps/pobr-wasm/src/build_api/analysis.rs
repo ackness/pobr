@@ -330,6 +330,9 @@ fn apply_variant(
                 continue;
             }
             group.gem_skills.push(GemSkillRef {
+                count: gem.count,
+                enable_global_1: gem.enable_global_1,
+                enable_global_2: gem.enable_global_2,
                 skill_id: gem.skill_id.clone(),
                 gem_level: gem.level,
                 quality: gem.quality,

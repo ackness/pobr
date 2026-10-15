@@ -197,6 +197,7 @@ function toRequest(state: BuildState): CalculateBuildRequest {
     allocated_nodes: state.allocatedNodes,
     attribute_choices: state.attributeChoices,
     ...weaponSetRequest(state),
+    ...(state.socketGroups.some(group => group.enabled && group.include_in_full_dps) ? { full_dps: true } : {}),
     items: state.items,
     flasks: state.flasks,
     limbs: state.limbs,
@@ -327,6 +328,8 @@ export function parseSaved(json: string): SavedSession | null {
     const record = (value: unknown): value is Record<string, unknown> =>
       value !== null && typeof value === 'object' && !Array.isArray(value);
     const uint = (value: unknown): value is number => Number.isInteger(value) && Number(value) >= 0 && Number(value) <= 0xffffffff;
+    const optionalCount = (value: unknown) => value == null || typeof value === 'number' && Number.isFinite(value) && value >= 0;
+    const optionalBool = (value: unknown) => value == null || typeof value === 'boolean';
     const optionalText = (value: unknown) => value == null || typeof value === 'string';
     const optionalIndex = (value: unknown, min = 0) => value == null || uint(value) && value >= min;
     const strings = (value: unknown): value is string[] => Array.isArray(value) && value.every(entry => typeof entry === 'string');
@@ -349,22 +352,29 @@ export function parseSaved(json: string): SavedSession | null {
         || group.enabled != null && typeof group.enabled !== 'boolean'
         || group.weapon_set != null && ![1, 2].includes(Number(group.weapon_set))
         || group.weapon_set != null && typeof group.weapon_set !== 'number'
-        || !optionalIndex(group.main_active_skill, 1)) return null;
+        || !optionalIndex(group.main_active_skill, 1)
+        || !optionalBool(group.include_in_full_dps) || !optionalCount(group.group_count)) return null;
       const gems: SocketGroupInput['gems'] = [];
       for (const gem of group.gems) {
         // PoB imports retain unresolved slots as an empty stable ID, including level 0.
         if (!record(gem) || typeof gem.skill_id !== 'string' || !uint(gem.level) || gem.level === 0 && gem.skill_id !== ''
           || !uint(gem.quality) || !optionalIndex(gem.stat_set_index, 1) || !optionalText(gem.name_spec)
           || !optionalText(gem.minion) || !optionalIndex(gem.minion_skill, 1)
+          || !optionalCount(gem.count) || !optionalBool(gem.enable_global_1) || !optionalBool(gem.enable_global_2)
           || gem.corrupted != null && typeof gem.corrupted !== 'boolean') return null;
         gems.push({ skill_id: gem.skill_id, level: gem.level, quality: gem.quality,
           ...(gem.stat_set_index != null ? { stat_set_index: Number(gem.stat_set_index) } : {}),
           ...(gem.name_spec !== undefined ? { name_spec: gem.name_spec as string | null } : {}),
           ...(typeof gem.minion === 'string' ? { minion: gem.minion } : {}),
           ...(gem.minion_skill != null ? { minion_skill: Number(gem.minion_skill) } : {}),
+          ...(gem.count != null ? { count: Number(gem.count) } : {}),
+          ...(gem.enable_global_1 != null ? { enable_global_1: Boolean(gem.enable_global_1) } : {}),
+          ...(gem.enable_global_2 != null ? { enable_global_2: Boolean(gem.enable_global_2) } : {}),
           ...(gem.corrupted === true ? { corrupted: true } : {}) });
       }
       socketGroups.push({ enabled: group.enabled == null ? true : group.enabled as boolean,
+        ...(group.include_in_full_dps != null ? { include_in_full_dps: Boolean(group.include_in_full_dps) } : {}),
+        ...(group.group_count != null ? { group_count: Number(group.group_count) } : {}),
         slot: group.slot as string | null | undefined, source: group.source as string | null | undefined,
         weapon_set: group.weapon_set as 1 | 2 | null | undefined,
         main_active_skill: group.main_active_skill as number | null | undefined, gems });
@@ -496,6 +506,8 @@ export function materialize(
       weapon_set: g.weapon_set,
       slot: g.slot,
       enabled: g.enabled,
+      ...(g.include_in_full_dps !== undefined ? { include_in_full_dps: g.include_in_full_dps } : {}),
+      ...(g.group_count != null ? { group_count: g.group_count } : {}),
       main_active_skill: g.main_active_skill,
       source: g.source,
       gems: g.gems.map((gem) => ({
@@ -504,6 +516,9 @@ export function materialize(
         quality: gem.quality,
         stat_set_index: gem.stat_set_index,
         ...(gem.name_spec !== undefined ? { name_spec: gem.name_spec } : {}),
+        ...(gem.count != null ? { count: gem.count } : {}),
+        ...(gem.enable_global_1 != null ? { enable_global_1: gem.enable_global_1 } : {}),
+        ...(gem.enable_global_2 != null ? { enable_global_2: gem.enable_global_2 } : {}),
         ...(gem.minion ? { minion: gem.minion } : {}),
         ...(gem.minion_skill != null ? { minion_skill: gem.minion_skill } : {}),
         ...(gem.corrupted ? { corrupted: true } : {}),
