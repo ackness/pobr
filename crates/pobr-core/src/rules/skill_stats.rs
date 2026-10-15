@@ -260,6 +260,20 @@ pub fn crushes_on_hit(stat: &str) -> bool {
 /// leaves the stat to the extracted stat map.
 pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
     match stat {
+        // The selected effect deals no damage; secondary explosions have
+        // their own stat sets without this stat.
+        "base_deal_no_damage" => Some(vec![Modifier::flag("DealNoDamage")]),
+        // Explosive Demise detonates an allied minion below this life
+        // threshold. With no minion present there is nothing to detonate.
+        "command_minion_target_ally_below_x_life" => {
+            Some(vec![Modifier::flag("DealNoDamage").with_tag(
+                ModTag::MultiplierThreshold {
+                    var: "MinionPresenceCount".into(),
+                    threshold: 0.0,
+                    upper: true,
+                },
+            )])
+        }
         "base_minimum_channel_time_ms" => Some(vec![Modifier::number(
             "ChannelMinimumTime",
             ModType::Base,

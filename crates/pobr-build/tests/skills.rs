@@ -55,6 +55,8 @@ mod granted_skill_reservation;
 mod limbs;
 #[path = "skills/minions.rs"]
 mod minions;
+#[path = "skills/no_damage.rs"]
+mod no_damage;
 #[path = "skills/quarterstaff_conditions.rs"]
 mod quarterstaff_conditions;
 #[path = "skills/rain.rs"]

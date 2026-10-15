@@ -623,6 +623,31 @@ class CompareBuildTests(unittest.TestCase):
         self.compare = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.compare)
 
+    def test_action_rate_uses_hit_speed_when_present(self):
+        entry = {"stat": "ActionRate", "value": 4.0, "pob_key": "Speed"}
+        entries = {"ActionRate": entry}
+        for hit_speed in (4.0, 0.0):
+            entry["value"] = hit_speed
+            output = {"Speed": 1.5, "HitSpeed": hit_speed}
+            self.assertEqual(self.compare.disagreeing_stats(entries, output), [])
+            self.assertIn("(HitSpeed)", self.compare.stat_header("ActionRate", entry, output))
+            self.assertTrue(any(row.endswith("HitSpeed")
+                                for row in self.compare.factor_rows(entries, output)))
+            self.assertEqual(self.compare.reference_value({"mainOutput": output}, "Speed"), hit_speed)
+        entry["value"] = 1.5
+        for output in ({"Speed": 1.5}, {"Speed": 1.5, "HitSpeed": None}):
+            self.assertEqual(self.compare.disagreeing_stats(entries, output), [])
+            self.assertIn("(Speed)", self.compare.stat_header("ActionRate", entry, output))
+
+    def test_selected_minion_totals_appear_in_comparison(self):
+        entry = {"stat": "Minion:TotalDPS", "value": 200, "pob_key": "Minion:TotalDPS"}
+        oracle = {"mainOutput": {"TotalDPS": 0}, "minionOutput": {"TotalDPS": 210}}
+        report = {"breakdowns": [entry]}
+        text = self.compare.render("minion", report, oracle, "<PathOfBuilding2/>",
+                                   ["Minion:TotalDPS"], "asked")
+        self.assertIn("PoB2 210 (Minion:TotalDPS)", text)
+        self.assertEqual(self.compare.reference_value(oracle, "Minion:TotalDPS"), 210)
+
     def test_sources_of_both_sides_meet_on_one_key(self):
         slots = {"23": "item:gloves", "13": "flask:charm1"}
         pairs = [
@@ -1100,6 +1125,8 @@ class SkillSweepTests(unittest.TestCase):
                                 "variantId": "Fireball"}],
             "IceStrikePlayer": [{"gameId": "Metadata/Items/Gems/SkillGemIceStrike",
                                  "variantId": "IceStrike", "weaponRequirements": "Quarterstaff"}],
+            "WolfArcticHowlPlayer": [{"gameId": "Metadata/Items/Gem/SkillGemWolfArcticHowl",
+                                      "variantId": "WolfArcticHowl", "weaponRequirements": "Talisman"}],
         }
         cls.cases, cls.skipped, cls.inventory = cls.sweep.skill_cases(
             cls.data, cls.vendor_gems, set(cls.vendor_gems))
@@ -1138,6 +1165,13 @@ class SkillSweepTests(unittest.TestCase):
         slot = root.find("Items/ItemSet/Slot")
         self.assertEqual(slot.get("name"), "Weapon 1")
         self.assertEqual(slot.get("itemId"), item.get("id"))
+
+    def test_non_attack_shapeshift_skill_gets_its_required_weapon(self):
+        case = self.case("WolfArcticHowlPlayer")
+        self.assertNotIn("Attack", case["skill_types"])
+        xml, equipment = self.sweep.synthetic_xml(case, self.bases)
+        self.assertEqual(equipment[0]["item_class"], "Talisman")
+        self.assertEqual(ET.fromstring(xml).find("Items/ItemSet/Slot").get("name"), "Weapon 1")
 
     def test_exported_effect_order_selects_primary_after_secondary_and_support(self):
         with tempfile.TemporaryDirectory() as temp:

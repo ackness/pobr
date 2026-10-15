@@ -153,12 +153,14 @@ def skill_cases(directory, vendor_gems, vendor_effects):
 def equipment_classes(case):
     types = set(case["skill_types"])
     requirement = case["oracle_gem"].get("weaponRequirements", "")
-    # A shield remains necessary for shield spells; ordinary spells are unarmed.
+    # Explicit equipment requirements also apply to non-attacks, such as
+    # Arctic Howl's Talisman. Ordinary spells without a requirement stay unarmed.
     if "RequiresBuckler" in types:
         return ["Buckler"]
     if "RequiresShield" in types or "Shield" in requirement:
         return ["Shield"]
-    if "Attack" not in types or "NonWeaponAttack" in types or requirement == "Unarmed":
+    if ("NonWeaponAttack" in types or requirement == "Unarmed"
+            or ("Attack" not in types and not requirement)):
         return []
     if requirement:
         first = requirement.split(", ")[0]
