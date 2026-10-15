@@ -79,6 +79,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
   const deltaText = (value: number) => `${value > 0 ? '+' : ''}${format(value)}`;
   const positionLabel = (slot: string) => slot.startsWith('Jewel@') ? `${ut('jewelPosition')} ${slot.slice(6)}` : slotLabel(lang, slot);
   const errorText = useCallback((message: string) => ({
+    'unknown-required-level': craftT(lang, 'unknownRequirement'),
     'invalid-item': upgradeT(lang, 'invalidItem'), 'unknown-base': upgradeT(lang, 'unknownBase'),
     'wrong-slot': upgradeT(lang, 'wrongSlot'), 'weapon-type': upgradeT(lang, 'weaponType'),
     'item-level': upgradeT(lang, 'itemLevel'), 'unidentified-item': upgradeT(lang, 'unidentified'),
@@ -115,7 +116,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
     if (!keepSlot) { setSnapshot(null); setChosenSlot(null); setAffixDirty(false); }
     else setChosenSlot(keepSlot);
     try {
-      const next = await compareReplacementPositions(request, input, abort.signal, { catalog, jewelSocketNodes: jewelSockets, augmentPlans: plans });
+      const next = await compareReplacementPositions(request, input, abort.signal, { catalog, jewelSocketNodes: jewelSockets, augmentPlans: plans, includeEmptySlots: !!candidate });
       if (current()) setSnapshot({ report: next, key: nextKey, request, input, objective, catalog,
         dataVersion: session.dataVersion, treeVersion: session.treeVersion, augmentPlans: plans });
     } catch (error) {
@@ -124,7 +125,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
       if (controller.current === abort) { setBusy(false); controller.current = null; }
     }
   }, [active, session.currentRequest, session.activeWeaponSet, session.dataVersion, session.treeVersion,
-    session.busy, objective, catalog, jewelSockets, errorText, stop]);
+    session.busy, objective, catalog, jewelSockets, errorText, stop, candidate?.kind]);
   // Only an explicit paste owns a debounce; returning to this page never restarts work.
   useEffect(() => {
     if (!active || pendingPaste === null || session.busy || !catalog) return;

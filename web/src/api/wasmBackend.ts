@@ -1,3 +1,4 @@
+import type { UniqueEntry, UniqueDraft } from './uniques';
 import type { CraftingMetadata } from './itemCrafting';
 /**
  * wasm 后端：wasm-pack 产物加载 + 游戏数据 fetch/注入 + JSON 契约调用。
@@ -55,6 +56,8 @@ interface WasmModule {
   runeCatalogJson(itemText: string): string;
   itemAugmentInfoJson(itemText: string): string;
   reforgeRunesJson(requestJson: string): string;
+  uniqueCatalogJson(): string;
+  uniqueItemDraftJson(request: string): string;
   itemCraftingCatalogJson(): string;
   normalizeItemDraftJson(text: string): string;
   nodePowerJson(requestJson: string): string;
@@ -275,6 +278,8 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     async itemAugmentInfo(text) {
       return JSON.parse(wasm.itemAugmentInfoJson(text)) as ItemAugmentInfo;
     },
+    async uniqueCatalog() { return JSON.parse(wasm.uniqueCatalogJson()) as UniqueEntry[]; },
+    async uniqueItemDraft(selection) { return JSON.parse(wasm.uniqueItemDraftJson(JSON.stringify(selection))) as UniqueDraft; },
     async itemCraftingCatalog() {
       return JSON.parse(wasm.itemCraftingCatalogJson()) as CraftingMetadata;
     },

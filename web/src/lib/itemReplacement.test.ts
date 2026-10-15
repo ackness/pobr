@@ -46,6 +46,7 @@ test('legacy userscript pseudo mods become metadata while genuine unknown effect
 test('required level uses declared/base requirements, not item level', async () => {
   await expect(validateReplacement(request, 'ring1', copied, catalog, translate)).resolves.toEqual(catalog.bases[0]);
   await expect(validateReplacement(request, 'ring1', copied.replace('Level: 60', 'Level: 80'), catalog, translate)).rejects.toThrow('item-level');
+  await expect(validateReplacement(request, 'ring1', copied, { ...catalog, bases: [{ ...catalog.bases[0], requirement_known: false }] }, translate)).rejects.toThrow('unknown-required-level');
   await expect(validateReplacement({ ...request, character: { level: 1 } }, 'ring1', 'Rarity: NORMAL\nSapphire Ring', catalog, translate)).rejects.toThrow('item-level');
 });
 
@@ -319,4 +320,17 @@ test.each(['single', 'positions'] as const)('cancelled %s backend acquisition ne
   resolve({ ...base, translateLines: lateTranslation });
   await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
   expect(lateTranslation).not.toHaveBeenCalled();
+});
+
+
+test('new drafts can evaluate empty slots without changing the equipped-only paste flow', async () => {
+  const build = { character: { level: 85 }, items: [] };
+  const original = structuredClone(build);
+  const result = await compareReplacementPositions(build, copied, undefined,
+    { catalog, translate, classify, evaluate: evaluatePositions, includeEmptySlots: true });
+  expect(result.positions.map(row => row.slot)).toEqual(['ring1', 'ring2']);
+  expect(result.positions[0].variant).toEqual({ set_items: [{ slot: 'ring1', text: copied }] });
+  expect(build).toEqual(original);
+  await expect(compareReplacementPositions(build, copied, undefined,
+    { catalog, translate, classify, evaluate: evaluatePositions })).rejects.toThrow('no-compatible-slot');
 });

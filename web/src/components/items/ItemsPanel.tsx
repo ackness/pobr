@@ -1,3 +1,5 @@
+import { UniqueCatalog } from './UniqueCatalog';
+import { uniqueT } from '../../lib/uniqueCatalogText';
 import { ItemCrafter } from './ItemCrafter';
 import { craftT } from '../../lib/itemCraftingText';
 import { WeaponSetControl } from '../shared/WeaponSetControl';
@@ -176,6 +178,7 @@ const itemDraftKey = (slot: string, weaponSet: number) =>
 /** 装备页：PoB2 式人形槽位布局；点槽位在下方编辑 PoB 文本，保存即重算。 */
 export function ItemsPanel({ session, lang, onUpgrade }: Props) {
   const [crafting, setCrafting] = useState(false);
+  const [uniques, setUniques] = useState(false);
   const tt = bindT(lang);
   const [selected, setSelected] = useState<string | null>(() => ALL_SLOTS
     .find(slot => session.editorDrafts[itemDraftKey(slot, session.activeWeaponSet)] !== undefined) ?? null);
@@ -426,10 +429,12 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
     <section className="ui-page items-page" aria-labelledby="items-heading">
       <PageHeader id="items-heading" title={tt('items.title')} description={tt('ui.itemsHint')}>
         <WeaponSetControl session={session} lang={lang} />
-        <button aria-expanded={crafting} onClick={() => setCrafting(value => !value)}>{craftT(lang, crafting ? 'close' : 'craft')}</button>
+        <button aria-expanded={crafting} onClick={() => { setCrafting(value => !value); setUniques(false); }}>{craftT(lang, crafting ? 'close' : 'craft')}</button>
+        <button aria-expanded={uniques} onClick={() => { setUniques(value => !value); setCrafting(false); }}>{uniqueT(lang, uniques ? 'close' : 'title')}</button>
         {onUpgrade && <button onClick={() => onUpgrade(selected && !isLimbSlot(selected) ? selected : "weapon1")}>{tt("trade.findBetter")} ↗</button>}
       </PageHeader>
       <p className="weapon-set-hint">{tt('weapons.hint')}</p>
+      {uniques && <UniqueCatalog session={session} lang={lang} />}
       {crafting && <ItemCrafter session={session} lang={lang} />}
       <div className="items-workspace">
       <article className="ui-card items-equipped">

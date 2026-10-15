@@ -30,8 +30,10 @@ mod decode;
 mod encode;
 mod request;
 mod support;
+mod uniques;
 mod usage;
 pub use support::support_groups_compatible_json;
+pub use uniques::{unique_catalog_json, unique_item_draft_json};
 pub use usage::line_usage_json;
 
 pub use analysis::{AttributionRequest, attribution_json, node_power_json, optimize_variants_json};

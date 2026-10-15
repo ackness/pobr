@@ -1,3 +1,4 @@
+import type { UniqueEntry, UniqueSelection, UniqueDraft } from './uniques';
 import type { CraftingMetadata } from './itemCrafting';
 /**
  * API 层唯一入口：组件层只 import 这里，看不到 wasm。
@@ -79,6 +80,8 @@ export interface PobrBackend {
   loadPassiveTree(treeVersion?: string | null): Promise<PassiveNode[]>;
   /** Catalog from the same immutable data snapshot used by calculation. */
   loadTradeCatalog(): Promise<unknown>;
+  uniqueCatalog(): Promise<UniqueEntry[]>;
+  uniqueItemDraft(selection: UniqueSelection): Promise<UniqueDraft>;
   itemCraftingCatalog(): Promise<CraftingMetadata>;
   normalizeItemDraft(text: string): Promise<string>;
   loadJewelBases(): Promise<JewelBase[]>;

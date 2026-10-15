@@ -10,6 +10,8 @@ export interface TradeBase {
   category: string;
   tags: string[];
   level: number;
+  /** False only for unique-only bases whose requirement metadata is unavailable. */
+  requirement_known?: boolean;
   implicits: string[];
   domain?: string;
   affix_limit?: number;

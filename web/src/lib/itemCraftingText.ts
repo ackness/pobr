@@ -1,5 +1,6 @@
 import type { Lang } from './i18n';
 const labels = {
+  unknownRequirement: ['This unique base has no verified level requirement. You can save it to the library; equipment preview is unavailable.', '此傳奇基底缺少已確認的需求等級。可儲存至收藏庫，暫不提供裝備預覽。', '此传奇基底缺少已确认的需求等级。可保存到收藏库，暂不提供装备预览。'],
   craft: ['Craft item', '打造物品', '打造物品'],
   hint: ['Choose a base, then add affixes and compare before equipping. Base implicits start at maximum; affixes start at their midpoint.', '選擇基底並加入詞綴，裝備前先比較。基底固定詞綴取最大值，新增詞綴預設取中間值。', '选择基底并添加词缀，装备前先比较。基底固定词缀取最大值，新增词缀默认取中间值。'],
   itemClass: ['Item class', '物品類別', '物品类别'],

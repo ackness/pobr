@@ -27,7 +27,7 @@ pub use build_api::{
     import_trade_items_json, item_augment_info_json, item_crafting_catalog_json, line_usage_json,
     manage_loadout_json, minion_catalog_json, node_power_json, normalize_item_draft_json,
     optimize_variants_json, reforge_runes_json, rune_catalog_json, skill_metrics_json,
-    translate_lines_to_zh_cn_json,
+    translate_lines_to_zh_cn_json, unique_catalog_json, unique_item_draft_json,
 };
 pub use i18n::translate;
 pub use session::calculate_json;
@@ -193,6 +193,16 @@ pub mod wasm {
     }
 
     /// JS entry point: `reforgeRunesJson(requestJson) -> string` (re-socket runes -> rewritten item text).
+    #[wasm_bindgen(js_name = uniqueCatalogJson)]
+    pub fn unique_catalog_json() -> Result<String, JsError> {
+        crate::build_api::unique_catalog_json().map_err(|err| JsError::new(&err))
+    }
+
+    #[wasm_bindgen(js_name = uniqueItemDraftJson)]
+    pub fn unique_item_draft_json(request: &str) -> Result<String, JsError> {
+        crate::build_api::unique_item_draft_json(request).map_err(|err| JsError::new(&err))
+    }
+
     #[wasm_bindgen(js_name = itemCraftingCatalogJson)]
     pub fn item_crafting_catalog_json() -> Result<String, JsError> {
         crate::build_api::item_crafting_catalog_json().map_err(|err| JsError::new(&err))
