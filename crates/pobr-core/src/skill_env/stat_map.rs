@@ -157,7 +157,8 @@ pub(super) fn mapped_stat_modifiers_observed(
         // The engine's own definition of a stat comes first; the extracted
         // stat map is consulted only for the stats it does not define.
         let outcome = match (
-            skill_stats::skill_modifiers(&ds.stat, ds.value),
+            crate::rules::spell_hits::modifiers(effect_id, set_key, &ds.stat, ds.value)
+                .or_else(|| skill_stats::skill_modifiers(&ds.stat, ds.value)),
             ctx.catalog,
         ) {
             (Some(modifiers), _) => MappedOutcome::Mapped(

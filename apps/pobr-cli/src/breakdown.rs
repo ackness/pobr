@@ -480,7 +480,9 @@ pub fn render_breakdowns(report: &CalculateBuildReport) -> String {
         );
     }
     if let Some(reference) = &report.reference
-        && (reference.at_own_rate_of_use || reference.rain_hits_whenever_allowed)
+        && (reference.at_own_rate_of_use
+            || reference.rain_hits_whenever_allowed
+            || reference.periodic_hits_assume_sustained)
     {
         let _ = writeln!(
             s,

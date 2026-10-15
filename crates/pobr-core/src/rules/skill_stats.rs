@@ -279,6 +279,16 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
                 value,
             )])
         }
+        // "{0}% more damage with Hits for blasts originating from a Unique enemy".
+        "snap_damage_+%_final_if_created_from_unique" => Some(vec![
+            Modifier::number("Damage", ModType::More, value)
+                .with_flags(ModFlags::HIT)
+                .with_tag(ModTag::Condition {
+                    var: "Unique".into(),
+                    negated: false,
+                    actor: None,
+                }),
+        ]),
         stat if inflicts_withered(stat) => Some(Vec::new()),
         stat if is_summoned_minion_count(stat) => Some(Vec::new()),
         // Granted to the skill's minions where they are created

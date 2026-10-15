@@ -197,6 +197,9 @@ pub struct CalcConfig {
     /// land after it (`calc::rain`). Off by default; it is the basis of a
     /// build code's reference values.
     pub rain_hits_whenever_allowed: bool,
+    /// Reference comparison assumes an orb or storm is continuously maintained.
+    /// Game calculations instead cap its uptime by duration and use rate.
+    pub periodic_hits_assume_sustained: bool,
     /// The conditions and multipliers asked for through [`Self::condition`]
     /// and [`Self::multiplier`], once [`Self::track_reads`] turns it on. The
     /// configs a stage narrows from this one are clones and share it.

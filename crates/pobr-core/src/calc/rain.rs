@@ -96,6 +96,11 @@ pub(crate) fn is_rain(db: &ModDb, cfg: &CalcConfig) -> bool {
     db.sum(ModType::Base, cfg, &[ModName::from(LANDING_INTERVAL)]) > 0.0
 }
 
+/// First evenly spaced landing after the target's hit lockout expires.
+pub(crate) fn landings_per_hit(landing_rate: f64, hit_interval: f64) -> f64 {
+    (hit_interval * landing_rate - 1e-9).ceil().max(1.0)
+}
+
 /// How often the rain of the skill that `db` and `cfg` describe hits an
 /// enemy when the character uses the skill `uses_per_second` times a second.
 /// `None` for a skill that is not a rain.
@@ -129,7 +134,7 @@ pub(crate) fn rain_hits(db: &ModDb, cfg: &CalcConfig, uses_per_second: f64) -> O
         // The first arrow to land once the interval has passed. A tolerance
         // keeps an interval that is a whole number of landings at that
         // number.
-        let arrows_per_hit = (hit_interval * landing_rate - 1e-9).ceil().max(1.0);
+        let arrows_per_hit = landings_per_hit(landing_rate, hit_interval);
         let hits_per_rain = (arrows / arrows_per_hit).ceil();
         (
             arrows_per_hit,

@@ -741,3 +741,45 @@ fn calculate_build_reports_the_minion_of_the_main_skill() {
         "the beast's Life agrees: {reference:#?}"
     );
 }
+
+#[test]
+fn periodic_spells_compare_on_continuous_exposure_despite_short_duration() {
+    let xml = r#"<PathOfBuilding2>
+<Build level="90" className="Sorceress" ascendClassName="None" mainSocketGroup="1">
+  <PlayerStat stat="Speed" value="1.25"/>
+  <PlayerStat stat="HitSpeed" value="0.7142857142857143"/>
+</Build>
+<Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true" mainActiveSkill="1">
+  <Gem gemId="Metadata/Items/Gem/SkillGemSolarOrb" skillId="SolarOrbPlayer" level="20" quality="0" enabled="true"/>
+</Skill></SkillSet></Skills>
+<Config><Input name="customMods" string="99% reduced Skill Effect Duration"/></Config>
+</PathOfBuilding2>"#;
+    let request = CalculateBuildRequest {
+        code: encode_code(xml).unwrap(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    };
+    let game = calculate_build(&request).unwrap();
+    assert!((game.output.action_rate - 0.125 / 1.4).abs() < 1e-6);
+    let reference = game.reference.as_ref().unwrap();
+    assert!(reference.periodic_hits_assume_sustained);
+    assert!(reference.compared > 0);
+    assert!(
+        reference
+            .differing
+            .iter()
+            .all(|row| row.stat != "ActionRate")
+    );
+    let on_basis = calculate_build_detailed(
+        &request,
+        &BuildDetail {
+            reference_basis: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert!((on_basis.output.action_rate - 1.0 / 1.4).abs() < 1e-6);
+    assert!(render_breakdowns(&game).contains("exporter's basis"));
+}

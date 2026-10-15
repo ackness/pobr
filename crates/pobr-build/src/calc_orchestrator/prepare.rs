@@ -267,6 +267,7 @@ pub(super) fn stage_build_cfg(
         // setting (combat_conditions below) + env_finalize stage 3's flask/charm merge +
         // stage 6's buff_expander.
         .with_mode_combat(true);
+    cfg.periodic_hits_assume_sustained = !options.periodic_uptime;
     // DistanceRamp's skillDist (matching vendor CalcActiveSkill.lua:671+684, 0.22.0):
     // `effectiveRange = env.configInput.enemyDistance or env.configPlaceholder.enemyDistance`,
     // `skillDist = env.mode_effective and effectiveRange`. From 0.22.0 on, **a

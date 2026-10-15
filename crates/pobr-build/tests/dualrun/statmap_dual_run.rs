@@ -87,6 +87,7 @@ fn opts(mode: StatMapMode, catalog: Option<Arc<StatMapCatalog>>) -> DataOrchestr
         stat_map_catalog: catalog,
         energy_triggers: true,
         rain_landings: true,
+        periodic_uptime: true,
     }
 }
 

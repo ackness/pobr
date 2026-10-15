@@ -343,7 +343,7 @@ pub fn calculate_minimal(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> 
 /// speed), and finally the cooldown speed cap + the server tick cap.
 ///
 /// The rate a skill's hits come at, which is its rate of use except for a
-/// rain: the hits of a rain come as its arrows land (`calc::rain`).
+/// rain or periodic spell (`calc::rain`, `calc::periodic`).
 pub(crate) fn resolve_action_rate(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> f64 {
     action_rate_terms(db, cfg, input).value
 }
@@ -375,7 +375,8 @@ pub(crate) struct ActionRateTerms {
     pub(crate) uses: f64,
     /// How the uses turn into hits, for a rain.
     rain: Option<super::rain::RainHits>,
-    /// The rate the hits come at: the uses, or the hits of a rain.
+    periodic: Option<super::periodic::PeriodicHits>,
+    /// The rate the hits come at: uses, rain landings, or periodic hits.
     pub(crate) value: f64,
 }
 
@@ -385,6 +386,9 @@ impl ActionRateTerms {
     pub(crate) fn formula(&self) -> StatFormula {
         if let Some(rain) = &self.rain {
             return rain.formula(self.value);
+        }
+        if let Some(periodic) = &self.periodic {
+            return periodic.formula(self.value);
         }
         let mut steps = FormulaBuilder::default();
         steps.scaled(self.base, 0.0, self.inc, self.more);
@@ -419,8 +423,11 @@ pub(crate) fn action_rate_terms(
 ) -> ActionRateTerms {
     let mut terms = use_rate_terms(db, cfg, input);
     terms.rain = super::rain::rain_hits(db, cfg, terms.uses);
+    terms.periodic = super::periodic::periodic_hits(db, cfg, terms.uses);
     if let Some(rain) = &terms.rain {
         terms.value = round(rain.rate);
+    } else if let Some(periodic) = &terms.periodic {
+        terms.value = round(periodic.rate);
     }
     terms
 }
@@ -442,6 +449,7 @@ fn use_rate_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> ActionR
             ticked,
             uses: round(ticked),
             rain: None,
+            periodic: None,
             value: round(ticked),
         };
     }
@@ -479,6 +487,7 @@ fn use_rate_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> ActionR
         ticked,
         uses: round(ticked),
         rain: None,
+        periodic: None,
         value: round(ticked),
     }
 }
@@ -1460,6 +1469,30 @@ fn total_dps_traced(
         None => (use_rate, use_rate_node),
     };
 
+    let (action_rate, action_rate_node) =
+        if let Some(periodic) = super::periodic::periodic_hits(db, cfg, use_rate) {
+            let rate = round(periodic.rate);
+            let node = trace.add_node("periodic hit rate", rate, TraceOperation::Multiply);
+            trace.add_edge(use_rate_node, node);
+            for name in [
+                super::periodic::INTERVAL,
+                super::rain::HIT_INTERVAL,
+                super::periodic::DURATION,
+                super::periodic::LIMIT,
+            ] {
+                let term = db.sum_traced(ModType::Base, cfg, &[ModName::from(name)], trace, name);
+                trace.add_edge(term.node_id, node);
+            }
+            let duration = [ModName::from("Duration")];
+            let inc = db.sum_traced(ModType::Inc, cfg, &duration, trace, "Periodic duration INC");
+            let more = more_factor_traced(db, cfg, &duration, "Periodic duration MORE", trace);
+            trace.add_edge(inc.node_id, node);
+            trace.add_edge(more.node_id, node);
+            (rate, node)
+        } else {
+            (action_rate, action_rate_node)
+        };
+
     // TotalDPS final
     let end = dps_end_factors(db, cfg, None);
     let end_factor = end.dps_multiplier * end.quantity_multiplier;
@@ -2171,10 +2204,11 @@ fn apply_total_time(db: &ModDb, cfg: &CalcConfig, scaled_rate: f64) -> f64 {
             ModName::from("TotalAttackTime"),
         ],
     );
-    if extra_time <= 0.0 {
+    let channel_time = super::flameblast::release_time(db, cfg, 1.0 / scaled_rate);
+    if extra_time <= 0.0 && channel_time == 1.0 / scaled_rate {
         return scaled_rate;
     }
-    let effective_time = 1.0 / scaled_rate + extra_time;
+    let effective_time = channel_time + extra_time.max(0.0);
     1.0 / effective_time
 }
 

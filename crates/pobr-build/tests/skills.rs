@@ -63,6 +63,8 @@ mod shield_block;
 mod skill_damage_dps;
 #[path = "skills/skill_metrics.rs"]
 mod skill_metrics;
+#[path = "skills/spell_hit_rates.rs"]
+mod spell_hit_rates;
 #[path = "skills/spirit_reservation.rs"]
 mod spirit_reservation;
 #[path = "skills/stalking_panther.rs"]

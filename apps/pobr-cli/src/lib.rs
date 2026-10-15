@@ -1072,6 +1072,9 @@ pub struct ReferenceCheck {
     /// whenever the enemy can be hit again, as the exporter does; `output`
     /// counts the hits of the arrows that land (`output.rain`).
     pub rain_hits_whenever_allowed: bool,
+    /// `true` when the reference assumes continuous orb/storm exposure;
+    /// `output` can instead be limited by duration and casting frequency.
+    pub periodic_hits_assume_sustained: bool,
     pub compared: usize,
     pub agreeing: usize,
     pub differing: Vec<ReferenceDifference>,
@@ -1265,7 +1268,9 @@ pub fn calculate_build_detailed(
     // it is made on that basis, not at the rates the output above reports.
     let at_own_rate = compares && out.energy_trigger_source.is_some();
     let rain_hits_whenever_allowed = compares && output.rain.is_some();
-    let on_basis = (!detail.reference_basis && (at_own_rate || rain_hits_whenever_allowed))
+    let periodic_hits_assume_sustained = compares && session.has_periodic_hits();
+    let on_basis = (!detail.reference_basis
+        && (at_own_rate || rain_hits_whenever_allowed || periodic_hits_assume_sustained))
         .then(|| {
             calculate_with_data_session(&build, &build_data, &opts.clone().on_reference_basis())
         })
@@ -1288,6 +1293,7 @@ pub fn calculate_build_detailed(
             tolerance: REFERENCE_TOLERANCE,
             at_own_rate_of_use: at_own_rate,
             rain_hits_whenever_allowed,
+            periodic_hits_assume_sustained,
             compared: rows.len(),
             agreeing: rows.len() - differing.len(),
             differing,

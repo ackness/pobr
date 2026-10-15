@@ -81,6 +81,8 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // Must run after env_finalize (buff/flask sources already merged) and before aggregation.
     apply_projectile_speed_to_damage(env);
 
+    super::flameblast::configure(&env.player.mod_db, &mut env.cfg);
+
     // Resolve charge overrides/defaults before per-charge modifiers expand.
     // Charges have no inherent bonuses; disabled use retains only the minimum.
     env.cfg = super::survivability::charge_multipliers_panel_default(&env.player.mod_db, &env.cfg);

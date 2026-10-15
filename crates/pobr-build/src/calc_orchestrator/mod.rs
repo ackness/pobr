@@ -127,13 +127,16 @@ pub struct DataOrchestratorOptions {
     /// the basis of a build code's reference values, whose exporter has no
     /// Energy model, so a comparison with them asks the same question.
     pub energy_triggers: bool,
-    /// Whether a rain (Rain of Arrows) hits an enemy with the first arrow to
+    /// Whether a rain or storm hits an enemy with the first arrow or bolt to
     /// land once the enemy can be hit again, so that the hits come in steps
     /// of the landing interval. Defaults to `true`, which is what the game's
     /// numbers give. `false` counts a hit whenever the enemy can be hit
     /// again, as if an arrow landed then: the basis of a build code's
     /// reference values.
     pub rain_landings: bool,
+    /// Limit maintained orb/storm uptime by its duration and the use rate.
+    /// The reference exporter assumes continuous exposure.
+    pub periodic_uptime: bool,
 }
 
 impl Default for DataOrchestratorOptions {
@@ -149,6 +152,7 @@ impl Default for DataOrchestratorOptions {
             stat_map_catalog: None,
             energy_triggers: true,
             rain_landings: true,
+            periodic_uptime: true,
         }
     }
 }
@@ -174,11 +178,13 @@ impl DataOrchestratorOptions {
     /// counts a rain's hits as often as an enemy can be hit, whenever the
     /// arrows land.
     ///
+    /// Orb/storm uptime is also assumed continuous by the exporter.
     /// A model added here is verified by its own tests, not by the reference.
     pub fn on_reference_basis(self) -> Self {
         Self {
             energy_triggers: false,
             rain_landings: false,
+            periodic_uptime: false,
             ..self
         }
     }

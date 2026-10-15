@@ -917,6 +917,11 @@ impl CalculationSession {
         self.env.ehp_terms.as_ref()
     }
 
+    /// Whether the main skill uses an orb/storm interval and duration model.
+    pub fn has_periodic_hits(&self) -> bool {
+        super::periodic::is_periodic(&self.env.player.mod_db, &self.env.cfg)
+    }
+
     /// How the main skill's hits come when it is a rain (`calc::rain`):
     /// its `ActionRate` is the rate of these hits, not of its uses.
     pub fn rain(&self) -> Option<super::rain::RainSummary> {
@@ -966,6 +971,17 @@ impl CalculationSession {
             // A rain's hits come as its arrows land, at projectile speed.
             "ActionRate" if super::rain::is_rain(&self.env.player.mod_db, &self.env.cfg) => {
                 &["ProjectileSpeed"]
+            }
+            "ActionRate"
+                if super::periodic::is_periodic(&self.env.player.mod_db, &self.env.cfg) =>
+            {
+                &[
+                    super::periodic::INTERVAL,
+                    super::rain::HIT_INTERVAL,
+                    super::periodic::DURATION,
+                    super::periodic::LIMIT,
+                    "Duration",
+                ]
             }
             "ActionRate" => return super::skill_use_time::speed_names_for(&self.env.cfg),
             "CritChance" => &["CriticalStrikeChance"],
