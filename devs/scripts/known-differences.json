@@ -44,6 +44,11 @@
       "reason": "0.5 leech uses the strongest active instance, with one-second base recovery and no 10%-of-pool amount cap; amount and speed are separate (docs/maintainer-guide.md, Leech; https://www.pathofexile.com/forum/view-thread/3932540; https://poe2db.tw/us/Keywords). The oracle stacks instances and retains the old pool-based instance cap. Default rate ceilings remain the documented compatibility convention. Previously agreeing row: 0.2 versus reference 0.0635 after removing the per-instance amount cap."
     },
     {
+      "build": "huntress-spirit-walker-companion-zekoa-the-headcrusher-e071351f645d",
+      "stats": ["ColdResistOverCap"],
+      "reason": "Fox Idol's Bonded +12% Cold Resistance is enabled by the body armour; 14 over cap agrees with pinned PoB2, while the reference of 2 omits it (docs/maintainer-guide.md, Idol counts)"
+    },
+    {
       "build": "ranger-deadeye-ice-shot-b6ce7b3a4329",
       "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "IgniteDPS", "AverageDamage", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
       "reason": "Minion Pact II takes the Rhoa of Rhoa Mount as the nearby minion (baseline note, crates/pobr-build/tests/parity/reference_report.rs)"

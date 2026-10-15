@@ -329,7 +329,9 @@ fn is_grand_spectrum(jewel: &pobr_data::item::Item) -> bool {
 
 /// The augments in the equipment's sockets, as `(Idols, the others)`. The
 /// game's base items class every augment (Rune, Soul Core, Idol) as
-/// `SoulCore` and tag the Idols `idol`. A socket entry that is no augment,
+/// `SoulCore`. The socketable category distinguishes Idols: some ancient
+/// Idols, such as Carved Majesty, only have the generic `rune` base tag.
+/// A socket entry that is no augment,
 /// such as the skill a Talisman grants, is not counted.
 fn augments_in_equipment(build: &Build, data: &BuildData) -> (usize, usize) {
     let (mut idols, mut others) = (0, 0);
@@ -340,7 +342,11 @@ fn augments_in_equipment(build: &Build, data: &BuildData) -> (usize, usize) {
         if base.item_class != "SoulCore" {
             continue;
         }
-        if base.tags.iter().any(|tag| tag == "idol") {
+        let is_idol = data.augments.get(name).map_or_else(
+            || base.tags.iter().any(|tag| tag == "idol"),
+            |augment| augment.slots.values().any(|slot| slot.kind == "Idol"),
+        );
+        if is_idol {
             idols += 1;
         } else {
             others += 1;

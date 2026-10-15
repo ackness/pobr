@@ -197,6 +197,9 @@ impl ResistanceResolution {
             Some(value) => steps.set(FormulaOp::Override, value, value),
             None => steps.scaled(self.base, self.flat, self.inc, self.more),
         }
+        if steps.current() != self.total {
+            steps.set(FormulaOp::Round, 0.0, self.total);
+        }
         steps.at_most(FormulaOp::Cap, self.max);
         steps.at_least(self.floor);
         steps.finish(self.final_value)
@@ -246,11 +249,15 @@ pub(crate) fn resolve_resistance(
     let override_total = db
         .override_(cfg, long.as_str())
         .or_else(|| db.override_(cfg, short.as_str()));
-    let total = override_total.unwrap_or_else(|| {
-        let summed = base + flat;
-        let factor = ((1.0 + inc / 100.0) * more).max(0.0);
-        summed * factor
-    });
+    // Resistance is an integer stat. Keep fractions through summing and
+    // scaling (including shared Fire modifiers), then truncate toward zero.
+    let total = override_total
+        .unwrap_or_else(|| {
+            let summed = base + flat;
+            let factor = ((1.0 + inc / 100.0) * more).max(0.0);
+            summed * factor
+        })
+        .trunc();
     let max = db
         .override_(cfg, max_long.as_str())
         .or_else(|| db.override_(cfg, max_short.as_str()))
@@ -260,7 +267,8 @@ pub(crate) fn resolve_resistance(
                 + db.sum(ModType::Base, cfg, &max_names)
                 + shared.max)
                 .min(cfg.constants.game().resist_hard_cap)
-        });
+        })
+        .trunc();
     let floor = cfg.constants.game().resist_floor;
     ResistanceResolution {
         total,
@@ -305,6 +313,22 @@ fn shared_fire_resistance(db: &ModDb, cfg: &CalcConfig, element: &str) -> Shared
             .filter(|row| {
                 row.modifier.origin.as_ref().is_none_or(|origin| {
                     origin.source_id.id != crate::ingest::campaign::RESISTANCE_PENALTY_SOURCE
+                })
+            })
+            .filter(|row| {
+                // The parser expands all-elemental lines into three names.
+                // They already grant Cold/Lightning and must not be shared
+                // again. Keep their original scope when selecting Fire mods.
+                let text = row.modifier.source.as_deref().or_else(|| {
+                    row.modifier
+                        .origin
+                        .as_ref()
+                        .and_then(|origin| origin.raw_text.as_deref())
+                });
+                text.is_none_or(|text| {
+                    let text =
+                        crate::mod_parser::engine::strip_display_markup(text).to_ascii_lowercase();
+                    !text.contains("all elemental resistances") && !text.contains("all resistances")
                 })
             })
             .filter_map(|row| row.value)
