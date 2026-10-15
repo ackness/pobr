@@ -110,7 +110,7 @@
     },
     {
       "build": "druid-oracle-grim-pillars-0a7cf6c82619",
-      "stats": ["SpiritUnreserved"],
+      "stats": ["SpiritUnreserved", "SpiritUnreservedPercent"],
       "reason": "the Blink the body armour grants and the group supporting it are one skill reserving once, and the Trinity an Absent Amulet grants reserves no Spirit (docs/maintainer-guide.md, companions and granted skills)"
     },
     {
@@ -130,13 +130,18 @@
     },
     {
       "build": "warrior-titan-his-scattering-calamity-686e624e7ff5",
-      "stats": ["SpiritUnreserved"],
-      "reason": "the Cast on Critical an Absent Amulet grants reserves no Spirit; the pinned PoB2 reserves nothing for this build (docs/maintainer-guide.md, Absent Amulet)"
+      "stats": ["SpiritUnreserved", "SpiritUnreservedPercent"],
+      "reason": "His Scattering Calamity uses weapon set 1, while the persistent skills are bound to the held set 2 and have no display_skill_reserves_in_all_weapon_sets stat: they reserve nothing in set 1, as in the pinned PoB2. The Absent Amulet's Cast on Critical also reserves nothing (docs/maintainer-guide.md, weapon-set reservation and Absent Amulet)"
     },
     {
       "build": "mercenary-gemling-legionnaire-frostbolt-42f790c0f9ba",
-      "stats": ["SpiritUnreserved"],
+      "stats": ["SpiritUnreserved", "SpiritUnreservedPercent"],
       "reason": "the Blink the body armour grants and the group supporting it are one skill reserving once, and the Cast on Critical an Absent Amulet grants reserves no Spirit (docs/maintainer-guide.md, companions and granted skills)"
+    },
+    {
+      "build": "druid-shaman-spark-5dcf9ecdd375",
+      "stats": ["SpiritUnreserved", "SpiritUnreservedPercent"],
+      "reason": "the Absent Amulet's Cast on Critical reserves nothing (the pinned PoB2 adds 85 Spirit); Svalinn's Cast on Block and its supports reserve nothing in the inactive shield weapon set (docs/maintainer-guide.md, weapon-set reservation and Absent Amulet). The code's older reference also differs from the pinned PoB2"
     },
     {
       "build": "witch-abyssal-lich-bonestorm-be0d16c86268",

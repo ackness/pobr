@@ -257,11 +257,6 @@ pub fn spirit_reservation_modifiers(
             if effect.is_support
                 || !(has("HasReservation") || totem_under_bond)
                 || has("ReservationBecomesCost")
-                || !seen.insert((
-                    gem.skill_id.clone(),
-                    gem.minion.clone(),
-                    picks_a_monster.then_some(group_ordinal),
-                ))
             {
                 continue;
             }
@@ -269,6 +264,25 @@ pub fn spirit_reservation_modifiers(
             // Skills" lowers what a minion skill reserves.
             let level = gem.gem_level
                 + additional_gem_levels(gem_level_bonuses, data, &gem.skill_id, gem.corrupted);
+            let es = data.effect_stats(&gem.skill_id, level, gem.quality, gem.stat_set_index);
+            // Only skills explicitly marked by the game keep reserving when
+            // their weapon set is inactive (Blink, Convalescence, etc.). Do
+            // this before deduplication so an inactive copy cannot hide one
+            // in the current set.
+            if !group.active_in_weapon_set
+                && !es.all().any(|s| {
+                    s.stat == "display_skill_reserves_in_all_weapon_sets" && s.value != 0.0
+                })
+            {
+                continue;
+            }
+            if !seen.insert((
+                gem.skill_id.clone(),
+                gem.minion.clone(),
+                picks_a_monster.then_some(group_ordinal),
+            )) {
+                continue;
+            }
             let own = data.effect_level_row(&gem.skill_id, level);
             let mut flat = own.and_then(|r| r.spirit_reservation_flat).unwrap_or(0.0);
             // The monster a Spectre or a tamed beast's gem summons sets what
@@ -314,7 +328,6 @@ pub fn spirit_reservation_modifiers(
                     .map(|s| s.value / 100.0)
                     .sum::<f64>();
             }
-            let es = data.effect_stats(&gem.skill_id, level, gem.quality, gem.stat_set_index);
             // Blasphemy's per-curse reservation (vendor CalcDefence.lua:229-239): an
             // `IsBlasphemy` effect adds `blasphemy_base_spirit_reservation_per_socketed_curse`
             // (constant stat = 60) once **per supported curse** (vendor's

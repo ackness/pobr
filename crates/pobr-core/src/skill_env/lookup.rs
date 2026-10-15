@@ -167,6 +167,9 @@ pub trait SocketGroupView {
 pub struct EnabledGroup<'a> {
     /// The group's gems (granted effect ids + level/quality/set selection).
     pub gems: &'a [GemInput],
+    /// Whether this group is used with the weapon set being calculated.
+    /// Buffs may persist from another set; reservation normally does not.
+    pub active_in_weapon_set: bool,
     /// Whether the group comes from a real gem (vs an item-granted / other source:
     /// vendor's `source="Item:…"` groups don't pass the support-gems-only gate).
     pub from_gem: bool,

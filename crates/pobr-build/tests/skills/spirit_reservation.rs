@@ -185,6 +185,31 @@ fn dedupes_across_groups_and_skips_disabled() {
     assert_eq!(calc(&build, &data), 0.0, "a disabled group doesn't reserve");
 }
 
+/// Cast on Block has no base reservation; Direstrike II adds 40 and Herbalism
+/// II adds 30 with its shield's weapon set. Blink's 60 Spirit persists in both
+/// sets (`display_skill_reserves_in_all_weapon_sets`).
+#[test]
+fn reservation_follows_the_skills_weapon_set_unless_the_game_says_all_sets() {
+    let data = repo_data();
+    let mut block = SocketGroup::new()
+        .with_gem_skill("MetaCastOnBlockPlayer", 18)
+        .with_gem_skill("SupportDirestrikePlayerTwo", 1)
+        .with_gem_skill("SupportHerbalismPlayerTwo", 1);
+    block.weapon_set = Some(2);
+    let mut blink = SocketGroup::new().with_gem_skill("BlinkReservationPlayer", 20);
+    blink.weapon_set = Some(2);
+    let mut build = build_with_group(block.clone()).add_socket_group(blink);
+    assert_eq!(calc(&build, &data), 60.0, "only Blink reserves in set 1");
+    build.weapon_set = pobr_build::WeaponSet::Second;
+    assert_eq!(calc(&build, &data), 130.0, "both skills reserve in set 2");
+
+    // An earlier inactive copy must not consume the effect's deduplication key.
+    build.weapon_set = pobr_build::WeaponSet::First;
+    block.weapon_set = Some(1);
+    build = build.add_socket_group(block);
+    assert_eq!(calc(&build, &data), 130.0);
+}
+
 /// Blasphemy per-curse reservation (vendor CalcDefence.lua:229-239): the
 /// `IsBlasphemy` effect adds `blasphemy_base_spirit_reservation_per_socketed_curse`
 /// (constant stat 60) once per same-group AppliesCurse active skill,

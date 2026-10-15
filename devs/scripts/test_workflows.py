@@ -992,6 +992,29 @@ class TriageTests(unittest.TestCase):
         self.assertEqual([(row["stat"], row["class"]) for row in result["rows"]],
                          [("SpiritUnreserved", "known"), ("SpiritUnreservedPercent", "known")])
 
+    def test_spirit_matches_the_granted_effects_game_display_name(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = root / "data/test/base"
+            base.mkdir(parents=True)
+            (root / "data/CURRENT").write_text("test", encoding="utf-8")
+            # Neither the effect id nor the gem's metadata name is a display name.
+            (base / "skill_gems.json").write_text(json.dumps([
+                {"id": "Metadata/Items/Gems/SkillGemInternalTrigger",
+                 "granted_effect_id": "MetaCastOnCritPlayer"}]), encoding="utf-8")
+            (base / "granted_effects.json").write_text(json.dumps([
+                {"id": "MetaCastOnCritPlayer", "displayed_name": "Cast on Critical"}]),
+                encoding="utf-8")
+            entries = {"SkillSpiritReservationBase": {"breakdown": {"mods": [
+                {"origin_id": "spirit.MetaCastOnCritPlayer", "value": 91}]}}}
+            oracle = {"spiritReservedBreakdown": [
+                {"skillName": "Cast on Critical", "total": 85}]}
+            with patch.object(self.triage, "REPO", root):
+                found = self.triage.spirit_leads(entries, oracle)
+            self.assertEqual([(row["kind"], row["key"], row["pobr"], row["pob2"])
+                              for row in found],
+                             [("different", "Cast on Critical", 91, 85)])
+
     def test_leads_are_gathered_across_builds(self):
         lead = self.triage.lead
         results = [
