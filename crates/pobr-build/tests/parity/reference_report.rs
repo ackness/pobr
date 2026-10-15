@@ -230,10 +230,16 @@ const BASELINES: [Baseline; 3] = [
     // skill DoT, crossbow timing, culling and projectile speed became
     // display stats, so the reference's rows for them are compared too
     // (new rows, not changed calculations).
+    //
+    // Then 501 rows: regeneration, net recovery, leech and gain-on-hit
+    // outputs became display stats, so the reference's rows for them are
+    // compared; characters' inherent 4% Mana regeneration per second
+    // (`character_inherent_mana_regeneration_rate_per_minute_%`) and
+    // Berserk's Life loss per Rage brought most of them into agreement.
     Baseline {
         corpus: "examples/wasm-benchmark/builds",
         dps_builds: 5,
-        agreeing_rows: 448,
+        agreeing_rows: 501,
     },
     // Was 22 builds and 1024 rows. A code whose main skill summons a minion
     // also carries `<MinionStat>` values for that minion, which were not
@@ -372,10 +378,16 @@ const BASELINES: [Baseline; 3] = [
     // skill DoT, crossbow timing, culling and projectile speed became
     // display stats, so the reference's rows for them are compared too
     // (new rows, not changed calculations).
+    //
+    // Then 4368 rows: regeneration, net recovery, leech and gain-on-hit
+    // outputs became display stats, so the reference's rows for them are
+    // compared; characters' inherent 4% Mana regeneration per second
+    // (`character_inherent_mana_regeneration_rate_per_minute_%`) and
+    // Berserk's Life loss per Rage brought most of them into agreement.
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
         dps_builds: 58,
-        agreeing_rows: 3902,
+        agreeing_rows: 4368,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
@@ -400,10 +412,16 @@ const BASELINES: [Baseline; 3] = [
     // Then 1293 rows: unique lines that were not parsed now compute by their
     // game stats (Blackheart's Armour against Chaos hits, Vigilant View's and
     // Goregirdle's caps, Matsya's halved Spirit reservation and others).
+    //
+    // Then 1448 rows: regeneration, net recovery, leech and gain-on-hit
+    // outputs became display stats, so the reference's rows for them are
+    // compared; characters' inherent 4% Mana regeneration per second
+    // (`character_inherent_mana_regeneration_rate_per_minute_%`) and
+    // Berserk's Life loss per Rage brought most of them into agreement.
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
         dps_builds: 18,
-        agreeing_rows: 1293,
+        agreeing_rows: 1448,
     },
 ];
 
