@@ -679,6 +679,7 @@ mod tests {
             crate::parsed::compile_parser_rules(&pobr_gamedata::current_data_dir()).unwrap();
         for (text, channel) in [
             ("+2 to Level of all Cold Skills", "gem_property"),
+            ("+4 to Level of Despair Skills", "gem_property"),
             ("+10% to Quality of all Spell Skills", "gem_property"),
             (
                 "+2 to Level of all Skills with a Strength requirement",
@@ -691,7 +692,10 @@ mod tests {
             assert_eq!(entry.text_channel.as_deref(), Some(channel));
         }
         for text in [
-            "+2 to Level of Despair Skills",
+            "+2 to Level of Socketed Skill Gems",
+            "+2 to Level of Supported Cold Skills",
+            "+2 to Level of dropped Reward Items",
+            "+2 to Level of Despair Skills if an Enemy is nearby",
             "Grants Skill:",
             "Unknown Future Mechanic",
         ] {

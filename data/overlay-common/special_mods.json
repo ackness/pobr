@@ -3857,6 +3857,88 @@
       "verified": false,
       "batch": "S2",
       "source_note": "Game stat all_damage_to_poisoned_enemies_contributes_to_chill; all hit damage contributes only against poisoned targets. Cold already contributes to Chill."
+    },
+    {
+      "id": "parry_damage",
+      "pattern": "(\\d+)% increased parry damage",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Parry"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": true,
+      "source_note": "Game stat parry_damage_+%: increased Parry Damage (Silverthorne and passive nodes)."
+    },
+    {
+      "id": "parry_physical_to_cold",
+      "pattern": "(\\d+)% of parry physical damage converted to cold damage",
+      "mods": [
+        {
+          "name": "PhysicalDamageConvertToCold",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Parry"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": true,
+      "source_note": "Game stat parry_physical_damage_%_to_convert_to_cold: Kaltenhalt converts Parry physical damage to Cold."
+    },
+    {
+      "id": "minion_damage_applies_to_player",
+      "pattern": "increases and reductions to minion damage also affect you",
+      "mods": [
+        {
+          "name": "MinionDamageAppliesToPlayer",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "batch": "S2",
+      "verified": true,
+      "source_note": "Game stat minion_damage_increases_and_reductions_also_affects_you (Chober Chaber): only increases and reductions transfer."
+    },
+    {
+      "id": "minion_attack_speed_applies_to_player",
+      "pattern": "increases and reductions to minion attack speed also affect you",
+      "mods": [
+        {
+          "name": "MinionAttackSpeedAppliesToPlayer",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "batch": "S2",
+      "verified": true,
+      "source_note": "Game stat additive_modifiers_to_minion_attack_speed_also_affect_you (Trenchtimbre)."
+    },
+    {
+      "id": "spell_damage_applies_to_attacks",
+      "pattern": "increases and reductions to spell damage also apply to attacks",
+      "mods": [
+        {
+          "name": "SpellDamageAppliesToAttacks",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "batch": "S2",
+      "verified": true,
+      "source_note": "Game stat additive_spell_damage_modifiers_apply_to_attack_damage (Crown of Eyes): increases and reductions, not more/less or added damage."
     }
   ]
 }

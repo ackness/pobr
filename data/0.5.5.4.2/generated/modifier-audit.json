@@ -30,7 +30,7 @@
       "0.5.5.4.2/generated/special_vendor.json": "c202035c54924c23ce48559538a8d2068b444d9571a2f986fe43105276e37426",
       "0.5.5.4.2/overlay/mod_parser_rules.json": "c719c7c3eeed65048067f264fd0a62f81cc20d89b917f05e2aa53753166242af",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
-      "overlay-common/special_mods.json": "59fa62c56ebefc2aaffb5cbad7a2eb423ba9803934c28d51357a3ebc4edfe92b"
+      "overlay-common/special_mods.json": "d3059e3c529dce51b18ed58f325e73be357fa3564531f3e0ae34f23a75aaae8c"
     },
     "effective_rules": [
       {
@@ -1513,6 +1513,46 @@
       },
       {
         "id": "all_hit_damage_chills_poisoned",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "parry_damage",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "parry_physical_to_cold",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "minion_damage_applies_to_player",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "minion_attack_speed_applies_to_player",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "spell_damage_applies_to_attacks",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -18636,10 +18676,10 @@
   },
   "summary": {
     "no_effect": 86,
-    "parsed": 16048,
-    "pobr_gap": 1718,
+    "parsed": 16061,
+    "pobr_gap": 1690,
     "recognized_empty": 187,
-    "text_channel": 773,
+    "text_channel": 788,
     "upstream_gap": 23788
   },
   "entries": {
@@ -20577,7 +20617,8 @@
       "sources": [
         "stat:stat_descriptions:despair_gem_level_+"
       ],
-      "status": "partial",
+      "status": "parsed",
+      "text_channel": "gem_property",
       "vendor_status": "parsed",
       "mod_names": []
     },
@@ -20585,7 +20626,8 @@
       "sources": [
         "stat:stat_descriptions:elemental_weakness_gem_level_+"
       ],
-      "status": "partial",
+      "status": "parsed",
+      "text_channel": "gem_property",
       "vendor_status": "parsed",
       "mod_names": []
     },
@@ -20593,7 +20635,8 @@
       "sources": [
         "stat:stat_descriptions:enfeeble_gem_level_+"
       ],
-      "status": "partial",
+      "status": "parsed",
+      "text_channel": "gem_property",
       "vendor_status": "parsed",
       "mod_names": []
     },
@@ -20861,7 +20904,8 @@
       "sources": [
         "stat:stat_descriptions:temporal_chains_gem_level_+"
       ],
-      "status": "partial",
+      "status": "parsed",
+      "text_channel": "gem_property",
       "vendor_status": "parsed",
       "mod_names": []
     },
@@ -20869,7 +20913,8 @@
       "sources": [
         "stat:stat_descriptions:vulnerability_gem_level_+"
       ],
-      "status": "partial",
+      "status": "parsed",
+      "text_channel": "gem_property",
       "vendor_status": "parsed",
       "mod_names": []
     },
@@ -31248,7 +31293,8 @@
       "sources": [
         "translation:绝望技能等级 {0:+d}"
       ],
-      "status": "partial",
+      "status": "parsed",
+      "text_channel": "gem_property",
       "vendor_status": "parsed",
       "mod_names": []
     },
@@ -31256,7 +31302,8 @@
       "sources": [
         "translation:元素要害技能等级 {0:+d}"
       ],
-      "status": "partial",
+      "status": "parsed",
+      "text_channel": "gem_property",
       "vendor_status": "parsed",
       "mod_names": []
     },
@@ -31264,7 +31311,8 @@
       "sources": [
         "translation:衰弱技能等级 {0:+d}"
       ],
-      "status": "partial",
+      "status": "parsed",
+      "text_channel": "gem_property",
       "vendor_status": "parsed",
       "mod_names": []
     },
@@ -31610,7 +31658,8 @@
       "sources": [
         "translation:时空锁链技能等级提高 {0:+d}"
       ],
-      "status": "partial",
+      "status": "parsed",
+      "text_channel": "gem_property",
       "vendor_status": "parsed",
       "mod_names": []
     },
@@ -31618,7 +31667,8 @@
       "sources": [
         "translation:脆弱技能等级 {0:+d}"
       ],
-      "status": "partial",
+      "status": "parsed",
+      "text_channel": "gem_property",
       "vendor_status": "parsed",
       "mod_names": []
     },
@@ -43034,7 +43084,8 @@
       "sources": [
         "unique:Cursecarver"
       ],
-      "status": "partial",
+      "status": "parsed",
+      "text_channel": "gem_property",
       "vendor_status": "parsed",
       "mod_names": []
     },
@@ -43042,7 +43093,8 @@
       "sources": [
         "unique:Cursecarver"
       ],
-      "status": "partial",
+      "status": "parsed",
+      "text_channel": "gem_property",
       "vendor_status": "parsed",
       "mod_names": []
     },
@@ -43050,7 +43102,8 @@
       "sources": [
         "unique:Cursecarver"
       ],
-      "status": "partial",
+      "status": "parsed",
+      "text_channel": "gem_property",
       "vendor_status": "parsed",
       "mod_names": []
     },
@@ -43058,7 +43111,8 @@
       "sources": [
         "unique:Cursecarver"
       ],
-      "status": "partial",
+      "status": "parsed",
+      "text_channel": "gem_property",
       "vendor_status": "parsed",
       "mod_names": []
     },
@@ -43066,7 +43120,8 @@
       "sources": [
         "unique:Cursecarver"
       ],
-      "status": "partial",
+      "status": "parsed",
+      "text_channel": "gem_property",
       "vendor_status": "parsed",
       "mod_names": []
     },
@@ -72390,10 +72445,14 @@
       "sources": [
         "stat:stat_descriptions:parry_damage_+%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "Damage"
+      ],
+      "special_rule_id": "parry_damage",
+      "matching_special_rules": [
+        "parry_damage"
       ]
     },
     "1% increased Parry Hit Area of Effect": {
@@ -80997,10 +81056,14 @@
       "sources": [
         "stat:stat_descriptions:parry_physical_damage_%_to_convert_to_cold"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "PhysicalDamageConvertToCold"
+      ],
+      "special_rule_id": "parry_physical_to_cold",
+      "matching_special_rules": [
+        "parry_physical_to_cold"
       ]
     },
     "1% of Physical Attack Damage Leeched as Life per Red Socket": {
@@ -86313,10 +86376,14 @@
       "sources": [
         "unique:Silverthorne"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "Damage"
+      ],
+      "special_rule_id": "parry_damage",
+      "matching_special_rules": [
+        "parry_damage"
       ]
     },
     "100% increased Physical Damage": {
@@ -86598,10 +86665,14 @@
       "sources": [
         "unique:Kaltenhalt"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "PhysicalDamageConvertToCold"
+      ],
+      "special_rule_id": "parry_physical_to_cold",
+      "matching_special_rules": [
+        "parry_physical_to_cold"
       ]
     },
     "100% of Physical Damage Converted to Cold Damage while Sphere has no Ailments": {
@@ -124384,10 +124455,14 @@
       "sources": [
         "translation:招架伤害提高 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "Damage"
+      ],
+      "special_rule_id": "parry_damage",
+      "matching_special_rules": [
+        "parry_damage"
       ]
     },
     "17% increased Parry Hit Area of Effect": {
@@ -140885,10 +140960,14 @@
       "sources": [
         "translation:招架物理伤害的 {0}% 转化为冰霜伤害"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "PhysicalDamageConvertToCold"
+      ],
+      "special_rule_id": "parry_physical_to_cold",
+      "matching_special_rules": [
+        "parry_physical_to_cold"
       ]
     },
     "17% of Physical Attack Damage Leeched as Life per Red Socket": {
@@ -169627,10 +169706,14 @@
         "passive:49545",
         "passive:57518"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "Damage"
+      ],
+      "special_rule_id": "parry_damage",
+      "matching_special_rules": [
+        "parry_damage"
       ]
     },
     "20% increased Parry Hit Area of Effect": {
@@ -173858,10 +173941,14 @@
       "sources": [
         "mods:jewel:JewelParryDamage"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "Damage"
+      ],
+      "special_rule_id": "parry_damage",
+      "matching_special_rules": [
+        "parry_damage"
       ]
     },
     "25% increased Physical Damage": {
@@ -312571,9 +312658,15 @@
         "translation:你能获得召唤生物攻击速度的增强与减弱效果",
         "unique:Trenchtimbre"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "MinionAttackSpeedAppliesToPlayer"
+      ],
+      "special_rule_id": "minion_attack_speed_applies_to_player",
+      "matching_special_rules": [
+        "minion_attack_speed_applies_to_player"
+      ]
     },
     "Increases and Reductions to Minion Damage also affect Dominating Blow and Absolution at 150% of their value": {
       "sources": [
@@ -312590,9 +312683,15 @@
         "translation:召唤生物伤害提高或降低，将同样作用于自身",
         "unique:Chober Chaber"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "MinionDamageAppliesToPlayer"
+      ],
+      "special_rule_id": "minion_damage_applies_to_player",
+      "matching_special_rules": [
+        "minion_damage_applies_to_player"
+      ]
     },
     "Increases and Reductions to Minion Damage also affect you at 150% of their value": {
       "sources": [
@@ -312702,9 +312801,15 @@
         "translation:对法术伤害的增幅与减益也会作用于攻击上",
         "unique:Crown of Eyes"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "SpellDamageAppliesToAttacks"
+      ],
+      "special_rule_id": "spell_damage_applies_to_attacks",
+      "matching_special_rules": [
+        "spell_damage_applies_to_attacks"
+      ]
     },
     "Increases and Reductions to other Damage Types in Radius are Transformed to apply to Fire Damage": {
       "sources": [
@@ -380344,11 +380449,15 @@
       "sources": [
         "translation:范围内的小型天赋同时提供 招架伤害提高 {0:d}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "radius_grant": "17% increased Parry Damage",
       "vendor_status": "parsed",
       "mod_names": [
         "Damage"
+      ],
+      "special_rule_id": "parry_damage",
+      "matching_special_rules": [
+        "parry_damage"
       ]
     },
     "Small Passive Skills in Radius also grant 17% increased Projectile Damage": {
@@ -381107,11 +381216,15 @@
       "sources": [
         "mods:jewel:JewelRadiusParryDamage"
       ],
-      "status": "partial",
+      "status": "parsed",
       "radius_grant": "3% increased Parry Damage",
       "vendor_status": "parsed",
       "mod_names": [
         "Damage"
+      ],
+      "special_rule_id": "parry_damage",
+      "matching_special_rules": [
+        "parry_damage"
       ]
     },
     "Small Passive Skills in Radius also grant 3% increased Projectile Damage if you've dealt a Melee Hit in the past eight seconds": {

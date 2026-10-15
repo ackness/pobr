@@ -328,15 +328,29 @@ pub fn clean_grant_text(text: &str) -> String {
 /// Parses a `+N to [Level|Quality] of all <category> Skills [with a <Attr> requirement]`
 /// mod into a [`GemPropertyBonus`]. Returns `None` for any other form. The game
 /// writes the kind either way, "all Cold Skills" or "all Nova Skill Gems"; both
-/// leave the kind alone as the category.
+/// leave the kind alone as the category. Named skills also omit "all":
+/// Cursecarver's `despair_gem_level_+` is "+N to Level of Despair Skills".
 pub fn parse_gem_property_bonus(text: &str) -> Option<GemPropertyBonus> {
     let clean = clean_grant_text(text);
     let body = clean.strip_prefix('+')?;
     let (num, rest) = body.split_once(" to ")?;
     let num = num.strip_suffix('%').unwrap_or(num);
     let value: u32 = num.trim().parse().ok()?;
-    let (kind, rest) = if let Some(r) = rest.strip_prefix("level of all") {
-        (GemPropertyKind::Level, r)
+    let (kind, rest) = if let Some(r) = rest.strip_prefix("level of ") {
+        let target = if let Some(category) = r.strip_prefix("all ") {
+            category
+        } else {
+            // Named skills have a complete Skills/Skill Gems suffix. Local
+            // socketed and supported-gem bonuses need their own scope.
+            if !(r.ends_with(" skills") || r.ends_with(" skill gems"))
+                || r.starts_with("socketed ")
+                || r.starts_with("supported ")
+            {
+                return None;
+            }
+            r
+        };
+        (GemPropertyKind::Level, target)
     } else {
         (
             GemPropertyKind::Quality,

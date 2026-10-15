@@ -16557,7 +16557,10 @@
         {
           "name": "Damage",
           "type": "Inc",
-          "value": 20.0
+          "value": 20.0,
+          "tags": [
+            "SkillName { names: [\"parry\"] }"
+          ]
         }
       ]
     },

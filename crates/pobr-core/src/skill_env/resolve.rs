@@ -297,7 +297,11 @@ pub fn gem_property_applies(
         Some(gem) => gem_tags_match_category(&bonus.category, &gem.gem_tags, skill_id),
         None => gem_level_category_matches(&bonus.category, skill_types, skill_id),
     };
-    if !of_kind {
+    let named_skill = data
+        .effect(skill_id)
+        .and_then(|effect| effect.displayed_name.as_deref())
+        .is_some_and(|name| name.eq_ignore_ascii_case(&bonus.category));
+    if !of_kind && !named_skill {
         return false;
     }
     match bonus.attr_req {

@@ -54,6 +54,7 @@ pub fn env_finalize(env: &mut Env) {
     super::rage::apply_rage(env);
     // Stage 6.6: modifiers to something else that also apply to the player.
     super::shared_modifiers::apply_companion_damage_to_player(env);
+    super::shared_modifiers::apply_shared_increases(env);
     // Stage 6.7: the Withered the enemy is stated to hold, once the skills,
     // items and buffs that can inflict it are all in.
     super::withered::apply_withered(env);
