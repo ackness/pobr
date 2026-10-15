@@ -135,6 +135,7 @@ fn config_value_json(value: &ConfigInputValue) -> serde_json::Value {
 
 #[derive(Debug, Serialize)]
 struct BuildJson {
+    party: pobr_build::party::Party,
     weapon_swap: Option<super::request::WeaponSwapInput>,
     character: CharacterJson,
     tree: TreeJson,
@@ -204,6 +205,7 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
             && l.config.is_none_or(|s| s == active.config.unwrap_or(1))
     });
     Ok(BuildJson {
+        party: build.party.clone(),
         skill_sets: if sets.skills.is_empty() {
             vec![NamedSetJson {
                 id: 1,
@@ -803,6 +805,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
         .collect();
 
     let json = BuildJson {
+        party: Default::default(),
         weapon_swap: None,
         character: CharacterJson {
             level,

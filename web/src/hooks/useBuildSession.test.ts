@@ -529,3 +529,12 @@ test('selecting a named skill set replaces its main group and bindings while kee
   expect(toRequest(next).main_socket_group).toBe(1);
   expect(toRequest(next).config_inputs).toEqual(current.params.config_inputs);
 });
+
+test('party members survive saved sessions and are passed to the calculation request', () => {
+  const party = { members: [{ id: 'support', name: 'Support', enabled: false, blocks: { Aura: 'Discipline\n150\n100|Skill:DisciplinePlayer|EnergyShield|BASE|-|-|-\n---' }, warnings: [] }], exports: {} };
+  const session = structuredClone(saved);
+  session.state.params.party = party;
+  const restored = parseSaved(JSON.stringify(session));
+  expect(restored?.state.params.party).toEqual(party);
+  expect(toRequest(session.state).party).toEqual(party);
+});

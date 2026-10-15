@@ -186,3 +186,11 @@ describe('tree comparison', () => {
     expect(treeAllocationTotals(build, nodes)).toEqual({ passive: 3, ascendancy: 1, unknown: [99], attributes: { str: 0, dex: 0, int: 1, unassigned: 1 } });
   });
 });
+
+test('shared comparison configuration includes party effects without changing either saved request', () => {
+  const party = { members: [{ id: 'support', name: 'Support', enabled: true, blocks: {}, warnings: [] }], exports: {} };
+  const [own, shared] = comparisonRequests({ party }, { party: { members: [], exports: {} } }, 'a');
+  expect(own.party).toEqual(party);
+  expect(shared.party).toEqual(party);
+  expect(comparisonRequests({ party }, {}, 'own')[1].party).toBeUndefined();
+});

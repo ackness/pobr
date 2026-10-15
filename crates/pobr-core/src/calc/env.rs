@@ -27,6 +27,7 @@ pub struct Env {
     pub buff_skills: Vec<BuffSpec>,
     /// Buff skills owned by a minion (index in `minions`), not the summoner.
     pub minion_buff_skills: Vec<(usize, BuffSpec)>,
+    pub party_buff_skills: Vec<super::session::PartyBuffSpec>,
     /// The player's warcry skill specs (backlog item #9; written by
     /// `session::add_warcry_skill`, consumed by `perform` before the hand
     /// pass via [`super::warcry::apply_warcry_uptime`] — the uptime-scaled
@@ -115,6 +116,7 @@ impl Env {
             minions: Vec::new(),
             buff_skills: Vec::new(),
             minion_buff_skills: Vec::new(),
+            party_buff_skills: Vec::new(),
             warcry_skills: Vec::new(),
             warcry_gain_injected: false,
             keystone_mods: BTreeMap::new(),

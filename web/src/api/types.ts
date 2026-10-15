@@ -9,7 +9,7 @@
  * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
  * 任何破坏性形状变更两侧同时 +1；boot 时握手校验（见 wasmBackend.ts）。
  */
-export const EXPECTED_SCHEMA_VERSION = 13;
+export const EXPECTED_SCHEMA_VERSION = 14;
 
 // ---------------------------------------------------------------------------
 // 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）
@@ -158,6 +158,7 @@ export interface BuildJson {
   skill_sets?: NamedSetJson[];
   active_skill_set?: number;
   custom_modifier_blocks?: CustomModifierBlock[];
+  party?: Party;
   weapon_swap?: WeaponSwap | null;
   character: CharacterJson;
   tree: TreeJson;
@@ -461,6 +462,7 @@ export interface CalculateBuildRequest {
   enemy_tier?: EnemyTier;
   extra_modifiers?: string[];
   custom_modifier_blocks?: CustomModifierBlock[];
+  party?: Party;
   config_inputs?: Record<string, ConfigInputValue>;
 }
 
@@ -1229,3 +1231,12 @@ export interface TreeEditResult {
   weapon_points_max: number;
 }
 export interface TreeEditResponse { valid: boolean; reason: string | null; result: TreeEditResult | null }
+
+export interface PartyMember {
+  id: string;
+  name: string;
+  enabled: boolean;
+  blocks: Record<string, string>;
+  warnings: string[];
+}
+export interface Party { members: PartyMember[]; exports: Record<string, string> }

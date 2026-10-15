@@ -77,6 +77,7 @@ export interface PobrBackend {
   encodeBuild(request: CalculateBuildRequest & { notes?: string; base_code?: string }): Promise<string>;
   /** Independent metrics for every active effect, including utility and unavailable skills. */
   skillMetrics(request: CalculateBuildRequest): Promise<SkillMetricsResponse>;
+  importPartyMember(code: string): Promise<import('./types').PartyMember>;
   attribution(request: AttributionRequest): Promise<AttributionResponse>;
   /** 构筑每一行词条在计算中的去向（比计算更慢，按需调用）。 */
   lineUsage(request: CalculateBuildRequest): Promise<LineUsageResponse>;

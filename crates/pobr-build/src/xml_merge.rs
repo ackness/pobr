@@ -32,7 +32,7 @@ pub fn merge_active_sets(base: &str, edited: &str) -> String {
     let sel = active_selection(base);
     let mut out = base.to_string();
 
-    for tag in ["Build", "Notes"] {
+    for tag in ["Build", "Notes", "Party"] {
         replace_global(&mut out, edited, tag);
     }
     merge_active_config(&mut out, edited);

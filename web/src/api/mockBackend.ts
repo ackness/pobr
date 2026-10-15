@@ -65,6 +65,7 @@ export function createMockBackend(): PobrBackend {
     async encodeBuild() {
       return 'MOCK_POB_CODE';
     },
+    async importPartyMember() { return { id: '1', name: 'Party member', enabled: true, blocks: {}, warnings: [] }; },
     async skillMetrics() {
       return skillMetricsFixture as SkillMetricsResponse;
     },

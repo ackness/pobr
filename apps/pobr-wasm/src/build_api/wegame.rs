@@ -600,6 +600,7 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
             .join("\n")
     );
     let json = BuildJson {
+        party: Default::default(),
         config_sets: vec![super::NamedSetJson {
             id: 1,
             title: "Default".into(),

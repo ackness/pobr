@@ -232,6 +232,7 @@ fn parse_build_with_allocated_nodes_impl(
     if use_second_weapon_set {
         build.weapon_set = WeaponSet::Second;
     }
+    build.party = crate::party::parse_party(xml)?;
     build.other_weapons = other_weapons;
     build.other_weapon_set_nodes = Some(
         allocation_override

@@ -166,3 +166,11 @@ fn localize_input_text(text: &str) -> String {
 
 mod tree_edit;
 pub use tree_edit::preview_tree_edit_json;
+
+/// Resolves a member's outgoing party blocks from their build code.
+pub fn import_party_member_json(code: &str) -> Result<String, String> {
+    let data = state::build_data().map_err(|e| ApiError::not_initialized(e).into_json())?;
+    let member = pobr_build::party::import_member(code, &data)
+        .map_err(|e| ApiError::decode_error(e.to_string()).into_json())?;
+    serde_json::to_string(&member).map_err(|e| e.to_string())
+}

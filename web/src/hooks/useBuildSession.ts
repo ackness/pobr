@@ -49,6 +49,7 @@ export interface CalcParams {
   /** 额外全局 modifier 文本（Config 页自定义词缀，一行一条）。 */
   extra_modifiers?: string[];
   custom_modifier_blocks?: CustomModifierBlock[];
+  party?: import('../api/types').Party;
 }
 
 /** 会话完整可编辑状态（重算请求由此派生）。 */
@@ -228,6 +229,7 @@ export function toRequest(state: BuildState): CalculateBuildRequest {
     enemy_tier: state.params.enemy_tier,
     extra_modifiers: state.params.extra_modifiers,
     custom_modifier_blocks: state.params.custom_modifier_blocks,
+    party: state.params.party,
     config_inputs: state.params.config_inputs,
   };
 }
@@ -291,8 +293,10 @@ function paramsFromConfigInputs(rawInputs: Record<string, ConfigInputValue>, ove
 }
 
 export function paramsFromDecoded(decoded: BuildJson): CalcParams {
-  return paramsFromConfigInputs(decoded.config_inputs, decoded.custom_modifier_blocks === undefined
-    ? {} : { custom_modifier_blocks: decoded.custom_modifier_blocks });
+  return paramsFromConfigInputs(decoded.config_inputs, {
+    ...(decoded.custom_modifier_blocks === undefined ? {} : { custom_modifier_blocks: decoded.custom_modifier_blocks }),
+    party: decoded.party,
+  });
 }
 
 /** 库条目：可复用的装备/珠宝（PoB 文本）。 */
@@ -420,6 +424,11 @@ export function parseSaved(json: string): SavedSession | null {
       || params.custom_modifier_blocks !== undefined && (!Array.isArray(params.custom_modifier_blocks)
         || !params.custom_modifier_blocks.every(block => record(block) && typeof block.title === 'string'
           && typeof block.enabled === 'boolean' && typeof block.text === 'string'))) return null;
+    if (params.party !== undefined && (!record(params.party) || !Array.isArray(params.party.members)
+      || !params.party.members.every(m => record(m) && typeof m.id === 'string' && typeof m.name === 'string'
+        && typeof m.enabled === 'boolean' && record(m.blocks) && Object.values(m.blocks).every(v => typeof v === 'string')
+        && Array.isArray(m.warnings) && m.warnings.every(v => typeof v === 'string'))
+      || !record(params.party.exports) || !Object.values(params.party.exports).every(v => typeof v === 'string'))) return null;
     const configInputs = params.config_inputs ?? {};
     if (!record(configInputs) || !Object.values(configInputs).every(value =>
       typeof value === 'boolean' || typeof value === 'string' || typeof value === 'number' && Number.isFinite(value))) return null;
@@ -447,6 +456,7 @@ export function parseSaved(json: string): SavedSession | null {
           ...(params.main_socket_group != null ? { main_socket_group: Number(params.main_socket_group) } : {}),
           ...(params.enemy_tier != null ? { enemy_tier: params.enemy_tier as EnemyTier } : {}),
           ...(params.extra_modifiers != null ? { extra_modifiers: params.extra_modifiers as string[] } : {}),
+          ...(params.party !== undefined ? { party: params.party as unknown as import('../api/types').Party } : {}),
           ...(params.custom_modifier_blocks !== undefined ? { custom_modifier_blocks: params.custom_modifier_blocks as CustomModifierBlock[] } : {}),
         }),
       },
@@ -509,6 +519,7 @@ export function backfillFromDecoded(state: BuildState, decoded: BuildJson): Buil
     }),
     params: {
       ...savedParams,
+      party: savedParams.party ?? decodedParams.party,
       main_socket_group: state.params.main_socket_group ?? decoded.main_socket_group ?? undefined,
       enemy_tier: savedParams.enemy_tier ?? decodedParams.enemy_tier,
       // An explicit empty block list must not resurrect source modifiers.

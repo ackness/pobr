@@ -75,6 +75,14 @@ pub struct BuffSpec {
     pub skill_types: pobr_data::skill::SkillTypes,
 }
 
+/// A party member's outgoing effect, with its caster strength already resolved.
+#[derive(Debug, Clone)]
+pub struct PartyBuffSpec {
+    pub member: usize,
+    pub curse_limit: f64,
+    pub spec: BuffSpec,
+}
+
 /// See [`CalculationSession::hit_damage_mods`].
 #[derive(Debug, Clone)]
 pub struct HitDamageMods<'a> {
@@ -415,6 +423,15 @@ impl CalculationSession {
     /// **Stored only, not consumed at this stage**: the spec goes into
     /// `Env::buff_skills`, and only participates in the calculation once T3's
     /// `buff_pass` (env_finalize stage 4) lands -- calling this API before then has no effect on output values.
+    pub fn add_party_buff_skill(&mut self, spec: PartyBuffSpec) {
+        self.env.party_buff_skills.push(spec);
+    }
+
+    /// The member's outgoing auras and curses, before recipient-side scaling.
+    pub fn party_buff_exports(&self) -> Vec<BuffSpec> {
+        super::buff_pass::party_exports(&self.env)
+    }
+
     pub fn add_buff_skill(&mut self, spec: BuffSpec) {
         self.env.buff_skills.push(spec);
     }

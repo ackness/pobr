@@ -23,10 +23,11 @@ pub mod zh;
 pub use build_api::{
     attribution_json, calculate_build_json, classify_item_lines_json, decode_build_file_json,
     decode_build_json, decode_build_loadout_json, encode_build_file_json, encode_build_json,
-    gem_catalog_json, import_trade_items_json, item_augment_info_json, item_crafting_catalog_json,
-    line_usage_json, manage_loadout_json, minion_catalog_json, node_power_json,
-    normalize_item_draft_json, optimize_variants_json, reforge_runes_json, rune_catalog_json,
-    skill_metrics_json, translate_lines_to_zh_cn_json, unique_catalog_json, unique_item_draft_json,
+    gem_catalog_json, import_party_member_json, import_trade_items_json, item_augment_info_json,
+    item_crafting_catalog_json, line_usage_json, manage_loadout_json, minion_catalog_json,
+    node_power_json, normalize_item_draft_json, optimize_variants_json, reforge_runes_json,
+    rune_catalog_json, skill_metrics_json, translate_lines_to_zh_cn_json, unique_catalog_json,
+    unique_item_draft_json,
 };
 pub use build_api::{preview_tree_edit_json, support_groups_compatible_json};
 pub use i18n::translate;
@@ -39,7 +40,7 @@ pub use state::{init_data_from_dir, init_staged_data, is_data_ready, stage_data_
 /// compares them at boot (see [`wasm::schema_version`]); a mismatch prompts
 /// a hard refresh — closing the door on "stale frontend cache + new wasm
 /// assets" silently breaking.
-pub const SCHEMA_VERSION: u32 = 13;
+pub const SCHEMA_VERSION: u32 = 14;
 
 /// wasm-bindgen bindings: compiled only under the `wasm` feature, exposing
 /// functions with the same names as the host API to JS.
@@ -103,6 +104,11 @@ pub mod wasm {
     }
 
     /// JS entry point: `skillMetricsJson(requestJson) -> string` (independent active-effect metrics).
+    #[wasm_bindgen(js_name = importPartyMemberJson)]
+    pub fn import_party_member_json(code: &str) -> Result<String, JsError> {
+        crate::build_api::import_party_member_json(code).map_err(|err| JsError::new(&err))
+    }
+
     #[wasm_bindgen(js_name = skillMetricsJson)]
     pub fn skill_metrics_json(request_json: &str) -> Result<String, JsError> {
         crate::build_api::skill_metrics_json(request_json).map_err(|err| JsError::new(&err))

@@ -154,6 +154,42 @@ pub(super) fn inject_buffs_and_heralds(
     build: &Build,
     data: &BuildData,
 ) {
+    for (index, member) in build
+        .party
+        .members
+        .iter()
+        .enumerate()
+        .filter(|(_, m)| m.enabled)
+    {
+        let effects = crate::party::member_effects(member, index);
+        for (source, text, parsed) in effects.lines {
+            session.note_line(
+                &source,
+                &text,
+                if parsed && source.id.ends_with(".EnemyConditions") {
+                    super::sources::LineFate::ReadBy("party enemy condition")
+                } else if parsed {
+                    super::sources::LineFate::LeftOut(
+                        "a stronger copy or the curse limit excluded this party effect",
+                    )
+                } else {
+                    super::sources::LineFate::Unparsed
+                },
+            );
+            if !parsed {
+                context
+                    .support_limits
+                    .push(format!("Party {}: {}", member.name, text));
+            }
+        }
+        for spec in effects.buffs {
+            session.add_party_buff_skill(spec);
+        }
+        session.add_enemy_modifiers(effects.enemy);
+        for condition in effects.conditions {
+            session.set_condition(condition, true);
+        }
+    }
     // 4b. Aura/curse skills → BuffSpec injected via `session.add_buff_skill` (per the
     //     §2.4 contract), consumed by pobr-core's buff_pass (env_finalize stage 4;
     //     cfg.mode_buffs is already set above): an aura defensive buff (Discipline→

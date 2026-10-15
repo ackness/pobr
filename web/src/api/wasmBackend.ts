@@ -48,6 +48,7 @@ interface WasmModule {
   calculateBuildJson(requestJson: string): string;
   encodeBuildJson(requestJson: string): string;
   skillMetricsJson(requestJson: string): string;
+  importPartyMemberJson(code: string): string;
   attributionJson(requestJson: string): string;
   lineUsageJson(requestJson: string): string;
   gemCatalogJson(): string;
@@ -195,6 +196,7 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     async encodeBuild(request) {
       return wasm.encodeBuildJson(JSON.stringify(request));
     },
+    async importPartyMember(code) { return JSON.parse(wasm.importPartyMemberJson(code)); },
     async skillMetrics(request) {
       return JSON.parse(wasm.skillMetricsJson(JSON.stringify(request))) as SkillMetricsResponse;
     },
