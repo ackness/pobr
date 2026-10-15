@@ -34,13 +34,12 @@
 //!   dotIsBurningGround/CausticGround/CorruptingBlood branches (`:5947-5967`)
 //!   depend on ground-dot flag data and are not modeled -- they fall through
 //!   to the else branch's `TotalDot = TotalDotInstance` (`:5971-5972`).
-//! - The end-of-pipeline merge family (`:6093-6234`): `WithDotDPS = baseDPS +
-//!   TotalDot` (only when skillFlags.dot); `TotalDotDPS = Σ(TotalDot + poison
-//!   + caustic + ignite + burning + bleed + corrupting + decay)` clamped to
-//!   `DotDpsCap` (pobr's current value = the three ailment-side
-//!   bleed/poison/ignite terms; caustic/burning ground and decay aren't
-//!   modeled and are always 0); `CombinedDPS = baseDPS + TotalDotDPS` (the
-//!   culling / reservation multipliers aren't modeled, taken as 1.0 -- vendor `:6238-6241`).
+//! - The end-of-pipeline merge adds the skill's own DoT, bleed, poison and
+//!   ignite to hit DPS. Ground and Profane Decay display fields are views of
+//!   those existing channels, not additional damage to add again. Effective
+//!   CombinedDPS also accounts for Culling Strike and the strongest minimum
+//!   enemy Life reservation (Blood Price's
+//!   `unique_blood_price_enemies_in_presence_have_at_least_%_life_reserved`).
 //!
 //! Field naming contract:
 //! `skill_dot_instance` / `skill_total_dot` / `total_dot_dps` /
@@ -111,6 +110,7 @@ pub struct SkillDotTerms {
     pub with_dot_dps: f64,
     /// How much sooner Culling Strike kills ([`cull_multiplier`]).
     pub cull_multiplier: f64,
+    pub reservation_multiplier: f64,
     pub combined_dps: f64,
 }
 
@@ -145,6 +145,8 @@ impl SkillDotTerms {
             steps.set(FormulaOp::HitDps, self.base_dps, self.base_dps);
         }
         steps.add(FormulaOp::DotDps, self.total_dot_dps);
+        steps.more(self.cull_multiplier);
+        steps.more(self.reservation_multiplier);
         steps.finish(round(self.combined_dps))
     }
 }
@@ -453,7 +455,22 @@ pub fn skill_dot_terms(
         0.0
     };
     let cull = cull_multiplier(db, enemy, cfg);
-    let combined_dps = (inputs.base_dps + total_dot_dps) * cull;
+    // Blood Price: enemies have *at least* this reserved fraction. Several
+    // sources do not add their minima. Reservation reduces life to remove,
+    // without changing the damage of an individual hit or ailment.
+    let reserved = if cfg.mode_effective {
+        enemy
+            .max_of(
+                ModType::Base,
+                cfg,
+                &[ModName::from("LifeReservationPercent")],
+            )
+            .clamp(0.0, 99.0)
+    } else {
+        0.0
+    };
+    let reservation = 100.0 / (100.0 - reserved);
+    let combined_dps = (inputs.base_dps + total_dot_dps) * cull * reservation;
 
     SkillDotTerms {
         parts,
@@ -467,6 +484,7 @@ pub fn skill_dot_terms(
         total_dot_dps,
         with_dot_dps,
         cull_multiplier: cull,
+        reservation_multiplier: reservation,
         combined_dps,
     }
 }

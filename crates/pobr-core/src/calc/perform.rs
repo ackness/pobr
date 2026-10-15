@@ -266,6 +266,7 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     fill_skill_dot_stage(env);
     fill_damage_views(env);
     fill_resource_cost_rates(env);
+    super::sidebar::fill_sidebar(env);
 
     super::recovery::fill_recovery(env, &output.stored_hit_avg, &output.stored_crit_avg);
 
@@ -1006,6 +1007,8 @@ fn fill_skill_dot_stage(env: &mut Env) {
     // threshold multiplier already contributes to CombinedDPS.
     env.player.output.culling_dps =
         round((terms.base_dps + terms.total_dot_dps) * (terms.cull_multiplier - 1.0));
+    env.player.output.reservation_dps =
+        round((terms.base_dps + terms.total_dot_dps) * (terms.reservation_multiplier - 1.0));
     let dot = terms.output();
     super::skill_dot::fill_skill_dot(&mut env.player.output, &dot);
 }

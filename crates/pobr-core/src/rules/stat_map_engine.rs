@@ -1124,6 +1124,14 @@ pub(crate) fn translated_mod_name_parts<'a>(
         .map(|(_, flag)| flag.as_str());
     // Name translation (base_name after dispatch).
     let translated = match base_name {
+        // Buff application already folds a gem's own effect into BuffSpec.
+        // Keep the selected skill's display input separate from global aura
+        // and curse bonuses, so it cannot amplify its buff a second time.
+        "AuraEffect" => "SelectedAuraEffect",
+        "SkillAuraEffectOnSelf" => "SelectedSkillAuraEffectOnSelf",
+        "CurseEffect" => "SelectedCurseEffect",
+        "Magnitude" => "SelectedMagnitude",
+
         "CritChance" => "CriticalStrikeChance",
         "CritMultiplier" => "CriticalStrikeMultiplier",
         // Crit chance cap: same name as vendor (e.g. Garukhan's Resolve's

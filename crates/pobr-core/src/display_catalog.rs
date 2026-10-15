@@ -24,6 +24,66 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         DisplayStatDefinition::computed(id, cat, vt).with_pob_key(pob)
     };
     vec![
+        computed("DecayDPS", Cat::DotDamage, Vt::Number, "DecayDPS"),
+        computed(
+            "MirageBurningGroundDPS",
+            Cat::DotDamage,
+            Vt::Number,
+            "MirageBurningGroundDPS",
+        ),
+        computed("ReservationDPS", Cat::Offence, Vt::Number, "ReservationDPS"),
+        computed("NetWardRegen", Cat::Recovery, Vt::Number, "NetWardRegen"),
+        computed("MirageDPS", Cat::Offence, Vt::Number, "MirageDPS"),
+        computed(
+            "BurningGroundDPS",
+            Cat::DotDamage,
+            Vt::Number,
+            "BurningGroundDPS",
+        ),
+        computed(
+            "EffectiveMovementSpeedMod",
+            Cat::Defence,
+            Vt::Number,
+            "EffectiveMovementSpeedMod",
+        ),
+        computed(
+            "MovementSpeedWhileUsingSkill",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "MovementSpeedWhileUsingSkill",
+        ),
+        computed(
+            "PresenceRadiusMetres",
+            Cat::Defence,
+            Vt::Number,
+            "PresenceRadiusMetres",
+        ),
+        computed(
+            "AuraEffectMod",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "AuraEffectMod",
+        ),
+        computed(
+            "CurseEffectMod",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "CurseEffectMod",
+        ),
+        computed(
+            "ActiveMinionLimit",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "ActiveMinionLimit",
+        ),
+        computed("ExplodeChance", Cat::Offence, Vt::Percent, "ExplodeChance"),
+        computed(
+            "CombinedAvgToMonsterLife",
+            Cat::Offence,
+            Vt::Percent,
+            "CombinedAvgToMonsterLife",
+        ),
+        computed("CritBifurcates", Cat::Offence, Vt::Number, "CritBifurcates"),
         // Damage and accuracy views
         computed("AverageDamage", Cat::Offence, Vt::Number, "AverageDamage"),
         computed(
@@ -894,6 +954,24 @@ pub fn extract_display_values(output: &OutputTable) -> Vec<DisplayStatValue> {
 /// Unknown ids return 0.
 pub fn display_value(output: &OutputTable, id: &str) -> f64 {
     match id {
+        "DecayDPS" => output.decay_dps,
+        "MirageBurningGroundDPS" => output.mirage_burning_ground_dps,
+
+        "ReservationDPS" => output.reservation_dps,
+        "NetWardRegen" => output.net_ward_regen,
+        "MirageDPS" => output.mirage_dps,
+        "BurningGroundDPS" => output.burning_ground_dps,
+
+        "EffectiveMovementSpeedMod" => output.effective_movement_speed_mod,
+        "MovementSpeedWhileUsingSkill" => output.movement_speed_while_using_skill,
+        "PresenceRadiusMetres" => output.presence_radius_metres,
+        "AuraEffectMod" => output.aura_effect_mod,
+        "CurseEffectMod" => output.curse_effect_mod,
+        "ActiveMinionLimit" => output.active_minion_limit,
+        "ExplodeChance" => output.explode_chance,
+        "CombinedAvgToMonsterLife" => output.combined_avg_to_monster_life,
+        "CritBifurcates" => output.crit_bifurcates,
+
         "TotalTotemPlacementTime" => output.total_totem_placement_time,
         "TrapThrowingTime" => output.trap_throwing_time,
         "TrapThrowCount" => output.trap_throw_count,

@@ -8,7 +8,7 @@ import type { Lang } from './i18n';
 
 export type { Lang };
 
-export type StatFormat = 'int' | 'float2' | 'percent' | 'rate';
+export type StatFormat = 'int' | 'float2' | 'percent' | 'rate' | 'modifier' | 'pierce' | 'chanceMultiplier';
 
 export interface StatRowDef {
   id: string;
@@ -38,6 +38,14 @@ export const STAT_SECTIONS: StatSectionDef[] = [
     title: { 'en-US': 'Offence', 'zh-TW': '攻擊', 'zh-CN': '攻击' },
     requiresSkill: true,
     rows: [
+      { id: 'DecayDPS', label: { 'en-US': 'Profane Decay DPS', 'zh-TW': '褻瀆腐朽每秒傷害', 'zh-CN': '亵渎腐朽每秒伤害' }, format: 'float2', hideZero: true },
+      { id: 'MirageBurningGroundDPS', label: { 'en-US': 'Mirage Ignited Ground DPS', 'zh-TW': '幻影燃燒地面每秒傷害', 'zh-CN': '幻影燃烧地面每秒伤害' }, format: 'float2', hideZero: true },
+      { id: 'ReservationDPS', label: { 'en-US': 'Reservation DPS', 'zh-TW': '保留等效傷害', 'zh-CN': '保留等效伤害' }, format: 'float2', hideZero: true },
+      { id: 'MirageDPS', label: { 'en-US': 'Mirage DPS', 'zh-TW': '幻影每秒傷害', 'zh-CN': '幻影每秒伤害' }, format: 'float2', hideZero: true },
+      { id: 'BurningGroundDPS', label: { 'en-US': 'Ignited / Burning Ground DPS', 'zh-TW': '燃燒地面每秒傷害', 'zh-CN': '燃烧地面每秒伤害' }, format: 'float2', hideZero: true },
+      { id: 'ExplodeChance', label: { 'en-US': 'Chance to Explode Enemies', 'zh-TW': '敵人爆炸機率', 'zh-CN': '敌人爆炸几率' }, format: 'percent', hideZero: true },
+      { id: 'CombinedAvgToMonsterLife', label: { 'en-US': 'Enemy Life Equivalent', 'zh-TW': '敵人生命等值', 'zh-CN': '敌人生命等值' }, format: 'percent', hideZero: true },
+      { id: 'CritBifurcates', label: { 'en-US': 'Double Critical Roll Chance', 'zh-TW': '雙重暴擊機率', 'zh-CN': '双重暴击几率' }, format: 'chanceMultiplier', hideZero: true },
       { id: 'AverageDamage', label: { 'en-US': 'Average Damage', 'zh-TW': '平均傷害', 'zh-CN': '平均伤害' }, format: 'float2', hideZero: true },
       { id: 'AverageBurstDamage', label: { 'en-US': 'Average Burst Damage', 'zh-TW': '平均爆發傷害', 'zh-CN': '平均爆发伤害' }, format: 'float2', hideZero: true },
       { id: 'CombinedAvg', label: { 'en-US': 'Combined Average', 'zh-TW': '合計平均傷害', 'zh-CN': '合计平均伤害' }, format: 'float2', hideZero: true },
@@ -86,6 +94,8 @@ export const STAT_SECTIONS: StatSectionDef[] = [
   {
     title: { 'en-US': 'Defence', 'zh-TW': '防禦', 'zh-CN': '防御' },
     rows: [
+      { id: 'EffectiveMovementSpeedMod', label: { 'en-US': 'Movement Speed Modifier', 'zh-TW': '移動速度倍率', 'zh-CN': '移动速度倍率' }, format: 'modifier', hideZero: true },
+      { id: 'PresenceRadiusMetres', label: { 'en-US': 'Presence Radius (m)', 'zh-TW': '存在範圍半徑（公尺）', 'zh-CN': '在场半径（米）' }, format: 'float2', hideZero: true },
       { id: 'Armour', label: { 'en-US': 'Armour', 'zh-TW': '護甲', 'zh-CN': '护甲' }, format: 'int', colorVar: 'color-defence' },
       { id: 'Evasion', label: { 'en-US': 'Evasion', 'zh-TW': '閃避', 'zh-CN': '闪避' }, format: 'int', colorVar: 'color-defence' },
       { id: 'PhysicalDamageReduction', label: { 'en-US': 'Phys. DR', 'zh-TW': '物理減傷', 'zh-CN': '物理减伤' }, format: 'percent' },
@@ -127,6 +137,7 @@ export const STAT_SECTIONS: StatSectionDef[] = [
       { id: 'RageRegenRecovery', label: { 'en-US': 'Rage Regeneration and Recovery per Second', 'zh-TW': '每秒盛怒再生與恢復', 'zh-CN': '每秒怒气再生与恢复' }, format: 'float2', hideZero: true },
       { id: 'NetLifeRegen', label: { 'en-US': 'Net Life Recovery per Second', 'zh-TW': '每秒生命淨恢復', 'zh-CN': '每秒生命净恢复' }, format: 'float2', hideZero: true },
       { id: 'NetManaRegen', label: { 'en-US': 'Net Mana Recovery per Second', 'zh-TW': '每秒魔力淨恢復', 'zh-CN': '每秒魔力净恢复' }, format: 'float2', hideZero: true },
+      { id: 'NetWardRegen', label: { 'en-US': 'Net Runic Ward Regeneration', 'zh-TW': '符文守護淨再生', 'zh-CN': '符文守护净再生' }, format: 'float2', hideZero: true },
       { id: 'NetEnergyShieldRegen', label: { 'en-US': 'Net Energy Shield Recovery per Second', 'zh-TW': '每秒能量護盾淨恢復', 'zh-CN': '每秒能量护盾净恢复' }, format: 'float2', hideZero: true },
       { id: 'TotalNetRegen', label: { 'en-US': 'Total Net Recovery per Second', 'zh-TW': '每秒總淨恢復', 'zh-CN': '每秒总净恢复' }, format: 'float2', hideZero: true },
       { id: 'TotalBuildDegen', label: { 'en-US': 'Build Resource Loss per Second', 'zh-TW': '每秒構築資源損失', 'zh-CN': '每秒构筑资源损失' }, format: 'float2', hideZero: true },
@@ -150,12 +161,16 @@ export const STAT_SECTIONS: StatSectionDef[] = [
     title: { 'en-US': 'Skill mechanics', 'zh-TW': '技能機制', 'zh-CN': '技能机制' },
     requiresSkill: true,
     rows: [
+      { id: 'MovementSpeedWhileUsingSkill', label: { 'en-US': 'Skill Movement Speed', 'zh-TW': '技能移動速度', 'zh-CN': '技能移动速度' }, format: 'modifier', hideZero: true },
+      { id: 'AuraEffectMod', label: { 'en-US': 'Aura Magnitude Multiplier', 'zh-TW': '光環幅度倍率', 'zh-CN': '光环幅度倍率' }, format: 'float2', hideZero: true },
+      { id: 'CurseEffectMod', label: { 'en-US': 'Curse Magnitude Multiplier', 'zh-TW': '詛咒幅度倍率', 'zh-CN': '诅咒幅度倍率' }, format: 'float2', hideZero: true },
+      { id: 'ActiveMinionLimit', label: { 'en-US': 'Active Minion Limit', 'zh-TW': '召喚物上限', 'zh-CN': '召唤物上限' }, format: 'int', hideZero: true },
       { id: 'Duration', label: { 'en-US': 'Skill Duration (s)', 'zh-TW': '技能持續時間（秒）', 'zh-CN': '技能持续时间（秒）' }, format: 'float2', hideZero: true },
       { id: 'DurationSecondary', label: { 'en-US': 'Secondary Duration (s)', 'zh-TW': '次要持續時間（秒）', 'zh-CN': '次要持续时间（秒）' }, format: 'float2', hideZero: true },
       { id: 'AuraDuration', label: { 'en-US': 'Aura Duration (s)', 'zh-TW': '光環持續時間（秒）', 'zh-CN': '光环持续时间（秒）' }, format: 'float2', hideZero: true },
       { id: 'ReserveDuration', label: { 'en-US': 'Reservation Duration (s)', 'zh-TW': '保留持續時間（秒）', 'zh-CN': '保留持续时间（秒）' }, format: 'float2', hideZero: true },
       { id: 'AreaOfEffectRadiusMetres', label: { 'en-US': 'Area Radius (m)', 'zh-TW': '範圍半徑（公尺）', 'zh-CN': '范围半径（米）' }, format: 'float2', hideZero: true },
-      { id: 'PierceCount', label: { 'en-US': 'Pierce Count', 'zh-TW': '穿透次數', 'zh-CN': '穿透次数' }, format: 'float2', hideZero: true },
+      { id: 'PierceCount', label: { 'en-US': 'Pierce Count', 'zh-TW': '穿透次數', 'zh-CN': '穿透次数' }, format: 'pierce', hideZero: true },
       { id: 'ForkCount', label: { 'en-US': 'Fork Count', 'zh-TW': '分岔次數', 'zh-CN': '分岔次数' }, format: 'float2', hideZero: true },
       { id: 'ChainMax', label: { 'en-US': 'Maximum Chains', 'zh-TW': '最大連鎖次數', 'zh-CN': '最大连锁次数' }, format: 'float2', hideZero: true },
       { id: 'SplitCount', label: { 'en-US': 'Split Count', 'zh-TW': '分裂數量', 'zh-CN': '分裂数量' }, format: 'float2', hideZero: true },
@@ -195,9 +210,15 @@ export const STAT_SECTIONS: StatSectionDef[] = [
 ];
 
 /** 数值格式化（null = 计算侧的 ∞ / 不适用）。 */
-export function formatStatValue(value: number | null, format: StatFormat): string {
+export function formatStatValue(value: number | null, format: StatFormat, lang: Lang = 'en-US'): string {
   if (value === null || !Number.isFinite(value)) return '∞';
   switch (format) {
+    case 'chanceMultiplier':
+      return `${roundTo(Math.max(0, value - 1) * 100, 1)}%`;
+    case 'modifier':
+      return `${value >= 1 ? '+' : ''}${roundTo((value - 1) * 100, 1)}%`;
+    case 'pierce':
+      return value >= 100 ? ({ 'en-US': 'All targets', 'zh-TW': '所有目標', 'zh-CN': '所有目标' }[lang]) : Math.round(value).toLocaleString('en-US');
     case 'int':
       return Math.round(value).toLocaleString('en-US');
     case 'percent':

@@ -191,6 +191,7 @@ fn translate_player_buff_entry(
 fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, UnsupportedReason> {
     match name {
         "Accuracy" => Ok(vec!["Accuracy"]),
+        "MovementSpeed" => Ok(vec!["MovementSpeed"]),
         "ManaRegen" => Ok(vec!["ManaRegen"]),
         "LifeRegen" => Ok(vec!["LifeRegen"]),
         "LifeRegenPercent" => Ok(vec!["LifeRegenPercent"]),

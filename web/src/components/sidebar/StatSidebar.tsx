@@ -161,7 +161,7 @@ export function StatSidebar({ session, lang, onStatClick }: Props) {
                   <>
                     <dt>{row.label[lang]}</dt>
                     <dd style={row.colorVar ? { color: `var(--${row.colorVar})` } : undefined}>
-                      {values ? formatStatValue(values.get(row.id) ?? null, row.format) : '—'}
+                      {values ? formatStatValue(values.get(row.id) ?? null, row.format, lang) : '—'}
                     </dd>
                   </>
                 );

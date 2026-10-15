@@ -27,6 +27,26 @@ pub struct FullDpsOutput {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutputTable {
+    pub decay_dps: f64,
+    pub mirage_burning_ground_dps: f64,
+
+    pub reservation_dps: f64,
+    pub net_ward_regen: f64,
+    pub mirage_dps: f64,
+    pub burning_ground_dps: f64,
+
+    /// Selected skill and character sidebar views. Movement values are multipliers.
+    pub effective_movement_speed_mod: f64,
+    pub movement_speed_while_using_skill: f64,
+    pub presence_radius_metres: f64,
+    pub aura_effect_mod: f64,
+    pub curse_effect_mod: f64,
+    pub active_minion_limit: f64,
+    pub explode_chance: f64,
+    pub combined_avg_to_monster_life: f64,
+    /// One plus the conditional double-critical probability; zero when absent.
+    pub crit_bifurcates: f64,
+
     /// Optional because evaluating every included effect is a separate, opt-in pass.
     pub full_dps: Option<FullDpsOutput>,
     pub strength: f64,
@@ -506,6 +526,24 @@ pub struct MinionOutput {
 impl Default for OutputTable {
     fn default() -> Self {
         Self {
+            decay_dps: 0.0,
+            mirage_burning_ground_dps: 0.0,
+
+            reservation_dps: 0.0,
+            net_ward_regen: 0.0,
+            mirage_dps: 0.0,
+            burning_ground_dps: 0.0,
+
+            effective_movement_speed_mod: 0.0,
+            movement_speed_while_using_skill: 0.0,
+            presence_radius_metres: 0.0,
+            aura_effect_mod: 0.0,
+            curse_effect_mod: 0.0,
+            active_minion_limit: 0.0,
+            explode_chance: 0.0,
+            combined_avg_to_monster_life: 0.0,
+            crit_bifurcates: 0.0,
+
             full_dps: None,
             strength: 0.0,
             dexterity: 0.0,

@@ -48,6 +48,22 @@ pub(crate) fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Mod
     let level = build.character.level;
     for (slot, item) in &build.items {
         let slot_id = slot.id();
+        // ArmourTypes.dat supplies the inherent movement penalty separately
+        // from the item's explicit movement modifiers.
+        if let Some(penalty) = data
+            .base_items
+            .get(&item.base.to_string())
+            .and_then(|base| base.armour.as_ref())
+            .and_then(|armour| armour.movement_penalty)
+        {
+            mods.push(
+                Modifier::number("ArmourMovementPenalty", ModType::Base, penalty).with_origin(
+                    ModifierSource::new(SourceId::new(SourceKind::Item, "base.movement_penalty"))
+                        .with_raw_text(format!("{} inherent movement penalty", item.base)),
+                ),
+            );
+        }
+
         let Some(values) = item_rolled_defence(item, data, level) else {
             continue;
         };

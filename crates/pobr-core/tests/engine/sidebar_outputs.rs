@@ -558,3 +558,156 @@ fn attack_channel_display_reuses_the_use_cycles_stage_time() {
     assert_eq!(env.player.output.channel_time, 0.5);
     assert!((env.player.output.mana_per_second_cost - 10.0 / 0.7).abs() < 1e-6);
 }
+
+#[test]
+fn movement_penalty_and_presence_use_independent_modifier_groups() {
+    let mut env = Env::new(Actor::new(1, ActorBaseStats::default()));
+    env.cfg.skill_types = SkillTypes::from_pob2_name("UsableWhileMoving").unwrap();
+    env.player.mod_db.add_list(vec![
+        Modifier::number("MovementSpeed", ModType::Inc, 30.0),
+        Modifier::number("ActionSpeed", ModType::Inc, 10.0),
+        Modifier::number("SkillMovementSpeed", ModType::More, -70.0),
+        Modifier::number("MovementSpeedPenalty", ModType::More, -40.0),
+        Modifier::number("PresenceArea", ModType::Inc, 125.0),
+        Modifier::number("PresenceRadius", ModType::More, 100.0),
+        Modifier::number("AreaOfEffect", ModType::Inc, 900.0),
+    ]);
+    perform(&mut env).unwrap();
+    assert_eq!(env.player.output.effective_movement_speed_mod, 1.43);
+    assert!((env.player.output.movement_speed_while_using_skill - 0.754).abs() < 1e-9);
+    assert_eq!(env.player.output.presence_radius_metres, 12.0);
+}
+
+#[test]
+fn selected_skill_magnitudes_and_minion_limit_do_not_leak() {
+    let mut env = Env::new(Actor::new(1, ActorBaseStats::default()));
+    env.cfg.skill_types = SkillTypes::AURA | SkillTypes::from_pob2_name("AppliesCurse").unwrap();
+    env.cfg.skill_name = Some("test".into());
+    env.player.mod_db.add_list(vec![
+        Modifier::number("AuraEffect", ModType::Inc, 50.0),
+        Modifier::number("SkillAuraEffectOnSelf", ModType::Inc, 20.0),
+        Modifier::number("Magnitude", ModType::More, 50.0),
+        Modifier::number("CurseEffect", ModType::Inc, 40.0),
+        Modifier::number("CurseEffect", ModType::More, -50.0),
+        Modifier::number("SelectedMinionLimit", ModType::Base, 3.0).with_tag(ModTag::SkillName {
+            names: vec!["test".into()],
+        }),
+        Modifier::number("SelectedMinionLimit", ModType::Base, 8.0).with_tag(ModTag::SkillName {
+            names: vec!["other".into()],
+        }),
+    ]);
+    perform(&mut env).unwrap();
+    assert!((env.player.output.aura_effect_mod - 2.55).abs() < 1e-9);
+    assert_eq!(env.player.output.curse_effect_mod, 0.7);
+    assert_eq!(env.player.output.active_minion_limit, 3.0);
+}
+
+#[test]
+fn double_critical_roll_multiplier_stores_one_plus_conditional_probability() {
+    let mut env = Env::new(Actor::new(
+        1,
+        ActorBaseStats {
+            hit_min: 100.0,
+            hit_max: 100.0,
+            action_rate: 1.0,
+            ..ActorBaseStats::default()
+        },
+    ));
+    env.cfg = CalcConfig::spell();
+    env.cfg.mode_effective = true;
+    env.player.mod_db.add_list(vec![
+        Modifier::number("SkillBaseCritChance", ModType::Base, 50.0),
+        Modifier::flag("BifurcateCrit"),
+        Modifier::number("EnemyExplodeChance", ModType::Base, 120.0),
+    ]);
+    perform(&mut env).unwrap();
+    assert!(
+        (env.player.output.crit_bifurcates - 4.0 / 3.0).abs() < 1e-6,
+        "double={} capped={} hit={} crit={}",
+        env.player.output.crit_bifurcates,
+        env.player.output.pre_effective_crit_chance,
+        env.player.output.hit_chance,
+        env.player.output.crit_chance
+    );
+    assert_eq!(env.player.output.explode_chance, 100.0);
+    let life = f64::from(env.cfg.constants.monster_scaling.life_at(1));
+    assert!(
+        (env.player.output.combined_avg_to_monster_life
+            - env.player.output.combined_avg / life * 100.0)
+            .abs()
+            < 1e-8
+    );
+}
+
+#[test]
+fn enemy_reservation_uses_the_strongest_minimum_and_requires_effective_mode() {
+    use pobr_core::calc::skill_dot::{SkillDotInputs, calc_skill_dot};
+    let db = ModDb::new();
+    let mut enemy = ModDb::new();
+    enemy.add_list(vec![
+        Modifier::number("LifeReservationPercent", ModType::Base, 10.0),
+        Modifier::number("LifeReservationPercent", ModType::Base, 20.0),
+    ]);
+    let mut cfg = CalcConfig::spell();
+    let input = SkillDotInputs {
+        base_dps: 100.0,
+        ..Default::default()
+    };
+    assert_eq!(
+        calc_skill_dot(&db, &enemy, &cfg, &input).combined_dps,
+        100.0
+    );
+    cfg.mode_effective = true;
+    assert_eq!(
+        calc_skill_dot(&db, &enemy, &cfg, &input).combined_dps,
+        125.0
+    );
+}
+
+#[test]
+fn clone_damage_and_ground_are_views_without_counting_damage_twice() {
+    let mut env = Env::new(Actor::new(
+        1,
+        ActorBaseStats {
+            hit_min: 100.0,
+            hit_max: 100.0,
+            action_rate: 2.0,
+            ..Default::default()
+        },
+    ));
+    env.player.mod_db.add_list(vec![
+        Modifier::flag("MirageSkill"),
+        Modifier::flag("BurningGround"),
+        Modifier::number("FireDot", ModType::Base, 100.0),
+    ]);
+    perform(&mut env).unwrap();
+    assert_eq!(env.player.output.burning_ground_dps, 100.0);
+    assert_eq!(env.player.output.mirage_dps, env.player.output.combined_dps);
+    assert_eq!(env.player.output.combined_dps, 300.0);
+}
+
+#[test]
+fn net_ward_regeneration_subtracts_flat_and_percent_spending() {
+    let mut env = Env::new(Actor::new(
+        1,
+        ActorBaseStats {
+            action_rate: 2.0,
+            ..Default::default()
+        },
+    ));
+    env.player.mod_db.add_list(vec![
+        Modifier::number("Ward", ModType::Base, 100.0),
+        Modifier::number("WardRegen", ModType::Base, 30.0),
+        Modifier::number("SkillWardCostBase", ModType::Base, 5.0),
+        Modifier::number("SkillWardPercentCostBase", ModType::Base, 10.0),
+    ]);
+    perform(&mut env).unwrap();
+    let out = env.player.output;
+    assert!(out.ward_per_second_cost > 0.0);
+    assert_eq!(
+        out.net_ward_regen,
+        out.ward_regen_recovery
+            - out.ward_per_second_cost
+            - out.ward * out.ward_percent_per_second_cost / 100.0
+    );
+}

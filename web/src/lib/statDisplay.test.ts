@@ -125,3 +125,23 @@ describe('STAT_SECTIONS', () => {
     expect(rows.get('ProjectileSpeedMod')?.format).toBe('float2');
   });
 });
+
+test('movement multipliers and unlimited piercing use display conventions', () => {
+  expect(formatStatValue(1.3, 'modifier')).toBe('+30%');
+  expect(formatStatValue(0.39, 'modifier')).toBe('-61%');
+  expect(formatStatValue(100, 'pierce')).toBe('All targets');
+  expect(formatStatValue(100, 'pierce', 'zh-TW')).toBe('所有目標');
+  expect(formatStatValue(3, 'pierce')).toBe('3');
+  const rows = new Map(STAT_SECTIONS.flatMap((section) => section.rows.map((row) => [row.id, row] as const)));
+  for (const id of ['ChainMax', 'ForkCount', 'SplitCount']) {
+    expect(formatStatValue(2, rows.get(id)!.format)).toBe('2');
+  }
+});
+
+test('double critical roll multiplier is displayed as a chance', () => {
+  const row = STAT_SECTIONS.flatMap(section => section.rows).find(row => row.id === 'CritBifurcates')!;
+  expect(formatStatValue(4 / 3, row.format)).toBe('33.3%');
+  expect(formatStatValue(1, row.format)).toBe('0%');
+  expect(formatStatValue(2, row.format)).toBe('100%');
+  expect(formatStatValue(0, row.format)).toBe('0%');
+});

@@ -151,3 +151,5 @@ pub use trigger::{
 pub(crate) fn round(value: f64) -> f64 {
     (value * 1_000_000_000.0).round() / 1_000_000_000.0
 }
+
+mod sidebar;

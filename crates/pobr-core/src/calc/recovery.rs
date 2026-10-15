@@ -412,9 +412,7 @@ fn fill_net_recovery(env: &mut Env) {
     out.net_energy_shield_regen = out.energy_shield_regen_recovery - loss[2];
     // This panel total combines Life, Mana, ES and Ward. Rage recovery remains
     // its own channel; its spending still contributes to TotalBuildDegen.
-    out.total_net_regen = out.net_life_regen
-        + out.net_mana_regen
-        + out.net_energy_shield_regen
-        + out.ward_regen_recovery
-        - costs[3];
+    out.net_ward_regen = out.ward_regen_recovery - costs[3];
+    out.total_net_regen =
+        out.net_life_regen + out.net_mana_regen + out.net_energy_shield_regen + out.net_ward_regen;
 }

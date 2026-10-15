@@ -128,3 +128,6 @@ mod unique_lines_3;
 
 #[path = "skills/minion_counts.rs"]
 mod minion_counts;
+
+#[path = "skills/sidebar_remaining.rs"]
+mod sidebar_remaining;

@@ -4050,6 +4050,48 @@
       "source_note": "Game stat additive_spell_damage_modifiers_apply_to_attack_damage (Crown of Eyes): increases and reductions, not more/less or added damage."
     },
     {
+      "id": "blood_price_enemy_life_reservation",
+      "pattern": "enemies in your presence have at least (\\d+)% of life reserved",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LifeReservationPercent",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "EnemyInPresence"
+            }
+          ]
+        }
+      ],
+      "verified": true,
+      "batch": "sidebar-3",
+      "source_note": "Game stat unique_blood_price_enemies_in_presence_have_at_least_%_life_reserved: Enemies in your Presence have at least {0}% of Life Reserved."
+    },
+    {
+      "id": "double_presence_radius",
+      "pattern": "presence radius is doubled",
+      "mods": [
+        {
+          "name": "PresenceRadius",
+          "type": "MORE",
+          "value": 100
+        }
+      ],
+      "verified": true,
+      "batch": "sidebar-3",
+      "source_note": "Game stat unique_double_presence_radius: Presence Radius is doubled."
+    },
+    {
       "id": "body_armour_grants_spirit_increased",
       "pattern": "body armour grants (\\d+)% increased spirit",
       "mods": [

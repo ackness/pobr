@@ -1565,3 +1565,19 @@ fn skill_keywords_restrict_to_the_skills_of_those_types() {
     assert!(fire[0].matches(&detonate_dead));
     assert!(!fire[0].matches(&ice_shot));
 }
+
+#[test]
+fn blood_price_and_radiant_grief_preserve_presence_semantics() {
+    let parsed = parse_mod("Enemies in your Presence have at least 10% of Life Reserved").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed, "{parsed:?}");
+    assert_eq!(parsed.mods[0].name.as_str(), "EnemyModifier", "{parsed:?}");
+    assert!(
+        parsed.mods[0]
+            .tags
+            .contains(&ModTag::condition("EnemyInPresence", false)),
+        "{parsed:?}"
+    );
+    let doubled = parse_mod("Presence Radius is doubled").unwrap();
+    assert_eq!(doubled.status, ParseStatus::Parsed);
+    assert_eq!(doubled.mods[0].name.as_str(), "PresenceRadius");
+}

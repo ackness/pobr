@@ -259,6 +259,14 @@ impl Env {
                 0.0
             };
         }
+        if !origin.summoned_by.is_empty() {
+            self.player.mod_db.add_mod(
+                crate::Modifier::number("SelectedMinionLimit", ModType::Base, f64::from(limit))
+                    .with_tag(crate::ModTag::SkillName {
+                        names: vec![crate::skill_env::skill_name_from_id(&origin.summoned_by)],
+                    }),
+            );
+        }
         actor.is_companion = origin.is_companion;
         actor.minion = Some(MinionIdentity {
             summoner: origin.summoner,

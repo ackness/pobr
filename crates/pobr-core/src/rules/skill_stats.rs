@@ -116,9 +116,11 @@ pub fn corpse_explosion_damage(stat: &str, value: f64) -> Option<(DamageType, f6
 
 /// The stats that say how many minions a summoning skill creates, of each
 /// kind of minion it summons.
-const SUMMONED_MINION_COUNTS: [&str; 1] = [
+const SUMMONED_MINION_COUNTS: [&str; 2] = [
     // Cackling Companions: "Summons {0} Hyenas".
     "skill_hyena_cackle_size",
+    // Wolf Pack: pack size grows from 3 at gem level 1 to 6 at level 20.
+    "skill_wolf_pack_size",
 ];
 
 /// Whether the stat `stat` of a summoning skill is the number of minions it
@@ -260,6 +262,39 @@ pub fn crushes_on_hit(stat: &str) -> bool {
 /// leaves the stat to the extracted stat map.
 pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
     match stat {
+        "skill_disabled_unless_cloned" => Some(vec![Modifier::flag("MirageSkill")]),
+        // The action's own movement penalty, with Mobility/Deliberation
+        // modifying the penalty rather than the character's movement speed.
+        "movement_speed_+%_final_while_performing_action" => Some(vec![Modifier::number(
+            "SkillMovementSpeed",
+            ModType::More,
+            value,
+        )]),
+        "movement_speed_penalty_+%_while_performing_action" => Some(vec![Modifier::number(
+            "MovementSpeedPenalty",
+            ModType::Inc,
+            value,
+        )]),
+        "support_mobility_movement_speed_penalty_+%_final_while_performing_action"
+        | "support_deliberation_movement_speed_penalty_+%_final_while_performing_action" => {
+            Some(vec![Modifier::number(
+                "MovementSpeedPenalty",
+                ModType::More,
+                value,
+            )])
+        }
+        "can_perform_skill_while_moving" => Some(vec![Modifier::flag("UsableWhileMoving")]),
+        "aura_effect_+%" => Some(vec![Modifier::number(
+            "SelectedMagnitude",
+            ModType::Inc,
+            value,
+        )]),
+        "curse_effect_+%" => Some(vec![Modifier::number(
+            "SelectedCurseEffect",
+            ModType::Inc,
+            value,
+        )]),
+
         // The selected effect deals no damage; secondary explosions have
         // their own stat sets without this stat.
         "base_deal_no_damage" => Some(vec![Modifier::flag("DealNoDamage")]),
