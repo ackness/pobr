@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-15-ranger-deadeye-ice-shot-98039d0e72ec",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/zhouwenweigy-6144/%E6%88%91%E7%88%B1%E4%B8%80%E7%A2%8C%E5%99%B6",
+    "account": "zhouwenweigy-6144",
+    "character": "我爱一碌噶",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-15T03:44:54+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0131-20261015-10033/character?account=zhouwenweigy-6144&name=%E6%88%91%E7%88%B1%E4%B8%80%E7%A2%8C%E5%99%B6&overview=forbidden-rites",
+    "snapshot": "0131-20261015-10033",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0131-20261015-10033/search?overview=forbidden-rites&class=Deadeye",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Ranger",
+    "ascendancy": "Deadeye",
+    "level": 99,
+    "main_skill": "Ice Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 7,
+    "code_sha256": "d0ae3b095471350cdb1cb81c0b2a5923d4b9ab80acf00d09018fdd1b86743784",
+    "code_chars": 12600,
+    "decoded_bytes": 47057
+  }
+}

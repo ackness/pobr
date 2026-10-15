@@ -2,7 +2,7 @@
   "_doc": "Reference rows `mise run triage` files as known: differences the repository already explains, so a triage lists only what is left to look at. `build` is a fragment of the build folder's name, `stats` the rows it explains, `reason` where the explanation is. Add an entry when a difference is documented as deliberate; remove it when the engine changes.",
   "differences": [
     {
-      "build": "ranger-deadeye-ice-shot",
+      "build": "ranger-deadeye-ice-shot-b6ce7b3a4329",
       "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "IgniteDPS"],
       "reason": "Minion Pact II takes the Rhoa of Rhoa Mount as the nearby minion (baseline note, crates/pobr-build/tests/parity/reference_report.rs)"
     },
@@ -27,7 +27,7 @@
       "reason": "enemies in Presence resist each element with their lowest Elemental Resistance, ailments included (docs/maintainer-guide.md, Presence)"
     },
     {
-      "build": "witch-infernalist-comet",
+      "build": "witch-infernalist-comet-d7afa87a05ea",
       "stats": ["Life", "LifeUnreserved", "LifeRecoverable"],
       "reason": "the weapon's runes read as the item says, one \"45% less maximum Life\", not PoB2's two runes of 15% and 30% less (docs/maintainer-guide.md, runes)"
     },
@@ -67,7 +67,7 @@
       "reason": "the cloud poisons without hitting, so it cannot critically hit and has no critical damage bonus; PoB2 leaves the bonus with no chance to crit (docs/maintainer-guide.md, Decompose)"
     },
     {
-      "build": "warrior-titan-his-scattering-calamity",
+      "build": "warrior-titan-his-scattering-calamity-686e624e7ff5",
       "stats": ["SpiritUnreserved"],
       "reason": "the Cast on Critical an Absent Amulet grants reserves no Spirit; the pinned PoB2 reserves nothing for this build (docs/maintainer-guide.md, Absent Amulet)"
     }

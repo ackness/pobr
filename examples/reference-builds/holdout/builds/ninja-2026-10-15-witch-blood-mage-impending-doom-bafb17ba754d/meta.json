@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-15-witch-blood-mage-impending-doom-bafb17ba754d",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%E6%8F%90%E8%8E%AB%E9%98%9F%E9%95%BF-7824/teemomowitch",
+    "account": "提莫队长-7824",
+    "character": "teemomowitch",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-15T03:44:54+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0131-20261015-10033/character?account=%E6%8F%90%E8%8E%AB%E9%98%9F%E9%95%BF-7824&name=teemomowitch&overview=forbidden-rites",
+    "snapshot": "0131-20261015-10033",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0131-20261015-10033/search?overview=forbidden-rites&class=Blood+Mage",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Blood Mage",
+    "level": 98,
+    "main_skill": "Impending Doom"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 7,
+    "code_sha256": "0395f2a3f063f05b2e594f7eddeadca723e341b4a844b0b0dd0fb862ecc1abcf",
+    "code_chars": 12372,
+    "decoded_bytes": 45791
+  }
+}

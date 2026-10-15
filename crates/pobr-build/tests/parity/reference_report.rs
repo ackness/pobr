@@ -327,25 +327,27 @@ const BASELINES: [Baseline; 3] = [
     // (Frost Bomb) take Evergrasping Ring's Chaos from all of an enemy's
     // damage, not only from Physical, so their TotalEHP is lower; Decompose's
     // reference keeps a critical damage bonus for a cloud that cannot crit.
+    //
+    // Then 56 builds and 3055 rows: the holdout set of 2026-10-15 joined, at
+    // the 13 builds and 988 rows it was measured at, once the next holdout
+    // was fetched.
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
-        dps_builds: 43,
-        agreeing_rows: 2067,
+        dps_builds: 56,
+        agreeing_rows: 3055,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
-    // Fetched 2026-10-15 from poe.ninja's snapshot of 2026-10-14, the last
+    // Fetched 2026-10-15 from poe.ninja's snapshot of 2026-10-15, the last
     // character of each ascendancy not already committed
     // (`mise run builds:fetch examples/reference-builds/holdout --pick last`),
-    // and measured before any change: 11 builds and 971 rows.
-    //
-    // 12 builds and 978 rows after the changes the tuned set's 41 builds
-    // record; 979 rows after those of its 43, 13 builds and 984 rows after
-    // those of its 2062 rows, and 988 rows after those of its 2067.
+    // and measured before any change: 19 builds and 1008 rows. (The holdout
+    // before it, fetched the day before and measured at 11 builds and 971
+    // rows, is part of the tuned set now.)
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
-        dps_builds: 13,
-        agreeing_rows: 988,
+        dps_builds: 19,
+        agreeing_rows: 1008,
     },
 ];
 

@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-15-monk-acolyte-of-chayula-ice-nova-258457c22f10",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%E7%BE%8E%E5%91%B3%E5%96%B5-5411/%E9%AA%87%E5%91%B3%E5%8D%81%E8%B6%B3",
+    "account": "美味喵-5411",
+    "character": "骇味十足",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-15T03:44:54+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0131-20261015-10033/character?account=%E7%BE%8E%E5%91%B3%E5%96%B5-5411&name=%E9%AA%87%E5%91%B3%E5%8D%81%E8%B6%B3&overview=forbidden-rites",
+    "snapshot": "0131-20261015-10033",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0131-20261015-10033/search?overview=forbidden-rites&class=Acolyte+of+Chayula",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Acolyte of Chayula",
+    "level": 99,
+    "main_skill": "Ice Nova"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 12,
+    "code_sha256": "d35d886f20a9d742223b6f140d64a64e9f145609db88bae41243b87f38143238",
+    "code_chars": 11708,
+    "decoded_bytes": 44118
+  }
+}

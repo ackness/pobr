@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-15-witch-abyssal-lich-thrashing-vines-2d5a643070cd",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/wariows-0069/PrecisoDeUmOB",
+    "account": "wariows-0069",
+    "character": "PrecisoDeUmOB",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-15T03:44:54+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0131-20261015-10033/character?account=wariows-0069&name=PrecisoDeUmOB&overview=forbidden-rites",
+    "snapshot": "0131-20261015-10033",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0131-20261015-10033/search?overview=forbidden-rites&class=Abyssal+Lich",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Abyssal Lich",
+    "level": 98,
+    "main_skill": "Thrashing Vines"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 8,
+    "code_sha256": "d1ff189582b378fb8fa0d86d74a5a09ac537a2ace46266cad7dda79a84f36070",
+    "code_chars": 11900,
+    "decoded_bytes": 43620
+  }
+}

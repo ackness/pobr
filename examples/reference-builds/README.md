@@ -9,7 +9,7 @@
 | `tuned/` | 找差异、修引擎。`mise run accuracy examples/reference-builds/tuned/builds` 看每个构筑的差异，`mise run diagnose <构筑>` 看丢掉的输入，`mise run compare <构筑>` 与钉定的 PoB2 逐个 stat 对照 | 修完后上调 `reference_report.rs` 里的基线 |
 | `holdout/` | 只测量。它的总数回答“没人调过的构筑上 PoBR 有多准” | 不对其中的构筑运行 `diagnose` 或 `compare`，不按它的差异挑选要修的内容；只看 `mise run accuracy` 的总数 |
 
-`examples/wasm-benchmark/builds` 的 8 个构筑同样已被逐个修过，属于前一类。`tuned/selection-holdout-2026-10-13.json` 是并入 `tuned/` 的那批 holdout 的抓取记录。
+`examples/wasm-benchmark/builds` 的 8 个构筑同样已被逐个修过，属于前一类。`tuned/selection-holdout-2026-10-13.json` 与 `tuned/selection-holdout-2026-10-15.json` 是并入 `tuned/` 的两批 holdout 的抓取记录。
 
 一旦按 `holdout/` 里某个构筑的差异改了引擎，这组数字就不再说明“没调过的构筑”。需要新一轮目标时，把 `holdout/` 的构筑移入 `tuned/`，再抓一批新的作 `holdout/`。
 
@@ -104,5 +104,7 @@ mise run builds:fetch examples/reference-builds/holdout --pick last
 | 2026-10-15（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 13（57%） | 984/1076（91.4%） |
 | 2026-10-15（第三十六轮：物品自身的 “+N to maximum Runic Ward” 与 “Gain % of maximum Life as Extra maximum Runic Ward” 计入符文护盾；Presence 内的敌人从全部伤害获得混沌伤害（Evergrasping Ring）；Renly's Training 替换盾牌的格挡值；Gemling 的 Mote 不重复计物品授予的技能；角色的光环作用于召唤物；Decompose 的毒云不能暴击；分诊列出 EHP 的逐类型项和本构筑相关的未读取词条） | `tuned/` | 46 | 43（93%） | 2067/2146（96.3%） |
 | 2026-10-15（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 13（57%） | 988/1076（91.8%） |
+| 2026-10-15（换轮：上面的 `holdout/` 23 个并入 `tuned/`，按上一行的数字计入） | `tuned/` | 69 | 56（81%） | 3055/3222（94.8%） |
+| 2026-10-15（新抓取，poe.ninja 2026-10-15 的快照，每个升华取未入库的最后一个角色；未做任何针对性修改） | `holdout/` | 23 | 19（83%） | 1008/1077（93.6%） |
 
 吻合行里有按游戏规则有意不同于参考值的行（例如护身符授予的技能不保留精魄，见 `reference_report.rs` 基线旁的说明），所以上限不是 100%。
