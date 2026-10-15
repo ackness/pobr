@@ -396,10 +396,14 @@ const BASELINES: [Baseline; 3] = [
     // skill DoT, crossbow timing, culling and projectile speed became
     // display stats, so the reference's rows for them are compared too
     // (new rows, not changed calculations).
+    //
+    // Then 1293 rows: unique lines that were not parsed now compute by their
+    // game stats (Blackheart's Armour against Chaos hits, Vigilant View's and
+    // Goregirdle's caps, Matsya's halved Spirit reservation and others).
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
         dps_builds: 18,
-        agreeing_rows: 1291,
+        agreeing_rows: 1293,
     },
 ];
 
