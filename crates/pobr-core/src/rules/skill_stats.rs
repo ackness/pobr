@@ -286,6 +286,14 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         stat if is_minion_stat(stat) => Some(Vec::new()),
         // Read where a minion's skill is chosen (`calc::MinionSkill`).
         COMMAND_SKILL_STAT => Some(Vec::new()),
+        // "Your Hits can't be Evaded" (including the implicit stat on palms).
+        "global_always_hit" => Some(vec![Modifier::flag("CannotBeEvaded")]),
+        // Mace Strike hits once with each weapon. Keep each hit's damage and
+        // critical chance, but count both hits when dual wielding.
+        "skill_double_hits_when_dual_wielding" => Some(vec![
+            Modifier::number("DPS", ModType::More, 100.0)
+                .with_tag(ModTag::condition("DualWielding", false)),
+        ]),
         // Reap: "Culling Strike" (`calc::skill_dot::cull_multiplier`).
         "kill_enemy_on_hit_if_under_10%_life" => Some(vec![Modifier::flag("CanCull")]),
         // Put on the enemy whichever skill crushes it
