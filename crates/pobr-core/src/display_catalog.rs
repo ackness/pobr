@@ -305,6 +305,12 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::TimeSeconds,
             "ChannelTime",
         ),
+        computed(
+            "ChannelTimeToTrigger",
+            Cat::SkillMechanics,
+            Vt::TimeSeconds,
+            "ChannelTimeToTrigger",
+        ),
         // Offence
         computed("TotalDPS", Cat::Offence, Vt::Number, "TotalDPS"),
         computed("TotalHitAvg", Cat::HitDamage, Vt::Number, "AverageHit"),
@@ -979,6 +985,7 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "MineThrowCount" => output.mine_throw_count,
         "WarcryCastTime" => output.warcry_cast_time,
         "ChannelTime" => output.channel_time,
+        "ChannelTimeToTrigger" => output.channel_time_to_trigger,
         "ManaPercentCost" => output.mana_percent_cost,
         "ManaPercentPerSecondCost" => output.mana_percent_per_second_cost,
         "ManaPerSecondCost" => output.mana_per_second_cost,

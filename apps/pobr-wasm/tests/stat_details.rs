@@ -16,6 +16,102 @@ fn close(actual: f64, expected: f64, at: &str) {
         "{at}: {actual} != {expected}"
     );
 }
+
+// Evaluate the published arithmetic, independently of the engine. New derived
+// descriptors cannot pass just by returning a plausible-looking input list.
+fn evaluate(formula: &str, inputs: &std::collections::BTreeMap<&str, &Value>) -> f64 {
+    struct Parser<'a> {
+        text: &'a [u8],
+        inputs: &'a std::collections::BTreeMap<&'a str, &'a Value>,
+    }
+    impl Parser<'_> {
+        fn eat(&mut self, c: u8) -> bool {
+            while self.text.first() == Some(&b' ') {
+                self.text = &self.text[1..];
+            }
+            if self.text.first() == Some(&c) {
+                self.text = &self.text[1..];
+                true
+            } else {
+                false
+            }
+        }
+        fn expr(&mut self) -> f64 {
+            let mut value = self.product();
+            loop {
+                if self.eat(b'+') {
+                    value += self.product();
+                } else if self.eat(b'-') {
+                    value -= self.product();
+                } else {
+                    return value;
+                }
+            }
+        }
+        fn product(&mut self) -> f64 {
+            let mut value = self.atom();
+            loop {
+                if self.eat(b'*') {
+                    value *= self.atom();
+                } else if self.eat(b'/') {
+                    value /= self.atom();
+                } else {
+                    return value;
+                }
+            }
+        }
+        fn atom(&mut self) -> f64 {
+            if self.eat(b'-') {
+                return -self.atom();
+            }
+            if self.eat(b'(') {
+                let value = self.expr();
+                assert!(self.eat(b')'));
+                return value;
+            }
+            let len = self
+                .text
+                .iter()
+                .take_while(|c| c.is_ascii_alphanumeric() || **c == b'.')
+                .count();
+            assert!(len > 0, "invalid formula near {:?}", self.text);
+            let token = std::str::from_utf8(&self.text[..len]).unwrap();
+            self.text = &self.text[len..];
+            if let Ok(n) = token.parse::<f64>() {
+                return n;
+            }
+            if !self.eat(b'(') {
+                return self.inputs[token].as_f64().unwrap_or(f64::INFINITY);
+            }
+            let mut args = vec![self.expr()];
+            while self.eat(b',') {
+                args.push(self.expr());
+            }
+            assert!(self.eat(b')'));
+            match token {
+                "round" => {
+                    let scale = 10_f64.powf(args[1]);
+                    (args[0] * scale).round() / scale
+                }
+                "floor" => args[0].floor(),
+                "ceil" => args[0].ceil(),
+                "sqrt" => args[0].sqrt(),
+                "pow" => args[0].powf(args[1]),
+                "max" => args.into_iter().fold(f64::NEG_INFINITY, f64::max),
+                "min" => args.into_iter().fold(f64::INFINITY, f64::min),
+                "clamp" => args[0].clamp(args[1], args[2]),
+                _ => panic!("unsupported formula function {token}"),
+            }
+        }
+    }
+    let mut parser = Parser {
+        text: formula.as_bytes(),
+        inputs,
+    };
+    let result = parser.expr();
+    assert!(parser.text.is_empty(), "unconsumed formula: {formula}");
+    result
+}
 fn check_rows(detail: &Value, at: &str) {
     let rows = detail["mods"].as_array().unwrap();
     for (kind, total) in [
@@ -65,14 +161,63 @@ fn requests_select_details_without_changing_stats() {
         .keys()
         .map(String::as_str)
         .collect();
-    assert_eq!(keys, ["Life", "ManaCost", "NetLifeRegen"]);
-    assert_eq!(details["breakdown_descriptors"]["Str"], "none");
+    assert_eq!(keys, ["Life", "ManaCost", "NetLifeRegen", "Str"]);
+    assert_eq!(details["breakdown_descriptors"]["Str"], "sources");
     let mut bad = base;
     bad["breakdowns"] = json!(["UnknownStat"]);
     assert!(
         pobr_wasm::calculate_build_json(&bad.to_string())
             .unwrap_err()
             .contains("unknown breakdown")
+    );
+}
+
+#[test]
+fn channel_and_full_dps_details_use_the_selected_gem_group() {
+    init();
+    let request = json!({
+        "character": {"class_name":"Sorceress", "level":90},
+        "socket_groups": [{"main_active_skill":2,"include_in_full_dps":true,"gems":[
+            {"skill_id":"MetaCastWhileChannellingPlayer"}, {"skill_id":"CometPlayer"}
+        ]}],
+        "full_dps":true,
+        "breakdowns":["ChannelTimeToTrigger", "FullDPS", "FullDotDPS"]
+    });
+    let result = calculate(request);
+    let channel = &result["breakdowns"]["ChannelTimeToTrigger"]["derived"];
+    assert_eq!(
+        channel["formula"],
+        "round(MaximumChannelEnergy / ChannelEnergyGain, 9)"
+    );
+    assert_eq!(channel["inputs"][0]["value"], 300.0);
+    assert_eq!(channel["inputs"][1]["value"], 60.0);
+    let full = &result["breakdowns"]["FullDPS"]["derived"];
+    let inputs = full["inputs"].as_array().unwrap();
+    assert_eq!(
+        inputs.len(),
+        result["full_dps"]["skills"].as_array().unwrap().len()
+    );
+    assert!(inputs.iter().all(|input| {
+        input["id"]
+            .as_str()
+            .unwrap()
+            .starts_with("SkillGroup1Effect")
+    }));
+    let total: f64 = inputs
+        .iter()
+        .map(|input| input["value"].as_f64().unwrap())
+        .sum();
+    assert!(total > 0.0);
+    close(
+        total,
+        result["full_dps"]["dps"].as_f64().unwrap(),
+        "included skill DPS",
+    );
+    let empty =
+        calculate(json!({"character":{"class_name":"Witch","level":80},"breakdowns":["FullDPS"]}));
+    assert_eq!(
+        empty["breakdowns"]["FullDPS"]["derived"]["inputs"][0]["value"],
+        0.0
     );
 }
 
@@ -87,6 +232,14 @@ fn every_detail_kind_has_truthful_totals_and_derived_inputs() {
         *counts.entry(format!("{kind:?}")).or_insert(0) += 1;
     }
     eprintln!("detail descriptors: {counts:?}");
+    eprintln!(
+        "none: {:?}",
+        descriptors
+            .iter()
+            .filter(|(_, k)| **k == DetailKind::None)
+            .map(|(id, _)| id)
+            .collect::<Vec<_>>()
+    );
     let fixtures = pobr_gamedata::repo_data_root().join("../examples/demo-bd-test/builds");
     let mut seen = std::collections::BTreeSet::new();
     for entry in std::fs::read_dir(fixtures).unwrap() {
@@ -95,7 +248,7 @@ fn every_detail_kind_has_truthful_totals_and_derived_inputs() {
             continue;
         }
         let result = calculate(
-            json!({"pob_code":std::fs::read_to_string(code).unwrap(),"breakdowns":requested}),
+            json!({"pob_code":std::fs::read_to_string(code).unwrap(),"breakdowns":requested,"full_dps":true}),
         );
         let stats: std::collections::BTreeMap<_, _> = result["stats"]
             .as_array()
@@ -141,68 +294,7 @@ fn every_detail_kind_has_truthful_totals_and_derived_inputs() {
                             "{id}: missing formula input {token}"
                         );
                     }
-                    let n = |key: &str| inputs[key].as_f64().unwrap();
-                    let round = |value: f64| (value * 1e9).round() / 1e9;
-                    let expected = if id.ends_with("PerSecondCost") {
-                        let cost = id.replace("PerSecond", "");
-                        round(n(&cost) * n("CostUseRate") + n("ContinuousCost"))
-                    } else if id.starts_with("Net") {
-                        n(&format!(
-                            "{}RegenRecovery",
-                            id.trim_start_matches("Net").trim_end_matches("Regen")
-                        )) - n("Spending")
-                            - n("SelfDamage")
-                    } else if id == "TotalNetRegen"
-                        || id == "TotalBuildDegen"
-                        || id.contains("LeechGain")
-                    {
-                        inputs.values().map(|v| v.as_f64().unwrap()).sum()
-                    } else if id.ends_with("UnreservedPercent") {
-                        let resource = id.trim_end_matches("UnreservedPercent");
-                        if n(resource) > 0.0 {
-                            n(&format!("{resource}Unreserved")) / n(resource) * 100.0
-                        } else {
-                            0.0
-                        }
-                    } else if id == "SpiritUnreserved" {
-                        n("Spirit") - n("SpiritReserved")
-                    } else if id.ends_with("Unreserved") {
-                        (n(id.trim_end_matches("Unreserved"))
-                            - n(&id.replace("Unreserved", "Reserved")))
-                        .max(0.0)
-                    } else if id.ends_with("OverCap") {
-                        round((n("UncappedResistance") - n("MaximumResistance")).max(0.0))
-                    } else if id.starts_with("Req") {
-                        inputs
-                            .values()
-                            .map(|v| v.as_f64().unwrap())
-                            .fold(0.0, f64::max)
-                    } else if id.contains("Duration") {
-                        round(
-                            (n("BaseDuration").max(0.0)
-                                * n("DurationModifier")
-                                * n("DebuffExpiration")
-                                / n("ServerTick"))
-                            .ceil()
-                                * n("ServerTick"),
-                        )
-                    } else if id == "TotalEHP" {
-                        assert!(d["context"].as_array().unwrap().len() >= 4);
-                        if n("EnemyDamage") <= 0.0 {
-                            0.0
-                        } else {
-                            round(
-                                n("NumberOfMitigatedHits") * n("EnemyDamage")
-                                    / (1.0 - n("NotHitChance") / 100.0),
-                            )
-                        }
-                    } else if id == "AreaOfEffectRadiusMetres" {
-                        n("AoeRadius") / 10.0
-                    } else if id == "EsRechargePerSecond" {
-                        n("EnergyShield") * n("EsRechargeRate")
-                    } else {
-                        panic!("unvalidated derived stat {id}")
-                    };
+                    let expected = evaluate(formula, &inputs);
                     if let Some(value) = stats[id.as_str()].as_f64() {
                         close(value, expected, id);
                     }

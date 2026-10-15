@@ -98,6 +98,38 @@ pub fn maximum_energy(spells: &[SocketedSpell], ms_per_energy: f64) -> f64 {
         .sum()
 }
 
+/// The empty-to-full channel duration uses continuous Energy gain, without
+/// assuming a refund from an earlier trigger or changing the spell's DPS.
+pub(crate) fn channel_trigger_terms(db: &crate::ModDb, cfg: &crate::CalcConfig) -> (f64, f64) {
+    let maximum = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("ChannelTriggerMaximumEnergy")],
+    );
+    let gain = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("ChannelTriggerEnergyPerSecond")],
+    );
+    let names = [
+        ModName::from(ENERGY_GENERATED),
+        ModName::from("ChannelTriggerEnergyGenerated"),
+    ];
+    (
+        maximum,
+        gain * (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names),
+    )
+}
+
+pub(crate) fn channel_time_to_trigger(db: &crate::ModDb, cfg: &crate::CalcConfig) -> f64 {
+    let (maximum, gain) = channel_trigger_terms(db, cfg);
+    if maximum > 0.0 && gain > 0.0 {
+        round(maximum / gain)
+    } else {
+        0.0
+    }
+}
+
 /// Energy one critical hit gives: `energy_per_power` for each Power of the
 /// enemy, by the share of its Ailment Threshold the hit deals, by the
 /// modifiers to Energy gained.

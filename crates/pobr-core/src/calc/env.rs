@@ -75,6 +75,8 @@ pub struct Env {
     pub crossbow_reload: Option<super::CrossbowReload>,
     /// What the EHP stage computed with (`None` before it runs).
     pub ehp_terms: Option<super::EhpTerms>,
+    /// The earlier single-hit estimate, retained for its optional legacy view.
+    pub(crate) legacy_ehp_terms: Option<super::ehp::EhpResult>,
     /// Normal leech, instant leech and on-hit recovery by resource, for optional details.
     pub(crate) leech_gain_terms: [[[f64; 3]; 3]; 2],
     /// MH/OH hand pass input (contract 1; written by the orchestration
@@ -123,6 +125,7 @@ impl Env {
             ailment_terms: Vec::new(),
             crossbow_reload: None,
             ehp_terms: None,
+            legacy_ehp_terms: None,
             leech_gain_terms: [[[0.0; 3]; 3]; 2],
             hand_sources: Vec::new(),
             main_hand_weapon_damage: Vec::new(),

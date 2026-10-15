@@ -47,7 +47,7 @@ fn catalog_entry_counts_locked() {
     );
     assert_eq!(
         catalog.len() - planned,
-        212,
+        213,
         "a change in Computed entry count needs explicit review"
     );
 }
@@ -77,10 +77,12 @@ fn sidebar_views_preserve_units_and_zero_pool_semantics() {
         firing_rate: 5.0,
         reload_time: 0.8,
         culling_dps: 40.0,
+        channel_time_to_trigger: 5.0,
         projectile_speed_mod: 1.8,
         ..OutputTable::default()
     };
     for (id, expected) in [
+        ("ChannelTimeToTrigger", 5.0),
         ("Str", 101.0),
         ("Dex", 202.0),
         ("Int", 303.0),

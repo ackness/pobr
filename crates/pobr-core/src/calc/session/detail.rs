@@ -4,6 +4,8 @@ use super::CalculationSession;
 use crate::ModEvaluation;
 use pobr_data::prelude::{ModName, ModType};
 
+pub use super::detail_views::DERIVED_STATS;
+
 pub struct SourceGroup<'a> {
     pub name: String,
     pub more_precision: Option<u32>,
@@ -19,10 +21,206 @@ pub struct DerivedDetail {
     pub context: Vec<(String, f64)>,
 }
 
-/// Only genuine player-side queries belong here. Enemy-side and non-additive
-/// relationships are described by `derived_detail`, never synthetic mod rows.
+/// Each group represents a genuine query. Explicit enemy groups use the enemy
+/// database; derived relationships never appear as synthetic modifier rows.
 pub fn source_names(stat: &str) -> Vec<String> {
     let names: &[&str] = match stat {
+        "Rage" => &[
+            "MaximumRage",
+            "MinimumRage",
+            "RageRegen",
+            "Condition:CanGainRage",
+            "Multiplier:RageStack",
+        ],
+        "FiringRate" => &[
+            "AttackSpeed",
+            "CastSpeed",
+            "SkillSpeed",
+            "ActionSpeed",
+            "TotalAttackTime",
+            "TotalCastTime",
+            "CooldownRecovery",
+            "CrossbowReloadTimeBase",
+        ],
+        "ChillEffect" => &["AilmentMagnitude", "EnemyChillMagnitude", "CannotChill"],
+        "TriggerRateCap" => &[
+            "TriggerCooldownBase",
+            "TriggeredSkillCooldown",
+            "CooldownRecovery",
+            "TriggerRateCapOverride",
+            "SkillIsTriggered",
+            "CWCTriggerTime",
+            "CWCAddsCastTime",
+        ],
+        "SkillTriggerRate" => &[
+            "TriggerCooldownBase",
+            "TriggeredSkillCooldown",
+            "CooldownRecovery",
+            "TriggerSourceRate",
+            "TriggerSourceHitChance",
+            "TriggerSourceCritChance",
+            "TriggerOnCrit",
+            "TriggerSourceGlobal",
+            "TriggerRateCapOverride",
+            "SkillIsTriggered",
+            "CWCTriggerTime",
+            "CWCAddsCastTime",
+            "EnergyTriggerMaximum",
+            "EnergyPerPowerOnCrit",
+            "EnergyGenerated",
+            "Multiplier:EnemyPower",
+            "EnergyRefundHalfChance",
+            "EnergySource",
+        ],
+        "ReloadTime" => &[
+            "CrossbowReloadTimeBase",
+            "ReloadSpeed",
+            "AttackSpeed",
+            "CastSpeed",
+            "SkillSpeed",
+            "CrossbowHasNoAmmo",
+        ],
+        "ChannelTime" => &[
+            "ChannelMinimumTime",
+            "FlameblastMinimumChannelTime",
+            "FlameblastMaxStages",
+            "SkillChannelStages",
+            "SkillChannelStageTimeOverride",
+            "ChannelStartLock",
+            "ChannelFixedAttackTime",
+            "ChannelReleaseTime",
+            "ChannelReleaseFraction",
+            "ChannelMaxStages",
+            "ChannelCycle",
+            "AttackSpeed",
+            "CastSpeed",
+            "SkillSpeed",
+            "ActionSpeed",
+        ],
+        "ShockEffect" => &["EnemyShockMagnitude", "AilmentMagnitude", "CannotShock"],
+        "FreezeBuildupPct" => &[
+            "EnemyFreezeBuildup",
+            "EnemyImmobilisationBuildup",
+            "ImmobilisationBuildup",
+            "CannotFreeze",
+        ],
+        "ElectrocuteBuildupPct" => &[
+            "EnemyElectrocuteBuildup",
+            "EnemyImmobilisationBuildup",
+            "ImmobilisationBuildup",
+            "CannotElectrocute",
+        ],
+        "Str" => &["Strength"],
+        "Dex" => &["Dexterity"],
+        "Int" => &["Intelligence"],
+        "EffectiveMovementSpeedMod" => &[
+            "MovementSpeed",
+            "ArmourMovementPenalty",
+            "ActionSpeed",
+            "MovementSpeedCannotBeBelowBase",
+            "Condition:IgnoreMovementPenalties",
+        ],
+        "MovementSpeedWhileUsingSkill" => &[
+            "MovementSpeed",
+            "ArmourMovementPenalty",
+            "MovementSpeedCannotBeBelowBase",
+            "Condition:IgnoreMovementPenalties",
+            "SkillMovementSpeed",
+            "MovementSpeedPenalty",
+            "UsableWhileMoving",
+        ],
+        "PresenceRadiusMetres" => &["PresenceRadius", "PresenceArea"],
+        "AuraEffectMod" => &[
+            "AuraEffect",
+            "SelectedAuraEffect",
+            "SkillAuraEffectOnSelf",
+            "SelectedSkillAuraEffectOnSelf",
+            "Magnitude",
+            "SelectedMagnitude",
+            "AuraCannotAffectSelf",
+        ],
+        "CurseEffectMod" => &["CurseEffect", "SelectedCurseEffect"],
+        "ActiveMinionLimit" => &["SelectedMinionLimit"],
+        "ExplodeChance" => &["EnemyExplodeChance"],
+        "QuantityMultiplier" => &["QuantityMultiplier"],
+        "PierceCount" => &[
+            "PierceCount",
+            "PierceChance",
+            "CannotPierce",
+            "PierceAllTargets",
+            "EnemyAlwaysPierceSelf",
+        ],
+        "ForkCount" => &["ForkOnce", "ForkTwice", "ForkCountMax", "CannotFork"],
+        "ChainMax" => &[
+            "ChainCountMax",
+            "BeamChainCountMax",
+            "ChainChance",
+            "CannotChain",
+            "NoAdditionalChains",
+            "AdditionalProjectilesAddChainsInstead",
+            "ProjectileCount",
+            "TwoAdditionalProjectilesChance",
+            "SurpassingProjectileChance",
+        ],
+        "SplitCount" => &[
+            "SplitCount",
+            "EnemySelfSplitCount",
+            "CannotSplit",
+            "AdditionalProjectilesAddSplitsInstead",
+            "AdditionalChainsAddSplitsInstead",
+            "ChainCountMax",
+            "ProjectileCount",
+            "TwoAdditionalProjectilesChance",
+            "SurpassingProjectileChance",
+        ],
+        "BounceCount" => &[
+            "BounceCount",
+            "AdditionalProjectilesAddBouncesInstead",
+            "ProjectileCount",
+            "TwoAdditionalProjectilesChance",
+            "SurpassingProjectileChance",
+        ],
+        "StoredUses" => &[
+            "SkillStoredUsesBase",
+            "AdditionalCooldownUses",
+            "SkillCooldownBase",
+        ],
+        "AvoidAllDamageFromHits" => &["AvoidAllDamageFromHitsChance"],
+        "AvoidProjectileDamage" => &["AvoidProjectileDamageChance"],
+        "AvoidIgnite" => &[
+            "AvoidIgnite",
+            "IgniteImmune",
+            "AvoidElementalAilments",
+            "ElementalAilmentImmune",
+            "ShockAvoidAppliesToElementalAilments",
+            "AvoidShock",
+            "ShockImmune",
+        ],
+        "AvoidChill" => &[
+            "AvoidChill",
+            "ChillImmune",
+            "AvoidElementalAilments",
+            "ElementalAilmentImmune",
+            "ShockAvoidAppliesToElementalAilments",
+            "AvoidShock",
+            "ShockImmune",
+        ],
+        "AvoidFreeze" => &[
+            "AvoidFreeze",
+            "FreezeImmune",
+            "AvoidElementalAilments",
+            "ElementalAilmentImmune",
+            "ShockAvoidAppliesToElementalAilments",
+            "AvoidShock",
+            "ShockImmune",
+        ],
+        "AvoidShock" => &["AvoidShock", "ShockImmune", "ElementalAilmentImmune"],
+        "AvoidPoison" => &["AvoidPoison", "PoisonImmune"],
+        "AvoidBleeding" => &["AvoidBleeding", "BleedImmune"],
+        "CritExtraDamageReduction" => &["ReduceCritExtraDamage"],
+        "ChargePowerMaximum" => &["PowerChargesMax"],
+        "ChargeFrenzyMaximum" => &["FrenzyChargesMax"],
+        "ChargeEnduranceMaximum" => &["EnduranceChargesMax"],
         "Ward" => &["Ward", "Defences"],
         "LifeReserved" => &[
             "LifeReserved",
@@ -168,6 +366,23 @@ pub fn source_names(stat: &str) -> Vec<String> {
     if !names.is_empty() {
         return names.iter().map(|s| (*s).to_string()).collect();
     }
+    if let Some(element) = stat.strip_prefix("TakenMulti")
+        && ["Physical", "Fire", "Cold", "Lightning", "Chaos"].contains(&element)
+    {
+        let mut names = vec![
+            "DamageTaken".into(),
+            format!("{element}DamageTaken"),
+            "DamageTakenWhenHit".into(),
+            format!("{element}DamageTakenWhenHit"),
+        ];
+        if ["Fire", "Cold", "Lightning"].contains(&element) {
+            names.extend([
+                "ElementalDamageTaken".into(),
+                "ElementalDamageTakenWhenHit".into(),
+            ]);
+        }
+        return names;
+    }
     for resource in ["Life", "Mana", "EnergyShield", "Ward", "Rage"] {
         if stat == format!("{resource}Regen") || stat == format!("{resource}RegenRecovery") {
             let mut names = [
@@ -244,16 +459,53 @@ impl CalculationSession {
         }
         source_names(stat)
             .into_iter()
+            .filter(|name| {
+                !matches!(name.as_str(), "AttackSpeed" | "CastSpeed" | "SkillSpeed")
+                    || super::super::skill_use_time::speed_names_for(&cfg)
+                        .iter()
+                        .any(|n| n.as_str() == name)
+            })
             .map(|name| {
-                let names = [ModName::from(name.as_str())];
+                let mut query_cfg = cfg.clone();
+                if stat == "SkillTriggerRate" && name == "EnergyGenerated" {
+                    query_cfg.conditions.insert("CritRecently".into(), true);
+                }
+                if stat == "Rage" && name == "Multiplier:RageStack" {
+                    query_cfg.conditions.insert("Combat".into(), true);
+                    query_cfg.conditions.insert("CanGainRage".into(), true);
+                }
+                if stat == "FiringRate"
+                    && let Some((hand, _)) = super::super::perform::main_hand_scope(&self.env)
+                {
+                    query_cfg = hand;
+                }
+                if matches!(stat, "EffectiveMovementSpeedMod" | "PresenceRadiusMetres")
+                    || stat == "MovementSpeedWhileUsingSkill"
+                        && !matches!(
+                            name.as_str(),
+                            "SkillMovementSpeed" | "MovementSpeedPenalty" | "UsableWhileMoving"
+                        )
+                {
+                    query_cfg.flags = pobr_data::prelude::ModFlags::NONE;
+                    query_cfg.keyword_flags = pobr_data::prelude::KeywordFlags::NONE;
+                    query_cfg.skill_types = pobr_data::prelude::SkillTypes::NONE;
+                    query_cfg.skill_name = None;
+                }
+                let (db, query_name) = match name.as_str() {
+                    "EnemySelfSplitCount" => (&self.env.enemy.mod_db, "SelfSplitCount"),
+                    "EnemyAlwaysPierceSelf" => (&self.env.enemy.mod_db, "AlwaysPierceSelf"),
+                    _ => (db, name.as_str()),
+                };
+                let cfg = &query_cfg;
+                let names = [ModName::from(query_name)];
                 SourceGroup {
                     totals: (
-                        db.sum(ModType::Base, &cfg, &names),
-                        db.sum(ModType::Inc, &cfg, &names),
-                        db.more(&cfg, &names),
+                        db.sum(ModType::Base, cfg, &names),
+                        db.sum(ModType::Inc, cfg, &names),
+                        db.more(cfg, &names),
                     ),
-                    more_precision: db.more_precision_for(&name),
-                    rows: db.evaluate_names(&cfg, &names),
+                    more_precision: db.more_precision_for(query_name),
+                    rows: db.evaluate_names(cfg, &names),
                     name,
                 }
             })
@@ -261,6 +513,9 @@ impl CalculationSession {
     }
 
     pub fn derived_detail(&self, stat: &str) -> Option<DerivedDetail> {
+        if DERIVED_STATS.contains(&stat) {
+            return self.derived_view(stat);
+        }
         let out = self.output();
         let mut context = Vec::new();
         let (formula, inputs): (String, Vec<(String, f64)>) = match stat {

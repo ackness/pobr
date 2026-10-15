@@ -1,4 +1,5 @@
 pub mod detail;
+mod detail_views;
 pub(super) mod preparation;
 
 use std::collections::BTreeMap;

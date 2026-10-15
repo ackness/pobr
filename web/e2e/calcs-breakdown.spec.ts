@@ -307,9 +307,24 @@ test('on-demand details cover steps, sources, derived inputs and an explicit emp
 
   const strength = page.locator('#breakdown-Str');
   await strength.locator('.breakdown-toggle').click();
-  await expect(strength).toHaveAttribute('data-detail-kind', 'none');
-  await expect(strength.getByRole('status')).toHaveText('No breakdown available for this stat.');
-  await expect(sidebar.locator('[data-detail-kind="none"]').first()).toHaveAttribute('title', 'No breakdown available for this stat.');
+  await expect(strength).toHaveAttribute('data-detail-kind', 'sources');
+  await expect(strength.locator('.breakdown-sources')).toContainText('Strength');
+  await expect(strength.locator('.breakdown-sources tbody tr:not(.is-inactive)')).not.toHaveCount(0);
+  await strength.screenshot({ path: 'test-results/calcs-strength-sources.png' });
+
+  const burst = page.locator('#breakdown-AverageBurstDamage');
+  await burst.locator('.breakdown-toggle').click();
+  await expect(burst).toHaveAttribute('data-detail-kind', 'derived');
+  await expect(burst.locator('.derived-formula')).toContainText('Hits in one burst');
+  await expect(burst.locator('.breakdown-derived')).toContainText('Average Damage');
+  expect(num(await burst.locator('.breakdown-value').textContent())).toBeGreaterThan(0);
+  await burst.screenshot({ path: 'test-results/calcs-burst-derived.png' });
+
+  const simulation = page.locator('#breakdown-NumberOfDamagingHits');
+  await simulation.locator('.breakdown-toggle').click();
+  await expect(simulation).toHaveAttribute('data-detail-kind', 'none');
+  await expect(simulation.getByRole('status')).toHaveText('No breakdown available for this stat.');
+  await expect(sidebar.locator('[data-detail-kind="none"]')).toHaveCount(0);
 
   // Reopening a detail after an edit must describe the new calculation.
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Build', exact: true }).click();

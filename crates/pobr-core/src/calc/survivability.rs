@@ -706,12 +706,29 @@ pub fn calc_recoup(
 /// Source: agent-docs/recovery-charges-buffs.md §2.3;
 ///       PoB2 `src/Modules/CalcDefence.lua`'s Recoup section;
 ///       PoB2 `src/Modules/CalcPerform.lua`'s `4SecondRecoup` flag handling.
+pub(crate) struct RecoupTerms {
+    pub damage: f64,
+    pub percent: f64,
+    pub duration: f64,
+    pub recovery: f64,
+}
+
 pub fn calc_recoup_from_db(
     db: &ModDb,
     cfg: &CalcConfig,
     damage_taken: f64,
     resource: RecoupResource,
 ) -> RecoupResult {
+    let t = recoup_terms(db, cfg, damage_taken, resource);
+    calc_recoup(t.damage, t.percent, t.duration, t.recovery)
+}
+
+pub(crate) fn recoup_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    damage_taken: f64,
+    resource: RecoupResource,
+) -> RecoupTerms {
     let mut recoup_pct = db.sum(ModType::Base, cfg, &[resource.recoup_mod_name()]);
     // life_recoup_also_applies_to_energy_shield copies the percentage;
     // the recipient retains its own recovery rate and recoup duration.
@@ -721,9 +738,11 @@ pub fn calc_recoup_from_db(
         recoup_pct += db.sum(ModType::Base, cfg, &[ModName::from("LifeRecoup")]);
     }
     if recoup_pct <= 0.0 {
-        return RecoupResult {
-            rate_per_second: 0.0,
+        return RecoupTerms {
+            damage: damage_taken,
+            percent: recoup_pct,
             duration: RECOUP_DURATION_DEFAULT,
+            recovery: 1.0,
         };
     }
 
@@ -746,5 +765,10 @@ pub fn calc_recoup_from_db(
     let rate_more = db.more(cfg, &[recovery_rate_name]);
     let recovery_rate_mod = (1.0 + rate_inc / 100.0) * rate_more;
 
-    calc_recoup(damage_taken, recoup_pct, duration, recovery_rate_mod)
+    RecoupTerms {
+        damage: damage_taken,
+        percent: recoup_pct,
+        duration,
+        recovery: recovery_rate_mod,
+    }
 }

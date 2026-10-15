@@ -171,6 +171,7 @@ TrapThrowCount = "每次投擲陷阱數"
 MineLayingTime = "地雷投擲時間（秒）"
 MineThrowCount = "每次投擲地雷數"
 WarcryCastTime = "戰吼施放時間（秒）"
+ChannelTimeToTrigger = "觸發前引導時間（秒）"
 ChannelTime = "引導時間（秒）"
 # Recovery and self-inflicted resource loss
 LifeRegenRecovery = "每秒生命再生與恢復"

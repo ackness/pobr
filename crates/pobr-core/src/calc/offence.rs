@@ -516,11 +516,11 @@ fn use_rate_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> ActionR
 /// or the OVERRIDE value when one applies.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct AccuracyTerms {
-    base: f64,
-    flat: f64,
-    inc: f64,
-    more: f64,
-    override_value: Option<f64>,
+    pub(crate) base: f64,
+    pub(crate) flat: f64,
+    pub(crate) inc: f64,
+    pub(crate) more: f64,
+    pub(crate) override_value: Option<f64>,
     pub(crate) value: f64,
 }
 

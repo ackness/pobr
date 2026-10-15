@@ -1860,6 +1860,7 @@ impl HandAilmentMerge {
 /// when two passes do, how their DPS was merged.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AilmentStageTerms {
+    pub stacked_merge: Option<HandAilmentMerge>,
     pub passes: Vec<(crate::HandTag, AilmentTerms)>,
     /// Per pass, the source hit by damage type: the parts add up to that
     /// pass's `source_hit` and `source_crit`.

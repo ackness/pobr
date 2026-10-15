@@ -99,6 +99,7 @@ pub struct OutputTable {
     pub mine_throw_count: f64,
     pub warcry_cast_time: f64,
     pub channel_time: f64,
+    pub channel_time_to_trigger: f64,
 
     pub mana_percent_cost: f64,
     pub mana_percent_per_second_cost: f64,
@@ -591,6 +592,7 @@ impl Default for OutputTable {
             mine_throw_count: 0.0,
             warcry_cast_time: 0.0,
             channel_time: 0.0,
+            channel_time_to_trigger: 0.0,
 
             mana_percent_cost: 0.0,
             mana_percent_per_second_cost: 0.0,

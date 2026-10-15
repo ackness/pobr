@@ -29,6 +29,41 @@ fn data() -> BuildData {
         .expect("load repository data")
 }
 
+#[test]
+fn channel_time_to_trigger_uses_the_meta_gems_energy_capacity_and_continuous_gain() {
+    let data = data();
+    let xml = build_xml(&[], &[], COMET)
+        .replace("MetaCastOnCritPlayer", "MetaCastWhileChannellingPlayer")
+        .replace("Cast on Critical", "Cast while Channelling");
+    let options = options(EnemyTier::None, &[]);
+    let out = calculate(&data, &xml, &options);
+    // 1 s base cast + 2 × Comet's 1 s added total cast time = 300 Energy;
+    // cast_while_channelling_gain_X_energy_per_second_while_channelling = 60.
+    assert_eq!(out.channel_time_to_trigger, 5.0);
+    let faster = calculate(
+        &data,
+        &xml,
+        &DataOrchestratorOptions {
+            extra_modifier_texts: vec![
+                SPELL_DAMAGE.into(),
+                "Meta Skills gain 100% increased Energy".into(),
+            ],
+            ..options.clone()
+        },
+    );
+    assert_eq!(faster.channel_time_to_trigger, 2.5);
+    assert_eq!(out.dps, faster.dps);
+    let two_spells = xml.replace("</Skill>", &format!("{}</Skill>", spark()));
+    assert_eq!(
+        calculate(&data, &two_spells, &options).channel_time_to_trigger,
+        (370.0_f64 / 60.0 * 1e9).round() / 1e9
+    );
+    assert_eq!(
+        comet(&data, EnemyTier::None, &[]).channel_time_to_trigger,
+        0.0
+    );
+}
+
 fn gem(skill_id: &str, name: &str) -> String {
     format!(
         r#"<Gem skillId="{skill_id}" nameSpec="{name}" level="20" quality="0" enabled="true"/>"#

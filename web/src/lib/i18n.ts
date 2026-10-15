@@ -1230,6 +1230,13 @@ const STAT_EXTRA_LABELS: Record<string, { 'zh-TW': string; 'zh-CN': string }> = 
 /** 聚合属性名（breakdown 键 / 归因字段 / diff 列表）→ 本地化。
  * 回退链：breakdown 名表 → 侧栏展示目录标签 → 补充译名表 → 原 id。 */
 export function statNameLabel(lang: Lang, id: string): string {
+  const skillContribution = /^SkillGroup(\d+)Effect(\d+)DPS$/.exec(id);
+  if (skillContribution) {
+    const [, group, effect] = skillContribution;
+    if (lang === 'zh-TW') return `技能組 ${group} · 效果 ${effect} DPS`;
+    if (lang === 'zh-CN') return `技能组 ${group} · 效果 ${effect} DPS`;
+    return `Skill group ${group} · effect ${effect} DPS`;
+  }
   const fromMods = MOD_NAME_LABELS[id]?.[lang];
   if (fromMods) return fromMods;
   for (const section of STAT_SECTIONS) {
