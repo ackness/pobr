@@ -202,3 +202,62 @@ fn display_stat_text_wave2_avoidance_labels() {
         "規避冰凍"
     );
 }
+
+#[test]
+fn sidebar_extensions_have_both_labels() {
+    let en = Translator::new(LanguageId::new("en-US")).unwrap();
+    let zh = Translator::new(LanguageId::new("zh-TW")).unwrap();
+    for (id, english, chinese) in [
+        ("Str", "Strength", "力量"),
+        ("Dex", "Dexterity", "敏捷"),
+        ("Int", "Intelligence", "智慧"),
+        ("Rage", "Rage", "盛怒"),
+        (
+            "FireResistOverCap",
+            "Fire Res. Over Max",
+            "超過上限火焰抗性",
+        ),
+        (
+            "ColdResistOverCap",
+            "Cold Res. Over Max",
+            "超過上限冰冷抗性",
+        ),
+        (
+            "LightningResistOverCap",
+            "Lightning Res. Over Max",
+            "超過上限閃電抗性",
+        ),
+        (
+            "ChaosResistOverCap",
+            "Chaos Res. Over Max",
+            "超過上限混沌抗性",
+        ),
+        ("LifeUnreservedPercent", "Unreserved Life", "未保留生命"),
+        ("ManaUnreservedPercent", "Unreserved Mana", "未保留魔力"),
+        ("SpiritUnreservedPercent", "Unreserved Spirit", "未保留精魂"),
+        (
+            "PreEffectiveCritChance",
+            "Crit Chance before Accuracy",
+            "命中確認前暴擊率",
+        ),
+        ("StoredUses", "Stored Uses", "儲存使用次數"),
+        ("TotalDot", "Skill DoT DPS", "技能持續傷害 DPS"),
+        (
+            "WithDotDPS",
+            "Hit and Skill DoT DPS",
+            "擊中與技能持續傷害 DPS",
+        ),
+        ("FiringRate", "Firing Rate", "射擊速率"),
+        ("ReloadTime", "Reload Time (s)", "裝填時間（秒）"),
+        ("CullingDPS", "Culling DPS", "撲殺 DPS"),
+        (
+            "ProjectileSpeedMod",
+            "Projectile Speed Multiplier",
+            "投射物速度倍率",
+        ),
+    ] {
+        let id = DisplayStatId::new(id);
+        assert_eq!(en.display_stat_text(&id), english);
+        assert_eq!(zh.display_stat_text(&id), chinese);
+    }
+}

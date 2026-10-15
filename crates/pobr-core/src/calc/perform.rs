@@ -218,6 +218,10 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     env.player.output.crit_hit_avg = output.stored_crit_avg.iter().map(|(_, avg)| avg).sum();
     env.player.output.main_hand = hand_pass.main_hand;
     env.player.output.off_hand = hand_pass.off_hand;
+    env.player.output.strength = env.cfg.stat("Strength");
+    env.player.output.dexterity = env.cfg.stat("Dexterity");
+    env.player.output.intelligence = env.cfg.stat("Intelligence");
+    env.player.output.rage = env.cfg.stat("Rage");
     // Backfill the curse panel (buff_pass produces this during env_finalize stage 4, before the
     // whole-table overwrite above, relayed via Env::curse_pass_output; None = buff_pass didn't
     // run, keeps the Default 0).
@@ -603,8 +607,9 @@ fn fill_mechanics(env: &mut Env) {
     // Chaos resist goes through the same full-channel vendor convention as the three
     // elements (Override/INC/MORE + the dual-name convention + resist_floor; vendor's
     // resistTypeList includes Chaos, and isElemental=false doesn't merge in the shared name).
-    env.player.output.chaos_resistance =
-        super::offence::resolve_resistance(db, cfg, 0.0, "Chaos", false).final_value;
+    let chaos_resistance = super::offence::resolve_resistance(db, cfg, 0.0, "Chaos", false);
+    env.player.output.chaos_resistance = chaos_resistance.final_value;
+    env.player.output.chaos_resistance_over_cap = chaos_resistance.over_cap;
     // Accuracy rating as the main-hand pass reads it (the hit chance input).
     env.player.output.accuracy = {
         let input = player_input(env);
@@ -936,6 +941,8 @@ fn fill_crossbow_reload(env: &mut Env) {
         return;
     }
     let reload_time = super::skill_use_time::crossbow_reload_time(db, cfg, base_reload);
+    env.player.output.firing_rate = firing_rate;
+    env.player.output.reload_time = reload_time;
     let bolt_count = db.sum(ModType::Base, cfg, &[ModName::from("CrossbowBoltCount")]);
     let chance_not_consume = db.sum(
         ModType::Base,
@@ -975,7 +982,12 @@ fn fill_crossbow_reload(env: &mut Env) {
 /// present) is preferred, otherwise the single-stack expected DPS. With no skill DoT and no
 /// ailment DoT, the output is all zero and the contract fields stay at their neutral Default.
 fn fill_skill_dot_stage(env: &mut Env) {
-    let dot = skill_dot_terms(env).output();
+    let terms = skill_dot_terms(env);
+    // Culling Strike removes the last part of the enemy's Life. The same
+    // threshold multiplier already contributes to CombinedDPS.
+    env.player.output.culling_dps =
+        round((terms.base_dps + terms.total_dot_dps) * (terms.cull_multiplier - 1.0));
+    let dot = terms.output();
     super::skill_dot::fill_skill_dot(&mut env.player.output, &dot);
 }
 
@@ -1251,6 +1263,12 @@ fn fill_skill_mechanics(env: &mut Env) {
     let proj = calc_projectile_count(db, cfg);
     if proj.base_count > 0.0 {
         env.player.output.projectile_count = proj.projectile_count;
+    }
+    if cfg.flags.intersects(ModFlags::PROJECTILE) || proj.base_count > 0.0 {
+        let projectile_speed = [ModName::from("ProjectileSpeed")];
+        env.player.output.projectile_speed_mod = (1.0
+            + db.sum(ModType::Inc, cfg, &projectile_speed) / 100.0)
+            * db.more(cfg, &projectile_speed);
     }
 
     // AoE: needs the skill's base radius (SkillAreaRadiusBase BASE). Skipped if absent (stays 0).

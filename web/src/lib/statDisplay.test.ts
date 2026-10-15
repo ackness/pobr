@@ -43,4 +43,21 @@ describe('STAT_SECTIONS', () => {
       }
     }
   });
+
+  test('sidebar extensions have rows with display units', () => {
+    const rows = new Map(STAT_SECTIONS.flatMap((section) => section.rows.map((row) => [row.id, row] as const)));
+    for (const id of [
+      'Str', 'Dex', 'Int', 'Rage', 'FireResistOverCap', 'ColdResistOverCap',
+      'LightningResistOverCap', 'ChaosResistOverCap', 'LifeUnreservedPercent',
+      'ManaUnreservedPercent', 'SpiritUnreservedPercent', 'PreEffectiveCritChance',
+      'StoredUses', 'TotalDot', 'WithDotDPS',
+      'FiringRate', 'ReloadTime', 'CullingDPS', 'ProjectileSpeedMod',
+    ]) {
+      expect(rows.has(id), id).toBe(true);
+    }
+    expect(rows.get('LifeUnreservedPercent')?.format).toBe('percent');
+    expect(rows.get('PreEffectiveCritChance')?.format).toBe('percent');
+    expect(rows.get('ReloadTime')?.label['en-US']).toContain('(s)');
+    expect(rows.get('ProjectileSpeedMod')?.format).toBe('float2');
+  });
 });

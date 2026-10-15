@@ -15,6 +15,43 @@ fn player_with(base: ActorBaseStats, mods: Vec<Modifier>) -> Env {
 }
 
 #[test]
+fn sidebar_overcap_and_projectile_speed_use_the_existing_modifier_buckets() {
+    let mut env = player_with(
+        ActorBaseStats::default(),
+        vec![
+            Modifier::number("ChaosResistance", ModType::Base, 125.0),
+            Modifier::number("MaximumChaosResistance", ModType::Base, 5.0),
+            Modifier::number("ProjectileSpeed", ModType::Inc, 50.0),
+            Modifier::number("ProjectileSpeed", ModType::More, 20.0),
+            Modifier::number("ProjectileCount", ModType::Base, 1.0),
+        ],
+    );
+    perform(&mut env).unwrap();
+    assert_eq!(env.player.output.chaos_resistance, 80.0);
+    assert_eq!(env.player.output.chaos_resistance_over_cap, 45.0);
+    assert!((env.player.output.projectile_speed_mod - 1.8).abs() < 1e-9);
+}
+
+#[test]
+fn culling_display_is_the_extra_part_of_combined_damage() {
+    let mut env = player_with(
+        ActorBaseStats {
+            hit_min: 100.0,
+            hit_max: 100.0,
+            action_rate: 1.0,
+            ..ActorBaseStats::default()
+        },
+        vec![Modifier::flag("CanCull")],
+    );
+    // Culling Strike's threshold against a Unique enemy is 5%.
+    env.enemy.mod_db.add_mod(Modifier::flag("Condition:Unique"));
+    perform(&mut env).unwrap();
+    let out = &env.player.output;
+    assert!((out.culling_dps - 100.0 / 19.0).abs() < 0.01);
+    assert!((out.combined_dps - out.dps - out.culling_dps).abs() < 0.01);
+}
+
+#[test]
 fn perform_fills_effective_action_rate_and_skill_use_time() {
     let base = ActorBaseStats {
         action_rate: 1.0,

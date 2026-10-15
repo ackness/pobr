@@ -172,7 +172,30 @@ fn calculate_build_json_shape() {
     assert_keys(&stats[0], &["id", "value", "category"], "stats[0]");
 
     // The sidebar's key fields exist and have finite values.
-    for key in ["TotalDPS", "Life", "FireResist"] {
+    for key in [
+        "TotalDPS",
+        "Life",
+        "FireResist",
+        "Str",
+        "Dex",
+        "Int",
+        "Rage",
+        "FireResistOverCap",
+        "ColdResistOverCap",
+        "LightningResistOverCap",
+        "ChaosResistOverCap",
+        "LifeUnreservedPercent",
+        "ManaUnreservedPercent",
+        "SpiritUnreservedPercent",
+        "PreEffectiveCritChance",
+        "StoredUses",
+        "TotalDot",
+        "WithDotDPS",
+        "FiringRate",
+        "ReloadTime",
+        "CullingDPS",
+        "ProjectileSpeedMod",
+    ] {
         let stat = stats
             .iter()
             .find(|s| s["id"] == key)

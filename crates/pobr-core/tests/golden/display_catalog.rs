@@ -33,7 +33,7 @@ fn catalog_entries_have_pob_keys_and_known_status() {
 }
 
 /// Entry count pinned: F-3 flipped all 24 fields in the defense-extension batch to
-/// Computed -> Planned = 0, Computed = 110 (chaos resistance, accuracy, combined and total DoT DPS added later); new entries must explicitly update this assertion.
+/// New entries must explicitly update this assertion.
 #[test]
 fn catalog_entry_counts_locked() {
     let catalog = display_catalog();
@@ -47,9 +47,69 @@ fn catalog_entry_counts_locked() {
     );
     assert_eq!(
         catalog.len() - planned,
-        110,
+        129,
         "a change in Computed entry count needs explicit review"
     );
+}
+
+#[test]
+fn sidebar_views_preserve_units_and_zero_pool_semantics() {
+    let output = OutputTable {
+        strength: 101.0,
+        dexterity: 202.0,
+        intelligence: 303.0,
+        rage: 12.0,
+        fire_resistance_over_cap: 11.0,
+        cold_resistance_over_cap: 22.0,
+        lightning_resistance_over_cap: 33.0,
+        chaos_resistance_over_cap: 44.0,
+        life: 1000.0,
+        life_unreserved: 750.0,
+        mana: 400.0,
+        mana_unreserved: 300.0,
+        spirit: 120.0,
+        spirit_unreserved: 30.0,
+        pre_effective_crit_chance: 0.45,
+        crit_chance: 0.40,
+        cooldown_stored_uses: 3,
+        skill_total_dot: 500.0,
+        with_dot_dps: 750.0,
+        firing_rate: 5.0,
+        reload_time: 0.8,
+        culling_dps: 40.0,
+        projectile_speed_mod: 1.8,
+        ..OutputTable::default()
+    };
+    for (id, expected) in [
+        ("Str", 101.0),
+        ("Dex", 202.0),
+        ("Int", 303.0),
+        ("Rage", 12.0),
+        ("FireResistOverCap", 11.0),
+        ("ColdResistOverCap", 22.0),
+        ("LightningResistOverCap", 33.0),
+        ("ChaosResistOverCap", 44.0),
+        ("LifeUnreservedPercent", 75.0),
+        ("ManaUnreservedPercent", 75.0),
+        ("SpiritUnreservedPercent", 25.0),
+        ("PreEffectiveCritChance", 45.0),
+        ("StoredUses", 3.0),
+        ("TotalDot", 500.0),
+        ("WithDotDPS", 750.0),
+        ("FiringRate", 5.0),
+        ("ReloadTime", 0.8),
+        ("CullingDPS", 40.0),
+        ("ProjectileSpeedMod", 1.8),
+    ] {
+        assert_eq!(display_value(&output, id), expected, "{id}");
+    }
+    for id in [
+        "LifeUnreservedPercent",
+        "ManaUnreservedPercent",
+        "SpiritUnreservedPercent",
+    ] {
+        assert_eq!(display_value(&OutputTable::default(), id), 0.0, "{id}");
+    }
 }
 
 /// Defense-extension field batch: all Computed after F-3, golden keys aligned with meta.json.

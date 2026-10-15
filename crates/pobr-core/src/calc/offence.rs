@@ -169,7 +169,7 @@ impl MinimalOutput {
 pub(crate) struct ResistanceResolution {
     pub(crate) final_value: f64,
     max: f64,
-    over_cap: f64,
+    pub(crate) over_cap: f64,
     /// The terms the total was built from, kept for [`Self::formula`].
     base: f64,
     flat: f64,

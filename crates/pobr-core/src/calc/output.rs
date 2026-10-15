@@ -4,6 +4,10 @@ use super::{DamageComponent, MinimalOutput, SkillUseTime};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutputTable {
+    pub strength: f64,
+    pub dexterity: f64,
+    pub intelligence: f64,
+    pub rage: f64,
     pub life: f64,
     pub mana: f64,
     pub armour: f64,
@@ -21,6 +25,7 @@ pub struct OutputTable {
     pub fire_resistance_over_cap: f64,
     pub cold_resistance_over_cap: f64,
     pub lightning_resistance_over_cap: f64,
+    pub chaos_resistance_over_cap: f64,
     pub crit_chance: f64,
     /// Crit chance (fraction) before the hit-chance downgrade / lucky /
     /// bifurcate / inevitable, but after the cap. Used to show overflow in breakdowns.
@@ -44,6 +49,10 @@ pub struct OutputTable {
     pub skill_use_time: Option<SkillUseTime>,
     /// Effective action rate after applying the server tick cap (actions/s).
     pub effective_action_rate: f64,
+    /// Crossbow shots per second before accounting for reloading.
+    pub firing_rate: f64,
+    /// Time to reload, before the chance to reload instantly.
+    pub reload_time: f64,
     /// Ailment DPS.
     pub bleed_dps: f64,
     pub ignite_dps: f64,
@@ -170,6 +179,8 @@ pub struct OutputTable {
     pub aoe_area_mod: f64,
     /// Projectile count (0 without a projectile mod).
     pub projectile_count: f64,
+    /// Projectile speed multiplier (1 is unchanged).
+    pub projectile_speed_mod: f64,
     /// Cooldown (seconds; 0 = no cooldown) and the number of storable uses.
     pub cooldown: f64,
     pub cooldown_stored_uses: u32,
@@ -290,6 +301,8 @@ pub struct OutputTable {
     pub with_dot_dps: f64,
     /// Combined DPS (PoB2 `CombinedDPS`).
     pub combined_dps: f64,
+    /// Equivalent damage per second contributed by Culling Strike.
+    pub culling_dps: f64,
     // Per-hand sub-tables (decision D4: strongly-typed sub-tables, with the
     // flat PoB key `MainHand.X` resolved through display_catalog's pob_key).
     // The existing top-level fields' semantics = after combineStat (a
@@ -391,6 +404,10 @@ pub struct MinionOutput {
 impl Default for OutputTable {
     fn default() -> Self {
         Self {
+            strength: 0.0,
+            dexterity: 0.0,
+            intelligence: 0.0,
+            rage: 0.0,
             life: 0.0,
             mana: 0.0,
             armour: 0.0,
@@ -408,6 +425,7 @@ impl Default for OutputTable {
             fire_resistance_over_cap: 0.0,
             cold_resistance_over_cap: 0.0,
             lightning_resistance_over_cap: 0.0,
+            chaos_resistance_over_cap: 0.0,
             crit_chance: 0.0,
             pre_effective_crit_chance: 0.0,
             crit_multiplier: 0.0,
@@ -419,6 +437,8 @@ impl Default for OutputTable {
             dps: 0.0,
             skill_use_time: None,
             effective_action_rate: 0.0,
+            firing_rate: 0.0,
+            reload_time: 0.0,
             bleed_dps: 0.0,
             ignite_dps: 0.0,
             poison_dps: 0.0,
@@ -494,6 +514,7 @@ impl Default for OutputTable {
             aoe_radius: 0.0,
             aoe_area_mod: 0.0,
             projectile_count: 0.0,
+            projectile_speed_mod: 0.0,
             cooldown: 0.0,
             cooldown_stored_uses: 0,
             mana_cost: 0.0,
@@ -544,6 +565,7 @@ impl Default for OutputTable {
             total_dot_dps: 0.0,
             with_dot_dps: 0.0,
             combined_dps: 0.0,
+            culling_dps: 0.0,
             //  Per-hand sub-tables default to None (always None in the fallback state; consumers skip on None).
             main_hand: None,
             off_hand: None,

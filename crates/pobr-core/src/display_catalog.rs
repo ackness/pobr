@@ -3,13 +3,11 @@
 //! Maps calculation results ([`OutputTable`](crate::calc::OutputTable)) to the
 //! stable [`DisplayStatDefinition`] / [`DisplayStatValue`] (pobr-data
 //! contract) consumed by upstream UI / parity checks. Calculations use only
-//! stable IDs internally; display text goes through i18n (not yet
-//! implemented).
+//! stable IDs internally; display text goes through i18n.
 //!
 //! - [`display_catalog`]: statically declares every display field (id /
 //!   category / value type / higher-is-better / PoB key). Computed fields are
-//!   marked `Computed`, not-yet-landed ones `Planned` (the defence extension
-//!   batch was fully flipped to `Computed` in F-3).
+//!   marked `Computed`, not-yet-landed ones `Planned`.
 //! - [`extract_display_values`]: extracts the current value of every
 //!   `Computed` field from an `OutputTable`.
 
@@ -25,11 +23,6 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
     let computed = |id: &str, cat: Cat, vt: Vt, pob: &str| {
         DisplayStatDefinition::computed(id, cat, vt).with_pob_key(pob)
     };
-    // Defence extensions (entered the catalog as Planned in W0.2): once the
-    // C/D/E/F tracks finish wiring up, F-3 (the sole exception to the
-    // output.rs/display_catalog freeze) flips them all to Computed at once —
-    // all 24 extension fields are produced by the perform fill stage.
-
     vec![
         // Offence
         computed("TotalDPS", Cat::Offence, Vt::Number, "TotalDPS"),
@@ -498,6 +491,77 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "TotalEHPLowestMaxHit",
         ),
+        // Additional sidebar views of the calculation's existing results.
+        computed("Str", Cat::Requirement, Vt::Number, "Str"),
+        computed("Dex", Cat::Requirement, Vt::Number, "Dex"),
+        computed("Int", Cat::Requirement, Vt::Number, "Int"),
+        computed("Rage", Cat::Resource, Vt::Number, "Rage"),
+        computed(
+            "FireResistOverCap",
+            Cat::Resistance,
+            Vt::Percent,
+            "FireResistOverCap",
+        ),
+        computed(
+            "ColdResistOverCap",
+            Cat::Resistance,
+            Vt::Percent,
+            "ColdResistOverCap",
+        ),
+        computed(
+            "LightningResistOverCap",
+            Cat::Resistance,
+            Vt::Percent,
+            "LightningResistOverCap",
+        ),
+        computed(
+            "ChaosResistOverCap",
+            Cat::Resistance,
+            Vt::Percent,
+            "ChaosResistOverCap",
+        ),
+        computed(
+            "LifeUnreservedPercent",
+            Cat::Resource,
+            Vt::Percent,
+            "LifeUnreservedPercent",
+        ),
+        computed(
+            "ManaUnreservedPercent",
+            Cat::Resource,
+            Vt::Percent,
+            "ManaUnreservedPercent",
+        ),
+        computed(
+            "SpiritUnreservedPercent",
+            Cat::Resource,
+            Vt::Percent,
+            "SpiritUnreservedPercent",
+        ),
+        computed(
+            "PreEffectiveCritChance",
+            Cat::Offence,
+            Vt::Percent,
+            "PreEffectiveCritChance",
+        ),
+        computed("StoredUses", Cat::SkillMechanics, Vt::Number, "StoredUses"),
+        computed("TotalDot", Cat::DotDamage, Vt::Number, "TotalDot"),
+        computed("WithDotDPS", Cat::Offence, Vt::Number, "WithDotDPS"),
+        computed("FiringRate", Cat::SkillMechanics, Vt::Number, "FiringRate"),
+        computed(
+            "ReloadTime",
+            Cat::SkillMechanics,
+            Vt::TimeSeconds,
+            "ReloadTime",
+        )
+        .with_higher_is_better(Some(false)),
+        computed("CullingDPS", Cat::Offence, Vt::Number, "CullingDPS"),
+        computed(
+            "ProjectileSpeedMod",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "ProjectileSpeedMod",
+        ),
     ]
 }
 
@@ -523,6 +587,25 @@ pub fn extract_display_values(output: &OutputTable) -> Vec<DisplayStatValue> {
 /// Unknown ids return 0.
 pub fn display_value(output: &OutputTable, id: &str) -> f64 {
     match id {
+        "Str" => output.strength,
+        "Dex" => output.dexterity,
+        "Int" => output.intelligence,
+        "Rage" => output.rage,
+        "FireResistOverCap" => output.fire_resistance_over_cap,
+        "ColdResistOverCap" => output.cold_resistance_over_cap,
+        "LightningResistOverCap" => output.lightning_resistance_over_cap,
+        "ChaosResistOverCap" => output.chaos_resistance_over_cap,
+        "LifeUnreservedPercent" => unreserved_percent(output.life_unreserved, output.life),
+        "ManaUnreservedPercent" => unreserved_percent(output.mana_unreserved, output.mana),
+        "SpiritUnreservedPercent" => unreserved_percent(output.spirit_unreserved, output.spirit),
+        "PreEffectiveCritChance" => output.pre_effective_crit_chance * 100.0,
+        "StoredUses" => f64::from(output.cooldown_stored_uses),
+        "TotalDot" => output.skill_total_dot,
+        "WithDotDPS" => output.with_dot_dps,
+        "FiringRate" => output.firing_rate,
+        "ReloadTime" => output.reload_time,
+        "CullingDPS" => output.culling_dps,
+        "ProjectileSpeedMod" => output.projectile_speed_mod,
         "TotalDPS" => output.dps,
         "TotalHitAvg" => output.total_hit_avg,
         // hit_chance / crit_chance are fractions (0..1) on the calc side, but
@@ -656,5 +739,14 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "TotalEHPLowestMaxHit" => output.total_ehp_lowest_max_hit,
 
         _ => 0.0,
+    }
+}
+
+/// A pool with no capacity has no unreserved share to display.
+fn unreserved_percent(unreserved: f64, maximum: f64) -> f64 {
+    if maximum > 0.0 {
+        unreserved / maximum * 100.0
+    } else {
+        0.0
     }
 }

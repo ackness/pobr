@@ -37,6 +37,8 @@ fn reload_cycle_average_scales_rate_and_dps() {
     let out = session.output();
 
     let expected_rate = 5.0 / (5.0 / 3.0 + 0.8); // ≈ 2.027027
+    assert_eq!(out.firing_rate, 3.0);
+    assert_eq!(out.reload_time, 0.8);
     assert!(
         (out.effective_action_rate - expected_rate).abs() < 1e-2,
         "cycle-average rate: {} vs {expected_rate}",
@@ -73,6 +75,8 @@ fn not_consume_ammo_100_keeps_firing_rate() {
     ]);
     session.perform_minimal().expect("perform");
     let out = session.output();
+    assert_eq!(out.firing_rate, 3.0);
+    assert_eq!(out.reload_time, 0.8);
     assert!(
         (out.effective_action_rate - 3.0).abs() < 1e-9,
         "not consuming ammo must degenerate to the pure fire rate: {}",
@@ -91,6 +95,8 @@ fn no_reload_data_is_neutral() {
     let mut baseline = CalculationSession::new(crossbow_input());
     baseline.perform_minimal().expect("perform");
     let base_out = baseline.output().clone();
+    assert_eq!(base_out.firing_rate, 0.0);
+    assert_eq!(base_out.reload_time, 0.0);
 
     let mut with_bolts_only = CalculationSession::new(crossbow_input());
     // Only a bolt-count mod, no reload base value: still zero-behavior (missing reload data never enters the model).

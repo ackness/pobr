@@ -42,6 +42,9 @@ fn per_attribute_modifiers_use_final_attributes_with_class_and_inc_more() {
     assert_eq!(out.life, 109.0);
     assert_eq!(out.mana, 121.0);
     assert!((out.total_hit_avg - 106.0).abs() < 1e-9);
+    assert_eq!(s.output().strength, 36.0);
+    assert_eq!(s.output().dexterity, 36.0);
+    assert_eq!(s.output().intelligence, 36.0);
 }
 
 /// Jack of all Trades: "2% increased Damage per 5 of your lowest Attribute"
