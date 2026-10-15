@@ -175,6 +175,16 @@
       "build": "grim-pillars-19a4efbb971d",
       "stats": ["TotalTotemPlacementTime", "ManaPerSecondCost", "LifePerSecondCost"],
       "reason": "Spell Totem is placed in its own 500 ms cast_time, not PoB2's 600 ms; per-second costs follow the placement rate (docs/maintainer-guide.md, Spell Totem)"
+    },
+    {
+      "build": "ritualist-purity-of-fire-d557864ceebc",
+      "stats": ["LifeRegenRecovery", "ManaRegenRecovery"],
+      "reason": "Wolf Pack creates skill_wolf_pack_size wolves and Licking Wounds counts each one in Presence (docs/maintainer-guide.md, Wolf Pack)"
+    },
+    {
+      "build": "spirit-walker-companion-zekoa-the-headcrusher",
+      "stats": ["ActiveMinionLimit"],
+      "reason": "the main skill's created minion limit; a companion without a limit stat is 1, PoB2 outputs 0 (docs/maintainer-guide.md, Wolf Pack)"
     }
   ]
 }
