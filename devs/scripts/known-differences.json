@@ -102,6 +102,11 @@
       "reason": "Doedre's Undoing spawns a Witchtoad every 0.25 seconds whatever the cast speed (docs/maintainer-guide.md, Doedre's Undoing)"
     },
     {
+      "build": "witch-blood-mage-impending-doom-c0dcbc68022c",
+      "stats": ["LifePerSecondCost"],
+      "reason": "Archmage adds a cost to Dark Consequences itself: Atalui converts it to Life and Efficiency II reduces it to 199, paid for each of 8 explosions/s (1592). PoB2 multiplies by the spell cast speed of 2.14/s (425.86), not its explosion rate (docs/maintainer-guide.md, Doedre's Undoing)"
+    },
+    {
       "build": "witch-abyssal-lich-twister-4028d0b52984",
       "stats": ["TotalDPS", "CombinedDPS", "CritMultiplier", "TotalDotDPS", "IgniteDPS", "AverageDamage", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
       "reason": "the Lich's Crystalline Phylactery doubles its jewel, \"100% increased Effect of bonuses gained from Socketed Jewel\", which the reference leaves out (docs/maintainer-guide.md, Crystalline Phylactery)"

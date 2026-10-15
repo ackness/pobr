@@ -2227,8 +2227,13 @@ fn fill_resource_cost_rates(env: &mut Env) {
         _,
         out.ward_percent_cost,
     ] = costs.percent;
+    // A sustained skill's explicit drain already describes ongoing payment.
+    // Its upfront cost starts the channel; each attack during it does not
+    // start another channel. Keep that cost visible without charging it again.
+    let ongoing =
+        |drain: f64, upfront: f64| round(if drain > 0.0 { drain } else { upfront * rate });
     let per_second =
-        std::array::from_fn::<_, 5, _>(|i| round(costs.per_second[i] + costs.upfront[i] * rate));
+        std::array::from_fn::<_, 5, _>(|i| ongoing(costs.per_second[i], costs.upfront[i]));
     [
         out.mana_per_second_cost,
         out.life_per_second_cost,
@@ -2236,9 +2241,8 @@ fn fill_resource_cost_rates(env: &mut Env) {
         out.rage_per_second_cost,
         out.ward_per_second_cost,
     ] = per_second;
-    let percent_per_second = std::array::from_fn::<_, 5, _>(|i| {
-        round(costs.percent_per_second[i] + costs.percent[i] * rate)
-    });
+    let percent_per_second =
+        std::array::from_fn::<_, 5, _>(|i| ongoing(costs.percent_per_second[i], costs.percent[i]));
     [
         out.mana_percent_per_second_cost,
         out.life_percent_per_second_cost,

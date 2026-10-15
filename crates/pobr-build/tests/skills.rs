@@ -129,6 +129,8 @@ mod unique_lines_3;
 #[path = "skills/minion_counts.rs"]
 mod minion_counts;
 
+#[path = "skills/cost_rate.rs"]
+mod cost_rate;
 #[path = "skills/party.rs"]
 mod party;
 #[path = "skills/sidebar_remaining.rs"]

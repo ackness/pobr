@@ -412,7 +412,8 @@ const BASELINES: [Baseline; 3] = [
         corpus: "examples/reference-builds/tuned/builds",
         dps_builds: 58,
         // Local flat requirements are added after base requirement conversion (+3 rows).
-        agreeing_rows: 5777,
+        // Explicit sustained drains do not repeat the upfront cost (+1 Oil Barrage row).
+        agreeing_rows: 5778,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
