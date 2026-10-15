@@ -922,6 +922,44 @@ impl CalculationSession {
         super::periodic::is_periodic(&self.env.player.mod_db, &self.env.cfg)
     }
 
+    /// Incoming enemy inputs used by EHP and maximum-hit calculations.
+    /// Preset rows remain visible but inactive when an explicit value replaces them.
+    pub fn enemy_hit_mods(&self, include_damage: bool) -> Vec<crate::ModEvaluation<'_>> {
+        let mut names = vec![
+            "EnemyFirePen",
+            "EnemyColdPen",
+            "EnemyLightningPen",
+            "EnemyPhysicalOverwhelm",
+            "EnemyHitCategory",
+        ];
+        if include_damage {
+            names.extend([
+                "EnemyPhysicalDamage",
+                "EnemyFireDamage",
+                "EnemyColdDamage",
+                "EnemyLightningDamage",
+                "EnemyChaosDamage",
+                "EnemyCritChance",
+                "EnemyCritDamage",
+                "EHPUnluckyWorstOf",
+            ]);
+        }
+        let db = &self.env.enemy.mod_db;
+        let cfg = &self.env.cfg;
+        let mut rows = db.evaluate_names(
+            cfg,
+            &names.into_iter().map(ModName::from).collect::<Vec<_>>(),
+        );
+        for row in &mut rows {
+            if row.modifier.mod_type == ModType::Base
+                && db.override_(cfg, row.modifier.name.as_str()).is_some()
+            {
+                row.active = false;
+            }
+        }
+        rows
+    }
+
     /// How the main skill's hits come when it is a rain (`calc::rain`):
     /// its `ActionRate` is the rate of these hits, not of its uses.
     pub fn rain(&self) -> Option<super::rain::RainSummary> {

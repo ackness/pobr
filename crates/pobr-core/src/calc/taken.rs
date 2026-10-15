@@ -277,6 +277,15 @@ pub fn build_mitigation_ctx(
     cfg: &CalcConfig,
     inputs: &MitigationInputs,
 ) -> MitigationCtx {
+    build_mitigation_ctx_for_category(db, cfg, inputs, HitCategory::Average)
+}
+
+pub(crate) fn build_mitigation_ctx_for_category(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    inputs: &MitigationInputs,
+    category: HitCategory,
+) -> MitigationCtx {
     // Global damage reduction ceiling: `Max("DamageReductionMax") or DamageReductionCap(=90)` (:1862).
     let global_dr_max = {
         let v = db.max_of(ModType::Base, cfg, &[ModName::from("DamageReductionMax")]);
@@ -333,8 +342,8 @@ pub fn build_mitigation_ctx(
         );
         // Resistance-taken multiplier (:2363; enemy penetration is left for config).
         ctx.resist_taken_multi[i] = 1.0 - inputs.resist_pct[i] / 100.0;
-        // takenFlat (Average view, :2365-2372): the base hit family, plus
-        // Attack/Spell each halved, plus the projectile variants each quartered.
+        // Flat damage taken follows the selected attack/spell and projectile
+        // context; Average gives each of the four categories equal weight.
         ctx.taken_flat[i] = db.sum(
             ModType::Base,
             cfg,
@@ -351,14 +360,14 @@ pub fn build_mitigation_ctx(
                 ModName::from("DamageTakenFromAttacks"),
                 ModName::from(format!("{name}DamageTakenFromAttacks")),
             ],
-        ) / 2.0
+        ) * category.select([1.0, 1.0, 0.0, 0.0], 0.0)
             + db.sum(
                 ModType::Base,
                 cfg,
                 &[ModName::from(format!(
                     "{name}DamageTakenFromProjectileAttacks"
                 ))],
-            ) / 4.0
+            ) * category.select([0.0, 1.0, 0.0, 0.0], 0.0)
             + db.sum(
                 ModType::Base,
                 cfg,
@@ -366,7 +375,7 @@ pub fn build_mitigation_ctx(
                     ModName::from("DamageTakenFromSpells"),
                     ModName::from(format!("{name}DamageTakenFromSpells")),
                 ],
-            ) / 2.0
+            ) * category.spell_share()
             + db.sum(
                 ModType::Base,
                 cfg,
@@ -374,9 +383,20 @@ pub fn build_mitigation_ctx(
                     ModName::from("DamageTakenFromSpellProjectiles"),
                     ModName::from(format!("{name}DamageTakenFromSpellProjectiles")),
                 ],
-            ) / 4.0;
+            ) * category.select([0.0, 0.0, 0.0, 1.0], 0.0);
         // Post-reduction multiplier (:2429/:2436-2437): taken inc/more (Average) × deflect; PoE2 has no suppression.
-        ctx.after_reduction_multi[i] = taken_mult_for_type_default(db, cfg, dt) * deflect_multi;
+        use super::defence::{HitSource, taken_mult_for_type_with_source};
+        let taken_mult = match category {
+            HitCategory::Average => taken_mult_for_type_default(db, cfg, dt),
+            HitCategory::Untyped => taken_mult_for_type_with_source(db, cfg, dt, None),
+            HitCategory::Melee | HitCategory::Projectile => {
+                taken_mult_for_type_with_source(db, cfg, dt, Some(HitSource::Attack))
+            }
+            HitCategory::Spell | HitCategory::SpellProjectile => {
+                taken_mult_for_type_with_source(db, cfg, dt, Some(HitSource::Spell))
+            }
+        };
+        ctx.after_reduction_multi[i] = taken_mult * deflect_multi;
         // Armour-applies percentage and effective applied armour (13-G7 percentage model).
         ctx.armour_applies_pct[i] = armour_applies_pct(db, cfg, dt);
         ctx.effective_applied_armour[i] = effective_applied_armour(
@@ -469,5 +489,93 @@ mod tests {
         assert_eq!(sum, 1000.0);
         assert_eq!(parts[DamageType::Fire as usize], 1000.0);
         assert_eq!(parts[DamageType::Physical as usize], 0.0);
+    }
+}
+
+/// Which incoming hits the configured enemy uses. Untyped hits do not
+/// inherit attack/spell evasion, block or damage-taken modifiers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum HitCategory {
+    Average,
+    Untyped,
+    Melee,
+    Projectile,
+    Spell,
+    SpellProjectile,
+}
+
+impl HitCategory {
+    pub(crate) fn from_enemy(db: &ModDb, cfg: &CalcConfig) -> Self {
+        match db.override_(cfg, "EnemyHitCategory") {
+            Some(1.0) => Self::Untyped,
+            Some(2.0) => Self::Melee,
+            Some(3.0) => Self::Projectile,
+            Some(4.0) => Self::Spell,
+            Some(5.0) => Self::SpellProjectile,
+            _ => Self::Average,
+        }
+    }
+
+    pub(crate) fn select(self, values: [f64; 4], untyped: f64) -> f64 {
+        match self {
+            Self::Average => values.iter().sum::<f64>() / 4.0,
+            Self::Untyped => untyped,
+            Self::Melee => values[0],
+            Self::Projectile => values[1],
+            Self::Spell => values[2],
+            Self::SpellProjectile => values[3],
+        }
+    }
+
+    pub(crate) fn spell_share(self) -> f64 {
+        self.select([0.0, 0.0, 1.0, 1.0], 0.0)
+    }
+
+    pub(crate) fn projectile_share(self) -> f64 {
+        self.select([0.0, 1.0, 0.0, 1.0], 0.0)
+    }
+}
+
+#[cfg(test)]
+mod configured_hit_tests {
+    use super::*;
+    use crate::Modifier;
+
+    #[test]
+    fn selected_hit_uses_only_its_damage_taken_buckets() {
+        let mut db = ModDb::new();
+        db.add_mod(Modifier::number("AttackDamageTaken", ModType::Inc, -50.0));
+        db.add_mod(Modifier::number(
+            "DamageTakenFromAttacks",
+            ModType::Base,
+            -10.0,
+        ));
+        db.add_mod(Modifier::number(
+            "PhysicalDamageTakenFromProjectileAttacks",
+            ModType::Base,
+            -5.0,
+        ));
+        db.add_mod(Modifier::number(
+            "DamageTakenFromSpellProjectiles",
+            ModType::Base,
+            -7.0,
+        ));
+        for (category, flat, mult) in [
+            (HitCategory::Average, -8.0, 0.75),
+            (HitCategory::Untyped, 0.0, 1.0),
+            (HitCategory::Melee, -10.0, 0.5),
+            (HitCategory::Projectile, -15.0, 0.5),
+            (HitCategory::Spell, 0.0, 1.0),
+            (HitCategory::SpellProjectile, -7.0, 1.0),
+        ] {
+            let ctx = build_mitigation_ctx_for_category(
+                &db,
+                &CalcConfig::default(),
+                &MitigationInputs::default(),
+                category,
+            );
+            assert_eq!(ctx.taken_flat[0], flat);
+            assert_eq!(ctx.after_reduction_multi[0], mult);
+        }
     }
 }

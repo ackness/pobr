@@ -45,6 +45,12 @@ pub const BREAKDOWN_STATS: &[&str] = &[
     "CritMultiplier",
     "Accuracy",
     "HitChance",
+    "TotalEHP",
+    "PhysicalMaximumHitTaken",
+    "FireMaximumHitTaken",
+    "ColdMaximumHitTaken",
+    "LightningMaximumHitTaken",
+    "ChaosMaximumHitTaken",
 ];
 
 #[derive(Debug, Clone, Serialize)]
@@ -663,7 +669,15 @@ fn hand_breakdowns(session: &CalculationSession, stat: &str) -> Vec<HandBreakdow
 /// neither modifier lines nor steps for it, or the stat is a damaging
 /// ailment the skill does not apply.
 pub fn stat_breakdown(session: &CalculationSession, stat: &str) -> Option<StatBreakdown> {
-    let rows = session.evaluated_stat_mods(stat);
+    let rows = match stat {
+        "TotalEHP" => session.enemy_hit_mods(true),
+        "PhysicalMaximumHitTaken"
+        | "FireMaximumHitTaken"
+        | "ColdMaximumHitTaken"
+        | "LightningMaximumHitTaken"
+        | "ChaosMaximumHitTaken" => session.enemy_hit_mods(false),
+        _ => session.evaluated_stat_mods(stat),
+    };
     let formula = session.stat_formula(stat).map(formula_steps);
     // A stat without modifier lines is still explained by its starting value
     // (a weapon's base crit chance, a skill's base rate).

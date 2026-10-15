@@ -27,7 +27,9 @@ use super::pool_setup::{
     MomHitPools, PoolBaseStats, build_pool_ctx, build_pool_state, mom_hit_pools,
 };
 use super::round;
-use super::taken::{MitigationCtx, MitigationInputs, build_mitigation_ctx, taken_hit_from_damage};
+use super::taken::{
+    MitigationCtx, MitigationInputs, build_mitigation_ctx_for_category, taken_hit_from_damage,
+};
 
 /// Final mitigation parameters per damage type.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -488,6 +490,12 @@ pub struct EnemyDamageIn {
     pub mult_by_type: [f64; 5],
 }
 
+/// Explicit inputs replace preset base values, leaving added enemy damage intact.
+fn enemy_base(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
+    db.override_(cfg, name)
+        .unwrap_or_else(|| db.sum(ModType::Base, cfg, &[ModName::from(name)]))
+}
+
 /// Enemy incoming-damage assembly (vendor CalcDefence.lua:2065-2137): the
 /// placeholder (`Enemy<X>Damage` BASE injected by setup_enemy) + the enemy
 /// db's `<X>Min`/`<X>Max` mod average (`:2098`) → per-type ×
@@ -512,11 +520,7 @@ pub fn assemble_enemy_damage(
         let i = dtype as usize;
         let name = type_prefix(dtype);
         // Placeholder (injected by setup_enemy; 0 under a bare Env with no enemy config → neutral).
-        let placeholder = enemy_db.sum(
-            ModType::Base,
-            cfg,
-            &[ModName::from(format!("Enemy{name}Damage"))],
-        );
+        let placeholder = enemy_base(enemy_db, cfg, &format!("Enemy{name}Damage"));
         // :2098 the enemy Min/Max mod average.
         let min_max = (enemy_db.sum(ModType::Base, cfg, &[ModName::from(format!("{name}Min"))])
             + enemy_db.sum(ModType::Base, cfg, &[ModName::from(format!("{name}Max"))]))
@@ -600,7 +604,7 @@ fn type_prefix(dtype: DamageType) -> &'static str {
 /// ```
 ///
 /// The placeholder comes from `enemy_presets.json` (`default_enemy_crit_chance` /
-/// `default_enemy_crit_damage_bonus`; a configInput override is left for later).
+/// `default_enemy_crit_damage_bonus`), unless explicitly configured.
 pub fn enemy_crit_effect_ehp(
     player_db: &ModDb,
     enemy_db: &ModDb,
@@ -614,7 +618,9 @@ pub fn enemy_crit_effect_ehp(
     } else if enemy_db.flag(cfg, "AlwaysCrit") {
         100.0
     } else {
-        (presets.default_enemy_crit_chance
+        (enemy_db
+            .override_(cfg, "EnemyCritChance")
+            .unwrap_or(presets.default_enemy_crit_chance)
             * (1.0
                 + player_db.sum(ModType::Inc, cfg, &[ModName::from("EnemyCritChance")]) / 100.0
                 + enemy_db.sum(ModType::Inc, cfg, &[ModName::from("CritChance")]) / 100.0)
@@ -625,7 +631,9 @@ pub fn enemy_crit_effect_ehp(
     if player_db.flag(cfg, "EnemyUnluckyCrit") {
         chance = chance / 100.0 * chance;
     }
-    let crit_damage = ((presets.default_enemy_crit_damage_bonus
+    let crit_damage = ((enemy_db
+        .override_(cfg, "EnemyCritDamage")
+        .unwrap_or(presets.default_enemy_crit_damage_bonus)
         + enemy_db.sum(ModType::Base, cfg, &[ModName::from("CritMultiplier")]))
         * (1.0 + enemy_db.sum(ModType::Inc, cfg, &[ModName::from("CritMultiplier")]) / 100.0))
         .max(0.0);
@@ -1201,7 +1209,7 @@ pub fn fill_ehp_pob2(
         // source = the `Enemy<X>Pen` placeholder injected by setup_enemy
         // (Pinnacle 3 / Uber 8, ConfigOptions.lua:2072-2074, Modules/Data.lua:231);
         // physical/chaos have no pen.
-        let enemy_pen = |name: &str| enemy_db.sum(ModType::Base, cfg, &[ModName::from(name)]);
+        let enemy_pen = |name: &str| enemy_base(enemy_db, cfg, name);
         let resist_after_pen = |resist: f64, pen: f64| -> f64 {
             if resist > 0.0 {
                 (resist - pen).max(0.0)
@@ -1212,7 +1220,8 @@ pub fn fill_ehp_pob2(
         let deflect_effect_pct = (cfg.constants.game().deflect_effect
             + db.sum(ModType::Base, cfg, &[ModName::from("DeflectEffect")]))
         .clamp(0.0, 100.0);
-        let mut mit = build_mitigation_ctx(
+        let category = super::taken::HitCategory::from_enemy(enemy_db, cfg);
+        let mut mit = build_mitigation_ctx_for_category(
             db,
             cfg,
             &MitigationInputs {
@@ -1229,7 +1238,10 @@ pub fn fill_ehp_pob2(
                 deflect_chance_pct: out.deflect_chance,
                 deflect_effect_pct,
             },
+            category,
         );
+        mit.overwhelm_pct[DamageType::Physical as usize] +=
+            enemy_base(enemy_db, cfg, "EnemyPhysicalOverwhelm");
         // CI chaos immunity: vendor's keystone mod set includes
         // `ChaosDamageTaken MORE -100` (ModParser.lua:2356/2360) →
         // ChaosTakenHitMult = 0. pobr's parse side doesn't emit this numeric
@@ -1241,15 +1253,29 @@ pub fn fill_ehp_pob2(
 
         // The not-hit layer (:2018-2026, reads Track E's evade for all four variants + the avoid output)
         let nh = not_hit_suite(out);
+        let worst_of = enemy_db.override_(cfg, "EHPUnluckyWorstOf").unwrap_or(1.0);
+        let unlucky = |percent: f64| 100.0 * (percent / 100.0).clamp(0.0, 1.0).powf(worst_of);
+        let not_hit = unlucky(category.select(
+            [nh.melee, nh.projectile, nh.spell, nh.spell_projectile],
+            out.avoid_all_damage_from_hits,
+        ));
+        let evade = unlucky(if category == super::taken::HitCategory::Average {
+            nh.average_evade
+        } else {
+            category.select(
+                [
+                    out.melee_evade_chance,
+                    out.projectile_evade_chance,
+                    out.spell_evade_chance,
+                    out.spell_projectile_evade_chance,
+                ],
+                0.0,
+            )
+        });
 
         // Enemy incoming damage (:2040-2137; the placeholder is injected into the enemy modDB by setup_enemy)
-        let crit_effect = enemy_crit_effect_ehp(
-            db,
-            enemy_db,
-            cfg,
-            nh.average_evade,
-            out.crit_extra_damage_reduction,
-        );
+        let crit_effect =
+            enemy_crit_effect_ehp(db, enemy_db, cfg, evade, out.crit_extra_damage_reduction);
         let enemy_in = assemble_enemy_damage(enemy_db, cfg, crit_effect);
 
         // Per-type TakenHit + panel DR (:2171-2444)
@@ -1296,18 +1322,21 @@ pub fn fill_ehp_pob2(
         // SpellProjectileBlock = max(spellBlock, projBlock) (`:1013`) --
         // underestimating shield builds (spellBlock 0, projBlock = block):
         // smith 13.65 vs vendor 20.475 (the root cause of TotalEHP being 0.92x).
-        let avg_block_frac = (out.effective_block_chance
-            + out.effective_projectile_block_chance
-            + out.effective_spell_block_chance
-            + out.effective_spell_projectile_block_chance)
-            / 4.0
-            / 100.0;
+        let avg_block_frac = unlucky(category.select(
+            [
+                out.effective_block_chance,
+                out.effective_projectile_block_chance,
+                out.effective_spell_block_chance,
+                out.effective_spell_projectile_block_chance,
+            ],
+            0.0,
+        )) / 100.0;
         // vendor's BlockEffect (blocked-off share %) = 100 − ΣBASE = 100 − out.block_effect (the damage-taken share).
         let block_effect_mult = 1.0 - avg_block_frac * (100.0 - out.block_effect) / 100.0;
         // :3195 the deflect multiplier (the chance<100 view; already folded
         // into afterReductionMulti when =100).
         let deflect_mult = if out.deflect_chance < 100.0 {
-            1.0 - out.deflect_chance * deflect_effect_pct / 10_000.0
+            1.0 - unlucky(out.deflect_chance) * deflect_effect_pct / 10_000.0
         } else {
             1.0
         };
@@ -1320,11 +1349,11 @@ pub fn fill_ehp_pob2(
         // avoidance, averageAvoidChance = 0, unchanged bit-for-bit from the
         // old value (zero behavior change for every other build).
         let specific_type_avoidance = avoidance.avoid_typed_damage.iter().any(|&a| a > 0.0);
-        let extra_avoid = avoidance.avoid_projectile_damage / 2.0;
+        let extra_avoid = avoidance.avoid_projectile_damage * category.projectile_share();
         let avoid_cap = crate::calc::defence::AVOID_HIT_CAP;
         let avoid: [f64; 5] = avoidance.avoid_typed_damage.map(|base| {
             if specific_type_avoidance {
-                (base + extra_avoid).min(avoid_cap)
+                unlucky((base + extra_avoid).min(avoid_cap))
             } else {
                 0.0
             }
@@ -1358,7 +1387,7 @@ pub fn fill_ehp_pob2(
                 },
                 mana: on_block("ManaOnBlock") * avg_block_frac,
                 energy_shield: (on_block("EnergyShieldOnBlock")
-                    + on_block("EnergyShieldOnSpellBlock") / 2.0)
+                    + on_block("EnergyShieldOnSpellBlock") * category.spell_share())
                     * avg_block_frac,
                 ward: on_block("WardOnBlock") * avg_block_frac,
             }
@@ -1402,7 +1431,7 @@ pub fn fill_ehp_pob2(
         };
 
         // TotalEHP (`:3271`'s TotalNumberOfHits + `:3322`)
-        let not_hit_frac = (nh.average / 100.0).clamp(0.0, 1.0);
+        let not_hit_frac = (not_hit / 100.0).clamp(0.0, 1.0);
         let total_hits = if not_hit_frac >= 1.0 {
             f64::INFINITY
         } else {
@@ -1460,7 +1489,7 @@ pub fn fill_ehp_pob2(
                 damaging_hits: n_hits,
                 damage_chance: configured_damage_chance,
                 mitigated_hits: n_mitigated,
-                not_hit_chance: nh.average,
+                not_hit_chance: not_hit,
                 enemy_damage_in: enemy_in.total_in,
             },
         }

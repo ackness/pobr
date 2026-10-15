@@ -490,6 +490,7 @@ pub(super) fn inject_enemy(
     // calculation session's actor does not carry the character's level.
     let enemy_level = resolved_enemy_level(build, data, options, enemy_tier);
     session.setup_enemy(enemy_level, enemy_tier);
+    session.add_enemy_modifiers(super::enemy_config::modifiers(build));
     // Config "Disable EHP gain on block/suppress" (vendor CalcDefence.lua:3261).
     if matches!(
         build.config.raw_inputs.values.get("DisableEHPGainOnBlock"),

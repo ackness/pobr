@@ -37,6 +37,8 @@ mod cost_multiplier;
 mod curse_copies;
 #[path = "skills/dual_wield.rs"]
 mod dual_wield;
+#[path = "skills/enemy_config.rs"]
+mod enemy_config;
 #[path = "skills/enemy_debuffs.rs"]
 mod enemy_debuffs;
 #[path = "skills/energy_triggers.rs"]

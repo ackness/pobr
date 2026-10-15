@@ -78,6 +78,7 @@ pub use diagnosis::{
 mod sources;
 use sources::SourceWriter;
 pub use sources::{LineFate, ReceivedLine};
+mod enemy_config;
 mod inject;
 use inject::*;
 
