@@ -21,8 +21,9 @@ pub(crate) fn damage_keywords(
     if skill_types.iter().any(|t| t == "Grenade") {
         names.push("GrenadeDamage".to_string());
     }
-    // Main weapon category → weapon-type damage.
-    if let Some(item) = build.items.get(&EquipmentSlot::Weapon1)
+    // Main weapon category → weapon-type damage, for a skill attacking with it.
+    if attacks_with_weapon(skill_types)
+        && let Some(item) = build.items.get(&EquipmentSlot::Weapon1)
         && let Some(def) = data.base_items.get(&item.base.to_string())
     {
         // An allowlist mapping flag → damage ModName (an L4 code-side derivation): only
@@ -44,6 +45,15 @@ pub(crate) fn damage_keywords(
         }
     }
     names
+}
+
+/// Whether a skill attacks with the weapon it is used with: an attack, and
+/// not one with its own base damage in place of a weapon's (`NonWeaponAttack`,
+/// Shield Wall's "replace off hand unarmed attack stats with shield type").
+/// "Damage with Maces" and the other weapon-type modifiers are about the
+/// weapon's hits, so a spell or a shield attack does not take them.
+pub(crate) fn attacks_with_weapon(skill_types: &[String]) -> bool {
+    skill_types.iter().any(|t| t == "Attack") && !skill_types.iter().any(|t| t == "NonWeaponAttack")
 }
 
 /// Looks up an entry in the injected weapon type table (`data.constants.weapon_types`,

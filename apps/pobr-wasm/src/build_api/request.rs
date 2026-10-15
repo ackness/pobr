@@ -432,7 +432,10 @@ pub(crate) fn apply_request_overrides(
                     .push((jewel.socket_node, parsed, radius_jewel));
                 continue;
             }
-            plain.push((pobr_build::build::JewelSocket::Tree, parsed));
+            plain.push((
+                pobr_build::build::JewelSocket::Node(jewel.socket_node),
+                parsed,
+            ));
             if let Some(rj) = radius_jewel {
                 radius.push(rj);
             }

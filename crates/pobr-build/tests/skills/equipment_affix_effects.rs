@@ -476,6 +476,44 @@ fn the_adorned_scales_corrupted_jewels_of_the_rarity_it_names() {
     }
 }
 
+/// The Lich's Crystalline Phylactery holds a non-unique jewel and grants
+/// "100% increased Effect of bonuses gained from Socketed Jewel": the jewel in
+/// it counts twice. The passive is not a "Jewel Socket Passive Skill", so The
+/// Adorned does not scale that jewel.
+#[test]
+fn the_crystalline_phylactery_doubles_the_jewel_it_holds() {
+    const CRYSTALLINE_PHYLACTERY: u32 = 17788;
+    let data = data();
+    let baseline = build("SparkPlayer");
+    let life = |build: &Build| run(build, &data).output().life;
+    let without = life(&baseline);
+    let mut jewel = item("Sapphire", &["+100 to maximum Life"]);
+    jewel.rarity = ItemRarity::Rare;
+    jewel.corrupted = true;
+    let in_a_socket = life(&baseline.clone().with_jewels(vec![jewel.clone()])) - without;
+    assert!(in_a_socket > 0.0);
+
+    let mut phylactery = baseline.clone();
+    phylactery.jewels.push((
+        pobr_build::build::JewelSocket::Node(CRYSTALLINE_PHYLACTERY),
+        jewel,
+    ));
+    close(life(&phylactery) - without, in_a_socket * 2.0);
+
+    let mut adorned = item(
+        "Diamond",
+        &[
+            "50% increased Effect of Jewel Socket Passive Skills",
+            "containing Corrupted Rare Jewels",
+        ],
+    );
+    adorned.rarity = ItemRarity::Unique;
+    phylactery
+        .jewels
+        .push((pobr_build::build::JewelSocket::Tree, adorned));
+    close(life(&phylactery) - without, in_a_socket * 2.0);
+}
+
 #[test]
 fn gem_level_affixes_use_their_dedicated_consumer_without_diagnostic_errors() {
     let data = data();
@@ -1131,6 +1169,53 @@ fn weapon_accuracy_is_the_rating_of_attacks_with_that_weapon() {
         with_mace(&[], "ShieldWallPlayer"),
     );
     assert!(with_mace(&accurate, "AxeChopPlayer") > with_mace(&[], "AxeChopPlayer"));
+}
+
+/// "Attacks with this Weapon Penetrate 15% Elemental Resistances" is about
+/// the weapon's own attacks: the weapon's slot names the hand they are made
+/// with, so the attack with it penetrates.
+#[test]
+fn a_line_about_this_weapon_applies_to_attacks_with_it() {
+    let data = data();
+    let dps = |mods: &[&str]| {
+        let mut lines = vec!["Adds 100 to 200 Fire Damage"];
+        lines.extend(mods);
+        let build =
+            build("AxeChopPlayer").set_item(EquipmentSlot::Weapon1, item("Wooden Club", &lines));
+        let session = calculate_with_data_session(
+            &build,
+            &data,
+            &DataOrchestratorOptions {
+                mode_effective: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(session.unsupported_modifier_texts().is_empty());
+        session.output().dps
+    };
+    let penetrates = dps(&["Attacks with this Weapon Penetrate 15% Elemental Resistances"]);
+    let plain = dps(&[]);
+    assert!(penetrates > plain, "{penetrates} > {plain}");
+}
+
+/// "Damage with Maces" is the damage of hits with a mace. Shield Wall
+/// attacks with the shield, and a spell with no weapon, so neither takes it.
+#[test]
+fn weapon_type_damage_is_for_attacks_with_that_weapon() {
+    let data = data();
+    let with_mace = |mods: &[&str], skill: &str| {
+        let build = build(skill)
+            .set_item(EquipmentSlot::Weapon1, item("Wooden Club", &[]))
+            .set_item(EquipmentSlot::Weapon2, item("Splintered Tower Shield", &[]))
+            .set_item(EquipmentSlot::Ring1, item("Sapphire Ring", mods));
+        run(&build, &data).output().dps
+    };
+    let maces = ["50% increased Damage with Maces"];
+    for skill in ["ShieldWallPlayer", "FireballPlayer"] {
+        close(with_mace(&maces, skill), with_mace(&[], skill));
+    }
+    assert!(with_mace(&maces, "AxeChopPlayer") > with_mace(&[], "AxeChopPlayer"));
 }
 
 /// "Spells which cost Life Gain 87% of Damage as Extra Physical Damage"

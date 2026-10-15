@@ -22,6 +22,21 @@
       "reason": "Pounce's Predator's Mark counts the minions already in Presence, not the wolves Pounce summons (docs/maintainer-guide.md, Pounce)"
     },
     {
+      "build": "mercenary-tactician-oil-barrage-02b94461578f",
+      "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "IgniteDPS"],
+      "reason": "the talisman's Soul Core of Topotante penetrates 15% as the item says, not PoB2's rune table's 25%, and Pounce's Predator's Mark counts the minions already in Presence (docs/maintainer-guide.md, runes and Pounce)"
+    },
+    {
+      "build": "grim-pillars-f74c11ce4b4d",
+      "stats": ["TotalDotDPS", "IgniteDPS"],
+      "reason": "a skill in a Spell Totem ignites with the totem's hits; PoB2 counts no totems for it (docs/maintainer-guide.md, totems)"
+    },
+    {
+      "build": "grim-pillars-5dda2982b793",
+      "stats": ["TotalDotDPS", "IgniteDPS"],
+      "reason": "a skill in a Spell Totem ignites with the totem's hits; PoB2 counts no totems for it (docs/maintainer-guide.md, totems)"
+    },
+    {
       "build": "mercenary-gemling-legionnaire-twister-a479eff2b320",
       "stats": ["TotalDotDPS", "IgniteDPS"],
       "reason": "enemies in Presence resist each element with their lowest Elemental Resistance, ailments included (docs/maintainer-guide.md, Presence)"
@@ -85,6 +100,26 @@
       "build": "witch-blood-mage-impending-doom-c0dcbc68022c",
       "stats": ["TotalDPS", "CombinedDPS", "ActionRate"],
       "reason": "Doedre's Undoing spawns a Witchtoad every 0.25 seconds whatever the cast speed (docs/maintainer-guide.md, Doedre's Undoing)"
+    },
+    {
+      "build": "witch-abyssal-lich-twister-4028d0b52984",
+      "stats": ["TotalDPS", "CombinedDPS", "CritMultiplier", "TotalDotDPS", "IgniteDPS"],
+      "reason": "the Lich's Crystalline Phylactery doubles its jewel, \"100% increased Effect of bonuses gained from Socketed Jewel\", which the reference leaves out (docs/maintainer-guide.md, Crystalline Phylactery)"
+    },
+    {
+      "build": "witch-abyssal-lich-twister-9d1c51aef392",
+      "stats": ["TotalDPS", "CombinedDPS", "CritMultiplier", "TotalDotDPS", "IgniteDPS"],
+      "reason": "the Lich's Crystalline Phylactery doubles its jewel, \"100% increased Effect of bonuses gained from Socketed Jewel\", which the reference leaves out (docs/maintainer-guide.md, Crystalline Phylactery)"
+    },
+    {
+      "build": "witch-lich-spark-ce24558eff0b",
+      "stats": ["TotalDPS", "CombinedDPS", "CritMultiplier", "TotalDotDPS", "IgniteDPS", "ColdResist", "ColdMaxHit"],
+      "reason": "the Lich's Crystalline Phylactery doubles its jewel, \"100% increased Effect of bonuses gained from Socketed Jewel\", which the reference leaves out (docs/maintainer-guide.md, Crystalline Phylactery)"
+    },
+    {
+      "build": "witch-lich-spark-0a17a1a7df6d",
+      "stats": ["TotalDPS", "CombinedDPS", "CritChance", "TotalDotDPS", "IgniteDPS", "ChaosMaxHit"],
+      "reason": "the Lich's Crystalline Phylactery doubles its jewel, \"100% increased Effect of bonuses gained from Socketed Jewel\", which the reference leaves out (docs/maintainer-guide.md, Crystalline Phylactery)"
     }
   ]
 }

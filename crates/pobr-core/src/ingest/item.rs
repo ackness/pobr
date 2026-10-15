@@ -201,6 +201,10 @@ const LOCAL_ADDED_DAMAGE: [&str; 8] = [
     "ChaosDamageMax",
 ];
 
+/// The condition the parser gives a line about "this weapon", until the
+/// item's slot names the hand.
+const HAND_ATTACK_PLACEHOLDER: &str = "{Hand}Attack";
+
 /// The "convert to local" modifier on weapons: an unflagged
 /// `CriticalStrikeMultiplier` (vendor `CritMultiplier`) gets a
 /// `Condition:{Main,Off}HandAttack` tag so it only applies to the hand pass
@@ -229,6 +233,10 @@ const LOCAL_ADDED_DAMAGE: [&str; 8] = [
 /// own damage (vendor `Item.lua:2516` folds every damage type's flagless BASE
 /// into `weaponData`), so it only reaches the hand attacking with it. Local
 /// physical adds never get here: they are folded into the weapon base.
+///
+/// A line that names the weapon ("Attacks with this Weapon Penetrate 15%
+/// Elemental Resistances", "with this weapon") is parsed with the placeholder
+/// condition `{Hand}Attack`; the weapon's slot says which hand it is.
 pub fn apply_weapon_hand_conditions(modifiers: &mut [Modifier], slot: EquipmentSlot) {
     let var = match slot {
         EquipmentSlot::Weapon1 => "MainHandAttack",
@@ -236,6 +244,13 @@ pub fn apply_weapon_hand_conditions(modifiers: &mut [Modifier], slot: EquipmentS
         _ => return,
     };
     for m in modifiers {
+        for tag in &mut m.tags {
+            if let ModTag::Condition { var: tag_var, .. } = tag
+                && tag_var == HAND_ATTACK_PLACEHOLDER
+            {
+                *tag_var = var.to_string();
+            }
+        }
         let keyword_ok =
             m.keyword_flags == KeywordFlags::NONE || m.keyword_flags == KeywordFlags::ATTACK;
         let local_crit = (m.name == ModName::from("CriticalStrikeMultiplier")

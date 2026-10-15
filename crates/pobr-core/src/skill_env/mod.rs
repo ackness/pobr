@@ -20,8 +20,9 @@ mod weapon;
 
 pub use buff_specs::{
     BuffEnv, buff_skill_specs, exposure_support_modifiers, group_judgement,
-    skill_inflicting_withered, strongest_skill_blind, support_buff_specs, support_modifiers,
-    support_modifiers_with_limits, warcry_skill_specs,
+    groups_inflict_exposure, skill_crushing_on_hit, skill_inflicting_withered,
+    strongest_skill_blind, support_buff_specs, support_modifiers, support_modifiers_with_limits,
+    warcry_skill_specs,
 };
 pub use buffs::{
     ReservationDb, ReservationLookup, buff_skill_name, herald_skill_names,

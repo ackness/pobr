@@ -969,6 +969,14 @@ pub(super) fn inject_self_buff_exposure(
         data,
         main_skill_group,
     ));
+    //      A skill group inflicting exposure lets the configured exposure on
+    //      the enemy hold, whichever skill is being calculated.
+    if pobr_core::skill_env::groups_inflict_exposure(&mut context.stat_map_ctx(), build, data) {
+        use pobr_core::calc::setup_env::{EXPOSURE_ELEMENTS, can_apply_exposure};
+        for element in EXPOSURE_ELEMENTS {
+            session.set_condition(can_apply_exposure(element), true);
+        }
+    }
     // 4c''. A skill that inflicts Withered lets the character have it on the
     //      enemy, whichever skill is being calculated.
     if let Some(skill_id) = pobr_core::skill_env::skill_inflicting_withered(build, data) {
@@ -978,6 +986,21 @@ pub(super) fn inject_self_buff_exposure(
         ));
         session.add_modifiers(vec![
             Modifier::flag(pobr_core::calc::withered::CAN_WITHER).with_origin(origin),
+        ]);
+    }
+    //      Likewise a skill whose hits Crush leaves the enemy Crushed.
+    if let Some(skill_id) = pobr_core::skill_env::skill_crushing_on_hit(build, data) {
+        let origin = ModifierSource::new(SourceId::new(
+            SourceKind::SkillGem,
+            format!("skill.{skill_id}.crushes_on_hit"),
+        ));
+        session.add_modifiers(vec![
+            Modifier::new(
+                "EnemyModifier",
+                ModType::List,
+                pobr_core::ModValue::NestedMods(vec![Modifier::flag("Condition:Crushed")]),
+            )
+            .with_origin(origin),
         ]);
     }
     // 4c'''. The Blind on the enemy is the strongest one the character's
@@ -1099,12 +1122,12 @@ pub(super) fn stage_inject_jewels(
         // The Adorned: every mod on a corrupted jewel of the rarity it names (magic
         // or rare) in one of the tree's own sockets is scaled by `1 + N/100`, the
         // value truncated after rounding to two places. Granted sockets (Sinister
-        // sockets, notables that hold a socket) and equipment sockets are not
-        // "Jewel Socket Passive Skills".
-        let scale = (*socket == crate::build::JewelSocket::Tree)
-            .then(|| jewel_effect.increase_for(jewel))
-            .flatten()
-            .map(|inc| 1.0 + inc / 100.0);
+        // sockets) and equipment sockets are not "Jewel Socket Passive Skills";
+        // a passive skill that holds a socket scales its jewel by its own effect.
+        let scale = super::collect::jewel_socket_increase(*socket, ctx.build, ctx.data, || {
+            jewel_effect.increase_for(jewel)
+        })
+        .map(|inc| 1.0 + inc / 100.0);
         let mut mods: Vec<pobr_core::Modifier> = Vec::new();
         for text in texts {
             let outcome = parse_ctx
@@ -1250,12 +1273,16 @@ pub(super) fn stage_inject_passives(
             .is_some_and(|def| def.ascendancy_id.is_some());
         let source = pobr_core::passive::node_source(node, ascendancy);
         // A gem level or quality bonus is read from the node's text
-        // (`gem_property_bonuses`), whether or not a rule parses it.
-        if parse_gem_property_bonus(&line).is_none() {
+        // (`gem_property_bonuses`), whether or not a rule parses it, and so is
+        // what the node says about the socket it holds.
+        if parse_gem_property_bonus(&line).is_some() {
+            session.note_line(&source, &line, LineFate::ReadBy(GEM_PROPERTY_READER));
+        } else if super::collect::is_socket_line(&line) {
+            let reader = super::collect::SOCKETED_JEWEL_READER;
+            session.note_line(&source, &line, LineFate::ReadBy(reader));
+        } else {
             session.record_unsupported_modifier_text(format!("Tree:{node}: {line}"));
             session.note_line(&source, &line, LineFate::Unparsed);
-        } else {
-            session.note_line(&source, &line, LineFate::ReadBy(GEM_PROPERTY_READER));
         }
     }
     let passive_nodes = passive_nodes;
@@ -1266,6 +1293,9 @@ pub(super) fn stage_inject_passives(
         for line in &node.modifier_texts {
             if parse_gem_property_bonus(line).is_some() {
                 session.note_line(&source, line, LineFate::ReadBy(GEM_PROPERTY_READER));
+            } else if super::collect::is_socket_line(line) {
+                let reader = super::collect::SOCKETED_JEWEL_READER;
+                session.note_line(&source, line, LineFate::ReadBy(reader));
             }
         }
     }

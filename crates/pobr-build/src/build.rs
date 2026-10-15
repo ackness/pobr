@@ -301,11 +301,19 @@ pub struct RadiusJewel {
 }
 
 /// Where a jewel is socketed. Effects on "Jewel Socket Passive Skills" (The
-/// Adorned) reach only the tree's own sockets (vendor CalcSetup.lua:120-126).
+/// Adorned) reach only the tree's own sockets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum JewelSocket {
     /// One of the passive tree's own jewel sockets, allocated.
     Tree,
+    /// The socket of the allocated passive with this id. The selected tree
+    /// says what it is: a jewel socket, as [`JewelSocket::Tree`], or a passive
+    /// skill that holds a socket, as the Lich's Crystalline Phylactery ("Can
+    /// Socket a non-Unique Basic Jewel into the Phylactery"), which is not a
+    /// "Jewel Socket Passive Skill" and scales the jewel by its own "increased
+    /// Effect of bonuses gained from Socketed Jewel"
+    /// (`calc_orchestrator::collect::jewel_socket_increase`).
+    Node(u32),
     /// A socket an item or another jewel grants: a Sinister socket, or a
     /// notable that holds a socket.
     Granted,

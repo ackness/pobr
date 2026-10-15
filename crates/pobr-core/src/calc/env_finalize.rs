@@ -553,11 +553,10 @@ pub fn apply_nondamaging_ailments(env: &mut Env) {
 /// so this copies the aggregated flag result back
 /// (`matches(cfg)` already includes gates like the Effective/EnemyInPresence tags).
 fn bridge_enemy_condition_flags(env: &mut Env) {
-    // ponytail: the allowlist currently only has Intimidated (the only
-    // condition with a consumer for the enemy base condition pair);
-    // generalizing to all `Condition:*` flags would light up every enemy
+    // ponytail: the allowlist has the conditions with a consumer among the
+    // enemy's base modifiers (Intimidated, Crushed); generalizing to all `Condition:*` flags would light up every enemy
     // condition mod at once -- left for parity to call out and extend one by one.
-    const BRIDGED: &[&str] = &["Intimidated"];
+    const BRIDGED: &[&str] = &["Intimidated", "Crushed"];
     for cond in BRIDGED {
         let flag = ModName::from(format!("Condition:{cond}"));
         if env.enemy.mod_db.flag(&env.cfg, flag.as_str()) {

@@ -3458,6 +3458,10 @@ mod imported_condition_edits {
             &DataOrchestratorOptions {
                 enemy_tier: EnemyTier::None,
                 mode_effective: true,
+                // The character inflicts each Exposure, which the configured one needs.
+                extra_modifier_texts: ["Fire", "Cold", "Lightning"]
+                    .map(|element| format!("Inflict {element} Exposure on Hit"))
+                    .into(),
                 ..Default::default()
             },
         )

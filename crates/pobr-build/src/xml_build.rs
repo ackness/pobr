@@ -1016,7 +1016,7 @@ fn parse_items_and_slots(
                 .entry(item_id)
                 .or_default()
                 .push(format!("socket:{node}"));
-            all_jewels.insert(item_id, JewelSocket::Tree);
+            all_jewels.insert(item_id, JewelSocket::Node(node));
         }
     }
 
@@ -1387,9 +1387,9 @@ pub fn radius_jewel_from_text(socket_node: u32, text: &str) -> Option<RadiusJewe
         tree_texts,
         rarity,
         corrupted,
-        // The tree's own socket until the calculation finds the socket is one
-        // an item grants (`resolve_granted_socket_jewels`).
-        socket: JewelSocket::Tree,
+        // The allocated passive's socket until the calculation finds the
+        // socket is one an item grants (`resolve_granted_socket_jewels`).
+        socket: JewelSocket::Node(socket_node),
     })
 }
 

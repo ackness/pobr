@@ -1223,8 +1223,13 @@ const BASELINE_OFF_HIT10: usize = 79; // 80/80 before the focus's gem levels wer
 // Lowered to 35/35 with BASELINE_OFF_HIT5: the Disciple of Varashta's
 // TotalDotDPS (0.84x) and CombinedDPS (0.86x) follow its spells a level below
 // the reference (see the note above BASELINE_OFF_HIT5).
-const BASELINE_DOT_HIT5: usize = 35; // 37/37 before the focus's gem levels were halved (#15 full marks; gemling TotalDotDPS enters the band following the crit fix; #10+#11 merged: 36; migration baseline: 9; 0.5.0=26)
-const BASELINE_DOT_HIT10: usize = 35; // 37/37 before the focus's gem levels were halved (#15 full marks; #10+#11 merged: 36; migration baseline: 11; 0.5.0=28)
+// Lowered to 33/34: witch-abyssal-lich-detonate-dead sockets a jewel in the
+// Lich's Crystalline Phylactery, "100% increased Effect of bonuses gained
+// from Socketed Jewel", which doubles the jewel; the golden values, as the
+// pinned PoB2, leave the line out. Its TotalDotDPS is 1.20x and CombinedDPS
+// 1.05x (TotalDPS 1.05x stays within 5%).
+const BASELINE_DOT_HIT5: usize = 33; // 37/37 before the focus's gem levels were halved (#15 full marks; gemling TotalDotDPS enters the band following the crit fix; #10+#11 merged: 36; migration baseline: 9; 0.5.0=26)
+const BASELINE_DOT_HIT10: usize = 34; // 37/37 before the focus's gem levels were halved (#15 full marks; #10+#11 merged: 36; migration baseline: 11; 0.5.0=28)
 
 /// Panel offence is compared with pinned PoB2 COMBAT references for the same
 /// 80 populated cells as the EFFECTIVE exports. The old cross-convention
