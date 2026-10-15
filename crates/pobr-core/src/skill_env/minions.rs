@@ -45,6 +45,9 @@ pub trait MinionSession {
     /// Gives the player modifiers granted instead of a minion.
     fn add_player_modifiers(&mut self, modifiers: Vec<crate::Modifier>);
 
+    /// Registers a buff skill owned by the most recently spawned minion.
+    fn add_last_minion_buff_skill(&mut self, spec: crate::calc::BuffSpec);
+
     /// Spawns one minion from its catalog definition (see
     /// [`crate::calc::CalculationSession::add_minion_from_def`]).
     #[allow(clippy::too_many_arguments)]
@@ -75,6 +78,10 @@ impl MinionSession for crate::calc::CalculationSession {
 
     fn add_player_modifiers(&mut self, modifiers: Vec<crate::Modifier>) {
         self.add_modifiers(modifiers);
+    }
+
+    fn add_last_minion_buff_skill(&mut self, spec: crate::calc::BuffSpec) {
+        crate::calc::CalculationSession::add_last_minion_buff_skill(self, spec);
     }
 
     fn minion_modifiers_for(&self, skill_types: SkillTypes) -> Vec<MinionModifierEntry> {
@@ -455,6 +462,20 @@ pub fn spawn_minions(
                         }),
                     },
                 );
+                let curses_enabled = if is_companion {
+                    session.has_flag("CompanionCursesEnabled")
+                } else if picks_a_monster(data, &skill_id) {
+                    session.has_flag("SpectreCursesEnabled")
+                } else {
+                    false
+                };
+                if curses_enabled {
+                    for spec in
+                        super::buff_specs::minion_curse_specs(data, &group, &def, minion_level)
+                    {
+                        session.add_last_minion_buff_skill(spec);
+                    }
+                }
             }
         }
     });
@@ -568,7 +589,7 @@ fn minion_skill(
 /// The level of the minion skill `skill_id` a minion of `minion_level`
 /// uses: the highest whose level requirement it meets, the first when the
 /// data gives no requirements.
-fn minion_skill_level(data: &dyn MinionEnv, skill_id: &str, minion_level: u32) -> u32 {
+pub(super) fn minion_skill_level(data: &dyn MinionEnv, skill_id: &str, minion_level: u32) -> u32 {
     let mut level = 1;
     for next in 2..=100 {
         match data.effect_level_row(skill_id, next) {
@@ -663,7 +684,7 @@ fn minion_skill_modifiers(
     }
     modifiers
         .into_iter()
-        .filter(|modifier| modifier.name.as_str() != "MinionModifier")
+        .filter(|modifier| !matches!(modifier.name.as_str(), "MinionModifier" | "CurseEffect"))
         .map(|inner| MinionModifierEntry {
             inner,
             minion_type: None,
@@ -764,7 +785,7 @@ fn group_judgement(
 
 /// [`group_judgement`] for a skill that does (`from_gem`) or does not come
 /// from a gem.
-fn group_judgement_from(
+pub(super) fn group_judgement_from(
     group: &crate::skill_env::EnabledGroup<'_>,
     data: &dyn MinionEnv,
     skill_id: &str,

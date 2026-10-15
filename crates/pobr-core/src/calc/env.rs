@@ -24,13 +24,9 @@ pub struct Env {
     /// (backward compatible: behaves the same as when this field didn't exist).
     pub minions: Vec<Actor>,
     /// The player's buff skill specs (written by `session::add_buff_skill`).
-    ///
-    /// Originally recorded as `player.buff_skills` — since `Actor` is defined
-    /// in actor.rs outside T0's ownership and minion buffs aren't implemented
-    /// yet, this pass keeps it at the top level of `Env` (semantically still
-    /// player-side); move it to per-actor if T3 consumption needs that later.
-    /// **Zero consumption this pass**: every output value is unchanged whether this is empty or not.
     pub buff_skills: Vec<BuffSpec>,
+    /// Buff skills owned by a minion (index in `minions`), not the summoner.
+    pub minion_buff_skills: Vec<(usize, BuffSpec)>,
     /// The player's warcry skill specs (backlog item #9; written by
     /// `session::add_warcry_skill`, consumed by `perform` before the hand
     /// pass via [`super::warcry::apply_warcry_uptime`] — the uptime-scaled
@@ -114,6 +110,7 @@ impl Env {
             cfg: CalcConfig::attack().with_damage_type(DamageType::Physical),
             minions: Vec::new(),
             buff_skills: Vec::new(),
+            minion_buff_skills: Vec::new(),
             warcry_skills: Vec::new(),
             warcry_gain_injected: false,
             keystone_mods: BTreeMap::new(),

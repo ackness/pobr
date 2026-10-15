@@ -1548,6 +1548,13 @@ impl CalculationSession {
         )
     }
 
+    /// Registers a buff of the minion most recently created by the skill assembler.
+    pub fn add_last_minion_buff_skill(&mut self, spec: BuffSpec) {
+        if let Some(index) = self.env.minions.len().checked_sub(1) {
+            self.env.minion_buff_skills.push((index, spec));
+        }
+    }
+
     /// How many minions the calculation created.
     pub fn minion_count(&self) -> usize {
         self.env.minions.len()

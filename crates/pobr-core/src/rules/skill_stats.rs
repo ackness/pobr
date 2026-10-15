@@ -577,6 +577,49 @@ const PREDATORS_MARK_PER_ENEMY: &str = "skill_wolf_mark_damage_taken_+%_per_near
 /// The stat of `{1}` in [`PREDATORS_MARK_PER_ENEMY`]'s text, the maximum.
 const PREDATORS_MARK_MAXIMUM: &str = "skill_wolf_mark_damage_taken_+%_cap";
 
+/// Enemy payloads from a monster's own curse stat set. Player curses keep
+/// their skill-specific mappings (including their target and value transforms).
+pub fn minion_curse_modifiers(
+    stat: &str,
+    value: f64,
+    stats: &[SkillDamageStat],
+) -> Option<Vec<Modifier>> {
+    let sibling = |id: &str| stats.iter().find(|ds| ds.stat == id).map(|ds| ds.value);
+    match stat {
+        // The curse's own stats describe what its target receives. These
+        // also occur on monster curses, without a player-skill stat map.
+        "base_chaos_damage_resistance_%" => {
+            Some(vec![Modifier::number("ChaosResist", ModType::Base, value)])
+        }
+        "physical_damage_taken_+%" => Some(vec![Modifier::number(
+            "PhysicalDamageTaken",
+            ModType::Inc,
+            value,
+        )]),
+        "accuracy_rating_+%" => Some(vec![Modifier::number("Accuracy", ModType::Inc, value)]),
+        "base_skill_buff_damage_+%_final_to_apply" => {
+            let mut modifier = Modifier::number("Damage", ModType::More, value);
+            // Enfeeble has a separate value against Unique enemies;
+            // the monster version has only one value for every target.
+            if sibling("base_skill_buff_damage_+%_final_vs_unique_to_apply").is_some() {
+                modifier.tags.push(ModTag::condition("Unique", true));
+            }
+            Some(vec![modifier])
+        }
+        "base_skill_buff_damage_+%_final_vs_unique_to_apply" => Some(vec![
+            Modifier::number("Damage", ModType::More, value)
+                .with_tag(ModTag::condition("Unique", false)),
+        ]),
+        "base_temporal_chains_other_buff_time_passed_+%_to_apply" => Some(vec![Modifier::number(
+            "BuffExpireFaster",
+            ModType::More,
+            value,
+        )]),
+
+        _ => curse_modifiers(stat, value, stats),
+    }
+}
+
 /// The modifiers the stat `stat` of a curse or a mark puts on the enemy at
 /// `value`, when this table defines the stat. `stats` is every stat of the
 /// skill, each with its quality added. `None` leaves the stat to the
@@ -1133,6 +1176,28 @@ mod tests {
         assert!(skill_modifiers("base_skill_effect_duration", 5000.0).is_none());
         assert!(granted_skill_modifiers("base_skill_effect_duration", 5000.0, &[]).is_empty());
         assert!(curse_modifiers("base_skill_effect_duration", 5000.0, &[]).is_none());
+    }
+
+    #[test]
+    fn enfeeble_uses_the_unique_value_only_when_its_skill_has_one() {
+        let common = "base_skill_buff_damage_+%_final_to_apply";
+        let unique = "base_skill_buff_damage_+%_final_vs_unique_to_apply";
+        let factor = |stats: &[SkillDamageStat], is_unique| {
+            let mut db = ModDb::new();
+            for ds in stats {
+                db.add_list(minion_curse_modifiers(&ds.stat, ds.value, stats).unwrap());
+            }
+            db.more(
+                &CalcConfig::new().with_condition("Unique", is_unique),
+                &[ModName::from("Damage")],
+            )
+        };
+        let player = [stat(common, -40.0), stat(unique, -15.0)];
+        assert_eq!(factor(&player, false), 0.6);
+        assert_eq!(factor(&player, true), 0.85);
+        let monster = [stat(common, -60.0)];
+        assert_eq!(factor(&monster, false), 0.4);
+        assert_eq!(factor(&monster, true), 0.4);
     }
 
     /// Predator's Mark at 20 quality: 4% increased damage taken for each of

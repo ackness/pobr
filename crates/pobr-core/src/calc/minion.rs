@@ -712,6 +712,7 @@ pub fn definition_modifiers(def: &MinionDef) -> Vec<Modifier> {
             ("CritMultiplier", 0.0) => "CriticalStrikeMultiplier",
             ("PhysicalDamage", 0.0) => "PhysicalDamage",
             ("DamageTaken", 0.0) => "DamageTaken",
+            ("EnemyCurseLimit", 0.0) => "EnemyCurseLimit",
             ("Speed", 1.0) => "AttackSpeed",
             _ => continue,
         };

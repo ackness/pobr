@@ -385,13 +385,36 @@ pub fn curse_stat_modifiers(
     skill_id: &str,
     set_key: Option<&str>,
 ) -> Vec<Modifier> {
+    curse_stat_modifiers_owned(ctx, stats, skill_id, set_key, false)
+}
+
+pub(super) fn minion_curse_stat_modifiers(
+    ctx: &mut StatMapCtx<'_>,
+    stats: &EffectStats,
+    skill_id: &str,
+    set_key: Option<&str>,
+) -> Vec<Modifier> {
+    curse_stat_modifiers_owned(ctx, stats, skill_id, set_key, true)
+}
+
+fn curse_stat_modifiers_owned(
+    ctx: &mut StatMapCtx<'_>,
+    stats: &EffectStats,
+    skill_id: &str,
+    set_key: Option<&str>,
+    minion: bool,
+) -> Vec<Modifier> {
     let merged = merged_stats(stats);
     let mut mods = Vec::new();
     for ds in &merged {
         if ds.value == 0.0 {
             continue;
         }
-        let native = skill_stats::curse_modifiers(&ds.stat, ds.value, &merged);
+        let native = if minion {
+            skill_stats::minion_curse_modifiers(&ds.stat, ds.value, &merged)
+        } else {
+            skill_stats::curse_modifiers(&ds.stat, ds.value, &merged)
+        };
         let outcome = match (native, ctx.catalog) {
             (Some(modifiers), _) => MappedOutcome::Mapped(
                 modifiers

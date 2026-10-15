@@ -28,6 +28,9 @@ use crate::skill_env::stat_map::{
 use crate::skill_env::support::{GroupSupportJudgement, SupportCandidate, judge_group_supports};
 use crate::skill_env::{EnabledGroup, GemInput};
 
+mod minions;
+pub(super) use minions::minion_curse_specs;
+
 /// The lookup surface the buff/warcry spec builders need.
 pub trait BuffEnv: StatSetLookup + EffectLookup + StatMapLookup + GemPropertyLookup {}
 impl<T: StatSetLookup + EffectLookup + StatMapLookup + GemPropertyLookup> BuffEnv for T {}

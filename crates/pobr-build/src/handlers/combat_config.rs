@@ -5,6 +5,20 @@ use pobr_core::{ModTag, Modifier};
 use pobr_data::modifier::ModType;
 
 pub(super) fn register(registry: &mut HandlerRegistry) {
+    for (id, flag) in [
+        ("config:raiseSpectreEnableCurses", "SpectreCursesEnabled"),
+        (
+            "config:summonCompanionEnableCurses",
+            "CompanionCursesEnabled",
+        ),
+    ] {
+        registry
+            .register(
+                id,
+                Box::new(move |_| HandlerOutcome::player_mods(vec![Modifier::flag(flag)])),
+            )
+            .expect("unique minion curse handler");
+    }
     for (id, name, skill) in [
         (
             "config:darkPactSkeletonLife",

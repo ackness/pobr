@@ -153,11 +153,21 @@ pub struct CursePassOutput {
 /// A curse candidate that has passed the gate (pobr's equivalent of vendor `:2290-2298`'s `curse` table entry).
 #[derive(Debug, Clone)]
 struct CurseEntry {
+    owner: usize,
     name: String,
     priority: i64,
     is_mark: bool,
     ignore_curse_limit: bool,
     mods: Vec<Modifier>,
+}
+
+fn curse_strength(curse: &CurseEntry) -> f64 {
+    curse
+        .mods
+        .iter()
+        .filter_map(|modifier| modifier.value.as_number())
+        .map(f64::abs)
+        .sum()
 }
 
 /// Priority calculation (vendor `determineCursePriority`, CalcPerform.lua:454-485):
@@ -401,10 +411,19 @@ fn affected_by_condition(name: &str) -> String {
 /// condition set). A no-op for the whole section (every value unchanged)
 /// when `cfg.mode_buffs == false` (default) or there's no spec.
 pub fn buff_pass(env: &mut Env) {
-    if !env.cfg.mode_buffs || env.buff_skills.is_empty() {
+    if !env.cfg.mode_buffs || (env.buff_skills.is_empty() && env.minion_buff_skills.is_empty()) {
         return;
     }
-    let specs = env.buff_skills.clone();
+    let specs: Vec<_> = env
+        .buff_skills
+        .iter()
+        .map(|spec| (None, spec.clone()))
+        .chain(
+            env.minion_buff_skills
+                .iter()
+                .map(|(index, spec)| (Some(*index), spec.clone())),
+        )
+        .collect();
     let priority_data = env.curse_priority.clone().unwrap_or_default();
     // Rounding precision rules (the ScaleAddMod primitive's exception table, injected by the orchestration layer; not injected = default).
     let rules = env.high_precision.clone();
@@ -419,7 +438,15 @@ pub fn buff_pass(env: &mut Env) {
     let mut curses: Vec<CurseEntry> = Vec::new();
     let mut conditions: Vec<String> = Vec::new();
 
-    for spec in &specs {
+    for (owner, spec) in &specs {
+        let caster = owner.map_or(&env.player, |index| &env.minions[index]);
+        let caster_cfg = match owner {
+            Some(_) => super::perform::minion_cfg(env, caster)
+                .with_skill_types(spec.skill_types)
+                .with_keyword_flags(crate::skill_env::skill_keyword_flags(spec.skill_types))
+                .with_skill_name(Some(spec.name.to_lowercase())),
+            None => env.cfg.clone(),
+        };
         match spec.kind {
             BuffKind::Aura => {
                 // vendor :2204-2205: the self factor (simplification (a):
@@ -522,7 +549,7 @@ pub fn buff_pass(env: &mut Env) {
             BuffKind::Curse => {
                 // vendor :2289's gate: `(mode_effective and (not Hexproof or exempt)) or mark`.
                 let hexproof = env.enemy.mod_db.flag(&env.cfg, "Hexproof");
-                let ignores_hexproof = env.player.mod_db.flag(&env.cfg, "CursesIgnoreHexproof")
+                let ignores_hexproof = caster.mod_db.flag(&caster_cfg, "CursesIgnoreHexproof")
                     || spec.ignore_curse_limit;
                 if !((env.cfg.mode_effective && (!hexproof || ignores_hexproof)) || spec.is_mark) {
                     continue;
@@ -539,13 +566,13 @@ pub fn buff_pass(env: &mut Env) {
                 // spec.local_effect_inc/more = vendor skillModList's
                 // skill-local CurseEffect section (gem quality / in-group
                 // support, pre-folded by the orchestration layer).
-                let inc = env.player.mod_db.sum(ModType::Inc, &env.cfg, &curse_effect)
+                let inc = caster.mod_db.sum(ModType::Inc, &caster_cfg, &curse_effect)
                     + spec.local_effect_inc
                     + env
                         .enemy
                         .mod_db
                         .sum(ModType::Inc, &env.cfg, &curse_effect_on_self);
-                let mut more = env.player.mod_db.more(&env.cfg, &curse_effect)
+                let mut more = caster.mod_db.more(&caster_cfg, &curse_effect)
                     * spec.local_effect_more
                     * spec.magnitude;
                 if !spec.is_mark {
@@ -579,10 +606,11 @@ pub fn buff_pass(env: &mut Env) {
                     .collect();
                 // vendor :2294's `ignoreCurseLimit = (...) and not mark or false`.
                 let ignore_curse_limit =
-                    (env.player.mod_db.flag(&env.cfg, "CursesIgnoreCurseLimit")
+                    (caster.mod_db.flag(&caster_cfg, "CursesIgnoreCurseLimit")
                         || spec.ignore_curse_limit)
                         && !spec.is_mark;
                 curses.push(CurseEntry {
+                    owner: owner.map_or(0, |index| index + 1),
                     name: spec.name.clone(),
                     priority: determine_curse_priority(
                         &priority_data,
@@ -634,7 +662,7 @@ pub fn buff_pass(env: &mut Env) {
     // Curse limit + slot assignment (vendor :2829-2896)
     // limit: override(CurseLimitIsMaximumPowerCharges → PowerChargesMax) else
     // baseline 1 (CalcSetup.lua:648, mirrored in base_player_mods.json) + Σ BASE.
-    let curse_limit = if env
+    let mut curse_limit = if env
         .player
         .mod_db
         .flag(&env.cfg, "CurseLimitIsMaximumPowerCharges")
@@ -651,11 +679,72 @@ pub fn buff_pass(env: &mut Env) {
                 .mod_db
                 .sum(ModType::Base, &env.cfg, &[ModName::from("EnemyCurseLimit")])
     };
-    let mark_limit = DEFAULT_ENEMY_MARK_LIMIT
+    let mut mark_limit = DEFAULT_ENEMY_MARK_LIMIT
         + env
             .player
             .mod_db
             .sum(ModType::Base, &env.cfg, &[ModName::from("EnemyMarkLimit")]);
+
+    if !env.minion_buff_skills.is_empty() {
+        // Every caster has its own limit. A monster's EnemyCurseLimit is
+        // its total (Ribrattle's definition is 3), not a bonus to the player.
+        let mut limits = BTreeMap::from([(0, (curse_limit, mark_limit))]);
+        for curse in &curses {
+            if curse.owner == 0 {
+                continue;
+            }
+            let actor = &env.minions[curse.owner - 1];
+            let cfg = super::perform::minion_cfg(env, actor);
+            let limit = actor
+                .mod_db
+                .sum(ModType::Base, &cfg, &[ModName::from("EnemyCurseLimit")])
+                .max(1.0);
+            let marks = actor
+                .mod_db
+                .sum(ModType::Base, &cfg, &[ModName::from("EnemyMarkLimit")])
+                .max(1.0);
+            limits.insert(curse.owner, (limit, marks));
+            curse_limit = curse_limit.max(limit);
+            mark_limit = mark_limit.max(marks);
+        }
+        // Select each caster's strongest copy of a named curse, then its
+        // highest-priority distinct curses up to that caster's limit.
+        let mut selected = Vec::new();
+        for (owner, (hexes, marks)) in limits {
+            let mut own: Vec<CurseEntry> = Vec::new();
+            for curse in curses.iter().filter(|curse| curse.owner == owner) {
+                match own.iter_mut().find(|other| other.name == curse.name) {
+                    Some(other) if curse_strength(curse) > curse_strength(other) => {
+                        *other = curse.clone()
+                    }
+                    Some(_) => {}
+                    None => own.push(curse.clone()),
+                }
+            }
+            own.sort_by_key(|curse| std::cmp::Reverse(curse.priority));
+            let mut count = [0usize; 2];
+            for curse in own {
+                let kind = usize::from(curse.is_mark);
+                let limit = if curse.is_mark { marks } else { hexes };
+                if curse.ignore_curse_limit || count[kind] < limit.max(0.0) as usize {
+                    if !curse.ignore_curse_limit {
+                        count[kind] += 1;
+                    }
+                    selected.push(curse);
+                }
+            }
+        }
+        // Compare fully scaled copies: the minion and player do not share
+        // CurseEffect bonuses. The same curse never stacks across owners.
+        curses.clear();
+        for curse in selected {
+            match curses.iter_mut().find(|other| other.name == curse.name) {
+                Some(other) if curse_strength(&curse) > curse_strength(other) => *other = curse,
+                Some(_) => {}
+                None => curses.push(curse),
+            }
+        }
+    }
 
     // Slot filling (vendor :2845-2876): curse/mark slots are **separate**;
     // same-name higher priority replaces, lower is skipped; a different name
@@ -835,6 +924,49 @@ mod tests {
             local_effect_more: 1.0,
             skill_types: pobr_data::skill::SkillTypes::NONE,
         }
+    }
+
+    #[test]
+    fn minion_curses_use_their_caster_and_do_not_borrow_another_casters_slots() {
+        let mut env = buffed_env();
+        env.player
+            .mod_db
+            .add_mod(Modifier::number("CurseEffect", ModType::Inc, 100.0));
+        let mut minion = Actor::new(80, ActorBaseStats::default());
+        minion
+            .mod_db
+            .add_mod(Modifier::number("CurseEffect", ModType::Inc, 50.0));
+        minion
+            .mod_db
+            .add_mod(Modifier::number("EnemyCurseLimit", ModType::Base, 3.0));
+        env.minions.push(minion);
+        env.buff_skills
+            .push(curse_spec("Despair", "", 1, 10.0, false, false));
+        env.buff_skills
+            .push(curse_spec("Vulnerability", "", 1, 50.0, false, false));
+        env.minion_buff_skills
+            .push((0, curse_spec("Despair", "", 1, 20.0, false, false)));
+        env.minion_buff_skills
+            .push((0, curse_spec("Enfeeble", "", 1, 5.0, false, false)));
+        buff_pass(&mut env);
+        let output = env.curse_pass_output.as_ref().unwrap();
+        assert_eq!(output.enemy_curse_limit, 3.0);
+        assert_eq!(output.curse_slots.len(), 2);
+        assert!(
+            !output
+                .curse_slots
+                .iter()
+                .any(|name| name == "Vulnerability")
+        );
+        // Player Despair is 20; minion Despair is 30, plus Enfeeble 7
+        // (the normal buff rounding rule). A limit of three on the minion
+        // does not let the player apply its second curse.
+        assert_eq!(
+            env.enemy
+                .mod_db
+                .sum(ModType::Inc, &env.cfg, &[ModName::from("DamageTaken")]),
+            37.0
+        );
     }
 
     fn aura_spec(name: &str, es: f64) -> BuffSpec {
