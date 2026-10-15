@@ -235,6 +235,25 @@ fn conversion_from_a_set_maximum_converts_that_maximum() {
     assert!(converts(true) <= 1.0, "{}", converts(true));
 }
 
+/// "Gain 25% of maximum Life as Extra maximum Runic Ward" (`LifeGainAsWard`):
+/// the character's Life before increases, at that rate and rounded to a
+/// whole number, is more Ward, which the Ward modifiers then scale.
+#[test]
+fn life_gained_as_ward_is_extra_ward() {
+    let mut db = ModDb::new();
+    db.add_list([
+        Modifier::number("MaximumLife", ModType::Base, 1001.0),
+        Modifier::number("Life", ModType::Inc, 50.0),
+        Modifier::number("LifeGainAsWard", ModType::Base, 25.0),
+    ]);
+    let cfg = CalcConfig::new();
+    let ks = DefenceKeystones::from_db(&db, &cfg);
+    let res = calc_defence_resources(&db, &cfg, &ActorBaseStats::default(), &ks);
+    // 1001 x 25% = 250.25 -> 250.
+    assert_eq!(res.extra_ward, 250.0);
+    assert_eq!(res.extra_life, 0.0, "gaining as Ward takes no Life away");
+}
+
 /// ConvertTo (defence -> defence): the slot base moves, slot by slot, into **the
 /// target's matching slot bucket** and picks up the target's multipliers; the source
 /// shrinks by (100-total)/100 (CalcDefence.lua:1340-1352).
@@ -342,11 +361,11 @@ fn es_to_mana_merged_into_matrix() {
     assert_eq!(res.extra_life, 0.0);
 }
 
-/// A non-defence source (Life) -> a defence target: rounded up globally with ceil
-/// (CalcDefence.lua:1364-1366); the source itself isn't deducted inside the matrix
-/// (that's the doActorLifeManaSpirit domain, :73-126).
+/// A non-defence source (Life) -> a defence target: the amount gained is a
+/// whole number, rounded to the nearest; the source itself isn't deducted
+/// inside the matrix (that's the doActorLifeManaSpirit domain).
 #[test]
-fn non_defence_source_gain_uses_ceil() {
+fn non_defence_source_gain_rounds_to_nearest() {
     // Arrange: base Life 1001 + "Gain 25% of Maximum Life as Extra Maximum Energy Shield".
     let mut db = ModDb::new();
     let outcome =
@@ -363,8 +382,8 @@ fn non_defence_source_gain_uses_ceil() {
     // Act
     let res = calc_defence_resources(&db, &cfg, &base, &ks);
 
-    // Assert: ceil(1001x0.25) = ceil(250.25) = 251.
-    assert_eq!(res.energy_shield, 251.0);
+    // Assert: 1001 x 0.25 = 250.25 -> 250.
+    assert_eq!(res.energy_shield, 250.0);
 }
 
 /// Unbreakable: doubles the Body Armour slot's armour base (CalcDefence.lua:1217);

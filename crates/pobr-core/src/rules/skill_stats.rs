@@ -75,6 +75,14 @@ pub fn inflicts_withered(stat: &str) -> bool {
     INFLICTS_WITHERED.contains(&stat)
 }
 
+/// Whether the corpse's Life the stat names is damage the skill only poisons
+/// with, without hitting: Decompose's cloud "Poisons enemies as though dealing
+/// Chaos damage equal to {0}% of Corpse's maximum Life". Without a hit there
+/// is no critical hit.
+pub fn corpse_damage_without_hit(stat: &str) -> bool {
+    stat == "corpse_explosion_monster_life_permillage_chaos"
+}
+
 /// What a corpse explosion deals, by the stat of the skill that says so: the
 /// type of its damage and the share of the corpse's maximum Life it is.
 ///

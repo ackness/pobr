@@ -313,6 +313,72 @@ fn merge_buff(dest: &mut Vec<Modifier>, src: Vec<Modifier>) {
     }
 }
 
+/// The character's auras on one of its minions: an aura affects "you and
+/// Allies in your Presence" (Discipline: "Emit an Aura that grants you and
+/// Allies in your Presence additional Total Energy Shield"). Each aura's
+/// modifiers are scaled by the character's increased and more aura and buff
+/// effect, added to the minion's own increased and more effect of buffs and
+/// auras on itself, and the aura's magnitude; same-named auras keep the
+/// strongest of each modifier. Returns the modifiers and the conditions they
+/// set on the minion. Nothing when buffs are off or the character's auras
+/// cannot affect allies.
+pub(crate) fn auras_on_minion(
+    env: &Env,
+    minion_db: &ModDb,
+    minion_cfg: &crate::CalcConfig,
+) -> (Vec<Modifier>, Vec<String>) {
+    let player = &env.player.mod_db;
+    if !env.cfg.mode_buffs
+        || [
+            "SelfAurasCannotAffectAllies",
+            "SelfAurasOnlyAffectYou",
+            "SelfAuraSkillsCannotAffectAllies",
+        ]
+        .iter()
+        .any(|flag| player.flag(&env.cfg, flag))
+    {
+        return (Vec::new(), Vec::new());
+    }
+    let effect = [ModName::from("AuraEffect"), ModName::from("BuffEffect")];
+    let on_self = [
+        ModName::from("BuffEffectOnSelf"),
+        ModName::from("AuraEffectOnSelf"),
+    ];
+    let magnitude = [ModName::from("Magnitude")];
+    let minion_inc = minion_db.sum(ModType::Inc, minion_cfg, &on_self);
+    let minion_more = minion_db.more(minion_cfg, &on_self);
+    let mut buffs: BTreeMap<String, Vec<Modifier>> = BTreeMap::new();
+    let mut conditions = Vec::new();
+    for spec in env
+        .buff_skills
+        .iter()
+        .filter(|spec| spec.kind == BuffKind::Aura)
+    {
+        let aura_cfg = env
+            .cfg
+            .clone()
+            .with_skill_types(spec.skill_types)
+            .with_keyword_flags(crate::skill_env::skill_keyword_flags(spec.skill_types));
+        let inc = player.sum(ModType::Inc, &aura_cfg, &effect) + minion_inc;
+        let more = player.more(&aura_cfg, &effect) * minion_more * spec.magnitude;
+        let mag_mult = (1.0 + player.sum(ModType::Inc, &aura_cfg, &magnitude) / 100.0)
+            * player.more(&aura_cfg, &magnitude);
+        let mult = (1.0 + inc / 100.0) * more * mag_mult;
+        let source_id = format!("aura.{}", spec.skill_id);
+        let scaled = spec
+            .mods
+            .iter()
+            .map(|m| scale_buff_mod(&env.high_precision, m, mult, &source_id))
+            .collect();
+        merge_buff(buffs.entry(spec.name.clone()).or_default(), scaled);
+        conditions.push(affected_by_condition(&spec.name));
+    }
+    if !conditions.is_empty() {
+        conditions.push("AffectedByAura".to_string());
+    }
+    (buffs.into_values().flatten().collect(), conditions)
+}
+
 /// Ensures a mod carries the `Condition:Effective` tag.
 fn ensure_effective_tag(modifier: &mut Modifier) {
     let already = modifier.tags.iter().any(|tag| {
@@ -1267,6 +1333,37 @@ mod tests {
         assert!(env.cfg.condition("AffectedByAura"));
         assert!(env.cfg.condition("AffectedByDiscipline"));
         assert_eq!(env.cfg.multiplier("BuffOnSelf"), 1.0);
+    }
+
+    /// An aura affects the character's minions too: the character's 20%
+    /// increased Aura effect adds to the minion's own 10% increased effect
+    /// of buffs on itself, and the minion's "on self" increase does not
+    /// reach the character: 100 x 1.3 = 130.
+    #[test]
+    fn auras_reach_minions_with_their_own_effect_on_self() {
+        let mut env = buffed_env();
+        env.player
+            .mod_db
+            .add_mod(Modifier::number("AuraEffect", ModType::Inc, 20.0));
+        env.buff_skills.push(aura_spec("Discipline", 100.0));
+        let mut minion_db = ModDb::new();
+        minion_db.add_mod(Modifier::number("BuffEffectOnSelf", ModType::Inc, 10.0));
+
+        let (mods, conditions) = auras_on_minion(&env, &minion_db, &env.cfg);
+
+        let es: f64 = mods
+            .iter()
+            .filter(|m| m.name.as_str() == "EnergyShield")
+            .filter_map(|m| m.value.as_number())
+            .sum();
+        assert_eq!(es, 130.0);
+        assert!(conditions.contains(&"AffectedByDiscipline".to_string()));
+        assert!(conditions.contains(&"AffectedByAura".to_string()));
+
+        env.player
+            .mod_db
+            .add_mod(Modifier::flag("SelfAurasCannotAffectAllies"));
+        assert!(auras_on_minion(&env, &minion_db, &env.cfg).0.is_empty());
     }
 
     /// Same fixture, end-to-end: CalculationSession → perform → the defence output's ES = 120.

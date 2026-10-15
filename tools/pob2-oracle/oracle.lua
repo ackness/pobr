@@ -599,6 +599,30 @@ if enemyDB then
 		end
 	end
 	enemyMitigation.dealtMods = dealtMods
+	-- The enemy's damage converted or gained as another type, and added
+	-- damage: the hit EHP and the largest hits assume.
+	local gainNames = { "DamageGainAsChaos", "NonChaosDamageGainAsChaos" }
+	for _, from in ipairs({ "Physical", "Fire", "Cold", "Lightning", "Chaos" }) do
+		gainNames[#gainNames + 1] = from .. "Min"
+		gainNames[#gainNames + 1] = from .. "Max"
+		for _, to in ipairs({ "Physical", "Fire", "Cold", "Lightning", "Chaos" }) do
+			if from ~= to then
+				gainNames[#gainNames + 1] = from .. "DamageGainAs" .. to
+				gainNames[#gainNames + 1] = from .. "DamageConvertTo" .. to
+				gainNames[#gainNames + 1] = from .. "DamageSkillConvertTo" .. to
+			end
+		end
+	end
+	local gainMods = {}
+	local enemyCfg = { keywordFlags = NOT64(KeywordFlag.MatchAll) }
+	for _, name in ipairs(gainNames) do
+		local okGain, gainTable = pcall(function() return enemyDB:Tabulate("BASE", enemyCfg, name) end)
+		if not okGain then io.stderr:write("gainMods: " .. tostring(gainTable) .. "\n") end
+		for _, entry in ipairs(okGain and gainTable or {}) do
+			gainMods[#gainMods + 1] = { name = entry.mod.name, value = entry.value, source = entry.mod.source }
+		end
+	end
+	enemyMitigation.gainMods = gainMods
 	-- Exposure effect composition (vendor CalcPerform.lua:3222-3227): global modDB
 	-- INC + per-active-skill skill-scoped INC, plus extra exposure BASE.
 	local pdb = mainEnv.player.modDB
@@ -783,20 +807,28 @@ end
 -- per-source mod list for any vendor stat names (same shape as critModList),
 -- keyed under extraModList. Zero cost when the env var is unset.
 -- ORACLE_EXTRA_CFG=weapon1 (or weapon2) queries with that hand's attack
--- configuration, which an attack's speed and damage are read with.
+-- configuration, which an attack's speed and damage are read with;
+-- ORACLE_EXTRA_CFG=player queries the character's own modDB with no
+-- configuration, as the defence calculation reads block, armour and the like;
+-- ORACLE_EXTRA_CFG=minion queries the main skill's minion the same way.
 local extraModList
 do
 	local names = os.getenv("ORACLE_EXTRA_STATS")
 	if names and #names > 0 then
 		local hand = os.getenv("ORACLE_EXTRA_CFG")
 		local cfg = skillCfg
-		if hand and mainSkill and mainSkill[hand .. "Cfg"] then
+		local source = sml
+		if hand == "player" then
+			cfg, source = nil, mainEnv.player.modDB
+		elseif hand == "minion" then
+			cfg, source = nil, mainSkill and mainSkill.minion and mainSkill.minion.modDB
+		elseif hand and mainSkill and mainSkill[hand .. "Cfg"] then
 			cfg = mainSkill[hand .. "Cfg"]
 		end
 		extraModList = { INC = {}, MORE = {}, BASE = {}, OVERRIDE = {}, FLAG = {} }
 		for name in names:gmatch("[^,%s]+") do
 			for _, mt in ipairs({ "BASE", "INC", "MORE", "OVERRIDE", "FLAG" }) do
-				local list = tabulateIn(sml, cfg, mt, name)
+				local list = tabulateIn(source, cfg, mt, name)
 				if #list > 0 then extraModList[mt][name] = list end
 			end
 		end

@@ -68,6 +68,27 @@ fn block_shield_base_times_increased() {
     );
 }
 
+/// Renly's Training: "Gain 35% Base Chance to Block from Equipped Shield
+/// instead of the Shield's value" replaces the shield's 26 while using a
+/// shield: round(35 x 1.07) = 37 instead of round(26 x 1.07) = 28.
+#[test]
+fn shield_block_replaced_by_a_base_chance() {
+    let mut db = db_from_texts(&[
+        "Gain 35% Base Chance to Block from Equipped Shield instead of the Shield's value",
+        "7% increased Block chance",
+    ]);
+    add_base(&mut db, "ShieldBlockChance", 26.0);
+    let mut cfg = CalcConfig::new();
+    assert_eq!(
+        calc::calc_block(&db, &cfg).block_chance,
+        28.0,
+        "not using a shield"
+    );
+
+    cfg.conditions.insert("UsingShield".to_string(), true);
+    assert_eq!(calc::calc_block(&db, &cfg).block_chance, 37.0);
+}
+
 /// The BlockChanceMax system (:961-965): cap = 50 innate + sum of BASE BlockChanceMax
 /// mods; the total is capped when it exceeds this; BlockChanceCap 90 is the hard ceiling.
 #[test]

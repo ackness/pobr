@@ -904,6 +904,12 @@ impl CalculationSession {
         &self.env.player.output
     }
 
+    /// What the EHP stage computed `TotalEHP` and the hits to die with: the
+    /// enemy's hit, the damage taken and the pools, per damage type.
+    pub fn ehp_terms(&self) -> Option<&super::EhpTerms> {
+        self.env.ehp_terms.as_ref()
+    }
+
     /// How the main skill's hits come when it is a rain (`calc::rain`):
     /// its `ActionRate` is the rate of these hits, not of its uses.
     pub fn rain(&self) -> Option<super::rain::RainSummary> {

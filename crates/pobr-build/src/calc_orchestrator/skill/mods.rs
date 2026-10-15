@@ -112,6 +112,25 @@ pub(crate) fn corpse_explosion_modifiers(
     let enemy_level = resolved_enemy_level(build, data, options);
     let monster_life = f64::from(data.constants.monster_scaling.life_at(enemy_level));
     let mut mods = Vec::new();
+    // A stat set that only poisons with the corpse's Life (Decompose's
+    // cloud) and deals no damage of its own does not hit, so it cannot
+    // critically hit; its explosion, with base Fire damage, does.
+    let without_hit = skill.base_damage.iter().any(|ds| {
+        ds.value != 0.0 && pobr_core::rules::skill_stats::corpse_damage_without_hit(&ds.stat)
+    }) && !skill.base_damage.iter().any(|ds| {
+        ds.value != 0.0 && ds.stat.contains("minimum_base_") && ds.stat.ends_with("_damage")
+    });
+    if without_hit {
+        mods.push(
+            Modifier::flag("NeverCrit").with_origin(
+                ModifierSource::new(SourceId::new(
+                    SourceKind::SkillGem,
+                    format!("skill.{skill_id}.corpseExplosion"),
+                ))
+                .with_raw_text("poisons as though dealing damage: no hit"),
+            ),
+        );
+    }
     for ds in &skill.base_damage {
         if ds.value == 0.0 {
             continue;

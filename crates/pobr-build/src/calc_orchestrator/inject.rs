@@ -14,9 +14,9 @@
 
 // The orchestration backbone's (`mod.rs`) types and sibling-module helpers are brought
 // in via glob import — matching the style of the rest of the `calc_orchestrator::*` submodules.
-use pobr_core::Modifier;
 use pobr_core::calc::CalculationSession;
 use pobr_core::mod_parser::ParseStatus;
+use pobr_core::{ItemModSection, Modifier};
 use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::modifier::ModType;
 use pobr_data::monster::EnemyTier;
@@ -372,16 +372,10 @@ pub(super) fn inject_build_multipliers(
     // deduplicated) — the Demolitionist ascendancy's "… for every different Grenade
     // fired …"'s Multiplier limitVar denominator.
     session.set_multiplier("GrenadeTypes", grenade_type_count(build, data));
-    // The Gemling ascendancy's Virtuous Barrier per-Attribute-Mote count (matching
-    // vendor CalcSetup.lua:1396,1766-1781): base {Str,Dex,Int}=3, plus each enabled
-    // non-support skill gem counted by its required attributes (str/dex/int_pct>0) —
-    // a single-attribute requirement gets +2, a multi-attribute one gets +1 each.
-    // Consumed only by Virtuous Barrier's `<res> INC ×<Attr>MoteSkillCount` (the sole
-    // consumer in this repo); for a build without this ascendancy, these three
-    // multipliers are referenced by nothing → zero behavior impact.
-    // ponytail: currently doesn't exclude fromNode/fromItem granted skills as vendor
-    // does; no currently-modeled granted skill carries attribute requirements, so this
-    // doesn't pollute the count yet. When a relevant build shows up, exclude precisely by SocketGroup::source.
+    // The Gemling ascendancy's Virtuous Barrier per-Attribute-Mote count
+    // (virtuous_mote_counts). Consumed only by Virtuous Barrier's
+    // `<res> INC ×<Attr>MoteSkillCount`; for a build without this ascendancy,
+    // these three multipliers are referenced by nothing.
     let (str_mote, dex_mote, int_mote) = virtuous_mote_counts(build, data);
     session.set_multiplier("StrengthMoteSkillCount", str_mote);
     session.set_multiplier("DexterityMoteSkillCount", dex_mote);
@@ -443,16 +437,24 @@ pub(super) fn per_slot_attribute_requirements(
 }
 
 /// Attribute-Mote count (the Gemling ascendancy's Virtuous Barrier): base 3/3/3 + each
-/// enabled non-support skill gem counted by its required attribute count
+/// skill the character has from a gem, by the gem's required attributes
 /// (single-attribute gets +2, multi-attribute gets +1 each). Returns `(Str, Dex, Int)`.
+///
+/// A support gem that grants a skill (tag `grants_active_skill`, Eonyr's
+/// Thunder) gives the character that skill and counts too. Groups an item or
+/// a passive grants are left out: the build already lists the same skill as a
+/// group of its own, and counting both would count it twice.
 pub(super) fn virtuous_mote_counts(build: &Build, data: &BuildData) -> (f64, f64, f64) {
     let (mut s, mut d, mut i) = (3.0, 3.0, 3.0);
     for group in build.enabled_socket_groups() {
+        if group.source.is_some() {
+            continue;
+        }
         for gem_id in &group.gem_ids {
             let Some(def) = data.skill_gems.get(gem_id) else {
                 continue;
             };
-            if def.is_support {
+            if def.is_support && !def.gem_tags.iter().any(|tag| tag == "grants_active_skill") {
                 continue;
             }
             let req = [def.str_pct > 0, def.dex_pct > 0, def.int_pct > 0];
@@ -776,6 +778,27 @@ pub(super) fn inject_items(
                         || pobr_core::skill_env::parse_local_ward_inc(&c).is_some()
                 },
             );
+            // "+N to maximum Runic Ward" of the item's own modifiers is part
+            // of its Runic Ward (`local_ward`, The Brass Dome); a socketed
+            // alloy's is the character's (`base_maximum_ward`).
+            for (section, texts) in item_sections_mut(&mut filtered) {
+                if section == ItemModSection::Enchant {
+                    continue;
+                }
+                let source = LineHolder::Slot(slot.id()).source(section);
+                texts.retain(|text| {
+                    let local = pobr_core::skill_env::parse_local_ward_flat(&clean_item_text(text))
+                        .is_some();
+                    if local {
+                        session.note_line(
+                            &source,
+                            text,
+                            LineFate::ReadBy("the item's own Runic Ward (item_ward_modifiers)"),
+                        );
+                    }
+                    !local
+                });
+            }
         }
         // A shield's own Block chance lines are part of its block chance
         // (shield_block_modifiers); in the global set they would add to the

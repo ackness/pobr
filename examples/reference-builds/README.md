@@ -102,5 +102,7 @@ mise run builds:fetch examples/reference-builds/holdout --pick last
 | 2026-10-15（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 12（52%） | 979/1076（91.0%） |
 | 2026-10-15（第三十五轮：词条规则的关键字不再丢弃，“Damage with Warcries”“with Fire Skills” 只作用于对应技能，技能按类型带关键字；Smith of Kitava 的火抗同时给冰电抗；Refraction III 的旗帜按护甲施加元素曝露；Culling Strike；配置的 Arcane Surge 在战斗中生效；Fire Spell on Hit 触发的法术无消耗） | `tuned/` | 46 | 43（93%） | 2062/2146（96.1%） |
 | 2026-10-15（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 13（57%） | 984/1076（91.4%） |
+| 2026-10-15（第三十六轮：物品自身的 “+N to maximum Runic Ward” 与 “Gain % of maximum Life as Extra maximum Runic Ward” 计入符文护盾；Presence 内的敌人从全部伤害获得混沌伤害（Evergrasping Ring）；Renly's Training 替换盾牌的格挡值；Gemling 的 Mote 不重复计物品授予的技能；角色的光环作用于召唤物；Decompose 的毒云不能暴击；分诊列出 EHP 的逐类型项和本构筑相关的未读取词条） | `tuned/` | 46 | 43（93%） | 2067/2146（96.3%） |
+| 2026-10-15（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 13（57%） | 988/1076（91.8%） |
 
 吻合行里有按游戏规则有意不同于参考值的行（例如护身符授予的技能不保留精魄，见 `reference_report.rs` 基线旁的说明），所以上限不是 100%。

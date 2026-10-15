@@ -3584,3 +3584,29 @@ mod imported_condition_edits {
         }
     }
 }
+
+/// The Gemling's Attribute Motes count each skill the character has from a
+/// gem by the gem's attributes: Twister (Dexterity only) +2, Eonyr's
+/// Thunder, a support that grants a skill, +2, Brutality, a support that
+/// grants none, nothing; a group an item grants is the same skill as the
+/// group supporting it and is not counted again.
+#[test]
+fn virtuous_motes_count_each_skill_gem_once() {
+    let data = repo_data();
+    let build = Build::new()
+        .add_socket_group(
+            SocketGroup::new()
+                .with_gem("Metadata/Items/Gem/SkillGemTwister")
+                .with_gem("Metadata/Items/Gems/SupportGemEonyrsThunder")
+                .with_gem("Metadata/Items/Gems/SupportGemBrutality"),
+        )
+        .add_socket_group(
+            SocketGroup::new()
+                .with_source("Item:1:Test Item")
+                .with_gem("Metadata/Items/Gem/SkillGemTwister"),
+        );
+    assert_eq!(
+        super::inject::virtuous_mote_counts(&build, &data),
+        (3.0, 7.0, 3.0)
+    );
+}

@@ -117,7 +117,11 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
         .min(cap);
 
     // :975-980 shield base (injected by the build layer; dual-shield = sum of both slots, matching vendor's addition).
-    let shield_base = db.sum(ModType::Base, cfg, &[ModName::from("ShieldBlockChance")]);
+    // Renly's Training: "Gain 35% Base Chance to Block from Equipped Shield
+    // instead of the Shield's value" (while using a shield).
+    let shield_base = db
+        .override_(cfg, "ReplaceShieldBlock")
+        .unwrap_or_else(|| db.sum(ModType::Base, cfg, &[ModName::from("ShieldBlockChance")]));
 
     // :1033-1036 attack block chance, rounded to a whole percent before the cap.
     let block_names = [ModName::from("BlockChance")];

@@ -313,10 +313,24 @@ const BASELINES: [Baseline; 3] = [
     // Culling Strike kills a unique at 5% of its Life; a configured Arcane
     // Surge applies in combat; Fire Spell on Hit's triggered spells cost no
     // Mana.
+    //
+    // Then 2067 rows: an item's own "+N to maximum Runic Ward" and "Gain % of
+    // maximum Life as Extra maximum Runic Ward" are Runic Ward; Renly's
+    // Training replaces the shield's block chance; the Gemling's Motes count
+    // a skill an item grants once; the character's auras reach its minions
+    // (Discipline's Energy Shield on a companion); Decompose's cloud cannot
+    // crit. Rows that went the other way, each against a reference the game
+    // proves wrong: the Amazon (Rain of Arrows) has its body armour's "Gain
+    // 5% of maximum Life as Extra maximum Runic Ward", which its reference
+    // leaves out, so its four largest-hit rows now agree with the pinned PoB2
+    // and not the reference; the Ritualist (Purity of Fire) and Stormweaver
+    // (Frost Bomb) take Evergrasping Ring's Chaos from all of an enemy's
+    // damage, not only from Physical, so their TotalEHP is lower; Decompose's
+    // reference keeps a critical damage bonus for a cloud that cannot crit.
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
         dps_builds: 43,
-        agreeing_rows: 2062,
+        agreeing_rows: 2067,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
@@ -326,12 +340,12 @@ const BASELINES: [Baseline; 3] = [
     // and measured before any change: 11 builds and 971 rows.
     //
     // 12 builds and 978 rows after the changes the tuned set's 41 builds
-    // record; 979 rows after those of its 43, and 13 builds and 984 rows
-    // after those of its 2062 rows.
+    // record; 979 rows after those of its 43, 13 builds and 984 rows after
+    // those of its 2062 rows, and 988 rows after those of its 2067.
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
         dps_builds: 13,
-        agreeing_rows: 984,
+        agreeing_rows: 988,
     },
 ];
 

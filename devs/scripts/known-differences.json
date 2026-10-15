@@ -13,8 +13,8 @@
     },
     {
       "build": "huntress-amazon-rain-of-arrows",
-      "stats": ["EvadeChance", "MeleeEvadeChance", "ProjectileEvadeChance", "SpellEvadeChance", "SpellProjectileEvadeChance"],
-      "reason": "one Blind, the strongest of the character's skills (docs/maintainer-guide.md, Blind)"
+      "stats": ["EvadeChance", "MeleeEvadeChance", "ProjectileEvadeChance", "SpellEvadeChance", "SpellProjectileEvadeChance", "TotalEHP"],
+      "reason": "one Blind, the strongest of the character's skills; the chance not to be hit enters the EHP (docs/maintainer-guide.md, Blind)"
     },
     {
       "build": "mercenary-witchhunter-crossbow-shot",
@@ -35,6 +35,41 @@
       "build": "huntress-ritualist-purity-of-fire",
       "stats": ["CritMultiplier"],
       "reason": "an aura is not a spell: increased Critical Spell Damage Bonus does not apply to Purity of Fire (docs/maintainer-guide.md, Purity of Fire)"
+    },
+    {
+      "build": "huntress-ritualist-purity-of-fire",
+      "stats": ["TotalEHP"],
+      "reason": "enemies in Presence gain Chaos damage from all of their damage (Evergrasping Ring), PoB2 only from their physical damage (docs/maintainer-guide.md, Evergrasping)"
+    },
+    {
+      "build": "sorceress-stormweaver-frost-bomb",
+      "stats": ["TotalEHP"],
+      "reason": "enemies in Presence gain Chaos damage from all of their damage (Evergrasping Ring), PoB2 only from their physical damage (docs/maintainer-guide.md, Evergrasping)"
+    },
+    {
+      "build": "druid-oracle-grim-pillars-0a7cf6c82619",
+      "stats": ["SpiritUnreserved"],
+      "reason": "the Blink the body armour grants and the group supporting it are one skill reserving once, and the Trinity an Absent Amulet grants reserves no Spirit (docs/maintainer-guide.md, companions and granted skills)"
+    },
+    {
+      "build": "monk-invoker-flicker-strike-e3b8bfa3a005",
+      "stats": ["TotalDotDPS", "IgniteDPS"],
+      "reason": "the quarterstaff's rune line reads 30% increased Elemental Damage with Attacks as the item says, not PoB2's rune table's 40% (docs/maintainer-guide.md, runes)"
+    },
+    {
+      "build": "monk-acolyte-of-chayula-decompose",
+      "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "PoisonDPS"],
+      "reason": "the strongest Despair, Doedre's Undoing's, applies; PoB2 picks Blasphemy's (docs/maintainer-guide.md, curses)"
+    },
+    {
+      "build": "monk-acolyte-of-chayula-decompose",
+      "stats": ["CritMultiplier"],
+      "reason": "the cloud poisons without hitting, so it cannot critically hit and has no critical damage bonus; PoB2 leaves the bonus with no chance to crit (docs/maintainer-guide.md, Decompose)"
+    },
+    {
+      "build": "warrior-titan-his-scattering-calamity",
+      "stats": ["SpiritUnreserved"],
+      "reason": "the Cast on Critical an Absent Amulet grants reserves no Spirit; the pinned PoB2 reserves nothing for this build (docs/maintainer-guide.md, Absent Amulet)"
     }
   ]
 }

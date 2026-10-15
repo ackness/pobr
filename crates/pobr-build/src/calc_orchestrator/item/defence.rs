@@ -180,8 +180,9 @@ pub(crate) fn item_spirit_modifiers(build: &Build, data: &BuildData) -> Vec<Modi
 
 /// Per-item Runic Ward → a `Ward` BASE mod.
 ///
-/// An item's Runic Ward is its base type's, scaled by the item's own
-/// "N% increased Runic Ward" (the game's `local_ward_+%`) and by its quality,
+/// An item's Runic Ward is its base type's plus its own "+N to maximum Runic
+/// Ward" (the game's `local_ward`), scaled by the item's own "N% increased
+/// Runic Ward" (`local_ward_+%`) and by its quality,
 /// and is a whole number like the item's other defences. It is recomputed from
 /// the base type for the same reason they are: the `Ward:` line of a build
 /// code is what the exporting tool computed, which may leave the local
@@ -190,11 +191,16 @@ pub(crate) fn item_spirit_modifiers(build: &Build, data: &BuildData) -> Vec<Modi
 pub(crate) fn item_ward_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
     let mut mods = Vec::new();
     for (slot, item) in &build.items {
-        let base = data
-            .armour_base(&item.base.to_string())
-            .map_or(0, |a| a.ward);
-        let value = if base > 0 {
-            (f64::from(base)
+        let armour = data.armour_base(&item.base.to_string());
+        let base = armour.map_or(0, |a| a.ward);
+        // Elsewhere, on a weapon, the line is the character's.
+        let flat = if armour.is_some() {
+            pobr_core::skill_env::item_local_ward_flat(item)
+        } else {
+            0.0
+        };
+        let value = if base > 0 || flat > 0.0 {
+            ((f64::from(base) + flat)
                 * (1.0 + pobr_core::skill_env::item_local_ward_inc(item) / 100.0)
                 * (1.0 + f64::from(item.quality) / 100.0))
                 .round()

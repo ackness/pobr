@@ -103,6 +103,7 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         let extras = [
             ("MaximumLife", resources.extra_life),
             ("MaximumMana", resources.extra_mana),
+            ("Ward", resources.extra_ward),
         ];
         for (name, value) in extras {
             if value > 0.0 {
@@ -448,8 +449,14 @@ fn perform_minions(env: &mut Env) {
     let mut minions = std::mem::take(&mut env.minions);
     for minion in &mut minions {
         // Minions use their own skill and hit the same enemy as the player.
-        let minion_cfg = minion_cfg(env, minion);
+        let mut minion_cfg = minion_cfg(env, minion);
         apply_gigantic(minion, &minion_cfg);
+        let (auras, conditions) =
+            super::buff_pass::auras_on_minion(env, &minion.mod_db, &minion_cfg);
+        minion.mod_db.add_list(auras);
+        for condition in conditions {
+            minion_cfg.conditions.insert(condition, true);
+        }
         apply_extra_auras(minion, &minion_cfg, env);
         apply_main_hand_share(minion, &minion_cfg, env);
         let mut input = MinimalInput::from(minion.base);

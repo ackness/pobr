@@ -284,6 +284,26 @@ pub fn parse_local_ward_inc(clean: &str) -> Option<f64> {
     number.trim().parse::<f64>().ok().map(|value| sign * value)
 }
 
+/// A local Runic Ward base, the game's `local_ward`: "+N to maximum Runic
+/// Ward" among an armour piece's own modifiers is part of that item's Runic
+/// Ward, scaled by its local increases and quality (The Brass Dome's
+/// implicit). The same text elsewhere, a socketed alloy's or a weapon's, is
+/// `base_maximum_ward`, a modifier to the character's.
+pub fn parse_local_ward_flat(clean: &str) -> Option<f64> {
+    let number = clean.strip_suffix(" to maximum runic ward")?;
+    number.trim().trim_start_matches('+').parse::<f64>().ok()
+}
+
+/// Sum of the local Runic Ward bases among the item's own modifiers
+/// (implicit and explicit; what is socketed in it is the character's).
+pub fn item_local_ward_flat(item: &Item) -> f64 {
+    item.implicit_texts
+        .iter()
+        .chain(item.modifier_texts.iter())
+        .filter_map(|text| parse_local_ward_flat(&clean_item_text(text)))
+        .sum()
+}
+
 /// Sum of the local Runic Ward increases on the item.
 pub fn item_local_ward_inc(item: &Item) -> f64 {
     weapon_mod_texts(item)
