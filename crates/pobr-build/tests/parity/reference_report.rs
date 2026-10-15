@@ -415,7 +415,12 @@ const BASELINES: [Baseline; 3] = [
         // Local flat requirements are added after base requirement conversion (+3 rows).
         // Explicit sustained drains do not repeat the upfront cost (+1 Oil Barrage row).
         // Sanguimantic Rituals redirects Arcane Surge regeneration to Life (+3 rows).
-        agreeing_rows: 5781,
+        // Soul Thief's physical attack Mana leech maps from the game stat (+1, Tactician 406c).
+        // 0.5 leech (strongest instance, one-second recovery, no pool cap; patch notes and
+        // poe2db Keywords): gain Warbringer af6a, lose LifeLeechGainRate on 1e4e329e5e5c,
+        // bc750d615159 and 42f790c0f9ba, where the reference still caps by the pool
+        // (devs/scripts/known-differences.json).
+        agreeing_rows: 5780,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //

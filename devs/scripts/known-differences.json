@@ -2,6 +2,48 @@
   "_doc": "Reference rows `mise run triage` files as known: differences the repository already explains, so a triage lists only what is left to look at. `build` is a fragment of the build folder's name, `stats` the rows it explains, `reason` where the explanation is. Add an entry when a difference is documented as deliberate; remove it when the engine changes.",
   "differences": [
     {
+      "build": "ranger-deadeye-twister-bed1edc6d8b2",
+      "stats": [
+        "ManaLeechGainRate"
+      ],
+      "reason": "0.5 leech uses the strongest active instance, with one-second base recovery and no 10%-of-pool amount cap; amount and speed are separate (docs/maintainer-guide.md, Leech; https://www.pathofexile.com/forum/view-thread/3932540; https://poe2db.tw/us/Keywords). The oracle stacks instances and retains the old pool-based instance cap. Default rate ceilings remain the documented compatibility convention. The one-second strongest-instance estimate is 80.72 rather than the reference 166.17."
+    },
+    {
+      "build": "ranger-pathfinder-ice-shot-728cbde29279",
+      "stats": [
+        "ManaLeechGainRate"
+      ],
+      "reason": "0.5 leech uses the strongest active instance, with one-second base recovery and no 10%-of-pool amount cap; amount and speed are separate (docs/maintainer-guide.md, Leech; https://www.pathofexile.com/forum/view-thread/3932540; https://poe2db.tw/us/Keywords). The oracle stacks instances and retains the old pool-based instance cap. Default rate ceilings remain the documented compatibility convention. base_mana_leech_amount_+% increases the amount, not the maximum rate: 162.96 rather than 190.12."
+    },
+    {
+      "build": "witch-blood-mage-arc-5bc8be0fa967",
+      "stats": [
+        "LifeLeechGainRate"
+      ],
+      "reason": "0.5 leech uses the strongest active instance, with one-second base recovery and no 10%-of-pool amount cap; amount and speed are separate (docs/maintainer-guide.md, Leech; https://www.pathofexile.com/forum/view-thread/3932540; https://poe2db.tw/us/Keywords). The oracle stacks instances and retains the old pool-based instance cap. Default rate ceilings remain the documented compatibility convention. base_life_leech_amount_+% increases the amount, not the maximum rate: 513.68 rather than 575.23."
+    },
+    {
+      "build": "warrior-warbringer-shield-wall-1e4e329e5e5c",
+      "stats": [
+        "LifeLeechGainRate"
+      ],
+      "reason": "0.5 leech uses the strongest active instance, with one-second base recovery and no 10%-of-pool amount cap; amount and speed are separate (docs/maintainer-guide.md, Leech; https://www.pathofexile.com/forum/view-thread/3932540; https://poe2db.tw/us/Keywords). The oracle stacks instances and retains the old pool-based instance cap. Default rate ceilings remain the documented compatibility convention. Previously agreeing row: 582.978 versus reference 552.40416 after removing the per-instance amount cap."
+    },
+    {
+      "build": "witch-blood-mage-comet-bc750d615159",
+      "stats": [
+        "LifeLeechGainRate"
+      ],
+      "reason": "0.5 leech uses the strongest active instance, with one-second base recovery and no 10%-of-pool amount cap; amount and speed are separate (docs/maintainer-guide.md, Leech; https://www.pathofexile.com/forum/view-thread/3932540; https://poe2db.tw/us/Keywords). The oracle stacks instances and retains the old pool-based instance cap. Default rate ceilings remain the documented compatibility convention. Previously agreeing row: 641.43144 versus reference 207.01273758865 after removing the per-instance amount cap."
+    },
+    {
+      "build": "mercenary-gemling-legionnaire-frostbolt-42f790c0f9ba",
+      "stats": [
+        "LifeLeechGainRate"
+      ],
+      "reason": "0.5 leech uses the strongest active instance, with one-second base recovery and no 10%-of-pool amount cap; amount and speed are separate (docs/maintainer-guide.md, Leech; https://www.pathofexile.com/forum/view-thread/3932540; https://poe2db.tw/us/Keywords). The oracle stacks instances and retains the old pool-based instance cap. Default rate ceilings remain the documented compatibility convention. Previously agreeing row: 0.2 versus reference 0.0635 after removing the per-instance amount cap."
+    },
+    {
       "build": "ranger-deadeye-ice-shot-b6ce7b3a4329",
       "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "IgniteDPS", "AverageDamage", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
       "reason": "Minion Pact II takes the Rhoa of Rhoa Mount as the nearby minion (baseline note, crates/pobr-build/tests/parity/reference_report.rs)"

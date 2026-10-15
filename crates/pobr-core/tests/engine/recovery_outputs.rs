@@ -90,7 +90,7 @@ fn leech_gains_include_on_hit_and_obey_hit_frequency() {
         Modifier::number("EnergyShieldOnHit", ModType::Base, 4.0),
     ];
     let fast = run(mods.clone(), 2.0);
-    value(&fast, "LifeLeechGainRate", 70.0);
+    value(&fast, "LifeLeechGainRate", 40.0);
     value(&fast, "LifeLeechGainPerHit", 35.0);
     value(&fast, "ManaLeechGainRate", 6.0);
     value(&fast, "ManaLeechGainPerHit", 3.0);
@@ -99,6 +99,64 @@ fn leech_gains_include_on_hit_and_obey_hit_frequency() {
     let slow = run(mods, 0.5);
     value(&slow, "LifeLeechGainRate", 17.5);
     value(&slow, "LifeLeechGainPerHit", 35.0);
+}
+
+#[test]
+fn leech_supports_grant_only_physical_attack_leech() {
+    // Soul Thief grants 800 permyriad = 8%; Life Thief grants 1200 = 12%.
+    // A 100 damage physical attack therefore leeches 8 Mana and 12 Life.
+    for (resource, stat, amount, expected) in [
+        (
+            "Mana",
+            "base_mana_leech_from_physical_attack_damage_permyriad",
+            800.0,
+            8.0,
+        ),
+        (
+            "Life",
+            "base_life_leech_from_physical_attack_damage_permyriad",
+            1200.0,
+            12.0,
+        ),
+    ] {
+        for (cfg, conversion, expected) in [
+            (
+                CalcConfig::attack().with_damage_type(DamageType::Physical),
+                0.0,
+                expected,
+            ),
+            (
+                CalcConfig::spell().with_damage_type(DamageType::Physical),
+                0.0,
+                0.0,
+            ),
+            (CalcConfig::attack(), 100.0, 0.0),
+        ] {
+            let mut player = Actor::new(
+                90,
+                ActorBaseStats {
+                    life: 1000.0,
+                    mana: 500.0,
+                    hit_min: 100.0,
+                    hit_max: 100.0,
+                    action_rate: 1.0,
+                    ..ActorBaseStats::default()
+                },
+            );
+            player
+                .mod_db
+                .add_list(pobr_core::rules::skill_stats::skill_modifiers(stat, amount).unwrap());
+            player.mod_db.add_mod(Modifier::number(
+                "PhysicalDamageConvertToFire",
+                ModType::Base,
+                conversion,
+            ));
+            let mut env = Env::new(player);
+            env.cfg = cfg;
+            perform(&mut env).unwrap();
+            value(&env, &format!("{resource}LeechGainPerHit"), expected);
+        }
+    }
 }
 
 #[test]
@@ -168,11 +226,11 @@ fn leech_caps_and_instant_recovery_do_not_cap_gain_on_hit() {
         ],
         2.0,
     );
-    value(&env, "LifeLeechGainPerHit", 120.0);
-    value(&env, "LifeLeechGainRate", 240.0);
-    value(&env, "ManaLeechGainPerHit", 50.0);
+    value(&env, "LifeLeechGainPerHit", 520.0);
+    value(&env, "LifeLeechGainRate", 1040.0);
+    value(&env, "ManaLeechGainPerHit", 500.0);
     value(&env, "ManaLeechGainRate", 100.0);
-    value(&env, "EnergyShieldLeechGainPerHit", 30.0);
+    value(&env, "EnergyShieldLeechGainPerHit", 500.0);
     value(&env, "EnergyShieldLeechGainRate", 30.0);
 }
 
@@ -262,4 +320,91 @@ fn net_life_and_mana_recovery_follow_the_channel_use_cycle() {
         (bare.player.output.net_mana_regen - paid.player.output.net_mana_regen - 20.0 / 0.7).abs()
             < 1e-6
     );
+}
+
+#[test]
+fn leech_recovers_over_one_second_without_a_pool_based_amount_cap() {
+    // 50% of a 1000 hit is 500 Life, even though the pool is only 1000.
+    // 0.1 hits/s yields 50/s; the full amount per hit is still 500.
+    let env = run(
+        vec![Modifier::number(
+            "PhysicalDamageLifeLeech",
+            ModType::Base,
+            50.0,
+        )],
+        0.1,
+    );
+    value(&env, "LifeLeechGainPerHit", 500.0);
+    value(&env, "LifeLeechGainRate", 50.0);
+    let env = run(
+        vec![Modifier::number(
+            "PhysicalDamageLifeLeech",
+            ModType::Base,
+            2.0,
+        )],
+        10.0,
+    );
+    // 20 Life recovered over one second; ten overlapping hits do not stack.
+    value(&env, "LifeLeechGainRate", 20.0);
+}
+
+#[test]
+fn leech_applies_increased_maximum_before_the_rate_cap() {
+    // 500 Life per instance, 100% increased maximum: 1000 * 20% * 2 = 400/s.
+    let env = run(
+        vec![
+            Modifier::number("PhysicalDamageLifeLeech", ModType::Base, 50.0),
+            Modifier::number("MaxLifeLeechRate", ModType::Inc, 100.0),
+        ],
+        10.0,
+    );
+    value(&env, "LifeLeechGainRate", 400.0);
+    value(&env, "LifeLeechGainPerHit", 500.0);
+}
+
+#[test]
+fn faster_leech_changes_rate_but_not_recovered_amount() {
+    // base_life_leech_rate_+%: "Leech Life 100% faster".
+    // 20 Life / (1 second / 2) = 40/s, with the same 20 Life per hit.
+    let env = run(
+        vec![
+            Modifier::number("PhysicalDamageLifeLeech", ModType::Base, 2.0),
+            Modifier::number("LifeLeechRate", ModType::Inc, 100.0),
+        ],
+        10.0,
+    );
+    value(&env, "LifeLeechGainRate", 40.0);
+    value(&env, "LifeLeechGainPerHit", 20.0);
+}
+
+#[test]
+fn increased_leech_amount_is_distinct_from_increased_maximum_rate() {
+    // base_life_leech_amount_+%: 50% increased amount turns 20 Life into
+    // 30 Life. It does not merely raise the unused 200/s recovery ceiling.
+    let parsed = crate::support::parse_mod("50% increased amount of Life Leeched").unwrap();
+    assert_eq!(parsed.mods[0].name.as_str(), "LifeLeechAmount");
+    let mut mods = parsed.mods;
+    mods.push(Modifier::number(
+        "PhysicalDamageLifeLeech",
+        ModType::Base,
+        2.0,
+    ));
+    let env = run(mods, 10.0);
+    value(&env, "LifeLeechGainPerHit", 30.0);
+    value(&env, "LifeLeechGainRate", 30.0);
+}
+
+#[test]
+fn strongest_leech_instance_recovers_instead_of_averaging_critical_rates() {
+    // Noncritical hits leech 20, critical hits 40. At 10 hits/s and 50%
+    // critical chance the stronger one-second instances sustain 40/s.
+    let env = run(
+        vec![
+            Modifier::number("PhysicalDamageLifeLeech", ModType::Base, 2.0),
+            Modifier::number("CritChanceBase", ModType::Override, 50.0),
+            Modifier::number("CritMultiplier", ModType::Base, 100.0),
+        ],
+        10.0,
+    );
+    value(&env, "LifeLeechGainRate", 40.0);
 }

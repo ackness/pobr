@@ -285,17 +285,13 @@ impl CalculationSession {
                 }
             }
             "LifeLeechRate" | "ManaLeechRate" | "EsLeechRate" => {
-                use crate::calc::survivability::LeechResource;
-                let (i, resource) = match stat {
-                    "LifeLeechRate" => (0, LeechResource::Life),
-                    "ManaLeechRate" => (1, LeechResource::Mana),
-                    _ => (2, LeechResource::EnergyShield),
+                let i = match stat {
+                    "LifeLeechRate" => 0,
+                    "ManaLeechRate" => 1,
+                    _ => 2,
                 };
                 let terms = perform::leech_panel_terms(env);
-                let mut rows = vec![(
-                    "LeechRateRatio".into(),
-                    resource.max_rate_pct() / crate::calc::survivability::LEECH_MAX_INSTANCE_PCT,
-                )];
+                let mut rows = vec![];
                 let mut expressions = vec!["0".to_string()];
                 for (index, pass) in terms.iter().enumerate() {
                     let prefix = if index == 0 { "Primary" } else { "Secondary" };
@@ -303,8 +299,17 @@ impl CalculationSession {
                     rows.extend([
                         (format!("{prefix}LeechedAmount"), t.instance_total),
                         (format!("{prefix}LeechRateCap"), t.rate_cap_per_second),
+                        (
+                            format!("{prefix}LeechInstanceRate"),
+                            t.display_rate_per_second,
+                        ),
                     ]);
-                    expressions.push(format!("round(min({prefix}LeechedAmount * LeechRateRatio, {prefix}LeechRateCap), 9)"));
+                    expressions.push(format!("{prefix}LeechInstanceRate"));
+                }
+                if terms.is_empty() {
+                    // No leech source: the only instance rate is zero.
+                    rows.push(("PrimaryLeechInstanceRate".into(), 0.0));
+                    expressions.push("PrimaryLeechInstanceRate".into());
                 }
                 (format!("max({})", expressions.join(", ")), rows)
             }

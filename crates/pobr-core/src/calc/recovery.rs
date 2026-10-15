@@ -2,7 +2,7 @@
 //! an input here. Resource drains ("Lose … per second") bypass mitigation;
 //! damage the build deals to itself uses resistance and damage-taken modifiers.
 
-use super::{Env, LeechResource, calc_leech, calc_regen};
+use super::{Env, LeechResource, calc_regen};
 use crate::{CalcConfig, HandTag, ModDb};
 use pobr_data::prelude::*;
 
@@ -212,22 +212,32 @@ fn gain_for_hit(
     // Reuse the engine's single-instance leech limits. A sustained rate also
     // needs sufficient hits to replace each expired instance; hit frequency
     // never stacks the recovery rates of overlapping instances.
-    let instance = calc_leech(pool, amount, 100.0, resource);
     let instant_fraction = if db.flag(cfg, &format!("Instant{name}Leech")) {
         1.0
     } else {
         (base(db, cfg, &format!("Instant{name}Leech")) / 100.0).clamp(0.0, 1.0)
     };
     let recovery = factor(db, cfg, &format!("{name}RecoveryRate"));
+    let amount = amount * factor(db, cfg, &format!("{name}LeechAmount"));
+    let instance = super::survivability::leech_instance(
+        pool,
+        amount,
+        resource,
+        factor(db, cfg, &format!("{name}LeechRate")),
+        factor(db, cfg, &format!("Max{name}LeechRate")),
+    );
     let normal = instance.instance_total * (1.0 - instant_fraction);
+    let normal_instance = super::survivability::leech_instance(
+        pool,
+        normal,
+        resource,
+        factor(db, cfg, &format!("{name}LeechRate")),
+        factor(db, cfg, &format!("Max{name}LeechRate")),
+    );
     Gain {
         per_hit: normal * recovery,
         instant: instance.instance_total * instant_fraction,
-        peak: (instance.display_rate_per_second
-            * (1.0 - instant_fraction)
-            * factor(db, cfg, &format!("{name}LeechRate")))
-        .min(instance.rate_cap_per_second * factor(db, cfg, &format!("Max{name}LeechRate")))
-            * recovery,
+        peak: normal_instance.display_rate_per_second * recovery,
         on_hit,
     }
 }
@@ -243,6 +253,7 @@ fn fill_leech_gain(env: &mut Env, hit: &[(DamageType, f64)], crit: &[(DamageType
     let mut details = [[[0.0; 3]; 3]; 2];
     let mut per_hit = [0.0; 3];
     let mut rate = [0.0; 3];
+    let mut instances: [Vec<(f64, f64)>; 3] = Default::default();
     let mut accumulate = |cfg: &CalcConfig,
                           normal: &[(DamageType, f64)],
                           critical: &[(DamageType, f64)],
@@ -268,12 +279,14 @@ fn fill_leech_gain(env: &mut Env, hit: &[(DamageType, f64)], crit: &[(DamageType
                 {
                     details[0][i][channel] += value * portion * share;
                 }
-                details[1][i][0] += (gain.per_hit * hit_rate).min(gain.peak * share) * portion;
+                if gain.peak > 0.0 {
+                    let duration = gain.per_hit / gain.peak;
+                    instances[i].push((gain.peak, (duration * hit_rate * portion).min(1.0)));
+                }
                 details[1][i][1] += gain.instant * hit_rate * portion;
                 details[1][i][2] += gain.on_hit * hit_rate * portion;
                 per_hit[i] += (gain.per_hit + gain.instant + gain.on_hit) * portion * share;
-                rate[i] += (gain.per_hit * hit_rate).min(gain.peak * share) * portion
-                    + (gain.instant + gain.on_hit) * hit_rate * portion;
+                rate[i] += (gain.instant + gain.on_hit) * hit_rate * portion;
             }
         }
     };
@@ -306,6 +319,22 @@ fn fill_leech_gain(env: &mut Env, hit: &[(DamageType, f64)], crit: &[(DamageType
                 share,
             );
         }
+    }
+    // "Only a single Leech instance per resource (Life, Mana, or Energy
+    // Shield) can apply at a time."
+    // https://www.pathofexile.com/forum/view-thread/3932540
+    // Allocate the available time to the highest rates first; lower rates
+    // can only fill time left after those instances expire. This is a
+    // sustained, evenly-spaced-hit estimate, not a simulation of crit timing.
+    for (i, candidates) in instances.iter_mut().enumerate() {
+        candidates.sort_by(|a, b| b.0.total_cmp(&a.0));
+        let mut remaining: f64 = 1.0;
+        for &(peak, uptime) in candidates.iter() {
+            let active = uptime.min(remaining);
+            details[1][i][0] += peak * active;
+            remaining -= active;
+        }
+        rate[i] += details[1][i][0];
     }
     let out = &mut env.player.output;
     env.leech_gain_terms = details;
