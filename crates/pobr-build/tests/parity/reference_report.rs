@@ -236,10 +236,16 @@ const BASELINES: [Baseline; 3] = [
     // compared; characters' inherent 4% Mana regeneration per second
     // (`character_inherent_mana_regeneration_rate_per_minute_%`) and
     // Berserk's Life loss per Rage brought most of them into agreement.
+    //
+    // Then 628 rows: the rest of the sidebar became display stats (damage
+    // and ailment views, accuracy per hand, durations, area radius,
+    // projectile counts, attribute requirements, costs and spending per
+    // second, placement and channel timing), so the reference's rows for
+    // them are compared too.
     Baseline {
         corpus: "examples/wasm-benchmark/builds",
         dps_builds: 5,
-        agreeing_rows: 501,
+        agreeing_rows: 628,
     },
     // Was 22 builds and 1024 rows. A code whose main skill summons a minion
     // also carries `<MinionStat>` values for that minion, which were not
@@ -384,10 +390,16 @@ const BASELINES: [Baseline; 3] = [
     // compared; characters' inherent 4% Mana regeneration per second
     // (`character_inherent_mana_regeneration_rate_per_minute_%`) and
     // Berserk's Life loss per Rage brought most of them into agreement.
+    //
+    // Then 5525 rows: the rest of the sidebar became display stats (damage
+    // and ailment views, accuracy per hand, durations, area radius,
+    // projectile counts, attribute requirements, costs and spending per
+    // second, placement and channel timing), so the reference's rows for
+    // them are compared too.
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
         dps_builds: 58,
-        agreeing_rows: 4368,
+        agreeing_rows: 5525,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
@@ -418,10 +430,16 @@ const BASELINES: [Baseline; 3] = [
     // compared; characters' inherent 4% Mana regeneration per second
     // (`character_inherent_mana_regeneration_rate_per_minute_%`) and
     // Berserk's Life loss per Rage brought most of them into agreement.
+    //
+    // Then 1828 rows: the rest of the sidebar became display stats (damage
+    // and ailment views, accuracy per hand, durations, area radius,
+    // projectile counts, attribute requirements, costs and spending per
+    // second, placement and channel timing), so the reference's rows for
+    // them are compared too.
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
         dps_builds: 18,
-        agreeing_rows: 1448,
+        agreeing_rows: 1828,
     },
 ];
 
