@@ -1472,12 +1472,21 @@ fn total_dps_traced(
     // (`calc::rain`); the uses only limit it.
     let (action_rate, action_rate_node) = match super::rain::rain_hits(db, cfg, use_rate) {
         Some(rain) => {
+            let landing_stat = if db.flag(cfg, super::rain::USE_CADENCE) {
+                super::rain::HIT_INTERVAL
+            } else {
+                "ProjectileSpeed"
+            };
             let landing_speed = db.sum_traced(
-                ModType::Inc,
+                if landing_stat == "ProjectileSpeed" {
+                    ModType::Inc
+                } else {
+                    ModType::Base
+                },
                 cfg,
-                &[ModName::from("ProjectileSpeed")],
+                &[ModName::from(landing_stat)],
                 trace,
-                "Projectile speed INC (how often the arrows land)",
+                "Rain landing timing",
             );
             let rate = round(rain.rate);
             let node = trace.add_node("rain hit rate", rate, TraceOperation::Multiply);

@@ -81,10 +81,10 @@ pub struct Env {
     /// single-pipeline path identical to the historical behavior (fallback
     /// state, output unchanged value-for-value).
     pub hand_sources: Vec<super::hand_pass::HandSource>,
-    /// The physical damage range of the character's main hand weapon, after
+    /// The damage ranges of the character's main hand weapon, after
     /// its own modifiers, whatever skill is calculated: what a minion that
     /// gains added damage equal to a share of it adds.
-    pub main_hand_weapon_damage: Option<(f64, f64)>,
+    pub main_hand_weapon_damage: Vec<(DamageType, f64, f64)>,
     /// Skill data's `doubleHitsWhenDualWielding` (flips the combineStat
     /// DPS/CRIT mode, vendor CalcOffence.lua:2459-2545). The data channel is
     /// the skill_overrides extraction; always false until the orchestration
@@ -122,7 +122,7 @@ impl Env {
             crossbow_reload: None,
             ehp_terms: None,
             hand_sources: Vec::new(),
-            main_hand_weapon_damage: None,
+            main_hand_weapon_damage: Vec::new(),
             double_hits_when_dual_wielding: false,
             high_precision: HighPrecisionRules::default(),
         }
@@ -194,6 +194,19 @@ impl Env {
                 actor.base.hit_min = weapon.hit_min;
                 actor.base.hit_max = weapon.hit_max;
                 actor.base.action_rate = weapon.attack_rate.unwrap_or(0.0);
+            }
+            // MonsterVarieties.DamageMultiplier applies to added attack damage
+            // as well as the monster's base damage. Picked beasts/spectres and
+            // copied weapons keep their own damage bases.
+            if !origin.picked_monster && origin.copied_weapon.is_none() && def.damage != 1.0 {
+                actor.mod_db.add_mod(
+                    crate::Modifier::number(
+                        "AddedDamage",
+                        ModType::More,
+                        (def.damage - 1.0) * 100.0,
+                    )
+                    .with_flags(ModFlags::ATTACK),
+                );
             }
             // An attack's damage_multiplier scales its weapon and added damage.
             if let Some(multiplier) = origin.skill.damage_multiplier {

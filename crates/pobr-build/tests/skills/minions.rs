@@ -597,3 +597,53 @@ fn every_companion_counts_with_its_own_supports() {
         one.base_sum("Multiplier:SummonedMinion")
     );
 }
+
+/// The Catha's Balance shares every damage type on the weapon. The
+/// monster's damage multiplier and its attack's multiplier both scale the
+/// added damage; weapon damage without that sharing modifier stays local.
+#[test]
+fn companions_scale_shared_weapon_damage_of_every_type() {
+    let data = load_data();
+    for (summon, monster, attack_multiplier) in [
+        ("SummonAzmerianWolfPlayer", "AzmerianWolf", 2.5),
+        ("WildProtectorPlayer", "BearCompanion", 1.0),
+    ] {
+        let hit = |added: &str, share: bool| {
+            let xml = format!(
+                r#"<PathOfBuilding2><Build level="90" className="Witch"/>
+<Skills><Skill><Gem skillId="{summon}" level="20"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Wooden Club
+{added}
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#
+            );
+            let build = pobr_build::parse_build(&xml).unwrap();
+            let options = DataOrchestratorOptions {
+                extra_modifier_texts: if share {
+                    vec!["Companions gain added Attack damage equal to 60% of your main hand Weapon's damage".into()]
+                } else {
+                    vec![]
+                },
+                ..default_opts()
+            };
+            let session = pobr_build::calculate_with_data_session(&build, &data, &options).unwrap();
+            session.minion_stat_formula(0, "TotalHitAvg").unwrap().value
+        };
+        let base = hit("", true);
+        for kind in ["Physical", "Fire", "Cold", "Lightning", "Chaos"] {
+            let added = format!("Adds 100 to 100 {kind} Damage");
+            let delta = hit(&added, true) - base;
+            // The AddedDamage MORE product uses the engine's two-decimal
+            // aggregation precision (2.43 × 2.5 becomes 6.08).
+            let effectiveness =
+                (data.minions[monster].damage * attack_multiplier * 100.0).round() / 100.0;
+            let expected = 100.0 * 0.6 * effectiveness * 1.05;
+            assert!(
+                (delta - expected).abs() < 1e-6,
+                "{summon} {kind}: {delta} vs {expected}"
+            );
+            assert_eq!(hit(&added, false), hit("", false));
+        }
+    }
+}

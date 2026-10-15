@@ -533,7 +533,12 @@ impl CalculationSession {
     /// Notes the physical damage range of the character's main hand weapon
     /// (see [`Env::main_hand_weapon_damage`](super::Env)).
     pub fn set_main_hand_weapon_damage(&mut self, min: f64, max: f64) {
-        self.env.main_hand_weapon_damage = Some((min, max));
+        self.set_main_hand_weapon_damage_components(vec![(DamageType::Physical, min, max)]);
+    }
+
+    /// Notes all damage types on the main-hand weapon for allies that share it.
+    pub fn set_main_hand_weapon_damage_components(&mut self, damage: Vec<(DamageType, f64, f64)>) {
+        self.env.main_hand_weapon_damage = damage;
     }
 
     pub fn set_hand_sources(
@@ -977,7 +982,15 @@ impl CalculationSession {
         };
         let db = &env.player.mod_db;
         let uses = super::offence::resolve_use_rate(db, cfg, hand_input);
-        super::rain::rain_hits(db, cfg, uses).map(|rain| rain.summary())
+        super::rain::rain_hits(db, cfg, uses).map(|rain| {
+            let mut summary = rain.summary();
+            if let Some(reload) = env.crossbow_reload {
+                summary.hits_per_second = super::round(
+                    summary.hits_per_second * reload.effective_rate / reload.firing_rate,
+                );
+            }
+            summary
+        })
     }
 
     /// The selected channel's timing approximation, including its stage default
@@ -1024,7 +1037,14 @@ impl CalculationSession {
             "LightningResist" => &["LightningResistance", "LightningResist", "ElementalResist"],
             "ChaosResist" => &["ChaosResistance", "ChaosResist"],
             // A rain's hits come as its arrows land, at projectile speed.
-            "ActionRate" if super::rain::is_rain(&self.env.player.mod_db, &self.env.cfg) => {
+            "ActionRate"
+                if super::rain::is_rain(&self.env.player.mod_db, &self.env.cfg)
+                    && !self
+                        .env
+                        .player
+                        .mod_db
+                        .flag(&self.env.cfg, super::rain::USE_CADENCE) =>
+            {
                 &["ProjectileSpeed"]
             }
             "ActionRate"
@@ -1040,6 +1060,14 @@ impl CalculationSession {
             }
             "ActionRate" => {
                 let mut names = super::skill_use_time::speed_names_for(&self.env.cfg);
+                if self
+                    .env
+                    .player
+                    .mod_db
+                    .flag(&self.env.cfg, super::rain::USE_CADENCE)
+                {
+                    names.push(ModName::from(super::rain::HIT_INTERVAL));
+                }
                 if self.env.player.mod_db.flag(&self.env.cfg, "ChannelCycle") {
                     names.extend(
                         [

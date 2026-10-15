@@ -87,3 +87,69 @@ fn on_the_reference_basis_the_enemy_is_hit_whenever_it_can_be() {
     assert_eq!(per_hit, 1.0);
     assert!((hits - 1.0 / 0.12).abs() < 1e-6, "{hits}");
 }
+
+/// Hailstorm's 200 ms target lockout applies to bolts landing at the firing
+/// cadence. Its 300 ms flight time delays the rain without setting that
+/// cadence, and projectile speed does not change the magazine's firing time.
+#[test]
+fn hailstorm_lands_at_the_attack_cadence_and_keeps_reload_timing() {
+    let data = data();
+    let build = pobr_build::parse_build(
+        r#"<PathOfBuilding2><Build level="90" className="Witch"/>
+<Skills><Skill><Gem skillId="HailstormRoundsPlayer" level="20"/>
+<Gem skillId="HailstormRoundsAmmoPlayer" level="20"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Makeshift Crossbow
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#,
+    )
+    .unwrap();
+    let run = |speed: &str, projectiles: bool, reference: bool| {
+        let mut options = DataOrchestratorOptions::default();
+        if reference {
+            options = options.on_reference_basis();
+        }
+        options.extra_modifier_texts.push(speed.into());
+        if projectiles {
+            options.extra_modifier_texts.extend([
+                "100% increased Projectile Speed".into(),
+                "Skills fire 2 additional Projectiles".into(),
+            ]);
+        }
+        calculate_with_data_session(&build, &data, &options).unwrap()
+    };
+    for speed in ["0% increased Attack Speed", "1000% increased Attack Speed"] {
+        let session = run(speed, false, false);
+        let rain = session.rain().expect("Hailstorm has a landing model");
+        let reload = session.crossbow_reload().expect("reload cycle");
+        assert_eq!(reload.effective_bolt_count, 50.0);
+        assert_eq!(rain.hit_interval, 0.2);
+        assert!((rain.landing_interval - 1.0 / reload.firing_rate).abs() < 1e-9);
+        let per_hit = (0.2 * reload.firing_rate - 1e-9).ceil().max(1.0);
+        let expected = reload.effective_rate / per_hit;
+        assert!((session.output().action_rate - expected).abs() < 1e-6);
+        assert_eq!(rain.hits_per_second, session.output().action_rate);
+        assert_eq!(
+            session.output().effective_action_rate,
+            session.output().action_rate
+        );
+        for stat in ["ActionRate", "TotalDPS"] {
+            assert!(
+                session.stat_formula(stat).is_some(),
+                "{stat} formula agrees with output"
+            );
+        }
+        let faster_projectiles = run(speed, true, false);
+        assert_eq!(
+            faster_projectiles.output().action_rate,
+            session.output().action_rate
+        );
+        assert_eq!(faster_projectiles.crossbow_reload(), Some(reload));
+    }
+    let fast = run("1000% increased Attack Speed", false, false);
+    assert!(fast.rain().unwrap().arrows_per_hit > 1.0);
+    let reference = run("1000% increased Attack Speed", false, true);
+    let reload = reference.crossbow_reload().unwrap();
+    let expected = reload.firing_rate.min(5.0) * reload.effective_rate / reload.firing_rate;
+    assert!((reference.output().action_rate - expected).abs() < 1e-6);
+}

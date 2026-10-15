@@ -12,6 +12,12 @@ pub fn modifiers(effect: &str, set: Option<&str>, stat: &str, value: f64) -> Opt
         "FirestormPlayer" | "IcestormPlayer" | "ThunderstormPlayer"
     ) || primary && matches!(effect, "BallLightningPlayer" | "SolarOrbPlayer");
     let base = |name| vec![Modifier::number(name, ModType::Base, value)];
+    if effect == "HailstormRoundsPlayer" && stat == "rain_hit_delay_ms" {
+        return Some(vec![
+            Modifier::number(rain::HIT_INTERVAL, ModType::Base, value),
+            Modifier::flag(rain::USE_CADENCE),
+        ]);
+    }
     if periodic {
         match stat {
             "ball_lightning_base_hit_frequency_ms"

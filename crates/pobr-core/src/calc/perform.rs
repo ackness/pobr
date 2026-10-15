@@ -361,12 +361,9 @@ fn apply_gigantic(minion: &mut super::Actor, cfg: &CalcConfig) {
 
 /// "Companions gain added Attack damage equal to N% of your main hand
 /// Weapon's damage": a minion with `GainMainHandDmgFromParent` adds N% (the
-/// character's `MainHandDamageToAllies`) of the physical damage of the
+/// character's `MainHandDamageToAllies`) of every damage type of the
 /// character's main hand weapon to its attacks.
 fn apply_main_hand_share(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env) {
-    let Some((min, max)) = env.main_hand_weapon_damage else {
-        return;
-    };
     if !cfg.flags.intersects(ModFlags::ATTACK)
         || !minion.mod_db.flag(cfg, "GainMainHandDmgFromParent")
     {
@@ -383,12 +380,22 @@ fn apply_main_hand_share(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env)
         ModifierSource::new(SourceId::new(SourceKind::Derived, "minion.main_hand_share"))
             .with_raw_text(format!("{share}% of your main hand Weapon's damage"))
     };
-    minion.mod_db.add_list([
-        Modifier::number("PhysicalDamageMin", ModType::Base, min * share / 100.0)
+    for &(kind, min, max) in &env.main_hand_weapon_damage {
+        minion.mod_db.add_list([
+            Modifier::number(
+                format!("{kind:?}DamageMin"),
+                ModType::Base,
+                min * share / 100.0,
+            )
             .with_origin(origin()),
-        Modifier::number("PhysicalDamageMax", ModType::Base, max * share / 100.0)
+            Modifier::number(
+                format!("{kind:?}DamageMax"),
+                ModType::Base,
+                max * share / 100.0,
+            )
             .with_origin(origin()),
-    ]);
+        ]);
+    }
 }
 
 /// "Allies in your Presence have …" (`ExtraAura`, an aura of the
@@ -944,7 +951,18 @@ fn fill_crossbow_reload(env: &mut Env) {
     if base_reload <= 0.0 {
         return; // Non-crossbow skill / no reload data: no-op.
     }
-    let firing_rate = env.player.output.effective_action_rate;
+    // Hailstorm's target lockout reduces hits, not the rate bolts consume
+    // the magazine. Reload timing must retain the actual attack cadence.
+    let firing_rate = if db.flag(cfg, super::rain::USE_CADENCE) {
+        let input = player_input(env);
+        let hand = main_hand_scope(env);
+        let (cfg, input) = hand
+            .as_ref()
+            .map_or((cfg, &input), |(cfg, input)| (cfg, input));
+        super::offence::resolve_use_rate(db, cfg, input)
+    } else {
+        env.player.output.effective_action_rate
+    };
     if firing_rate <= 0.0 {
         return;
     }
@@ -971,9 +989,9 @@ fn fill_crossbow_reload(env: &mut Env) {
     }
     env.crossbow_reload = Some(reload);
     let out = &mut env.player.output;
-    out.effective_action_rate = round(reload.effective_rate);
+    out.effective_action_rate = round(out.action_rate * factor);
     if let Some(sut) = &mut out.skill_use_time {
-        sut.effective_rate = round(reload.effective_rate);
+        sut.effective_rate = out.effective_action_rate;
     }
     // Proportionally scales DPS / panel rate (equivalent to vendor rewriting Speed in
     // `TotalDPS = AverageDamage × Speed`; the AverageDamage = dps/action_rate identity is unaffected).
