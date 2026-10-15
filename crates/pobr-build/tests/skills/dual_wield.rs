@@ -245,10 +245,13 @@ fn dual_wield_golden_baseline() {
         );
     };
     let data = load_build_data();
+    // The golden's hit and critical chances were recorded against a level-1 target.
+    let mut options = opts(&[]);
+    options.enemy_level = 1;
     let out = calculate_with_data(
         &dual_build(Some(weapon("Shortsword", &[]))),
         &data,
-        &opts(&[]),
+        &options,
     )
     .expect("dual wield golden calc");
     let mh = out.main_hand.as_ref().expect("MH sub-table");

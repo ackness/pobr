@@ -8,6 +8,7 @@ use super::super::stat_map::mapped_stat_modifiers;
 use pobr_core::Modifier;
 use pobr_core::rules::stat_map_engine::{self, MappedItem, MappedOutcome};
 use pobr_data::modifier::ModType;
+use pobr_data::monster::EnemyTier;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 use crate::build::{Build, SocketGroup};
@@ -95,18 +96,15 @@ pub(crate) fn dot_flag_modifiers(
 /// - Gate = the selected statSet's `explodeCorpse` (catalog
 ///   `StatSetDef::explode_corpse`, from the skill_overrides overlay; e.g.
 ///   DetonateDeadPlayer);
-/// - Corpse life = the monster life of the enemy level
-///   (`monster_scaling.life_at`; the level resolved in the same order as
-///   setup_enemy: orchestrator option → config enemyLevel → min(MaxEnemyLevel,
-///   character level));
+/// - Corpse life = `monster_scaling.life_at(enemy_level)`, using the same
+///   resolved level as enemy mitigation;
 /// - Injection = `<Type>DamageMin/Max` BASE, added to the skill's base.
 ///
 /// Returns empty (zero injection) for a non-corpse skill or a skill without
 /// such a stat.
 pub(crate) fn corpse_explosion_modifiers(
-    build: &Build,
     data: &BuildData,
-    options: &DataOrchestratorOptions,
+    enemy_level: u32,
     group: &SocketGroup,
     skill: &ResolvedSkillLevel,
     skill_id: &str,
@@ -117,7 +115,6 @@ pub(crate) fn corpse_explosion_modifiers(
     if !data.selected_set_explode_corpse(skill_id, set_index) {
         return Vec::new();
     }
-    let enemy_level = resolved_enemy_level(build, data, options);
     let monster_life = f64::from(data.constants.monster_scaling.life_at(enemy_level));
     let mut mods = Vec::new();
     // A stat set that only poisons with the corpse's Life (Decompose's
@@ -170,20 +167,30 @@ pub(crate) fn corpse_explosion_modifiers(
     mods
 }
 
-/// Resolves the enemy level (in the same order as `calculate_with_data` step 5's
-/// setup_enemy, vendor CalcSetup.lua:529): orchestrator option's explicit level → build
-/// config's `enemyLevel` (Input/Placeholder) → `min(MaxEnemyLevel, character level)`.
+/// One level for corpse Life and enemy mitigation. Explicit options override
+/// the build's input/placeholder. Otherwise ordinary monsters follow the
+/// character, while Pinnacle/Uber use their preset's default/minimum level.
+/// Every path respects the preset's level floor and the maximum enemy level.
 pub(crate) fn resolved_enemy_level(
     build: &Build,
     data: &BuildData,
     options: &DataOrchestratorOptions,
+    tier: EnemyTier,
 ) -> u32 {
-    pobr_core::skill_env::resolved_enemy_level(
-        options.enemy_level,
-        config_enemy_level(build),
-        build.character.level,
-        data.constants.enemy_presets.max_enemy_level,
-    )
+    let presets = &data.constants.enemy_presets;
+    let min_level = presets
+        .tier_for(tier)
+        .map_or_else(|| tier.min_level(), |preset| preset.min_level);
+    let default_level = match tier {
+        EnemyTier::Pinnacle | EnemyTier::Uber => min_level,
+        EnemyTier::None | EnemyTier::Boss => build.character.level,
+    };
+    let level = if options.enemy_level != 0 {
+        options.enemy_level
+    } else {
+        config_enemy_level(build).unwrap_or(default_level)
+    };
+    level.max(min_level).min(presets.max_enemy_level)
 }
 
 /// Crossbow reload data channel (matching vendor `CalcOffence.lua:1118-1122`'s

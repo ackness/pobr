@@ -105,7 +105,8 @@ pub struct DataOrchestratorOptions {
     pub extra_modifier_texts: Vec<String>,
     /// Whether to inject character base (level + class-derived attributes → life/mana/accuracy BASE). Defaults to `true`.
     pub inject_character_base: bool,
-    /// Enemy level (`0` = follows character level, see [`CalculationSession::setup_enemy`]).
+    /// Enemy level override. `0` uses the build's input/placeholder, then the
+    /// tier default: character level for normal/Boss, preset minimum for Pinnacle/Uber.
     pub enemy_level: u32,
     /// Enemy tier (normal / Boss / Pinnacle / Uber).
     pub enemy_tier: EnemyTier,
@@ -666,6 +667,7 @@ fn calculate_prepared_with_context(
     inject_enemy(
         &mut session,
         build,
+        data,
         options,
         ctx.enemy_tier,
         &ctx.resolved_config,

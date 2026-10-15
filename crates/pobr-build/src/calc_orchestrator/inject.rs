@@ -46,10 +46,10 @@ use super::skill::buffs::{
 };
 use super::skill::mods::{
     corpse_explosion_modifiers, crossbow_reload_modifiers, dot_flag_modifiers,
-    main_skill_quality_modifiers, skill_base_modifiers, support_modifiers,
+    main_skill_quality_modifiers, resolved_enemy_level, skill_base_modifiers, support_modifiers,
     unselected_set_global_modifiers,
 };
-use super::skill::resolve::{config_enemy_level, parse_gem_property_bonus};
+use super::skill::resolve::parse_gem_property_bonus;
 use super::skill::triggers::trigger_modifiers;
 use super::sources::{GEM_PROPERTY_READER, LineFate, LineHolder, SourceWriter, item_sections_mut};
 use super::stat_map::exposure_support_modifiers;
@@ -481,22 +481,14 @@ pub(super) fn virtuous_mote_counts(build: &Build, data: &BuildData) -> (f64, f64
 pub(super) fn inject_enemy(
     session: &mut SourceWriter,
     build: &Build,
+    data: &BuildData,
     options: &DataOrchestratorOptions,
     enemy_tier: EnemyTier,
     resolved_config: &crate::config_resolve::ResolvedConfig,
 ) {
-    // 5. Enemy + effective DPS: setup_enemy writes enemy scaling/resistances/damage
-    //    reduction; mode_effective is already in cfg. Enemy level resolution matches
-    //    vendor (CalcSetup.lua:529's `env.enemyLevel =
-    //    build.configTab.enemyLevel or m_min(data.misc.MaxEnemyLevel, charLevel)`): the
-    //    caller's explicit level (an orchestrator option ≠0) takes priority; otherwise
-    //    the build XML Config's `enemyLevel` scalar; if both are missing, falls back to
-    //    0 → setup_enemy internally derives it as min(MaxEnemyLevel, character level).
-    let enemy_level = if options.enemy_level != 0 {
-        options.enemy_level
-    } else {
-        config_enemy_level(build).unwrap_or(0)
-    };
+    // Use the build's resolved level, also used for corpse Life; the
+    // calculation session's actor does not carry the character's level.
+    let enemy_level = resolved_enemy_level(build, data, options, enemy_tier);
     session.setup_enemy(enemy_level, enemy_tier);
     // Config "Disable EHP gain on block/suppress" (vendor CalcDefence.lua:3261).
     if matches!(
@@ -586,11 +578,14 @@ pub(super) fn inject_main_skill_mods(
         //         directly on statSet baseMods; calc::skill_dot preserves the dotCfg
         //         bits based on these).
         session.add_modifiers(dot_flag_modifiers(group, data, skill_id));
-        // 1b-i-c. Corpse explosion base damage: the explodeCorpse-gated statSet's
-        //         `monsterLife × corpseExplosionLifeMultiplier` → Physical BASE
-        //         (matching vendor CalcOffence.lua:2211-2217; e.g. Detonate Dead).
+        // The skill's corpse-Life share uses the same monster level as
+        // enemy mitigation, including the selected tier's default/floor.
         session.add_modifiers(corpse_explosion_modifiers(
-            build, data, options, group, skill, skill_id,
+            data,
+            resolved_enemy_level(build, data, options, ctx.enemy_tier),
+            group,
+            skill,
+            skill_id,
         ));
         // 1b-i-x. Crossbow reload data channel: CrossbowReloadTimeBase (the weapon's
         //         reload_time_ms) + CrossbowBoltCount (the ammo sibling skill's stat),
