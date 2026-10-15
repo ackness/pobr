@@ -2484,7 +2484,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Armour",
+          "name": "ArmourAppliesToChaosDamageTaken",
           "type": "Base",
           "value": 20.0
         }
@@ -34059,7 +34059,10 @@
         {
           "name": "MaximumLife",
           "type": "Inc",
-          "value": 15.0
+          "value": 15.0,
+          "tags": [
+            "Condition { var: \"NormalBodyArmourEquipped\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -34142,7 +34145,10 @@
         {
           "name": "LifeRegenPercent",
           "type": "Base",
-          "value": 3.0
+          "value": 3.0,
+          "tags": [
+            "Condition { var: \"NormalBodyArmourEquipped\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -39437,7 +39443,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "EvadeChance",
+          "name": "EvadeChanceMax",
           "type": "Override",
           "value": 50.0
         }
@@ -39474,8 +39480,8 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "PhysicalDamageReduction",
-          "type": "Override",
+          "name": "PhysicalDamageReductionMax",
+          "type": "Base",
           "value": 50.0
         }
       ]
@@ -43883,7 +43889,14 @@
     },
     {
       "text": "[CullingStrike|Culling Strike]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CanCull",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "[CullingStrike|Culling Strike] against Beasts while your [Companion] is in your [Presence]",

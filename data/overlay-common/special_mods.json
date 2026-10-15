@@ -3596,6 +3596,267 @@
         "Spells which cost Life Gain 87% of Damage as Extra Physical Damage"
       ],
       "source_note": "Game stat spells_gain_%_physical_damage_if_they_cost_life: only a spell that costs Life gains the damage. A spell costs Life when its Life cost, after conversions, is at least 1: the engine's LifeCost stat, set before damage by calc::perform (as for spell_damage_with_spells_that_cost_life)."
+    },
+    {
+      "id": "armour_also_applies_to_chaos_damage",
+      "pattern": "\\+?(\\d+(?:\\.\\d+)?)% of armour also applies to chaos damage",
+      "mods": [
+        {
+          "name": "ArmourAppliesToChaosDamageTaken",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat base_armour_%_applies_to_chaos_damage; Blackheart: +N% of Armour also applies to Chaos Damage. Consumed by calc::taken for Chaos hit mitigation."
+    },
+    {
+      "id": "maximum_chance_to_evade",
+      "pattern": "maximum chance to evade is (\\d+)%",
+      "mods": [
+        {
+          "name": "EvadeChanceMax",
+          "type": "OVERRIDE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stats maximum_chance_to_evade_% and maximum_chance_to_evade_is_50%; Vigilant View. Caps all evade variants in calc::defence."
+    },
+    {
+      "id": "maximum_physical_damage_reduction",
+      "pattern": "maximum physical damage reduction is (\\d+)%",
+      "mods": [
+        {
+          "name": "PhysicalDamageReductionMax",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat maximum_physical_damage_reduction_is_50%; Goregirdle. Caps physical hit mitigation in calc::taken."
+    },
+    {
+      "id": "skills_reserve_less_spirit",
+      "pattern": "skills reserve (\\d+)% less spirit",
+      "mods": [
+        {
+          "name": "SpiritReserved",
+          "type": "MORE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "mult": -1.0
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat unique_spirit_reservations_are_halved; Matsya: Skills reserve 50% less Spirit. Multiplies the reservation amount, independently of reservation efficiency."
+    },
+    {
+      "id": "all_hit_damage_contributes_to_poison",
+      "pattern": "all damage from hits contributes to poison magnitude",
+      "mods": [
+        {
+          "name": "FireCanPoison",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "ColdCanPoison",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "LightningCanPoison",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat all_damage_can_poison; Plaguefinger. Physical and Chaos already contribute; the three elemental types also enter the poison source hit, without granting poison chance."
+    },
+    {
+      "id": "culling_strike",
+      "pattern": "culling strike",
+      "mods": [
+        {
+          "name": "CanCull",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat kill_enemy_on_hit_if_under_10%_life and item text Culling Strike. The existing calc::skill_dot consumer uses the game rarity-specific culling thresholds in combined DPS."
+    },
+    {
+      "id": "curses_can_affect_hexproof",
+      "pattern": "curses you inflict can affect hexproof enemies",
+      "mods": [
+        {
+          "name": "CursesIgnoreHexproof",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat ignore_hexproof; Cospri's Will / Veilpiercer. Allows hexes through the enemy Hexproof gate in calc::buff_pass."
+    },
+    {
+      "id": "body_armour_grants_maximum_life",
+      "pattern": "body armour grants (\\d+)% increased maximum life",
+      "mods": [
+        {
+          "name": "MaximumLife",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "NormalBodyArmourEquipped"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat body_armour_grants_x_maximum_life_+%; Kitavan Engraving. Smith of Kitava Body Armour grants modifiers require normal body armour, as the ascendancy states."
+    },
+    {
+      "id": "body_armour_grants_life_regeneration",
+      "pattern": "body armour grants regenerate (\\d+(?:\\.\\d+)?)% of maximum life per second",
+      "mods": [
+        {
+          "name": "LifeRegenPercent",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "NormalBodyArmourEquipped"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat body_armour_grants_x_life_regeneration_rate_per_minute_%; Leather Bindings. The text already expresses the percentage per second. Requires normal body armour."
+    },
+    {
+      "id": "all_hit_damage_chills_bleeding",
+      "pattern": "all damage from hits against bleeding targets contributes to chill magnitude",
+      "mods": [
+        {
+          "name": "PhysicalCanChill",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "EnemyBleeding"
+            }
+          ]
+        },
+        {
+          "name": "FireCanChill",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "EnemyBleeding"
+            }
+          ]
+        },
+        {
+          "name": "LightningCanChill",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "EnemyBleeding"
+            }
+          ]
+        },
+        {
+          "name": "ChaosCanChill",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "EnemyBleeding"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat all_damage_to_bleeding_enemies_contributes_to_chill; all hit damage contributes only against bleeding targets. Cold already contributes to Chill."
+    },
+    {
+      "id": "all_hit_damage_chills_poisoned",
+      "pattern": "all damage from hits against poisoned targets contributes to chill magnitude",
+      "mods": [
+        {
+          "name": "PhysicalCanChill",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "EnemyPoisoned"
+            }
+          ]
+        },
+        {
+          "name": "FireCanChill",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "EnemyPoisoned"
+            }
+          ]
+        },
+        {
+          "name": "LightningCanChill",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "EnemyPoisoned"
+            }
+          ]
+        },
+        {
+          "name": "ChaosCanChill",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "EnemyPoisoned"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat all_damage_to_poisoned_enemies_contributes_to_chill; all hit damage contributes only against poisoned targets. Cold already contributes to Chill."
     }
   ]
 }

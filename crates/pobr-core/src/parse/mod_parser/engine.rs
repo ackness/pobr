@@ -722,7 +722,7 @@ fn tail_unparsed(work: &str) -> Option<String> {
 /// `[Hit|Hits]` shows its last part, a style `<underline>{Sorcery Ward}` the
 /// text in its braces (the passive tree words "Grants Skill: <underline>{Sorcery
 /// Ward}" this way).
-fn strip_display_markup(text: &str) -> String {
+pub fn strip_display_markup(text: &str) -> String {
     strip_pob_brackets(&strip_style_markup(text))
 }
 
