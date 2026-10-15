@@ -662,7 +662,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
     setCalculating(true);
     setCalcError(null);
     getBackend()
-      .then((backend) => backend.calculateBuild(request))
+      .then((backend) => backend.calculateBuild({ ...request, breakdowns: [] }))
       .then((result) => {
         if (seqRef.current === seq) setCalculated({ version, result });
       })

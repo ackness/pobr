@@ -1,4 +1,218 @@
 {
+  "breakdown_descriptors": {
+    "Accuracy": "steps",
+    "AccuracyHitChanceUncapped": "none",
+    "ActionRate": "steps",
+    "ActiveMinionLimit": "none",
+    "AoeAreaMod": "sources",
+    "AoeRadius": "sources",
+    "AreaOfEffectRadiusMetres": "derived",
+    "Armour": "steps",
+    "AuraDuration": "derived",
+    "AuraEffectMod": "none",
+    "AverageBurstDamage": "none",
+    "AverageDamage": "none",
+    "AvoidAllDamageFromHits": "none",
+    "AvoidBleeding": "none",
+    "AvoidChill": "none",
+    "AvoidFreeze": "none",
+    "AvoidIgnite": "none",
+    "AvoidPoison": "none",
+    "AvoidProjectileDamage": "none",
+    "AvoidShock": "none",
+    "AvoidStun": "none",
+    "BleedActiveStacks": "none",
+    "BleedDPS": "steps",
+    "BleedDamage": "none",
+    "BleedStackedDPS": "none",
+    "BlockChance": "sources",
+    "BlockChanceMax": "sources",
+    "BlockEffect": "sources",
+    "BounceCount": "none",
+    "BurningGroundDPS": "none",
+    "ChainMax": "none",
+    "ChannelTime": "none",
+    "ChaosMaxHit": "none",
+    "ChaosResist": "steps",
+    "ChaosResistOverCap": "derived",
+    "ChargeEnduranceCurrent": "none",
+    "ChargeEnduranceMaximum": "none",
+    "ChargeFrenzyCurrent": "none",
+    "ChargeFrenzyMaximum": "none",
+    "ChargePowerCurrent": "none",
+    "ChargePowerMaximum": "none",
+    "ChillEffect": "none",
+    "ColdMaxHit": "none",
+    "ColdResist": "steps",
+    "ColdResistOverCap": "derived",
+    "CombinedAvg": "none",
+    "CombinedAvgToMonsterLife": "none",
+    "CombinedDPS": "steps",
+    "Cooldown": "sources",
+    "CooldownStoredUses": "sources",
+    "CritBifurcates": "none",
+    "CritChance": "steps",
+    "CritExtraDamageReduction": "none",
+    "CritMultiplier": "steps",
+    "CullingDPS": "none",
+    "CurseEffectMod": "none",
+    "DecayDPS": "none",
+    "DeflectChance": "none",
+    "DeflectionRating": "none",
+    "Dex": "none",
+    "Duration": "derived",
+    "DurationSecondary": "derived",
+    "ESCost": "sources",
+    "ESPerSecondCost": "derived",
+    "ESPercentCost": "sources",
+    "ESPercentPerSecondCost": "derived",
+    "EffectiveActionRate": "none",
+    "EffectiveBlockChance": "sources",
+    "EffectiveMovementSpeedMod": "none",
+    "EffectiveSpellBlockChance": "sources",
+    "ElectrocuteBuildupPct": "none",
+    "EnemyCritEffect": "none",
+    "EnergyShield": "steps",
+    "EnergyShieldLeechGainPerHit": "derived",
+    "EnergyShieldLeechGainRate": "derived",
+    "EnergyShieldRecoveryCap": "none",
+    "EnergyShieldRegen": "sources",
+    "EnergyShieldRegenRecovery": "sources",
+    "EsLeechRate": "none",
+    "EsRechargeDelay": "sources",
+    "EsRechargePerSecond": "derived",
+    "EsRechargeRate": "sources",
+    "EsRecoupRate": "none",
+    "EvadeChance": "none",
+    "Evasion": "steps",
+    "ExplodeChance": "none",
+    "FireMaxHit": "none",
+    "FireResist": "steps",
+    "FireResistOverCap": "derived",
+    "FiringRate": "none",
+    "ForkCount": "none",
+    "FreezeBuildupPct": "none",
+    "FullDPS": "none",
+    "FullDotDPS": "none",
+    "HitChance": "steps",
+    "HitSpeed": "none",
+    "IgniteDPS": "steps",
+    "IgniteDamage": "none",
+    "Int": "none",
+    "Life": "steps",
+    "LifeCost": "sources",
+    "LifeLeechGainPerHit": "derived",
+    "LifeLeechGainRate": "derived",
+    "LifeLeechRate": "none",
+    "LifePerSecondCost": "derived",
+    "LifePercentCost": "sources",
+    "LifePercentPerSecondCost": "derived",
+    "LifeRecoupRate": "none",
+    "LifeRecoverable": "none",
+    "LifeRegen": "sources",
+    "LifeRegenRecovery": "sources",
+    "LifeReserved": "sources",
+    "LifeUnreserved": "derived",
+    "LifeUnreservedPercent": "derived",
+    "LightningMaxHit": "none",
+    "LightningResist": "steps",
+    "LightningResistOverCap": "derived",
+    "MainHandAccuracy": "none",
+    "Mana": "steps",
+    "ManaCost": "sources",
+    "ManaLeechGainPerHit": "derived",
+    "ManaLeechGainRate": "derived",
+    "ManaLeechRate": "none",
+    "ManaPerSecondCost": "derived",
+    "ManaPercentCost": "sources",
+    "ManaPercentPerSecondCost": "derived",
+    "ManaRegen": "sources",
+    "ManaRegenRecovery": "sources",
+    "ManaReserved": "sources",
+    "ManaUnreserved": "derived",
+    "ManaUnreservedPercent": "derived",
+    "MeleeEvadeChance": "none",
+    "MineLayingTime": "sources",
+    "MineThrowCount": "sources",
+    "MirageBurningGroundDPS": "none",
+    "MirageDPS": "none",
+    "MovementSpeedWhileUsingSkill": "none",
+    "NetEnergyShieldRegen": "derived",
+    "NetLifeRegen": "derived",
+    "NetManaRegen": "derived",
+    "NetWardRegen": "derived",
+    "NumberOfDamagingHits": "none",
+    "NumberOfMitigatedHits": "none",
+    "OffHandAccuracy": "none",
+    "PhysicalDamageReduction": "none",
+    "PhysicalMaxHit": "none",
+    "PierceCount": "none",
+    "PoisonActiveStacks": "none",
+    "PoisonDPS": "steps",
+    "PoisonDamage": "none",
+    "PoisonStackedDPS": "none",
+    "PreEffectiveCritChance": "none",
+    "PresenceRadiusMetres": "none",
+    "ProjectileCount": "sources",
+    "ProjectileEvadeChance": "none",
+    "ProjectileSpeedMod": "sources",
+    "QuantityMultiplier": "none",
+    "Rage": "none",
+    "RageCost": "sources",
+    "RagePerSecondCost": "derived",
+    "RageRegenRecovery": "sources",
+    "ReloadTime": "none",
+    "ReqDex": "derived",
+    "ReqInt": "derived",
+    "ReqStr": "derived",
+    "ReservationDPS": "none",
+    "ReserveDuration": "derived",
+    "SelfStunChance": "none",
+    "ShockEffect": "none",
+    "SkillTriggerRate": "none",
+    "SpellBlockChance": "sources",
+    "SpellBlockChanceMax": "sources",
+    "SpellEvadeChance": "none",
+    "SpellProjectileEvadeChance": "none",
+    "Spirit": "steps",
+    "SpiritReserved": "sources",
+    "SpiritUnreserved": "derived",
+    "SpiritUnreservedPercent": "derived",
+    "SplitCount": "none",
+    "StoredUses": "none",
+    "Str": "none",
+    "StunDuration": "none",
+    "StunThreshold": "none",
+    "TakenMultiChaos": "none",
+    "TakenMultiCold": "none",
+    "TakenMultiFire": "none",
+    "TakenMultiLightning": "none",
+    "TakenMultiPhysical": "none",
+    "TotalBuildDegen": "derived",
+    "TotalDPS": "steps",
+    "TotalDot": "none",
+    "TotalDotDPS": "steps",
+    "TotalEHP": "derived",
+    "TotalEHPLowestMaxHit": "none",
+    "TotalHitAvg": "steps",
+    "TotalNetRegen": "derived",
+    "TotalTotemPlacementTime": "sources",
+    "TrapThrowCount": "sources",
+    "TrapThrowingTime": "sources",
+    "TriggerRateCap": "none",
+    "WarcryCastTime": "sources",
+    "Ward": "sources",
+    "WardCost": "sources",
+    "WardPerSecondCost": "derived",
+    "WardPercentCost": "sources",
+    "WardPercentPerSecondCost": "derived",
+    "WardRegen": "sources",
+    "WardRegenRecovery": "sources",
+    "WithBleedDPS": "none",
+    "WithDotDPS": "none",
+    "WithIgniteDPS": "none",
+    "WithPoisonDPS": "none"
+  },
   "breakdowns": {
     "Accuracy": {
       "actor": {
@@ -16,6 +230,7 @@
         "value": 918.0
       },
       "inc_total": 0.0,
+      "kind": "steps",
       "mods": [
         {
           "active": true,
@@ -64,6 +279,7 @@
         "value": 0.204750205
       },
       "inc_total": 120.0,
+      "kind": "steps",
       "mods": [
         {
           "active": true,
@@ -192,6 +408,7 @@
         "value": 0.0
       },
       "inc_total": 30.0,
+      "kind": "steps",
       "mods": [
         {
           "active": true,
@@ -226,6 +443,7 @@
         "value": 75.0
       },
       "inc_total": 0.0,
+      "kind": "steps",
       "mods": [
         {
           "active": true,
@@ -305,6 +523,7 @@
         "value": 6269.869668456
       },
       "inc_total": 0.0,
+      "kind": "steps",
       "mods": [],
       "more_total": 1.0
     },
@@ -339,6 +558,7 @@
         "value": 100.0
       },
       "inc_total": 422.0,
+      "kind": "steps",
       "mods": [
         {
           "active": true,
@@ -576,6 +796,7 @@
         "value": 4.59
       },
       "inc_total": 259.0,
+      "kind": "steps",
       "mods": [
         {
           "active": true,
@@ -791,6 +1012,7 @@
         "value": 9593.0
       },
       "inc_total": 487.0,
+      "kind": "steps",
       "mods": [
         {
           "active": true,
@@ -1082,6 +1304,7 @@
         "value": 12.0
       },
       "inc_total": 78.0,
+      "kind": "steps",
       "mods": [
         {
           "active": true,
@@ -1152,6 +1375,7 @@
         "value": 75.0
       },
       "inc_total": 0.0,
+      "kind": "steps",
       "mods": [
         {
           "active": true,
@@ -1235,6 +1459,7 @@
         "value": 100.0
       },
       "inc_total": 0.0,
+      "kind": "steps",
       "mods": [
         {
           "active": true,
@@ -1319,6 +1544,7 @@
         "value": 4.534608386
       },
       "inc_total": 30.0,
+      "kind": "steps",
       "mods": [
         {
           "active": true,
@@ -1357,6 +1583,7 @@
         "value": 1.0
       },
       "inc_total": 5.0,
+      "kind": "steps",
       "mods": [
         {
           "active": true,
@@ -1454,6 +1681,7 @@
         "value": 75.0
       },
       "inc_total": 0.0,
+      "kind": "steps",
       "mods": [
         {
           "active": true,
@@ -1533,6 +1761,7 @@
         "value": 2023.7
       },
       "inc_total": 18.0,
+      "kind": "steps",
       "mods": [
         {
           "active": true,
@@ -1652,6 +1881,7 @@
         "value": 343.0
       },
       "inc_total": 0.0,
+      "kind": "steps",
       "mods": [
         {
           "active": true,
@@ -1732,6 +1962,7 @@
         "value": 6265.33506007
       },
       "inc_total": 0.0,
+      "kind": "steps",
       "mitigation": [
         {
           "average": 8131.2768,
@@ -1903,6 +2134,7 @@
         "value": 4.534608386
       },
       "inc_total": 0.0,
+      "kind": "steps",
       "mods": [],
       "more_total": 1.0
     },
@@ -2309,6 +2541,7 @@
         "value": 28598.034015
       },
       "inc_total": 0.0,
+      "kind": "steps",
       "mods": [],
       "more_total": 1.0
     }

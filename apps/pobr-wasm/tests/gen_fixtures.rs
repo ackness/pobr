@@ -32,6 +32,18 @@ fn generate_web_fixtures() {
     let calc_req = serde_json::json!({ "pob_code": code }).to_string();
     let calculate = pobr_wasm::calculate_build_json(&calc_req).expect("calculate");
     std::fs::write(out.join("calculate.json"), pretty(&calculate)).unwrap();
+    let detail_ids: Vec<_> = pobr_build::breakdown::detail::detail_descriptors()
+        .into_keys()
+        .collect();
+    let detail_request =
+        serde_json::json!({ "pob_code": code, "breakdowns": detail_ids }).to_string();
+    let detail_response: serde_json::Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&detail_request).unwrap()).unwrap();
+    std::fs::write(
+        out.join("stat_details.json"),
+        serde_json::to_string_pretty(&detail_response["breakdowns"]).unwrap() + "\n",
+    )
+    .unwrap();
 
     let attr_req = serde_json::json!({
         "request": { "pob_code": code },

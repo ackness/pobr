@@ -7,6 +7,7 @@ import { STAT_SECTIONS, formatStatValue, statMap, type Lang } from '../../lib/st
 import { bindT, damageTypeLabel, statNameLabel } from '../../lib/i18n';
 import { AppSelect } from '../shared/AppSelect';
 import './sidebar.css';
+import { detailKind } from '../../lib/statDetails';
 
 interface Props {
   session: BuildSession;
@@ -49,7 +50,7 @@ function MainSkillSection({ session, lang, onStatClick }: Props) {
         <dd style={color ? { color } : undefined}>{formatStatValue(value, 'float2')}</dd>
       </>
     );
-    return onStatClick && session.calc?.breakdowns[id] ? (
+    return onStatClick && session.calc && detailKind(session.calc, id) !== 'none' ? (
       <button type="button" className="stat-row stat-row--link" key={id} onClick={() => onStatClick(id)}>
         {inner}
       </button>
@@ -142,7 +143,7 @@ function MainMinionSection({ session, lang, onStatClick }: Props) {
     <p>{tt('skills.level')} {minion.level}</p><dl>
       {values.map(([name, value]) => {
         const content = <><dt>{name === 'TotalDPS' ? tt('sidebar.hitDps') : statNameLabel(lang, name)}</dt><dd>{formatStatValue(value, 'float2')}</dd></>;
-        return onStatClick && minion.breakdowns[name] ? <button key={name} className="stat-row stat-row--link"
+        return onStatClick && detailKind(minion, name) !== 'none' ? <button key={name} className="stat-row stat-row--link"
           onClick={() => onStatClick(`Minion:${minion.index}:${name}`)}>{content}</button> : <div key={name} className="stat-row">{content}</div>;
       })}
     </dl></section>;
@@ -173,7 +174,7 @@ export function StatSidebar({ session, lang, onStatClick }: Props) {
             <h3>{section.title[lang]}</h3>
             <dl>
               {rows.map((row) => {
-                const clickable = !!onStatClick && !!calc?.breakdowns[row.id];
+                const clickable = !!onStatClick && !!calc && detailKind(calc, row.id) !== 'none';
                 const inner = (
                   <>
                     <dt>{row.label[lang]}</dt>
@@ -192,7 +193,7 @@ export function StatSidebar({ session, lang, onStatClick }: Props) {
                     {inner}
                   </button>
                 ) : (
-                  <div className="stat-row" key={row.id}>
+                  <div className="stat-row" key={row.id} title={bindT(lang)('calcs.noBreakdown')} data-detail-kind="none">
                     {inner}
                   </div>
                 );

@@ -967,6 +967,12 @@ impl ModDb {
         }
     }
 
+    /// Per-name MORE precision: None rounds the product to two places;
+    /// Some(p) floors it to p places. Exposed for source-detail arithmetic.
+    pub fn more_precision_for(&self, name: &str) -> Option<u32> {
+        self.high_precision.precision_for(name, ModType::More)
+    }
+
     /// The parameter is upgraded to `impl Into<EvalContext>` (same as [`sum`](Self::sum)).
     pub fn more<'a>(&self, ctx: impl Into<EvalContext<'a>>, names: &[ModName]) -> f64 {
         self.more_rounded(ctx.into(), names, Query::Of(ModType::More, names), |_| true)

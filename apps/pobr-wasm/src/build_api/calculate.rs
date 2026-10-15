@@ -3,8 +3,12 @@
 
 use std::collections::BTreeMap;
 
+use pobr_build::breakdown::detail::{
+    DetailKind, StatDetail, detail_descriptors, minion_detail_descriptors, minion_stat_detail,
+    stat_detail,
+};
 use pobr_build::breakdown::{
-    BREAKDOWN_STATS, MainSkillBreakdown, StatBreakdown, main_skill_breakdown, stat_breakdown,
+    BREAKDOWN_STATS, BreakdownActor, MainSkillBreakdown, main_skill_breakdown,
 };
 use serde::Serialize;
 
@@ -32,7 +36,8 @@ struct CalculateBuildResponse {
     /// preserved verbatim for display and baseline-versus-edit comparison.
     unsupported_modifiers: Vec<String>,
     /// The mod-line breakdown for aggregated stats (keyed by display stat id, see [`BREAKDOWN_STATS`]).
-    breakdowns: BTreeMap<String, StatBreakdown>,
+    breakdowns: BTreeMap<String, StatDetail>,
+    breakdown_descriptors: BTreeMap<String, DetailKind>,
     /// The main skill's identity plus damage breakdown (`null` = the build has no resolvable damage main skill).
     main_skill: Option<MainSkillBreakdown>,
     /// Degraded records for a single equipment/flask/jewel item's text
@@ -57,12 +62,14 @@ struct MinionOutputJson {
     evasion: f64,
     energy_shield: f64,
     stats: BTreeMap<String, f64>,
-    breakdowns: BTreeMap<String, StatBreakdown>,
+    breakdowns: BTreeMap<String, StatDetail>,
+    breakdown_descriptors: BTreeMap<String, DetailKind>,
 }
 
 fn minion_outputs(
     session: &pobr_core::calc::CalculationSession,
     data: &pobr_build::BuildData,
+    req: &CalculateBuildRequest,
 ) -> Vec<MinionOutputJson> {
     session
         .output()
@@ -70,40 +77,37 @@ fn minion_outputs(
         .iter()
         .enumerate()
         .map(|(index, minion)| {
-            let breakdowns: BTreeMap<_, _> = [
-                "Life",
-                "Armour",
-                "Evasion",
-                "EnergyShield",
-                "TotalDPS",
-                "TotalHitAvg",
-                "ActionRate",
-                "HitChance",
-                "CritChance",
-                "CritMultiplier",
-                "Accuracy",
-            ]
-            .into_iter()
-            .filter_map(|stat| {
-                pobr_build::breakdown::minion_stat_breakdown(session, index, stat)
-                    .map(|value| (stat.to_string(), value))
-            })
-            .collect();
-            let mut stats: BTreeMap<_, _> = [
-                ("Life", minion.life),
-                ("Armour", minion.armour),
-                ("Evasion", minion.evasion),
-                ("EnergyShield", minion.energy_shield),
-                ("TotalDPS", minion.dps),
-            ]
-            .into_iter()
-            .map(|(stat, value)| (stat.to_string(), value))
-            .collect();
-            for (stat, breakdown) in &breakdowns {
-                if let Some(formula) = &breakdown.formula {
-                    stats.entry(stat.clone()).or_insert(formula.value);
-                }
-            }
+            let descriptors = minion_detail_descriptors();
+            let selected = match req.breakdown_actor {
+                Some(BreakdownActor::Minion { index: selected }) => selected == index,
+                _ => req.breakdowns.is_none() && req.breakdown_actor.is_none(),
+            };
+            let requested: Vec<&str> = if selected {
+                req.breakdowns.as_ref().map_or_else(
+                    || descriptors.keys().map(String::as_str).collect(),
+                    |ids| ids.iter().map(String::as_str).collect(),
+                )
+            } else {
+                vec![]
+            };
+            let breakdowns =
+                collect_breakdowns(requested, |stat| minion_stat_detail(session, index, stat));
+            // Values come from the completed actor output, never from producing
+            // unrequested explanation formulas merely to fill the stat table.
+            let stats = session
+                .minion_output(index)
+                .map(|output| {
+                    descriptors
+                        .keys()
+                        .map(|id| {
+                            (
+                                id.clone(),
+                                pobr_core::display_catalog::display_value(output, id),
+                            )
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
             MinionOutputJson {
                 index,
                 minion_id: minion.minion_id.clone(),
@@ -121,6 +125,7 @@ fn minion_outputs(
                 energy_shield: minion.energy_shield,
                 stats,
                 breakdowns,
+                breakdown_descriptors: descriptors,
             }
         })
         .collect()
@@ -157,6 +162,8 @@ fn selection_cache_key(request_json: &str, keep_main: bool) -> String {
     }
     if !keep_main {
         request.remove("main_socket_group");
+        request.remove("breakdowns");
+        request.remove("breakdown_actor");
     }
     if let Some(serde_json::Value::Array(groups)) = request.get_mut("socket_groups") {
         for (index, group) in groups.iter_mut().enumerate() {
@@ -208,10 +215,29 @@ fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
         );
     }
     let stats = pobr_core::extract_display_values(session.output());
-    let breakdowns = BREAKDOWN_STATS
-        .iter()
-        .filter_map(|name| stat_breakdown(&session, name).map(|b| (name.to_string(), b)))
-        .collect();
+    let requested: Vec<&str> = req.breakdowns.as_ref().map_or_else(
+        || BREAKDOWN_STATS.to_vec(),
+        |ids| ids.iter().map(String::as_str).collect(),
+    );
+    let descriptors = detail_descriptors();
+    if let Some(unknown) = requested.iter().find(|id| !descriptors.contains_key(**id)) {
+        return Err(super::ApiError::bad_request(format!(
+            "unknown breakdown: {unknown}"
+        )));
+    }
+    // Evaluate only selected ids, with duplicates collapsed before any query.
+    if let Some(BreakdownActor::Minion { index }) = req.breakdown_actor
+        && index >= session.minion_count()
+    {
+        return Err(super::ApiError::bad_request(format!(
+            "unknown breakdown actor: minion {index}"
+        )));
+    }
+    let breakdowns = if matches!(req.breakdown_actor, Some(BreakdownActor::Minion { .. })) {
+        BTreeMap::new()
+    } else {
+        collect_breakdowns(requested, |id| stat_detail(&session, id))
+    };
     let main_minion_index =
         pobr_build::reference_check::main_skill_minion(&build, &data, session.output()).and_then(
             |main| {
@@ -223,13 +249,14 @@ fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
             },
         );
     let response = CalculateBuildResponse {
-        minions: minion_outputs(&session, &data),
+        minions: minion_outputs(&session, &data, &req),
         main_minion_index,
         full_dps: session.output().full_dps.clone(),
         stats,
         config_context,
         unsupported_modifiers: session.unsupported_modifier_texts().to_vec(),
         breakdowns,
+        breakdown_descriptors: descriptors,
         main_skill: main_skill_breakdown(&build, &data, session.output()),
         item_errors,
         tree_effects: pobr_build::calc_orchestrator::passive_jewel_state(&build, &data),
@@ -334,4 +361,38 @@ fn skill_metrics_impl(request_json: &str) -> Result<String, super::ApiError> {
         item_errors,
     };
     Ok(serde_json::to_string(&response).map_err(|e| format!("serialize: {e}"))?)
+}
+
+/// Selection happens before the producer runs: empty and duplicate requests
+/// must not cause detail queries whose output is later discarded.
+fn collect_breakdowns<'a, T>(
+    ids: impl IntoIterator<Item = &'a str>,
+    mut compute: impl FnMut(&str) -> Option<T>,
+) -> BTreeMap<String, T> {
+    ids.into_iter()
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .filter_map(|id| compute(id).map(|detail| (id.to_string(), detail)))
+        .collect()
+}
+
+#[cfg(test)]
+mod detail_request_tests {
+    use super::*;
+    #[test]
+    fn unrequested_details_are_never_computed() {
+        let mut called = Vec::new();
+        let empty = collect_breakdowns([], |id| {
+            called.push(id.to_string());
+            Some(1)
+        });
+        assert!(empty.is_empty());
+        assert!(called.is_empty());
+        let selected = collect_breakdowns(["ManaCost", "Life", "ManaCost"], |id| {
+            called.push(id.to_string());
+            Some(1)
+        });
+        assert_eq!(called, ["Life", "ManaCost"]);
+        assert_eq!(selected.len(), 2);
+    }
 }

@@ -6,14 +6,17 @@
 //! [`CalculationSession`] through [`stat_breakdown`] and
 //! [`main_skill_breakdown`]; the field names and order are that contract.
 
+pub mod detail;
+
 use pobr_core::ModEvaluation;
 use pobr_core::calc::{CalculationSession, OutputTable, StatFormula};
 use serde::Serialize;
 
 use crate::{Build, BuildData};
 
-/// The displayed stats the breakdown covers (PoB2's always-present sidebar
-/// stats). Each stat is evaluated over the modifier names its calculation
+/// The legacy default selection when callers omit the requested detail ids.
+/// Available kinds and ids are declared by [`detail::detail_descriptors`].
+/// Each default stat is evaluated over the modifier names its calculation
 /// stage aggregates (`CalculationSession::stat_mod_names`). `TotalDPS` and
 /// `TotalHitAvg` have no single aggregation: they carry steps only, and the
 /// average hit a per-damage-type table (`damage`). `CombinedDPS` and
@@ -68,7 +71,7 @@ pub struct BreakdownMod {
     pub slot: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, serde::Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum BreakdownActor {
     Player,
@@ -669,24 +672,13 @@ fn hand_breakdowns(session: &CalculationSession, stat: &str) -> Vec<HandBreakdow
 }
 
 /// How the finished `session` arrives at `stat`: a display stat id (see
-/// [`BREAKDOWN_STATS`] for the ones the panel shows) or any modifier name,
+/// [`BREAKDOWN_STATS`] for the legacy default selection) or any modifier name,
 /// which is aggregated under its own name. `None` when the calculation has
 /// neither modifier lines nor steps for it, or the stat is a damaging
 /// ailment the skill does not apply.
 pub fn stat_breakdown(session: &CalculationSession, stat: &str) -> Option<StatBreakdown> {
-    // EHP and the maximum hits list the enemy inputs they use, which are
-    // other names than the stat. Their lines do not add up to a total of
-    // the stat, so these stats are not in `BREAKDOWN_STATS` (the panel shows
-    // a base total); a caller asks for them by name.
-    let rows = match stat {
-        "TotalEHP" => session.enemy_hit_mods(true),
-        "PhysicalMaximumHitTaken"
-        | "FireMaximumHitTaken"
-        | "ColdMaximumHitTaken"
-        | "LightningMaximumHitTaken"
-        | "ChaosMaximumHitTaken" => session.enemy_hit_mods(false),
-        _ => session.evaluated_stat_mods(stat),
-    };
+    // Enemy inputs are non-additive; the detail contract exposes them as derived.
+    let rows = session.evaluated_stat_mods(stat);
     let formula = session.stat_formula(stat).map(formula_steps);
     // A stat without modifier lines is still explained by its starting value
     // (a weapon's base crit chance, a skill's base rate).

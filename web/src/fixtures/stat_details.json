@@ -1,0 +1,5412 @@
+{
+  "Accuracy": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 918.0,
+    "formula": {
+      "steps": [
+        {
+          "op": "flat",
+          "operand": 918.0,
+          "result": 918.0
+        }
+      ],
+      "value": 918.0
+    },
+    "inc_total": 0.0,
+    "kind": "steps",
+    "mods": [
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "base.Accuracy",
+        "origin_kind": "CharacterBase",
+        "slot": null,
+        "source_text": null,
+        "value": 648.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "base.attr_derived",
+        "origin_kind": "CharacterBase",
+        "slot": null,
+        "source_text": null,
+        "value": 270.0
+      }
+    ],
+    "more_total": 1.0
+  },
+  "ActionRate": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": {
+      "steps": [
+        {
+          "op": "base",
+          "operand": 1.25,
+          "result": 1.25
+        },
+        {
+          "op": "increased",
+          "operand": 120.0,
+          "result": 2.75
+        },
+        {
+          "op": "cooldown_cap",
+          "operand": 0.20475020475020472,
+          "result": 0.20475020475020472
+        }
+      ],
+      "value": 0.204750205
+    },
+    "inc_total": 120.0,
+    "kind": "steps",
+    "mods": [
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "buff.ArcaneSurge",
+        "origin_kind": "Buff",
+        "slot": null,
+        "source_text": "ArcaneSurge",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "item.ring1.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "ring1",
+        "source_text": "23% increased Cast Speed",
+        "value": 23.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "item.weapon1.enchant",
+        "origin_kind": "ItemEnchant",
+        "slot": "weapon1",
+        "source_text": "46% increased Cast Speed",
+        "value": 46.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "item.ring2.implicit",
+        "origin_kind": "ItemImplicit",
+        "slot": "ring2",
+        "source_text": "9% increased Cast Speed",
+        "value": 9.0
+      },
+      {
+        "active": false,
+        "mod_type": "INC",
+        "origin_id": "jewel.1",
+        "origin_kind": "Jewel",
+        "slot": null,
+        "source_text": "3% increased Skill Speed while Shapeshifted",
+        "value": 3.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.10364",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "4% increased [SkillSpeed|Skill Speed]",
+        "value": 4.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.14725",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "3% increased [SkillSpeed|Skill Speed]",
+        "value": 3.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.32545",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "3% increased [SkillSpeed|Skill Speed]",
+        "value": 3.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.34233",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "5% increased [SkillSpeed|Skill Speed]",
+        "value": 5.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.42857",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "4% increased [SkillSpeed|Skill Speed]",
+        "value": 4.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.49220",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "8% increased [Attack] and Cast Speed",
+        "value": 8.0
+      },
+      {
+        "active": false,
+        "mod_type": "INC",
+        "origin_id": "node.51820",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "12% increased [Attack] and Cast Speed if you've summoned a [Totem|Totem] [Recently|Recently]",
+        "value": 12.0
+      }
+    ],
+    "more_total": 1.0
+  },
+  "AoeAreaMod": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 0.0,
+        "inc_total": 35.0,
+        "mods": [
+          {
+            "active": false,
+            "mod_type": "INC",
+            "origin_id": "node.8540",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "10% increased Area of Effect of [Curse|Curses]",
+            "value": 10.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "SupportMagnifiedAreaPlayer.base_skill_area_of_effect_+%",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": 35.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "AreaOfEffect"
+      }
+    ]
+  },
+  "AoeRadius": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 0.0,
+        "inc_total": 35.0,
+        "mods": [
+          {
+            "active": false,
+            "mod_type": "INC",
+            "origin_id": "node.8540",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "10% increased Area of Effect of [Curse|Curses]",
+            "value": 10.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "SupportMagnifiedAreaPlayer.base_skill_area_of_effect_+%",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": 35.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "AreaOfEffect"
+      }
+    ]
+  },
+  "AreaOfEffectRadiusMetres": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "AoeRadius / 10",
+      "inputs": [
+        {
+          "id": "AoeRadius",
+          "value": 39.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Armour": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": {
+      "steps": [
+        {
+          "op": "increased",
+          "operand": 30.0,
+          "result": 0.0
+        }
+      ],
+      "value": 0.0
+    },
+    "inc_total": 30.0,
+    "kind": "steps",
+    "mods": [
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "quest",
+        "origin_kind": "CampaignReward",
+        "slot": null,
+        "source_text": "30% increased Global Armour, Evasion and Energy Shield",
+        "value": 30.0
+      }
+    ],
+    "more_total": 1.0
+  },
+  "AuraDuration": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(ceil(max(0, BaseDuration) * DurationModifier * DebuffExpiration / ServerTick) * ServerTick, 9)",
+      "inputs": [
+        {
+          "id": "BaseDuration",
+          "value": 0.0
+        },
+        {
+          "id": "DurationModifier",
+          "value": 1.9575
+        },
+        {
+          "id": "DebuffExpiration",
+          "value": 1.0
+        },
+        {
+          "id": "ServerTick",
+          "value": 0.033
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "BlockChance": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "BlockChanceMax": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "BlockEffect": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "ChaosResistOverCap": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(max(0, UncappedResistance - MaximumResistance), 9)",
+      "inputs": [
+        {
+          "id": "UncappedResistance",
+          "value": 0.0
+        },
+        {
+          "id": "MaximumResistance",
+          "value": 75.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "ColdResist": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 95.0,
+    "formula": {
+      "steps": [
+        {
+          "op": "flat",
+          "operand": 95.0,
+          "result": 95.0
+        },
+        {
+          "op": "cap",
+          "operand": 75.0,
+          "result": 75.0
+        }
+      ],
+      "value": 75.0
+    },
+    "inc_total": 0.0,
+    "kind": "steps",
+    "mods": [
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "campaign.resistance_penalty",
+        "origin_kind": "CampaignReward",
+        "slot": null,
+        "source_text": null,
+        "value": -60.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "quest",
+        "origin_kind": "CampaignReward",
+        "slot": null,
+        "source_text": "+10% to Cold Resistance",
+        "value": 10.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.boots.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "boots",
+        "source_text": "+42% to Cold Resistance",
+        "value": 42.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.gloves.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "gloves",
+        "source_text": "+42% to Cold Resistance",
+        "value": 42.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.helmet.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "helmet",
+        "source_text": "+45% to Cold Resistance",
+        "value": 45.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.ring2.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "ring2",
+        "source_text": "+16% to all Elemental Resistances",
+        "value": 16.0
+      }
+    ],
+    "more_total": 1.0
+  },
+  "ColdResistOverCap": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(max(0, UncappedResistance - MaximumResistance), 9)",
+      "inputs": [
+        {
+          "id": "UncappedResistance",
+          "value": 95.0
+        },
+        {
+          "id": "MaximumResistance",
+          "value": 75.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "CombinedDPS": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": {
+      "steps": [
+        {
+          "op": "hit_dps",
+          "operand": 6265.33506007,
+          "result": 6265.33506007
+        },
+        {
+          "op": "dot_dps",
+          "operand": 4.534608386,
+          "result": 6269.869668456
+        }
+      ],
+      "value": 6269.869668456
+    },
+    "inc_total": 0.0,
+    "kind": "steps",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Cooldown": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 6.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "skill.SkillCooldownBase",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 6.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "SkillCooldownBase"
+      },
+      {
+        "base_total": 0.0,
+        "inc_total": 23.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "item.belt.explicit",
+            "origin_kind": "ItemAffix",
+            "slot": "belt",
+            "source_text": "Spells have 23% increased Cooldown Recovery Rate",
+            "value": 23.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "CooldownRecovery"
+      }
+    ]
+  },
+  "CooldownStoredUses": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 6.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "skill.SkillCooldownBase",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 6.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "SkillCooldownBase"
+      },
+      {
+        "base_total": 0.0,
+        "inc_total": 23.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "item.belt.explicit",
+            "origin_kind": "ItemAffix",
+            "slot": "belt",
+            "source_text": "Spells have 23% increased Cooldown Recovery Rate",
+            "value": 23.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "CooldownRecovery"
+      }
+    ]
+  },
+  "CritChance": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": {
+      "steps": [
+        {
+          "op": "base",
+          "operand": 13.0,
+          "result": 13.0
+        },
+        {
+          "op": "enemy_flat",
+          "operand": 10.0,
+          "result": 23.0
+        },
+        {
+          "op": "increased",
+          "operand": 422.0,
+          "result": 120.06
+        },
+        {
+          "op": "cap",
+          "operand": 100.0,
+          "result": 100.0
+        }
+      ],
+      "value": 100.0
+    },
+    "inc_total": 422.0,
+    "kind": "steps",
+    "mods": [
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.44357",
+        "origin_kind": "AscendancyNode",
+        "slot": null,
+        "source_text": "12% increased [Critical|Critical Hit Chance]",
+        "value": 12.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "item.weapon1.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "weapon1",
+        "source_text": "72% increased Critical Hit Chance for Spells",
+        "value": 72.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "item.helmet.implicit",
+        "origin_kind": "ItemImplicit",
+        "slot": "helmet",
+        "source_text": "33% increased Critical Hit Chance",
+        "value": 33.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "jewel.1",
+        "origin_kind": "Jewel",
+        "slot": null,
+        "source_text": "13% increased Critical Hit Chance for Spells",
+        "value": 13.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "jewel.3",
+        "origin_kind": "Jewel",
+        "slot": null,
+        "source_text": "14% increased Critical Hit Chance for Spells",
+        "value": 14.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "jewel.4",
+        "origin_kind": "Jewel",
+        "slot": null,
+        "source_text": "13% increased Critical Hit Chance for Spells",
+        "value": 13.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.13823",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "25% increased [Critical|Critical Hit Chance] for [Spell|Spells]",
+        "value": 25.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.14958",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "10% increased [Critical|Critical Hit Chance]",
+        "value": 10.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.17548",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased [Critical|Critical Hit Chance]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.21245",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "10% increased [Critical|Critical Hit Chance] for [Spell|Spells]",
+        "value": 10.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.31692",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "10% increased [Critical|Critical Hit Chance]",
+        "value": 10.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.40760",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "10% increased [Critical|Critical Hit Chance]",
+        "value": 10.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.44420",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "10% increased [Critical|Critical Hit Chance]",
+        "value": 10.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.45702",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "10% increased [Critical|Critical Hit Chance]",
+        "value": 10.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.46197",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "50% increased [Critical|Critical Hit Chance]",
+        "value": 50.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.5284",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased [Critical|Critical Hit Chance] for [Spell|Spells]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.5501",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased [Critical|Critical Hit Chance] for [Spell|Spells]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.55947",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "10% increased [Critical|Critical Hit Chance] for [Spell|Spells]",
+        "value": 10.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.57178",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "10% increased [Critical|Critical Hit Chance] for [Spell|Spells]",
+        "value": 10.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.57204",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "25% increased [Critical|Critical Hit Chance]",
+        "value": 25.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.61179",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "10% increased [Critical|Critical Hit Chance] for [Spell|Spells]",
+        "value": 10.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.61333",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "10% increased [Critical|Critical Hit Chance]",
+        "value": 10.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.61601",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "20% increased [Critical|Critical Hit Chance]",
+        "value": 20.0
+      }
+    ],
+    "more_total": 1.0
+  },
+  "CritMultiplier": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": {
+      "steps": [
+        {
+          "op": "base",
+          "operand": 100.0,
+          "result": 100.0
+        },
+        {
+          "op": "increased",
+          "operand": 259.0,
+          "result": 359.0
+        },
+        {
+          "op": "bonus_to_multiplier",
+          "operand": 100.0,
+          "result": 4.59
+        }
+      ],
+      "value": 4.59
+    },
+    "inc_total": 259.0,
+    "kind": "steps",
+    "mods": [
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "jewel.2",
+        "origin_kind": "Jewel",
+        "slot": null,
+        "source_text": "20% increased Critical Spell Damage Bonus",
+        "value": 20.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "jewel.3",
+        "origin_kind": "Jewel",
+        "slot": null,
+        "source_text": "11% increased Critical Spell Damage Bonus",
+        "value": 11.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "jewel.4",
+        "origin_kind": "Jewel",
+        "slot": null,
+        "source_text": "13% increased Critical Spell Damage Bonus",
+        "value": 13.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.13419",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased [CriticalDamageBonus|Critical Damage Bonus]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.15618",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased [CriticalDamageBonus|Critical Spell Damage Bonus]",
+        "value": 15.0
+      },
+      {
+        "active": false,
+        "mod_type": "INC",
+        "origin_id": "node.17548",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "25% increased [CriticalDamageBonus|Critical Damage Bonus] if you've dealt a [Critical|Non-Critical Hit] [Recently]",
+        "value": 25.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.20024",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased [CriticalDamageBonus|Critical Damage Bonus]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.20677",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "25% increased [CriticalDamageBonus|Critical Damage Bonus]",
+        "value": 25.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.21779",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased [CriticalDamageBonus|Critical Damage Bonus]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.28021",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased [CriticalDamageBonus|Critical Damage Bonus]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.32054",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased [CriticalDamageBonus|Critical Spell Damage Bonus]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.34621",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased [CriticalDamageBonus|Critical Damage Bonus]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.44223",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased [CriticalDamageBonus|Critical Damage Bonus]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.46197",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "20% reduced [CriticalDamageBonus|Critical Damage Bonus]",
+        "value": -20.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.48821",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased [CriticalDamageBonus|Critical Spell Damage Bonus]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.5284",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased [CriticalDamageBonus|Critical Spell Damage Bonus]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.535",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased [CriticalDamageBonus|Critical Damage Bonus]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.5501",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased [CriticalDamageBonus|Critical Spell Damage Bonus]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.62153",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased [CriticalDamageBonus|Critical Spell Damage Bonus]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.9782",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased [CriticalDamageBonus|Critical Damage Bonus]",
+        "value": 15.0
+      }
+    ],
+    "more_total": 1.0
+  },
+  "Duration": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(ceil(max(0, BaseDuration) * DurationModifier * DebuffExpiration / ServerTick) * ServerTick, 9)",
+      "inputs": [
+        {
+          "id": "BaseDuration",
+          "value": -0.0
+        },
+        {
+          "id": "DurationModifier",
+          "value": 1.9575
+        },
+        {
+          "id": "DebuffExpiration",
+          "value": 1.0
+        },
+        {
+          "id": "ServerTick",
+          "value": 0.033
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "DurationSecondary": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(ceil(max(0, BaseDuration) * DurationModifier * DebuffExpiration / ServerTick) * ServerTick, 9)",
+      "inputs": [
+        {
+          "id": "BaseDuration",
+          "value": 8.0
+        },
+        {
+          "id": "DurationModifier",
+          "value": 1.9575
+        },
+        {
+          "id": "DebuffExpiration",
+          "value": 1.0
+        },
+        {
+          "id": "ServerTick",
+          "value": 0.033
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "ESCost": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "SupportEfficiencyPlayerTwo.support_inspiration_cost_+%_final",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": -40.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 0.6,
+        "name": "Cost"
+      },
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "support.ProlongedDurationSupportPlayerTwo.manaMultiplier",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": 20.0
+          },
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "support.SupportMagnifiedAreaPlayer.manaMultiplier",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": 30.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.56,
+        "name": "SupportManaMultiplier"
+      },
+      {
+        "base_total": 211.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "skill.SkillManaCostBase",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 211.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "SkillManaCostBase"
+      },
+      {
+        "base_total": 128.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "buff.ArchmagePlayer.archmage_max_mana_permyriad_to_add_to_non_channelled_spell_mana_cost",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 128.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "ManaCostNoMult"
+      }
+    ]
+  },
+  "ESPerSecondCost": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(ESCost * CostUseRate + ContinuousCost, 9)",
+      "inputs": [
+        {
+          "id": "ESCost",
+          "value": 0.0
+        },
+        {
+          "id": "CostUseRate",
+          "value": 0.204750205
+        },
+        {
+          "id": "ContinuousCost",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "ESPercentCost": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "SupportEfficiencyPlayerTwo.support_inspiration_cost_+%_final",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": -40.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 0.6,
+        "name": "Cost"
+      },
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "support.ProlongedDurationSupportPlayerTwo.manaMultiplier",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": 20.0
+          },
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "support.SupportMagnifiedAreaPlayer.manaMultiplier",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": 30.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.56,
+        "name": "SupportManaMultiplier"
+      },
+      {
+        "base_total": 128.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "buff.ArchmagePlayer.archmage_max_mana_permyriad_to_add_to_non_channelled_spell_mana_cost",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 128.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "ManaCostNoMult"
+      }
+    ]
+  },
+  "ESPercentPerSecondCost": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(ESPercentCost * CostUseRate + ContinuousCost, 9)",
+      "inputs": [
+        {
+          "id": "ESPercentCost",
+          "value": 0.0
+        },
+        {
+          "id": "CostUseRate",
+          "value": 0.204750205
+        },
+        {
+          "id": "ContinuousCost",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "EffectiveBlockChance": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "EffectiveSpellBlockChance": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "EnergyShield": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 1730.0,
+    "formula": {
+      "steps": [
+        {
+          "op": "flat",
+          "operand": 1730.0,
+          "result": 1730.0
+        },
+        {
+          "op": "increased",
+          "operand": 429.0,
+          "result": 9151.7
+        },
+        {
+          "op": "slot_scaled",
+          "operand": 440.7999999999997,
+          "result": 9592.5
+        },
+        {
+          "op": "round",
+          "operand": 0.0,
+          "result": 9593.0
+        }
+      ],
+      "value": 9593.0
+    },
+    "inc_total": 487.0,
+    "kind": "steps",
+    "mods": [
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "base.EnergyShield",
+        "origin_kind": "Item",
+        "slot": null,
+        "source_text": null,
+        "value": 162.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "base.EnergyShield",
+        "origin_kind": "Item",
+        "slot": null,
+        "source_text": null,
+        "value": 195.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "base.EnergyShield",
+        "origin_kind": "Item",
+        "slot": null,
+        "source_text": null,
+        "value": 536.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "base.EnergyShield",
+        "origin_kind": "Item",
+        "slot": null,
+        "source_text": null,
+        "value": 760.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.belt.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "belt",
+        "source_text": "+77 to maximum Energy Shield",
+        "value": 77.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "quest",
+        "origin_kind": "CampaignReward",
+        "slot": null,
+        "source_text": "30% increased Global Armour, Evasion and Energy Shield",
+        "value": 30.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "item.amulet.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "amulet",
+        "source_text": "33% increased maximum Energy Shield",
+        "value": 33.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "item.amulet.implicit",
+        "origin_kind": "ItemImplicit",
+        "slot": "amulet",
+        "source_text": "58% increased Energy Shield from Equipped Body Armour",
+        "value": 58.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "jewel.1",
+        "origin_kind": "Jewel",
+        "slot": null,
+        "source_text": "17% increased maximum Energy Shield",
+        "value": 17.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "jewel.2",
+        "origin_kind": "Jewel",
+        "slot": null,
+        "source_text": "15% increased maximum Energy Shield",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "jewel.3",
+        "origin_kind": "Jewel",
+        "slot": null,
+        "source_text": "15% increased maximum Energy Shield",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "jewel.4",
+        "origin_kind": "Jewel",
+        "slot": null,
+        "source_text": "10% increased maximum Energy Shield",
+        "value": 10.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.116",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "18% increased maximum [EnergyShield|Energy Shield]",
+        "value": 18.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.13537",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased maximum [EnergyShield|Energy Shield]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.15975",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "12% increased maximum [EnergyShield|Energy Shield]",
+        "value": 12.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.21336",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "12% increased maximum [EnergyShield|Energy Shield]",
+        "value": 12.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.2254",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "30% increased maximum [EnergyShield|Energy Shield]",
+        "value": 30.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.37974",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased maximum [EnergyShield|Energy Shield]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.38105",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased maximum [EnergyShield|Energy Shield]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.41372",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "10% increased maximum [EnergyShield|Energy Shield]",
+        "value": 10.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.44299",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "25% increased maximum [EnergyShield|Energy Shield]",
+        "value": 25.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.48030",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased maximum [EnergyShield|Energy Shield]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.49455",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased maximum [EnergyShield|Energy Shield]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.6006",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased maximum [EnergyShield|Energy Shield]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.62230",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "50% increased maximum [EnergyShield|Energy Shield]",
+        "value": 50.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.62984",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "24% increased maximum [EnergyShield|Energy Shield]",
+        "value": 24.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.6715",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "10% increased maximum [EnergyShield|Energy Shield]",
+        "value": 10.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.9642",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "28% increased maximum [EnergyShield|Energy Shield]",
+        "value": 28.0
+      }
+    ],
+    "more_total": 1.0,
+    "slots": [
+      {
+        "base": 760.0,
+        "extra": 440.7999999999997,
+        "increased": 58.0,
+        "more": 1.0,
+        "slot": "bodyarmour"
+      }
+    ]
+  },
+  "EnergyShieldLeechGainPerHit": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "SustainedLeech + InstantLeech + GainOnHit",
+      "inputs": [
+        {
+          "id": "SustainedLeech",
+          "value": 0.0
+        },
+        {
+          "id": "InstantLeech",
+          "value": 0.0
+        },
+        {
+          "id": "GainOnHit",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "EnergyShieldLeechGainRate": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "SustainedLeech + InstantLeech + GainOnHit",
+      "inputs": [
+        {
+          "id": "SustainedLeech",
+          "value": 0.0
+        },
+        {
+          "id": "InstantLeech",
+          "value": 0.0
+        },
+        {
+          "id": "GainOnHit",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "EnergyShieldRegen": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "EnergyShieldRegenRecovery": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "EsRechargeDelay": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 0.0,
+        "inc_total": -20.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.62230",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "20% [FasterESRechargeStart|slower start of Energy Shield Recharge]",
+            "value": -20.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "EnergyShieldRechargeFaster"
+      }
+    ]
+  },
+  "EsRechargePerSecond": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "EnergyShield * EsRechargeRate",
+      "inputs": [
+        {
+          "id": "EnergyShield",
+          "value": 9593.0
+        },
+        {
+          "id": "EsRechargeRate",
+          "value": 0.125
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "EsRechargeRate": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Evasion": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 7.0,
+    "formula": {
+      "steps": [
+        {
+          "op": "flat",
+          "operand": 7.0,
+          "result": 7.0
+        },
+        {
+          "op": "increased",
+          "operand": 78.0,
+          "result": 12.46
+        },
+        {
+          "op": "round",
+          "operand": 0.0,
+          "result": 12.0
+        }
+      ],
+      "value": 12.0
+    },
+    "inc_total": 78.0,
+    "kind": "steps",
+    "mods": [
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "base.Evasion",
+        "origin_kind": "CharacterBase",
+        "slot": null,
+        "source_text": null,
+        "value": 7.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "quest",
+        "origin_kind": "CampaignReward",
+        "slot": null,
+        "source_text": "30% increased Global Armour, Evasion and Energy Shield",
+        "value": 30.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.15975",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "12% increased [Evasion|Evasion Rating]",
+        "value": 12.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.21336",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "12% increased [Evasion|Evasion Rating]",
+        "value": 12.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.62984",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "24% increased [Evasion|Evasion Rating]",
+        "value": 24.0
+      }
+    ],
+    "more_total": 1.0
+  },
+  "FireResist": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 114.0,
+    "formula": {
+      "steps": [
+        {
+          "op": "flat",
+          "operand": 114.0,
+          "result": 114.0
+        },
+        {
+          "op": "cap",
+          "operand": 75.0,
+          "result": 75.0
+        }
+      ],
+      "value": 75.0
+    },
+    "inc_total": 0.0,
+    "kind": "steps",
+    "mods": [
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "campaign.resistance_penalty",
+        "origin_kind": "CampaignReward",
+        "slot": null,
+        "source_text": null,
+        "value": -60.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "quest",
+        "origin_kind": "CampaignReward",
+        "slot": null,
+        "source_text": "+10% to Fire Resistance",
+        "value": 10.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.boots.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "boots",
+        "source_text": "+41% to Fire Resistance",
+        "value": 41.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.helmet.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "helmet",
+        "source_text": "+43% to Fire Resistance",
+        "value": 43.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.ring2.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "ring2",
+        "source_text": "+16% to all Elemental Resistances",
+        "value": 16.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.ring2.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "ring2",
+        "source_text": "+32% to Fire Resistance",
+        "value": 32.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.bodyarmour.enchant",
+        "origin_kind": "ItemEnchant",
+        "slot": "bodyarmour",
+        "source_text": "+32% to Fire Resistance",
+        "value": 32.0
+      }
+    ],
+    "more_total": 1.0
+  },
+  "FireResistOverCap": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(max(0, UncappedResistance - MaximumResistance), 9)",
+      "inputs": [
+        {
+          "id": "UncappedResistance",
+          "value": 114.0
+        },
+        {
+          "id": "MaximumResistance",
+          "value": 75.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "HitChance": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 918.0,
+    "formula": {
+      "steps": [
+        {
+          "op": "always_hits",
+          "operand": 100.0,
+          "result": 100.0
+        }
+      ],
+      "value": 100.0
+    },
+    "inc_total": 0.0,
+    "kind": "steps",
+    "mods": [
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "base.Accuracy",
+        "origin_kind": "CharacterBase",
+        "slot": null,
+        "source_text": null,
+        "value": 648.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "base.attr_derived",
+        "origin_kind": "CharacterBase",
+        "slot": null,
+        "source_text": null,
+        "value": 270.0
+      }
+    ],
+    "more_total": 1.0
+  },
+  "IgniteDPS": {
+    "actor": {
+      "kind": "player"
+    },
+    "ailment": {
+      "apply_chance": 0.7127397,
+      "base_duration": 4.0,
+      "chance_mods": [],
+      "crit_share": 99.99999999999996,
+      "damage_roll": 50.0,
+      "duration": 4.395604395604395,
+      "duration_mods": [],
+      "effect_mods": [],
+      "enemy_duration": 1.0989010989010988,
+      "hit_chance": 100.0,
+      "hits_per_second": 0.204750205,
+      "max_stacks": 1.0,
+      "rate": 1.0,
+      "rate_mods": [],
+      "source": [
+        {
+          "crit": 2541.0240000000003,
+          "damage_type": "Fire",
+          "hit": 553.6
+        }
+      ],
+      "source_crit": 2541.0240000000003,
+      "source_hit": 553.6,
+      "stacks": 0.006414663722489603
+    },
+    "base_total": 0.0,
+    "formula": {
+      "steps": [
+        {
+          "op": "ailment_source",
+          "operand": 2541.024,
+          "result": 2541.024
+        },
+        {
+          "op": "per_second",
+          "operand": 20.0,
+          "result": 508.2048
+        },
+        {
+          "op": "increased",
+          "operand": 30.0,
+          "result": 660.66624
+        },
+        {
+          "op": "enemy_mitigation",
+          "operand": 1.07,
+          "result": 706.9128768
+        },
+        {
+          "op": "active_stacks",
+          "operand": 0.006414663722489603,
+          "result": 4.534608385769722
+        }
+      ],
+      "value": 4.534608386
+    },
+    "inc_total": 30.0,
+    "kind": "steps",
+    "mods": [
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.5284",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased [BuffMagnitude|Magnitude] of [DamagingAilments|Damaging Ailments] you inflict with [Critical|Critical Hits]",
+        "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "node.57178",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "15% increased [BuffMagnitude|Magnitude] of [DamagingAilments|Damaging Ailments] you inflict with [Critical|Critical Hits]",
+        "value": 15.0
+      }
+    ],
+    "more_total": 1.0
+  },
+  "Life": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 1552.0,
+    "formula": {
+      "steps": [
+        {
+          "op": "override",
+          "operand": 1.0,
+          "result": 1.0
+        }
+      ],
+      "value": 1.0
+    },
+    "inc_total": 5.0,
+    "kind": "steps",
+    "mods": [
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "quest",
+        "origin_kind": "CampaignReward",
+        "slot": null,
+        "source_text": "+20 to maximum Life",
+        "value": 20.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "base.MaximumLife",
+        "origin_kind": "CharacterBase",
+        "slot": null,
+        "source_text": null,
+        "value": 1206.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "base.attr_derived",
+        "origin_kind": "CharacterBase",
+        "slot": null,
+        "source_text": null,
+        "value": 154.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.bodyarmour.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "bodyarmour",
+        "source_text": "+97 to maximum Life",
+        "value": 97.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.gloves.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "gloves",
+        "source_text": "+30 to maximum Life",
+        "value": 30.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.helmet.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "helmet",
+        "source_text": "+45 to maximum Life",
+        "value": 45.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "quest",
+        "origin_kind": "CampaignReward",
+        "slot": null,
+        "source_text": "5% increased maximum Life",
+        "value": 5.0
+      },
+      {
+        "active": true,
+        "mod_type": "OVERRIDE",
+        "origin_id": "node.56349",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "Maximum Life is 1",
+        "value": 1.0
+      }
+    ],
+    "more_total": 1.0
+  },
+  "LifeCost": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "SupportEfficiencyPlayerTwo.support_inspiration_cost_+%_final",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": -40.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 0.6,
+        "name": "Cost"
+      },
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "support.ProlongedDurationSupportPlayerTwo.manaMultiplier",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": 20.0
+          },
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "support.SupportMagnifiedAreaPlayer.manaMultiplier",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": 30.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.56,
+        "name": "SupportManaMultiplier"
+      },
+      {
+        "base_total": 211.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "skill.SkillManaCostBase",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 211.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "SkillManaCostBase"
+      },
+      {
+        "base_total": 128.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "buff.ArchmagePlayer.archmage_max_mana_permyriad_to_add_to_non_channelled_spell_mana_cost",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 128.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "ManaCostNoMult"
+      }
+    ]
+  },
+  "LifeLeechGainPerHit": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "SustainedLeech + InstantLeech + GainOnHit",
+      "inputs": [
+        {
+          "id": "SustainedLeech",
+          "value": 0.0
+        },
+        {
+          "id": "InstantLeech",
+          "value": 0.0
+        },
+        {
+          "id": "GainOnHit",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "LifeLeechGainRate": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "SustainedLeech + InstantLeech + GainOnHit",
+      "inputs": [
+        {
+          "id": "SustainedLeech",
+          "value": 0.0
+        },
+        {
+          "id": "InstantLeech",
+          "value": 0.0
+        },
+        {
+          "id": "GainOnHit",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "LifePerSecondCost": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(LifeCost * CostUseRate + ContinuousCost, 9)",
+      "inputs": [
+        {
+          "id": "LifeCost",
+          "value": 0.0
+        },
+        {
+          "id": "CostUseRate",
+          "value": 0.204750205
+        },
+        {
+          "id": "ContinuousCost",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "LifePercentCost": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "SupportEfficiencyPlayerTwo.support_inspiration_cost_+%_final",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": -40.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 0.6,
+        "name": "Cost"
+      },
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "support.ProlongedDurationSupportPlayerTwo.manaMultiplier",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": 20.0
+          },
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "support.SupportMagnifiedAreaPlayer.manaMultiplier",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": 30.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.56,
+        "name": "SupportManaMultiplier"
+      },
+      {
+        "base_total": 128.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "buff.ArchmagePlayer.archmage_max_mana_permyriad_to_add_to_non_channelled_spell_mana_cost",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 128.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "ManaCostNoMult"
+      }
+    ]
+  },
+  "LifePercentPerSecondCost": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(LifePercentCost * CostUseRate + ContinuousCost, 9)",
+      "inputs": [
+        {
+          "id": "LifePercentCost",
+          "value": 0.0
+        },
+        {
+          "id": "CostUseRate",
+          "value": 0.204750205
+        },
+        {
+          "id": "ContinuousCost",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "LifeRegen": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "LifeRegenRecovery": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "LifeReserved": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": false,
+            "mod_type": "INC",
+            "origin_id": "node.63236",
+            "origin_kind": "AscendancyNode",
+            "slot": null,
+            "source_text": "[Meta] Skills have 50% increased [Reservation] [Efficiency]",
+            "value": 50.0
+          },
+          {
+            "active": false,
+            "mod_type": "INC",
+            "origin_id": "node.42245",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "[Meta] Skills have 20% increased [Reservation] [Efficiency]",
+            "value": 20.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "ReservationEfficiency"
+      }
+    ]
+  },
+  "LifeUnreserved": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "max(0, Life - LifeReserved)",
+      "inputs": [
+        {
+          "id": "Life",
+          "value": 1.0
+        },
+        {
+          "id": "LifeReserved",
+          "value": -0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "LifeUnreservedPercent": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "LifeUnreserved / Life * 100",
+      "inputs": [
+        {
+          "id": "Life",
+          "value": 1.0
+        },
+        {
+          "id": "LifeUnreserved",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "LightningResist": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 91.0,
+    "formula": {
+      "steps": [
+        {
+          "op": "flat",
+          "operand": 91.0,
+          "result": 91.0
+        },
+        {
+          "op": "cap",
+          "operand": 75.0,
+          "result": 75.0
+        }
+      ],
+      "value": 75.0
+    },
+    "inc_total": 0.0,
+    "kind": "steps",
+    "mods": [
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "campaign.resistance_penalty",
+        "origin_kind": "CampaignReward",
+        "slot": null,
+        "source_text": null,
+        "value": -60.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "quest",
+        "origin_kind": "CampaignReward",
+        "slot": null,
+        "source_text": "+10% to Lightning Resistance",
+        "value": 10.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.bodyarmour.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "bodyarmour",
+        "source_text": "+40% to Lightning Resistance",
+        "value": 40.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.boots.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "boots",
+        "source_text": "+43% to Lightning Resistance",
+        "value": 43.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.gloves.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "gloves",
+        "source_text": "+42% to Lightning Resistance",
+        "value": 42.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.ring2.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "ring2",
+        "source_text": "+16% to all Elemental Resistances",
+        "value": 16.0
+      }
+    ],
+    "more_total": 1.0
+  },
+  "LightningResistOverCap": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(max(0, UncappedResistance - MaximumResistance), 9)",
+      "inputs": [
+        {
+          "id": "UncappedResistance",
+          "value": 91.0
+        },
+        {
+          "id": "MaximumResistance",
+          "value": 75.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Mana": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 1715.0,
+    "formula": {
+      "steps": [
+        {
+          "op": "flat",
+          "operand": 1715.0,
+          "result": 1715.0
+        },
+        {
+          "op": "increased",
+          "operand": 18.0,
+          "result": 2023.7
+        }
+      ],
+      "value": 2023.7
+    },
+    "inc_total": 18.0,
+    "kind": "steps",
+    "mods": [
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "base.MaximumMana",
+        "origin_kind": "CharacterBase",
+        "slot": null,
+        "source_text": null,
+        "value": 444.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "base.attr_derived",
+        "origin_kind": "CharacterBase",
+        "slot": null,
+        "source_text": null,
+        "value": 444.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.gloves.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "gloves",
+        "source_text": "+87 to maximum Mana",
+        "value": 87.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.ring1.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "ring1",
+        "source_text": "+205 to maximum Mana",
+        "value": 205.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.ring2.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "ring2",
+        "source_text": "+214 to maximum Mana",
+        "value": 214.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.weapon2.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "weapon2",
+        "source_text": "+180 to maximum Mana",
+        "value": 180.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.boots.implicit",
+        "origin_kind": "ItemImplicit",
+        "slot": "boots",
+        "source_text": "+121 to maximum Mana",
+        "value": 121.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "node.61027",
+        "origin_kind": "PassiveNode",
+        "slot": null,
+        "source_text": "+20 to maximum Mana",
+        "value": 20.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "quest",
+        "origin_kind": "CampaignReward",
+        "slot": null,
+        "source_text": "5% increased Maximum Mana",
+        "value": 5.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "item.ring1.enchant",
+        "origin_kind": "ItemEnchant",
+        "slot": "ring1",
+        "source_text": "7% increased maximum Mana",
+        "value": 7.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "item.ring2.enchant",
+        "origin_kind": "ItemEnchant",
+        "slot": "ring2",
+        "source_text": "6% increased maximum Mana",
+        "value": 6.0
+      }
+    ],
+    "more_total": 1.0
+  },
+  "ManaCost": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "SupportEfficiencyPlayerTwo.support_inspiration_cost_+%_final",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": -40.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 0.6,
+        "name": "Cost"
+      },
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "support.ProlongedDurationSupportPlayerTwo.manaMultiplier",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": 20.0
+          },
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "support.SupportMagnifiedAreaPlayer.manaMultiplier",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": 30.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.56,
+        "name": "SupportManaMultiplier"
+      },
+      {
+        "base_total": 211.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "skill.SkillManaCostBase",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 211.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "SkillManaCostBase"
+      },
+      {
+        "base_total": 128.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "buff.ArchmagePlayer.archmage_max_mana_permyriad_to_add_to_non_channelled_spell_mana_cost",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 128.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "ManaCostNoMult"
+      }
+    ]
+  },
+  "ManaLeechGainPerHit": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "SustainedLeech + InstantLeech + GainOnHit",
+      "inputs": [
+        {
+          "id": "SustainedLeech",
+          "value": 0.0
+        },
+        {
+          "id": "InstantLeech",
+          "value": 0.0
+        },
+        {
+          "id": "GainOnHit",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "ManaLeechGainRate": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "SustainedLeech + InstantLeech + GainOnHit",
+      "inputs": [
+        {
+          "id": "SustainedLeech",
+          "value": 0.0
+        },
+        {
+          "id": "InstantLeech",
+          "value": 0.0
+        },
+        {
+          "id": "GainOnHit",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "ManaPerSecondCost": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(ManaCost * CostUseRate + ContinuousCost, 9)",
+      "inputs": [
+        {
+          "id": "ManaCost",
+          "value": 275.0
+        },
+        {
+          "id": "CostUseRate",
+          "value": 0.204750205
+        },
+        {
+          "id": "ContinuousCost",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "ManaPercentCost": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "SupportEfficiencyPlayerTwo.support_inspiration_cost_+%_final",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": -40.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 0.6,
+        "name": "Cost"
+      },
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "support.ProlongedDurationSupportPlayerTwo.manaMultiplier",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": 20.0
+          },
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "support.SupportMagnifiedAreaPlayer.manaMultiplier",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": 30.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.56,
+        "name": "SupportManaMultiplier"
+      },
+      {
+        "base_total": 128.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "buff.ArchmagePlayer.archmage_max_mana_permyriad_to_add_to_non_channelled_spell_mana_cost",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 128.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "ManaCostNoMult"
+      }
+    ]
+  },
+  "ManaPercentPerSecondCost": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(ManaPercentCost * CostUseRate + ContinuousCost, 9)",
+      "inputs": [
+        {
+          "id": "ManaPercentCost",
+          "value": 0.0
+        },
+        {
+          "id": "CostUseRate",
+          "value": 0.204750205
+        },
+        {
+          "id": "ContinuousCost",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "ManaRegen": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 0.0,
+        "inc_total": 248.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "quest",
+            "origin_kind": "CampaignReward",
+            "slot": null,
+            "source_text": "25% increased Mana Regeneration Rate",
+            "value": 25.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "item.amulet.explicit",
+            "origin_kind": "ItemAffix",
+            "slot": "amulet",
+            "source_text": "52% increased Mana Regeneration Rate",
+            "value": 52.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "item.ring1.explicit",
+            "origin_kind": "ItemAffix",
+            "slot": "ring1",
+            "source_text": "26% increased Mana Regeneration Rate",
+            "value": 26.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "item.weapon2.explicit",
+            "origin_kind": "ItemAffix",
+            "slot": "weapon2",
+            "source_text": "21% increased Mana Regeneration Rate",
+            "value": 21.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.116",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "12% increased Mana Regeneration Rate",
+            "value": 12.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.34233",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "15% increased Mana Regeneration Rate",
+            "value": 15.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.41372",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "6% increased Mana Regeneration Rate",
+            "value": 6.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.48198",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "15% increased Mana Regeneration Rate",
+            "value": 15.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.61027",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "20% increased Mana Regeneration Rate",
+            "value": 20.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.6715",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "6% increased Mana Regeneration Rate",
+            "value": 6.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "buff.SupportClarityPlayerTwo.support_clarity_mana_regeneration_rate_+%",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 50.0
+          },
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "buff.ArcaneSurge",
+            "origin_kind": "Buff",
+            "slot": null,
+            "source_text": "ArcaneSurge",
+            "value": 20.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.2,
+        "name": "ManaRegen"
+      },
+      {
+        "base_total": 4.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "base.ManaRegenPercent",
+            "origin_kind": "CharacterBase",
+            "slot": null,
+            "source_text": null,
+            "value": 4.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "ManaRegenPercent"
+      }
+    ]
+  },
+  "ManaRegenRecovery": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 0.0,
+        "inc_total": 248.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "quest",
+            "origin_kind": "CampaignReward",
+            "slot": null,
+            "source_text": "25% increased Mana Regeneration Rate",
+            "value": 25.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "item.amulet.explicit",
+            "origin_kind": "ItemAffix",
+            "slot": "amulet",
+            "source_text": "52% increased Mana Regeneration Rate",
+            "value": 52.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "item.ring1.explicit",
+            "origin_kind": "ItemAffix",
+            "slot": "ring1",
+            "source_text": "26% increased Mana Regeneration Rate",
+            "value": 26.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "item.weapon2.explicit",
+            "origin_kind": "ItemAffix",
+            "slot": "weapon2",
+            "source_text": "21% increased Mana Regeneration Rate",
+            "value": 21.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.116",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "12% increased Mana Regeneration Rate",
+            "value": 12.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.34233",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "15% increased Mana Regeneration Rate",
+            "value": 15.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.41372",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "6% increased Mana Regeneration Rate",
+            "value": 6.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.48198",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "15% increased Mana Regeneration Rate",
+            "value": 15.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.61027",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "20% increased Mana Regeneration Rate",
+            "value": 20.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.6715",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "6% increased Mana Regeneration Rate",
+            "value": 6.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "buff.SupportClarityPlayerTwo.support_clarity_mana_regeneration_rate_+%",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 50.0
+          },
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "buff.ArcaneSurge",
+            "origin_kind": "Buff",
+            "slot": null,
+            "source_text": "ArcaneSurge",
+            "value": 20.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.2,
+        "name": "ManaRegen"
+      },
+      {
+        "base_total": 4.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "base.ManaRegenPercent",
+            "origin_kind": "CharacterBase",
+            "slot": null,
+            "source_text": null,
+            "value": 4.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "ManaRegenPercent"
+      }
+    ]
+  },
+  "ManaReserved": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": false,
+            "mod_type": "INC",
+            "origin_id": "node.63236",
+            "origin_kind": "AscendancyNode",
+            "slot": null,
+            "source_text": "[Meta] Skills have 50% increased [Reservation] [Efficiency]",
+            "value": 50.0
+          },
+          {
+            "active": false,
+            "mod_type": "INC",
+            "origin_id": "node.42245",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "[Meta] Skills have 20% increased [Reservation] [Efficiency]",
+            "value": 20.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "ReservationEfficiency"
+      }
+    ]
+  },
+  "ManaUnreserved": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "max(0, Mana - ManaReserved)",
+      "inputs": [
+        {
+          "id": "Mana",
+          "value": 2023.7
+        },
+        {
+          "id": "ManaReserved",
+          "value": -0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "ManaUnreservedPercent": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "ManaUnreserved / Mana * 100",
+      "inputs": [
+        {
+          "id": "Mana",
+          "value": 2023.7
+        },
+        {
+          "id": "ManaUnreserved",
+          "value": 2023.7
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "MineLayingTime": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "MineThrowCount": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "NetEnergyShieldRegen": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "EnergyShieldRegenRecovery - Spending - SelfDamage",
+      "inputs": [
+        {
+          "id": "EnergyShieldRegenRecovery",
+          "value": 0.0
+        },
+        {
+          "id": "Spending",
+          "value": 0.0
+        },
+        {
+          "id": "SelfDamage",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "NetLifeRegen": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "LifeRegenRecovery - Spending - SelfDamage",
+      "inputs": [
+        {
+          "id": "LifeRegenRecovery",
+          "value": 0.0
+        },
+        {
+          "id": "Spending",
+          "value": 0.0
+        },
+        {
+          "id": "SelfDamage",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "NetManaRegen": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "ManaRegenRecovery - Spending - SelfDamage",
+      "inputs": [
+        {
+          "id": "ManaRegenRecovery",
+          "value": 338.0
+        },
+        {
+          "id": "Spending",
+          "value": 56.306306375
+        },
+        {
+          "id": "SelfDamage",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "NetWardRegen": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "WardRegenRecovery - Spending - SelfDamage",
+      "inputs": [
+        {
+          "id": "WardRegenRecovery",
+          "value": 0.0
+        },
+        {
+          "id": "Spending",
+          "value": 0.0
+        },
+        {
+          "id": "SelfDamage",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "ProjectileCount": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "ProjectileSpeedMod": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "RageCost": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "SupportEfficiencyPlayerTwo.support_inspiration_cost_+%_final",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": -40.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 0.6,
+        "name": "Cost"
+      },
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "support.ProlongedDurationSupportPlayerTwo.manaMultiplier",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": 20.0
+          },
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "support.SupportMagnifiedAreaPlayer.manaMultiplier",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": 30.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.56,
+        "name": "SupportManaMultiplier"
+      },
+      {
+        "base_total": 211.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "skill.SkillManaCostBase",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 211.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "SkillManaCostBase"
+      },
+      {
+        "base_total": 128.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "buff.ArchmagePlayer.archmage_max_mana_permyriad_to_add_to_non_channelled_spell_mana_cost",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 128.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "ManaCostNoMult"
+      }
+    ]
+  },
+  "RagePerSecondCost": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(RageCost * CostUseRate + ContinuousCost, 9)",
+      "inputs": [
+        {
+          "id": "RageCost",
+          "value": 0.0
+        },
+        {
+          "id": "CostUseRate",
+          "value": 0.204750205
+        },
+        {
+          "id": "ContinuousCost",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "RageRegenRecovery": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "ReqDex": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "max(0, SupportRequirement, ItemRequirement, WeaponRequirement, MeleeWeaponRequirement, GemRequirement, MeleeGemRequirement)",
+      "inputs": [
+        {
+          "id": "SupportRequirement",
+          "value": 10.0
+        },
+        {
+          "id": "ItemRequirement",
+          "value": 0.0
+        },
+        {
+          "id": "WeaponRequirement",
+          "value": 0.0
+        },
+        {
+          "id": "MeleeWeaponRequirement",
+          "value": 0.0
+        },
+        {
+          "id": "GemRequirement",
+          "value": 0.0
+        },
+        {
+          "id": "MeleeGemRequirement",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "ReqInt": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "max(0, SupportRequirement, ItemRequirement, WeaponRequirement, MeleeWeaponRequirement, GemRequirement, MeleeGemRequirement)",
+      "inputs": [
+        {
+          "id": "SupportRequirement",
+          "value": 95.0
+        },
+        {
+          "id": "ItemRequirement",
+          "value": 121.0
+        },
+        {
+          "id": "WeaponRequirement",
+          "value": 0.0
+        },
+        {
+          "id": "MeleeWeaponRequirement",
+          "value": 0.0
+        },
+        {
+          "id": "GemRequirement",
+          "value": 147.0
+        },
+        {
+          "id": "MeleeGemRequirement",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "ReqStr": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "max(0, SupportRequirement, ItemRequirement, WeaponRequirement, MeleeWeaponRequirement, GemRequirement, MeleeGemRequirement)",
+      "inputs": [
+        {
+          "id": "SupportRequirement",
+          "value": 45.0
+        },
+        {
+          "id": "ItemRequirement",
+          "value": 12.0
+        },
+        {
+          "id": "WeaponRequirement",
+          "value": 0.0
+        },
+        {
+          "id": "MeleeWeaponRequirement",
+          "value": 0.0
+        },
+        {
+          "id": "GemRequirement",
+          "value": 80.0
+        },
+        {
+          "id": "MeleeGemRequirement",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "ReserveDuration": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(ceil(max(0, BaseDuration) * DurationModifier * DebuffExpiration / ServerTick) * ServerTick, 9)",
+      "inputs": [
+        {
+          "id": "BaseDuration",
+          "value": 0.0
+        },
+        {
+          "id": "DurationModifier",
+          "value": 1.9575
+        },
+        {
+          "id": "DebuffExpiration",
+          "value": 1.0
+        },
+        {
+          "id": "ServerTick",
+          "value": 0.033
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "SpellBlockChance": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "SpellBlockChanceMax": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Spirit": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 343.0,
+    "formula": {
+      "steps": [
+        {
+          "op": "flat",
+          "operand": 343.0,
+          "result": 343.0
+        }
+      ],
+      "value": 343.0
+    },
+    "inc_total": 0.0,
+    "kind": "steps",
+    "mods": [
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "quest",
+        "origin_kind": "CampaignReward",
+        "slot": null,
+        "source_text": "+30 to Spirit",
+        "value": 30.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "quest",
+        "origin_kind": "CampaignReward",
+        "slot": null,
+        "source_text": "+30 to Spirit",
+        "value": 30.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "quest",
+        "origin_kind": "CampaignReward",
+        "slot": null,
+        "source_text": "+40 to Spirit",
+        "value": 40.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "base.Spirit",
+        "origin_kind": "Item",
+        "slot": null,
+        "source_text": null,
+        "value": 195.0
+      },
+      {
+        "active": true,
+        "mod_type": "BASE",
+        "origin_id": "item.amulet.explicit",
+        "origin_kind": "ItemAffix",
+        "slot": "amulet",
+        "source_text": "+48 to Spirit",
+        "value": 48.0
+      }
+    ],
+    "more_total": 1.0
+  },
+  "SpiritReserved": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 205.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "spirit.ArchmagePlayer",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 98.0
+          },
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "spirit.BlasphemyPlayer",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 66.0
+          },
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "spirit.SummonMetaTotemSpellTotemPlayer",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 41.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "SkillSpiritReservationBase"
+      },
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": false,
+            "mod_type": "BASE",
+            "origin_id": "node.45202",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "[Totem|Totems] reserve 75 [Spirit] each",
+            "value": 75.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "ExtraSpirit"
+      }
+    ]
+  },
+  "SpiritUnreserved": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "Spirit - SpiritReserved",
+      "inputs": [
+        {
+          "id": "Spirit",
+          "value": 343.0
+        },
+        {
+          "id": "SpiritReserved",
+          "value": 205.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "SpiritUnreservedPercent": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "SpiritUnreserved / Spirit * 100",
+      "inputs": [
+        {
+          "id": "Spirit",
+          "value": 343.0
+        },
+        {
+          "id": "SpiritUnreserved",
+          "value": 138.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "TotalBuildDegen": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "ResourceDrain + SelfDamage + Spending",
+      "inputs": [
+        {
+          "id": "ResourceDrain",
+          "value": 0.0
+        },
+        {
+          "id": "SelfDamage",
+          "value": 0.0
+        },
+        {
+          "id": "Spending",
+          "value": 56.306306375
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "TotalDPS": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": {
+      "steps": [
+        {
+          "op": "average_hit",
+          "operand": 28598.034015,
+          "result": 28598.034015
+        },
+        {
+          "op": "enemy_mitigation",
+          "operand": 1.07,
+          "result": 30599.89639605
+        },
+        {
+          "op": "uses_per_second",
+          "operand": 0.204750205,
+          "result": 6265.335060069999
+        },
+        {
+          "op": "chance_to_hit",
+          "operand": 100.0,
+          "result": 6265.335060069999
+        }
+      ],
+      "value": 6265.33506007
+    },
+    "inc_total": 0.0,
+    "kind": "steps",
+    "mitigation": [
+      {
+        "average": 8131.2768,
+        "damage_type": "Lightning",
+        "defence_mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "exposure",
+            "origin_kind": "EnemyConfig",
+            "slot": null,
+            "source_text": "exposure LightningExposure",
+            "value": -12.0
+          },
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "lightning_resist",
+            "origin_kind": "EnemyConfig",
+            "slot": null,
+            "source_text": "enemy lightning_resist",
+            "value": 50.0
+          },
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "curse.ElementalWeaknessPlayer.base_skill_buff_all_elements_resistance_%_to_apply",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": -45.0
+          }
+        ],
+        "mitigated": 8700.466176,
+        "multiplier": 1.07,
+        "reduction": -7.0,
+        "resist": -7.0,
+        "resist_inverted": 0.0,
+        "taken": 1.0,
+        "taken_mods": [
+          {
+            "active": false,
+            "mod_type": "INC",
+            "origin_id": "intimidated_base",
+            "origin_kind": "EnemyConfig",
+            "slot": null,
+            "source_text": "enemy intimidated_base",
+            "value": 10.0
+          }
+        ]
+      },
+      {
+        "average": 17925.733215,
+        "damage_type": "Cold",
+        "defence_mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "cold_resist",
+            "origin_kind": "EnemyConfig",
+            "slot": null,
+            "source_text": "enemy cold_resist",
+            "value": 50.0
+          },
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "exposure",
+            "origin_kind": "EnemyConfig",
+            "slot": null,
+            "source_text": "exposure ColdExposure",
+            "value": -12.0
+          },
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "curse.ElementalWeaknessPlayer.base_skill_buff_all_elements_resistance_%_to_apply",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": -45.0
+          }
+        ],
+        "mitigated": 19180.53454005,
+        "multiplier": 1.07,
+        "reduction": -7.0,
+        "resist": -7.0,
+        "resist_inverted": 0.0,
+        "taken": 1.0,
+        "taken_mods": [
+          {
+            "active": false,
+            "mod_type": "INC",
+            "origin_id": "intimidated_base",
+            "origin_kind": "EnemyConfig",
+            "slot": null,
+            "source_text": "enemy intimidated_base",
+            "value": 10.0
+          }
+        ]
+      },
+      {
+        "average": 2541.0240000000003,
+        "damage_type": "Fire",
+        "defence_mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "exposure",
+            "origin_kind": "EnemyConfig",
+            "slot": null,
+            "source_text": "exposure FireExposure",
+            "value": -12.0
+          },
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "fire_resist",
+            "origin_kind": "EnemyConfig",
+            "slot": null,
+            "source_text": "enemy fire_resist",
+            "value": 50.0
+          },
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "curse.ElementalWeaknessPlayer.base_skill_buff_all_elements_resistance_%_to_apply",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": -45.0
+          }
+        ],
+        "mitigated": 2718.89568,
+        "multiplier": 1.0699999999999998,
+        "reduction": -7.0,
+        "resist": -7.0,
+        "resist_inverted": 0.0,
+        "taken": 1.0,
+        "taken_mods": [
+          {
+            "active": false,
+            "mod_type": "INC",
+            "origin_id": "intimidated_base",
+            "origin_kind": "EnemyConfig",
+            "slot": null,
+            "source_text": "enemy intimidated_base",
+            "value": 10.0
+          }
+        ]
+      }
+    ],
+    "mods": [],
+    "more_total": 1.0
+  },
+  "TotalDotDPS": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": {
+      "steps": [
+        {
+          "op": "ignite_dps",
+          "operand": 4.534608386,
+          "result": 4.534608386
+        }
+      ],
+      "value": 4.534608386
+    },
+    "inc_total": 0.0,
+    "kind": "steps",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "TotalEHP": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [
+        {
+          "id": "LifeRecoverable",
+          "value": 1.0
+        },
+        {
+          "id": "ManaUnreserved",
+          "value": 2023.7
+        },
+        {
+          "id": "EnergyShieldRecoveryCap",
+          "value": 9593.0
+        },
+        {
+          "id": "Ward",
+          "value": 0.0
+        }
+      ],
+      "formula": "round(NumberOfMitigatedHits * EnemyDamage / (1 - NotHitChance / 100), 9)",
+      "inputs": [
+        {
+          "id": "NumberOfMitigatedHits",
+          "value": 5.34313371952335
+        },
+        {
+          "id": "EnemyDamage",
+          "value": 4246.0
+        },
+        {
+          "id": "NotHitChance",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "TotalHitAvg": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "damage": {
+      "damage_effect": 1.0,
+      "rows": [
+        {
+          "avg": 1771.52,
+          "base_max": 830.4,
+          "base_min": 553.6,
+          "crit_avg": 8131.2768,
+          "damage_type": "Lightning",
+          "increased": 156.0,
+          "max": 2125.824,
+          "max_mods": [],
+          "min": 1417.216,
+          "min_mods": [],
+          "mods": [
+            {
+              "active": true,
+              "mod_type": "INC",
+              "origin_id": "item.weapon1.implicit",
+              "origin_kind": "ItemImplicit",
+              "slot": "weapon1",
+              "source_text": "80% increased Elemental Damage",
+              "value": 80.0
+            },
+            {
+              "active": true,
+              "mod_type": "INC",
+              "origin_id": "jewel.1",
+              "origin_kind": "Jewel",
+              "slot": null,
+              "source_text": "15% increased Elemental Damage",
+              "value": 15.0
+            },
+            {
+              "active": true,
+              "mod_type": "INC",
+              "origin_id": "node.5936",
+              "origin_kind": "PassiveNode",
+              "slot": null,
+              "source_text": "10% increased [ElementalDamage|Elemental Damage]",
+              "value": 10.0
+            }
+          ],
+          "more": 1.0,
+          "more_max": 1.0,
+          "more_min": 1.0
+        },
+        {
+          "avg": 3905.3885,
+          "base_max": 1567.38,
+          "base_min": 1044.92,
+          "crit_avg": 17925.733215,
+          "damage_type": "Cold",
+          "increased": 199.0,
+          "max": 4686.4662,
+          "max_mods": [],
+          "min": 3124.3108,
+          "min_mods": [],
+          "mods": [
+            {
+              "active": true,
+              "mod_type": "INC",
+              "origin_id": "item.weapon1.implicit",
+              "origin_kind": "ItemImplicit",
+              "slot": "weapon1",
+              "source_text": "80% increased Elemental Damage",
+              "value": 80.0
+            },
+            {
+              "active": true,
+              "mod_type": "INC",
+              "origin_id": "jewel.1",
+              "origin_kind": "Jewel",
+              "slot": null,
+              "source_text": "15% increased Elemental Damage",
+              "value": 15.0
+            },
+            {
+              "active": true,
+              "mod_type": "INC",
+              "origin_id": "jewel.2",
+              "origin_kind": "Jewel",
+              "slot": null,
+              "source_text": "7% increased Cold Damage",
+              "value": 7.0
+            },
+            {
+              "active": true,
+              "mod_type": "INC",
+              "origin_id": "node.41669",
+              "origin_kind": "PassiveNode",
+              "slot": null,
+              "source_text": "12% increased [Cold] Damage",
+              "value": 12.0
+            },
+            {
+              "active": true,
+              "mod_type": "INC",
+              "origin_id": "node.44455",
+              "origin_kind": "PassiveNode",
+              "slot": null,
+              "source_text": "12% increased [Cold] Damage",
+              "value": 12.0
+            },
+            {
+              "active": true,
+              "mod_type": "INC",
+              "origin_id": "node.5936",
+              "origin_kind": "PassiveNode",
+              "slot": null,
+              "source_text": "10% increased [ElementalDamage|Elemental Damage]",
+              "value": 10.0
+            },
+            {
+              "active": true,
+              "mod_type": "INC",
+              "origin_id": "node.60515",
+              "origin_kind": "PassiveNode",
+              "slot": null,
+              "source_text": "12% increased [Cold] Damage",
+              "value": 12.0
+            }
+          ],
+          "more": 1.0,
+          "more_max": 1.0,
+          "more_min": 1.0
+        },
+        {
+          "avg": 553.6,
+          "base_max": 259.5,
+          "base_min": 173.0,
+          "crit_avg": 2541.0240000000003,
+          "damage_type": "Fire",
+          "increased": 156.0,
+          "max": 664.32,
+          "max_mods": [],
+          "min": 442.88,
+          "min_mods": [],
+          "mods": [
+            {
+              "active": true,
+              "mod_type": "INC",
+              "origin_id": "item.weapon1.implicit",
+              "origin_kind": "ItemImplicit",
+              "slot": "weapon1",
+              "source_text": "80% increased Elemental Damage",
+              "value": 80.0
+            },
+            {
+              "active": true,
+              "mod_type": "INC",
+              "origin_id": "jewel.1",
+              "origin_kind": "Jewel",
+              "slot": null,
+              "source_text": "15% increased Elemental Damage",
+              "value": 15.0
+            },
+            {
+              "active": true,
+              "mod_type": "INC",
+              "origin_id": "node.5936",
+              "origin_kind": "PassiveNode",
+              "slot": null,
+              "source_text": "10% increased [ElementalDamage|Elemental Damage]",
+              "value": 10.0
+            }
+          ],
+          "more": 1.0,
+          "more_max": 1.0,
+          "more_min": 1.0
+        }
+      ],
+      "shared_mods": [
+        {
+          "active": false,
+          "mod_type": "INC",
+          "origin_id": "node.13065",
+          "origin_kind": "AscendancyNode",
+          "slot": null,
+          "source_text": "[Trigger|Triggered] [Spell|Spells] deal 16% increased [Spell] Damage",
+          "value": 16.0
+        },
+        {
+          "active": true,
+          "mod_type": "INC",
+          "origin_id": "item.belt.explicit",
+          "origin_kind": "ItemAffix",
+          "slot": "belt",
+          "source_text": "42% increased Spell Damage during any Flask Effect",
+          "value": 42.0
+        },
+        {
+          "active": false,
+          "mod_type": "INC",
+          "origin_id": "item.ring1.explicit",
+          "origin_kind": "ItemAffix",
+          "slot": "ring1",
+          "source_text": "16% increased Spell Damage while on Full Energy Shield",
+          "value": 16.0
+        },
+        {
+          "active": false,
+          "mod_type": "INC",
+          "origin_id": "jewel.4",
+          "origin_kind": "Jewel",
+          "slot": null,
+          "source_text": "6% increased Thorns damage",
+          "value": 6.0
+        },
+        {
+          "active": true,
+          "mod_type": "INC",
+          "origin_id": "jewel.4",
+          "origin_kind": "Jewel",
+          "slot": null,
+          "source_text": "9% increased Spell Damage",
+          "value": 9.0
+        },
+        {
+          "active": false,
+          "mod_type": "INC",
+          "origin_id": "node.14110",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "15% increased [Totem|Totem] Damage",
+          "value": 15.0
+        },
+        {
+          "active": false,
+          "mod_type": "INC",
+          "origin_id": "node.38124",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "15% increased [Totem|Totem] Damage",
+          "value": 15.0
+        },
+        {
+          "active": false,
+          "mod_type": "INC",
+          "origin_id": "node.6355",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "15% increased [Totem|Totem] Damage",
+          "value": 15.0
+        },
+        {
+          "active": false,
+          "mod_type": "INC",
+          "origin_id": "node.63668",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "[Trigger|Triggered] [Spell|Spells] deal 14% increased [Spell] Damage",
+          "value": 14.0
+        },
+        {
+          "active": false,
+          "mod_type": "INC",
+          "origin_id": "node.9069",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "[Trigger|Triggered] [Spell|Spells] deal 14% increased [Spell] Damage",
+          "value": 14.0
+        },
+        {
+          "active": false,
+          "mod_type": "INC",
+          "origin_id": "buff.SupportMysticismPlayerTwo.support_spell_damage_spirit_cost_spell_damage_+%_on_full_energy_shield",
+          "origin_kind": "SkillGem",
+          "slot": null,
+          "source_text": null,
+          "value": 40.0
+        }
+      ],
+      "sources": [
+        {
+          "added_effect": 1.0,
+          "added_effect_mods": [],
+          "added_max": 1038.0,
+          "added_max_mods": [
+            {
+              "active": false,
+              "mod_type": "BASE",
+              "origin_id": "item.ring2.explicit",
+              "origin_kind": "ItemAffix",
+              "slot": "ring2",
+              "source_text": "Adds 15 to 22 Cold damage to Attacks",
+              "value": 22.0
+            },
+            {
+              "active": true,
+              "mod_type": "BASE",
+              "origin_id": "skill.spell_maximum_base_cold_damage",
+              "origin_kind": "SkillGem",
+              "slot": null,
+              "source_text": null,
+              "value": 1038.0
+            }
+          ],
+          "added_min": 692.0,
+          "added_min_mods": [
+            {
+              "active": false,
+              "mod_type": "BASE",
+              "origin_id": "item.ring2.explicit",
+              "origin_kind": "ItemAffix",
+              "slot": "ring2",
+              "source_text": "Adds 15 to 22 Cold damage to Attacks",
+              "value": 15.0
+            },
+            {
+              "active": true,
+              "mod_type": "BASE",
+              "origin_id": "skill.spell_minimum_base_cold_damage",
+              "origin_kind": "SkillGem",
+              "slot": null,
+              "source_text": null,
+              "value": 692.0
+            }
+          ],
+          "convert_mods": [],
+          "damage_type": "Cold",
+          "gain_mods": [
+            {
+              "active": true,
+              "mod_type": "BASE",
+              "origin_id": "node.23587",
+              "origin_kind": "AscendancyNode",
+              "slot": null,
+              "source_text": "[Gain] 10% of Damage as Extra [Cold] Damage",
+              "value": 10.0
+            },
+            {
+              "active": true,
+              "mod_type": "BASE",
+              "origin_id": "item.weapon1.explicit",
+              "origin_kind": "ItemAffix",
+              "slot": "weapon1",
+              "source_text": "Gain 22% of Damage as Extra Cold Damage",
+              "value": 22.0
+            },
+            {
+              "active": true,
+              "mod_type": "BASE",
+              "origin_id": "item.weapon1.enchant",
+              "origin_kind": "ItemEnchant",
+              "slot": "weapon1",
+              "source_text": "Gain 13% of Elemental Damage as Extra Cold Damage",
+              "value": 13.0
+            },
+            {
+              "active": true,
+              "mod_type": "BASE",
+              "origin_id": "item.weapon1.implicit",
+              "origin_kind": "ItemImplicit",
+              "slot": "weapon1",
+              "source_text": "Gain 25% of Damage as Extra Fire Damage",
+              "value": 25.0
+            },
+            {
+              "active": true,
+              "mod_type": "BASE",
+              "origin_id": "node.41972",
+              "origin_kind": "PassiveNode",
+              "slot": null,
+              "source_text": "[Gain] 6% of [ElementalDamage|Elemental Damage] as Extra [Cold] Damage",
+              "value": 6.0
+            },
+            {
+              "active": true,
+              "mod_type": "BASE",
+              "origin_id": "buff.ArchmagePlayer.archmage_all_damage_%_to_gain_as_lightning_to_grant_to_non_channelling_spells_per_100_max_mana",
+              "origin_kind": "SkillGem",
+              "slot": null,
+              "source_text": null,
+              "value": 80.0
+            }
+          ],
+          "max": 1038.0,
+          "min": 692.0
+        }
+      ]
+    },
+    "formula": {
+      "steps": [
+        {
+          "op": "non_crit_hit",
+          "operand": 6230.5085,
+          "result": 6230.5085
+        },
+        {
+          "op": "crit_hits",
+          "operand": 100.0,
+          "result": 28598.034015
+        }
+      ],
+      "value": 28598.034015
+    },
+    "inc_total": 0.0,
+    "kind": "steps",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "TotalNetRegen": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "NetLifeRegen + NetManaRegen + NetEnergyShieldRegen + NetWardRegen",
+      "inputs": [
+        {
+          "id": "NetLifeRegen",
+          "value": 0.0
+        },
+        {
+          "id": "NetManaRegen",
+          "value": 281.693693625
+        },
+        {
+          "id": "NetEnergyShieldRegen",
+          "value": 0.0
+        },
+        {
+          "id": "NetWardRegen",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "TotalTotemPlacementTime": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 0.0,
+        "inc_total": 44.0,
+        "mods": [
+          {
+            "active": false,
+            "mod_type": "INC",
+            "origin_id": "jewel.1",
+            "origin_kind": "Jewel",
+            "slot": null,
+            "source_text": "3% increased Skill Speed while Shapeshifted",
+            "value": 3.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.10364",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "4% increased [SkillSpeed|Skill Speed]",
+            "value": 4.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.14725",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "3% increased [SkillSpeed|Skill Speed]",
+            "value": 3.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.32545",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "3% increased [SkillSpeed|Skill Speed]",
+            "value": 3.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.34233",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "5% increased [SkillSpeed|Skill Speed]",
+            "value": 5.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.42857",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "4% increased [SkillSpeed|Skill Speed]",
+            "value": 4.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.43396",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "25% increased [Totem|Totem] Placement speed",
+            "value": 25.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "TotemPlacementSpeed"
+      }
+    ]
+  },
+  "TrapThrowCount": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "TrapThrowingTime": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "WarcryCastTime": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 0.0,
+        "inc_total": 19.0,
+        "mods": [
+          {
+            "active": false,
+            "mod_type": "INC",
+            "origin_id": "jewel.1",
+            "origin_kind": "Jewel",
+            "slot": null,
+            "source_text": "3% increased Skill Speed while Shapeshifted",
+            "value": 3.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.10364",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "4% increased [SkillSpeed|Skill Speed]",
+            "value": 4.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.14725",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "3% increased [SkillSpeed|Skill Speed]",
+            "value": 3.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.32545",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "3% increased [SkillSpeed|Skill Speed]",
+            "value": 3.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.34233",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "5% increased [SkillSpeed|Skill Speed]",
+            "value": 5.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "node.42857",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "4% increased [SkillSpeed|Skill Speed]",
+            "value": 4.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "WarcrySpeed"
+      }
+    ]
+  },
+  "Ward": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "WardCost": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "SupportEfficiencyPlayerTwo.support_inspiration_cost_+%_final",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": -40.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 0.6,
+        "name": "Cost"
+      },
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "support.ProlongedDurationSupportPlayerTwo.manaMultiplier",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": 20.0
+          },
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "support.SupportMagnifiedAreaPlayer.manaMultiplier",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": 30.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.56,
+        "name": "SupportManaMultiplier"
+      },
+      {
+        "base_total": 211.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "skill.SkillManaCostBase",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 211.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "SkillManaCostBase"
+      },
+      {
+        "base_total": 128.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "buff.ArchmagePlayer.archmage_max_mana_permyriad_to_add_to_non_channelled_spell_mana_cost",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 128.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "ManaCostNoMult"
+      }
+    ]
+  },
+  "WardPerSecondCost": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(WardCost * CostUseRate + ContinuousCost, 9)",
+      "inputs": [
+        {
+          "id": "WardCost",
+          "value": 0.0
+        },
+        {
+          "id": "CostUseRate",
+          "value": 0.204750205
+        },
+        {
+          "id": "ContinuousCost",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "WardPercentCost": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "SupportEfficiencyPlayerTwo.support_inspiration_cost_+%_final",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": -40.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 0.6,
+        "name": "Cost"
+      },
+      {
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "support.ProlongedDurationSupportPlayerTwo.manaMultiplier",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": 20.0
+          },
+          {
+            "active": true,
+            "mod_type": "MORE",
+            "origin_id": "support.SupportMagnifiedAreaPlayer.manaMultiplier",
+            "origin_kind": "SupportGem",
+            "slot": null,
+            "source_text": null,
+            "value": 30.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.56,
+        "name": "SupportManaMultiplier"
+      },
+      {
+        "base_total": 128.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "buff.ArchmagePlayer.archmage_max_mana_permyriad_to_add_to_non_channelled_spell_mana_cost",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 128.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "ManaCostNoMult"
+      }
+    ]
+  },
+  "WardPercentPerSecondCost": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(WardPercentCost * CostUseRate + ContinuousCost, 9)",
+      "inputs": [
+        {
+          "id": "WardPercentCost",
+          "value": 0.0
+        },
+        {
+          "id": "CostUseRate",
+          "value": 0.204750205
+        },
+        {
+          "id": "ContinuousCost",
+          "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "WardRegen": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 5.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "base.WardRegenPercent",
+            "origin_kind": "CharacterBase",
+            "slot": null,
+            "source_text": null,
+            "value": 5.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "WardRegenPercent"
+      }
+    ]
+  },
+  "WardRegenRecovery": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 5.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "base.WardRegenPercent",
+            "origin_kind": "CharacterBase",
+            "slot": null,
+            "source_text": null,
+            "value": 5.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "WardRegenPercent"
+      }
+    ]
+  }
+}

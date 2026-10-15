@@ -147,6 +147,7 @@ fn calculate_build_json_shape() {
             "stats",
             "unsupported_modifiers",
             "breakdowns",
+            "breakdown_descriptors",
             "main_skill",
             "minions",
             "main_minion_index",
@@ -284,6 +285,7 @@ fn calculate_build_json_shape() {
     assert_keys(
         es_bd,
         &[
+            "kind",
             "actor",
             "base_total",
             "inc_total",

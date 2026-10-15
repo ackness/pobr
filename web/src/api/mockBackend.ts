@@ -17,6 +17,7 @@ import type {
 } from './types';
 import decodeFixture from '../fixtures/decode.json';
 import calculateFixture from '../fixtures/calculate.json';
+import detailFixture from '../fixtures/stat_details.json';
 import attributionFixture from '../fixtures/attribution.json';
 import skillMetricsFixture from '../fixtures/skill_metrics.json';
 import treeFixture from '../fixtures/tree.json';
@@ -46,8 +47,17 @@ export function createMockBackend(): PobrBackend {
     async decodeBuildFile() {
       return decodeFixture as unknown as BuildJson;
     },
-    async calculateBuild() {
-      return calculateFixture as unknown as CalculateBuildResponse;
+    async calculateBuild(request) {
+      const result = calculateFixture as unknown as CalculateBuildResponse;
+      if (request.breakdowns === undefined && request.breakdown_actor === undefined) return result;
+      const details = detailFixture as unknown as CalculateBuildResponse['breakdowns'];
+      const filter = (rows: CalculateBuildResponse['breakdowns']) => Object.fromEntries((request.breakdowns ?? Object.keys(rows)).filter(id => rows[id]).map(id => [id, rows[id]]));
+      return { ...result,
+        breakdowns: request.breakdown_actor?.kind === 'minion' ? {} : filter(details),
+        minions: result.minions?.map(minion => ({ ...minion,
+          breakdowns: request.breakdown_actor?.kind === 'minion' && request.breakdown_actor.index === minion.index ? filter(minion.breakdowns) : {},
+        })),
+      };
     },
     async encodeBuild() {
       return 'MOCK_POB_CODE';

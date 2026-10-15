@@ -62,7 +62,7 @@ test('headline sidebar stats open the lines behind them', async ({ page }) => {
   }
 
   // Fire resistance: the steps go from the modifier total (86) to the capped value shown (75).
-  await sidebar.getByRole('button', { name: /^Fire Res\./ }).click();
+  await sidebar.getByRole('button', { name: /^Fire Res\.\s*\d/ }).click();
   const fire = page.locator('#breakdown-FireResist');
   const steps = fire.locator('.breakdown-formula tr.formula-step');
   await expect(steps.first().locator('.formula-result')).toHaveText('86');
@@ -277,4 +277,45 @@ test('a defence lists what each item slot adds on its own', async ({ page }) => 
     num(await armour.locator('tr.formula-slot_scaled .formula-operand').textContent()),
     1,
   );
+});
+
+test('on-demand details cover steps, sources, derived inputs and an explicit empty state', async ({ page }) => {
+  test.setTimeout(60_000);
+  await loadBuild(page, 'monk-invoker-frost-bomb');
+  const sidebar = page.locator('#character-stats');
+  await sidebar.getByRole('button', { name: /^Life\s/ }).first().click();
+  const life = page.locator('#breakdown-Life');
+  await expect(life).toHaveAttribute('data-detail-kind', 'steps');
+  await expect(life.locator('.breakdown-formula')).toBeVisible();
+
+  await sidebar.getByRole('button', { name: /^Mana Cost\s/ }).first().click();
+  const cost = page.locator('#breakdown-ManaCost');
+  await expect(cost).toHaveAttribute('data-detail-kind', 'sources');
+  await expect(cost.locator('.breakdown-sources')).toBeVisible();
+  await expect(cost.locator('.breakdown-sources')).toContainText('Support cost multiplier');
+
+  await page.locator('.calcs-search').fill('ManaCost');
+  await sidebar.getByRole('button', { name: /^Effective HP\s/ }).first().click();
+  await expect(page.locator('.calcs-search')).toHaveValue('');
+  const ehp = page.locator('#breakdown-TotalEHP');
+  await expect(ehp).toHaveAttribute('data-detail-kind', 'derived');
+  await expect(ehp.locator('.derived-formula')).toBeVisible();
+  await expect(ehp.locator('.breakdown-derived')).toContainText('Enemy damage per hit');
+  await expect(ehp.locator('.breakdown-derived')).toContainText('Resource pools used upstream');
+  await ehp.scrollIntoViewIfNeeded();
+  await ehp.screenshot({ path: 'test-results/calcs-derived.png' });
+
+  const strength = page.locator('#breakdown-Str');
+  await strength.locator('.breakdown-toggle').click();
+  await expect(strength).toHaveAttribute('data-detail-kind', 'none');
+  await expect(strength.getByRole('status')).toHaveText('No breakdown available for this stat.');
+  await expect(sidebar.locator('[data-detail-kind="none"]').first()).toHaveAttribute('title', 'No breakdown available for this stat.');
+
+  // Reopening a detail after an edit must describe the new calculation.
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Build', exact: true }).click();
+  await page.getByLabel('Level', { exact: true }).fill('75');
+  await sidebar.getByRole('button', { name: /^Life\s/ }).first().click();
+  await expect(life.locator('.breakdown-formula')).toBeVisible();
+  await expect.poll(async () => Math.round(num(await life.locator('.formula-final .formula-result').textContent())))
+    .toBe(Math.round(num(await life.locator('.breakdown-value').textContent())));
 });

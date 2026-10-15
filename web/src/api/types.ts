@@ -267,6 +267,7 @@ export interface MinionOutput {
   energy_shield: number;
   stats: Record<string, number>;
   breakdowns: Record<string, Breakdown>;
+  breakdown_descriptors?: Record<string, DetailKind>;
 }
 
 /** 宝石目录条目（gem_catalog_json）。 */
@@ -415,6 +416,9 @@ export interface ItemAugmentInfo {
 
 /** `pob_code` 与 `character` 至少给一个（无 code = PoB2 新建 build 语义）。 */
 export interface CalculateBuildRequest {
+  /** Omitted: legacy defaults; []: no details; otherwise only the opened ids. */
+  breakdowns?: string[];
+  breakdown_actor?: BreakdownActor;
   /** Collect configuration visibility facts; omitted keeps read tracking off. */
   config_context?: boolean;
   /** Evaluate included effects; omitted keeps the single-skill calculation. */
@@ -567,7 +571,20 @@ export interface BreakdownFormula {
   value: number;
 }
 
+export type DetailKind = 'steps' | 'sources' | 'derived' | 'none';
+export interface DetailInput { id: string; value: number | null }
+export interface SourceDetail {
+  name: string;
+  more_precision: number | null;
+  base_total: number;
+  inc_total: number;
+  more_total: number;
+  mods: BreakdownMod[];
+}
 export interface Breakdown {
+  kind?: DetailKind;
+  sources?: SourceDetail[];
+  derived?: { formula: string; inputs: DetailInput[]; context: DetailInput[] };
   actor?: BreakdownActor;
   /** Totals cover active lines only. */
   base_total: number;
@@ -822,6 +839,8 @@ export interface CalculateBuildResponse {
   unsupported_modifiers: string[];
   /** 键 = 聚合 ModName（Life / EnergyShield / FireResist / ...）。 */
   breakdowns: Record<string, Breakdown>;
+  /** Optional for older saved/mock responses. */
+  breakdown_descriptors?: Record<string, DetailKind>;
   /** 主技能分解（null = 无可解析的伤害主技能）。 */
   main_skill: MainSkillInfo | null;
   /** 单件装备/药剂/珠宝文本解析失败的降级记录（据 slot 标红；空 = 全部成功）。 */

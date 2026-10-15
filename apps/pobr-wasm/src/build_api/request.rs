@@ -178,6 +178,10 @@ pub struct JewelInput {
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct CalculateBuildRequest {
+    /// Omitted: legacy defaults; empty: no detail work; otherwise only these ids.
+    pub(crate) breakdowns: Option<Vec<String>>,
+    /// Select an actor for requested ids; omitted keeps the player (legacy defaults include minions).
+    pub(crate) breakdown_actor: Option<pobr_build::breakdown::BreakdownActor>,
     /// Collect visibility facts for Config; ordinary calculations keep read tracking off.
     pub(crate) config_context: bool,
     /// Opt in to evaluating all included effects; ordinary edits stay on the main-skill path.

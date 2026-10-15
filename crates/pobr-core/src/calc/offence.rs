@@ -175,6 +175,8 @@ impl MinimalOutput {
 
 /// A single resistance's resolution result: the capped final value / max resistance / over-cap.
 pub(crate) struct ResistanceResolution {
+    pub(crate) total: f64,
+    pub(crate) uncapped_max: f64,
     pub(crate) final_value: f64,
     max: f64,
     pub(crate) over_cap: f64,
@@ -261,6 +263,8 @@ pub(crate) fn resolve_resistance(
         });
     let floor = cfg.constants.game().resist_floor;
     ResistanceResolution {
+        total,
+        uncapped_max: max,
         final_value: round(total.min(max).max(floor)),
         max: round(max),
         over_cap: round((total - max).max(0.0)),

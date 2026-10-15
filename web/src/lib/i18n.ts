@@ -1,3 +1,4 @@
+import { DETAIL_LABELS } from './detailLabels';
 /**
  * UI 文案三语字典（en-US / zh-TW / zh-CN）。
  *
@@ -561,6 +562,15 @@ const DICT = {
   'calcs.baseTotal': { 'en-US': 'Base total', 'zh-TW': '基礎合計', 'zh-CN': '基础合计' },
   'calcs.incTotal': { 'en-US': 'Increased total', 'zh-TW': '增加合計', 'zh-CN': '增加合计' },
   'calcs.moreTotal': { 'en-US': 'More multiplier', 'zh-TW': '更多乘數', 'zh-CN': '更多乘数' },
+  "calcs.noBreakdown": {"en-US": "No breakdown available for this stat.", "zh-TW": "此數值尚無計算明細。", "zh-CN": "此数值尚无计算明细。"},
+  "calcs.inputs": {"en-US": "Formula inputs", "zh-TW": "公式輸入", "zh-CN": "公式输入"},
+  "calcs.context": {"en-US": "Resource pools used upstream", "zh-TW": "上游計算使用的資源池", "zh-CN": "上游计算使用的资源池"},
+  "calcs.sourcesNote": {"en-US": "Modifier totals are shown separately for each input. These are contributions, before further rounding, conversion or limits.", "zh-TW": "各項輸入分別列出詞綴合計；後續可能還有取整、轉換或上限。", "zh-CN": "各项输入分别列出词缀合计；后续可能还有取整、转换或上限。"},
+  "calcs.noSources": {"en-US": "No modifier sources apply to this input in the current build.", "zh-TW": "目前構築沒有作用於此輸入的詞綴來源。", "zh-CN": "当前构筑没有作用于此输入的词缀来源。"},
+  "calcs.loadingDetail": {"en-US": "Loading explanation…", "zh-TW": "載入計算明細…", "zh-CN": "加载计算明细…"},
+  "calcs.retry": {"en-US": "Retry", "zh-TW": "重試", "zh-CN": "重试"},
+  "calcs.moreRounded": {"en-US": "MORE product rounded to decimal places:", "zh-TW": "MORE 乘積四捨五入小數位：", "zh-CN": "MORE 乘积四舍五入小数位："},
+  "calcs.moreFloored": {"en-US": "MORE product rounded down to decimal places:", "zh-TW": "MORE 乘積無條件捨去小數位：", "zh-CN": "MORE 乘积向下取整小数位："},
   'calcs.totalsNote': { 'en-US': 'Totals of the lines below. The shown value can include further effects that are not listed as steps.', 'zh-TW': '以下詞條的合計。顯示的數值可能還包含未列為步驟的其他效果。', 'zh-CN': '以下词条的合计。显示的数值可能还包含未列为步骤的其他效果。' },
   'calcs.formula': { 'en-US': 'How this value is calculated', 'zh-TW': '此數值的計算過程', 'zh-CN': '此数值的计算过程' },
   'calcs.formulaResult': { 'en-US': 'Shown value', 'zh-TW': '顯示數值', 'zh-CN': '显示数值' },
@@ -1055,6 +1065,26 @@ export function enemyTierLabel(lang: Lang, tier: string): string {
 }
 
 const MOD_NAME_LABELS: Record<string, Entry> = {
+  CostUseRate: {"en-US": "Paid uses per second", "zh-TW": "每秒付費使用次數", "zh-CN": "每秒付费使用次数"},
+  ContinuousCost: {"en-US": "Continuous cost per second", "zh-TW": "持續每秒消耗", "zh-CN": "持续每秒消耗"},
+  Spending: {"en-US": "Resource spending per second", "zh-TW": "每秒資源支出", "zh-CN": "每秒资源支出"},
+  SelfDamage: {"en-US": "Self-damage per second after mitigation", "zh-TW": "減免後每秒自身傷害", "zh-CN": "减免后每秒自身伤害"},
+  ResourceDrain: {"en-US": "Resource loss per second", "zh-TW": "每秒資源流失", "zh-CN": "每秒资源流失"},
+  EnemyDamage: {"en-US": "Enemy damage per hit before modifiers", "zh-TW": "敵人每次擊中的原始傷害", "zh-CN": "敌人每次击中的原始伤害"},
+  NotHitChance: {"en-US": "Chance not to be hit (%)", "zh-TW": "不被擊中的機率（%）", "zh-CN": "不被击中的几率（%）"},
+  BaseDuration: {"en-US": "Base duration (seconds)", "zh-TW": "基礎持續時間（秒）", "zh-CN": "基础持续时间（秒）"},
+  DurationModifier: {"en-US": "Duration multiplier", "zh-TW": "持續時間倍率", "zh-CN": "持续时间倍率"},
+  DebuffExpiration: {"en-US": "Enemy debuff duration multiplier", "zh-TW": "敵人減益持續時間倍率", "zh-CN": "敌人减益持续时间倍率"},
+  ServerTick: {"en-US": "Server tick (seconds)", "zh-TW": "伺服器更新間隔（秒）", "zh-CN": "服务器更新间隔（秒）"},
+  UncappedResistance: {"en-US": "Resistance before limits (%)", "zh-TW": "上限前抗性（%）", "zh-CN": "上限前抗性（%）"},
+  MaximumResistance: {"en-US": "Maximum resistance (%)", "zh-TW": "抗性上限（%）", "zh-CN": "抗性上限（%）"},
+  SupportRequirement: {"en-US": "Support gems requirement after adjustments", "zh-TW": "輔助寶石調整後需求", "zh-CN": "辅助宝石调整后需求"},
+  ItemRequirement: {"en-US": "Equipment requirement after adjustments", "zh-TW": "裝備調整後需求", "zh-CN": "装备调整后需求"},
+  WeaponRequirement: {"en-US": "Weapons requirement after adjustments", "zh-TW": "武器調整後需求", "zh-CN": "武器调整后需求"},
+  MeleeWeaponRequirement: {"en-US": "Melee weapons requirement after adjustments", "zh-TW": "近戰武器調整後需求", "zh-CN": "近战武器调整后需求"},
+  GemRequirement: {"en-US": "Active gems requirement after adjustments", "zh-TW": "主動寶石調整後需求", "zh-CN": "主动宝石调整后需求"},
+  MeleeGemRequirement: {"en-US": "Melee gems requirement after adjustments", "zh-TW": "近戰寶石調整後需求", "zh-CN": "近战宝石调整后需求"},
+
   Life: { 'en-US': 'Life', 'zh-TW': '生命', 'zh-CN': '生命' },
   Mana: { 'en-US': 'Mana', 'zh-TW': '魔力', 'zh-CN': '魔力' },
   EnergyShield: { 'en-US': 'Energy Shield', 'zh-TW': '能量護盾', 'zh-CN': '能量护盾' },
@@ -1195,7 +1225,7 @@ export function statNameLabel(lang: Lang, id: string): string {
     const extra = STAT_EXTRA_LABELS[id]?.[lang];
     if (extra) return extra;
   }
-  return id;
+  return DETAIL_LABELS[id]?.[lang] ?? id;
 }
 
 const DAMAGE_TYPE_LABELS: Record<string, Entry> = {

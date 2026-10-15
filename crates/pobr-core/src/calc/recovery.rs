@@ -240,6 +240,7 @@ fn fill_leech_gain(env: &mut Env, hit: &[(DamageType, f64)], crit: &[(DamageType
         LeechResource::Mana,
         LeechResource::EnergyShield,
     ];
+    let mut details = [[[0.0; 3]; 3]; 2];
     let mut per_hit = [0.0; 3];
     let mut rate = [0.0; 3];
     let mut accumulate = |cfg: &CalcConfig,
@@ -261,6 +262,15 @@ fn fill_leech_gain(env: &mut Env, hit: &[(DamageType, f64)], crit: &[(DamageType
             for (i, resource) in resources.iter().enumerate() {
                 let gain = gain_for_hit(env, &pass_cfg, damage, *resource, pools[i]);
                 let hit_rate = out.effective_action_rate * hit_chance * share;
+                for (channel, value) in [gain.per_hit, gain.instant, gain.on_hit]
+                    .into_iter()
+                    .enumerate()
+                {
+                    details[0][i][channel] += value * portion * share;
+                }
+                details[1][i][0] += (gain.per_hit * hit_rate).min(gain.peak * share) * portion;
+                details[1][i][1] += gain.instant * hit_rate * portion;
+                details[1][i][2] += gain.on_hit * hit_rate * portion;
                 per_hit[i] += (gain.per_hit + gain.instant + gain.on_hit) * portion * share;
                 rate[i] += (gain.per_hit * hit_rate).min(gain.peak * share) * portion
                     + (gain.instant + gain.on_hit) * hit_rate * portion;
@@ -298,6 +308,7 @@ fn fill_leech_gain(env: &mut Env, hit: &[(DamageType, f64)], crit: &[(DamageType
         }
     }
     let out = &mut env.player.output;
+    env.leech_gain_terms = details;
     [
         out.life_leech_gain_rate,
         out.mana_leech_gain_rate,
@@ -310,10 +321,17 @@ fn fill_leech_gain(env: &mut Env, hit: &[(DamageType, f64)], crit: &[(DamageType
     ] = per_hit;
 }
 
-fn fill_net_recovery(env: &mut Env) {
+pub(super) struct NetRecoveryTerms {
+    pub costs: [f64; 5],
+    pub loss: [f64; 3],
+    pub direct_drain: f64,
+    pub typed_loss: f64,
+}
+
+pub(super) fn net_recovery_terms(env: &Env) -> NetRecoveryTerms {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
-    let out = &mut env.player.output;
+    let out = &env.player.output;
     let pools = [out.life, out.mana, out.energy_shield];
     // Spending already follows casts, channels, reloads, triggers or placements.
     // Percent costs remain separate display channels; convert them to resources.
@@ -406,6 +424,22 @@ fn fill_net_recovery(env: &mut Env) {
             loss[1] += amount * mom;
         }
     }
+    NetRecoveryTerms {
+        costs,
+        loss,
+        direct_drain,
+        typed_loss,
+    }
+}
+
+fn fill_net_recovery(env: &mut Env) {
+    let NetRecoveryTerms {
+        costs,
+        loss,
+        direct_drain,
+        typed_loss,
+    } = net_recovery_terms(env);
+    let out = &mut env.player.output;
     out.total_build_degen = direct_drain + typed_loss + costs.iter().sum::<f64>();
     out.net_life_regen = out.life_regen_recovery - loss[0];
     out.net_mana_regen = out.mana_regen_recovery - loss[1];

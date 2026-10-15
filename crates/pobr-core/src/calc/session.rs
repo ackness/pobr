@@ -1,3 +1,4 @@
+pub mod detail;
 pub(super) mod preparation;
 
 use std::collections::BTreeMap;
@@ -1590,6 +1591,10 @@ impl CalculationSession {
     }
 
     /// How many minions the calculation created.
+    pub fn minion_output(&self, index: usize) -> Option<&OutputTable> {
+        self.env.minions.get(index).map(|actor| &actor.output)
+    }
+
     pub fn minion_count(&self) -> usize {
         self.env.minions.len()
     }

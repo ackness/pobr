@@ -2105,13 +2105,9 @@ fn physical_pdr_fraction(db: &ModDb, cfg: &CalcConfig) -> f64 {
 }
 
 /// Costs are paid at uses, reloads, or triggers, not at every projectile hit.
-fn fill_resource_cost_rates(env: &mut Env) {
-    let costs = super::skill_mechanics::resource_costs(&env.player.mod_db, &env.cfg);
+pub(super) fn resource_cost_use_rate(env: &Env) -> f64 {
     let (cfg, input) = main_hand_scope(env).unwrap_or_else(|| (env.cfg.clone(), player_input(env)));
     let terms = super::offence::action_rate_terms(&env.player.mod_db, &cfg, &input);
-    if let Some(channel) = terms.channel {
-        env.player.output.channel_time = round(channel.channel_time);
-    }
     let mut rate = terms.uses;
     if env.player.output.skill_trigger_rate > 0.0 {
         rate = env.player.output.skill_trigger_rate;
@@ -2155,6 +2151,18 @@ fn fill_resource_cost_rates(env: &mut Env) {
             .max(0.0);
     if env.crossbow_reload.is_none() {
         rate /= repeats;
+    }
+    rate
+}
+
+fn fill_resource_cost_rates(env: &mut Env) {
+    let costs = super::skill_mechanics::resource_costs(&env.player.mod_db, &env.cfg);
+    let rate = resource_cost_use_rate(env);
+    let (cfg, input) = main_hand_scope(env).unwrap_or_else(|| (env.cfg.clone(), player_input(env)));
+    if let Some(channel) =
+        super::offence::action_rate_terms(&env.player.mod_db, &cfg, &input).channel
+    {
+        env.player.output.channel_time = round(channel.channel_time);
     }
     let out = &mut env.player.output;
     [
