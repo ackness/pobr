@@ -3078,12 +3078,8 @@
     "base_total": 0.0,
     "derived": {
       "context": [],
-      "formula": "max(0, round(min(PrimaryLeechedAmount * LeechRateRatio, PrimaryLeechRateCap), 9))",
+      "formula": "max(0, PrimaryLeechInstanceRate)",
       "inputs": [
-        {
-          "id": "LeechRateRatio",
-          "value": 1.0
-        },
         {
           "id": "PrimaryLeechedAmount",
           "value": 0.0
@@ -3091,6 +3087,10 @@
         {
           "id": "PrimaryLeechRateCap",
           "value": 959.3
+        },
+        {
+          "id": "PrimaryLeechInstanceRate",
+          "value": 0.0
         }
       ]
     },
@@ -4458,12 +4458,8 @@
     "base_total": 0.0,
     "derived": {
       "context": [],
-      "formula": "max(0, round(min(PrimaryLeechedAmount * LeechRateRatio, PrimaryLeechRateCap), 9))",
+      "formula": "max(0, PrimaryLeechInstanceRate)",
       "inputs": [
-        {
-          "id": "LeechRateRatio",
-          "value": 2.0
-        },
         {
           "id": "PrimaryLeechedAmount",
           "value": 0.0
@@ -4471,6 +4467,10 @@
         {
           "id": "PrimaryLeechRateCap",
           "value": 0.2
+        },
+        {
+          "id": "PrimaryLeechInstanceRate",
+          "value": 0.0
         }
       ]
     },
@@ -5252,12 +5252,8 @@
     "base_total": 0.0,
     "derived": {
       "context": [],
-      "formula": "max(0, round(min(PrimaryLeechedAmount * LeechRateRatio, PrimaryLeechRateCap), 9))",
+      "formula": "max(0, PrimaryLeechInstanceRate)",
       "inputs": [
-        {
-          "id": "LeechRateRatio",
-          "value": 2.0
-        },
         {
           "id": "PrimaryLeechedAmount",
           "value": 0.0
@@ -5265,6 +5261,10 @@
         {
           "id": "PrimaryLeechRateCap",
           "value": 404.74
+        },
+        {
+          "id": "PrimaryLeechInstanceRate",
+          "value": 0.0
         }
       ]
     },
@@ -7028,67 +7028,21 @@
       "kind": "player"
     },
     "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "ResolvedTriggerRate",
+      "inputs": [
+        {
+          "id": "ResolvedTriggerRate",
+          "value": 0.0
+        }
+      ]
+    },
     "formula": null,
     "inc_total": 0.0,
-    "kind": "sources",
+    "kind": "derived",
     "mods": [],
-    "more_total": 1.0,
-    "sources": [
-      {
-        "base_total": 0.0,
-        "inc_total": 23.0,
-        "mods": [
-          {
-            "active": true,
-            "mod_type": "INC",
-            "origin_id": "item.belt.explicit",
-            "origin_kind": "ItemAffix",
-            "slot": "belt",
-            "source_text": "Spells have 23% increased Cooldown Recovery Rate",
-            "value": 23.0
-          }
-        ],
-        "more_precision": null,
-        "more_total": 1.0,
-        "name": "CooldownRecovery"
-      },
-      {
-        "base_total": 0.0,
-        "inc_total": 0.0,
-        "mods": [
-          {
-            "active": true,
-            "mod_type": "MORE",
-            "origin_id": "node.63236",
-            "origin_kind": "AscendancyNode",
-            "slot": null,
-            "source_text": "[Meta] Skills gain 35% more [Energy]",
-            "value": 35.0
-          }
-        ],
-        "more_precision": null,
-        "more_total": 1.35,
-        "name": "EnergyGenerated"
-      },
-      {
-        "base_total": 20.0,
-        "inc_total": 0.0,
-        "mods": [
-          {
-            "active": true,
-            "mod_type": "BASE",
-            "origin_id": "tier_player.Pinnacle.Multiplier:EnemyPower",
-            "origin_kind": "EnemyConfig",
-            "slot": null,
-            "source_text": "Boss",
-            "value": 20.0
-          }
-        ],
-        "more_precision": null,
-        "more_total": 1.0,
-        "name": "Multiplier:EnemyPower"
-      }
-    ]
+    "more_total": 1.0
   },
   "SpellBlockChance": {
     "actor": {
@@ -8573,31 +8527,21 @@
       "kind": "player"
     },
     "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "ResolvedTriggerRateCap",
+      "inputs": [
+        {
+          "id": "ResolvedTriggerRateCap",
+          "value": 0.0
+        }
+      ]
+    },
     "formula": null,
     "inc_total": 0.0,
-    "kind": "sources",
+    "kind": "derived",
     "mods": [],
-    "more_total": 1.0,
-    "sources": [
-      {
-        "base_total": 0.0,
-        "inc_total": 23.0,
-        "mods": [
-          {
-            "active": true,
-            "mod_type": "INC",
-            "origin_id": "item.belt.explicit",
-            "origin_kind": "ItemAffix",
-            "slot": "belt",
-            "source_text": "Spells have 23% increased Cooldown Recovery Rate",
-            "value": 23.0
-          }
-        ],
-        "more_precision": null,
-        "more_total": 1.0,
-        "name": "CooldownRecovery"
-      }
-    ]
+    "more_total": 1.0
   },
   "WarcryCastTime": {
     "actor": {
