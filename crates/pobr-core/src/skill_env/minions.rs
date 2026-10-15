@@ -107,12 +107,19 @@ impl MinionSession for crate::calc::CalculationSession {
 
 /// The lookup surface [`spawn_minions`] needs.
 pub trait MinionEnv:
-    MinionLookup + EffectLookup + StatSetLookup + StatMapLookup + ParserRulesLookup + GemPropertyLookup
+    MinionLookup
+    + EffectLookup
+    + StatSetLookup
+    + StatMapLookup
+    + ParserRulesLookup
+    + GemPropertyLookup
+    + crate::skill_env::weapon::WeaponItemLookup
 {
 }
 impl<T> MinionEnv for T where
     T: MinionLookup
         + EffectLookup
+        + crate::skill_env::weapon::WeaponItemLookup
         + StatSetLookup
         + StatMapLookup
         + ParserRulesLookup
@@ -141,6 +148,7 @@ pub fn spawn_minions(
     groups: &dyn SocketGroupView,
     data: &dyn MinionEnv,
     gem_level_bonuses: &[crate::skill_env::GemPropertyBonus],
+    equipment: &dyn crate::skill_env::EquipmentView,
 ) {
     use std::collections::BTreeSet;
 
@@ -153,6 +161,8 @@ pub fn spawn_minions(
     let umbral_well = session.has_flag(umbral_souls::UMBRAL_WELL);
     let facts = skill_stats::SummonedMinions {
         reviving_kinds: reviving_minion_kinds(groups, data),
+        player_strength: session.attribute("Strength"),
+        player_dexterity: session.attribute("Dexterity"),
     };
 
     groups.for_each_enabled_group(&mut |group| {
@@ -200,6 +210,26 @@ pub fn spawn_minions(
             }
             let minion_ids = summoned_minions(data, &skill_id, chosen.as_deref());
             if minion_ids.is_empty() {
+                continue;
+            }
+            // Manifest Weapon: "Manifest a copy of your main hand Melee
+            // Martial Weapon". Without that weapon there is no minion.
+            let copies_weapon = data
+                .effect(&skill_id)
+                .is_some_and(|effect| effect.minion_uses.iter().any(|slot| slot == "Weapon 1"));
+            let copied_item = copies_weapon
+                .then(|| equipment.item(pobr_data::item::EquipmentSlot::Weapon1))
+                .flatten();
+            let copied_weapon = copied_item
+                .and_then(|item| {
+                    crate::skill_env::weapon_item_contribution(item, data.as_weapon_item_lookup())
+                })
+                .filter(|weapon| {
+                    weapon
+                        .flags
+                        .intersects(pobr_data::modifier::ModFlags::WEAPON_MELEE)
+                });
+            if copies_weapon && copied_weapon.is_none() {
                 continue;
             }
             if umbral_well
@@ -287,6 +317,36 @@ pub fn spawn_minions(
                     .fold(SkillTypes::NONE, |all, one| all | one)
             });
             let mut group_minion_modifiers = session.minion_modifiers_for(skill_types);
+            if let Some(item) = copied_item {
+                for text in crate::skill_env::item_text::weapon_mod_texts(item) {
+                    let text = crate::skill_env::item_text::clean_item_text(text);
+                    for kind in ["Fire", "Cold", "Lightning", "Chaos"] {
+                        if let Some((min, max)) =
+                            crate::skill_env::item_text::parse_adds_with_suffix(
+                                &text,
+                                &format!("{} damage", kind.to_lowercase()),
+                            )
+                        {
+                            for (bound, value) in [("Min", min), ("Max", max)] {
+                                group_minion_modifiers.push(MinionModifierEntry {
+                                    inner: crate::Modifier::number(
+                                        format!("{kind}Damage{bound}"),
+                                        pobr_data::modifier::ModType::Base,
+                                        value,
+                                    )
+                                    .with_origin(stat_origin(
+                                        &skill_id,
+                                        SourceKind::SkillGem,
+                                        "copied_weapon",
+                                        value,
+                                    )),
+                                    minion_type: None,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
             // What of the character's attributes this skill's minions gain:
             // "Minions gain your Strength", Sturdy Ally's "Companions gain
             // your Strength".
@@ -366,7 +426,7 @@ pub fn spawn_minions(
                     0
                 };
                 let def = def.clone();
-                let skill = minion_skill(data, &def, chosen_skill);
+                let skill = minion_skill(data, &def, chosen_skill, minion_level);
                 let mut minion_modifiers = group_minion_modifiers.clone();
                 minion_modifiers.extend(minion_skill_modifiers(&group, data, &skill, minion_level));
                 // `add_minion_from_def` internally maps gem level to monster level via
@@ -386,6 +446,13 @@ pub fn spawn_minions(
                         is_companion,
                         skill,
                         picked_monster: picks_a_monster(data, &skill_id),
+                        copied_weapon: copied_weapon.map(|weapon| crate::calc::WeaponBase {
+                            hit_min: weapon.phys_min,
+                            hit_max: weapon.phys_max,
+                            attack_rate: Some(weapon.attack_rate),
+                            crit_chance: weapon.crit_chance,
+                            flags: weapon.flags,
+                        }),
                     },
                 );
             }
@@ -431,7 +498,18 @@ fn stat_minion_modifiers<'a>(
         if ds.value == 0.0 {
             continue;
         }
-        let Some(modifiers) = skill_stats::minion_modifiers(&ds.stat, ds.value, facts) else {
+        let modifiers =
+            if ds.stat == "non_skill_base_physical_damage_%_to_convert_to_random_element" {
+                // On a summoning skill this is its minions' conversion (Azmerian Swarm).
+                Some(vec![crate::Modifier::number(
+                    "PhysicalDamageConvertToRandom",
+                    pobr_data::modifier::ModType::Base,
+                    ds.value,
+                )])
+            } else {
+                skill_stats::minion_modifiers(&ds.stat, ds.value, facts)
+            };
+        let Some(modifiers) = modifiers else {
             continue;
         };
         for modifier in modifiers {
@@ -456,6 +534,7 @@ fn minion_skill(
     data: &dyn MinionEnv,
     def: &pobr_data::minion::MinionDef,
     chosen: Option<u32>,
+    minion_level: u32,
 ) -> crate::calc::MinionSkill {
     let skills: Vec<(&String, &pobr_data::catalog::GrantedEffectDef)> = def
         .skill_list
@@ -469,6 +548,15 @@ fn minion_skill(
             id: (*id).clone(),
             types: effect.skill_types.clone(),
             cast_time: effect.cast_time.map_or(0.0, |ms| f64::from(ms) / 1000.0),
+            damage_multiplier: {
+                let level = minion_skill_level(data, id, minion_level);
+                data.selected_set_level_row(id, level, None)
+                    .map(|row| row.damage_multiplier)
+                    .or_else(|| {
+                        data.effect_level_row(id, level)
+                            .and_then(|row| row.base_multiplier)
+                    })
+            },
             command: data
                 .effect_stats(id, 1, 0, None)
                 .all()
@@ -530,8 +618,22 @@ fn minion_skill_modifiers(
         None,
         row.and_then(|row| row.crit_chance)
             .filter(|_| !skill.uses_weapon()),
-        None,
+        data.selected_set_level_row(&skill.id, level, None)
+            .and_then(|row| row.skill_attack_speed_more),
     );
+    if skill.uses_weapon()
+        && let Some(speed) = row.and_then(|row| row.attack_speed_multiplier)
+    {
+        modifiers.push(
+            crate::Modifier::number("AttackSpeed", pobr_data::modifier::ModType::More, speed)
+                .with_origin(stat_origin(
+                    &skill.id,
+                    SourceKind::SkillGem,
+                    "attack_speed_multiplier",
+                    speed,
+                )),
+        );
+    }
     modifiers.extend(crate::skill_env::mapped_stat_modifiers(
         &mut ctx,
         &own,

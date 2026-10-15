@@ -354,6 +354,9 @@ pub struct MinionOrigin {
     pub skill: MinionSkill,
     /// Whether it is a monster the player picked: a Spectre or a tamed beast.
     pub picked_monster: bool,
+    /// Manifest Weapon copies the summoner's main hand instead of using
+    /// the monster's level-scaled attack damage.
+    pub copied_weapon: Option<super::WeaponBase>,
 }
 
 /// The skill a minion uses: one of its monster's skills, chosen by the
@@ -368,6 +371,9 @@ pub struct MinionSkill {
     /// The skill's cast time in seconds (0 when the data gives none): how
     /// often a minion casting a spell uses it, before cast speed.
     pub cast_time: f64,
+    /// The selected attack's weapon and added damage multiplier; absent
+    /// when the skill data gives none.
+    pub damage_multiplier: Option<f64>,
     /// Whether it is a Command skill
     /// ([`crate::rules::skill_stats::COMMAND_SKILL_STAT`]).
     pub command: bool,

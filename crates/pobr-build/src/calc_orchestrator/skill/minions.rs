@@ -13,7 +13,7 @@ use crate::build_data::BuildData;
 
 pub(crate) fn spawn_minions(session: &mut CalculationSession, build: &Build, data: &BuildData) {
     let bonuses = gem_property_bonuses(build, data);
-    pobr_core::skill_env::spawn_minions(session, build, data, &bonuses);
+    pobr_core::skill_env::spawn_minions(session, build, data, &bonuses, build);
     // What minions that share the main hand weapon's damage add.
     if let Some(weapon) =
         pobr_core::skill_env::EquipmentView::item(build, pobr_data::item::EquipmentSlot::Weapon1)

@@ -135,6 +135,9 @@ pub struct SummonedMinions {
     /// How many different kinds of Reviving Minion the character summons:
     /// the distinct skills of the `Minion` and `Persistent` types it uses.
     pub reviving_kinds: u32,
+    /// The summoner's final attributes, before any sharing with minions.
+    pub player_strength: f64,
+    pub player_dexterity: f64,
 }
 
 /// The modifiers the stat `stat` of a summoning skill, or of a support that
@@ -156,6 +159,24 @@ pub fn minion_modifiers(stat: &str, value: f64, minions: SummonedMinions) -> Opt
         }
         // "Supported Skills have {0}% increased Minion Attack Speed".
         "minion_attack_speed_+%" => Modifier::number("AttackSpeed", ModType::Inc, value),
+        // "Minions from this skill have 1% increased Damage per {0} of your Strength".
+        "minion_1%_damage_+%_per_X_player_strength" => Modifier::number(
+            "Damage", ModType::Inc,
+            if value > 0.0 { (minions.player_strength / value).floor() } else { 0.0 },
+        ),
+        // "Minions from this skill have 1% increased Attack Speed per {0} of your Dexterity".
+        "active_skill_minion_1%_attack_speed_+%_per_X_player_dexterity" => Modifier::number(
+            "AttackSpeed", ModType::Inc,
+            if value > 0.0 { (minions.player_dexterity / value).floor() } else { 0.0 },
+        ),
+        "minion_1%_area_of_effect_+%_per_X_player_dexterity" => Modifier::number(
+            "AreaOfEffect", ModType::Inc,
+            if value > 0.0 { (minions.player_dexterity / value).floor() } else { 0.0 },
+        ),
+        // Raging Spirits: "Minions convert {0}% of Physical Damage to Fire Damage".
+        "minion_skill_physical_damage_%_to_convert_to_fire" => {
+            Modifier::number("SkillPhysicalDamageConvertToFire", ModType::Base, value)
+        }
         // Tangmazu's Thurible: "Companions from Supported Skills are
         // Gigantic"; a summoning skill's "Minions are Gigantic".
         "companions_are_gigantic" | "minions_are_gigantic" => {
@@ -276,7 +297,13 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
             Modifier::number("DamageGainAsFire", ModType::Base, value)
                 .with_tag(ModTag::multiplier(crate::calc::channel::STAGES, 1.0, None)),
         ]),
-
+        // Supporting Fire: "Fires {0} volleys" per command, each dealing
+        // the attack's damage. Volley count changes DPS, not each hit.
+        "death_from_above_number_of_volleys" => Some(vec![Modifier::number(
+            "DPS",
+            ModType::More,
+            (value.max(1.0) - 1.0) * 100.0,
+        )]),
         // Dark Pact adds a percentage of the target skeleton's maximum Life.
         "skeletal_chains_aoe_%_health_dealt_as_chaos_damage" => Some(vec![Modifier::number(
             "DarkPactLifeAsChaos",
@@ -1274,7 +1301,10 @@ mod tests {
     fn minion_stats_are_for_the_minions() {
         const MUSTER: &str =
             "support_varied_troops_damage_+%_final_per_different_persistent_ominion";
-        let three = SummonedMinions { reviving_kinds: 3 };
+        let three = SummonedMinions {
+            reviving_kinds: 3,
+            ..Default::default()
+        };
         let mut db = ModDb::new();
         db.add_list(minion_modifiers(MUSTER, 7.0, three).expect("a rule"));
         let damage = [ModName::from("Damage")];

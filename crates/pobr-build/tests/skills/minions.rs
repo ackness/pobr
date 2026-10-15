@@ -422,6 +422,94 @@ fn a_minion_casts_its_spell_at_its_level() {
     assert!((1.6..1.75).contains(&bidding), "{bidding}");
 }
 
+/// The sweep's level-20 summons, with no equipment or supports, against
+/// the reference enemy. These exercise the minion's own attack multiplier,
+/// attack speed, the summoning gem's conversions and the player's attributes.
+#[test]
+fn summoned_attacks_use_their_skill_and_summoning_stats() {
+    let data = load_data();
+    let opts = DataOrchestratorOptions::against_reference_enemy().on_reference_basis();
+    for (summon, attack, expected) in [
+        (
+            "SupportingFirePlayer",
+            "DeathFromAboveDaemonMinion",
+            416.3720964,
+        ),
+        (
+            "SummonAzmerianWolfPlayer",
+            "MeleeAtAnimationSpeedWolfPackleader",
+            805.1703503,
+        ),
+        ("RagingSpiritsPlayer", "MinionMeleeStep", 89.11875),
+        ("AzmerianSwarmPlayer", "AzmerianSwarmAttack", 67.2091875),
+        ("WildProtectorPlayer", "CompanionBearMaul", 791.501979),
+        (
+            "AncestralSpiritsPlayer",
+            "MeleeAtAnimationSpeed",
+            73.84260429,
+        ),
+    ] {
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Witch".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(SocketGroup::new().with_gem_skill(summon, 20));
+        let out = calculate_with_data(&build, &data, &opts).expect("calculate summon");
+        let minion = out
+            .minions
+            .iter()
+            .find(|minion| minion.skill_id == attack)
+            .expect(attack);
+        assert_eq!(minion.level, 40);
+        assert!(
+            (minion.dps / expected - 1.0).abs() < 0.05,
+            "{summon}: {} vs {expected}",
+            minion.dps
+        );
+    }
+}
+
+fn manifested_weapon(
+    data: &BuildData,
+    weapon: &str,
+    level: u32,
+) -> Vec<pobr_core::calc::MinionOutput> {
+    let xml = format!(
+        r#"<PathOfBuilding2>
+<Build level="90" className="Witch"/>
+<Skills><Skill enabled="true"><Gem skillId="ManifestWeaponPlayer" level="{level}" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+{weapon}
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#
+    );
+    let build = pobr_build::parse_build(&xml).expect("manifest build");
+    calculate_with_data(&build, data, &default_opts())
+        .expect("calculate manifest")
+        .minions
+}
+
+/// Manifest Weapon copies a main-hand melee weapon, never an unarmed or
+/// monster-level fallback. Local added elemental damage is copied too.
+#[test]
+fn manifest_weapon_requires_and_copies_the_main_hand_weapon() {
+    let data = load_data();
+    assert!(manifested_weapon(&data, "", 20).is_empty());
+    assert!(manifested_weapon(&data, "Crude Bow", 20).is_empty());
+    let low = manifested_weapon(&data, "Hardwood Spear", 1);
+    let high = manifested_weapon(&data, "Hardwood Spear", 20);
+    assert_eq!(low.len(), 1);
+    assert!(low[0].dps > 0.0);
+    assert_eq!(
+        low[0].dps, high[0].dps,
+        "weapon damage is independent of monster level"
+    );
+    let fire = manifested_weapon(&data, "Hardwood Spear\nAdds 100 to 100 Fire Damage", 20);
+    assert!(fire[0].dps > high[0].dps * 2.0);
+}
+
 /// What reaches a companion's attack besides the lines for minions: the
 /// character's auras that affect only allies, a share of the character's
 /// main hand weapon, and physical damage gained as chaos damage.

@@ -193,12 +193,29 @@ impl Env {
             actor.mod_db.track_reads();
         }
         if origin.skill.uses_weapon() {
+            if let Some(weapon) = origin.copied_weapon {
+                actor.base.hit_min = weapon.hit_min;
+                actor.base.hit_max = weapon.hit_max;
+                actor.base.action_rate = weapon.attack_rate.unwrap_or(0.0);
+            }
+            // An attack's damage_multiplier scales its weapon and added damage.
+            if let Some(multiplier) = origin.skill.damage_multiplier {
+                actor.base.hit_min *= multiplier;
+                actor.base.hit_max *= multiplier;
+                actor.mod_db.add_mod(crate::Modifier::number(
+                    "AddedDamage",
+                    pobr_data::modifier::ModType::More,
+                    (multiplier - 1.0) * 100.0,
+                ));
+            }
             // A monster's attack crits at its weapon's chance.
             actor.mod_db.add_mod(
                 crate::Modifier::number(
                     "CriticalStrikeChance",
                     pobr_data::modifier::ModType::Base,
-                    ctx.base.weapon.crit_chance,
+                    origin
+                        .copied_weapon
+                        .map_or(ctx.base.weapon.crit_chance, |weapon| weapon.crit_chance),
                 )
                 .with_origin(pobr_data::source::ModifierSource::new(
                     pobr_data::source::SourceId::new(
