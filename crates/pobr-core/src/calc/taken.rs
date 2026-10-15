@@ -459,39 +459,6 @@ pub fn taken_hit_from_damage(
     (total, parts)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Per-type array index convention (same as pool_damage): enum order, Physical=0 … Chaos=4.
-    #[test]
-    fn damage_type_index_convention() {
-        assert_eq!(DamageType::Physical as usize, 0);
-        assert_eq!(DamageType::Fire as usize, 1);
-        assert_eq!(DamageType::Cold as usize, 2);
-        assert_eq!(DamageType::Lightning as usize, 3);
-        assert_eq!(DamageType::Chaos as usize, 4);
-    }
-
-    /// Vendor round = floor(x + 0.5) (Modules/Common.lua).
-    #[test]
-    fn vendor_round_half_up() {
-        assert_eq!(vendor_round(357.142_857), 357.0);
-        assert_eq!(vendor_round(0.5), 1.0);
-        assert_eq!(vendor_round(124.999), 125.0);
-    }
-
-    /// Neutral ctx: identity shift, all multipliers 1 → damage taken = round(raw).
-    #[test]
-    fn neutral_ctx_identity() {
-        let ctx = MitigationCtx::default();
-        let (sum, parts) = taken_hit_from_damage(1000.0, DamageType::Fire, &ctx);
-        assert_eq!(sum, 1000.0);
-        assert_eq!(parts[DamageType::Fire as usize], 1000.0);
-        assert_eq!(parts[DamageType::Physical as usize], 0.0);
-    }
-}
-
 /// Which incoming hits the configured enemy uses. Untyped hits do not
 /// inherit attack/spell evasion, block or damage-taken modifiers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -533,6 +500,39 @@ impl HitCategory {
 
     pub(crate) fn projectile_share(self) -> f64 {
         self.select([0.0, 1.0, 0.0, 1.0], 0.0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Per-type array index convention (same as pool_damage): enum order, Physical=0 … Chaos=4.
+    #[test]
+    fn damage_type_index_convention() {
+        assert_eq!(DamageType::Physical as usize, 0);
+        assert_eq!(DamageType::Fire as usize, 1);
+        assert_eq!(DamageType::Cold as usize, 2);
+        assert_eq!(DamageType::Lightning as usize, 3);
+        assert_eq!(DamageType::Chaos as usize, 4);
+    }
+
+    /// Vendor round = floor(x + 0.5) (Modules/Common.lua).
+    #[test]
+    fn vendor_round_half_up() {
+        assert_eq!(vendor_round(357.142_857), 357.0);
+        assert_eq!(vendor_round(0.5), 1.0);
+        assert_eq!(vendor_round(124.999), 125.0);
+    }
+
+    /// Neutral ctx: identity shift, all multipliers 1 → damage taken = round(raw).
+    #[test]
+    fn neutral_ctx_identity() {
+        let ctx = MitigationCtx::default();
+        let (sum, parts) = taken_hit_from_damage(1000.0, DamageType::Fire, &ctx);
+        assert_eq!(sum, 1000.0);
+        assert_eq!(parts[DamageType::Fire as usize], 1000.0);
+        assert_eq!(parts[DamageType::Physical as usize], 0.0);
     }
 }
 
