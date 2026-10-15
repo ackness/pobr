@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { UpgradeGoalProvider } from './hooks/useUpgradeGoal';
 import { useBuildSession } from './hooks/useBuildSession';
+import { buildImportErrorMessage } from './api/import';
 import { t, type Lang } from './lib/i18n';
 import { TAB_IDS, TopBar, type TabId } from './components/shell/TopBar';
 import { WorkspaceSwitcher } from './components/import/BuildWorkspace';
@@ -164,7 +165,7 @@ function BuildApp() {
           )}
           {session.operationError && (
             <div className="calc-error" role="alert">
-              {session.operationError}
+              {buildImportErrorMessage(session.operationError, lang)}
             </div>
           )}
           {tab === 'build' && <BuildPanel session={session} lang={lang} onImported={() => {

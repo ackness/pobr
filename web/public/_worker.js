@@ -1,4 +1,5 @@
 // Cloudflare Pages worker; Vite runs the same handler locally.
+import { BuildLinkError, buildCodeTarget, fetchBuildCode } from './build-import.mjs';
 const API = 'https://www.wegame.com.cn/api/v1/wegame.pallas.poe2.Profile/';
 const LIMIT = 4 * 1024 * 1024;
 
@@ -194,6 +195,27 @@ export async function fetchTradeMarket(input, fetcher = fetch) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === '/api/import/build-code') {
+      const headers = { 'cache-control': 'no-store' };
+      if (request.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: { ...headers, allow: 'POST' } });
+      const origin = request.headers.get('origin');
+      if (origin && origin !== url.origin) return new Response('Forbidden', { status: 403, headers });
+      let input;
+      try {
+        input = (await readJson(request, 4096)).url;
+        if (typeof input !== 'string') throw new BuildLinkError('invalid_url');
+        buildCodeTarget(input);
+      } catch (error) {
+        return Response.json({ error_code: error instanceof BuildLinkError ? error.code : 'invalid_url' }, { status: 400, headers });
+      }
+      try {
+        return Response.json({ code: await fetchBuildCode(input) }, { headers });
+      } catch (error) {
+        return Response.json({ error_code: error instanceof BuildLinkError ? error.code : 'network' }, {
+          status: error instanceof BuildLinkError ? error.status : 502, headers,
+        });
+      }
+    }
     if (url.pathname === '/api/trade/search') {
       if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
       const origin = request.headers.get('origin');

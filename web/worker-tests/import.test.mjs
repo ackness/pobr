@@ -180,6 +180,6 @@ test('Pages deployment routes every API to the Worker while static assets bypass
   const matches = (pattern, path) => pattern.endsWith('*') ? path.startsWith(pattern.slice(0, -1)) : path === pattern;
   const routed = path => manifest.include.some(pattern => matches(pattern, path)) && !manifest.exclude.some(pattern => matches(pattern, path));
   // Workerd unit tests invoke fetch directly, so this separately guards the Pages routing boundary.
-  for (const path of ['/api/import/wegame', '/api/trade/leagues', '/api/trade/search']) assert.equal(routed(path), true, path);
+  for (const path of ['/api/import/build-code', '/api/import/wegame', '/api/trade/leagues', '/api/trade/search']) assert.equal(routed(path), true, path);
   for (const path of ['/', '/assets/app.js', '/data/manifest.json']) assert.equal(routed(path), false, path);
 });

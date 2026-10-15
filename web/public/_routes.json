@@ -1,1 +1,1 @@
-{"version":1,"include":["/api/import/wegame","/api/trade/*"],"exclude":[]}
+{"version":1,"include":["/api/import/wegame","/api/import/build-code","/api/trade/*"],"exclude":[]}
