@@ -7,7 +7,7 @@ import type { TreeEditResult } from '../api/types';
  * 防止乱序返回覆盖新状态。所有后端交互经 `api/backend`。
  */
 
-import { activeWorkspaceStage, addWorkspaceBuild, createWorkspace, duplicateWorkspaceStage, parseWorkspace, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, type BuildWorkspace } from '../lib/buildWorkspace';
+import { activeWorkspaceStage, addWorkspaceBuild, createWorkspace, duplicateWorkspaceStage, parseWorkspace, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, replaceComparedStage, type StageSnapshot, type BuildWorkspace } from '../lib/buildWorkspace';
 import { formatApiError } from '../api/error';
 import { resolveBuildInput } from '../api/import';
 import { reconcileJewelAllocation } from '../lib/passiveGraph';
@@ -52,6 +52,8 @@ export interface CalcParams {
 
 /** 会话完整可编辑状态（重算请求由此派生）。 */
 interface BuildState {
+  /** Complete edited snapshot: source XML is metadata, not a source of missing overrides. */
+  sourceBackfillComplete?: boolean;
   treeVersion?: string | null;
   weaponSwap?: WeaponSwap | null;
   pobCode: string | null;
@@ -86,6 +88,7 @@ export interface BuildSession {
   createLocalBuild: (name: string) => void;
   duplicateStage: (name: string) => void;
   renameWorkspace: (kind: 'build' | 'stage', name: string) => void;
+  applyComparedStage: (a: StageSnapshot, b: StageSnapshot, state: SavedSession['state']) => boolean;
   exportWorkspace: () => string;
   exportLocalBuild: () => string;
   activeWeaponSet: 1 | 2;
@@ -345,7 +348,7 @@ export function parseSaved(json: string): SavedSession | null {
     const character = state.character;
     if (!record(character) || typeof character.class_name !== 'string'
       || !optionalText(character.ascendancy_name) || !optionalIndex(character.level, 1)
-      || Number(character.level ?? 1) > 100 || !optionalText(state.pobCode) || !optionalText(state.treeVersion)
+      || Number(character.level ?? 1) > 100 || !optionalBool(state.sourceBackfillComplete) || !optionalText(state.pobCode) || !optionalText(state.treeVersion)
       || !nodes(state.allocatedNodes) || !Array.isArray(state.socketGroups)
       || !itemList(state.items, /^(weapon[12]|helmet|bodyarmour|gloves|boots|amulet|ring[123]|belt)$/)) return null;
     const socketGroups: SocketGroupInput[] = [];
@@ -408,6 +411,7 @@ export function parseSaved(json: string): SavedSession | null {
     return {
       version: 1,
       state: {
+        ...(state.sourceBackfillComplete === true ? { sourceBackfillComplete: true } : {}),
         treeVersion: state.treeVersion as string | null | undefined,
         pobCode: typeof state.pobCode === 'string' ? state.pobCode : null,
         character: { class_name: character.class_name, level: Number(character.level ?? 1),
@@ -450,6 +454,7 @@ function itemName(text: string): string {
  * 兜底的 XML config / 主技能组，恢复会话时从解码结果回填（已保存的显式值优先）。
  */
 export function backfillFromDecoded(state: BuildState, decoded: BuildJson): BuildState {
+  if (state.sourceBackfillComplete) return state;
   const decodedParams = paramsFromDecoded(decoded);
   const savedParams = paramsFromConfigInputs(state.params.config_inputs, state.params);
   const sourceBlocks = decodedParams.custom_modifier_blocks;
@@ -1376,6 +1381,18 @@ export function useBuildSession(configContextActive = false): BuildSession {
     if (workspaceRef.current) persistWorkspace(renameWorkspaceEntry(workspaceRef.current, kind, name));
   }, [persistWorkspace]);
 
+  const applyComparedStage = useCallback((a: StageSnapshot, b: StageSnapshot, nextState: BuildState) => {
+    if (!workspaceRef.current || busy) return false;
+    nextState = { ...switchWeapons(nextState, skillWeaponSet(nextState, nextState.params.main_socket_group)), sourceBackfillComplete: true };
+    const next = replaceComparedStage(workspaceRef.current, a, b, nextState);
+    if (!next) return false;
+    if (activeWorkspaceStage(workspaceRef.current).id === a.stageId) {
+      setSocketGroupRevision(value => value + 1);
+      apply(nextState);
+    } else persistWorkspace(next);
+    return true;
+  }, [apply, busy, persistWorkspace]);
+
   const exportWorkspace = useCallback(() => {
     if (!workspaceRef.current) throw new Error('build not ready');
     return workspaceEnvelope(workspaceRef.current);
@@ -1478,7 +1495,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
 
   return {
     treeVersion: state?.treeVersion,
-    dataVersion, workspace, storageFailed, selectStage, createLocalBuild, duplicateStage, renameWorkspace, exportWorkspace, exportLocalBuild,
+    dataVersion, workspace, storageFailed, applyComparedStage, selectStage, createLocalBuild, duplicateStage, renameWorkspace, exportWorkspace, exportLocalBuild,
     activeWeaponSet: state?.weaponSwap?.active ?? 1,
     weaponSwap: state?.weaponSwap,
     setWeaponSet,

@@ -473,3 +473,13 @@ test('Full DPS is requested only for included groups, including a computed empty
   Object.assign(state.socketGroups[0], { enabled: false, include_in_full_dps: true });
   expect(toRequest(state).full_dps).toBe(true);
 });
+
+
+test('complete comparison edits survive saved-session parsing without source config resurrection', () => {
+  const edited = { ...saved, state: { ...saved.state, sourceBackfillComplete: true, params: { config_inputs: { zero: 0 } } } };
+  const restored = parseSaved(JSON.stringify(edited))!;
+  expect(restored.state.sourceBackfillComplete).toBe(true);
+  expect(parseSaved(JSON.stringify({ ...edited, state: { ...edited.state, sourceBackfillComplete: 'invalid' } }))).toBeNull();
+  expect(backfillFromDecoded(restored.state, { config_inputs: { conditionLowLife: true } } as unknown as BuildJson)).toBe(restored.state);
+  expect(restored.state.params.config_inputs).toEqual({ zero: 0 });
+});

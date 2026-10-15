@@ -1,0 +1,20 @@
+.compare-panel { display: grid; gap: 1.25rem; min-width: 0; padding: 1rem; }
+.compare-controls, .compare-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.compare-controls label { display: flex; flex-direction: column; gap: .4rem; min-width: 0; }
+.compare-controls select { max-width: 100%; width: 100%; padding: .5rem; }
+.compare-panel h3 { color: var(--accent-gold-bright); margin: 0 0 .75rem; }
+.compare-panel h4, .compare-panel p { margin: .4rem 0; }
+.compare-panel pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: .5rem 0; font-size: .8rem; }
+.compare-panel section, .compare-summary, .compare-identities { min-width: 0; border: 1px solid var(--border-subtle); border-radius: .4rem; padding: 1rem; }
+.compare-hint { color: var(--text-muted); font-size: .85rem; }
+.compare-table-wrap { overflow-x: auto; margin: 1rem 0; }
+.compare-panel table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: .85rem; }
+.compare-panel caption { text-align: left; font-weight: 600; padding: .5rem 0; }
+.compare-panel th, .compare-panel td { padding: .45rem .65rem; border-bottom: 1px solid var(--border-subtle); text-align: right; }
+.compare-panel th:first-child { text-align: left; }
+.compare-difference { padding: .8rem 0; border-top: 1px solid var(--border-subtle); }
+.compare-difference header { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; justify-content: space-between; }
+.compare-line-before { background: #a8404033; color: #ffb3a8; }
+.compare-line-after { background: #26835d33; color: #9fe8c3; }
+.compare-panel li { overflow-wrap: anywhere; margin: .25rem 0; }
+@media (max-width: 700px) { .compare-controls, .compare-pair { grid-template-columns: 1fr; } .compare-panel { padding: .6rem; } }

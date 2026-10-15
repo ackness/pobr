@@ -13,6 +13,7 @@ import { SkillsPanel } from './components/skills/SkillsPanel';
 import { ConfigPanel } from './components/config/ConfigPanel';
 import './components/shell/shell.css';
 
+const ComparePanel = lazy(() => import('./components/compare/ComparePanel').then(module => ({ default: module.ComparePanel })));
 const TradePanel = lazy(() => import('./components/trade/TradePanel').then(module => ({ default: module.TradePanel })));
 const CalcsPanel = lazy(() => import('./components/calcs/CalcsPanel').then(module => ({ default: module.CalcsPanel })));
 const TreePanel = lazy(() => import('./components/tree/TreePanel').then(module => ({ default: module.TreePanel })));
@@ -180,6 +181,7 @@ function BuildApp() {
             onTree={() => { setTreeFocus({nonce: Date.now()}); setTab('tree'); }}
             onConfig={() => setTab('config')} />}
           <Suspense fallback={<p className="panel-loading" role="status">{t(lang, 'ui.loadingPanel')}</p>}>
+          {tab === 'compare' && <ComparePanel session={session} lang={lang} />}
           {tab === 'items' && <ItemsPanel session={session} lang={lang} onUpgrade={slot => { setUpgradeFocus({slot, nonce:Date.now()}); setTab('trade'); }} />}
           {tab === 'calcs' && (
             <CalcsPanel
