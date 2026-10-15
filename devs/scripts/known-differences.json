@@ -3,12 +3,12 @@
   "differences": [
     {
       "build": "ranger-deadeye-ice-shot-b6ce7b3a4329",
-      "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "IgniteDPS"],
+      "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "IgniteDPS", "AverageDamage", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
       "reason": "Minion Pact II takes the Rhoa of Rhoa Mount as the nearby minion (baseline note, crates/pobr-build/tests/parity/reference_report.rs)"
     },
     {
       "build": "druid-oracle-lightning-bolt",
-      "stats": ["TotalDPS", "CombinedDPS"],
+      "stats": ["TotalDPS", "CombinedDPS", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
       "reason": "configured Withered stacks without a source of Withered (docs/maintainer-guide.md, Withered)"
     },
     {
@@ -18,22 +18,22 @@
     },
     {
       "build": "mercenary-witchhunter-crossbow-shot",
-      "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "IgniteDPS"],
+      "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "IgniteDPS", "AverageDamage", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
       "reason": "Pounce's Predator's Mark counts the minions already in Presence, not the wolves Pounce summons (docs/maintainer-guide.md, Pounce)"
     },
     {
       "build": "mercenary-tactician-oil-barrage-02b94461578f",
-      "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "IgniteDPS"],
+      "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "IgniteDPS", "AverageDamage", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
       "reason": "the talisman's Soul Core of Topotante penetrates 15% as the item says, not PoB2's rune table's 25%, and Pounce's Predator's Mark counts the minions already in Presence (docs/maintainer-guide.md, runes and Pounce)"
     },
     {
       "build": "grim-pillars-f74c11ce4b4d",
-      "stats": ["TotalDotDPS", "IgniteDPS"],
+      "stats": ["TotalDotDPS", "IgniteDPS", "IgniteDamage"],
       "reason": "a skill in a Spell Totem ignites with the totem's hits; PoB2 counts no totems for it (docs/maintainer-guide.md, totems)"
     },
     {
       "build": "grim-pillars-5dda2982b793",
-      "stats": ["TotalDotDPS", "IgniteDPS"],
+      "stats": ["TotalDotDPS", "IgniteDPS", "IgniteDamage"],
       "reason": "a skill in a Spell Totem ignites with the totem's hits; PoB2 counts no totems for it (docs/maintainer-guide.md, totems)"
     },
     {
@@ -73,7 +73,7 @@
     },
     {
       "build": "monk-acolyte-of-chayula-decompose",
-      "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "PoisonDPS"],
+      "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "PoisonDPS", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
       "reason": "the strongest Despair, Doedre's Undoing's, applies; PoB2 picks Blasphemy's (docs/maintainer-guide.md, curses)"
     },
     {
@@ -93,33 +93,88 @@
     },
     {
       "build": "witch-abyssal-lich-bonestorm-be0d16c86268",
-      "stats": ["TotalDPS", "CombinedDPS", "ActionRate", "TotalDotDPS", "IgniteDPS"],
+      "stats": ["TotalDPS", "CombinedDPS", "ActionRate", "TotalDotDPS", "IgniteDPS", "HitSpeed", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
       "reason": "Bonestorm fires every spike a channel conjures, not one hit per minimum channel time (docs/maintainer-guide.md, Bonestorm)"
     },
     {
       "build": "witch-blood-mage-impending-doom-c0dcbc68022c",
-      "stats": ["TotalDPS", "CombinedDPS", "ActionRate"],
+      "stats": ["TotalDPS", "CombinedDPS", "ActionRate", "HitSpeed", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
       "reason": "Doedre's Undoing spawns a Witchtoad every 0.25 seconds whatever the cast speed (docs/maintainer-guide.md, Doedre's Undoing)"
     },
     {
       "build": "witch-abyssal-lich-twister-4028d0b52984",
-      "stats": ["TotalDPS", "CombinedDPS", "CritMultiplier", "TotalDotDPS", "IgniteDPS"],
+      "stats": ["TotalDPS", "CombinedDPS", "CritMultiplier", "TotalDotDPS", "IgniteDPS", "AverageDamage", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
       "reason": "the Lich's Crystalline Phylactery doubles its jewel, \"100% increased Effect of bonuses gained from Socketed Jewel\", which the reference leaves out (docs/maintainer-guide.md, Crystalline Phylactery)"
     },
     {
       "build": "witch-abyssal-lich-twister-9d1c51aef392",
-      "stats": ["TotalDPS", "CombinedDPS", "CritMultiplier", "TotalDotDPS", "IgniteDPS"],
+      "stats": ["TotalDPS", "CombinedDPS", "CritMultiplier", "TotalDotDPS", "IgniteDPS", "AverageDamage", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
       "reason": "the Lich's Crystalline Phylactery doubles its jewel, \"100% increased Effect of bonuses gained from Socketed Jewel\", which the reference leaves out (docs/maintainer-guide.md, Crystalline Phylactery)"
     },
     {
       "build": "witch-lich-spark-ce24558eff0b",
-      "stats": ["TotalDPS", "CombinedDPS", "CritMultiplier", "TotalDotDPS", "IgniteDPS", "ColdResist", "ColdMaxHit"],
+      "stats": ["TotalDPS", "CombinedDPS", "CritMultiplier", "TotalDotDPS", "IgniteDPS", "ColdResist", "ColdMaxHit", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS", "Dex", "ColdResistOverCap"],
       "reason": "the Lich's Crystalline Phylactery doubles its jewel, \"100% increased Effect of bonuses gained from Socketed Jewel\", which the reference leaves out (docs/maintainer-guide.md, Crystalline Phylactery)"
     },
     {
       "build": "witch-lich-spark-0a17a1a7df6d",
-      "stats": ["TotalDPS", "CombinedDPS", "CritChance", "TotalDotDPS", "IgniteDPS", "ChaosMaxHit"],
+      "stats": ["TotalDPS", "CombinedDPS", "CritChance", "TotalDotDPS", "IgniteDPS", "ChaosMaxHit", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS", "PreEffectiveCritChance"],
       "reason": "the Lich's Crystalline Phylactery doubles its jewel, \"100% increased Effect of bonuses gained from Socketed Jewel\", which the reference leaves out (docs/maintainer-guide.md, Crystalline Phylactery)"
+    },
+    {
+      "build": "monk-acolyte-of-chayula-decompose-7505238a9c8d",
+      "stats": ["ReqStr"],
+      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, Eternal Rage)"
+    },
+    {
+      "build": "monk-martial-artist-ice-shot-71a879f43f2f",
+      "stats": ["ReqStr"],
+      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, Eternal Rage)"
+    },
+    {
+      "build": "ranger-pathfinder-ice-shot-34c6001553ac",
+      "stats": ["ReqStr"],
+      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, Eternal Rage)"
+    },
+    {
+      "build": "ranger-pathfinder-mana-remnants-c84caa555533",
+      "stats": ["ReqStr"],
+      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, Eternal Rage)"
+    },
+    {
+      "build": "ranger-pathfinder-ice-shot-728cbde29279",
+      "stats": ["ReqStr"],
+      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, Eternal Rage)"
+    },
+    {
+      "build": "witch-abyssal-lich-twister-9d1c51aef392",
+      "stats": ["ReqStr"],
+      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, Eternal Rage)"
+    },
+    {
+      "build": "huntress-amazon-ice-shot-182e794cb5d9",
+      "stats": ["ReqStr"],
+      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, Eternal Rage)"
+    },
+    {
+      "build": "grim-pillars-5dda2982b793",
+      "stats": ["TotalTotemPlacementTime"],
+      "reason": "Spell Totem is placed in its own 500 ms cast_time, not PoB2's 600 ms; per-second costs follow the placement rate (docs/maintainer-guide.md, Spell Totem)"
+    },
+    {
+      "build": "grim-pillars-f74c11ce4b4d",
+      "stats": ["TotalTotemPlacementTime", "ManaPerSecondCost"],
+      "reason": "Spell Totem is placed in its own 500 ms cast_time, not PoB2's 600 ms; per-second costs follow the placement rate (docs/maintainer-guide.md, Spell Totem)"
+    },
+    {
+      "build": "grim-pillars-0a7cf6c82619",
+      "stats": ["TotalTotemPlacementTime"],
+      "reason": "Spell Totem is placed in its own 500 ms cast_time, not PoB2's 600 ms; per-second costs follow the placement rate (docs/maintainer-guide.md, Spell Totem)"
+    },
+    {
+      "build": "grim-pillars-19a4efbb971d",
+      "stats": ["TotalTotemPlacementTime", "ManaPerSecondCost", "LifePerSecondCost"],
+      "reason": "Spell Totem is placed in its own 500 ms cast_time, not PoB2's 600 ms; per-second costs follow the placement rate (docs/maintainer-guide.md, Spell Totem)"
     }
   ]
 }
