@@ -1,3 +1,4 @@
+import type { TreeEditResult } from '../api/types';
 /**
  * Build 会话状态（PoB2 语义：启动即有一个可编辑的空 build）。
  *
@@ -10,7 +11,7 @@ import { activeWorkspaceStage, addWorkspaceBuild, createWorkspace, duplicateWork
 import { formatApiError } from '../api/error';
 import { resolveBuildInput } from '../api/import';
 import { reconcileJewelAllocation } from '../lib/passiveGraph';
-import { skillWeaponSet, switchWeapons, validWeaponSwap, weaponSetRequest } from '../lib/weaponSets';
+import { applyTreeAllocation, skillWeaponSet, switchWeapons, validWeaponSwap, weaponSetRequest } from '../lib/weaponSets';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getBackend } from '../api/backend';
 import { composeNotes, splitNotes, type Annotations } from '../lib/annotations';
@@ -147,6 +148,7 @@ export interface BuildSession {
   toggleNode: (skill: number, choice?: AttributeChoice) => void;
   /** 整体替换加点集合（树寻路一次点亮/熄灭整条路径）。 */
   setAllocatedNodes: (skills: number[], choices?: Record<string, AttributeChoice>) => void;
+  applyTreeEdit: (result: TreeEditResult, request: CalculateBuildRequest, choices?: Record<string, AttributeChoice>) => boolean;
   /** 整表替换属性三选一（批量调配 / 快捷键改单点）。 */
   setAttributeChoices: (choices: Record<string, AttributeChoice>) => void;
   /** 当前完整计算请求（对比预览用：克隆后改一处再算一次）。 */
@@ -1163,6 +1165,18 @@ export function useBuildSession(configContextActive = false): BuildSession {
     [apply, state],
   );
 
+  const applyTreeEdit = useCallback((result: TreeEditResult, expected: CalculateBuildRequest,
+    choices?: Record<string, AttributeChoice>) => {
+    const current = stateRef.current;
+    if (!current || JSON.stringify(toRequest(current)) !== JSON.stringify(expected)) return false;
+    const next = applyTreeAllocation(current, result.allocation);
+    const kept = new Set([...result.allocation.shared, ...result.allocation.exclusive.flat()]);
+    const attributeChoices = Object.fromEntries(Object.entries({ ...current.attributeChoices, ...choices })
+      .filter(([id]) => kept.has(Number(id))));
+    apply({ ...next, attributeChoices, jewels: current.jewels.filter(jewel => kept.has(jewel.socket_node)) });
+    return true;
+  }, [apply]);
+
   const setAttributeChoices = useCallback(
     (attributeChoices: Record<string, AttributeChoice>) => {
       if (!state) return;
@@ -1506,6 +1520,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
     setCharacter,
     toggleNode,
     setAllocatedNodes,
+    applyTreeEdit,
     setAttributeChoices,
     setSocketGroups,
     setItems,

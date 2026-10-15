@@ -8,7 +8,7 @@ import type { CraftingMetadata } from './itemCrafting';
  */
 
 import type {
-  SocketGroupInput,
+  SocketGroupInput, TreeAllocationMode, TreeEditAction, TreeEditResponse,
   AttributionRequest,
   ClassNames,
   AttributionResponse,
@@ -78,6 +78,7 @@ export interface PobrBackend {
   lineUsage(request: CalculateBuildRequest): Promise<LineUsageResponse>;
   /** 天赋树静态数据（静态资产，不经 wasm）。 */
   loadPassiveTree(treeVersion?: string | null): Promise<PassiveNode[]>;
+  previewTreeEdit(request: CalculateBuildRequest, node: number, mode: TreeAllocationMode, action: TreeEditAction): Promise<TreeEditResponse>;
   /** Catalog from the same immutable data snapshot used by calculation. */
   loadTradeCatalog(): Promise<unknown>;
   uniqueCatalog(): Promise<UniqueEntry[]>;

@@ -1,4 +1,4 @@
-import type { SlotItemInput, SocketGroupInput, WeaponSwap } from '../api/types';
+import type { SlotItemInput, SocketGroupInput, WeaponSwap, TreeAllocation, CalculateBuildRequest } from '../api/types';
 
 export interface WeaponSetState {
   items: SlotItemInput[];
@@ -62,4 +62,25 @@ export function validWeaponSwap(value: unknown): WeaponSwap | undefined {
       !Array.isArray(swap.exclusive_nodes) || swap.exclusive_nodes.length !== 2 ||
       swap.exclusive_nodes.some(nodes => !Array.isArray(nodes) || nodes.some(node => !Number.isInteger(node) || node < 0 || node > 0xffffffff))) return undefined;
   return swap;
+}
+
+/** Apply the backend's complete allocation without pruning the inactive set. */
+export function applyTreeAllocation<T extends WeaponSetState>(state: T, allocation: TreeAllocation): T {
+  const swap = state.weaponSwap ?? { active: 1, alternate_items: [], exclusive_nodes: [[], []] };
+  return { ...state,
+    allocatedNodes: [...new Set([...allocation.shared, ...allocation.exclusive[swap.active - 1]])],
+    weaponSwap: { ...swap, exclusive_nodes: allocation.exclusive.map(nodes => [...nodes]) as [number[], number[]] },
+  };
+}
+
+/** A numerical preview must use the same full route/refund as the edit. */
+export function treeAllocationRequest(request: CalculateBuildRequest, allocation: TreeAllocation): CalculateBuildRequest {
+  const swap = request.weapon_swap ?? { active: 1, alternate_items: [], exclusive_nodes: [[], []] };
+  const kept = new Set([...allocation.shared, ...allocation.exclusive.flat()]);
+  return { ...request,
+    allocated_nodes: [...allocation.shared, ...allocation.exclusive[swap.active - 1]],
+    weapon_swap: { ...swap, exclusive_nodes: allocation.exclusive },
+    attribute_choices: Object.fromEntries(Object.entries(request.attribute_choices ?? {}).filter(([id]) => kept.has(Number(id)))),
+    jewels: request.jewels?.filter(jewel => kept.has(jewel.socket_node)),
+  };
 }

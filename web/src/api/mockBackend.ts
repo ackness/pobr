@@ -110,6 +110,9 @@ export function createMockBackend(): PobrBackend {
     async importTradeItems(items) {
       return items.map(() => ({ error: 'Trade item import requires the calculation backend' }));
     },
+    async previewTreeEdit() {
+      return { valid: false, reason: 'backend_unavailable', result: null };
+    },
     async supportGroupsCompatible(groups) {
       // The UI fixture backend has no rule data; never guess legal candidates.
       return groups.map(() => false);

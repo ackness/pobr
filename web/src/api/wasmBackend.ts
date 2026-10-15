@@ -61,6 +61,7 @@ interface WasmModule {
   itemCraftingCatalogJson(): string;
   normalizeItemDraftJson(text: string): string;
   nodePowerJson(requestJson: string): string;
+  previewTreeEditJson(requestJson: string): string;
   optimizeVariantsJson(requestJson: string): string;
   supportGroupsCompatibleJson(requestJson: string): string;
   translate(lang: string, key: string): string;
@@ -256,6 +257,9 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     },
     async classifyItemLines(text) {
       return JSON.parse(wasm.classifyItemLinesJson(text)) as ItemLineJson[];
+    },
+    async previewTreeEdit(request, node, mode, action) {
+      return JSON.parse(wasm.previewTreeEditJson(JSON.stringify({ request, node, mode, action })));
     },
     async nodePower(request, powerStat, maxDepth) {
       return JSON.parse(

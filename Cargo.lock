@@ -567,6 +567,7 @@ dependencies = [
  "pobr-gamedata",
  "pobr-i18n",
  "pobr-item",
+ "pobr-tree",
  "serde",
  "serde_json",
  "wasm-bindgen",

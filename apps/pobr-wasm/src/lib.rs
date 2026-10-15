@@ -20,7 +20,6 @@ pub mod state;
 mod xml_write;
 pub mod zh;
 
-pub use build_api::support_groups_compatible_json;
 pub use build_api::{
     attribution_json, calculate_build_json, classify_item_lines_json, decode_build_file_json,
     decode_build_json, decode_build_loadout_json, encode_build_json, gem_catalog_json,
@@ -29,6 +28,7 @@ pub use build_api::{
     optimize_variants_json, reforge_runes_json, rune_catalog_json, skill_metrics_json,
     translate_lines_to_zh_cn_json, unique_catalog_json, unique_item_draft_json,
 };
+pub use build_api::{preview_tree_edit_json, support_groups_compatible_json};
 pub use i18n::translate;
 pub use session::calculate_json;
 pub use state::{init_data_from_dir, init_staged_data, is_data_ready, stage_data_file};
@@ -39,7 +39,7 @@ pub use state::{init_data_from_dir, init_staged_data, is_data_ready, stage_data_
 /// compares them at boot (see [`wasm::schema_version`]); a mismatch prompts
 /// a hard refresh — closing the door on "stale frontend cache + new wasm
 /// assets" silently breaking.
-pub const SCHEMA_VERSION: u32 = 8;
+pub const SCHEMA_VERSION: u32 = 9;
 
 /// wasm-bindgen bindings: compiled only under the `wasm` feature, exposing
 /// functions with the same names as the host API to JS.
@@ -216,6 +216,12 @@ pub mod wasm {
     #[wasm_bindgen(js_name = reforgeRunesJson)]
     pub fn reforge_runes_json(request_json: &str) -> Result<String, JsError> {
         crate::build_api::reforge_runes_json(request_json).map_err(|err| JsError::new(&err))
+    }
+
+    /// Preview and validate one connected shared/weapon-set passive edit.
+    #[wasm_bindgen(js_name = previewTreeEditJson)]
+    pub fn preview_tree_edit_json(request_json: &str) -> Result<String, JsError> {
+        crate::build_api::preview_tree_edit_json(request_json).map_err(|err| JsError::new(&err))
     }
 
     /// JS entry point: `nodePowerJson(requestJson) -> string` (the tree node power heatmap).

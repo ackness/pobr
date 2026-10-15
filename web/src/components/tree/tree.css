@@ -506,3 +506,13 @@
 .node-jewel-allocatable { stroke: #65d6bd; stroke-width: 8; }
 .node-transformed { stroke: #c78cdb; stroke-width: 10; }
 .node.node-selected { stroke: var(--color-cold); stroke-width: 32; stroke-dasharray: 24 12; }
+
+.tree-allocation-mode { display: inline-flex; gap: .5rem; align-items: center; }
+.tree-edit-preview { min-height: 2.8rem; display: flex; flex-wrap: wrap; gap: .4rem 1.25rem; padding: .6rem; border: 1px solid var(--border-subtle); font-size: .85rem; }
+.node.node-weapon-1 { stroke: #64b5f6; stroke-width: 22; }
+.node.node-weapon-2 { stroke: #ce93d8; stroke-width: 22; }
+.node.node-preview-add { stroke: #81c784; stroke-width: 30; }
+.node.node-preview-promote { stroke: #ffd54f; stroke-width: 30; }
+.node.node-preview-refund { stroke: #ef9a9a; stroke-width: 30; stroke-dasharray: 35 15; }
+.tree-edges .edge-preview { stroke: #81c784; stroke-width: 20; opacity: 1; }
+.tree-edges .edge-refund { stroke: #ef9a9a; stroke-width: 20; stroke-dasharray: 35 15; opacity: 1; }

@@ -9,7 +9,7 @@
  * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
  * 任何破坏性形状变更两侧同时 +1；boot 时握手校验（见 wasmBackend.ts）。
  */
-export const EXPECTED_SCHEMA_VERSION = 8;
+export const EXPECTED_SCHEMA_VERSION = 9;
 
 // ---------------------------------------------------------------------------
 // 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）
@@ -1183,3 +1183,19 @@ export interface SkillMetricsResponse {
   skills: SkillMetricsEntry[];
   item_errors: SlotIssue[];
 }
+
+export type TreeAllocationMode = 0 | 1 | 2;
+export type TreeEditAction = 'allocate' | 'refund' | 'promote';
+export interface TreeAllocation { shared: number[]; exclusive: [number[], number[]] }
+export interface TreeEditResult {
+  allocation: TreeAllocation;
+  added: number[];
+  removed: number[];
+  promoted: number[];
+  path: number[];
+  points_used: number;
+  points_max: number;
+  weapon_points_used: [number, number];
+  weapon_points_max: number;
+}
+export interface TreeEditResponse { valid: boolean; reason: string | null; result: TreeEditResult | null }

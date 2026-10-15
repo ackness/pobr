@@ -163,3 +163,6 @@ fn localize_input_text(text: &str) -> String {
         .collect::<Vec<_>>()
         .join("\n")
 }
+
+mod tree_edit;
+pub use tree_edit::preview_tree_edit_json;

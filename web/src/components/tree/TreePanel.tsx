@@ -2,7 +2,9 @@ import { PageHeader } from '../shared/PageHeader';
 import { formatApiError } from '../../api/error';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
-import type { AttributeChoice, PassiveNode, TreeArt } from '../../api/types';
+import type { AttributeChoice, PassiveNode, TreeArt, TreeAllocationMode } from '../../api/types';
+import { useTreeEditPreview } from '../../hooks/useTreeEditPreview';
+import { treeAllocationRequest } from '../../lib/weaponSets';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useItemDisplayNames } from '../../hooks/useLocalizedLines';
 import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
@@ -10,8 +12,6 @@ import {
   allocationAccess,
   buildPassiveGraph,
   classStartSkill,
-  deallocateNode,
-  shortestAllocationPath,
 } from '../../lib/passiveGraph';
 import { previewDiff, type DiffEntry } from '../../lib/compare';
 import { DiffList } from '../shared/DiffList';
@@ -108,6 +108,12 @@ export function TreePanel(props: Props) {
 
 /** Retain planner inputs and complete receipts, never the interactive canvas. */
 function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch }: Props) {
+  const [allocationMode, setAllocationMode] = useState<TreeAllocationMode>(0);
+  const mode = allocationMode === 0 ? 0 : session.activeWeaponSet;
+  const changeMode = (next: TreeAllocationMode) => {
+    setAllocationMode(next);
+    if (next !== 0) session.setWeaponSet(next);
+  };
   const [rawNodes, setNodes] = useState<PassiveNode[] | null>(null);
   const treeEffects = session.calc?.tree_effects;
   const nodes = useMemo(() => rawNodes?.map(node => {
@@ -139,10 +145,12 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch 
     session.activeLoadout, session.activeWeaponSet, session.socketGroupRevision,
     session.character?.class_name, session.character?.ascendancy_name]);
   return <TreeCanvas key={canvasContext} session={session} lang={lang} onJewelSearch={onJewelSearch}
-    nodes={rawNodes ? nodes : null} art={art} error={error} plannedNodes={plannedNodes} planner={planner} />;
+    allocationMode={mode} onAllocationMode={changeMode} nodes={rawNodes ? nodes : null} art={art} error={error} plannedNodes={plannedNodes} planner={planner} />;
 }
 
 interface CanvasProps {
+  allocationMode: TreeAllocationMode;
+  onAllocationMode: (mode: TreeAllocationMode) => void;
   session: BuildSession;
   lang: Lang;
   onJewelSearch?: (socket: number) => void;
@@ -153,7 +161,7 @@ interface CanvasProps {
   planner: TreeOptimizerState;
 }
 
-function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNodes, planner }: CanvasProps) {
+function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, art, error, plannedNodes, planner }: CanvasProps) {
   const tt = bindT(lang);
   const treeEffects = session.calc?.tree_effects;
   const grants = useMemo(() => treeEffects?.allocation_grants ?? [], [treeEffects]);
@@ -202,10 +210,6 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
   };
   /** hover 节点的加点/取消收益（防抖重算；按 stateVersion 失效的缓存）。 */
   const [hoverDiff, setHoverDiff] = useState<DiffEntry[] | null>(null);
-  const diffCacheRef = useRef<{ version: number; map: Map<number, DiffEntry[]> }>({
-    version: -1,
-    map: new Map(),
-  });
   const [viewBox, setViewBox] = useState<ViewBox | null>(null);
   const dragRef = useRef<{
     pointerId: number;
@@ -367,17 +371,30 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
   }, [placed, search]);
   const selectedNode = selectedSkill === null ? null : byId.get(selectedSkill) ?? null;
   const selectedAllocated = selectedSkill !== null && allocated.has(selectedSkill);
-  const selectedPath = useMemo(() => selectedNode && !selectedAllocated
-    ? shortestAllocationPath(graph, allocated, startSkill, selectedNode.skill, grants) : [],
-  [selectedNode, selectedAllocated, graph, allocated, startSkill, grants]);
+  const editRequest = session.currentRequest();
+  const selectedPreview = useTreeEditPreview(editRequest, selectedSkill, allocationMode,
+    selectedAllocated ? 'refund' : 'allocate');
+  const hoverPreview = useTreeEditPreview(editRequest, hover?.skill ?? null, allocationMode,
+    hover && allocated.has(hover.skill) ? 'refund' : 'allocate');
+  const selectedPath = selectedPreview?.result?.added ?? [];
+  const preview = hover ? hoverPreview : selectedPreview;
+  const previewResult = preview?.result;
+  const previewNodes = useMemo(() => ({
+    added: new Set(previewResult?.added), removed: new Set(previewResult?.removed),
+    promoted: new Set(previewResult?.promoted), path: new Set(previewResult?.path),
+  }), [previewResult]);
+  const owner = useMemo(() => new Map((session.weaponSwap?.exclusive_nodes ?? [[], []])
+    .flatMap((ids, index) => ids.map(id => [id, index + 1] as const))), [session.weaponSwap]);
+  const [editError, setEditError] = useState<string | null>(null);
+  const editPending = useRef(false);
+  const modeRef = useRef(allocationMode);
+  modeRef.current = allocationMode;
   const selectedNeedsAttribute = Boolean(selectedNode && !selectedAllocated
     && isAttrNode(selectedNode) && selectedPath.length === 1);
   const selectedChoice = selectedSkill === null ? undefined : session.attributeChoices[String(selectedSkill)];
   const pendingAttribute = attributeDraft && attributeDraft.skill === selectedSkill && attributeDraft.saved === selectedChoice
     ? attributeDraft.choice : undefined;
-  const selectedRefundCount = useMemo(() => selectedNode && selectedAllocated
-    ? allocated.size - deallocateNode(graph, allocated, startSkill, selectedNode.skill, grants).size : 0,
-  [selectedNode, selectedAllocated, graph, allocated, startSkill, grants]);
+  const selectedRefundCount = selectedPreview?.result?.removed.length ?? 0;
   const detailsLines = useMemo(() => selectedNode ? [
     selectedNode.name ?? selectedNode.id,
     ...(selectedNode.stats ?? []).map(line =>
@@ -456,7 +473,7 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
   };
 
   const edges = useMemo(() => {
-    const out: { x1: number; y1: number; x2: number; y2: number; active: boolean }[] = [];
+    const out: { from: number; to: number; x1: number; y1: number; x2: number; y2: number; active: boolean }[] = [];
     // GGG 的 `connections` 是**单向 out 边**（每条只出现一次，方向任意）——
     // 不能按 id 大小去重（会丢一半边），用无向键 seen 集合。
     const seen = new Set<string>();
@@ -471,6 +488,7 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
         // 飞升与主树分区渲染在同一平面；跨区连线跳过（坐标相距过远的伪边）。
         if ((node.ascendancy_id ?? null) !== (other.ascendancy_id ?? null)) continue;
         out.push({
+          from: node.skill, to: target,
           x1: node.x!,
           y1: node.y!,
           x2: other.x!,
@@ -489,67 +507,55 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
   const sessionRef = useRef(session);
   sessionRef.current = session;
 
-  /** One manual edit seam for canvas clicks, attribute choices and node details.
-   * Physical paths, radius grants and refund fallback stay in passiveGraph.
-   */
-  const actOnNode = useCallback((skill: number,
-    action: 'allocate' | 'refund' | 'attribute' | 'jewel', choice?: AttributeChoice) => {
+  /** Every manual allocation uses the same authoritative path and budget check. */
+  const actOnNode = useCallback(async (skill: number,
+    action: 'allocate' | 'refund' | 'promote' | 'attribute' | 'jewel', choice?: AttributeChoice) => {
     const s = sessionRef.current;
     const node = byId.get(skill);
-    if (s.busy || !node) return;
-    const allocated = new Set(s.allocatedNodes);
-    const isAlloc = allocated.has(skill);
-    if (action === 'attribute') {
-      if (!isAttrNode(node) || !choice) return;
-      if (isAlloc) {
-        if (s.attributeChoices[String(skill)] === choice) return;
-        s.setAttributeChoices({ ...s.attributeChoices, [String(skill)]: choice });
-      } else {
-        // Hover shortcuts deliberately assign this one node, not a travel route.
-        s.toggleNode(skill, choice);
-      }
-      setAttributeDraft(null);
-      return;
-    }
-    if (action === 'refund') {
-      if (!isAlloc && node.kind !== 'jewel_socket') return;
-      const remaining = [...deallocateNode(graph, allocated, startSkill, skill, grants)];
-      if (node.kind === 'jewel_socket') {
-        s.removeJewelSocket(skill, remaining);
-        if (jewelSocket === skill) {
-          s.setEditorDraft(`jewel:${skill}`, null);
-          setJewelSocket(null);
-        }
-      } else {
-        s.setAllocatedNodes(remaining);
-      }
-      setAttrPicker(null);
+    if (s.busy || editPending.current || !node) return;
+    const isAlloc = s.allocatedNodes.includes(skill);
+    if (action === 'attribute' && (!isAttrNode(node) || !choice)) return;
+    if (action === 'attribute' && isAlloc) {
+      s.setAttributeChoices({ ...s.attributeChoices, [String(skill)]: choice! });
       setAttributeDraft(null);
       return;
     }
     if (action === 'jewel' && node.kind !== 'jewel_socket') return;
-    if (action === 'allocate' && isAlloc) return;
-    const path = isAlloc ? [] : shortestAllocationPath(graph, allocated, startSkill, skill, grants);
-    if (!isAlloc) {
-      if (path.length === 0 && action !== 'jewel') return;
-      // Adjacent Attribute points require an explicit choice. Multi-step paths
-      // retain the pointer route's unassigned travel-attribute semantics.
-      if (path.length === 1 && isAttrNode(node) && !choice) return 'chooseAttribute';
-      if (path.length === 1 && isAttrNode(node) && choice) s.toggleNode(skill, choice);
-      else s.setAllocatedNodes([...s.allocatedNodes, ...path]);
-    }
-    setAttrPicker(null);
-    setAttributeDraft(null);
-    if (node.kind === 'jewel_socket') setJewelSocket(skill);
-  }, [byId, graph, startSkill, grants, jewelSocket]);
+    if (action === 'jewel' && isAlloc) { setJewelSocket(skill); return; }
+    const request = s.currentRequest();
+    if (!request) return;
+    const generation = canvasGeneration.current;
+    editPending.current = true;
+    setEditError(null);
+    try {
+      const backend = await getBackend();
+      const response = await backend.previewTreeEdit(request, skill, allocationMode,
+        action === 'refund' || action === 'promote' ? action : 'allocate');
+      if (generation !== canvasGeneration.current || modeRef.current !== allocationMode) return;
+      if (!response.valid || !response.result) { setEditError(response.reason); return; }
+      if (action !== 'refund' && response.result.added.length === 1 && isAttrNode(node) && !choice) return 'chooseAttribute';
+      if (!sessionRef.current.applyTreeEdit(response.result, request, choice ? { [String(skill)]: choice } : undefined)) {
+        setEditError('stale_edit'); return;
+      }
+      if (jewelSocket !== null && response.result.removed.includes(jewelSocket)) {
+        s.setEditorDraft(`jewel:${jewelSocket}`, null); setJewelSocket(null);
+      }
+      setAttrPicker(null);
+      setAttributeDraft(null);
+      if (action !== 'refund' && node.kind === 'jewel_socket') setJewelSocket(skill);
+    } catch { setEditError('backend_unavailable'); }
+    finally { editPending.current = false; }
+  }, [byId, allocationMode, jewelSocket]);
 
   const handleNodeClick = useCallback((node: PassiveNode, e: React.MouseEvent) => {
     if (suppressClickRef.current || dragRef.current?.moved) return;
     const action = node.kind === 'jewel_socket' ? 'jewel'
       : sessionRef.current.allocatedNodes.includes(node.skill) ? 'refund' : 'allocate';
-    if (actOnNode(node.skill, action) !== 'chooseAttribute') return;
     const rect = svgRef.current?.getBoundingClientRect();
-    if (rect) setAttrPicker({ node, x: e.clientX - rect.left, y: e.clientY - rect.top });
+    const pos = rect ? { x: e.clientX - rect.left, y: e.clientY - rect.top } : null;
+    void actOnNode(node.skill, action).then(result => {
+      if (result === 'chooseAttribute' && pos) setAttrPicker({ node, ...pos });
+    });
   }, [actOnNode]);
 
   const edgesEl = useMemo(
@@ -562,12 +568,12 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
             y1={e.y1}
             x2={e.x2}
             y2={e.y2}
-            className={e.active ? 'edge-active' : 'edge'}
+            className={`${e.active ? 'edge-active' : 'edge'}${previewNodes.path.has(e.from) && previewNodes.path.has(e.to) ? ' edge-preview' : ''}${previewNodes.removed.has(e.from) && previewNodes.removed.has(e.to) ? ' edge-refund' : ''}`}
           />
         ))}
       </g>
     ),
-    [edges],
+    [edges, previewNodes],
   );
 
   const filledJewelSockets = useMemo(
@@ -629,11 +635,12 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
               )}
               <circle
                 data-skill-id={node.skill}
+                data-weapon-set={owner.get(node.skill) ?? (isAlloc ? 0 : undefined)}
                 cx={node.x}
                 cy={node.y}
                 r={r}
                 style={heat ? { fill: heat } : undefined}
-                className={`node node-${node.kind}${icon || frame ? ' node-art' : ''}${node.ascendancy_id ? ' node-asc' : ''}${isAlloc ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && filledJewelSockets.has(node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}${selectedSkill === node.skill ? ' node-selected' : ''}${freeNodes.has(node.skill) ? ' node-jewel-allocatable' : ''}${treeEffects?.nodes[String(node.skill)] ? ' node-transformed' : ''}${plannedNodes?.allocate.includes(node.skill) ? ' node-planned-add' : ''}${plannedNodes?.deallocate.includes(node.skill) ? ' node-planned-remove' : ''}`}
+                className={`node node-${node.kind}${icon || frame ? ' node-art' : ''}${node.ascendancy_id ? ' node-asc' : ''}${isAlloc ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && filledJewelSockets.has(node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}${selectedSkill === node.skill ? ' node-selected' : ''}${freeNodes.has(node.skill) ? ' node-jewel-allocatable' : ''}${treeEffects?.nodes[String(node.skill)] ? ' node-transformed' : ''}${plannedNodes?.allocate.includes(node.skill) ? ' node-planned-add' : ''}${plannedNodes?.deallocate.includes(node.skill) ? ' node-planned-remove' : ''}${owner.has(node.skill) ? ` node-weapon-${owner.get(node.skill)}` : ''}${previewNodes.added.has(node.skill) ? ' node-preview-add' : ''}${previewNodes.promoted.has(node.skill) ? ' node-preview-promote' : ''}${previewNodes.removed.has(node.skill) ? ' node-preview-refund' : ''}`}
                 onPointerEnter={(e) => {
                   if (dragRef.current?.moved) return;
                   setHover(node);
@@ -652,7 +659,7 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
         })}
       </g>
     );
-  }, [placed, allocated, filledJewelSockets, searchHits, selectedSkill, heatStat, heatData, heatMax, handleNodeClick, art, plannedNodes, freeNodes, treeEffects]);
+  }, [placed, allocated, filledJewelSockets, searchHits, selectedSkill, heatStat, heatData, heatMax, handleNodeClick, art, plannedNodes, freeNodes, treeEffects, owner, previewNodes]);
 
   const fullExtent = useMemo((): ViewBox | null => {
     if (placed.length === 0) return null;
@@ -740,43 +747,17 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentAscId]);
 
-  // hover 收益：把「该节点加点/取消后」的请求再算一次，差异进 tooltip。
-  // 300ms 防抖；结果按 stateVersion 缓存（编辑后全量失效）。
+  // Preview the full validated edit, including both weapon sets and dependent refunds.
   useEffect(() => {
     setHoverDiff(null);
-    if (!hover || session.busy || !session.calc) return;
-    const cache = diffCacheRef.current;
-    if (cache.version !== session.stateVersion) {
-      cache.version = session.stateVersion;
-      cache.map.clear();
-    }
-    const cached = cache.map.get(hover.skill);
-    if (cached) {
-      setHoverDiff(cached);
-      return;
-    }
-    const request = session.currentRequest();
-    if (!request) return;
-    const skill = hover.skill;
+    if (!hover || !hoverPreview?.result || session.busy || !session.calc || !editRequest) return;
     let cancelled = false;
-    const generation = canvasGeneration.current;
     const timer = setTimeout(() => {
-      if (cancelled || generation !== canvasGeneration.current) return;
-      const has = session.allocatedNodes.includes(skill);
-      const nodes = has
-        ? session.allocatedNodes.filter((n) => n !== skill)
-        : [...session.allocatedNodes, skill];
-      previewDiff({ ...request, allocated_nodes: nodes }, session.calc!)
-        .then((diffs) => {
-          if (cancelled || generation !== canvasGeneration.current) return;
-          cache.map.set(skill, diffs);
-          setHoverDiff((current) => (hover.skill === skill ? diffs : current));
-        })
-        .catch(() => {});
+      previewDiff(treeAllocationRequest(editRequest, hoverPreview.result!.allocation), session.calc!)
+        .then(diffs => { if (!cancelled) setHoverDiff(diffs); }).catch(() => {});
     }, 300);
     return () => { cancelled = true; clearTimeout(timer); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hover, session.stateVersion, session.busy]);
+  }, [hover, hoverPreview, session.stateVersion, session.busy]);
 
   // 快捷键 S/D/I（或 1/2/3）：弹窗打开时选择；hover 属性小点时直接加点或改选。
   useLayoutEffect(() => {
@@ -933,6 +914,16 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
         <span className="ui-badge tree-count">{session.allocatedNodes.length} {tt('tree.allocated')}</span>
       </PageHeader>
       <div className="tree-toolbar">
+        <label className="tree-allocation-mode">
+          {tt('tree.allocationMode')}
+          <select aria-label={tt('tree.allocationMode')} value={allocationMode} disabled={session.busy}
+            onChange={e => { setEditError(null); setAttrPicker(null); setAttributeDraft(null);
+              onAllocationMode(Number(e.target.value) as TreeAllocationMode); }}>
+            <option value={0}>{tt('tree.shared')}</option>
+            <option value={1}>{tt('tree.set1')}</option>
+            <option value={2}>{tt('tree.set2')}</option>
+          </select>
+        </label>
         <span className="tree-search">
           <input
             ref={searchRef}
@@ -1056,6 +1047,18 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
         )}
         <button onClick={() => setViewBox(null)}>{tt('tree.reset')}</button>
       </div>
+      <p className="tree-hint">{tt('tree.weaponRules')}</p>
+      {editError && <p role="alert">{treeEditError(editError, lang)}</p>}
+      <div className="tree-edit-preview" role="status">
+        {preview && <>
+        {previewResult ? <>
+          <span>{tt('tree.points')}: {previewResult.points_used} / {previewResult.points_max}</span>
+          <span>{tt('tree.set1')}: {previewResult.weapon_points_used[0]} / {previewResult.weapon_points_max}</span>
+          <span>{tt('tree.set2')}: {previewResult.weapon_points_used[1]} / {previewResult.weapon_points_max}</span>
+          <span>{tt('tree.previewChanges')}: +{previewResult.added.length} / −{previewResult.removed.length} · {tt('tree.promoted')}: {previewResult.promoted.length}</span>
+        </> : treeEditError(preview.reason, lang)}
+        </>}
+      </div>
       <div className="tree-workspace">
       <div className="tree-canvas">
         <svg
@@ -1157,6 +1160,7 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
           </header>
           <p className="tree-node-details-state">
             #{selectedNode.skill} · {tt(selectedAllocated ? 'tree.allocated' : 'tree.notAllocated')}
+            {(selectedAllocated || owner.has(selectedNode.skill)) && <> · {tt(owner.get(selectedNode.skill) === 1 ? 'tree.set1' : owner.get(selectedNode.skill) === 2 ? 'tree.set2' : 'tree.shared')}</>}
           </p>
           <ul className="tree-node-details-stats">
             {displayedDetails.slice(1).map((line, index) => <li key={index}>{line}</li>)}
@@ -1177,7 +1181,7 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
               </select>
             </label>
           )}
-          {!selectedAllocated && selectedPath.length === 0 && (
+          {!selectedAllocated && selectedPreview?.valid === false && (
             <p className="tree-hint">{tt(selectedNode.skill === startSkill ? 'tree.currentStart' : 'tree.unallocatable')}</p>
           )}
           {!selectedAllocated && selectedPath.length > 1 && (
@@ -1200,16 +1204,18 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
               </button>
             )}
             {selectedAllocated ? (
-              <button disabled={session.busy} onClick={() => actOnNode(selectedNode.skill, 'refund')}>
+              <button disabled={session.busy || !selectedPreview?.valid} onClick={() => actOnNode(selectedNode.skill, 'refund')}>
                 {tt('tree.refund')}
               </button>
             ) : (
-              <button disabled={session.busy || selectedPath.length === 0
+              <button disabled={session.busy || !selectedPreview?.valid
                 || (selectedNeedsAttribute && !pendingAttribute)}
                 onClick={() => actOnNode(selectedNode.skill, 'allocate', pendingAttribute || undefined)}>
                 {tt('tree.allocate')}
               </button>
             )}
+            {owner.has(selectedNode.skill) && <button disabled={session.busy}
+              onClick={() => actOnNode(selectedNode.skill, 'promote')}>{tt('tree.promote')}</button>}
             {selectedAllocated && selectedNode.kind === 'jewel_socket' && (
               <button disabled={session.busy} onClick={() => actOnNode(selectedNode.skill, 'jewel')}>
                 {tt('tree.editJewel')}
@@ -1463,4 +1469,18 @@ function TreeTooltip({
       {benefit}
     </div>
   );
+}
+
+function treeEditError(reason: string | null, lang: Lang): string {
+  const tt = bindT(lang);
+  if (reason === 'passive_point_budget') return tt('tree.pointLimit');
+  if (reason === 'weapon_point_budget') return tt('tree.weaponLimit');
+  if (reason === 'ascendancy_point_budget') return tt('tree.ascLimit');
+  if (reason === 'unsupported_node') return tt('tree.unsupportedNode');
+  if (reason === 'stale_edit') return tt('tree.staleEdit');
+  if (reason === 'backend_unavailable') return tt('tree.editUnavailable');
+  if (reason === 'protected_root') return tt('tree.currentStart');
+  if (reason === 'wrong_weapon_set') return tt('tree.wrongSet');
+  if (['disconnected_shared_path', 'disconnected_weapon_path', 'overlapping_allocations', 'shared_only_node', 'unknown_node'].includes(reason ?? '')) return tt('tree.invalidImport');
+  return tt('tree.noLegalPath');
 }
