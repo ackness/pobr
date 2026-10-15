@@ -1713,7 +1713,7 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                         // PoB `mainActiveSkill` (1-based, indexing this group's
                         // non-support skill list): marks the designated main skill in a
                         // group with multiple active skills (e.g. Cast on Crit +
-                        // Comet); the actual "skip support/meta, pick by ordinal"
+                        // Comet); the actual "skip support, pick by display ordinal"
                         // determination happens in resolve_main_skill (which has
                         // granted_effect data available).
                         if let Some(n) =

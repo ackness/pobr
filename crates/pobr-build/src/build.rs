@@ -101,8 +101,8 @@ pub struct SocketGroup {
     /// Gem levels before corruption or another weapon set adjusts skill levels.
     /// Added skill levels do not raise the gems' attribute requirements.
     pub gem_requirement_levels: Vec<u32>,
-    /// PoB `<Skill mainActiveSkill="N">` (**1-based**): indexes each gem's primary
-    /// non-support effect followed by its additional non-support effects, in order.
+    /// PoB `<Skill mainActiveSkill="N">` (**1-based**): indexes each gem's non-support
+    /// effects in granted-effect display order, preserving the group’s gem order.
     /// Effects granted by support gems also count. `None` selects the first effect;
     /// an invalid explicit ordinal is not clamped or replaced with another skill.
     pub main_active_skill: Option<usize>,

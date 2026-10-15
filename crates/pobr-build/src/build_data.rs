@@ -324,6 +324,7 @@ impl BuildData {
                     variant_id: gem.gem_effect_id.clone().unwrap_or_default(),
                     granted_effect_id: effect_id.clone(),
                     additional_granted_effect_ids: gem.additional_granted_effect_ids.clone(),
+                    granted_effect_display_order: Vec::new(),
                     additional_stat_set_ids: Vec::new(),
                 });
         }

@@ -652,6 +652,10 @@ pub struct GemEffectDef {
     /// expansion (18-G5).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub additional_granted_effect_ids: Vec<String>,
+    /// Zero-based effect positions in `GemEffects.GrantedEffectDisplayOrder`.
+    /// Unlisted effects follow in their original primary/additional order.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub granted_effect_display_order: Vec<usize>,
     /// Additional statSet ids for the primary effect
     /// (`GrantedEffects.AdditionalStatSets` → `GrantedEffectStatSets.Id`,
     /// vendor `additionalStatSet1..N`). A cross-check sidecar for

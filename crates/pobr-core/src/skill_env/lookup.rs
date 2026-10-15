@@ -19,6 +19,11 @@ pub trait EffectLookup {
     /// Returns the additional granted effect ids linked to `primary_id` via the
     /// `gem_effects` foreign key (empty when the domain is missing).
     fn additional_effects(&self, primary_id: &str) -> &[String];
+
+    /// Zero-based primary/additional positions in the gem's display order.
+    fn effect_display_order(&self, _primary_id: &str) -> &[usize] {
+        &[]
+    }
 }
 
 /// Per-level stat table lookup (the `granted_effect_levels` + `skill_stat_sets` +

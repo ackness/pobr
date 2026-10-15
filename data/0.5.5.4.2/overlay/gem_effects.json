@@ -36,6 +36,10 @@
       "granted_effect_id": "ArmourPiercingBoltsAmmoPlayer",
       "additional_granted_effect_ids": [
         "ArmourPiercingBoltsPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        0
       ]
     },
     {
@@ -179,6 +183,10 @@
       "additional_granted_effect_ids": [
         "SupportMirageDeadeyePlayer",
         "MirageDeadeyeSpawnPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        2
       ]
     },
     {
@@ -313,6 +321,9 @@
       "granted_effect_id": "BlackPowderBlitzReservationPlayer",
       "additional_granted_effect_ids": [
         "BlackPowderBlitzPlayer"
+      ],
+      "granted_effect_display_order": [
+        1
       ]
     },
     {
@@ -395,6 +406,10 @@
       "granted_effect_id": "CrossbowRequiemAmmoPlayer",
       "additional_granted_effect_ids": [
         "CrossbowRequiemPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        0
       ]
     },
     {
@@ -416,6 +431,10 @@
       "granted_effect_id": "DefianceBannerReservationPlayer",
       "additional_granted_effect_ids": [
         "DefianceBannerPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        0
       ]
     },
     {
@@ -437,6 +456,10 @@
       "granted_effect_id": "DreadBannerReservationPlayer",
       "additional_granted_effect_ids": [
         "DreadBannerPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        0
       ]
     },
     {
@@ -501,6 +524,10 @@
       "granted_effect_id": "ExplosiveShotAmmoPlayer",
       "additional_granted_effect_ids": [
         "ExplosiveShotPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        0
       ]
     },
     {
@@ -570,6 +597,10 @@
       "granted_effect_id": "FragmentationRoundsAmmoPlayer",
       "additional_granted_effect_ids": [
         "FragmentationRoundsPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        0
       ]
     },
     {
@@ -610,6 +641,10 @@
       "granted_effect_id": "GalvanicShardsAmmoPlayer",
       "additional_granted_effect_ids": [
         "GalvanicShardsPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        0
       ]
     },
     {
@@ -654,6 +689,10 @@
       "granted_effect_id": "GlacialBoltAmmoPlayer",
       "additional_granted_effect_ids": [
         "GlacialBoltPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        0
       ]
     },
     {
@@ -670,6 +709,10 @@
       "granted_effect_id": "HailstormRoundsAmmoPlayer",
       "additional_granted_effect_ids": [
         "HailstormRoundsPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        0
       ]
     },
     {
@@ -709,6 +752,10 @@
       "granted_effect_id": "HighVelocityRoundsAmmoPlayer",
       "additional_granted_effect_ids": [
         "HighVelocityRoundsPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        0
       ]
     },
     {
@@ -722,6 +769,10 @@
       "granted_effect_id": "IceShardsAmmoPlayer",
       "additional_granted_effect_ids": [
         "IceShardsPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        0
       ]
     },
     {
@@ -754,6 +805,10 @@
       "granted_effect_id": "IncendiaryShotAmmoPlayer",
       "additional_granted_effect_ids": [
         "IncendiaryShotPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        0
       ]
     },
     {
@@ -822,6 +877,10 @@
       "additional_granted_effect_ids": [
         "SupportMirageArcherPlayer",
         "MirageArcherSpawnPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        2
       ]
     },
     {
@@ -881,6 +940,10 @@
       "granted_effect_id": "PermafrostBoltsAmmoPlayer",
       "additional_granted_effect_ids": [
         "PermafrostBoltsPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        0
       ]
     },
     {
@@ -902,6 +965,10 @@
       "granted_effect_id": "PlasmaBlastAmmoPlayer",
       "additional_granted_effect_ids": [
         "PlasmaBlastPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        0
       ]
     },
     {
@@ -1004,6 +1071,10 @@
       "granted_effect_id": "RapidShotAmmoPlayer",
       "additional_granted_effect_ids": [
         "RapidShotPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        0
       ]
     },
     {
@@ -1060,6 +1131,10 @@
       "granted_effect_id": "ShockburstRoundsAmmoPlayer",
       "additional_granted_effect_ids": [
         "ShockburstRoundsPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        0
       ]
     },
     {
@@ -1076,6 +1151,10 @@
       "granted_effect_id": "SiegeCascadeAmmoPlayer",
       "additional_granted_effect_ids": [
         "SiegeCascadePlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        0
       ]
     },
     {
@@ -1160,6 +1239,10 @@
       "granted_effect_id": "StormblastBoltsAmmoPlayer",
       "additional_granted_effect_ids": [
         "StormblastBoltsPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        0
       ]
     },
     {
@@ -1275,6 +1358,10 @@
       "granted_effect_id": "WarBannerReservationPlayer",
       "additional_granted_effect_ids": [
         "WarBannerPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        0
       ]
     },
     {
@@ -4242,6 +4329,11 @@
         "SupportWolfPouncePlayer",
         "WolfPounceMarkPlayer",
         "WolfPounceSummonWolfPlayer"
+      ],
+      "granted_effect_display_order": [
+        0,
+        2,
+        3
       ]
     },
     {
@@ -4734,6 +4826,10 @@
       "additional_granted_effect_ids": [
         "TriggeredSparkEmpowerPlayer",
         "TriggeredEmpoweredSparkPlayer"
+      ],
+      "granted_effect_display_order": [
+        1,
+        2
       ]
     },
     {

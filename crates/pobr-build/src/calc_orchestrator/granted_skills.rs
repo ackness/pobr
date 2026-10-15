@@ -559,6 +559,7 @@ mod tests {
                 variant_id: "Firebolt".to_string(),
                 granted_effect_id: SKILL_ID.to_string(),
                 additional_granted_effect_ids: Vec::new(),
+                granted_effect_display_order: Vec::new(),
                 additional_stat_set_ids: Vec::new(),
             },
         );

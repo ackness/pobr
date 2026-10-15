@@ -2534,6 +2534,7 @@ fn meta_gem_expands_additional_granted_effect_as_main_skill() {
             variant_id: "Shell".into(),
             granted_effect_id: "SummonShellPlayer".into(),
             additional_granted_effect_ids: vec!["ShellQuakePlayer".into()],
+            granted_effect_display_order: Vec::new(),
             additional_stat_set_ids: vec![],
         },
     );

@@ -329,6 +329,13 @@ impl BuildData {
 }
 
 impl pobr_core::skill_env::EffectLookup for BuildData {
+    fn effect_display_order(&self, primary_id: &str) -> &[usize] {
+        self.gem_effects
+            .get(primary_id)
+            .map(|g| g.granted_effect_display_order.as_slice())
+            .unwrap_or(&[])
+    }
+
     fn effect(&self, id: &str) -> Option<&GrantedEffectDef> {
         self.granted_effects.get(id)
     }

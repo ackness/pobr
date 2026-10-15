@@ -737,7 +737,7 @@ pub struct ActiveEffect<'a> {
     pub stat_set_index: Option<u32>,
 }
 
-/// Enumerates each gem's primary effect followed by its additional active effects.
+/// Enumerates each gem's active effects in its granted-effect display order.
 /// Support primaries are omitted, but their granted active effects are not.
 /// Unknown effects remain visible so callers can report missing data, not silently
 /// renumber or substitute a different skill.
@@ -748,8 +748,24 @@ pub fn group_active_effects<'a>(
     gems.enumerate()
         .flat_map(
             move |(gem_index, (id, gem_level, quality, stat_set_index))| {
-                std::iter::once(id)
-                    .chain(effects.additional_effects(id).iter().map(String::as_str))
+                let additional = effects.additional_effects(id);
+                let order = effects.effect_display_order(id);
+                order
+                    .iter()
+                    .copied()
+                    .enumerate()
+                    .filter(move |&(position, index)| {
+                        index <= additional.len() && !order[..position].contains(&index)
+                    })
+                    .map(|(_, index)| index)
+                    .chain((0..=additional.len()).filter(move |index| !order.contains(index)))
+                    .map(move |index| {
+                        if index == 0 {
+                            id
+                        } else {
+                            additional[index - 1].as_str()
+                        }
+                    })
                     .filter(move |id| {
                         !id.is_empty() && effects.effect(id).is_none_or(|effect| !effect.is_support)
                     })
