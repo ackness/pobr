@@ -224,10 +224,16 @@ const BASELINES: [Baseline; 3] = [
     // comes off a skill's cooldown before Cooldown Recovery Rate, down to 0.1
     // seconds: the Oracle's Lightning Bolt (0.5 seconds) has 0.1, as its
     // reference does, where the line was read by nothing (0.27).
+    //
+    // Then 448 rows: the sidebar's attributes, Rage, resistance over cap,
+    // unreserved percentages, pre-effective critical chance, stored uses,
+    // skill DoT, crossbow timing, culling and projectile speed became
+    // display stats, so the reference's rows for them are compared too
+    // (new rows, not changed calculations).
     Baseline {
         corpus: "examples/wasm-benchmark/builds",
         dps_builds: 5,
-        agreeing_rows: 349,
+        agreeing_rows: 448,
     },
     // Was 22 builds and 1024 rows. A code whose main skill summons a minion
     // also carries `<MinionStat>` values for that minion, which were not
@@ -360,10 +366,16 @@ const BASELINES: [Baseline; 3] = [
     // Adorned leaves it alone. The reference, as the pinned PoB2, reads
     // neither: Abyssal Lich Twister 4028 and 9d1c, Lich Spark ce24 and 0a17
     // (4 builds' damage, 20 rows).
+    //
+    // Then 3902 rows: the sidebar's attributes, Rage, resistance over cap,
+    // unreserved percentages, pre-effective critical chance, stored uses,
+    // skill DoT, crossbow timing, culling and projectile speed became
+    // display stats, so the reference's rows for them are compared too
+    // (new rows, not changed calculations).
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
         dps_builds: 58,
-        agreeing_rows: 3049,
+        agreeing_rows: 3902,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
@@ -378,10 +390,16 @@ const BASELINES: [Baseline; 3] = [
     // Lich's Crystalline Phylactery, which doubles the jewel; their
     // references don't (see the tuned set's note). Measured only, by
     // switching that one rule back.
+    //
+    // Then 1291 rows: the sidebar's attributes, Rage, resistance over cap,
+    // unreserved percentages, pre-effective critical chance, stored uses,
+    // skill DoT, crossbow timing, culling and projectile speed became
+    // display stats, so the reference's rows for them are compared too
+    // (new rows, not changed calculations).
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
         dps_builds: 18,
-        agreeing_rows: 1003,
+        agreeing_rows: 1291,
     },
 ];
 
