@@ -36,6 +36,14 @@ pub(crate) fn skill_base_modifiers(
         skill.crit_chance,
         skill.skill_attack_speed_more,
     );
+    mods.extend(pobr_core::calc::channel::skill_modifiers(
+        skill_id,
+        skill.use_time_s,
+        skill
+            .base_damage
+            .iter()
+            .any(|stat| stat.stat == "aftershock_delay_ms"),
+    ));
     // The skill's stats (base damage + its own damage% scaling) are injected via
     // SkillStatMap mapping. Exception: `off_hand_weapon_*physical_damage` (base hit
     // damage for a non-weapon attack) is already counted into `base_hit_min/max` as a

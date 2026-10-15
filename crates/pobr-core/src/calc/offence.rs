@@ -375,6 +375,7 @@ pub(crate) struct ActionRateTerms {
     pub(crate) uses: f64,
     /// How the uses turn into hits, for a rain.
     rain: Option<super::rain::RainHits>,
+    pub(crate) channel: Option<super::channel::ChannelCycle>,
     periodic: Option<super::periodic::PeriodicHits>,
     /// The rate the hits come at: uses, rain landings, or periodic hits.
     pub(crate) value: f64,
@@ -401,6 +402,9 @@ impl ActionRateTerms {
         }
         if self.action_speed != 1.0 {
             steps.set(FormulaOp::ActionSpeed, self.action_speed, self.uncapped);
+        }
+        if let Some(channel) = &self.channel {
+            channel.append_formula(&mut steps);
         }
         steps.at_most(FormulaOp::CooldownCap, self.cooled);
         steps.at_most(FormulaOp::ServerTickCap, self.ticked);
@@ -449,6 +453,7 @@ fn use_rate_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> ActionR
             ticked,
             uses: round(ticked),
             rain: None,
+            channel: None,
             periodic: None,
             value: round(ticked),
         };
@@ -473,7 +478,9 @@ fn use_rate_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> ActionR
             speed_names
         );
     }
-    let cooled = apply_cooldown_cap(db, cfg, uncapped_action_rate);
+    let channel = super::channel::cycle(db, cfg, uncapped_action_rate);
+    let use_rate = channel.map_or(uncapped_action_rate, |cycle| 1.0 / cycle.cycle_time);
+    let cooled = apply_cooldown_cap(db, cfg, use_rate);
     let ticked = apply_server_tick_cap(db, cfg, cooled);
     ActionRateTerms {
         base: input.base_action_rate,
@@ -487,6 +494,7 @@ fn use_rate_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> ActionR
         ticked,
         uses: round(ticked),
         rain: None,
+        channel,
         periodic: None,
         value: round(ticked),
     }

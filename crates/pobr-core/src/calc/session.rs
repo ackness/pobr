@@ -937,6 +937,18 @@ impl CalculationSession {
         super::rain::rain_hits(db, cfg, uses).map(|rain| rain.summary())
     }
 
+    /// The selected channel's timing approximation, including its stage default
+    /// and cap. The same count scales damage and the time to reach those stages.
+    pub fn channel(&self) -> Option<super::channel::ChannelCycle> {
+        let env = &self.env;
+        let input = perform::player_input(env);
+        let hand = perform::main_hand_scope(env);
+        let (cfg, input) = hand
+            .as_ref()
+            .map_or((&env.cfg, &input), |(cfg, input)| (cfg, input));
+        super::offence::action_rate_terms(&env.player.mod_db, cfg, input).channel
+    }
+
     /// Diagnostic helper: lists every modifier named `name` in the player
     /// modDB (including ones that don't match cfg), for parity debugging to
     /// check each source's contribution.
@@ -983,7 +995,23 @@ impl CalculationSession {
                     "Duration",
                 ]
             }
-            "ActionRate" => return super::skill_use_time::speed_names_for(&self.env.cfg),
+            "ActionRate" => {
+                let mut names = super::skill_use_time::speed_names_for(&self.env.cfg);
+                if self.env.player.mod_db.flag(&self.env.cfg, "ChannelCycle") {
+                    names.extend(
+                        [
+                            "ChannelFixedAttackTime",
+                            "ChannelMinimumTime",
+                            "ChannelStartLock",
+                            "ChannelMaxStages",
+                            "ChannelReleaseTime",
+                            "ChannelReleaseFraction",
+                        ]
+                        .map(ModName::from),
+                    );
+                }
+                return names;
+            }
             "CritChance" => &["CriticalStrikeChance"],
             "CritMultiplier" => &["CriticalStrikeMultiplier"],
             "HitChance" => &["Accuracy"],

@@ -94,6 +94,8 @@ fn magma_barrier_increases_block_chance() {
 
 /// Shield bashes use their own attack time and each complete five points
 /// of the shield's defence, never the main-hand weapon or unarmed damage.
+/// Raise Shield assumes a blockable hit arrives whenever the bash can be used;
+/// its 250 ms minimum raise and 35 ms release do not determine bash frequency.
 #[test]
 fn shield_bashes_use_the_shield_source_and_skill_attack_time() {
     let data = data();

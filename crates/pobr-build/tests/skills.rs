@@ -103,5 +103,7 @@ mod line_usage;
 #[path = "skills/uhtred_omen.rs"]
 mod uhtred_omen;
 
+#[path = "skills/channel.rs"]
+mod channel;
 #[path = "skills/unique_lines.rs"]
 mod unique_lines;

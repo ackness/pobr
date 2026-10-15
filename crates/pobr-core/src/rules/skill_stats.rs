@@ -239,6 +239,44 @@ pub fn crushes_on_hit(stat: &str) -> bool {
 /// leaves the stat to the extracted stat map.
 pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
     match stat {
+        "base_minimum_channel_time_ms" => Some(vec![Modifier::number(
+            "ChannelMinimumTime",
+            ModType::Base,
+            value / 1000.0,
+        )]),
+        "channel_start_lock_cancelling_of_attack_time_%" => Some(vec![Modifier::number(
+            "ChannelStartLock",
+            ModType::Base,
+            value,
+        )]),
+        "channel_end_duration_as_%_of_attack_time" => Some(vec![Modifier::number(
+            "ChannelReleaseFraction",
+            ModType::Base,
+            value,
+        )]),
+        "channel_skill_end_animation_duration_override_ms" => Some(vec![Modifier::number(
+            "ChannelReleaseTime",
+            ModType::Base,
+            value / 1000.0,
+        )]),
+        "channelled_slam_max_stages" | "detonating_arrow_max_number_of_stages" => {
+            Some(vec![Modifier::number(
+                "ChannelMaxStages",
+                ModType::Base,
+                value,
+            )])
+        }
+        // "40% more Damage with Hits for each stage"; not ailment damage.
+        "channelled_slam_damage_+%_final_per_stage" => Some(vec![
+            Modifier::number("Damage", ModType::More, value)
+                .with_keyword_flags(KeywordFlags::HIT)
+                .with_tag(ModTag::multiplier(crate::calc::channel::STAGES, 1.0, None)),
+        ]),
+        "detonating_arrow_all_damage_%_to_gain_as_fire_per_stage" => Some(vec![
+            Modifier::number("DamageGainAsFire", ModType::Base, value)
+                .with_tag(ModTag::multiplier(crate::calc::channel::STAGES, 1.0, None)),
+        ]),
+
         // Dark Pact adds a percentage of the target skeleton's maximum Life.
         "skeletal_chains_aoe_%_health_dealt_as_chaos_damage" => Some(vec![Modifier::number(
             "DarkPactLifeAsChaos",

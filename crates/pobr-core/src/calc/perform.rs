@@ -81,6 +81,7 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // Must run after env_finalize (buff/flask sources already merged) and before aggregation.
     apply_projectile_speed_to_damage(env);
 
+    super::channel::resolve_stages(&env.player.mod_db, &mut env.cfg);
     super::flameblast::configure(&env.player.mod_db, &mut env.cfg);
 
     // Resolve charge overrides/defaults before per-charge modifiers expand.
