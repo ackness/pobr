@@ -18,7 +18,8 @@
 
 use pobr_data::catalog::buffs::{BuffDef, BuffModValue, BuffModeGate, Rounding};
 use pobr_data::catalog::value_expr::EffectTag;
-use pobr_data::modifier::{ModFlags, ModType};
+use pobr_data::modifier::{KeywordFlags, ModFlags, ModType};
+use pobr_data::skill::SkillTypes;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 use pobr_data::stat::StatId;
 
@@ -259,6 +260,10 @@ pub fn expand_misc_buffs(
         .conditions
         .entry("Combat".into())
         .or_insert(state.mode_combat);
+    let mut character_cfg = trigger_cfg.clone();
+    character_cfg.flags = ModFlags::NONE;
+    character_cfg.keyword_flags = KeywordFlags::NONE;
+    character_cfg.skill_types = SkillTypes::NONE;
     for def in defs {
         // Mode gate (doActorMisc's whole block at :510 is gated on
         // `env.mode_combat`).
@@ -266,8 +271,18 @@ pub fn expand_misc_buffs(
             BuffModeGate::Combat if !state.mode_combat => continue,
             BuffModeGate::Combat => {}
         }
-        // Trigger flag not set → zero output.
-        if !state.db.flag(&trigger_cfg, def.trigger_flag.as_str()) {
+        // Trigger flag not set → zero output. Having the buff is also stated
+        // as the condition of its name: "You have Unholy Might" and "Do you
+        // have Onslaught?" set `Condition:UnholyMight` / `Condition:Onslaught`.
+        // Only a condition that holds for the character counts, not one
+        // stated for a kind of damage: "30% chance to gain Onslaught for 4
+        // seconds on Hit" is `Condition:Onslaught` on hits, a chance the
+        // configuration decides.
+        let flag = def.trigger_flag.as_str();
+        if !state.db.flag(&trigger_cfg, flag)
+            && !state.db.flag(&character_cfg, &format!("Condition:{flag}"))
+            && !trigger_cfg.condition(flag)
+        {
             continue;
         }
         expand_one(state, def, registry, &mut out);
@@ -1026,6 +1041,39 @@ mod tests {
             .map(|m| m.value.as_number().unwrap())
             .collect();
         assert_eq!(values, vec![110.0, 27.0, 11.0]);
+    }
+
+    /// Having the buff is also stated as the condition of its name ("You
+    /// have Unholy Might", "Do you have Onslaught?"), but not a condition
+    /// stated for a kind of damage ("30% chance to gain Onslaught for 4
+    /// seconds on Hit").
+    #[test]
+    fn the_condition_of_the_buff_name_triggers_it() {
+        let expands = |db: &ModDb, cfg: &CalcConfig| {
+            !expand_misc_buffs(
+                &state(db, cfg, true),
+                &[onslaught_def()],
+                &HandlerRegistry::new(),
+            )
+            .mods
+            .is_empty()
+        };
+        let cfg = CalcConfig::new();
+        let mut db = ModDb::new();
+        db.add_mod(Modifier::flag("Condition:Onslaught"));
+        assert!(expands(&db, &cfg), "a source states the condition");
+
+        let mut on_hit = ModDb::new();
+        on_hit.add_mod(Modifier::flag("Condition:Onslaught").with_flags(ModFlags::HIT));
+        let hits = CalcConfig::new().with_flags(ModFlags::HIT | ModFlags::ATTACK);
+        assert!(!expands(&on_hit, &hits), "a chance on hit is configured");
+
+        let configured = CalcConfig::new().with_condition("Onslaught", true);
+        assert!(
+            expands(&ModDb::new(), &configured),
+            "the configured condition"
+        );
+        assert!(!expands(&ModDb::new(), &cfg));
     }
 
     /// UnholyMight: a literal Multiplier plus a per-multiplier-scaled value

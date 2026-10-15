@@ -716,7 +716,9 @@ local function tabulateIn(list, cfg, modType, name)
 			type = mod.type,
 			-- mod.value is the raw declared value (table-valued mods become a string)
 			rawValue = (type(mod.value) == "number") and mod.value or modLib.formatValue(mod.value),
-			evalValue = entry.value, -- post-EvalMod contribution actually counted
+			-- post-EvalMod contribution actually counted (a LIST entry's table
+			-- value is formatted like rawValue)
+			evalValue = (type(entry.value) == "table") and modLib.formatValue(entry.value) or entry.value,
 			source = mod.source,
 			flags = flagsStr(mod.flags, ModFlag),
 			keywordFlags = flagsStr(mod.keywordFlags, KeywordFlag),
@@ -805,7 +807,8 @@ end
 
 -- Ad-hoc stat tabulation: ORACLE_EXTRA_STATS="CooldownRecovery,Speed" dumps the
 -- per-source mod list for any vendor stat names (same shape as critModList),
--- keyed under extraModList. Zero cost when the env var is unset.
+-- keyed under extraModList, LIST mods (GemProperty and the like) included.
+-- Zero cost when the env var is unset.
 -- ORACLE_EXTRA_CFG=weapon1 (or weapon2) queries with that hand's attack
 -- configuration, which an attack's speed and damage are read with;
 -- ORACLE_EXTRA_CFG=player queries the character's own modDB with no
@@ -825,9 +828,9 @@ do
 		elseif hand and mainSkill and mainSkill[hand .. "Cfg"] then
 			cfg = mainSkill[hand .. "Cfg"]
 		end
-		extraModList = { INC = {}, MORE = {}, BASE = {}, OVERRIDE = {}, FLAG = {} }
+		extraModList = { INC = {}, MORE = {}, BASE = {}, OVERRIDE = {}, FLAG = {}, LIST = {} }
 		for name in names:gmatch("[^,%s]+") do
-			for _, mt in ipairs({ "BASE", "INC", "MORE", "OVERRIDE", "FLAG" }) do
+			for _, mt in ipairs({ "BASE", "INC", "MORE", "OVERRIDE", "FLAG", "LIST" }) do
 				local list = tabulateIn(source, cfg, mt, name)
 				if #list > 0 then extraModList[mt][name] = list end
 			end

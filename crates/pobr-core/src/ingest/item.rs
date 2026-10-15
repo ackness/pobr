@@ -220,7 +220,10 @@ const LOCAL_ADDED_DAMAGE: [&str; 8] = [
 /// Physical Life/Mana leech on a weapon belongs to that weapon's attacks,
 /// including the current "Leeches ... Physical Damage" spelling without
 /// an explicit Attack flag. Equipment outside weapon slots stays global.
-/// Accuracy/ImpaleChance/OnHit conversion remains outside this function.
+/// So does a weapon's Accuracy Rating: the game states it as the local stats
+/// `local_accuracy_rating` / `local_accuracy_rating_+%`, the rating of attacks
+/// with that weapon, which a shield attack (Shield Wall) does not use.
+/// ImpaleChance/OnHit conversion remains outside this function.
 ///
 /// A bare "Adds N to M <elemental/chaos> Damage" on a weapon is that weapon's
 /// own damage (vendor `Item.lua:2516` folds every damage type's flagless BASE
@@ -235,8 +238,9 @@ pub fn apply_weapon_hand_conditions(modifiers: &mut [Modifier], slot: EquipmentS
     for m in modifiers {
         let keyword_ok =
             m.keyword_flags == KeywordFlags::NONE || m.keyword_flags == KeywordFlags::ATTACK;
-        let local_crit =
-            m.name == ModName::from("CriticalStrikeMultiplier") && m.flags == ModFlags::NONE;
+        let local_crit = (m.name == ModName::from("CriticalStrikeMultiplier")
+            || m.name == ModName::from("Accuracy"))
+            && m.flags == ModFlags::NONE;
         let local_leech = (m.name == ModName::from("PhysicalDamageLifeLeech")
             || m.name == ModName::from("PhysicalDamageManaLeech"))
             && (m.flags == ModFlags::NONE || m.flags == ModFlags::ATTACK);

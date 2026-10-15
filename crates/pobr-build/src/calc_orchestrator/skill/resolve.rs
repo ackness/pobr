@@ -396,7 +396,136 @@ pub(crate) fn gem_property_bonuses(build: &Build, data: &BuildData) -> Vec<GemPr
         bonuses
             .extend(custom_modifier_lines(text).filter_map(|line| parse_gem_property_bonus(&line)));
     }
+    scale_slot_gem_property_bonuses(build, data, &mut bonuses);
     bonuses
+}
+
+/// A group bound to the weapon set the build is not using
+/// ([`SocketGroup::weapon_set`]), such as a Sigil of Power a staff of that
+/// set grants, is used with that set's weapons ([`Build::other_weapons`]):
+/// their "+N to Level of all Spell Skills" count for it and the levels and
+/// quality the weapons in use give don't. The difference goes into each gem
+/// of the group, so every reader of its level and quality sees it.
+///
+/// Returns `None` when no group is bound to the other set.
+pub(crate) fn apply_other_weapon_set_gem_bonuses(build: &Build, data: &BuildData) -> Option<Build> {
+    use crate::build::WeaponSet;
+    use pobr_data::item::EquipmentSlot::{Weapon1, Weapon2};
+    let other_set = match build.weapon_set {
+        WeaponSet::First => WeaponSet::Second,
+        WeaponSet::Second => WeaponSet::First,
+    };
+    let bound = |group: &SocketGroup| group.weapon_set == Some(other_set.number());
+    if !build.socket_groups.iter().any(bound) {
+        return None;
+    }
+    let mut swapped = build.clone();
+    for slot in [Weapon1, Weapon2] {
+        swapped.items.remove(&slot);
+        if let Some(item) = build.other_weapons.get(&slot) {
+            swapped.items.insert(slot, item.clone());
+        }
+    }
+    swapped.weapon_set = other_set;
+    let here = gem_property_bonuses(build, data);
+    let there = gem_property_bonuses(&swapped, data);
+    let mut adjusted = build.clone();
+    let mut any = false;
+    for group in adjusted
+        .socket_groups
+        .iter_mut()
+        .filter(|group| bound(group))
+    {
+        for gem in &mut group.gem_skills {
+            let skill_types = data
+                .granted_effects
+                .get(&gem.skill_id)
+                .map(|e| e.skill_types.as_slice())
+                .unwrap_or(&[]);
+            let total = |bonuses: &[GemPropertyBonus], kind| -> i64 {
+                bonuses
+                    .iter()
+                    .filter(|b| {
+                        b.kind == kind
+                            && gem_property_applies(
+                                b,
+                                data,
+                                skill_types,
+                                &gem.skill_id,
+                                gem.corrupted,
+                            )
+                    })
+                    .map(|b| i64::from(b.value))
+                    .sum()
+            };
+            let change = |kind| total(&there, kind) - total(&here, kind);
+            let level =
+                u32::try_from((i64::from(gem.gem_level) + change(GemPropertyKind::Level)).max(1))
+                    .unwrap_or(gem.gem_level);
+            let quality =
+                u32::try_from((i64::from(gem.quality) + change(GemPropertyKind::Quality)).max(0))
+                    .unwrap_or(gem.quality);
+            if level == gem.gem_level && quality == gem.quality {
+                continue;
+            }
+            if group.active_skill_id.as_deref() == Some(gem.skill_id.as_str()) {
+                group.active_gem_level = Some(level);
+                group.active_gem_quality = Some(quality);
+            }
+            gem.gem_level = level;
+            gem.quality = quality;
+            any = true;
+        }
+    }
+    any.then_some(adjusted)
+}
+
+/// "25% increased bonuses gained from Equipped Rings and Amulets" (the
+/// Ritualist's Mystic Attunement) scales an amulet's "+4 to Level of all
+/// Spell Skills" as it scales the item's other lines: to 5. A level or a
+/// quality is a whole number, so the scaled value rounds down, but a level
+/// bonus reduced this way stays at least 1: under Instruments of Power's "50%
+/// reduced bonuses gained from Equipped Focus" a focus's +1 is still +1 and
+/// its +2 is +1 ([Instruments of Power](https://www.poe2wiki.net/wiki/Instruments_of_Power)).
+fn scale_slot_gem_property_bonuses(
+    build: &Build,
+    data: &BuildData,
+    bonuses: &mut [GemPropertyBonus],
+) {
+    use pobr_data::item::EquipmentSlot::{Amulet, Ring1, Ring2, Ring3, Weapon2};
+    let slot_bonuses = |slot| -> Vec<GemPropertyBonus> {
+        build.items.get(&slot).map_or_else(Vec::new, |item| {
+            item.implicit_texts
+                .iter()
+                .chain(&item.modifier_texts)
+                .chain(&item.enchant_texts)
+                .filter_map(|text| parse_gem_property_bonus(text))
+                .collect()
+        })
+    };
+    // Reading the scales parses every passive, so look for a bonus first.
+    if [Amulet, Ring1, Ring2, Ring3, Weapon2]
+        .into_iter()
+        .all(|slot| slot_bonuses(slot).is_empty())
+    {
+        return;
+    }
+    let mut scaled = vec![false; bonuses.len()];
+    for (slot, inc) in super::super::item::mirror::slot_bonus_effect_scales(build, data) {
+        for bonus in slot_bonuses(slot) {
+            let Some(index) = (0..bonuses.len()).find(|&i| !scaled[i] && bonuses[i] == bonus)
+            else {
+                continue;
+            };
+            scaled[index] = true;
+            let floor = match bonus.kind {
+                GemPropertyKind::Level => bonus.value.min(1),
+                GemPropertyKind::Quality => 0,
+            };
+            bonuses[index].value =
+                ((f64::from(bonus.value) * (1.0 + inc)).floor().max(0.0) as u32).max(floor);
+        }
+    }
 }
 
 /// Whether the build carries the GemlingQuality flag (matching vendor

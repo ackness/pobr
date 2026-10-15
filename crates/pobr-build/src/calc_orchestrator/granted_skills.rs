@@ -223,13 +223,38 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
 /// level ([`SocketGroup::granted_level`]). The Lament, Portent and Absent
 /// Amulets also waive the Spirit their granted skill reserves as a gem
 /// ([`BuildData::reservation_free_grant_bases`];
-/// [`SocketGroup::reservation_free_skill`]).
+/// [`SocketGroup::reservation_free_skill`]). A skill a weapon of the other
+/// weapon set grants ([`Build::other_weapons`]) is bound to that set
+/// ([`SocketGroup::weapon_set`]): the character swaps to it to use the skill.
 ///
 /// Returns `None` when no group is a skill the equipment grants.
 pub(crate) fn mark_item_granted_skills(build: &Build, data: &BuildData) -> Option<Build> {
-    // (slot, name, level, whether the item waives the skill's reservation)
-    let mut grants: Vec<(String, String, Option<u32>, bool)> = Vec::new();
-    for (slot, item) in build.equipped_items() {
+    /// One "Grants Skill" line of an item.
+    struct Grant {
+        slot: String,
+        name: String,
+        level: Option<u32>,
+        /// The item waives the skill's reservation.
+        reservation_free: bool,
+        /// The weapon set it binds the skill to.
+        set: Option<u8>,
+    }
+    // A weapon of the other set grants a skill used with that set.
+    let other_set = match build.weapon_set {
+        crate::build::WeaponSet::First => 2,
+        crate::build::WeaponSet::Second => 1,
+    };
+    let mut other_weapons: Vec<_> = build.other_weapons.iter().collect();
+    other_weapons.sort_by_key(|(slot, _)| slot.id());
+    let mut grants: Vec<Grant> = Vec::new();
+    let equipped = build
+        .equipped_items()
+        .into_iter()
+        .map(|(slot, item)| (slot, item, None));
+    let other = other_weapons
+        .into_iter()
+        .map(|(slot, item)| (*slot, item, Some(other_set)));
+    for (slot, item, set) in equipped.chain(other) {
         let reservation_free = data
             .reservation_free_grant_bases
             .contains(&item.base.to_string());
@@ -240,7 +265,13 @@ pub(crate) fn mark_item_granted_skills(build: &Build, data: &BuildData) -> Optio
             .chain(&item.enchant_texts)
         {
             if let Some((name, level)) = parse_grants_skill(text) {
-                grants.push((normalized_slot(slot.id()), name, level, reservation_free));
+                grants.push(Grant {
+                    slot: normalized_slot(slot.id()),
+                    name,
+                    level,
+                    reservation_free,
+                    set,
+                });
             }
         }
     }
@@ -252,7 +283,14 @@ pub(crate) fn mark_item_granted_skills(build: &Build, data: &BuildData) -> Optio
     let mut marked = build.clone();
     let mut claimed: HashSet<usize> = HashSet::new();
     let mut any = false;
-    for (slot, name, level, reservation_free) in grants {
+    for Grant {
+        slot,
+        name,
+        level,
+        reservation_free,
+        set,
+    } in grants
+    {
         let Some(&skill_id) = by_name.get(&name) else {
             continue;
         };
@@ -260,6 +298,7 @@ pub(crate) fn mark_item_granted_skills(build: &Build, data: &BuildData) -> Optio
             is_item_skill_source(group.source.as_deref())
                 && group.slot.as_deref().map(normalized_slot).as_deref() == Some(slot.as_str())
                 && group.active_skill_id.as_deref() == Some(skill_id)
+                && (group.weapon_set == Some(other_set)) == (set == Some(other_set))
         };
         let listed = |group: &SocketGroup| {
             group.from_gem()
@@ -291,6 +330,10 @@ pub(crate) fn mark_item_granted_skills(build: &Build, data: &BuildData) -> Optio
             }
             if reservation_free {
                 group.reservation_free_skill = Some(skill_id.to_string());
+                any = true;
+            }
+            if set.is_some() && group.weapon_set != set {
+                group.weapon_set = set;
                 any = true;
             }
         }

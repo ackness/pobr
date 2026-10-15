@@ -70,6 +70,21 @@
       "build": "warrior-titan-his-scattering-calamity-686e624e7ff5",
       "stats": ["SpiritUnreserved"],
       "reason": "the Cast on Critical an Absent Amulet grants reserves no Spirit; the pinned PoB2 reserves nothing for this build (docs/maintainer-guide.md, Absent Amulet)"
+    },
+    {
+      "build": "mercenary-gemling-legionnaire-frostbolt-42f790c0f9ba",
+      "stats": ["SpiritUnreserved"],
+      "reason": "the Blink the body armour grants and the group supporting it are one skill reserving once, and the Cast on Critical an Absent Amulet grants reserves no Spirit (docs/maintainer-guide.md, companions and granted skills)"
+    },
+    {
+      "build": "witch-abyssal-lich-bonestorm-be0d16c86268",
+      "stats": ["TotalDPS", "CombinedDPS", "ActionRate", "TotalDotDPS", "IgniteDPS"],
+      "reason": "Bonestorm fires every spike a channel conjures, not one hit per minimum channel time (docs/maintainer-guide.md, Bonestorm)"
+    },
+    {
+      "build": "witch-blood-mage-impending-doom-c0dcbc68022c",
+      "stats": ["TotalDPS", "CombinedDPS", "ActionRate"],
+      "reason": "Doedre's Undoing spawns a Witchtoad every 0.25 seconds whatever the cast speed (docs/maintainer-guide.md, Doedre's Undoing)"
     }
   ]
 }

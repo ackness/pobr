@@ -135,6 +135,19 @@ Implicits: 0
         life("1234", 2, "Allocates Future Gift", "unknown_tree"),
         baseline,
     );
+    // A jewel allocates a socket as an item does (a Megalomaniac's
+    // "Allocates Zarokh's Gift").
+    let by_jewel = xml("1234", 2, "", "future_tree").replace(
+        "Allocates 2 Sinister Jewel sockets",
+        "Allocates 2 Sinister Jewel sockets\nAllocates Future Gift",
+    );
+    close(
+        run(&pobr_build::parse_build(&by_jewel).unwrap(), &data)
+            .output()
+            .life
+            - baseline,
+        81.0 * life_scale,
+    );
     // An inactive tree can reuse the same socket with another item. Neither
     // XML calculation nor the editable view may mix its jewels into this set.
     let first = xml("1234", 1, "", "future_tree").replace(
@@ -1098,4 +1111,86 @@ fn attributes_per_socket_filled_grant_life_and_mana() {
         per_socket_mana - mana,
         attribute * constants.mana_per_intelligence,
     );
+}
+
+/// A weapon's "+N to Accuracy Rating" is the game's local stat
+/// `local_accuracy_rating`: the rating of attacks with that weapon. Shield
+/// Wall attacks with the shield, so the mace's rating is not its own.
+#[test]
+fn weapon_accuracy_is_the_rating_of_attacks_with_that_weapon() {
+    let data = data();
+    let with_mace = |mods: &[&str], skill: &str| {
+        let build = build(skill)
+            .set_item(EquipmentSlot::Weapon1, item("Wooden Club", mods))
+            .set_item(EquipmentSlot::Weapon2, item("Splintered Tower Shield", &[]));
+        run(&build, &data).output().accuracy
+    };
+    let accurate = ["+500 to Accuracy Rating"];
+    close(
+        with_mace(&accurate, "ShieldWallPlayer"),
+        with_mace(&[], "ShieldWallPlayer"),
+    );
+    assert!(with_mace(&accurate, "AxeChopPlayer") > with_mace(&[], "AxeChopPlayer"));
+}
+
+/// "Spells which cost Life Gain 87% of Damage as Extra Physical Damage"
+/// (`spells_gain_%_physical_damage_if_they_cost_life`): a spell costing Mana
+/// gains nothing.
+#[test]
+fn spells_that_cost_mana_gain_nothing_from_a_life_cost_line() {
+    let data = data();
+    let fireball = |mods: &[&str]| {
+        let build =
+            build("FireballPlayer").set_item(EquipmentSlot::Ring1, item("Sapphire Ring", mods));
+        let session = run(&build, &data);
+        assert!(session.unsupported_modifier_texts().is_empty());
+        session.output().dps
+    };
+    close(
+        fireball(&["Spells which cost Life Gain 87% of Damage as Extra Physical Damage"]),
+        fireball(&[]),
+    );
+}
+
+/// "Defend against Hits as though you had 1% more Armour per 1% current
+/// Energy Shield" (`armour_+%_final_vs_hits_per_1%_current_energy_shield`):
+/// at full Energy Shield, Armour counts double against hits.
+#[test]
+fn armour_counts_more_against_hits_per_current_energy_shield() {
+    let data = data();
+    let reduction = |mods: &[&str]| {
+        let build = build("FireballPlayer")
+            .set_item(
+                EquipmentSlot::Ring1,
+                item("Sapphire Ring", &["+50 to Armour"]),
+            )
+            .set_item(EquipmentSlot::Ring2, item("Sapphire Ring", mods));
+        let session = run(&build, &data);
+        assert!(session.unsupported_modifier_texts().is_empty());
+        session.output().physical_damage_reduction
+    };
+    let more = reduction(&[
+        "Defend against Hits as though you had 1% more Armour per 1% current Energy Shield",
+    ]);
+    let plain = reduction(&[]);
+    assert!(more > plain, "{more} > {plain}");
+}
+
+/// "You have Unholy Might" (`have_unholy_might`): the built-in buff, "Gain
+/// 30% of Damage as extra Chaos Damage", is the character's.
+#[test]
+fn an_item_granting_unholy_might_gains_chaos_damage() {
+    let data = data();
+    let fireball = |mods: &[&str]| {
+        let build =
+            build("FireballPlayer").set_item(EquipmentSlot::Ring1, item("Sapphire Ring", mods));
+        let session =
+            calculate_with_data_session(&build, &data, &DataOrchestratorOptions::default())
+                .unwrap();
+        assert!(session.unsupported_modifier_texts().is_empty());
+        session.output().dps
+    };
+    let mighty = fireball(&["You have Unholy Might"]);
+    let plain = fireball(&[]);
+    assert!(mighty > plain * 1.2, "{mighty} against {plain}");
 }

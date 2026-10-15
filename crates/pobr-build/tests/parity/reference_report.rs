@@ -331,10 +331,26 @@ const BASELINES: [Baseline; 3] = [
     // Then 56 builds and 3055 rows: the holdout set of 2026-10-15 joined, at
     // the 13 builds and 988 rows it was measured at, once the next holdout
     // was fetched.
+    //
+    // Then 61 builds and 3063 rows: a jewel's "Allocates" opens the socket it
+    // names; "increased bonuses gained from Equipped Rings and Amulets"
+    // scales their gem levels; a group bound to the other weapon set takes
+    // its gem levels from that set's weapons; "You have Unholy Might" grants
+    // the buff; a weapon's Accuracy Rating is its own attacks' (Shield Wall
+    // attacks with the shield); "Spells which cost Life" asks for a Life
+    // cost; "Defend against Hits as though you had 1% more Armour per 1%
+    // current Energy Shield"; Oil Barrage's Oil applies Exposure. Rows that
+    // went the other way, against a reference the game proves wrong: the
+    // Titan (His Scattering Calamity, 686e) casts its main skill from the
+    // staff of weapon set 1 while the item set holds set 2. The skill is used
+    // holding that staff, so the calculation now uses set 1's weapons and
+    // passives, as the pinned PoB2 does; the reference, exported with set 2,
+    // gives its ActionRate, critical chance and bonus, Mana and EHP with the
+    // other staff (nine rows, now agreeing with the pinned PoB2).
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
-        dps_builds: 56,
-        agreeing_rows: 3055,
+        dps_builds: 61,
+        agreeing_rows: 3063,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //

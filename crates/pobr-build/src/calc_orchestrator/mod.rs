@@ -480,10 +480,15 @@ pub(crate) fn prepared_build_view<'a>(
     // A skill an item grants is used at the level the character meets the
     // requirements of, which depends on the attributes its items and passives
     // give it: settled from the view without its skills.
-    match scale_granted_skills(&view, data, || {
+    let view = match scale_granted_skills(&view, data, || {
         attributes_without_skills(&view, data, options)
     }) {
         Some(scaled) => Cow::Owned(scaled),
+        None => view,
+    };
+    // A group bound to the other weapon set takes that set's weapons' levels.
+    match skill::resolve::apply_other_weapon_set_gem_bonuses(&view, data) {
+        Some(adjusted) => Cow::Owned(adjusted),
         None => view,
     }
 }

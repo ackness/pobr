@@ -1044,8 +1044,16 @@ const BASELINE_DEF_HIT10: usize = 449; // 449/450: every cell but the one above 
 //    Wolf Pack no longer wrongly picks up the weapon's `12% reduced Attack
 //    Speed` (0.88->1.00). Zero regression across all 18 builds' per-slot
 //    diffs (all hits).
-const BASELINE_OFF_HIT5: usize = 80; // #15 full marks 80/80 (78 after #10; 76 after #8; 73 after merging #6+#7; migration baseline: 39)
-const BASELINE_OFF_HIT10: usize = 80; // #15 full marks 80/80 (78 after #10; 76 after #8; migration baseline: 47; 0.5.0=74)
+// Lowered to 79/79 on purpose: the Disciple of Varashta (Comet) wields a
+// staff and a focus through Instruments of Power, "50% reduced bonuses gained
+// from Equipped Focus". The focus's "+2 to Level of all Spell Skills" counts
+// +1 (stats on the focus are granted at half their value, a level bonus no
+// lower than 1: https://www.poe2wiki.net/wiki/Instruments_of_Power), so its
+// spells are a level below the PoB2 reference, which halves the focus's
+// other lines but not its gem levels. Its TotalDPS is 0.86x; its damage over time and CombinedDPS
+// follow (see BASELINE_DOT_HIT5); every other cell still agrees.
+const BASELINE_OFF_HIT5: usize = 79; // 80/80 before the focus's gem levels were halved (#15 full marks; 78 after #10; 76 after #8; 73 after merging #6+#7; migration baseline: 39)
+const BASELINE_OFF_HIT10: usize = 79; // 80/80 before the focus's gem levels were halved (#15 full marks; 78 after #10; 76 after #8; migration baseline: 47; 0.5.0=74)
 
 /// Independent baseline for the DoT three columns (TotalDotDPS/WithDotDPS/
 /// CombinedDPS), measured when they were added (a separate constant for the
@@ -1212,17 +1220,22 @@ const BASELINE_OFF_HIT10: usize = 80; // #15 full marks 80/80 (78 after #10; 76 
 // within band (21659->21621, still 1.00x). Curse-slot ownership is unchanged
 // per build (druid's single slot still goes to Temporal Chains, EW still
 // doesn't get a slot).
-const BASELINE_DOT_HIT5: usize = 37; // #15 full marks 37/37 (gemling TotalDotDPS enters the band following the crit fix; #10+#11 merged: 36; migration baseline: 9; 0.5.0=26)
-const BASELINE_DOT_HIT10: usize = 37; // #15 full marks 37/37 (#10+#11 merged: 36; migration baseline: 11; 0.5.0=28)
+// Lowered to 35/35 with BASELINE_OFF_HIT5: the Disciple of Varashta's
+// TotalDotDPS (0.84x) and CombinedDPS (0.86x) follow its spells a level below
+// the reference (see the note above BASELINE_OFF_HIT5).
+const BASELINE_DOT_HIT5: usize = 35; // 37/37 before the focus's gem levels were halved (#15 full marks; gemling TotalDotDPS enters the band following the crit fix; #10+#11 merged: 36; migration baseline: 9; 0.5.0=26)
+const BASELINE_DOT_HIT10: usize = 35; // 37/37 before the focus's gem levels were halved (#15 full marks; #10+#11 merged: 36; migration baseline: 11; 0.5.0=28)
 
 /// Panel offence is compared with pinned PoB2 COMBAT references for the same
 /// 80 populated cells as the EFFECTIVE exports. The old cross-convention
 /// comparison measured 45/47 after #15 and rewarded leaked boss bonuses.
 /// With proper COMBAT references, the pre-fix engine measures 65/73 and the
 /// boss-rarity fix measures 69/79. Neither EFFECTIVE references nor its gates
-/// change; the panel gate is raised from 45/47 to the verified 69/79.
+/// change; the panel gate is raised from 45/47 to the verified 69/79. The
+/// @10% count is 78 since the Disciple of Varashta's focus counts half its
+/// gem levels (see [`BASELINE_OFF_HIT5`]).
 const PANEL_OFF_HIT5: usize = 69;
-const PANEL_OFF_HIT10: usize = 79;
+const PANEL_OFF_HIT10: usize = 78;
 
 /// Regression gate: the aggregate hit count must not fall below the recorded baseline ([`BASELINE_*`]). CI gate, prevents changes from regressing parity.
 #[test]

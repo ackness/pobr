@@ -63,12 +63,20 @@ pub(crate) fn resolve_granted_socket_jewels(build: &Build, data: &BuildData) -> 
         .take(count)
         .map(|(_, skill)| skill)
         .collect();
-    for text in build.items.values().flat_map(|item| {
-        item.implicit_texts
-            .iter()
-            .chain(&item.modifier_texts)
-            .chain(&item.enchant_texts)
-    }) {
+    // A jewel allocates a socket the same way an item does: a Megalomaniac's
+    // "Allocates Zarokh's Gift" opens that Sinister socket.
+    for text in build
+        .items
+        .values()
+        .chain(build.limbs.values())
+        .chain(build.jewel_items())
+        .flat_map(|item| {
+            item.implicit_texts
+                .iter()
+                .chain(&item.modifier_texts)
+                .chain(&item.enchant_texts)
+        })
+    {
         if let Some(name) = text.trim().strip_prefix("Allocates ")
             && let Some(node) = nodes
                 .values()

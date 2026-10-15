@@ -510,6 +510,18 @@ pub fn expand_misc_buffs(env: &mut Env) {
         &pending,
         &env.buff_handler_registry,
     );
+    // A buff's own multiplier (Unholy Might's magnitude, 100, that its "Gain
+    // 30% of Damage as Extra Chaos Damage" is counted per) joins the
+    // multiplier table, which was filled before the buffs expanded.
+    for modifier in &expansion.mods {
+        if modifier.mod_type == ModType::Base
+            && modifier.tags.is_empty()
+            && let Some(var) = modifier.name.as_str().strip_prefix("Multiplier:")
+            && let Some(value) = modifier.value.as_number()
+        {
+            *env.cfg.multipliers.entry(var.to_string()).or_insert(0.0) += value;
+        }
+    }
     env.player.mod_db.add_list(expansion.mods);
     env.enemy.mod_db.add_list(expansion.enemy_mods);
     for condition in expansion.conditions_set {

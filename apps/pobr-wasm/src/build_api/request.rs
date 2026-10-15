@@ -18,6 +18,7 @@ use pobr_core::calc::{CalculationSession, MinimalInput};
 use pobr_core::item_text::parse_pob_xml_item;
 use pobr_core::rules::config_interpreter::ConfigInputValue;
 use pobr_data::build_config::CustomModifierBlock;
+use pobr_data::item::EquipmentSlot;
 use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::{AttributeChoice, NodeId};
 use serde::{Deserialize, Serialize};
@@ -136,9 +137,10 @@ pub struct SlotItemInput {
 #[derive(Debug, Clone, Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct WeaponSwapInput {
-    /// The weapon set in use, 1 or 2; calculation reads only this field.
+    /// The weapon set in use, 1 or 2.
     pub(crate) active: u8,
-    /// The other set's weapons (export only).
+    /// The other set's weapons. A group bound to that set (a skill one of
+    /// them grants) is used with them.
     pub(crate) alternate_items: Vec<SlotItemInput>,
     /// The passives allocated in only one set, per set (export only).
     pub(crate) exclusive_nodes: [Vec<u32>; 2],
@@ -343,6 +345,26 @@ pub(crate) fn apply_request_overrides(
         build.weapon_set = WeaponSet::from_number(active).ok_or_else(|| {
             ApiError::bad_request(format!("weapon_swap.active must be 1 or 2, got {active}"))
         })?;
+        build.other_weapons.clear();
+        for item in &swap.alternate_items {
+            let slot = slot_from_id(&item.slot)
+                .map_err(|e| ApiError::bad_request(e).with_slot(item.slot.as_str()))?;
+            if !matches!(slot, EquipmentSlot::Weapon1 | EquipmentSlot::Weapon2) {
+                return Err(
+                    ApiError::bad_request("alternate_items must contain only weapons")
+                        .with_slot(item.slot.as_str()),
+                );
+            }
+            match parse_pob_xml_item(&localize_input_text(&item.text)) {
+                Ok(parsed) => {
+                    build.other_weapons.insert(slot, parsed);
+                }
+                Err(e) => issues.push(SlotIssue {
+                    slot: item.slot.clone(),
+                    message: format!("{e:?}"),
+                }),
+            }
+        }
     }
     if let Some(flasks) = &req.flasks {
         build.utility_slots.clear();

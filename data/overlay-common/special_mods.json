@@ -3545,6 +3545,57 @@
         "Modifiers to Maximum Fire Resistance also grant Maximum Cold and Lightning Resistance"
       ],
       "source_note": "Game stat modifiers_to_maximum_fire_resistance_apply_to_maximum_cold_and_lightning_resistance (Smith of Kitava's Forged in Flame): every modifier to Maximum Fire Resistance also adds its value to Maximum Cold and Lightning Resistance (calc::offence::resolve_resistance)."
+    },
+    {
+      "id": "armour_more_vs_hits_per_current_energy_shield",
+      "pattern": "defend against hits as though you had (\\d+)% more armour per 1% current energy shield",
+      "mods": [
+        {
+          "name": "ArmourDefense",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "CurrentEnergyShield",
+              "div": 1
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "armour-defence",
+      "examples": [
+        "Defend against Hits as though you had 1% more Armour per 1% current Energy Shield"
+      ],
+      "source_note": "Game stat armour_+%_final_vs_hits_per_1%_current_energy_shield: against hits, Armour counts as that much more per 1% of maximum Energy Shield the character currently has (the configured `CurrentEnergyShield` percentage, full by default). ArmourDefense is the share of extra Armour used against hits (calc::taken::effective_applied_armour)."
+    },
+    {
+      "id": "spells_that_cost_life_gain_physical",
+      "pattern": "spells which cost life gain (\\d+)% of damage as extra physical damage",
+      "mods": [
+        {
+          "name": "DamageGainAsPhysical",
+          "type": "BASE",
+          "value": "$1",
+          "flags": [
+            "Spell"
+          ],
+          "tags": [
+            {
+              "type": "StatThreshold",
+              "stat": "LifeCost",
+              "threshold": 1.0
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "cost",
+      "examples": [
+        "Spells which cost Life Gain 87% of Damage as Extra Physical Damage"
+      ],
+      "source_note": "Game stat spells_gain_%_physical_damage_if_they_cost_life: only a spell that costs Life gains the damage. A spell costs Life when its Life cost, after conversions, is at least 1: the engine's LifeCost stat, set before damage by calc::perform (as for spell_damage_with_spells_that_cost_life)."
     }
   ]
 }

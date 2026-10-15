@@ -68,6 +68,7 @@ pub struct GemSkillRef {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SocketGroup {
     /// Exclusive weapon-set binding (1/2); None follows the active item set.
+    /// A skill a weapon grants is bound to that weapon's set.
     pub weapon_set: Option<u8>,
     /// PoB `<Skill source>` (item-granted skills use `Item:<id>:<name>`). `None` means a
     /// regular skill group the user created manually; the orchestrator uses this to tell
@@ -392,6 +393,12 @@ pub struct Build {
     /// The weapon set in use; its weapons are the ones in `items`. Modifiers
     /// "while using Weapon Set 2" apply to it.
     pub weapon_set: WeaponSet,
+    /// The other weapon set's weapons (`Weapon1` / `Weapon2`). A group bound to
+    /// that set ([`SocketGroup::weapon_set`]), such as a skill one of these
+    /// weapons grants, is used with them: the character swaps to the set to
+    /// use it, so their "+N to Level of all Spell Skills" count for it and the
+    /// weapons in `items` don't.
+    pub other_weapons: HashMap<EquipmentSlot, Item>,
     /// Skill gem groups.
     pub socket_groups: Vec<SocketGroup>,
     /// Main skill group index (PoB `<Build mainSocketGroup>`, **1-based**, indexes
