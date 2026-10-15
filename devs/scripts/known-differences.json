@@ -215,6 +215,61 @@
       "build": "monk-martial-artist-ice-shot-71a879f43f2f",
       "stats": ["RageRegenRecovery"],
       "reason": "PoBR scales the Eternal Rage an Absent Amulet grants (\"Grants Skill: Level N Eternal Rage\") down to the level the character's attributes reach; PoB2 also keeps the plain gem group at the undowngraded level, and Rage regeneration follows the level (ceaseless_rage_base_rage_regeneration_per_minute, 300 at level 20) (docs/maintainer-guide.md, granted skills)"
+    },
+    {
+      "build": "druid-oracle-grim-pillars-0a7cf6c82619",
+      "stats": ["ReqStr", "ReqDex", "ReqInt"],
+      "reason": "the item's granted Purity of Ice 18 (42 Strength), Trinity 18 (75 Dexterity) and Blink 20 (157 Intelligence) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, granted skill requirements)"
+    },
+    {
+      "build": "monk-invoker-flicker-strike-e3b8bfa3a005",
+      "stats": ["ReqInt"],
+      "reason": "the item's granted Cast on Critical 19 (147 Intelligence) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, granted skill requirements)"
+    },
+    {
+      "build": "warrior-warbringer-shield-wall-1e4e329e5e5c",
+      "stats": ["ReqInt"],
+      "reason": "the item's granted Time of Need 20 (48 Intelligence) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, granted skill requirements)"
+    },
+    {
+      "build": "sorceress-chronomancer-reap-3875ffe5d15e",
+      "stats": ["ReqDex"],
+      "reason": "the item's granted Trinity 20 (86 Dexterity) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, granted skill requirements)"
+    },
+    {
+      "build": "sorceress-disciple-of-varashta-navira-the-last-mirage-538d2b675299",
+      "stats": ["ReqStr"],
+      "reason": "the item's granted Wolf Pack 18 (75 Strength) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, granted skill requirements)"
+    },
+    {
+      "build": "sorceress-disciple-of-varashta-navira-the-last-mirage-36b7d6c385c7",
+      "stats": ["ReqStr"],
+      "reason": "the item's granted Wolf Pack 17 (70 Strength) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, granted skill requirements)"
+    },
+    {
+      "build": "monk-invoker-grim-pillars-5dda2982b793",
+      "stats": ["ReqDex"],
+      "reason": "the item's granted Trinity 20 (86 Dexterity) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, granted skill requirements)"
+    },
+    {
+      "build": "mercenary-gemling-legionnaire-twister-a479eff2b320",
+      "stats": ["ReqStr"],
+      "reason": "the item's granted Eternal Rage 20 (157 Strength before global gem modifiers) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, granted skill requirements)"
+    },
+    {
+      "build": "witch-blood-mage-impending-doom-add19135df93",
+      "stats": ["ReqStr"],
+      "reason": "the item's granted Wolf Pack 20 (86 Strength) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, granted skill requirements)"
+    },
+    {
+      "build": "huntress-spirit-walker-companion-zekoa-the-headcrusher-e071351f645d",
+      "stats": ["ReqStr", "ReqInt"],
+      "reason": "The Vertex's Equipment has no Attribute Requirements (game stat global_equipment_no_attribute_requirements) removes equipment requirements, including weapons; PoB2 leaves this line out (docs/maintainer-guide.md, The Vertex)"
+    },
+    {
+      "build": "witch-blood-mage-impending-doom-add19135df93",
+      "stats": ["ReqDex"],
+      "reason": "The Vertex's Equipment has no Attribute Requirements (game stat global_equipment_no_attribute_requirements) removes equipment requirements, including weapons; PoB2 leaves this line out (docs/maintainer-guide.md, The Vertex)"
     }
   ]
 }

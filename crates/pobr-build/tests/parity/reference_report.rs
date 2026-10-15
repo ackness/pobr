@@ -411,7 +411,8 @@ const BASELINES: [Baseline; 3] = [
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
         dps_builds: 58,
-        agreeing_rows: 5774,
+        // Local flat requirements are added after base requirement conversion (+3 rows).
+        agreeing_rows: 5777,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
@@ -457,7 +458,8 @@ const BASELINES: [Baseline; 3] = [
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
         dps_builds: 18,
-        agreeing_rows: 1906,
+        // Measured only: local flat requirements follow base conversion (+1 row).
+        agreeing_rows: 1907,
     },
 ];
 
