@@ -111,5 +111,8 @@ mod uhtred_omen;
 mod channel;
 #[path = "skills/unique_lines.rs"]
 mod unique_lines;
+
+#[path = "skills/attribute_requirements.rs"]
+mod attribute_requirements;
 #[path = "skills/unique_lines_2.rs"]
 mod unique_lines_2;

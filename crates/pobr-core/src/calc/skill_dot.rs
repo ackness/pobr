@@ -155,9 +155,8 @@ pub struct SkillDotInputs {
     /// The skill's effective rate (actions/s, after the server tick cap;
     /// PoB2 `output.Speed` -- the instance generation rate for the DotCanStack branch).
     pub speed: f64,
-    /// Skill duration (seconds; PoB2 `output.Duration`). 0 means the
-    /// orchestration layer hasn't wired up duration, so the DotCanStack
-    /// branch conservatively degenerates to a single instance.
+    /// Resolved skill duration (seconds). With no duration, the DotCanStack
+    /// branch conservatively falls back to one instance.
     pub duration: f64,
     /// Hit DPS (PoB2 `baseDPS = output.TotalDPS`, the base for the merge family).
     pub base_dps: f64,

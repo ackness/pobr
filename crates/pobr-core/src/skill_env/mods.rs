@@ -823,3 +823,46 @@ pub fn data_mapped_stat_modifiers(
         set_key,
     )
 }
+
+/// The CostTypes channel is already divided into points or percent per use
+/// or per second. Mana is injected by the existing base-parameter adapter.
+pub fn additional_resource_cost_modifiers(costs: &[super::ResolvedCost]) -> Vec<Modifier> {
+    costs
+        .iter()
+        .filter_map(|cost| {
+            if cost.resource == "Mana" && !cost.per_second {
+                return None;
+            }
+            let key = cost.resource.replace("PerMinute", "PerSecond");
+            if !matches!(
+                key.as_str(),
+                "Life"
+                    | "ES"
+                    | "Ward"
+                    | "Rage"
+                    | "ManaPercent"
+                    | "LifePercent"
+                    | "ESPercent"
+                    | "WardPercent"
+                    | "UnreservedManaPercent"
+                    | "ManaPerSecond"
+                    | "LifePerSecond"
+                    | "ESPerSecond"
+                    | "WardPerSecond"
+                    | "RagePerSecond"
+                    | "ManaPercentPerSecond"
+                    | "LifePercentPerSecond"
+                    | "ESPercentPerSecond"
+            ) {
+                return None;
+            }
+            Some(
+                Modifier::number(format!("Skill{key}CostBase"), ModType::Base, cost.amount)
+                    .with_origin(ModifierSource::new(SourceId::new(
+                        SourceKind::SkillGem,
+                        format!("skill.{key}Cost"),
+                    ))),
+            )
+        })
+        .collect()
+}

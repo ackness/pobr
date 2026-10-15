@@ -80,6 +80,7 @@ use sources::SourceWriter;
 pub use sources::{LineFate, ReceivedLine};
 mod enemy_config;
 mod inject;
+mod requirements;
 use inject::*;
 
 /// The default exposure magnitude (matching PoB2 ConfigOptions.lua: each

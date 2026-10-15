@@ -1,0 +1,560 @@
+use pobr_core::calc::actor::{Actor, ActorBaseStats};
+use pobr_core::calc::env::Env;
+use pobr_core::calc::perform::perform;
+use pobr_core::calc::{HandSource, MinimalInput, WeaponBase, run_hand_passes};
+use pobr_core::{CalcConfig, ModDb, ModTag, Modifier, display_value};
+use pobr_data::prelude::*;
+
+#[test]
+fn damage_views_keep_mitigation_hit_chance_and_quantity_separate() {
+    let mut actor = Actor::new(
+        1,
+        ActorBaseStats {
+            hit_min: 100.0,
+            hit_max: 100.0,
+            action_rate: 2.0,
+            ..ActorBaseStats::default()
+        },
+    );
+    actor.mod_db.add_list(vec![
+        Modifier::number("QuantityMultiplier", ModType::Base, 3.0),
+        Modifier::number("RepeatCount", ModType::Base, 2.0),
+    ]);
+    let mut env = Env::new(actor);
+    env.cfg.mode_effective = true;
+    env.enemy.mod_db.add_list(vec![
+        Modifier::number("PhysicalDamageReduction", ModType::Base, 50.0),
+        Modifier::number("BlockChance", ModType::Base, 20.0),
+    ]);
+    perform(&mut env).unwrap();
+    let out = &env.player.output;
+    assert_eq!(out.total_hit_avg, 100.0);
+    assert_eq!(out.average_damage, 40.0);
+    assert_eq!(out.average_burst_damage, 120.0);
+    assert_eq!(out.quantity_multiplier, 3.0);
+    assert_eq!(out.dps, 240.0);
+    assert_eq!(out.hit_speed, 2.0);
+    assert_eq!(out.combined_avg, 240.0);
+    for stat in ["WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"] {
+        assert_eq!(display_value(out, stat), 240.0);
+    }
+}
+
+#[test]
+fn accuracy_and_damage_follow_each_hands_scope() {
+    let mut db = ModDb::new();
+    db.add_list(vec![
+        Modifier::number("Accuracy", ModType::Base, 1000.0),
+        Modifier::number("Accuracy", ModType::Inc, 100.0)
+            .with_tag(ModTag::condition("OffHandAttack", false)),
+        Modifier::flag("Condition:HitChanceCanExceed100"),
+    ]);
+    let cfg = CalcConfig::attack();
+    let input = MinimalInput {
+        enemy_evasion: 100.0,
+        ..MinimalInput::default()
+    };
+    let weapon = WeaponBase {
+        hit_min: 100.0,
+        hit_max: 100.0,
+        ..WeaponBase::default()
+    };
+    let out = run_hand_passes(
+        &db,
+        &ModDb::new(),
+        &cfg,
+        &[HandSource::main_hand(weapon), HandSource::off_hand(weapon)],
+        &input,
+        false,
+    );
+    assert_eq!(out.main_hand.as_ref().unwrap().accuracy, 1000.0);
+    assert_eq!(out.off_hand.as_ref().unwrap().accuracy, 2000.0);
+    assert!(out.combined.accuracy_hit_chance_uncapped > 100.0);
+    assert_eq!(out.combined.average_damage, 100.0);
+}
+
+#[test]
+fn ailment_total_damage_uses_its_effective_duration() {
+    let mut actor = Actor::new(
+        1,
+        ActorBaseStats {
+            hit_min: 100.0,
+            hit_max: 100.0,
+            action_rate: 2.0,
+            ..ActorBaseStats::default()
+        },
+    );
+    actor.mod_db.add_list(vec![
+        Modifier::number("PoisonChance", ModType::Base, 100.0),
+        Modifier::number("PoisonDuration", ModType::Inc, 100.0),
+    ]);
+    let mut env = Env::new(actor);
+    env.cfg = CalcConfig::spell().with_damage_type(DamageType::Chaos);
+    perform(&mut env).unwrap();
+    let out = &env.player.output;
+    assert!(out.poison_dps > 0.0);
+    assert_eq!(out.poison_damage, out.poison_dps * 4.0);
+    assert_eq!(out.with_poison_dps, out.dps + out.poison_stacked_dps);
+    assert_eq!(display_value(out, "PoisonDamage"), out.poison_damage);
+}
+
+#[test]
+fn skill_average_display_uses_damage_per_use_and_full_ailment_damage() {
+    let mut actor = Actor::new(
+        1,
+        ActorBaseStats {
+            hit_min: 100.0,
+            hit_max: 100.0,
+            action_rate: 2.0,
+            ..ActorBaseStats::default()
+        },
+    );
+    actor.mod_db.add_mod(Modifier::flag("ShowAverageDamage"));
+    actor
+        .mod_db
+        .add_mod(Modifier::number("PoisonChance", ModType::Base, 100.0));
+    let mut env = Env::new(actor);
+    env.cfg = CalcConfig::spell().with_damage_type(DamageType::Chaos);
+    perform(&mut env).unwrap();
+    let out = &env.player.output;
+    assert_eq!(out.average_damage, 100.0);
+    assert_eq!(out.dps, 200.0);
+    assert_eq!(out.combined_avg, out.average_damage + out.poison_damage);
+    assert_eq!(out.with_poison_dps, out.combined_avg);
+    assert_eq!(out.with_ignite_dps, out.average_damage);
+}
+
+#[test]
+fn flicker_burst_counts_consumed_charges_and_their_double_benefit() {
+    let mut actor = Actor::new(
+        1,
+        ActorBaseStats {
+            hit_min: 100.0,
+            hit_max: 100.0,
+            action_rate: 1.0,
+            ..ActorBaseStats::default()
+        },
+    );
+    for (stat, value) in [
+        ("flicker_strike_additional_flickers_from_power_charges", 2.0),
+        ("chance_%_to_double_effect_of_removing_charges", 50.0),
+    ] {
+        actor
+            .mod_db
+            .add_list(pobr_core::rules::skill_stats::skill_modifiers(stat, value).unwrap());
+    }
+    actor.mod_db.add_mod(Modifier::number(
+        "Multiplier:ExtraConsumablePowerCharges",
+        ModType::Base,
+        1.0,
+    ));
+    let mut env = Env::new(actor);
+    env.cfg = CalcConfig::spell().with_multiplier("PowerCharge", 3.0);
+    perform(&mut env).unwrap();
+    assert_eq!(env.player.output.average_burst_damage, 1300.0);
+}
+
+#[test]
+fn skill_data_durations_reach_each_scoped_output() {
+    use pobr_core::rules::stat_map_engine::StatMapCatalog;
+    use pobr_core::skill_env::{StatMapCtx, mapped_stat_modifiers};
+    use pobr_data::catalog::SkillDamageStat;
+    let catalog = StatMapCatalog::new(serde_json::from_str(r#"{
+        "global": {
+            "base_skill_effect_duration": { "div": 1000, "mods": [{"kind":"skill_data", "value":{"key":"duration"}}] },
+            "base_secondary_skill_effect_duration": { "div": 1000, "mods": [{"kind":"skill_data", "value":{"key":"durationSecondary"}}] },
+            "aura_duration": { "div": 1000, "mods": [{"kind":"skill_data", "value":{"key":"auraDuration"}}] },
+            "reserve_duration": { "div": 1000, "mods": [{"kind":"skill_data", "value":{"key":"reserveDuration"}}] }
+        }
+    }"#).unwrap());
+    let stats = [
+        ("base_skill_effect_duration", 4000.0),
+        ("base_secondary_skill_effect_duration", 2000.0),
+        ("aura_duration", 5000.0),
+        ("reserve_duration", 6000.0),
+    ]
+    .map(|(stat, value)| SkillDamageStat {
+        stat: stat.into(),
+        value,
+    });
+    let mut actor = Actor::new(1, ActorBaseStats::default());
+    actor.mod_db.add_list(mapped_stat_modifiers(
+        &mut StatMapCtx::data(Some(&catalog)),
+        &stats,
+        SourceKind::SkillGem,
+        "skill",
+        "DurationSkill",
+        None,
+    ));
+    actor.mod_db.add_list(vec![
+        Modifier::number("Duration", ModType::Inc, 50.0),
+        Modifier::number("Duration", ModType::Base, 1.0),
+        Modifier::number("Duration", ModType::Inc, 100.0).with_flags(ModFlags::ATTACK),
+        Modifier::number("PrimaryDuration", ModType::Inc, 50.0),
+        Modifier::number("SecondaryDuration", ModType::More, -50.0),
+    ]);
+    let mut env = Env::new(actor);
+    env.cfg = CalcConfig::spell();
+    perform(&mut env).unwrap();
+    let out = &env.player.output;
+    assert_eq!(out.duration, 10.032);
+    assert_eq!(out.duration_secondary, 2.277);
+    assert_eq!(out.aura_duration, 7.524);
+    assert_eq!(out.reserve_duration, 9.009);
+    for (id, expected) in [
+        ("Duration", 10.032),
+        ("DurationSecondary", 2.277),
+        ("AuraDuration", 7.524),
+        ("ReserveDuration", 9.009),
+    ] {
+        assert_eq!(display_value(out, id), expected);
+    }
+}
+
+#[test]
+fn swift_affliction_changes_skill_and_damaging_ailment_durations_once_each() {
+    use pobr_core::calc::ailment::ailment_duration;
+    use pobr_core::calc::skill_mechanics::skill_durations;
+    use pobr_core::rules::stat_map_engine::{MappedItem, MappedOutcome, StatMapCatalog, map_stat};
+    let catalog = StatMapCatalog::new(serde_json::from_str(r#"{
+        "global": { "support_swift_affliction_skill_effect_and_damaging_ailment_duration_+%_final": {
+            "mods": [
+                {"kind":"mod", "name":"Duration", "mod_type":"MORE"},
+                {"kind":"mod", "name":"DamagingAilmentDuration", "mod_type":"MORE"}
+            ]
+        } }
+    }"#).unwrap());
+    let MappedOutcome::Mapped(items) = map_stat(
+        &catalog,
+        "SupportSwiftAfflictionPlayerThree",
+        None,
+        "support_swift_affliction_skill_effect_and_damaging_ailment_duration_+%_final",
+        -30.0,
+    ) else {
+        panic!("duration stat must map")
+    };
+    let mut db = ModDb::new();
+    for item in items {
+        if let MappedItem::Modifier(modifier) = item {
+            db.add_mod(*modifier);
+        }
+    }
+    db.add_mod(Modifier::number(
+        "EnemyElementalAilmentDuration",
+        ModType::Inc,
+        10.0,
+    ));
+    db.add_mod(Modifier::number("SkillDurationBase", ModType::Base, 4.0));
+    let cfg = CalcConfig::spell();
+    assert_eq!(ailment_duration(AilmentType::Ignite, &db, &cfg), 3.08);
+    assert_eq!(ailment_duration(AilmentType::Poison, &db, &cfg), 1.4);
+    assert_eq!(skill_durations(&db, &ModDb::new(), &cfg).primary, 2.805);
+}
+
+#[test]
+fn stackable_skill_dot_uses_its_resolved_duration() {
+    let mut actor = Actor::new(
+        1,
+        ActorBaseStats {
+            action_rate: 3.0,
+            ..ActorBaseStats::default()
+        },
+    );
+    actor.mod_db.add_list(vec![
+        Modifier::number("SkillDurationBase", ModType::Base, 2.0),
+        Modifier::number("ChaosDot", ModType::Base, 10.0),
+        Modifier::flag("DotCanStack"),
+    ]);
+    let mut env = Env::new(actor);
+    env.cfg = CalcConfig::spell();
+    perform(&mut env).unwrap();
+    assert_eq!(env.player.output.duration, 2.013);
+    assert_eq!(env.player.output.skill_total_dot, 60.39);
+}
+
+#[test]
+fn game_radius_and_scoped_additions_reach_metres_display() {
+    use pobr_core::rules::stat_map_engine::StatMapCatalog;
+    use pobr_core::skill_env::{StatMapCtx, mapped_stat_modifiers};
+    use pobr_data::catalog::SkillDamageStat;
+    let catalog = StatMapCatalog::new(serde_json::from_str(r#"{
+        "global": {
+            "active_skill_base_area_of_effect_radius": { "mods": [{"kind":"skill_data", "value":{"key":"radius"}}] },
+            "active_skill_base_radius_+": { "mods": [{"kind":"skill_data", "value":{"key":"radiusExtra"}, "tags":[{"type":"Multiplier", "var":"Stage"}]}] },
+            "active_skill_area_of_effect_radius_+%_final": { "mods": [{"kind":"mod", "name":"AreaOfEffectRadius", "mod_type":"MORE"}] }
+        }
+    }"#).unwrap());
+    let stats = [
+        ("active_skill_base_area_of_effect_radius", 28.0),
+        ("active_skill_base_radius_+", 2.0),
+        ("active_skill_area_of_effect_radius_+%_final", 20.0),
+    ]
+    .map(|(stat, value)| SkillDamageStat {
+        stat: stat.into(),
+        value,
+    });
+    let mut actor = Actor::new(1, ActorBaseStats::default());
+    actor.mod_db.add_list(mapped_stat_modifiers(
+        &mut StatMapCtx::data(Some(&catalog)),
+        &stats,
+        SourceKind::SkillGem,
+        "skill",
+        "CometPlayer",
+        None,
+    ));
+    actor.mod_db.add_list(vec![
+        Modifier::number("AreaOfEffect", ModType::Inc, 50.0),
+        Modifier::number("AreaOfEffect", ModType::Inc, 100.0).with_flags(ModFlags::ATTACK),
+    ]);
+    let mut env = Env::new(actor);
+    env.cfg = CalcConfig::spell().with_multiplier("Stage", 3.0);
+    perform(&mut env).unwrap();
+    // 34 base units, sqrt(1.5) -> 122%, then 20% more radius -> 146%.
+    assert_eq!(env.player.output.aoe_radius, 49.0);
+    assert_eq!(
+        display_value(&env.player.output, "AreaOfEffectRadiusMetres"),
+        4.9
+    );
+}
+
+#[test]
+fn projectile_counts_keep_fractional_chances_and_conversion_flags() {
+    use pobr_core::calc::skill_mechanics::projectile_behavior_counts;
+    let mut db = ModDb::new();
+    db.add_list(vec![
+        Modifier::number("ProjectileCount", ModType::Base, 3.0),
+        Modifier::number("ProjectileCount", ModType::More, 50.0),
+        Modifier::number("PierceChance", ModType::Base, 15.0),
+        Modifier::number("ChainCountMax", ModType::Base, 2.0),
+        Modifier::number("SplitCount", ModType::Base, 1.0),
+        Modifier::flag("ForkOnce"),
+        Modifier::flag("NoAdditionalProjectiles"),
+        Modifier::flag("AdditionalProjectilesAddChainsInstead"),
+        Modifier::flag("AdditionalProjectilesAddBouncesInstead"),
+    ]);
+    db.add_list(
+        pobr_core::rules::skill_stats::skill_modifiers(
+            "spectral_spiral_weapon_base_number_of_bounces",
+            2.0,
+        )
+        .unwrap(),
+    );
+    let cfg = CalcConfig::spell().with_flags(ModFlags::SPELL | ModFlags::PROJECTILE);
+    let result = projectile_behavior_counts(&db, &ModDb::new(), &cfg);
+    assert_eq!(result.pierce, 0.15);
+    assert_eq!(result.chain, 5.0);
+    assert_eq!(result.fork, 1.0);
+    assert_eq!(result.split, 1.0);
+    assert_eq!(result.bounce, 6.0);
+    db.add_mod(Modifier::flag("CannotChain"));
+    assert_eq!(
+        projectile_behavior_counts(&db, &ModDb::new(), &cfg).chain,
+        0.0
+    );
+    db.add_mod(Modifier::flag("PierceAllTargets"));
+    let result = projectile_behavior_counts(&db, &ModDb::new(), &cfg);
+    assert_eq!(result.pierce, 100.0);
+    assert_eq!(result.fork, 0.0);
+    assert_eq!(result.chain, 0.0);
+}
+
+#[test]
+fn requirements_take_maxima_with_source_specific_modifiers() {
+    use pobr_core::calc::skill_mechanics::attribute_requirements;
+    let mut cfg = CalcConfig::new();
+    for (name, value) in [
+        ("ItemRequirementStr", 150.0),
+        ("WeaponRequirementStr", 200.0),
+        ("GemRequirementStr", 180.0),
+        ("SupportRequirementStr", 95.0),
+        ("MeleeWeaponRequirementDex", 140.0),
+        ("GemRequirementInt", 100.0),
+        ("Strength", 180.0),
+    ] {
+        cfg.stats.insert(name.into(), value);
+    }
+    let mut db = ModDb::new();
+    db.add_list(vec![
+        Modifier::number("GlobalAttributeRequirements", ModType::Inc, -20.0),
+        Modifier::number("GlobalGemAttributeRequirements", ModType::More, 50.0),
+        Modifier::number("GlobalWeaponAttributeRequirements", ModType::Inc, -40.0),
+    ]);
+    assert_eq!(attribute_requirements(&db, &cfg), [216.0, 56.0, 120.0]);
+    db.add_list(vec![
+        Modifier::flag("GemAttributeRequirementsSatisfiedByHighestAttribute"),
+        Modifier::flag("StrengthSatisfiesMeleeWeaponsAndSkills"),
+    ]);
+    assert_eq!(attribute_requirements(&db, &cfg), [216.0, 0.0, 0.0]);
+    db.add_mod(Modifier::number(
+        "GlobalGemAttributeRequirements",
+        ModType::More,
+        -100.0,
+    ));
+    assert_eq!(attribute_requirements(&db, &cfg), [120.0, 0.0, 0.0]);
+    db.add_mod(Modifier::flag("IgnoreAttributeRequirements"));
+    assert_eq!(attribute_requirements(&db, &cfg), [0.0; 3]);
+}
+
+#[test]
+fn all_resource_cost_channels_use_resolved_data_and_cost_scopes() {
+    use pobr_core::calc::skill_mechanics::resource_costs;
+    use pobr_core::skill_env::{ResolvedCost, additional_resource_cost_modifiers};
+    let costs = [
+        ("Life", 10.0, false),
+        ("ES", 8.0, false),
+        ("Rage", 4.0, false),
+        ("Ward", 5.0, false),
+        ("ManaPercent", 3.0, false),
+        ("LifePercent", 2.0, false),
+        ("ESPercentPerMinute", 1.5, true),
+        ("ManaPerMinute", 4.0, true),
+    ]
+    .map(|(resource, amount, per_second)| ResolvedCost {
+        resource: resource.into(),
+        amount,
+        per_second,
+    });
+    let mut db = ModDb::new();
+    db.add_list(additional_resource_cost_modifiers(&costs));
+    db.add_list(vec![
+        Modifier::number("SkillManaCostBase", ModType::Base, 10.0),
+        Modifier::number("SupportManaMultiplier", ModType::More, 100.0),
+        Modifier::number("WardCostAsPercentOfManaCost", ModType::Base, 50.0),
+        Modifier::number("WardCost", ModType::Inc, 50.0),
+    ]);
+    let out = resource_costs(&db, &CalcConfig::spell());
+    assert_eq!(out.upfront, [20.0, 20.0, 16.0, 8.0, 30.0]);
+    assert_eq!(out.percent, [6.0, 4.0, 0.0, 0.0, 0.0]);
+    assert_eq!(out.per_second, [8.0, 0.0, 0.0, 0.0, 0.0]);
+    assert_eq!(out.percent_per_second, [0.0, 0.0, 3.0, 0.0, 0.0]);
+    db.add_mod(Modifier::flag("HasNoCost"));
+    assert_eq!(
+        resource_costs(&db, &CalcConfig::spell()),
+        Default::default()
+    );
+}
+
+#[test]
+fn cost_rate_counts_casts_and_reloads_instead_of_projectile_hits() {
+    let mut actor = Actor::new(
+        1,
+        ActorBaseStats {
+            action_rate: 2.0,
+            ..Default::default()
+        },
+    );
+    actor.mod_db.add_list(vec![
+        Modifier::number("SkillManaCostBase", ModType::Base, 10.0),
+        Modifier::number("PeriodicHitInterval", ModType::Base, 100.0),
+        Modifier::number("SkillRageCostBase", ModType::Base, 4.0),
+        Modifier::number("SkillESPercentCostBase", ModType::Base, 2.0),
+        Modifier::number("SkillWardPercentCostBase", ModType::Base, 3.0),
+    ]);
+    let mut env = Env::new(actor);
+    env.cfg = CalcConfig::spell();
+    perform(&mut env).unwrap();
+    assert_eq!(env.player.output.effective_action_rate, 10.0);
+    assert_eq!(env.player.output.mana_per_second_cost, 20.0);
+    assert_eq!(env.player.output.rage_per_second_cost, 8.0);
+    assert_eq!(env.player.output.es_percent_per_second_cost, 4.0);
+    assert_eq!(env.player.output.ward_percent_per_second_cost, 6.0);
+
+    let mut actor = Actor::new(
+        1,
+        ActorBaseStats {
+            action_rate: 2.0,
+            ..Default::default()
+        },
+    );
+    actor.mod_db.add_list(vec![
+        Modifier::number("SkillManaCostBase", ModType::Base, 10.0),
+        Modifier::number("CrossbowReloadTimeBase", ModType::Base, 1.0),
+        Modifier::number("CrossbowBoltCount", ModType::Base, 2.0),
+    ]);
+    let mut env = Env::new(actor);
+    env.cfg = CalcConfig::attack();
+    perform(&mut env).unwrap();
+    assert_eq!(env.player.output.mana_per_second_cost, 5.0);
+}
+
+#[test]
+fn placement_throwing_and_channel_times_use_their_own_speed_scopes() {
+    use pobr_core::calc::skill_mechanics::skill_timings;
+    let mut db = ModDb::new();
+    db.add_list(vec![
+        Modifier::number("SkillTotemPlacementTimeBase", ModType::Base, 0.6),
+        Modifier::number("SkillTrapThrowingTimeBase", ModType::Base, 0.6),
+        Modifier::number("SkillMineLayingTimeBase", ModType::Base, 0.3),
+        Modifier::number("SkillWarcryCastTimeBase", ModType::Base, 0.8),
+        Modifier::number("ChannelMinimumTime", ModType::Base, 0.3),
+        Modifier::number("TotemPlacementSpeed", ModType::Inc, 100.0),
+        Modifier::number("TrapThrowingSpeed", ModType::Inc, 50.0),
+        Modifier::number("WarcrySpeed", ModType::Inc, 25.0),
+        Modifier::number("ActionSpeed", ModType::Inc, 100.0),
+        Modifier::number("CastSpeed", ModType::Inc, 100.0),
+        Modifier::number("TrapThrowCount", ModType::Base, 2.0),
+        Modifier::number("MineThrowCount", ModType::Base, 1.5),
+    ]);
+    let out = skill_timings(&db, &CalcConfig::spell(), 0.5);
+    assert_eq!(out.totem, 0.15);
+    assert_eq!(out.trap, 0.2);
+    assert_eq!(out.mine, 0.15);
+    assert_eq!(out.warcry, 0.32);
+    assert_eq!(out.channel, 0.3);
+    assert_eq!(out.trap_count, 3.0);
+    assert_eq!(out.mine_count, 2.5);
+    db.add_mod(Modifier::flag("InstantWarcry"));
+    assert_eq!(skill_timings(&db, &CalcConfig::spell(), 0.5).warcry, 0.0);
+}
+
+#[test]
+fn proxy_costs_are_paid_when_placing_it_and_respect_cooldown() {
+    let mut actor = Actor::new(
+        1,
+        ActorBaseStats {
+            action_rate: 20.0,
+            ..Default::default()
+        },
+    );
+    actor.mod_db.add_list(vec![
+        Modifier::number("SkillManaCostBase", ModType::Base, 10.0),
+        Modifier::number("SkillTotemPlacementTimeBase", ModType::Base, 0.5),
+        Modifier::number("TotemPlacementSpeed", ModType::Inc, 100.0),
+    ]);
+    let mut env = Env::new(actor.clone());
+    env.cfg = CalcConfig::spell();
+    perform(&mut env).unwrap();
+    assert_eq!(env.player.output.total_totem_placement_time, 0.25);
+    assert_eq!(env.player.output.mana_per_second_cost, 40.0);
+    actor
+        .mod_db
+        .add_mod(Modifier::number("SkillCooldownBase", ModType::Base, 1.0));
+    let mut env = Env::new(actor);
+    env.cfg = CalcConfig::spell();
+    perform(&mut env).unwrap();
+    assert!((env.player.output.mana_per_second_cost - 10.0 / 1.023).abs() < 1e-6);
+}
+
+#[test]
+fn attack_channel_display_reuses_the_use_cycles_stage_time() {
+    let mut actor = Actor::new(
+        1,
+        ActorBaseStats {
+            action_rate: 2.0,
+            ..Default::default()
+        },
+    );
+    actor.mod_db.add_list(vec![
+        Modifier::flag("ChannelCycle"),
+        Modifier::number("ChannelMaxStages", ModType::Base, 3.0),
+        Modifier::number("ChannelMinimumTime", ModType::Base, 0.3),
+        Modifier::number("ChannelReleaseTime", ModType::Base, 0.2),
+        Modifier::number("AttackSpeed", ModType::Inc, 100.0),
+        Modifier::number("SkillManaCostBase", ModType::Base, 10.0),
+    ]);
+    let mut env = Env::new(actor);
+    env.cfg = CalcConfig::attack().with_multiplier("ChannelStages", 2.0);
+    perform(&mut env).unwrap();
+    assert_eq!(env.player.output.channel_time, 0.5);
+    assert!((env.player.output.mana_per_second_cost - 10.0 / 0.7).abs() < 1e-6);
+}

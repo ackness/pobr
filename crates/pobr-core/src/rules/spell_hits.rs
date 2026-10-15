@@ -24,7 +24,12 @@ pub fn modifiers(effect: &str, set: Option<&str>, stat: &str, value: f64) -> Opt
                 ]);
             }
             "lightning_storm_hit_prevention_duration_ms" => return Some(base(rain::HIT_INTERVAL)),
-            "base_skill_effect_duration" => return Some(base(periodic::DURATION)),
+            "base_skill_effect_duration" => {
+                return Some(vec![
+                    Modifier::number(periodic::DURATION, ModType::Base, value),
+                    Modifier::number("SkillDurationBase", ModType::Base, value / 1000.0),
+                ]);
+            }
             "firestorm_max_number_of_storms"
             | "icestorm_max_number_of_storms"
             | "lightning_storm_max_number_of_storms"
@@ -57,6 +62,29 @@ pub fn modifiers(effect: &str, set: Option<&str>, stat: &str, value: f64) -> Opt
 mod tests {
     use super::*;
     use crate::{CalcConfig, ModDb};
+
+    #[test]
+    fn periodic_duration_also_reaches_the_skill_duration_view() {
+        let mut db = ModDb::new();
+        db.add_list(
+            modifiers(
+                "FirestormPlayer",
+                None,
+                "base_skill_effect_duration",
+                3000.0,
+            )
+            .unwrap(),
+        );
+        let cfg = CalcConfig::spell();
+        assert_eq!(
+            db.sum(ModType::Base, &cfg, &[ModName::from(periodic::DURATION)]),
+            3000.0
+        );
+        assert_eq!(
+            crate::calc::skill_mechanics::skill_durations(&db, &ModDb::new(), &cfg).primary,
+            3.003
+        );
+    }
 
     #[test]
     fn orb_explosions_do_not_inherit_the_primary_effects_hit_interval() {

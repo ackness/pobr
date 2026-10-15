@@ -436,8 +436,8 @@ fn support_coverage_resource_effects_do_not_leak_from_other_or_incompatible_grou
         let bare = coverage_session(&coverage_build(incompatible_host, None), &data);
         assert!(other.unsupported_modifier_texts().is_empty());
         assert!(incompatible.unsupported_modifier_texts().is_empty());
-        assert_eq!(other.output(), other_bare.output());
-        assert_eq!(incompatible.output(), bare.output());
+        assert_same_skill_outputs(other.output(), other_bare.output());
+        assert_same_skill_outputs(incompatible.output(), bare.output());
     }
 }
 
@@ -482,6 +482,22 @@ fn coverage_session(
     data: &BuildData,
 ) -> pobr_core::calc::CalculationSession {
     pobr_build::calculate_with_data_session(build, data, &panel_opts()).unwrap()
+}
+
+// Socketed gems contribute to build-wide requirements even when inspecting
+// another group. Payload isolation compares every other output field.
+fn assert_same_skill_outputs(
+    left: &pobr_core::calc::OutputTable,
+    right: &pobr_core::calc::OutputTable,
+) {
+    let without_requirements = |output: &pobr_core::calc::OutputTable| {
+        let mut output = output.clone();
+        output.req_str = 0.0;
+        output.req_dex = 0.0;
+        output.req_int = 0.0;
+        output
+    };
+    assert_eq!(without_requirements(left), without_requirements(right));
 }
 
 fn fork_receipt(session: &pobr_core::calc::CalculationSession) -> &str {
@@ -744,7 +760,8 @@ fn support_coverage_removed_disabled_and_incompatible_payloads_do_not_disclose_f
     assert!(bare.unsupported_modifier_texts().is_empty());
     let incompatible = coverage_session(&coverage_build("ArmourBreakerPlayer", Some(FORK)), &data);
     let melee_bare = coverage_session(&coverage_build("ArmourBreakerPlayer", None), &data);
-    assert_eq!(incompatible.output(), melee_bare.output());
+    assert_same_skill_outputs(incompatible.output(), melee_bare.output());
+    assert_eq!(incompatible.output().req_dex, 5.0);
     assert!(incompatible.unsupported_modifier_texts().is_empty());
     let reequipped = coverage_session(&parse_build(&enabled).unwrap(), &data);
     assert_eq!(
@@ -866,13 +883,16 @@ fn support_coverage_multiple_groups_do_not_leak_another_hosts_payload() {
         fire.unsupported_modifier_texts(),
         ice.unsupported_modifier_texts()
     );
-    assert_eq!(
+    for session in [&bare, &fire, &ice] {
+        assert_eq!(session.output().req_dex, 10.0, "two socketed Fork supports");
+    }
+    assert_same_skill_outputs(
         fire.output(),
-        coverage_session(&coverage_build("FireballPlayer", Some(FORK)), &data).output()
+        coverage_session(&coverage_build("FireballPlayer", Some(FORK)), &data).output(),
     );
-    assert_eq!(
+    assert_same_skill_outputs(
         ice.output(),
-        coverage_session(&coverage_build("BallLightningPlayer", Some(FORK)), &data).output()
+        coverage_session(&coverage_build("BallLightningPlayer", Some(FORK)), &data).output(),
     );
     assert!(
         coverage_session(&build.with_main_socket_group(1), &data)
@@ -1476,7 +1496,7 @@ mod elemental_armament {
             without_support.socket_groups[0].gem_skills.remove(1);
             let other_session = calculate_with_data_session(&other, data(), &opts).unwrap();
             let other_bare = calculate_with_data_session(&without_support, data(), &opts).unwrap();
-            assert_eq!(other_session.output(), other_bare.output(), "{host}");
+            assert_same_skill_outputs(other_session.output(), other_bare.output());
             assert!(other_session.unsupported_modifier_texts().is_empty());
             assert!(other_session.all_mods().iter().all(|modifier| {
                 modifier
@@ -1493,7 +1513,8 @@ mod elemental_armament {
         let plain = calculate_with_data_session(&bare_spell, data(), &opts).unwrap();
         assert!(plain.output().total_hit_avg > 0.0);
         assert!(plain.output().ignite_dps > 0.0);
-        assert_eq!(rejected.output(), plain.output());
+        assert_same_skill_outputs(rejected.output(), plain.output());
+        assert_eq!(rejected.output().req_str, 5.0);
         assert!(rejected.unsupported_modifier_texts().is_empty());
     }
 }

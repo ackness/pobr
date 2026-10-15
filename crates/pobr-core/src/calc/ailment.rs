@@ -249,12 +249,19 @@ pub fn ailment_base_duration(ailment: AilmentType, cfg: &CalcConfig) -> Option<f
 /// The modifier names [`ailment_duration`] scales the base duration by.
 /// "increased duration of Ailments you inflict" reads as
 /// `EnemyAilmentDuration`; supports' stats map to `AilmentDuration`.
-pub(crate) fn duration_mod_names(ailment: AilmentType) -> [ModName; 3] {
-    [
+pub(crate) fn duration_mod_names(ailment: AilmentType) -> Vec<ModName> {
+    let mut names = vec![
         ModName::from(format!("{}Duration", ailment_mod_name(ailment))),
         ModName::from("AilmentDuration"),
         ModName::from("EnemyAilmentDuration"),
-    ]
+        ModName::from("DamagingAilmentDuration"),
+    ];
+    // "Duration of Elemental Ailments on Enemies" affects Ignite, not
+    // Bleeding or Poison; skill-effect duration alone affects none of them.
+    if ailment == AilmentType::Ignite {
+        names.push(ModName::from("EnemyElementalAilmentDuration"));
+    }
+    names
 }
 
 /// The player modifier names behind the chance to apply `ailment` (`"Bleed"`

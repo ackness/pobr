@@ -3859,6 +3859,115 @@
       "source_note": "Game stat all_damage_to_poisoned_enemies_contributes_to_chill; all hit damage contributes only against poisoned targets. Cold already contributes to Chill."
     },
     {
+      "id": "equipment_requirement_increase",
+      "pattern": "equipment has (\\d+)% increased attribute requirements",
+      "mods": [
+        {
+          "name": "GlobalItemAttributeRequirements",
+          "type": "INC",
+          "value": {
+            "ref": "$1"
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat global_equipment_attribute_requirements_+%; applied to the corresponding requirement source."
+    },
+    {
+      "id": "equipment_no_requirements",
+      "pattern": "equipment has no attribute requirements",
+      "mods": [
+        {
+          "name": "GlobalItemAttributeRequirements",
+          "type": "MORE",
+          "value": -100
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat global_equipment_no_attribute_requirements; applied to the corresponding requirement source."
+    },
+    {
+      "id": "gem_requirement_increase",
+      "pattern": "skill gems have (\\d+)% increased attribute requirements",
+      "mods": [
+        {
+          "name": "GlobalGemAttributeRequirements",
+          "type": "INC",
+          "value": {
+            "ref": "$1"
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat global_gem_attribute_requirements_+%; applied to the corresponding requirement source."
+    },
+    {
+      "id": "local_requirements_to_strength",
+      "pattern": "convert (\\d+)% of requirements to strength",
+      "mods": [
+        {
+          "name": "AttributeRequirementsConverted",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "AttributeRequirementsConvertedToStrength",
+          "type": "BASE",
+          "value": {
+            "ref": "$1"
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat local_requirements_%_to_convert_to_strength; conversion applies only to this item."
+    },
+    {
+      "id": "local_requirements_to_dexterity",
+      "pattern": "convert (\\d+)% of requirements to dexterity",
+      "mods": [
+        {
+          "name": "AttributeRequirementsConverted",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "AttributeRequirementsConvertedToDexterity",
+          "type": "BASE",
+          "value": {
+            "ref": "$1"
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat local_requirements_%_to_convert_to_dexterity; conversion applies only to this item."
+    },
+    {
+      "id": "local_requirements_to_intelligence",
+      "pattern": "convert (\\d+)% of requirements to intelligence",
+      "mods": [
+        {
+          "name": "AttributeRequirementsConverted",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "AttributeRequirementsConvertedToIntelligence",
+          "type": "BASE",
+          "value": {
+            "ref": "$1"
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat local_requirements_%_to_convert_to_intelligence; conversion applies only to this item."
+    },
+    {
       "id": "parry_damage",
       "pattern": "(\\d+)% increased parry damage",
       "mods": [

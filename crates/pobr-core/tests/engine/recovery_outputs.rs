@@ -175,3 +175,91 @@ fn leech_caps_and_instant_recovery_do_not_cap_gain_on_hit() {
     value(&env, "EnergyShieldLeechGainPerHit", 30.0);
     value(&env, "EnergyShieldLeechGainRate", 30.0);
 }
+
+#[test]
+fn net_recovery_spends_all_resources_at_cast_rate_not_periodic_hit_rate() {
+    let regeneration = vec![
+        Modifier::number("LifeRegen", ModType::Base, 100.0),
+        Modifier::number("ManaRegen", ModType::Base, 50.0),
+        Modifier::number("EnergyShieldRegen", ModType::Base, 30.0),
+        Modifier::number("WardRegen", ModType::Base, 5.0),
+        Modifier::number("PeriodicHitInterval", ModType::Base, 100.0),
+    ];
+    let bare = run(regeneration.clone(), 2.0);
+    let mut spending = regeneration;
+    for (resource, cost) in [
+        ("Life", 10.0),
+        ("Mana", 20.0),
+        ("ES", 3.0),
+        ("Ward", 4.0),
+        ("Rage", 5.0),
+    ] {
+        spending.push(Modifier::number(
+            format!("Skill{resource}CostBase"),
+            ModType::Base,
+            cost,
+        ));
+    }
+    let paid = run(spending, 2.0);
+    assert_eq!(paid.player.output.effective_action_rate, 10.0);
+    assert_eq!(
+        bare.player.output.net_life_regen - paid.player.output.net_life_regen,
+        20.0
+    );
+    assert_eq!(
+        bare.player.output.net_mana_regen - paid.player.output.net_mana_regen,
+        40.0
+    );
+    value(&paid, "NetEnergyShieldRegen", 24.0);
+    value(&paid, "TotalNetRegen", 111.0);
+    value(&paid, "TotalBuildDegen", 84.0);
+}
+
+#[test]
+fn net_recovery_converts_percent_spending_to_each_resource_pool() {
+    let env = run(
+        vec![
+            Modifier::number("Ward", ModType::Base, 100.0),
+            Modifier::number("SkillLifePercentCostBase", ModType::Base, 1.0),
+            Modifier::number("SkillManaPercentCostBase", ModType::Base, 2.0),
+            Modifier::number("SkillESPercentCostBase", ModType::Base, 3.0),
+            Modifier::number("SkillWardPercentCostBase", ModType::Base, 4.0),
+            Modifier::number("SkillLifePerSecondCostBase", ModType::Base, 3.0),
+            Modifier::number("SkillManaPerSecondCostBase", ModType::Base, 7.0),
+        ],
+        2.0,
+    );
+    value(&env, "NetLifeRegen", -23.0);
+    value(&env, "NetManaRegen", -27.0);
+    value(&env, "NetEnergyShieldRegen", -18.0);
+    value(&env, "TotalNetRegen", -76.0);
+    value(&env, "TotalBuildDegen", 76.0);
+}
+
+#[test]
+fn net_life_and_mana_recovery_follow_the_channel_use_cycle() {
+    let mut modifiers = vec![
+        Modifier::flag("ChannelCycle"),
+        Modifier::number("ChannelMaxStages", ModType::Base, 2.0),
+        Modifier::number("ChannelMinimumTime", ModType::Base, 0.3),
+        Modifier::number("ChannelReleaseTime", ModType::Base, 0.2),
+        Modifier::number("AttackSpeed", ModType::Inc, 100.0),
+        Modifier::number("LifeRegen", ModType::Base, 100.0),
+        Modifier::number("ManaRegen", ModType::Base, 50.0),
+    ];
+    let bare = run(modifiers.clone(), 2.0);
+    modifiers.extend([
+        Modifier::number("SkillLifeCostBase", ModType::Base, 10.0),
+        Modifier::number("SkillManaCostBase", ModType::Base, 20.0),
+    ]);
+    let paid = run(modifiers, 2.0);
+    assert_eq!(paid.player.output.channel_time, 0.5);
+    assert!(
+        (bare.player.output.net_life_regen - paid.player.output.net_life_regen - 10.0 / 0.7).abs()
+            < 1e-6
+    );
+    assert!(
+        (bare.player.output.net_mana_regen - paid.player.output.net_mana_regen - 20.0 / 0.7).abs()
+            < 1e-6
+    );
+}

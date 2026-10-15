@@ -1805,6 +1805,7 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                                     cur.active_gem_quality = Some(quality);
                                 }
                                 let name_spec_pending = skill_id.is_none();
+                                cur.gem_requirement_levels.push(own_level);
                                 cur.gem_skills.push(crate::build::GemSkillRef {
                                     skill_id: skill_id.unwrap_or_default(),
                                     gem_level: level,

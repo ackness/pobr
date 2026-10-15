@@ -46,13 +46,14 @@ pub use lookup::{
 pub use minions::{MinionEnv, MinionSession, spawn_minions};
 pub use mods::{
     ActiveEffect, CorruptedJewelEffect, GemInput, GemPropertyBonus, GemPropertyKind,
-    STAT_IS_AREA_DAMAGE, STAT_IS_PROJECTILE, clean_grant_text, crossbow_reload_modifiers,
-    data_mapped_stat_modifiers, dot_flag_modifiers, gem_level_category_matches,
-    gem_tags_match_category, group_active_effects, is_attribute_node, is_damage_skill,
-    is_off_hand_weapon_base_stat, mk_trigger_flag, mk_trigger_mod, parse_gem_level_bonus,
-    parse_gem_property_bonus, pick_group_main_skill, resolved_enemy_level, scale_trunc_2dp,
-    skill_base_modifiers, skill_keyword_flags, skill_name_from_id, skill_type_bits,
-    skill_type_flags, stat_set_hit_flags, support_mana_multiplier_modifier, vendor_scale_mod_value,
+    STAT_IS_AREA_DAMAGE, STAT_IS_PROJECTILE, additional_resource_cost_modifiers, clean_grant_text,
+    crossbow_reload_modifiers, data_mapped_stat_modifiers, dot_flag_modifiers,
+    gem_level_category_matches, gem_tags_match_category, group_active_effects, is_attribute_node,
+    is_damage_skill, is_off_hand_weapon_base_stat, mk_trigger_flag, mk_trigger_mod,
+    parse_gem_level_bonus, parse_gem_property_bonus, pick_group_main_skill, resolved_enemy_level,
+    scale_trunc_2dp, skill_base_modifiers, skill_keyword_flags, skill_name_from_id,
+    skill_type_bits, skill_type_flags, stat_set_hit_flags, support_mana_multiplier_modifier,
+    vendor_scale_mod_value,
 };
 pub use resolve::{
     GemPropertyLookup, GemPropertyScanView, GrantedPassiveLookup, ResolvedCost, ResolvedSkillLevel,

@@ -279,6 +279,10 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
             ModType::Base,
             value / 1000.0,
         )]),
+        // Spectral Helix: "can Bounce up to +{0} times".
+        "spectral_spiral_weapon_base_number_of_bounces" => {
+            Some(vec![Modifier::number("BounceCount", ModType::Base, value)])
+        }
         "channel_start_lock_cancelling_of_attack_time_%" => Some(vec![Modifier::number(
             "ChannelStartLock",
             ModType::Base,
@@ -470,6 +474,17 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         // a storm drops. Only a rain whose landings the engine knows reads it.
         "rain_hit_delay_ms" => Some(vec![Modifier::number(
             crate::calc::rain::HIT_INTERVAL,
+            ModType::Base,
+            value,
+        )]),
+        // Flicker Strike performs additional strikes per Power Charge consumed.
+        "flicker_strike_additional_flickers_from_power_charges" => Some(vec![Modifier::number(
+            "AdditionalFlickersPerPowerCharge",
+            ModType::Base,
+            value,
+        )]),
+        CONSUMED_CHARGE_BENEFIT_DOUBLE_CHANCE => Some(vec![Modifier::number(
+            "ConsumedChargeBenefitDoubleChance",
             ModType::Base,
             value,
         )]),

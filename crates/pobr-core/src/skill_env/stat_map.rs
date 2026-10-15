@@ -189,8 +189,18 @@ pub(super) fn mapped_stat_modifiers_observed(
             continue;
         };
         for item in items {
-            let MappedItem::Modifier(modifier) = item else {
-                continue;
+            let modifier = match item {
+                MappedItem::Modifier(modifier) => *modifier,
+                MappedItem::SkillData { key, value } => {
+                    let name = match key.as_str() {
+                        "duration" => "SkillDurationBase",
+                        "durationSecondary" => "SkillDurationSecondaryBase",
+                        "auraDuration" => "SkillAuraDurationBase",
+                        "reserveDuration" => "SkillReserveDurationBase",
+                        _ => continue,
+                    };
+                    Modifier::number(name, pobr_data::modifier::ModType::Base, value)
+                }
             };
             let origin = ModifierSource::new(SourceId::new(
                 source_kind.clone(),

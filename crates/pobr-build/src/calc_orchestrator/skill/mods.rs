@@ -37,6 +37,9 @@ pub(crate) fn skill_base_modifiers(
         skill.crit_chance,
         skill.skill_attack_speed_more,
     );
+    mods.extend(pobr_core::skill_env::additional_resource_cost_modifiers(
+        &skill.costs,
+    ));
     mods.extend(pobr_core::calc::channel::skill_modifiers(
         skill_id,
         skill.use_time_s,
@@ -451,4 +454,55 @@ pub(crate) fn support_modifiers(
     }
     context.support_limits.extend(limits);
     mods
+}
+
+/// The action that places a proxy comes from its summoning skill, not from
+/// the attack or spell the proxy performs. CastTime is in milliseconds.
+pub(crate) fn skill_timing_modifiers(
+    data: &BuildData,
+    group: &SocketGroup,
+    skill_id: &str,
+    final_types: &[String],
+) -> Vec<Modifier> {
+    let has = |kind: &str| final_types.iter().any(|t| t == kind);
+    let main = data.granted_effects.get(skill_id);
+    let totem = has("SummonsTotem") || has("UsedByTotem");
+    let placement = if totem {
+        group
+            .gem_skills
+            .iter()
+            .filter_map(|gem| data.granted_effects.get(&gem.skill_id))
+            .find(|effect| effect.skill_types.iter().any(|t| t == "SummonsTotem"))
+            .or(main)
+            .and_then(|effect| effect.cast_time)
+    } else {
+        None
+    };
+    [
+        ("SkillTotemPlacementTimeBase", placement),
+        (
+            "SkillWarcryCastTimeBase",
+            main.filter(|_| has("Warcry"))
+                .and_then(|effect| effect.cast_time),
+        ),
+        (
+            "SkillTrapThrowingTimeBase",
+            main.filter(|_| has("Trap"))
+                .and_then(|effect| effect.cast_time),
+        ),
+        (
+            "SkillMineLayingTimeBase",
+            main.filter(|_| has("Mine"))
+                .and_then(|effect| effect.cast_time),
+        ),
+    ]
+    .into_iter()
+    .filter_map(|(name, time)| {
+        time.filter(|time| *time > 0).map(|time| {
+            Modifier::number(name, ModType::Base, time as f64 / 1000.0).with_origin(
+                ModifierSource::new(SourceId::new(SourceKind::SkillGem, format!("skill.{name}"))),
+            )
+        })
+    })
+    .collect()
 }

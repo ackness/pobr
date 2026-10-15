@@ -80,6 +80,11 @@ pub struct MinimalOutput {
     /// Non-crit hit components split by damage type; summing gives total non-crit hit damage.
     pub damage_components: Vec<DamageComponent>,
     pub total_hit_avg: f64,
+    /// Expected damage per hit, including enemy mitigation and chance to hit.
+    pub average_damage: f64,
+    pub accuracy: f64,
+    /// Chance to pass the accuracy check before the 100% ceiling (percent).
+    pub accuracy_hit_chance_uncapped: f64,
     pub hit_chance: f64,
     pub action_rate: f64,
     pub dps: f64,
@@ -134,6 +139,9 @@ impl MinimalOutput {
             crit_multiplier: output.crit_multiplier,
             damage_components: output.damage_components.clone(),
             total_hit_avg: output.total_hit_avg,
+            average_damage: output.average_damage,
+            accuracy: output.accuracy,
+            accuracy_hit_chance_uncapped: output.accuracy_hit_chance_uncapped,
             hit_chance: output.hit_chance,
             action_rate: output.action_rate,
             dps: output.dps,
@@ -1002,6 +1010,9 @@ pub fn calculate_minimal_vs_enemy(
         crit_multiplier,
         damage_components,
         total_hit_avg,
+        average_damage: round(crit_pass.total_hit_avg_mitigated * hit_chance),
+        accuracy: hit_terms.accuracy,
+        accuracy_hit_chance_uncapped: round(hit_terms.accuracy_chance * 100.0 + hit_terms.excess),
         hit_chance,
         action_rate,
         dps,

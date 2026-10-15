@@ -40,8 +40,8 @@
 //!   (`FireMin`/`PhysicalMax` etc.) translate to `<Type>DamageMin/Max` BASE
 //!   modifiers (PoBR has no skillData table, so base damage flows through the
 //!   modifier pipeline instead, matching legacy behaviour); `duration`
-//!   produces [`MappedItem::SkillData`] (callers may ignore it until a
-//!   consumer is wired up); other keys are counted as Unsupported.
+//!   produces [`MappedItem::SkillData`], which `skill_env` turns into an
+//!   attributed skill-base modifier; unhandled keys are Unsupported.
 //! - **flag constructor** (vendor `flag(name)`, a skill behaviour switch such
 //!   as `projectile`): only names with a ModDb flag consumer are translated;
 //!   the rest are Unsupported (see [`is_consumable_flag`]).
@@ -163,9 +163,8 @@ pub enum MappedItem {
     /// variant).
     Modifier(Box<Modifier>),
     /// A skill data key/value (vendor `skill(key, …)`; e.g. `duration`, in
-    /// seconds). Consumers wire this up as needed; callers with no consumer
-    /// can just ignore it (it doesn't participate in calculation, so
-    /// ignoring it can't cause a miscalculation).
+    /// seconds). The main skill mapping consumes the supported duration
+    /// channels; other domains only read keys that belong to them.
     SkillData {
         /// The vendor skillData key name, verbatim.
         key: String,
@@ -658,6 +657,21 @@ fn is_consumable_flag(name: &str) -> bool {
             | "CritLucky"
             | "ElementalLuckHits"
             | "ProjectileSpeedAppliesToProjectileDamage"
+            | "InstantWarcry"
+            | "CannotSplit"
+            | "CannotPierce"
+            | "CannotFork"
+            | "CannotChain"
+            | "NoAdditionalChains"
+            | "PierceAllTargets"
+            | "ForkOnce"
+            | "ForkTwice"
+            | "NoAdditionalProjectiles"
+            | "AdditionalProjectilesAddSplitsInstead"
+            | "AdditionalProjectilesAddChainsInstead"
+            | "AdditionalProjectilesAddBouncesInstead"
+            | "AdditionalChainsAddSplitsInstead"
+
             //  Ailment-stacking switch (Escalating Poison's
             // `number_of_additional_poison_stacks` is injected paired with
             // `PoisonStacks BASE`, sup_dex.lua:2188-2191). Consumer = the
@@ -748,6 +762,22 @@ fn collect_skill_data(
     for tag in &element.tags {
         tags.push(translate_tag(tag)?);
     }
+    // Keep tags on numeric skill data so charge- and stage-dependent values
+    // remain scoped to the skill. Radius uses internal distance units.
+    if let Some(name) = match key {
+        "radius" => Some("SkillAreaRadiusBase"),
+        "radiusExtra" => Some("SkillAreaRadiusExtra"),
+        "channelTimeOverride" => Some("SkillChannelStageTimeOverride"),
+        "channelTimeMultiplier" => Some("SkillChannelStages"),
+        _ => None,
+    } {
+        let mut modifier = Modifier::number(name, ModType::Base, merged_value);
+        for tag in tags {
+            modifier = modifier.with_tag(tag);
+        }
+        items.push(MappedItem::Modifier(Box::new(modifier)));
+        return Ok(());
+    }
     // Base damage keys (vendor writes a skill's base damage into skillData;
     // PoBR has no skillData table, so it's consumed as `<Type>DamageMin/Max`
     // BASE through the modifier pipeline instead, matching legacy's
@@ -793,6 +823,17 @@ fn collect_skill_data(
         items.push(MappedItem::Modifier(Box::new(Modifier::flag(flag_name))));
         return Ok(());
     }
+    // This is a display convention. Per-stat-set overrides can suppress
+    // the game's base_skill_show_average_damage_instead_of_dps hint for
+    // skills whose sustained rate is the useful sidebar view.
+    if key == "showAverage" {
+        let mut modifier = Modifier::flag("ShowAverageDamage");
+        for tag in tags {
+            modifier = modifier.with_tag(tag);
+        }
+        items.push(MappedItem::Modifier(Box::new(modifier)));
+        return Ok(());
+    }
     // skill_data whitelist (produces [`MappedItem::SkillData`], consumed by
     // the orchestration layer by key):
     // - duration (vendor `skill("duration", …)`; the entry-level div=1000
@@ -803,7 +844,14 @@ fn collect_skill_data(
     //   consumer = the orchestration layer's corpse-explosion base-damage
     //   injection, CalcOffence.lua:2211-2217).
     // Other keys are counted as unsupported.
-    if matches!(key, "duration" | "corpseExplosionLifeMultiplier") {
+    if matches!(
+        key,
+        "duration"
+            | "durationSecondary"
+            | "auraDuration"
+            | "reserveDuration"
+            | "corpseExplosionLifeMultiplier"
+    ) {
         if !tags.is_empty() {
             return Err(UnsupportedReason::UnsupportedTag(
                 "skill_data has a tag".into(),
@@ -1120,6 +1168,53 @@ pub(crate) fn translated_mod_name_parts<'a>(
         | "ElementalPenetration"
         | "TotalCastTime"
         | "TotalAttackTime"
+        | "ManaCost"
+        | "LifeCost"
+        | "ESCost"
+        | "RageCost"
+        | "WardCost"
+        | "Cost"
+        | "ManaCostBase"
+        | "LifeCostBase"
+        | "ESCostBase"
+        | "RageCostBase"
+        | "WardCostBase"
+        | "ESCostNoMult"
+        | "WardCostAsPercentOfManaCost"
+        | "WardCostAsPercentOfLifeCost"
+        | "ManaCostAsEnergyShieldCost"
+        | "ESCostEfficiency"
+        | "WardCostEfficiency"
+        | "RageCostEfficiency"
+        | "TotemPlacementTime"
+        | "TrapThrowingTime"
+        | "MineLayingTime"
+        | "WarcryCastTime"
+        | "TrapThrowingSpeed"
+        | "MineLayingSpeed"
+        | "SkillTrapThrowingTime"
+        | "SkillMineThrowingTime"
+        | "TrapThrowCount"
+        | "MineThrowCount"
+        | "PierceCount"
+        | "PierceChance"
+        | "ForkCountMax"
+        | "ChainCountMax"
+        | "BeamChainCountMax"
+        | "ChainChance"
+        | "SplitCount"
+        | "BounceCount"
+        | "TwoAdditionalProjectilesChance"
+        | "SurpassingProjectileChance"
+        | "AreaOfEffect"
+        | "AreaOfEffectPrimary"
+        | "AreaOfEffectRadius"
+        | "Duration"
+        | "PrimaryDuration"
+        | "SecondaryDuration"
+        | "DamagingAilmentDuration"
+        | "MineDuration"
+        | "EnemyElementalAilmentDuration"
         // Vendor `SkillStatMap.lua:554-557` (skill_speed_+% shares the entry
         // with three mods) and `:2400-2401` (summon_totem_cast_speed_+%):
         // separate names for warcry/totem speed. PoBR has no consumer yet
@@ -1210,7 +1305,7 @@ pub(crate) fn translated_mod_name_parts<'a>(
         "EnemyPoisonDuration" => "PoisonDuration",
         "EnemyBleedDuration" => "BleedDuration",
         "EnemyIgniteDuration" => "IgniteDuration",
-        "EnemyAilmentDuration" | "DamagingAilmentDuration" => "AilmentDuration",
+        "EnemyAilmentDuration" => "AilmentDuration",
         other => {
             // Conversion / gain-as family (`Skill<From>DamageConvertTo<To>` /
             // `[Skill]<From>DamageGainAs<To>`): PoB2 and PoBR use the same
@@ -2395,6 +2490,35 @@ mod tests {
         assert_eq!(mods[0].name.as_str(), "FireDamageMin");
         assert_eq!(mods[0].mod_type, ModType::Base);
         assert_eq!(mods[0].value.as_number(), Some(19.0));
+    }
+
+    #[test]
+    fn average_damage_display_hint_respects_stat_set_override() {
+        let catalog = catalog_json(
+            r#"{ "global": { "base_skill_show_average_damage_instead_of_dps": {
+                "mods": [{ "kind": "skill_data", "value": { "key": "showAverage", "value": true } }]
+            } }, "per_stat_set": { "CometPlayer": { "1": {
+                "base_skill_show_average_damage_instead_of_dps": {}
+            } } } }"#,
+        );
+        let mods = expect_modifiers(map_stat(
+            &catalog,
+            "GrimPillarsPlayer",
+            None,
+            "base_skill_show_average_damage_instead_of_dps",
+            1.0,
+        ));
+        assert_eq!(mods[0].name.as_str(), "ShowAverageDamage");
+        assert_eq!(
+            map_stat(
+                &catalog,
+                "CometPlayer",
+                None,
+                "base_skill_show_average_damage_instead_of_dps",
+                1.0
+            ),
+            MappedOutcome::Mapped(Vec::new())
+        );
     }
 
     /// skill_data duration -> a SkillData item (entry div=1000 converts ms to s).

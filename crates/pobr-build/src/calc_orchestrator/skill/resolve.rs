@@ -436,6 +436,10 @@ pub(crate) fn apply_other_weapon_set_gem_bonuses(build: &Build, data: &BuildData
         .iter_mut()
         .filter(|group| bound(group))
     {
+        if group.gem_requirement_levels.is_empty() {
+            group.gem_requirement_levels =
+                group.gem_skills.iter().map(|gem| gem.gem_level).collect();
+        }
         for gem in &mut group.gem_skills {
             let skill_types = data
                 .granted_effects

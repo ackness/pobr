@@ -402,8 +402,10 @@ pub(super) fn inject_build_multipliers(
     // `output[attr.."RequirementsOn"..slot] = floor(itemReq × reqMult)`) — the fetch
     // source for "Gain Armour equal to N% of total Strength Requirements of Equipped
     // Boots, Gloves and Helmet" (a PercentStat, `StrRequirementsOn<slot>`).
-    // ponytail: reqMult (the GlobalAttributeRequirements mod family) is always treated
-    // as 1; wire up the multiplier when a build with "reduced attribute requirements" shows up.
+    // The separate requirement snapshot also includes gems and supports.
+    for (var, value) in super::requirements::requirement_snapshots(build, data) {
+        session.set_stat(var, value);
+    }
     for (var, value) in per_slot_attribute_requirements(build, data) {
         session.set_stat(var, value);
     }
@@ -560,6 +562,12 @@ pub(super) fn inject_main_skill_mods(
             skill,
             skill_id,
             main_set_key.as_deref(),
+        ));
+        session.add_modifiers(super::skill::mods::skill_timing_modifiers(
+            data,
+            group,
+            skill_id,
+            &ctx.main.main_skill_types,
         ));
         // 1b-i-q. Main skill gem's quality stats (T1.7): the quality segment is
         //         mapped via stat-map and injected with SourceKind::GemQuality

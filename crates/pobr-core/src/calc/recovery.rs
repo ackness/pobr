@@ -315,11 +315,16 @@ fn fill_net_recovery(env: &mut Env) {
     let cfg = &env.cfg;
     let out = &mut env.player.output;
     let pools = [out.life, out.mana, out.energy_shield];
-    let mut loss = [
-        out.life_cost * out.effective_action_rate,
-        out.mana_cost * out.effective_action_rate,
-        0.0,
+    // Spending already follows casts, channels, reloads, triggers or placements.
+    // Percent costs remain separate display channels; convert them to resources.
+    let costs = [
+        out.life_per_second_cost + out.life * out.life_percent_per_second_cost / 100.0,
+        out.mana_per_second_cost + out.mana * out.mana_percent_per_second_cost / 100.0,
+        out.es_per_second_cost + out.energy_shield * out.es_percent_per_second_cost / 100.0,
+        out.ward_per_second_cost + out.ward * out.ward_percent_per_second_cost / 100.0,
+        out.rage_per_second_cost,
     ];
+    let mut loss = [costs[0], costs[1], costs[2]];
     let direct_drain: f64 = RESOURCES[..3]
         .iter()
         .enumerate()
@@ -401,15 +406,15 @@ fn fill_net_recovery(env: &mut Env) {
             loss[1] += amount * mom;
         }
     }
-    out.total_build_degen = direct_drain
-        + typed_loss
-        + out.life_cost * out.effective_action_rate
-        + out.mana_cost * out.effective_action_rate;
+    out.total_build_degen = direct_drain + typed_loss + costs.iter().sum::<f64>();
     out.net_life_regen = out.life_regen_recovery - loss[0];
     out.net_mana_regen = out.mana_regen_recovery - loss[1];
     out.net_energy_shield_regen = out.energy_shield_regen_recovery - loss[2];
+    // This panel total combines Life, Mana, ES and Ward. Rage recovery remains
+    // its own channel; its spending still contributes to TotalBuildDegen.
     out.total_net_regen = out.net_life_regen
         + out.net_mana_regen
         + out.net_energy_shield_regen
-        + out.ward_regen_recovery;
+        + out.ward_regen_recovery
+        - costs[3];
 }

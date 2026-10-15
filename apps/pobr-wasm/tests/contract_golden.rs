@@ -195,6 +195,56 @@ fn calculate_build_json_shape() {
         "ReloadTime",
         "CullingDPS",
         "ProjectileSpeedMod",
+        "TotalTotemPlacementTime",
+        "TrapThrowingTime",
+        "TrapThrowCount",
+        "MineLayingTime",
+        "MineThrowCount",
+        "WarcryCastTime",
+        "ChannelTime",
+        "ManaPercentCost",
+        "ManaPercentPerSecondCost",
+        "ManaPerSecondCost",
+        "LifePercentCost",
+        "LifePercentPerSecondCost",
+        "LifePerSecondCost",
+        "ESCost",
+        "ESPercentCost",
+        "ESPercentPerSecondCost",
+        "ESPerSecondCost",
+        "WardCost",
+        "WardPercentCost",
+        "WardPercentPerSecondCost",
+        "WardPerSecondCost",
+        "RageCost",
+        "RagePerSecondCost",
+        "ReqStr",
+        "ReqDex",
+        "ReqInt",
+        "PierceCount",
+        "ForkCount",
+        "ChainMax",
+        "SplitCount",
+        "BounceCount",
+        "AreaOfEffectRadiusMetres",
+        "Duration",
+        "DurationSecondary",
+        "AuraDuration",
+        "ReserveDuration",
+        "AverageDamage",
+        "AverageBurstDamage",
+        "CombinedAvg",
+        "HitSpeed",
+        "IgniteDamage",
+        "BleedDamage",
+        "PoisonDamage",
+        "WithIgniteDPS",
+        "WithBleedDPS",
+        "WithPoisonDPS",
+        "MainHandAccuracy",
+        "OffHandAccuracy",
+        "AccuracyHitChanceUncapped",
+        "QuantityMultiplier",
     ] {
         let stat = stats
             .iter()
@@ -4002,6 +4052,17 @@ mod support_coverage {
     #[test]
     fn other_disabled_or_incompatible_groups_do_not_leak_limits() {
         init();
+        // Requirements cover all declared socketed gems, independent of
+        // which group's payload is being inspected.
+        let skill_stats = |response: &Value| {
+            response["stats"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|stat| !matches!(stat["id"].as_str(), Some("ReqStr" | "ReqDex" | "ReqInt")))
+                .cloned()
+                .collect::<Vec<_>>()
+        };
         let mut disabled = group("FireballPlayer", &[FORK]);
         disabled["enabled"] = json!(false);
         let groups = vec![
@@ -4024,7 +4085,9 @@ mod support_coverage {
             (&lightning, "BallLightningPlayer"),
         ] {
             let single = calc(&request(vec![group(host, &[FORK])], 0));
-            assert_eq!(response["stats"], single["stats"]);
+            assert_eq!(skill_stats(response), skill_stats(&single));
+            assert_eq!(stat(response, "ReqDex"), 15.0);
+            assert_eq!(stat(&single, "ReqDex"), 5.0);
             assert_eq!(
                 response["unsupported_modifiers"],
                 single["unsupported_modifiers"]
@@ -4038,9 +4101,10 @@ mod support_coverage {
                 .is_empty()
         );
         assert_eq!(
-            incompatible["stats"],
-            calc(&request(vec![group("ArmourBreakerPlayer", &[])], 0))["stats"]
+            skill_stats(&incompatible),
+            skill_stats(&calc(&request(vec![group("ArmourBreakerPlayer", &[])], 0)))
         );
+        assert_eq!(stat(&bare, "ReqDex"), 15.0);
         assert_eq!(calc(&request(groups, 0)), bare);
     }
 

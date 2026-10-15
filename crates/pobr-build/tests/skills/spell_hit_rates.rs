@@ -106,3 +106,17 @@ fn flameblast_and_snap_respect_cooldowns_and_bonestorm_stays_unchanged() {
         flame.output().total_hit_avg
     );
 }
+
+#[test]
+fn flameblast_channel_display_excludes_its_release_and_cooldown() {
+    let session = calculate_with_data_session(
+        &build("FlameblastPlayer"),
+        data(),
+        &DataOrchestratorOptions::default(),
+    )
+    .unwrap();
+    // base_minimum_channel_time_ms is 490; the 600-ms release and cooldown
+    // belong to the use cycle, not the time spent channelling.
+    assert_eq!(session.output().channel_time, 0.49);
+    assert!(session.output().cooldown > session.output().channel_time);
+}

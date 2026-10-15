@@ -169,3 +169,24 @@ fn a_totems_cast_is_not_the_characters() {
         assert_ratio(with_line, hit, if in_totem { 1.0 } else { 1.2 });
     }
 }
+
+#[test]
+fn placement_reads_the_summoning_gems_cast_time() {
+    let data = data();
+    assert_eq!(
+        data.granted_effects["SummonMetaTotemSpellTotemPlayer"].cast_time,
+        Some(500)
+    );
+    let options = DataOrchestratorOptions {
+        extra_modifier_texts: vec![
+            "100% increased Totem Placement speed".into(),
+            "100% increased Cast Speed".into(),
+        ],
+        ..Default::default()
+    };
+    let output = calculate_with_data(&build(true, ""), &data, &options).unwrap();
+    assert_eq!(output.total_totem_placement_time, 0.25);
+    assert!((output.mana_per_second_cost - output.mana_cost * 4.0).abs() < 1e-6);
+    let own = calculate_with_data(&build(false, ""), &data, &options).unwrap();
+    assert_eq!(own.total_totem_placement_time, 0.0);
+}

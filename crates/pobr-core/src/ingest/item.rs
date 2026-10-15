@@ -412,7 +412,12 @@ pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'
         }
         match ctx.parse(strip_during_effect(text)) {
             Ok(outcome) if outcome.status == ParseStatus::Parsed => {
-                for modifier in outcome.mods {
+                for mut modifier in outcome.mods {
+                    // A flask's bare "increased Duration" describes that
+                    // item, not the character's skill effects.
+                    if modifier.name.as_str() == "Duration" && is_local_utility_duration(text) {
+                        modifier.name = ModName::from("LocalUtilityDuration");
+                    }
                     nested.push(modifier.with_origin(make_origin(text)));
                 }
             }
@@ -454,6 +459,22 @@ pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'
 /// through parsing, and stay in the unsupported report while unmodeled.
 fn is_trigger_line(text: &str) -> bool {
     text.trim().to_lowercase().starts_with("used when ")
+}
+
+fn is_local_utility_duration(text: &str) -> bool {
+    let lower = text.trim().to_lowercase();
+    [
+        "% increased duration",
+        "% reduced duration",
+        "% more duration",
+        "% less duration",
+    ]
+    .iter()
+    .any(|suffix| {
+        lower
+            .strip_suffix(suffix)
+            .is_some_and(|n| n.parse::<f64>().is_ok())
+    })
 }
 
 /// `N% increased effect` / `N% reduced effect` (case-insensitive) → this item's local effect inc.

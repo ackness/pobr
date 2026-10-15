@@ -262,6 +262,8 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // Skill DoT + combined-DPS family: runs after fill_ailments — TotalDotDPS only reads the
     // current bleed/poison/ignite values from the ailment side (ailment.rs is untouched, per the T4 wave agreement).
     fill_skill_dot_stage(env);
+    fill_damage_views(env);
+    fill_resource_cost_rates(env);
 
     super::recovery::fill_recovery(env, &output.stored_hit_avg, &output.stored_crit_avg);
 
@@ -996,16 +998,86 @@ fn fill_skill_dot_stage(env: &mut Env) {
     super::skill_dot::fill_skill_dot(&mut env.player.output, &dot);
 }
 
+/// Views of the already-resolved hit and ailment stages. Repeats affect a
+/// burst's damage; quantity affects throughput, not damage per hit.
+fn fill_damage_views(env: &mut Env) {
+    let db = &env.player.mod_db;
+    let cfg = &env.cfg;
+    let repeats = 1.0
+        + db.sum(ModType::Base, cfg, &[ModName::from("RepeatCount")])
+            .max(0.0);
+    let flickers = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("AdditionalFlickersPerPowerCharge")],
+    );
+    let removable = cfg.multiplier("RemovablePowerCharge");
+    let burst_hits = if flickers > 0.0 && removable > 0.0 {
+        let extra = db.sum(
+            ModType::Base,
+            cfg,
+            &[ModName::from("Multiplier:ExtraConsumablePowerCharges")],
+        );
+        let doubled = db
+            .sum(
+                ModType::Base,
+                cfg,
+                &[ModName::from("ConsumedChargeBenefitDoubleChance")],
+            )
+            .clamp(0.0, 100.0);
+        1.0 + flickers * (removable + extra).max(0.0) * (1.0 + doubled / 100.0)
+    } else {
+        repeats
+    };
+    let out = &mut env.player.output;
+    out.average_burst_damage = round(out.average_damage * burst_hits);
+    out.hit_speed = out.effective_action_rate;
+    out.quantity_multiplier =
+        super::scaled_damage::dps_end_factors(db, cfg, None).quantity_multiplier;
+    // A repeatable use with a known cooldown/reload or trigger cadence has
+    // a sustained rate. Keep the per-use view for the remaining skills that
+    // request it through base_skill_show_average_damage_instead_of_dps.
+    let show_average = db.flag(cfg, "ShowAverageDamage")
+        && out.cooldown == 0.0
+        && out.reload_time == 0.0
+        && out.skill_trigger_rate == 0.0;
+    let base = if show_average {
+        out.average_damage
+    } else {
+        out.dps
+    };
+    out.combined_avg = if show_average {
+        base + out.ignite_damage + out.bleed_damage + out.poison_damage
+    } else {
+        base
+    };
+    out.with_ignite_dps = base
+        + if show_average {
+            out.ignite_damage
+        } else {
+            out.ignite_stacked_dps.max(out.ignite_dps)
+        };
+    out.with_bleed_dps = base
+        + if show_average {
+            out.bleed_damage
+        } else {
+            out.bleed_stacked_dps.max(out.bleed_dps)
+        };
+    out.with_poison_dps = base
+        + if show_average {
+            out.poison_damage
+        } else {
+            out.poison_stacked_dps.max(out.poison_dps)
+        };
+}
+
 /// The skill DoT stage's terms, from the hit and ailment values already in the output.
 pub(super) fn skill_dot_terms(env: &Env) -> super::skill_dot::SkillDotTerms {
     let out = &env.player.output;
     let pick = |stacked: f64, single: f64| if stacked > 0.0 { stacked } else { single };
     let inputs = super::skill_dot::SkillDotInputs {
         speed: out.effective_action_rate.max(0.0),
-        // The skill-duration data channel isn't wired up (statmap skill_data's `duration` has no
-        // consumer); the DotCanStack branch conservatively degenerates to a single instance
-        // inside calc — pass the real value once it's wired in.
-        duration: 0.0,
+        duration: out.duration,
         base_dps: out.dps,
         bleed_dps: pick(out.bleed_stacked_dps, out.bleed_dps),
         poison_dps: pick(out.poison_stacked_dps, out.poison_dps),
@@ -1276,10 +1348,46 @@ fn fill_skill_mechanics(env: &mut Env) {
             * db.more(cfg, &projectile_speed);
     }
 
+    let requirements = super::skill_mechanics::attribute_requirements(db, cfg);
+    [
+        env.player.output.req_str,
+        env.player.output.req_dex,
+        env.player.output.req_int,
+    ] = requirements;
+    let timings = super::skill_mechanics::skill_timings(
+        db,
+        cfg,
+        if env.player.base.action_rate > 0.0 {
+            1.0 / env.player.base.action_rate
+        } else {
+            0.0
+        },
+    );
+    env.player.output.total_totem_placement_time = timings.totem;
+    env.player.output.trap_throwing_time = timings.trap;
+    env.player.output.trap_throw_count = timings.trap_count;
+    env.player.output.mine_laying_time = timings.mine;
+    env.player.output.mine_throw_count = timings.mine_count;
+    env.player.output.warcry_cast_time = timings.warcry;
+    env.player.output.channel_time = timings.channel;
+    let behaviors = super::skill_mechanics::projectile_behavior_counts(db, &env.enemy.mod_db, cfg);
+    env.player.output.pierce_count = behaviors.pierce;
+    env.player.output.fork_count = behaviors.fork;
+    env.player.output.chain_max = behaviors.chain;
+    env.player.output.split_count = behaviors.split;
+    env.player.output.bounce_count = behaviors.bounce;
+
+    let durations = super::skill_mechanics::skill_durations(db, &env.enemy.mod_db, cfg);
+    env.player.output.duration = durations.primary;
+    env.player.output.duration_secondary = durations.secondary;
+    env.player.output.aura_duration = durations.aura;
+    env.player.output.reserve_duration = durations.reservation;
+
     // AoE: needs the skill's base radius (SkillAreaRadiusBase BASE). Skipped if absent (stays 0).
     let base_radius = db.sum(ModType::Base, cfg, &[ModName::from("SkillAreaRadiusBase")]);
     if base_radius > 0.0 {
-        let aoe = calc_aoe(db, cfg, base_radius, 0.0);
+        let extra = db.sum(ModType::Base, cfg, &[ModName::from("SkillAreaRadiusExtra")]);
+        let aoe = calc_aoe(db, cfg, base_radius, extra);
         env.player.output.aoe_radius = aoe.radius;
         env.player.output.aoe_area_mod = aoe.area_mod;
     }
@@ -1789,22 +1897,26 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
                 merge,
             },
         ));
+        let damage = round(dps * results[0].terms.duration);
         let out = &mut env.player.output;
         match kind {
             AilmentType::Bleed => {
                 out.bleed_dps = dps;
+                out.bleed_damage = damage;
                 out.bleed_stacked_dps = stacked;
                 out.bleed_active_stacks = active;
                 out.bleed_max_stacks = max_stacks;
             }
             AilmentType::Ignite => {
                 out.ignite_dps = dps;
+                out.ignite_damage = damage;
                 out.ignite_stacked_dps = stacked;
                 out.ignite_active_stacks = active;
                 out.ignite_max_stacks = max_stacks;
             }
             AilmentType::Poison => {
                 out.poison_dps = dps;
+                out.poison_damage = damage;
                 out.poison_stacked_dps = stacked;
                 out.poison_active_stacks = active;
                 out.poison_max_stacks = max_stacks;
@@ -1975,4 +2087,92 @@ fn physical_pdr_fraction(db: &ModDb, cfg: &CalcConfig) -> f64 {
     // armour+flat (CalcDefence.lua:396); the upper-bound clamp is handled uniformly by the ehp
     // layer (a variable dr_max). This only guarantees non-negativity.
     (pct / 100.0).max(0.0)
+}
+
+/// Costs are paid at uses, reloads, or triggers, not at every projectile hit.
+fn fill_resource_cost_rates(env: &mut Env) {
+    let costs = super::skill_mechanics::resource_costs(&env.player.mod_db, &env.cfg);
+    let (cfg, input) = main_hand_scope(env).unwrap_or_else(|| (env.cfg.clone(), player_input(env)));
+    let terms = super::offence::action_rate_terms(&env.player.mod_db, &cfg, &input);
+    if let Some(channel) = terms.channel {
+        env.player.output.channel_time = round(channel.channel_time);
+    }
+    let mut rate = terms.uses;
+    if env.player.output.skill_trigger_rate > 0.0 {
+        rate = env.player.output.skill_trigger_rate;
+    } else if let Some(reload) = &env.crossbow_reload {
+        let cycle = reload.total_firing_time + reload.effective_reload_time;
+        rate = if cycle > 0.0 { 1.0 / cycle } else { 0.0 };
+    } else if env.player.mod_db.sum(
+        ModType::Base,
+        &cfg,
+        &[ModName::from("CrossbowReloadTimeBase")],
+    ) > 0.0
+        && env.player.mod_db.sum(
+            ModType::Base,
+            &cfg,
+            &[ModName::from("ChanceToNotConsumeAmmo")],
+        ) >= 100.0
+    {
+        rate = 0.0;
+    }
+    let placement = [
+        env.player.output.mine_laying_time,
+        env.player.output.trap_throwing_time,
+        env.player.output.total_totem_placement_time,
+        env.player.output.warcry_cast_time,
+    ]
+    .into_iter()
+    .find(|time| *time > 0.0);
+    if let Some(time) = placement
+        && env.player.output.skill_trigger_rate <= 0.0
+    {
+        rate = 1.0 / time;
+        if env.player.output.cooldown > 0.0 {
+            rate = rate.min(1.0 / env.player.output.cooldown);
+        }
+    }
+    let repeats = 1.0
+        + env
+            .player
+            .mod_db
+            .sum(ModType::Base, &cfg, &[ModName::from("RepeatCount")])
+            .max(0.0);
+    if env.crossbow_reload.is_none() {
+        rate /= repeats;
+    }
+    let out = &mut env.player.output;
+    [
+        out.mana_cost,
+        out.life_cost,
+        out.es_cost,
+        out.rage_cost,
+        out.ward_cost,
+    ] = costs.upfront;
+    [
+        out.mana_percent_cost,
+        out.life_percent_cost,
+        out.es_percent_cost,
+        _,
+        out.ward_percent_cost,
+    ] = costs.percent;
+    let per_second =
+        std::array::from_fn::<_, 5, _>(|i| round(costs.per_second[i] + costs.upfront[i] * rate));
+    [
+        out.mana_per_second_cost,
+        out.life_per_second_cost,
+        out.es_per_second_cost,
+        out.rage_per_second_cost,
+        out.ward_per_second_cost,
+    ] = per_second;
+    let percent_per_second = std::array::from_fn::<_, 5, _>(|i| {
+        round(costs.percent_per_second[i] + costs.percent[i] * rate)
+    });
+    [
+        out.mana_percent_per_second_cost,
+        out.life_percent_per_second_cost,
+        out.es_percent_per_second_cost,
+        _,
+        out.ward_percent_per_second_cost,
+    ] = percent_per_second;
 }

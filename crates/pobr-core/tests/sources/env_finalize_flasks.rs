@@ -356,3 +356,31 @@ fn end_to_end_belt_charm_slots_text_unlocks_charm_budget() {
         "'Has 1 Charm Slot' parses to CharmLimit BASE -> unlocks the charm budget"
     );
 }
+
+#[test]
+fn local_flask_duration_does_not_extend_skill_effects() {
+    let carriers = carrier_for(
+        "Flask 1",
+        "Life Flask",
+        &[
+            "47% increased Duration",
+            "20% increased Skill Effect Duration during effect",
+        ],
+    );
+    let mut env = env_with_carriers(true, carriers);
+    merge_flasks_charms(&mut env);
+    assert_eq!(
+        env.player
+            .mod_db
+            .sum(ModType::Inc, &env.cfg, &[ModName::from("Duration")]),
+        20.0
+    );
+    assert_eq!(
+        env.player.mod_db.sum(
+            ModType::Inc,
+            &env.cfg,
+            &[ModName::from("LocalUtilityDuration")]
+        ),
+        47.0
+    );
+}

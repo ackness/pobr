@@ -28,6 +28,8 @@ mod character_base;
 mod hand_pass;
 #[path = "engine/perform_fill.rs"]
 mod perform_fill;
+#[path = "engine/sidebar_outputs.rs"]
+mod sidebar_outputs;
 
 #[path = "engine/recovery_outputs.rs"]
 mod recovery_outputs;

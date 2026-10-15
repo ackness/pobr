@@ -47,7 +47,7 @@ fn catalog_entry_counts_locked() {
     );
     assert_eq!(
         catalog.len() - planned,
-        145,
+        195,
         "a change in Computed entry count needs explicit review"
     );
 }

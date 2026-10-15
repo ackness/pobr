@@ -98,6 +98,9 @@ pub struct SocketGroup {
     /// list order, active and support included); used to resolve support gems' per-level
     /// stats (multipliers/added damage) and inject them into the supported skill.
     pub gem_skills: Vec<GemSkillRef>,
+    /// Gem levels before corruption or another weapon set adjusts skill levels.
+    /// Added skill levels do not raise the gems' attribute requirements.
+    pub gem_requirement_levels: Vec<u32>,
     /// PoB `<Skill mainActiveSkill="N">` (**1-based**): indexes each gem's primary
     /// non-support effect followed by its additional non-support effects, in order.
     /// Effects granted by support gems also count. `None` selects the first effect;
@@ -169,6 +172,7 @@ impl SocketGroup {
             active_gem_level: None,
             active_gem_quality: None,
             gem_skills: Vec::new(),
+            gem_requirement_levels: Vec::new(),
             main_active_skill: None,
             reservation_free_skill: None,
             granted_level: None,
