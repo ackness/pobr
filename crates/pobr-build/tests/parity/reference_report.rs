@@ -420,7 +420,9 @@ const BASELINES: [Baseline; 3] = [
         // poe2db Keywords): gain Warbringer af6a, lose LifeLeechGainRate on 1e4e329e5e5c,
         // bc750d615159 and 42f790c0f9ba, where the reference still caps by the pool
         // (devs/scripts/known-differences.json).
-        agreeing_rows: 5780,
+        // Smith sharing excludes all-elemental modifiers; ancient Idols use their category (+5 rows).
+        // Non-spell casts include Cast Speed (+1 Wildwood's Gifts ActionRate row).
+        agreeing_rows: 5786,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
@@ -467,7 +469,8 @@ const BASELINES: [Baseline; 3] = [
         corpus: "examples/reference-builds/holdout/builds",
         dps_builds: 18,
         // Measured only: local flat requirements follow base conversion (+1 row).
-        agreeing_rows: 1907,
+        // Measured only: resistance truncation, Smith sharing and Idol categories (+5 rows).
+        agreeing_rows: 1912,
     },
 ];
 

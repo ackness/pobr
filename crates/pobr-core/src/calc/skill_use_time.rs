@@ -36,8 +36,8 @@ pub const SPEED_BUCKET: [&str; 3] = ["AttackSpeed", "CastSpeed", "SkillSpeed"];
 pub const ACTION_SPEED: &str = "ActionSpeed";
 
 /// The speed bucket as a [`ModName`] array (for [`ModDb::sum`]/[`ModDb::more`]
-/// aggregation). Contains all three members — used for the "use time" display
-/// (attacks and spells each only have one non-zero side).
+/// aggregation). Contains every family; use [`speed_names_for`] when
+/// calculating a particular skill.
 pub fn speed_names() -> [ModName; 3] {
     [
         ModName::from(SPEED_BUCKET[0]),
@@ -46,18 +46,11 @@ pub fn speed_names() -> [ModName; 3] {
     ]
 }
 
-/// Picks the speed bucket by skill type: attack → `[AttackSpeed, SkillSpeed]`,
-/// spell → `[CastSpeed, SkillSpeed]`, neither (e.g. companion/minion/reservation
-/// main skills) → just `[SkillSpeed]`.
-///
-/// Source: PoB CalcOffence — attacks only benefit from attack speed, spells
-/// only from cast speed, and `SkillSpeed` applies to both; they must not be
-/// conflated (an attack must not pick up `increased Cast Speed`, nor a spell
-/// `increased Attack Speed`). For unflagged skills: vendor's `Speed` mod
-/// carries ModFlag.Attack/Cast, and flag matching requires cfg to have the
-/// corresponding bit set — a cfg that is neither attack nor spell picks up
-/// neither (confirmed on Wolf Pack: its main skill once incorrectly picked up
-/// the weapon's `12% reduced Attack Speed`, giving Speed 0.88 vs vendor's 1.00).
+/// Attacks use AttackSpeed; other skills with a cast time use CastSpeed,
+/// even without the Spell type (e.g. AncientGiftsPlayer's 1000 ms cast).
+/// Warcries and proxy placement have separate timing calculations. Their
+/// non-spell actions must not acquire cast speed through this fallback.
+/// SkillSpeed shares the applicable speed's additive bucket.
 pub fn speed_names_for(cfg: &CalcConfig) -> Vec<ModName> {
     // Attack/spell detection accepts either ModFlags (injected by the
     // orchestrator via `skill_type_flags`) or SkillTypes
@@ -69,7 +62,13 @@ pub fn speed_names_for(cfg: &CalcConfig) -> Vec<ModName> {
     if is_attack {
         names.push(ModName::from(SPEED_BUCKET[0])); // AttackSpeed
     }
-    if is_spell {
+    let separate_timing = cfg.skill_types.intersects(
+        SkillTypes::WARCRY
+            | SkillTypes::SUMMONS_TOTEM
+            | SkillTypes::TRAPPED
+            | SkillTypes::REMOTE_MINED,
+    );
+    if is_spell || (!is_attack && !separate_timing) {
         names.push(ModName::from(SPEED_BUCKET[1])); // CastSpeed
     }
     names.push(ModName::from(SPEED_BUCKET[2])); // SkillSpeed (always)
@@ -84,7 +83,7 @@ pub fn calc_skill_use_time(
     use_time_penalty: f64,
     is_channelling: bool,
 ) -> SkillUseTime {
-    let total_skill_speed = db.sum(ModType::Inc, cfg, &speed_names());
+    let total_skill_speed = db.sum(ModType::Inc, cfg, &speed_names_for(cfg));
     let total_action_speed = db.sum(ModType::Inc, cfg, &[ModName::from(ACTION_SPEED)]);
 
     let tooltip_use_time = if base_use_time > 0.0 {
@@ -232,7 +231,7 @@ pub fn calc_skill_use_time_traced(
     let speed_bucket = db.sum_traced(
         ModType::Inc,
         cfg,
-        &speed_names(),
+        &speed_names_for(cfg),
         trace,
         "skill speed bucket (Attack/Cast/Skill)",
     );

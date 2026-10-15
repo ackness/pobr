@@ -120,3 +120,39 @@ fn flameblast_channel_display_excludes_its_release_and_cooldown() {
     assert_eq!(session.output().channel_time, 0.49);
     assert!(session.output().cooldown > session.output().channel_time);
 }
+
+#[test]
+fn non_spell_casts_share_cast_and_skill_speed_without_attack_speed() {
+    let skill = "AncientGiftsPlayer";
+    let effect = &data().granted_effects[skill];
+    assert_eq!(effect.cast_time, Some(1000));
+    assert!(
+        !effect
+            .skill_types
+            .iter()
+            .any(|t| t == "Spell" || t == "Attack")
+    );
+    // Wildwood's Gifts uses a 1000 ms cast. The body's 7% and jewel's 3%
+    // Cast Speed add to Skill Speed (12% increased, 10% reduced): 1.12/s.
+    // Attack Speed cannot apply to this non-attack buff.
+    for (cast_speed, expected) in [(false, 1.02), (true, 1.12)] {
+        let mut lines = vec![
+            "12% increased Skill Speed".into(),
+            "10% reduced Skill Speed".into(),
+            "100% increased Attack Speed".into(),
+        ];
+        if cast_speed {
+            lines.extend([
+                "7% increased Cast Speed".into(),
+                "3% increased Cast Speed".into(),
+            ]);
+        }
+        let options = DataOrchestratorOptions {
+            extra_modifier_texts: lines,
+            ..Default::default()
+        };
+        let session = calculate_with_data_session(&build(skill), data(), &options).unwrap();
+        assert_eq!(session.output().action_rate, expected);
+        assert_eq!(session.stat_formula("ActionRate").unwrap().value, expected);
+    }
+}
