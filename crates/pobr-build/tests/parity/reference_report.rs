@@ -242,10 +242,16 @@ const BASELINES: [Baseline; 3] = [
     // projectile counts, attribute requirements, costs and spending per
     // second, placement and channel timing), so the reference's rows for
     // them are compared too.
+    //
+    // Then 659 rows: the last sidebar mechanics (movement speed, Presence
+    // radius, aura and curse effect, minion limit, ground and mirage damage,
+    // CritBifurcates) became display stats and are compared. Wolf Pack now
+    // reads `skill_wolf_pack_size` (3 / 5 / 6 wolves at levels 1 / 18 / 20),
+    // which moves two Ritualist regeneration rows away from the reference.
     Baseline {
         corpus: "examples/wasm-benchmark/builds",
         dps_builds: 5,
-        agreeing_rows: 628,
+        agreeing_rows: 659,
     },
     // Was 22 builds and 1024 rows. A code whose main skill summons a minion
     // also carries `<MinionStat>` values for that minion, which were not
@@ -396,10 +402,16 @@ const BASELINES: [Baseline; 3] = [
     // projectile counts, attribute requirements, costs and spending per
     // second, placement and channel timing), so the reference's rows for
     // them are compared too.
+    //
+    // Then 5774 rows: the last sidebar mechanics (movement speed, Presence
+    // radius, aura and curse effect, minion limit, ground and mirage damage,
+    // CritBifurcates) became display stats and are compared. Wolf Pack now
+    // reads `skill_wolf_pack_size` (3 / 5 / 6 wolves at levels 1 / 18 / 20),
+    // which moves two Ritualist regeneration rows away from the reference.
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
         dps_builds: 58,
-        agreeing_rows: 5525,
+        agreeing_rows: 5774,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
@@ -436,10 +448,16 @@ const BASELINES: [Baseline; 3] = [
     // projectile counts, attribute requirements, costs and spending per
     // second, placement and channel timing), so the reference's rows for
     // them are compared too.
+    //
+    // Then 1906 rows: the last sidebar mechanics (movement speed, Presence
+    // radius, aura and curse effect, minion limit, ground and mirage damage,
+    // CritBifurcates) became display stats and are compared. Wolf Pack now
+    // reads `skill_wolf_pack_size` (3 / 5 / 6 wolves at levels 1 / 18 / 20),
+    // which moves two Ritualist regeneration rows away from the reference.
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
         dps_builds: 18,
-        agreeing_rows: 1828,
+        agreeing_rows: 1906,
     },
 ];
 
