@@ -31,7 +31,12 @@ pub struct ChannelCycle {
 }
 
 /// Skills with a defined cycle in this approximation. Parry has no channel-phase
-/// duration; its bash retains its own level-row attack time.
+/// duration; its bash retains its own level-row attack time. Raise Shield has
+/// no cycle either: "Release immediately after Blocking ... to perform a Shield
+/// Bash" waits for a blocked hit, so its 250 ms minimum and 35 ms release are
+/// the raise, not a bash rate. It keeps its own attack time, assuming a
+/// blockable hit arrives whenever the bash can be used. Shield Charge is also
+/// an `ActiveBlock` skill, but its release does not wait for a block.
 pub fn skill_modifiers(
     skill: &str,
     attack_time: Option<f64>,
@@ -44,7 +49,6 @@ pub fn skill_modifiers(
             | "PerfectStrikePlayer"
             | "GatheringStormPlayer"
             | "SnipePlayer"
-            | "ShieldBlockPlayer"
             | "ShieldChargePlayer"
     ) {
         return Vec::new();
@@ -126,15 +130,6 @@ pub(crate) fn resolve_stages(db: &ModDb, cfg: &mut CalcConfig) {
 /// if the skill has no supported channel phases or cannot perform an attack.
 pub(crate) fn cycle(db: &ModDb, cfg: &CalcConfig, attack_rate: f64) -> Option<ChannelCycle> {
     if !db.flag(cfg, "ChannelCycle") {
-        return None;
-    }
-    // Raise Shield: "Release immediately after Blocking ... to perform a
-    // Shield Bash". ActiveBlock's raise timing is not a bash cycle. Retain the
-    // skill's own attack time, assuming a blockable hit arrives whenever the
-    // bash can be used.
-    if SkillTypes::from_pob2_name("ActiveBlock")
-        .is_some_and(|active_block| cfg.skill_types.contains(active_block))
-    {
         return None;
     }
     let fixed_time = base(db, cfg, "ChannelFixedAttackTime");
@@ -303,7 +298,7 @@ mod tests {
     }
 
     #[test]
-    fn active_block_uses_bash_attack_time_instead_of_raise_phases() {
+    fn raise_shield_uses_bash_attack_time_but_shield_charge_channels() {
         let db = channel(
             "ShieldBlockPlayer",
             &[
@@ -321,6 +316,14 @@ mod tests {
         assert!(cycle(&db, &cfg, input.base_action_rate).is_none());
         let output = super::super::calculate_minimal(&db, &cfg, &input);
         assert!((output.action_rate - 1.0 / 0.55).abs() < 1e-6);
+        // Shield Charge has the same skill type; its release does not wait
+        // for a block, so its minimum channel time is the cycle.
+        let charge = channel(
+            "ShieldChargePlayer",
+            &[("base_minimum_channel_time_ms", 1300.0)],
+        );
+        let charge_cycle = cycle(&charge, &cfg, 1.0 / 0.6).unwrap();
+        assert!((charge_cycle.cycle_time - 1.3).abs() < 1e-9);
     }
 
     #[test]

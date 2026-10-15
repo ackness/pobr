@@ -165,3 +165,28 @@ Implicits: 0
         );
     }
 }
+
+/// Shield Charge is an `ActiveBlock` skill like Raise Shield, but its release
+/// does not wait for a blocked hit: one use is its 1300 ms minimum channel
+/// (`base_minimum_channel_time_ms`), however fast its attack time is.
+#[test]
+fn shield_charge_uses_its_minimum_channel_time() {
+    let data = data();
+    let xml = r#"<PathOfBuilding2>
+<Build level="90" className="Witch" mainSocketGroup="1"/>
+<Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true" mainActiveSkill="1"><Gem skillId="ShieldChargePlayer" level="20" quality="0" enabled="true"/></Skill></SkillSet></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Splintered Tower Shield
+Armour: 100
+Implicits: 0
+</Item><ItemSet id="1"><Slot name="Weapon 2" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#;
+    let build = parse_build(xml).expect("shield charge build");
+    let output = calculate_with_data(&build, &data, &DataOrchestratorOptions::default())
+        .expect("shield charge");
+    assert!(
+        (output.action_rate - 1.0 / 1.3).abs() < 1e-6,
+        "{}",
+        output.action_rate
+    );
+}
