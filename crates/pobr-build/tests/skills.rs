@@ -122,3 +122,6 @@ mod attribute_requirements;
 mod effect_ordinal;
 #[path = "skills/unique_lines_2.rs"]
 mod unique_lines_2;
+
+#[path = "skills/unique_lines_3.rs"]
+mod unique_lines_3;

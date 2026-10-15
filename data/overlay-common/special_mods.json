@@ -4048,6 +4048,395 @@
       "batch": "S2",
       "verified": true,
       "source_note": "Game stat additive_spell_damage_modifiers_apply_to_attack_damage (Crown of Eyes): increases and reductions, not more/less or added damage."
+    },
+    {
+      "id": "body_armour_grants_spirit_increased",
+      "pattern": "body armour grants (\\d+)% increased spirit",
+      "mods": [
+        {
+          "name": "Spirit",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "NormalBodyArmourEquipped"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat body_armour_grants_spirit_+%. Output regressions: skills::unique_lines_3.",
+      "examples": [
+        "Body Armour grants 20% increased Spirit"
+      ]
+    },
+    {
+      "id": "body_armour_grants_spirit_reduced",
+      "pattern": "body armour grants (\\d+)% reduced spirit",
+      "mods": [
+        {
+          "name": "Spirit",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "NormalBodyArmourEquipped"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat body_armour_grants_spirit_+%. Output regressions: skills::unique_lines_3.",
+      "examples": [
+        "Body Armour grants 20% reduced Spirit"
+      ]
+    },
+    {
+      "id": "body_armour_grants_strength_increased",
+      "pattern": "body armour grants (\\d+)% increased strength",
+      "mods": [
+        {
+          "name": "Strength",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "NormalBodyArmourEquipped"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat body_armour_grants_x_strength_+%. Output regressions: skills::unique_lines_3.",
+      "examples": [
+        "Body Armour grants 20% increased Strength"
+      ]
+    },
+    {
+      "id": "body_armour_grants_strength_reduced",
+      "pattern": "body armour grants (\\d+)% reduced strength",
+      "mods": [
+        {
+          "name": "Strength",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "NormalBodyArmourEquipped"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat body_armour_grants_x_strength_+%. Output regressions: skills::unique_lines_3.",
+      "examples": [
+        "Body Armour grants 20% reduced Strength"
+      ]
+    },
+    {
+      "id": "body_armour_grants_stun_threshold_increased",
+      "pattern": "body armour grants (\\d+)% increased stun threshold",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "NormalBodyArmourEquipped"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat body_armour_grants_x_stun_threshold_+%. Output regressions: skills::unique_lines_3.",
+      "examples": [
+        "Body Armour grants 20% increased Stun Threshold"
+      ]
+    },
+    {
+      "id": "body_armour_grants_stun_threshold_reduced",
+      "pattern": "body armour grants (\\d+)% reduced stun threshold",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "NormalBodyArmourEquipped"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat body_armour_grants_x_stun_threshold_+%. Output regressions: skills::unique_lines_3.",
+      "examples": [
+        "Body Armour grants 20% reduced Stun Threshold"
+      ]
+    },
+    {
+      "id": "body_armour_grants_fire_resistance",
+      "pattern": "body armour grants \\+(\\d+)% to fire resistance",
+      "mods": [
+        {
+          "name": "FireResist",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "NormalBodyArmourEquipped"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat body_armour_grants_x_base_fire_damage_resistance_%. Output regressions: skills::unique_lines_3.",
+      "examples": [
+        "Body Armour grants +75% to Fire Resistance"
+      ]
+    },
+    {
+      "id": "body_armour_grants_cold_resistance",
+      "pattern": "body armour grants \\+(\\d+)% to cold resistance",
+      "mods": [
+        {
+          "name": "ColdResist",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "NormalBodyArmourEquipped"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat body_armour_grants_x_base_cold_damage_resistance_%. Output regressions: skills::unique_lines_3.",
+      "examples": [
+        "Body Armour grants +75% to Cold Resistance"
+      ]
+    },
+    {
+      "id": "body_armour_grants_lightning_resistance",
+      "pattern": "body armour grants \\+(\\d+)% to lightning resistance",
+      "mods": [
+        {
+          "name": "LightningResist",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "NormalBodyArmourEquipped"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat body_armour_grants_x_base_lightning_damage_resistance_%. Output regressions: skills::unique_lines_3.",
+      "examples": [
+        "Body Armour grants +75% to Lightning Resistance"
+      ]
+    },
+    {
+      "id": "body_armour_grants_maximum_fire_resistance",
+      "pattern": "body armour grants \\+(\\d+)% to maximum fire resistance",
+      "mods": [
+        {
+          "name": "FireResistMax",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "NormalBodyArmourEquipped"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat body_armour_grants_x_base_maximum_fire_damage_resistance_%. Output regressions: skills::unique_lines_3.",
+      "examples": [
+        "Body Armour grants +5% to Maximum Fire Resistance"
+      ]
+    },
+    {
+      "id": "body_armour_grants_elemental_armour",
+      "pattern": "body armour grants \\+(\\d+)% of armour also applies to elemental damage",
+      "mods": [
+        {
+          "name": "ArmourAppliesToElementalDamageTaken",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "NormalBodyArmourEquipped"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat body_armour_grants_armour_%_applies_to_fire_cold_lightning_damage. Output regressions: skills::unique_lines_3.",
+      "examples": [
+        "Body Armour grants +50% of Armour also applies to Elemental Damage"
+      ]
+    },
+    {
+      "id": "body_armour_grants_physical_taken_as_fire",
+      "pattern": "body armour grants (\\d+)% of physical damage from hits taken as fire damage",
+      "mods": [
+        {
+          "name": "PhysicalDamageFromHitsTakenAsFire",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "NormalBodyArmourEquipped"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat body_armour_grants_x_physical_damage_taken_%_as_fire. Output regressions: skills::unique_lines_3.",
+      "examples": [
+        "Body Armour grants 25% of Physical Damage from Hits taken as Fire Damage"
+      ]
+    },
+    {
+      "id": "charms_applied_effect_increased",
+      "pattern": "charms applied to you have (\\d+)% increased effect",
+      "mods": [
+        {
+          "name": "CharmEffect",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat charm_effect_+%. Output regressions: skills::unique_lines_3.",
+      "examples": [
+        "Charms applied to you have 25% increased Effect"
+      ]
+    },
+    {
+      "id": "charms_applied_effect_reduced",
+      "pattern": "charms applied to you have (\\d+)% reduced effect",
+      "mods": [
+        {
+          "name": "CharmEffect",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat charm_effect_+%. Output regressions: skills::unique_lines_3.",
+      "examples": [
+        "Charms applied to you have 25% reduced Effect"
+      ]
+    },
+    {
+      "id": "temporary_minion_limit",
+      "pattern": "temporary minion skills have \\+(\\d+) to limit of minions summoned",
+      "mods": [
+        {
+          "name": "TemporaryMinionLimit",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat temporary_minion_limit_+. Output regressions: skills::unique_lines_3.",
+      "examples": [
+        "Temporary Minion Skills have +2 to Limit of Minions summoned"
+      ]
+    },
+    {
+      "id": "life_recoup_also_energy_shield",
+      "pattern": "damage taken recouped as life is also recouped as energy shield",
+      "mods": [
+        {
+          "name": "LifeRecoupAlsoAppliesToEnergyShield",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat life_recoup_also_applies_to_energy_shield. Output regressions: skills::unique_lines_3.",
+      "examples": [
+        "Damage taken Recouped as Life is also Recouped as Energy Shield"
+      ]
+    },
+    {
+      "id": "life_regeneration_not_applied",
+      "pattern": "life recovery from regeneration is not applied",
+      "mods": [
+        {
+          "name": "UnaffectedByLifeRegen",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat life_recovery_from_regeneration_is_not_applied. Output regressions: skills::unique_lines_3.",
+      "examples": [
+        "Life Recovery from Regeneration is not applied"
+      ]
     }
   ]
 }

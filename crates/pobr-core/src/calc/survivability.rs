@@ -712,7 +712,14 @@ pub fn calc_recoup_from_db(
     damage_taken: f64,
     resource: RecoupResource,
 ) -> RecoupResult {
-    let recoup_pct = db.sum(ModType::Base, cfg, &[resource.recoup_mod_name()]);
+    let mut recoup_pct = db.sum(ModType::Base, cfg, &[resource.recoup_mod_name()]);
+    // life_recoup_also_applies_to_energy_shield copies the percentage;
+    // the recipient retains its own recovery rate and recoup duration.
+    if resource == RecoupResource::EnergyShield
+        && db.flag(cfg, "LifeRecoupAlsoAppliesToEnergyShield")
+    {
+        recoup_pct += db.sum(ModType::Base, cfg, &[ModName::from("LifeRecoup")]);
+    }
     if recoup_pct <= 0.0 {
         return RecoupResult {
             rate_per_second: 0.0,

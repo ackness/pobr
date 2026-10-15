@@ -33,3 +33,6 @@ mod sidebar_outputs;
 
 #[path = "engine/recovery_outputs.rs"]
 mod recovery_outputs;
+
+#[path = "engine/recoup_transfer.rs"]
+mod recoup_transfer;

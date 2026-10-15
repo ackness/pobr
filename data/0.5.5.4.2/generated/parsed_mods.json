@@ -34016,19 +34016,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "ArmourAppliesToFireDamageTaken",
+          "name": "ArmourAppliesToElementalDamageTaken",
           "type": "Base",
-          "value": 50.0
-        },
-        {
-          "name": "ArmourAppliesToColdDamageTaken",
-          "type": "Base",
-          "value": 50.0
-        },
-        {
-          "name": "ArmourAppliesToLightningDamageTaken",
-          "type": "Base",
-          "value": 50.0
+          "value": 50.0,
+          "tags": [
+            "Condition { var: \"NormalBodyArmourEquipped\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -34037,9 +34030,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "FireResistance",
+          "name": "FireResist",
           "type": "Base",
-          "value": 75.0
+          "value": 75.0,
+          "tags": [
+            "Condition { var: \"NormalBodyArmourEquipped\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -34076,7 +34072,10 @@
         {
           "name": "Strength",
           "type": "Inc",
-          "value": 20.0
+          "value": 20.0,
+          "tags": [
+            "Condition { var: \"NormalBodyArmourEquipped\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -34087,7 +34086,10 @@
         {
           "name": "PhysicalDamageFromHitsTakenAsFire",
           "type": "Base",
-          "value": 25.0
+          "value": 25.0,
+          "tags": [
+            "Condition { var: \"NormalBodyArmourEquipped\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -34098,7 +34100,10 @@
         {
           "name": "Spirit",
           "type": "Inc",
-          "value": 30.0
+          "value": 30.0,
+          "tags": [
+            "Condition { var: \"NormalBodyArmourEquipped\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -43275,7 +43280,14 @@
     },
     {
       "text": "[Charm|Charms] applied to you have 10% increased Effect",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CharmEffect",
+          "type": "Inc",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "[Charm|Charms] applied to you have 100% increased Effect per empty [Charm] slot",
@@ -43283,7 +43295,14 @@
     },
     {
       "text": "[Charm|Charms] applied to you have 25% increased Effect",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CharmEffect",
+          "type": "Inc",
+          "value": 25.0
+        }
+      ]
     },
     {
       "text": "[Charm|Charms] gain 0.15 charges per Second",
@@ -47500,7 +47519,14 @@
     },
     {
       "text": "[TemporaryMinion|Temporary Minion] Skills have +2 to [Limit] of [Minion|Minions] summoned",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "TemporaryMinionLimit",
+          "type": "Base",
+          "value": 2.0
+        }
+      ]
     },
     {
       "text": "[Thorns|Thorns Damage] has 25% chance to ignore Enemy [Armour|Armour]",

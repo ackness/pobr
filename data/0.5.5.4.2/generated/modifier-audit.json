@@ -30,7 +30,7 @@
       "0.5.5.4.2/generated/special_vendor.json": "c202035c54924c23ce48559538a8d2068b444d9571a2f986fe43105276e37426",
       "0.5.5.4.2/overlay/mod_parser_rules.json": "c719c7c3eeed65048067f264fd0a62f81cc20d89b917f05e2aa53753166242af",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
-      "overlay-common/special_mods.json": "d3059e3c529dce51b18ed58f325e73be357fa3564531f3e0ae34f23a75aaae8c"
+      "overlay-common/special_mods.json": "6e68b2c64b591feb07c0eaa958dafc4e8137a6205e74a2103f69b9393913eb6d"
     },
     "effective_rules": [
       {
@@ -1520,6 +1520,54 @@
         "non_effective_fields": []
       },
       {
+        "id": "equipment_requirement_increase",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "equipment_no_requirements",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "gem_requirement_increase",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "local_requirements_to_strength",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "local_requirements_to_dexterity",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "local_requirements_to_intelligence",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
         "id": "parry_damage",
         "files": [
           "overlay-common/special_mods.json"
@@ -1553,6 +1601,142 @@
       },
       {
         "id": "spell_damage_applies_to_attacks",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "body_armour_grants_spirit_increased",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "body_armour_grants_spirit_reduced",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "body_armour_grants_strength_increased",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "body_armour_grants_strength_reduced",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "body_armour_grants_stun_threshold_increased",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "body_armour_grants_stun_threshold_reduced",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "body_armour_grants_fire_resistance",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "body_armour_grants_cold_resistance",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "body_armour_grants_lightning_resistance",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "body_armour_grants_maximum_fire_resistance",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "body_armour_grants_elemental_armour",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "body_armour_grants_physical_taken_as_fire",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "charms_applied_effect_increased",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "charms_applied_effect_reduced",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "temporary_minion_limit",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "life_recoup_also_energy_shield",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "life_regeneration_not_applied",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -18676,11 +18860,11 @@
   },
   "summary": {
     "no_effect": 86,
-    "parsed": 16061,
-    "pobr_gap": 1690,
+    "parsed": 16117,
+    "pobr_gap": 1649,
     "recognized_empty": 187,
     "text_channel": 788,
-    "upstream_gap": 23788
+    "upstream_gap": 23782
   },
   "entries": {
     "% of spent Runic Ward granted as Guard@100%": {
@@ -233325,52 +233509,70 @@
       "sources": [
         "stat:stat_descriptions:body_armour_grants_armour_%_applies_to_fire_cold_lightning_damage"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "ArmourAppliesToColdDamageTaken",
-        "ArmourAppliesToFireDamageTaken",
-        "ArmourAppliesToLightningDamageTaken"
+        "ArmourAppliesToElementalDamageTaken"
+      ],
+      "special_rule_id": "body_armour_grants_elemental_armour",
+      "matching_special_rules": [
+        "body_armour_grants_elemental_armour"
       ]
     },
     "Body Armour grants +1% to Cold Resistance": {
       "sources": [
         "stat:stat_descriptions:body_armour_grants_x_base_cold_damage_resistance_%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "ColdResistance"
+        "ColdResist"
+      ],
+      "special_rule_id": "body_armour_grants_cold_resistance",
+      "matching_special_rules": [
+        "body_armour_grants_cold_resistance"
       ]
     },
     "Body Armour grants +1% to Fire Resistance": {
       "sources": [
         "stat:stat_descriptions:body_armour_grants_x_base_fire_damage_resistance_%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "FireResistance"
+        "FireResist"
+      ],
+      "special_rule_id": "body_armour_grants_fire_resistance",
+      "matching_special_rules": [
+        "body_armour_grants_fire_resistance"
       ]
     },
     "Body Armour grants +1% to Lightning Resistance": {
       "sources": [
         "stat:stat_descriptions:body_armour_grants_x_base_lightning_damage_resistance_%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "LightningResistance"
+        "LightningResist"
+      ],
+      "special_rule_id": "body_armour_grants_lightning_resistance",
+      "matching_special_rules": [
+        "body_armour_grants_lightning_resistance"
       ]
     },
     "Body Armour grants +1% to Maximum Fire Resistance": {
       "sources": [
         "stat:stat_descriptions:body_armour_grants_x_base_maximum_fire_damage_resistance_%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaximumFireResistance"
+        "FireResistMax"
+      ],
+      "special_rule_id": "body_armour_grants_maximum_fire_resistance",
+      "matching_special_rules": [
+        "body_armour_grants_maximum_fire_resistance"
       ]
     },
     "Body Armour grants +100% of Armour also applies to Chaos Damage": {
@@ -233393,74 +233595,142 @@
       "sources": [
         "translation:胸甲使 {0:+d}% 的护甲同样作用于元素伤害"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "ArmourAppliesToColdDamageTaken",
-        "ArmourAppliesToFireDamageTaken",
-        "ArmourAppliesToLightningDamageTaken"
+        "ArmourAppliesToElementalDamageTaken"
+      ],
+      "special_rule_id": "body_armour_grants_elemental_armour",
+      "matching_special_rules": [
+        "body_armour_grants_elemental_armour"
       ]
     },
     "Body Armour grants +17% to Cold Resistance": {
       "sources": [
         "translation:胸甲使冰霜抗性 {0:+d}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "ColdResistance"
+        "ColdResist"
+      ],
+      "special_rule_id": "body_armour_grants_cold_resistance",
+      "matching_special_rules": [
+        "body_armour_grants_cold_resistance"
       ]
     },
     "Body Armour grants +17% to Fire Resistance": {
       "sources": [
         "translation:胸甲使火焰抗性 {0:+d}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "FireResistance"
+        "FireResist"
+      ],
+      "special_rule_id": "body_armour_grants_fire_resistance",
+      "matching_special_rules": [
+        "body_armour_grants_fire_resistance"
       ]
     },
     "Body Armour grants +17% to Lightning Resistance": {
       "sources": [
         "translation:胸甲使闪电抗性 {0:+d}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "LightningResistance"
+        "LightningResist"
+      ],
+      "special_rule_id": "body_armour_grants_lightning_resistance",
+      "matching_special_rules": [
+        "body_armour_grants_lightning_resistance"
       ]
     },
     "Body Armour grants +17% to Maximum Fire Resistance": {
       "sources": [
         "translation:胸甲使火焰抗性上限 {0:+d}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaximumFireResistance"
+        "FireResistMax"
+      ],
+      "special_rule_id": "body_armour_grants_maximum_fire_resistance",
+      "matching_special_rules": [
+        "body_armour_grants_maximum_fire_resistance"
+      ]
+    },
+    "Body Armour grants +5% to Maximum Fire Resistance": {
+      "sources": [
+        "rule:body_armour_grants_maximum_fire_resistance"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "FireResistMax"
+      ],
+      "special_rule_id": "body_armour_grants_maximum_fire_resistance",
+      "matching_special_rules": [
+        "body_armour_grants_maximum_fire_resistance"
       ]
     },
     "Body Armour grants +50% of Armour also applies to Elemental Damage": {
       "sources": [
-        "passive:13772"
+        "passive:13772",
+        "rule:body_armour_grants_elemental_armour"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "ArmourAppliesToColdDamageTaken",
-        "ArmourAppliesToFireDamageTaken",
-        "ArmourAppliesToLightningDamageTaken"
+        "ArmourAppliesToElementalDamageTaken"
+      ],
+      "special_rule_id": "body_armour_grants_elemental_armour",
+      "matching_special_rules": [
+        "body_armour_grants_elemental_armour"
+      ]
+    },
+    "Body Armour grants +75% to Cold Resistance": {
+      "sources": [
+        "rule:body_armour_grants_cold_resistance"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "ColdResist"
+      ],
+      "special_rule_id": "body_armour_grants_cold_resistance",
+      "matching_special_rules": [
+        "body_armour_grants_cold_resistance"
       ]
     },
     "Body Armour grants +75% to Fire Resistance": {
       "sources": [
-        "passive:61039"
+        "passive:61039",
+        "rule:body_armour_grants_fire_resistance"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "FireResistance"
+        "FireResist"
+      ],
+      "special_rule_id": "body_armour_grants_fire_resistance",
+      "matching_special_rules": [
+        "body_armour_grants_fire_resistance"
+      ]
+    },
+    "Body Armour grants +75% to Lightning Resistance": {
+      "sources": [
+        "rule:body_armour_grants_lightning_resistance"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "LightningResist"
+      ],
+      "special_rule_id": "body_armour_grants_lightning_resistance",
+      "matching_special_rules": [
+        "body_armour_grants_lightning_resistance"
       ]
     },
     "Body Armour grants 1% increased Glory generation": {
@@ -233475,30 +233745,42 @@
       "sources": [
         "stat:stat_descriptions:body_armour_grants_spirit_+%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "Spirit"
+      ],
+      "special_rule_id": "body_armour_grants_spirit_increased",
+      "matching_special_rules": [
+        "body_armour_grants_spirit_increased"
       ]
     },
     "Body Armour grants 1% increased Strength": {
       "sources": [
         "stat:stat_descriptions:body_armour_grants_x_strength_+%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "Strength"
+      ],
+      "special_rule_id": "body_armour_grants_strength_increased",
+      "matching_special_rules": [
+        "body_armour_grants_strength_increased"
       ]
     },
     "Body Armour grants 1% increased Stun Threshold": {
       "sources": [
         "stat:stat_descriptions:body_armour_grants_x_stun_threshold_+%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "StunThreshold"
+      ],
+      "special_rule_id": "body_armour_grants_stun_threshold_increased",
+      "matching_special_rules": [
+        "body_armour_grants_stun_threshold_increased"
       ]
     },
     "Body Armour grants 1% increased Thorns damage": {
@@ -233529,10 +233811,14 @@
       "sources": [
         "stat:stat_descriptions:body_armour_grants_x_physical_damage_taken_%_as_fire"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "PhysicalDamageFromHitsTakenAsFire"
+      ],
+      "special_rule_id": "body_armour_grants_physical_taken_as_fire",
+      "matching_special_rules": [
+        "body_armour_grants_physical_taken_as_fire"
       ]
     },
     "Body Armour grants 100% increased Thorns damage": {
@@ -233571,30 +233857,42 @@
       "sources": [
         "translation:胸甲使精魂提高 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "Spirit"
+      ],
+      "special_rule_id": "body_armour_grants_spirit_increased",
+      "matching_special_rules": [
+        "body_armour_grants_spirit_increased"
       ]
     },
     "Body Armour grants 17% increased Strength": {
       "sources": [
         "translation:胸甲使力量提高 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "Strength"
+      ],
+      "special_rule_id": "body_armour_grants_strength_increased",
+      "matching_special_rules": [
+        "body_armour_grants_strength_increased"
       ]
     },
     "Body Armour grants 17% increased Stun Threshold": {
       "sources": [
         "translation:胸甲使晕眩阈值提高 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "StunThreshold"
+      ],
+      "special_rule_id": "body_armour_grants_stun_threshold_increased",
+      "matching_special_rules": [
+        "body_armour_grants_stun_threshold_increased"
       ]
     },
     "Body Armour grants 17% increased Thorns damage": {
@@ -233625,10 +233923,14 @@
       "sources": [
         "translation:胸甲使受到的击中物理伤害的 {0}% 转化为火焰伤害"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "PhysicalDamageFromHitsTakenAsFire"
+      ],
+      "special_rule_id": "body_armour_grants_physical_taken_as_fire",
+      "matching_special_rules": [
+        "body_armour_grants_physical_taken_as_fire"
       ]
     },
     "Body Armour grants 17% reduced Glory generation": {
@@ -233643,30 +233945,42 @@
       "sources": [
         "translation:胸甲使精魂降低 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "Spirit"
+      ],
+      "special_rule_id": "body_armour_grants_spirit_reduced",
+      "matching_special_rules": [
+        "body_armour_grants_spirit_reduced"
       ]
     },
     "Body Armour grants 17% reduced Strength": {
       "sources": [
         "translation:胸甲使力量降低 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "Strength"
+      ],
+      "special_rule_id": "body_armour_grants_strength_reduced",
+      "matching_special_rules": [
+        "body_armour_grants_strength_reduced"
       ]
     },
     "Body Armour grants 17% reduced Stun Threshold": {
       "sources": [
         "translation:胸甲使晕眩阈值降低 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "StunThreshold"
+      ],
+      "special_rule_id": "body_armour_grants_stun_threshold_reduced",
+      "matching_special_rules": [
+        "body_armour_grants_stun_threshold_reduced"
       ]
     },
     "Body Armour grants 17% reduced Thorns damage": {
@@ -233689,34 +234003,118 @@
         "MaximumLife"
       ]
     },
+    "Body Armour grants 20% increased Spirit": {
+      "sources": [
+        "rule:body_armour_grants_spirit_increased"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "Spirit"
+      ],
+      "special_rule_id": "body_armour_grants_spirit_increased",
+      "matching_special_rules": [
+        "body_armour_grants_spirit_increased"
+      ]
+    },
     "Body Armour grants 20% increased Strength": {
       "sources": [
-        "passive:49340"
+        "passive:49340",
+        "rule:body_armour_grants_strength_increased"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "Strength"
+      ],
+      "special_rule_id": "body_armour_grants_strength_increased",
+      "matching_special_rules": [
+        "body_armour_grants_strength_increased"
+      ]
+    },
+    "Body Armour grants 20% increased Stun Threshold": {
+      "sources": [
+        "rule:body_armour_grants_stun_threshold_increased"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "StunThreshold"
+      ],
+      "special_rule_id": "body_armour_grants_stun_threshold_increased",
+      "matching_special_rules": [
+        "body_armour_grants_stun_threshold_increased"
+      ]
+    },
+    "Body Armour grants 20% reduced Spirit": {
+      "sources": [
+        "rule:body_armour_grants_spirit_reduced"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "Spirit"
+      ],
+      "special_rule_id": "body_armour_grants_spirit_reduced",
+      "matching_special_rules": [
+        "body_armour_grants_spirit_reduced"
+      ]
+    },
+    "Body Armour grants 20% reduced Strength": {
+      "sources": [
+        "rule:body_armour_grants_strength_reduced"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "Strength"
+      ],
+      "special_rule_id": "body_armour_grants_strength_reduced",
+      "matching_special_rules": [
+        "body_armour_grants_strength_reduced"
+      ]
+    },
+    "Body Armour grants 20% reduced Stun Threshold": {
+      "sources": [
+        "rule:body_armour_grants_stun_threshold_reduced"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "StunThreshold"
+      ],
+      "special_rule_id": "body_armour_grants_stun_threshold_reduced",
+      "matching_special_rules": [
+        "body_armour_grants_stun_threshold_reduced"
       ]
     },
     "Body Armour grants 25% of Physical Damage from Hits taken as Fire Damage": {
       "sources": [
-        "passive:9997"
+        "passive:9997",
+        "rule:body_armour_grants_physical_taken_as_fire"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "PhysicalDamageFromHitsTakenAsFire"
+      ],
+      "special_rule_id": "body_armour_grants_physical_taken_as_fire",
+      "matching_special_rules": [
+        "body_armour_grants_physical_taken_as_fire"
       ]
     },
     "Body Armour grants 30% increased Spirit": {
       "sources": [
         "passive:22908"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "Spirit"
+      ],
+      "special_rule_id": "body_armour_grants_spirit_increased",
+      "matching_special_rules": [
+        "body_armour_grants_spirit_increased"
       ]
     },
     "Body Armour grants 60% increased Glory generation": {
@@ -246044,9 +246442,15 @@
       "sources": [
         "stat:stat_descriptions:charm_effect_+%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "CharmEffect"
+      ],
+      "special_rule_id": "charms_applied_effect_increased",
+      "matching_special_rules": [
+        "charms_applied_effect_increased"
+      ]
     },
     "Charms applied to you have 1% increased Effect per 10 Tribute": {
       "sources": [
@@ -246071,9 +246475,15 @@
         "passive:30252",
         "passive:48462"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "CharmEffect"
+      ],
+      "special_rule_id": "charms_applied_effect_increased",
+      "matching_special_rules": [
+        "charms_applied_effect_increased"
+      ]
     },
     "Charms applied to you have 100% increased Effect per empty Charm slot": {
       "sources": [
@@ -246087,9 +246497,15 @@
       "sources": [
         "translation:对你生效的咒符效果提高 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "CharmEffect"
+      ],
+      "special_rule_id": "charms_applied_effect_increased",
+      "matching_special_rules": [
+        "charms_applied_effect_increased"
+      ]
     },
     "Charms applied to you have 17% increased Effect per 10 Tribute": {
       "sources": [
@@ -246111,9 +246527,15 @@
       "sources": [
         "translation:对你生效的咒符效果降低 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "CharmEffect"
+      ],
+      "special_rule_id": "charms_applied_effect_reduced",
+      "matching_special_rules": [
+        "charms_applied_effect_reduced"
+      ]
     },
     "Charms applied to you have 17% reduced Effect per 10 Tribute": {
       "sources": [
@@ -246133,11 +246555,32 @@
     },
     "Charms applied to you have 25% increased Effect": {
       "sources": [
-        "passive:62803"
+        "passive:62803",
+        "rule:charms_applied_effect_increased"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "CharmEffect"
+      ],
+      "special_rule_id": "charms_applied_effect_increased",
+      "matching_special_rules": [
+        "charms_applied_effect_increased"
+      ]
+    },
+    "Charms applied to you have 25% reduced Effect": {
+      "sources": [
+        "rule:charms_applied_effect_reduced"
+      ],
+      "status": "parsed",
+      "vendor_status": "unsupported",
+      "mod_names": [
+        "CharmEffect"
+      ],
+      "special_rule_id": "charms_applied_effect_reduced",
+      "matching_special_rules": [
+        "charms_applied_effect_reduced"
+      ]
     },
     "Charms gain 0.15 charges per Second": {
       "sources": [
@@ -251750,25 +252193,46 @@
       "sources": [
         "stat:stat_descriptions:local_requirements_%_to_convert_to_dexterity"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "AttributeRequirementsConverted",
+        "AttributeRequirementsConvertedToDexterity"
+      ],
+      "special_rule_id": "local_requirements_to_dexterity",
+      "matching_special_rules": [
+        "local_requirements_to_dexterity"
+      ]
     },
     "Convert 1% of Requirements to Intelligence": {
       "sources": [
         "stat:stat_descriptions:local_requirements_%_to_convert_to_intelligence"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "AttributeRequirementsConverted",
+        "AttributeRequirementsConvertedToIntelligence"
+      ],
+      "special_rule_id": "local_requirements_to_intelligence",
+      "matching_special_rules": [
+        "local_requirements_to_intelligence"
+      ]
     },
     "Convert 1% of Requirements to Strength": {
       "sources": [
         "stat:stat_descriptions:local_requirements_%_to_convert_to_strength"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "AttributeRequirementsConverted",
+        "AttributeRequirementsConvertedToStrength"
+      ],
+      "special_rule_id": "local_requirements_to_strength",
+      "matching_special_rules": [
+        "local_requirements_to_strength"
+      ]
     },
     "Convert 1% of maximum Life to twice as much Armour per 1% Chaos Resistance above 0%": {
       "sources": [
@@ -251834,25 +252298,46 @@
       "sources": [
         "translation:需求的 {0}% 转化为敏捷"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "AttributeRequirementsConverted",
+        "AttributeRequirementsConvertedToDexterity"
+      ],
+      "special_rule_id": "local_requirements_to_dexterity",
+      "matching_special_rules": [
+        "local_requirements_to_dexterity"
+      ]
     },
     "Convert 17% of Requirements to Intelligence": {
       "sources": [
         "translation:需求的 {0}% 转化为智慧"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "AttributeRequirementsConverted",
+        "AttributeRequirementsConvertedToIntelligence"
+      ],
+      "special_rule_id": "local_requirements_to_intelligence",
+      "matching_special_rules": [
+        "local_requirements_to_intelligence"
+      ]
     },
     "Convert 17% of Requirements to Strength": {
       "sources": [
         "translation:需求的 {0}% 转化为力量"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "AttributeRequirementsConverted",
+        "AttributeRequirementsConvertedToStrength"
+      ],
+      "special_rule_id": "local_requirements_to_strength",
+      "matching_special_rules": [
+        "local_requirements_to_strength"
+      ]
     },
     "Convert 17% of maximum Life to twice as much Armour per 1% Chaos Resistance above 0%": {
       "sources": [
@@ -258030,13 +258515,20 @@
     },
     "Damage taken Recouped as Life is also Recouped as Energy Shield": {
       "sources": [
+        "rule:life_recoup_also_energy_shield",
         "stat:stat_descriptions:life_recoup_also_applies_to_energy_shield",
         "translation:所受伤害吸纳为生命时还会吸纳为能量护盾",
         "unique:Sacrosanctum"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "LifeRecoupAlsoAppliesToEnergyShield"
+      ],
+      "special_rule_id": "life_recoup_also_energy_shield",
+      "matching_special_rules": [
+        "life_recoup_also_energy_shield"
+      ]
     },
     "Damage taken cannot be Absorbed": {
       "sources": [
@@ -271792,17 +272284,29 @@
       "sources": [
         "stat:stat_descriptions:global_equipment_attribute_requirements_+%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "GlobalItemAttributeRequirements"
+      ],
+      "special_rule_id": "equipment_requirement_increase",
+      "matching_special_rules": [
+        "equipment_requirement_increase"
+      ]
     },
     "Equipment has 17% increased Attribute Requirements": {
       "sources": [
         "translation:装备对属性需求提高 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "GlobalItemAttributeRequirements"
+      ],
+      "special_rule_id": "equipment_requirement_increase",
+      "matching_special_rules": [
+        "equipment_requirement_increase"
+      ]
     },
     "Equipment has 17% reduced Attribute Requirements": {
       "sources": [
@@ -271818,9 +272322,15 @@
         "translation:装备对属性无需求",
         "unique:The Vertex"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "GlobalItemAttributeRequirements"
+      ],
+      "special_rule_id": "equipment_no_requirements",
+      "matching_special_rules": [
+        "equipment_no_requirements"
+      ]
     },
     "Erupting blade creation radius@17m": {
       "sources": [
@@ -320172,13 +320682,20 @@
     },
     "Life Recovery from Regeneration is not applied": {
       "sources": [
+        "rule:life_regeneration_not_applied",
         "stat:stat_descriptions:life_recovery_from_regeneration_is_not_applied",
         "translation:生命回复无效",
         "unique:Igniferis"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "UnaffectedByLifeRegen"
+      ],
+      "special_rule_id": "life_regeneration_not_applied",
+      "matching_special_rules": [
+        "life_regeneration_not_applied"
+      ]
     },
     "Life Recovery from your Flasks also applies to your Companions": {
       "sources": [
@@ -377264,9 +377781,15 @@
       "sources": [
         "stat:stat_descriptions:global_gem_attribute_requirements_+%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "GlobalGemAttributeRequirements"
+      ],
+      "special_rule_id": "gem_requirement_increase",
+      "matching_special_rules": [
+        "gem_requirement_increase"
+      ]
     },
     "Skill Gems have 1% more Attribute Requirements": {
       "sources": [
@@ -377286,9 +377809,15 @@
       "sources": [
         "translation:技能宝石对属性需求提高 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "GlobalGemAttributeRequirements"
+      ],
+      "special_rule_id": "gem_requirement_increase",
+      "matching_special_rules": [
+        "gem_requirement_increase"
+      ]
     },
     "Skill Gems have 17% less Attribute Requirements": {
       "sources": [
@@ -405781,28 +406310,47 @@
         "search_mods:breach:GenesisTreeRingTemporaryMinionLimitCrafted",
         "stat:stat_descriptions:temporary_minion_limit_+"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "TemporaryMinionLimit"
+      ],
+      "special_rule_id": "temporary_minion_limit",
+      "matching_special_rules": [
+        "temporary_minion_limit"
+      ]
     },
     "Temporary Minion Skills have +17 to Limit of Minions summoned": {
       "sources": [
         "translation:临时召唤生物技能的召唤生物上限 {0:+d}"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "TemporaryMinionLimit"
+      ],
+      "special_rule_id": "temporary_minion_limit",
+      "matching_special_rules": [
+        "temporary_minion_limit"
+      ]
     },
     "Temporary Minion Skills have +2 to Limit of Minions summoned": {
       "sources": [
         "mods:equipment:AlloyTemporaryMinionSkillLimit1",
         "passive:47420",
         "passive:57079",
+        "rule:temporary_minion_limit",
         "search_mods:alloy:AlloyTemporaryMinionSkillLimit1"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "TemporaryMinionLimit"
+      ],
+      "special_rule_id": "temporary_minion_limit",
+      "matching_special_rules": [
+        "temporary_minion_limit"
+      ]
     },
     "Tendrils fired@17": {
       "sources": [

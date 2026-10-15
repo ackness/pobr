@@ -434,7 +434,16 @@ pub fn spawn_minions(
                 // The limit only affects `Multiplier:SummonedMinion` (per-minion mods +
                 // DPS aggregation count), not a single minion's life/defence.
                 let limit = if counted {
-                    own_count.unwrap_or_else(|| minion_limit(&*session, def))
+                    let base = own_count.unwrap_or_else(|| minion_limit(&*session, def));
+                    // temporary_minion_limit_+: a minion skill with a
+                    // duration summons temporary minions, unlike a
+                    // persistent reservation with no duration.
+                    let extra = if skill_types.contains(SkillTypes::DURATION) {
+                        session.base_sum("TemporaryMinionLimit").max(0.0) as u32
+                    } else {
+                        0
+                    };
+                    base.saturating_add(extra)
                 } else {
                     0
                 };
