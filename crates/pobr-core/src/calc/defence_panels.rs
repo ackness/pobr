@@ -397,10 +397,59 @@ impl SpiritTerms {
     }
 }
 
+/// Whether a Spirit BASE modifier comes from equipment (suppressed by
+/// "Cannot gain Spirit from Equipment", passive 8143 Lead me through Grace...).
+///
+/// Equipment Spirit is: the per-item base Spirit (sceptre `Spirit:` lines /
+/// catalog `spirit`, injected as `Spirit` BASE with `SourceKind::Item`), plus
+/// explicit `+N to Spirit` lines on equipment and runes socketed in it
+/// (`SourceKind::ItemAffix` / `ItemImplicit` / `ItemEnchant`). Quest rewards
+/// (`CampaignReward`), tree/passive grants (`PassiveNode` / `AscendancyNode`),
+/// and test fixtures (no origin) are kept — including the node's own
+/// "+1 to Spirit for every 8 Item ES / 20 Evasion on Equipped Body Armour"
+/// (a passive's Spirit, not equipment's). Only BASE is filtered; INC/MORE
+/// (e.g. "% increased Spirit" scaling the remaining pool) still applies.
+fn is_equipment_spirit(m: &crate::Modifier) -> bool {
+    matches!(
+        m.origin.as_ref().map(|o| &o.source_id.kind),
+        Some(
+            pobr_data::source::SourceKind::Item
+                | pobr_data::source::SourceKind::ItemAffix
+                | pobr_data::source::SourceKind::ItemImplicit
+                | pobr_data::source::SourceKind::ItemEnchant
+                | pobr_data::source::SourceKind::ItemQuality
+        )
+    )
+}
+
+/// The equipment-sourced `Spirit` BASE total (for the CannotGainSpirit exclusion).
+/// Evaluates each modifier (PerStat scaling included) so passive per-defence
+/// Spirit (which has no equipment origin) is never subtracted here — the
+/// caller subtracts this from the full BASE total. The full total's `db.sum`
+/// already marks all Spirit mods (including equipment ones) as read, so no
+/// extra ledger marking is needed here.
+fn equipment_spirit_base(db: &ModDb, cfg: &CalcConfig) -> f64 {
+    use crate::model::config::EvalContext;
+    let ctx = EvalContext::new(cfg);
+    db.named("Spirit")
+        .filter(|m| m.mod_type == ModType::Base && m.matches(cfg) && is_equipment_spirit(m))
+        .filter_map(|m| m.effective_number_ref(&ctx))
+        .sum()
+}
+
 pub(crate) fn spirit_terms(db: &ModDb, cfg: &CalcConfig) -> SpiritTerms {
     let names = [ModName::from("Spirit")];
     let override_value = db.override_(cfg, "Spirit");
-    let base = db.sum(ModType::Base, cfg, &names);
+    let total_base = db.sum(ModType::Base, cfg, &names);
+    // Invoker's "Cannot gain Spirit from Equipment" (passive 8143): equipment
+    // BASE (per-item Spirit + explicit +N lines + runes) is not gained; the
+    // node's own per-ES/Evasion Spirit (passive origin) still counts. The flag
+    // read marks CannotGainSpiritFromEquipment applied (was unread).
+    let base = if db.flag(cfg, "CannotGainSpiritFromEquipment") {
+        (total_base - equipment_spirit_base(db, cfg)).max(0.0)
+    } else {
+        total_base
+    };
     let extra = db.sum(ModType::Base, cfg, &[ModName::from("ExtraSpirit")]);
     let conv = db
         .sum(
