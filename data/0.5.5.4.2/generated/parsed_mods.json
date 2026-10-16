@@ -38622,7 +38622,14 @@
     },
     {
       "text": "Grants [ThaumaturgicalDynamism|Thaumaturgical Dynamism]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ThaumaturgicalDynamismChargeInterval",
+          "type": "Base",
+          "value": 5.0
+        }
+      ]
     },
     {
       "text": "Grants [UnravellingBuff|Unravelling]",
@@ -45504,9 +45511,9 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MaximumLife",
+          "name": "ChaosSkillLifeAndEnergyShieldLossPercent",
           "type": "Base",
-          "value": -3.0
+          "value": 3.0
         }
       ]
     },

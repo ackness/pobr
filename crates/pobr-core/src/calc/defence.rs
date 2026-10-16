@@ -715,7 +715,15 @@ pub fn calc_es_recharge(
     energy_shield: f64,
     zealots_oath: bool,
 ) -> EsRecharge {
-    // ZealotsOath: ES is driven by regen, recharge is disabled (PoB2 active-defences.md §5 keystone table).
+    // Scarred Faith's recharge prohibition is independent of regeneration.
+    // Game passive_keystone_alternate_es_recovery: "Energy Shield does not Recharge".
+    if db.flag(cfg, "NoEnergyShieldRecharge") {
+        return EsRecharge {
+            rate_fraction: 0.0,
+            delay_seconds: 0.0,
+        };
+    }
+    // Zealot's Oath recovers excess Life regeneration as Energy Shield.
     if zealots_oath || energy_shield <= 0.0 {
         return EsRecharge {
             rate_fraction: 0.0,

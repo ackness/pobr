@@ -605,9 +605,9 @@
           "value": true
         }
       ],
-      "verified": false,
+      "verified": true,
       "batch": "S2",
-      "source_note": "ModParser.lua:5030（探针求值自动转写；样本：Energy Shield does not Recharge）"
+      "source_note": "Game passive_keystone_alternate_es_recovery (Scarred Faith): Energy Shield does not Recharge. Regression: engine::keystones."
     },
     {
       "id": "equipment_and_skill_gems_have_reduced_attribute_requirements",
@@ -5054,6 +5054,102 @@
       "examples": [
         "Possessed by Spirit Of The Wolf for 20 seconds on use"
       ]
+    },
+    {
+      "id": "thaumaturgical_dynamism",
+      "pattern": "grants thaumaturgical dynamism",
+      "mods": [
+        {
+          "name": "ThaumaturgicalDynamismChargeInterval",
+          "type": "BASE",
+          "value": 5
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "ascendancy_gemling_charge_generator_buff_display; BuffTemplates.AscendancyGemlingChargeGenerator: gain_random_charge_every_X_ms_from_total_socketed_gem_attribute_requirements = 5000; https://poe2db.tw/us/Thaumaturgical_Dynamism",
+      "source_note": "Game text and stats; regression: engine::keystones. See maintainer guide for snapshot and event-model limits."
+    },
+    {
+      "id": "resonance_power_instead_of_frenzy",
+      "pattern": "gain power charges instead of frenzy charges",
+      "mods": [
+        {
+          "name": "GainPowerChargesInsteadOfFrenzy",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "gain_power_charges_instead_of_frenzy",
+      "source_note": "Game text and stats; regression: engine::keystones. See maintainer guide for snapshot and event-model limits."
+    },
+    {
+      "id": "resonance_endurance_instead_of_power",
+      "pattern": "gain endurance charges instead of power charges",
+      "mods": [
+        {
+          "name": "GainEnduranceChargesInsteadOfPower",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "gain_endurance_charges_instead_of_power",
+      "source_note": "Game text and stats; regression: engine::keystones. See maintainer guide for snapshot and event-model limits."
+    },
+    {
+      "id": "resonance_frenzy_instead_of_endurance",
+      "pattern": "gain frenzy charges instead of endurance charges",
+      "mods": [
+        {
+          "name": "GainFrenzyChargesInsteadOfEndurance",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "gain_frenzy_charges_instead_of_endurance",
+      "source_note": "Game text and stats; regression: engine::keystones. See maintainer guide for snapshot and event-model limits."
+    },
+    {
+      "id": "event_horizon_resource_loss",
+      "pattern": "lose (\\d+(?:\\.\\d+)?)% of maximum life and energy shield when you use a chaos skill",
+      "mods": [
+        {
+          "name": "ChaosSkillLifeAndEnergyShieldLossPercent",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "lose_%_of_life_and_energy_shield_when_you_use_a_chaos_skill; passive chaos33_ (Event Horizon): 3%",
+      "source_note": "Game text and stats; regression: engine::keystones. See maintainer guide for snapshot and event-model limits."
+    },
+    {
+      "id": "scarred_faith_no_es_regeneration",
+      "pattern": "you cannot recover energy shield from regeneration",
+      "mods": [
+        {
+          "name": "NoEnergyShieldRegen",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "keystone_alternate_es_recovery; passive_keystone_alternate_es_recovery (Scarred Faith)",
+      "source_note": "Game text separately prohibits ES regeneration. Regression: engine::keystones."
     },
     {
       "id": "immune_to_chill_if_majority_blue_supports_socketed",

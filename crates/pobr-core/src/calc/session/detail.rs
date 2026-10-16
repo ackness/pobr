@@ -400,8 +400,16 @@ pub fn source_names(stat: &str) -> Vec<String> {
         ],
         "TrapThrowCount" => &["TrapThrowCount"],
         "MineThrowCount" => &["MineThrowCount"],
-        "EsRechargeRate" => &["EnergyShieldRechargeRate", "ZealotsOath"],
-        "EsRechargeDelay" => &["EnergyShieldRechargeFaster", "EnergyShieldRechargeBase"],
+        "EsRechargeRate" => &[
+            "EnergyShieldRechargeRate",
+            "ZealotsOath",
+            "NoEnergyShieldRecharge",
+        ],
+        "EsRechargeDelay" => &[
+            "EnergyShieldRechargeFaster",
+            "EnergyShieldRechargeBase",
+            "NoEnergyShieldRecharge",
+        ],
         "ReqStr" | "ReqDex" | "ReqInt" => &[
             "GlobalAttributeRequirements",
             "GlobalGemAttributeRequirements",
@@ -791,9 +799,10 @@ impl CalculationSession {
                 let terms = super::super::recovery::net_recovery_terms(&self.env);
                 if stat == "TotalBuildDegen" {
                     (
-                        "ResourceDrain + SelfDamage + Spending".into(),
+                        "ResourceDrain + UseLoss + SelfDamage + Spending".into(),
                         vec![
                             ("ResourceDrain".into(), terms.direct_drain),
+                            ("UseLoss".into(), terms.use_loss.iter().sum()),
                             ("SelfDamage".into(), terms.typed_loss),
                             ("Spending".into(), terms.costs.iter().sum()),
                         ],
@@ -808,14 +817,18 @@ impl CalculationSession {
                         _ => (3, "Ward", out.ward_regen_recovery),
                     };
                     (
-                        format!("{resource}RegenRecovery - Spending - SelfDamage"),
+                        format!("{resource}RegenRecovery - Spending - SelfDamage - UseLoss"),
                         vec![
                             (format!("{resource}RegenRecovery"), recovered),
                             ("Spending".into(), terms.costs[i]),
                             (
+                                "UseLoss".into(),
+                                terms.use_loss.get(i).copied().unwrap_or(0.0),
+                            ),
+                            (
                                 "SelfDamage".into(),
                                 if i < 3 {
-                                    terms.loss[i] - terms.costs[i]
+                                    terms.loss[i] - terms.costs[i] - terms.use_loss[i]
                                 } else {
                                     0.0
                                 },

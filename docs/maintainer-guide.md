@@ -315,6 +315,35 @@ apply Light Radius modifiers to skill area (`calc::skill_mechanics::calc_aoe`).
 
 恢复（`pobr-core/src/calc/recovery.rs`）分三层：原始再生；经过再生限制与直接恢复后的恢复（`LifeRegenRecovery` 等，含 Runic Ward 与怒气，来自 `base_ward_regeneration_per_minute` “Regenerate 1 Runic Ward per second”、`base_rage_regeneration_per_minute` 等游戏 stat）；扣掉构筑自身损耗后的净恢复（`NetLifeRegen`、`NetManaRegen`、`NetEnergyShieldRegen`、`NetWardRegen`、`TotalNetRegen`）。角色固有的魔力再生是 `character_inherent_mana_regeneration_rate_per_minute_%` = 240（每秒 4% 最大魔力），“No inherent Mana Regeneration” 只去掉这一份（`calc_orchestrator::inject::inject_character_base`）。自身损耗是资源流失（“Lose … per second”，不经减免）、自己受到的类型化持续伤害（经抗性与承伤修正）和主技能的每秒消耗（百分比消耗按资源池换算）：生命、魔力、能量护盾各扣自己的消耗，`NetWardRegen` 是 Runic Ward 的恢复减去它的每秒消耗，`TotalNetRegen` 是这四种净恢复之和，怒气消耗只进入 `TotalBuildDegen`；敌人的持续伤害不计入。Berserk 的 `skill_base_life_loss_%_per_minute_per_rage_while_not_losing_rage_to_apply` = 6 是每点怒气每秒流失 0.1% 最大生命。偷取与命中获得（`LifeLeechGainRate`、`LifeLeechGainPerHit` 等）按[游戏关键词](https://poe2db.tw/us/Keywords)使用一秒基础持续时间，不再把每次偷取量限制为资源池的 10%。[0.5 补丁说明](https://www.pathofexile.com/forum/view-thread/3932540)中的单次命中 40,000 伤害上限已实现：命中总伤害超过上限时，各伤害类型按相同比例缩小，再按各自的偷取比例计算，不能用额外元素伤害补足物理偷取。`base_life_leech_amount_+%` / `base_mana_leech_amount_+%` 的“increased amount of Life Leeched” / “increased amount of Mana Leeched”增加偷取量；`base_life_leech_rate_+%` 等“Leech Life 1% faster”加快速率，不增加总量。最大偷取速率先应用增加/减少与更多/更少修正，再限制实例速率；生命和魔力每秒 20%、能量护盾每秒 10% 的默认上限仍是项目保留的兼容约定，并非 0.5 补丁说明确认的游戏常量。按主技能平均命中频率估计实例覆盖时间，优先计算恢复速率最高的实例，较慢实例只填补其过期后留下的时间，不模拟随机暴击的时间序列；命中获得与瞬间偷取仍按每次命中相加。PoB2 在没有自身类型化持续伤害时不给出净恢复字段，PoBR 照常计算。
 
+Scarred Faith's “Energy Shield does not Recharge” (`keystone_alternate_es_recovery`,
+[game text](https://poe2db.tw/us/Scarred_Faith)) sets recharge rate, amount and
+start delay to zero; its separate regeneration prohibition makes net ES
+regeneration zero when there are no other gains or drains. Recharge is not
+included in the current EHP hit-pool simulation. Resonance (`keystone_charge_cycle`
+and `gain_*_charges_instead_of_*`, [game text](https://poe2db.tw/us/Resonance))
+redirects Power → Endurance → Frenzy → Power once. With no charge-gain event
+model, configured counts above their minima stand in for incoming gains;
+minima and maxima stay with their original type, incoming gains merge and
+are capped by the destination maximum. On-gain proc effects, duration and
+consumption timing are not simulated. Event Horizon
+(`lose_%_of_life_and_energy_shield_when_you_use_a_chaos_skill`, passive
+`chaos33_`: 3%, [game text](https://poe2db.tw/us/Event_Horizon)) subtracts
+3% of each final maximum pool per selected player-used Chaos skill use from
+net Life/ES recovery and includes it in `TotalBuildDegen`. It uses the existing
+cost-use frequency (one payment per repeat sequence), excludes triggered and
+proxy actions, and is neither mitigated damage nor a cost affected by cost
+modifiers. Other skills in a rotation and channel start/stop events are not
+simulated. These charge and loss rules, and the previously unrecognized Scarred Faith
+regeneration wording, declare `exporter: "absent"`.
+Thaumaturgical Dynamism (`ascendancy_gemling_charge_generator_buff_display`)
+is recognized as a five-second generator, from game
+`BuffTemplates.AscendancyGemlingChargeGenerator`'s
+`gain_random_charge_every_X_ms_from_total_socketed_gem_attribute_requirements = 5000`
+([buff data](https://poe2db.tw/us/Thaumaturgical_Dynamism)). Random charge
+selection weighted by socketed gem attribute requirements needs a gain-event
+model; the interval modifier remains unread in diagnostics and never assumes
+full charges or grants an unconditional damage buff.
+
 Full DPS（`calc_orchestrator::full_dps::calculate`，`DataOrchestratorOptions::full_dps`，默认关闭）是构筑码中勾选 `includeInFullDPS` 的组里每个启用效果的持续输出之和，不模拟技能轮转。数量取组的 `groupCount`，没有时取宝石的 `count`（可为小数，不是正的有限数时不计入）；每个效果按自己的武器组、天赋、辅助与触发环境计算，召唤物行用该召唤宝石创建的召唤物；物品内建触发技能的自动行在可编辑的组已纳入同一技能时跳过。命中 DPS 乘数量相加；流血、点燃、毒共用各自的层数上限，单层伤害高的先占层（`full_dps::allocate_stacks`）；同一技能不可叠加的持续伤害只取较强的一份，可叠加的（`DotCanStack`）乘数量，持续伤害总上限与最强的 Culling Strike 倍率各只计一次。逐技能的行（`FullDpsSkill`：数量、单实例命中 DPS、分到的持续伤害、最终贡献、未支持词条与错误）之和等于 `FullDPS`。`includeInFullDPS`、`groupCount`、宝石的 `count` 与 `enableGlobal1/2` 导入导出时保留，WASM 请求里是组的 `include_in_full_dps`、`group_count` 与宝石的 `count`；Web 的技能页编辑它们，只在有组纳入时请求 `full_dps: true`。
 
 Uhtred 系辅助（“+2 to Level of Supported Skills if exactly one other Support is modifying them”）只把辅助宝石算作辅助：meta 宝石（Cast on Elemental Ailment）的触发效果是技能宝石的第二个效果，不算；只辅助 meta 宝石的辅助（Boundless Energy II 要求 `GeneratesEnergy`）也不修改被触发的技能（`skill_env::resolve::support_granted_gem_levels`）。“Skills from Corrupted Gems have …” 在主技能取等级的那颗宝石已腐化时生效（条件 `GemCorrupted`，`calc_orchestrator::skill::resolve::from_corrupted_gem`）。
