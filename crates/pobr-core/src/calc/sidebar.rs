@@ -94,12 +94,13 @@ pub(super) fn fill_sidebar(env: &mut Env) {
     // ShockEffectMod describes magnitude scaling, independently of the
     // hit-dependent shock magnitude retained in shock_effect.
     out.shock_effect_mod = if out.shock_effect > 0.0 {
-        factor(db, cfg, &["EnemyShockMagnitude", "AilmentMagnitude"])
-            * factor(
-                &env.enemy.mod_db,
-                cfg,
-                &["SelfShockMagnitude", "AilmentMagnitude"],
-            )
+        let (attacker, defender) = super::ailment::effect_mod_factors(
+            pobr_data::prelude::AilmentType::Shock,
+            db,
+            &env.enemy.mod_db,
+            cfg,
+        );
+        attacker * defender
     } else {
         0.0
     };

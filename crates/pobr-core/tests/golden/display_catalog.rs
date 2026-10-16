@@ -162,7 +162,9 @@ fn catalog_entry_counts_locked() {
         // Global{Gem,Item,Weapon}AttributeRequirements, MaximumChill, MaximumShock,
         // CurrentChill and CurrentShock (+19).
         // PinBuildupAvg (+1).
-        505,
+        // ShockDuration, ChillDuration, ChillEffectMod, FreezeBuildupAvg,
+        // SelfFreezeEffect, SelfPoisonEffect and SelfBlindDuration (+7).
+        512,
         "a change in Computed entry count needs explicit review"
     );
 }

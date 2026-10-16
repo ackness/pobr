@@ -317,6 +317,27 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         )
         .with_higher_is_better(Some(false)),
         computed(
+            "SelfFreezeEffect",
+            Cat::Defence,
+            Vt::Percent,
+            "SelfFreezeEffect",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "SelfPoisonEffect",
+            Cat::Defence,
+            Vt::Percent,
+            "SelfPoisonEffect",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "SelfBlindDuration",
+            Cat::Defence,
+            Vt::Percent,
+            "SelfBlindDuration",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
             "DebuffExpirationModifier",
             Cat::Defence,
             Vt::Percent,
@@ -1302,6 +1323,25 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         ),
         // Ailment extensions (Wave 2 / Lane B)
         computed("ChillEffect", Cat::Ailment, Vt::Percent, "ChillEffect"),
+        computed("ChillEffectMod", Cat::Ailment, Vt::Number, "ChillEffectMod"),
+        computed(
+            "ChillDuration",
+            Cat::Ailment,
+            Vt::TimeSeconds,
+            "ChillDuration",
+        ),
+        computed(
+            "ShockDuration",
+            Cat::Ailment,
+            Vt::TimeSeconds,
+            "ShockDuration",
+        ),
+        computed(
+            "FreezeBuildupAvg",
+            Cat::Ailment,
+            Vt::Percent,
+            "FreezeBuildupAvg",
+        ),
         computed(
             "FreezeBuildupPct",
             Cat::Ailment,
@@ -2422,6 +2462,10 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
 
         // Ailment extensions
         "ChillEffect" => output.chill_effect,
+        "ChillEffectMod" => output.chill_effect_mod,
+        "ChillDuration" => output.chill_duration,
+        "ShockDuration" => output.shock_duration,
+        "FreezeBuildupAvg" => output.freeze_buildup_avg,
         "AilmentThreshold" => output.ailment_threshold,
         "LifeOnKill" => output.life_on_kill,
         "ManaOnKill" => output.mana_on_kill,
@@ -2470,6 +2514,9 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "WitherEffectOnSelf" => output.wither_effect_on_self,
         "SelfBleedEffect" => output.self_bleed_effect,
         "SelfIgniteEffect" => output.self_ignite_effect,
+        "SelfFreezeEffect" => output.self_freeze_effect,
+        "SelfPoisonEffect" => output.self_poison_effect,
+        "SelfBlindDuration" => output.self_blind_duration,
         "DebuffExpirationModifier" => output.debuff_expiration_modifier,
         "CurseEffectOnSelf" => output.curse_effect_on_self,
         "SelfBleedDuration" => output.self_bleed_duration,

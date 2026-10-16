@@ -39,7 +39,71 @@ fn split_stat(stat: &str) -> Option<(AilmentType, &str)> {
 }
 
 pub(crate) fn is_display_stat(stat: &str) -> bool {
-    stat == "ShockChance" || split_stat(stat).is_some()
+    stat == "ShockChance" || is_non_damaging_view(stat) || split_stat(stat).is_some()
+}
+
+/// Views of the Shock / Chill / Freeze terms the ailment stage retains.
+fn is_non_damaging_view(stat: &str) -> bool {
+    matches!(
+        stat,
+        "ShockDuration" | "ChillDuration" | "ChillEffectMod" | "FreezeBuildupAvg"
+    )
+}
+
+fn non_damaging_detail(env: &Env, stat: &str) -> DerivedDetail {
+    let none = |gate: &str| DerivedDetail {
+        formula: format!("0 * {gate}"),
+        inputs: vec![(gate.to_string(), 0.0)],
+        context: Vec::new(),
+    };
+    if stat == "FreezeBuildupAvg" {
+        return match env.freeze_buildup_terms {
+            Some(t) if t.enabled => DerivedDetail {
+                formula:
+                    "FreezeSourceHitAverage * FreezeBuildupPerDamage * EnemyFreezeBuildupMultiplier"
+                        .into(),
+                inputs: vec![
+                    ("FreezeSourceHitAverage".into(), t.source),
+                    ("FreezeBuildupPerDamage".into(), t.buildup_pct),
+                    ("EnemyFreezeBuildupMultiplier".into(), t.enemy_multiplier),
+                ],
+                context: Vec::new(),
+            },
+            _ => none("CanFreeze"),
+        };
+    }
+    let kind = if stat == "ShockDuration" {
+        AilmentType::Shock
+    } else {
+        AilmentType::Chill
+    };
+    let Some((_, t)) = env.non_damaging_terms.iter().find(|(k, _)| *k == kind) else {
+        return none(if kind == AilmentType::Shock {
+            "CanShock"
+        } else {
+            "CanChill"
+        });
+    };
+    if stat == "ChillEffectMod" {
+        return DerivedDetail {
+            formula: "AttackerChillMagnitude * TargetChillMagnitude".into(),
+            inputs: vec![
+                ("AttackerChillMagnitude".into(), t.attacker_effect),
+                ("TargetChillMagnitude".into(), t.defender_effect),
+            ],
+            context: Vec::new(),
+        };
+    }
+    DerivedDetail {
+        formula: "BaseAilmentDuration * (1 + AilmentDurationIncreased / 100) * AilmentDurationMore * EnemyDebuffDuration".into(),
+        inputs: vec![
+            ("BaseAilmentDuration".into(), t.duration.base),
+            ("AilmentDurationIncreased".into(), t.duration.increased),
+            ("AilmentDurationMore".into(), t.duration.more),
+            ("EnemyDebuffDuration".into(), t.enemy_duration),
+        ],
+        context: Vec::new(),
+    }
 }
 
 fn stage(out: &OutputTable, kind: AilmentType) -> Option<&AilmentStageTerms> {
@@ -107,6 +171,9 @@ pub(crate) fn display_value(out: &OutputTable, stat: &str) -> Option<f64> {
 }
 
 pub(crate) fn detail(env: &Env, stat: &str) -> Option<DerivedDetail> {
+    if is_non_damaging_view(stat) {
+        return Some(non_damaging_detail(env, stat));
+    }
     let out = &env.player.output;
     let mut context = Vec::new();
     let one = |id: &str, value| (id.to_string(), vec![(id.to_string(), value)]);

@@ -132,7 +132,8 @@ fn elemental_prohibitions_override_bonuses_without_disabling_other_ailments() {
                 ignite_traced(&source, &player, &enemy, &cfg, 1000.0, &mut trace);
             let (shock_chance, shock, shock_node) =
                 shock_traced(&source, &player, &enemy, &cfg, 1000.0, &mut trace);
-            let (chill, chill_node) = chill_traced(10_000.0, 1000.0, &player, &cfg, &mut trace);
+            let (chill, chill_node) =
+                chill_traced(10_000.0, 1000.0, &player, &ModDb::new(), &cfg, &mut trace);
             let (freeze, freeze_node) =
                 freeze_poise_buildup_traced(1000.0, &player, &cfg, &mut trace);
             let (electrocute, electrocute_node) =
@@ -561,7 +562,7 @@ fn chill_traced_writes_trace_and_matches_non_traced() {
     let player = ModDb::new();
     let mut trace = TraceGraph::new();
 
-    let (effect, node) = chill_traced(350.0, 1000.0, &player, &cfg, &mut trace);
+    let (effect, node) = chill_traced(350.0, 1000.0, &player, &ModDb::new(), &cfg, &mut trace);
     let expected = chill_effect(350.0, 1000.0);
     assert!(
         (effect - expected).abs() < 1e-6,
@@ -581,7 +582,7 @@ fn chill_traced_with_ailment_magnitude_mod() {
     player.add_mod(Modifier::number("AilmentMagnitude", ModType::Inc, 50.0));
     let mut trace = TraceGraph::new();
 
-    let (effect, _) = chill_traced(350.0, 1000.0, &player, &cfg, &mut trace);
+    let (effect, _) = chill_traced(350.0, 1000.0, &player, &ModDb::new(), &cfg, &mut trace);
     assert!(
         (effect - 50.0).abs() < 1e-6,
         "+50% AilmentMagnitude: ratio=0.35*1.5=0.525 → clamp 50, got {effect}"
@@ -1593,4 +1594,21 @@ fn debuff_duration_mult_from_enemy_buff_expire_faster() {
     // Panel figure (mode_effective=false) is always 1 (vendor :1834 gate).
     let panel = CalcConfig::attack();
     assert_eq!(debuff_duration_mult(&enemy, &panel), 1.0);
+}
+
+/// The target's own Chill magnitude modifier scales the inflicted Chill:
+/// 100 * (350 / 1000) * (1 + 20/100) * (1 - 20/100) = 33.6, while the
+/// attacker's 20% alone gives 42.
+#[test]
+fn chill_traced_reads_the_targets_chill_magnitude() {
+    let cfg = CalcConfig::attack();
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::number("EnemyChillMagnitude", ModType::Inc, 20.0));
+    let mut enemy = ModDb::new();
+    let mut trace = TraceGraph::new();
+    let (alone, _) = chill_traced(350.0, 1000.0, &player, &enemy, &cfg, &mut trace);
+    assert!((alone - 42.0).abs() < 1e-9, "{alone}");
+    enemy.add_mod(Modifier::number("SelfChillMagnitude", ModType::Inc, -20.0));
+    let (reduced, _) = chill_traced(350.0, 1000.0, &player, &enemy, &cfg, &mut trace);
+    assert!((reduced - 33.6).abs() < 1e-9, "{reduced}");
 }
