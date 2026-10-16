@@ -1710,3 +1710,36 @@ fn slowing_potency_uses_the_game_stat_and_marks_exporter_absence() {
         assert_eq!(rule.game_source, "base_slow_potency_+%");
     }
 }
+
+#[test]
+fn armour_break_increases_report_the_missing_per_hit_model() {
+    // Exposed Wounds gives 30% increased break against ailmented targets;
+    // a global 20% increase cannot scale an already-configured broken total.
+    for text in [
+        "Break 20% increased Armour",
+        "[Hit|Hits] [ArmourBreak|Break] 30% increased [Armour] on targets with [Ailments]",
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed, "{text}: {parsed:?}");
+        assert!(parsed.mods.is_empty(), "{text}: {parsed:?}");
+        let meta = parsed.special_meta.unwrap();
+        assert!(meta.no_effect);
+    }
+}
+
+#[test]
+fn additional_remnant_chance_reports_the_missing_count_model() {
+    // Remnant Attraction gives 10%; the preceding small passive gives 5%.
+    for text in [
+        "10% chance to create an additional [Remnant]",
+        "5% chance to create an additional Remnant",
+        "+17% chance to create an additional Remnant",
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed, "{text}: {parsed:?}");
+        assert!(parsed.mods.is_empty(), "{text}: {parsed:?}");
+        let meta = parsed.special_meta.unwrap();
+        assert!(meta.no_effect);
+        assert_eq!(meta.entry_id, "additional_remnant_chance");
+    }
+}

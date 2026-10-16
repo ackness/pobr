@@ -340,3 +340,34 @@ fn exporter_coverage_requires_a_game_source() {
     assert!(GameData::new(&version).special_mods().is_err());
     std::fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn remnant_and_armour_break_limits_keep_their_game_sources() {
+    let def = load();
+    for (id, stat, reason) in [
+        (
+            "additional_remnant_chance",
+            "chance_%_to_create_additional_remnant",
+            "remnant count not modelled",
+        ),
+        (
+            "break_increased_armour",
+            "armour_break_amount_+%",
+            "per hit is not modelled",
+        ),
+        (
+            "hits_break_increased_armour_on_ailmented_targets",
+            "armour_break_amount_+%_vs_enemies_affected_by_ailments",
+            "per hit is not modelled",
+        ),
+    ] {
+        let entry = def.entries.iter().find(|entry| entry.id == id).unwrap();
+        assert_eq!(entry.batch, "S0");
+        assert!(entry.mods.is_empty() && entry.handler_id.is_none());
+        assert!(entry.game_source.as_deref().unwrap().contains(stat));
+        assert!(entry.source_note.as_deref().unwrap().contains(reason));
+        if id == "additional_remnant_chance" {
+            assert_eq!(entry.exporter, pobr_data::source::ExporterCoverage::Absent);
+        }
+    }
+}

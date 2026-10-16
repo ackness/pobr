@@ -126,16 +126,11 @@
       "id": "break_increased_armour",
       "pattern": "break (\\d+)% increased armour",
       "vendor_pattern": "break (%d+)%% increased armour",
-      "mods": [
-        {
-          "name": "ArmourBreakPerHit",
-          "type": "INC",
-          "value": "$1"
-        }
-      ],
+      "mods": [],
       "verified": false,
-      "batch": "S2",
-      "source_note": "ModParser.lua:4258（探针求值自动转写；样本：Break 10% increased Armour）"
+      "batch": "S0",
+      "source_note": "Armour broken per hit is not modelled. The configured ArmourBreakAmount is the total already removed from the enemy, not a base per-hit amount; increased break must not scale it. A per-hit model needs flat skill break, damage-based break, event conditions and monster rarity multipliers.",
+      "game_source": "base/stats.json: armour_break_amount_+%; https://poe2db.tw/us/Keywords"
     },
     {
       "id": "buffs_on_you_expire_slower",
@@ -5058,6 +5053,107 @@
       "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold feeds the player threshold output; slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
       "examples": [
         "Possessed by Spirit Of The Wolf for 20 seconds on use"
+      ]
+    },
+    {
+      "id": "immune_to_chill_if_majority_blue_supports_socketed",
+      "pattern": "immune to chill if a majority of your socketed support gems are blue",
+      "mods": [
+        {
+          "name": "ChillImmune",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "MajorityBlueSocketedSupports"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "socketed-support-majority",
+      "exporter": "differs",
+      "game_source": "base/stats.json: immune_to_chill_if_majority_blue_supports_socketed; base/passive_tree.json: Crystallised Immunities (5332)",
+      "source_note": "Game text requires a majority of socketed support gems. Count every support in enabled groups using SkillGems.GemColour and require strictly more than half. The exporter instead accepts a strict plurality.",
+      "examples": [
+        "Immune to Chill if a majority of your Socketed Support Gems are Blue"
+      ]
+    },
+    {
+      "id": "immune_to_ignite_if_majority_red_supports_socketed",
+      "pattern": "immune to ignite if a majority of your socketed support gems are red",
+      "mods": [
+        {
+          "name": "IgniteImmune",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "MajorityRedSocketedSupports"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "socketed-support-majority",
+      "exporter": "differs",
+      "game_source": "base/stats.json: immune_to_ignite_if_majority_red_supports_socketed; base/passive_tree.json: Crystallised Immunities (5332)",
+      "source_note": "Game text requires a majority of socketed support gems. Count every support in enabled groups using SkillGems.GemColour and require strictly more than half. The exporter instead accepts a strict plurality.",
+      "examples": [
+        "Immune to Ignite if a majority of your Socketed Support Gems are Red"
+      ]
+    },
+    {
+      "id": "immune_to_shock_if_majority_green_supports_socketed",
+      "pattern": "immune to shock if a majority of your socketed support gems are green",
+      "mods": [
+        {
+          "name": "ShockImmune",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "MajorityGreenSocketedSupports"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "socketed-support-majority",
+      "exporter": "differs",
+      "game_source": "base/stats.json: immune_to_shock_if_majority_green_supports_socketed; base/passive_tree.json: Crystallised Immunities (5332)",
+      "source_note": "Game text requires a majority of socketed support gems. Count every support in enabled groups using SkillGems.GemColour and require strictly more than half. The exporter instead accepts a strict plurality.",
+      "examples": [
+        "Immune to Shock if a majority of your Socketed Support Gems are Green"
+      ]
+    },
+    {
+      "id": "hits_break_increased_armour_on_ailmented_targets",
+      "pattern": "hits break (\\d+)% increased armour on targets with ailments",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "game_source": "base/stats.json: armour_break_amount_+%_vs_enemies_affected_by_ailments; base/passive_tree.json: Exposed Wounds (43383)",
+      "source_note": "Armour broken per hit is not modelled. This scales per-hit break only against targets with an ailment; it must not scale the configured total ArmourBreakAmount. See break_increased_armour.",
+      "examples": [
+        "Hits Break 30% increased Armour on targets with Ailments"
+      ]
+    },
+    {
+      "id": "additional_remnant_chance",
+      "pattern": "\\+?(\\d+)% chance to create an additional remnant",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "exporter": "absent",
+      "game_source": "base/stats.json: chance_%_to_create_additional_remnant; base/passive_tree.json: Remnant Attraction (1506)",
+      "source_note": "remnant count not modelled. Into the Breach uses configured collected Purple Flame stacks, not a generated-remnant or collection rate. Extra creation chance cannot scale that supplied count. Arcane Remnants, Empowering Remnants, Elemental Equilibrium and Storm's Recollection need a remnant model.",
+      "examples": [
+        "10% chance to create an additional Remnant",
+        "+17% chance to create an additional Remnant"
       ]
     }
   ]

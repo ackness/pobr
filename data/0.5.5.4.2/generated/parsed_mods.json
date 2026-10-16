@@ -38898,7 +38898,17 @@
     },
     {
       "text": "Immune to [Chill] if a majority of your Socketed [SupportGem|Support Gems] are Blue",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ChillImmune",
+          "type": "Flag",
+          "value": true,
+          "tags": [
+            "Condition { var: \"MajorityBlueSocketedSupports\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Immune to [CorruptedBlood|Corrupted Blood]",
@@ -38939,7 +38949,17 @@
     },
     {
       "text": "Immune to [Ignite] if a majority of your Socketed [SupportGem|Support Gems] are Red",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "IgniteImmune",
+          "type": "Flag",
+          "value": true,
+          "tags": [
+            "Condition { var: \"MajorityRedSocketedSupports\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Immune to [Maim]",
@@ -38983,7 +39003,17 @@
     },
     {
       "text": "Immune to [Shock] if a majority of your Socketed [SupportGem|Support Gems] are Green",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ShockImmune",
+          "type": "Flag",
+          "value": true,
+          "tags": [
+            "Condition { var: \"MajorityGreenSocketedSupports\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Immune to [Shock] while affected by an [Archon] [Buff]",
@@ -42695,58 +42725,23 @@
     },
     {
       "text": "[ArmourBreak|Break] 10% increased [Armour|Armour]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "ArmourBreakPerHit",
-          "type": "Inc",
-          "value": 10.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "[ArmourBreak|Break] 15% increased [Armour|Armour]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "ArmourBreakPerHit",
-          "type": "Inc",
-          "value": 15.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "[ArmourBreak|Break] 20% increased [Armour|Armour]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "ArmourBreakPerHit",
-          "type": "Inc",
-          "value": 20.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "[ArmourBreak|Break] 25% increased [Armour|Armour]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "ArmourBreakPerHit",
-          "type": "Inc",
-          "value": 25.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "[ArmourBreak|Break] 40% increased [Armour|Armour]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "ArmourBreakPerHit",
-          "type": "Inc",
-          "value": 40.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "[ArmourBreak|Break] 50% of [Armour] on [HeavyStun|Heavy Stunning] an Enemy",
@@ -42758,14 +42753,7 @@
     },
     {
       "text": "[ArmourBreak|Break] 60% increased [Armour|Armour]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "ArmourBreakPerHit",
-          "type": "Inc",
-          "value": 60.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "[ArmourBreak|Break] [Armour] on [Critical|Critical Hit] with [Spell|Spells] equal to 10% of [Physical|Physical] Damage dealt",
@@ -45170,11 +45158,11 @@
     },
     {
       "text": "[Hit|Hits] [ArmourBreak|Break] 30% increased [Armour|Armour] on targets with [Ailments]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Hit|Hits] [ArmourBreak|Break] 50% increased [Armour|Armour] on targets with [Ailments]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Hit|Hits] against you have 12% reduced [CriticalDamageBonus|Critical Damage Bonus]",
