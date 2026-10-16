@@ -8,7 +8,7 @@ use pobr_core::calc::actor::{Actor, ActorBaseStats};
 use pobr_core::calc::defence::{EvadeSuite, calc_evade_suite};
 use pobr_core::calc::env::Env;
 use pobr_core::calc::perform::perform;
-use pobr_core::{CalcConfig, ModDb, Modifier};
+use pobr_core::{CalcConfig, ModDb, ModTag, Modifier};
 use pobr_data::prelude::*;
 
 const EPS: f64 = 1e-9;
@@ -547,4 +547,35 @@ fn resistance_above_floor_unchanged() {
     };
     let out = calculate_minimal(&ModDb::new(), &CalcConfig::default(), &input);
     assert_eq!(out.cold_resistance, -60.0);
+}
+
+/// Strong Chin (passive 10998): "Gain Stun Threshold equal to the lowest of Evasion
+/// and Armour on your Helmet" (stat
+/// stun_threshold_+_from_lowest_of_base_helmet_evasion_rating_and_armour).
+///
+/// The stat name says "base": the game text ("Evasion and Armour on your Helmet")
+/// is the helmet's local final values (the displayed Armour/Evasion on the item:
+/// base + local flat, × local inc, × quality, before any global/tree scaling),
+/// not the base type's values. This matches the existing per-slot defence
+/// multiplier semantics (item_rolled_defence) and vendor CalcDefence.lua:816's
+/// armourBase/evasionBase (the item's base values after local calculation).
+///
+/// Helmet with 200 Armour / 150 Evasion → lowest 150 → +150 Stun Threshold
+/// (life 1000 + 150 = 1150).
+#[test]
+fn strong_chin_helmet_lowest_gives_stun_threshold() {
+    let db = db_with(vec![
+        Modifier::number("StunThreshold", ModType::Base, 1.0).with_tag(ModTag::PerStat {
+            stat: "LowestOfArmourAndEvasionOnhelmet".into(),
+            div: 1.0,
+            limit: None,
+            limit_var: None,
+            actor: None,
+        }),
+    ]);
+    // The orchestrator's per_slot_defence_multipliers backfills this from
+    // min(helmet Armour, helmet Evasion) = min(200, 150) = 150.
+    let cfg = CalcConfig::default().with_stat("LowestOfArmourAndEvasionOnhelmet", 150.0);
+    let t = calc_stun_threshold(&db, &cfg, &stun_inputs(1000.0));
+    assert!((t - 1150.0).abs() < EPS, "got {t}");
 }

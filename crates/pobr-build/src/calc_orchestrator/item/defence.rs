@@ -321,9 +321,14 @@ pub(crate) fn per_slot_defence_multipliers(build: &Build, data: &BuildData) -> V
                 out.push((format!("{name}On{slot_id}"), values[idx]));
             }
         }
-        // vendor CalcDefence.lua:816's `output["LowestOfArmourAndEvasionOn"..slot]
-        // = m_min(armourBase, evasionBase)` — consumed by PerStat mods (e.g. the
-        // Svalinn-flavor AilmentThreshold per lowest). When min≤0, a missing key is
+        // Per-slot lowest of armour and evasion: `LowestOfArmourAndEvasionOn<slot>
+        // = min(item armour base, item evasion base)` — consumed by PerStat mods
+        // (e.g. the boots AilmentThreshold per lowest, Strong Chin's Stun Threshold
+        // per lowest on helmet). The values are the item's local final defences
+        // (item_rolled_defence: base + local flat, × local inc, × quality, before
+        // global scaling), not the base type's values — the game text ("Evasion
+        // and Armour on your Helmet") is the helmet's displayed values, and the
+        // stat name's "base" is the pre-global item base. When min≤0, a missing key is
         // equivalent to 0, so no key is set.
         let lowest = values[0].min(values[1]);
         if lowest > 0.0 {
