@@ -5086,6 +5086,20 @@
       "source_note": "Game text and stats; regression: engine::keystones. See maintainer guide for snapshot and event-model limits."
     },
     {
+      "id": "focused_thrust_projectile_damage",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased projectile damage with spears while there are no enemies within (\\d+(?:\\.\\d+)?)m",
+      "handler_id": "special:focused_thrust",
+      "handler_args": [
+        "$1",
+        "$2"
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "projectile_damage_+%_with_spears_while_there_no_enemies_surrounding_you; passive 9227 (Focused Thrust): 40% increased Projectile Damage with Spears while there are no Enemies within 3m",
+      "source_note": "Single-target distance convention: enemyDistance >= radius in metres times 10; Projectile Spear hits only. Regression: skills::line_usage::focused_thrust_requires_spear_projectile_hits_and_configured_distance. See maintainer guide."
+    },
+    {
       "id": "conduit_charge_gains_to_allies",
       "pattern": "if you would gain a charge, allies in your presence gain that charge instead",
       "mods": [
