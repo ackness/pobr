@@ -132,8 +132,15 @@ fn elemental_prohibitions_override_bonuses_without_disabling_other_ailments() {
                 ignite_traced(&source, &player, &enemy, &cfg, 1000.0, &mut trace);
             let (shock_chance, shock, shock_node) =
                 shock_traced(&source, &player, &enemy, &cfg, 1000.0, &mut trace);
-            let (chill, chill_node) =
-                chill_traced(10_000.0, 1000.0, &player, &ModDb::new(), &cfg, 0.0, &mut trace);
+            let (chill, chill_node) = chill_traced(
+                10_000.0,
+                1000.0,
+                &player,
+                &ModDb::new(),
+                &cfg,
+                0.0,
+                &mut trace,
+            );
             let (freeze, freeze_node) =
                 freeze_poise_buildup_traced(1000.0, &player, &cfg, &mut trace);
             let (electrocute, electrocute_node) =
@@ -1630,8 +1637,15 @@ fn critical_hit_magnitude_lines_apply_to_the_critical_share() {
     let mut trace = TraceGraph::new();
     let (no_crit, _) = chill_traced(350.0, 1000.0, &player, &ModDb::new(), &cfg, 0.0, &mut trace);
     assert!((no_crit - 35.0).abs() < 1e-9, "{no_crit}");
-    let (weighted, _) =
-        chill_traced(350.0, 1000.0, &player, &ModDb::new(), &cfg, 0.25, &mut trace);
+    let (weighted, _) = chill_traced(
+        350.0,
+        1000.0,
+        &player,
+        &ModDb::new(),
+        &cfg,
+        0.25,
+        &mut trace,
+    );
     assert!((weighted - 36.75).abs() < 1e-9, "{weighted}");
 
     // Shock: a hit that never / always crits (crit multiplier 1, so the
@@ -1662,5 +1676,8 @@ fn critical_hit_magnitude_lines_apply_to_the_critical_share() {
     );
 
     // 50 * (10000 / 10000)^0.4 = 50%, and 60% with the critical line.
-    assert!((base - 0.5).abs() < 1e-9 && (crit - 0.6).abs() < 1e-9, "{base} {crit}");
+    assert!(
+        (base - 0.5).abs() < 1e-9 && (crit - 0.6).abs() < 1e-9,
+        "{base} {crit}"
+    );
 }

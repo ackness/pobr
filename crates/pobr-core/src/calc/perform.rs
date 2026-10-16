@@ -2183,14 +2183,13 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
         env.player.output.chill_effect = chill;
         // The duration and magnitude modifier of a Chill this hit can inflict.
         if !player.flag(cfg, "CannotChill")
-            && let Some(terms) =
-                super::ailment::non_damaging_ailment_terms(
-                    AilmentType::Chill,
-                    player,
-                    enemy,
-                    cfg,
-                    ailment_crit,
-                )
+            && let Some(terms) = super::ailment::non_damaging_ailment_terms(
+                AilmentType::Chill,
+                player,
+                enemy,
+                cfg,
+                ailment_crit,
+            )
         {
             env.player.output.chill_duration = terms.duration();
             env.player.output.chill_effect_mod = terms.effect_mod();
@@ -2210,14 +2209,13 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
         env.player.output.shock_chance = chance;
         env.player.output.shock_effect = magnitude;
         if chance > 0.0
-            && let Some(terms) =
-                super::ailment::non_damaging_ailment_terms(
-                    AilmentType::Shock,
-                    player,
-                    enemy,
-                    cfg,
-                    ailment_crit,
-                )
+            && let Some(terms) = super::ailment::non_damaging_ailment_terms(
+                AilmentType::Shock,
+                player,
+                enemy,
+                cfg,
+                ailment_crit,
+            )
         {
             env.player.output.shock_duration = terms.duration();
             non_damaging_terms.push((AilmentType::Shock, terms));
