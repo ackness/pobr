@@ -141,6 +141,32 @@ impl CalculationSession {
         }
     }
 
+    /// Distinct non-same rules received by any actor, including skipped rules.
+    pub fn exporter_rules(&self) -> impl Iterator<Item = &pobr_data::source::ExporterRule> {
+        let mut rules = BTreeMap::new();
+        for db in std::iter::once(&self.env.player.mod_db)
+            .chain(std::iter::once(&self.env.enemy.mod_db))
+            .chain(self.env.minions.iter().map(|actor| &actor.mod_db))
+        {
+            for rule in db.exporter_rules() {
+                rules.insert(&rule.id, rule);
+            }
+        }
+        rules.into_values()
+    }
+
+    /// Set before sources are ingested, including nested utility/buff payloads.
+    pub fn set_exporter_rules(&mut self, include_absent: bool, overrides: BTreeMap<String, bool>) {
+        self.env
+            .player
+            .mod_db
+            .set_exporter_rules(include_absent, overrides.clone());
+        self.env
+            .enemy
+            .mod_db
+            .set_exporter_rules(include_absent, overrides);
+    }
+
     /// Injects data-driven parser engine rules (the orchestration layer's
     /// injection contract surface): afterward, all ingest
     /// ([`add_item`](Self::add_item) / [`add_passive_nodes`](Self::add_passive_nodes)

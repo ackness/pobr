@@ -513,6 +513,7 @@ def analyse(name: str, corpus: str, report: dict, oracle: dict, xml: str, known:
         "rows": rows, "leads": leads, "pools": pool_line, "ehp": ehp_lines,
         "unsupported": report.get("unsupported_modifiers") or [],
         "ledger": ledger,
+        "beyond_pob2": report.get("beyond_pob2") or [],
         "related_unread": related_unread(rows, ledger["unread"]),
         "missing_items": report.get("missing_items") or [],
         "skill_levels": skill_levels(report.get("usage"), oracle),
@@ -784,6 +785,17 @@ def render(results: list, failures: list, commit: str, top: int) -> str:
                + f") · PoB2 vendor {commit[:10]}")
     out.append(f"rows that differ from the build codes' references: {differing} of {compared}: "
                + " · ".join(f"{name} {count}" for name, count in classes.items() if count))
+    beyond = {}
+    for result in results:
+        for rule in result.get("beyond_pob2", []):
+            key = (rule["rule_id"], rule["exporter"])
+            counts = beyond.setdefault(key, [0, 0, 0])
+            counts[0] += 1
+            counts[1] += int(rule["changed_rows"] > 0)
+            counts[2] += rule["changed_rows"]
+    out.append("\n== beyond PoB2 (each absent rule enabled alone on reference basis; differs stays enabled)")
+    for (rule, coverage), (present, builds, rows) in sorted(beyond.items()):
+        out.append(f"  {rule} [{coverage}]: {present} present builds; {builds} changed builds, {rows} changed rows")
     for name, error in failures:
         out.append(f"!! {short(name)}: {error}")
 

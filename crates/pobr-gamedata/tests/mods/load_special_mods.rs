@@ -296,3 +296,47 @@ fn both_layers_absent_yields_none() {
     let (_root, ver_dir) = temp_data_root("none");
     assert!(GameData::new(&ver_dir).special_mods().unwrap().is_none());
 }
+
+#[test]
+fn exporter_coverage_requires_a_game_source() {
+    use pobr_data::source::ExporterCoverage;
+    let (root, version) = temp_data_root("exporter");
+    let path = version.join("overlay/special_mods.json");
+    for coverage in ["absent", "differs"] {
+        for source in [
+            None,
+            Some(""),
+            Some("  "),
+            Some("base_spell_mana_cost_efficiency_+%"),
+        ] {
+            let body = serde_json::json!({"entries": [{
+                "id": "coverage_test", "pattern": "test", "batch": "S2",
+                "exporter": coverage, "game_source": source
+            }]});
+            std::fs::write(&path, body.to_string()).unwrap();
+            let result = GameData::new(&version).special_mods();
+            assert_eq!(
+                result.is_ok(),
+                source.is_some_and(|value| !value.trim().is_empty()),
+                "{body}"
+            );
+        }
+    }
+    write_special(&path, &[("vnd_test", "test")]);
+    assert_eq!(
+        GameData::new(&version)
+            .special_mods()
+            .unwrap()
+            .unwrap()
+            .entries[0]
+            .exporter,
+        ExporterCoverage::Same
+    );
+    std::fs::write(
+        &path,
+        r#"{"entries":[{"id":"bad","pattern":"test","batch":"S2","exporter":"typo"}]}"#,
+    )
+    .unwrap();
+    assert!(GameData::new(&version).special_mods().is_err());
+    std::fs::remove_dir_all(root).unwrap();
+}

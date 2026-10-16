@@ -270,6 +270,15 @@ pub struct SpecialTemplateDef {
     /// key in vendor; see `source_note` for its origin).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vendor_pattern: Option<String>,
+    /// Missing coverage preserves the extracted exporter's semantics.
+    #[serde(
+        default,
+        skip_serializing_if = "crate::source::ExporterCoverage::is_same"
+    )]
+    pub exporter: crate::source::ExporterCoverage,
+    /// Required for absent/different rules: game stat id, text, or link.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub game_source: Option<String>,
     /// Template paths (mutually exclusive with `handler_id`; both absent
     /// means a "known unsupported" entry that's recognized but produces no
     /// mod — goes into the unsupported report but no longer counts as a

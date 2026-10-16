@@ -4482,6 +4482,8 @@
     },
     {
       "id": "spell_mana_cost_efficiency",
+      "exporter": "absent",
+      "game_source": "base_spell_mana_cost_efficiency_+%",
       "pattern": "(\\d+(?:\\.\\d+)?)% increased mana cost efficiency of spells",
       "mods": [
         {
@@ -4502,6 +4504,43 @@
       "examples": [
         "39% increased Mana Cost Efficiency of Spells"
       ]
+    },
+    {
+      "id": "grants_onslaught_during_effect",
+      "pattern": "grants onslaught(?: during (?:flask )?effect)?",
+      "mods": [
+        {
+          "name": "Condition:Onslaught",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingFlask"
+            }
+          ]
+        },
+        {
+          "name": "Condition:Onslaught",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stats charm_gain_onslaught_during_effect and gain_onslaught_during_flask_effect: Onslaught is granted while this utility item is active. The suffix-free spelling is used by flask/charm ingest; its payload only merges for an active item. Calculation regression: sources::env_finalize_flasks::onslaught_only_applies_during_the_source_items_effect.",
+      "examples": [
+        "Grants Onslaught during effect",
+        "Grants Onslaught during flask effect"
+      ],
+      "exporter": "absent",
+      "game_source": "charm_gain_onslaught_during_effect; gain_onslaught_during_flask_effect; https://poe2db.tw/us/Onslaught"
     }
   ]
 }

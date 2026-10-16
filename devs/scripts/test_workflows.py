@@ -890,6 +890,21 @@ class TriageTests(unittest.TestCase):
         self.triage = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.triage)
 
+    def test_beyond_pob2_aggregates_rule_impact_without_conflating_agreement(self):
+        results = []
+        for changed in [2, 0, 3]:
+            result = self.triage.analyse("build", "set", {
+                "reference": {"compared": 10, "differing": []},
+                "beyond_pob2": [
+                    {"rule_id": "absent_rule", "exporter": "absent", "changed_rows": changed},
+                    {"rule_id": "different_rule", "exporter": "differs", "changed_rows": 0},
+                ],
+            }, {}, "<PathOfBuilding/>", [])
+            results.append(result)
+        text = self.triage.render(results, [], "test", 3)
+        self.assertIn("absent_rule [absent]: 3 present builds; 2 changed builds, 5 changed rows", text)
+        self.assertIn("different_rule [differs]: 3 present builds; 0 changed builds, 0 changed rows", text)
+
     def test_rows_are_filed_by_what_pob2_says_today(self):
         classify = self.triage.classify
         self.assertEqual(classify(100.0, 120.0, 101.0), "reference")

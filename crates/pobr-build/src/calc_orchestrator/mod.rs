@@ -143,6 +143,10 @@ pub struct DataOrchestratorOptions {
     pub periodic_uptime: bool,
     /// Evaluate all groups marked includeInFullDPS. Defaults to false.
     pub full_dps: bool,
+    /// Include rules missing from the reference exporter (the game default).
+    pub exporter_absent_rules: bool,
+    /// Per-rule diagnostic overrides, used to measure isolated rule impact.
+    pub exporter_rule_overrides: std::collections::BTreeMap<String, bool>,
 }
 
 impl Default for DataOrchestratorOptions {
@@ -160,6 +164,8 @@ impl Default for DataOrchestratorOptions {
             rain_landings: true,
             periodic_uptime: true,
             full_dps: false,
+            exporter_absent_rules: true,
+            exporter_rule_overrides: Default::default(),
         }
     }
 }
@@ -189,6 +195,8 @@ impl DataOrchestratorOptions {
     /// A model added here is verified by its own tests, not by the reference.
     pub fn on_reference_basis(self) -> Self {
         Self {
+            exporter_absent_rules: false,
+            exporter_rule_overrides: Default::default(),
             energy_triggers: false,
             rain_landings: false,
             periodic_uptime: false,
@@ -955,6 +963,10 @@ fn stage_create_session(ctx: &StageCtx<'_>, cfg: CalcConfig) -> SourceWriter {
     // into calc (must come after with_config — with_config replaces cfg wholesale). The
     // data is value-for-value equal to the Default fallback, zero behavior change.
     session.set_constants(data.constants.clone());
+    session.set_exporter_rules(
+        ctx.options.exporter_absent_rules,
+        ctx.options.exporter_rule_overrides.clone(),
+    );
     // CalcSetup supplies one base projectile; SkillStatMap count overrides
     // subtract that one. Only projectile skills expose this output.
     if ctx.main.skill_flags.intersects(ModFlags::PROJECTILE) {

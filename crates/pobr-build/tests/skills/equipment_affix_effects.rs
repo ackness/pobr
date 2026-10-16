@@ -1404,3 +1404,55 @@ fn chaos_max_hit_uses_the_imported_tacati_resistance() {
     close(result.output().ward, 2162.0);
     close(result.output().chaos_max_hit, 8001.0);
 }
+
+#[test]
+fn exporter_absent_item_rules_apply_only_on_the_game_basis() {
+    let data = data();
+    let build = build("FireballPlayer").set_item(
+        EquipmentSlot::Ring1,
+        item(
+            "Sapphire Ring",
+            &["39% increased Mana Cost Efficiency of Spells"],
+        ),
+    );
+    let game = calculate_with_data_session(
+        &build,
+        &data,
+        &DataOrchestratorOptions::against_reference_enemy(),
+    )
+    .unwrap();
+    let reference = calculate_with_data_session(
+        &build,
+        &data,
+        &DataOrchestratorOptions::reference_conditions(),
+    )
+    .unwrap();
+    close(game.stat_totals("ManaCostEfficiency").1, 39.0);
+    close(reference.stat_totals("ManaCostEfficiency").1, 0.0);
+    let modifier = game.mod_db().named("ManaCostEfficiency").next().unwrap();
+    assert_eq!(
+        modifier.exporter_rule.as_ref().unwrap().id,
+        "spell_mana_cost_efficiency"
+    );
+    assert!(
+        modifier.origin.is_some(),
+        "item provenance survives rule provenance"
+    );
+    let report = pobr_build::ImportReport {
+        reference_stats: [("ManaCost".into(), 139.0), ("Life".into(), 100.0)].into(),
+        ..Default::default()
+    };
+    let impacts = pobr_build::exporter_impact::exporter_rule_impacts(
+        &build,
+        &data,
+        &DataOrchestratorOptions::reference_conditions(),
+        &report,
+        &reference,
+    )
+    .unwrap();
+    assert_eq!(impacts.len(), 1);
+    assert_eq!(
+        impacts[0].changed_rows, 1,
+        "efficiency changes ManaCost, not Life"
+    );
+}

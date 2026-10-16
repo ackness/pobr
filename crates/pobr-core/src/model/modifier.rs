@@ -523,6 +523,8 @@ pub struct Modifier {
     pub value: ModValue,
     pub source: Option<String>,
     pub origin: Option<ModifierSource>,
+    /// Rule provenance survives replacing an item's/gem's source origin.
+    pub exporter_rule: Option<std::sync::Arc<pobr_data::source::ExporterRule>>,
     pub flags: ModFlags,
     pub keyword_flags: KeywordFlags,
     pub tags: Vec<ModTag>,
@@ -548,9 +550,20 @@ impl Modifier {
             value,
             source: None,
             origin: None,
+            exporter_rule: None,
             flags: ModFlags::NONE,
             keyword_flags: KeywordFlags::NONE,
             tags: Vec::new(),
+        }
+    }
+
+    /// Stamp the complete payload before source-specific ingest replaces origins.
+    pub fn set_exporter_rule(&mut self, rule: &std::sync::Arc<pobr_data::source::ExporterRule>) {
+        self.exporter_rule = Some(rule.clone());
+        if let ModValue::NestedMods(mods) = &mut self.value {
+            for modifier in mods {
+                modifier.set_exporter_rule(rule);
+            }
         }
     }
 

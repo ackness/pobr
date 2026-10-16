@@ -526,14 +526,9 @@ fn ingest_charm_with_no_parseable_mods_still_emits_empty_carrier() {
 /// Flask special lines: `N% increased effect` -> LocalUtilityEffect; the
 /// `... during effect` suffix is stripped and re-uses the parser (MovementSpeed).
 ///
-/// **`Grants Onslaught during effect` is deliberately Unsupported** -- PoB2's
-/// ModParser returns unsupported for this line (produces no mod, verified via
-/// `run-parsemod.sh`), so Onslaught never enters modDB. PoBR matches it line for
-/// line and no longer unconditionally emits `flag("Onslaught")` beyond what PoB2 can
-/// parse (that inflated Speed for detonate-dead/coiling/flicker by +20% relative to
-/// golden).
+/// Onslaught stays inside the active-item payload until its effect is merged.
 #[test]
-fn ingest_flask_onslaught_during_effect_is_unsupported_local_effect_still_parses() {
+fn ingest_flask_onslaught_during_effect_stays_in_the_payload() {
     let flask = utility_item(
         "Quicksilver Flask",
         &[],
@@ -546,26 +541,20 @@ fn ingest_flask_onslaught_during_effect_is_unsupported_local_effect_still_parses
     assert_eq!(classify_utility_item(&flask), UtilityItemKind::Flask);
 
     let ingest = ingest_flask_charm("Flask 1", &flask);
-    assert_eq!(
-        ingest.unsupported,
-        vec!["Grants Onslaught during effect".to_string()],
-        "the Onslaught line is Unsupported, matching PoB2 (no Onslaught flag emitted)"
-    );
+    assert!(ingest.unsupported.is_empty());
     let carrier = &ingest.modifiers[0];
     assert_eq!(carrier.name, ModName::from(FLASK_BUFF_LIST_NAME));
     let nested = carrier.value.as_nested_mods().unwrap();
-    // The Onslaught line produces no mod -> only LocalUtilityEffect + MovementSpeed
-    // remain.
-    assert_eq!(nested.len(), 2);
-    assert!(
-        nested.iter().all(|m| m.name != ModName::from("Onslaught")),
-        "must not have an Onslaught flag"
-    );
-    assert_eq!(nested[0].name, ModName::from(LOCAL_UTILITY_EFFECT_NAME));
-    assert_eq!(nested[0].value.as_number(), Some(25.0));
-    assert_eq!(nested[1].name, ModName::from("MovementSpeed"));
-    assert_eq!(nested[1].mod_type, ModType::Inc);
-    assert_eq!(nested[1].value.as_number(), Some(10.0));
+    assert_eq!(nested.len(), 4);
+    assert_eq!(nested[0].name, ModName::from("Condition:Onslaught"));
+    assert_eq!(nested[0].mod_type, ModType::Flag);
+    assert_eq!(nested[1].name, ModName::from("Condition:Onslaught"));
+    assert_eq!(nested[1].mod_type, ModType::Flag);
+    assert_eq!(nested[2].name, ModName::from(LOCAL_UTILITY_EFFECT_NAME));
+    assert_eq!(nested[2].value.as_number(), Some(25.0));
+    assert_eq!(nested[3].name, ModName::from("MovementSpeed"));
+    assert_eq!(nested[3].mod_type, ModType::Inc);
+    assert_eq!(nested[3].value.as_number(), Some(10.0));
 }
 
 /// Every line unparseable -> **still produces an empty payload** (behavior switch:

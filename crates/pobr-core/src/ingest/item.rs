@@ -371,8 +371,8 @@ pub fn flask_charm_source(slot_name: &str) -> SourceId {
 ///   (`"Charm 1"` → `charm1`); inner mods each carry their own origin (slot +
 ///   raw_text), so they're traceable modifier-by-modifier once merged.
 /// - `N% increased/reduced effect` → the payload's [`LOCAL_UTILITY_EFFECT_NAME`] Inc.
-/// - `Grants Onslaught [during effect]` → an `Onslaught` Flag (consumed after
-///   merging by env_finalize stage 6's buff_definitions `OnslaughtFlask`).
+/// - `Grants Onslaught during effect` → `Condition:Onslaught`, gated on an
+///   active utility effect; the buff expands after the payload merges.
 /// - Other lines strip the `... during effect` suffix and reuse [`parse_mod`]
 ///   (the active-state semantics are already handled by the slot's `active`
 ///   gate); unparseable lines (including hard parse errors — flask text is
@@ -486,23 +486,6 @@ fn parse_local_effect_inc(text: &str) -> Option<f64> {
         .or_else(|| lower.strip_suffix("% reduced effect").map(|n| (n, -1.0)))?;
     number.parse::<f64>().ok().map(|value| value * sign)
 }
-
-// Note: `Grants Onslaught during effect` (the sole modifier on Silver Charm
-// The Fall of the Axe, etc.) is **deliberately no longer special-cased**.
-// PoB2's ModParser returns `unsupported` for this line (no mod is produced,
-// verified via `tools/pob2-oracle/run-parsemod.sh`) — its Onslaught never
-// enters modDB, and golden doesn't include that Onslaught speed boost. An
-// earlier `parse_granted_buff_flag` exceeded PoB2's parsing capability by
-// unconditionally emitting `flag("Onslaught")`, inflating Speed relative to
-// golden (detonate-dead 2.87 vs 2.62 = 1.09x, coiling 1.08x, flicker 1.15x;
-// cooldown/trigger-rate-capped grenade/frost-bomb were unaffected, hence
-// 1.00x). After removal, this line falls through to `ctx.parse` below →
-// Unsupported, matching PoB2 line-for-line (also consistent with PoBR's
-// design philosophy: unparseable text is Unsupported). Silver **Flask**'s
-// Onslaught (CalcPerform.lua:618-648's `item.baseName:match("Silver Flask")`
-// active form) is a separate channel unrelated to this text modifier; it
-// should be wired up through its own source when that real mechanic lands,
-// not via text special-casing.
 
 /// Strips the `... during [flask] effect` suffix (case-insensitive), returning the remaining slice.
 fn strip_during_effect(text: &str) -> &str {

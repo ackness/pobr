@@ -100,10 +100,13 @@ struct Agreement {
     agreeing_rows: usize,
     /// stat id -> (agreeing builds, compared builds)
     per_stat: BTreeMap<String, (usize, usize)>,
+    // (coverage, present builds, changed builds, changed rows); no holdout identities.
+    beyond: BTreeMap<String, (pobr_data::source::ExporterCoverage, usize, usize, usize)>,
 }
 
 /// Compares every build under `root`; `verbose` prints each build's misses.
-fn corpus_agreement(root: &Path, verbose: bool) -> Agreement {
+fn corpus_agreement(root: &Path, verbose: bool, impact: bool) -> Agreement {
+    let verbose = verbose && !root.components().any(|part| part.as_os_str() == "holdout");
     let data =
         BuildData::load(&GameData::new(pobr_gamedata::current_data_dir())).expect("load BuildData");
     // The same convention as `ninja_parity`: the conditions the references
@@ -129,6 +132,21 @@ fn corpus_agreement(root: &Path, verbose: bool) -> Agreement {
                 continue;
             }
         };
+        if impact {
+            for rule in pobr_build::exporter_impact::exporter_rule_impacts(
+                &build, &data, &options, &report, &session,
+            )
+            .expect("rule impact")
+            {
+                let entry = total
+                    .beyond
+                    .entry(rule.rule_id)
+                    .or_insert((rule.exporter, 0, 0, 0));
+                entry.1 += 1;
+                entry.2 += usize::from(rule.changed_rows > 0);
+                entry.3 += rule.changed_rows;
+            }
+        }
         let rows = compare_build_to_reference(&build, &data, session.output(), &report);
         let misses: Vec<&ReferenceRow> = rows.iter().filter(|row| !row.agrees(TOL)).collect();
         total.builds += 1;
@@ -252,10 +270,8 @@ const BASELINES: [Baseline; 3] = [
         corpus: "examples/wasm-benchmark/builds",
         dps_builds: 5,
         // Sanguimantic Rituals redirects Arcane Surge regeneration to Life (+2 rows).
-        // base_spell_mana_cost_efficiency_+% applies to Spells; the exporter only parses attacks.
-        // Gemling Comet c60ba778fabb and Titan His Scattering Calamity a46026af415f
-        // lose ManaCost / ManaPerSecondCost agreement (-4 rows; known-differences.json).
-        agreeing_rows: 657,
+        // Exporter-absent Spell Mana Cost Efficiency is excluded on reference basis.
+        agreeing_rows: 661,
     },
     // Was 22 builds and 1024 rows. A code whose main skill summons a minion
     // also carries `<MinionStat>` values for that minion, which were not
@@ -426,11 +442,8 @@ const BASELINES: [Baseline; 3] = [
         // Smith sharing excludes all-elemental modifiers; ancient Idols use their category (+5 rows).
         // Non-spell casts include Cast Speed (+1 Wildwood's Gifts ActionRate row).
         // Spell Echo's average repeated area fixes Frost Bomb's radius (+1 row).
-        // base_spell_mana_cost_efficiency_+% applies to Spells; the exporter only parses attacks.
-        // Shaman Comet ccfea76a6890, Lich Spark ce24558eff0b / 0a17a1a7df6d,
-        // Shaman Spark 5dcf9ecdd375 and Stormweaver Comet 32a7d948edf8 lose
-        // ManaCost / ManaPerSecondCost agreement (-10 rows; known-differences.json).
-        agreeing_rows: 5777,
+        // Exporter-absent Spell Mana Cost Efficiency is excluded on reference basis.
+        agreeing_rows: 5787,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
@@ -478,9 +491,8 @@ const BASELINES: [Baseline; 3] = [
         dps_builds: 18,
         // Measured only: local flat requirements follow base conversion (+1 row).
         // Measured only: resistance truncation, Smith sharing and Idol categories (+5 rows).
-        // Measured only: base_spell_mana_cost_efficiency_+% corrects the exporter's
-        // missing Spell phrase (-4 rows; no holdout builds diagnosed).
-        agreeing_rows: 1908,
+        // Measured only: reference basis excludes exporter-absent rules.
+        agreeing_rows: 1912,
     },
 ];
 
@@ -489,7 +501,7 @@ const BASELINES: [Baseline; 3] = [
 #[test]
 fn reference_agreement_does_not_regress() {
     for set in BASELINES {
-        let total = corpus_agreement(&repo_path(set.corpus), false);
+        let total = corpus_agreement(&repo_path(set.corpus), false, false);
         assert!(
             total.dps_builds >= set.dps_builds,
             "{}: TotalDPS agrees on {} builds, was {}",
@@ -593,6 +605,17 @@ fn sanguimantic_rituals_regeneration_matches_build_references() {
     }
 }
 
+fn print_beyond(total: &Agreement) {
+    eprintln!(
+        "  beyond PoB2 (each absent rule enabled alone on reference basis; differs stays enabled):"
+    );
+    for (id, (coverage, present, builds, rows)) in &total.beyond {
+        eprintln!(
+            "    {id} [{coverage:?}]: {present} present builds; {builds} changed builds, {rows} changed rows"
+        );
+    }
+}
+
 fn percent(part: usize, whole: usize) -> f64 {
     100.0 * part as f64 / whole.max(1) as f64
 }
@@ -612,7 +635,7 @@ fn reference_report() {
             "set", "builds", "TotalDPS", "rows"
         );
         for set in BASELINES {
-            let total = corpus_agreement(&repo_path(set.corpus), false);
+            let total = corpus_agreement(&repo_path(set.corpus), false, true);
             eprintln!(
                 "{:<44}{:>8}{:>8} {:>4.0}%{:>11}/{:<5}{:>5.1}%",
                 set.corpus,
@@ -623,10 +646,11 @@ fn reference_report() {
                 total.rows,
                 percent(total.agreeing_rows, total.rows)
             );
+            print_beyond(&total);
         }
         return;
     };
-    let total = corpus_agreement(&root, true);
+    let total = corpus_agreement(&root, true, true);
 
     eprintln!(
         "\n================ REFERENCE SUMMARY (tol {:.0}%) ================",
@@ -643,6 +667,7 @@ fn reference_report() {
         total.rows,
         percent(total.agreeing_rows, total.rows)
     );
+    print_beyond(&total);
     eprintln!("stats that disagree on at least one build (agree/compared):");
     let mut stats: Vec<_> = total
         .per_stat

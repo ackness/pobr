@@ -144,7 +144,9 @@ impl Env {
     /// injection result. Once this entry point is called during integration,
     /// `perform` runs the same offence/defence pipeline for every minion.
     pub fn add_minion(&mut self, ctx: super::MinionContext) -> &mut Self {
-        self.minions.push(minion_actor_from_context(&ctx));
+        let mut actor = minion_actor_from_context(&ctx);
+        actor.mod_db.inherit_exporter_rules(&self.player.mod_db);
+        self.minions.push(actor);
         self
     }
 
@@ -207,6 +209,7 @@ impl Env {
             );
         }
         let mut actor = minion_actor_from_context(&ctx);
+        actor.mod_db.inherit_exporter_rules(&self.player.mod_db);
         // A minion created while the calculation notes its reads is noted too.
         if self.player.mod_db.tracks_reads() {
             actor.mod_db.track_reads();

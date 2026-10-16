@@ -724,6 +724,8 @@ fn energy_meta_worked_builds_keep_reference_dps_and_expose_game_rates() {
             &data,
             &DataOrchestratorOptions {
                 energy_triggers: false,
+                // Own-use comparison also omits the exporter's missing charm rule.
+                exporter_absent_rules: false,
                 ..options
             },
         )

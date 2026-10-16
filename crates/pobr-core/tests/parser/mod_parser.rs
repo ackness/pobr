@@ -1596,3 +1596,29 @@ fn spell_mana_cost_efficiency_retains_its_spell_scope() {
     assert!(!modifier.matches(&pobr_core::CalcConfig::attack()));
     assert!(!modifier.matches(&pobr_core::CalcConfig::new()));
 }
+
+#[test]
+fn grants_onslaught_requires_an_active_utility_effect() {
+    // charm_gain_onslaught_during_effect / gain_onslaught_during_flask_effect.
+    for text in [
+        "Grants Onslaught during effect",
+        "Grants Onslaught during flask effect",
+    ] {
+        let outcome = parse_mod(text).unwrap();
+        assert_eq!(outcome.status, ParseStatus::Parsed);
+        assert_eq!(outcome.mods.len(), 2);
+        let mut db = pobr_core::ModDb::new();
+        for modifier in outcome.mods {
+            assert_eq!(modifier.name, ModName::from("Condition:Onslaught"));
+            assert_eq!(modifier.mod_type, ModType::Flag);
+            db.add_mod(modifier);
+        }
+        assert!(!db.flag(&pobr_core::CalcConfig::new(), "Condition:Onslaught"));
+        for condition in ["UsingCharm", "UsingFlask"] {
+            assert!(db.flag(
+                &pobr_core::CalcConfig::new().with_condition(condition, true),
+                "Condition:Onslaught"
+            ));
+        }
+    }
+}

@@ -141,6 +141,7 @@ impl std::error::Error for SpecialCompileError {}
 #[derive(Debug)]
 struct CompiledEntry {
     id: String,
+    exporter_rule: Option<std::sync::Arc<pobr_data::source::ExporterRule>>,
     regex: Regex,
     verified: bool,
     /// Registered as changing nothing a calculation reports (batch `S0`).
@@ -269,6 +270,13 @@ impl SpecialModRules {
 
             entries.push(CompiledEntry {
                 id: def.id.clone(),
+                exporter_rule: (!def.exporter.is_same()).then(|| {
+                    std::sync::Arc::new(pobr_data::source::ExporterRule {
+                        id: def.id.clone(),
+                        exporter: def.exporter,
+                        game_source: def.game_source.clone().unwrap_or_default(),
+                    })
+                }),
                 regex,
                 verified: def.verified,
                 no_effect: def.batch == "S0",
@@ -360,6 +368,9 @@ impl SpecialModRules {
                 let outcome = handler(&HandlerCtx::with_inputs_and_captures(&nums, &captures));
                 let mut mods = outcome.player_mods;
                 for m in &mut mods {
+                    if let Some(rule) = &entry.exporter_rule {
+                        m.set_exporter_rule(rule);
+                    }
                     if m.source.is_none() {
                         m.source = Some(line.to_string());
                     }
@@ -385,7 +396,12 @@ impl SpecialModRules {
                     unregistered_handler: None,
                 });
             };
-            let mods = instantiate_template(template, &captures, &entry.enums, line);
+            let mut mods = instantiate_template(template, &captures, &entry.enums, line);
+            for modifier in &mut mods {
+                if let Some(rule) = &entry.exporter_rule {
+                    modifier.set_exporter_rule(rule);
+                }
+            }
             return Some(SpecialMatch {
                 entry_id: entry.id.clone(),
                 mods,

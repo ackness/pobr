@@ -395,3 +395,30 @@ fn summoned_minion_multipliers_stack_multiple_types() {
         "multiple minion types should stack in SummonedMinion"
     );
 }
+
+#[test]
+fn minion_context_inherits_reference_rule_policy_before_calculation() {
+    use pobr_core::calc::{Actor, ActorBaseStats, Env};
+    use pobr_data::source::{ExporterCoverage, ExporterRule};
+    let mut modifier = Modifier::number("Life", ModType::Base, 123.0);
+    modifier.set_exporter_rule(&std::sync::Arc::new(ExporterRule {
+        id: "test_minion_life".into(),
+        exporter: ExporterCoverage::Absent,
+        game_source: "Minions have +123 to maximum Life".into(),
+    }));
+    for include_absent in [true, false] {
+        let mut env = Env::new(Actor::new(90, ActorBaseStats::default()));
+        env.player
+            .mod_db
+            .set_exporter_rules(include_absent, Default::default());
+        let mut input = empty_input(20, MinionData::default());
+        input.ally_buff_mods.push(modifier.clone());
+        env.add_minion(build_minion_context(&input));
+        let db = &env.minions[0].mod_db;
+        assert_eq!(
+            db.named("Life").any(|m| m.exporter_rule.is_some()),
+            include_absent
+        );
+        assert_eq!(db.exporter_rules().count(), 1);
+    }
+}

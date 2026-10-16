@@ -342,62 +342,6 @@
       "build": "witch-blood-mage-impending-doom-add19135df93",
       "stats": ["ReqDex"],
       "reason": "The Vertex's Equipment has no Attribute Requirements (game stat global_equipment_no_attribute_requirements) removes equipment requirements, including weapons; PoB2 leaves this line out (docs/maintainer-guide.md, The Vertex)"
-    },
-    {
-      "build": "mercenary-gemling-legionnaire-comet-c60ba778fabb",
-      "stats": [
-        "ManaCost",
-        "ManaPerSecondCost"
-      ],
-      "reason": "Game stat base_spell_mana_cost_efficiency_+% (increased Mana Cost Efficiency of Spells) applies unconditionally to Spell mana costs. The exporter parses mana cost efficiency of attacks but has no rule for of spells, so its reference omits this modifier; ManaCost and ManaPerSecondCost intentionally decrease (docs/maintainer-guide.md, known intentional differences)."
-    },
-    {
-      "build": "warrior-titan-his-scattering-calamity-a46026af415f",
-      "stats": [
-        "ManaCost",
-        "ManaPerSecondCost"
-      ],
-      "reason": "Game stat base_spell_mana_cost_efficiency_+% (increased Mana Cost Efficiency of Spells) applies unconditionally to Spell mana costs. The exporter parses mana cost efficiency of attacks but has no rule for of spells, so its reference omits this modifier; ManaCost and ManaPerSecondCost intentionally decrease (docs/maintainer-guide.md, known intentional differences)."
-    },
-    {
-      "build": "druid-shaman-comet-ccfea76a6890",
-      "stats": [
-        "ManaCost",
-        "ManaPerSecondCost"
-      ],
-      "reason": "Game stat base_spell_mana_cost_efficiency_+% (increased Mana Cost Efficiency of Spells) applies unconditionally to Spell mana costs. The exporter parses mana cost efficiency of attacks but has no rule for of spells, so its reference omits this modifier; ManaCost and ManaPerSecondCost intentionally decrease (docs/maintainer-guide.md, known intentional differences)."
-    },
-    {
-      "build": "witch-lich-spark-ce24558eff0b",
-      "stats": [
-        "ManaCost",
-        "ManaPerSecondCost"
-      ],
-      "reason": "Game stat base_spell_mana_cost_efficiency_+% (increased Mana Cost Efficiency of Spells) applies unconditionally to Spell mana costs. The exporter parses mana cost efficiency of attacks but has no rule for of spells, so its reference omits this modifier; ManaCost and ManaPerSecondCost intentionally decrease (docs/maintainer-guide.md, known intentional differences)."
-    },
-    {
-      "build": "druid-shaman-spark-5dcf9ecdd375",
-      "stats": [
-        "ManaCost",
-        "ManaPerSecondCost"
-      ],
-      "reason": "Game stat base_spell_mana_cost_efficiency_+% (increased Mana Cost Efficiency of Spells) applies unconditionally to Spell mana costs. The exporter parses mana cost efficiency of attacks but has no rule for of spells, so its reference omits this modifier; ManaCost and ManaPerSecondCost intentionally decrease (docs/maintainer-guide.md, known intentional differences)."
-    },
-    {
-      "build": "sorceress-stormweaver-comet-32a7d948edf8",
-      "stats": [
-        "ManaCost",
-        "ManaPerSecondCost"
-      ],
-      "reason": "Game stat base_spell_mana_cost_efficiency_+% (increased Mana Cost Efficiency of Spells) applies unconditionally to Spell mana costs. The exporter parses mana cost efficiency of attacks but has no rule for of spells, so its reference omits this modifier; ManaCost and ManaPerSecondCost intentionally decrease (docs/maintainer-guide.md, known intentional differences)."
-    },
-    {
-      "build": "witch-lich-spark-0a17a1a7df6d",
-      "stats": [
-        "ManaCost",
-        "ManaPerSecondCost"
-      ],
-      "reason": "Game stat base_spell_mana_cost_efficiency_+% (increased Mana Cost Efficiency of Spells) applies unconditionally to Spell mana costs. The exporter parses mana cost efficiency of attacks but has no rule for of spells, so its reference omits this modifier; ManaCost and ManaPerSecondCost intentionally decrease (docs/maintainer-guide.md, known intentional differences)."
     }
   ]
 }
