@@ -21,14 +21,20 @@ the modifier lines one side counts and the other does not or counts with
 another value (by source and type), the engine's lines that do not apply
 where PoB2 counts their source (a condition the engine does not set), the
 factors of the damage and the enemy's mitigation that differ, PoB2's pools
-behind a largest hit or EHP that differs, and the lines no rule parses, by how
+behind a largest hit or EHP that differs with the terms of the EHP stage that
+differ (the enemy's hit, the damage taken and the pool per type, the hits to
+die; the engine's `output.ehp`) and the enemy damage PoB2 gains as other
+types, and the lines no rule parses, by how
 many builds carry them. From each build's ledger of lines (`--usage`) it
 gathers the inputs the calculation drops whether or not a row differs: lines a
 rule recognises and nothing models, modifiers stored and never read (first
 those no triaged build reads), conditions nothing sets, gem stats the engine
 rejects, and lines parsed yet storing nothing. Each build also lists the
-skills the two sides calculate at another level or quality, which change a
-buff, aura or curse without any of the above. Fix what several builds share
+modifiers stored there and never read whose names share a word with a row
+that differs (`ReplaceShieldBlock` for `EffectiveBlockChance`), which the
+cross-build list leaves out when few builds store them, and the skills the
+two sides calculate at another level or quality, which change a buff, aura or
+curse without any of the above. Fix what several builds share
 first, then rerun.
 
 The holdout set is only measured (`mise run accuracy`), never triaged. The
@@ -70,6 +76,25 @@ POB2_POOLS = (
     ("block %", "EffectiveBlockChance"), ("evade %", "EvadeChance"),
 )
 PoBR_POOLS = ("Life", "EnergyShield", "Mana", "Ward")
+# The terms behind EHP on both sides: PoBR's `output.ehp` and PoB2's output.
+EHP_TYPES = ("Physical", "Fire", "Cold", "Lightning", "Chaos")
+EHP_TYPE_TERMS = (("enemy damage", "enemy_damage", "EnemyDamage"),
+                  ("taken", "taken_hit", "TakenHit"), ("pool", "total_hit_pool", "TotalHitPool"))
+EHP_TERMS = (
+    ("enemy damage in", "enemy_damage_in", "totalEnemyDamageIn"),
+    ("hits to die", "damaging_hits", "NumberOfDamagingHits"),
+    ("damage chance %", "damage_chance", "ConfiguredDamageChance"),
+    ("mitigated hits", "mitigated_hits", "NumberOfMitigatedDamagingHits"),
+    ("not hit %", "not_hit_chance", "AverageNotHitChance"),
+)
+EHP_TOLERANCE = 0.005
+# Words of a stat name too common to relate a modifier name to it.
+STAT_STOPWORDS = {"Effective", "Chance", "Total", "Max", "Min", "Average", "Combined", "Rate",
+                  "Base", "Hit", "Damage", "DPS", "Unreserved", "Recoverable", "Percent"}
+# What a largest hit or EHP is built from, beyond the words of its name.
+POOL_WORDS = {"Life", "Mana", "Energy", "Shield", "Ward", "Armour", "Evasion", "Evade", "Block",
+              "Deflect", "Deflection", "Resist", "Taken", "Avoid", "Guard", "Aegis", "Suppress"}
+RELATED_UNREAD = 6
 POOL_STAT = re.compile(r"(MaxHit|EHP)$")
 # The enemy's mitigation PoB2 records per damage type.
 ENEMY_FIELDS = ("resistBase", "pen", "takenInc", "takenMore")
@@ -320,6 +345,40 @@ def pools(entries: dict, oracle: dict) -> str:
     return f"PoB2 {theirs or '—'}; PoBR {ours or '—'}"
 
 
+def ehp_terms(report: dict, oracle: dict) -> list:
+    """The terms behind EHP and the hits to die that differ between PoBR's
+    `output.ehp` and PoB2, in the order the stage computes them, then the
+    enemy's damage PoB2 gains as other types."""
+    ours = compare.as_dict((report.get("output") or {}).get("ehp"))
+    main_output = compare.as_dict(oracle.get("mainOutput"))
+    pairs = []
+    by_type = compare.as_dict(ours.get("by_type"))
+    for label, key, suffix in EHP_TYPE_TERMS:
+        for damage_type in EHP_TYPES:
+            pairs.append((f"{damage_type} {label}",
+                          compare.as_dict(by_type.get(damage_type)).get(key),
+                          main_output.get(damage_type + suffix)))
+    pairs += [(label, ours.get(key), main_output.get(theirs)) for label, key, theirs in EHP_TERMS]
+    differing = []
+    for label, pobr, pob2 in pairs:
+        pobr, pob2 = compare.number(pobr), compare.number(pob2)
+        if pobr is None or pob2 is None:
+            continue
+        if abs(pobr - pob2) > EHP_TOLERANCE * max(abs(pobr), abs(pob2), 1e-9):
+            differing.append(f"{label} PoBR {compare.num(pobr)} · PoB2 {compare.num(pob2)}")
+    gains = {}
+    for mod in compare.as_list(compare.as_dict(oracle.get("enemyMitigation")).get("gainMods")):
+        mod = compare.as_dict(mod)
+        name, source = mod.get("name"), str(mod.get("source") or "?").split(":")[-1].strip()
+        entry = gains.setdefault(name, [0.0, set()])
+        entry[0] += compare.number(mod.get("value")) or 0.0
+        entry[1].add(source)
+    found = [f"differ: {'; '.join(differing)}"] if differing else []
+    found += [f"PoB2 enemy {name} {compare.num(total)} ({', '.join(sorted(sources))})"
+              for name, (total, sources) in sorted(gains.items())]
+    return found
+
+
 def line_source(line: dict) -> str:
     """Where a line of the ledger is: its source id and holder."""
     source = line.get("source_id") or line.get("source_kind") or "?"
@@ -360,6 +419,31 @@ def ledger_findings(usage) -> dict:
     return found
 
 
+def stat_words(name: str) -> set:
+    """The words of a CamelCase name (`EffectiveBlockChance` → Effective, Block, Chance)."""
+    return set(re.findall(r"[A-Z][a-z]+|[A-Z]+(?![a-z])", name or ""))
+
+
+def related_unread(rows: list, unread: list) -> list:
+    """The modifiers of the build nothing read whose names share a word with
+    a differing row, such as `ReplaceShieldBlock` for `EffectiveBlockChance`:
+    a name only one build stores falls below the cross-build list."""
+    words = set()
+    for row in rows:
+        if row["class"] in ACTIONABLE:
+            words |= stat_words(row["stat"]) - STAT_STOPWORDS
+            if POOL_STAT.search(row["stat"] or ""):
+                words |= POOL_WORDS
+    found, seen = [], set()
+    for entry in unread:
+        name = entry.get("name") or ""
+        if name in seen or not (stat_words(name) & words):
+            continue
+        seen.add(name)
+        found.append(entry)
+    return found
+
+
 def analyse(name: str, corpus: str, report: dict, oracle: dict, xml: str, known: list) -> dict:
     """One build's differing rows, their classes and what explains them."""
     entries = {entry.get("stat"): entry for entry in report.get("breakdowns") or []}
@@ -377,7 +461,7 @@ def analyse(name: str, corpus: str, report: dict, oracle: dict, xml: str, known:
         reason = known_reason(known, name, stat)
         rows.append({"stat": stat, "pobr": pobr, "code": code, "pob2": now,
                      "class": "known" if reason else classify(pobr, code, now), "reason": reason})
-    leads, seen, damage_done, pool_line = [], set(), False, None
+    leads, seen, damage_done, pool_line, ehp_lines = [], set(), False, None, []
     free = reservation_free_skills(xml)
     for row in rows:
         if row["class"] not in ACTIONABLE:
@@ -389,6 +473,7 @@ def analyse(name: str, corpus: str, report: dict, oracle: dict, xml: str, known:
             damage_done = True
         if POOL_STAT.search(stat or "") and pool_line is None:
             pool_line = pools(entries, oracle)
+            ehp_lines = ehp_terms(report, oracle)
         found_leads = stat_leads(stat, entries, oracle, item_slots, main_skill)
         # PoB2 also reserves the skill a reservation-free amulet grants
         # (once more when the build has that gem too).
@@ -405,11 +490,13 @@ def analyse(name: str, corpus: str, report: dict, oracle: dict, xml: str, known:
             seen.add(identity)
             found["stat"] = stat
             leads.append(found)
+    ledger = ledger_findings(report.get("usage"))
     return {
         "build": name, "short": short(name), "set": corpus, "compared": reference.get("compared"),
-        "rows": rows, "leads": leads, "pools": pool_line,
+        "rows": rows, "leads": leads, "pools": pool_line, "ehp": ehp_lines,
         "unsupported": report.get("unsupported_modifiers") or [],
-        "ledger": ledger_findings(report.get("usage")),
+        "ledger": ledger,
+        "related_unread": related_unread(rows, ledger["unread"]),
         "missing_items": report.get("missing_items") or [],
         "skill_levels": skill_levels(report.get("usage"), oracle),
         "main_skill": skill, "pob2_main_skill": info.get("grantedEffectId"),
@@ -646,6 +733,10 @@ def render(results: list, failures: list, commit: str, top: int) -> str:
                            f"{row['class']}")
         if result["pools"]:
             out.append(f"   pools: {result['pools']}")
+        for line in result.get("ehp") or []:
+            out.append(f"   ehp {line}")
+        for entry in (result.get("related_unread") or [])[:RELATED_UNREAD]:
+            out.append(f"   unread here: {entry['name']} · {entry['source']} | {entry['text'][:90]}")
         for found in result["skill_levels"][:4]:
             out.append(f"   level: {levels_text(found)}")
         if len(result["skill_levels"]) > 4:

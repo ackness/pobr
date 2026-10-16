@@ -4,7 +4,10 @@
 //!
 //! - `local_ward_+%`, "N% increased Runic Ward": scales the Runic Ward of the
 //!   item it is on.
-//! - `base_maximum_ward`, "+N to maximum Runic Ward": added to the character.
+//! - `base_maximum_ward`, "+N to maximum Runic Ward": added to the character;
+//!   a socketed alloy's (`AlloyMaximumRunicWard1`) and a weapon's.
+//! - `local_ward`, the same text among a unique armour piece's own modifiers
+//!   (The Brass Dome's implicit): part of that item's Runic Ward.
 //! - `maximum_ward_+%`, "N% increased maximum Runic Ward": scales the
 //!   character's total.
 //!
@@ -98,14 +101,32 @@ fn the_ward_line_of_a_build_code_does_not_replace_the_base() {
     }
 }
 
+/// An item block with `enchants` (socketed runes and alloys) as its implicit
+/// section and `modifiers` after it.
+fn socketed_item(id: usize, base: &str, enchants: &[&str], modifiers: &[&str]) -> String {
+    let mut text = format!(
+        "<Item id=\"{id}\">Rarity: RARE\nTest Piece\n{base}\nQuality: 20\nImplicits: {}\n",
+        enchants.len()
+    );
+    for line in enchants {
+        text.push_str(&format!("{{enchant}}{{rune}}{line}\n"));
+    }
+    for modifier in modifiers {
+        text.push_str(modifier);
+        text.push('\n');
+    }
+    text.push_str("</Item>");
+    text
+}
+
 #[test]
-fn flat_runic_ward_is_added_to_the_character_not_to_the_item() {
+fn a_socketed_alloys_runic_ward_is_added_to_the_character_not_to_the_item() {
     let data = data();
-    let boots = item(
+    let boots = socketed_item(
         1,
         BOOTS,
-        &["Quality: 20"],
-        &["25% increased Runic Ward", "+66 to maximum Runic Ward"],
+        &["+66 to maximum Runic Ward"],
+        &["25% increased Runic Ward"],
     );
     assert_eq!(ward(&data, &boots, false, &[]), 302.0 + 66.0);
     // From somewhere other than an item it is the same 66.
@@ -124,4 +145,18 @@ fn increased_maximum_runic_ward_scales_the_total() {
         "{total} != {}",
         (241.0 + 288.0) * 1.10
     );
+}
+
+/// The Brass Dome's "+(750-1000) to maximum Runic Ward" is the item's own:
+/// (201 + 990) x 1.25 x 1.2 = 1786.5.
+#[test]
+fn an_items_own_runic_ward_is_scaled_with_the_item() {
+    let data = data();
+    let boots = item(
+        1,
+        BOOTS,
+        &["Quality: 20"],
+        &["25% increased Runic Ward", "+990 to maximum Runic Ward"],
+    );
+    assert_eq!(ward(&data, &boots, false, &[]), 1787.0);
 }

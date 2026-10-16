@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-15-huntress-ritualist-discipline-b3d780b73ae2",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%E6%86%8E%E6%81%B6-2107/%E6%8C%87%E7%8E%AF%E6%9B%BE",
+    "account": "憎恶-2107",
+    "character": "指环曾",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-15T03:44:54+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0131-20261015-10033/character?account=%E6%86%8E%E6%81%B6-2107&name=%E6%8C%87%E7%8E%AF%E6%9B%BE&overview=forbidden-rites",
+    "snapshot": "0131-20261015-10033",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0131-20261015-10033/search?overview=forbidden-rites&class=Ritualist",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Ritualist",
+    "level": 99,
+    "main_skill": "Discipline"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 1,
+    "code_sha256": "47ee2975553d3fbfd172aa683c4baef1c148717a8241ace0386c18652f4b9803",
+    "code_chars": 10168,
+    "decoded_bytes": 32734
+  }
+}

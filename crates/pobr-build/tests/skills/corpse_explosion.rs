@@ -114,3 +114,32 @@ fn non_corpse_skill_gets_no_physical_injection() {
         "Fireball should not gain corpse physical base damage"
     );
 }
+
+/// Decompose's cloud "Poisons enemies as though dealing Chaos damage equal to
+/// {0}% of Corpse's maximum Life": it poisons without hitting, so it cannot
+/// critically hit. Its explosion deals base Fire damage, a hit with the
+/// skill's critical hit chance.
+#[test]
+fn decompose_cloud_cannot_crit_but_its_explosion_can() {
+    let build_data = load_build_data();
+    let crit = |stat_set: u32| {
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Witch".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(
+                SocketGroup::new()
+                    .with_slot("weapon1")
+                    .with_gem("Metadata/Items/Gems/SkillGemCorpseCloud")
+                    .with_active_skill("CorpseCloudPlayer", 20)
+                    .with_gem_skill_stat_set("CorpseCloudPlayer", 20, stat_set),
+            );
+        calculate_with_data(&build, &build_data, &opts(0))
+            .expect("calculate")
+            .crit_chance
+    };
+    assert_eq!(crit(1), 0.0, "the cloud");
+    assert!(crit(2) > 0.0, "the explosion: {}", crit(2));
+}

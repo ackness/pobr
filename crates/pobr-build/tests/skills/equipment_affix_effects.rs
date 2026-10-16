@@ -135,6 +135,19 @@ Implicits: 0
         life("1234", 2, "Allocates Future Gift", "unknown_tree"),
         baseline,
     );
+    // A jewel allocates a socket as an item does (a Megalomaniac's
+    // "Allocates Zarokh's Gift").
+    let by_jewel = xml("1234", 2, "", "future_tree").replace(
+        "Allocates 2 Sinister Jewel sockets",
+        "Allocates 2 Sinister Jewel sockets\nAllocates Future Gift",
+    );
+    close(
+        run(&pobr_build::parse_build(&by_jewel).unwrap(), &data)
+            .output()
+            .life
+            - baseline,
+        81.0 * life_scale,
+    );
     // An inactive tree can reuse the same socket with another item. Neither
     // XML calculation nor the editable view may mix its jewels into this set.
     let first = xml("1234", 1, "", "future_tree").replace(
@@ -461,6 +474,44 @@ fn the_adorned_scales_corrupted_jewels_of_the_rarity_it_names() {
         build.jewels.push((socket, jewel(ItemRarity::Rare, true)));
         close(run(&build, &data).output().life - without, plain);
     }
+}
+
+/// The Lich's Crystalline Phylactery holds a non-unique jewel and grants
+/// "100% increased Effect of bonuses gained from Socketed Jewel": the jewel in
+/// it counts twice. The passive is not a "Jewel Socket Passive Skill", so The
+/// Adorned does not scale that jewel.
+#[test]
+fn the_crystalline_phylactery_doubles_the_jewel_it_holds() {
+    const CRYSTALLINE_PHYLACTERY: u32 = 17788;
+    let data = data();
+    let baseline = build("SparkPlayer");
+    let life = |build: &Build| run(build, &data).output().life;
+    let without = life(&baseline);
+    let mut jewel = item("Sapphire", &["+100 to maximum Life"]);
+    jewel.rarity = ItemRarity::Rare;
+    jewel.corrupted = true;
+    let in_a_socket = life(&baseline.clone().with_jewels(vec![jewel.clone()])) - without;
+    assert!(in_a_socket > 0.0);
+
+    let mut phylactery = baseline.clone();
+    phylactery.jewels.push((
+        pobr_build::build::JewelSocket::Node(CRYSTALLINE_PHYLACTERY),
+        jewel,
+    ));
+    close(life(&phylactery) - without, in_a_socket * 2.0);
+
+    let mut adorned = item(
+        "Diamond",
+        &[
+            "50% increased Effect of Jewel Socket Passive Skills",
+            "containing Corrupted Rare Jewels",
+        ],
+    );
+    adorned.rarity = ItemRarity::Unique;
+    phylactery
+        .jewels
+        .push((pobr_build::build::JewelSocket::Tree, adorned));
+    close(life(&phylactery) - without, in_a_socket * 2.0);
 }
 
 #[test]
@@ -1098,4 +1149,133 @@ fn attributes_per_socket_filled_grant_life_and_mana() {
         per_socket_mana - mana,
         attribute * constants.mana_per_intelligence,
     );
+}
+
+/// A weapon's "+N to Accuracy Rating" is the game's local stat
+/// `local_accuracy_rating`: the rating of attacks with that weapon. Shield
+/// Wall attacks with the shield, so the mace's rating is not its own.
+#[test]
+fn weapon_accuracy_is_the_rating_of_attacks_with_that_weapon() {
+    let data = data();
+    let with_mace = |mods: &[&str], skill: &str| {
+        let build = build(skill)
+            .set_item(EquipmentSlot::Weapon1, item("Wooden Club", mods))
+            .set_item(EquipmentSlot::Weapon2, item("Splintered Tower Shield", &[]));
+        run(&build, &data).output().accuracy
+    };
+    let accurate = ["+500 to Accuracy Rating"];
+    close(
+        with_mace(&accurate, "ShieldWallPlayer"),
+        with_mace(&[], "ShieldWallPlayer"),
+    );
+    assert!(with_mace(&accurate, "AxeChopPlayer") > with_mace(&[], "AxeChopPlayer"));
+}
+
+/// "Attacks with this Weapon Penetrate 15% Elemental Resistances" is about
+/// the weapon's own attacks: the weapon's slot names the hand they are made
+/// with, so the attack with it penetrates.
+#[test]
+fn a_line_about_this_weapon_applies_to_attacks_with_it() {
+    let data = data();
+    let dps = |mods: &[&str]| {
+        let mut lines = vec!["Adds 100 to 200 Fire Damage"];
+        lines.extend(mods);
+        let build =
+            build("AxeChopPlayer").set_item(EquipmentSlot::Weapon1, item("Wooden Club", &lines));
+        let session = calculate_with_data_session(
+            &build,
+            &data,
+            &DataOrchestratorOptions {
+                mode_effective: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(session.unsupported_modifier_texts().is_empty());
+        session.output().dps
+    };
+    let penetrates = dps(&["Attacks with this Weapon Penetrate 15% Elemental Resistances"]);
+    let plain = dps(&[]);
+    assert!(penetrates > plain, "{penetrates} > {plain}");
+}
+
+/// "Damage with Maces" is the damage of hits with a mace. Shield Wall
+/// attacks with the shield, and a spell with no weapon, so neither takes it.
+#[test]
+fn weapon_type_damage_is_for_attacks_with_that_weapon() {
+    let data = data();
+    let with_mace = |mods: &[&str], skill: &str| {
+        let build = build(skill)
+            .set_item(EquipmentSlot::Weapon1, item("Wooden Club", &[]))
+            .set_item(EquipmentSlot::Weapon2, item("Splintered Tower Shield", &[]))
+            .set_item(EquipmentSlot::Ring1, item("Sapphire Ring", mods));
+        run(&build, &data).output().dps
+    };
+    let maces = ["50% increased Damage with Maces"];
+    for skill in ["ShieldWallPlayer", "FireballPlayer"] {
+        close(with_mace(&maces, skill), with_mace(&[], skill));
+    }
+    assert!(with_mace(&maces, "AxeChopPlayer") > with_mace(&[], "AxeChopPlayer"));
+}
+
+/// "Spells which cost Life Gain 87% of Damage as Extra Physical Damage"
+/// (`spells_gain_%_physical_damage_if_they_cost_life`): a spell costing Mana
+/// gains nothing.
+#[test]
+fn spells_that_cost_mana_gain_nothing_from_a_life_cost_line() {
+    let data = data();
+    let fireball = |mods: &[&str]| {
+        let build =
+            build("FireballPlayer").set_item(EquipmentSlot::Ring1, item("Sapphire Ring", mods));
+        let session = run(&build, &data);
+        assert!(session.unsupported_modifier_texts().is_empty());
+        session.output().dps
+    };
+    close(
+        fireball(&["Spells which cost Life Gain 87% of Damage as Extra Physical Damage"]),
+        fireball(&[]),
+    );
+}
+
+/// "Defend against Hits as though you had 1% more Armour per 1% current
+/// Energy Shield" (`armour_+%_final_vs_hits_per_1%_current_energy_shield`):
+/// at full Energy Shield, Armour counts double against hits.
+#[test]
+fn armour_counts_more_against_hits_per_current_energy_shield() {
+    let data = data();
+    let reduction = |mods: &[&str]| {
+        let build = build("FireballPlayer")
+            .set_item(
+                EquipmentSlot::Ring1,
+                item("Sapphire Ring", &["+50 to Armour"]),
+            )
+            .set_item(EquipmentSlot::Ring2, item("Sapphire Ring", mods));
+        let session = run(&build, &data);
+        assert!(session.unsupported_modifier_texts().is_empty());
+        session.output().physical_damage_reduction
+    };
+    let more = reduction(&[
+        "Defend against Hits as though you had 1% more Armour per 1% current Energy Shield",
+    ]);
+    let plain = reduction(&[]);
+    assert!(more > plain, "{more} > {plain}");
+}
+
+/// "You have Unholy Might" (`have_unholy_might`): the built-in buff, "Gain
+/// 30% of Damage as extra Chaos Damage", is the character's.
+#[test]
+fn an_item_granting_unholy_might_gains_chaos_damage() {
+    let data = data();
+    let fireball = |mods: &[&str]| {
+        let build =
+            build("FireballPlayer").set_item(EquipmentSlot::Ring1, item("Sapphire Ring", mods));
+        let session =
+            calculate_with_data_session(&build, &data, &DataOrchestratorOptions::default())
+                .unwrap();
+        assert!(session.unsupported_modifier_texts().is_empty());
+        session.output().dps
+    };
+    let mighty = fireball(&["You have Unholy Might"]);
+    let plain = fireball(&[]);
+    assert!(mighty > plain * 1.2, "{mighty} against {plain}");
 }

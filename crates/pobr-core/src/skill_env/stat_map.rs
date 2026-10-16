@@ -441,12 +441,40 @@ pub fn debuff_stat_modifiers(
     skill_id: &str,
     set_key: Option<&str>,
 ) -> Vec<Modifier> {
-    let Some(catalog) = ctx.catalog else {
-        return Vec::new();
-    };
     let mut mods = Vec::new();
+    // The engine's own definitions come first. Quality adds to the stat the
+    // skill already has: one debuff of the total strength.
+    let mut own: Vec<(&str, f64)> = Vec::new();
     for ds in stats.all() {
-        if ds.value == 0.0 {
+        if skill_stats::debuff_modifiers(&ds.stat, 0.0).is_none() {
+            continue;
+        }
+        match own.iter_mut().find(|(stat, _)| *stat == ds.stat) {
+            Some((_, value)) => *value += ds.value,
+            None => own.push((ds.stat.as_str(), ds.value)),
+        }
+    }
+    for (stat, value) in own {
+        if value == 0.0 {
+            continue;
+        }
+        let origin = ModifierSource::new(SourceId::new(
+            SourceKind::SkillGem,
+            format!("debuff.{skill_id}.{stat}"),
+        ))
+        .with_raw_text(format!("debuff {skill_id} {stat} ({value})"));
+        mods.extend(
+            skill_stats::debuff_modifiers(stat, value)
+                .into_iter()
+                .flatten()
+                .map(|modifier| modifier.with_origin(origin.clone())),
+        );
+    }
+    let Some(catalog) = ctx.catalog else {
+        return mods;
+    };
+    for ds in stats.all() {
+        if ds.value == 0.0 || skill_stats::debuff_modifiers(&ds.stat, 0.0).is_some() {
             continue;
         }
         let outcome =
@@ -652,5 +680,37 @@ mod tests {
         };
         assert_eq!(taken(7.0), 28.0);
         assert_eq!(taken(20.0), 60.0);
+    }
+
+    /// Oil Barrage at 20 quality: its Oil's 20 Exposure and the quality's 5
+    /// are one debuff of 25 on each elemental Resistance (the strongest
+    /// Exposure applies, so two modifiers would lose the quality).
+    #[test]
+    fn a_debuff_reads_each_stat_with_its_quality_added() {
+        const OIL: &str = "skill_base_oil_exposure_-_to_total_elemental_resistance";
+        let stats = EffectStats {
+            base: vec![stat(OIL, 20.0)],
+            quality: vec![stat(OIL, 5.0)],
+        };
+        let mods = debuff_stat_modifiers(
+            &mut StatMapCtx::data(None),
+            &stats,
+            "OilBarragePlayer",
+            None,
+        );
+        let exposures: Vec<_> = mods
+            .iter()
+            .map(|m| (m.name.as_str(), m.value.as_number()))
+            .collect();
+        assert_eq!(
+            exposures,
+            vec![
+                ("FireExposure", Some(25.0)),
+                ("ColdExposure", Some(25.0)),
+                ("LightningExposure", Some(25.0)),
+            ]
+        );
+        // The skill itself reads nothing from the stat.
+        assert_eq!(skill_stats::skill_modifiers(OIL, 20.0), Some(Vec::new()));
     }
 }

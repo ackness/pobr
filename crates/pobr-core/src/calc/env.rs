@@ -77,6 +77,8 @@ pub struct Env {
     /// The crossbow reload cycle `perform` scaled the rate and DPS by
     /// (`None` when the stage changed nothing).
     pub crossbow_reload: Option<super::CrossbowReload>,
+    /// What the EHP stage computed with (`None` before it runs).
+    pub ehp_terms: Option<super::EhpTerms>,
     /// MH/OH hand pass input (contract 1; written by the orchestration
     /// layer's weapon section via `session::set_hand_sources`). Empty means a
     /// non-attack skill / legacy entry point, and `perform` takes the
@@ -121,6 +123,7 @@ impl Env {
             curse_pass_output: None,
             ailment_terms: Vec::new(),
             crossbow_reload: None,
+            ehp_terms: None,
             hand_sources: Vec::new(),
             main_hand_weapon_damage: None,
             double_hits_when_dual_wielding: false,

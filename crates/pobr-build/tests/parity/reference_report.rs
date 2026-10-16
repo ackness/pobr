@@ -313,25 +313,75 @@ const BASELINES: [Baseline; 3] = [
     // Culling Strike kills a unique at 5% of its Life; a configured Arcane
     // Surge applies in combat; Fire Spell on Hit's triggered spells cost no
     // Mana.
+    //
+    // Then 2067 rows: an item's own "+N to maximum Runic Ward" and "Gain % of
+    // maximum Life as Extra maximum Runic Ward" are Runic Ward; Renly's
+    // Training replaces the shield's block chance; the Gemling's Motes count
+    // a skill an item grants once; the character's auras reach its minions
+    // (Discipline's Energy Shield on a companion); Decompose's cloud cannot
+    // crit. Rows that went the other way, each against a reference the game
+    // proves wrong: the Amazon (Rain of Arrows) has its body armour's "Gain
+    // 5% of maximum Life as Extra maximum Runic Ward", which its reference
+    // leaves out, so its four largest-hit rows now agree with the pinned PoB2
+    // and not the reference; the Ritualist (Purity of Fire) and Stormweaver
+    // (Frost Bomb) take Evergrasping Ring's Chaos from all of an enemy's
+    // damage, not only from Physical, so their TotalEHP is lower; Decompose's
+    // reference keeps a critical damage bonus for a cloud that cannot crit.
+    //
+    // Then 56 builds and 3055 rows: the holdout set of 2026-10-15 joined, at
+    // the 13 builds and 988 rows it was measured at, once the next holdout
+    // was fetched.
+    //
+    // Then 61 builds and 3063 rows: a jewel's "Allocates" opens the socket it
+    // names; "increased bonuses gained from Equipped Rings and Amulets"
+    // scales their gem levels; a group bound to the other weapon set takes
+    // its gem levels from that set's weapons; "You have Unholy Might" grants
+    // the buff; a weapon's Accuracy Rating is its own attacks' (Shield Wall
+    // attacks with the shield); "Spells which cost Life" asks for a Life
+    // cost; "Defend against Hits as though you had 1% more Armour per 1%
+    // current Energy Shield"; Oil Barrage's Oil applies Exposure. Rows that
+    // went the other way, against a reference the game proves wrong: the
+    // Titan (His Scattering Calamity, 686e) casts its main skill from the
+    // staff of weapon set 1 while the item set holds set 2. The skill is used
+    // holding that staff, so the calculation now uses set 1's weapons and
+    // passives, as the pinned PoB2 does; the reference, exported with set 2,
+    // gives its ActionRate, critical chance and bonus, Mana and EHP with the
+    // other staff (nine rows, now agreeing with the pinned PoB2).
+    //
+    // Then 58 builds and 3049 rows. Gained: a line about "this Weapon"
+    // ("Attacks with this Weapon Penetrate 15% Elemental Resistances") takes
+    // the hand of the weapon's slot; "Is the enemy Exposed to Fire?" needs a
+    // character that inflicts it (the Martial Artist, Flicker Strike, has no
+    // source); "Damage with Maces" is for attacks with the mace, not Shield
+    // Wall's; Styrn's Ferocity Crushes the enemy. Lost, against a reference
+    // the game's text proves wrong: the Lich's Crystalline Phylactery gives
+    // "100% increased Effect of bonuses gained from Socketed Jewel" and is
+    // not a "Jewel Socket Passive Skill", so its jewel counts twice and The
+    // Adorned leaves it alone. The reference, as the pinned PoB2, reads
+    // neither: Abyssal Lich Twister 4028 and 9d1c, Lich Spark ce24 and 0a17
+    // (4 builds' damage, 20 rows).
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
-        dps_builds: 43,
-        agreeing_rows: 2062,
+        dps_builds: 58,
+        agreeing_rows: 3049,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
-    // Fetched 2026-10-15 from poe.ninja's snapshot of 2026-10-14, the last
+    // Fetched 2026-10-15 from poe.ninja's snapshot of 2026-10-15, the last
     // character of each ascendancy not already committed
     // (`mise run builds:fetch examples/reference-builds/holdout --pick last`),
-    // and measured before any change: 11 builds and 971 rows.
+    // and measured before any change: 19 builds and 1008 rows. (The holdout
+    // before it, fetched the day before and measured at 11 builds and 971
+    // rows, is part of the tuned set now.)
     //
-    // 12 builds and 978 rows after the changes the tuned set's 41 builds
-    // record; 979 rows after those of its 43, and 13 builds and 984 rows
-    // after those of its 2062 rows.
+    // Then 18 builds and 1003 rows: two of its builds socket a jewel in the
+    // Lich's Crystalline Phylactery, which doubles the jewel; their
+    // references don't (see the tuned set's note). Measured only, by
+    // switching that one rule back.
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
-        dps_builds: 13,
-        agreeing_rows: 984,
+        dps_builds: 18,
+        agreeing_rows: 1003,
     },
 ];
 

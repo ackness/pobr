@@ -201,6 +201,10 @@ const LOCAL_ADDED_DAMAGE: [&str; 8] = [
     "ChaosDamageMax",
 ];
 
+/// The condition the parser gives a line about "this weapon", until the
+/// item's slot names the hand.
+const HAND_ATTACK_PLACEHOLDER: &str = "{Hand}Attack";
+
 /// The "convert to local" modifier on weapons: an unflagged
 /// `CriticalStrikeMultiplier` (vendor `CritMultiplier`) gets a
 /// `Condition:{Main,Off}HandAttack` tag so it only applies to the hand pass
@@ -220,12 +224,19 @@ const LOCAL_ADDED_DAMAGE: [&str; 8] = [
 /// Physical Life/Mana leech on a weapon belongs to that weapon's attacks,
 /// including the current "Leeches ... Physical Damage" spelling without
 /// an explicit Attack flag. Equipment outside weapon slots stays global.
-/// Accuracy/ImpaleChance/OnHit conversion remains outside this function.
+/// So does a weapon's Accuracy Rating: the game states it as the local stats
+/// `local_accuracy_rating` / `local_accuracy_rating_+%`, the rating of attacks
+/// with that weapon, which a shield attack (Shield Wall) does not use.
+/// ImpaleChance/OnHit conversion remains outside this function.
 ///
 /// A bare "Adds N to M <elemental/chaos> Damage" on a weapon is that weapon's
 /// own damage (vendor `Item.lua:2516` folds every damage type's flagless BASE
 /// into `weaponData`), so it only reaches the hand attacking with it. Local
 /// physical adds never get here: they are folded into the weapon base.
+///
+/// A line that names the weapon ("Attacks with this Weapon Penetrate 15%
+/// Elemental Resistances", "with this weapon") is parsed with the placeholder
+/// condition `{Hand}Attack`; the weapon's slot says which hand it is.
 pub fn apply_weapon_hand_conditions(modifiers: &mut [Modifier], slot: EquipmentSlot) {
     let var = match slot {
         EquipmentSlot::Weapon1 => "MainHandAttack",
@@ -233,10 +244,18 @@ pub fn apply_weapon_hand_conditions(modifiers: &mut [Modifier], slot: EquipmentS
         _ => return,
     };
     for m in modifiers {
+        for tag in &mut m.tags {
+            if let ModTag::Condition { var: tag_var, .. } = tag
+                && tag_var == HAND_ATTACK_PLACEHOLDER
+            {
+                *tag_var = var.to_string();
+            }
+        }
         let keyword_ok =
             m.keyword_flags == KeywordFlags::NONE || m.keyword_flags == KeywordFlags::ATTACK;
-        let local_crit =
-            m.name == ModName::from("CriticalStrikeMultiplier") && m.flags == ModFlags::NONE;
+        let local_crit = (m.name == ModName::from("CriticalStrikeMultiplier")
+            || m.name == ModName::from("Accuracy"))
+            && m.flags == ModFlags::NONE;
         let local_leech = (m.name == ModName::from("PhysicalDamageLifeLeech")
             || m.name == ModName::from("PhysicalDamageManaLeech"))
             && (m.flags == ModFlags::NONE || m.flags == ModFlags::ATTACK);

@@ -363,6 +363,19 @@ fn inject_enemy_mods(db: &mut ModDb, defaults: &EnemyTierDefaults, tier: EnemyTi
                 .with_tag(ModTag::condition("EnemyIntimidated", false)),
         );
     }
+    // Crushed lowers Physical Damage Reduction by 15 (the debuff's stat
+    // `base_additional_physical_damage_reduction_%`), below zero too, so the
+    // target then takes more physical damage.
+    db.add_mod(
+        Modifier::number(
+            ModName::from("PhysicalDamageReduction"),
+            ModType::Base,
+            -CRUSHED_PHYSICAL_DAMAGE_REDUCTION,
+        )
+        .with_source("enemy crushed_base")
+        .with_origin(enemy_source("crushed_base"))
+        .with_tag(ModTag::condition("EnemyCrushed", false)),
+    );
 }
 
 /// Injects the EHP incoming-damage placeholder: turns vendor
@@ -446,6 +459,7 @@ pub fn reduce_enemy_exposure(db: &mut ModDb, player_db: &ModDb, cfg: &CalcConfig
     // which doesn't match in the panel view (`mode_effective == false`) →
     // factor 1.0, consistent with historical output.
     let exposure_effect_on_self = db.more(cfg, &[ModName::from("ExposureEffectOnSelf")]);
+    let cfg = &with_exposure_sources(db, player_db, cfg);
     for (element, exposure_name, resist_name) in [
         ("Fire", "FireExposure", "FireResist"),
         ("Cold", "ColdExposure", "ColdResist"),
@@ -501,6 +515,61 @@ pub fn reduce_enemy_exposure(db: &mut ModDb, player_db: &ModDb, cfg: &CalcConfig
             );
         }
     }
+}
+
+/// How much Physical Damage Reduction a Crushed target loses.
+const CRUSHED_PHYSICAL_DAMAGE_REDUCTION: f64 = 15.0;
+
+/// The elements exposure lowers the resistance of.
+pub const EXPOSURE_ELEMENTS: [&str; 3] = ["Fire", "Cold", "Lightning"];
+
+/// The condition the configured exposure of `element` waits for: the
+/// character can apply exposure of that element.
+pub fn can_apply_exposure(element: &str) -> String {
+    format!("CanApply{element}Exposure")
+}
+
+/// `cfg` with `CanApply<Element>Exposure` set for each element the character
+/// can apply exposure of. Exposure is a debuff the character inflicts, so the
+/// configured "Is the enemy Exposed to Fire?" holds only with a source: a
+/// skill or support that inflicts it (the orchestration sets the condition
+/// for any skill group that does), a "chance to inflict Fire Exposure" or an
+/// "inflict Exposure" modifier on the character, a banner applying exposure
+/// per Armour, or exposure already on the enemy from something other than the
+/// configuration.
+fn with_exposure_sources(db: &ModDb, player_db: &ModDb, cfg: &CalcConfig) -> CalcConfig {
+    let mut cfg = cfg.clone();
+    let inflicts_any = player_db.flag(&cfg, "InflictExposure")
+        || player_db.sum(
+            ModType::Base,
+            &cfg,
+            &[ModName::from(
+                crate::rules::skill_stats::ELEMENTAL_EXPOSURE_PER_1000_ARMOUR,
+            )],
+        ) > 0.0;
+    for element in EXPOSURE_ELEMENTS {
+        let var = can_apply_exposure(element);
+        if cfg.condition(&var) {
+            continue;
+        }
+        let can_apply = inflicts_any
+            || player_db.sum(
+                ModType::Base,
+                &cfg,
+                &[ModName::from(format!("{element}ExposureChance"))],
+            ) > 0.0
+            // Read without the condition set, so the configured exposure
+            // itself does not count.
+            || db.max_of(
+                ModType::Base,
+                &cfg,
+                &[ModName::from(format!("{element}Exposure"))],
+            ) > 0.0;
+        if can_apply {
+            cfg.conditions.insert(var, true);
+        }
+    }
+    cfg
 }
 
 /// Convenience constructor: builds a complete `Env` from a player [`Actor`] (player + enemy scaling + cfg).

@@ -3458,6 +3458,10 @@ mod imported_condition_edits {
             &DataOrchestratorOptions {
                 enemy_tier: EnemyTier::None,
                 mode_effective: true,
+                // The character inflicts each Exposure, which the configured one needs.
+                extra_modifier_texts: ["Fire", "Cold", "Lightning"]
+                    .map(|element| format!("Inflict {element} Exposure on Hit"))
+                    .into(),
                 ..Default::default()
             },
         )
@@ -3583,4 +3587,84 @@ mod imported_condition_edits {
             }
         }
     }
+}
+
+/// The Gemling's Attribute Motes count each skill the character has from a
+/// gem by the gem's attributes: Twister (Dexterity only) +2, Eonyr's
+/// Thunder, a support that grants a skill, +2, Brutality, a support that
+/// grants none, nothing; a group an item grants is the same skill as the
+/// group supporting it and is not counted again.
+#[test]
+fn virtuous_motes_count_each_skill_gem_once() {
+    let data = repo_data();
+    let build = Build::new()
+        .add_socket_group(
+            SocketGroup::new()
+                .with_gem("Metadata/Items/Gem/SkillGemTwister")
+                .with_gem("Metadata/Items/Gems/SupportGemEonyrsThunder")
+                .with_gem("Metadata/Items/Gems/SupportGemBrutality"),
+        )
+        .add_socket_group(
+            SocketGroup::new()
+                .with_source("Item:1:Test Item")
+                .with_gem("Metadata/Items/Gem/SkillGemTwister"),
+        );
+    assert_eq!(
+        super::inject::virtuous_mote_counts(&build, &data),
+        (3.0, 7.0, 3.0)
+    );
+}
+
+/// "25% increased bonuses gained from Equipped Rings and Amulets" (the
+/// Ritualist's Mystic Attunement) scales an amulet's "+4 to Level of all
+/// Spell Skills" to 5, a whole level rounded down; a body armour's line is
+/// not scaled.
+#[test]
+fn ring_and_amulet_bonuses_scale_their_gem_levels() {
+    let data = repo_data();
+    let mut amulet = life_item("0");
+    amulet.modifier_texts = vec!["+4 to Level of all Spell Skills".into()];
+    let mut armour = life_item("0");
+    armour.modifier_texts = vec!["+3 to Level of all Spell Skills".into()];
+    let build = Build::new()
+        .with_tree(PassiveTreeSpec {
+            allocated_nodes: vec![NodeId(7068)],
+            ..Default::default()
+        })
+        .set_item(EquipmentSlot::Amulet, amulet)
+        .set_item(EquipmentSlot::BodyArmour, armour);
+    let mut levels: Vec<u32> = gem_property_bonuses(&build, &data)
+        .iter()
+        .filter(|b| b.kind == GemPropertyKind::Level)
+        .map(|b| b.value)
+        .collect();
+    levels.sort_unstable();
+    assert_eq!(levels, vec![3, 5]);
+}
+
+/// Instruments of Power's "50% reduced bonuses gained from Equipped Focus"
+/// halves a focus's "+2 to Level of all Spell Skills" to 1, and leaves its
+/// "+1 to Level of all Minion Skills" at 1: a level bonus it reduces does not
+/// round down below 1.
+#[test]
+fn a_reduced_focus_level_bonus_stays_at_least_one() {
+    let data = repo_data();
+    let mut focus = life_item("0");
+    focus.base = ItemBaseId::from("Twig Focus");
+    focus.modifier_texts = vec![
+        "+2 to Level of all Spell Skills".into(),
+        "+1 to Level of all Minion Skills".into(),
+    ];
+    let build = Build::new()
+        .with_tree(PassiveTreeSpec {
+            allocated_nodes: vec![NodeId(20701)],
+            ..Default::default()
+        })
+        .set_item(EquipmentSlot::Weapon2, focus);
+    let levels: Vec<u32> = gem_property_bonuses(&build, &data)
+        .iter()
+        .filter(|b| b.kind == GemPropertyKind::Level)
+        .map(|b| b.value)
+        .collect();
+    assert_eq!(levels, vec![1, 1]);
 }

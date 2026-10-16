@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-15-warrior-warbringer-earthshatter-235767b54e85",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/zdpsOfficer-6788/solomon_smith",
+    "account": "zdpsOfficer-6788",
+    "character": "solomon_smith",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-15T03:44:54+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0131-20261015-10033/character?account=zdpsOfficer-6788&name=solomon_smith&overview=forbidden-rites",
+    "snapshot": "0131-20261015-10033",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0131-20261015-10033/search?overview=forbidden-rites&class=Warbringer",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Warbringer",
+    "level": 97,
+    "main_skill": "Earthshatter"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 10,
+    "code_sha256": "20802b7559102091b1a2b70caf8be77e858cdf1f79b76150448977b92b97b3f4",
+    "code_chars": 12500,
+    "decoded_bytes": 45637
+  }
+}

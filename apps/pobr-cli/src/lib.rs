@@ -936,6 +936,10 @@ pub struct CalculateBuildOutput {
     /// come. `action_rate` and the DPS are by `hits_per_second`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rain: Option<RainOutput>,
+    /// What `TotalEHP` and the hits to die were computed with: the enemy's
+    /// hit, the damage taken and the pools, per damage type.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ehp: Option<EhpOutput>,
     /// Each minion the calculation created, in the order created: its own
     /// offence and defence. Absent without minions.
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -986,6 +990,35 @@ pub struct RainOutput {
     /// Arrows one use fires.
     pub arrows: f64,
     pub hits_per_second: f64,
+}
+
+/// The terms behind `TotalEHP` (`pobr_core::calc::EhpTerms`).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct EhpOutput {
+    /// Per damage type (`Physical`, `Fire`, `Cold`, `Lightning`, `Chaos`).
+    pub by_type: std::collections::BTreeMap<String, EhpTypeOutput>,
+    /// Hits like the enemy's to die.
+    pub damaging_hits: f64,
+    /// The percentage of a hit left after block, deflection and avoidance.
+    pub damage_chance: f64,
+    /// Hits to die with that percentage.
+    pub mitigated_hits: f64,
+    /// The chance not to be hit at all, in percent.
+    pub not_hit_chance: f64,
+    /// The enemy's damage before modifiers; `TotalEHP` is the hits to die
+    /// over the chance to be hit, in these units.
+    pub enemy_damage_in: f64,
+}
+
+/// One damage type of the enemy's hit.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct EhpTypeOutput {
+    /// The enemy's damage of this type in one hit.
+    pub enemy_damage: f64,
+    /// The part of it taken.
+    pub taken_hit: f64,
+    /// The pool this type of damage depletes.
+    pub total_hit_pool: f64,
 }
 
 /// Passive-tree version reconciliation diagnostics (gap B): the build's
@@ -1184,6 +1217,25 @@ pub fn calculate_build_detailed(
             arrows_per_hit: rain.arrows_per_hit,
             arrows: rain.arrows,
             hits_per_second: rain.hits_per_second,
+        }),
+        ehp: session.ehp_terms().map(|terms| EhpOutput {
+            by_type: ["Physical", "Fire", "Cold", "Lightning", "Chaos"]
+                .iter()
+                .enumerate()
+                .map(|(i, name)| {
+                    let part = EhpTypeOutput {
+                        enemy_damage: terms.enemy_damage[i],
+                        taken_hit: terms.taken_hit[i],
+                        total_hit_pool: terms.total_hit_pool[i],
+                    };
+                    (name.to_string(), part)
+                })
+                .collect(),
+            damaging_hits: terms.damaging_hits,
+            damage_chance: terms.damage_chance,
+            mitigated_hits: terms.mitigated_hits,
+            not_hit_chance: terms.not_hit_chance,
+            enemy_damage_in: terms.enemy_damage_in,
         }),
         minions: out
             .minions

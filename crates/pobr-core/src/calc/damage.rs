@@ -818,7 +818,7 @@ fn conversion_names(from: DamageType, to: DamageType, skill: bool) -> Vec<ModNam
 /// Physical Damage as Chaos Damage" (`PhysicalDamageAsChaos`) adds as much
 /// as the same line with "as extra Chaos Damage": the game's stat for both
 /// is a share "to add as" the other type.
-fn gain_names(from: DamageType, to: DamageType) -> Vec<ModName> {
+pub(crate) fn gain_names(from: DamageType, to: DamageType) -> Vec<ModName> {
     let from_prefix = type_prefix(from);
     let to_prefix = type_prefix(to);
     let mut names = vec![

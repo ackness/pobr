@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-15-huntress-amazon-twister-e6efce603f97",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%E5%B9%B8%E9%81%8B%E4%B9%8B%E8%B7%AF-5770/iuiuiuiuiu",
+    "account": "幸運之路-5770",
+    "character": "iuiuiuiuiu",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-15T03:44:54+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0131-20261015-10033/character?account=%E5%B9%B8%E9%81%8B%E4%B9%8B%E8%B7%AF-5770&name=iuiuiuiuiu&overview=forbidden-rites",
+    "snapshot": "0131-20261015-10033",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0131-20261015-10033/search?overview=forbidden-rites&class=Amazon",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Amazon",
+    "level": 97,
+    "main_skill": "Twister"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 10,
+    "code_sha256": "b630466ca8a77430d2ad43fcb2a19a1bfd38355da57854266a963f32463320e1",
+    "code_chars": 12048,
+    "decoded_bytes": 47372
+  }
+}

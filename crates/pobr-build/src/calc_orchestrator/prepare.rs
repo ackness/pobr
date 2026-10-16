@@ -10,8 +10,8 @@ use pobr_data::skill::SkillTypes;
 use super::DataOrchestratorOptions;
 use super::conditions::{apply_condition_implications, build_has_companion_skill};
 use super::conditions::{
-    combat_conditions, damage_keywords, main_hand_offhand_is_shield, skill_type_bits,
-    skill_type_flags, weapon_cfg_flags, weapon_type_conditions,
+    attacks_with_weapon, combat_conditions, damage_keywords, main_hand_offhand_is_shield,
+    skill_type_bits, skill_type_flags, weapon_cfg_flags, weapon_type_conditions,
 };
 use crate::build::{Build, SocketGroup};
 use crate::build_data::{BuildData, ResolvedSkillLevel};
@@ -427,11 +427,13 @@ pub(super) fn stage_build_cfg(
     // and the other modifiers of one set.
     cfg = cfg.with_condition(format!("WeaponSet{}", build.weapon_set.number()), true);
     // Main-hand weapon bits → cfg.flags: derived from the **same source**
-    // (weapon_type_info table) with the **same gating** as the Using* conditions above
-    // — the mod-side dual-written weapon-bit channel doesn't get a separate activation
-    // path outside the condition channel.
+    // (weapon_type_info table) as the Using* conditions above. The conditions
+    // describe what the character wields; the bits describe the hits, so only
+    // a skill attacking with the weapon carries them.
     let weapon_bits = weapon_cfg_flags(build, data);
-    if !weapon_bits.is_empty() {
+    if !weapon_bits.is_empty()
+        && (main.main_effect.is_none() || attacks_with_weapon(&main.main_skill_types))
+    {
         cfg.flags |= weapon_bits;
     }
     (cfg, enemy_tier)

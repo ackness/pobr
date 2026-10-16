@@ -171,6 +171,14 @@ pub(crate) const READ_OUTSIDE_THE_DATABASE: &[(&str, &str)] = &[
 
 /// What consumes `name` outside the modifier database, when something does.
 pub(crate) fn read_outside_the_database(name: &str) -> Option<&'static str> {
+    // "increased bonuses gained from Equipped Rings and Amulets": one name
+    // per slot.
+    if name.starts_with("EffectOfBonusesFrom") {
+        return Some(
+            "scales the lines of the item in that slot, its gem levels included \
+             (item::mirror::slot_bonus_effect_scales)",
+        );
+    }
     READ_OUTSIDE_THE_DATABASE
         .iter()
         .find(|(outside, _)| *outside == name)

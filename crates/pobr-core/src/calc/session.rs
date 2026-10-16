@@ -583,16 +583,23 @@ impl CalculationSession {
     /// double deduction). Only affects damage under the effective view
     /// (`mode_effective`). Must be called after [`setup_enemy`](Self::setup_enemy).
     ///
+    /// The configured exposure is the character's own: it holds only while
+    /// the character can apply exposure of that element, so each modifier waits
+    /// for `CanApply<Element>Exposure` ([`reduce_enemy_exposure`] works it out).
+    ///
     /// [`reduce_enemy_exposure`]: super::setup_env::reduce_enemy_exposure
     pub fn apply_enemy_exposure(&mut self, elements: [bool; 3], magnitude: f64) {
-        let names = ["FireExposure", "ColdExposure", "LightningExposure"];
-        for (on, name) in elements.iter().zip(names) {
+        for (on, element) in elements.iter().zip(super::setup_env::EXPOSURE_ELEMENTS) {
             if *on {
                 self.env.enemy.mod_db.add_list([Modifier::number(
-                    ModName::from(name),
+                    ModName::from(format!("{element}Exposure")),
                     ModType::Base,
                     magnitude,
                 )
+                .with_tag(crate::ModTag::condition(
+                    super::setup_env::can_apply_exposure(element),
+                    false,
+                ))
                 .with_source("config exposure")]);
             }
         }
@@ -902,6 +909,12 @@ impl CalculationSession {
     /// subset; use this when the full output is needed.
     pub fn output(&self) -> &OutputTable {
         &self.env.player.output
+    }
+
+    /// What the EHP stage computed `TotalEHP` and the hits to die with: the
+    /// enemy's hit, the damage taken and the pools, per damage type.
+    pub fn ehp_terms(&self) -> Option<&super::EhpTerms> {
+        self.env.ehp_terms.as_ref()
     }
 
     /// How the main skill's hits come when it is a rain (`calc::rain`):
@@ -1565,7 +1578,7 @@ fn ailment_of(stat: &str) -> Option<AilmentType> {
 /// Conditions a pass of the calculation works out for itself, for the hit
 /// or hand it is computing or from what the character has in effect. Absent
 /// from the condition map, they do not hold; nothing is missing.
-const CONDITIONS_SET_BY_A_PASS: [&str; 19] = [
+const CONDITIONS_SET_BY_A_PASS: [&str; 23] = [
     // `calc::offence` and `calc::crit_pass`: the critical and the
     // non-critical half of a hit.
     "CriticalStrike",
@@ -1583,8 +1596,9 @@ const CONDITIONS_SET_BY_A_PASS: [&str; 19] = [
     // `calc::buff_pass`: curses and marks on the enemy.
     "EnemyCursed",
     "EnemyMarked",
-    // `env_finalize`: the enemy's own Intimidated flag.
+    // `env_finalize`: the enemy's own Intimidated and Crushed flags.
     "EnemyIntimidated",
+    "EnemyCrushed",
     // `rules::buff_expander`: the Elusive handler.
     "Elusive",
     // `bridge_player_conditions`: from the flag of what grants it.
@@ -1599,6 +1613,11 @@ const CONDITIONS_SET_BY_A_PASS: [&str; 19] = [
     "WeaponSet2",
     // `calc::perform`: a minion using a Command skill.
     crate::rules::skill_stats::COMMAND_SKILL,
+    // `setup_env::reduce_enemy_exposure`: the character can apply exposure of
+    // an element, which the configured exposure waits for.
+    "CanApplyFireExposure",
+    "CanApplyColdExposure",
+    "CanApplyLightningExposure",
 ];
 
 /// Whether a pass of the calculation sets `var` when it holds:

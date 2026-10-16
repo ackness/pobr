@@ -42,7 +42,9 @@ use pobr_data::item::{EquipmentSlot, Item, LimbSlot};
 use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::{AttributeChoice, NodeId, PassiveTreeSpec};
 
-use crate::build::{Build, CharacterIdentity, JewelSocket, RadiusJewel, SocketGroup, WeaponSet};
+use crate::build::{
+    Build, CharacterIdentity, GemSkillRef, JewelSocket, RadiusJewel, SocketGroup, WeaponSet,
+};
 use crate::build_code::decode_pob_code;
 use crate::error::{BuildError, XmlError};
 use crate::import_report::{ImportReport, ImportedBuild, SkippedItem, UnmodelledSlot};
@@ -148,12 +150,11 @@ fn parse_build_with_allocated_nodes_impl(
 ) -> Result<ImportedBuild, XmlError> {
     let header = parse_build_header(xml)?;
 
-    // The active ItemSet's `useSecondWeaponSet` determines which set of weapon-set-only
-    // points is active (matching PoB2 CalcSetup.lua:791-792's `Condition:WeaponSet<N>`
-    // flag semantics); the filtered allocated-node set then gates tree socket jewels
-    // (jewel mods only enter the calculation through the modList of an allocated socket
-    // node — PoB2 CalcSetup.lua:175-244 only walks `spec.allocNodes`).
-    let use_second_weapon_set = parse_active_item_set(xml)?.use_second_weapon_set;
+    // The weapon set in use (see `calculation_weapon_set`) decides the weapons and
+    // which set of weapon-set-only points is allocated; the filtered allocated-node
+    // set then gates tree socket jewels (a jewel only takes effect in an allocated
+    // socket).
+    let use_second_weapon_set = calculation_weapon_set(xml)?;
     let ParsedPassives {
         allocated: imported_nodes,
         tree_version,
@@ -171,7 +172,7 @@ fn parse_build_with_allocated_nodes_impl(
             limbs,
         },
         mut report,
-    ) = parse_items_and_slots(xml, &allocated_set)?;
+    ) = parse_items_and_slots(xml, &allocated_set, use_second_weapon_set)?;
     report.reference_stats = parse_reference_stats(xml, "PlayerStat")?;
     report.minion_reference_stats = parse_reference_stats(xml, "MinionStat")?;
     let attribute_overrides = parse_attribute_overrides(xml)?;
@@ -186,8 +187,27 @@ fn parse_build_with_allocated_nodes_impl(
             Some((node, item, radius_jewel_from_text(node, text)))
         })
         .collect();
-    let socket_groups = parse_socket_groups(xml)?;
+    // The other weapon set's weapons: a group bound to that set is used with them.
+    let other_weapons = parse_item_set_for_weapons(xml, Some(!use_second_weapon_set))?
+        .equipment
+        .into_iter()
+        .filter(|(slot, _)| matches!(slot, EquipmentSlot::Weapon1 | EquipmentSlot::Weapon2))
+        .filter_map(|(slot, id)| Some((slot, parse_pob_xml_item(socket_texts.get(&id)?).ok()?)))
+        .collect();
+    let mut socket_groups = parse_socket_groups(xml)?;
     let main_socket_group = parse_main_socket_group(xml);
+    // The main skill is used with the other weapon set than the one the character
+    // holds: a group usable in either set is used in the held one.
+    let held_second = parse_active_item_set(xml)?.use_second_weapon_set;
+    if held_second != use_second_weapon_set {
+        let held = if held_second { 2 } else { 1 };
+        let sets: Vec<u8> = (0..socket_groups.len())
+            .map(|index| group_weapon_set(&socket_groups, index).unwrap_or(held))
+            .collect();
+        for (group, set) in socket_groups.iter_mut().zip(sets) {
+            group.weapon_set = Some(set);
+        }
+    }
 
     let mut build = Build::new()
         .with_character(CharacterIdentity {
@@ -212,6 +232,7 @@ fn parse_build_with_allocated_nodes_impl(
     if use_second_weapon_set {
         build.weapon_set = WeaponSet::Second;
     }
+    build.other_weapons = other_weapons;
     build.granted_socket_jewels = granted_socket_jewels;
     build.jewels = jewels;
     if !radius_jewels.is_empty() {
@@ -695,6 +716,53 @@ fn use_charge_condition(name: &str) -> Option<&'static str> {
 }
 
 /// Extracts `<Build mainSocketGroup="N">` (1-based main skill group index). Returns `None` when missing.
+/// Whether the calculation uses the second weapon set: the set its main skill is
+/// used with. A skill a weapon grants is used holding that weapon, and a group set
+/// to one weapon set is used in that set; any other main skill is used with the
+/// item set's own `useSecondWeaponSet`.
+fn calculation_weapon_set(xml: &str) -> Result<bool, XmlError> {
+    let use_second = parse_active_item_set(xml)?.use_second_weapon_set;
+    let groups = parse_socket_groups(xml)?;
+    Ok(parse_main_socket_group(xml)
+        .and_then(|group| group_weapon_set(&groups, group.checked_sub(1)?))
+        .map_or(use_second, |set| set == 2))
+}
+
+/// The weapon set a group is used in: its own, or, for the ordinary group a
+/// character exported from the game lists a weapon's granted skill in (the
+/// first one listing the skill at the granted level, with no quality and
+/// uncorrupted, as `mark_item_granted_skills` claims it), the weapon's.
+fn group_weapon_set(groups: &[SocketGroup], index: usize) -> Option<u8> {
+    let group = groups.get(index)?;
+    if group.weapon_set.is_some() || !group.from_gem() {
+        return group.weapon_set;
+    }
+    let plain = |gem: &GemSkillRef| gem.quality == 0 && !gem.corrupted;
+    let gem = group.gem_skills.first().filter(|gem| plain(gem))?;
+    let same =
+        |other: &GemSkillRef| other.skill_id == gem.skill_id && other.gem_level == gem.gem_level;
+    let first_listed = groups.iter().position(|other| {
+        other.from_gem()
+            && other
+                .gem_skills
+                .first()
+                .is_some_and(|f| plain(f) && same(f))
+    });
+    if first_listed != Some(index) {
+        return None;
+    }
+    groups
+        .iter()
+        .filter(|weapon| {
+            weapon
+                .source
+                .as_deref()
+                .is_some_and(|s| s.starts_with("Item:"))
+        })
+        .find(|weapon| weapon.gem_skills.first().is_some_and(same))?
+        .weapon_set
+}
+
 fn parse_main_socket_group(xml: &str) -> Option<usize> {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
@@ -901,6 +969,7 @@ fn parse_attribute_overrides(xml: &str) -> Result<HashMap<NodeId, AttributeChoic
 fn parse_items_and_slots(
     xml: &str,
     allocated: &std::collections::HashSet<u32>,
+    use_second_weapon_set: bool,
 ) -> Result<(ImportedItems, ImportReport), XmlError> {
     let ItemBlocks { items, rejected } = parse_item_blocks(xml)?;
     let SlotAssignments {
@@ -910,7 +979,7 @@ fn parse_items_and_slots(
         limbs: limb_ids,
         unmodelled,
         use_second_weapon_set: _,
-    } = parse_active_item_set(xml)?;
+    } = parse_item_set_for_weapons(xml, Some(use_second_weapon_set))?;
 
     // Where each item id is used, to say what a rejected block leaves empty.
     let mut used_in: HashMap<u32, Vec<String>> = HashMap::new();
@@ -947,7 +1016,7 @@ fn parse_items_and_slots(
                 .entry(item_id)
                 .or_default()
                 .push(format!("socket:{node}"));
-            all_jewels.insert(item_id, JewelSocket::Tree);
+            all_jewels.insert(item_id, JewelSocket::Node(node));
         }
     }
 
@@ -1099,6 +1168,8 @@ pub struct RawItemsView {
     pub limbs: Vec<(String, String)>,
     /// The inactive weapon pair, kept separately from shared equipment.
     pub alternate_weapons: Vec<(String, String)>,
+    /// The weapon set in use: the one the main skill is used with (a skill a
+    /// weapon grants is used holding it), otherwise the item set's own.
     pub active_weapon_set: u8,
     pub weapon_set_nodes: [Vec<u32>; 2],
 }
@@ -1166,14 +1237,14 @@ pub fn parse_build_sets(xml: &str) -> Result<BuildSets, XmlError> {
 /// Parses the raw item text view of the build XML (see [`RawItemsView`]).
 pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
     let texts = parse_raw_item_texts(xml)?;
+    let second = calculation_weapon_set(xml)?;
     let SlotAssignments {
         equipment: slot_assignments,
         jewels: jewel_ids,
         flask_charms: flask_charm_ids,
         limbs: mut limb_ids,
-        use_second_weapon_set: second,
         ..
-    } = parse_active_item_set(xml)?;
+    } = parse_item_set_for_weapons(xml, Some(second))?;
     let alternate_weapons = parse_item_set_for_weapons(xml, Some(!second))?
         .equipment
         .into_iter()
@@ -1316,9 +1387,9 @@ pub fn radius_jewel_from_text(socket_node: u32, text: &str) -> Option<RadiusJewe
         tree_texts,
         rarity,
         corrupted,
-        // The tree's own socket until the calculation finds the socket is one
-        // an item grants (`resolve_granted_socket_jewels`).
-        socket: JewelSocket::Tree,
+        // The allocated passive's socket until the calculation finds the
+        // socket is one an item grants (`resolve_granted_socket_jewels`).
+        socket: JewelSocket::Node(socket_node),
     })
 }
 
@@ -1658,6 +1729,20 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                             (false, true) => Some(2),
                             _ => None,
                         };
+                        // A skill a weapon grants is used with that weapon's set.
+                        if group
+                            .source
+                            .as_deref()
+                            .is_some_and(|s| s.starts_with("Item:"))
+                        {
+                            match group.slot.as_deref() {
+                                Some("Weapon 1" | "Weapon 2") => group.weapon_set = Some(1),
+                                Some("Weapon 1 Swap" | "Weapon 2 Swap") => {
+                                    group.weapon_set = Some(2)
+                                }
+                                _ => {}
+                            }
+                        }
                         current = Some(group);
                     }
                     "Gem" if in_target_set => {

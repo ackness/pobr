@@ -581,10 +581,28 @@ pub fn skill_inflicting_withered(
     groups: &dyn SocketGroupView,
     data: &dyn BuffEnv,
 ) -> Option<String> {
+    skill_with_stat(groups, data, skill_stats::inflicts_withered)
+}
+
+/// The first enabled active skill of the build whose hits Crush their
+/// target, by its own stats or by those of a support that applies to it
+/// (Styrn's Ferocity, [`skill_stats::crushes_on_hit`]). A target is Crushed
+/// for seconds, so the calculated skill then hits a Crushed enemy.
+pub fn skill_crushing_on_hit(groups: &dyn SocketGroupView, data: &dyn BuffEnv) -> Option<String> {
+    skill_with_stat(groups, data, skill_stats::crushes_on_hit)
+}
+
+/// The first enabled active skill of the build that has a non-zero stat
+/// `wanted` accepts, its own or that of a support that applies to it.
+fn skill_with_stat(
+    groups: &dyn SocketGroupView,
+    data: &dyn BuffEnv,
+    wanted: fn(&str) -> bool,
+) -> Option<String> {
     let inflicts = |effect_id: &str, level: u32, quality: u32, set_index: Option<u32>| {
         data.effect_stats(effect_id, level, quality, set_index)
             .all()
-            .any(|ds| ds.value != 0.0 && skill_stats::inflicts_withered(&ds.stat))
+            .any(|ds| ds.value != 0.0 && wanted(&ds.stat))
     };
     let mut found = None;
     groups.for_each_enabled_group(&mut |group| {
@@ -999,38 +1017,8 @@ pub fn exposure_support_modifiers(
             if effect.is_support {
                 continue;
             }
-            let es = data.effect_stats(
-                &gem.skill_id,
-                gem.gem_level,
-                gem.quality,
-                gem.stat_set_index,
-            );
-            let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
             let judgement = group_judgement(&group, data, &gem.skill_id);
-            let is_host = crate::skill_env::stat_map::has_debuff_payload(
-                ctx.catalog,
-                &es,
-                &gem.skill_id,
-                set_key.as_deref(),
-            ) || crate::skill_env::stat_map::has_exposure_inflict_stats(
-                ctx.catalog,
-                &es,
-                &gem.skill_id,
-                set_key.as_deref(),
-            ) || judgement.compatible.iter().any(|sup| {
-                let host = &group.gems[sup.gem_index];
-                // Quality passed as 0, matching support_modifiers's semantics.
-                let set_index = support_stat_set_index(sup, group.gems);
-                let sup_stats = data.effect_stats(&sup.effect_id, host.gem_level, 0, set_index);
-                let sup_key = data.selected_set_key(&sup.effect_id, set_index);
-                crate::skill_env::stat_map::has_exposure_inflict_stats(
-                    ctx.catalog,
-                    &sup_stats,
-                    &sup.effect_id,
-                    sup_key.as_deref(),
-                )
-            });
-            if !is_host {
+            if !hosts_exposure(ctx, &group, data, gem, &judgement, true) {
                 continue;
             }
             for sup in judgement.compatible {
@@ -1060,4 +1048,77 @@ pub fn exposure_support_modifiers(
         }
     });
     mods
+}
+
+/// Whether a skill gem in `group` hosts an exposure source: the skill itself,
+/// or a support that applies to it, inflicts exposure (Fire Exposure's
+/// "inflict Exposure on Ignite"); with `with_debuffs`, also a skill whose own
+/// debuff is exposure (Frost Bomb).
+fn hosts_exposure(
+    ctx: &mut StatMapCtx<'_>,
+    group: &EnabledGroup<'_>,
+    data: &dyn BuffEnv,
+    gem: &GemInput,
+    judgement: &GroupSupportJudgement,
+    with_debuffs: bool,
+) -> bool {
+    let es = data.effect_stats(
+        &gem.skill_id,
+        gem.gem_level,
+        gem.quality,
+        gem.stat_set_index,
+    );
+    let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
+    (with_debuffs
+        && crate::skill_env::stat_map::has_debuff_payload(
+            ctx.catalog,
+            &es,
+            &gem.skill_id,
+            set_key.as_deref(),
+        ))
+        || crate::skill_env::stat_map::has_exposure_inflict_stats(
+            ctx.catalog,
+            &es,
+            &gem.skill_id,
+            set_key.as_deref(),
+        )
+        || judgement.compatible.iter().any(|sup| {
+            let host = &group.gems[sup.gem_index];
+            // Quality passed as 0, matching support_modifiers's semantics.
+            let set_index = support_stat_set_index(sup, group.gems);
+            let sup_stats = data.effect_stats(&sup.effect_id, host.gem_level, 0, set_index);
+            let sup_key = data.selected_set_key(&sup.effect_id, set_index);
+            crate::skill_env::stat_map::has_exposure_inflict_stats(
+                ctx.catalog,
+                &sup_stats,
+                &sup.effect_id,
+                sup_key.as_deref(),
+            )
+        })
+}
+
+/// Whether any enabled skill group inflicts exposure: a skill, or a support
+/// applying to it, that inflicts it. The configured exposure on the enemy
+/// needs such a source (`calc::setup_env::reduce_enemy_exposure`); a skill
+/// whose debuff is exposure puts that exposure on the enemy itself.
+pub fn groups_inflict_exposure(
+    ctx: &mut StatMapCtx<'_>,
+    groups: &dyn SocketGroupView,
+    data: &dyn BuffEnv,
+) -> bool {
+    let mut inflicts = false;
+    groups.for_each_enabled_group(&mut |group| {
+        if inflicts {
+            return;
+        }
+        inflicts = group.gems.iter().any(|gem| {
+            data.effect(&gem.skill_id)
+                .is_some_and(|effect| !effect.is_support)
+                && {
+                    let judgement = group_judgement(&group, data, &gem.skill_id);
+                    hosts_exposure(ctx, &group, data, gem, &judgement, false)
+                }
+        });
+    });
+    inflicts
 }

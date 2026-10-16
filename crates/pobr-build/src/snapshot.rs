@@ -125,6 +125,7 @@ pub(crate) fn same_build(a: &Build, b: &Build) -> bool {
         utility_slots,
         limbs,
         weapon_set,
+        other_weapons,
         socket_groups,
         main_socket_group,
         config,
@@ -163,6 +164,7 @@ pub(crate) fn same_build(a: &Build, b: &Build) -> bool {
             .zip(&b.limbs)
             .all(|(a, b)| a.0 == b.0 && same_item(a.1, b.1))
         && weapon_set == &b.weapon_set
+        && same_item_map(other_weapons, &b.other_weapons)
         && socket_groups == &b.socket_groups
         && main_socket_group == &b.main_socket_group
         && same_config(config, &b.config)

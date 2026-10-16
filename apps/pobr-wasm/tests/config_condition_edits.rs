@@ -20,6 +20,9 @@ fn init() {
     pobr_wasm::init_data_from_dir(&pobr_gamedata::current_data_dir().to_string_lossy()).unwrap();
 }
 
+/// The character inflicts each Exposure, which the configured one needs.
+const INFLICTS_EXPOSURE: &str = "Inflict Fire Exposure on Hit&#10;Inflict Cold Exposure on Hit&#10;Inflict Lightning Exposure on Hit";
+
 fn code(key: &str, value: Option<bool>, skill: &str) -> String {
     let input = value
         .map(|value| format!(r#"<Input name="{key}" boolean="{value}"/>"#))
@@ -33,6 +36,7 @@ fn code(key: &str, value: Option<bool>, skill: &str) -> String {
           </Skill></SkillSet></Skills>
           <Items activeItemSet="1"><ItemSet id="1"/></Items>
           <Config>{input}<Input name="enemyIsBoss" string="None"/>
+            <Input name="customMods" string="{INFLICTS_EXPOSURE}"/>
             <Input name="syntheticFalse" boolean="false"/>
             <Input name="syntheticZero" number="0"/>
             <Input name="syntheticNumber" number="7.5"/>

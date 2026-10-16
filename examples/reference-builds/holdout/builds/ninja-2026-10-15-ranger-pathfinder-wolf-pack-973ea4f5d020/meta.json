@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-15-ranger-pathfinder-wolf-pack-973ea4f5d020",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%E6%9C%88%E9%BA%9F%E4%B8%B6%E9%9B%B6%E4%BA%94%E4%BA%8C-3033/%E5%AE%89%E6%BA%AF%E9%9B%B6%E4%BA%94%E4%BA%94%E4%BA%8C",
+    "account": "月麟丶零五二-3033",
+    "character": "安溯零五五二",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-15T03:44:54+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0131-20261015-10033/character?account=%E6%9C%88%E9%BA%9F%E4%B8%B6%E9%9B%B6%E4%BA%94%E4%BA%8C-3033&name=%E5%AE%89%E6%BA%AF%E9%9B%B6%E4%BA%94%E4%BA%94%E4%BA%8C&overview=forbidden-rites",
+    "snapshot": "0131-20261015-10033",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0131-20261015-10033/search?overview=forbidden-rites&class=Pathfinder",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Ranger",
+    "ascendancy": "Pathfinder",
+    "level": 99,
+    "main_skill": "Wolf Pack"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 6,
+    "code_sha256": "4cebff71fc9521dc69b4eddfbf768549daae3e896176af93bc165a2409e694a3",
+    "code_chars": 11188,
+    "decoded_bytes": 38248
+  }
+}

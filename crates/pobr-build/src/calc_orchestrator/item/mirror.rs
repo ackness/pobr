@@ -138,9 +138,9 @@ pub(crate) fn slot_bonus_effect_scales(
     // their injection scaling (including The Adorned) before scaling the quiver.
     let jewel_effect = pobr_core::skill_env::CorruptedJewelEffect::from_jewels(build.jewel_items());
     for (socket, jewel) in &build.jewels {
-        let inc = (*socket == crate::build::JewelSocket::Tree)
-            .then(|| jewel_effect.increase_for(jewel))
-            .flatten();
+        let inc = super::super::collect::jewel_socket_increase(*socket, build, data, || {
+            jewel_effect.increase_for(jewel)
+        });
         let scale = 1.0 + inc.unwrap_or(0.0) / 100.0;
         for text in jewel
             .implicit_texts

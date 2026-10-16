@@ -1643,3 +1643,24 @@ fn traced_empty_enemy_equals_legacy_entry() {
         "panel scope: enemy DamageTaken should not affect traced DPS"
     );
 }
+
+/// "Enemies in your Presence Gain 10% of Damage as Extra Chaos Damage"
+/// (Evergrasping Ring, `DamageGainAsChaos` on the enemy): all of the enemy's
+/// damage adds a tenth as Chaos, scaled by its increases to either type; what
+/// it deals before the gain is unchanged.
+#[test]
+fn enemy_gains_chaos_from_all_of_its_damage() {
+    let mut enemy = ModDb::new();
+    enemy.add_list([
+        Modifier::number("EnemyPhysicalDamage", ModType::Base, 1000.0),
+        Modifier::number("EnemyFireDamage", ModType::Base, 500.0),
+        Modifier::number("DamageGainAsChaos", ModType::Base, 10.0),
+        Modifier::number("FireDamage", ModType::Inc, 20.0),
+    ]);
+    let damage = pobr_core::calc::assemble_enemy_damage(&enemy, &CalcConfig::new(), 1.0);
+    // 1000 x 10% + 500 x 10% x 1.2 (its increased Fire damage) = 160.
+    assert_eq!(damage.damage.chaos, 160.0);
+    assert_eq!(damage.damage.fire, 600.0);
+    assert_eq!(damage.damage.physical, 1000.0);
+    assert_eq!(damage.total_in, 1500.0, "the damage before it gains any");
+}

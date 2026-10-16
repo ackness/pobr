@@ -229,6 +229,11 @@ pub struct DefenceResources {
     /// The amount converted from defence sources into Mana (includes the old dedicated ES→Mana
     /// channel; PoB2 `ExtraMana` BASE semantics).
     pub extra_mana: f64,
+    /// The Runic Ward Life and Mana grant ("Gain 5% of maximum Life as Extra
+    /// maximum Runic Ward", the game's `base_maximum_life_%_to_gain_as_maximum_ward`):
+    /// a Runic Ward base like the others these sources grant, from the same
+    /// amount of Life or Mana, and scaled by the Runic Ward modifiers.
+    pub extra_ward: f64,
 }
 
 /// The five-way defensive resource conversion matrix + per-slot aggregation
@@ -400,6 +405,11 @@ pub(crate) fn defence_resource_terms(
             db.slot_bases(cfg, "EnergyShield")
         },
     ];
+    // In the order of the slots' names: the items are added in no set order,
+    // and a total of 9592.5 must not round to 9592 one time and 9593 another.
+    for slot_list in slots.iter_mut() {
+        slot_list.sort_by(|a, b| a.0.cmp(&b.0));
+    }
     for (idx, slot_list) in slots.iter_mut().enumerate() {
         terms[idx].flat = if idx == 2 && keystones.energy_shield_to_ward {
             slot_total(&db.slot_bases(cfg, "EnergyShield"))
@@ -452,6 +462,7 @@ pub(crate) fn defence_resource_terms(
     // base, serially.
     let mut total_received = [0.0_f64; MATRIX_RESOURCES.len()];
     let mut kept_total = [0.0_f64; MATRIX_DEFENCE_COUNT];
+    let mut extra_ward = 0.0;
     for (s, src) in MATRIX_RESOURCES.iter().enumerate() {
         // The global base at this source's processing time = the input base stat + the global
         // flat BASE + amounts converted in by earlier sources (serial semantics, :1328-1329
@@ -525,9 +536,21 @@ pub(crate) fn defence_resource_terms(
                 received[t] += global_s * rate / 100.0;
                 total_received[t] += total_s * rate / 100.0;
             } else {
-                // Non-defence sources: rounds the global amount up with ceil (:1364-1366), same for Total (:1365).
-                received[t] += (global_s * rate / 100.0).ceil();
-                total_received[t] += (total_s * rate / 100.0).ceil();
+                // Non-defence sources: the amount is a whole number, rounded to the nearest.
+                received[t] += (global_s * rate / 100.0).round();
+                total_received[t] += (total_s * rate / 100.0).round();
+            }
+        }
+        if !is_defence_src {
+            let gain = db
+                .sum(
+                    ModType::Base,
+                    cfg,
+                    &[ModName::from(format!("{src}GainAsWard"))],
+                )
+                .max(0.0);
+            if gain > 0.0 {
+                extra_ward += (global_s * gain / 100.0).round();
             }
         }
         if is_defence_src {
@@ -624,6 +647,7 @@ pub(crate) fn defence_resource_terms(
             energy_shield: out[2],
             extra_life: received[3],
             extra_mana: received[4],
+            extra_ward,
         },
         terms,
     )

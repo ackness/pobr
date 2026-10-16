@@ -20,6 +20,67 @@ use pobr_tree::{collect_allocated_mods_for_class, compute_radius_jewel_effect_wi
 use super::skill::resolve::{parse_gem_property_bonus, small_passive_effect_inc};
 pub(crate) use pobr_core::passive::{GrantTargetKind, parse_grant_line};
 
+/// The increase, in percent, a jewel's socket gives everything the jewel
+/// grants. One of the tree's own jewel sockets takes The Adorned's increase
+/// for the jewel (`adorned`, "Jewel Socket Passive Skills containing
+/// Corrupted Rare Jewels"). A passive skill that holds a socket is not a
+/// Jewel Socket Passive Skill: it takes its own "100% increased Effect of
+/// bonuses gained from Socketed Jewel" (`phylactery_jewel_socket_effect_+%`,
+/// the Lich's Crystalline Phylactery). A socket an item grants and an
+/// equipment socket take neither.
+pub(crate) fn jewel_socket_increase(
+    socket: crate::build::JewelSocket,
+    build: &Build,
+    data: &BuildData,
+    adorned: impl FnOnce() -> Option<f64>,
+) -> Option<f64> {
+    use crate::build::JewelSocket;
+    use pobr_data::catalog::PassiveNodeKind;
+
+    let node = match socket {
+        JewelSocket::Tree => return adorned(),
+        JewelSocket::Node(node) => node,
+        JewelSocket::Granted | JewelSocket::Equipment => return None,
+    };
+    let nodes = data.passive_nodes_for(build.tree_version.as_deref());
+    match nodes.get(&node) {
+        Some(def) if def.kind != PassiveNodeKind::JewelSocket => {
+            let inc: f64 = def
+                .stats
+                .iter()
+                .filter_map(|line| socketed_jewel_effect(line))
+                .sum();
+            (inc != 0.0).then_some(inc)
+        }
+        // A jewel socket, or a node the selected tree does not have.
+        _ => adorned(),
+    }
+}
+
+/// The reader of a passive skill's lines about the socket it holds.
+pub(crate) const SOCKETED_JEWEL_READER: &str =
+    "the jewel in the passive's socket (collect::jewel_socket_increase)";
+
+/// Whether a passive's line is about the socket it holds: "Can Socket a
+/// non-Unique Basic Jewel into the Phylactery", or the socketed jewel's effect.
+pub(crate) fn is_socket_line(line: &str) -> bool {
+    socketed_jewel_effect(line).is_some()
+        || pobr_core::skill_env::clean_grant_text(line).starts_with("can socket ")
+}
+
+/// "100% increased Effect of bonuses gained from Socketed Jewel": 100.
+pub(crate) fn socketed_jewel_effect(line: &str) -> Option<f64> {
+    // Lower case, without the tree's markup.
+    let line = pobr_core::skill_env::clean_grant_text(line);
+    let (number, rest) = line.split_once('%')?;
+    let value: f64 = number.trim().parse().ok()?;
+    match rest.trim() {
+        "increased effect of bonuses gained from socketed jewel" => Some(value),
+        "reduced effect of bonuses gained from socketed jewel" => Some(-value),
+        _ => None,
+    }
+}
+
 /// Resolve item-granted sockets using the selected tree's stable IDs and names.
 /// Numeric node IDs and the number of available sockets belong to the data pack.
 pub(crate) fn resolve_granted_socket_jewels(build: &Build, data: &BuildData) -> Option<Build> {
@@ -63,12 +124,20 @@ pub(crate) fn resolve_granted_socket_jewels(build: &Build, data: &BuildData) -> 
         .take(count)
         .map(|(_, skill)| skill)
         .collect();
-    for text in build.items.values().flat_map(|item| {
-        item.implicit_texts
-            .iter()
-            .chain(&item.modifier_texts)
-            .chain(&item.enchant_texts)
-    }) {
+    // A jewel allocates a socket the same way an item does: a Megalomaniac's
+    // "Allocates Zarokh's Gift" opens that Sinister socket.
+    for text in build
+        .items
+        .values()
+        .chain(build.limbs.values())
+        .chain(build.jewel_items())
+        .flat_map(|item| {
+            item.implicit_texts
+                .iter()
+                .chain(&item.modifier_texts)
+                .chain(&item.enchant_texts)
+        })
+    {
         if let Some(name) = text.trim().strip_prefix("Allocates ")
             && let Some(node) = nodes
                 .values()
@@ -558,10 +627,10 @@ pub(crate) fn radius_jewel_grant_modifiers(build: &Build, data: &BuildData) -> V
         // An increase to a jewel socket's effect makes everything the jewel
         // grants that much stronger, before the node it lands on scales it.
         let jewel_scale = 1.0
-            + (exp.jewel.socket == crate::build::JewelSocket::Tree)
-                .then(|| jewel_effect.increase(exp.jewel.rarity, exp.jewel.corrupted))
-                .flatten()
-                .unwrap_or(0.0)
+            + jewel_socket_increase(exp.jewel.socket, build, data, || {
+                jewel_effect.increase(exp.jewel.rarity, exp.jewel.corrupted)
+            })
+            .unwrap_or(0.0)
                 / 100.0;
         for line in &exp.jewel.grant_lines {
             let Some((kind, granted)) = parse_grant_line(line) else {

@@ -14,9 +14,9 @@
 
 // The orchestration backbone's (`mod.rs`) types and sibling-module helpers are brought
 // in via glob import — matching the style of the rest of the `calc_orchestrator::*` submodules.
-use pobr_core::Modifier;
 use pobr_core::calc::CalculationSession;
 use pobr_core::mod_parser::ParseStatus;
+use pobr_core::{ItemModSection, Modifier};
 use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::modifier::ModType;
 use pobr_data::monster::EnemyTier;
@@ -372,16 +372,10 @@ pub(super) fn inject_build_multipliers(
     // deduplicated) — the Demolitionist ascendancy's "… for every different Grenade
     // fired …"'s Multiplier limitVar denominator.
     session.set_multiplier("GrenadeTypes", grenade_type_count(build, data));
-    // The Gemling ascendancy's Virtuous Barrier per-Attribute-Mote count (matching
-    // vendor CalcSetup.lua:1396,1766-1781): base {Str,Dex,Int}=3, plus each enabled
-    // non-support skill gem counted by its required attributes (str/dex/int_pct>0) —
-    // a single-attribute requirement gets +2, a multi-attribute one gets +1 each.
-    // Consumed only by Virtuous Barrier's `<res> INC ×<Attr>MoteSkillCount` (the sole
-    // consumer in this repo); for a build without this ascendancy, these three
-    // multipliers are referenced by nothing → zero behavior impact.
-    // ponytail: currently doesn't exclude fromNode/fromItem granted skills as vendor
-    // does; no currently-modeled granted skill carries attribute requirements, so this
-    // doesn't pollute the count yet. When a relevant build shows up, exclude precisely by SocketGroup::source.
+    // The Gemling ascendancy's Virtuous Barrier per-Attribute-Mote count
+    // (virtuous_mote_counts). Consumed only by Virtuous Barrier's
+    // `<res> INC ×<Attr>MoteSkillCount`; for a build without this ascendancy,
+    // these three multipliers are referenced by nothing.
     let (str_mote, dex_mote, int_mote) = virtuous_mote_counts(build, data);
     session.set_multiplier("StrengthMoteSkillCount", str_mote);
     session.set_multiplier("DexterityMoteSkillCount", dex_mote);
@@ -443,16 +437,24 @@ pub(super) fn per_slot_attribute_requirements(
 }
 
 /// Attribute-Mote count (the Gemling ascendancy's Virtuous Barrier): base 3/3/3 + each
-/// enabled non-support skill gem counted by its required attribute count
+/// skill the character has from a gem, by the gem's required attributes
 /// (single-attribute gets +2, multi-attribute gets +1 each). Returns `(Str, Dex, Int)`.
+///
+/// A support gem that grants a skill (tag `grants_active_skill`, Eonyr's
+/// Thunder) gives the character that skill and counts too. Groups an item or
+/// a passive grants are left out: the build already lists the same skill as a
+/// group of its own, and counting both would count it twice.
 pub(super) fn virtuous_mote_counts(build: &Build, data: &BuildData) -> (f64, f64, f64) {
     let (mut s, mut d, mut i) = (3.0, 3.0, 3.0);
     for group in build.enabled_socket_groups() {
+        if group.source.is_some() {
+            continue;
+        }
         for gem_id in &group.gem_ids {
             let Some(def) = data.skill_gems.get(gem_id) else {
                 continue;
             };
-            if def.is_support {
+            if def.is_support && !def.gem_tags.iter().any(|tag| tag == "grants_active_skill") {
                 continue;
             }
             let req = [def.str_pct > 0, def.dex_pct > 0, def.int_pct > 0];
@@ -776,6 +778,27 @@ pub(super) fn inject_items(
                         || pobr_core::skill_env::parse_local_ward_inc(&c).is_some()
                 },
             );
+            // "+N to maximum Runic Ward" of the item's own modifiers is part
+            // of its Runic Ward (`local_ward`, The Brass Dome); a socketed
+            // alloy's is the character's (`base_maximum_ward`).
+            for (section, texts) in item_sections_mut(&mut filtered) {
+                if section == ItemModSection::Enchant {
+                    continue;
+                }
+                let source = LineHolder::Slot(slot.id()).source(section);
+                texts.retain(|text| {
+                    let local = pobr_core::skill_env::parse_local_ward_flat(&clean_item_text(text))
+                        .is_some();
+                    if local {
+                        session.note_line(
+                            &source,
+                            text,
+                            LineFate::ReadBy("the item's own Runic Ward (item_ward_modifiers)"),
+                        );
+                    }
+                    !local
+                });
+            }
         }
         // A shield's own Block chance lines are part of its block chance
         // (shield_block_modifiers); in the global set they would add to the
@@ -946,6 +969,14 @@ pub(super) fn inject_self_buff_exposure(
         data,
         main_skill_group,
     ));
+    //      A skill group inflicting exposure lets the configured exposure on
+    //      the enemy hold, whichever skill is being calculated.
+    if pobr_core::skill_env::groups_inflict_exposure(&mut context.stat_map_ctx(), build, data) {
+        use pobr_core::calc::setup_env::{EXPOSURE_ELEMENTS, can_apply_exposure};
+        for element in EXPOSURE_ELEMENTS {
+            session.set_condition(can_apply_exposure(element), true);
+        }
+    }
     // 4c''. A skill that inflicts Withered lets the character have it on the
     //      enemy, whichever skill is being calculated.
     if let Some(skill_id) = pobr_core::skill_env::skill_inflicting_withered(build, data) {
@@ -955,6 +986,21 @@ pub(super) fn inject_self_buff_exposure(
         ));
         session.add_modifiers(vec![
             Modifier::flag(pobr_core::calc::withered::CAN_WITHER).with_origin(origin),
+        ]);
+    }
+    //      Likewise a skill whose hits Crush leaves the enemy Crushed.
+    if let Some(skill_id) = pobr_core::skill_env::skill_crushing_on_hit(build, data) {
+        let origin = ModifierSource::new(SourceId::new(
+            SourceKind::SkillGem,
+            format!("skill.{skill_id}.crushes_on_hit"),
+        ));
+        session.add_modifiers(vec![
+            Modifier::new(
+                "EnemyModifier",
+                ModType::List,
+                pobr_core::ModValue::NestedMods(vec![Modifier::flag("Condition:Crushed")]),
+            )
+            .with_origin(origin),
         ]);
     }
     // 4c'''. The Blind on the enemy is the strongest one the character's
@@ -1076,12 +1122,12 @@ pub(super) fn stage_inject_jewels(
         // The Adorned: every mod on a corrupted jewel of the rarity it names (magic
         // or rare) in one of the tree's own sockets is scaled by `1 + N/100`, the
         // value truncated after rounding to two places. Granted sockets (Sinister
-        // sockets, notables that hold a socket) and equipment sockets are not
-        // "Jewel Socket Passive Skills".
-        let scale = (*socket == crate::build::JewelSocket::Tree)
-            .then(|| jewel_effect.increase_for(jewel))
-            .flatten()
-            .map(|inc| 1.0 + inc / 100.0);
+        // sockets) and equipment sockets are not "Jewel Socket Passive Skills";
+        // a passive skill that holds a socket scales its jewel by its own effect.
+        let scale = super::collect::jewel_socket_increase(*socket, ctx.build, ctx.data, || {
+            jewel_effect.increase_for(jewel)
+        })
+        .map(|inc| 1.0 + inc / 100.0);
         let mut mods: Vec<pobr_core::Modifier> = Vec::new();
         for text in texts {
             let outcome = parse_ctx
@@ -1227,12 +1273,16 @@ pub(super) fn stage_inject_passives(
             .is_some_and(|def| def.ascendancy_id.is_some());
         let source = pobr_core::passive::node_source(node, ascendancy);
         // A gem level or quality bonus is read from the node's text
-        // (`gem_property_bonuses`), whether or not a rule parses it.
-        if parse_gem_property_bonus(&line).is_none() {
+        // (`gem_property_bonuses`), whether or not a rule parses it, and so is
+        // what the node says about the socket it holds.
+        if parse_gem_property_bonus(&line).is_some() {
+            session.note_line(&source, &line, LineFate::ReadBy(GEM_PROPERTY_READER));
+        } else if super::collect::is_socket_line(&line) {
+            let reader = super::collect::SOCKETED_JEWEL_READER;
+            session.note_line(&source, &line, LineFate::ReadBy(reader));
+        } else {
             session.record_unsupported_modifier_text(format!("Tree:{node}: {line}"));
             session.note_line(&source, &line, LineFate::Unparsed);
-        } else {
-            session.note_line(&source, &line, LineFate::ReadBy(GEM_PROPERTY_READER));
         }
     }
     let passive_nodes = passive_nodes;
@@ -1243,6 +1293,9 @@ pub(super) fn stage_inject_passives(
         for line in &node.modifier_texts {
             if parse_gem_property_bonus(line).is_some() {
                 session.note_line(&source, line, LineFate::ReadBy(GEM_PROPERTY_READER));
+            } else if super::collect::is_socket_line(line) {
+                let reader = super::collect::SOCKETED_JEWEL_READER;
+                session.note_line(&source, line, LineFate::ReadBy(reader));
             }
         }
     }

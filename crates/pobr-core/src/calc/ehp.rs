@@ -448,11 +448,38 @@ pub fn enemy_damage_placeholder(
     }
 }
 
+/// What the EHP stage computed with, per damage type in the order Physical,
+/// Fire, Cold, Lightning, Chaos: the enemy's hit, the part of it taken, and
+/// the pool that type of damage has to deplete.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct EhpTerms {
+    /// The enemy's damage of each type in one hit, after its modifiers,
+    /// critical hits and gained damage (`<X>EnemyDamage`).
+    pub enemy_damage: [f64; 5],
+    /// The damage of each type taken from that hit (`<X>TakenHit`).
+    pub taken_hit: [f64; 5],
+    /// The pool each type depletes (`<X>TotalHitPool`).
+    pub total_hit_pool: [f64; 5],
+    /// Hits like that to die (`NumberOfDamagingHits`).
+    pub damaging_hits: f64,
+    /// The percentage of a hit left after block, deflection and avoidance
+    /// (`ConfiguredDamageChance`).
+    pub damage_chance: f64,
+    /// Hits to die with that percentage (`NumberOfMitigatedDamagingHits`).
+    pub mitigated_hits: f64,
+    /// The chance not to be hit at all (`AverageNotHitChance`).
+    pub not_hit_chance: f64,
+    /// The enemy's damage before modifiers, which EHP is in units of
+    /// (`totalEnemyDamageIn`).
+    pub enemy_damage_in: f64,
+}
+
 /// Enemy incoming-damage assembly result (vendor CalcDefence.lua:2040-2168's enemy-damage section).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct EnemyDamageIn {
-    /// Per-type final value `<X>EnemyDamage = enemyDamage × enemyDamageMult × EnemyCritEffect`
-    /// (`:2137`; enemy Conversion `:2098-2128` has no mod source, left as-is).
+    /// Per-type final value `<X>EnemyDamage = enemyDamage × enemyDamageMult ×
+    /// EnemyCritEffect`, plus the damage the enemy gains as that type from
+    /// the others.
     pub damage: TypedDamage,
     /// `totalEnemyDamageIn = Σ enemyDamage` (**before** mult/crit, `:2136`;
     /// the end-of-pipeline TotalEHP multiplier `:3322`).
@@ -466,6 +493,13 @@ pub struct EnemyDamageIn {
 /// db's `<X>Min`/`<X>Max` mod average (`:2098`) → per-type ×
 /// `enemyDamageMult` (`calcLib.mod(enemyDB, "Damage", "<X>Damage"[, "ElementalDamage"])`,
 /// `:2133`) × `EnemyCritEffect`.
+///
+/// The enemy also gains damage as other types, read with the names the
+/// player's gains are (`damage::gain_names`): Evergrasping Ring's "Enemies in
+/// your Presence Gain {0}% of Damage as Extra Chaos Damage"
+/// (`enemies_in_presence_non_skill_base_all_damage_%_to_gain_as_chaos`) is
+/// a share of all of its damage, each type gaining from the others. Gained
+/// damage is modified by the modifiers of both types.
 pub fn assemble_enemy_damage(
     enemy_db: &ModDb,
     cfg: &CalcConfig,
@@ -473,6 +507,7 @@ pub fn assemble_enemy_damage(
 ) -> EnemyDamageIn {
     let mut result = EnemyDamageIn::default();
     let mut per_type = [0.0_f64; 5];
+    let mut base_by_type = [0.0_f64; 5];
     for dtype in DAMAGE_TYPE_BY_INDEX {
         let i = dtype as usize;
         let name = type_prefix(dtype);
@@ -499,7 +534,35 @@ pub fn assemble_enemy_damage(
             (1.0 + enemy_db.sum(ModType::Inc, cfg, &names) / 100.0) * enemy_db.more(cfg, &names);
         result.mult_by_type[i] = mult;
         result.total_in += enemy_damage;
+        base_by_type[i] = enemy_damage;
         per_type[i] = enemy_damage * mult * crit_effect;
+    }
+    // What the enemy gains as another type: Evergrasping Ring's "Enemies in
+    // your Presence Gain (6-12)% of Damage as Extra Chaos Damage" is
+    // `enemies_in_presence_non_skill_base_all_damage_%_to_gain_as_chaos`,
+    // from all of its damage, scaled by its increases to either type.
+    for from in DAMAGE_TYPE_BY_INDEX {
+        for to in DAMAGE_TYPE_BY_INDEX {
+            if from == to || base_by_type[from as usize] == 0.0 {
+                continue;
+            }
+            let share =
+                enemy_db.sum(ModType::Base, cfg, &super::damage::gain_names(from, to)) / 100.0;
+            if share <= 0.0 {
+                continue;
+            }
+            let mut names = vec![
+                ModName::from("Damage"),
+                ModName::from(format!("{}Damage", type_prefix(to))),
+                ModName::from(format!("{}Damage", type_prefix(from))),
+            ];
+            if to.is_elemental() || from.is_elemental() {
+                names.push(ModName::from("ElementalDamage"));
+            }
+            let mult = (1.0 + enemy_db.sum(ModType::Inc, cfg, &names) / 100.0)
+                * enemy_db.more(cfg, &names);
+            per_type[to as usize] += base_by_type[from as usize] * share * mult * crit_effect;
+        }
     }
     result.damage = TypedDamage {
         physical: per_type[0],
@@ -509,6 +572,11 @@ pub fn assemble_enemy_damage(
         chaos: per_type[4],
     };
     result
+}
+
+/// A typed damage as an array in `DAMAGE_TYPE_BY_INDEX` order.
+fn by_type(damage: &TypedDamage) -> [f64; 5] {
+    DAMAGE_TYPE_BY_INDEX.map(|dtype| damage.get(dtype))
 }
 
 /// DamageType → mod name prefix.
@@ -1103,6 +1171,7 @@ pub fn fill_ehp_pob2(
         self_stun_chance: f64,
         stun_duration: f64,
         recoupable_total: f64,
+        terms: EhpTerms,
     }
     let computed = {
         let db = &env.player.mod_db;
@@ -1384,8 +1453,19 @@ pub fn fill_ehp_pob2(
             self_stun_chance: stun.self_stun_chance,
             stun_duration: stun.stun_duration,
             recoupable_total,
+            terms: EhpTerms {
+                enemy_damage: by_type(&enemy_in.damage),
+                taken_hit: by_type(&taken_hit),
+                total_hit_pool: pool_by_type,
+                damaging_hits: n_hits,
+                damage_chance: configured_damage_chance,
+                mitigated_hits: n_mitigated,
+                not_hit_chance: nh.average,
+                enemy_damage_in: enemy_in.total_in,
+            },
         }
     };
+    env.ehp_terms = Some(computed.terms);
 
     let out = &mut env.player.output;
     out.life_recoverable = computed.life_recoverable;

@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-15-warrior-smith-of-kitava-earthshatter-fe41445e45af",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%ED%94%84%EB%A1%9C%EB%9D%BC%EA%B3%A0-5012/FR_SK_Tanker",
+    "account": "프로라고-5012",
+    "character": "FR_SK_Tanker",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-15T03:44:54+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0131-20261015-10033/character?account=%ED%94%84%EB%A1%9C%EB%9D%BC%EA%B3%A0-5012&name=FR_SK_Tanker&overview=forbidden-rites",
+    "snapshot": "0131-20261015-10033",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0131-20261015-10033/search?overview=forbidden-rites&class=Smith+of+Kitava",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Smith of Kitava",
+    "level": 97,
+    "main_skill": "Earthshatter"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 9,
+    "code_sha256": "d784d41cd5ea74dd12769a42686f13c09da6b616f4c1f6a79dd45aadf28357e1",
+    "code_chars": 13240,
+    "decoded_bytes": 49125
+  }
+}

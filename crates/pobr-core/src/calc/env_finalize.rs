@@ -510,6 +510,18 @@ pub fn expand_misc_buffs(env: &mut Env) {
         &pending,
         &env.buff_handler_registry,
     );
+    // A buff's own multiplier (Unholy Might's magnitude, 100, that its "Gain
+    // 30% of Damage as Extra Chaos Damage" is counted per) joins the
+    // multiplier table, which was filled before the buffs expanded.
+    for modifier in &expansion.mods {
+        if modifier.mod_type == ModType::Base
+            && modifier.tags.is_empty()
+            && let Some(var) = modifier.name.as_str().strip_prefix("Multiplier:")
+            && let Some(value) = modifier.value.as_number()
+        {
+            *env.cfg.multipliers.entry(var.to_string()).or_insert(0.0) += value;
+        }
+    }
     env.player.mod_db.add_list(expansion.mods);
     env.enemy.mod_db.add_list(expansion.enemy_mods);
     for condition in expansion.conditions_set {
@@ -541,11 +553,10 @@ pub fn apply_nondamaging_ailments(env: &mut Env) {
 /// so this copies the aggregated flag result back
 /// (`matches(cfg)` already includes gates like the Effective/EnemyInPresence tags).
 fn bridge_enemy_condition_flags(env: &mut Env) {
-    // ponytail: the allowlist currently only has Intimidated (the only
-    // condition with a consumer for the enemy base condition pair);
-    // generalizing to all `Condition:*` flags would light up every enemy
+    // ponytail: the allowlist has the conditions with a consumer among the
+    // enemy's base modifiers (Intimidated, Crushed); generalizing to all `Condition:*` flags would light up every enemy
     // condition mod at once -- left for parity to call out and extend one by one.
-    const BRIDGED: &[&str] = &["Intimidated"];
+    const BRIDGED: &[&str] = &["Intimidated", "Crushed"];
     for cond in BRIDGED {
         let flag = ModName::from(format!("Condition:{cond}"));
         if env.enemy.mod_db.flag(&env.cfg, flag.as_str()) {

@@ -75,6 +75,14 @@ pub fn inflicts_withered(stat: &str) -> bool {
     INFLICTS_WITHERED.contains(&stat)
 }
 
+/// Whether the corpse's Life the stat names is damage the skill only poisons
+/// with, without hitting: Decompose's cloud "Poisons enemies as though dealing
+/// Chaos damage equal to {0}% of Corpse's maximum Life". Without a hit there
+/// is no critical hit.
+pub fn corpse_damage_without_hit(stat: &str) -> bool {
+    stat == "corpse_explosion_monster_life_permillage_chaos"
+}
+
 /// What a corpse explosion deals, by the stat of the skill that says so: the
 /// type of its damage and the share of the corpse's maximum Life it is.
 ///
@@ -219,6 +227,13 @@ pub fn is_minion_stat(stat: &str) -> bool {
     minion_modifiers(stat, 0.0, SummonedMinions::default()).is_some()
 }
 
+/// Whether a skill with the stat `stat` Crushes the targets it hits: Styrn's
+/// Ferocity, "Supported Skills Crush targets they Hit for 8 seconds". Crushed
+/// lowers the target's Physical Damage Reduction (`calc::setup_env`).
+pub fn crushes_on_hit(stat: &str) -> bool {
+    stat == "support_knights_ferocity_crush_on_hit_ms"
+}
+
 /// The modifiers the stat `stat` of a skill, or of a support that applies to
 /// it, grants that skill at `value`, when this table defines the stat. `None`
 /// leaves the stat to the extracted stat map.
@@ -233,6 +248,9 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         COMMAND_SKILL_STAT => Some(Vec::new()),
         // Reap: "Culling Strike" (`calc::skill_dot::cull_multiplier`).
         "kill_enemy_on_hit_if_under_10%_life" => Some(vec![Modifier::flag("CanCull")]),
+        // Put on the enemy whichever skill crushes it
+        // (`skill_env::skill_crushing_on_hit`).
+        stat if crushes_on_hit(stat) => Some(Vec::new()),
         // Decompose: "Poisons enemies as though dealing Chaos damage equal
         // to {0}% of Corpse's maximum Life": what it deals poisons.
         "corpse_explosion_monster_life_permillage_chaos" => {
@@ -241,6 +259,8 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         // The corpse's Life the skill deals, where the corpse is known
         // (`calc_orchestrator::skill::mods::corpse_explosion_modifiers`).
         stat if corpse_explosion_damage(stat, 0.0).is_some() => Some(Vec::new()),
+        // Put on the enemy as the skill's debuff (`debuff_modifiers`).
+        stat if debuff_modifiers(stat, 0.0).is_some() => Some(Vec::new()),
         // Raise the buff of the Offering, or the effect of the Remnants, of
         // the skill they are on, where that buff is made
         // (`skill_env::buff_specs`).
@@ -371,6 +391,28 @@ pub fn granted_skill_modifiers(stat: &str, value: f64, stats: &[SkillDamageStat]
 /// Predator's Mark, the mark Pounce applies: "Marked target takes {0}%
 /// increased damage for each of its enemies within 6 metres of it, up to
 /// {1}%". The stat of `{0}`.
+/// Oil Barrage: its Oil Ground applies Exposure, lowering each elemental
+/// Resistance of the enemies in it by this much.
+const OIL_EXPOSURE: &str = "skill_base_oil_exposure_-_to_total_elemental_resistance";
+
+/// The modifiers the stat `stat` of a skill puts on the enemies it affects at
+/// `value`, its quality added, when this table defines the stat. They are the
+/// skill's debuff (`skill_env::buff_specs::buff_skill_specs`). `None` leaves
+/// the stat to the extracted stat map.
+pub fn debuff_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
+    match stat {
+        // The enemy is taken to stand in the Oil. Exposure of each element
+        // is reduced with the others (`calc::setup_env::reduce_enemy_exposure`).
+        OIL_EXPOSURE => Some(
+            ["FireExposure", "ColdExposure", "LightningExposure"]
+                .into_iter()
+                .map(|name| Modifier::number(name, ModType::Base, value))
+                .collect(),
+        ),
+        _ => None,
+    }
+}
+
 const PREDATORS_MARK_PER_ENEMY: &str = "skill_wolf_mark_damage_taken_+%_per_nearby_enemy";
 
 /// The stat of `{1}` in [`PREDATORS_MARK_PER_ENEMY`]'s text, the maximum.

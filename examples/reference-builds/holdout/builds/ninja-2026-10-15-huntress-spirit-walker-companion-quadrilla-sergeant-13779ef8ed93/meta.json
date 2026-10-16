@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-15-huntress-spirit-walker-companion-quadrilla-sergeant-13779ef8ed93",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%EB%A7%B9%EC%9D%B4%EB%A7%89%EB%82%B4-0369/%EB%A7%B9%EC%9D%B4%EB%A7%89%EB%82%B4",
+    "account": "맹이막내-0369",
+    "character": "맹이막내",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-15T03:44:54+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0131-20261015-10033/character?account=%EB%A7%B9%EC%9D%B4%EB%A7%89%EB%82%B4-0369&name=%EB%A7%B9%EC%9D%B4%EB%A7%89%EB%82%B4&overview=forbidden-rites",
+    "snapshot": "0131-20261015-10033",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0131-20261015-10033/search?overview=forbidden-rites&class=Spirit+Walker",
+    "selection": "ascendancy-last-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Spirit Walker",
+    "level": 99,
+    "main_skill": "Companion: Quadrilla Sergeant"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 12,
+    "code_sha256": "32efab135cd1a2b55bfc4fcd15c0b34fa18596b513c3655463d873b011c58d03",
+    "code_chars": 13700,
+    "decoded_bytes": 63016
+  }
+}
