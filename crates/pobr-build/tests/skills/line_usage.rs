@@ -1421,18 +1421,17 @@ fn self_debuff_modifier_views_read_each_previously_unmodelled_line() {
 }
 
 /// A flask line the parser read only in part applies nothing and is listed as
-/// unparsed. These three lines parse to a wrong modifier plus leftover text:
-/// "Removes 15% of Life Recovered from Mana when used" to -15 `FlaskRecovery`,
-/// "88% more Recovery if used while on Low Mana" to 88% more
-/// `FlaskLifeRecoveryLowLife` (Low Life, not Low Mana), and the Chaos recoup line to
-/// +50 `ChaosDamage`.
+/// unparsed. These three lines still parse to a wrong modifier plus leftover text:
+/// "3% more Life Flask Recovery" to 3% more maximum Life, "2% more Mana Flask Recovery"
+/// to 2% more maximum Mana, and "10% increased speed of Recoup Effects" to a
+/// `LocalEffect` increase.
 #[test]
 fn partially_parsed_flask_lines_are_unparsed_and_apply_nothing() {
     let data = data();
     let lines = [
-        "Removes 15% of Life Recovered from Mana when used",
-        "88% more Recovery if used while on Low Mana",
-        "50% of Chaos damage you prevent when Hit Recouped as Life and Mana during effect",
+        "3% more Life Flask Recovery",
+        "2% more Mana Flask Recovery",
+        "10% increased speed of Recoup Effects",
     ];
     let build = parse_build(&format!(
         r#"<PathOfBuilding2>
@@ -1462,6 +1461,120 @@ Implicits: 0
             diagnosis.unparsed_lines
         );
     }
+}
+
+/// The three lines that used to parse to a wrong modifier plus leftover text now have rules.
+/// "88% more Recovery if used while on Low Mana" (game stat
+/// `local_flask_amount_to_recover_+%_when_on_low_mana`) is a MORE on the flask's own recovery
+/// gated on the `LowMana` condition: it is `inactive` until `conditionLowMana` is set, then
+/// `applied`, and the flask's recovery rises by exactly 88%. "Removes 15% of Life Recovered
+/// from Mana when used" is the local utility property behind `Flask1ManaRemovedOnUse`
+/// (15% of the Life flask's total recovery, per use), and the Forsaken Bangle line "50% of
+/// Chaos damage you prevent when Hit Recouped as Life and Mana during effect" feeds the
+/// Chaos prevented-damage recoup of Life and Mana (`LifeRecoupRate` / `ManaRecoupRate`); both
+/// are `applied`.
+#[test]
+fn low_pool_flask_recovery_applies_under_the_matching_condition() {
+    let data = data();
+    let low_mana = "88% more Recovery if used while on Low Mana";
+    let removes = "Removes 15% of Life Recovered from Mana when used";
+    let chaos_recoup =
+        "50% of Chaos damage you prevent when Hit Recouped as Life and Mana during effect";
+    let build = |config: &str| {
+        parse_build(&format!(
+            r#"<PathOfBuilding2>
+<Build level="80" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: MAGIC
+Undiluted Ultimate Life Flask
+Implicits: 0
+{removes}
+</Item><Item id="2">Rarity: MAGIC
+Undiluted Ultimate Mana Flask
+Implicits: 0
+{low_mana}
+</Item><Item id="3">Rarity: UNIQUE
+Forsaken Bangle
+Amethyst Charm
+Implicits: 1
+Used when you take Chaos damage from a Hit
+{chaos_recoup}
+</Item><Item id="4">Rarity: RARE
+Test Belt
+Heavy Belt
+Implicits: 1
+Has 1 Charm Slot
+</Item><ItemSet id="1"><Slot name="Flask 1" itemId="1" active="true"/><Slot name="Flask 2" itemId="2" active="true"/><Slot name="Charm 1" itemId="3" active="true"/><Slot name="Belt" itemId="4"/></ItemSet></Items>
+<Config>{config}</Config>
+</PathOfBuilding2>"#
+        ))
+        .unwrap()
+    };
+    let options = DataOrchestratorOptions::default();
+    let run = |config: &str| {
+        let build = build(config);
+        let diagnosis = diagnose(&build, &data, &options).unwrap();
+        let ledger = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+        let session = pobr_build::calculate_with_data_session(&build, &data, &options).unwrap();
+        let stats = session.output().utility_stats.clone();
+        (diagnosis, ledger, stats)
+    };
+
+    let (diagnosis, ledger, off_stats) = run("");
+    let off_recovery = off_stats["Flask2Recovery"];
+    for text in [low_mana, removes, chaos_recoup] {
+        assert!(
+            !diagnosis.unparsed_lines.iter().any(|line| line == text),
+            "{text} is no longer unsupported: {:?}",
+            diagnosis.unparsed_lines
+        );
+    }
+    let row = line(&ledger, "flask.flask2", low_mana);
+    assert_eq!(row.status, LineStatus::Inactive, "{row:?}");
+    assert_eq!(row.modifiers.len(), 1, "{row:?}");
+    assert_eq!(row.modifiers[0].status, ModifierStatus::Inactive, "{row:?}");
+    assert!(
+        row.modifiers[0]
+            .reason
+            .as_deref()
+            .is_some_and(|reason| reason.contains("LowMana")),
+        "{row:?}"
+    );
+    let row = line(&ledger, "flask.flask1", removes);
+    assert_eq!(row.status, LineStatus::Applied, "{row:?}");
+    assert_eq!(row.modifiers.len(), 1, "{row:?}");
+    let row = line(&ledger, "flask.charm1", chaos_recoup);
+    assert_eq!(row.status, LineStatus::Applied, "{row:?}");
+    assert_eq!(row.modifiers.len(), 2, "{row:?}");
+    assert!(
+        row.modifiers
+            .iter()
+            .all(|modifier| modifier.status == ModifierStatus::Applied),
+        "{row:?}"
+    );
+    // The Life flask line removes exactly 15% of that flask's total recovery from Mana per use.
+    let stats = &off_stats;
+    let life_flask_recovery = stats["Flask1Recovery"];
+    assert!(life_flask_recovery > 0.0, "{life_flask_recovery}");
+    assert!(
+        (stats["Flask1ManaRemovedOnUse"] - 0.15 * life_flask_recovery).abs() < 1e-9,
+        "{stats:?}"
+    );
+    assert_eq!(stats["Flask1LifeRemovedOnUse"], 0.0);
+    assert_eq!(stats["Flask2ManaRemovedOnUse"], 0.0);
+    assert_eq!(stats["Flask2LifeRemovedOnUse"], 0.0);
+
+    // With the Low Mana state configured the same line is applied and the flask recovers 88%
+    // more: the Ultimate Mana Flask's recovery is multiplied by exactly 1.88.
+    let (_, ledger, on_stats) = run(r#"<Input name="conditionLowMana" boolean="true"/>"#);
+    let on_recovery = on_stats["Flask2Recovery"];
+    let row = line(&ledger, "flask.flask2", low_mana);
+    assert_eq!(row.status, LineStatus::Applied, "{row:?}");
+    assert!(off_recovery > 0.0, "{off_recovery}");
+    assert!(
+        (on_recovery / off_recovery - 1.88).abs() < 1e-9,
+        "{on_recovery} / {off_recovery}"
+    );
 }
 
 /// Free modifier texts (`extra_modifier_texts`) follow the same rule: the partly read

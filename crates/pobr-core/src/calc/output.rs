@@ -140,6 +140,9 @@ pub struct OutputTable {
     pub cold_resistance_total: f64,
     pub lightning_resistance_total: f64,
     pub chaos_resistance_total: f64,
+    /// Fire, Cold, Lightning and Chaos resistance against damage over time
+    /// (`<X>ResistOverTime`, `offence::resolve_resistance_over_time`).
+    pub resistance_over_time: [f64; 4],
     pub crit_chance: f64,
     /// Crit chance (fraction) before the hit-chance downgrade / lucky /
     /// bifurcate / inevitable, but after the cap. Used to show overflow in breakdowns.
@@ -367,6 +370,7 @@ pub struct OutputTable {
     pub max_life_leech_rate_percent: f64,
     /// Recoup return rate (per second; depends on the damage_taken estimate baseline).
     pub life_recoup_rate: f64,
+    pub mana_recoup_rate: f64,
     pub es_recoup_rate: f64,
 
     // Ailment extensions (Lane B: chill / freeze·shock buildup / bleed·poison stacks; written by perform's fill_ailments)
@@ -731,6 +735,7 @@ impl Default for OutputTable {
             lightning_resistance_total: 0.0,
             chaos_resistance_total: 0.0,
             chaos_resistance_over_cap: 0.0,
+            resistance_over_time: [0.0; 4],
             crit_chance: 0.0,
             pre_effective_crit_chance: 0.0,
             crit_multiplier: 0.0,
@@ -887,6 +892,7 @@ impl Default for OutputTable {
             max_energy_shield_leech_rate: 0.0,
             max_life_leech_rate_percent: 0.0,
             life_recoup_rate: 0.0,
+            mana_recoup_rate: 0.0,
             es_recoup_rate: 0.0,
             // Lane B: ailment extensions default to 0 (not applied without a matching hit/mod).
             chill_effect: 0.0,

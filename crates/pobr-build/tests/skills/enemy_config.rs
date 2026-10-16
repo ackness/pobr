@@ -576,12 +576,146 @@ fn further_ehp_fields_expose_mitigation_and_pool_terms() {
         };
         close(reconstructed, value);
     }
-    // Neither reflect nor a separate damage-over-time resistance is modelled.
-    for missing in ["FireTakenReflect", "FireResistOverTime"] {
-        assert!(
-            !pobr_core::display_catalog()
+    // Reflect is not modelled.
+    assert!(
+        !pobr_core::display_catalog()
+            .iter()
+            .any(|d| d.id.as_str() == "FireTakenReflect")
+    );
+}
+
+/// The defensive damage-over-time views, with hand-computed numbers:
+/// resistance against damage over time (including a "+#% Chaos Resistance
+/// against Damage Over Time" line, game stat
+/// `additional_chaos_resistance_against_damage_over_time_%`), additional
+/// damage reduction (not Armour), over-time damage taken, the non-hit pool
+/// (no hit-only Life loss prevention, with Runic Ward) and the survival time.
+#[test]
+fn defensive_damage_over_time_views_reconstruct_from_their_terms() {
+    use pobr_core::display_value;
+
+    let data = data();
+    let inputs = r#"<Input name="enemySpeed" number="1000"/>"#;
+    let session = calc(
+        &data,
+        inputs,
+        &[
+            "+40% to Fire Resistance",
+            "+20% to Chaos Resistance",
+            "+15% Chaos Resistance against Damage Over Time",
+            "20% additional Physical Damage Reduction",
+            "+2000 to Armour",
+            "10% increased Damage taken",
+        ],
+    );
+    let out = session.output();
+    // Fire resistance applies to damage over time as to hits (50 in this
+    // fixture, no over-time-only line); Chaos adds the over-time-only 15.
+    close(out.fire_resistance, 50.0);
+    close(display_value(out, "FireResistOverTime"), 50.0);
+    close(out.chaos_resistance, 20.0);
+    close(display_value(out, "ChaosResistOverTime"), 35.0);
+    // Physical: 20% additional reduction, Armour ignored, 10% increased taken.
+    close(display_value(out, "PhysicalTakenDotMult"), 0.8 * 1.1);
+    close(display_value(out, "FireTakenDotMult"), 0.5 * 1.1);
+    close(display_value(out, "ChaosTakenDotMult"), 0.65 * 1.1);
+    // Recoverable Life only: no Mana, Energy Shield or Runic Ward.
+    let life = out.life_unreserved;
+    close(display_value(out, "FireTotalPool"), life);
+    close(display_value(out, "FireDotEHP"), life / (0.5 * 1.1));
+    // 1000 ms per enemy action at full action speed.
+    close(
+        display_value(out, "EHPSurvivalTime"),
+        out.total_number_of_hits * 1.0,
+    );
+
+    for stat in [
+        "FireResistOverTime",
+        "ChaosResistOverTime",
+        "PhysicalTakenDotMult",
+        "FireTakenDotMult",
+        "ChaosTakenDotMult",
+        "FireTotalPool",
+        "FireDotEHP",
+        "PhysicalDotEHP",
+        "EHPSurvivalTime",
+    ] {
+        let detail = stat_detail(&session, stat).unwrap();
+        assert_eq!(detail.kind, DetailKind::Derived, "{stat}");
+        let d = detail.derived.unwrap();
+        let get = |id: &str| {
+            d.inputs
                 .iter()
-                .any(|d| d.id.as_str() == missing)
-        );
+                .find(|row| row.id == id)
+                .map(|row| row.value)
+                .unwrap_or_else(|| panic!("{stat}: no {id}"))
+        };
+        let reconstructed = if stat.ends_with("ResistOverTime") {
+            let total = ((get("BaseResistance") + get("FlatResistance"))
+                * ((1.0 + get("IncreasedResistance") / 100.0) * get("MoreResistance")).max(0.0))
+            .trunc();
+            total.min(get("MaximumResistance")).max(get("ResistFloor"))
+        } else if stat.ends_with("TakenDotMult") {
+            ((1.0 - get("Resistance") / 100.0)
+                * (1.0 - get("DamageReduction") / 100.0)
+                * get("OverTimeDamageTaken"))
+            .max(0.0)
+        } else if stat.ends_with("TotalPool") {
+            get("ManaEffectiveLife") + get("EnergyShieldInPool") + get("RunicWardInPool")
+        } else if stat.ends_with("DotEHP") {
+            get("TotalPool") / get("TakenDotMult")
+        } else {
+            get("TotalNumberOfHits") * get("EnemyActionTime") / 1000.0 / get("EnemyActionSpeed")
+        };
+        close(reconstructed, display_value(out, stat));
     }
+}
+
+/// Runic Ward is in the non-hit pool; hit-only Life loss prevention is not,
+/// and Chaos Inoculation makes Chaos damage over time zero. Without a
+/// configured enemy attack / cast time there is no survival time.
+#[test]
+fn damage_over_time_pool_has_ward_without_hit_only_layers() {
+    use pobr_core::display_value;
+
+    let data = data();
+    // The exporter's 700 ms placeholder is an assumption, not a configured time.
+    let plain = calc(
+        &data,
+        r#"<Placeholder name="enemySpeed" number="700"/>"#,
+        &["+500 to maximum Runic Ward"],
+    );
+    let out = plain.output();
+    close(out.ward, 500.0);
+    close(
+        display_value(out, "FireTotalPool"),
+        out.life_unreserved + 500.0,
+    );
+    close(display_value(out, "EHPSurvivalTime"), 0.0);
+
+    let prevented = calc(
+        &data,
+        "",
+        &[
+            "20% of Life Loss from Hits is prevented, then that much Life is lost over 4 seconds instead",
+        ],
+    );
+    let out = prevented.output();
+    // The hit pool grows by the prevented share; the non-hit pool does not.
+    close(
+        display_value(out, "FireTotalHitPool"),
+        out.life_unreserved / 0.8,
+    );
+    close(display_value(out, "FireTotalPool"), out.life_unreserved);
+
+    // "Immune to Chaos Damage": no Chaos damage over time is taken.
+    let mut session = CalculationSession::new(MinimalInput {
+        base_life: 1000.0,
+        ..Default::default()
+    });
+    session.add_modifiers([pobr_core::Modifier::flag("ChaosInoculation")]);
+    session.perform_minimal().unwrap();
+    close(display_value(session.output(), "ChaosTakenDotMult"), 0.0);
+    assert!(display_value(session.output(), "ChaosDotEHP").is_infinite());
+    close(display_value(session.output(), "FireTakenDotMult"), 1.0);
 }

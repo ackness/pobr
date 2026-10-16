@@ -1188,6 +1188,7 @@ const STAT_EXTRA_LABELS: Record<string, { 'zh-TW': string; 'zh-CN': string }> = 
   ManaLeechRate: { 'zh-TW': '魔力偷取速率', 'zh-CN': '魔力偷取速率' },
   EsLeechRate: { 'zh-TW': '護盾偷取速率', 'zh-CN': '护盾偷取速率' },
   LifeRecoupRate: { 'zh-TW': '生命回得速率', 'zh-CN': '生命回得速率' },
+  ManaRecoupRate: { 'zh-TW': '魔力回得速率', 'zh-CN': '魔力回得速率' },
   EsRecoupRate: { 'zh-TW': '護盾回得速率', 'zh-CN': '护盾回得速率' },
   ChillEffect: { 'zh-TW': '冰緩效果', 'zh-CN': '冰缓效果' },
   HeavyStunBuildupAvg: { 'zh-TW': '每次擊中重度暈眩累積', 'zh-CN': '每次击中重度晕眩积累' },

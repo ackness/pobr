@@ -44,6 +44,26 @@ pub const DERIVED_STATS: &[&str] = &[
     "ColdResistTotal",
     "LightningResistTotal",
     "ChaosResistTotal",
+    "FireResistOverTime",
+    "ColdResistOverTime",
+    "LightningResistOverTime",
+    "ChaosResistOverTime",
+    "PhysicalTakenDotMult",
+    "FireTakenDotMult",
+    "ColdTakenDotMult",
+    "LightningTakenDotMult",
+    "ChaosTakenDotMult",
+    "PhysicalTotalPool",
+    "FireTotalPool",
+    "ColdTotalPool",
+    "LightningTotalPool",
+    "ChaosTotalPool",
+    "PhysicalDotEHP",
+    "FireDotEHP",
+    "ColdDotEHP",
+    "LightningDotEHP",
+    "ChaosDotEHP",
+    "EHPSurvivalTime",
     "LowLifePercentage",
     "LowestAttribute",
     "MaximumChill",
@@ -233,6 +253,7 @@ pub const DERIVED_STATS: &[&str] = &[
     "ManaLeechRate",
     "EsLeechRate",
     "LifeRecoupRate",
+    "ManaRecoupRate",
     "EsRecoupRate",
     "BleedActiveStacks",
     "PoisonActiveStacks",
@@ -582,6 +603,120 @@ impl CalculationSession {
                     _ => unreachable!(),
                 }
             }
+            "FireResistOverTime"
+            | "ColdResistOverTime"
+            | "LightningResistOverTime"
+            | "ChaosResistOverTime" => {
+                let input = perform::player_input(env);
+                let (element, base) = match stat {
+                    "FireResistOverTime" => ("Fire", input.base_fire_resistance),
+                    "ColdResistOverTime" => ("Cold", input.base_cold_resistance),
+                    "LightningResistOverTime" => ("Lightning", input.base_lightning_resistance),
+                    _ => ("Chaos", 0.0),
+                };
+                let r = crate::calc::offence::resolve_resistance_over_time(
+                    db,
+                    cfg,
+                    base,
+                    element,
+                    element != "Chaos",
+                );
+                let raw = r.override_total.unwrap_or_else(|| {
+                    (r.base + r.flat) * ((1.0 + r.inc / 100.0) * r.more).max(0.0)
+                });
+                // Resistance truncates toward zero: floor when positive, ceil when negative.
+                let toward_zero = if raw >= 0.0 { "floor" } else { "ceil" };
+                let mut inputs = vec![
+                    ("MaximumResistance".to_string(), r.max),
+                    ("ResistFloor".to_string(), r.floor),
+                ];
+                let total = match r.override_total {
+                    Some(value) => {
+                        inputs.push(("OverrideResistance".into(), value));
+                        format!("{toward_zero}(OverrideResistance)")
+                    }
+                    None => {
+                        inputs.extend([
+                            ("BaseResistance".into(), r.base),
+                            ("FlatResistance".into(), r.flat),
+                            ("IncreasedResistance".into(), r.inc),
+                            ("MoreResistance".into(), r.more),
+                        ]);
+                        format!(
+                            "{toward_zero}((BaseResistance + FlatResistance) * max((1 + IncreasedResistance / 100) * MoreResistance, 0))"
+                        )
+                    }
+                };
+                (
+                    format!("max(min({total}, MaximumResistance), ResistFloor)"),
+                    inputs,
+                )
+            }
+            "PhysicalTakenDotMult"
+            | "FireTakenDotMult"
+            | "ColdTakenDotMult"
+            | "LightningTakenDotMult"
+            | "ChaosTakenDotMult"
+            | "PhysicalTotalPool"
+            | "FireTotalPool"
+            | "ColdTotalPool"
+            | "LightningTotalPool"
+            | "ChaosTotalPool"
+            | "PhysicalDotEHP"
+            | "FireDotEHP"
+            | "ColdDotEHP"
+            | "LightningDotEHP"
+            | "ChaosDotEHP" => {
+                let t = self.ehp_terms()?;
+                let (i, kind) = ["Physical", "Fire", "Cold", "Lightning", "Chaos"]
+                    .into_iter()
+                    .enumerate()
+                    .find(|(_, kind)| stat.starts_with(kind))?;
+                let dot = t.dot_taken[i];
+                match &stat[kind.len()..] {
+                    "TakenDotMult" if dot.immune => one("ImmuneToChaosDamage", 0.0),
+                    "TakenDotMult" => (
+                        "max((1 - Resistance / 100) * (1 - DamageReduction / 100) * OverTimeDamageTaken, 0)".into(),
+                        vec![
+                            ("Resistance".into(), dot.resistance),
+                            ("DamageReduction".into(), dot.reduction),
+                            ("OverTimeDamageTaken".into(), dot.taken),
+                        ],
+                    ),
+                    "TotalPool" => (
+                        "ManaEffectiveLife + EnergyShieldInPool + RunicWardInPool".into(),
+                        vec![
+                            ("ManaEffectiveLife".into(), t.mom.effective_life_by_type[i]),
+                            ("EnergyShieldInPool".into(), t.pool_before_ward[i] - t.mom.effective_life_by_type[i]),
+                            ("RunicWardInPool".into(), t.total_pool[i] - t.pool_before_ward[i]),
+                        ],
+                    ),
+                    "DotEHP" => (
+                        "TotalPool / TakenDotMult".into(),
+                        vec![
+                            ("TotalPool".into(), t.total_pool[i]),
+                            ("TakenDotMult".into(), dot.multiplier()),
+                        ],
+                    ),
+                    _ => unreachable!(),
+                }
+            }
+            "EHPSurvivalTime" => {
+                let t = self.ehp_terms()?;
+                if t.enemy_action_time_ms <= 0.0 {
+                    // No configured enemy attack / cast time: no survival time.
+                    one("EnemyActionTime", 0.0)
+                } else {
+                    (
+                        "TotalNumberOfHits * EnemyActionTime / 1000 / EnemyActionSpeed".into(),
+                        vec![
+                            ("TotalNumberOfHits".into(), out.total_number_of_hits),
+                            ("EnemyActionTime".into(), t.enemy_action_time_ms),
+                            ("EnemyActionSpeed".into(), t.enemy_action_speed),
+                        ],
+                    )
+                }
+            }
             "ArchonDuration" | "ArchonRecoveryPeriod" => {
                 let timing = crate::rules::archon::timing(db, cfg);
                 if stat == "ArchonDuration" {
@@ -873,16 +1008,25 @@ impl CalculationSession {
             }
             "LifeRecoupRate" => {
                 use crate::calc::survivability::life_recoup_terms;
-                let t = life_recoup_terms(
-                    db,
-                    cfg,
-                    self.ehp_terms()?.recoupable_total,
-                    self.ehp_terms()?.physical_prevented,
-                );
-                ("round((RecoupableDamage * RecoupPercent + PhysicalDamagePrevented * PreventedRecoupPercent) / 100 / RecoupDuration * RecoupRecovery, 9)".into(), vec![
+                let terms = self.ehp_terms()?;
+                let t = life_recoup_terms(db, cfg, terms.recoupable_total, terms.prevented());
+                ("round((RecoupableDamage * RecoupPercent + PhysicalDamagePrevented * PreventedRecoupPercent + ChaosDamagePrevented * ChaosPreventedRecoupPercent) / 100 / RecoupDuration * RecoupRecovery, 9)".into(), vec![
                         ("RecoupableDamage".into(), t.damage), ("RecoupPercent".into(), t.percent),
                         ("PhysicalDamagePrevented".into(), t.physical_prevented),
-                        ("PreventedRecoupPercent".into(), t.prevented_percent),
+                        ("PreventedRecoupPercent".into(), t.physical_prevented_percent),
+                        ("ChaosDamagePrevented".into(), t.chaos_prevented),
+                        ("ChaosPreventedRecoupPercent".into(), t.chaos_prevented_percent),
+                        ("RecoupDuration".into(), t.duration), ("RecoupRecovery".into(), t.recovery),
+                    ])
+            }
+            "ManaRecoupRate" => {
+                use crate::calc::survivability::mana_recoup_terms;
+                let terms = self.ehp_terms()?;
+                let t = mana_recoup_terms(db, cfg, terms.recoupable_total, terms.prevented());
+                ("round((RecoupableDamage * RecoupPercent + ChaosDamagePrevented * ChaosPreventedRecoupPercent) / 100 / RecoupDuration * RecoupRecovery, 9)".into(), vec![
+                        ("RecoupableDamage".into(), t.damage), ("RecoupPercent".into(), t.percent),
+                        ("ChaosDamagePrevented".into(), t.chaos_prevented),
+                        ("ChaosPreventedRecoupPercent".into(), t.chaos_prevented_percent),
                         ("RecoupDuration".into(), t.duration), ("RecoupRecovery".into(), t.recovery),
                     ])
             }

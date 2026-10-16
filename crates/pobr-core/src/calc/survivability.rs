@@ -902,48 +902,107 @@ pub(crate) fn recoup_terms(
     }
 }
 
-/// Life recoup from damage taken and Physical damage prevented by reduction.
-/// Both contributions share Life's duration and recovery rate. The prevented
-/// base follows the convention documented in the maintainer guide (not tested
-/// in game), and is separate from ordinary damage-taken recoup.
-pub(crate) struct LifeRecoupTerms {
+/// Damage prevented by mitigation, per source, which prevented-damage recoup
+/// returns. The convention (maintainer guide; not tested in game) counts the
+/// Physical reduction stage and the Chaos mitigation stage.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct PreventedDamage {
+    pub physical: f64,
+    pub chaos: f64,
+}
+
+/// Recoup of one resource (Life or Mana) from damage taken plus damage
+/// prevented. Both contributions share the resource's duration and recovery
+/// rate, and the prevented bases are separate from the ordinary damage-taken
+/// recoup.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PreventedRecoupTerms {
     pub damage: f64,
     pub percent: f64,
     pub physical_prevented: f64,
-    pub prevented_percent: f64,
+    pub physical_prevented_percent: f64,
+    pub chaos_prevented: f64,
+    pub chaos_prevented_percent: f64,
     pub duration: f64,
     pub recovery: f64,
     pub rate_per_second: f64,
 }
 
-pub(crate) fn life_recoup_terms(
+fn prevented_recoup_terms(
     db: &ModDb,
     cfg: &CalcConfig,
+    resource: RecoupResource,
     damage_taken: f64,
-    physical_prevented: f64,
-) -> LifeRecoupTerms {
+    prevented: PreventedDamage,
+    physical_mod: Option<&str>,
+    chaos_mod: &str,
+) -> PreventedRecoupTerms {
     let damage = damage_taken.max(0.0);
-    let percent = recoup_base_percent(db, cfg, RecoupResource::Life).max(0.0);
-    let physical_prevented = physical_prevented.max(0.0);
-    let prevented_percent = db
-        .sum(
-            ModType::Base,
-            cfg,
-            &[ModName::from("PhysicalDamagePreventedLifeRecoup")],
-        )
-        .max(0.0);
-    let duration = recoup_duration(db, cfg, RecoupResource::Life);
-    let recovery = recoup_recovery_rate(db, cfg, RecoupResource::Life).max(0.0);
-    let total = (damage * percent + physical_prevented * prevented_percent) / 100.0;
-    LifeRecoupTerms {
+    let percent = recoup_base_percent(db, cfg, resource).max(0.0);
+    let physical_prevented = prevented.physical.max(0.0);
+    let chaos_prevented = prevented.chaos.max(0.0);
+    let prevented_percent =
+        |name: &str| db.sum(ModType::Base, cfg, &[ModName::from(name)]).max(0.0);
+    let physical_prevented_percent = physical_mod.map_or(0.0, prevented_percent);
+    let chaos_prevented_percent = prevented_percent(chaos_mod);
+    let duration = recoup_duration(db, cfg, resource);
+    let recovery = recoup_recovery_rate(db, cfg, resource).max(0.0);
+    let total = (damage * percent
+        + physical_prevented * physical_prevented_percent
+        + chaos_prevented * chaos_prevented_percent)
+        / 100.0;
+    PreventedRecoupTerms {
         damage,
         percent,
         physical_prevented,
-        prevented_percent,
+        physical_prevented_percent,
+        chaos_prevented,
+        chaos_prevented_percent,
         duration,
         recovery,
         rate_per_second: round(total / duration * recovery),
     }
+}
+
+/// Life recoup: damage taken, Physical damage prevented
+/// (`PhysicalDamagePreventedLifeRecoup`) and Chaos damage prevented
+/// (`ChaosDamagePreventedLifeRecoup`), over Life's recoup duration at Life's
+/// recovery rate.
+pub fn life_recoup_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    damage_taken: f64,
+    prevented: PreventedDamage,
+) -> PreventedRecoupTerms {
+    prevented_recoup_terms(
+        db,
+        cfg,
+        RecoupResource::Life,
+        damage_taken,
+        prevented,
+        Some("PhysicalDamagePreventedLifeRecoup"),
+        "ChaosDamagePreventedLifeRecoup",
+    )
+}
+
+/// Mana recoup: damage taken (`ManaRecoup`) and Chaos damage prevented
+/// (`ChaosDamagePreventedManaRecoup`), over Mana's recoup duration at Mana's
+/// recovery rate. No Physical prevented recoup returns Mana.
+pub fn mana_recoup_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    damage_taken: f64,
+    prevented: PreventedDamage,
+) -> PreventedRecoupTerms {
+    prevented_recoup_terms(
+        db,
+        cfg,
+        RecoupResource::Mana,
+        damage_taken,
+        prevented,
+        None,
+        "ChaosDamagePreventedManaRecoup",
+    )
 }
 
 /// Energy Shield recoup with per-damage-type percentages, shared by the panel

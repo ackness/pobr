@@ -5,13 +5,13 @@
 //! Measured on the benchmark and tuned builds (flask lines):
 //!
 //! - "1% more Life Flask Recovery" reads as +1% more `MaximumLife`, leftover "Flask Recovery";
-//! - "50% of Chaos damage you prevent when Hit Recouped as Life and Mana during effect" reads
-//!   as +50 `ChaosDamage`, leftover "you prevent when Hit Recouped as Life and Mana";
-//! - "Removes 15% of Life Recovered from Mana when used" reads as -15 `FlaskRecovery`
-//!   (the flask's own recovery, not the Life recovered from Mana);
-//! - "88% more Recovery if used while on Low Mana" reads as 88% more `FlaskLifeRecoveryLowLife`
-//!   (Low Life, not Low Mana), leftover "if used";
+//! - "2% more Mana Flask Recovery" reads as +2% more `MaximumMana`, leftover "Flask Recovery";
 //! - "1% increased speed of Recoup Effects" reads as +1% increased `LocalEffect`.
+//!
+//! Three more flask and charm lines used to be listed here ("Removes 15% of Life Recovered
+//! from Mana when used", "88% more Recovery if used while on Low Mana" and the Chaos prevented
+//! recoup line). They have their own rules in `overlay-common/special_mods.json` now, so they
+//! are no longer partial; the parser and line-usage tests cover them.
 //!
 //! Every ingest path goes through `ParseOutcome::into_applicable`: such a line applies
 //! nothing and is reported in the ingest's `unsupported` list (and the session's
@@ -37,13 +37,8 @@ use crate::support::{ctx, parse_mod, session};
 const LIFE_FLASK_MORE: &str = "1% more Life Flask Recovery";
 /// Reads as +1% increased `LocalEffect`, leftover "speed of Recoup s".
 const RECOUP_SPEED: &str = "1% increased speed of Recoup Effects";
-/// Reads as +50 `ChaosDamage`, leftover "you prevent when Hit Recouped as Life and Mana".
-const CHAOS_PREVENTED: &str =
-    "50% of Chaos damage you prevent when Hit Recouped as Life and Mana during effect";
-/// Reads as -15 `FlaskRecovery`, leftover "% of  from Mana when used".
-const REMOVES_FROM_MANA: &str = "Removes 15% of Life Recovered from Mana when used";
-/// Reads as 88% more `FlaskLifeRecoveryLowLife`, leftover "if used".
-const LOW_MANA_MORE: &str = "88% more Recovery if used while on Low Mana";
+/// Reads as +2% more `MaximumMana`, leftover "Flask Recovery".
+const MANA_FLASK_MORE: &str = "2% more Mana Flask Recovery";
 
 fn item(base: &str, rarity: ItemRarity, explicits: &[&str]) -> Item {
     Item {
@@ -138,9 +133,9 @@ fn flask_ingest_does_not_apply_partially_parsed_lines() {
         ItemRarity::Magic,
         &[
             "10% increased Movement Speed during effect",
-            REMOVES_FROM_MANA,
-            LOW_MANA_MORE,
-            CHAOS_PREVENTED,
+            LIFE_FLASK_MORE,
+            MANA_FLASK_MORE,
+            RECOUP_SPEED,
         ],
     );
 
@@ -150,9 +145,9 @@ fn flask_ingest_does_not_apply_partially_parsed_lines() {
     assert_eq!(
         ingest.unsupported,
         vec![
-            REMOVES_FROM_MANA.to_string(),
-            LOW_MANA_MORE.to_string(),
-            CHAOS_PREVENTED.to_string(),
+            LIFE_FLASK_MORE.to_string(),
+            MANA_FLASK_MORE.to_string(),
+            RECOUP_SPEED.to_string(),
         ]
     );
     // The payload holds only the complete line: one MovementSpeed +10% increased.
@@ -163,7 +158,7 @@ fn flask_ingest_does_not_apply_partially_parsed_lines() {
     assert_eq!(payload[0].name.as_str(), "MovementSpeed");
     assert_eq!(payload[0].mod_type, ModType::Inc);
     assert_eq!(payload[0].value.as_number(), Some(10.0));
-    for wrong in ["FlaskRecovery", "FlaskLifeRecoveryLowLife", "ChaosDamage"] {
+    for wrong in ["MaximumLife", "MaximumMana", "LocalEffect"] {
         assert!(!has_name(payload, wrong), "{wrong} must not be applied");
     }
 }
@@ -173,12 +168,12 @@ fn charm_ingest_does_not_apply_a_partially_parsed_line() {
     let charm = item(
         "Sapphire Charm of Lightning",
         ItemRarity::Magic,
-        &["+15% to Lightning Resistance", CHAOS_PREVENTED],
+        &["+15% to Lightning Resistance", RECOUP_SPEED],
     );
 
     let ingest = ingest_flask_charm_with_ctx("Charm 1", &charm, ctx());
 
-    assert_eq!(ingest.unsupported, vec![CHAOS_PREVENTED.to_string()]);
+    assert_eq!(ingest.unsupported, vec![RECOUP_SPEED.to_string()]);
     let payload = ingest.modifiers[0].value.as_nested_mods().unwrap();
     assert_eq!(payload.len(), 1, "{payload:?}");
     assert_eq!(payload[0].name.as_str(), "LightningResistance");
@@ -273,26 +268,25 @@ fn session_entry_points_report_partially_parsed_lines() {
         .unwrap();
     session.add_flask_charm(
         "Flask 1",
-        &item("Quicksilver Flask", ItemRarity::Magic, &[CHAOS_PREVENTED]),
+        &item("Quicksilver Flask", ItemRarity::Magic, &[MANA_FLASK_MORE]),
     );
     session
         .add_passive_nodes(&[node(1, &[RECOUP_SPEED])])
         .unwrap();
     session
-        .add_skill_gem(&GemModSource::active("fireball", [REMOVES_FROM_MANA]))
+        .add_skill_gem(&GemModSource::active("fireball", [LIFE_FLASK_MORE]))
         .unwrap();
 
     assert_eq!(
         session.unsupported_modifier_texts(),
         [
             LIFE_FLASK_MORE,
-            CHAOS_PREVENTED,
+            MANA_FLASK_MORE,
             RECOUP_SPEED,
-            REMOVES_FROM_MANA
+            LIFE_FLASK_MORE
         ]
     );
     assert!(session.mods_named("MaximumLife").is_empty());
-    assert!(session.mods_named("ChaosDamage").is_empty());
+    assert!(session.mods_named("MaximumMana").is_empty());
     assert!(session.mods_named("LocalEffect").is_empty());
-    assert!(session.mods_named("FlaskRecovery").is_empty());
 }
