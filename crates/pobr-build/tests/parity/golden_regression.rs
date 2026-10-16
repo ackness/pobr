@@ -394,7 +394,8 @@ fn deadeye_golden_wave2_skill_mechanics_and_trigger_fields() {
 
     // Skill mechanics: no base mods -> 0.
     assert_near_float("aoe_radius", 0.0, out.aoe_radius);
-    assert_near_float("aoe_area_mod", 0.0, out.aoe_area_mod);
+    // Area scaling is a multiplier, neutral at 1 even without a base radius.
+    assert_near_float("aoe_area_mod", 1.0, out.aoe_area_mod);
     assert_near_float("projectile_count", 0.0, out.projectile_count);
     assert_near_float("cooldown", 0.0, out.cooldown);
     assert_eq!(out.cooldown_stored_uses, 0, "cooldown_stored_uses");
