@@ -12,6 +12,8 @@
 //! because this skill has no use for it (spell damage on an attack). What a
 //! lead cannot be is invisible.
 
+use std::borrow::Cow;
+
 use pobr_core::calc::CalculationSession;
 use pobr_core::{Modifier, ReadSnapshot, ReadVariables};
 
@@ -180,10 +182,10 @@ pub(crate) const READ_OUTSIDE_THE_DATABASE: &[(&str, &str)] = &[
 /// A confirmed reader that only runs under a particular state. Every entry
 /// needs an off/on ledger regression in `tests/skills/line_usage.rs`; this is
 /// not a list of names presumed to be implemented.
-#[derive(Debug, Clone, Copy, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct ReadGate {
-    pub state: &'static str,
-    pub config_option: Option<&'static str>,
+    pub state: Cow<'static, str>,
+    pub config_option: Option<Cow<'static, str>>,
 }
 
 impl ReadGate {
@@ -202,21 +204,21 @@ pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
     (
         "BleedFaster",
         ReadGate {
-            state: "the selected skill inflicts Bleed",
+            state: Cow::Borrowed("the selected skill inflicts Bleed"),
             config_option: None,
         },
     ),
     (
         "IgniteFaster",
         ReadGate {
-            state: "the selected skill inflicts Ignite",
+            state: Cow::Borrowed("the selected skill inflicts Ignite"),
             config_option: None,
         },
     ),
     (
         "PoisonFaster",
         ReadGate {
-            state: "the selected skill inflicts Poison",
+            state: Cow::Borrowed("the selected skill inflicts Poison"),
             config_option: None,
         },
     ),
@@ -224,7 +226,9 @@ pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
     (
         "LightRadius",
         ReadGate {
-            state: "Light Radius modifiers also apply to Accuracy, Damage or Area of Effect",
+            state: Cow::Borrowed(
+                "Light Radius modifiers also apply to Accuracy, Damage or Area of Effect",
+            ),
             config_option: None,
         },
     ),
@@ -232,14 +236,18 @@ pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
     (
         "EnergyShieldRecharge",
         ReadGate {
-            state: "you have Energy Shield and recharge is enabled (no Zealot's Oath or recharge prohibition)",
+            state: Cow::Borrowed(
+                "you have Energy Shield and recharge is enabled (no Zealot's Oath or recharge prohibition)",
+            ),
             config_option: None,
         },
     ),
     (
         "EnergyShieldRechargeFaster",
         ReadGate {
-            state: "you have Energy Shield and recharge is enabled (no Zealot's Oath or recharge prohibition)",
+            state: Cow::Borrowed(
+                "you have Energy Shield and recharge is enabled (no Zealot's Oath or recharge prohibition)",
+            ),
             config_option: None,
         },
     ),
@@ -248,14 +256,14 @@ pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
     (
         "FireDamage",
         ReadGate {
-            state: "the selected skill deals Fire damage",
+            state: Cow::Borrowed("the selected skill deals Fire damage"),
             config_option: None,
         },
     ),
     (
         "LightningDamage",
         ReadGate {
-            state: "the selected skill deals Lightning damage",
+            state: Cow::Borrowed("the selected skill deals Lightning damage"),
             config_option: None,
         },
     ),
@@ -264,7 +272,7 @@ pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
     (
         "AilmentMagnitude",
         ReadGate {
-            state: "the selected skill supplies damage for an ailment",
+            state: Cow::Borrowed("the selected skill supplies damage for an ailment"),
             config_option: None,
         },
     ),
@@ -272,36 +280,36 @@ pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
     (
         "SelfShockEffect",
         ReadGate {
-            state: "Shocked in combat",
-            config_option: Some("conditionShocked"),
+            state: Cow::Borrowed("Shocked in combat"),
+            config_option: Some(Cow::Borrowed("conditionShocked")),
         },
     ),
     (
         "SelfChillEffect",
         ReadGate {
-            state: "Chilled in combat with an explicit Chill magnitude",
-            config_option: Some("conditionChilled"),
+            state: Cow::Borrowed("Chilled in combat with an explicit Chill magnitude"),
+            config_option: Some(Cow::Borrowed("conditionChilled")),
         },
     ),
     (
         "SelfChillEffectIsReversed",
         ReadGate {
-            state: "Chilled in combat with an explicit Chill magnitude",
-            config_option: Some("conditionChilled"),
+            state: Cow::Borrowed("Chilled in combat with an explicit Chill magnitude"),
+            config_option: Some(Cow::Borrowed("conditionChilled")),
         },
     ),
     // `calc::skill_use_time::action_speed_factor`.
     (
         "UnaffectedBySlows",
         ReadGate {
-            state: "a slow applies to you",
+            state: Cow::Borrowed("a slow applies to you"),
             config_option: None,
         },
     ),
     (
         "SlowEffectOnSelf",
         ReadGate {
-            state: "a slow applies to you and you are not unaffected by slows",
+            state: Cow::Borrowed("a slow applies to you and you are not unaffected by slows"),
             config_option: None,
         },
     ),
@@ -309,30 +317,30 @@ pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
     (
         "ArchonMovementSpeed",
         ReadGate {
-            state: "Affected by an Archon buff",
-            config_option: Some("conditionAffectedByArchon"),
+            state: Cow::Borrowed("Affected by an Archon buff"),
+            config_option: Some(Cow::Borrowed("conditionAffectedByArchon")),
         },
     ),
     (
         "ArchonElementalResistance",
         ReadGate {
-            state: "Affected by an Archon buff",
-            config_option: Some("conditionAffectedByArchon"),
+            state: Cow::Borrowed("Affected by an Archon buff"),
+            config_option: Some(Cow::Borrowed("conditionAffectedByArchon")),
         },
     ),
     (
         "ArchonEffect",
         ReadGate {
-            state: "Affected by an Archon buff",
-            config_option: Some("conditionAffectedByArchon"),
+            state: Cow::Borrowed("Affected by an Archon buff"),
+            config_option: Some(Cow::Borrowed("conditionAffectedByArchon")),
         },
     ),
     // `calc::utility::calculate`: on-kill flask/charm charges need a kill rate.
     (
         "FlaskChargeOnKillChance",
         ReadGate {
-            state: "a kill rate is configured for on-kill charge gain",
-            config_option: Some("enemyKillsPerSecond"),
+            state: Cow::Borrowed("a kill rate is configured for on-kill charge gain"),
+            config_option: Some(Cow::Borrowed("enemyKillsPerSecond")),
         },
     ),
 ];
@@ -341,7 +349,7 @@ pub(crate) fn read_under_a_state(name: &str) -> Option<ReadGate> {
     if let Some(gate) = READ_UNDER_A_STATE
         .iter()
         .find(|(registered, _)| *registered == name)
-        .map(|(_, gate)| *gate)
+        .map(|(_, gate)| gate.clone())
     {
         return Some(gate);
     }
@@ -355,7 +363,7 @@ pub(crate) fn read_under_a_state(name: &str) -> Option<ReadGate> {
         return READ_UNDER_A_STATE
             .iter()
             .find(|(registered, _)| *registered == bare)
-            .map(|(_, gate)| *gate);
+            .map(|(_, gate)| gate.clone());
     }
     None
 }

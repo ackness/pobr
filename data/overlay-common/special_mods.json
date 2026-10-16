@@ -5637,6 +5637,158 @@
       "examples": [
         "Corrupting will always result in change"
       ]
+    },
+    {
+      "id": "wind_ground_ignited",
+      "pattern": "wind skills which can be boosted by elemental ground surfaces count as being boosted by ignited ground",
+      "mods": [
+        {
+          "name": "Condition:TwisterFire",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "wind_skills_count_as_empowered_by_ignited_ground; base/stats.json; Berek's Respite game text",
+      "source_note": "Game stat wind_skills_count_as_empowered_by_ignited_ground (compound template 'Wind Skills which can be boosted by Elemental Ground Surfaces count as being boosted by Chilled Ground'). The item text wraps across two lines; the joined line counts the skill as boosted, which sets the Twister element condition the Twister config checkbox sets. Only Twister reads these conditions today (SkillDamageGainAsFire gated by TwisterFire in skill_stat_map.json).",
+      "examples": [
+        "Wind Skills which can be boosted by Elemental Ground Surfaces count as being boosted by Ignited Ground"
+      ]
+    },
+    {
+      "id": "wind_ground_shocked",
+      "pattern": "wind skills which can be boosted by elemental ground surfaces count as being boosted by shocked ground",
+      "mods": [
+        {
+          "name": "Condition:TwisterLightning",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "wind_skills_count_as_empowered_by_shocked_ground; base/stats.json; Berek's Grip game text",
+      "source_note": "Game stat wind_skills_count_as_empowered_by_shocked_ground (compound template 'Wind Skills which can be boosted by Elemental Ground Surfaces count as being boosted by Chilled Ground'). The item text wraps across two lines; the joined line counts the skill as boosted, which sets the Twister element condition the Twister config checkbox sets. Only Twister reads these conditions today (SkillDamageGainAsLightning gated by TwisterLightning in skill_stat_map.json).",
+      "examples": [
+        "Wind Skills which can be boosted by Elemental Ground Surfaces count as being boosted by Shocked Ground"
+      ]
+    },
+    {
+      "id": "wind_ground_chilled",
+      "pattern": "wind skills which can be boosted by elemental ground surfaces count as being boosted by chilled ground",
+      "mods": [
+        {
+          "name": "Condition:TwisterCold",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "wind_skills_count_as_empowered_by_chilled_ground; base/stats.json; Berek's Pass game text",
+      "source_note": "Game stat wind_skills_count_as_empowered_by_chilled_ground (compound template 'Wind Skills which can be boosted by Elemental Ground Surfaces count as being boosted by Chilled Ground'). The item text wraps across two lines; the joined line counts the skill as boosted, which sets the Twister element condition the Twister config checkbox sets. Only Twister reads these conditions today (SkillDamageGainAsCold gated by TwisterCold in skill_stat_map.json).",
+      "examples": [
+        "Wind Skills which can be boosted by Elemental Ground Surfaces count as being boosted by Chilled Ground"
+      ]
+    },
+    {
+      "id": "wind_ground_all_elements",
+      "pattern": "wind skills which can be boosted by elemental ground surfaces count as being boosted by ignited, shocked, and chilled ground",
+      "mods": [
+        {
+          "name": "Condition:TwisterFire",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "Condition:TwisterLightning",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "Condition:TwisterCold",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "wind_skills_count_as_empowered_by_ignited_ground, wind_skills_count_as_empowered_by_shocked_ground, wind_skills_count_as_empowered_by_chilled_ground; base/stats.json; The Taming game text",
+      "source_note": "The Taming carries all three wind-ground game stats, rendered as one compound line. The item text wraps across two lines; the joined line counts the skill as boosted by every element, setting all three Twister element conditions. Only Twister reads these conditions today (SkillDamageGainAsCold/Fire/Lightning gated by TwisterCold/Fire/Lightning in skill_stat_map.json).",
+      "examples": [
+        "Wind Skills which can be boosted by Elemental Ground Surfaces count as being boosted by Ignited, Shocked, and Chilled Ground"
+      ]
+    },
+    {
+      "id": "wind_ground_multiple_surfaces",
+      "pattern": "wind skills which can be boosted by elemental ground surfaces can be boosted by multiple elemental ground surfaces",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "exporter": "absent",
+      "game_source": "wind_skills_can_be_empowered_by_multiple_elements; base/stats.json; The Taming game text",
+      "source_note": "Game stat wind_skills_can_be_empowered_by_multiple_elements. PoBR applies each Twister element condition independently and does not limit a Twister to one element, so this line changes nothing any calculation reports: recognised with no modifier.",
+      "examples": [
+        "Wind Skills which can be boosted by Elemental Ground Surfaces can be boosted by multiple Elemental Ground Surfaces"
+      ]
+    },
+    {
+      "id": "increased_totem_placement_range",
+      "pattern": "(\\d+(?:\\.\\d+)?)% (?:increased|reduced) totem placement range",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "exporter": "absent",
+      "game_source": "base/stats.json: totem_placement_range_+%; base/passive_tree.json: Ancestral Reach (43396)",
+      "source_note": "Game text of the stat totem_placement_range_+%, which Ancestral Reach carries. Totem placement range changes where a totem can be placed, which is part of nothing a calculation reports (no damage, defence, or rate output reads a placement distance), so the line is recognised and adds no modifier: it is not an input the calculation dropped.",
+      "examples": [
+        "50% increased Totem Placement range"
+      ]
+    },
+    {
+      "id": "increased_surrounded_area_of_effect",
+      "pattern": "(\\d+(?:\\.\\d+)?)% (?:increased|reduced) surrounded area of effect",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: surrounded_area_of_effect_+%; base/passive_tree.json: Paranoia (24766)",
+      "source_note": "Surrounded radius not modelled. PoBR's Surrounded bridge (calc/session/preparation.rs) has no distance model: being Surrounded is a binary state, so an increased Surrounded area (the radius in which enemies count) cannot scale anything yet. A distance model needs enemy positions and the Surrounded radius.",
+      "examples": [
+        "50% increased Surrounded Area of Effect"
+      ]
+    },
+    {
+      "id": "maximum_elemental_infusions",
+      "pattern": "\\+?(\\d+) to maximum (cold|fire|lightning) infusions",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "exporter": "absent",
+      "game_source": "base/stats.json: maximum_cold_infusion_stacks, maximum_fire_infusion_stacks, maximum_lightning_infusion_stacks; base/passive_tree.json: Frozen Limit (50715), Infernal Limit (61354), Shocking Limit (29800)",
+      "source_note": "Infusion count not modelled. PoBR models infusion consumption as per-skill conditions, without an infusion count (no maximum-infusion output or count-gated model), so a higher maximum cannot change anything yet.",
+      "examples": [
+        "+1 to maximum Cold Infusions",
+        "+1 to maximum Fire Infusions",
+        "+1 to maximum Lightning Infusions"
+      ]
+    },
+    {
+      "id": "maximum_number_of_elemental_infusions",
+      "pattern": "\\+?(\\d+) to maximum number of elemental infusions",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "exporter": "absent",
+      "game_source": "base/stats.json: additional_maximum_infusion_stacks; base/passive_tree.json: Infused Limits (38965)",
+      "source_note": "Infusion count not modelled. PoBR models infusion consumption as per-skill conditions, without an infusion count (no maximum-infusion output or count-gated model), so a higher maximum cannot change anything yet.",
+      "examples": [
+        "+1 to maximum number of Elemental Infusions"
+      ]
     }
   ]
 }

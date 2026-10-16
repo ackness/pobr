@@ -25,6 +25,7 @@
 //! skill's context. The CLI (`calculate-build --usage`) and the web
 //! contract (`line_usage_json`) return it as JSON.
 
+use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use pobr_core::calc::CalculationSession;
@@ -418,15 +419,18 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
                         .then(|| {
                             missing_slot_base_gate(modifier, &slot_bases)
                                 .or_else(|| {
+                                    diagnosis
+                                        .reads
+                                        .sites
+                                        .get(modifier.name.as_str())
+                                        .and_then(|sites| outranked_gate(modifier, sites))
+                                })
+                                .or_else(|| {
                                     (!diagnosis.reads.sites.contains_key(modifier.name.as_str()))
                                         .then(|| read_under_a_state(modifier.name.as_str()))
                                         .flatten()
                                 })
-                                .or_else(|| {
-                                    reason
-                                        .as_ref()
-                                        .and_then(|reason| multiplier_zero_gate(reason, data))
-                                })
+                                .or_else(|| multiplier_zero_gate(modifier, context, data))
                         })
                         .flatten(),
                     status,
@@ -761,10 +765,10 @@ fn missing_slot_base_gate(
         return None;
     }
     let name = modifier.name.as_str();
-    let state = match name {
-        "Armour" => "the equipped shield has no base Armour",
-        "Evasion" => "the equipped shield has no base Evasion",
-        "EnergyShield" => "the equipped shield has no base Energy Shield",
+    let state: Cow<'static, str> = match name {
+        "Armour" => Cow::Borrowed("the equipped shield has no base Armour"),
+        "Evasion" => Cow::Borrowed("the equipped shield has no base Evasion"),
+        "EnergyShield" => Cow::Borrowed("the equipped shield has no base Energy Shield"),
         _ => return None,
     };
     if bases.contains(&(slot.to_string(), name.to_string())) {
@@ -776,31 +780,85 @@ fn missing_slot_base_gate(
     })
 }
 
+/// A modifier the calculation read and correctly discarded: a `MAX` query's
+/// loser or a beaten `OVERRIDE`. The stronger value won, so the ledger files
+/// it as state-gated rather than dropped. Mirrors two of [`uncounted_reason`]'s
+/// outcomes; any other reason keeps the existing classification. The states
+/// stay name-free (`Cow::Borrowed`): the reason names the modifier already,
+/// and the ledger runs on every Web request, so no per-loser allocation.
+fn outranked_gate(modifier: &Modifier, sites: &[String]) -> Option<ReadGate> {
+    match modifier.value {
+        ModValue::Number(0.0) | ModValue::Bool(false) => return None,
+        _ => {}
+    }
+    let kind = modifier.mod_type.as_trace_label();
+    let mut kinds: Vec<&str> = sites.iter().filter_map(|site| query_kind(site)).collect();
+    kinds.sort_unstable();
+    kinds.dedup();
+    if !kinds.contains(&kind) {
+        return None;
+    }
+    // Static states: the reason names the modifier already.
+    let state: Cow<'static, str> = if modifier.mod_type == ModType::Override {
+        Cow::Borrowed("another OVERRIDE of the same name wins")
+    } else if sites.iter().any(|site| site.starts_with("MAX ")) {
+        Cow::Borrowed("a stronger modifier of the same name applies")
+    } else {
+        return None;
+    };
+    Some(ReadGate {
+        state,
+        config_option: None,
+    })
+}
+
 /// An inactive line scaled to 0 by a multiplier with a config input writing
 /// it: gated on that count so the gap queue files it as config-gated, not
 /// dropped. The option comes from the config catalog (the same source as
-/// `condition_configs`); nothing is hand-listed. `ReadGate` holds `&'static
-/// str`, so the dynamic state and option names are leaked: the ledger is a
-/// diagnostic path, not hot, and a gated line costs two small strings.
-fn multiplier_zero_gate(reason: &str, data: &BuildData) -> Option<ReadGate> {
-    let rest = reason.strip_prefix("scaled to 0: ")?;
+/// `condition_configs`); nothing is hand-listed. The zero-scaling tags are
+/// read off the modifier itself (mirroring `zero_scaling`'s count), never
+/// parsed back out of the reason text. Player-scoped multipliers only:
+/// cross-actor tags keep the existing classification.
+fn multiplier_zero_gate(
+    modifier: &Modifier,
+    ctx: &EvalContext<'_>,
+    data: &BuildData,
+) -> Option<ReadGate> {
+    use pobr_core::ModTag;
+
     let catalog = data.config_catalog.as_deref()?;
-    for part in rest.split("; ") {
-        let after = part.strip_prefix("Multiplier ")?;
-        let name = after.split(" is ").next()?;
-        let bare = name.rsplit('.').next().unwrap_or(name);
-        for candidate in std::iter::once(bare).chain(bare.split('|').filter(|piece| *piece != bare))
-        {
-            let candidate = candidate.trim();
-            if candidate.is_empty() {
-                continue;
-            }
-            if let Some(option) = multiplier_option_setting(catalog, candidate) {
-                let state: &'static str = Box::leak(format!("{candidate} is 0").into_boxed_str());
-                let option: &'static str = Box::leak(option.into_boxed_str());
+    // A missing condition, skill mismatch or stored zero is not a zero count
+    // gate, even if this modifier also carries a multiplier tag.
+    if !modifier.matches(ctx.cfg)
+        || !matches!(modifier.value, ModValue::Number(value) if value != 0.0)
+        || modifier.effective_number(*ctx) != Some(0.0)
+    {
+        return None;
+    }
+    let cfg = ctx.cfg;
+    for tag in &modifier.tags {
+        let (var, div) = match tag {
+            ModTag::Multiplier {
+                var,
+                div,
+                actor: None,
+                ..
+            } => (var, *div),
+            _ => continue,
+        };
+        let base: f64 = var.split('|').map(|part| cfg.multiplier(part)).sum();
+        if (base / div.max(f64::EPSILON) + 0.0001).floor() != 0.0 {
+            continue;
+        }
+        for part in var.split('|') {
+            if let Some(option) = multiplier_option_setting(catalog, part) {
                 return Some(ReadGate {
-                    state,
-                    config_option: Some(option),
+                    state: Cow::Owned(if div == 1.0 {
+                        format!("{var} is {base}")
+                    } else {
+                        format!("{var} is {base}, per {div}")
+                    }),
+                    config_option: Some(Cow::Owned(option)),
                 });
             }
         }
@@ -849,6 +907,8 @@ fn judge(
     if sites.iter().all(|site| query_kind(site).is_none()) {
         return (ModifierStatus::Applied, None);
     }
+    // An outranked loser keeps its reason; only the attached `read_gate`
+    // (see above) files it as state-gated rather than dropped.
     (
         ModifierStatus::Inactive,
         Some(uncounted_reason(modifier, sites)),
@@ -1476,6 +1536,71 @@ mod tests {
         assert_eq!(query_kind("BASE Armour [slot helmet]"), Some("BASE"));
         assert_eq!(query_kind("NAMED Damage"), None);
         assert_eq!(query_kind("EVAL Life"), None);
+    }
+
+    #[test]
+    fn multiplier_gates_follow_zero_scaling_tags() {
+        use pobr_core::{CalcConfig, ModTag};
+        use pobr_gamedata::ruleset::ConfigCatalog;
+
+        let option = serde_json::from_value(serde_json::json!({
+            "var": "multiplierCursesOnSelf",
+            "input_type": "count",
+            "section": "When In Combat",
+            "effects": [{
+                "target": "player",
+                "name": "Multiplier:CurseOnSelf",
+                "mod_type": "BASE",
+                "value": {"kind": "input"}
+            }]
+        }))
+        .unwrap();
+        let mut data = BuildData::empty();
+        data.config_catalog = Some(std::sync::Arc::new(ConfigCatalog::new(vec![option])));
+        let cfg = CalcConfig::new();
+        let ctx = EvalContext::new(&cfg);
+        let damage = Modifier::number("Damage", ModType::Inc, 30.0)
+            // The first zero tag has no config setter. Continue to the next
+            // tag and inspect each component of its summed multiplier.
+            .with_tag(ModTag::multiplier("Unconfigured", 1.0, None))
+            .with_tag(ModTag::multiplier("Other|CurseOnSelf", 2.0, None));
+        let gate = multiplier_zero_gate(&damage, &ctx, &data).unwrap();
+        assert_eq!(
+            gate.config_option.as_deref(),
+            Some("multiplierCursesOnSelf")
+        );
+        assert_eq!(gate.state, "Other|CurseOnSelf is 0, per 2");
+
+        // A positive count below the divisor also scales to zero. Once the
+        // sum reaches the divisor, only Unconfigured is zero, with no setter.
+        for (other, expected_gate) in [(1.0, true), (2.0, false)] {
+            let cfg = CalcConfig::new().with_multiplier("Other", other);
+            let gate = multiplier_zero_gate(&damage, &EvalContext::new(&cfg), &data);
+            assert_eq!(gate.is_some(), expected_gate);
+            if let Some(gate) = gate {
+                assert_eq!(gate.state, "Other|CurseOnSelf is 1, per 2");
+            }
+        }
+
+        let mut stored_zero = damage.clone();
+        stored_zero.value = ModValue::Number(0.0);
+        assert!(multiplier_zero_gate(&stored_zero, &ctx, &data).is_none());
+        let conditional = damage.with_tag(ModTag::Condition {
+            var: "Missing".to_string(),
+            negated: false,
+            actor: None,
+        });
+        assert!(multiplier_zero_gate(&conditional, &ctx, &data).is_none());
+
+        // A limit can zero a nonzero count; changing the count does not lift
+        // that cap and must not be suggested as its gate.
+        let capped = Modifier::number("Damage", ModType::Inc, 30.0).with_tag(ModTag::multiplier(
+            "CurseOnSelf",
+            1.0,
+            Some(0.0),
+        ));
+        let cfg = CalcConfig::new().with_multiplier("CurseOnSelf", 2.0);
+        assert!(multiplier_zero_gate(&capped, &EvalContext::new(&cfg), &data).is_none());
     }
 
     #[test]

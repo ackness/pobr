@@ -100,6 +100,8 @@ mod umbral_well;
 mod weapon_accuracy_damage;
 #[path = "skills/weapon_sets.rs"]
 mod weapon_sets;
+#[path = "skills/wind_ground.rs"]
+mod wind_ground;
 #[path = "skills/withered.rs"]
 mod withered;
 

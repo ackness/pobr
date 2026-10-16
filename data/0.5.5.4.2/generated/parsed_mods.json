@@ -26971,14 +26971,7 @@
     },
     {
       "text": "50% increased [Surrounded] Area of Effect",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "SurroundedArea",
-          "type": "Inc",
-          "value": 50.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "50% increased [Totem|Totem] Placement range",
@@ -41959,7 +41952,7 @@
     },
     {
       "text": "Wind Skills which can be boosted by Elemental Ground Surfaces can be boosted by multiple Elemental Ground Surfaces",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Wind Skills which can be boosted by Elemental Ground Surfaces count",
