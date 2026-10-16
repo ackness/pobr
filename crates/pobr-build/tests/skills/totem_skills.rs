@@ -280,3 +280,54 @@ fn totem_details_reconstruct_their_values() {
     assert_eq!(duration.inputs[0], ("TotemDurationInc".to_string(), -10.0));
     assert!((output.totem_duration_mod - 0.9).abs() < 1e-12);
 }
+
+/// A Spell Totem build whose second group holds `aura` (a gem element).
+fn build_with_aura(aura: &str) -> Build {
+    let xml = format!(
+        r#"<PathOfBuilding2>
+<Build level="80" className="Sorceress" ascendClassName="None" mainSocketGroup="1"/>
+<Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
+<Skills defaultGemLevel="20" activeSkillSet="1"><SkillSet id="1">
+  <Skill enabled="true" mainActiveSkill="2">
+    {SPELL_TOTEM}
+    <Gem gemId="Metadata/Items/Gems/SkillGemGrimPillars" skillId="GrimPillarsPlayer" nameSpec="Grim Pillars" variantId="GrimPillars" enabled="true" level="20" quality="0"/>
+  </Skill>
+  <Skill enabled="true">{aura}</Skill>
+</SkillSet></Skills>
+<Config></Config>
+</PathOfBuilding2>"#
+    );
+    parse_build(&xml).expect("parse synthetic build")
+}
+
+const PURITY_OF_FIRE: &str = r#"<Gem gemId="Metadata/Items/Gems/SkillGemPurityOfFire" skillId="PurityOfFirePlayer" nameSpec="Purity of Fire" variantId="PurityOfFire" enabled="true" level="20" quality="0"/>"#;
+
+/// A totem is an Ally in the character's Presence, so the character's auras
+/// reach it: level-20 Purity of Fire's game stat
+/// `base_skill_buff_fire_damage_resistance_%_to_apply` = 41 adds to the Spell
+/// Totem's own 75% Fire Resistance (116 uncapped, capped at the monster
+/// maximum of 75). Cold, Lightning and Chaos keep the gem's values.
+#[test]
+fn the_characters_auras_reach_its_totem() {
+    let data = data();
+    let options = DataOrchestratorOptions::default();
+    let with = calculate_with_data(&build_with_aura(PURITY_OF_FIRE), &data, &options)
+        .expect("calculate");
+    let without = calculate_with_data(&build_with_aura(""), &data, &options).expect("calculate");
+    assert_eq!(without.totem_resist_total, [75.0, 75.0, 75.0, 35.0]);
+    assert_eq!(with.totem_resist_total, [116.0, 75.0, 75.0, 35.0]);
+    assert_eq!(with.totem_resist, [75.0, 75.0, 75.0, 35.0]);
+
+    let result = diagnose(&build_with_aura(PURITY_OF_FIRE), &data, &options).expect("diagnose");
+    let detail = result
+        .session
+        .derived_detail("TotemFireResistTotal")
+        .expect("detail");
+    let flat = detail
+        .inputs
+        .iter()
+        .find(|(name, _)| name == "TotemResistanceFlat")
+        .unwrap()
+        .1;
+    assert_eq!(flat, 116.0);
+}
