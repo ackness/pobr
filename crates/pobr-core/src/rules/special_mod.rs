@@ -145,6 +145,8 @@ struct CompiledEntry {
     regex: Regex,
     verified: bool,
     /// Registered as changing nothing a calculation reports (batch `S0`).
+    /// Batch `unmodelled` entries are recognised too, but their mechanic is
+    /// missing, so they stay `no_effect = false` and report as unmodelled.
     no_effect: bool,
     /// Instantiated as template mods (mutually exclusive with `handler_id`).
     template: Option<CompiledTemplate>,

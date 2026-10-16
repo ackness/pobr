@@ -128,7 +128,7 @@
       "vendor_pattern": "break (%d+)%% increased armour",
       "mods": [],
       "verified": false,
-      "batch": "S0",
+      "batch": "unmodelled",
       "source_note": "Armour broken per hit is not modelled. The configured ArmourBreakAmount is the total already removed from the enemy, not a base per-hit amount; increased break must not scale it. A per-hit model needs flat skill break, damage-based break, event conditions and monster rarity multipliers.",
       "game_source": "base/stats.json: armour_break_amount_+%; https://poe2db.tw/us/Keywords"
     },
@@ -942,17 +942,23 @@
       "vendor_pattern": "immune to chaos damage",
       "mods": [],
       "verified": false,
-      "batch": "S0",
-      "source_note": "纯识别条目（pobr 现状 = Unsupported 不产 mod，mod_parser.rs:539-548）；vendor :2358 产 ChaosInoculation flag + ChaosDamageTaken MORE -100——B-3 行为升级时改 mods 并对拍"
+      "batch": "unmodelled",
+      "source_note": "Recognised, not modelled: a standalone chaos immunity outside Chaos Inoculation has no engine flag (EHP's chaos immunity is tied to the ChaosInoculation keystone flag)."
     },
     {
       "id": "immune_to_chaos_damage_and_bleeding",
       "pattern": "immune to chaos damage and bleeding",
       "vendor_pattern": "immune to chaos damage and bleeding",
-      "mods": [],
-      "verified": false,
-      "batch": "S0",
-      "source_note": "纯识别条目（pobr 现状 = Unsupported，mod_parser.rs:539-548）；vendor :2362 另含 BleedImmune flag"
+      "mods": [
+        {
+          "name": "BleedImmune",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "source_note": "Chaos Inoculation keystone (passive 56349, keystone_chaos_inoculation): \"Maximum Life becomes 1 / Immune to Chaos Damage and Bleeding\". The chaos immunity comes from the ChaosInoculation flag that the same keystone's \"Maximum Life is 1\" line sets (ci_maximum_life_is_1; EHP treats chaos as immune). This line adds the bleed immunity."
     },
     {
       "id": "immune_to_poison",
@@ -4822,7 +4828,7 @@
       "pattern": "(?:\\d+(?:\\.\\d+)?)% chance to gain a charge when you kill an enemy",
       "mods": [],
       "verified": false,
-      "batch": "S0",
+      "batch": "unmodelled",
       "exporter": "absent",
       "game_source": "local_%_chance_to_gain_flask_charge_on_kill; base/mods.json: FlaskChanceRechargeOnKill1..3",
       "source_note": "kill rate not modelled; passive charge generation per second is unchanged.",
@@ -5231,7 +5237,7 @@
       "pattern": "hits break (\\d+)% increased armour on targets with ailments",
       "mods": [],
       "verified": false,
-      "batch": "S0",
+      "batch": "unmodelled",
       "game_source": "base/stats.json: armour_break_amount_+%_vs_enemies_affected_by_ailments; base/passive_tree.json: Exposed Wounds (43383)",
       "source_note": "Armour broken per hit is not modelled. This scales per-hit break only against targets with an ailment; it must not scale the configured total ArmourBreakAmount. See break_increased_armour.",
       "examples": [
@@ -5243,7 +5249,7 @@
       "pattern": "\\+?(\\d+)% chance to create an additional remnant",
       "mods": [],
       "verified": false,
-      "batch": "S0",
+      "batch": "unmodelled",
       "exporter": "absent",
       "game_source": "base/stats.json: chance_%_to_create_additional_remnant; base/passive_tree.json: Remnant Attraction (1506)",
       "source_note": "remnant count not modelled. Into the Breach uses configured collected Purple Flame stacks, not a generated-remnant or collection rate. Extra creation chance cannot scale that supplied count. Arcane Remnants, Empowering Remnants, Elemental Equilibrium and Storm's Recollection need a remnant model.",

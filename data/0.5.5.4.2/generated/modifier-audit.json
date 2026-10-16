@@ -30,7 +30,7 @@
       "0.5.5.4.2/generated/special_vendor.json": "12d91522257bfb57b5cdfc63073bd3a5df8c7a87d2b1c13c3ba3f959c936d4a5",
       "0.5.5.4.2/overlay/mod_parser_rules.json": "c719c7c3eeed65048067f264fd0a62f81cc20d89b917f05e2aa53753166242af",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
-      "overlay-common/special_mods.json": "81bdd43eda436b8f36737e47710bc1e6f0d91adca2230b457ba83ca973370275"
+      "overlay-common/special_mods.json": "1b249791018b0461e9fa898a222c340c1ab9fae45936b8ca23308ba6b81312d8"
     },
     "effective_rules": [
       {
@@ -1969,6 +1969,94 @@
       },
       {
         "id": "charm_spirit_wolf",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "thaumaturgical_dynamism",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "resonance_power_instead_of_frenzy",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "resonance_endurance_instead_of_power",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "resonance_frenzy_instead_of_endurance",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "event_horizon_resource_loss",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "scarred_faith_no_es_regeneration",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "immune_to_chill_if_majority_blue_supports_socketed",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "immune_to_ignite_if_majority_red_supports_socketed",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "immune_to_shock_if_majority_green_supports_socketed",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "hits_break_increased_armour_on_ailmented_targets",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "additional_remnant_chance",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -19083,12 +19171,12 @@
     "unsampled_translations": 170
   },
   "summary": {
-    "no_effect": 125,
+    "no_effect": 118,
     "parsed": 16189,
-    "pobr_gap": 1643,
-    "recognized_empty": 187,
+    "pobr_gap": 1636,
+    "recognized_empty": 214,
     "text_channel": 788,
-    "upstream_gap": 23680
+    "upstream_gap": 23667
   },
   "entries": {
     "% of spent Runic Ward granted as Guard@100%": {
@@ -36812,11 +36900,16 @@
     },
     "+17% chance to create an additional Remnant": {
       "sources": [
+        "rule:additional_remnant_chance",
         "translation:有 {0:+d}% 的几率产生一个额外残片"
       ],
-      "status": "partial",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "additional_remnant_chance",
+      "matching_special_rules": [
+        "additional_remnant_chance"
+      ]
     },
     "+17% chance to fire 2 additional Projectiles": {
       "sources": [
@@ -48997,7 +49090,7 @@
       "sources": [
         "stat:stat_descriptions:local_%_chance_to_gain_flask_charge_on_kill"
       ],
-      "status": "no_effect",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "utility_charge_on_kill",
@@ -53114,9 +53207,13 @@
       "sources": [
         "stat:stat_descriptions:chance_%_to_create_additional_remnant"
       ],
-      "status": "partial",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "additional_remnant_chance",
+      "matching_special_rules": [
+        "additional_remnant_chance"
+      ]
     },
     "1% chance to deal Double Damage": {
       "sources": [
@@ -82819,11 +82916,16 @@
     },
     "10% chance to create an additional Remnant": {
       "sources": [
-        "passive:1506"
+        "passive:1506",
+        "rule:additional_remnant_chance"
       ],
-      "status": "partial",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "additional_remnant_chance",
+      "matching_special_rules": [
+        "additional_remnant_chance"
+      ]
     },
     "10% chance to gain Volatility on Kill": {
       "sources": [
@@ -96163,7 +96265,7 @@
       "sources": [
         "translation:击败敌人时有 {0}% 的几率获得一个能量球"
       ],
-      "status": "no_effect",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "utility_charge_on_kill",
@@ -102378,9 +102480,13 @@
       "sources": [
         "translation:有 {0}% 的几率产生一个额外残片"
       ],
-      "status": "partial",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "additional_remnant_chance",
+      "matching_special_rules": [
+        "additional_remnant_chance"
+      ]
     },
     "17% chance to create the wrong Bladestorm": {
       "sources": [
@@ -168090,7 +168196,7 @@
         "unique:Beira's Anguish",
         "unique:Nascent Hope"
       ],
-      "status": "no_effect",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "utility_charge_on_kill",
@@ -173039,7 +173145,7 @@
         "unique:Beira's Anguish",
         "unique:Nascent Hope"
       ],
-      "status": "no_effect",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "utility_charge_on_kill",
@@ -177121,7 +177227,7 @@
         "mods:charm:FlaskChanceRechargeOnKill2",
         "mods:flask:FlaskChanceRechargeOnKill2"
       ],
-      "status": "no_effect",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "utility_charge_on_kill",
@@ -180768,7 +180874,7 @@
         "mods:flask:FlaskChanceRechargeOnKill3",
         "rule:utility_charge_on_kill"
       ],
-      "status": "no_effect",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
       "mod_names": [],
       "special_rule_id": "utility_charge_on_kill",
@@ -185244,9 +185350,13 @@
         "passive:42339",
         "passive:60974"
       ],
-      "status": "partial",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "additional_remnant_chance",
+      "matching_special_rules": [
+        "additional_remnant_chance"
+      ]
     },
     "5% chance to gain Volatility on Kill": {
       "sources": [
@@ -238830,11 +238940,9 @@
       "sources": [
         "stat:stat_descriptions:armour_break_amount_+%"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -238872,11 +238980,9 @@
         "passive:42410",
         "passive:7294"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -238889,11 +238995,9 @@
         "passive:38066",
         "search_mods:corrupted:CorruptionArmourBreak1"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -238903,11 +239007,9 @@
       "sources": [
         "translation:粉碎的护甲提高 {0}%"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -238959,11 +239061,9 @@
         "passive:62785",
         "passive:65498"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -238975,11 +239075,9 @@
         "passive:49380",
         "passive:59767"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -238989,11 +239087,9 @@
       "sources": [
         "search_mods:desecrated:AbyssModWandUlamanSuffixArmourBreakAmount"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -239004,11 +239100,9 @@
         "jewel_node:kalguur_notable7",
         "passive:42981"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -239034,11 +239128,9 @@
       "sources": [
         "passive:21453"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -239048,11 +239140,9 @@
       "sources": [
         "search_mods:desecrated:AbyssModJewelPrefixGlobalPhysicalDamageArmourBreak"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -291374,9 +291464,15 @@
         "stat:passive_skill_stat_descriptions:keystone_charge_cycle",
         "translation:获得狂怒球时改为获得暴击球\n获得耐力球时改为获得狂怒球\n获得暴击球时改为获得耐力球"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "GainEnduranceChargesInsteadOfPower"
+      ],
+      "special_rule_id": "resonance_endurance_instead_of_power",
+      "matching_special_rules": [
+        "resonance_endurance_instead_of_power"
+      ]
     },
     "Gain Exposed to Corruption stacks twice as frequently": {
       "sources": [
@@ -291448,9 +291544,15 @@
         "stat:passive_skill_stat_descriptions:keystone_charge_cycle",
         "translation:获得狂怒球时改为获得暴击球\n获得耐力球时改为获得狂怒球\n获得暴击球时改为获得耐力球"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "GainFrenzyChargesInsteadOfEndurance"
+      ],
+      "special_rule_id": "resonance_frenzy_instead_of_endurance",
+      "matching_special_rules": [
+        "resonance_frenzy_instead_of_endurance"
+      ]
     },
     "Gain Guard equal to 1% of maximum Life for 4 seconds on taking Savage Hit": {
       "sources": [
@@ -292077,9 +292179,15 @@
         "translation:每个暴击球使法术伤害总增3%\n获得暴击球来替代狂怒球",
         "translation:获得狂怒球时改为获得暴击球\n获得耐力球时改为获得狂怒球\n获得暴击球时改为获得耐力球"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "GainPowerChargesInsteadOfFrenzy"
+      ],
+      "special_rule_id": "resonance_power_instead_of_frenzy",
+      "matching_special_rules": [
+        "resonance_power_instead_of_frenzy"
+      ]
     },
     "Gain Rage benefits without spending it": {
       "sources": [
@@ -302418,9 +302526,15 @@
         "stat:passive_skill_stat_descriptions:ascendancy_gemling_charge_generator_buff_display",
         "translation:赋予奇术活力"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ThaumaturgicalDynamismChargeInterval"
+      ],
+      "special_rule_id": "thaumaturgical_dynamism",
+      "matching_special_rules": [
+        "thaumaturgical_dynamism"
+      ]
     },
     "Grants Unravelling": {
       "sources": [
@@ -307716,9 +307830,13 @@
       "sources": [
         "stat:stat_descriptions:armour_break_amount_+%_vs_enemies_affected_by_ailments"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "hits_break_increased_armour_on_ailmented_targets",
+      "matching_special_rules": [
+        "hits_break_increased_armour_on_ailmented_targets"
+      ]
     },
     "Hits Break 17 Armour": {
       "sources": [
@@ -307732,9 +307850,13 @@
       "sources": [
         "translation:击中对受到异常状态影响的目标粉碎的护甲提高 {0}%"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "hits_break_increased_armour_on_ailmented_targets",
+      "matching_special_rules": [
+        "hits_break_increased_armour_on_ailmented_targets"
+      ]
     },
     "Hits Break 17% reduced Armour on targets with Ailments": {
       "sources": [
@@ -307755,11 +307877,16 @@
     "Hits Break 30% increased Armour on targets with Ailments": {
       "sources": [
         "passive:43383",
-        "passive:60138"
+        "passive:60138",
+        "rule:hits_break_increased_armour_on_ailmented_targets"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "hits_break_increased_armour_on_ailmented_targets",
+      "matching_special_rules": [
+        "hits_break_increased_armour_on_ailmented_targets"
+      ]
     },
     "Hits Break 50 Armour": {
       "sources": [
@@ -307773,9 +307900,13 @@
       "sources": [
         "passive:7449"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "hits_break_increased_armour_on_ailmented_targets",
+      "matching_special_rules": [
+        "hits_break_increased_armour_on_ailmented_targets"
+      ]
     },
     "Hits Enemies every 17 Seconds": {
       "sources": [
@@ -311891,9 +312022,11 @@
         "stat:passive_skill_stat_descriptions:keystone_chaos_inoculation",
         "translation:生命上限变成 1\n免疫混沌伤害和流血"
       ],
-      "status": "no_effect",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": [],
+      "mod_names": [
+        "BleedImmune"
+      ],
       "special_rule_id": "immune_to_chaos_damage_and_bleeding",
       "matching_special_rules": [
         "immune_to_chaos_damage_and_bleeding"
@@ -311917,12 +312050,19 @@
     "Immune to Chill if a majority of your Socketed Support Gems are Blue": {
       "sources": [
         "passive:5332",
+        "rule:immune_to_chill_if_majority_blue_supports_socketed",
         "stat:stat_descriptions:immune_to_chill_if_majority_blue_supports_socketed",
         "translation:若你镶嵌的辅助宝石大多数为蓝色，则免疫冰缓"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "ChillImmune"
+      ],
+      "special_rule_id": "immune_to_chill_if_majority_blue_supports_socketed",
+      "matching_special_rules": [
+        "immune_to_chill_if_majority_blue_supports_socketed"
+      ]
     },
     "Immune to Cold Ailments": {
       "sources": [
@@ -312219,12 +312359,19 @@
     "Immune to Ignite if a majority of your Socketed Support Gems are Red": {
       "sources": [
         "passive:5332",
+        "rule:immune_to_ignite_if_majority_red_supports_socketed",
         "stat:stat_descriptions:immune_to_ignite_if_majority_red_supports_socketed",
         "translation:若你镶嵌的辅助宝石大多数为红色，则免疫点燃"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "IgniteImmune"
+      ],
+      "special_rule_id": "immune_to_ignite_if_majority_red_supports_socketed",
+      "matching_special_rules": [
+        "immune_to_ignite_if_majority_red_supports_socketed"
+      ]
     },
     "Immune to Ignite while affected by Purity of Fire": {
       "sources": [
@@ -312337,12 +312484,19 @@
     "Immune to Shock if a majority of your Socketed Support Gems are Green": {
       "sources": [
         "passive:5332",
+        "rule:immune_to_shock_if_majority_green_supports_socketed",
         "stat:stat_descriptions:immune_to_shock_if_majority_green_supports_socketed",
         "translation:若你镶嵌的辅助宝石大多数为绿色，则免疫感电"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "ShockImmune"
+      ],
+      "special_rule_id": "immune_to_shock_if_majority_green_supports_socketed",
+      "matching_special_rules": [
+        "immune_to_shock_if_majority_green_supports_socketed"
+      ]
     },
     "Immune to Shock while affected by Purity of Lightning": {
       "sources": [
@@ -324018,10 +324172,14 @@
       "sources": [
         "stat:stat_descriptions:lose_%_of_life_and_energy_shield_when_you_use_a_chaos_skill"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "MaximumLife"
+        "ChaosSkillLifeAndEnergyShieldLossPercent"
+      ],
+      "special_rule_id": "event_horizon_resource_loss",
+      "matching_special_rules": [
+        "event_horizon_resource_loss"
       ]
     },
     "Lose 1% of maximum Life on Kill": {
@@ -324609,10 +324767,14 @@
       "sources": [
         "translation:生命和能量护盾在你使用混沌技能时失去 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "MaximumLife"
+        "ChaosSkillLifeAndEnergyShieldLossPercent"
+      ],
+      "special_rule_id": "event_horizon_resource_loss",
+      "matching_special_rules": [
+        "event_horizon_resource_loss"
       ]
     },
     "Lose 17% of maximum Life on Kill": {
@@ -324840,10 +325002,14 @@
       "sources": [
         "passive:52191"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "MaximumLife"
+        "ChaosSkillLifeAndEnergyShieldLossPercent"
+      ],
+      "special_rule_id": "event_horizon_resource_loss",
+      "matching_special_rules": [
+        "event_horizon_resource_loss"
       ]
     },
     "Lose 5 Affinity per second of each Element you are not gaining": {
@@ -382723,12 +382889,10 @@
       "sources": [
         "translation:范围内的小型天赋同时提供 粉碎的护甲提高 {0:d}%"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "radius_grant": "Break 17% increased Armour",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -382738,12 +382902,10 @@
       "sources": [
         "mods:jewel:JewelRadiusArmourBreak"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "radius_grant": "Break 2% increased Armour",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -423916,9 +424078,15 @@
         "stat:passive_skill_stat_descriptions:keystone_alternate_es_recovery",
         "translation:每点敌人威力值使被阻挡的物理伤害的 5% 吸纳为能量护盾\n能量护盾不会充能\n能量护盾不能通过再生回复\n回复的能量护盾不能高于护甲值"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "NoEnergyShieldRegen"
+      ],
+      "special_rule_id": "scarred_faith_no_es_regeneration",
+      "matching_special_rules": [
+        "scarred_faith_no_es_regeneration"
+      ]
     },
     "You cannot Recover Energy Shield to above Armour": {
       "sources": [
