@@ -4438,6 +4438,32 @@
       ]
     },
     {
+      "id": "flask_damage_taken_recouped_as_life_during_effect",
+      "exporter": "absent",
+      "game_source": "local_flask_damage_taken_goes_to_life_over_4_seconds_%_during_effect; overlay/uniques.json: Blood of the Warrior",
+      "pattern": "(\\d+(?:\\.\\d+)?)% of damage taken during (?:flask )?effect recouped as life",
+      "mods": [
+        {
+          "name": "LifeRecoup",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingFlask"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat local_flask_damage_taken_goes_to_life_over_4_seconds_%_during_effect, read as ordinary Life recoup while the flask is active (enabled-flask convention). Shares the Life recoup duration (8 seconds unless the 4SecondRecoup flags apply): the stat id's over_4_seconds is legacy naming and the text states no duration. The generic path used to read the line as DamageTaken BASE and left 'Recouped as Life' unparsed. Regression: parser::mod_parser::flask_damage_taken_recouped_as_life_is_life_recoup and sources::env_finalize_flasks::flask_recoup_line_adds_life_recoup_not_damage_taken.",
+      "examples": [
+        "29% of Damage taken during effect Recouped as Life",
+        "21% of Damage taken during flask effect Recouped as Life"
+      ]
+    },
+    {
       "id": "life_recoup_also_energy_shield",
       "pattern": "damage taken recouped as life is also recouped as energy shield",
       "mods": [
