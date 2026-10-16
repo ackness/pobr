@@ -3,6 +3,12 @@ use super::{CalculationSession, detail::DerivedDetail};
 use crate::calc::{perform, survivability::ChargeKind};
 
 pub const DERIVED_STATS: &[&str] = &[
+    "LowLifePercentage",
+    "LowestAttribute",
+    "MaximumChill",
+    "MaximumShock",
+    "CurrentChill",
+    "CurrentShock",
     "HeavyStunBuildupAvg",
     "PhysicalTakenDamage",
     "FireTakenDamage",
@@ -196,6 +202,9 @@ impl CalculationSession {
         }
         if crate::calc::ailment_display::is_display_stat(stat) {
             return crate::calc::ailment_display::detail(&self.env, stat);
+        }
+        if crate::calc::limit_display::has_derived_detail(stat) {
+            return crate::calc::limit_display::detail(&self.env, stat);
         }
         let env = &self.env;
         let out = &env.player.output;

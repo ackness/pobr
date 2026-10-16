@@ -1195,6 +1195,40 @@ pub fn attribute_requirements(db: &ModDb, cfg: &CalcConfig) -> [f64; 3] {
     attribute_requirement_terms(db, cfg).map(|values| values.into_iter().fold(0.0, f64::max))
 }
 
+/// Names whose increases and decreases scale one category's attribute
+/// requirements: the generic name, the gem or item name, and for weapons the
+/// weapon name. Shared by the requirement calculation and the Calcs views.
+pub fn requirement_modifier_names(category: &str) -> Vec<ModName> {
+    let mut names = vec![
+        ModName::from("GlobalAttributeRequirements"),
+        ModName::from(if category.ends_with("Gem") {
+            "GlobalGemAttributeRequirements"
+        } else {
+            "GlobalItemAttributeRequirements"
+        }),
+    ];
+    if category.ends_with("Weapon") {
+        names.push(ModName::from("GlobalWeaponAttributeRequirements"));
+    }
+    names
+}
+
+/// The multiplier applied to a category's requirements (`Item`, `Weapon`,
+/// `MeleeWeapon`, `Gem` or `MeleeGem`); `global` has the skill's flags cleared.
+pub fn requirement_modifier(db: &ModDb, global: &CalcConfig, category: &str) -> f64 {
+    let names = requirement_modifier_names(category);
+    ((1.0 + db.sum(ModType::Inc, global, &names) / 100.0) * db.more(global, &names)).max(0.0)
+}
+
+/// The Gem, Item and Weapon requirement multipliers, in that order, read with
+/// the skill's flags cleared as in [`attribute_requirement_terms`].
+pub fn global_requirement_modifiers(db: &ModDb, cfg: &CalcConfig) -> [f64; 3] {
+    let mut global = cfg.clone();
+    global.flags = ModFlags::NONE;
+    global.keyword_flags = KeywordFlags::NONE;
+    ["Gem", "Item", "Weapon"].map(|category| requirement_modifier(db, &global, category))
+}
+
 /// Adjusted category requirements, after substitutions and ignored requirements.
 pub fn attribute_requirement_terms(db: &ModDb, cfg: &CalcConfig) -> [[f64; 6]; 3] {
     if db.flag(cfg, "IgnoreAttributeRequirements") {
@@ -1221,20 +1255,7 @@ pub fn attribute_requirement_terms(db: &ModDb, cfg: &CalcConfig) -> [[f64; 6]; 3
             .enumerate()
         {
             let gem = category.ends_with("Gem");
-            let mut names = vec![
-                ModName::from("GlobalAttributeRequirements"),
-                ModName::from(if gem {
-                    "GlobalGemAttributeRequirements"
-                } else {
-                    "GlobalItemAttributeRequirements"
-                }),
-            ];
-            if category.ends_with("Weapon") {
-                names.push(ModName::from("GlobalWeaponAttributeRequirements"));
-            }
-            let modifier = ((1.0 + db.sum(ModType::Inc, &global, &names) / 100.0)
-                * db.more(&global, &names))
-            .max(0.0);
+            let modifier = requirement_modifier(db, &global, category);
             let requirement = (stat(&format!("{category}Requirement{attr}")) * modifier).floor();
             if (gem && highest_satisfies && highest >= requirement)
                 || (category.starts_with("Melee")

@@ -120,17 +120,70 @@ impl AilmentSpec {
     }
 }
 
+/// The terms of `Maximum<X>`: an override replaces the game maximum plus the
+/// sum of the `<X>Max` BASE modifiers. Shared by the application stage and the
+/// `MaximumChill` / `MaximumShock` Calcs views.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct MaximumTerms {
+    pub override_value: Option<f64>,
+    pub game_maximum: f64,
+    pub bonus: f64,
+}
+
+impl MaximumTerms {
+    pub fn value(self) -> f64 {
+        self.override_value
+            .unwrap_or(self.game_maximum + self.bonus)
+    }
+}
+
+/// `Maximum<X>` terms for `"Chill"`; any other name reads Shock.
+pub fn maximum_terms(player: &ModDb, cfg: &CalcConfig, name: &str) -> MaximumTerms {
+    let spec = if name == "Chill" { &CHILL } else { &SHOCK };
+    let max_name = ModName::from(format!("{}Max", spec.name));
+    MaximumTerms {
+        override_value: player.override_(cfg, max_name.as_str()),
+        game_maximum: spec.data_max(cfg),
+        bonus: player.sum(ModType::Base, cfg, std::slice::from_ref(&max_name)),
+    }
+}
+
+/// One non-damaging ailment's limit and applied magnitude. `current` is
+/// `floor(min(max(source, enemy_value), maximum))`, or 0 when the ailment is
+/// not applied (no source, or already applied by another actor); `source` and
+/// `enemy_value` are the player-side strongest source and the enemy `<X>Val`.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct AppliedAilment {
+    /// The terms of `maximum`.
+    pub terms: MaximumTerms,
+    pub maximum: f64,
+    /// False when the stage returned early: no source, or already applied.
+    pub applied: bool,
+    pub source: f64,
+    pub enemy_value: f64,
+    pub current: f64,
+}
+
+/// The Chill and Shock results of the enemy-ailment stage, retained for the
+/// `Maximum*` and `Current*` Calcs views.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct AppliedAilments {
+    pub chill: AppliedAilment,
+    pub shock: AppliedAilment,
+}
+
 /// env_finalize stage 7 entry point: applies Chill/Shock, then does the
-/// `Multiplier:ChillEffect/ShockEffect` incremental update
-/// (CalcPerform.lua:3127-3180). Bit-for-bit no-op when there's no source mod at all.
+/// `Multiplier:ChillEffect/ShockEffect` incremental update. Bit-for-bit no-op
+/// on the enemy and conditions when there's no source mod at all.
 pub fn apply_nondamaging_ailments(env: &mut Env) {
-    let current_chill = apply_ailment(env, &CHILL);
-    let current_shock = apply_ailment(env, &SHOCK);
+    let chill = apply_ailment(env, &CHILL);
+    let shock = apply_ailment(env, &SHOCK);
+    env.applied_ailments = AppliedAilments { chill, shock };
     // vendor :3173-3180: tops up the difference when output.Current<X> is
     // higher than the existing multiplier (an incremental update, consumed
     // by mods like "per ChillEffect/ShockEffect"). Always a no-op when not applied (Current=0).
-    update_effect_multiplier(env, &CHILL, current_chill);
-    update_effect_multiplier(env, &SHOCK, current_shock);
+    update_effect_multiplier(env, &CHILL, chill.current);
+    update_effect_multiplier(env, &SHOCK, shock.current);
 }
 
 /// The kind of a player db source mod (vendor Tabulate's three names).
@@ -141,8 +194,8 @@ enum SourceKind3 {
     Minimum,
 }
 
-/// Applies a single ailment, returning `Current<X>` (0.0 when not applied). Mirrors CalcPerform.lua:3127-3168.
-fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> f64 {
+/// Applies a single ailment, returning its limit and `Current<X>` (0.0 when not applied).
+fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> AppliedAilment {
     // cfg snapshot: keeps the read stage's semantics consistent; cfg.conditions
     // is only copied back at the end of the write stage.
     let cfg = env.cfg.clone();
@@ -154,16 +207,26 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> f64 {
 
     // vendor Tabulate("BASE", nil, <X>Base, <X>Override, <X>Minimum) (:3131).
     let sources = collect_player_sources(player, &cfg, spec);
+    let terms = maximum_terms(player, &cfg, spec.name);
+    let maximum = terms.value();
+    let not_applied = AppliedAilment {
+        terms,
+        maximum,
+        applied: false,
+        source: 0.0,
+        enemy_value: enemy_val,
+        current: 0.0,
+    };
 
     // Existence gate (the semantic equivalent of vendor :3128-3129, see the
     // module doc's last two "Known differences" bullets).
     if enemy_val <= 0.0 && sources.is_empty() {
-        return 0.0;
+        return not_applied;
     }
     // `Condition:Already<cond>` prevents duplicate application (:3130).
     let already_name = ModName::from(format!("Condition:Already{}", spec.condition));
     if enemy.flag(&cfg, already_name.as_str()) {
-        return 0.0;
+        return not_applied;
     }
 
     // Magnitude (only Base/Minimum sources are multiplied, :3144-3146): skill
@@ -192,14 +255,6 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> f64 {
     // repeatedly is order-independent here (minimum is monotonically
     // non-decreasing, so the final value already covers the full total).
     strongest = strongest.max(minimum);
-
-    // Maximum<X>: Override takes priority, otherwise data max + Σ <X>Max BASE (:3153-3163).
-    let max_name = ModName::from(format!("{}Max", spec.name));
-    let maximum = player
-        .override_(&cfg, max_name.as_str())
-        .unwrap_or_else(|| {
-            spec.data_max(&cfg) + player.sum(ModType::Base, &cfg, std::slice::from_ref(&max_name))
-        });
 
     // Current<X> = floor(min(max(override, Σ Val), Maximum) × 10^prec)/10^prec (:3164);
     // prec=0 (non_damaging_ailments.json Chill/Shock) → integer floor.
@@ -269,7 +324,14 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> f64 {
         env.cfg.conditions.insert(spec.condition.to_string(), true);
     }
 
-    current
+    AppliedAilment {
+        terms,
+        maximum,
+        applied: true,
+        source: strongest,
+        enemy_value: enemy_val,
+        current,
+    }
 }
 
 /// Collects the player db's `<X>Base/<X>Override/<X>Minimum` BASE-type source

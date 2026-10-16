@@ -553,6 +553,82 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "PresenceRadiusMetres",
         ),
+        // Limits, speed and recovery multipliers (neutral 1), and ailment
+        // maximums; values come from the stages that resolve them.
+        computed("PresenceRadius", Cat::Defence, Vt::Number, "PresenceRadius"),
+        computed("CharmLimit", Cat::Utility, Vt::Number, "CharmLimit"),
+        computed(
+            "EnemyCurseLimit",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "EnemyCurseLimit",
+        ),
+        computed(
+            "EnemyMarkLimit",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "EnemyMarkLimit",
+        ),
+        computed("ActionSpeedMod", Cat::Defence, Vt::Number, "ActionSpeedMod"),
+        computed(
+            "MovementSpeedMod",
+            Cat::Defence,
+            Vt::Number,
+            "MovementSpeedMod",
+        ),
+        computed("LightRadiusMod", Cat::Misc, Vt::Number, "LightRadiusMod"),
+        computed(
+            "LifeRecoveryRateMod",
+            Cat::Recovery,
+            Vt::Number,
+            "LifeRecoveryRateMod",
+        ),
+        computed(
+            "ManaRecoveryRateMod",
+            Cat::Recovery,
+            Vt::Number,
+            "ManaRecoveryRateMod",
+        ),
+        computed(
+            "EnergyShieldRecoveryRateMod",
+            Cat::Recovery,
+            Vt::Number,
+            "EnergyShieldRecoveryRateMod",
+        ),
+        computed(
+            "LowLifePercentage",
+            Cat::Resource,
+            Vt::Percent,
+            "LowLifePercentage",
+        ),
+        computed(
+            "LowestAttribute",
+            Cat::Resource,
+            Vt::Number,
+            "LowestAttribute",
+        ),
+        computed(
+            "GlobalGemAttributeRequirements",
+            Cat::Requirement,
+            Vt::Number,
+            "GlobalGemAttributeRequirements",
+        ),
+        computed(
+            "GlobalItemAttributeRequirements",
+            Cat::Requirement,
+            Vt::Number,
+            "GlobalItemAttributeRequirements",
+        ),
+        computed(
+            "GlobalWeaponAttributeRequirements",
+            Cat::Requirement,
+            Vt::Number,
+            "GlobalWeaponAttributeRequirements",
+        ),
+        computed("MaximumChill", Cat::Ailment, Vt::Percent, "MaximumChill"),
+        computed("MaximumShock", Cat::Ailment, Vt::Percent, "MaximumShock"),
+        computed("CurrentChill", Cat::Ailment, Vt::Percent, "CurrentChill"),
+        computed("CurrentShock", Cat::Ailment, Vt::Percent, "CurrentShock"),
         computed(
             "AuraEffectMod",
             Cat::SkillMechanics,
@@ -1787,6 +1863,9 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         return value;
     }
     if let Some(value) = crate::calc::ailment_display::display_value(output, id) {
+        return value;
+    }
+    if let Some(value) = crate::calc::limit_display::display_value(output, id) {
         return value;
     }
     match id {

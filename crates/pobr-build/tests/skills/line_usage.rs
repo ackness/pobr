@@ -455,7 +455,6 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
             "BleedFaster" | "IgniteFaster" | "PoisonFaster" => {
                 "Damaging Ailments deal damage 20% faster"
             }
-            "LightRadius" => "20% increased Light Radius",
             "FireDamage" => "40% increased Fire Damage",
             "LightningDamage" => "40% increased Lightning Damage",
             "AilmentMagnitude" => "40% increased Magnitude of Ailments you inflict",
@@ -563,9 +562,6 @@ Implicits: 0
                     "100% chance to Bleed on Hit".into(),
                     "100% chance to Poison on Hit".into(),
                 ]);
-            }
-            if active && name == "LightRadius" {
-                options.extra_modifier_texts.push("Increases and Reductions to Light Radius also apply to Area of Effect at 50% of their value".into());
             }
             let diagnosis = diagnose(&build, &data, &options).unwrap();
             let ledger = pobr_build::usage::line_usage(&diagnosis, &build, &data);

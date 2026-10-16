@@ -54,3 +54,6 @@ mod player_debuffs;
 
 #[path = "engine/keystones.rs"]
 mod keystones;
+
+#[path = "engine/limit_views.rs"]
+mod limit_views;

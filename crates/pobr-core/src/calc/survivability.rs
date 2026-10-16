@@ -812,7 +812,7 @@ fn recoup_duration(db: &ModDb, cfg: &CalcConfig, resource: RecoupResource) -> f6
 
 /// Recovery rate multiplier for a resource: its `XRecoveryRate` INC/MORE
 /// merged into a multiplier (shared with regen).
-fn recoup_recovery_rate(db: &ModDb, cfg: &CalcConfig, resource: RecoupResource) -> f64 {
+pub(crate) fn recoup_recovery_rate(db: &ModDb, cfg: &CalcConfig, resource: RecoupResource) -> f64 {
     let name = match resource {
         RecoupResource::Life => ModName::from("LifeRecoveryRate"),
         RecoupResource::Mana => ModName::from("ManaRecoveryRate"),

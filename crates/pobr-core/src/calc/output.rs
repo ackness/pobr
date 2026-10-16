@@ -92,6 +92,8 @@ pub struct OutputTable {
     pub effective_movement_speed_mod: f64,
     pub movement_speed_while_using_skill: f64,
     pub presence_radius_metres: f64,
+    /// Limits, speed, recovery and requirement multipliers, and ailment maximums.
+    pub limit_views: super::limit_display::LimitViews,
     pub aura_effect_mod: f64,
     pub curse_effect_mod: f64,
     pub active_minion_limit: f64,
@@ -644,6 +646,7 @@ impl Default for OutputTable {
             effective_movement_speed_mod: 0.0,
             movement_speed_while_using_skill: 0.0,
             presence_radius_metres: 0.0,
+            limit_views: Default::default(),
             aura_effect_mod: 0.0,
             curse_effect_mod: 0.0,
             active_minion_limit: 0.0,
