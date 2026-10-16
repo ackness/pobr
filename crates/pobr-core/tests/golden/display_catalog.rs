@@ -56,7 +56,8 @@ fn catalog_entry_counts_locked() {
         // AilmentThreshold, LifeOnKill, ManaOnKill, EnergyShieldOnKill,
         // DazeChance and FullyBrokenArmourEffect (+6).
         // ArchonDuration and ArchonRecoveryPeriod (+2).
-        269,
+        // Charm{1,2,3}LifeRecoveryOnUse (+3), game charm_recover_X_life_when_used.
+        272,
         "a change in Computed entry count needs explicit review"
     );
 }

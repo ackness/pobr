@@ -44,7 +44,7 @@ fn numeric_stat(name: &str) -> (&str, ModType, f64) {
         "AilmentThreshold" => ("ailment_threshold_+%", Inc, 1.0),
         "Armour" => ("physical_damage_reduction_rating_+%", Inc, 1.0),
         "Evasion" => ("evasion_rating_+%", Inc, 1.0),
-        "CritChance" => ("critical_strike_chance_+%", Inc, 1.0),
+        "CriticalStrikeChance" => ("critical_strike_chance_+%", Inc, 1.0),
         "DamageGainAsLightning" => (
             "non_skill_base_all_damage_%_to_gain_as_lightning",
             Base,

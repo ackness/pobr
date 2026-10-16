@@ -310,3 +310,155 @@ fn spirit_family_buffs_do_not_stack_and_slot_limits_gate_grants() {
         );
     }
 }
+
+#[test]
+fn charm_life_recovery_is_per_use_local_and_independent_of_quality_or_regeneration() {
+    let mut session = super::support::session(MinimalInput::default());
+    let base = UtilityBaseStats {
+        life: 0.0,
+        mana: 0.0,
+        duration: 1.0,
+        charges_max: 80.0,
+        charges_used: 80.0,
+    };
+    // CharmGainLifeOnUse8 rolls 285..350 Life; quality affects duration only.
+    let item = charm(&["Recover 350 Life when Used"]);
+    session.add_utility_base("Charm 1", &item, &base);
+    session.add_flask_charm("Charm 1", &item);
+    let other = charm(&[]);
+    session.add_utility_base("Charm 2", &other, &base);
+    session.add_inactive_utility_properties("Charm 2", &other);
+    session.track_modifier_reads();
+    session.perform_minimal().unwrap();
+    let out = session.output();
+    assert_eq!(out.utility_stats["Charm1LifeRecoveryOnUse"], 350.0);
+    assert_eq!(
+        pobr_core::display_value(out, "Charm1LifeRecoveryOnUse"),
+        350.0
+    );
+    assert_eq!(out.utility_stats["Charm2LifeRecoveryOnUse"], 0.0);
+    assert_eq!(out.life_regen, 0.0);
+    assert_eq!(
+        session
+            .derived_detail("Charm1LifeRecoveryOnUse")
+            .unwrap()
+            .inputs,
+        vec![("UtilityLifeOnUse".into(), 350.0)]
+    );
+    assert!(
+        session
+            .read_modifier_names()
+            .iter()
+            .any(|name| name.as_str() == "LocalUtility:Charm1:UtilityLifeOnUse")
+    );
+    assert!(session.unsupported_modifier_texts().is_empty());
+}
+
+#[test]
+fn all_possession_modifiers_have_readers_except_documented_heavy_stun_buildup() {
+    use pobr_core::calc::charm_spirits::SPIRIT_DEFINITIONS;
+    use pobr_core::{CalcConfig, Modifier};
+    for cfg in [CalcConfig::attack(), CalcConfig::spell()] {
+        for &(spirit, _, _, _) in SPIRIT_DEFINITIONS {
+            let mut session = super::support::session(MinimalInput {
+                base_life: 1000.0,
+                base_hit_min: 100.0,
+                base_hit_max: 100.0,
+                base_action_rate: 2.0,
+                ..Default::default()
+            })
+            .with_config(cfg.clone().with_mode_combat(true));
+            // Supply all source damage types and a slow to reach conditional readers.
+            session
+                .add_modifier_texts(&[
+                    "Adds 100 to 100 Fire Damage",
+                    "Adds 100 to 100 Cold Damage",
+                    "Adds 100 to 100 Lightning Damage",
+                    "Adds 100 to 100 Chaos Damage",
+                    "50% reduced Action Speed",
+                ])
+                .unwrap();
+            session.add_modifiers([
+                Modifier::number("SkillBaseCritChance", ModType::Base, 5.0),
+                Modifier::number("CharmLimit", ModType::Base, 3.0),
+            ]);
+            session.add_flask_charm(
+                "Charm 1",
+                &charm(&[&format!(
+                    "Possessed by Spirit Of The {spirit} for 20 seconds on use"
+                )]),
+            );
+            session.track_modifier_reads();
+            session.perform_minimal().unwrap();
+            let unread: Vec<_> = session
+                .unread_modifiers()
+                .into_iter()
+                .filter(|modifier| modifier.source.as_deref() == Some("CharmSpirit"))
+                .map(|modifier| modifier.name.as_str())
+                .collect();
+            // hit_damage_stun_multiplier_+% = 60 is enemy heavy-stun buildup,
+            // not the player's stun threshold, and has no calculation model.
+            assert_eq!(
+                unread,
+                if spirit == "Bear" {
+                    vec!["EnemyHeavyStunBuildup"]
+                } else {
+                    vec![]
+                },
+                "{spirit}"
+            );
+            if spirit == "Cat" {
+                // SpiritOfTheCatPossessedPlayer: 100% increased critical chance.
+                assert_eq!(session.output().crit_chance, 0.10); // 5% * (1 + 100%).
+            }
+        }
+    }
+}
+
+#[test]
+fn charm_guard_uses_strongest_active_grant_life_cap_and_existing_hit_pool() {
+    use pobr_core::{CalcConfig, Modifier};
+    // CharmGuardWhileActive6: 355..500 Guard; rank 5: 265..350.
+    for (life, enabled, include_absent, limit, effect, expected) in [
+        (1000.0, true, true, 3.0, 0.0, 500.0),
+        (100.0, true, true, 3.0, 0.0, 200.0), // 200% maximum Life cap.
+        (1000.0, false, true, 3.0, 0.0, 0.0),
+        (1000.0, true, false, 3.0, 0.0, 0.0),
+        (1000.0, true, true, 1.0, 0.0, 350.0), // Second slot unavailable.
+        (1000.0, true, true, 3.0, 20.0, 600.0), // Charm effect, not quality.
+    ] {
+        let mut session = super::support::session(MinimalInput {
+            base_life: life,
+            ..Default::default()
+        })
+        .with_config(CalcConfig::default().with_mode_combat(true));
+        session.set_exporter_rules(include_absent, Default::default());
+        session.add_modifiers([
+            Modifier::number("CharmLimit", ModType::Base, limit),
+            Modifier::number("CharmEffect", ModType::Inc, effect),
+        ]);
+        let first = charm(&["Also grants 350 Guard"]);
+        let second = Item {
+            base: pobr_data::item::ItemBaseId::from("Thawing Charm"),
+            ..charm(&["Also grants 500 Guard"])
+        };
+        if enabled {
+            session.add_flask_charm("Charm 1", &first);
+            session.add_flask_charm("Charm 2", &second);
+        } else {
+            session.add_inactive_utility_properties("Charm 1", &first);
+            session.add_inactive_utility_properties("Charm 2", &second);
+        }
+        session.track_modifier_reads();
+        session.perform_minimal().unwrap();
+        assert_eq!(session.output().physical_max_hit, life + expected);
+        if enabled && include_absent {
+            assert!(
+                session
+                    .read_modifier_names()
+                    .iter()
+                    .any(|name| name.as_str() == "CharmGuard")
+            );
+        }
+    }
+}

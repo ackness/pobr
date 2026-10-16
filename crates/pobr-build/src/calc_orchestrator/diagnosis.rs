@@ -190,6 +190,28 @@ impl ReadGate {
 /// Gated readers, alongside the consumers outside the database. Keep the
 /// actual consumer here so a registry entry can be checked against its code.
 pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
+    // `calc::perform::damaging_ailment_for_pass` reads rate only for active ailments.
+    (
+        "BleedFaster",
+        ReadGate {
+            state: "the selected skill inflicts Bleed",
+            config_option: None,
+        },
+    ),
+    (
+        "IgniteFaster",
+        ReadGate {
+            state: "the selected skill inflicts Ignite",
+            config_option: None,
+        },
+    ),
+    (
+        "PoisonFaster",
+        ReadGate {
+            state: "the selected skill inflicts Poison",
+            config_option: None,
+        },
+    ),
     // `calc::defence::calc_es_recharge`, after the resource/recharge gates.
     (
         "EnergyShieldRecharge",

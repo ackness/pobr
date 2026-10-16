@@ -6,16 +6,16 @@
   },
   "summary": {
     "total": 4277,
-    "parsed": 3513,
-    "unsupported": 764,
+    "parsed": 3518,
+    "unsupported": 759,
     "err": 0,
-    "coverage_ratio": 0.82137
+    "coverage_ratio": 0.822539
   },
   "by_source": [
     {
       "source": "C1_build",
-      "parsed": 1215,
-      "unsupported": 488,
+      "parsed": 1220,
+      "unsupported": 483,
       "err": 0
     },
     {
@@ -128,26 +128,6 @@
       "source": "C1_build"
     },
     {
-      "text": "Also grants 180 Guard",
-      "status": "unsupported",
-      "source": "C1_build"
-    },
-    {
-      "text": "Also grants 265 Guard",
-      "status": "unsupported",
-      "source": "C1_build"
-    },
-    {
-      "text": "Also grants 435 Guard",
-      "status": "unsupported",
-      "source": "C1_build"
-    },
-    {
-      "text": "Also grants 491 Guard",
-      "status": "unsupported",
-      "source": "C1_build"
-    },
-    {
       "text": "Amber Amulet",
       "status": "unsupported",
       "source": "C1_build"
@@ -229,6 +209,26 @@
     },
     {
       "text": "Attuned Wand",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Atziri&apos;s Disdain",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Atziri&apos;s Splendour",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Bear Spirit gains [SpiritWalkerBearAura|Embrace of the Wild]",
+      "status": "unsupported",
+      "source": "C2_tree"
+    },
+    {
+      "text": "Beast Core",
       "status": "unsupported",
       "source": "C1_build"
     }

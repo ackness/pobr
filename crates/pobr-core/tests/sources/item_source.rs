@@ -463,20 +463,9 @@ fn ingest_charm_wraps_mods_into_list_payload_with_flask_attribution() {
     );
 }
 
-/// Even mods for effects a charm has that aren't currently modeled must still show
-/// up in the unsupported report. `Also grants N Guard` is a real explicit prefix
-/// from ModCharm.lua; `Possessed by ...` also comes from a real build -- silently
-/// dropping either would make callers think the effect is already in effect.
+/// Guard and possession use game rules even when the exporter cannot parse them.
 #[test]
 fn ingest_charm_parses_guard_and_possession_effects_via_engine() {
-    // The possession line is modeled through the engine's special channel
-    // (SpiritPossessionOnUse) and normally produces a mod. The guard line
-    // (`Also grants N Guard`) was once modeled by the curated entry
-    // also_grants_guard, but the vendor ModParser never actually parses it -- it was
-    // a phantom Guard pool relative to PoB2 golden values (removed in backlog item
-    // #7, ritualist EHP 1.10x -> 1.00x). Aligning with PoB2 puts it back in the
-    // "unmodeled -> must be loudly reported as unsupported" bucket; silently
-    // dropping it would be the failure mode.
     let charm = utility_item(
         "Thawing Charm",
         &["Used when you become Frozen"],
@@ -488,12 +477,7 @@ fn ingest_charm_parses_guard_and_possession_effects_via_engine() {
 
     let ingest = ingest_flask_charm("Charm 1", &charm);
 
-    assert_eq!(
-        ingest.unsupported,
-        vec!["Also grants 435 Guard".to_string()],
-        "the guard line is unmodeled and should be reported (matching PoB2), the possession line should parse; actual unsupported: {:?}",
-        ingest.unsupported
-    );
+    assert!(ingest.unsupported.is_empty());
 }
 
 /// An activated charm where every line fails to parse **still produces an empty
