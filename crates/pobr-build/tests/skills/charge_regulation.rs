@@ -5,7 +5,10 @@
 //! Energy Shield while you have an Endurance Charge" and "25% increased Skill
 //! Speed while you have a Frenzy Charge".
 
-use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
+use pobr_build::{
+    BuildData, DataOrchestratorOptions, calculate_with_data, calculate_with_data_session,
+    parse_build,
+};
 use pobr_core::calc::OutputTable;
 use pobr_gamedata::{GameData, data_version, repo_data_root};
 
@@ -109,4 +112,81 @@ fn without_charges_the_buff_grants_nothing() {
     assert_eq!(with.energy_shield, without.energy_shield);
     assert_eq!(with.crit_chance, without.crit_chance);
     assert_eq!(with.action_rate, without.action_rate);
+}
+
+#[test]
+fn conduit_redirects_gains_and_preserves_minimum_charges() {
+    let data = data();
+    // Conduit (keystone_conduit, passive 33979) gives incoming charges to allies.
+    // The game stat additional_critical_strike_chance_per_power_charge_permyriad
+    // supplies the test's +1% Critical Hit Chance per Power Charge: three charges
+    // add 3 percentage points, zero adds none, and minimum one retains 1 point.
+    for minimum in [0, 1] {
+        let calculate = |conduit: bool, resonance: bool, reference: bool| {
+            let nodes = if conduit { "33979" } else { "" };
+            let build = parse_build(&format!(
+                r#"<PathOfBuilding2>
+<Build level="80" className="Sorceress" mainSocketGroup="1"/>
+<Tree activeSpec="1"><Spec nodes="{nodes}"/></Tree>
+<Skills><Skill enabled="true">{FIREBALL}</Skill></Skills>
+<Config>
+<Input name="usePowerCharges" boolean="true"/><Input name="overridePowerCharges" number="3"/>
+<Input name="useFrenzyCharges" boolean="true"/><Input name="overrideFrenzyCharges" number="3"/>
+<Input name="useEnduranceCharges" boolean="true"/><Input name="overrideEnduranceCharges" number="3"/>
+</Config></PathOfBuilding2>"#
+            ))
+            .unwrap();
+            let mut options = DataOrchestratorOptions {
+                extra_modifier_texts: vec![
+                    "+1% Critical Hit Chance per Power Charge".into(),
+                    format!("+{minimum} to Minimum Power Charges"),
+                    format!("+{minimum} to Minimum Frenzy Charges"),
+                    format!("+{minimum} to Minimum Endurance Charges"),
+                ],
+                ..Default::default()
+            };
+            if resonance {
+                options.extra_modifier_texts.extend([
+                    "Gain Endurance Charges instead of Power Charges".into(),
+                    "Gain Frenzy Charges instead of Endurance Charges".into(),
+                    "Gain Power Charges instead of Frenzy Charges".into(),
+                ]);
+            }
+            if reference {
+                options = options.on_reference_basis();
+            }
+            calculate_with_data_session(&build, &data, &options).unwrap()
+        };
+        let baseline = calculate(false, false, false);
+        let reference = calculate(true, false, true);
+        assert_eq!(
+            baseline.output().crit_chance,
+            reference.output().crit_chance
+        );
+        for resonance in [false, true] {
+            let conduit = calculate(true, resonance, false);
+            assert!(conduit.unsupported_modifier_texts().is_empty());
+            for stat in [
+                "ChargePowerCurrent",
+                "ChargeFrenzyCurrent",
+                "ChargeEnduranceCurrent",
+            ] {
+                assert_eq!(pobr_core::display_value(baseline.output(), stat), 3.0);
+                assert_eq!(pobr_core::display_value(reference.output(), stat), 3.0);
+                assert_eq!(
+                    pobr_core::display_value(conduit.output(), stat),
+                    f64::from(minimum)
+                );
+                // The existing detail reads the resolved charge snapshot.
+                let detail = conduit.derived_detail(stat).unwrap();
+                assert_eq!(detail.formula, "max(ConfiguredCharges, MinimumCharges)");
+                assert_eq!(
+                    detail.inputs[0].1.max(detail.inputs[1].1),
+                    f64::from(minimum)
+                );
+            }
+            let lost_crit = baseline.output().crit_chance - conduit.output().crit_chance;
+            assert!((lost_crit - f64::from(3 - minimum) * 0.01).abs() < 1e-9);
+        }
+    }
 }

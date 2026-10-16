@@ -5086,6 +5086,22 @@
       "source_note": "Game text and stats; regression: engine::keystones. See maintainer guide for snapshot and event-model limits."
     },
     {
+      "id": "conduit_charge_gains_to_allies",
+      "pattern": "if you would gain a charge, allies in your presence gain that charge instead",
+      "mods": [
+        {
+          "name": "ChargesGainedByAllies",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "keystone_conduit; passive 33979; https://poe2db.tw/us/Conduit",
+      "source_note": "Game text and stats; regression: skills::charge_regulation::conduit_redirects_gains_and_preserves_minimum_charges. Configured counts above minima represent gains; ally charge effects remain unmodelled. See maintainer guide."
+    },
+    {
       "id": "resonance_power_instead_of_frenzy",
       "pattern": "gain power charges instead of frenzy charges",
       "mods": [
