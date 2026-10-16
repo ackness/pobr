@@ -212,8 +212,8 @@ fn conditional_offence_limits_report_the_missing_models() {
     let data = data();
     let cases = [
         (
-            "Physical Spell Critical Hits build Pin",
-            "physical_spell_critical_pin_unmodelled",
+            "Pin Enemies which are Primed for Pinning",
+            "primed_pin_unmodelled",
         ),
         ("25% increased Daze Duration", "daze_duration_unmodelled"),
         (
@@ -455,7 +455,6 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
             "BleedFaster" | "IgniteFaster" | "PoisonFaster" => {
                 "Damaging Ailments deal damage 20% faster"
             }
-            "LightRadius" => "20% increased Light Radius",
             "FireDamage" => "40% increased Fire Damage",
             "LightningDamage" => "40% increased Lightning Damage",
             "AilmentMagnitude" => "40% increased Magnitude of Ailments you inflict",
@@ -563,9 +562,6 @@ Implicits: 0
                     "100% chance to Bleed on Hit".into(),
                     "100% chance to Poison on Hit".into(),
                 ]);
-            }
-            if active && name == "LightRadius" {
-                options.extra_modifier_texts.push("Increases and Reductions to Light Radius also apply to Area of Effect at 50% of their value".into());
             }
             let diagnosis = diagnose(&build, &data, &options).unwrap();
             let ledger = pobr_build::usage::line_usage(&diagnosis, &build, &data);
@@ -1320,6 +1316,74 @@ fn heavy_stun_uses_loaded_boss_poise_and_the_dazed_configuration() {
 }
 
 #[test]
+fn pin_source_lines_have_a_reader_and_only_enabled_types_build_pin() {
+    let data = data();
+    let weapon_line = "All Damage from Hits with this Weapon Contributes to Pin Buildup";
+    let run = |weapon_lines: &str, extra: &[&str]| {
+        let build = parse_build(&format!(
+            r#"<PathOfBuilding2>
+<Build level="80" className="Huntress" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="MeleePlayer" level="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: UNIQUE
+Pin Test Spear
+Hardwood Spear
+Implicits: 0
+{weapon_lines}
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#
+        ))
+        .unwrap();
+        let options = DataOrchestratorOptions {
+            mode_effective: true,
+            extra_modifier_texts: extra.iter().map(|line| line.to_string()).collect(),
+            ..Default::default()
+        };
+        let diagnosis = diagnose(&build, &data, &options).unwrap();
+        let usage = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+        (diagnosis.session.output().pin_buildup_avg, usage)
+    };
+    // Nothing enables Pin: the hit builds none.
+    let (none, _) = run("", &[]);
+    assert_eq!(none, 0.0);
+    // Physical Damage is Pinning (base_physical_damage_can_pin) and the increase
+    // are both consumed by PinBuildupAvg.
+    let extra = ["Physical Damage is Pinning", "30% increased Pin Buildup"];
+    let (physical, usage) = run("", &extra);
+    assert!(physical > 0.0, "{physical}");
+    for text in extra {
+        let row = usage
+            .lines
+            .iter()
+            .find(|row| row.text.as_deref() == Some(text))
+            .unwrap();
+        assert_eq!(
+            row.modifiers[0].status,
+            ModifierStatus::Applied,
+            "{text}: {row:?}"
+        );
+    }
+    let (plain, _) = run("", &["Physical Damage is Pinning"]);
+    // The boss poise threshold is large, so the shared 9-decimal rounding of the
+    // per-damage percentage limits the ratio to about 1e-4.
+    assert!((physical / plain - 1.3).abs() < 1e-3, "{physical} {plain}");
+    // The weapon's own line enables every damage type of that hand's hits.
+    let (weapon, usage) = run(weapon_line, &[]);
+    assert!(weapon >= plain, "{weapon} {plain}");
+    let row = line(&usage, "item.weapon1.explicit", weapon_line);
+    assert_eq!(row.modifiers[0].status, ModifierStatus::Applied, "{row:?}");
+    // A spell-only critical source on an attack is read but has no effect.
+    let spell_line = "Physical Spell Critical Hits build Pin";
+    let (spell, usage) = run("", &[spell_line]);
+    assert_eq!(spell, 0.0);
+    let row = usage
+        .lines
+        .iter()
+        .find(|row| row.text.as_deref() == Some(spell_line))
+        .unwrap();
+    assert_ne!(row.modifiers[0].status, ModifierStatus::Unread, "{row:?}");
+}
+
+#[test]
 fn self_debuff_modifier_views_read_each_previously_unmodelled_line() {
     let data = data();
     let texts = [
@@ -1341,4 +1405,90 @@ fn self_debuff_modifier_views_read_each_previously_unmodelled_line() {
             "{row:?}"
         );
     }
+}
+
+/// A flask line the parser read only in part applies nothing and is listed as
+/// unparsed. These three lines parse to a wrong modifier plus leftover text:
+/// "Removes 15% of Life Recovered from Mana when used" to -15 `FlaskRecovery`,
+/// "88% more Recovery if used while on Low Mana" to 88% more
+/// `FlaskLifeRecoveryLowLife` (Low Life, not Low Mana), and the Chaos recoup line to
+/// +50 `ChaosDamage`.
+#[test]
+fn partially_parsed_flask_lines_are_unparsed_and_apply_nothing() {
+    let data = data();
+    let lines = [
+        "Removes 15% of Life Recovered from Mana when used",
+        "88% more Recovery if used while on Low Mana",
+        "50% of Chaos damage you prevent when Hit Recouped as Life and Mana during effect",
+    ];
+    let build = parse_build(&format!(
+        r#"<PathOfBuilding2>
+<Build level="80" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: MAGIC
+Undiluted Ultimate Life Flask
+Implicits: 0
+{}
+</Item><ItemSet id="1"><Slot name="Flask 1" itemId="1" active="true"/></ItemSet></Items>
+</PathOfBuilding2>"#,
+        lines.join("\n")
+    ))
+    .unwrap();
+    let diagnosis = diagnose(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+    let ledger = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+    for text in lines {
+        let row = line(&ledger, "flask.flask1", text);
+        assert_eq!(row.status, LineStatus::Unparsed, "{row:?}");
+        assert!(row.modifiers.is_empty(), "{row:?}");
+        assert!(
+            diagnosis
+                .unparsed_lines
+                .iter()
+                .any(|unparsed| unparsed == text),
+            "{text} is in the unsupported list: {:?}",
+            diagnosis.unparsed_lines
+        );
+    }
+}
+
+/// Free modifier texts (`extra_modifier_texts`) follow the same rule: the partly read
+/// line "1% more Life Flask Recovery" is reported as unsupported and is not stored as a
+/// 1% more maximum Life modifier; the whole-line "1% more maximum Life" is.
+#[test]
+fn partially_parsed_extra_text_is_unparsed_and_applies_nothing() {
+    let data = data();
+    let text = "1% more Life Flask Recovery";
+    let build = parse_build(
+        r#"<PathOfBuilding2>
+<Build level="80" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
+</PathOfBuilding2>"#,
+    )
+    .unwrap();
+    let with = |line: Option<&str>| {
+        let options = DataOrchestratorOptions {
+            extra_modifier_texts: line.map(str::to_string).into_iter().collect(),
+            ..Default::default()
+        };
+        let session = pobr_build::calculate_with_data_session(&build, &data, &options).unwrap();
+        (
+            pobr_core::display_value(session.output(), "Life"),
+            session.unsupported_modifier_texts().to_vec(),
+        )
+    };
+    let (base_life, base_unsupported) = with(None);
+    assert!(base_life > 0.0);
+    assert!(base_unsupported.is_empty(), "{base_unsupported:?}");
+
+    let (life, unsupported) = with(Some(text));
+    assert_eq!(life, base_life, "the partial line changed Life");
+    assert_eq!(unsupported, vec![text.to_string()]);
+
+    // The same wording read completely does apply: 1% more Life.
+    let (more_life, unsupported) = with(Some("1% more maximum Life"));
+    assert!(unsupported.is_empty(), "{unsupported:?}");
+    assert!(
+        (more_life / base_life - 1.01).abs() < 0.001,
+        "{more_life} / {base_life}"
+    );
 }

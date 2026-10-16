@@ -223,16 +223,6 @@ pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
             config_option: None,
         },
     ),
-    // calc::shared_modifiers::apply_shared_increases copies Light Radius INCs.
-    (
-        "LightRadius",
-        ReadGate {
-            state: Cow::Borrowed(
-                "Light Radius modifiers also apply to Accuracy, Damage or Area of Effect",
-            ),
-            config_option: None,
-        },
-    ),
     // `calc::defence::calc_es_recharge`, after the resource/recharge gates.
     (
         "EnergyShieldRecharge",

@@ -83,6 +83,12 @@ pub struct CritPassOutput {
     /// enemy's mitigation, weighted by crit chance, including types present
     /// in only one leg. Empty outside `mode_effective`.
     pub mitigated_avg: Vec<(DamageType, f64)>,
+    /// The part of each type's blended average that comes from the crit leg
+    /// (already weighted by crit chance), on the same basis as the average the
+    /// calculation reports: mitigated when `mitigated_avg` is filled, stored
+    /// (pre-resist) otherwise. Subtracting it from that average leaves the
+    /// non-crit leg's share.
+    pub crit_avg: Vec<(DamageType, f64)>,
     /// Whether the equivalence short circuit was taken (both legs'
     /// aggregation inputs bit-identical → old single-factor formula).
     pub short_circuited: bool,
@@ -237,7 +243,7 @@ where
 
     // Blend by damage type: critical-only additions or conversions can give
     // the two legs different components. Reuse the mitigation already computed.
-    let mitigated_avg = match mitigated_legs {
+    let (mitigated_avg, crit_avg) = match mitigated_legs {
         Some((hit_parts, crit_parts)) => {
             let mut blended: Vec<(DamageType, f64)> = non_crit
                 .avgs
@@ -245,16 +251,21 @@ where
                 .zip(hit_parts)
                 .map(|((ty, _), hit)| (*ty, hit * (1.0 - c)))
                 .collect();
+            let mut crit_share = Vec::with_capacity(crit_parts.len());
             for ((ty, _), crit_v) in crit_leg.avgs.iter().zip(crit_parts) {
+                crit_share.push((*ty, crit_v * c));
                 if let Some((_, value)) = blended.iter_mut().find(|(kind, _)| kind == ty) {
                     *value += crit_v * c;
                 } else {
                     blended.push((*ty, crit_v * c));
                 }
             }
-            blended
+            (blended, crit_share)
         }
-        None => Vec::new(),
+        None => (
+            Vec::new(),
+            crit_leg.avgs.iter().map(|(ty, v)| (*ty, v * c)).collect(),
+        ),
     };
 
     CritPassOutput {
@@ -267,6 +278,7 @@ where
         total_hit_avg,
         total_hit_avg_mitigated,
         mitigated_avg,
+        crit_avg,
         short_circuited: short_circuit,
     }
 }

@@ -106,6 +106,22 @@ pub const DEFAULT_ENEMY_CURSE_LIMIT: f64 = 1.0;
 /// Player's inherent mark limit baseline (vendor `CalcSetup.lua:649`; data mirror = `base_player_mods.json::enemy_mark_limit`).
 pub const DEFAULT_ENEMY_MARK_LIMIT: f64 = 1.0;
 
+/// The player's own curse limit: the maximum Power Charges with
+/// `CurseLimitIsMaximumPowerCharges`, otherwise the baseline plus the
+/// `EnemyCurseLimit` bonuses. Minion and party casters have their own limits.
+pub(crate) fn player_curse_limit(db: &ModDb, cfg: &crate::CalcConfig) -> f64 {
+    if db.flag(cfg, "CurseLimitIsMaximumPowerCharges") {
+        f64::from(charge_maximum(db, cfg, ChargeKind::Power))
+    } else {
+        DEFAULT_ENEMY_CURSE_LIMIT + db.sum(ModType::Base, cfg, &[ModName::from("EnemyCurseLimit")])
+    }
+}
+
+/// The player's own mark limit: the baseline plus the `EnemyMarkLimit` bonuses.
+pub(crate) fn player_mark_limit(db: &ModDb, cfg: &crate::CalcConfig) -> f64 {
+    DEFAULT_ENEMY_MARK_LIMIT + db.sum(ModType::Base, cfg, &[ModName::from("EnemyMarkLimit")])
+}
+
 /// The ceiling on socket order entering priority (vendor `CalcPerform.lua:465`'s
 /// `m_min(k, 8)` -- avoids colliding with the `CurseFromEquipment` weight range).
 const SOCKET_INDEX_CAP: u32 = 8;
@@ -716,28 +732,8 @@ pub fn buff_pass(env: &mut Env) {
     // Curse limit + slot assignment (vendor :2829-2896)
     // limit: override(CurseLimitIsMaximumPowerCharges → PowerChargesMax) else
     // baseline 1 (CalcSetup.lua:648, mirrored in base_player_mods.json) + Σ BASE.
-    let mut curse_limit = if env
-        .player
-        .mod_db
-        .flag(&env.cfg, "CurseLimitIsMaximumPowerCharges")
-    {
-        f64::from(charge_maximum(
-            &env.player.mod_db,
-            &env.cfg,
-            ChargeKind::Power,
-        ))
-    } else {
-        DEFAULT_ENEMY_CURSE_LIMIT
-            + env
-                .player
-                .mod_db
-                .sum(ModType::Base, &env.cfg, &[ModName::from("EnemyCurseLimit")])
-    };
-    let mut mark_limit = DEFAULT_ENEMY_MARK_LIMIT
-        + env
-            .player
-            .mod_db
-            .sum(ModType::Base, &env.cfg, &[ModName::from("EnemyMarkLimit")]);
+    let mut curse_limit = player_curse_limit(&env.player.mod_db, &env.cfg);
+    let mut mark_limit = player_mark_limit(&env.player.mod_db, &env.cfg);
 
     if !env.minion_buff_skills.is_empty() || !env.party_buff_skills.is_empty() {
         // Every caster has its own limit. A monster's EnemyCurseLimit is

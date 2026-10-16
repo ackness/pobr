@@ -127,9 +127,11 @@ pub(super) fn fill_sidebar(env: &mut Env) {
     if db.flag(&global, "MovementSpeedCannotBeBelowBase") {
         movement = movement.max(1.0);
     }
-    out.effective_movement_speed_mod =
-        (movement * super::skill_use_time::action_speed_factor(db, &global) * 1000.0).round()
-            / 1000.0;
+    let action_speed = super::skill_use_time::action_speed_factor(db, &global);
+    out.limit_views.action_speed_mod = action_speed;
+    out.limit_views.movement_speed_mod = movement;
+    out.limit_views.light_radius_mod = factor(db, &global, &["LightRadius"]);
+    out.effective_movement_speed_mod = (movement * action_speed * 1000.0).round() / 1000.0;
     if cfg
         .skill_types
         .intersects(SkillTypes::from_pob2_name("UsableWhileMoving").unwrap())
@@ -202,6 +204,7 @@ pub(super) fn fill_sidebar(env: &mut Env) {
     if db.flag(cfg, "ProfaneDecay") {
         out.decay_dps = out.skill_total_dot;
     }
+    super::limit_display::fill(env);
 }
 
 /// Game keywords: a player's base Elemental Ailment Threshold is half Life.

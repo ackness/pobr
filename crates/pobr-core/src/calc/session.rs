@@ -9,7 +9,7 @@ use pobr_data::catalog::buffs::BuffDef;
 use pobr_data::prelude::*;
 
 use crate::item::{ingest_item_with_ctx, ingest_limb_with_ctx};
-use crate::mod_parser::{ParseCtx, ParseError, ParseStatus};
+use crate::mod_parser::{ParseCtx, ParseError};
 use crate::passive::{AllocatedNode, ingest_passive_nodes_with_ctx};
 use crate::rules::HandlerRegistry;
 use crate::skill_source::{GemModSource, ingest_gem_with_ctx};
@@ -328,19 +328,13 @@ impl CalculationSession {
             }
         }
         for (outcome, original) in outcomes {
-            // Parsed (including partial parses with leftover text) is
-            // injected, Unsupported is collected. This used to downgrade
-            // "Parsed+leftover" to the whole line, guarding against the
-            // converted-to family incorrectly producing an `A Base X` wrong
-            // value -- but that also discarded legitimate tag-suffix clauses
-            // along with it (a MultiplierThreshold threshold line's leftover
-            // `Max` in "... if you have at least N Red Support Gems Socketed").
-            // Since then, the dangerous converted-to variants have already
-            // been fixed by the special_mods data to parse **cleanly (no leftover)**,
-            // making the gate redundant, so it was reverted to direct injection.
-            match outcome.status {
-                ParseStatus::Parsed => self.env.player.mod_db.add_list(outcome.mods),
-                ParseStatus::Unsupported => self.unsupported_modifier_texts.push(original),
+            // A line is stored only when the parser read all of it. A partial
+            // parse (leftover text) is reported like an unsupported line: the
+            // part it read can carry another meaning than the whole line
+            // ("1% more Life Flask Recovery" is not a maximum Life modifier).
+            match outcome.into_applicable(&original) {
+                Ok(mods) => self.env.player.mod_db.add_list(mods),
+                Err(_) => self.unsupported_modifier_texts.push(original),
             }
         }
 

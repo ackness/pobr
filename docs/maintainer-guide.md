@@ -282,15 +282,16 @@ in `calc_orchestrator::inject`, and the selected triggered payload receives
 `Triggered` in `prepare::stage_resolve_main_skill`. Possessing a freeze or Pin
 source does not establish the target state. Coming Calamity's 40% elemental
 bonuses require their matching Herald; added attack damage (including
-Asphyxia's Wrath) applies only to attacks. Pin buildup, Daze duration and Maim
-application remain `unmodelled` entries with explicit
+Asphyxia's Wrath) applies only to attacks. Daze duration, Maim application and
+primed-Pin thresholds remain `unmodelled` entries with explicit
 reasons: player stun defences and per-hit `DazeChance` do not measure those
 mechanics. Sources: game `base/stats.json` (`damage_+%_vs_frozen_enemies`,
 `bleeding_magnitude_+%_against_pinned_enemies`, `triggered_spell_spell_damage_+%`,
-`physical_spell_damage_can_pin_on_critical_hit`, `hit_damage_stun_multiplier_+%`,
-`daze_duration_+%`, `maim_on_hit_%`) and `base/passive_tree.json` (Coming
-Calamity, Bone Chains, Seeing Stars, Maiming Strike). The Daze-duration and
-attack-Maim rules are exporter-absent; recognizing them does not implement them.
+`hit_damage_stun_multiplier_+%`, `daze_duration_+%`, `maim_on_hit_%`,
+`pin_almost_pinned_enemies`) and `base/passive_tree.json` (Coming
+Calamity, Seeing Stars, Maiming Strike, Constricting Command). The Daze-duration
+and attack-Maim rules are exporter-absent; recognizing them does not implement
+them.
 `FireDamage`, `LightningDamage` and `AilmentMagnitude` have readers gated by
 the selected skill's source damage; the usage ledger reports that gate when a
 non-damaging skill such as Mana Remnants does not reach those readers.
@@ -325,9 +326,50 @@ Map Boss/Xesht Poise entries in `base/enemy_presets.json` remain unused.
 `CannotStun` / `CannotHeavyStun` suppress buildup. The derived detail reuses the
 retained calculation terms. Mauling Stuns uses `enemyDistance <= metres * 10`,
 sharing Focused Thrust's handler and ledger gate; unset distance retains the
-zero-distance convention. Pin remains unmodelled in this implementation;
-inspection found `GameConstants.PinDamageScale = 420 / 100` (4.2), so its
-remaining work is calculation/reader wiring rather than a missing scale.
+zero-distance convention.
+
+`PinBuildupAvg` reports the selected successful hit's average enemy Pin buildup
+as a percentage of the Pin threshold. The game's `KeywordPopups[60]` says that
+"Certain skills and effects allow damage to build up Pinned", so buildup is
+opt-in per damage type: a hit builds Pin only from the types that an applying
+source enables. The sources are the selected skill's
+`base_physical_damage_can_pin` (Physical) and `base_all_damage_can_pin`, a
+weapon's `local_all_damage_can_pin` (that hand's hits only),
+`all_projectile_damage_can_pin` (projectile hits only),
+`physical_spell_damage_can_pin_on_critical_hit` (Bone Chains: the Physical part
+of a critical spell hit only; the non-critical leg and other types add nothing)
+and the Pin support's `support_pin_physical_damage_can_pin`. `cannot_pin` and
+"Cannot Immobilise" force 0. They are the `CanPin` / `<Type>CanPin` flags;
+critical-only sources reuse Heavy Stun's separate critical and non-critical
+mitigated legs (`calc::ailment::pin_terms`). The scale is
+`GameConstants[45].PinDamageScale = 420 / 100` (4.2) over the same poise
+threshold as Heavy Stun (`PinThresholdModifier` [48] and
+`HeavyStunThresholdModifier` [29] are both 500, so the boss poise rows above
+apply unchanged). Player `EnemyPinBuildup` / `EnemyImmobilisationBuildup` (Pin
+support, "increased Pin Buildup", `active_skill_pins_as_though_dealt_damage_+%_final`)
+and the enemy's `PinBuildup` / `ImmobilisationBuildup` scale it. Heavy Stun's
+50% physical and melee multipliers are not applied: the game text gives them
+only for Light Stun chance and Heavy Stun buildup (`KeywordPopups[55]` / [57]).
+That is a convention, **no in-game test**. A skill with
+`support_pin_buildup_pin_instead_of_stun` (the Pin support) builds no Heavy Stun
+(`HeavyStunBuildupAvg` is 0) and its damage counts toward Pin; the support's
+buildup modifiers are the Pin ones, and PoBR does not copy the skill's Heavy
+Stun modifiers to Pin as PoB2 does. Primed-Pin thresholds (`KeywordPopups[400]`:
+40% / 50% / 60% / 70% by rarity, `pin_almost_pinned_enemies`) and the 3-second
+Pin duration are not modelled: `primed_pin_unmodelled` is exporter-absent and
+`conditionEnemyPinned` stays a configured state. PoB2 pins from unmitigated hit
+averages and evaluates `Physical Spell Critical Hits build Pin` once against the
+skill, so a physical spell pins with every damage type; that rule declares
+`exporter: "differs"`. Worked comparisons against the pinned oracle: Chronomancer
+Reap `3875ffe5d15e` 12.976 vs 55.896 (0.232 = 0.552 from the Xesht 17 / 9.38
+poise factor, as for Heavy Stun, times 0.42 because PoBR pins only the Physical
+critical portion while PoB2 adds Cold, Fire and Lightning); Tactician Oil Barrage
+`02b94461578f` 6.615 vs 17.082 (0.387) and Crossbow Shot `406c76f8e89a` 6.747 vs
+12.506 (0.539) follow their `HeavyStunBuildupAvg` ratios (0.396 and 0.541), so the
+remaining gap there is the shared poise and mitigated-versus-unmitigated source
+damage, not Pin; Blood Mage Impending Doom `add19135df93` is 0.364 vs 0, because
+the 3260 Physical part of the Dark Consequences frog explosion (a Spell by game
+skill type) pins in PoBR while the oracle reports empty `skillFlags` for it.
 
 伤害型异常（流血、点燃、毒）的同时层数 = 命中率 × 施加几率 × 持续时间 × 每秒命中数，持续时间是基础时间乘持续时间加成（含 “increased duration of Ailments you inflict”，`EnemyAilmentDuration`）与敌人身上效果的过期速度，再除以 “Damaging Ailments deal damage #% faster”：伤害总量不变、造成得更快，每份结束得更早（`calc/perform.rs`，分解里写作 “faster /N”）。
 
@@ -434,6 +476,10 @@ fields use numeric catalog units, not percentage points.
 - `ExplodeChance` 是 “Enemies you kill … have a #% chance to explode” 类词条的几率（`EnemyExplodeChance`，上限 100%），爆炸伤害还没有计算；`CombinedAvgToMonsterLife` 是 `CombinedAvg` 占敌人等级在怪物生命表里的生命的百分比。
 - `CritBifurcates` 与构筑码里同名参考值同单位，是倍率 1 + c / (2 − c)：c 是一次掷骰的暴击几率（乘命中几率，Lucky 先计），c / (2 − c) 是暴击的命中里两次暴击掷骰都成功的比例（`attacks_roll_crits_twice`），两把武器各算一次后取平均；不在有效口径或没有这一机制时为 0。比较直接用倍率，Web 显示为 (值 − 1) × 100%，例如 1.33333 显示 33.3%。
 
+Limit, speed, recovery and requirement multiplier views (`calc/limit_display.rs`, filled at the end of `calc/sidebar.rs`) read values the calculation already resolves; none re-evaluates a mechanic. `CharmLimit` is the usable Charm slots (`env_finalize::charm_slots`). `EnemyCurseLimit` and `EnemyMarkLimit` are the player's own limits (`buff_pass::player_curse_limit` / `player_mark_limit`, shared with the curse pass, so `CurseLimitIsMaximumPowerCharges` is honoured); the internal `OutputTable::enemy_curse_limit` that party code reads is the largest limit among all casters and can be higher. `ActionSpeedMod` is `skill_use_time::action_speed_factor` (negative `ActionSpeed` slows scaled by `SlowEffectOnSelf`, dropped under `UnaffectedBySlows`, plus positive bonuses); `MovementSpeedMod` is the movement speed before action speed, so `EffectiveMovementSpeedMod` = `MovementSpeedMod` × `ActionSpeedMod` (rounded to 0.001). `LightRadiusMod`, `LifeRecoveryRateMod`, `ManaRecoveryRateMod` and `EnergyShieldRecoveryRateMod` are `(1 + INC / 100) * MORE` of `LightRadius` and of the recovery-rate query that `survivability::recoup_recovery_rate` feeds to Recoup. Because `LightRadiusMod` reads every `LightRadius` modifier, a Light Radius line counts as read in the usage ledger even without a transfer. `GlobalGemAttributeRequirements` / `GlobalItemAttributeRequirements` / `GlobalWeaponAttributeRequirements` are the per-class multipliers (neutral 1, including `GlobalAttributeRequirements`) that `skill_mechanics::global_requirement_modifiers` supplies to the requirement calculation; The Vertex's “Equipment has no Attribute Requirements” is a 100% less `GlobalItemAttributeRequirements`, so the item and weapon multipliers read 0 where PoB2 (which does not apply that line) shows 1 and 3; this is the listed Vertex difference (Spirit Walker Zekoa e071, Blood Mage Impending Doom add1), the only disagreement for these fields among the worked builds. `PresenceRadius` is `PresenceRadiusMetres` × 10 (tenths of a metre, the unit PoB2 uses); the metre field keeps its own floor. `LowLifePercentage` is the game's `LowPoolThreshold` × 100 (35), the same constant that decides the automatic Low Life condition; `LowestAttribute` is the minimum of the three final attributes that `prepare_player_stats` stores. `MaximumChill` / `MaximumShock` and `CurrentChill` / `CurrentShock` are the values of the non-damaging ailment stage (`ailment_apply::maximum_terms` / `AppliedAilment`, retained in `Env::applied_ailments`): the game maximum (Chill 50, Shock 100; the Shock bound comes from the PoB2-derived `SHOCK_MAX_EFFECT` and has not been checked against the game) plus `ChillMax` / `ShockMax`, or the override when one applies, and `floor(min(max(source magnitude, magnitude already on the enemy), maximum))` when a source applies the ailment, otherwise 0. PoB2 adds an unconditional 30 Chill base for the enemy, so its `CurrentChill` is never 0; PoBR keeps its convention that no chill source means no applied chill, so this field disagrees with the oracle in every worked build while the maximums agree. `CurrentShock` is 0 in both. The derived details are `LowLifePercentage`, `LowestAttribute` and the four ailment fields; the rest are modifier queries.
+
+Not exposed, because PoBR has no corresponding model and a plausible number would be invented: `BloodCharges` / `BloodChargesMax` and `InspirationCharges` / `InspirationChargesMax` (not mechanics of the current game data; PoB2's 5 is its setup default), `ActiveTrapLimit` / `ActiveMineLimit` (game data defines only per-skill allowed counts such as `base_number_of_traps_allowed`; PoB2's 15 is its default), `FullLifePercentage`, `LifeCancellableReservation` / `ManaCancellableReservation` (no uncancellable-reservation model), and `DurationMod` (PoB2 combines the selected skill's `Duration`, `PrimaryDuration`, damaging-ailment duration and mine duration, while the existing `Duration` field already carries PoBR's modifier for the skill duration channels only).
+
 `ReqStr` / `ReqDex` / `ReqInt` 取全构筑装备与宝石需求的最大值，再与各颜色辅助宝石累计的需求比较（`calc_orchestrator::requirements::requirement_snapshots`）：装备先转换基底需求，再加本地固定需求，乘本地百分比修正并向下取整，最后应用全局修正（Runeforged Leaden Greathammer 的 60 力量、50 智力，转换 20% 到敏捷后再加 81 智力，得到 48 / 22 / 121；三倍武器需求后为 144 / 66 / 363）；宝石按原生等级计，腐化与装备给的技能等级不抬高需求；物品授予的技能和被认作它的普通组不新增一颗宝石的需求（见“已知的有意差异”）。消耗按资源分固定、百分比与每秒三种通道；每秒消耗按使用、触发、装填或放置的频率计算，多发投射物不另付消耗（`perform::fill_resource_cost_rates`）。技能自带每秒消耗时，该资源的持续消耗直接取这一通道，不再把启动消耗按攻击频率叠加：Oil Barrage 是 Wyvern 引导技能，不是弩弹药；27 级的 69 魔力启动消耗与每分钟 4049 魔力在 110% 辅助倍率下分别为 75 与每秒 74。图腾放置用召唤技能自己的游戏 `cast_time`（`calc_orchestrator::skill::mods::skill_timing_modifiers`，陷阱、地雷与战吼同理），施法速度与图腾放置速度分开。不是攻击、也没有专属速度的技能（例如 Wildwood's Gifts，`AncientGiftsPlayer`，只有 1000 毫秒的施法时间、没有 `Spell` 类型）按施法速度加技能速度计算使用时间（`skill_use_time::speed_names_for`）；战吼、图腾、陷阱与地雷仍用各自的速度。游戏把这类技能的基础时间标为 “Cast Time”，PoB2 与构筑码参考值也这样计，**没有找到游戏对施法速度作用范围的正式说明，也没有游戏内实测**。`ChannelTime` 只含引导阶段，不含释放与冷却。
 
 Spell Echo's `echoed_spell_area_of_effect_+%` increases the area of echoes only.
@@ -448,7 +494,7 @@ explicit transfer is equipped: `light_radius_additive_modifiers_apply_to_area_%_
 uses the rolled percentage (game Mods: 25–50); the accuracy and damage transfers
 use `light_radius_increases_apply_to_accuracy` and
 `light_radius_additive_modifiers_apply_to_damage`. Copies retain source and
-conditions. Without a transfer the ledger reports the missing state.
+conditions. `LightRadiusMod` displays the modifier itself, so without a transfer the ledger still counts the line as read there but the shared copies stay absent.
 
 `buff_time_passed_+%_only_buff_category` changes elapsed buff time: “Buffs on you
 expire 10% slower” divides the selected Buff skill's duration and the nominal
@@ -747,8 +793,22 @@ duration). It is not flat Damage Taken: the generic `N% of` rule used to read it
 that way, adding 29 (Abyssal Lich Twister `4028d0b52984`) or 21 (Martial Artist Ice
 Shot `71a879f43f2f`) to every damage type, and the pinned PoB2 drops the line
 because its mid-line form leaves an unparsed remainder. The rule is
-`exporter: "absent"`. A parse that leaves an `unparsed` remainder still returns
-`Parsed` and is applied by ingest; that general behaviour is unchanged here.
+`exporter: "absent"`.
+
+A line the parser reads only in part is not applied. A parse that returns `Parsed`
+with a non-empty `unparsed` remainder (for example “Removes 15% of Life Recovered
+from Mana when used”, which was a −15 `FlaskRecovery`, “88% more Recovery if used
+while on Low Mana”, which was a `FlaskLifeRecoveryLowLife` bonus, and “50% of Chaos
+damage you prevent when Hit Recouped as Life and Mana during effect”, which was +50
+`ChaosDamage`) used to be applied by ingest as a wrong modifier. Every ingest path now
+goes through `ParseOutcome::into_applicable`: item sections, flasks and charms,
+passive nodes, gem and support-gem stat texts, free `extra_modifier_texts`, jewel
+texts and local requirement lines apply a line only when `ParseOutcome::is_complete`
+holds; otherwise the original line is kept in `unsupported_modifier_texts` and
+the usage ledger reports it as `unparsed`, exactly like a line no rule matched. A
+remainder that is only display residue is fixed in the parser rule, not tolerated at
+ingest; the benchmark and tuned groups had none. Silently dropped pre-flag tags
+(`dropped_pre_flag_tags`, audit class `Partial`) are a separate, unchanged diagnostic.
 
 Focused Thrust (`projectile_damage_+%_with_spears_while_there_no_enemies_surrounding_you`, passive 9227) grants 40% increased Damage to Projectile hits with Spears when `enemyDistance` is at least 30 (3 m; ten units per metre), remains inactive with an `enemyDistance` config gate when unset, and assumes the configured target is the only enemy; this single-target convention has no in-game test, and the rule is `exporter: "absent"`.
 
@@ -814,7 +874,7 @@ PoB2 对照值与逻辑回归都使用活动数据版本，没有单独钉住的
 | 环节 | 丢失方式 | 记录位置 |
 |------|----------|----------|
 | 导入（XML → `Build`） | 物品块被拒、物品所在装备槽没有模型 | `ImportReport::skipped_items` / `unmodelled_slots` |
-| 文本 → Modifier | 没有规则能解析的词条行（物品、珠宝、已分配天赋 `Tree:<节点>: …`、配置行 `Config: …`） | `unsupported_modifier_texts` |
+| 文本 → Modifier | 没有规则能解析的词条行（物品、珠宝、已分配天赋 `Tree:<节点>: …`、配置行 `Config: …`）；只读懂一部分、留有未解析余文的行（`Parsed` 但 `unparsed` 非空）同样不应用，按原文记入 | `unsupported_modifier_texts`（台账 `unparsed`） |
 | 宝石 stat → Modifier | stat map 有条目但引擎拒绝（未知 mod 名、不支持的 tag）；完全没有条目的 stat 多数是展示或动画数据，按所属宝石列出供查找缺失的机制 | `Diagnosis::unmapped_stats` / `unknown_stats` |
 | Modifier → 计算 | 存入的名字从未被查询；依赖的 `Multiplier` 没有任何地方赋值（含从角色快照读取的 `actor: player` 类，例如 “per non-Idol Augment in your Equipment”）；等待的条件不在条件表里，也没有计算阶段推导它 | `Diagnosis::unread_modifiers` / `unprovided_multipliers` / `unset_conditions` |
 

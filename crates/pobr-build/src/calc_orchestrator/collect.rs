@@ -760,9 +760,9 @@ pub(crate) fn passive_effect_copies(
 }
 
 /// The single parseability-gate function (from B3, which killed the dual parser):
-/// determined by matching vendor's `list and not extra` (PassiveTree.lua:447's
-/// `if not list or extra` triggers wrap-merge retry) — i.e.
-/// `status == Parsed && unparsed == None`. The ingest side goes through the same engine;
+/// a line passes when the parser read all of it (`ParseOutcome::is_complete`: parsed
+/// with nothing left over), the same rule `ParseOutcome::into_applicable` applies at
+/// every ingest. A failing line triggers the wrap-merge retry. The ingest side goes through the same engine;
 /// the gate and ingest share one parser, so any new mod gap must be fixed in the data
 /// tables (mod_parser_rules.json / overlay). When the engine isn't injected (old data
 /// pack), there's no parser: everything is Unsupported → everything dropped.
@@ -773,9 +773,7 @@ pub(crate) fn gate_parses(ctx: ParseCtx<'_>, t: &str) -> bool {
     {
         return false;
     }
-    let pass = ctx.parse(t).is_ok_and(|o| {
-        matches!(o.status, pobr_core::mod_parser::ParseStatus::Parsed) && o.unparsed.is_none()
-    });
+    let pass = ctx.parse(t).is_ok_and(|o| o.is_complete());
     // Diagnostic: POBR_DBG_GATE=1 dumps lines dropped by the gate.
     if !pass && pobr_core::dbg_env!("POBR_DBG_GATE").is_some() {
         eprintln!("[GATE_DROP] {t}");

@@ -25,6 +25,7 @@ pub mod formula;
 pub mod hand_pass;
 pub(crate) mod hit_display;
 pub mod keystone_merge;
+pub(crate) mod limit_display;
 pub mod mageblood;
 pub mod minion;
 pub mod offence;

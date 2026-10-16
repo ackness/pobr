@@ -1192,10 +1192,7 @@ fn lines_without_modifiers(
             LineFate::LeftOut(reason) => (LineStatus::Inactive, Some(reason.to_string())),
             LineFate::Unparsed => (LineStatus::Unparsed, None),
             LineFate::Parsed => match parse.parse(text) {
-                Ok(outcome)
-                    if outcome.status == pobr_core::mod_parser::ParseStatus::Parsed
-                        && outcome.unparsed.is_none() =>
-                {
+                Ok(outcome) if outcome.is_complete() => {
                     if outcome.mods.is_empty() {
                         match outcome.special_meta {
                             Some(meta) if meta.no_effect => (

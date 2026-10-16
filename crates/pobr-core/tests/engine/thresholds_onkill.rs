@@ -350,3 +350,139 @@ fn heavy_stun_daze_bonus_follows_the_effective_enemy_condition() {
     assert!((run(true, true) - run(true, false) * 1.5).abs() < 1e-9);
     assert_eq!(run(false, true), run(false, false));
 }
+
+fn pin_session(lines: &[&str], flags: ModFlags) -> CalculationSession {
+    let mut session = session(lines).with_config(
+        CalcConfig::spell()
+            .with_flags(flags)
+            .with_mode_effective(true),
+    );
+    session.setup_enemy(10, pobr_data::monster::EnemyTier::None);
+    session.add_enemy_modifiers([Modifier::number("Armour", ModType::Override, 0.0)]);
+    session
+}
+
+/// `GameConstants.PinDamageScale` (4.2) over the poise threshold, with the
+/// percentage rounded the way the calculation does.
+fn pin_per_damage(threshold: f64, inc: f64, more: f64) -> f64 {
+    (4.2 / threshold * (1.0 + inc / 100.0) * more * 100.0 * 1e9_f64).round() / 1e9
+}
+
+#[test]
+fn pin_buildup_is_opt_in_per_damage_type_without_heavy_stun_multipliers() {
+    let per_damage = pin_per_damage(142.0, 0.0, 1.0);
+    let lines = ["Adds 100 to 100 Fire Damage", "Adds 100 to 100 Cold Damage"];
+    // No Pin source: the hit builds Heavy Stun but no Pin.
+    let mut none = pin_session(&lines, ModFlags::SPELL | ModFlags::MELEE);
+    none.perform_minimal().unwrap();
+    assert_eq!(display_value(none.output(), "PinBuildupAvg"), 0.0);
+    assert!(display_value(none.output(), "HeavyStunBuildupAvg") > 0.0);
+    // "Physical Damage is Pinning": only the 100 Physical damage counts. Heavy
+    // Stun's Physical (1.5) and Melee (1.5) multipliers do not apply to Pin.
+    let mut physical = pin_session(
+        &[lines[0], lines[1], "Physical Damage is Pinning"],
+        ModFlags::SPELL | ModFlags::MELEE,
+    );
+    physical.perform_minimal().unwrap();
+    let actual = display_value(physical.output(), "PinBuildupAvg");
+    assert!((actual - 100.0 * per_damage).abs() < 1e-6, "{actual}");
+    // All damage (`base_all_damage_can_pin`): Fire is resisted by 50%, so
+    // 100 Physical + 50 Fire + 100 Cold build Pin.
+    let mut all = pin_session(&lines, ModFlags::SPELL);
+    all.add_modifiers([Modifier::flag("CanPin")]);
+    all.add_enemy_modifiers([Modifier::number("FireResist", ModType::Base, 50.0)]);
+    all.perform_minimal().unwrap();
+    let actual = display_value(all.output(), "PinBuildupAvg");
+    assert!((actual - 250.0 * per_damage).abs() < 1e-6, "{actual}");
+    // The derived view reconstructs the value from its own inputs.
+    let detail = all.derived_detail("PinBuildupAvg").unwrap();
+    let get = |id: &str| detail.inputs.iter().find(|(name, _)| name == id).unwrap().1;
+    let pct = (get("PinDamageScale") / get("EnemyPoiseThreshold")
+        * (1.0 + get("PinBuildupIncreased") / 100.0)
+        * get("PinBuildupMore")
+        * 100.0
+        * 1e9)
+        .round()
+        / 1e9;
+    let reconstructed = (get("PhysicalPinningHitAverage")
+        + get("FirePinningHitAverage")
+        + get("ColdPinningHitAverage"))
+        * pct
+        * get("EnemyPinBuildupMultiplier");
+    assert_eq!(get("PinDamageScale"), 4.2);
+    assert!((actual - reconstructed).abs() < 1e-9);
+    // `cannot_pin` forces zero.
+    let mut cannot = pin_session(&lines, ModFlags::SPELL);
+    cannot.add_modifiers([Modifier::flag("CanPin"), Modifier::flag("CannotPin")]);
+    cannot.perform_minimal().unwrap();
+    assert_eq!(display_value(cannot.output(), "PinBuildupAvg"), 0.0);
+}
+
+#[test]
+fn pin_buildup_critical_source_counts_only_the_critical_physical_portion() {
+    // 100 Physical, 50% critical chance, base critical damage doubles it.
+    let mut session = pin_session(&["Physical Spell Critical Hits build Pin"], ModFlags::SPELL);
+    session.add_modifiers([Modifier::number("SkillBaseCritChance", ModType::Base, 50.0)]);
+    session.perform_minimal().unwrap();
+    // Crit leg: 200 * 0.5 = 100 of the 150 average builds Pin.
+    let per_damage = pin_per_damage(142.0, 0.0, 1.0);
+    let actual = display_value(session.output(), "PinBuildupAvg");
+    assert!((actual - 100.0 * per_damage).abs() < 1e-6, "{actual}");
+    // Non-spell hits do not carry the spell-only source.
+    let mut attack = pin_session(
+        &["Physical Spell Critical Hits build Pin"],
+        ModFlags::ATTACK,
+    );
+    attack.add_modifiers([Modifier::number("SkillBaseCritChance", ModType::Base, 50.0)]);
+    attack.perform_minimal().unwrap();
+    assert_eq!(display_value(attack.output(), "PinBuildupAvg"), 0.0);
+}
+
+#[test]
+fn pin_buildup_projectile_source_and_modifier_readers() {
+    let lines = [
+        "Projectile Damage builds Pin",
+        "50% increased Pin Buildup",
+        "20% increased Immobilisation Buildup",
+    ];
+    let build = |flags| {
+        let mut session = pin_session(&lines, flags);
+        session.add_modifiers([Modifier::number("EnemyPinBuildup", ModType::More, 20.0)]);
+        session.add_enemy_modifiers([
+            Modifier::number("PoiseThreshold", ModType::More, 100.0),
+            Modifier::number("PinBuildup", ModType::Inc, 30.0),
+            Modifier::number("ImmobilisationBuildup", ModType::More, 10.0),
+        ]);
+        session.perform_minimal().unwrap();
+        session
+    };
+    assert_eq!(
+        display_value(build(ModFlags::SPELL).output(), "PinBuildupAvg"),
+        0.0
+    );
+    let session = build(ModFlags::SPELL | ModFlags::PROJECTILE);
+    // floor(142 * 2) = 284; INC 50 + 20; MORE 1.2; enemy 1.3 * 1.1.
+    let expected = 100.0 * pin_per_damage(284.0, 70.0, 1.2) * 1.3 * 1.1;
+    let actual = display_value(session.output(), "PinBuildupAvg");
+    assert!((actual - expected).abs() < 1e-6, "{actual} vs {expected}");
+}
+
+#[test]
+fn pin_support_pins_instead_of_heavy_stunning() {
+    let mut session = pin_session(&["Physical Damage is Pinning"], ModFlags::SPELL);
+    // `support_pin_buildup_pin_instead_of_stun` as the skill stat map writes it.
+    session.add_modifiers([Modifier::flag("PinBuildupInsteadOfHeavyStunBuildup")]);
+    session.perform_minimal().unwrap();
+    assert_eq!(display_value(session.output(), "HeavyStunBuildupAvg"), 0.0);
+    let pin = display_value(session.output(), "PinBuildupAvg");
+    assert!(
+        (pin - 100.0 * pin_per_damage(142.0, 0.0, 1.0)).abs() < 1e-6,
+        "{pin}"
+    );
+    // Without the Pin support the same hit builds Heavy Stun (Physical 1.5).
+    let mut stun = pin_session(&["Physical Damage is Pinning"], ModFlags::SPELL);
+    stun.perform_minimal().unwrap();
+    let expected = 100.0 * 1.5 * (0.58 / 142.0 * 100.0 * 1e9_f64).round() / 1e9;
+    let actual = display_value(stun.output(), "HeavyStunBuildupAvg");
+    assert!((actual - expected).abs() < 1e-6, "{actual} vs {expected}");
+}

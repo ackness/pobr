@@ -71,6 +71,10 @@ pub struct Env {
     pub curse_pass_output: Option<CursePassOutput>,
     /// The selected hit's Heavy Stun buildup inputs, retained for its derived view.
     pub(crate) heavy_stun_terms: Option<super::ailment::HeavyStunTerms>,
+    /// Chill and Shock maximums and applied magnitudes from the enemy-ailment
+    /// stage, retained for the Calcs `Maximum*` and `Current*` views.
+    pub(crate) applied_ailments: super::ailment_apply::AppliedAilments,
+    pub(crate) pin_terms: Option<super::ailment::PinTerms>,
     /// The crossbow reload cycle `perform` scaled the rate and DPS by
     /// (`None` when the stage changed nothing).
     pub crossbow_reload: Option<super::CrossbowReload>,
@@ -125,6 +129,8 @@ impl Env {
             curse_priority: None,
             curse_pass_output: None,
             heavy_stun_terms: None,
+            applied_ailments: super::ailment_apply::AppliedAilments::default(),
+            pin_terms: None,
             crossbow_reload: None,
             legacy_ehp_terms: None,
             leech_gain_terms: [[[0.0; 3]; 3]; 2],

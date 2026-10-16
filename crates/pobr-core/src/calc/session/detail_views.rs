@@ -44,7 +44,14 @@ pub const DERIVED_STATS: &[&str] = &[
     "ColdResistTotal",
     "LightningResistTotal",
     "ChaosResistTotal",
+    "LowLifePercentage",
+    "LowestAttribute",
+    "MaximumChill",
+    "MaximumShock",
+    "CurrentChill",
+    "CurrentShock",
     "HeavyStunBuildupAvg",
+    "PinBuildupAvg",
     "PhysicalTakenDamage",
     "FireTakenDamage",
     "ColdTakenDamage",
@@ -238,6 +245,9 @@ impl CalculationSession {
         if crate::calc::ailment_display::is_display_stat(stat) {
             return crate::calc::ailment_display::detail(&self.env, stat);
         }
+        if crate::calc::limit_display::has_derived_detail(stat) {
+            return crate::calc::limit_display::detail(&self.env, stat);
+        }
         let env = &self.env;
         let out = &env.player.output;
         let db = &env.player.mod_db;
@@ -266,6 +276,38 @@ impl CalculationSession {
                             ("StunBuildupMore".into(), t.more),
                             ("EnemyStunBuildupMultiplier".into(), t.enemy_multiplier),
                         ],
+                    )
+                }
+            }
+            "PinBuildupAvg" => {
+                let t = env.pin_terms.as_ref()?;
+                let rows: Vec<_> = crate::calc::ailment::PIN_DAMAGE_TYPES
+                    .iter()
+                    .zip(t.damage)
+                    .filter(|(_, damage)| *damage != 0.0)
+                    .map(|(kind, damage)| (format!("{kind:?}PinningHitAverage"), damage))
+                    .collect();
+                if !t.enabled || t.threshold <= 0.0 || rows.is_empty() {
+                    ("0 * CanPin".into(), vec![("CanPin".into(), 0.0)])
+                } else {
+                    let damage = rows
+                        .iter()
+                        .map(|(id, _)| id.as_str())
+                        .collect::<Vec<_>>()
+                        .join(" + ");
+                    let mut inputs = rows;
+                    inputs.extend([
+                        ("PinDamageScale".into(), t.damage_scale),
+                        ("EnemyPoiseThreshold".into(), t.threshold),
+                        ("PinBuildupIncreased".into(), t.increased),
+                        ("PinBuildupMore".into(), t.more),
+                        ("EnemyPinBuildupMultiplier".into(), t.enemy_multiplier),
+                    ]);
+                    (
+                        format!(
+                            "({damage}) * round(PinDamageScale / EnemyPoiseThreshold * (1 + PinBuildupIncreased / 100) * PinBuildupMore * 100, 9) * EnemyPinBuildupMultiplier"
+                        ),
+                        inputs,
                     )
                 }
             }
@@ -399,10 +441,20 @@ impl CalculationSession {
                     element,
                     element != "Chaos",
                 );
+                // Resistance truncates toward zero: floor when positive, ceil when negative.
+                let raw = r.override_total.unwrap_or_else(|| {
+                    (r.base + r.flat) * ((1.0 + r.inc / 100.0) * r.more).max(0.0)
+                });
+                let toward_zero = if raw >= 0.0 { "floor" } else { "ceil" };
                 match r.override_total {
-                    Some(value) => ("trunc(OverrideResistance)".into(), vec![("OverrideResistance".into(), value)]),
+                    Some(value) => (
+                        format!("{toward_zero}(OverrideResistance)"),
+                        vec![("OverrideResistance".into(), value)],
+                    ),
                     None => (
-                        "trunc((BaseResistance + FlatResistance) * max((1 + IncreasedResistance / 100) * MoreResistance, 0))".into(),
+                        format!(
+                            "{toward_zero}((BaseResistance + FlatResistance) * max((1 + IncreasedResistance / 100) * MoreResistance, 0))"
+                        ),
                         vec![
                             ("BaseResistance".into(), r.base),
                             ("FlatResistance".into(), r.flat),
