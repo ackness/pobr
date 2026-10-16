@@ -867,7 +867,8 @@ fn fill_mechanics(env: &mut Env) {
     //     from F-3, at the end this switches the canonical `total_ehp`/`*_max_hit` to the new
     //     convention's values, and overwrites avoid_stun / the Stun system with the real
     //     totalTakenHit value. ---
-    let recoupable_total = super::ehp::fill_ehp_pob2(env, &keystones, &resistances);
+    let recoupable_by_type = super::ehp::fill_ehp_pob2(env, &keystones, &resistances);
+    let recoupable_total: f64 = recoupable_by_type.iter().sum();
 
     // Recoup (13-G15 partial: base-value replacement)
     // Old convention = life × 10% estimate (decoupled from the hit pipeline); new convention =
@@ -879,13 +880,16 @@ fn fill_mechanics(env: &mut Env) {
     // swapped for the real value).
     // With no enemy incoming damage (a bare Env) → base 0 → rate 0 (matches vendor's
     // no-incoming-damage semantics).
+    // ES recoup is per-type: generic EnergyShieldRecoup (+ Life transfer) applies
+    // to all recoupable, while Fire/Cold/LightningEnergyShieldRecoup (from
+    // recoup_%_elemental_damage_as_energy_shield) apply to their damage type's
+    // recoupable only — same duration and ES recovery rate for both.
     let (life_recoup_rate, es_recoup_rate) = {
         let db = &env.player.mod_db;
         let cfg = &env.cfg;
         (
             calc_recoup_from_db(db, cfg, recoupable_total, RecoupResource::Life).rate_per_second,
-            calc_recoup_from_db(db, cfg, recoupable_total, RecoupResource::EnergyShield)
-                .rate_per_second,
+            super::survivability::calc_es_recoup_rate_by_type(db, cfg, recoupable_by_type),
         )
     };
     env.player.output.life_recoup_rate = life_recoup_rate;

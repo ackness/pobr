@@ -9,9 +9,10 @@ use pobr_core::{
         AllChargeStates, ChargeKind, ChargeState, DEFAULT_CHARGE_DURATION_SECONDS,
         DEFAULT_MAX_CHARGES, LEECH_DURATION_SECONDS, LEECH_EFFECTIVE_MAX_HIT_DAMAGE,
         LEECH_MAX_ES_RATE_PCT, LEECH_MAX_LIFE_RATE_PCT, LEECH_MAX_MANA_RATE_PCT, LeechResource,
-        RECOUP_DURATION_4S, RECOUP_DURATION_DEFAULT, RecoupResource, calc_leech,
-        calc_leech_from_db, calc_recoup, calc_recoup_from_db, calc_regen, charge_maximum,
-        charge_minimum, regen, regen_with_rate, resolve_all_charges, resolve_charge_state,
+        RECOUP_DURATION_4S, RECOUP_DURATION_DEFAULT, RecoupResource, calc_es_recoup_rate_by_type,
+        calc_leech, calc_leech_from_db, calc_recoup, calc_recoup_from_db, calc_regen,
+        charge_maximum, charge_minimum, es_recoup_terms, regen, regen_with_rate,
+        resolve_all_charges, resolve_charge_state,
     },
 };
 use pobr_data::prelude::*;
@@ -621,4 +622,75 @@ fn calc_recoup_from_db_es_recoup() {
     // total = 500*20%=100; rate=100/8=12.5/s
     assert!((r.rate_per_second - 12.5).abs() < 0.001);
     assert_eq!(r.duration, 8.0);
+}
+
+/// Elemental ES recoup (stat recoup_%_elemental_damage_as_energy_shield:
+/// Storm Driven, ES Recoup nodes, desecrated body/shield mod) — parsed as
+/// Fire/Cold/LightningEnergyShieldRecoup BASE. Reads with the same 8s/4s timing
+/// and the Energy Shield recovery rate as generic ES recoup.
+///
+/// Hand calc: 15% elemental (all three types 15) with pure-fire recoupable
+/// 1000 (Physical/Fire/Cold/Lightning/Chaos order: [0,1000,0,0,0]) →
+/// total = 1000×15% = 150; rate = 150/8 = 18.75/s. Pure-physical recoupable
+/// [1000,0,0,0,0] → elemental pct 0 → rate 0 — appears for fire hits only.
+#[test]
+fn elemental_es_recoup_applies_to_fire_hits_only() {
+    let mut db = ModDb::new();
+    let cfg = CalcConfig::new();
+    // "15% of Elemental Damage taken Recouped as Energy Shield".
+    for name in [
+        "FireEnergyShieldRecoup",
+        "ColdEnergyShieldRecoup",
+        "LightningEnergyShieldRecoup",
+    ] {
+        db.add_mod(make_modifier(name, ModType::Base, 15.0));
+    }
+    // Pure fire hit: 1000 fire recoupable → 150 total → 18.75/s.
+    let fire = calc_es_recoup_rate_by_type(&db, &cfg, [0.0, 1000.0, 0.0, 0.0, 0.0]);
+    assert!((fire - 18.75).abs() < 0.001, "got {fire}");
+    // Pure physical hit: elemental recoup does not apply → 0.
+    let phys = calc_es_recoup_rate_by_type(&db, &cfg, [1000.0, 0.0, 0.0, 0.0, 0.0]);
+    assert_eq!(phys, 0.0);
+}
+
+/// The EsRecoupRate derived detail lists the shared terms' per-type inputs,
+/// so evaluating its formula from those inputs reconstructs the panel rate.
+/// Same setup as above: 15% elemental, pure-fire recoupable 1000.
+#[test]
+fn es_recoup_detail_inputs_reconstruct_rate_with_elemental_recoup() {
+    let mut db = ModDb::new();
+    let cfg = CalcConfig::new();
+    for name in [
+        "FireEnergyShieldRecoup",
+        "ColdEnergyShieldRecoup",
+        "LightningEnergyShieldRecoup",
+    ] {
+        db.add_mod(make_modifier(name, ModType::Base, 15.0));
+    }
+    // Physical/Fire/Cold/Lightning/Chaos order.
+    let t = es_recoup_terms(&db, &cfg, [0.0, 1000.0, 0.0, 0.0, 0.0]);
+    // Generic ES percent is 0, so each elemental type carries exactly its own 15%.
+    assert_eq!(
+        t.percent_by_type,
+        [0.0, 15.0, 15.0, 15.0, 0.0],
+        "percents {:?}",
+        t.percent_by_type
+    );
+    assert_eq!(t.duration, 8.0);
+    assert_eq!(t.recovery, 1.0);
+    // The detail formula evaluated from the detail inputs:
+    // round((Σ recoupable × percent) / 100 / duration × recovery).
+    let total: f64 = t
+        .recoupable_by_type
+        .iter()
+        .zip(t.percent_by_type.iter())
+        .map(|(dmg, pct)| dmg * pct)
+        .sum();
+    let reconstructed = (total / 100.0 / t.duration * t.recovery.max(0.0) * 1e9).round() / 1e9;
+    assert!((reconstructed - 18.75).abs() < 1e-9, "got {reconstructed}");
+    assert_eq!(t.rate_per_second, reconstructed);
+    assert_eq!(
+        calc_es_recoup_rate_by_type(&db, &cfg, [0.0, 1000.0, 0.0, 0.0, 0.0]),
+        reconstructed
+    );
 }

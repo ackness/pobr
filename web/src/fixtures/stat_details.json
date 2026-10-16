@@ -3838,12 +3838,44 @@
       "formula": "0 * RecoupableDamage",
       "inputs": [
         {
-          "id": "RecoupableDamage",
+          "id": "RecoupablePhysical",
           "value": 0.0
         },
         {
-          "id": "RecoupPercent",
-          "value": -0.0
+          "id": "RecoupableFire",
+          "value": 0.0
+        },
+        {
+          "id": "RecoupableCold",
+          "value": 0.0
+        },
+        {
+          "id": "RecoupableLightning",
+          "value": 0.0
+        },
+        {
+          "id": "RecoupableChaos",
+          "value": 0.0
+        },
+        {
+          "id": "RecoupPctPhysical",
+          "value": 0.0
+        },
+        {
+          "id": "RecoupPctFire",
+          "value": 0.0
+        },
+        {
+          "id": "RecoupPctCold",
+          "value": 0.0
+        },
+        {
+          "id": "RecoupPctLightning",
+          "value": 0.0
+        },
+        {
+          "id": "RecoupPctChaos",
+          "value": 0.0
         },
         {
           "id": "RecoupDuration",

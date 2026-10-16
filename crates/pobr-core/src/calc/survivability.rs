@@ -735,20 +735,53 @@ pub fn calc_recoup_from_db(
     calc_recoup(t.damage, t.percent, t.duration, t.recovery)
 }
 
+/// Recoup duration for a resource: the global `4SecondRecoup` flag or the
+/// resource's own `4SecondXRecoup` flag selects the 4s duration, otherwise
+/// the 8s default.
+fn recoup_duration(db: &ModDb, cfg: &CalcConfig, resource: RecoupResource) -> f64 {
+    let four_sec = db.flag(cfg, RecoupResource::four_sec_flag_global())
+        || db.flag(cfg, resource.four_sec_flag());
+    if four_sec {
+        RECOUP_DURATION_4S
+    } else {
+        RECOUP_DURATION_DEFAULT
+    }
+}
+
+/// Recovery rate multiplier for a resource: its `XRecoveryRate` INC/MORE
+/// merged into a multiplier (shared with regen).
+fn recoup_recovery_rate(db: &ModDb, cfg: &CalcConfig, resource: RecoupResource) -> f64 {
+    let name = match resource {
+        RecoupResource::Life => ModName::from("LifeRecoveryRate"),
+        RecoupResource::Mana => ModName::from("ManaRecoveryRate"),
+        RecoupResource::EnergyShield => ModName::from("EnergyShieldRecoveryRate"),
+    };
+    let inc = db.sum(ModType::Inc, cfg, std::slice::from_ref(&name));
+    (1.0 + inc / 100.0) * db.more(cfg, &[name])
+}
+
+/// Generic recoup percentage for a resource: its `XRecoup` BASE, plus
+/// `LifeRecoup` for Energy Shield when `LifeRecoupAlsoAppliesToEnergyShield`
+/// (copies the percentage; the recipient keeps its own timing and recovery).
+fn recoup_base_percent(db: &ModDb, cfg: &CalcConfig, resource: RecoupResource) -> f64 {
+    let mut pct = db.sum(ModType::Base, cfg, &[resource.recoup_mod_name()]);
+    // life_recoup_also_applies_to_energy_shield copies the percentage;
+    // the recipient retains its own recovery rate and recoup duration.
+    if resource == RecoupResource::EnergyShield
+        && db.flag(cfg, "LifeRecoupAlsoAppliesToEnergyShield")
+    {
+        pct += db.sum(ModType::Base, cfg, &[ModName::from("LifeRecoup")]);
+    }
+    pct
+}
+
 pub(crate) fn recoup_terms(
     db: &ModDb,
     cfg: &CalcConfig,
     damage_taken: f64,
     resource: RecoupResource,
 ) -> RecoupTerms {
-    let mut recoup_pct = db.sum(ModType::Base, cfg, &[resource.recoup_mod_name()]);
-    // life_recoup_also_applies_to_energy_shield copies the percentage;
-    // the recipient retains its own recovery rate and recoup duration.
-    if resource == RecoupResource::EnergyShield
-        && db.flag(cfg, "LifeRecoupAlsoAppliesToEnergyShield")
-    {
-        recoup_pct += db.sum(ModType::Base, cfg, &[ModName::from("LifeRecoup")]);
-    }
+    let recoup_pct = recoup_base_percent(db, cfg, resource);
     if recoup_pct <= 0.0 {
         return RecoupTerms {
             damage: damage_taken,
@@ -758,29 +791,81 @@ pub(crate) fn recoup_terms(
         };
     }
 
-    // Duration: the global 4s flag or the per-resource 4s flag
-    let four_sec = db.flag(cfg, RecoupResource::four_sec_flag_global())
-        || db.flag(cfg, resource.four_sec_flag());
-    let duration = if four_sec {
-        RECOUP_DURATION_4S
-    } else {
-        RECOUP_DURATION_DEFAULT
-    };
-
-    // RecoveryRateMod: this resource's XRecoveryRate inc/more merged into a multiplier
-    let recovery_rate_name = match resource {
-        RecoupResource::Life => ModName::from("LifeRecoveryRate"),
-        RecoupResource::Mana => ModName::from("ManaRecoveryRate"),
-        RecoupResource::EnergyShield => ModName::from("EnergyShieldRecoveryRate"),
-    };
-    let rate_inc = db.sum(ModType::Inc, cfg, std::slice::from_ref(&recovery_rate_name));
-    let rate_more = db.more(cfg, &[recovery_rate_name]);
-    let recovery_rate_mod = (1.0 + rate_inc / 100.0) * rate_more;
-
     RecoupTerms {
         damage: damage_taken,
         percent: recoup_pct,
-        duration,
-        recovery: recovery_rate_mod,
+        duration: recoup_duration(db, cfg, resource),
+        recovery: recoup_recovery_rate(db, cfg, resource),
     }
+}
+
+/// Energy Shield recoup with per-damage-type percentages, shared by the panel
+/// rate and the EsRecoupRate derived detail so the detail's inputs reconstruct it.
+///
+/// `percent_by_type` is Physical/Fire/Cold/Lightning/Chaos order: the generic
+/// ES percentage on every type, plus `Fire/Cold/LightningEnergyShieldRecoup`
+/// (game stat `recoup_%_elemental_damage_as_energy_shield`, parsed as three
+/// per-type BASE mods) on its own type. Duration and recovery are the shared
+/// ES timing and Energy Shield recovery rate; `rate_per_second` is
+/// `round(Σ recoupable × percent / 100 / duration × recovery)`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct EsRecoupTerms {
+    pub recoupable_by_type: [f64; 5],
+    pub percent_by_type: [f64; 5],
+    pub duration: f64,
+    pub recovery: f64,
+    pub rate_per_second: f64,
+}
+
+pub fn es_recoup_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    recoupable_by_type: [f64; 5],
+) -> EsRecoupTerms {
+    use pobr_data::constants::DamageType as DT;
+    let base = recoup_base_percent(db, cfg, RecoupResource::EnergyShield);
+    let specific = [
+        (DT::Fire, "FireEnergyShieldRecoup"),
+        (DT::Cold, "ColdEnergyShieldRecoup"),
+        (DT::Lightning, "LightningEnergyShieldRecoup"),
+    ];
+    let mut percent_by_type = [base; 5];
+    for (dtype, name) in specific {
+        percent_by_type[dtype as usize] += db.sum(ModType::Base, cfg, &[ModName::from(name)]);
+    }
+    let duration = recoup_duration(db, cfg, RecoupResource::EnergyShield);
+    let recovery = recoup_recovery_rate(db, cfg, RecoupResource::EnergyShield);
+    let mut total = 0.0;
+    for (dmg, pct) in recoupable_by_type.iter().zip(percent_by_type.iter()) {
+        if *dmg > 0.0 && *pct > 0.0 {
+            total += dmg.max(0.0) * pct / 100.0;
+        }
+    }
+    let rate_per_second = if total <= 0.0 || duration <= 0.0 {
+        0.0
+    } else {
+        round(total / duration * recovery.max(0.0))
+    };
+    EsRecoupTerms {
+        recoupable_by_type,
+        percent_by_type,
+        duration,
+        recovery,
+        rate_per_second,
+    }
+}
+
+/// The ES recoup per-second rate from per-type recoupable damage
+/// (`recoupable_by_type` in Physical/Fire/Cold/Lightning/Chaos order).
+///
+/// This reads `Fire/Cold/LightningEnergyShieldRecoup` (was unread): 15%
+/// elemental ES recoup recoups 15% of fire/cold/lightning damage taken, and
+/// nothing of physical/chaos damage — so it appears for fire hits only (when
+/// the recoupable is pure fire).
+pub fn calc_es_recoup_rate_by_type(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    recoupable_by_type: [f64; 5],
+) -> f64 {
+    es_recoup_terms(db, cfg, recoupable_by_type).rate_per_second
 }
