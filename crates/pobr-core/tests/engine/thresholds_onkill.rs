@@ -141,3 +141,32 @@ fn daze_chance_is_a_capped_hit_chance() {
         assert_eq!(display_value(session.output(), "DazeChance"), expected);
     }
 }
+
+#[test]
+fn fully_broken_armour_scales_physical_hits_and_leaves_bleed_unchanged() {
+    let run = |broken, amount| {
+        let mut session = session(&[
+            "50% increased effect of Fully Broken Armour",
+            "100% chance to inflict Bleeding on Hit",
+        ]);
+        if broken {
+            session.add_enemy_modifiers([
+                Modifier::number("Armour", ModType::Base, 1000.0),
+                Modifier::flag("ArmourBreakConfigured"),
+                Modifier::number("ArmourBreakAmount", ModType::Base, amount),
+            ]);
+        }
+        session.perform_minimal().unwrap();
+        session.output().clone()
+    };
+    let base = run(false, 0.0);
+    let full = run(true, 0.0);
+    let partial = run(true, 250.0);
+    // Game keyword: Fully Broken Armour gives 20% increased physical hit
+    // damage taken. 50% increased effect makes it 30%: 100 * 1.3 = 130.
+    assert_eq!(full.fully_broken_armour_effect, 30.0);
+    assert_eq!(full.average_damage, 130.0);
+    assert_eq!(full.bleed_dps, base.bleed_dps);
+    assert!(partial.average_damage < 100.0);
+    assert_eq!(base.average_damage, 100.0);
+}

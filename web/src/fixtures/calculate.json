@@ -4,6 +4,7 @@
     "AccuracyHitChanceUncapped": "derived",
     "ActionRate": "steps",
     "ActiveMinionLimit": "sources",
+    "AilmentThreshold": "sources",
     "AoeAreaMod": "sources",
     "AoeRadius": "sources",
     "AreaOfEffectRadiusMetres": "derived",
@@ -77,6 +78,7 @@
     "CritMultiplier": "steps",
     "CullingDPS": "derived",
     "CurseEffectMod": "sources",
+    "DazeChance": "sources",
     "DecayDPS": "derived",
     "DeflectChance": "derived",
     "DeflectionRating": "derived",
@@ -96,6 +98,7 @@
     "EnergyShield": "steps",
     "EnergyShieldLeechGainPerHit": "derived",
     "EnergyShieldLeechGainRate": "derived",
+    "EnergyShieldOnKill": "sources",
     "EnergyShieldRecoveryCap": "derived",
     "EnergyShieldRegen": "sources",
     "EnergyShieldRegenRecovery": "sources",
@@ -136,6 +139,7 @@
     "FreezeBuildupPct": "sources",
     "FullDPS": "derived",
     "FullDotDPS": "derived",
+    "FullyBrokenArmourEffect": "sources",
     "HitChance": "steps",
     "HitSpeed": "derived",
     "IgniteDPS": "steps",
@@ -147,6 +151,7 @@
     "LifeLeechGainPerHit": "derived",
     "LifeLeechGainRate": "derived",
     "LifeLeechRate": "derived",
+    "LifeOnKill": "sources",
     "LifePerSecondCost": "derived",
     "LifePercentCost": "sources",
     "LifePercentPerSecondCost": "derived",
@@ -168,6 +173,7 @@
     "ManaLeechGainPerHit": "derived",
     "ManaLeechGainRate": "derived",
     "ManaLeechRate": "derived",
+    "ManaOnKill": "sources",
     "ManaPerSecondCost": "derived",
     "ManaPercentCost": "sources",
     "ManaPercentPerSecondCost": "derived",
@@ -3410,6 +3416,36 @@
       "value": 0.0
     },
     {
+      "category": "Defence",
+      "id": "AilmentThreshold",
+      "value": 2688.5
+    },
+    {
+      "category": "Recovery",
+      "id": "LifeOnKill",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "ManaOnKill",
+      "value": 27.0
+    },
+    {
+      "category": "Recovery",
+      "id": "EnergyShieldOnKill",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "DazeChance",
+      "value": -0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "FullyBrokenArmourEffect",
+      "value": 20.0
+    },
+    {
       "category": "Ailment",
       "id": "ChillEffect",
       "value": 0.0
@@ -3417,7 +3453,7 @@
     {
       "category": "Ailment",
       "id": "FreezeBuildupPct",
-      "value": 0.000147739
+      "value": 0.00019206
     },
     {
       "category": "Ailment",

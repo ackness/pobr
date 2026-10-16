@@ -232,6 +232,19 @@ with lookup implementations organized under `build_data/{skills,equipment,passiv
 
 “Gain #% of Physical Damage as Chaos Damage”（`PhysicalDamageAsChaos`，不带 extra）与 “as extra Chaos Damage” 一样是额外获得的伤害，进入同一张 gain 表（`calc/damage.rs::gain_names`），来源伤害不减少。Embitter（`all_damage_gained_as_cold_instead`，“causing all sources of Damage Gained to instead be treated as Damage Gained as extra Cold”）把这张表里每一行获得的额外伤害都记为冰（`skill_stats::GAINS_ONLY_COLD`）。
 
+Player `AilmentThreshold` starts at half maximum Life, adds flat threshold and
+percentages of final maximum Energy Shield, then applies threshold increases
+and multipliers ([game keyword text](https://poe2db.tw/us/Keywords)).
+`LifeOnKill`, `ManaOnKill` and `EnergyShieldOnKill` report flat recovery plus
+percentages of their final maximum pool per kill, respecting recovery blocks;
+they do not assume a kill frequency. `DazeChance` reports the selected hit's
+chance, capped at 100%. Freeze buildup reads `FreezeBuildup` alongside the
+existing enemy/immobilisation modifiers. Fully Broken Armour removes Armour
+and makes non-player targets take 20% increased Physical damage from Hits;
+`FullyBrokenArmourEffect` displays that percentage after effect modifiers,
+and it affects hits only when the enemy is configured as fully broken.
+These fields expose source details through the display catalog.
+
 伤害型异常（流血、点燃、毒）的同时层数 = 命中率 × 施加几率 × 持续时间 × 每秒命中数，持续时间是基础时间乘持续时间加成（含 “increased duration of Ailments you inflict”，`EnemyAilmentDuration`）与敌人身上效果的过期速度，再除以 “Damaging Ailments deal damage #% faster”：伤害总量不变、造成得更快，每份结束得更早（`calc/perform.rs`，分解里写作 “faster /N”）。
 
 “你和 Presence 内的友军 …” 类词条（例如 Infernalist 的 Bringer of Flame：“All Damage from you and Allies in your Presence contributes to Flammability and Ignite Magnitudes”）角色自己也有。PoBR 的 `ExtraAura` 只给友军，所以抽取器把 PoB2 规则里不带 `onlyAllies` 的 `ExtraAura` 展开为角色自己的词条（带同样的条件）加给友军的 `ExtraAura`（`sync-pob-catalog` 的 `character_share_of_aura`）；带 `onlyAllies` 的规则抽取器不收。

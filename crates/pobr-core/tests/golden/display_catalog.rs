@@ -52,8 +52,9 @@ fn catalog_entry_counts_locked() {
         // UtilityFlaskChargeGen, plus Flask{1,2} and Charm{1,2,3} Duration,
         // ChargesMax, ChargesUsed, Uses, ChargeGen and ChargesGained; flasks
         // also expose Recovery, InstantRecovery and RecoveryPerSecond (+41).
-        // AilmentThreshold, LifeOnKill, ManaOnKill, EnergyShieldOnKill, DazeChance.
-        263,
+        // AilmentThreshold, LifeOnKill, ManaOnKill, EnergyShieldOnKill,
+        // DazeChance and FullyBrokenArmourEffect (+6).
+        264,
         "a change in Computed entry count needs explicit review"
     );
 }

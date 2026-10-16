@@ -210,6 +210,7 @@ fn fill_threshold_and_kill_views(env: &mut Env) {
     out.daze_chance = db
         .sum(ModType::Base, &hit_cfg, &[ModName::from("DazeChance")])
         .clamp(0.0, 100.0);
+    out.fully_broken_armour_effect = super::armour_break::fully_broken_effect(db, cfg);
     for (resource, value) in [
         ("Life", &mut out.life_on_kill),
         ("Mana", &mut out.mana_on_kill),

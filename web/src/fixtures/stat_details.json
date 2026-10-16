@@ -222,6 +222,55 @@
     "mods": [],
     "more_total": 1.0
   },
+  "AilmentThreshold": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 2688.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "node.14666",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "Gain additional [AilmentThreshold|Ailment Threshold] equal to 8% of maximum [EnergyShield|Energy Shield]",
+            "value": 768.0
+          },
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "node.517",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "Gain additional [AilmentThreshold|Ailment Threshold] equal to 8% of maximum [EnergyShield|Energy Shield]",
+            "value": 768.0
+          },
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "node.9642",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "Gain additional [AilmentThreshold|Ailment Threshold] equal to 12% of maximum [EnergyShield|Energy Shield]",
+            "value": 1152.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "AilmentThreshold"
+      }
+    ]
+  },
   "AoeAreaMod": {
     "actor": {
       "kind": "player"
@@ -2614,6 +2663,17 @@
     "mods": [],
     "more_total": 1.0
   },
+  "DazeChance": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
   "DecayDPS": {
     "actor": {
       "kind": "player"
@@ -3615,6 +3675,17 @@
     "formula": null,
     "inc_total": 0.0,
     "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "EnergyShieldOnKill": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
     "mods": [],
     "more_total": 1.0
   },
@@ -4844,7 +4915,27 @@
     "inc_total": 0.0,
     "kind": "sources",
     "mods": [],
-    "more_total": 1.0
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 0.0,
+        "inc_total": 30.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "item.gloves.enchant",
+            "origin_kind": "ItemEnchant",
+            "slot": "gloves",
+            "source_text": "30% increased Magnitude of Non-Damaging Ailments you inflict",
+            "value": 30.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "FreezeBuildup"
+      }
+    ]
   },
   "FullDPS": {
     "actor": {
@@ -4885,6 +4976,17 @@
     "formula": null,
     "inc_total": 0.0,
     "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "FullyBrokenArmourEffect": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
     "mods": [],
     "more_total": 1.0
   },
@@ -5650,6 +5752,17 @@
     "formula": null,
     "inc_total": 0.0,
     "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "LifeOnKill": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
     "mods": [],
     "more_total": 1.0
   },
@@ -6468,6 +6581,37 @@
     "kind": "derived",
     "mods": [],
     "more_total": 1.0
+  },
+  "ManaOnKill": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 27.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "item.ring2.explicit",
+            "origin_kind": "ItemAffix",
+            "slot": "ring2",
+            "source_text": "Gain 27 Mana per enemy killed",
+            "value": 27.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "ManaOnKill"
+      }
+    ]
   },
   "ManaPerSecondCost": {
     "actor": {

@@ -226,3 +226,40 @@ fn a_loot_line_is_reported_as_having_no_calculated_effect() {
         "{reason}"
     );
 }
+
+#[test]
+fn thresholds_recovery_and_hit_debuff_lines_reach_display_outputs() {
+    let data = data();
+    let lines = [
+        "40% increased Elemental Ailment Threshold",
+        "Gain additional Ailment Threshold equal to 17% of maximum Energy Shield",
+        "Recover 2% of maximum Life on Kill",
+        "Recover 3% of maximum Mana on Kill",
+        "Recover 4% of maximum Energy Shield on Kill",
+        "50% increased Freeze Buildup",
+        "10% chance to Daze on Hit",
+        "50% increased effect of Fully Broken Armour",
+    ];
+    let mut armour = vec!["Adds 10 to 20 Cold Damage to Spells"];
+    armour.extend(lines);
+    let ledger = ledger(&data, &armour, &["+2000 to maximum Energy Shield"]);
+    for text in lines {
+        let row = line(&ledger, "item.bodyarmour.explicit", text);
+        assert_eq!(row.status, LineStatus::Applied, "{row:#?}");
+    }
+    for id in [
+        "AilmentThreshold",
+        "LifeOnKill",
+        "ManaOnKill",
+        "EnergyShieldOnKill",
+        "FreezeBuildupPct",
+        "DazeChance",
+        "FullyBrokenArmourEffect",
+    ] {
+        assert_eq!(
+            pobr_build::breakdown::detail::detail_kind(id),
+            pobr_build::breakdown::detail::DetailKind::Sources,
+            "{id}"
+        );
+    }
+}

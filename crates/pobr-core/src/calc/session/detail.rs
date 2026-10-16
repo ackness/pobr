@@ -125,6 +125,7 @@ pub fn source_names(stat: &str) -> Vec<String> {
         "ManaOnKill" => &["ManaOnKill", "CannotGainMana"],
         "EnergyShieldOnKill" => &["EnergyShieldOnKill", "CannotGainEnergyShield"],
         "DazeChance" => &["DazeChance"],
+        "FullyBrokenArmourEffect" => &["FullyBrokenArmourEffect"],
         "FreezeBuildupPct" => &[
             "FreezeBuildup",
             "EnemyFreezeBuildup",
