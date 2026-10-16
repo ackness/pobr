@@ -5637,6 +5637,59 @@
       "examples": [
         "Corrupting will always result in change"
       ]
+    },
+    {
+      "id": "increased_totem_placement_range",
+      "pattern": "(\\d+(?:\\.\\d+)?)% (?:increased|reduced) totem placement range",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "exporter": "absent",
+      "game_source": "base/stats.json: totem_placement_range_+%; base/passive_tree.json: Ancestral Reach (43396)",
+      "source_note": "Game text of the stat totem_placement_range_+%, which Ancestral Reach carries. Totem placement range changes where a totem can be placed, which is part of nothing a calculation reports (no damage, defence, or rate output reads a placement distance), so the line is recognised and adds no modifier: it is not an input the calculation dropped.",
+      "examples": [
+        "50% increased Totem Placement range"
+      ]
+    },
+    {
+      "id": "increased_surrounded_area_of_effect",
+      "pattern": "(\\d+(?:\\.\\d+)?)% (?:increased|reduced) surrounded area of effect",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: surrounded_area_of_effect_+%; base/passive_tree.json: Paranoia (24766)",
+      "source_note": "Surrounded radius not modelled. PoBR's Surrounded bridge (calc/session/preparation.rs) has no distance model: being Surrounded is a binary state, so an increased Surrounded area (the radius in which enemies count) cannot scale anything yet. A distance model needs enemy positions and the Surrounded radius.",
+      "examples": [
+        "50% increased Surrounded Area of Effect"
+      ]
+    },
+    {
+      "id": "maximum_elemental_infusions",
+      "pattern": "\\+?(\\d+) to maximum (cold|fire|lightning) infusions",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "exporter": "absent",
+      "game_source": "base/stats.json: maximum_cold_infusion_stacks, maximum_fire_infusion_stacks, maximum_lightning_infusion_stacks; base/passive_tree.json: Frozen Limit (50715), Infernal Limit (61354), Shocking Limit (29800)",
+      "source_note": "Infusion count not modelled. PoBR models infusion consumption as per-skill conditions, without an infusion count (no maximum-infusion output or count-gated model), so a higher maximum cannot change anything yet.",
+      "examples": [
+        "+1 to maximum Cold Infusions",
+        "+1 to maximum Fire Infusions",
+        "+1 to maximum Lightning Infusions"
+      ]
+    },
+    {
+      "id": "maximum_number_of_elemental_infusions",
+      "pattern": "\\+?(\\d+) to maximum number of elemental infusions",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "exporter": "absent",
+      "game_source": "base/stats.json: additional_maximum_infusion_stacks; base/passive_tree.json: Infused Limits (38965)",
+      "source_note": "Infusion count not modelled. PoBR models infusion consumption as per-skill conditions, without an infusion count (no maximum-infusion output or count-gated model), so a higher maximum cannot change anything yet.",
+      "examples": [
+        "+1 to maximum number of Elemental Infusions"
+      ]
     }
   ]
 }
