@@ -314,7 +314,7 @@ fn thresholds_recovery_and_hit_debuff_lines_reach_display_outputs() {
 fn every_registered_state_reader_is_inactive_off_and_applied_on() {
     use pobr_build::calc_orchestrator::READ_UNDER_A_STATE;
     let data = data();
-    for &(name, gate) in READ_UNDER_A_STATE {
+    for &(name, ref gate) in READ_UNDER_A_STATE {
         let text = match name {
             "BleedFaster" | "IgniteFaster" | "PoisonFaster" => {
                 "Damaging Ailments deal damage 20% faster"
@@ -358,6 +358,7 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
             let is_charge_on_kill = name == "FlaskChargeOnKillChance";
             let config = gate
                 .config_option
+                .as_deref()
                 .map(|option| {
                     if option == "enemyKillsPerSecond" {
                         // Count-type kill rate: absent when off, 2/s when on.
@@ -474,7 +475,81 @@ Implicits: 0
                         modifier.name == name
                     }
                 }));
-                assert!(modifier.reason.as_deref().unwrap().contains(gate.state));
+                assert!(modifier.reason.as_deref().unwrap().contains(&*gate.state));
+            }
+        }
+    }
+}
+
+#[test]
+fn curse_on_self_count_gates_per_curse_damage() {
+    // Game stat damage_+%_per_active_curse_on_self (Warding Fetish passive
+    // 31925): 30% per curse, so 2 curses is 60% increased Damage.
+    let data = data();
+    let text = "30% increased Damage per Curse on you";
+    for curses in [None, Some(2.0)] {
+        let config = curses
+            .map(|n| {
+                format!(r#"<Config><Input name="multiplierCursesOnSelf" number="{n}"/></Config>"#)
+            })
+            .unwrap_or_default();
+        let build = parse_build(&format!(
+            r#"<PathOfBuilding2>
+<Build level="80" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
+{config}</PathOfBuilding2>"#
+        ))
+        .unwrap();
+        let diagnosis = diagnose(
+            &build,
+            &data,
+            &DataOrchestratorOptions {
+                extra_modifier_texts: vec![text.to_string()],
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let ledger = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+        let row = ledger
+            .lines
+            .iter()
+            .find(|row| row.text.as_deref() == Some(text))
+            .unwrap();
+        let modifier = &row.modifiers[0];
+        assert_eq!(modifier.name, "Damage", "{row:?}");
+        match curses {
+            None => {
+                assert_eq!(modifier.status, ModifierStatus::Inactive, "{row:?}");
+                assert_eq!(
+                    modifier.reason.as_deref(),
+                    Some("scaled to 0: Multiplier CurseOnSelf is 0"),
+                    "{row:?}"
+                );
+                assert_eq!(
+                    modifier
+                        .read_gate
+                        .as_ref()
+                        .map(|gate| gate.config_option.as_deref()),
+                    Some(Some("multiplierCursesOnSelf")),
+                    "{modifier:?}"
+                );
+                let gate = modifier.read_gate.as_ref().unwrap();
+                assert!(matches!(gate.state, std::borrow::Cow::Owned(_)));
+                assert!(matches!(
+                    gate.config_option,
+                    Some(std::borrow::Cow::Owned(_))
+                ));
+                assert_eq!(
+                    serde_json::to_value(gate).unwrap(),
+                    serde_json::json!({
+                        "state": "CurseOnSelf is 0",
+                        "config_option": "multiplierCursesOnSelf"
+                    })
+                );
+            }
+            Some(_) => {
+                assert_eq!(modifier.status, ModifierStatus::Applied, "{row:?}");
+                assert_eq!(modifier.applied, Some(60.0), "{row:?}");
             }
         }
     }
@@ -719,8 +794,8 @@ Implicits: 0
         let modifier = by_name(&armour_only, text, name);
         assert_eq!(modifier.status, ModifierStatus::Inactive, "{modifier:?}");
         let gate = modifier.read_gate.as_ref().unwrap();
-        assert_eq!(gate.state, state, "{modifier:?}");
-        assert_eq!(gate.config_option, None, "{modifier:?}");
+        assert_eq!(&*gate.state, state, "{modifier:?}");
+        assert!(gate.config_option.is_none(), "{modifier:?}");
         assert!(
             modifier.reason.as_deref().unwrap().contains(state),
             "{modifier:?}"
@@ -742,7 +817,7 @@ Implicits: 0
         "{energy_shield:?}"
     );
     assert_eq!(
-        energy_shield.read_gate.as_ref().unwrap().state,
+        &*energy_shield.read_gate.as_ref().unwrap().state,
         "the equipped shield has no base Energy Shield"
     );
 }
@@ -785,10 +860,10 @@ fn outranked_max_loser_is_state_gated() {
     assert_eq!(loser.status, ModifierStatus::Inactive, "{loser:?}");
     let gate = loser.read_gate.as_ref().unwrap();
     assert_eq!(
-        gate.state, "a stronger modifier of the same name applies",
+        &*gate.state, "a stronger modifier of the same name applies",
         "{loser:?}"
     );
-    assert_eq!(gate.config_option, None, "{loser:?}");
+    assert!(gate.config_option.is_none(), "{loser:?}");
     assert_eq!(
         loser.reason.as_deref(),
         Some("only the strongest ArmourDefense counts, and another is stronger"),

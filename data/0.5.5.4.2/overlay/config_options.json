@@ -11888,6 +11888,23 @@
       "verified": true
     },
     {
+      "var": "multiplierCursesOnSelf",
+      "input_type": "count",
+      "section": "When In Combat",
+      "label": "# of Curses on you:",
+      "effects": [
+        {
+          "target": "player",
+          "name": "Multiplier:CurseOnSelf",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "input"
+          }
+        }
+      ],
+      "verified": true
+    },
+    {
       "var": "multiplierDefiance",
       "input_type": "count",
       "section": "When In Combat",

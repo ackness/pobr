@@ -189,7 +189,7 @@ mod tests {
         let mut entries = vec![entry("energyIncomingHitRate"), entry("other")];
         append_energy_options(&mut entries);
         append_energy_options(&mut entries);
-        assert_eq!(entries.len(), 6);
+        assert_eq!(entries.len(), 7);
         let incoming = entries
             .iter()
             .find(|entry| entry.var == "energyIncomingHitRate")
@@ -204,6 +204,11 @@ mod tests {
             .find(|entry| entry.var == "enemyKillsPerSecond")
             .unwrap();
         assert_eq!(kills.effects[0].name, "Multiplier:EnemyKillsPerSecond");
+        let curses = entries
+            .iter()
+            .find(|entry| entry.var == "multiplierCursesOnSelf")
+            .unwrap();
+        assert_eq!(curses.effects[0].name, "Multiplier:CurseOnSelf");
     }
 
     /// Assembly is sorted by var and byte-stable (two assemblies of the same input are byte-identical).
