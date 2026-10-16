@@ -77,7 +77,8 @@ pub use diagnosis::{
     UnsetCondition, diagnose,
 };
 pub(crate) use diagnosis::{
-    condition_set_from_build, config_option_setting, read_outside_the_database, read_under_a_state,
+    condition_set_from_build, config_option_setting, multiplier_option_setting,
+    read_outside_the_database, read_under_a_state,
 };
 mod sources;
 use sources::SourceWriter;

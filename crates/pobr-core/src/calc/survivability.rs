@@ -344,9 +344,35 @@ pub fn resolve_all_charges(db: &ModDb, cfg: &CalcConfig) -> AllChargeStates {
     }
 }
 
-/// Fills the charge-stack multipliers per PoB2's charge semantics, returning a derived cfg.
+/// Inputs for each charge kind: its count override modifier and use condition.
+/// The plain count comes from these inputs (or the minimum while disabled);
+/// `Removable<Kind>Charge` is that count minus the minimum, after gain routing.
+/// Diagnostics resolve the use condition through the config catalog rather
+/// than maintaining a second list of config option ids. Every entry has an
+/// off/on ledger fixture in `pobr-build/tests/skills/line_usage.rs`.
+pub const CHARGE_MULTIPLIER_INPUTS: &[(ChargeKind, &str, &str)] = &[
+    (ChargeKind::Power, "PowerCharges", "UsePowerCharges"),
+    (ChargeKind::Frenzy, "FrenzyCharges", "UseFrenzyCharges"),
+    (
+        ChargeKind::Endurance,
+        "EnduranceCharges",
+        "UseEnduranceCharges",
+    ),
+];
+
+/// The charge-use condition driving a plain or removable charge multiplier.
+/// The catalog maps this condition to the player's charge configuration.
+pub fn charge_multiplier_use_condition(multiplier: &str) -> Option<&'static str> {
+    let count = multiplier.strip_prefix("Removable").unwrap_or(multiplier);
+    CHARGE_MULTIPLIER_INPUTS
+        .iter()
+        .find(|(kind, _, _)| kind.multiplier_key() == count)
+        .map(|(_, _, condition)| *condition)
+}
+
+/// Fills the charge-stack multipliers, returning a derived cfg.
 ///
-/// PoB2 `CalcPerform.lua:928-963`: when `UseXCharges` is enabled, a matching
+/// When `UseXCharges` is enabled, a matching
 /// `XCharges` OVERRIDE supplies the count, otherwise the maximum is used.
 /// The result is floored at the always-on minimum, including when use is off.
 /// Explicit counts are neither truncated nor upper-clamped. The config interpreter
@@ -365,15 +391,7 @@ pub fn charge_multipliers_panel_default(db: &ModDb, cfg: &CalcConfig) -> CalcCon
     let original_combat = cfg.conditions.get("Combat").copied();
     let mut projected_combat = false;
     let mut removable_total = 0.0;
-    for (kind, override_name, use_condition) in [
-        (ChargeKind::Power, "PowerCharges", "UsePowerCharges"),
-        (ChargeKind::Frenzy, "FrenzyCharges", "UseFrenzyCharges"),
-        (
-            ChargeKind::Endurance,
-            "EnduranceCharges",
-            "UseEnduranceCharges",
-        ),
-    ] {
+    for &(kind, override_name, use_condition) in CHARGE_MULTIPLIER_INPUTS {
         let key = kind.multiplier_key();
         let maximum = charge_maximum(db, cfg, kind);
         let minimum = f64::from(charge_minimum(db, cfg, kind, maximum));
@@ -802,6 +820,50 @@ pub(crate) fn recoup_terms(
         percent: recoup_pct,
         duration: recoup_duration(db, cfg, resource),
         recovery: recoup_recovery_rate(db, cfg, resource),
+    }
+}
+
+/// Life recoup from damage taken and Physical damage prevented by reduction.
+/// Both contributions share Life's duration and recovery rate. The prevented
+/// base follows the convention documented in the maintainer guide (not tested
+/// in game), and is separate from ordinary damage-taken recoup.
+pub(crate) struct LifeRecoupTerms {
+    pub damage: f64,
+    pub percent: f64,
+    pub physical_prevented: f64,
+    pub prevented_percent: f64,
+    pub duration: f64,
+    pub recovery: f64,
+    pub rate_per_second: f64,
+}
+
+pub(crate) fn life_recoup_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    damage_taken: f64,
+    physical_prevented: f64,
+) -> LifeRecoupTerms {
+    let damage = damage_taken.max(0.0);
+    let percent = recoup_base_percent(db, cfg, RecoupResource::Life).max(0.0);
+    let physical_prevented = physical_prevented.max(0.0);
+    let prevented_percent = db
+        .sum(
+            ModType::Base,
+            cfg,
+            &[ModName::from("PhysicalDamagePreventedLifeRecoup")],
+        )
+        .max(0.0);
+    let duration = recoup_duration(db, cfg, RecoupResource::Life);
+    let recovery = recoup_recovery_rate(db, cfg, RecoupResource::Life).max(0.0);
+    let total = (damage * percent + physical_prevented * prevented_percent) / 100.0;
+    LifeRecoupTerms {
+        damage,
+        percent,
+        physical_prevented,
+        prevented_percent,
+        duration,
+        recovery,
+        rate_per_second: round(total / duration * recovery),
     }
 }
 

@@ -5,6 +5,8 @@
 
 #[path = "skills/archon.rs"]
 mod archon;
+#[path = "skills/prevented_recoup.rs"]
+mod prevented_recoup;
 
 #[path = "skills/aura_gems.rs"]
 mod aura_gems;

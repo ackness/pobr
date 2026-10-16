@@ -1,0 +1,642 @@
+{
+  "data_version": "0.5.5.4.2",
+  "rule": "Exclude a control if none of its required if_skill names/ids exist in base/granted_effects.json or the game's skill-gem item names; otherwise exclude only when its mechanic identifiers lack complete word evidence in base stats/skills/mods/passives or inherited overlay item/stat-description text (even across separate records). Keep controls without a searchable mechanic. Legacy stats and exporter-derived overlay text are retained evidence, not proof of a playable PoE2 mechanic.",
+  "excluded": {
+    "ActiveBrands": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Armageddon Brand",
+        "Storm Brand",
+        "Arcanist Brand",
+        "Penance Brand",
+        "Wintertide Brand"
+      ],
+      "sources": []
+    },
+    "ColdSnapBypassCD": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Cold Snap"
+      ],
+      "sources": []
+    },
+    "ConcPathBypassCD": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Consecrated Path of Endurance"
+      ],
+      "sources": []
+    },
+    "EVBypass": {
+      "class": "not_in_game",
+      "reason": "mechanic_absent",
+      "queries": [
+        "EVBypass"
+      ],
+      "sources": []
+    },
+    "MoltenShellDamageMitigated": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Molten Shell"
+      ],
+      "sources": []
+    },
+    "ShrapnelBallistaProjectileOverlap": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Shrapnel Ballista"
+      ],
+      "sources": []
+    },
+    "TotalVaalRejuvenationTotemLife": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Vaal Rejuvenation Totem"
+      ],
+      "sources": []
+    },
+    "VaalMoltenShellDamageMitigated": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Vaal Molten Shell"
+      ],
+      "sources": []
+    },
+    "VigilantStrikeBypassCD": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Vigilant Strike"
+      ],
+      "sources": []
+    },
+    "absolutionSkillDamageCountedOnce": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Absolution"
+      ],
+      "sources": []
+    },
+    "animateWeaponLingeringBlade": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Animate Weapon"
+      ],
+      "sources": []
+    },
+    "arcaneCloakUsedRecentlyCheck": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Arcane Cloak"
+      ],
+      "sources": []
+    },
+    "aspectOfTheAvianAviansFlight": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Aspect of the Avian"
+      ],
+      "sources": []
+    },
+    "aspectOfTheAvianAviansMight": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Aspect of the Avian"
+      ],
+      "sources": []
+    },
+    "aspectOfTheCatCatsAgility": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Aspect of the Cat"
+      ],
+      "sources": []
+    },
+    "aspectOfTheCatCatsStealth": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Aspect of the Cat"
+      ],
+      "sources": []
+    },
+    "aspectOfTheSpiderWebStacks": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Aspect of the Spider"
+      ],
+      "sources": []
+    },
+    "bladestormInBloodstorm": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Bladestorm"
+      ],
+      "sources": []
+    },
+    "bladestormInSandstorm": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Bladestorm"
+      ],
+      "sources": []
+    },
+    "bloodSacramentReservationEHP": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Blood Sacrament"
+      ],
+      "sources": []
+    },
+    "bloodSandStance": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Blood and Sand",
+        "Flesh and Stone",
+        "Lacerate",
+        "Bladestorm",
+        "Perforate",
+        "Perforate of Duality"
+      ],
+      "sources": []
+    },
+    "buffPendulum": {
+      "class": "not_in_game",
+      "reason": "mechanic_absent",
+      "queries": [
+        "PendulumOfDestructionAreaOfEffect"
+      ],
+      "sources": []
+    },
+    "carrionGolemEqualsChaosGolem": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Summon Chaos Golem"
+      ],
+      "sources": []
+    },
+    "carrionGolemNearbyMinion": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Summon Carrion Golem"
+      ],
+      "sources": []
+    },
+    "chaosGolemEqualsStoneGolem": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Summon Stone Golem"
+      ],
+      "sources": []
+    },
+    "conditionEnemyPacified": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Pacify"
+      ],
+      "sources": []
+    },
+    "conditionHaveAugyre": {
+      "class": "not_in_game",
+      "reason": "mechanic_absent",
+      "queries": [
+        "Condition:HaveAugyre"
+      ],
+      "sources": []
+    },
+    "conditionHaveVulconus": {
+      "class": "not_in_game",
+      "reason": "mechanic_absent",
+      "queries": [
+        "Condition:HaveVulconus"
+      ],
+      "sources": []
+    },
+    "conditionRavenousCorpseConsumed": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Ravenous"
+      ],
+      "sources": []
+    },
+    "configSpectralWolfCount": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Summon Spectral Wolf"
+      ],
+      "sources": []
+    },
+    "deathmarkDeathmarkActive": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Predator"
+      ],
+      "sources": []
+    },
+    "embraceMadnessActive": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Embrace Madness"
+      ],
+      "sources": []
+    },
+    "enemyInRFOrScorchingRay": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Righteous Fire",
+        "Scorching Ray"
+      ],
+      "sources": []
+    },
+    "enemyMultiplierPvpDamage": {
+      "class": "not_in_game",
+      "reason": "mechanic_absent",
+      "queries": [
+        "isPvP"
+      ],
+      "sources": []
+    },
+    "enemyRadius": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Seismic Trap",
+        "Lightning Spire Trap",
+        "Explosive Trap"
+      ],
+      "sources": []
+    },
+    "enemySizePreset": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Seismic Trap",
+        "Lightning Spire Trap",
+        "Explosive Trap"
+      ],
+      "sources": []
+    },
+    "freshMeatBuffs": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Fresh Meat"
+      ],
+      "sources": []
+    },
+    "frostShieldStages": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Frost Shield"
+      ],
+      "sources": []
+    },
+    "greaterHarbingerOfTimeSlipstream": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Summon Greater Harbinger of Time"
+      ],
+      "sources": []
+    },
+    "harbingerOfTimeSlipstream": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Summon Harbinger of Time"
+      ],
+      "sources": []
+    },
+    "heraldOfAgonyVirulenceStack": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Herald of Agony"
+      ],
+      "sources": []
+    },
+    "iceNovaCastOnFrostbolt": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Ice Nova of Frostbolts"
+      ],
+      "sources": []
+    },
+    "infusedChannellingInfusion": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Infused Channelling"
+      ],
+      "sources": []
+    },
+    "intensifyIntensity": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Intensify",
+        "Crackling Lance",
+        "Pinpoint"
+      ],
+      "sources": []
+    },
+    "linkedSourceRate": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Intuitive Link"
+      ],
+      "sources": []
+    },
+    "manabondMissingUnreservedManaPercentage": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Manabond"
+      ],
+      "sources": []
+    },
+    "meatShieldEnemyNearYou": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Meat Shield"
+      ],
+      "sources": []
+    },
+    "multiplierCorrosionStackCount": {
+      "class": "not_in_game",
+      "reason": "mechanic_absent",
+      "queries": [
+        "Condition:CanCorrode"
+      ],
+      "sources": []
+    },
+    "multiplierPvpDamage": {
+      "class": "not_in_game",
+      "reason": "mechanic_absent",
+      "queries": [
+        "isPvP"
+      ],
+      "sources": []
+    },
+    "multiplierPvpTvalueOverride": {
+      "class": "not_in_game",
+      "reason": "mechanic_absent",
+      "queries": [
+        "isPvP"
+      ],
+      "sources": []
+    },
+    "multiplierWoCExpiredDuration": {
+      "class": "not_in_game",
+      "reason": "mechanic_absent",
+      "queries": [
+        "Multiplier:WoCDurationExpired"
+      ],
+      "sources": []
+    },
+    "nearbyBleedingEnemies": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Thirst for Blood"
+      ],
+      "sources": []
+    },
+    "overrideCrabBarriers": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Aspect of the Crab"
+      ],
+      "sources": []
+    },
+    "overrideCruelty": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Cruelty"
+      ],
+      "sources": []
+    },
+    "perforateSpikeOverlap": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Perforate"
+      ],
+      "sources": []
+    },
+    "physicalAegisDepleted": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Physical Aegis"
+      ],
+      "sources": []
+    },
+    "prideEffect": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Pride",
+        "AzmeriDemonPhysicalDamageAura"
+      ],
+      "sources": []
+    },
+    "raiseSpectreEnableSanguimancerDemonLowLife": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "ABTTAzmeriShepherdSpellDamage"
+      ],
+      "sources": []
+    },
+    "raiseSpectreEnableSlashingHorrorEnrage": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "AzmeriDualStrikeDemonFireEnrage"
+      ],
+      "sources": []
+    },
+    "raiseSpectreEnableSummonedUrsaRallyingCry": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "DropBearSummonedRallyingCry"
+      ],
+      "sources": []
+    },
+    "raiseSpectreKaomFireBeamTotemStage": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "KaomFireBeamTotemSpectre"
+      ],
+      "sources": []
+    },
+    "raiseSpidersSpiderCount": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Raise Spiders"
+      ],
+      "sources": []
+    },
+    "sacrificedRageCount": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Rage Vortex"
+      ],
+      "sources": []
+    },
+    "shardsConsumed": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Splitting Steel of Ammunition",
+        "Shattering Steel of Ammunition",
+        "Lancing Steel",
+        "Shrapnel Ballista of Steel"
+      ],
+      "sources": []
+    },
+    "siphoningTrapAffectedEnemies": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Siphoning Trap"
+      ],
+      "sources": []
+    },
+    "steelWards": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Shattering Steel of Ammunition"
+      ],
+      "sources": []
+    },
+    "stoneGolemEqualsCarrionGolem": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Summon Carrion Golem"
+      ],
+      "sources": []
+    },
+    "stormRainActiveArrows": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Storm Rain of the Conduit"
+      ],
+      "sources": []
+    },
+    "stormRainBeamOverlap": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Storm Rain"
+      ],
+      "sources": []
+    },
+    "summonElementalRelicEnableAngerAura": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Summon Elemental Relic"
+      ],
+      "sources": []
+    },
+    "summonElementalRelicEnableHatredAura": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Summon Elemental Relic"
+      ],
+      "sources": []
+    },
+    "summonElementalRelicEnableWrathAura": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Summon Elemental Relic"
+      ],
+      "sources": []
+    },
+    "summonHolyRelicEnableHolyRelicBoon": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Summon Holy Relic"
+      ],
+      "sources": []
+    },
+    "summonLightningGolemEnableWrath": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Summon Lightning Golem"
+      ],
+      "sources": []
+    },
+    "summonReaperConsumeRecently": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Summon Reaper"
+      ],
+      "sources": []
+    },
+    "voltaxicBurstSpellsQueued": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Voltaxic Burst"
+      ],
+      "sources": []
+    },
+    "vortexCastOnFrostbolt": {
+      "class": "not_in_game",
+      "reason": "required_skill_absent",
+      "queries": [
+        "Vortex of Projection"
+      ],
+      "sources": []
+    }
+  }
+}

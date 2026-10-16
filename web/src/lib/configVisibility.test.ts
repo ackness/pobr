@@ -1,13 +1,27 @@
 import { expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import type { ConfigContext, ConfigOption } from '../api/types';
-import { configApplicability, configVisibilityInputs, showConfigOption } from './configVisibility';
+import { configApplicability, configExistsInGame, configVisibilityInputs, showConfigOption } from './configVisibility';
+import gameRelevance from './configGameRelevance.json';
 
 const option: ConfigOption = { var: 'skillSetting', input_type: 'count', visibility: { if_skill: ['Fireball'] } };
 const context: ConfigContext = { main_skill: 'spark', skill_types: ['Spell'], predicates: {
   if_skill: { Spark: true, Fireball: false }, if_skill_type: { Spell: true, Attack: false },
   if_cond: { LowLife: true, KilledRecently: false }, if_stat: { Life: true }, if_flag: { attack: false, spell: true },
 } };
+
+test('game-data exclusions apply before all-options and saved-input visibility', () => {
+  const brand: ConfigOption = { var: 'ActiveBrands', input_type: 'count' };
+  const saved = { ActiveBrands: 3 };
+  expect(showConfigOption(brand, 'unknown', saved, true)).toBe(true);
+  expect(configExistsInGame(brand, gameRelevance.data_version)).toBe(false);
+  expect(saved).toEqual({ ActiveBrands: 3 });
+  expect(configExistsInGame(brand, 'a-new-snapshot')).toBe(true);
+  expect(configExistsInGame(brand, undefined)).toBe(true);
+  for (const var_ of ['conditionShockEffect', 'detonateDeadCorpseLife', 'SecondsSinceInevitableCrit', 'conditionUnravelling']) {
+    expect(configExistsInGame({ var: var_, input_type: 'count' }, gameRelevance.data_version)).toBe(true);
+  }
+});
 
 test('irrelevant skill option hides unless all options are requested', () => {
   const applicability = configApplicability(option, context, {});
@@ -72,8 +86,9 @@ test.each([
 ] as const)('Applicable view gates Energy controls for %s', (skill, expected) => {
   const native: { options: ConfigOption[] } = JSON.parse(readFileSync(new URL('../../../data/overlay-common/energy_config_options.json', import.meta.url), 'utf8'));
   const snapshot: { options: ConfigOption[] } = JSON.parse(readFileSync(new URL('../../../data/0.5.5.4.2/overlay/config_options.json', import.meta.url), 'utf8'));
-  const options = snapshot.options.filter(option => native.options.some(energy => energy.var === option.var));
-  expect(options).toEqual(native.options);
+  const energyOptions = native.options.filter(option => option.var.startsWith('energy'));
+  const options = snapshot.options.filter(option => energyOptions.some(energy => energy.var === option.var));
+  expect(options).toEqual([...energyOptions].sort((a, b) => a.var.localeCompare(b.var)));
   const ids = options.flatMap(option => option.visibility?.if_skill ?? []);
   // The backend contract tests verify these predicates from actual socket groups,
   // including a meta gem outside the inspected skill's group.

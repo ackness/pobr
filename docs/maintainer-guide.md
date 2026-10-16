@@ -314,6 +314,8 @@ Smith of Kitava 的 “Modifiers to Fire Resistance also grant Cold and Lightnin
 
 Three equipment-adjacent readings share one convention: the value is the item's own displayed number, and suppression is tracked per modifier name. Strong Chin's `stun_threshold_+_from_lowest_of_base_helmet_evasion_rating_and_armour` grants Stun Threshold equal to the lower of the helmet's displayed Armour and Evasion (pre-global scaling; the stat name's "base" is the pre-global item base). The Invoker's `cannot_gain_spirit_from_equipment` drops only BASE Spirit with an equipment origin (per-item base Spirit, explicit +N lines, socketed runes); passive and quest Spirit still count, and the suppressed equipment lines still show as applied in the usage ledger because modifier reads are tracked per name. Elemental recoup (`recoup_%_elemental_damage_as_energy_shield`, parsed as `Fire/Cold/LightningEnergyShieldRecoup`) adds its percentage to its own damage type's recoupable only, sharing the Energy Shield recoup duration and recovery rate (`calc::survivability::es_recoup_terms`, which also feeds the EsRecoupRate derived detail).
 
+“Physical Damage prevented Recouped as Life” (`physical_damage_prevented_recouped_as_life_%`, [Made to Last](https://poe2db.tw/us/Made_to_Last) 5%, Wandering Reliquary 50%) uses an explicit convention: prevented damage is the Physical damage entering the physical reduction stage minus that leaving it, counting Armour and additional physical damage reduction after the cap and overwhelm. This follows [Iron Ward's game text](https://poe2db.tw/us/Iron_Ward), which describes damage prevented by Armour or other sources of damage reduction; it is an assumption, **没有游戏内实测 / no in-game test**. Damage shifted to another type before reduction and later damage-taken multipliers do not count; blocked and deflected hits contribute nothing, including partially damaging blocks. Evaded hits never enter the landed-hit loop. The [December 2024 bug report](https://www.pathofexile.com/forum/view-thread/3661840) and [November 2025 discussion](https://www.pathofexile.com/forum/view-thread/3882155) are verification leads, not a developer ruling on this convention. The mitigated EHP loop accumulates prevented damage alongside ordinary damage-taken recoup; `calc::survivability::life_recoup_terms` combines both using Life's 8-second duration (4 seconds with either Life/global flag) and LifeRecoveryRate, and also supplies the `LifeRecoupRate` detail. The parser rule is `exporter: "absent"`, so reference-basis calculations omit it.
+
 几条暗金词条接到已有的计算入口（`overlay-common/special_mods.json`）：Blackheart 的 `base_armour_%_applies_to_chaos_damage` 让这一比例的护甲也用于混沌命中的减伤；Vigilant View 的 `maximum_chance_to_evade_is_50%` 与 Goregirdle 的 `maximum_physical_damage_reduction_is_50%` 限制闪避率与物理命中减伤；Matsya 的 “Skills reserve 50% less Spirit”（`unique_spirit_reservations_are_halved`）乘在保留量上，不是保留效率；Plaguefinger 的 `all_damage_can_poison` 让元素命中也计入中毒的伤害，不提供中毒几率；`ignore_hexproof`（“Curses you inflict can affect Hexproof Enemies”）让诅咒越过敌人的 Hexproof；Venopuncture / Icefang Orbit（`all_damage_to_bleeding_enemies_contributes_to_chill` / `all_damage_to_poisoned_enemies_contributes_to_chill`）只在敌人流血 / 中毒时让全部命中伤害计入冰缓强度。Parry 的 “increased Parry Damage”（`parry_damage_+%`，Silverthorne 与天赋）和 Kaltenhalt 的 Parry 物理转冰（`parry_physical_damage_%_to_convert_to_cold`）只作用于 Parry。Chober Chaber、Trenchtimbre、Crown of Eyes 的 “increases and reductions … also …”（`minion_damage_increases_and_reductions_also_affects_you`、`additive_modifiers_to_minion_attack_speed_also_affect_you`、`additive_spell_damage_modifiers_apply_to_attack_damage`）只复制相应的 INC 词条：召唤物伤害、召唤物攻击速度、法术伤害分别给角色伤害、角色攻击速度、攻击伤害，保留来源和条件，不复制 MORE / LESS、点伤和只限定某类召唤物的词条（`calc::shared_modifiers::apply_shared_increases`）。
 
 Berek's Grip/Pass/Respite and The Taming carry the game stats `wind_skills_count_as_empowered_by_{ignited,shocked,chilled}_ground`: their joined item lines set `Condition:TwisterFire/Lightning/Cold` exactly like the Twister config checkboxes, bridged into the conditions table by `CalculationSession::bridge_player_conditions`, so Twister's `SkillDamageGainAs` tags apply without any config (`special_mods.json`: `wind_ground_ignited/shocked/chilled/all_elements`). The game text wraps across two item lines, so equipment reuses the tree wrap-merge (`filter_item_parseable` via `collect::combine_wrapped`) and the pair is ledgered once as its joined line. `wind_skills_can_be_empowered_by_multiple_elements` is S0 (`wind_ground_multiple_surfaces`): PoBR applies each Twister element condition independently and never limits a Twister to one element, so two Berek's rings without The Taming both apply — a known simplification with no in-game test. All five rules are `exporter: absent`, so the reference basis is unchanged and the game-mode DPS rise shows only in the beyond-PoB2 report.
@@ -337,6 +339,21 @@ Crystallised Immunities uses the game stats `immune_to_chill_if_majority_blue_su
 `chance_%_to_create_additional_remnant` (Remnant Attraction, node 1506) is recognised with the reason “remnant count not modelled” and `exporter: "absent"`. Into the Breach's configured collected Purple Flame stacks are not a creation rate, so extra creation chance does not multiply them. Arcane Remnants, Empowering Remnants, Elemental Equilibrium and Storm's Recollection still need a remnant generation/collection model. These entries use batch `unmodelled`: the ledger reports `unmodelled`, the audit reports `recognized_empty`, and the gap queue keeps them as dropped input. Sources: `base/stats.json` and `base/passive_tree.json`.
 
 `mise run config:coverage [--json <文件>]` 按配置分区报告 `read` / `handler` / `implied` / `unread` / `no_effect`：复用 benchmark、tuned 的 `.cache/build-usage/` 读取并集，条件与倍率另用台账的 `condition_reads`、`multiplier_reads`、`referenced_variables` 和计算阶段条件清单；列出未覆盖技能、引擎及活动数据中没有精确名字引用的项、未注册 handler、stub / context gate，以及空 effects 中已有 scalar 读取方与丢失的机制。`--binary <pobr>` 复用已构建 CLI，`--refresh` 重算台账；不读 holdout。这是读取覆盖，静态名字引用与 handler 注册都不证明选项改变了数值；近似名字不是别名，已穿透／连锁次数不能映射为穿透／连锁上限。
+
+Config coverage also reports `not_in_game` and excludes it from the relevant
+`(read + handler) / options` denominator. `devs/scripts/config_relevance.py`
+checks required skills against game effect IDs/displayed names and skill-gem
+item names; other controls are excluded only when their mechanic words lack
+base-game evidence or inherited overlay item/stat-description text. The overlay
+text is exporter-derived, not an independent game-data source. Ambiguous matches
+and legacy stats stay in the denominator; this is not proof of playability.
+`python3 devs/scripts/config_relevance.py` regenerates the versioned Web filter,
+and workflow tests check it against the snapshot. Static computed-name leads
+(such as `ShockVal`) are not observed reads. `detonateDeadCorpseLife` supplies
+an explicit nonnegative finite corpse Life, including zero, to existing corpse
+damage shares (`corpse_explosion_monster_life_permillage_physical` / `_chaos`);
+absent, negative or nonnumeric values retain the enemy-level life table. It
+does not change enemy Life or add corpse damage to unrelated skills.
 
 配置项进入计算的方式各不相同，有 handler id 不等于选项已生效。破甲（`conditionEnemyArmourBroken` 与破甲量 `multiplierArmourBreak`）由 `calc::armour_break::apply_armour_break` 在有效 DPS 口径下从敌人护甲中扣掉所填的量，没填时全部扣掉，“You can Break enemy Armour to below 0” 时下限为原护甲的相反数；没勾选时数值框里的残留不生效。致盲与 Elusive 的效果覆盖（`overrideBuffBlinded` / `overrideBuffElusive`）按百分数读取，不超过角色能施加的致盲、能得到的 Elusive 效果（`calc::blind`、`rules::buff_expander`）。Inexorable Critical 按配置的距上次暴击秒数（`SecondsSinceInevitableCrit`，不到 4 秒时另置 `CritRecently`）乘每秒的加成，受 `support_inevitable_criticals_*_cap` 限制（`calc::crit::apply_inexorable_critical`）。Dark Pact 的目标骷髅生命（`darkPactSkeletonLife`）乘 `skeletal_chains_aoe_%_health_dealt_as_chaos_damage` 为基础混沌伤害，Herald of Ash 的过量伤害（`hoaOverkill`）乘每分钟的燃烧比例 `herald_of_ash_burning_%_overkill_damage_per_minute` 为火焰持续伤害（`calc::configured_damage`）。
 
@@ -654,6 +671,16 @@ applies its Effect constantly” (`local_flask_always_drinking`) reports zero
 available uses while keeping its recovery rate.
 
 Focused Thrust (`projectile_damage_+%_with_spears_while_there_no_enemies_surrounding_you`, passive 9227) grants 40% increased Damage to Projectile hits with Spears when `enemyDistance` is at least 30 (3 m; ten units per metre), remains inactive with an `enemyDistance` config gate when unset, and assumes the configured target is the only enemy; this single-target convention has no in-game test, and the rule is `exporter: "absent"`.
+
+“#% increased Damage per Curse on you” (`damage_+%_per_active_curse_on_self`)
+scales by the PoBR config input `multiplierCursesOnSelf`
+(`Multiplier:CurseOnSelf`); with no count the line is inactive with that config
+gate. The ledger finds count gates from the modifier's zero-scaling
+`Multiplier` tags and the config catalog. Static gate labels are borrowed;
+dynamic labels and config ids are owned, with the same JSON string fields.
+Plain and removable Power/Frenzy/Endurance charge counts share the calculation's
+input mapping, so their zero-scaling ledger gates point to the catalog's matching
+`use<Kind>Charges` option (with `override<Kind>Charges` setting the enabled count).
 
 Rite of Passage's “Possessed by Spirit Of The Bear / Boar / Cat / Owl / Ox /
 Primate / Serpent / Stag / Wolf for # seconds on use” uses game

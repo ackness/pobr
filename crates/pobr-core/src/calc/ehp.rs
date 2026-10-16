@@ -478,6 +478,9 @@ pub struct EhpTerms {
     pub enemy_damage_multipliers: [f64; 5],
     pub physical_reduction: DamageReductionTerms,
     pub recoupable_total: f64,
+    /// Physical damage prevented by Armour plus additional physical reduction,
+    /// accumulated alongside damage-taken recoup in the mitigated hit loop.
+    pub physical_prevented: f64,
     /// The recoupable damage of each type (Physical/Fire/Cold/Lightning/Chaos
     /// order), feeding per-type recoup (elemental Energy Shield recoup) and
     /// the EsRecoupRate derived detail.
@@ -784,25 +787,38 @@ pub fn number_of_hits_to_die(
     number_of_hits_to_die_tracked(damage_in, pools_full, ctx, params).0
 }
 
-/// Lethal hit count + per-type recoupable accumulation (part of 13-G15).
-///
-/// Vendor's `DamageIn.TrackRecoupable` path (set at CalcDefence.lua:3232-3236,
-/// `:3119-3123` accumulates `poolTable.damageTakenThatCanBeRecouped`
-/// (reducePoolsByDamage `:489`/`:537`'s per-type damageRemainder, recorded
-/// after the allies layer but before aegis/guard/ward/ES) into
-/// `<X>RecoupableDamageTaken`). Matching vendor's semantics: **accumulated
-/// only in the top-level loop** (cycles==1) -- accelerated recursion
-/// (cycles>1) sets TrackRecoupable=false (`:3046-3049`); a top-level
-/// amplified hit (the iterationMultiplier-scaled hit) is recorded using its
-/// scaled damage, matching vendor's behavior.
+/// Lethal hit count and recoupable damage, accumulated only at the top level.
+/// Accelerated recursive probes do not count; amplified top-level hits count
+/// their scaled damage, including the lethal hit's full damage.
 pub fn number_of_hits_to_die_tracked(
     damage_in: &TypedDamage,
     pools_full: &PoolState,
     ctx: &PoolCtx,
     params: &EhpLoopParams,
 ) -> (f64, [f64; 5]) {
+    let (hits, recoup) = hits_to_die_with_recoup(damage_in, pools_full, ctx, params, 0.0);
+    (hits, recoup.by_type)
+}
+
+#[derive(Default)]
+struct RecoupAccumulation {
+    by_type: [f64; 5],
+    physical_prevented: f64,
+    physical_prevented_per_hit: f64,
+}
+
+fn hits_to_die_with_recoup(
+    damage_in: &TypedDamage,
+    pools_full: &PoolState,
+    ctx: &PoolCtx,
+    params: &EhpLoopParams,
+    physical_prevented_per_hit: f64,
+) -> (f64, RecoupAccumulation) {
     let mut iterations = 0.0;
-    let mut recoupable = [0.0_f64; 5];
+    let mut recoup = RecoupAccumulation {
+        physical_prevented_per_hit,
+        ..Default::default()
+    };
     let hits = hits_to_die_inner(
         damage_in,
         pools_full,
@@ -810,9 +826,9 @@ pub fn number_of_hits_to_die_tracked(
         params,
         1.0,
         &mut iterations,
-        &mut recoupable,
+        &mut recoup,
     );
-    (hits, recoupable)
+    (hits, recoup)
 }
 
 /// `numberOfHitsToDie`'s recursive body (`cycles`/`iterations` correspond to
@@ -825,7 +841,7 @@ fn hits_to_die_inner(
     params: &EhpLoopParams,
     cycles: f64,
     iterations: &mut f64,
-    recoupable: &mut [f64; 5],
+    recoup: &mut RecoupAccumulation,
 ) -> f64 {
     // :2060-2068 zero incoming damage → ∞.
     let per_hit_total = damage_in.total();
@@ -860,11 +876,12 @@ fn hits_to_die_inner(
         last_overkill = after.overkill;
         // :2127-2143 `damageTotal` is this iteration's (possibly batched) damage.
         last_damage_total = per_hit_total * iteration_multiplier;
-        // F-4: recoupable accumulation (top level only, cycles==1, vendor :3046-3049/:3119-3123).
+        // Recursive probes do not contribute; top-level batches count each hit.
         if cycles <= 1.0 {
-            for (acc, v) in recoupable.iter_mut().zip(after.recoupable_by_type) {
+            for (acc, v) in recoup.by_type.iter_mut().zip(after.recoupable_by_type) {
                 *acc += v;
             }
+            recoup.physical_prevented += recoup.physical_prevented_per_hit * iteration_multiplier;
         }
         pool = after.pools;
         // :3084 still alive and the single-hit damage already exceeds the ceiling → treated as surviving unlimited hits.
@@ -886,7 +903,7 @@ fn hits_to_die_inner(
                 params,
                 cycles * params.speed_up,
                 iterations,
-                recoupable,
+                recoup,
             );
             // :3112 recursion already knows it survives forever → straight to ∞.
             if recursive_hits.is_infinite() {
@@ -1320,6 +1337,11 @@ pub fn fill_ehp_pob2(
 
         // Per-type TakenHit + panel DR (:2171-2444)
         let (taken_hit, dr_pct) = taken_hit_per_type(&enemy_in.damage, &mit);
+        let physical_before_reduction = DAMAGE_TYPE_BY_INDEX
+            .into_iter()
+            .map(|kind| enemy_in.damage.get(kind).max(0.0) * mit.shift[kind as usize][0])
+            .sum::<f64>();
+        let physical_reduction = damage_reduction_terms(physical_before_reduction, &mit, 0);
 
         // avoid_stun / Stun real-value wiring
         // vendor totalTakenHit = Σ <X>TakenHit (:2444); the ES halving condition
@@ -1409,6 +1431,7 @@ pub fn fill_ehp_pob2(
         // never accumulate recoupable and the mods would stay unread.
         let any_recoup = [
             "LifeRecoup",
+            "PhysicalDamagePreventedLifeRecoup",
             "ManaRecoup",
             "EnergyShieldRecoup",
             "FireEnergyShieldRecoup",
@@ -1442,43 +1465,54 @@ pub fn fill_ehp_pob2(
                 ward: on_block("WardOnBlock") * avg_block_frac,
             }
         };
-        let (n_mitigated, recoupable_by_type, recoupable_total) =
-            if (configured_damage_chance - 100.0).abs() > f64::EPSILON
-                || any_recoup
-                || prevented_total
-                || gain.any()
-            {
-                // Per-type reduction (vendor :3277-3300's DamageIn[type] × (1 - avoid_type/100)) --
-                // per-type avoidance can't go through scale_damage's uniform
-                // factor (that's reused elsewhere in the hits_to_die iteration
-                // and must stay uniform). With no per-type avoidance, avoid is
-                // entirely 0, matching the old uniform scaling bit-for-bit.
-                let base_mult = block_effect_mult * deflect_mult;
-                let mitigated_in = super::pool_damage::TypedDamage {
-                    physical: taken_hit.physical * base_mult * (1.0 - avoid[0] / 100.0),
-                    fire: taken_hit.fire * base_mult * (1.0 - avoid[1] / 100.0),
-                    cold: taken_hit.cold * base_mult * (1.0 - avoid[2] / 100.0),
-                    lightning: taken_hit.lightning * base_mult * (1.0 - avoid[3] / 100.0),
-                    chaos: taken_hit.chaos * base_mult * (1.0 - avoid[4] / 100.0),
-                };
-                // :3338 LimitEHPSpeedup = TrackRecoupable or TrackLifeLossOverTime or GainWhenHit.
-                let m_params = EhpLoopParams {
-                    gain,
-                    ..EhpLoopParams::from_constants(
-                        &cfg.constants,
-                        any_recoup || prevented_total || gain.any(),
-                    )
-                };
-                // F-4 (part of 13-G15): the mitigated loop simultaneously
-                // accumulates recoupable (vendor's TrackRecoupable is set at
-                // `:3232-3236` before NumberOfMitigatedDamagingHits is recomputed;
-                // `:3347-3361`'s totalDamage = Σ <X>RecoupableDamageTaken serves as the recoup base value).
-                let (hits, recoupable) =
-                    number_of_hits_to_die_tracked(&mitigated_in, &pools, &ctx, &m_params);
-                (hits, recoupable, recoupable.iter().sum::<f64>())
-            } else {
-                (n_hits, [0.0; 5], 0.0)
+        // Convention (no in-game test): only the Physical reduction stage
+        // counts, after taken-as shifts and before damage-taken multipliers.
+        // Blocked/deflected hits contribute nothing even when they deal damage.
+        // Evasion is already outside this loop of landed hits; it changes the
+        // number of attacks needed, not the accumulated damage before death.
+        let physical_prevented_per_hit = physical_before_reduction
+            * (1.0 - physical_reduction.taken_multiplier())
+            * (1.0 - avg_block_frac)
+            * (1.0 - unlucky(out.deflect_chance) / 100.0)
+            * (1.0 - avoid[0] / 100.0);
+        let (n_mitigated, recoup) = if (configured_damage_chance - 100.0).abs() > f64::EPSILON
+            || any_recoup
+            || prevented_total
+            || gain.any()
+        {
+            // Per-type reduction (vendor :3277-3300's DamageIn[type] × (1 - avoid_type/100)) --
+            // per-type avoidance can't go through scale_damage's uniform
+            // factor (that's reused elsewhere in the hits_to_die iteration
+            // and must stay uniform). With no per-type avoidance, avoid is
+            // entirely 0, matching the old uniform scaling bit-for-bit.
+            let base_mult = block_effect_mult * deflect_mult;
+            let mitigated_in = super::pool_damage::TypedDamage {
+                physical: taken_hit.physical * base_mult * (1.0 - avoid[0] / 100.0),
+                fire: taken_hit.fire * base_mult * (1.0 - avoid[1] / 100.0),
+                cold: taken_hit.cold * base_mult * (1.0 - avoid[2] / 100.0),
+                lightning: taken_hit.lightning * base_mult * (1.0 - avoid[3] / 100.0),
+                chaos: taken_hit.chaos * base_mult * (1.0 - avoid[4] / 100.0),
             };
+            // :3338 LimitEHPSpeedup = TrackRecoupable or TrackLifeLossOverTime or GainWhenHit.
+            let m_params = EhpLoopParams {
+                gain,
+                ..EhpLoopParams::from_constants(
+                    &cfg.constants,
+                    any_recoup || prevented_total || gain.any(),
+                )
+            };
+            hits_to_die_with_recoup(
+                &mitigated_in,
+                &pools,
+                &ctx,
+                &m_params,
+                physical_prevented_per_hit,
+            )
+        } else {
+            (n_hits, RecoupAccumulation::default())
+        };
+        let recoupable_by_type = recoup.by_type;
+        let recoupable_total = recoupable_by_type.iter().sum();
 
         // TotalEHP (`:3271`'s TotalNumberOfHits + `:3322`)
         let not_hit_frac = (not_hit / 100.0).clamp(0.0, 1.0);
@@ -1543,16 +1577,8 @@ pub fn fill_ehp_pob2(
                 mitigated_hits: n_mitigated,
                 not_hit_chance: not_hit,
                 enemy_damage_in: enemy_in.total_in,
-                physical_reduction: damage_reduction_terms(
-                    DAMAGE_TYPE_BY_INDEX
-                        .into_iter()
-                        .map(|kind| {
-                            enemy_in.damage.get(kind).max(0.0) * mit.shift[kind as usize][0]
-                        })
-                        .sum(),
-                    &mit,
-                    0,
-                ),
+                physical_reduction,
+                physical_prevented: recoup.physical_prevented,
                 recoupable_total,
                 recoupable_by_type,
                 max_hit_solutions,

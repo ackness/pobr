@@ -1843,7 +1843,7 @@ class ConfigCoverageTests(unittest.TestCase):
             pass_conditions={"Combat"}, skill_names={"ArcPlayer": "Arc"})
         rows = {r["var"]: r for r in report["options"]}
         self.assertEqual(report["counts"], {"read": 5, "handler": 1, "implied": 1,
-                                            "unread": 6, "no_effect": 2})
+                                            "unread": 6, "no_effect": 2, "not_in_game": 0})
         self.assertEqual(report["sections"]["Combat"], report["counts"])
         self.assertEqual(rows["variants"]["missing"][0]["name"], "Missing")
         self.assertEqual(rows["unworked"]["unworked_skills"], ["Fireball"])
@@ -1870,6 +1870,41 @@ class ConfigCoverageTests(unittest.TestCase):
         self.assertEqual(report["counts"]["read"], 3)
         self.assertEqual(self.coverage.effect_names(options[0]), [("minion", "Damage")])
 
+    def test_game_relevance_uses_skills_and_game_words_without_a_mechanic_list(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            (directory / "base").mkdir()
+            (directory / "base/granted_effects.json").write_text(json.dumps([
+                {"id": "ArcPlayer", "displayed_name": "Arc"}]))
+            (directory / "base/base_items.json").write_text(json.dumps([
+                {"name": "Fresh Clip I", "item_class": "Support Skill Gem"}]))
+            (directory / "base/stats.json").write_text(json.dumps([
+                {"id": "legacy_trauma_damage_per_stack"}, {"id": "shock_effect_+%"}]))
+            game = self.coverage.config_relevance.GameEvidence(directory)
+            def option(var, visibility):
+                return {"var": var, "section": "Test", "visibility": visibility,
+                        "effects": [{"name": "Damage"}]}
+            options = [option("absent", {"if_skill": ["Storm Brand"]}),
+                       option("id", {"if_skill": ["ArcPlayer"]}),
+                       option("name", {"if_skill": ["ARC"]}),
+                       option("support", {"if_skill": ["Fresh Clip I"]}),
+                       option("legacy", {"if_mult": ["TraumaStacks"]}),
+                       option("missing", {"if_flag": ["CanInflictImaginaryAilment"]}),
+                       option("generic", {"if_stat": ["ImplementationDetail"]})]
+            evidence = {o["var"]: game.classify(o) for o in options}
+            self.assertEqual([key for key, row in evidence.items() if row["class"] == "not_in_game"],
+                             ["absent", "missing"])
+            report = self.coverage.classify(options, [{"usage": {"reads": {"Damage": []}}}],
+                {"engine": {}, "data": {}}, set(), relevance=evidence)
+            self.assertEqual(report["counts"]["not_in_game"], 2)
+            self.assertEqual(report["relevant_coverage"], {"covered": 5, "total": 5, "percent": 100})
+
+    def test_web_game_relevance_manifest_matches_the_active_snapshot(self):
+        directory = REPO / "data" / (REPO / "data/CURRENT").read_text().strip()
+        actual = json.loads((REPO / "web/src/lib/configGameRelevance.json").read_text())
+        self.assertEqual(actual, self.coverage.config_relevance.web_manifest(directory),
+                         "regenerate with python3 devs/scripts/config_relevance.py")
+
     def test_registry_only_counts_registrations_not_comments_or_stubs(self):
         text = '''
         // registry.register("config:comment", stub);
@@ -1882,18 +1917,27 @@ class ConfigCoverageTests(unittest.TestCase):
         '''
         self.assertEqual(self.coverage.registrations(text), {"config:direct", "config:table"})
 
+    def test_catalog_tags_are_consumers_but_effects_and_visibility_are_not(self):
+        catalog = {"visibility": {"if_cond": ["OnlyVisible"]}, "effects": [
+            {"name": "ShockVal", "tags": [{"type": "condition", "var": "ShockedConfig"}]},
+            {"name": "Armour", "tags": [{"type": "multiplier", "var": "CorrosionStack"}]}]}
+        self.assertEqual(set(self.coverage.config_tag_reads(catalog)),
+                         {"ShockedConfig", "CorrosionStack"})
+
     def test_source_search_excludes_tests_comments_and_the_catalog(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             source = root / "crates/core/src/calc.rs"
             source.parent.mkdir(parents=True)
-            source.write_text('let x = "Read"; // "Comment"\n#[cfg(test)] mod tests { "Test" }')
+            source.write_text('let x = "Read"; format!("{}Val", "Shock"); // "Comment"\n'
+                              '#[cfg(test)] mod tests { "Test" }')
             directory = root / "data/test"
             directory.mkdir(parents=True)
             (directory / "config_options.json").write_text('{"name": "OnlyWritten"}')
             (directory / "rules.json").write_text('{"name": "Producer"}')
             index, *_ = self.coverage.source_index(root, directory)
             self.assertIn("Read", index["engine"])
+            self.assertIn("ShockVal", index["engine"])
             self.assertNotIn("Comment", index["engine"])
             self.assertNotIn("Test", index["engine"])
             self.assertNotIn("OnlyWritten", index["data"])
