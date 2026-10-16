@@ -34,6 +34,9 @@ pub trait MinionSession {
     /// Whether the player has the flag `name`.
     fn has_flag(&self, name: &str) -> bool;
 
+    /// Whether the configured enemy has the flag `name` (including rarity).
+    fn enemy_has_flag(&self, name: &str) -> bool;
+
     /// The character's final attribute `name` (`Strength`, `Dexterity`), as
     /// its attributes were prepared.
     fn attribute(&self, name: &str) -> f64;
@@ -70,6 +73,10 @@ impl MinionSession for crate::calc::CalculationSession {
 
     fn has_flag(&self, name: &str) -> bool {
         crate::calc::CalculationSession::has_flag(self, name)
+    }
+
+    fn enemy_has_flag(&self, name: &str) -> bool {
+        crate::calc::CalculationSession::enemy_has_flag(self, name)
     }
 
     fn attribute(&self, name: &str) -> f64 {
@@ -141,7 +148,9 @@ impl<T> MinionEnv for T where
 ///   `collect_item_texts`), chained with `extra_texts`;
 /// - `gem_level_bonuses` = the build's GemProperty Level bonuses (the
 ///   `additional_gem_levels` input, assembled once by the caller via
-///   [`crate::skill_env::gem_property_bonuses`]).
+///   [`crate::skill_env::gem_property_bonuses`]);
+/// - `main_skill` = the selected effect and its zero-based enabled-group index,
+///   for summons that exist only when explicitly inspecting that effect.
 ///
 /// Semantics: the mods don't participate in the player's own aggregation in the main
 /// flow (the engine produces a `MinionModifier` LIST mod, and LIST doesn't participate
@@ -156,6 +165,7 @@ pub fn spawn_minions(
     data: &dyn MinionEnv,
     gem_level_bonuses: &[crate::skill_env::GemPropertyBonus],
     equipment: &dyn crate::skill_env::EquipmentView,
+    main_skill: Option<(usize, crate::skill_env::ActiveEffect<'_>)>,
 ) {
     use std::collections::BTreeSet;
 
@@ -198,6 +208,22 @@ pub fn spawn_minions(
         } else {
             group.gems.to_vec()
         };
+        let mut candidates: Vec<_> = candidates.into_iter().enumerate().collect();
+        let selected = main_skill
+            .filter(|(index, _)| *index == group_index)
+            .map(|(_, effect)| effect);
+        // Selecting Pounce's summon effect previews its minion with
+        // the same gem and support provenance as the primary effect.
+        if let Some(effect) = selected
+            && effect.skill_id == "WolfPounceSummonWolfPlayer"
+            && !data.effect_minion_list(effect.skill_id).is_empty()
+            && let Some((_, gem)) = candidates.get(effect.gem_index)
+            && gem.skill_id != effect.skill_id
+        {
+            let mut summon = gem.clone();
+            summon.skill_id = effect.skill_id.to_string();
+            candidates.push((effect.gem_index, summon));
+        }
         for (
             gem_index,
             GemInput {
@@ -209,8 +235,23 @@ pub fn spawn_minions(
                 minion: chosen,
                 minion_skill: chosen_skill,
             },
-        ) in candidates.into_iter().enumerate()
+        ) in candidates
         {
+            // These wolves appear on the marked enemy's death. They are
+            // present only when explicitly inspecting the summon effect,
+            // not while calculating Pounce, its Mark, or another skill.
+            // An imported skillMinion on the parent gem is a display
+            // choice for the summon effect, not a summon by the attack.
+            if matches!(
+                skill_id.as_str(),
+                "WolfPouncePlayer" | "WolfPounceMarkPlayer"
+            ) || (skill_id == "WolfPounceSummonWolfPlayer"
+                && !selected.is_some_and(|effect| {
+                    effect.gem_index == gem_index && effect.skill_id == skill_id
+                }))
+            {
+                continue;
+            }
             // A support itself doesn't summon — its addMinionList appends to the active
             // skill's minion_list, which is deferred; the first version only wires up
             // the active skill's minion_list.
@@ -271,28 +312,28 @@ pub fn spawn_minions(
                 }
                 continue;
             }
-            // Minion level uses the **effective gem level** (matching vendor's
-            // `data.minionLevelTable[activeEffect.level]`, CalcActiveSkill.lua:948 —
-            // activeEffect.level includes applyGemMods's `+N to Level of all <X>
-            // Skills` and levels granted by supports). wolf-pack's "+4 to Level of all
-            // Minion Skills": gem 18 → 22 → monster level 44 (pinned by oracle; before
-            // the fix, 36 → life 1013 vs 2262).
+            // Minion level uses the effective level of the originating gem,
+            // including item/passive bonuses and levels granted by supports.
             // A support on any of the gem's effects grants the gem its levels.
-            let judgements: Vec<_> = std::iter::once(skill_id.as_str())
+            let gem_skill_id = group
+                .gems
+                .get(gem_index)
+                .map_or(skill_id.as_str(), |gem| gem.skill_id.as_str());
+            let judgements: Vec<_> = std::iter::once(gem_skill_id)
                 .chain(
-                    data.additional_effects(&skill_id)
+                    data.additional_effects(gem_skill_id)
                         .iter()
                         .map(String::as_str)
                         .filter(|id| data.effect(id).is_some_and(|e| !e.is_support)),
                 )
                 .map(|id| group_judgement(&group, data, id))
                 .collect();
-            let judgement = &judgements[0];
+            let judgement = group_judgement(&group, data, &skill_id);
             let effective_gem_level = gem_level
                 .saturating_add(crate::skill_env::additional_gem_levels(
                     gem_level_bonuses,
                     data,
-                    &skill_id,
+                    gem_skill_id,
                     corrupted,
                 ))
                 .saturating_add(support_granted_gem_levels(&judgements, group.gems, data));
@@ -305,6 +346,7 @@ pub fn spawn_minions(
                 effective_gem_level,
                 quality,
                 stat_set_index,
+                session,
             );
             // (#12 companion) Companion determination: the granted skill has
             // `SkillType.Companion` and not `MinionsAreUndamagable` (matching vendor
@@ -767,7 +809,27 @@ fn own_minion_count(
     level: u32,
     quality: u32,
     set_index: Option<u32>,
+    session: &dyn MinionSession,
 ) -> Option<u32> {
+    // The game's skill_cross_slash_triggered_summon_+_wolves stats add
+    // wolves to the one summoned per activation: +0 for a Rare, +1 for
+    // a Unique. number_of_wolves_allowed is the cap, not the spawn count.
+    if skill_id == "WolfPounceSummonWolfPlayer" {
+        let rarity_stat = if session.enemy_has_flag("Condition:Unique") {
+            "skill_cross_slash_triggered_summon_+_wolves_if_unique"
+        } else if session.enemy_has_flag("Condition:RareOrUnique") {
+            "skill_cross_slash_triggered_summon_+_wolves_if_rare"
+        } else {
+            return Some(1);
+        };
+        let extra: f64 = data
+            .effect_stats(skill_id, level, quality, set_index)
+            .all()
+            .filter(|ds| ds.stat == rarity_stat)
+            .map(|ds| ds.value)
+            .sum();
+        return Some((1.0 + extra).max(0.0) as u32);
+    }
     let mut count = None;
     for ds in data.effect_stats(skill_id, level, quality, set_index).all() {
         if skill_stats::is_summoned_minion_count(&ds.stat) {
