@@ -822,7 +822,7 @@ fn perform_ignite_stacking_multiplies_dps() {
 
 // Lane C integration: skill mechanics (AoE / projectiles / cooldown / cost)
 
-/// Skill mechanics default to neutral: no base mods → AoE/cooldown/cost all 0; projectiles 0 (no projectile source).
+/// With no base mods, radius/cooldown/cost/projectiles are zero and the area multiplier is one.
 #[test]
 fn perform_skill_mechanics_defaults_are_neutral() {
     let base = ActorBaseStats {
@@ -834,7 +834,7 @@ fn perform_skill_mechanics_defaults_are_neutral() {
 
     let o = &env.player.output;
     assert_eq!(o.aoe_radius, 0.0);
-    assert_eq!(o.aoe_area_mod, 0.0);
+    assert_eq!(o.aoe_area_mod, 1.0);
     assert_eq!(o.projectile_count, 0.0);
     assert_eq!(o.cooldown, 0.0);
     assert_eq!(o.cooldown_stored_uses, 0);
