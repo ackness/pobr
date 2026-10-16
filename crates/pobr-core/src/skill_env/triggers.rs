@@ -147,6 +147,24 @@ pub fn trigger_modifiers<S: TriggerSubCalc>(
     group_index: Option<usize>,
     main_skill_id: &str,
 ) -> Vec<Modifier> {
+    // ActiveSkills.Description: Repulsion needs a hit on the cursed enemy,
+    // Shield Wave/Combust need empowered shield/weapon hits, and Caltrops
+    // need an enemy to trigger a hazard laid during a dodge. No build input
+    // models those event frequencies or the supply of empowered attacks.
+    // Preserve each hit, without substituting weapon speed or container use
+    // time. This also applies when considered as another trigger's source.
+    if matches!(
+        main_skill_id,
+        "CurseOfRepulsionShockwavePlayer"
+            | "FortifyingCryShockwavePlayer"
+            | "TemperWeaponCombustionPlayer"
+            | "TriggeredTrailOfCaltropsPlayer"
+    ) {
+        return vec![mk_trigger_flag(
+            crate::calc::trigger::EVENT_RATE_UNMODELLED,
+            "trigger event frequency is not modelled",
+        )];
+    }
     let mut mods = trigger_rate_modifiers(
         ctx,
         data,
