@@ -182,7 +182,38 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "MovementSpeedPenalty",
             "UsableWhileMoving",
         ],
-        "PresenceRadiusMetres" => &["PresenceRadius", "PresenceArea"],
+        "PresenceRadiusMetres" | "PresenceRadius" => &["PresenceRadius", "PresenceArea"],
+        "CharmLimit" => &["CharmLimit"],
+        "EnemyCurseLimit" => &[
+            "EnemyCurseLimit",
+            "CurseLimitIsMaximumPowerCharges",
+            "PowerChargesMax",
+        ],
+        "EnemyMarkLimit" => &["EnemyMarkLimit"],
+        "ActionSpeedMod" => &["ActionSpeed", "SlowEffectOnSelf", "UnaffectedBySlows"],
+        "MovementSpeedMod" => &[
+            "MovementSpeed",
+            "ArmourMovementPenalty",
+            "MovementSpeedCannotBeBelowBase",
+            "Condition:IgnoreMovementPenalties",
+        ],
+        "LightRadiusMod" => &["LightRadius"],
+        "LifeRecoveryRateMod" => &["LifeRecoveryRate"],
+        "ManaRecoveryRateMod" => &["ManaRecoveryRate"],
+        "EnergyShieldRecoveryRateMod" => &["EnergyShieldRecoveryRate"],
+        "GlobalGemAttributeRequirements" => &[
+            "GlobalAttributeRequirements",
+            "GlobalGemAttributeRequirements",
+        ],
+        "GlobalItemAttributeRequirements" => &[
+            "GlobalAttributeRequirements",
+            "GlobalItemAttributeRequirements",
+        ],
+        "GlobalWeaponAttributeRequirements" => &[
+            "GlobalAttributeRequirements",
+            "GlobalItemAttributeRequirements",
+            "GlobalWeaponAttributeRequirements",
+        ],
         "AuraEffectMod" => &[
             "AuraEffect",
             "SelectedAuraEffect",
@@ -568,7 +599,9 @@ impl CalculationSession {
         if stat.starts_with("ManaRegen") && db.flag(&cfg, "Condition:NoInherentManaRegen") {
             cfg.conditions.insert("NoInherentManaRegen".into(), true);
         }
-        if stat.starts_with("Req") {
+        if stat.starts_with("Req")
+            || stat.starts_with("Global") && stat.ends_with("AttributeRequirements")
+        {
             cfg.flags = pobr_data::prelude::ModFlags::NONE;
             cfg.keyword_flags = pobr_data::prelude::KeywordFlags::NONE;
         }
@@ -601,12 +634,19 @@ impl CalculationSession {
                 {
                     query_cfg = hand;
                 }
-                if matches!(stat, "EffectiveMovementSpeedMod" | "PresenceRadiusMetres")
-                    || stat == "MovementSpeedWhileUsingSkill"
-                        && !matches!(
-                            name.as_str(),
-                            "SkillMovementSpeed" | "MovementSpeedPenalty" | "UsableWhileMoving"
-                        )
+                if matches!(
+                    stat,
+                    "EffectiveMovementSpeedMod"
+                        | "PresenceRadiusMetres"
+                        | "PresenceRadius"
+                        | "MovementSpeedMod"
+                        | "ActionSpeedMod"
+                        | "LightRadiusMod"
+                ) || stat == "MovementSpeedWhileUsingSkill"
+                    && !matches!(
+                        name.as_str(),
+                        "SkillMovementSpeed" | "MovementSpeedPenalty" | "UsableWhileMoving"
+                    )
                 {
                     query_cfg.flags = pobr_data::prelude::ModFlags::NONE;
                     query_cfg.keyword_flags = pobr_data::prelude::KeywordFlags::NONE;

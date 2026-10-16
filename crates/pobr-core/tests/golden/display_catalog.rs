@@ -152,7 +152,12 @@ fn catalog_entry_counts_locked() {
         // Damaging-ailment chance/duration/multipliers/roll/stacks/source ranges and ShockChance (+34).
         // Hit Calcs: five types × Min/Max/EffMult, TotalMin/TotalMax/CritEffect/
         // DpsMultiplier, each with MainHand/OffHand; Repeats and TotalNumberOfHits (+59).
-        424,
+        // Limit and modifier views: PresenceRadius, CharmLimit, EnemyCurseLimit,
+        // EnemyMarkLimit, ActionSpeedMod, MovementSpeedMod, LightRadiusMod,
+        // {Life,Mana,EnergyShield}RecoveryRateMod, LowLifePercentage, LowestAttribute,
+        // Global{Gem,Item,Weapon}AttributeRequirements, MaximumChill, MaximumShock,
+        // CurrentChill and CurrentShock (+19).
+        443,
         "a change in Computed entry count needs explicit review"
     );
 }
