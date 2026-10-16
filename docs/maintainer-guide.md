@@ -676,6 +676,9 @@ scales by the PoBR config input `multiplierCursesOnSelf`
 gate. The ledger finds count gates from the modifier's zero-scaling
 `Multiplier` tags and the config catalog. Static gate labels are borrowed;
 dynamic labels and config ids are owned, with the same JSON string fields.
+Plain and removable Power/Frenzy/Endurance charge counts share the calculation's
+input mapping, so their zero-scaling ledger gates point to the catalog's matching
+`use<Kind>Charges` option (with `override<Kind>Charges` setting the enabled count).
 
 Rite of Passage's “Possessed by Spirit Of The Bear / Boar / Cat / Owl / Ox /
 Primate / Serpent / Stag / Wolf for # seconds on use” uses game

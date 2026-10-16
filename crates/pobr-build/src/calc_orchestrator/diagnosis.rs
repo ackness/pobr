@@ -15,6 +15,7 @@
 use std::borrow::Cow;
 
 use pobr_core::calc::CalculationSession;
+use pobr_core::calc::survivability::charge_multiplier_use_condition;
 use pobr_core::{Modifier, ReadSnapshot, ReadVariables};
 
 use super::sources::ReceivedLine;
@@ -494,13 +495,10 @@ pub(crate) fn config_option_setting(catalog: &ConfigCatalog, condition: &str) ->
         .map(|option| option.var.clone())
 }
 
-/// The config option that writes `Multiplier:<multiplier>`, if one does:
-/// an effect (or per-option effect) with that exact name. Used by the line
-/// ledger to file a multiplier-scaled-to-0 line as config-gated instead of
-/// dropped. Unlike [`config_option_setting`], there is no `condition`-prefix
-/// convention to honour: the multiplier name is the whole key.
-///
-/// [`config_option_setting`]: crate::calc_orchestrator::diagnosis::config_option_setting
+/// The config option that writes `Multiplier:<multiplier>`, or enables the
+/// charge count from which it is derived. Direct and per-option effects use
+/// the exact multiplier name; derived charge counts share their input mapping
+/// with the calculation. Used by the ledger to file zero scaling as config-gated.
 pub(crate) fn multiplier_option_setting(
     catalog: &ConfigCatalog,
     multiplier: &str,
@@ -517,6 +515,7 @@ pub(crate) fn multiplier_option_setting(
                 .any(|effect| effect.name == wanted)
         })
         .map(|option| option.var.clone())
+        .or_else(|| config_option_setting(catalog, charge_multiplier_use_condition(multiplier)?))
 }
 
 /// [`CalculationSession::unset_conditions`] less what the orchestration would
