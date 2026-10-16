@@ -16,6 +16,9 @@ pub enum DetailKind {
 /// A descriptor exists for every catalog id, including explicit `none` entries.
 /// The legacy list is only the default request, not the supported surface.
 pub fn detail_kind(stat: &str) -> DetailKind {
+    if pobr_core::calc::utility::item_stat(stat).is_some() {
+        return DetailKind::Derived;
+    }
     if BREAKDOWN_STATS.contains(&stat) {
         return DetailKind::Steps;
     }

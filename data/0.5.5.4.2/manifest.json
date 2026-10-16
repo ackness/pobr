@@ -60,7 +60,7 @@
     ]
   },
   "files": {
-    "base/base_items.json": "ac652c7948396223fb8a51f30cb85204528926b2e7b57bc6708ab173e96bd3fe",
+    "base/base_items.json": "525275795877d850b993f1771b3809e081ed5da7d1e3da8de5e05ef7dda2b032",
     "base/base_player_mods.json": "5f93bf335cd2dd71ae1ce8bf137a7a0dfe621ee6e3778d0fc6c9f83befc85687",
     "base/character_constants.json": "e64bd63f5c2288447ff22e878297752aae8ec5ee9a6135e460f514914ed22150",
     "base/cost_types.json": "5dac3a7f08d63b8512f1d24870d50f876cf7907c6cc2a405473a4c65926fb88a",

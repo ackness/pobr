@@ -278,9 +278,9 @@ fn dedup_seed(m: &Modifier) -> DedupSeed {
 /// - `:1561`'s `FlasksDoNotApplyToPlayer` → the flask's buff and conditions
 ///   don't land on the player at all.
 ///
-/// Known differences: the charge/duration/recovery model
-/// (flaskData.duration/charges, calcFlaskRecovery, the Mageblood special
-/// case `:1387-1403`) isn't built; `MagicUtilityFlaskEffect`/`MagicCharmEffect`
+/// Per-item duration, charges and recovery are calculated by `calc::utility`.
+/// Known differences: Mageblood special behavior and
+/// `MagicUtilityFlaskEffect`/`MagicCharmEffect`
 /// (`:1406`/`:1588`, needs a rarity channel) and the minion-side application
 /// (`:1568-1586`) aren't implemented (the earlier "highPrecisionMods'
 /// per-mod precision override table isn't implemented" gap has since been
@@ -344,6 +344,7 @@ pub fn merge_flasks_charms(env: &mut Env) {
     // Idempotency guard: an existing non-List Flask-sourced mod means this Env has already merged them in.
     let already_merged = env.player.mod_db.iter_mods().any(|m| {
         m.mod_type != ModType::List
+            && !m.name.as_str().starts_with("LocalUtility:")
             && m.origin
                 .as_ref()
                 .is_some_and(|o| o.source_id.kind == SourceKind::Flask)

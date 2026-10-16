@@ -17,6 +17,8 @@ pub struct Env {
     /// Derived modifiers are appended during perform, so an environment is single-use.
     pub(crate) performed: bool,
     pub player: Actor,
+    pub utility_items: Vec<super::utility::UtilityItemSpec>,
+    pub utility_details: BTreeMap<String, super::utility::UtilityTerms>,
     pub enemy: Actor,
     pub cfg: CalcConfig,
     /// Player minions (Lane4). Each minion is its own `Actor`, reusing the
@@ -110,6 +112,8 @@ impl Env {
     pub fn new(player: Actor) -> Self {
         Self {
             performed: false,
+            utility_items: Vec::new(),
+            utility_details: BTreeMap::new(),
             player,
             enemy: Actor::new(1, ActorBaseStats::default()),
             cfg: CalcConfig::attack().with_damage_type(DamageType::Physical),

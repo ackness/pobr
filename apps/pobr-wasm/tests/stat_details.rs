@@ -2,6 +2,9 @@
 use pobr_build::breakdown::detail::{DetailKind, detail_descriptors};
 use serde_json::{Value, json};
 
+#[path = "support/utility.rs"]
+mod utility_fixture;
+
 fn init() {
     if !pobr_wasm::is_data_ready() {
         pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
@@ -242,14 +245,15 @@ fn every_detail_kind_has_truthful_totals_and_derived_inputs() {
     );
     let fixtures = pobr_gamedata::repo_data_root().join("../examples/demo-bd-test/builds");
     let mut seen = std::collections::BTreeSet::new();
+    let mut codes = vec![utility_fixture::code()];
     for entry in std::fs::read_dir(fixtures).unwrap() {
-        let code = entry.unwrap().path().join("code.txt");
-        if !code.is_file() {
-            continue;
+        let path = entry.unwrap().path().join("code.txt");
+        if path.is_file() {
+            codes.push(std::fs::read_to_string(path).unwrap());
         }
-        let result = calculate(
-            json!({"pob_code":std::fs::read_to_string(code).unwrap(),"breakdowns":requested,"full_dps":true}),
-        );
+    }
+    for code in codes {
+        let result = calculate(json!({"pob_code":code,"breakdowns":requested,"full_dps":true}));
         let stats: std::collections::BTreeMap<_, _> = result["stats"]
             .as_array()
             .unwrap()
@@ -534,4 +538,88 @@ fn energy_config_context_uses_meta_gems_anywhere_in_the_build() {
             );
         }
     }
+}
+
+#[test]
+fn utility_slots_use_loaded_game_bases_and_publish_only_equipped_figures() {
+    init();
+    let result = calculate(
+        json!({"pob_code":utility_fixture::code(), "breakdowns":["Flask1Recovery", "Charm3Duration"]}),
+    );
+    let stats: std::collections::BTreeMap<_, _> = result["stats"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|stat| {
+            (
+                stat["id"].as_str().unwrap(),
+                stat["value"].as_f64().unwrap(),
+            )
+        })
+        .collect();
+    close(stats["Flask1Recovery"], 1104.0, "920 life * 1.2 quality");
+    close(
+        stats["Flask1ChargesMax"],
+        105.0,
+        "75 charges * 1.4 local capacity",
+    );
+    close(stats["Flask1ChargesUsed"], 8.0, "10 charges * .8 local use");
+    close(
+        stats["Charm3Duration"],
+        3.6,
+        "3 seconds * 1.2 charm quality",
+    );
+    close(
+        stats["Charm1ChargesMax"],
+        56.0,
+        "40 charges * 1.4 local capacity",
+    );
+    assert!(result["breakdowns"]["Flask1Recovery"]["derived"].is_object());
+    assert!(result["breakdowns"]["Charm3Duration"]["derived"].is_object());
+}
+
+#[test]
+fn unticked_utility_items_keep_their_properties_without_activating_their_buffs() {
+    init();
+    let xml = pobr_build::decode_pob_code(&utility_fixture::code()).unwrap()
+        .replace("<Items activeItemSet=\"1\">", "<Items activeItemSet=\"1\"><Item id=\"6\">Rarity: NORMAL\nHeavy Belt\nImplicits: 1\nHas 3 Charm Slots\n</Item>")
+        .replace("<ItemSet id=\"1\">", "<ItemSet id=\"1\"><Slot name=\"Belt\" itemId=\"6\"/>");
+    let active =
+        calculate(json!({"pob_code":pobr_build::encode_pob_code(&xml).unwrap(),"breakdowns":[]}));
+    let inactive = calculate(
+        json!({"pob_code":pobr_build::encode_pob_code(&xml.replace("active=\"true\"", "active=\"false\"")).unwrap(),"breakdowns":["Flask1Recovery"]}),
+    );
+    let figures = |result: &Value| -> std::collections::BTreeMap<String, Value> {
+        result["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|stat| {
+                let id = stat["id"].as_str().unwrap();
+                pobr_core::calc::utility::item_stat(id)
+                    .map(|_| (id.to_string(), stat["value"].clone()))
+            })
+            .collect()
+    };
+    assert_eq!(figures(&active), figures(&inactive));
+    let fire_resist = |result: &Value| {
+        result["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|stat| stat["id"] == "FireResist")
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+    close(
+        fire_resist(&active) - fire_resist(&inactive),
+        25.0,
+        "unticked Ruby Charm grants no fire resistance",
+    );
+    assert_eq!(
+        inactive["breakdown_descriptors"]["Flask1Recovery"],
+        "derived"
+    );
+    assert!(inactive["breakdowns"]["Flask1Recovery"]["derived"].is_object());
 }

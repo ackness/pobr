@@ -391,6 +391,35 @@ impl CalculationSession {
         Ok(())
     }
 
+    /// Supplies the equipped utility item's game base for per-use calculations.
+    pub fn add_utility_base(
+        &mut self,
+        slot: &str,
+        item: &Item,
+        base: &pobr_data::catalog::UtilityBaseStats,
+    ) {
+        self.env
+            .utility_items
+            .push(super::utility::UtilityItemSpec {
+                slot: slot.into(),
+                base: base.clone(),
+                quality: item.quality as f64,
+                is_charm: crate::item::classify_utility_item(item)
+                    == crate::item::UtilityItemKind::Charm,
+            });
+    }
+
+    /// Stores only local properties for an equipped utility item with its effects disabled.
+    pub fn add_inactive_utility_properties(&mut self, slot_name: &str, item: &Item) {
+        let ingest = crate::item::ingest_flask_charm_with_ctx(slot_name, item, self.parse_ctx());
+        self.env.player.mod_db.add_list(
+            ingest
+                .modifiers
+                .into_iter()
+                .filter(|modifier| modifier.name.as_str().starts_with("LocalUtility:")),
+        );
+    }
+
     /// Wires in an **active-state** flask/charm: its mods are packed by
     /// [`crate::item::ingest_flask_charm`] into a `FlaskBuff`/`CharmBuff`
     /// payload List mod and injected (List mods don't participate in

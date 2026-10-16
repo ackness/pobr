@@ -553,6 +553,7 @@ mod tests {
                 armour: None,
                 spirit: None,
                 charm_buff: Vec::new(),
+                utility: None,
             },
         );
         data.gem_effects.insert(

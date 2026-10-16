@@ -377,7 +377,7 @@ fn local_flask_duration_does_not_extend_skill_effects() {
         env.player.mod_db.sum(
             ModType::Inc,
             &env.cfg,
-            &[ModName::from("LocalUtilityDuration")]
+            &[ModName::from("LocalUtility:Flask1:LocalUtilityDuration")]
         ),
         47.0
     );

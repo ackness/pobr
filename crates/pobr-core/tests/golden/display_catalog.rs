@@ -47,8 +47,12 @@ fn catalog_entry_counts_locked() {
     );
     assert_eq!(
         catalog.len() - planned,
-        // +4: Fire/Cold/Lightning/Chaos ResistMax, shared by the player and minions.
-        217,
+        // Also includes the base's Fire/Cold/Lightning/ChaosResistMax additions (+4).
+        // FlaskEffect / FlaskChargeGen / LifeFlaskChargeGen / ManaFlaskChargeGen /
+        // UtilityFlaskChargeGen, plus Flask{1,2} and Charm{1,2,3} Duration,
+        // ChargesMax, ChargesUsed, Uses, ChargeGen and ChargesGained; flasks
+        // also expose Recovery, InstantRecovery and RecoveryPerSecond (+41).
+        258,
         "a change in Computed entry count needs explicit review"
     );
 }
@@ -232,10 +236,24 @@ fn extract_covers_every_computed_catalog_entry() {
         .iter()
         .filter(|def| def.parity_status == ParityStatus::Computed)
         .count();
-    let values = extract_display_values(&OutputTable {
+    let mut output = OutputTable {
         full_dps: Some(Default::default()),
         ..Default::default()
-    });
+    };
+    // Per-slot figures are absent until that slot holds an item.
+    assert!(
+        extract_display_values(&output)
+            .iter()
+            .all(|value| pobr_core::calc::utility::item_stat(value.id.as_str()).is_none())
+    );
+    for def in display_catalog() {
+        if pobr_core::calc::utility::item_stat(def.id.as_str()).is_some() {
+            output
+                .utility_stats
+                .insert(def.id.as_str().to_string(), 0.0);
+        }
+    }
+    let values = extract_display_values(&output);
     assert_eq!(values.len(), computed);
 }
 

@@ -23,7 +23,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
     let computed = |id: &str, cat: Cat, vt: Vt, pob: &str| {
         DisplayStatDefinition::computed(id, cat, vt).with_pob_key(pob)
     };
-    vec![
+    let mut catalog = vec![
         computed("DecayDPS", Cat::DotDamage, Vt::Number, "DecayDPS"),
         computed(
             "MirageBurningGroundDPS",
@@ -956,7 +956,44 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "ProjectileSpeedMod",
         ),
-    ]
+    ];
+    for (id, _) in crate::calc::utility::GLOBAL_STATS {
+        catalog.push(computed(
+            id,
+            Cat::Recovery,
+            if *id == "FlaskEffect" {
+                Vt::Percent
+            } else {
+                Vt::Number
+            },
+            id,
+        ));
+    }
+    for (kind, count) in [("Flask", 2), ("Charm", 3)] {
+        for slot in 1..=count {
+            for field in crate::calc::utility::ITEM_STATS {
+                if kind == "Charm" && field.contains("Recovery") {
+                    continue;
+                }
+                let id = format!("{kind}{slot}{field}");
+                let vt = if *field == "Duration" {
+                    Vt::TimeSeconds
+                } else {
+                    Vt::Number
+                };
+                catalog.push(
+                    DisplayStatDefinition::computed(id.as_str(), Cat::Recovery, vt)
+                        .with_pob_key(id.as_str())
+                        .with_higher_is_better(if *field == "ChargesUsed" {
+                            Some(false)
+                        } else {
+                            None
+                        }),
+                );
+            }
+        }
+    }
+    catalog
 }
 
 /// Extracts the current value of every `Computed` display field from an
@@ -967,6 +1004,10 @@ pub fn extract_display_values(output: &OutputTable) -> Vec<DisplayStatValue> {
         .filter(|def| def.parity_status == ParityStatus::Computed)
         .filter(|def| {
             output.full_dps.is_some() || !matches!(def.id.as_str(), "FullDPS" | "FullDotDPS")
+        })
+        .filter(|def| {
+            crate::calc::utility::item_stat(def.id.as_str()).is_none()
+                || output.utility_stats.contains_key(def.id.as_str())
         })
         .map(|def| {
             let value = display_value(output, def.id.as_str());
@@ -983,6 +1024,9 @@ pub fn extract_display_values(output: &OutputTable) -> Vec<DisplayStatValue> {
 /// [`extract_display_values`], including fractional chance to percent conversion.
 /// Unknown ids return 0.
 pub fn display_value(output: &OutputTable, id: &str) -> f64 {
+    if let Some(value) = output.utility_stats.get(id) {
+        return *value;
+    }
     match id {
         "DecayDPS" => output.decay_dps,
         "MirageBurningGroundDPS" => output.mirage_burning_ground_dps,

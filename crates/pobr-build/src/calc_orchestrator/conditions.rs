@@ -385,6 +385,7 @@ mod weapon_condition_tests {
                 armour: None,
                 spirit: None,
                 charm_buff: vec![],
+                utility: None,
             },
         );
         build.set_item(

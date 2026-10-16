@@ -153,6 +153,7 @@ mod tests {
             armour,
             spirit: None,
             charm_buff: Vec::new(),
+            utility: None,
             req_str: 0,
             req_dex: 0,
             req_int: 0,

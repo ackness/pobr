@@ -92,7 +92,12 @@ pub(super) fn inject_flasks_charms(session: &mut SourceWriter, build: &Build, da
     //       CalcPerform.lua:1429-1663). A charm needs a CharmLimit source (a belt
     //       implicit etc.) to enter the budget (:1589); unparseable lines (trigger/
     //       recovery lines) are skip-and-collected.
-    for (slot_name, item) in &build.utility_slots {
+    for (active, (slot_name, item)) in build.utility_slots.iter().map(|item| (true, item)).chain(
+        build
+            .inactive_utility_slots
+            .iter()
+            .map(|item| (false, item)),
+    ) {
         // A charm base's inherent buff (e.g. Ruby Charm's `+25% to Fire Resistance`) is
         // **not in the item text** — it's a base attribute (vendor's
         // `Item.lua:838-844` folds `base.charm.buff` line by line into
@@ -109,12 +114,21 @@ pub(super) fn inject_flasks_charms(session: &mut SourceWriter, build: &Build, da
         // base name" reliably locates it (a normal/rare item whose full name equals
         // the base name matches too).
         let item_name = item.base.to_string();
-        let base_buff: &[String] = data
+        let base = data
             .base_items
             .values()
-            .filter(|def| !def.charm_buff.is_empty())
-            .find(|def| item_name.contains(def.name.as_str()))
-            .map(|def| def.charm_buff.as_slice())
+            .filter(|def| def.utility.is_some() || !def.charm_buff.is_empty())
+            .filter(|def| item_name.contains(def.name.as_str()))
+            .max_by_key(|def| def.name.len());
+        if let Some(utility) = base.and_then(|base| base.utility.as_ref()) {
+            session.add_utility_base(slot_name, item, utility);
+        }
+        if !active {
+            session.add_inactive_utility_properties(slot_name, item);
+            continue;
+        }
+        let base_buff = base
+            .map(|base| base.charm_buff.as_slice())
             .unwrap_or_default();
         if base_buff.is_empty() {
             session.add_flask_charm(slot_name, item);

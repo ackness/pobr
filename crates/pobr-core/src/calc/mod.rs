@@ -153,3 +153,5 @@ pub(crate) fn round(value: f64) -> f64 {
 }
 
 mod sidebar;
+
+pub mod utility;

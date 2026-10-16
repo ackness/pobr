@@ -24,6 +24,12 @@ pub struct DerivedDetail {
 /// Each group represents a genuine query. Explicit enemy groups use the enemy
 /// database; derived relationships never appear as synthetic modifier rows.
 pub fn source_names(stat: &str) -> Vec<String> {
+    if let Some((_, names)) = super::super::utility::GLOBAL_STATS
+        .iter()
+        .find(|(id, _)| *id == stat)
+    {
+        return names.iter().map(|name| (*name).to_string()).collect();
+    }
     let names: &[&str] = match stat {
         "Rage" => &[
             "MaximumRage",
@@ -464,7 +470,14 @@ pub fn source_names(stat: &str) -> Vec<String> {
 impl CalculationSession {
     pub fn detail_sources(&self, stat: &str) -> Vec<SourceGroup<'_>> {
         let db = &self.env.player.mod_db;
-        let mut cfg = self.env.cfg.clone();
+        let mut cfg = if super::super::utility::GLOBAL_STATS
+            .iter()
+            .any(|(id, _)| *id == stat)
+        {
+            super::super::utility::query_config(&self.env.cfg)
+        } else {
+            self.env.cfg.clone()
+        };
         if stat.starts_with("ManaRegen") && db.flag(&cfg, "Condition:NoInherentManaRegen") {
             cfg.conditions.insert("NoInherentManaRegen".into(), true);
         }
@@ -535,6 +548,9 @@ impl CalculationSession {
     }
 
     pub fn derived_detail(&self, stat: &str) -> Option<DerivedDetail> {
+        if let Some(terms) = self.env.utility_details.get(stat) {
+            return Some(super::super::utility::derived(terms));
+        }
         if let Some(terms) = &self.output().energy_trigger {
             if terms.at_own_rate && matches!(stat, "SkillTriggerRate" | "TriggerRateCap") {
                 return Some(DerivedDetail {

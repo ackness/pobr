@@ -36,3 +36,6 @@ mod recovery_outputs;
 
 #[path = "engine/recoup_transfer.rs"]
 mod recoup_transfer;
+
+#[path = "engine/utility.rs"]
+mod utility;

@@ -156,6 +156,19 @@ impl SourceWriter {
         self.session.add_limb(slot, item)
     }
 
+    pub fn add_utility_base(
+        &mut self,
+        slot: &str,
+        item: &Item,
+        base: &pobr_data::catalog::UtilityBaseStats,
+    ) {
+        self.session.add_utility_base(slot, item, base);
+    }
+
+    pub fn add_inactive_utility_properties(&mut self, slot: &str, item: &Item) {
+        self.session.add_inactive_utility_properties(slot, item);
+    }
+
     pub fn add_flask_charm(&mut self, slot: &str, item: &Item) {
         if self.received.is_some() {
             let source = pobr_core::item::flask_charm_source(slot);

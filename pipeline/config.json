@@ -42,6 +42,23 @@
       ]
     },
     {
+      "name": "Flasks",
+      "columns": [
+        "BaseItemType",
+        "LifePerUse",
+        "ManaPerUse",
+        "RecoveryTime"
+      ]
+    },
+    {
+      "name": "ComponentCharges",
+      "columns": [
+        "BaseItemTypesKey",
+        "MaxCharges",
+        "PerCharge"
+      ]
+    },
+    {
       "name": "ItemClasses",
       "columns": [
         "Id",

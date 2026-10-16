@@ -434,6 +434,9 @@ pub struct Build {
     /// enters the calculation via `ingest_flask_charm` → env_finalize stage 3
     /// `merge_flasks_charms`.
     pub utility_slots: Vec<(String, Item)>,
+    /// Equipped utility items whose active effects are unticked. Their local
+    /// properties still participate in per-item flask/charm figures.
+    pub inactive_utility_slots: Vec<(String, Item)>,
     /// The Transcendent limbs, by slot: a set of their own beside the
     /// equipment. Their lines are global modifiers, attributed to the slot.
     pub limbs: BTreeMap<LimbSlot, Item>,

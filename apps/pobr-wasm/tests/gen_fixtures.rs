@@ -7,6 +7,9 @@
 
 use pobr_gamedata::repo_data_root;
 
+#[path = "support/utility.rs"]
+mod utility_fixture;
+
 fn demo_code() -> String {
     let path =
         repo_data_root().join("../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt");
@@ -32,7 +35,17 @@ fn generate_stat_detail_fixtures() {
         .flat_map(|id| pobr_core::calc::session::detail::source_names(id))
         .collect();
     let fixtures = repo_data_root().join("../examples/demo-bd-test/builds");
-    let mut responses = vec![response.clone()];
+    let mut responses = vec![
+        response.clone(),
+        serde_json::from_str(
+            &pobr_wasm::calculate_build_json(
+                &serde_json::json!({"pob_code": utility_fixture::code(), "breakdowns": ids})
+                    .to_string(),
+            )
+            .unwrap(),
+        )
+        .unwrap(),
+    ];
     for entry in std::fs::read_dir(fixtures).unwrap() {
         let code = entry.unwrap().path().join("code.txt");
         if !code.is_file() {

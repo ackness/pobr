@@ -789,6 +789,7 @@ fn holder_name(
         return build
             .utility_slots
             .iter()
+            .chain(&build.inactive_utility_slots)
             .find(|(name, _)| pobr_core::item::flask_charm_source(name).id == id)
             .map(|(_, item)| item.base.to_string());
     }

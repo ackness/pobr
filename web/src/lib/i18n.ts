@@ -1231,6 +1231,15 @@ const STAT_EXTRA_LABELS: Record<string, { 'zh-TW': string; 'zh-CN': string }> = 
 /** 聚合属性名（breakdown 键 / 归因字段 / diff 列表）→ 本地化。
  * 回退链：breakdown 名表 → 侧栏展示目录标签 → 补充译名表 → 原 id。 */
 export function statNameLabel(lang: Lang, id: string): string {
+  const utility = /^(Flask|Charm)([1-3])(.+)$/.exec(id);
+  if (utility) {
+    const [, kind, slot, field] = utility;
+    const label = DETAIL_LABELS[`UtilityField${field}`]?.[lang];
+    if (label) {
+      const name = lang === 'en-US' ? kind : kind === 'Flask' ? (lang === 'zh-TW' ? '藥劑' : '药剂') : (lang === 'zh-TW' ? '護符' : '护符');
+      return `${name} ${slot} · ${label}`;
+    }
+  }
   const skillContribution = /^SkillGroup(\d+)Effect(\d+)DPS$/.exec(id);
   if (skillContribution) {
     const [, group, effect] = skillContribution;

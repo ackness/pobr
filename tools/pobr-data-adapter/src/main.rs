@@ -41,6 +41,7 @@ mod monsters;
 mod raw_source;
 mod required_columns;
 mod skills;
+mod utility;
 
 const ZH_TW: &str = "Traditional Chinese";
 
@@ -434,6 +435,7 @@ fn run(args: Args) -> Result<String, String> {
 
     // Weapon/armour base stats (WeaponTypes / ArmourTypes, joined by base item row index).
     let (weapon_map, armour_map) = weapon_armour_lookups(&en)?;
+    let utility_map = utility::adapt(&en)?;
 
     let mut bases = Vec::new();
     let mut i18n_zh: BTreeMap<String, String> = BTreeMap::new();
@@ -483,6 +485,7 @@ fn run(args: Args) -> Result<String, String> {
             // `charm.buff`): `.dat` has no such column -> always empty,
             // backfilled by the overlay during gamedata loading.
             charm_buff: Vec::new(),
+            utility: utility_map.get(&index).cloned(),
         });
     }
 

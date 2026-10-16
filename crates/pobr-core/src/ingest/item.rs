@@ -311,9 +311,8 @@ fn substitute_slot_placeholder(modifier: &mut Modifier, slot_id: &str) {
 // A List mod doesn't participate in sum/more/flag aggregation → the payload
 // has zero effect on output before merging (a migration invariant).
 //
-// Scope: only covers "modifiers enter calc + apply the effect multiplier
-// bucket"; charge/duration/recovery modeling (vendor
-// flaskData.duration/charges, calcFlaskRecovery) isn't built.
+// Local duration, recovery and charge properties are stored separately for
+// calc::utility; only effect modifiers enter the buff payload.
 
 /// The List mod name for a flask's modifier payload (consumed by `merge_flasks_charms`).
 pub const FLASK_BUFF_LIST_NAME: &str = "FlaskBuff";
@@ -418,7 +417,17 @@ pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'
                     if modifier.name.as_str() == "Duration" && is_local_utility_duration(text) {
                         modifier.name = ModName::from("LocalUtilityDuration");
                     }
-                    nested.push(modifier.with_origin(make_origin(text)));
+                    let modifier = modifier.with_origin(make_origin(text));
+                    if crate::calc::utility::is_local_property(modifier.name.as_str(), text) {
+                        let mut modifier = modifier;
+                        modifier.name = ModName::from(
+                            crate::calc::utility::local_name(slot_name, modifier.name.as_str())
+                                .as_str(),
+                        );
+                        ingest.modifiers.push(modifier);
+                    } else {
+                        nested.push(modifier);
+                    }
                 }
             }
             // Unsupported or a hard error: report the original line (with

@@ -68,6 +68,14 @@ const REQUIRED_EN: &[(&str, &[&str])] = &[
         ],
     ),
     (
+        "Flasks.json",
+        &["BaseItemType", "LifePerUse", "ManaPerUse", "RecoveryTime"],
+    ),
+    (
+        "ComponentCharges.json",
+        &["BaseItemTypesKey", "MaxCharges", "PerCharge"],
+    ),
+    (
         "WeaponTypes.json",
         &[
             "BaseItemType",

@@ -894,6 +894,7 @@ pub struct BuildSummary {
 /// The key output fields from a `calculate-build` result.
 #[derive(Debug, Clone, Serialize)]
 pub struct CalculateBuildOutput {
+    pub utility_stats: std::collections::BTreeMap<String, f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub full_dps: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1205,6 +1206,7 @@ pub fn calculate_build_detailed(
 
     let summary = build_summary(&build);
     let output = CalculateBuildOutput {
+        utility_stats: out.utility_stats.clone(),
         full_dps: out.full_dps.as_ref().map(|full| full.dps),
         full_dot_dps: out.full_dps.as_ref().map(|full| full.dot_dps),
         full_dps_skills: out

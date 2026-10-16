@@ -85,7 +85,7 @@ pub use item_overlay::{
     CatalystDef, CatalystsDef, ModScalabilityDef, ModScalabilityEntryDef, ModScalabilitySlotDef,
     RuneDef, RuneSlotDef, RunesDef, UniqueDef, UniquesDef,
 };
-pub use items::{ArmourBaseStats, BaseItemDef, WeaponBaseStats};
+pub use items::{ArmourBaseStats, BaseItemDef, UtilityBaseStats, WeaponBaseStats};
 pub use manifest::{CATALOG_SCHEMA_VERSION, DataManifest, DomainSections};
 pub use mods::{ModDef, ModStat, SpawnWeight, StatDef};
 pub use monster_resistances::{MonsterResistanceDef, MonsterResistancesDef};

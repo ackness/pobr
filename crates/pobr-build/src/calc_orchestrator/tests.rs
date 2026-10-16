@@ -3318,6 +3318,7 @@ fn weapon_base_item(name: &str, item_class: &str) -> pobr_data::catalog::BaseIte
         armour: None,
         spirit: None,
         charm_buff: Vec::new(),
+        utility: None,
     }
 }
 
