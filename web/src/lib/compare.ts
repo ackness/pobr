@@ -77,7 +77,7 @@ export function comparisonRequests(a: CalculateBuildRequest, b: CalculateBuildRe
   const ownA = { ...a, mode_effective: true, config_context: false };
   const ownB = { ...b, mode_effective: true, config_context: false };
   return [ownA, basis === 'own' ? ownB : { ...ownB,
-    enemy_tier: a.enemy_tier, config_inputs: a.config_inputs,
+    enemy_tier: a.enemy_tier, config_inputs: a.config_inputs, party: a.party,
     extra_modifiers: a.extra_modifiers, custom_modifier_blocks: a.custom_modifier_blocks,
   }];
 }

@@ -603,6 +603,8 @@ pub struct AilmentTerms {
     /// The chance for a hit to apply the ailment at the average hit and at
     /// `damage_roll` (fractions).
     pub apply_chance: f64,
+    /// Average source damage of a newly applied instance, before over-stacking.
+    pub application_source_damage: f64,
     pub apply_chance_rolled: f64,
     /// The inputs of the active instance estimate
     /// `hit_chance × apply_chance × duration × hits_per_second`.
@@ -1860,6 +1862,7 @@ impl HandAilmentMerge {
 /// when two passes do, how their DPS was merged.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AilmentStageTerms {
+    pub stacked_merge: Option<HandAilmentMerge>,
     pub passes: Vec<(crate::HandTag, AilmentTerms)>,
     /// Per pass, the source hit by damage type: the parts add up to that
     /// pass's `source_hit` and `source_crit`.

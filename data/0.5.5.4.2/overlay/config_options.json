@@ -10101,6 +10101,99 @@
       "verified": true
     },
     {
+      "var": "energyIncomingHitRate",
+      "input_type": "count_allow_zero",
+      "section": "Skill Options",
+      "label": "Incoming blockable hits per second:",
+      "tooltip": "Incoming blockable hits reaching the block check. If absent, uses an explicitly configured enemy attack / cast time; with neither input, keeps the spell’s own rate. Set 0 for zero events.",
+      "visibility": {
+        "if_skill": [
+          "MetaCastOnBlockPlayer"
+        ]
+      },
+      "effects": [
+        {
+          "target": "player",
+          "name": "Multiplier:EnergyIncomingHitRate",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "input"
+          }
+        }
+      ],
+      "verified": true
+    },
+    {
+      "var": "energyInvocationUsesPerSecond",
+      "input_type": "count_allow_zero",
+      "section": "Skill Options",
+      "label": "Invocation uses per second:",
+      "tooltip": "Leave empty to estimate immediate use whenever enough Energy is available, limited by the Invocation cooldown. Set 0 to disable manual activations.",
+      "visibility": {
+        "if_skill": [
+          "MetaSpellslingerPlayer",
+          "MetaElementalInvocationPlayer"
+        ]
+      },
+      "effects": [
+        {
+          "target": "player",
+          "name": "Multiplier:EnergyInvocationUsesPerSecond",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "input"
+          }
+        }
+      ],
+      "verified": true
+    },
+    {
+      "var": "energyMinionDeathsPerSecond",
+      "input_type": "count_allow_zero",
+      "section": "Skill Options",
+      "label": "Minions killed per second:",
+      "tooltip": "Rate of minions killed, not minions expiring. If absent, keeps the spell’s own rate. Set 0 for zero events.",
+      "visibility": {
+        "if_skill": [
+          "MetaCastOnMinionDeathPlayer"
+        ]
+      },
+      "effects": [
+        {
+          "target": "player",
+          "name": "Multiplier:EnergyMinionDeathsPerSecond",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "input"
+          }
+        }
+      ],
+      "verified": true
+    },
+    {
+      "var": "energyMinionPower",
+      "input_type": "count_allow_zero",
+      "section": "Skill Options",
+      "label": "Average Power of killed minions:",
+      "tooltip": "Power of the minions counted in Minions killed per second. Defaults to 1.",
+      "visibility": {
+        "if_skill": [
+          "MetaCastOnMinionDeathPlayer"
+        ]
+      },
+      "effects": [
+        {
+          "target": "player",
+          "name": "Multiplier:EnergyMinionPower",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "input"
+          }
+        }
+      ],
+      "verified": true
+    },
+    {
       "var": "eyeOfWinterCold",
       "input_type": "check",
       "section": "Skill Options",

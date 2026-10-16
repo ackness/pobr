@@ -200,6 +200,7 @@ export const STAT_SECTIONS: StatSectionDef[] = [
       { id: 'MineLayingTime', label: { 'en-US': 'Mine Throwing Time (s)', 'zh-TW': '地雷投擲時間（秒）', 'zh-CN': '地雷投掷时间（秒）' }, format: 'float2', hideZero: true },
       { id: 'MineThrowCount', label: { 'en-US': 'Mines per Throw', 'zh-TW': '每次投擲地雷數', 'zh-CN': '每次投掷地雷数' }, format: 'float2', hideZero: true },
       { id: 'WarcryCastTime', label: { 'en-US': 'Warcry Time (s)', 'zh-TW': '戰吼施放時間（秒）', 'zh-CN': '战吼施放时间（秒）' }, format: 'float2', hideZero: true },
+      { id: 'ChannelTimeToTrigger', label: { 'en-US': 'Channel Time to Trigger (s)', 'zh-TW': '觸發前引導時間（秒）', 'zh-CN': '触发前引导时间（秒）' }, format: 'float2', hideZero: true },
       { id: 'ChannelTime', label: { 'en-US': 'Channel Time (s)', 'zh-TW': '引導時間（秒）', 'zh-CN': '引导时间（秒）' }, format: 'float2', hideZero: true },
       { id: 'StoredUses', label: { 'en-US': 'Stored Uses', 'zh-TW': '儲存使用次數', 'zh-CN': '储存使用次数' }, format: 'int', hideZero: true },
       { id: 'FiringRate', label: { 'en-US': 'Firing Rate', 'zh-TW': '射擊速率', 'zh-CN': '射击速率' }, format: 'rate', hideZero: true },

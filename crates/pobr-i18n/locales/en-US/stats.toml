@@ -213,6 +213,7 @@ TrapThrowCount = "Traps per Throw"
 MineLayingTime = "Mine Throwing Time (s)"
 MineThrowCount = "Mines per Throw"
 WarcryCastTime = "Warcry Time (s)"
+ChannelTimeToTrigger = "Channel Time to Trigger (s)"
 ChannelTime = "Channel Time (s)"
 # Recovery and self-inflicted resource loss
 LifeRegenRecovery = "Life Regeneration and Recovery per Second"

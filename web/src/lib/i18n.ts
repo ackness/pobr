@@ -16,6 +16,17 @@ export const LANGS: Lang[] = ['en-US', 'zh-TW', 'zh-CN'];
 type Entry = { 'en-US': string; 'zh-TW': string; 'zh-CN': string };
 
 const DICT = {
+  "namedSets.skill": { "en-US": "Skill set", "zh-TW": "技能組合", "zh-CN": "技能组合" },
+  "namedSets.config": {"en-US": "Config set", "zh-TW": "配置組", "zh-CN": "配置组"},
+  "namedSets.create": {"en-US": "New set", "zh-TW": "新增組合", "zh-CN": "新建组合"},
+  "namedSets.duplicate": {"en-US": "Copy set", "zh-TW": "複製組合", "zh-CN": "复制组合"},
+  "namedSets.rename": {"en-US": "Rename set", "zh-TW": "重新命名", "zh-CN": "重命名"},
+  "namedSets.remove": {"en-US": "Delete set", "zh-TW": "刪除組合", "zh-CN": "删除组合"},
+  "namedSets.name": {"en-US": "Set name", "zh-TW": "組名稱", "zh-CN": "组名称"},
+  "namedSets.save": {"en-US": "Save name", "zh-TW": "儲存名稱", "zh-CN": "保存名称"},
+  "namedSets.cancel": {"en-US": "Cancel", "zh-TW": "取消", "zh-CN": "取消"},
+  "namedSets.confirmDelete": {"en-US": "Delete this set? Its saved values will be removed.", "zh-TW": "刪除此組？其中已儲存的值也會刪除。", "zh-CN": "删除此组？其中已保存的值也会删除。"},
+
   "tab.compare": {"en-US": "Compare", "zh-TW": "對比", "zh-CN": "对比"},
   "compare.title": {"en-US": "Compare builds and stages", "zh-TW": "對比構築與階段", "zh-CN": "对比构筑与阶段"},
   "compare.hint": {"en-US": "Choose A and B to inspect saved builds. Only Apply changes A; B stays untouched.", "zh-TW": "選擇 A 與 B 檢視已儲存構築。只有套用會修改 A，B 保持不變。", "zh-CN": "选择 A 与 B 查看已保存构筑。只有应用会修改 A，B 保持不变。"},
@@ -120,6 +131,10 @@ const DICT = {
   "editor.reviewJewels": {"en-US": "Review jewel drafts", "zh-TW": "查看珠寶草稿", "zh-CN": "查看珠宝草稿"},
   "lib.wrongSlot": {"en-US": "Select a compatible equipment position first", "zh-TW": "請先選擇相容的裝備位置", "zh-CN": "请先选择兼容的装备位置"},
   "build.code": {"en-US": "Build code", "zh-TW": "構築代碼", "zh-CN": "构筑代码"},
+  'plannerFile.title': { 'en-US': 'PoE2 Build Planner', 'zh-TW': 'PoE2 遊戲內構築規劃', 'zh-CN': 'PoE2 游戏内构筑规划' },
+  'plannerFile.hint': { 'en-US': 'Download .build files for the game’s BuildPlanner folder. Each file carries passives, gems and inventory hints. Equipment rolls, character level and calculation settings cannot be restored from this format. All loadouts produces one download per loadout; save each file below.', 'zh-TW': '下載 .build 檔案並放入遊戲的 BuildPlanner 資料夾。每個檔案包含天賦、寶石及裝備提示，無法還原完整裝備、角色等級或計算設定。全部配裝會產生多個檔案，請逐一下載。', 'zh-CN': '下载 .build 文件并放入游戏的 BuildPlanner 文件夹。每个文件包含天赋、宝石及装备提示，无法还原完整装备、角色等级或计算设置。全部配装会生成多个文件，请逐一下载。' },
+  'plannerFile.current': { 'en-US': 'Download current .build', 'zh-TW': '下載目前 .build', 'zh-CN': '下载当前 .build' },
+  'plannerFile.all': { 'en-US': 'Prepare all loadouts (.build)', 'zh-TW': '準備全部配裝（.build）', 'zh-CN': '准备全部配装（.build）' },
   "build.importHint": {"en-US": "Paste a PoB2 code, a supported share link, or .build JSON. Links: pobb.in, poe.ninja PoB shares, Pastebin, Rentry, poe2db, Maxroll and WeGame. The selected destination controls where the build is saved.", "zh-TW": "貼上 PoB2 代碼、支援的分享連結或 .build JSON。支援 pobb.in、poe.ninja PoB 分享、Pastebin、Rentry、poe2db、Maxroll 及 WeGame。構築會儲存至上方選擇的位置。", "zh-CN": "粘贴 PoB2 代码、支持的分享链接或 .build JSON。支持 pobb.in、poe.ninja PoB 分享、Pastebin、Rentry、poe2db、Maxroll 及 WeGame。构筑会保存到上方选择的位置。"},
   "build.linkInvalid": {"en-US": "This is not a supported HTTPS build-share URL. Copy the complete share link.", "zh-TW": "這不是支援的 HTTPS 構築分享網址。請複製完整的分享連結。", "zh-CN": "这不是支持的 HTTPS 构筑分享网址。请复制完整的分享链接。"},
   "build.linkHost": {"en-US": "This share host is not supported. Paste the PoB2 code instead.", "zh-TW": "尚不支援這個分享網站。請改貼 PoB2 代碼。", "zh-CN": "尚不支持这个分享网站。请改贴 PoB2 代码。"},
@@ -631,6 +646,7 @@ const DICT = {
   'calcs.step.off_hand_added': { 'en-US': 'Off hand, added: the skill hits with both weapons at once', 'zh-TW': '副手，相加：技能同時以兩把武器擊中', 'zh-CN': '副手，相加：技能同时以两把武器击中' },
   'calcs.step.off_hand_either': { 'en-US': 'Off hand: both weapons hit at once and either can crit', 'zh-TW': '副手：兩把武器同時擊中，任一暴擊即算', 'zh-CN': '副手：两把武器同时击中，任一暴击即算' },
   'calcs.step.off_hand_alternating': { 'en-US': 'Off hand: alternating weapons of different speed', 'zh-TW': '副手：輪流使用速度不同的武器', 'zh-CN': '副手：轮流使用速度不同的武器' },
+  'calcs.step.energy_trigger': { 'en-US': 'Energy trigger rate / own use rate', 'zh-TW': '能量觸發頻率 / 自身使用頻率', 'zh-CN': '能量触发频率 / 自身使用频率' },
   'calcs.step.reload': { 'en-US': 'Time spent reloading (see the table below)', 'zh-TW': '裝填所佔的時間（見下表）', 'zh-CN': '装填所占的时间（见下表）' },
   'calcs.step.hit_interval': { 'en-US': 'Hit by the first arrow to land once it can be hit again', 'zh-TW': '能再次被命中後落下的第一支箭命中', 'zh-CN': '能再次被命中后落下的第一支箭命中' },
   'calcs.step.stronger_hand': { 'en-US': 'The stronger hand (see below)', 'zh-TW': '較強的一手（見下方）', 'zh-CN': '较强的一手（见下方）' },
@@ -853,7 +869,7 @@ const DICT = {
   'lib.filterSlot': { 'en-US': 'Current slot only', 'zh-TW': '只看當前槽位', 'zh-CN': '只看当前槽位' },
   'lib.noMatch': { 'en-US': 'No matching items', 'zh-TW': '無符合物品', 'zh-CN': '没有匹配的物品' },
   'lib.useJewel': { 'en-US': 'Use', 'zh-TW': '使用', 'zh-CN': '使用' },
-  'sets.title': { 'en-US': 'Skill sets', 'zh-TW': '技能組套裝', 'zh-CN': '技能组套装' },
+  'sets.title': { 'en-US': 'Reusable skill sets', 'zh-TW': '可重用技能組合', 'zh-CN': '可复用技能组合' },
   'sets.save': { 'en-US': 'Save current as set', 'zh-TW': '保存當前為套裝', 'zh-CN': '保存当前为套装' },
   'sets.namePlaceholder': { 'en-US': 'Set name…', 'zh-TW': '套裝名稱…', 'zh-CN': '套装名称…' },
   'sets.apply': { 'en-US': 'Apply', 'zh-TW': '套用', 'zh-CN': '套用' },
@@ -1215,6 +1231,13 @@ const STAT_EXTRA_LABELS: Record<string, { 'zh-TW': string; 'zh-CN': string }> = 
 /** 聚合属性名（breakdown 键 / 归因字段 / diff 列表）→ 本地化。
  * 回退链：breakdown 名表 → 侧栏展示目录标签 → 补充译名表 → 原 id。 */
 export function statNameLabel(lang: Lang, id: string): string {
+  const skillContribution = /^SkillGroup(\d+)Effect(\d+)DPS$/.exec(id);
+  if (skillContribution) {
+    const [, group, effect] = skillContribution;
+    if (lang === 'zh-TW') return `技能組 ${group} · 效果 ${effect} DPS`;
+    if (lang === 'zh-CN') return `技能组 ${group} · 效果 ${effect} DPS`;
+    return `Skill group ${group} · effect ${effect} DPS`;
+  }
   const fromMods = MOD_NAME_LABELS[id]?.[lang];
   if (fromMods) return fromMods;
   for (const section of STAT_SECTIONS) {

@@ -297,8 +297,11 @@ def damage_leads(entries: dict, oracle: dict, item_slots: dict, main_skill: str)
     return found
 
 
+SPIRIT_STATS = ("SpiritUnreserved", "SpiritUnreservedPercent")
+
+
 def stat_leads(stat: str, entries: dict, oracle: dict, item_slots: dict, main_skill: str) -> list:
-    if stat == "SpiritUnreserved":
+    if stat in SPIRIT_STATS:
         return spirit_leads(entries, oracle)
     if stat in compare.DAMAGE_STATS:
         return damage_leads(entries, oracle, item_slots, main_skill)
@@ -477,7 +480,7 @@ def analyse(name: str, corpus: str, report: dict, oracle: dict, xml: str, known:
         found_leads = stat_leads(stat, entries, oracle, item_slots, main_skill)
         # PoB2 also reserves the skill a reservation-free amulet grants
         # (once more when the build has that gem too).
-        if stat == "SpiritUnreserved" and found_leads and all(
+        if stat in SPIRIT_STATS and found_leads and all(
                 skill_key(found["key"]) in free and (found["pob2"] or 0) > (found["pobr"] or 0)
                 for found in found_leads):
             row["class"], row["reason"] = "known", SPIRIT_REASON

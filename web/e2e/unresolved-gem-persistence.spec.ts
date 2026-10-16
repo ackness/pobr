@@ -24,7 +24,11 @@ function activeSaved(envelope: Envelope): SavedSession {
 
 function assertUnresolvedSlot(saved: SavedSession) {
   expect(saved.state.socketGroups[8].gems[0].skill_id).toBe('FirestormPlayer');
-  expect(saved.state.socketGroups[8].gems[1]).toEqual({ skill_id: '', level: 0, quality: 0, name_spec: 'Unleash' });
+  // The committed source explicitly sets count="1" and both enableGlobal flags.
+  expect(saved.state.socketGroups[8].gems[1]).toEqual({
+    skill_id: '', level: 0, quality: 0, name_spec: 'Unleash',
+    count: 1, enable_global_1: true, enable_global_2: true,
+  });
   expect(saved.state.socketGroups[8].gems[2].skill_id).toBe('SupportSpellCascadePlayer');
 }
 
@@ -212,7 +216,10 @@ test('Comet PoB share-code reimport retains the unresolved slot and source gem m
     const gem = groups[8]?.querySelectorAll('Gem')[1];
     return gem ? Object.fromEntries(Array.from(gem.attributes, attribute => [attribute.name, attribute.value])) : null;
   }, xml);
-  expect(unresolvedMetadata).toMatchObject({ nameSpec: 'Unleash', level: '0', quality: '0' });
+  expect(unresolvedMetadata).toMatchObject({
+    nameSpec: 'Unleash', level: '0', quality: '0',
+    count: '1', enableGlobal1: 'true', enableGlobal2: 'true',
+  });
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(sharedCode);
   await page.locator('.import-submit').click();
   await expect(page.locator('.paper-doll')).toBeVisible();
@@ -234,6 +241,45 @@ test('Comet PoB share-code reimport retains the unresolved slot and source gem m
   await page.reload();
   await ready(page);
   expect(await snapshot(page)).toEqual(after);
+});
+
+test('unresolved gems without count or global weapon attributes keep them absent through sharing', async ({ page }) => {
+  const code = deflateSync(`<PathOfBuilding2><Build className="Sorceress" level="85" mainSocketGroup="1"/>
+<Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true">
+<Gem skillId="FireballPlayer" gemId="Metadata/Items/Gems/SkillGemFireball" level="20" quality="0"/>
+<Gem nameSpec="Unleash" level="0" quality="0"/>
+</Skill></SkillSet></Skills></PathOfBuilding2>`).toString('base64url');
+  await page.goto('/');
+  await ready(page);
+  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
+  await page.locator('.import-submit').click();
+  await expect(page.locator('.paper-doll')).toBeVisible();
+  await idle(page);
+  const unresolved = { skill_id: '', level: 0, quality: 0, name_spec: 'Unleash' };
+  expect((await snapshot(page)).state.socketGroups[0].gems[1]).toEqual(unresolved);
+  await nav(page, 'Build').click();
+  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
+  const output = page.getByRole('textbox', { name: 'Share Code', exact: true });
+  await expect(output).toBeVisible();
+  const sharedCode = await output.inputValue();
+  const xml = inflateSync(Buffer.from(sharedCode, 'base64url')).toString('utf8');
+  const attributes = await page.evaluate(value => {
+    const document = new DOMParser().parseFromString(value, 'application/xml');
+    const gem = document.querySelector('Skills > SkillSet > Skill > Gem[nameSpec="Unleash"]');
+    return gem ? Object.fromEntries(Array.from(gem.attributes, attribute => [attribute.name, attribute.value])) : null;
+  }, xml);
+  expect(attributes).toMatchObject({ nameSpec: 'Unleash', level: '0', quality: '0' });
+  for (const attribute of ['count', 'enableGlobal1', 'enableGlobal2']) {
+    expect(attributes).not.toHaveProperty(attribute);
+  }
+  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(sharedCode);
+  await page.locator('.import-submit').click();
+  await expect(page.locator('.paper-doll')).toBeVisible();
+  await idle(page);
+  expect((await snapshot(page)).state.socketGroups[0].gems[1]).toEqual(unresolved);
+  await page.reload();
+  await ready(page);
+  expect((await snapshot(page)).state.socketGroups[0].gems[1]).toEqual(unresolved);
 });
 
 test('malformed inactive Comet stage import preserves the current workspace and library', async ({ page }) => {

@@ -28,7 +28,7 @@ fn pob_slot_name(slot: EquipmentSlot) -> &'static str {
 }
 
 /// The PoB2 tree tag for the data actually loaded into this instance.
-fn current_tree_version() -> Result<String, String> {
+pub(super) fn current_tree_version() -> Result<String, String> {
     let manifest = state::game_data()?
         .manifest()
         .map_err(|error| error.to_string())?;
@@ -318,6 +318,23 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
         custom_modifier_blocks: &custom_modifier_blocks,
         notes: req.notes.as_deref(),
     });
+    let party = req
+        .party
+        .clone()
+        .or_else(|| {
+            req.base_code
+                .as_deref()
+                .and_then(|code| decode_pob_code(code).ok())
+                .and_then(|xml| pobr_build::party::parse_party(&xml).ok())
+        })
+        .unwrap_or_default();
+    let xml = xml.replace(
+        "</PathOfBuilding2>",
+        &format!(
+            "{}\n</PathOfBuilding2>",
+            pobr_build::party::party_xml(&party)
+        ),
+    );
     // With a base draft, write back the active sets and global fields, preserving
     // the other loadouts; if the base draft is corrupted, degrade to a
     // pure-edit-state output (better to lose the other sets than fail the export outright).

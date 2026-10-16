@@ -132,6 +132,8 @@ pub enum FormulaOp {
     OffHandAlternating,
     /// Multiplies by `operand`: the share of time not spent reloading.
     Reload,
+    /// Changes the spell's use rate to its meta gem's Energy trigger rate.
+    EnergyTrigger,
     /// A target can be hit once every `operand` seconds: of the arrows
     /// landing at the running rate, the first to land once that time has
     /// passed hits, one in every `⌈operand × value⌉`.
@@ -225,6 +227,7 @@ impl FormulaOp {
             Self::OffHandEither => "off_hand_either",
             Self::OffHandAlternating => "off_hand_alternating",
             Self::Reload => "reload",
+            Self::EnergyTrigger => "energy_trigger",
             Self::HitInterval => "hit_interval",
             Self::StrongerHand => "stronger_hand",
             Self::StrongerShare => "stronger_share",

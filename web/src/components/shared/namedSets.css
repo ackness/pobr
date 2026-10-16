@@ -1,0 +1,4 @@
+.named-sets { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0 20px; }
+.named-sets label { display: flex; align-items: center; gap: 8px; }
+.named-sets select { min-width: 150px; max-width: 300px; }
+.named-sets form { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }

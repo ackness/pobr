@@ -226,6 +226,7 @@ pub struct CalculateBuildRequest {
     /// Editable PoB groups. `None` keeps the legacy request behavior; an
     /// explicit empty array clears imported custom modifiers.
     pub(crate) custom_modifier_blocks: Option<Vec<CustomModifierBlock>>,
+    pub(crate) party: Option<pobr_build::party::Party>,
     /// The `<Config>` input override (Config page toggles; bool/number/string).
     pub(crate) config_inputs: BTreeMap<String, serde_json::Value>,
     /// Notes (only written into `<Notes>` by `encode_build_json`; ignored by the calculation path).
@@ -490,6 +491,9 @@ pub(crate) fn apply_request_overrides(
         // The contract is 0-based (web index semantics); Build's internal
         // representation matches PoB XML's 1-based indexing.
         build.main_socket_group = Some(main + 1);
+    }
+    if let Some(party) = &req.party {
+        build.party = party.clone();
     }
     for (key, value) in &req.config_inputs {
         build.config.raw_inputs.values.insert(

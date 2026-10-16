@@ -108,7 +108,16 @@ update it when the behavior changes.
 - Player `overridePowerCharges`, `overrideFrenzyCharges` and `overrideEnduranceCharges` feed the shared charge multiplier context as interpreted `*Charges` overrides when their use condition is enabled. Absent/zero count inputs default to maximum; disabled use retains the minimum. Explicit numeric counts floor at the minimum, retain fractions and are not upper-capped, matching the pinned PoB2 reference. Ordinary per-charge multiplier tags independently floor the consumed stack count. Raw imported Bool/Text types remain intact; numeric strings are not silently coerced into number inputs.
 - Current charge fields in native `ChargeState`, `OutputTable` and display values are `f64`; maximum/minimum fields remain `u32`. The JSON stat contract remains numeric, without a schema/data/version bump. Charge queries locally project `mode_combat` into the override tag context and restore the original condition map; do not activate unrelated Combat-tagged effects globally. This is not exhaustive charge, minion or Config-catalog coverage.
 
+## Web party effects
+
+- Config's Party section adds, imports, removes and enables members. Each member retains editable `PartyMemberStats`, `Aura`, `Curse`, `Warcry Skills`, `Link Skills`, `EnemyConditions` and `EnemyMods` blocks. Member changes participate in stage saves, calculation requests and PoB exports.
+- Native import calculates member resource/attribute totals and supported outgoing aura/curse strengths from their own build. Exported effects the engine cannot reconstruct remain intact. Unsupported formatted modifier lines remain visible in calculation diagnostics rather than becoming unconditional modifiers.
+- Party effects use the existing buff pass, recipient effect modifiers, strongest-copy merging and per-caster curse limits. Sources begin with `party.<member>`. Disabling a member removes its contribution while keeping its text.
+- PoB XML writes normal `<Party><ImportedBuffs>` blocks and preserves outgoing `<ExportedBuffs>`. An ignorable `PoBRMember` extension retains individual member names, text and enabled state; PoB2 uses the combined enabled blocks. Schema 14 adds party state and member import.
+
 ## Web calculation details
+
+- Energy meta gems expose `energy_trigger` terms (storage, cost, event rate, refund and trigger rate). `SkillTriggerRate` and `TriggerRateCap` have derived explanations; `TotalDPS` and `ActionRate` include the Energy rate adjustment. Config can supply incoming blockable hits, killed-minion rate and Power, and manual Invocation uses per second; missing event sources retain the spell’s own rate with `at_own_rate: true`, a null `source`, and `missing_source` guidance in both trigger-rate explanations. Explicit zero inputs still stop triggers. Incoming hits prefer `energyIncomingHitRate`, then explicit `enemySpeed`; omitted Invocation cadence estimates immediate use subject to cooldown. The four inputs use `if_skill` gates for their stable meta-gem IDs in the Applicable view. The legacy CLI critical-hit Energy field remains for compatibility beside generic event terms.
 
 - Explanations are requested, not computed on every edit. `calculateBuildJson` takes an optional `breakdowns`: omitted keeps the legacy default (`BREAKDOWN_STATS` for the player and every minion's details), `[]` computes no player or minion details, and a list computes only those ids, deduplicated first; an unknown id is a bad request. Optional `breakdown_actor` is `{kind: "player"}` or `{kind: "minion", index}` for a minion of the same response; an out-of-range index is a bad request. Values and actor identity do not depend on the requested details, and the skill-metrics and Full DPS caches ignore both fields. The session's ordinary calculation sends `breakdowns: []`; opening a row requests that one id for the selected actor.
 - `breakdown_descriptors` gives every display stat id one kind (`pobr_build::breakdown::detail::detail_kind`): `steps` (the step-by-step stats with their hand, damage, ailment and reload tables), `sources` (groups that are each one engine ModDb query: active BASE and INC rows add up, MORE multiplies with that group's precision, and groups in different units are never added into one total), `derived` (a formula over stable-id inputs with upstream pool context; enemy inputs are never additive EHP rows) or `none` (an explicit empty state). A sidebar row whose kind is not `none` opens its explanation even before the payload exists.
@@ -120,3 +129,20 @@ update it when the behavior changes.
 Algorithm experiments: `POBR_UPGRADE_BENCH=1 pnpm --dir web test src/lib/upgradeBench.test.ts src/lib/supportBench.test.ts src/lib/passiveBench.test.ts` uses real WASM and synthetic fixtures, comparing finite exhaustive references and apply/recalculate equality. Benchmarks are opt-in and write ignored `.cache` reports. See `devs/docs/architecture/18-upgrade-guidance.md` for results and limits; no bounded planner is a proof of a global or budget optimum.
 
 Build references are temporarily hidden from navigation and saved-tab restoration. The panel, matching logic, fixtures and catalog generation remain for future player-shared builds. Its UI workflows are explicitly skipped while hidden; the saved-tab fallback and matching unit tests remain active. See `devs/docs/architecture/21-build-reference-guidance.md` for the retained behavior and `docs/reference-sources-and-engine-review.md` for source/API findings and the current PoB2 alignment review.
+
+### 历史天赋树转换
+
+Tree 的“转换为当前天赋树”先预览当前 Spec；勾选“全部天赋方案”则覆盖所有 Spec。
+`preview_tree_conversion_json({ code, all_specs })` 返回独立的 `code` 和逐 Spec 的
+`kept`、`dropped`（旧名、旧词条、移除原因、珠宝物品编号）、`disconnected` 与
+`disconnected_by_set`（共用、武器组 1、武器组 2）。schema 15 增加此入口。
+历史节点按编号及身份匹配；旧包无稳定 slug 时比较去除展示标记的名称与种类，
+词条数值变化不等于换节点。不可用的历史目录会报错，不能猜测转换。
+当前版本的 Spec 原文保持不变。
+
+预览、取消均不改动会话；只有确认才替换天赋状态和保存其他方案的完整 XML 底稿。
+会话版本变化后旧预览不可确认。仍存在的珠宝插槽与两组专属点保留，断路节点只报告，
+不自动退款；失效插槽的物品仍在 XML 物品池。导出及重新导入保持转换后的版本与分组。
+天赋加点、属性选择、方案应用和转换共用最多 30 步的内存撤销历史，转换撤销也恢复
+其他 Spec 和原始 XML；其他构筑编辑或切换阶段会结束该历史，避免回退之后的装备或配置。
+撤销历史不跨页面刷新持久化。

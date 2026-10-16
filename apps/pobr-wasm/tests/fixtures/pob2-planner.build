@@ -1,0 +1,24 @@
+{
+  "ascendancy":"Ranger1",
+  "author":"Fixture author",
+  "description":"Planner hints",
+  "inventory_slots":[{
+      "additional_text":"<silver>{Choose a bow}",
+      "inventory_id":"Weapon1",
+      "slot_x":0
+    }],
+  "name":"Writer fixture",
+  "passives":[{
+      "id":"melee18",
+      "weapon_set":2
+    },{
+      "additional_text":"Keep this passive note",
+      "id":"melee17",
+      "weapon_set":0
+    }],
+  "skills":[{
+      "additional_text":"Level 17, 12% Quality",
+      "id":"Metadata/Items/Gem/SkillGemIceShot",
+      "support_skills":["Metadata/Items/Gem/SupportGemFastForward"]
+    }]
+}

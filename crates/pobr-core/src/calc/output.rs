@@ -99,6 +99,7 @@ pub struct OutputTable {
     pub mine_throw_count: f64,
     pub warcry_cast_time: f64,
     pub channel_time: f64,
+    pub channel_time_to_trigger: f64,
 
     pub mana_percent_cost: f64,
     pub mana_percent_per_second_cost: f64,
@@ -246,9 +247,11 @@ pub struct OutputTable {
     pub skill_trigger_rate: f64,
     /// Maximum Energy of the meta gem that holds the main skill (0 outside one).
     pub energy_trigger_maximum: f64,
+    /// Terms of the selected meta gem, including storage versus consumption.
+    pub energy_trigger: Option<super::energy::EnergyTriggerTerms>,
     /// Energy one event of the chosen source gives that gem.
     pub energy_per_trigger_event: f64,
-    /// The skill whose critical hits fill the gem most often; `None` when the
+    /// The skill or external event that fills the gem most often; `None` when the
     /// main skill is not in an Energy meta gem or nothing can fill it.
     pub energy_trigger_source: Option<String>,
 
@@ -591,6 +594,7 @@ impl Default for OutputTable {
             mine_throw_count: 0.0,
             warcry_cast_time: 0.0,
             channel_time: 0.0,
+            channel_time_to_trigger: 0.0,
 
             mana_percent_cost: 0.0,
             mana_percent_per_second_cost: 0.0,
@@ -693,6 +697,7 @@ impl Default for OutputTable {
             trigger_rate_cap: 0.0,
             skill_trigger_rate: 0.0,
             energy_trigger_maximum: 0.0,
+            energy_trigger: None,
             energy_per_trigger_event: 0.0,
             energy_trigger_source: None,
             // Lane A: charges / leech / Recoup default to neutral 0 (no effect on the panel without a source mod).

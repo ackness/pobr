@@ -287,3 +287,11 @@
     align-self: flex-start;
   }
 }
+
+.party-editor { margin-block: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: 6px; }
+.party-editor > summary { cursor: pointer; font-weight: 600; }
+.party-editor fieldset { margin-block: 1rem; padding: 1rem; min-width: 0; }
+.party-editor label { display: inline-flex; gap: .5rem; margin: .4rem; align-items: center; }
+.party-editor textarea { display: block; box-sizing: border-box; width: 100%; min-width: 16rem; font-family: monospace; }
+.party-editor details { margin-block: .5rem; }
+.party-editor button { margin: .4rem; }

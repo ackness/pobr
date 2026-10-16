@@ -32,8 +32,7 @@
 //! - (a) `skill_db` = `player.mod_db`'s global aggregate (pobr has no
 //!   per-skill modlist layering). The gap: an "AuraEffect that only applies
 //!   to a specific aura" mod (rare, fix per-build when it comes up).
-//! - (b) The ally-strongest-wins branch (`allyBuffs`, `:2105`) is always
-//!   empty -- party isn't implemented, this branch isn't implemented.
+//! - Party effects share the same strongest-copy and curse-limit selection as local buffs.
 //! - (c) `auraCannotAffectSelf` (`:2102`): the granted_effect data column
 //!   isn't landed, always treated as false.
 //! - (d) The `ExtraAuraEffect` extra mod list (`:2089-2101`) isn't migrated
@@ -277,7 +276,7 @@ fn scale_buff_mod(
     let scale_note = format!("buff effect ×{mult:.4}");
     match out.origin.as_mut() {
         Some(origin) => {
-            if mult != 1.0 {
+            if mult != 1.0 && !origin.source_id.id.starts_with("party.") {
                 origin.raw_text = Some(match origin.raw_text.take() {
                     Some(text) => format!("{text} ({scale_note})"),
                     None => scale_note,
@@ -338,17 +337,16 @@ pub(crate) fn auras_on_minion(
     minion_cfg: &crate::CalcConfig,
 ) -> (Vec<Modifier>, Vec<String>) {
     let player = &env.player.mod_db;
-    if !env.cfg.mode_buffs
-        || [
-            "SelfAurasCannotAffectAllies",
-            "SelfAurasOnlyAffectYou",
-            "SelfAuraSkillsCannotAffectAllies",
-        ]
-        .iter()
-        .any(|flag| player.flag(&env.cfg, flag))
-    {
+    if !env.cfg.mode_buffs {
         return (Vec::new(), Vec::new());
     }
+    let cannot_share = [
+        "SelfAurasCannotAffectAllies",
+        "SelfAurasOnlyAffectYou",
+        "SelfAuraSkillsCannotAffectAllies",
+    ]
+    .iter()
+    .any(|flag| player.flag(&env.cfg, flag));
     let effect = [ModName::from("AuraEffect"), ModName::from("BuffEffect")];
     let on_self = [
         ModName::from("BuffEffectOnSelf"),
@@ -362,7 +360,7 @@ pub(crate) fn auras_on_minion(
     for spec in env
         .buff_skills
         .iter()
-        .filter(|spec| spec.kind == BuffKind::Aura)
+        .filter(|spec| spec.kind == BuffKind::Aura && !cannot_share)
     {
         let aura_cfg = env
             .cfg
@@ -383,7 +381,27 @@ pub(crate) fn auras_on_minion(
         merge_buff(buffs.entry(spec.name.clone()).or_default(), scaled);
         conditions.push(affected_by_condition(&spec.name));
     }
-    if !conditions.is_empty() {
+    let mut has_aura = !conditions.is_empty();
+    for party in &env.party_buff_skills {
+        let spec = &party.spec;
+        if !matches!(
+            spec.kind,
+            BuffKind::Aura | BuffKind::Buff | BuffKind::Warcry | BuffKind::Link
+        ) {
+            continue;
+        }
+        has_aura |= spec.kind == BuffKind::Aura;
+        let mult =
+            received_effect(minion_db, minion_cfg, spec.kind == BuffKind::Aura) * spec.magnitude;
+        let mods = spec
+            .mods
+            .iter()
+            .map(|m| scale_buff_mod(&env.high_precision, m, mult, &spec.skill_id))
+            .collect();
+        merge_buff(buffs.entry(spec.name.clone()).or_default(), mods);
+        conditions.push(affected_by_condition(&spec.name));
+    }
+    if has_aura {
         conditions.push("AffectedByAura".to_string());
     }
     (buffs.into_values().flatten().collect(), conditions)
@@ -411,17 +429,26 @@ fn affected_by_condition(name: &str) -> String {
 /// condition set). A no-op for the whole section (every value unchanged)
 /// when `cfg.mode_buffs == false` (default) or there's no spec.
 pub fn buff_pass(env: &mut Env) {
-    if !env.cfg.mode_buffs || (env.buff_skills.is_empty() && env.minion_buff_skills.is_empty()) {
+    if !env.cfg.mode_buffs
+        || (env.buff_skills.is_empty()
+            && env.minion_buff_skills.is_empty()
+            && env.party_buff_skills.is_empty())
+    {
         return;
     }
     let specs: Vec<_> = env
         .buff_skills
         .iter()
-        .map(|spec| (None, spec.clone()))
+        .map(|spec| (None, None, spec.clone()))
         .chain(
             env.minion_buff_skills
                 .iter()
-                .map(|(index, spec)| (Some(*index), spec.clone())),
+                .map(|(index, spec)| (Some(*index), None, spec.clone())),
+        )
+        .chain(
+            env.party_buff_skills
+                .iter()
+                .map(|party| (None, Some(party), party.spec.clone())),
         )
         .collect();
     let priority_data = env.curse_priority.clone().unwrap_or_default();
@@ -438,7 +465,7 @@ pub fn buff_pass(env: &mut Env) {
     let mut curses: Vec<CurseEntry> = Vec::new();
     let mut conditions: Vec<String> = Vec::new();
 
-    for (owner, spec) in &specs {
+    for (owner, party, spec) in &specs {
         let caster = owner.map_or(&env.player, |index| &env.minions[index]);
         let caster_cfg = match owner {
             Some(_) => super::perform::minion_cfg(env, caster)
@@ -478,7 +505,11 @@ pub fn buff_pass(env: &mut Env) {
                 let mag_mult = (1.0
                     + env.player.mod_db.sum(ModType::Inc, &aura_cfg, &mag_names) / 100.0)
                     * env.player.mod_db.more(&aura_cfg, &mag_names);
-                let mult = (1.0 + inc / 100.0) * more * mag_mult;
+                let mult = if party.is_some() {
+                    received_effect(&env.player.mod_db, &aura_cfg, true) * spec.magnitude
+                } else {
+                    (1.0 + inc / 100.0) * more * mag_mult
+                };
                 // vendor :2107-2110: sets the conditions.
                 conditions.push("AffectedByAura".to_string());
                 conditions.push(affected_by_condition(&spec.name));
@@ -490,7 +521,9 @@ pub fn buff_pass(env: &mut Env) {
                     .collect();
                 merge_buff(player_buffs.entry(spec.name.clone()).or_default(), scaled);
             }
-            BuffKind::Buff => {
+            BuffKind::Buff | BuffKind::Warcry | BuffKind::Link
+                if party.is_some() || spec.kind == BuffKind::Buff =>
+            {
                 // vendor :1949-1962: a player self-buff (e.g. the Precision
                 // family of supports) enters the player db through the
                 // BuffEffect factor, plus an AffectedBy condition.
@@ -535,7 +568,11 @@ pub fn buff_pass(env: &mut Env) {
                     inc += env.player.mod_db.sum(ModType::Inc, &env.cfg, &names);
                     more *= env.player.mod_db.more(&env.cfg, &names);
                 }
-                let mult = (1.0 + inc / 100.0) * more;
+                let mult = if party.is_some() {
+                    received_effect(&env.player.mod_db, &buff_cfg, false) * spec.magnitude
+                } else {
+                    (1.0 + inc / 100.0) * more
+                };
                 // vendor :1955: `modDB.conditions["AffectedBy"..buff.name] = true`.
                 conditions.push(affected_by_condition(&spec.name));
                 let source_id = format!("buff.{}", spec.skill_id);
@@ -549,7 +586,8 @@ pub fn buff_pass(env: &mut Env) {
             BuffKind::Curse => {
                 // vendor :2289's gate: `(mode_effective and (not Hexproof or exempt)) or mark`.
                 let hexproof = env.enemy.mod_db.flag(&env.cfg, "Hexproof");
-                let ignores_hexproof = caster.mod_db.flag(&caster_cfg, "CursesIgnoreHexproof")
+                let ignores_hexproof = (party.is_none()
+                    && caster.mod_db.flag(&caster_cfg, "CursesIgnoreHexproof"))
                     || spec.ignore_curse_limit;
                 if !((env.cfg.mode_effective && (!hexproof || ignores_hexproof)) || spec.is_mark) {
                     continue;
@@ -579,7 +617,20 @@ pub fn buff_pass(env: &mut Env) {
                     // vendor :2303-2305: non-marks additionally multiply by the enemy-side CurseEffectOnSelf MORE.
                     more *= env.enemy.mod_db.more(&env.cfg, &curse_effect_on_self);
                 }
-                let mult = (1.0 + inc / 100.0) * more;
+                let mult = if party.is_some() {
+                    let inc = env
+                        .enemy
+                        .mod_db
+                        .sum(ModType::Inc, &env.cfg, &curse_effect_on_self);
+                    let more = if spec.is_mark {
+                        1.0
+                    } else {
+                        env.enemy.mod_db.more(&env.cfg, &curse_effect_on_self)
+                    };
+                    (1.0 + inc / 100.0) * more * spec.magnitude
+                } else {
+                    (1.0 + inc / 100.0) * more
+                };
                 if dbg_env!("POBR_DBG_CURSE").is_some() {
                     eprintln!(
                         "[POBR_CURSE] entry name={} inc={inc:.2} (local_inc={:.2}) more={more:.4} (local_more={:.4} magnitude={:.4}) mult={mult:.4} mods={:?}",
@@ -605,12 +656,15 @@ pub fn buff_pass(env: &mut Env) {
                     })
                     .collect();
                 // vendor :2294's `ignoreCurseLimit = (...) and not mark or false`.
-                let ignore_curse_limit =
-                    (caster.mod_db.flag(&caster_cfg, "CursesIgnoreCurseLimit")
-                        || spec.ignore_curse_limit)
-                        && !spec.is_mark;
+                let ignore_curse_limit = ((party.is_none()
+                    && caster.mod_db.flag(&caster_cfg, "CursesIgnoreCurseLimit"))
+                    || spec.ignore_curse_limit)
+                    && !spec.is_mark;
                 curses.push(CurseEntry {
-                    owner: owner.map_or(0, |index| index + 1),
+                    owner: party.map_or_else(
+                        || owner.map_or(0, |index| index + 1),
+                        |p| 1 + env.minions.len() + p.member,
+                    ),
                     name: spec.name.clone(),
                     priority: determine_curse_priority(
                         &priority_data,
@@ -685,12 +739,23 @@ pub fn buff_pass(env: &mut Env) {
             .mod_db
             .sum(ModType::Base, &env.cfg, &[ModName::from("EnemyMarkLimit")]);
 
-    if !env.minion_buff_skills.is_empty() {
+    if !env.minion_buff_skills.is_empty() || !env.party_buff_skills.is_empty() {
         // Every caster has its own limit. A monster's EnemyCurseLimit is
         // its total (Ribrattle's definition is 3), not a bonus to the player.
         let mut limits = BTreeMap::from([(0, (curse_limit, mark_limit))]);
         for curse in &curses {
             if curse.owner == 0 {
+                continue;
+            }
+            if curse.owner > env.minions.len() {
+                if let Some(party) = env
+                    .party_buff_skills
+                    .iter()
+                    .find(|p| p.member + 1 + env.minions.len() == curse.owner)
+                {
+                    limits.insert(curse.owner, (party.curse_limit, 1.0));
+                    curse_limit = curse_limit.max(party.curse_limit);
+                }
                 continue;
             }
             let actor = &env.minions[curse.owner - 1];
@@ -840,6 +905,59 @@ pub fn buff_pass(env: &mut Env) {
         enemy_curse_limit: curse_limit,
         curse_slots: slot_names,
     });
+}
+
+/// Party exports carry the caster's factor; only the recipient's modifiers apply here.
+fn received_effect(db: &ModDb, cfg: &crate::CalcConfig, aura: bool) -> f64 {
+    let names: Vec<ModName> = if aura {
+        vec!["BuffEffectOnSelf".into(), "AuraEffectOnSelf".into()]
+    } else {
+        vec!["BuffEffectOnSelf".into()]
+    };
+    (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)
+}
+
+pub(super) fn party_exports(env: &Env) -> Vec<super::session::BuffSpec> {
+    let mut result = Vec::new();
+    for spec in &env.buff_skills {
+        if !matches!(spec.kind, BuffKind::Aura | BuffKind::Curse) {
+            continue;
+        }
+        if spec.kind == BuffKind::Aura
+            && [
+                "SelfAurasCannotAffectAllies",
+                "SelfAurasOnlyAffectYou",
+                "SelfAuraSkillsCannotAffectAllies",
+            ]
+            .iter()
+            .any(|name| env.player.mod_db.flag(&env.cfg, name))
+        {
+            continue;
+        }
+        let cfg = env
+            .cfg
+            .clone()
+            .with_skill_types(spec.skill_types)
+            .with_keyword_flags(crate::skill_env::skill_keyword_flags(spec.skill_types));
+        let names: Vec<ModName> = if spec.kind == BuffKind::Aura {
+            vec!["AuraEffect".into(), "BuffEffect".into()]
+        } else {
+            vec!["CurseEffect".into()]
+        };
+        let mut exported = spec.clone();
+        let inc = env.player.mod_db.sum(ModType::Inc, &cfg, &names) + spec.local_effect_inc;
+        exported.magnitude *=
+            (1.0 + inc / 100.0) * env.player.mod_db.more(&cfg, &names) * spec.local_effect_more;
+        if spec.kind == BuffKind::Aura {
+            let names = [ModName::from("Magnitude")];
+            exported.magnitude *= (1.0 + env.player.mod_db.sum(ModType::Inc, &cfg, &names) / 100.0)
+                * env.player.mod_db.more(&cfg, &names);
+        }
+        exported.local_effect_inc = 0.0;
+        exported.local_effect_more = 1.0;
+        result.push(exported);
+    }
+    result
 }
 
 #[cfg(test)]
@@ -1496,6 +1614,29 @@ mod tests {
             .mod_db
             .add_mod(Modifier::flag("SelfAurasCannotAffectAllies"));
         assert!(auras_on_minion(&env, &minion_db, &env.cfg).0.is_empty());
+    }
+
+    #[test]
+    fn party_buffs_reach_minions_without_inheriting_the_players_aura_restriction() {
+        let mut env = buffed_env();
+        env.player
+            .mod_db
+            .add_mod(Modifier::flag("SelfAurasCannotAffectAllies"));
+        let mut spec = aura_spec("Shared warcry", 100.0);
+        spec.kind = BuffKind::Warcry;
+        env.party_buff_skills
+            .push(super::super::session::PartyBuffSpec {
+                member: 0,
+                curse_limit: 1.0,
+                spec,
+            });
+        let (mods, conditions) = auras_on_minion(&env, &ModDb::new(), &env.cfg);
+        assert_eq!(mods[0].value.as_number(), Some(100.0));
+        assert!(!conditions.contains(&"AffectedByAura".to_string()));
+        env.party_buff_skills[0].spec.kind = BuffKind::Aura;
+        let (mods, conditions) = auras_on_minion(&env, &ModDb::new(), &env.cfg);
+        assert_eq!(mods[0].value.as_number(), Some(100.0));
+        assert!(conditions.contains(&"AffectedByAura".to_string()));
     }
 
     /// Same fixture, end-to-end: CalculationSession → perform → the defence output's ES = 120.

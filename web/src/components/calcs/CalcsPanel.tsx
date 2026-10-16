@@ -100,6 +100,7 @@ function formulaOperand(step: FormulaStep): string {
     case 'enemy_mitigation':
     case 'uses_per_second':
     case 'dps_multiplier':
+    case 'energy_trigger':
     case 'reload':
       return `×${n}`;
     case 'vs_evasion':
@@ -655,17 +656,20 @@ function ModLines({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
   );
 }
 
-function BreakdownTable({ breakdown, lang }: { breakdown: Breakdown; lang: Lang }) {
+export function BreakdownTable({ breakdown, lang }: { breakdown: Breakdown; lang: Lang }) {
   const tt = bindT(lang);
   if (breakdown.derived) {
     const derived = breakdown.derived;
+    const sourceHints = derived.context.filter(input => input.id.startsWith('EnergyNeeds'));
+    const context = derived.context.filter(input => !input.id.startsWith('EnergyNeeds'));
     return <div className="breakdown-detail breakdown-derived">
+      {sourceHints.map(hint => <p className="breakdown-note" key={hint.id}>{statNameLabel(lang, hint.id)}</p>)}
       <p className="derived-formula">{detailFormula(derived.formula, derived.inputs, lang)}</p>
       <table className="breakdown-table"><caption>{tt('calcs.inputs')}</caption><tbody>
         {derived.inputs.map(input => <tr key={input.id}><th scope="row">{statNameLabel(lang, input.id)}</th><td>{formatStatValue(input.value, 'float2')}</td></tr>)}
       </tbody></table>
-      {derived.context.length > 0 && <table className="breakdown-table"><caption>{tt('calcs.context')}</caption><tbody>
-        {derived.context.map(input => <tr key={input.id}><th scope="row">{statNameLabel(lang, input.id)}</th><td>{formatStatValue(input.value, 'float2')}</td></tr>)}
+      {context.length > 0 && <table className="breakdown-table"><caption>{tt('calcs.context')}</caption><tbody>
+        {context.map(input => <tr key={input.id}><th scope="row">{statNameLabel(lang, input.id)}</th><td>{formatStatValue(input.value, 'float2')}</td></tr>)}
       </tbody></table>}
     </div>;
   }

@@ -251,7 +251,8 @@ const BASELINES: [Baseline; 3] = [
     Baseline {
         corpus: "examples/wasm-benchmark/builds",
         dps_builds: 5,
-        agreeing_rows: 659,
+        // Sanguimantic Rituals redirects Arcane Surge regeneration to Life (+2 rows).
+        agreeing_rows: 661,
     },
     // Was 22 builds and 1024 rows. A code whose main skill summons a minion
     // also carries `<MinionStat>` values for that minion, which were not
@@ -411,7 +412,17 @@ const BASELINES: [Baseline; 3] = [
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
         dps_builds: 58,
-        agreeing_rows: 5774,
+        // Local flat requirements are added after base requirement conversion (+3 rows).
+        // Explicit sustained drains do not repeat the upfront cost (+1 Oil Barrage row).
+        // Sanguimantic Rituals redirects Arcane Surge regeneration to Life (+3 rows).
+        // Soul Thief's physical attack Mana leech maps from the game stat (+1, Tactician 406c).
+        // 0.5 leech (strongest instance, one-second recovery, no pool cap; patch notes and
+        // poe2db Keywords): gain Warbringer af6a, lose LifeLeechGainRate on 1e4e329e5e5c,
+        // bc750d615159 and 42f790c0f9ba, where the reference still caps by the pool
+        // (devs/scripts/known-differences.json).
+        // Smith sharing excludes all-elemental modifiers; ancient Idols use their category (+5 rows).
+        // Non-spell casts include Cast Speed (+1 Wildwood's Gifts ActionRate row).
+        agreeing_rows: 5786,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
@@ -457,7 +468,9 @@ const BASELINES: [Baseline; 3] = [
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
         dps_builds: 18,
-        agreeing_rows: 1906,
+        // Measured only: local flat requirements follow base conversion (+1 row).
+        // Measured only: resistance truncation, Smith sharing and Idol categories (+5 rows).
+        agreeing_rows: 1912,
     },
 ];
 
@@ -519,6 +532,55 @@ fn amulet_granted_skills_do_not_overdraw_spirit() {
         checked += 1;
     }
     assert_eq!(checked, BUILDS.len());
+}
+
+#[test]
+fn sanguimantic_rituals_regeneration_matches_build_references() {
+    let data =
+        BuildData::load(&GameData::new(pobr_gamedata::current_data_dir())).expect("load BuildData");
+    let options = DataOrchestratorOptions::reference_conditions();
+    for (path, life, mana) in [
+        (
+            "examples/wasm-benchmark/builds/ninja-2026-10-11-druid-oracle-lightning-bolt-950c9ad4451d",
+            20.7,
+            Some(24.5),
+        ),
+        (
+            "examples/reference-builds/tuned/builds/ninja-2026-10-14-druid-oracle-lightning-bolt-7b2a679e8c58",
+            19.5,
+            Some(176.3),
+        ),
+        (
+            "examples/reference-builds/tuned/builds/ninja-2026-10-14-huntress-ritualist-living-bomb-9a0fb35e890a",
+            88.0,
+            None,
+        ),
+    ] {
+        let ImportedBuild { build, report } = import(&repo_path(path));
+        let session = calculate_with_data_session(&build, &data, &options).unwrap();
+        let out = session.output();
+        eprintln!(
+            "{path}: LifeRegenRecovery {:.3}, ManaRegenRecovery {:.3}",
+            out.life_regen_recovery, out.mana_regen_recovery
+        );
+        assert!(
+            (out.life_regen_recovery - life).abs() < 0.15,
+            "{path}: Life regeneration"
+        );
+        assert!(
+            (out.life_regen_recovery - report.reference_stats["LifeRegenRecovery"]).abs() < 0.15
+        );
+        if let Some(mana) = mana {
+            assert!(
+                (out.mana_regen_recovery - mana).abs() < 0.15,
+                "{path}: Mana regeneration"
+            );
+            assert!(
+                (out.mana_regen_recovery - report.reference_stats["ManaRegenRecovery"]).abs()
+                    < 0.15
+            );
+        }
+    }
 }
 
 fn percent(part: usize, whole: usize) -> f64 {

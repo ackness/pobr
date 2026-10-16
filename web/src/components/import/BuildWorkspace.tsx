@@ -94,7 +94,7 @@ export function BuildWorkspace({ session, lang }: { session: BuildSession; lang:
         <p className="build-card-hint">{text.importedLoadoutsHint}</p>
         <label>{tt('loadout.switch')}<select aria-label={tt('loadout.switch')} value={session.activeLoadout ?? ''} disabled={session.busy} onChange={event => {
           const loadout = session.loadouts[Number(event.target.value)];
-          if (loadout && confirmLoadout()) void session.switchLoadout({ tree: loadout.tree, item: loadout.item, skill: loadout.skill });
+          if (loadout && confirmLoadout()) void session.switchLoadout({ tree: loadout.tree, item: loadout.item, skill: loadout.skill, config: loadout.config });
         }}>
           {session.activeLoadout === null && <option value="">—</option>}
           {session.loadouts.map((loadout, index) => <option key={index} value={index}>{loadout.name}</option>)}

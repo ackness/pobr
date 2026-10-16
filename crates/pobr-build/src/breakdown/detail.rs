@@ -19,8 +19,13 @@ pub fn detail_kind(stat: &str) -> DetailKind {
     if BREAKDOWN_STATS.contains(&stat) {
         return DetailKind::Steps;
     }
+    if pobr_core::calc::session::detail::DERIVED_STATS.contains(&stat) {
+        return DetailKind::Derived;
+    }
     match stat {
-        "LifeUnreservedPercent"
+        "SkillTriggerRate"
+        | "TriggerRateCap"
+        | "LifeUnreservedPercent"
         | "ManaUnreservedPercent"
         | "SpiritUnreservedPercent"
         | "LifeLeechGainRate"

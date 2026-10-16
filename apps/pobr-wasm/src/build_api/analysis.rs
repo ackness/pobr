@@ -34,6 +34,9 @@ struct NodePowerRequest {
     power_stat: String,
     /// The max BFS depth from the allocated frontier (PoB2's nodePowerMaxDepth; defaults to 5).
     max_depth: Option<u32>,
+    /// Explicit single-node probes for the report, at most 16 per request.
+    /// The caller obtains legal route cost from the passive planner.
+    nodes: Option<Vec<u32>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -42,7 +45,7 @@ struct NodePowerEntry {
     skill: u32,
     /// The target stat's delta after a single-point trial allocation (can be negative).
     delta: f64,
-    /// The distance (in steps) from the frontier (1 = adjacent to an allocated node).
+    /// The distance from the frontier; 0 for an explicit probe without route discovery.
     distance: u32,
 }
 
@@ -73,7 +76,12 @@ pub fn node_power_json(request_json: &str) -> Result<String, String> {
 fn node_power_impl(request_json: &str) -> Result<String, super::ApiError> {
     let req: NodePowerRequest = serde_json::from_str(request_json)
         .map_err(|e| super::ApiError::bad_request(format!("invalid request json: {e}")))?;
-    let max_depth = req.max_depth.unwrap_or(5);
+    let max_depth = req.max_depth.unwrap_or(5).min(12);
+    if req.nodes.as_ref().is_some_and(|nodes| nodes.len() > 16) {
+        return Err(super::ApiError::bad_request(
+            "node power accepts at most 16 explicit nodes",
+        ));
+    }
     let data = state::build_data().map_err(super::ApiError::not_initialized)?;
 
     let mut base_build = parse_build_from_request(&req.request)?;
@@ -107,7 +115,7 @@ fn node_power_impl(request_json: &str) -> Result<String, super::ApiError> {
     // BFS: the frontier = the allocated node set (depth 0), expanding layer by layer into unallocated nodes.
     let mut distance: BTreeMap<u32, u32> = BTreeMap::new();
     let mut frontier: Vec<u32> = allocated.iter().copied().collect();
-    for depth in 1..=max_depth {
+    for depth in 1..=if req.nodes.is_some() { 0 } else { max_depth } {
         let mut next = Vec::new();
         for &skill in &frontier {
             for &neighbor in adjacency.get(&skill).map(Vec::as_slice).unwrap_or(&[]) {
@@ -122,6 +130,16 @@ fn node_power_impl(request_json: &str) -> Result<String, super::ApiError> {
             break;
         }
         frontier = next;
+    }
+
+    if let Some(nodes) = req.nodes {
+        // Explicit probes do not claim a graph distance. Complete legal routes
+        // are evaluated separately by the same variant evaluator as planners.
+        distance = nodes
+            .into_iter()
+            .filter(|id| !allocated.contains(id))
+            .map(|id| (id, 0))
+            .collect();
     }
 
     // Node identity matters: radius grants and transformations can distinguish

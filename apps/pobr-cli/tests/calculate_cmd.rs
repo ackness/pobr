@@ -826,3 +826,25 @@ fn full_dps_is_opt_in_and_the_json_contributions_sum_to_it() {
     );
     assert_eq!(report.breakdowns[0].value, report.output.full_dps);
 }
+
+#[test]
+fn calculate_build_exports_crossbow_firing_and_reload_rates() {
+    let xml = r#"<PathOfBuilding2><Build className="Witch" level="90" mainSocketGroup="1"/>
+<Skills><Skill mainActiveSkill="1"><Gem skillId="FragmentationRoundsAmmoPlayer" level="20"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Makeshift Crossbow
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items></PathOfBuilding2>"#;
+    let report = calculate_build(&CalculateBuildRequest {
+        code: encode_code(xml).unwrap(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    })
+    .unwrap();
+    assert!((report.output.firing_rate - 1.6).abs() < 1e-9);
+    assert!((report.output.reload_time - 0.8).abs() < 1e-9);
+    let json = serde_json::to_value(report).unwrap();
+    assert!(json["output"]["firing_rate"].as_f64().unwrap() > 0.0);
+    assert!(json["output"]["reload_time"].as_f64().unwrap() > 0.0);
+}

@@ -59,9 +59,13 @@ export function createMockBackend(): PobrBackend {
         })),
       };
     },
+    async encodeBuildFile() {
+      throw new Error("Build Planner export requires the WASM backend");
+    },
     async encodeBuild() {
       return 'MOCK_POB_CODE';
     },
+    async importPartyMember() { return { id: '1', name: 'Party member', enabled: true, blocks: {}, warnings: [] }; },
     async skillMetrics() {
       return skillMetricsFixture as SkillMetricsResponse;
     },
@@ -119,6 +123,9 @@ export function createMockBackend(): PobrBackend {
     },
     async importTradeItems(items) {
       return items.map(() => ({ error: 'Trade item import requires the calculation backend' }));
+    },
+    async previewTreeConversion() {
+      throw new Error('Tree conversion requires the calculation backend');
     },
     async previewTreeEdit() {
       return { valid: false, reason: 'backend_unavailable', result: null };

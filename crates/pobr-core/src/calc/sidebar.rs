@@ -16,25 +16,30 @@ fn factor(db: &ModDb, cfg: &CalcConfig, names: &[&str]) -> f64 {
 /// this multiplier; the display converts it to a percentage. Lucky applies
 /// before the two rolls; Inevitable repeats failed pairs and does not change
 /// the terminating pair.
-fn double_crit_multiplier(db: &ModDb, cfg: &CalcConfig, capped: f64, hit: f64) -> f64 {
+fn double_crit_chance(db: &ModDb, cfg: &CalcConfig, capped: f64, hit: f64) -> (bool, f64) {
     if !cfg.mode_effective || !db.flag(cfg, "BifurcateCrit") {
-        return 0.0;
+        return (false, 0.0);
     }
     let mut chance = (capped * hit).clamp(0.0, 1.0);
     if db.flag(cfg, "CritChanceLucky") {
         chance = 1.0 - (1.0 - chance).powi(2);
     }
-    1.0 + chance / (2.0 - chance)
+    (true, chance)
 }
 
-fn critical_roll_view(env: &Env) -> f64 {
+pub(super) fn critical_roll_chances(env: &Env) -> Vec<(bool, f64)> {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
     let input = super::perform::player_input(env);
     let out = &env.player.output;
     if env.hand_sources.is_empty() {
         let hit = super::offence::hit_chance_terms(db, &env.enemy.mod_db, cfg, &input);
-        return double_crit_multiplier(db, cfg, out.pre_effective_crit_chance, hit.accuracy_chance);
+        return vec![double_crit_chance(
+            db,
+            cfg,
+            out.pre_effective_crit_chance,
+            hit.accuracy_chance,
+        )];
     }
     let mut chances = Vec::new();
     for source in &env.hand_sources {
@@ -45,17 +50,32 @@ fn critical_roll_view(env: &Env) -> f64 {
         let Some(hand) = hand else { continue };
         let (scope, input) = super::hand_pass::hand_scope(db, source, cfg, &input);
         let hit = super::offence::hit_chance_terms(db, &env.enemy.mod_db, &scope, &input);
-        chances.push(double_crit_multiplier(
+        chances.push(double_crit_chance(
             db,
             &scope,
             hand.pre_effective_crit_chance,
             hit.accuracy_chance,
         ));
     }
+    chances
+}
+
+fn critical_roll_view(env: &Env) -> f64 {
+    let chances = critical_roll_chances(env);
     if chances.is_empty() {
         0.0
     } else {
-        chances.iter().sum::<f64>() / chances.len() as f64
+        chances
+            .iter()
+            .map(|(enabled, chance)| {
+                if *enabled {
+                    1.0 + chance / (2.0 - chance)
+                } else {
+                    0.0
+                }
+            })
+            .sum::<f64>()
+            / chances.len() as f64
     }
 }
 

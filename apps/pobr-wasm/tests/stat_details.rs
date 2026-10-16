@@ -16,6 +16,102 @@ fn close(actual: f64, expected: f64, at: &str) {
         "{at}: {actual} != {expected}"
     );
 }
+
+// Evaluate the published arithmetic, independently of the engine. New derived
+// descriptors cannot pass just by returning a plausible-looking input list.
+fn evaluate(formula: &str, inputs: &std::collections::BTreeMap<&str, &Value>) -> f64 {
+    struct Parser<'a> {
+        text: &'a [u8],
+        inputs: &'a std::collections::BTreeMap<&'a str, &'a Value>,
+    }
+    impl Parser<'_> {
+        fn eat(&mut self, c: u8) -> bool {
+            while self.text.first() == Some(&b' ') {
+                self.text = &self.text[1..];
+            }
+            if self.text.first() == Some(&c) {
+                self.text = &self.text[1..];
+                true
+            } else {
+                false
+            }
+        }
+        fn expr(&mut self) -> f64 {
+            let mut value = self.product();
+            loop {
+                if self.eat(b'+') {
+                    value += self.product();
+                } else if self.eat(b'-') {
+                    value -= self.product();
+                } else {
+                    return value;
+                }
+            }
+        }
+        fn product(&mut self) -> f64 {
+            let mut value = self.atom();
+            loop {
+                if self.eat(b'*') {
+                    value *= self.atom();
+                } else if self.eat(b'/') {
+                    value /= self.atom();
+                } else {
+                    return value;
+                }
+            }
+        }
+        fn atom(&mut self) -> f64 {
+            if self.eat(b'-') {
+                return -self.atom();
+            }
+            if self.eat(b'(') {
+                let value = self.expr();
+                assert!(self.eat(b')'));
+                return value;
+            }
+            let len = self
+                .text
+                .iter()
+                .take_while(|c| c.is_ascii_alphanumeric() || **c == b'.')
+                .count();
+            assert!(len > 0, "invalid formula near {:?}", self.text);
+            let token = std::str::from_utf8(&self.text[..len]).unwrap();
+            self.text = &self.text[len..];
+            if let Ok(n) = token.parse::<f64>() {
+                return n;
+            }
+            if !self.eat(b'(') {
+                return self.inputs[token].as_f64().unwrap_or(f64::INFINITY);
+            }
+            let mut args = vec![self.expr()];
+            while self.eat(b',') {
+                args.push(self.expr());
+            }
+            assert!(self.eat(b')'));
+            match token {
+                "round" => {
+                    let scale = 10_f64.powf(args[1]);
+                    (args[0] * scale).round() / scale
+                }
+                "floor" => args[0].floor(),
+                "ceil" => args[0].ceil(),
+                "sqrt" => args[0].sqrt(),
+                "pow" => args[0].powf(args[1]),
+                "max" => args.into_iter().fold(f64::NEG_INFINITY, f64::max),
+                "min" => args.into_iter().fold(f64::INFINITY, f64::min),
+                "clamp" => args[0].clamp(args[1], args[2]),
+                _ => panic!("unsupported formula function {token}"),
+            }
+        }
+    }
+    let mut parser = Parser {
+        text: formula.as_bytes(),
+        inputs,
+    };
+    let result = parser.expr();
+    assert!(parser.text.is_empty(), "unconsumed formula: {formula}");
+    result
+}
 fn check_rows(detail: &Value, at: &str) {
     let rows = detail["mods"].as_array().unwrap();
     for (kind, total) in [
@@ -65,14 +161,63 @@ fn requests_select_details_without_changing_stats() {
         .keys()
         .map(String::as_str)
         .collect();
-    assert_eq!(keys, ["Life", "ManaCost", "NetLifeRegen"]);
-    assert_eq!(details["breakdown_descriptors"]["Str"], "none");
+    assert_eq!(keys, ["Life", "ManaCost", "NetLifeRegen", "Str"]);
+    assert_eq!(details["breakdown_descriptors"]["Str"], "sources");
     let mut bad = base;
     bad["breakdowns"] = json!(["UnknownStat"]);
     assert!(
         pobr_wasm::calculate_build_json(&bad.to_string())
             .unwrap_err()
             .contains("unknown breakdown")
+    );
+}
+
+#[test]
+fn channel_and_full_dps_details_use_the_selected_gem_group() {
+    init();
+    let request = json!({
+        "character": {"class_name":"Sorceress", "level":90},
+        "socket_groups": [{"main_active_skill":2,"include_in_full_dps":true,"gems":[
+            {"skill_id":"MetaCastWhileChannellingPlayer"}, {"skill_id":"CometPlayer"}
+        ]}],
+        "full_dps":true,
+        "breakdowns":["ChannelTimeToTrigger", "FullDPS", "FullDotDPS"]
+    });
+    let result = calculate(request);
+    let channel = &result["breakdowns"]["ChannelTimeToTrigger"]["derived"];
+    assert_eq!(
+        channel["formula"],
+        "round(MaximumChannelEnergy / ChannelEnergyGain, 9)"
+    );
+    assert_eq!(channel["inputs"][0]["value"], 300.0);
+    assert_eq!(channel["inputs"][1]["value"], 60.0);
+    let full = &result["breakdowns"]["FullDPS"]["derived"];
+    let inputs = full["inputs"].as_array().unwrap();
+    assert_eq!(
+        inputs.len(),
+        result["full_dps"]["skills"].as_array().unwrap().len()
+    );
+    assert!(inputs.iter().all(|input| {
+        input["id"]
+            .as_str()
+            .unwrap()
+            .starts_with("SkillGroup1Effect")
+    }));
+    let total: f64 = inputs
+        .iter()
+        .map(|input| input["value"].as_f64().unwrap())
+        .sum();
+    assert!(total > 0.0);
+    close(
+        total,
+        result["full_dps"]["dps"].as_f64().unwrap(),
+        "included skill DPS",
+    );
+    let empty =
+        calculate(json!({"character":{"class_name":"Witch","level":80},"breakdowns":["FullDPS"]}));
+    assert_eq!(
+        empty["breakdowns"]["FullDPS"]["derived"]["inputs"][0]["value"],
+        0.0
     );
 }
 
@@ -87,6 +232,14 @@ fn every_detail_kind_has_truthful_totals_and_derived_inputs() {
         *counts.entry(format!("{kind:?}")).or_insert(0) += 1;
     }
     eprintln!("detail descriptors: {counts:?}");
+    eprintln!(
+        "none: {:?}",
+        descriptors
+            .iter()
+            .filter(|(_, k)| **k == DetailKind::None)
+            .map(|(id, _)| id)
+            .collect::<Vec<_>>()
+    );
     let fixtures = pobr_gamedata::repo_data_root().join("../examples/demo-bd-test/builds");
     let mut seen = std::collections::BTreeSet::new();
     for entry in std::fs::read_dir(fixtures).unwrap() {
@@ -95,7 +248,7 @@ fn every_detail_kind_has_truthful_totals_and_derived_inputs() {
             continue;
         }
         let result = calculate(
-            json!({"pob_code":std::fs::read_to_string(code).unwrap(),"breakdowns":requested}),
+            json!({"pob_code":std::fs::read_to_string(code).unwrap(),"breakdowns":requested,"full_dps":true}),
         );
         let stats: std::collections::BTreeMap<_, _> = result["stats"]
             .as_array()
@@ -141,68 +294,7 @@ fn every_detail_kind_has_truthful_totals_and_derived_inputs() {
                             "{id}: missing formula input {token}"
                         );
                     }
-                    let n = |key: &str| inputs[key].as_f64().unwrap();
-                    let round = |value: f64| (value * 1e9).round() / 1e9;
-                    let expected = if id.ends_with("PerSecondCost") {
-                        let cost = id.replace("PerSecond", "");
-                        round(n(&cost) * n("CostUseRate") + n("ContinuousCost"))
-                    } else if id.starts_with("Net") {
-                        n(&format!(
-                            "{}RegenRecovery",
-                            id.trim_start_matches("Net").trim_end_matches("Regen")
-                        )) - n("Spending")
-                            - n("SelfDamage")
-                    } else if id == "TotalNetRegen"
-                        || id == "TotalBuildDegen"
-                        || id.contains("LeechGain")
-                    {
-                        inputs.values().map(|v| v.as_f64().unwrap()).sum()
-                    } else if id.ends_with("UnreservedPercent") {
-                        let resource = id.trim_end_matches("UnreservedPercent");
-                        if n(resource) > 0.0 {
-                            n(&format!("{resource}Unreserved")) / n(resource) * 100.0
-                        } else {
-                            0.0
-                        }
-                    } else if id == "SpiritUnreserved" {
-                        n("Spirit") - n("SpiritReserved")
-                    } else if id.ends_with("Unreserved") {
-                        (n(id.trim_end_matches("Unreserved"))
-                            - n(&id.replace("Unreserved", "Reserved")))
-                        .max(0.0)
-                    } else if id.ends_with("OverCap") {
-                        round((n("UncappedResistance") - n("MaximumResistance")).max(0.0))
-                    } else if id.starts_with("Req") {
-                        inputs
-                            .values()
-                            .map(|v| v.as_f64().unwrap())
-                            .fold(0.0, f64::max)
-                    } else if id.contains("Duration") {
-                        round(
-                            (n("BaseDuration").max(0.0)
-                                * n("DurationModifier")
-                                * n("DebuffExpiration")
-                                / n("ServerTick"))
-                            .ceil()
-                                * n("ServerTick"),
-                        )
-                    } else if id == "TotalEHP" {
-                        assert!(d["context"].as_array().unwrap().len() >= 4);
-                        if n("EnemyDamage") <= 0.0 {
-                            0.0
-                        } else {
-                            round(
-                                n("NumberOfMitigatedHits") * n("EnemyDamage")
-                                    / (1.0 - n("NotHitChance") / 100.0),
-                            )
-                        }
-                    } else if id == "AreaOfEffectRadiusMetres" {
-                        n("AoeRadius") / 10.0
-                    } else if id == "EsRechargePerSecond" {
-                        n("EnergyShield") * n("EsRechargeRate")
-                    } else {
-                        panic!("unvalidated derived stat {id}")
-                    };
+                    let expected = evaluate(formula, &inputs);
                     if let Some(value) = stats[id.as_str()].as_f64() {
                         close(value, expected, id);
                     }
@@ -252,6 +344,193 @@ fn lazy_minion_details_keep_values_and_actor_identity() {
                 details["Life"]["formula"]["value"].as_f64().unwrap(),
                 minion["stats"]["Life"].as_f64().unwrap(),
                 "minion Life",
+            );
+        }
+    }
+}
+
+#[test]
+fn energy_trigger_details_config_and_full_dps_share_the_calculated_rate() {
+    init();
+    for (meta, config, extra) in [
+        (
+            "MetaCastOnElementalAilmentPlayer",
+            json!({}),
+            vec!["100% chance to Shock"],
+        ),
+        (
+            "MetaCastOnBlockPlayer",
+            json!({"energyIncomingHitRate":8}),
+            vec!["+50% to Block chance"],
+        ),
+        ("MetaSpellslingerPlayer", json!({}), vec![]),
+        (
+            "MetaCastOnMinionDeathPlayer",
+            json!({"energyMinionDeathsPerSecond":6}),
+            vec![],
+        ),
+        (
+            "MetaElementalInvocationPlayer",
+            json!({}),
+            vec!["100% chance to Shock"],
+        ),
+    ] {
+        let request = json!({
+            "character":{"class_name":"Sorceress","level":90},
+            "socket_groups":[
+                {"main_active_skill":2,"include_in_full_dps":true,"gems":[
+                    {"skill_id":meta,"level":20},{"skill_id":"CometPlayer","level":20}]},
+                {"gems":[{"skill_id":"SparkPlayer","level":20}]}],
+            "config_inputs":config,"extra_modifiers":extra,
+            "full_dps":true,"breakdowns":["SkillTriggerRate","TriggerRateCap","TotalDPS"]
+        });
+        let result = calculate(request);
+        let stats: std::collections::BTreeMap<_, _> = result["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|row| (row["id"].as_str().unwrap(), &row["value"]))
+            .collect();
+        let terms = &result["energy_trigger"];
+        assert_eq!(terms["at_own_rate"], false, "{meta}");
+        assert!(
+            terms["triggers_per_second"].as_f64().unwrap() > 0.0,
+            "{meta}: {result}"
+        );
+        for id in ["SkillTriggerRate", "TriggerRateCap"] {
+            let derived = &result["breakdowns"][id]["derived"];
+            let inputs = derived["inputs"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|row| (row["id"].as_str().unwrap(), &row["value"]))
+                .collect();
+            let expected = evaluate(derived["formula"].as_str().unwrap(), &inputs);
+            close(stats[id].as_f64().unwrap(), expected, id);
+        }
+        let dps = stats["TotalDPS"].as_f64().unwrap();
+        close(
+            result["breakdowns"]["TotalDPS"]["formula"]["value"]
+                .as_f64()
+                .unwrap(),
+            dps,
+            meta,
+        );
+        let comet = result["full_dps"]["skills"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["skill_id"] == "CometPlayer")
+            .unwrap();
+        close(comet["hit_dps"].as_f64().unwrap(), dps, meta);
+    }
+}
+
+#[test]
+fn missing_energy_sources_explain_the_own_rate_fallback_and_explicit_zero_stops() {
+    init();
+    for (meta, missing, zero_input) in [
+        ("MetaCastOnCritPlayer", "EnergyNeedsCriticalHits", None),
+        (
+            "MetaCastOnElementalAilmentPlayer",
+            "EnergyNeedsAilments",
+            None,
+        ),
+        (
+            "MetaCastOnBlockPlayer",
+            "EnergyNeedsIncomingHits",
+            Some("energyIncomingHitRate"),
+        ),
+        (
+            "MetaCastOnMinionDeathPlayer",
+            "EnergyNeedsMinionDeaths",
+            Some("energyMinionDeathsPerSecond"),
+        ),
+        (
+            "MetaSpellslingerPlayer",
+            "EnergyNeedsSpellCasts",
+            Some("energyInvocationUsesPerSecond"),
+        ),
+        (
+            "MetaElementalInvocationPlayer",
+            "EnergyNeedsAilments",
+            Some("energyInvocationUsesPerSecond"),
+        ),
+    ] {
+        let mut request = json!({
+            "character":{"class_name":"Sorceress","level":90},
+            "socket_groups":[{"main_active_skill":2,"include_in_full_dps":true,"gems":[
+                {"skill_id":meta,"level":20},{"skill_id":"CometPlayer","level":20}]}],
+            "config_inputs":{}, "full_dps":true,
+            "breakdowns":["SkillTriggerRate","TriggerRateCap","EffectiveActionRate","TotalDPS"]
+        });
+        let result = calculate(request.clone());
+        let terms = &result["energy_trigger"];
+        assert_eq!(terms["at_own_rate"], true, "{meta}");
+        assert!(terms["source"].is_null(), "{meta}");
+        assert_eq!(terms["missing_source"], missing, "{meta}");
+        assert_eq!(terms["rate_multiplier"], 1.0, "{meta}");
+        let dps = result["breakdowns"]["TotalDPS"]["formula"]["value"]
+            .as_f64()
+            .unwrap();
+        assert!(dps > 0.0, "{meta}");
+        for id in ["SkillTriggerRate", "TriggerRateCap"] {
+            let derived = &result["breakdowns"][id]["derived"];
+            assert_eq!(derived["formula"], "0 * EnergyAtOwnRate", "{meta}: {id}");
+            assert!(derived["inputs"][0]["value"].as_f64().unwrap() > 0.0);
+            assert_eq!(derived["context"][0]["id"], missing, "{meta}: {id}");
+        }
+        let payload_dps = |response: &Value| {
+            response["full_dps"]["skills"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|skill| skill["skill_id"] == "CometPlayer")
+                .unwrap()["hit_dps"]
+                .as_f64()
+                .unwrap()
+        };
+        close(payload_dps(&result), dps, meta);
+        if let Some(input) = zero_input {
+            request["config_inputs"][input] = json!(0);
+            let zero = calculate(request);
+            assert_eq!(zero["energy_trigger"]["at_own_rate"], false, "{meta}");
+            let total = zero["stats"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|stat| stat["id"] == "TotalDPS")
+                .unwrap();
+            assert_eq!(total["value"], 0.0, "{meta}");
+            assert_eq!(payload_dps(&zero), 0.0, "{meta}");
+        }
+    }
+}
+
+#[test]
+fn energy_config_context_uses_meta_gems_anywhere_in_the_build() {
+    init();
+    let metas = [
+        "MetaCastOnBlockPlayer",
+        "MetaCastOnMinionDeathPlayer",
+        "MetaSpellslingerPlayer",
+        "MetaElementalInvocationPlayer",
+    ];
+    for skill in metas
+        .into_iter()
+        .chain(["MetaCastOnCritPlayer", "SparkPlayer"])
+    {
+        let result = calculate(json!({
+            "character":{"class_name":"Sorceress","level":90},
+            "main_socket_group":0,"config_context":true,
+            "socket_groups":[{"gems":[{"skill_id":"SparkPlayer","level":20}]},
+                {"gems":[{"skill_id":skill,"level":20}]}]
+        }));
+        for meta in metas {
+            assert_eq!(
+                result["config_context"]["predicates"]["if_skill"][meta],
+                skill == meta,
+                "{skill}: {meta}"
             );
         }
     }

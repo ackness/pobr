@@ -28,6 +28,7 @@ import type {
   SkillMetricsResponse,
   JewelInput,
   LoadoutJson,
+  SetSelection,
   PassiveTreeMeta,
   SlotItemInput,
   SocketGroupInput,
@@ -48,10 +49,12 @@ export interface CalcParams {
   /** 额外全局 modifier 文本（Config 页自定义词缀，一行一条）。 */
   extra_modifiers?: string[];
   custom_modifier_blocks?: CustomModifierBlock[];
+  party?: import('../api/types').Party;
 }
 
 /** 会话完整可编辑状态（重算请求由此派生）。 */
 interface BuildState {
+  plannerSource?: string;
   /** Complete edited snapshot: source XML is metadata, not a source of missing overrides. */
   sourceBackfillComplete?: boolean;
   treeVersion?: string | null;
@@ -74,6 +77,30 @@ interface BuildState {
   /** 局部注释（key 约定见 lib/annotations）；不参与计算，分享时嵌入 <Notes>。 */
   annotations: Annotations;
   params: CalcParams;
+}
+
+/** Only configuration moves; unsaved edits in every other dimension stay local. */
+export function applyNamedConfig(state: BuildState, decoded: BuildJson & { code: string }): BuildState {
+  return { ...state, pobCode: decoded.code, sourceBackfillComplete: true,
+    params: { ...paramsFromDecoded(decoded), main_socket_group: state.params.main_socket_group } };
+}
+
+/** Skill sets own groups and their main selection; configuration and gear stay local. */
+export function applyNamedSkills(state: BuildState, decoded: BuildJson & { code: string }): BuildState {
+  return { ...state, pobCode: decoded.code, sourceBackfillComplete: true,
+    socketGroups: materialize(decoded).socketGroups,
+    params: { ...state.params, main_socket_group: decoded.main_socket_group ?? undefined } };
+}
+
+/** Conversion changes only passive state and the XML base holding other specs. */
+export function convertedTreeState(state: BuildState, decoded: BuildJson, code: string): BuildState {
+  const sockets = new Set((decoded.items.socket_jewels ?? []).map(j => j.socket_node));
+  return { ...state, pobCode: code, treeVersion: decoded.tree.tree_version,
+    allocatedNodes: decoded.tree.allocated_nodes,
+    attributeChoices: decoded.tree.attribute_choices ?? {},
+    weaponSwap: state.weaponSwap && decoded.weapon_swap
+      ? { ...state.weaponSwap, exclusive_nodes: decoded.weapon_swap.exclusive_nodes } : decoded.weapon_swap,
+    jewels: state.jewels.filter(jewel => sockets.has(jewel.socket_node)) };
 }
 
 export type ImportDestination = 'newBuild' | 'currentStage';
@@ -134,13 +161,15 @@ export interface BuildSession {
   exportSession: () => string;
   /** 编辑态 → PoB2 分享 code（可粘回 PoB2 / 二次导入）。 */
   exportCode: () => Promise<string>;
+  exportBuildFiles: (name: string, all: boolean) => Promise<import('../api/types').BuildPlannerExport>;
   /** 从导出的 JSON 恢复会话；非法输入抛错。 */
   importSession: (json: string, destination?: ImportDestination) => void;
   importCode: (code: string, options?: ImportOptions) => Promise<boolean>;
   /** 切到指定 loadout（成组换天赋/装备/技能）；会覆盖本地编辑。 */
-  switchLoadout: (sel: { tree: number; item: number | null; skill: number | null }) => Promise<void>;
+  switchLoadout: (sel: SetSelection) => Promise<void>;
   /** 当前 build 的 loadout 清单（导入后可用；手搓 build 为空）。 */
   loadouts: LoadoutJson[];
+  changeNamedSet: (kind: 'config' | 'skill', op: 'select' | 'create' | 'duplicate' | 'rename' | 'remove', id: number, name?: string) => Promise<void>;
   /** 当前选中的 loadout 下标。 */
   activeLoadout: number | null;
   /** 复制 / 重命名 / 删除当前 loadout（同名写进三类 set；随后整份重载）。 */
@@ -151,6 +180,9 @@ export interface BuildSession {
   toggleNode: (skill: number, choice?: AttributeChoice) => void;
   /** 整体替换加点集合（树寻路一次点亮/熄灭整条路径）。 */
   setAllocatedNodes: (skills: number[], choices?: Record<string, AttributeChoice>) => void;
+  canUndoTree: boolean;
+  undoTree: () => void;
+  applyTreeConversion: (decoded: BuildJson, code: string, expectedVersion: number) => boolean;
   applyTreeEdit: (result: TreeEditResult, request: CalculateBuildRequest, choices?: Record<string, AttributeChoice>) => boolean;
   /** 整表替换属性三选一（批量调配 / 快捷键改单点）。 */
   setAttributeChoices: (choices: Record<string, AttributeChoice>) => void;
@@ -211,6 +243,7 @@ export function toRequest(state: BuildState): CalculateBuildRequest {
     enemy_tier: state.params.enemy_tier,
     extra_modifiers: state.params.extra_modifiers,
     custom_modifier_blocks: state.params.custom_modifier_blocks,
+    party: state.params.party,
     config_inputs: state.params.config_inputs,
   };
 }
@@ -274,8 +307,10 @@ function paramsFromConfigInputs(rawInputs: Record<string, ConfigInputValue>, ove
 }
 
 export function paramsFromDecoded(decoded: BuildJson): CalcParams {
-  return paramsFromConfigInputs(decoded.config_inputs, decoded.custom_modifier_blocks === undefined
-    ? {} : { custom_modifier_blocks: decoded.custom_modifier_blocks });
+  return paramsFromConfigInputs(decoded.config_inputs, {
+    ...(decoded.custom_modifier_blocks === undefined ? {} : { custom_modifier_blocks: decoded.custom_modifier_blocks }),
+    party: decoded.party,
+  });
 }
 
 /** 库条目：可复用的装备/珠宝（PoB 文本）。 */
@@ -403,6 +438,11 @@ export function parseSaved(json: string): SavedSession | null {
       || params.custom_modifier_blocks !== undefined && (!Array.isArray(params.custom_modifier_blocks)
         || !params.custom_modifier_blocks.every(block => record(block) && typeof block.title === 'string'
           && typeof block.enabled === 'boolean' && typeof block.text === 'string'))) return null;
+    if (params.party !== undefined && (!record(params.party) || !Array.isArray(params.party.members)
+      || !params.party.members.every(m => record(m) && typeof m.id === 'string' && typeof m.name === 'string'
+        && typeof m.enabled === 'boolean' && record(m.blocks) && Object.values(m.blocks).every(v => typeof v === 'string')
+        && Array.isArray(m.warnings) && m.warnings.every(v => typeof v === 'string'))
+      || !record(params.party.exports) || !Object.values(params.party.exports).every(v => typeof v === 'string'))) return null;
     const configInputs = params.config_inputs ?? {};
     if (!record(configInputs) || !Object.values(configInputs).every(value =>
       typeof value === 'boolean' || typeof value === 'string' || typeof value === 'number' && Number.isFinite(value))) return null;
@@ -412,6 +452,7 @@ export function parseSaved(json: string): SavedSession | null {
       version: 1,
       state: {
         ...(state.sourceBackfillComplete === true ? { sourceBackfillComplete: true } : {}),
+        ...(typeof state.plannerSource === 'string' ? { plannerSource: state.plannerSource } : {}),
         treeVersion: state.treeVersion as string | null | undefined,
         pobCode: typeof state.pobCode === 'string' ? state.pobCode : null,
         character: { class_name: character.class_name, level: Number(character.level ?? 1),
@@ -429,6 +470,7 @@ export function parseSaved(json: string): SavedSession | null {
           ...(params.main_socket_group != null ? { main_socket_group: Number(params.main_socket_group) } : {}),
           ...(params.enemy_tier != null ? { enemy_tier: params.enemy_tier as EnemyTier } : {}),
           ...(params.extra_modifiers != null ? { extra_modifiers: params.extra_modifiers as string[] } : {}),
+          ...(params.party !== undefined ? { party: params.party as unknown as import('../api/types').Party } : {}),
           ...(params.custom_modifier_blocks !== undefined ? { custom_modifier_blocks: params.custom_modifier_blocks as CustomModifierBlock[] } : {}),
         }),
       },
@@ -491,6 +533,7 @@ export function backfillFromDecoded(state: BuildState, decoded: BuildJson): Buil
     }),
     params: {
       ...savedParams,
+      party: savedParams.party ?? decodedParams.party,
       main_socket_group: state.params.main_socket_group ?? decoded.main_socket_group ?? undefined,
       enemy_tier: savedParams.enemy_tier ?? decodedParams.enemy_tier,
       // An explicit empty block list must not resurrect source modifiers.
@@ -507,8 +550,9 @@ export function backfillFromDecoded(state: BuildState, decoded: BuildJson): Buil
 /** 解码结果 → 可编辑技能组/装备状态（物化，之后全走覆盖）。 */
 export function materialize(
   decoded: BuildJson,
-): Pick<BuildState, 'treeVersion' | 'socketGroups' | 'items' | 'flasks' | 'limbs' | 'jewels' | 'weaponSwap'> {
+): Pick<BuildState, 'plannerSource' | 'treeVersion' | 'socketGroups' | 'items' | 'flasks' | 'limbs' | 'jewels' | 'weaponSwap'> {
   return {
+    ...(decoded.planner_source ? { plannerSource: decoded.planner_source } : {}),
     treeVersion: decoded.tree.tree_version,
     weaponSwap: decoded.weapon_swap,
     socketGroups: decoded.socket_groups.map((g) => ({
@@ -579,6 +623,9 @@ export function useBuildSession(configContextActive = false): BuildSession {
   const [classNames, setClassNames] = useState<ClassNames>({ classes: {}, ascendancies: {} });
   const [build, setBuild] = useState<BuildJson | null>(null);
   const [state, setState] = useState<BuildState | null>(null);
+  const buildRef = useRef(build);
+  buildRef.current = build;
+  const treeHistory = useRef<{ state: BuildState; build: BuildJson | null }[]>([]);
   const [calculated, setCalculated] = useState<{ version: number; result: CalculateBuildResponse } | null>(null);
   const [calculating, setCalculating] = useState(false);
   // Source operations can overlap a recalc or nest (manageLoadout imports its result).
@@ -682,8 +729,15 @@ export function useBuildSession(configContextActive = false): BuildSession {
 
   /** 应用新状态并触发重算 + 自动保存到浏览器。 */
   const apply = useCallback(
-    (next: BuildState, opts?: { clean?: boolean }) => {
+    (next: BuildState, opts?: { clean?: boolean; treeEdit?: boolean; undo?: boolean }) => {
       const previous = stateRef.current;
+      if (opts?.treeEdit && previous) {
+        treeHistory.current = [...treeHistory.current.slice(-29), { state: previous, build: buildRef.current }];
+      } else if (!opts?.undo) {
+        // Non-tree edits or stage changes end this tree transaction history, so
+        // Undo can never overwrite equipment/configuration edited afterwards.
+        treeHistory.current = [];
+      }
       if (!opts?.clean && previous?.weaponSwap && next.weaponSwap === previous.weaponSwap && next.allocatedNodes !== previous.allocatedNodes) {
         const index = previous.weaponSwap.active - 1;
         next = { ...next, weaponSwap: { ...previous.weaponSwap, exclusive_nodes: previous.weaponSwap.exclusive_nodes.map((nodes, i) => i === index ? nodes.filter(node => next.allocatedNodes.includes(node)) : nodes) as [number[], number[]] } };
@@ -895,7 +949,8 @@ export function useBuildSession(configContextActive = false): BuildSession {
           params: { ...paramsFromDecoded(decoded), main_socket_group: decoded.main_socket_group ?? undefined },
         };
         if (options.destination === 'newBuild' && workspaceRef.current) {
-          const name = options.name?.trim() || decoded.character.ascendancy_name || decoded.character.class_name;
+          const plannerName: string | undefined = decoded.planner_source ? JSON.parse(decoded.planner_source).name : undefined;
+          const name = options.name?.trim() || plannerName?.trim() || decoded.character.ascendancy_name || decoded.character.class_name;
           workspaceRef.current = addWorkspaceBuild(workspaceRef.current, name, { version: 1, state: importedState, notes: overview });
         }
         // Do not persist imported notes into the stage being left behind.
@@ -924,7 +979,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
    * 时无从重解析，直接忽略。
    */
   const switchLoadout = useCallback(
-    async (sel: { tree: number; item: number | null; skill: number | null }) => {
+    async (sel: SetSelection) => {
       const code = state?.pobCode;
       if (!code) return;
       setPendingOperations(count => count + 1);
@@ -980,7 +1035,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
           op,
           name,
           current
-            ? { tree: current.tree, item: current.item, skill: current.skill }
+            ? { tree: current.tree, item: current.item, skill: current.skill, config: current.config }
             : undefined,
         );
         await importCode(nextCode);
@@ -1118,7 +1173,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
   const applyTreePlan = useCallback((expectedRequest: CalculateBuildRequest, plan: TreePlan): boolean => {
     const next = prepareTreePlan(stateRef.current, expectedRequest, plan, busy);
     if (!next) return false;
-    apply(next);
+    apply(next, { treeEdit: true });
     return true;
   }, [apply, busy]);
 
@@ -1149,7 +1204,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
       } else if (choice) {
         attributeChoices[String(skill)] = choice;
       }
-      apply({ ...state, allocatedNodes, attributeChoices });
+      apply({ ...state, allocatedNodes, attributeChoices }, { treeEdit: true });
     },
     [apply, state],
   );
@@ -1165,7 +1220,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
       const attributeChoices = Object.fromEntries(
         Object.entries({ ...state.attributeChoices, ...choices }).filter(([skill]) => kept.has(Number(skill))),
       );
-      apply({ ...state, allocatedNodes, attributeChoices });
+      apply({ ...state, allocatedNodes, attributeChoices }, { treeEdit: true });
     },
     [apply, state],
   );
@@ -1178,17 +1233,32 @@ export function useBuildSession(configContextActive = false): BuildSession {
     const kept = new Set([...result.allocation.shared, ...result.allocation.exclusive.flat()]);
     const attributeChoices = Object.fromEntries(Object.entries({ ...current.attributeChoices, ...choices })
       .filter(([id]) => kept.has(Number(id))));
-    apply({ ...next, attributeChoices, jewels: current.jewels.filter(jewel => kept.has(jewel.socket_node)) });
+    apply({ ...next, attributeChoices, jewels: current.jewels.filter(jewel => kept.has(jewel.socket_node)) }, { treeEdit: true });
     return true;
   }, [apply]);
 
   const setAttributeChoices = useCallback(
     (attributeChoices: Record<string, AttributeChoice>) => {
       if (!state) return;
-      apply({ ...state, attributeChoices });
+      apply({ ...state, attributeChoices }, { treeEdit: true });
     },
     [apply, state],
   );
+
+  const applyTreeConversion = useCallback((decoded: BuildJson, code: string, expectedVersion: number) => {
+    const current = stateRef.current;
+    if (!current || versionRef.current !== expectedVersion) return false;
+    apply(convertedTreeState(current, decoded, code), { treeEdit: true });
+    setBuild(decoded);
+    return true;
+  }, [apply]);
+
+  const undoTree = useCallback(() => {
+    const previous = treeHistory.current.pop();
+    if (!previous) return;
+    apply(previous.state, { undo: true });
+    setBuild(previous.build);
+  }, [apply]);
 
   const updateParams = useCallback(
     (patch: Partial<CalcParams>) => {
@@ -1292,6 +1362,37 @@ export function useBuildSession(configContextActive = false): BuildSession {
       base_code: state.pobCode ?? undefined,
     });
   }, [state, notes]);
+
+  const exportBuildFiles = useCallback(async (name: string, all: boolean) => {
+    const backend = await getBackend();
+    return backend.encodeBuildFile({ code: await exportCode(), name, all_loadouts: all, source: state?.plannerSource });
+  }, [exportCode, state?.plannerSource]);
+
+  const changeNamedSet = useCallback(async (kind: 'config' | 'skill', op: 'select' | 'create' | 'duplicate' | 'rename' | 'remove', id: number, name?: string) => {
+    const current = stateRef.current;
+    if (!current) return;
+    setPendingOperations(count => count + 1);
+    setOperationError(null);
+    try {
+      const backend = await getBackend();
+      // Flush the active slice before changing the XML selection; other sets
+      // remain in the export base, including fields this app cannot interpret.
+      let code = await backend.encodeBuild({ ...toRequest(current), socket_groups: current.socketGroups,
+        weapon_swap: current.weaponSwap, notes: composeNotes(notesRef.current, current.annotations),
+        base_code: current.pobCode ?? undefined });
+      if (op !== 'select') code = await backend.manageLoadout(code, op, name, { kind, [kind]: id });
+      const decoded = await backend.switchLoadout(code, op === 'select' ? { [kind]: id } : {});
+      // A response from a stage that has been left must not overwrite the new stage.
+      if (stateRef.current !== current) return;
+      setBuild(decoded);
+      if (kind === 'skill') setSocketGroupRevision(value => value + 1);
+      apply(kind === 'config' ? applyNamedConfig(current, decoded) : applyNamedSkills(current, decoded));
+    } catch (err) {
+      if (stateRef.current === current) setOperationError(formatApiError(err));
+    } finally {
+      setPendingOperations(count => count - 1);
+    }
+  }, [apply]);
 
   const restoreSession = useCallback((saved: SavedSession, drafts: Record<string, string>) => {
     setSocketGroupRevision(value => value + 1);
@@ -1527,10 +1628,12 @@ export function useBuildSession(configContextActive = false): BuildSession {
     removeSocketGroup,
     exportSession,
     exportCode,
+    exportBuildFiles,
     importSession,
     importCode,
     switchLoadout,
     manageLoadout,
+    changeNamedSet,
     loadouts: build?.loadouts ?? [],
     activeLoadout: build?.active_loadout ?? null,
     newBuild,
@@ -1538,6 +1641,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
     toggleNode,
     setAllocatedNodes,
     applyTreeEdit,
+    applyTreeConversion, undoTree, canUndoTree: treeHistory.current.length > 0,
     setAttributeChoices,
     setSocketGroups,
     setItems,

@@ -455,6 +455,7 @@ pub struct Build {
     pub main_socket_group: Option<usize>,
     /// Build-level config.
     pub config: BuildConfig,
+    pub party: crate::party::Party,
 }
 
 impl Build {

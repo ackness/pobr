@@ -130,13 +130,15 @@ pub(crate) fn same_build(a: &Build, b: &Build) -> bool {
         socket_groups,
         main_socket_group,
         config,
+        party,
     } = a;
     let pobr_data::passive_tree::PassiveTreeSpec {
         allocated_nodes,
         mastery_effects,
         attribute_overrides,
     } = tree;
-    character == &b.character
+    party == &b.party
+        && character == &b.character
         && view_mode == &b.view_mode
         && allocated_nodes == &b.tree.allocated_nodes
         && mastery_effects == &b.tree.mastery_effects

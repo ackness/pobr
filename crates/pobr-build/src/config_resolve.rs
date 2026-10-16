@@ -117,6 +117,13 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
     // Explicit stage controls feed the same multipliers as the native API.
     // Raw inputs also survive XML export; unset inputs retain engine defaults.
     for (input, multiplier) in [
+        ("energyIncomingHitRate", "EnergyIncomingHitRate"),
+        ("energyMinionDeathsPerSecond", "EnergyMinionDeathsPerSecond"),
+        ("energyMinionPower", "EnergyMinionPower"),
+        (
+            "energyInvocationUsesPerSecond",
+            "EnergyInvocationUsesPerSecond",
+        ),
         ("skillFlameblastStages", "FlameblastStage"),
         ("skillChannelStages", "ChannelStages"),
         ("skillIncinerateStages", "IncinerateStage"),
@@ -127,6 +134,17 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
         {
             config.multipliers.insert(multiplier.into(), *value);
         }
+    }
+
+    if !config.multipliers.contains_key("EnergyIncomingHitRate")
+        && let Some(ConfigInputValue::Number(ms)) = config.raw_inputs.values.get("enemySpeed")
+        && ms.is_finite()
+        && *ms >= 0.0
+    {
+        config.multipliers.insert(
+            "EnergyIncomingHitRate".into(),
+            if *ms > 0.0 { 1000.0 / ms } else { 0.0 },
+        );
     }
 
     let Some(catalog) = catalog else {

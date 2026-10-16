@@ -474,6 +474,10 @@ pub struct EhpTerms {
     /// The enemy's damage before modifiers, which EHP is in units of
     /// (`totalEnemyDamageIn`).
     pub enemy_damage_in: f64,
+    pub max_hit_solutions: [f64; 5],
+    pub enemy_damage_multipliers: [f64; 5],
+    pub physical_reduction: DamageReductionTerms,
+    pub recoupable_total: f64,
 }
 
 /// Enemy incoming-damage assembly result (vendor CalcDefence.lua:2040-2168's enemy-damage section).
@@ -674,14 +678,8 @@ pub fn taken_hit_per_type(
         // note this is the **rounded** variant (Common.lua's round=floor(x+0.5);
         // armourReductionF is the fractional variant, only used by
         // takenHitFromDamage/`:437`). That's why golden's PhysicalDamageReduction is always an integer.
-        let armour_dr =
-            vendor_round(armour_reduction(mit.effective_applied_armour[i], damage) * 100.0)
-                .min(mit.dr_max_pct[i]);
-        // :2382 totalReduct = min(drMax, armourReduct + flatDR).
-        let total_dr = (armour_dr + mit.flat_dr_pct[i]).min(mit.dr_max_pct[i]);
-        // :2383 reductMult = 1 − clamp(totalReduct − overwhelm, 0, drMax)/100.
-        let reduct_mult =
-            1.0 - (total_dr - mit.overwhelm_pct[i]).clamp(0.0, mit.dr_max_pct[i]) / 100.0;
+        let reduction = damage_reduction_terms(damage, mit, i);
+        let reduct_mult = reduction.taken_multiplier();
         dr_pct[i] = 100.0 - reduct_mult * 100.0;
         // :2442 TakenHit = max(damage × resMult × reductMult + takenFlat, 0) × afterReductionMulti.
         let base_mult = mit.resist_taken_multi[i] * reduct_mult;
@@ -950,6 +948,29 @@ pub struct MaxHitInputs<'a> {
     pub smoothing_passes: u32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct DamageReductionTerms {
+    pub armour: f64,
+    pub flat: f64,
+    pub overwhelm: f64,
+    pub cap: f64,
+}
+impl DamageReductionTerms {
+    fn taken_multiplier(self) -> f64 {
+        1.0 - ((self.armour + self.flat).min(self.cap) - self.overwhelm).clamp(0.0, self.cap)
+            / 100.0
+    }
+}
+fn damage_reduction_terms(damage: f64, mit: &MitigationCtx, i: usize) -> DamageReductionTerms {
+    DamageReductionTerms {
+        armour: vendor_round(armour_reduction(mit.effective_applied_armour[i], damage) * 100.0)
+            .min(mit.dr_max_pct[i]),
+        flat: mit.flat_dr_pct[i],
+        overwhelm: mit.overwhelm_pct[i],
+        cap: mit.dr_max_pct[i],
+    }
+}
+
 /// New-view per-type maximum survivable hit (vendor CalcDefence.lua:3601-3697).
 ///
 /// For each conversion target in `shift[dtype]`, independently solves for
@@ -966,6 +987,18 @@ pub struct MaxHitInputs<'a> {
 ///   [`reduce_pools`] to measure overkill until it converges);
 /// - Finally `round(partMin / enemyDamageMult)` (`:3660`/`:3696`).
 pub fn max_hit_pob2(dtype: DamageType, inputs: &MaxHitInputs, enemy_damage_mult: f64) -> f64 {
+    scale_max_hit_solution(max_hit_solution(dtype, inputs), enemy_damage_mult)
+}
+
+fn scale_max_hit_solution(solution: f64, enemy_damage_mult: f64) -> f64 {
+    if solution == f64::INFINITY {
+        solution
+    } else {
+        vendor_round(solution / enemy_damage_mult)
+    }
+}
+
+fn max_hit_solution(dtype: DamageType, inputs: &MaxHitInputs) -> f64 {
     let mit = inputs.mit;
     let src = dtype as usize;
     let mut part_min = f64::INFINITY;
@@ -1034,7 +1067,7 @@ pub fn max_hit_pob2(dtype: DamageType, inputs: &MaxHitInputs, enemy_damage_mult:
     }
     if !use_smoothing {
         // :3696 no conversion: fold directly by the enemy damage multiplier.
-        return vendor_round(part_min / enemy_damage_mult);
+        return part_min;
     }
     // :3663-3692 conversion smoothing: starting from partMin, measures the
     // overkill from actually running takenHit → reducePools, then converges
@@ -1086,7 +1119,7 @@ pub fn max_hit_pob2(dtype: DamageType, inputs: &MaxHitInputs, enemy_damage_mult:
             break;
         }
     }
-    vendor_round(pass_incoming / enemy_damage_mult)
+    pass_incoming
 }
 
 /// The "not hit" chance for all four hit variants (vendor CalcDefence.lua:2018-2026).
@@ -1463,9 +1496,11 @@ pub fn fill_ehp_pob2(
             smoothing_passes: cfg.constants.game().max_hit_smoothing_passes as u32,
         };
         let mut max_hits = [0.0_f64; 5];
+        let mut max_hit_solutions = [0.0_f64; 5];
         for dtype in DAMAGE_TYPE_BY_INDEX {
             let i = dtype as usize;
-            max_hits[i] = max_hit_pob2(dtype, &inputs, enemy_in.mult_by_type[i]);
+            max_hit_solutions[i] = max_hit_solution(dtype, &inputs);
+            max_hits[i] = scale_max_hit_solution(max_hit_solutions[i], enemy_in.mult_by_type[i]);
         }
 
         Computed {
@@ -1491,6 +1526,19 @@ pub fn fill_ehp_pob2(
                 mitigated_hits: n_mitigated,
                 not_hit_chance: not_hit,
                 enemy_damage_in: enemy_in.total_in,
+                physical_reduction: damage_reduction_terms(
+                    DAMAGE_TYPE_BY_INDEX
+                        .into_iter()
+                        .map(|kind| {
+                            enemy_in.damage.get(kind).max(0.0) * mit.shift[kind as usize][0]
+                        })
+                        .sum(),
+                    &mit,
+                    0,
+                ),
+                recoupable_total,
+                max_hit_solutions,
+                enemy_damage_multipliers: enemy_in.mult_by_type,
             },
         }
     };

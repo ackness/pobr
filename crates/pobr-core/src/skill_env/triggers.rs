@@ -121,12 +121,10 @@ pub struct RecognizedTrigger<'a> {
 /// Three ways a skill can be, tried in this order; the first that recognizes
 /// it answers:
 ///
-/// 1. **A spell in a meta gem that fills with Energy** from critical hits
-///    (Cast on Critical): the gem's own stats say how much Energy it holds
-///    and gains, and the character's other skills are calculated as the
-///    sources of the critical hits ([`crate::calc::energy`]). With
-///    [`TriggerCtx::energy_triggers`] off the spell is recognized and given
-///    nothing: it keeps its own rate of use.
+/// 1. **A spell in an Energy meta gem**: its own stats determine capacity,
+///    consumption and gain. Sources are calculated skills or configured
+///    external events ([`crate::calc::energy`]). With
+///    [`TriggerCtx::energy_triggers`] off it retains the reference path.
 /// 2. **A trigger listed in `overlay/trigger_configs.json`**: an entry's
 ///    `match_effect_ids` match either a gem in the group (the gem triggers the
 ///    skill) or the main skill itself. The entry states the trigger cooldown
@@ -141,6 +139,35 @@ pub struct RecognizedTrigger<'a> {
 /// ② handler entries' real logic; ③ per-skill cooldown rotation for multiple
 /// triggered skills; ④ cross-call sub-calculation caching.
 pub fn trigger_modifiers<S: TriggerSubCalc>(
+    ctx: &mut TriggerCtx<'_, S>,
+    data: &dyn TriggerEnv,
+    gem_level_bonuses: &[crate::skill_env::GemPropertyBonus],
+    main_skill: &ResolvedSkillLevel,
+    group: &EnabledGroup<'_>,
+    group_index: Option<usize>,
+    main_skill_id: &str,
+) -> Vec<Modifier> {
+    let mut mods = trigger_rate_modifiers(
+        ctx,
+        data,
+        gem_level_bonuses,
+        main_skill,
+        group,
+        group_index,
+        main_skill_id,
+    );
+    if !ctx.is_trigger_source {
+        mods.extend(channel_energy_modifiers(
+            data,
+            gem_level_bonuses,
+            group,
+            main_skill_id,
+        ));
+    }
+    mods
+}
+
+fn trigger_rate_modifiers<S: TriggerSubCalc>(
     ctx: &mut TriggerCtx<'_, S>,
     data: &dyn TriggerEnv,
     gem_level_bonuses: &[crate::skill_env::GemPropertyBonus],
@@ -242,9 +269,8 @@ const ENERGY_GENERATED_PCT: &str = "energy_generated_+%";
 const MAX_ENERGY_SOURCES: usize = 6;
 
 /// The modifiers `calc::energy` reads for a main skill that sits in a meta gem
-/// filled by critical hits: how much Energy the gem holds and gains, and what
-/// each of the character's other skills would give it. Empty when
-/// [`TriggerCtx::energy_triggers`] is off: the spell keeps its own rate of use.
+/// filled by skill or external events: capacity, consumption, gain, and the
+/// character's source skills. Disabled on the reference basis.
 ///
 /// `None` when the main skill is not such a spell.
 fn energy_trigger_modifiers<S: TriggerSubCalc>(
@@ -257,23 +283,7 @@ fn energy_trigger_modifiers<S: TriggerSubCalc>(
     use crate::calc::energy;
 
     let stat_of = |gem: &GemInput, effect_id: &str, stat: &str| {
-        let level = gem
-            .gem_level
-            .saturating_add(crate::skill_env::additional_gem_levels(
-                gem_level_bonuses,
-                data.as_gem_property(),
-                &gem.skill_id,
-                gem.corrupted,
-            ));
-        let set_index = (effect_id == gem.skill_id)
-            .then_some(gem.stat_set_index)
-            .flatten();
-        data.effect_stats(effect_id, level, gem.quality, set_index)
-            .base
-            .iter()
-            .filter(|entry| entry.stat == stat)
-            .map(|entry| entry.value)
-            .reduce(|sum, value| sum + value)
+        energy_stat(data, gem_level_bonuses, gem, effect_id, stat)
     };
 
     // The spells a meta gem triggers are the ones its support half supports.
@@ -281,10 +291,88 @@ fn energy_trigger_modifiers<S: TriggerSubCalc>(
         let support_half = triggering_half(data, group, &gem.skill_id, main_skill_id)?;
         Some((gem, stat_of(gem, support_half, MS_OF_CAST_TIME_PER_ENERGY)?))
     })?;
-    let energy_per_power = stat_of(meta, &meta.skill_id, CENTIENERGY_PER_POWER_ON_CRIT)? / 100.0;
+    let crit = stat_of(meta, &meta.skill_id, CENTIENERGY_PER_POWER_ON_CRIT);
     if !ctx.energy_triggers {
-        return Some(Vec::new());
+        // Preserve the pre-energy path on the reference basis, including its
+        // existing trigger-config recognition for Spellslinger.
+        return crit.map(|_| Vec::new());
     }
+    let mut gains = Vec::new();
+    for (stat, name, divisor) in [
+        (
+            CENTIENERGY_PER_POWER_ON_CRIT,
+            energy::ENERGY_PER_POWER_ON_CRIT,
+            100.0,
+        ),
+        (
+            "cast_on_block_gain_X_centienergy_on_block",
+            energy::ENERGY_PER_BLOCK,
+            100.0,
+        ),
+        (
+            "spellslinger_invocation_gain_X_centienergy_per_10ms_base_cast_time",
+            energy::ENERGY_PER_CAST_MS,
+            1000.0,
+        ),
+        (
+            "cast_on_ignite_gain_X_centienergy_per_monster_power_on_ignite",
+            energy::ENERGY_PER_IGNITE_POWER,
+            100.0,
+        ),
+        (
+            "cast_on_shock_gain_X_centienergy_per_monster_power_on_shock",
+            energy::ENERGY_PER_SHOCK_POWER,
+            100.0,
+        ),
+        (
+            "cast_on_freeze_gain_X_centienergy_per_monster_power_on_freeze",
+            energy::ENERGY_PER_FREEZE_POWER,
+            100.0,
+        ),
+        (
+            "elemental_invocation_gain_X_centienergy_per_monster_power_on_ignite",
+            energy::ENERGY_PER_IGNITE_POWER,
+            100.0,
+        ),
+        (
+            "elemental_invocation_gain_X_centienergy_per_monster_power_on_shock",
+            energy::ENERGY_PER_SHOCK_POWER,
+            100.0,
+        ),
+        (
+            "elemental_invocation_gain_X_centienergy_per_monster_power_on_freeze",
+            energy::ENERGY_PER_FREEZE_POWER,
+            100.0,
+        ),
+    ] {
+        if let Some(value) = stat_of(meta, &meta.skill_id, stat) {
+            gains.push(mk_trigger_mod(name, value / divisor, stat));
+        }
+    }
+    if let Some(value) = stat_of(
+        meta,
+        &meta.skill_id,
+        "cast_on_minion_death_gain_1_energy_per_X_minion_relative_defensiveness_%",
+    ) && value > 0.0
+    {
+        gains.push(mk_trigger_mod(
+            energy::ENERGY_PER_MINION_POWER,
+            100.0 / value,
+            "Energy from the killed minion's Power",
+        ));
+    }
+    if gains.is_empty() {
+        return None;
+    }
+    let spellslinger = gains
+        .iter()
+        .any(|m| m.name.as_str() == energy::ENERGY_PER_CAST_MS);
+    let external = gains.iter().any(|m| {
+        matches!(
+            m.name.as_str(),
+            energy::ENERGY_PER_BLOCK | energy::ENERGY_PER_MINION_POWER
+        )
+    });
     let triggered =
         |skill_id: &str| triggering_half(data, group, &meta.skill_id, skill_id).is_some();
     let spells: Vec<energy::SocketedSpell> = group
@@ -305,18 +393,38 @@ fn energy_trigger_modifiers<S: TriggerSubCalc>(
         })
         .collect();
 
-    let mut mods = vec![
-        mk_trigger_mod(
-            energy::MAXIMUM_ENERGY,
-            energy::maximum_energy(&spells, ms_per_energy),
-            "maximum Energy of the meta gem",
-        ),
-        mk_trigger_mod(
-            energy::ENERGY_PER_POWER_ON_CRIT,
-            energy_per_power,
-            "Energy per Power of an enemy hit critically",
-        ),
-    ];
+    let cost = energy::maximum_energy(&spells, ms_per_energy);
+    let capacity = stat_of(
+        meta,
+        &meta.skill_id,
+        "generic_ongoing_trigger_maximum_energy",
+    );
+    let mut mods = gains;
+    mods.push(mk_trigger_mod(
+        energy::MAXIMUM_ENERGY,
+        capacity.unwrap_or(cost),
+        "maximum Energy of the meta gem",
+    ));
+    mods.push(mk_trigger_mod(
+        energy::ENERGY_COST,
+        cost,
+        "Energy consumed by the socketed spells",
+    ));
+    if capacity.is_some() {
+        let level = resolve_skill_level(
+            data.as_skill_level(),
+            &meta.skill_id,
+            meta.gem_level,
+            meta.stat_set_index,
+        );
+        if let Some(cooldown) = level.and_then(|level| level.cooldown_s) {
+            mods.push(mk_trigger_mod(
+                energy::INVOCATION_COOLDOWN,
+                cooldown,
+                "Invocation cooldown",
+            ));
+        }
+    }
     if let Some(increase) = stat_of(meta, &meta.skill_id, ENERGY_GENERATED_PCT)
         && increase != 0.0
     {
@@ -329,29 +437,83 @@ fn energy_trigger_modifiers<S: TriggerSubCalc>(
         mods.push(increased);
     }
 
-    // The character's other skills, as sources of the critical hits. A spell
+    // Energy supports apply to the meta gem, not to its socketed payload.
+    for support in
+        crate::skill_env::buff_specs::group_judgement(group, data.as_buff_env(), &meta.skill_id)
+            .compatible
+    {
+        let gem = &group.gems[support.gem_index];
+        for (stat, name, kind) in [
+            (ENERGY_GENERATED_PCT, energy::ENERGY_GENERATED, ModType::Inc),
+            (
+                "trigger_skills_refund_half_energy_spent_chance_%",
+                energy::REFUND_HALF_CHANCE,
+                ModType::Base,
+            ),
+        ] {
+            if let Some(value) = stat_of(gem, &support.effect_id, stat) {
+                let mut modifier =
+                    mk_trigger_mod(name, value, stat).with_source(&support.effect_id);
+                modifier.mod_type = kind;
+                mods.push(modifier);
+            }
+        }
+    }
+
+    if external {
+        return Some(mods);
+    }
+    // The character's other skills, as sources of Energy events. A spell
     // a meta gem triggers is not one: what a gem triggers gives no Energy.
     let groups = ctx.groups;
-    let mut candidates: Vec<(usize, usize, String, f64)> = Vec::new();
+    let mut candidates: Vec<(usize, usize, String, f64, f64)> = Vec::new();
     let mut index = 0;
     groups.for_each_enabled_group(&mut |other| {
         let other_index = index;
         index += 1;
         for (gem_index, gem) in other.gems.iter().enumerate() {
-            let by_hand = data.effect(&gem.skill_id).is_some_and(hits_by_hand)
-                && !other.gems.iter().any(|meta| {
-                    triggering_half(data, &other, &meta.skill_id, &gem.skill_id).is_some()
-                });
+            let by_hand = data.effect(&gem.skill_id).is_some_and(|effect| {
+                if spellslinger {
+                    !effect.is_support
+                        && effect.skill_types.iter().any(|kind| kind == "Spell")
+                        && !effect.skill_types.iter().any(|kind| {
+                            matches!(
+                                kind.as_str(),
+                                "Meta"
+                                    | "Triggered"
+                                    | "InbuiltTrigger"
+                                    | "Persistent"
+                                    | "SummonsTotem"
+                            )
+                        })
+                } else {
+                    hits_by_hand(effect)
+                }
+            }) && !other
+                .gems
+                .iter()
+                .any(|meta| triggering_half(data, &other, &meta.skill_id, &gem.skill_id).is_some());
             if !by_hand {
                 continue;
             }
             let rate = base_rate_of(ctx, data, gem_level_bonuses, &other, gem).unwrap_or(0.0);
-            candidates.push((other_index, gem_index, gem.skill_id.clone(), rate));
+            let cast_time = data
+                .effect(&gem.skill_id)
+                .and_then(|effect| effect.cast_time)
+                .map_or(0.0, f64::from)
+                + 2.0 * stat_of(gem, &gem.skill_id, ADDED_TOTAL_CAST_TIME_MS).unwrap_or(0.0);
+            candidates.push((
+                other_index,
+                gem_index,
+                gem.skill_id.clone(),
+                rate,
+                cast_time,
+            ));
         }
     });
     candidates.sort_by(|a, b| b.3.total_cmp(&a.3));
     candidates.truncate(MAX_ENERGY_SOURCES);
-    for (source_group, gem_index, skill_id, _) in candidates {
+    for (source_group, gem_index, skill_id, _, cast_time) in candidates {
         let Some(stats) = ctx.sub_calc.source_stats(source_group, gem_index) else {
             continue;
         };
@@ -360,14 +522,117 @@ fn energy_trigger_modifiers<S: TriggerSubCalc>(
             mk_trigger_mod(energy::ENERGY_SOURCE, 0.0, "a skill that can fill the gem");
         source.mod_type = ModType::List;
         source.value = ModValue::NestedMods(vec![
-            value(energy::SOURCE_RATE, stats.action_rate),
+            value(
+                energy::SOURCE_RATE,
+                if crit.is_some() || spellslinger {
+                    stats.action_rate
+                } else {
+                    stats.hit_rate
+                },
+            ),
             value(energy::SOURCE_HIT_CHANCE, stats.hit_chance),
             value(energy::SOURCE_CRIT_CHANCE, stats.crit_chance),
             value(energy::SOURCE_CRIT_DAMAGE, stats.crit_hit_damage),
+            value(energy::SOURCE_CAST_TIME, cast_time),
+            value(energy::SOURCE_IGNITE_CHANCE, stats.ailments.ignite_chance),
+            value(energy::SOURCE_IGNITE_DAMAGE, stats.ailments.ignite_damage),
+            value(energy::SOURCE_SHOCK_CHANCE, stats.ailments.shock_chance),
+            value(energy::SOURCE_FREEZE_CHANCE, stats.ailments.freeze_chance),
         ]);
         mods.push(source.with_source(skill_id));
     }
     Some(mods)
+}
+
+fn energy_stat(
+    data: &dyn TriggerEnv,
+    gem_level_bonuses: &[crate::skill_env::GemPropertyBonus],
+    gem: &GemInput,
+    effect_id: &str,
+    stat: &str,
+) -> Option<f64> {
+    let level = gem
+        .gem_level
+        .saturating_add(crate::skill_env::additional_gem_levels(
+            gem_level_bonuses,
+            data.as_gem_property(),
+            &gem.skill_id,
+            gem.corrupted,
+        ));
+    let set_index = (effect_id == gem.skill_id)
+        .then_some(gem.stat_set_index)
+        .flatten();
+    data.effect_stats(effect_id, level, gem.quality, set_index)
+        .all()
+        .filter(|entry| entry.stat == stat)
+        .map(|entry| entry.value)
+        .reduce(|sum, value| sum + value)
+}
+
+/// Time from an empty Energy bar to the first CWC trigger. This display
+/// does not change the selected spell's existing throughput model.
+fn channel_energy_modifiers(
+    data: &dyn TriggerEnv,
+    bonuses: &[crate::skill_env::GemPropertyBonus],
+    group: &EnabledGroup<'_>,
+    main_skill_id: &str,
+) -> Vec<Modifier> {
+    use crate::calc::energy;
+    let stat = |gem: &GemInput, effect: &str, id: &str| energy_stat(data, bonuses, gem, effect, id);
+    // Game stat: CWC gains 60 Energy per second while channelling.
+    let Some((meta, gain, ms)) = group.gems.iter().find_map(|gem| {
+        let half = supporting_half(data, group, &gem.skill_id, main_skill_id)?;
+        Some((
+            gem,
+            stat(
+                gem,
+                &gem.skill_id,
+                "cast_while_channelling_gain_X_energy_per_second_while_channelling",
+            )?,
+            stat(gem, half, MS_OF_CAST_TIME_PER_ENERGY)?,
+        ))
+    }) else {
+        return Vec::new();
+    };
+    let spells: Vec<_> = group
+        .gems
+        .iter()
+        .filter(|gem| {
+            data.effect(&gem.skill_id)
+                .is_some_and(|effect| !effect.is_support)
+                && supporting_half(data, group, &meta.skill_id, &gem.skill_id).is_some()
+        })
+        .map(|gem| energy::SocketedSpell {
+            cast_time_ms: data
+                .effect(&gem.skill_id)
+                .and_then(|effect| effect.cast_time)
+                .map_or(0.0, f64::from),
+            added_total_cast_time_ms: stat(gem, &gem.skill_id, ADDED_TOTAL_CAST_TIME_MS)
+                .unwrap_or(0.0),
+        })
+        .collect();
+    let mut mods = vec![
+        mk_trigger_mod(
+            "ChannelTriggerMaximumEnergy",
+            energy::maximum_energy(&spells, ms),
+            "maximum Energy of the channelling meta gem",
+        ),
+        mk_trigger_mod(
+            "ChannelTriggerEnergyPerSecond",
+            gain,
+            "Energy gained per second while channelling",
+        ),
+    ];
+    if let Some(increase) = stat(meta, &meta.skill_id, ENERGY_GENERATED_PCT) {
+        let mut modifier = mk_trigger_mod(
+            "ChannelTriggerEnergyGenerated",
+            increase,
+            "channelling meta gem Energy gain",
+        );
+        modifier.mod_type = ModType::Inc;
+        mods.push(modifier);
+    }
+    mods
 }
 
 /// The support half through which the meta gem `meta_id` triggers `skill_id`
@@ -386,6 +651,18 @@ fn triggering_half<'a>(
             .all(|wanted| effect.skill_types.iter().any(|kind| kind == wanted))
     });
     if !fills_with_energy || meta_id == skill_id {
+        return None;
+    }
+    supporting_half(data, group, meta_id, skill_id)
+}
+
+fn supporting_half<'a>(
+    data: &'a dyn TriggerEnv,
+    group: &EnabledGroup<'_>,
+    meta_id: &str,
+    skill_id: &str,
+) -> Option<&'a str> {
+    if meta_id == skill_id {
         return None;
     }
     let supports =

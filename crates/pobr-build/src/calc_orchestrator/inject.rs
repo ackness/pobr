@@ -154,6 +154,42 @@ pub(super) fn inject_buffs_and_heralds(
     build: &Build,
     data: &BuildData,
 ) {
+    for (index, member) in build
+        .party
+        .members
+        .iter()
+        .enumerate()
+        .filter(|(_, m)| m.enabled)
+    {
+        let effects = crate::party::member_effects(member, index);
+        for (source, text, parsed) in effects.lines {
+            session.note_line(
+                &source,
+                &text,
+                if parsed && source.id.ends_with(".EnemyConditions") {
+                    super::sources::LineFate::ReadBy("party enemy condition")
+                } else if parsed {
+                    super::sources::LineFate::LeftOut(
+                        "a stronger copy or the curse limit excluded this party effect",
+                    )
+                } else {
+                    super::sources::LineFate::Unparsed
+                },
+            );
+            if !parsed {
+                context
+                    .support_limits
+                    .push(format!("Party {}: {}", member.name, text));
+            }
+        }
+        for spec in effects.buffs {
+            session.add_party_buff_skill(spec);
+        }
+        session.add_enemy_modifiers(effects.enemy);
+        for condition in effects.conditions {
+            session.set_condition(condition, true);
+        }
+    }
     // 4b. Aura/curse skills → BuffSpec injected via `session.add_buff_skill` (per the
     //     §2.4 contract), consumed by pobr-core's buff_pass (env_finalize stage 4;
     //     cfg.mode_buffs is already set above): an aura defensive buff (Discipline→
@@ -293,7 +329,9 @@ fn is_grand_spectrum(jewel: &pobr_data::item::Item) -> bool {
 
 /// The augments in the equipment's sockets, as `(Idols, the others)`. The
 /// game's base items class every augment (Rune, Soul Core, Idol) as
-/// `SoulCore` and tag the Idols `idol`. A socket entry that is no augment,
+/// `SoulCore`. The socketable category distinguishes Idols: some ancient
+/// Idols, such as Carved Majesty, only have the generic `rune` base tag.
+/// A socket entry that is no augment,
 /// such as the skill a Talisman grants, is not counted.
 fn augments_in_equipment(build: &Build, data: &BuildData) -> (usize, usize) {
     let (mut idols, mut others) = (0, 0);
@@ -304,7 +342,11 @@ fn augments_in_equipment(build: &Build, data: &BuildData) -> (usize, usize) {
         if base.item_class != "SoulCore" {
             continue;
         }
-        if base.tags.iter().any(|tag| tag == "idol") {
+        let is_idol = data.augments.get(name).map_or_else(
+            || base.tags.iter().any(|tag| tag == "idol"),
+            |augment| augment.slots.values().any(|slot| slot.kind == "Idol"),
+        );
+        if is_idol {
             idols += 1;
         } else {
             others += 1;
@@ -601,6 +643,16 @@ pub(super) fn inject_main_skill_mods(
         //         consumed by perform's `fill_crossbow_reload`. Returns empty for a
         //         non-crossbow/grenade skill.
         session.add_modifiers(crossbow_reload_modifiers(build, data, group, skill_id));
+        if ctx
+            .main
+            .main_skill_types
+            .iter()
+            .any(|kind| kind == "NonWeaponAttack")
+        {
+            session.add_modifiers(pobr_core::skill_env::shield_elemental_damage_modifiers(
+                skill_id, skill, build, data,
+            ));
+        }
         session.add_modifiers(support_modifiers(
             context,
             group,

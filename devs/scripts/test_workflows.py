@@ -981,14 +981,16 @@ class TriageTests(unittest.TestCase):
         xml = ("<PathOfBuilding2><Items><Item id=\"1\">Rarity: UNIQUE\nVoid\nLament Amulet\n"
                "Grants Skill: Level 20 Cast on Minion Death\n</Item></Items></PathOfBuilding2>")
         report = {"reference": {"compared": 1, "differing": [
-            {"stat": "SpiritUnreserved", "pobr": -26, "reference": -56, "pob_key": "SpiritUnreserved"}]},
+            {"stat": "SpiritUnreserved", "pobr": -26, "reference": -56, "pob_key": "SpiritUnreserved"},
+            {"stat": "SpiritUnreservedPercent", "pobr": -26, "reference": -56,
+             "pob_key": "SpiritUnreservedPercent"}]},
             "breakdowns": [{"stat": "SkillSpiritReservationBase",
                             **reserved(("MetaCastOnMinionDeathPlayer", 30.0))}]}
-        oracle = {"mainOutput": {"SpiritUnreserved": -56},
+        oracle = {"mainOutput": {"SpiritUnreserved": -56, "SpiritUnreservedPercent": -56},
                   "spiritReservedBreakdown": [{"skillName": "Cast on Minion Death", "total": 60}]}
         result = self.triage.analyse("build", "set", report, oracle, xml, [])
         self.assertEqual([(row["stat"], row["class"]) for row in result["rows"]],
-                         [("SpiritUnreserved", "known")])
+                         [("SpiritUnreserved", "known"), ("SpiritUnreservedPercent", "known")])
 
     def test_leads_are_gathered_across_builds(self):
         lead = self.triage.lead
@@ -1129,7 +1131,7 @@ class SkillSweepTests(unittest.TestCase):
                                       "variantId": "WolfArcticHowl", "weaponRequirements": "Talisman"}],
         }
         cls.cases, cls.skipped, cls.inventory = cls.sweep.skill_cases(
-            cls.data, cls.vendor_gems, set(cls.vendor_gems))
+            cls.data, cls.vendor_gems, {*cls.vendor_gems, "UnloadAmmoPlayer"})
 
     def case(self, effect_id):
         return next(c for c in self.cases if c["skill_id"] == effect_id)
@@ -1173,27 +1175,60 @@ class SkillSweepTests(unittest.TestCase):
         self.assertEqual(equipment[0]["item_class"], "Talisman")
         self.assertEqual(ET.fromstring(xml).find("Items/ItemSet/Slot").get("name"), "Weapon 1")
 
-    def test_exported_effect_order_selects_primary_after_secondary_and_support(self):
-        with tempfile.TemporaryDirectory() as temp:
-            vendor = Path(temp)
-            (vendor / "src/Data/Skills").mkdir(parents=True)
-            (vendor / "src/Data/Skills/act.lua").write_text(
-                'skills["Primary"] = {\n}\nskills["Support"] = {\n\tsupport = true,\n}\n'
-                'skills["Secondary"] = {\n}\n')
-            (vendor / "src/Data/Gems.lua").write_text(
-                'return {\n\t["Gem"] = {\n\t\tgrantedEffectId = "Primary",\n'
-                '\t\tgameId = "Gem",\n\t\tvariantId = "Variant",\n'
-                '\t\tadditionalGrantedEffectId1 = "Support",\n'
-                '\t\tadditionalGrantedEffectId2 = "Secondary",\n'
-                '\t\tgrantedEffectDisplayOrder = { 1, 2 },\n\t},\n}\n')
-            gems, effects = self.sweep.vendor_metadata(vendor)
-            self.assertEqual(effects, {"Primary", "Support", "Secondary"})
-            self.assertEqual(gems["Primary"][0]["primary_active_index"], 2)
-            case = {**self.case("FireballPlayer"), "oracle_gem": gems["Primary"][0]}
-            xml, _ = self.sweep.synthetic_xml(case, self.bases)
-            skill = ET.fromstring(xml).find("Skills/SkillSet/Skill")
-            self.assertEqual(skill.get("mainActiveSkill"), "2")
-            self.assertEqual(skill.get("mainActiveSkillCalcs"), "2")
+    def test_effect_order_filters_supports_after_ordering_and_keeps_unknowns(self):
+        link = {"granted_effect_id": "Primary",
+                "additional_granted_effect_ids": ["Support", "Secondary", "Unknown", ""],
+                "granted_effect_display_order": [1, 2, 2, 90]}
+        effects = {"Primary": {}, "Secondary": {}, "Support": {"is_support": True}}
+        self.assertEqual(self.sweep.active_effects(link, effects),
+                         [(1, "Secondary"), (2, "Primary"), (3, "Unknown")])
+        link.pop("granted_effect_display_order")
+        self.assertEqual(self.sweep.active_effects(link, effects),
+                         [(1, "Primary"), (2, "Secondary"), (3, "Unknown")])
+
+    def test_crossbow_shots_keep_ammo_gem_identity_and_select_firing_ordinal(self):
+        ammo = [c for c in self.cases if c["is_primary"] and "CrossbowAmmoSkill" in c["skill_types"]]
+        self.assertEqual(len(ammo), 16)
+        for primary in ammo:
+            with self.subTest(skill=primary["skill_id"]):
+                shot = next(c for c in self.cases if c["primary_skill_id"] == primary["skill_id"]
+                            and not c["is_primary"])
+                self.assertEqual((shot["active_skill_index"], primary["active_skill_index"]), (1, 2))
+                self.assertIn("CrossbowSkill", shot["skill_types"])
+                xml, equipment = self.sweep.synthetic_xml(shot, self.bases)
+                skill = ET.fromstring(xml).find("Skills/SkillSet/Skill")
+                self.assertEqual(skill.get("mainActiveSkill"), "1")
+                self.assertEqual(skill.get("mainActiveSkillCalcs"), "1")
+                self.assertEqual(skill.find("Gem").get("skillId"), primary["skill_id"])
+                self.assertEqual([b["item_class"] for b in equipment], ["Crossbow"])
+
+    def test_banner_and_mirage_active_rows_retain_their_primary_rows(self):
+        pairs = [("WarBannerReservationPlayer", "WarBannerPlayer"),
+                 ("DefianceBannerReservationPlayer", "DefianceBannerPlayer"),
+                 ("DreadBannerReservationPlayer", "DreadBannerPlayer"),
+                 ("BlackPowderBlitzReservationPlayer", "BlackPowderBlitzPlayer"),
+                 ("MetaMirageArcherPlayer", "MirageArcherSpawnPlayer"),
+                 ("MetaMirageDeadeyePlayer", "MirageDeadeyeSpawnPlayer")]
+        for primary_id, active_id in pairs:
+            with self.subTest(primary=primary_id):
+                primary, active = self.case(primary_id), self.case(active_id)
+                self.assertTrue(primary["is_primary"])
+                self.assertFalse(active["is_primary"])
+                self.assertEqual(active["primary_skill_id"], primary_id)
+                self.assertEqual((active["active_skill_index"], primary["active_skill_index"]), (1, 2))
+                xml, _ = self.sweep.synthetic_xml(active, self.bases)
+                self.assertEqual(ET.fromstring(xml).find("Skills/SkillSet/Skill/Gem").get("skillId"), primary_id)
+
+    def test_missing_originating_gem_is_not_counted_as_vendor_supported(self):
+        case = next(c for c in self.cases if c["case_id"] == "SummonMercenaryCompanionPlayer/UnloadAmmoPlayer@2")
+        self.assertTrue(case["vendor_has_effect"])
+        self.assertFalse(case["vendor_has_gem"])
+        row = {**case, "classification": "pob2_other_skill", "pobr": None, "pob2": None}
+        summary = self.sweep.summarize([row])
+        self.assertEqual(summary["measured"], 1)
+        self.assertEqual(summary["vendor_supported"], 0)
+        # A primary can still be selected directly by skillId without gemId.
+        self.assertEqual(self.sweep.summarize([{**row, "is_primary": True}])["vendor_supported"], 1)
 
     def test_unknown_vendor_gem_uses_effect_id_without_invalid_gem_id(self):
         xml, _ = self.sweep.synthetic_xml(self.case("Melee1HAxePlayer"), self.bases)
@@ -1203,8 +1238,9 @@ class SkillSweepTests(unittest.TestCase):
 
     def test_meta_gems_are_included_and_effect_ids_are_deduplicated(self):
         all_cases = self.cases + self.skipped
-        self.assertEqual(len({c["skill_id"] for c in all_cases}), len(all_cases))
-        self.assertEqual(len(all_cases), self.inventory["primary_active_effects"])
+        self.assertEqual(len({c["case_id"] for c in all_cases}), len(all_cases))
+        self.assertEqual(sum(c["is_primary"] for c in all_cases), self.inventory["primary_active_effects"])
+        self.assertEqual(sum(not c["is_primary"] for c in all_cases), self.inventory["additional_active_effects"])
         self.assertEqual(self.case("MetaCastOnCritPlayer")["gem"]["gem_type"], 2)
         self.assertIn("meta", self.case("MetaCastOnCritPlayer")["families"])
         self.assertTrue(all(not c["gem"]["is_support"] for c in all_cases))
@@ -1239,6 +1275,14 @@ class SkillSweepTests(unittest.TestCase):
         right["comparison_rate"] = 100
         self.assertEqual(self.sweep.classify("FireballPlayer", left, right)[0], "agree")
 
+    def test_crossbow_firing_and_reload_metrics_are_compared(self):
+        for metric in ("FiringRate", "ReloadTime"):
+            left, right = self.result(100), self.result(100)
+            left["metrics"][metric] = 106
+            classification, differences, _ = self.sweep.classify("FireballPlayer", left, right)
+            self.assertEqual(classification, "differs")
+            self.assertEqual(differences, [metric])
+
     def test_minion_damage_is_not_hidden_as_both_zero(self):
         left, right = self.result(0), self.result(0)
         right["minion"] = {"TotalDPS": 100, "skill_id": "minion_attack"}
@@ -1247,7 +1291,7 @@ class SkillSweepTests(unittest.TestCase):
     def test_cache_reuses_oracle_and_engine_failure_keeps_oracle_result(self):
         case = self.case("FireballPlayer")
         oracle = {"mainOutput": {"TotalDPS": 100}, "skillInfo": {"grantedEffectId": "FireballPlayer"}}
-        engine = {"output": {"dps": 100, "action_rate": 1, "total_hit_avg": 100, "crit_chance": 0},
+        engine = {"output": {"dps": 100, "action_rate": 1, "total_hit_avg": 100, "crit_chance": 0, "firing_rate": 0, "reload_time": 0},
                   "main_skill": {"skill_id": "FireballPlayer", "combined_dps": 100}}
         with tempfile.TemporaryDirectory() as temp, patch.object(self.sweep, "CACHE", Path(temp)):
             with patch.object(self.sweep, "run", side_effect=[json.dumps(engine), json.dumps(oracle)]) as run:
@@ -1271,6 +1315,48 @@ class SkillSweepTests(unittest.TestCase):
         for xml, commit, wrapper in [("changed", "commit", b"wrapper"),
                                      ("xml", "changed", b"wrapper"), ("xml", "commit", b"changed")]:
             self.assertNotEqual(key, self.sweep.cache_key(xml, commit, wrapper))
+
+    def test_focused_run_preserves_full_report_and_honors_explicit_destinations(self):
+        effect = "FireballPlayer"
+        result = self.result(100, effect)
+        row = {"skill_id": effect, "classification": "agree", "families": [],
+               "vendor_has_effect": True, "pobr": result, "pob2": result, "reasons": []}
+        commit = self.sweep.read_json(self.data / "overlay/skill_overrides.json")["_meta"]["vendor_commit"]
+        with tempfile.TemporaryDirectory() as temp, contextlib.ExitStack() as stack:
+            root = Path(temp)
+            cache = root / "cache"
+            cache.mkdir()
+            vendor = root / "vendor"
+            (vendor / "src").mkdir(parents=True)
+            (vendor / "src/HeadlessWrapper.lua").touch()
+            (root / "target/debug").mkdir(parents=True)
+            (root / "target/debug/pobr").touch()
+            for suffix in ("json", "txt"):
+                (cache / f"report.{suffix}").write_text("previous full inventory")
+            for name, value in (("REPO", root), ("CACHE", cache), ("VENDOR", vendor)):
+                stack.enter_context(patch.object(self.sweep, name, value))
+            stack.enter_context(patch.dict(os.environ, {"POBR_DATA_ROOT": str(self.data.parent),
+                                                      "POBR_DATA_VERSION": self.data.name}))
+            stack.enter_context(patch.object(self.sweep, "run", return_value=commit))
+            stack.enter_context(patch.object(self.sweep, "vendor_metadata", return_value=({}, set())))
+            stack.enter_context(patch.object(self.sweep, "skill_cases", return_value=(
+                [{"skill_id": effect}], [], {"primary_active_effects": 1, "additional_active_effects": 0})))
+            stack.enter_context(patch.object(self.sweep, "measure", return_value=row))
+            stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
+            stack.enter_context(contextlib.redirect_stderr(io.StringIO()))
+            self.assertEqual(self.sweep.main(["--no-build", "--skill", effect]), 0)
+            self.assertEqual(self.sweep.read_json(cache / "report-selected.json")["selection"], [effect])
+            self.assertTrue((cache / "report-selected.txt").is_file())
+            for suffix in ("json", "txt"):
+                self.assertEqual((cache / f"report.{suffix}").read_text(), "previous full inventory")
+            custom_json, custom_text = root / "chosen.json", root / "chosen.txt"
+            self.assertEqual(self.sweep.main(["--no-build", "--skill", effect,
+                "--json", str(custom_json), "--text", str(custom_text)]), 0)
+            self.assertEqual(self.sweep.read_json(custom_json)["selection"], [effect])
+            self.assertTrue(custom_text.is_file())
+            self.assertEqual(self.sweep.main(["--no-build"]), 0)
+            self.assertEqual(self.sweep.read_json(cache / "report.json")["selection"], "all")
+            self.assertIn("Skill sweep:", (cache / "report.txt").read_text())
 
     def test_oracle_attack_average_falls_back_to_average_damage(self):
         result = self.sweep.oracle_result({"mainOutput": {"AverageDamage": 42}, "skillInfo": {}})

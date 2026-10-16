@@ -1098,6 +1098,48 @@ fn augments_in_equipment_are_counted_by_kind() {
     close(socketed_fire - fire, -8.0);
 }
 
+#[test]
+fn ancient_idol_with_rune_base_tag_does_not_penalize_resistance() {
+    let data = data();
+    assert_eq!(data.base_items["Carved Majesty"].tags, ["rune"]);
+    let mut gloves = item(
+        "Secured Wraps",
+        &[
+            "+10 to maximum Life per Idol in your Equipment",
+            "-4% to all Elemental Resistances per non-Idol Augment in your Equipment",
+        ],
+    );
+    let baseline = run(
+        &build("FireballPlayer").set_item(EquipmentSlot::Gloves, gloves.clone()),
+        &data,
+    );
+    gloves.socketed = [
+        "Carved Majesty",
+        "Perfect Iron Rune",
+        "Legacy of Wanderlust",
+    ]
+    .map(String::from)
+    .into();
+    let socketed = run(
+        &build("FireballPlayer").set_item(EquipmentSlot::Gloves, gloves),
+        &data,
+    );
+    // One ancient Idol grants 10 Life; two non-Idol augments cost 2 × 4%.
+    close(socketed.output().life - baseline.output().life, 10.0);
+    close(
+        socketed.output().fire_resistance - baseline.output().fire_resistance,
+        -8.0,
+    );
+    close(
+        socketed.output().cold_resistance - baseline.output().cold_resistance,
+        -8.0,
+    );
+    close(
+        socketed.output().lightning_resistance - baseline.output().lightning_resistance,
+        -8.0,
+    );
+}
+
 /// A keystone an item grants ("Giant's Blood" on a jewel) applies before
 /// the attributes are derived: its "Inherent Life granted by Strength is
 /// halved" makes 100 Strength grant 100 Life instead of 200.

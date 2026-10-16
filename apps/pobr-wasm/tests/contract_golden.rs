@@ -55,9 +55,14 @@ fn decode_build_json_shape() {
             "main_socket_group",
             "config_inputs",
             "custom_modifier_blocks",
+            "party",
             "notes",
             "loadouts",
             "active_loadout",
+            "config_sets",
+            "active_config_set",
+            "skill_sets",
+            "active_skill_set",
             "weapon_swap",
         ],
         "BuildJson",
@@ -497,6 +502,12 @@ fn check_formula(
         .unwrap()
         .iter()
         .any(|step| step["op"] == "reload");
+    let energy_factor = formula["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|step| step["op"] == "energy_trigger")
+        .map_or(1.0, |step| step["operand"].as_f64().unwrap());
     let mut stronger_share = 1.0;
     // The value before the `increased` step and that step's operand.
     let mut player_increase = None;
@@ -564,7 +575,10 @@ fn check_formula(
                 } else {
                     operand
                 };
-                assert!(matches_shown("ActionRate", rate), "{at}: rate");
+                assert!(
+                    matches_shown("ActionRate", rate * energy_factor),
+                    "{at}: rate"
+                );
                 previous * operand
             }
             "chance_to_hit" => {
@@ -662,6 +676,7 @@ fn check_formula(
                 assert!(close(operand, least), "{at}: weaker hand {least}");
                 previous + operand * (1.0 - stronger_share)
             }
+            "energy_trigger" => previous * operand,
             "reload" => {
                 assert!(close(operand, reload_factor()), "{at}: reload factor");
                 previous * operand
@@ -3239,7 +3254,11 @@ fn real_build_exposes_a_single_default_loadout() {
 
     let loadouts = json["loadouts"].as_array().expect("loadouts array");
     assert_eq!(loadouts.len(), 1);
-    assert_keys(&loadouts[0], &["name", "tree", "item", "skill"], "loadout");
+    assert_keys(
+        &loadouts[0],
+        &["name", "tree", "item", "skill", "config"],
+        "loadout",
+    );
     assert_eq!(loadouts[0]["tree"], 1);
     assert!(loadouts[0]["item"].is_null(), "single-set exemption");
     assert_eq!(json["active_loadout"], 0);
@@ -4501,4 +4520,37 @@ fn skill_forms_enabled_counts_and_stages_round_trip() {
     let mut stages = req;
     stages["config_inputs"] = serde_json::json!({"skillFlameblastStages": 4});
     assert_ne!(calc(stages)["stats"], baseline["stats"]);
+}
+
+#[test]
+fn party_import_edit_export_and_calculation() {
+    ensure_data();
+    let code = pobr_build::encode_pob_code(r#"<PathOfBuilding2><Build level="80" className="Witch"/><Skills><Skill enabled="true"><Gem skillId="DisciplinePlayer" level="20" enabled="true"/></Skill></Skills></PathOfBuilding2>"#).unwrap();
+    let member: Value =
+        serde_json::from_str(&pobr_wasm::import_party_member_json(&code).unwrap()).unwrap();
+    let request = serde_json::json!({ "character": { "level": 80, "class_name": "Witch" }, "party": { "members": [member], "exports": {} } });
+    let encoded = pobr_wasm::encode_build_json(&request.to_string()).unwrap();
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&encoded).unwrap()).unwrap();
+    assert_eq!(
+        decoded["party"]["members"][0]["blocks"],
+        request["party"]["members"][0]["blocks"]
+    );
+    let calculated: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap();
+    assert!(
+        calculated["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|s| s["id"] == "EnergyShield" && s["value"].as_f64().unwrap() > 0.0)
+    );
+    let mut clear = request;
+    clear["party"]["members"] = serde_json::json!([]);
+    clear["base_code"] = Value::String(encoded);
+    let encoded = pobr_wasm::encode_build_json(&clear.to_string()).unwrap();
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&encoded).unwrap()).unwrap();
+    assert_eq!(decoded["party"]["members"], serde_json::json!([]));
 }

@@ -129,7 +129,7 @@
         "line_end": 1617,
         "segment_hash": "fnv1a64:144064cc425efef2"
       },
-      "notes": "基本形（默认 15% Cast Speed / 20% more ManaRegen × effect，effect=1+Σinc/100 不取整，vendor 无 floor）。未覆盖分支：Max(ArcaneSurgeCastSpeed/ManaRegen) 覆写、ArcaneSurgeLifeRegen flag（LifeRegen 改道）、ArcaneSurgeDamage（Spell Damage MORE）——均无树/装备样本，出现时升级 handler。"
+      "notes": "Base bonuses: 15% increased Cast Speed and 20% more Mana Regeneration, scaled by buff effect without rounding. Sanguimantic Rituals (ArcaneSurgeLifeRegen) redirects the regeneration bonus to Life with the same value and scaling. Uncovered branches: ArcaneSurgeCastSpeed/ManaRegen maximum overrides and ArcaneSurgeDamage (more Spell Damage)."
     },
     {
       "id": "ChaoticMight",

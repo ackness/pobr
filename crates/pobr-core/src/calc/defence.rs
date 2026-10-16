@@ -798,6 +798,27 @@ pub const AVOID_AILMENT_CAP: f64 = 100.0;
 ///
 /// Source: agent-docs/active-defences.md §3.2;
 ///       PoB2 `src/Modules/CalcDefence.lua` avoidance section + :2554-2558.
+pub(crate) fn stun_avoidance_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    energy_shield: f64,
+    total_taken_hit: f64,
+    energy_shield_protects_mana: bool,
+) -> (f64, f64) {
+    if db.flag(cfg, "StunImmune") {
+        return (0.0, 1.0);
+    }
+    let raw = db.sum(ModType::Base, cfg, &[ModName::from("AvoidStun")]);
+    (
+        (100.0 - raw.min(AVOID_AILMENT_CAP)).max(0.0),
+        if energy_shield > total_taken_hit && !energy_shield_protects_mana {
+            0.5
+        } else {
+            1.0
+        },
+    )
+}
+
 pub fn calc_avoidance(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -906,21 +927,14 @@ pub fn calc_avoidance(
     //   notAvoidChance = StunImmune ? 0 : 100 - min(AvoidStun, 100)
     //   if ES > totalTakenHit and not EnergyShieldProtectsMana: notAvoidChance *= 0.5
     //   StunAvoidChance = 100 - notAvoidChance
-    let stun_immune = db.flag(cfg, "StunImmune");
-    let avoid_stun = if stun_immune {
-        100.0
-    } else {
-        let stun_raw = db.sum(ModType::Base, cfg, &[ModName::from("AvoidStun")]);
-        let not_avoid = (100.0 - stun_raw.min(AVOID_AILMENT_CAP)).max(0.0);
-        // :2555-2557 When ES can absorb the whole hit and it's not EB, the chance to be stunned is halved.
-        let effective_not_avoid = if energy_shield > total_taken_hit && !energy_shield_protects_mana
-        {
-            not_avoid * 0.5
-        } else {
-            not_avoid
-        };
-        round((100.0 - effective_not_avoid).clamp(0.0, AVOID_AILMENT_CAP))
-    };
+    let (not_avoid, shield_factor) = stun_avoidance_terms(
+        db,
+        cfg,
+        energy_shield,
+        total_taken_hit,
+        energy_shield_protects_mana,
+    );
+    let avoid_stun = round((100.0 - not_avoid * shield_factor).clamp(0.0, AVOID_AILMENT_CAP));
 
     AvoidanceResult {
         avoid_all_damage_from_hits,
@@ -953,20 +967,6 @@ pub struct EvadeSuite {
     pub spell: f64,
     /// Spell projectile evade chance.
     pub spell_projectile: f64,
-}
-
-impl EvadeSuite {
-    /// All five values set to the same number (used by the CannotEvade → 0 / AlwaysEvade → 100
-    /// branches; :1421-1433).
-    fn uniform(value: f64) -> Self {
-        Self {
-            evade_chance: value,
-            melee: value,
-            projectile: value,
-            spell: value,
-            spell_projectile: value,
-        }
-    }
 }
 
 /// vendor `calcs.monsterHitChance` (CalcDefence.lua:40-46): the monster's chance to hit the
@@ -1019,6 +1019,53 @@ fn scaling_mod(db: &ModDb, cfg: &CalcConfig, names: &[ModName]) -> f64 {
 /// Note: `EnemyAccuracyDistancePenalty` (:2545-2549) depends on config input; once
 /// config_interpreter is wired in, the caller pre-folds it into `enemy_accuracy` — this
 /// function's formula stays unchanged.
+#[derive(Clone, Copy)]
+pub(crate) struct EvadeTerms {
+    pub enemy_chance: f64,
+    pub extra: f64,
+    pub enemy_multiplier: f64,
+    pub scaling: f64,
+    pub cap: f64,
+    pub clamp_zero: bool,
+    pub unlucky: bool,
+    pub override_value: Option<f64>,
+}
+impl EvadeTerms {
+    fn constant(value: f64) -> Self {
+        Self {
+            enemy_chance: 0.0,
+            extra: 0.0,
+            enemy_multiplier: 1.0,
+            scaling: 1.0,
+            cap: 100.0,
+            clamp_zero: true,
+            unlucky: false,
+            override_value: Some(value),
+        }
+    }
+    fn before_luck(self) -> f64 {
+        if let Some(value) = self.override_value {
+            return value;
+        }
+        let chance = ((100.0 - (self.enemy_chance - self.extra) * self.enemy_multiplier)
+            * self.scaling)
+            .min(self.cap);
+        if self.clamp_zero {
+            chance.max(0.0)
+        } else {
+            chance
+        }
+    }
+    fn value(self) -> f64 {
+        let v = self.before_luck();
+        if self.unlucky {
+            round(v * v / 100.0)
+        } else {
+            round(v)
+        }
+    }
+}
+
 pub fn calc_evade_suite(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -1027,13 +1074,38 @@ pub fn calc_evade_suite(
     enemy_hit_mult: f64,
     enemy_cannot_be_evaded: bool,
 ) -> EvadeSuite {
+    let [combined, melee, projectile, spell, spell_projectile] = evade_terms(
+        db,
+        cfg,
+        evasion,
+        enemy_accuracy,
+        enemy_hit_mult,
+        enemy_cannot_be_evaded,
+    );
+    EvadeSuite {
+        evade_chance: combined.value(),
+        melee: melee.value(),
+        projectile: projectile.value(),
+        spell: spell.value(),
+        spell_projectile: spell_projectile.value(),
+    }
+}
+
+pub(crate) fn evade_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    evasion: f64,
+    enemy_accuracy: f64,
+    enemy_hit_mult: f64,
+    enemy_cannot_be_evaded: bool,
+) -> [EvadeTerms; 5] {
     // :1421-1426 CannotEvade / enemy CannotBeEvaded → all 0.
     if db.flag(cfg, "CannotEvade") || enemy_cannot_be_evaded {
-        return EvadeSuite::uniform(0.0);
+        return [EvadeTerms::constant(0.0); 5];
     }
     // :1427-1433 AlwaysEvade ("Attacks cannot Hit you") → all 100.
     if db.flag(cfg, "AlwaysEvade") {
-        return EvadeSuite::uniform(100.0);
+        return [EvadeTerms::constant(100.0); 5];
     }
 
     // :1394-1397 per-type effective evasion value (vendor rounds to an integer, floors at 0).
@@ -1055,10 +1127,15 @@ pub fn calc_evade_suite(
         .max(0.0);
 
     // :1438-1441 the per-type independent formula.
-    let typed_chance = |type_evasion: f64, names: &[ModName]| -> f64 {
-        let unscaled = 100.0
-            - (monster_hit_chance_pct(type_evasion, enemy_accuracy) - evade_base) * enemy_hit_mult;
-        (unscaled * scaling_mod(db, cfg, names)).clamp(0.0, evade_max)
+    let typed_chance = |type_evasion: f64, names: &[ModName]| EvadeTerms {
+        enemy_chance: monster_hit_chance_pct(type_evasion, enemy_accuracy),
+        extra: evade_base,
+        enemy_multiplier: enemy_hit_mult,
+        scaling: scaling_mod(db, cfg, names),
+        cap: evade_max,
+        clamp_zero: true,
+        unlucky: db.flag(cfg, "UnluckyEvade"),
+        override_value: None,
     };
     let melee = typed_chance(
         melee_evasion,
@@ -1092,32 +1169,19 @@ pub fn calc_evade_suite(
 
     // :1437 the combined independent formula (no per-type factor, no clamp to 0 — matches
     // vendor, only :1449's cap clamping applies).
-    let mut evade_chance =
-        100.0 - (monster_hit_chance_pct(evasion, enemy_accuracy) - evade_base) * enemy_hit_mult;
-    // :1443-1448 split decision: keep the combined value only if melee differs from all three
-    // other types, otherwise combined = melee.
-    if !(melee != projectile && melee != spell && melee != spell_projectile) {
-        evade_chance = melee;
-    }
-    // :1449 the combined value's cap.
-    evade_chance = evade_chance.min(evade_max);
-
-    // :1450-1456 UnluckyEvade → each value becomes x²/100.
-    let unlucky = db.flag(cfg, "UnluckyEvade");
-    let finish = |v: f64| -> f64 {
-        if unlucky {
-            round(v * v / 100.0)
-        } else {
-            round(v)
-        }
+    let mut combined = EvadeTerms {
+        scaling: 1.0,
+        clamp_zero: false,
+        enemy_chance: monster_hit_chance_pct(evasion, enemy_accuracy),
+        ..melee
     };
-    EvadeSuite {
-        evade_chance: finish(evade_chance),
-        melee: finish(melee),
-        projectile: finish(projectile),
-        spell: finish(spell),
-        spell_projectile: finish(spell_projectile),
+    if !(melee.before_luck() != projectile.before_luck()
+        && melee.before_luck() != spell.before_luck()
+        && melee.before_luck() != spell_projectile.before_luck())
+    {
+        combined = melee;
     }
+    [combined, melee, projectile, spell, spell_projectile]
 }
 
 /// Track E fill orchestration (called as the last line of perform's `fill_mechanics`):

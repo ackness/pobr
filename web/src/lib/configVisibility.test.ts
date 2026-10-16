@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+import { readFileSync } from 'node:fs';
 import type { ConfigContext, ConfigOption } from '../api/types';
 import { configApplicability, configVisibilityInputs, showConfigOption } from './configVisibility';
 
@@ -58,4 +59,28 @@ test('dependency defaults do not become explicit overrides, and false overrides 
 
 test('unconditional options work without a calculation', () => {
   expect(configApplicability({ ...option, visibility: undefined }, undefined, {})).toBe('applicable');
+});
+
+test.each([
+  ['MetaCastOnBlockPlayer', ['energyIncomingHitRate']],
+  ['MetaCastOnMinionDeathPlayer', ['energyMinionDeathsPerSecond', 'energyMinionPower']],
+  ['MetaSpellslingerPlayer', ['energyInvocationUsesPerSecond']],
+  ['MetaElementalInvocationPlayer', ['energyInvocationUsesPerSecond']],
+  ['MetaCastOnElementalAilmentPlayer', []],
+  ['MetaCastOnCritPlayer', []],
+  ['SparkPlayer', []],
+] as const)('Applicable view gates Energy controls for %s', (skill, expected) => {
+  const native: { options: ConfigOption[] } = JSON.parse(readFileSync(new URL('../../../data/overlay-common/energy_config_options.json', import.meta.url), 'utf8'));
+  const snapshot: { options: ConfigOption[] } = JSON.parse(readFileSync(new URL('../../../data/0.5.5.4.2/overlay/config_options.json', import.meta.url), 'utf8'));
+  const options = snapshot.options.filter(option => native.options.some(energy => energy.var === option.var));
+  expect(options).toEqual(native.options);
+  const ids = options.flatMap(option => option.visibility?.if_skill ?? []);
+  // The backend contract tests verify these predicates from actual socket groups,
+  // including a meta gem outside the inspected skill's group.
+  const context: ConfigContext = { main_skill: 'spark', skill_types: ['Spell'], predicates: {
+    if_skill: Object.fromEntries(ids.map(id => [id, id === skill])),
+  } };
+  const shown = options.filter(option => showConfigOption(option, configApplicability(option, context, {}), {}, false));
+  expect(shown.map(option => option.var)).toEqual(expected);
+  for (const option of shown) expect(configApplicability(option, context, {})).toBe('applicable');
 });

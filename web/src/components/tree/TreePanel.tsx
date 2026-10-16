@@ -1,3 +1,4 @@
+import { TreeConversionControls } from './TreeConversionControls';
 import { PageHeader } from '../shared/PageHeader';
 import { formatApiError } from '../../api/error';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -21,6 +22,7 @@ import { NoteEditor } from '../shared/NoteEditor';
 import { TreeOptimizer, useTreeOptimizer, type TreeOptimizerState } from './TreeOptimizer';
 import type { PassivePlan } from '../../lib/passivePlanner';
 import './tree.css';
+import { NodePowerTable } from './NodePowerTable';
 
 interface Props {
   session: BuildSession;
@@ -58,9 +60,9 @@ export function TreePanel(props: Props) {
       : lang === 'zh-TW'
         ? `此角色使用 ${session.treeVersion} 天賦樹。計算與匯出會保留該版本，歷史天賦樹暫不支援互動編輯和路線規劃。`
         : `此角色使用 ${session.treeVersion} 天赋树。计算与导出会保留该版本，历史天赋树暂不支持交互编辑和路线规划。`;
-    return <section className="ui-page"><p role="status">{text}</p></section>;
+    return <><TreeConversionControls session={session} lang={lang} /><section className="ui-page"><p role="status">{text}</p></section></>;
   }
-  return <EditableTreePanel key={JSON.stringify([session.dataVersion, session.treeVersion])} {...props} />;
+  return <>{active && <TreeConversionControls session={session} lang={lang} />}<EditableTreePanel key={JSON.stringify([session.dataVersion, session.treeVersion])} {...props} /></>;
 }
 
 /** Retain planner inputs and complete receipts, never the interactive canvas. */
@@ -266,7 +268,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
       'TotalDPS', 'Life', 'EnergyShield', 'TotalEHP', 'Mana',
       'Armour', 'Evasion', 'Spirit',
     ];
-    const present = new Set((session.calc?.stats ?? []).map((s) => s.id));
+    const present = new Set((session.calc?.stats ?? []).filter(s => Number.isFinite(s.value)).map((s) => s.id));
     return CANDIDATES.filter((id) => present.has(id));
   }, [session.calc]);
 
@@ -895,7 +897,8 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
             aria-label={tt('tree.heat')}
             onChange={(e) => {
               setHeatStat(e.target.value);
-              if (!e.target.value) setHeatData(null);
+              setHeatData(null);
+              setHeatVersion(-1);
             }}
           >
             <option value="">{tt('tree.heatOff')}</option>
@@ -1229,6 +1232,15 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
           </span>
       </div>
       {Boolean(treeEffects?.warnings.length) && <p className="tree-hint" role="status">{tt('tree.jewelSeedMissing')}</p>}
+      <NodePowerTable session={session} nodes={nodes ?? []} lang={lang}
+        stat={heatStat || 'Life'} stats={heatStatOptions}
+        onStat={stat => { setHeatStat(stat); setHeatData(null); setHeatVersion(-1); }}
+        onFocus={node => {
+          setSelectedSkill(node.skill); setAttributeDraft(null); setAttrPicker(null);
+          const w = Math.min(view.w, 6000), h = w / view.w * view.h;
+          setViewBox({ x: node.x! - w / 2, y: node.y! - h / 2, w, h });
+          svgRef.current?.scrollIntoView({ block: 'center' });
+        }} />
       <TreeOptimizer planner={planner} />
       {Object.keys(session.editorDrafts).filter(key => key.startsWith('jewel:')).map(key => (
         <button key={key} onClick={() => setJewelSocket(Number(key.slice(6)))}>

@@ -27,6 +27,7 @@ pub struct Env {
     pub buff_skills: Vec<BuffSpec>,
     /// Buff skills owned by a minion (index in `minions`), not the summoner.
     pub minion_buff_skills: Vec<(usize, BuffSpec)>,
+    pub party_buff_skills: Vec<super::session::PartyBuffSpec>,
     /// The player's warcry skill specs (backlog item #9; written by
     /// `session::add_warcry_skill`, consumed by `perform` before the hand
     /// pass via [`super::warcry::apply_warcry_uptime`] — the uptime-scaled
@@ -75,6 +76,8 @@ pub struct Env {
     pub crossbow_reload: Option<super::CrossbowReload>,
     /// What the EHP stage computed with (`None` before it runs).
     pub ehp_terms: Option<super::EhpTerms>,
+    /// The earlier single-hit estimate, retained for its optional legacy view.
+    pub(crate) legacy_ehp_terms: Option<super::ehp::EhpResult>,
     /// Normal leech, instant leech and on-hit recovery by resource, for optional details.
     pub(crate) leech_gain_terms: [[[f64; 3]; 3]; 2],
     /// MH/OH hand pass input (contract 1; written by the orchestration
@@ -113,6 +116,7 @@ impl Env {
             minions: Vec::new(),
             buff_skills: Vec::new(),
             minion_buff_skills: Vec::new(),
+            party_buff_skills: Vec::new(),
             warcry_skills: Vec::new(),
             warcry_gain_injected: false,
             keystone_mods: BTreeMap::new(),
@@ -123,6 +127,7 @@ impl Env {
             ailment_terms: Vec::new(),
             crossbow_reload: None,
             ehp_terms: None,
+            legacy_ehp_terms: None,
             leech_gain_terms: [[[0.0; 3]; 3]; 2],
             hand_sources: Vec::new(),
             main_hand_weapon_damage: Vec::new(),

@@ -232,6 +232,7 @@ fn parse_build_with_allocated_nodes_impl(
     if use_second_weapon_set {
         build.weapon_set = WeaponSet::Second;
     }
+    build.party = crate::party::parse_party(xml)?;
     build.other_weapons = other_weapons;
     build.other_weapon_set_nodes = Some(
         allocation_override
@@ -769,14 +770,29 @@ fn group_weapon_set(groups: &[SocketGroup], index: usize) -> Option<u8> {
 }
 
 fn parse_main_socket_group(xml: &str) -> Option<usize> {
+    let active = crate::loadout::active_selection(xml)
+        .skill
+        .unwrap_or(1)
+        .to_string();
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
+    let mut header = None;
     loop {
         match reader.read_event() {
             Ok(Event::Start(e)) | Ok(Event::Empty(e)) if element_name(&e) == "Build" => {
-                return attr_value(&e, b"mainSocketGroup").and_then(|v| v.parse::<usize>().ok());
+                header = attr_value(&e, b"mainSocketGroup").and_then(|v| v.parse::<usize>().ok());
             }
-            Ok(Event::Eof) | Err(_) => return None,
+            Ok(Event::Start(e)) | Ok(Event::Empty(e))
+                if element_name(&e) == "SkillSet"
+                    && attr_value(&e, b"id").as_deref() == Some(active.as_str()) =>
+            {
+                if let Some(main) =
+                    attr_value(&e, b"mainSocketGroup").and_then(|v| v.parse::<usize>().ok())
+                {
+                    return (main > 0).then_some(main);
+                }
+            }
+            Ok(Event::Eof) | Err(_) => return header,
             _ => {}
         }
     }
@@ -1204,11 +1220,9 @@ pub fn parse_notes(xml: &str) -> Result<Option<String>, XmlError> {
 /// `<ItemSet>` / `<SkillSet>`), for [`crate::loadout::derive_loadouts`] to derive
 /// grouped switching.
 ///
-/// `id` uses **document order** (1-based) rather than the XML's `id` attribute —
-/// `activeSpec` / `activeItemSet` / `activeSkillSet` are all selected by ordinal
-/// position (see [`parse_passive_nodes`] etc.), and an element's own `id` attribute
-/// doesn't necessarily match that. `title` defaults to `"Default"`, matching vendor's
-/// `spec.title or "Default"` semantics.
+/// Tree and item references use 1-based document order. Skill and config sets
+/// use their XML `id`, which may have gaps or differ from document order.
+/// Missing titles default to `"Default"`.
 pub fn parse_build_sets(xml: &str) -> Result<BuildSets, XmlError> {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
@@ -1221,13 +1235,20 @@ pub fn parse_build_sets(xml: &str) -> Result<BuildSets, XmlError> {
                     "Spec" => &mut sets.trees,
                     "ItemSet" => &mut sets.items,
                     "SkillSet" => &mut sets.skills,
+                    "ConfigSet" => &mut sets.configs,
                     _ => continue,
                 };
                 let title = attr_value(&e, b"title")
                     .filter(|t| !t.trim().is_empty())
                     .unwrap_or_else(|| "Default".to_string());
                 bucket.push(SetRef {
-                    id: bucket.len() + 1,
+                    id: if matches!(element_name(&e).as_str(), "ConfigSet" | "SkillSet") {
+                        attr_value(&e, b"id")
+                            .and_then(|id| id.parse().ok())
+                            .unwrap_or(bucket.len() + 1)
+                    } else {
+                        bucket.len() + 1
+                    },
                     title,
                 });
             }

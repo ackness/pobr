@@ -516,3 +516,11 @@
 .node.node-preview-refund { stroke: #ef9a9a; stroke-width: 30; stroke-dasharray: 35 15; }
 .tree-edges .edge-preview { stroke: #81c784; stroke-width: 20; opacity: 1; }
 .tree-edges .edge-refund { stroke: #ef9a9a; stroke-width: 20; stroke-dasharray: 35 15; opacity: 1; }
+
+.tree-conversion { margin: 0 0 12px; padding: 12px 16px; border: 1px solid var(--border-subtle); border-radius: 8px; }
+.tree-conversion-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.tree-conversion-actions label { display: flex; align-items: center; gap: 6px; }
+.tree-conversion-preview { max-width: 960px; }
+.tree-conversion-preview article { padding: 8px 0; border-top: 1px solid var(--border-subtle); }
+.tree-conversion-preview li { margin-bottom: 10px; }
+.tree-conversion-preview details p { overflow-wrap: anywhere; }

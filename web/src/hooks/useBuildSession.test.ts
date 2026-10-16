@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { toRequest, backfillFromDecoded, materialize, paramsFromDecoded, parseSaved, prepareTreePlan, skillMetricsForState, type SavedSession } from './useBuildSession';
+import { applyNamedSkills, applyNamedConfig, toRequest, backfillFromDecoded, materialize, paramsFromDecoded, parseSaved, prepareTreePlan, skillMetricsForState, type SavedSession } from './useBuildSession';
 import type { BuildJson, CalculateBuildRequest, SkillMetricsResponse } from '../api/types';
 import { parseWorkspace, createWorkspace } from '../lib/buildWorkspace';
 
@@ -482,4 +482,79 @@ test('complete comparison edits survive saved-session parsing without source con
   expect(parseSaved(JSON.stringify({ ...edited, state: { ...edited.state, sourceBackfillComplete: 'invalid' } }))).toBeNull();
   expect(backfillFromDecoded(restored.state, { config_inputs: { conditionLowLife: true } } as unknown as BuildJson)).toBe(restored.state);
   expect(restored.state.params.config_inputs).toEqual({ zero: 0 });
+});
+
+test('planner source survives saves without entering calculation requests', () => {
+  const plannerSource = JSON.stringify({ name: 'Guide', inventory_slots: [{ inventory_id: 'Weapon1', additional_text: 'Choose a bow' }] });
+  const restored = parseState({ plannerSource })!;
+  expect(restored.state.plannerSource).toBe(plannerSource);
+  expect(toRequest(restored.state)).not.toHaveProperty('plannerSource');
+  const workspace = parseWorkspace(createWorkspace(restored), parseSaved)!;
+  expect(workspace.builds[0].stages[0].saved.state.plannerSource).toBe(plannerSource);
+});
+
+test('selecting a named config changes only configuration and its persisted XML base', () => {
+  const current = { ...saved.state, params: { ...saved.state.params, main_socket_group: 4, extra_modifiers: ['old'] } };
+  const decoded = { code: 'selected-code', config_inputs: { enemyIsBoss: 'Pinnacle', future: false },
+    custom_modifier_blocks: [{ title: 'New', enabled: false, text: 'keep' }] } as unknown as BuildJson & { code: string };
+  const next = applyNamedConfig(current, decoded);
+  expect(next.params).toEqual({ config_inputs: { future: false }, enemy_tier: 'pinnacle',
+    custom_modifier_blocks: decoded.custom_modifier_blocks, main_socket_group: 4 });
+  expect(next.pobCode).toBe('selected-code');
+  for (const key of ['character', 'socketGroups', 'items', 'flasks', 'limbs', 'jewels', 'allocatedNodes', 'attributeChoices', 'weaponSwap', 'annotations'] as const) {
+    expect(next[key]).toBe(current[key]);
+  }
+  expect(parseSaved(JSON.stringify({ ...saved, state: next }))?.state.params).toEqual(next.params);
+  expect(toRequest(next).config_inputs).toEqual({ future: false });
+  expect(toRequest(next).enemy_tier).toBe('pinnacle');
+});
+
+test('selecting a named skill set replaces its main group and bindings while keeping other edits', () => {
+  const current = { ...saved.state, params: { ...saved.state.params, main_socket_group: 4, extra_modifiers: ['keep'] } };
+  const decoded = { code: 'skill-code', main_socket_group: 1, tree: {}, items: { equipped: [] },
+    socket_groups: [
+      { enabled: true, weapon_set: 2, gems: [{ skill_id: 'SparkPlayer', level: 10, quality: 5, enable_global_1: false, enable_global_2: true }] },
+      { enabled: true, weapon_set: 1, main_active_skill: 2, gems: [{ skill_id: 'FireballPlayer', level: 9, quality: 0 }] },
+    ] } as unknown as BuildJson & { code: string };
+  const next = applyNamedSkills(current, decoded);
+  expect(next.params).toEqual({ ...current.params, main_socket_group: 1 });
+  expect(next.socketGroups[0]).toMatchObject({ weapon_set: 2, gems: [{ skill_id: 'SparkPlayer', level: 10, enable_global_2: true }] });
+  expect(next.socketGroups[1]).toMatchObject({ weapon_set: 1, main_active_skill: 2 });
+  expect(next.pobCode).toBe('skill-code');
+  for (const key of ['character', 'items', 'flasks', 'limbs', 'jewels', 'allocatedNodes', 'attributeChoices', 'weaponSwap', 'annotations'] as const) {
+    expect(next[key]).toBe(current[key]);
+  }
+  const restored = parseSaved(JSON.stringify({ ...saved, state: next }));
+  expect(restored?.state.socketGroups).toEqual(next.socketGroups);
+  expect(toRequest(next).main_socket_group).toBe(1);
+  expect(toRequest(next).config_inputs).toEqual(current.params.config_inputs);
+});
+
+test('tree conversion retains non-tree edits and replaces the complete export base', async () => {
+  const { convertedTreeState } = await import('./useBuildSession');
+  const current = { ...saved.state, pobCode: 'old-full-base',
+    weaponSwap: { active: 1 as const, alternate_items: [{ slot: 'weapon1', text: 'Keep raw weapon text' }], exclusive_nodes: [[770], [12]] as [number[], number[]] },
+    jewels: [{ socket_node: 7, text: 'Preserved Jewel' }, { socket_node: 8, text: 'Removed Socket Jewel' }] };
+  const decoded = { tree: { tree_version: '0_5', allocated_nodes: [7, 770], attribute_choices: { '770': 'int' } },
+    weapon_swap: { ...current.weaponSwap, alternate_items: [], exclusive_nodes: [[770], [13]] },
+    items: { socket_jewels: [{ socket_node: 7, text: '\nPreserved Jewel\n    ' }] } } as unknown as BuildJson;
+  const next = convertedTreeState(current, decoded, 'converted-all-specs-base');
+  expect(next.pobCode).toBe('converted-all-specs-base');
+  expect(next.treeVersion).toBe('0_5');
+  expect(next.weaponSwap?.exclusive_nodes).toEqual([[770], [13]]);
+  expect(next.weaponSwap?.alternate_items).toBe(current.weaponSwap.alternate_items);
+  expect(next.allocatedNodes).toEqual([7, 770]);
+  expect(next.jewels).toEqual([{ socket_node: 7, text: 'Preserved Jewel' }]);
+  for (const key of ['character', 'socketGroups', 'items', 'flasks', 'limbs', 'params', 'annotations'] as const) expect(next[key]).toBe(current[key]);
+  expect(current.pobCode).toBe('old-full-base');
+  expect(current.jewels).toHaveLength(2);
+});
+
+test('party members survive saved sessions and are passed to the calculation request', () => {
+  const party = { members: [{ id: 'support', name: 'Support', enabled: false, blocks: { Aura: 'Discipline\n150\n100|Skill:DisciplinePlayer|EnergyShield|BASE|-|-|-\n---' }, warnings: [] }], exports: {} };
+  const session = structuredClone(saved);
+  session.state.params.party = party;
+  const restored = parseSaved(JSON.stringify(session));
+  expect(restored?.state.params.party).toEqual(party);
+  expect(toRequest(session.state).party).toEqual(party);
 });

@@ -1,4 +1,5 @@
 pub mod detail;
+mod detail_views;
 pub(super) mod preparation;
 
 use std::collections::BTreeMap;
@@ -72,6 +73,14 @@ pub struct BuffSpec {
     /// increased Aura Magnitudes"'s SkillTypes tag against this; defaults to
     /// NONE = the old behavior, where scoped mods never match).
     pub skill_types: pobr_data::skill::SkillTypes,
+}
+
+/// A party member's outgoing effect, with its caster strength already resolved.
+#[derive(Debug, Clone)]
+pub struct PartyBuffSpec {
+    pub member: usize,
+    pub curse_limit: f64,
+    pub spec: BuffSpec,
 }
 
 /// See [`CalculationSession::hit_damage_mods`].
@@ -414,6 +423,15 @@ impl CalculationSession {
     /// **Stored only, not consumed at this stage**: the spec goes into
     /// `Env::buff_skills`, and only participates in the calculation once T3's
     /// `buff_pass` (env_finalize stage 4) lands -- calling this API before then has no effect on output values.
+    pub fn add_party_buff_skill(&mut self, spec: PartyBuffSpec) {
+        self.env.party_buff_skills.push(spec);
+    }
+
+    /// The member's outgoing auras and curses, before recipient-side scaling.
+    pub fn party_buff_exports(&self) -> Vec<BuffSpec> {
+        super::buff_pass::party_exports(&self.env)
+    }
+
     pub fn add_buff_skill(&mut self, spec: BuffSpec) {
         self.env.buff_skills.push(spec);
     }
@@ -1146,6 +1164,19 @@ impl CalculationSession {
                 }
                 _ => formula,
             };
+            let formula = if matches!(stat, "ActionRate" | "TotalDPS")
+                && let Some(terms) = &output.energy_trigger
+            {
+                let scaled = formula.value * terms.rate_multiplier;
+                formula.then(
+                    super::FormulaOp::EnergyTrigger,
+                    terms.rate_multiplier,
+                    scaled,
+                    scaled,
+                )
+            } else {
+                formula
+            };
             return ((formula.value - displayed).abs() <= 1e-6).then_some(super::StatFormula {
                 value: displayed,
                 ..formula
@@ -1396,10 +1427,18 @@ impl CalculationSession {
         let db = &env.player.mod_db;
         let enemy = &env.enemy.mod_db;
         let hit = super::offence::hit_pass(db, enemy, cfg, input);
-        let dps = self
-            .pass_value("TotalDPS", pass)
-            .unwrap_or(env.player.output.dps);
-        ((hit.dps - dps).abs() <= 1e-6)
+        let (expected, dps) = if let Some(dps) = self.pass_value("TotalDPS", pass) {
+            (hit.dps, dps)
+        } else {
+            let factor = env
+                .player
+                .output
+                .energy_trigger
+                .as_ref()
+                .map_or(1.0, |terms| terms.rate_multiplier);
+            (hit.dps * factor, env.player.output.dps)
+        };
+        ((expected - dps).abs() <= 1e-6)
             .then(|| hit.mitigation_terms(db, enemy, cfg))
             .flatten()
     }
@@ -1488,6 +1527,11 @@ impl CalculationSession {
                 })
                 .collect(),
         }
+    }
+
+    /// Application probabilities and newly inflicted damage for Energy sources.
+    pub fn energy_source_ailments(&self) -> super::energy::AilmentSourceStats {
+        super::energy::source_ailments(&self.env)
     }
 
     /// What the ailment stage computed `stat` (`BleedDPS` / `IgniteDPS` /

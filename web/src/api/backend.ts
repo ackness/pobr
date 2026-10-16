@@ -8,12 +8,14 @@ import type { CraftingMetadata } from './itemCrafting';
  */
 
 import type {
-  SocketGroupInput, TreeAllocationMode, TreeEditAction, TreeEditResponse,
+  SocketGroupInput, TreeConversionResponse, TreeAllocationMode, TreeEditAction, TreeEditResponse,
   AttributionRequest,
   ClassNames,
   AttributionResponse,
   LineUsageResponse,
   BuildJson,
+  BuildPlannerExport,
+  SetSelection,
   SelectedLoadoutJson,
   CalculateBuildRequest,
   CalculateBuildResponse,
@@ -53,7 +55,7 @@ export interface PobrBackend {
    */
   switchLoadout(
     pobCode: string,
-    sel: { tree: number; item: number | null; skill: number | null },
+    sel: SetSelection,
   ): Promise<SelectedLoadoutJson>;
   /**
    * 组管理：复制 / 重命名 / 删除一个 loadout，返回**新的 build code**。
@@ -61,11 +63,13 @@ export interface PobrBackend {
    */
   manageLoadout(
     pobCode: string,
-    op: 'duplicate' | 'rename' | 'remove',
+    op: 'create' | 'duplicate' | 'rename' | 'remove',
     name?: string,
-    target?: { tree: number; item: number | null; skill: number | null },
+    target?: SetSelection & { kind?: 'config' | 'skill' },
   ): Promise<string>;
-  /** 解析国服导出的 `.build` 文件（JSON 文本）。 */
+  /** Current game planner format, one file per selected source loadout. */
+  encodeBuildFile(request: { code: string; name: string; all_loadouts: boolean; source?: string }): Promise<BuildPlannerExport>;
+  /** Current planner and legacy China-server .build JSON. */
   decodeBuildFile(content: string): Promise<BuildJson>;
   importTradeItems(items: unknown[]): Promise<{ text?: string; warnings?: string[]; error?: string }[]>;
   calculateBuild(request: CalculateBuildRequest): Promise<CalculateBuildResponse>;
@@ -73,11 +77,13 @@ export interface PobrBackend {
   encodeBuild(request: CalculateBuildRequest & { notes?: string; base_code?: string }): Promise<string>;
   /** Independent metrics for every active effect, including utility and unavailable skills. */
   skillMetrics(request: CalculateBuildRequest): Promise<SkillMetricsResponse>;
+  importPartyMember(code: string): Promise<import('./types').PartyMember>;
   attribution(request: AttributionRequest): Promise<AttributionResponse>;
   /** 构筑每一行词条在计算中的去向（比计算更慢，按需调用）。 */
   lineUsage(request: CalculateBuildRequest): Promise<LineUsageResponse>;
   /** 天赋树静态数据（静态资产，不经 wasm）。 */
   loadPassiveTree(treeVersion?: string | null): Promise<PassiveNode[]>;
+  previewTreeConversion(code: string, allSpecs: boolean): Promise<TreeConversionResponse>;
   previewTreeEdit(request: CalculateBuildRequest, node: number, mode: TreeAllocationMode, action: TreeEditAction): Promise<TreeEditResponse>;
   /** Catalog from the same immutable data snapshot used by calculation. */
   loadTradeCatalog(): Promise<unknown>;
@@ -106,6 +112,7 @@ export interface PobrBackend {
     request: CalculateBuildRequest,
     powerStat: string,
     maxDepth: number,
+    nodes?: number[],
   ): Promise<NodePowerResponse>;
   /** 通用变体评估（寻优框架计算面：变体 → 全量重算 → 属性值；打分在前端）。 */
   optimizeVariants(request: OptimizeVariantsRequest): Promise<OptimizeVariantsResponse>;

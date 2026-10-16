@@ -29,6 +29,41 @@ fn data() -> BuildData {
         .expect("load repository data")
 }
 
+#[test]
+fn channel_time_to_trigger_uses_the_meta_gems_energy_capacity_and_continuous_gain() {
+    let data = data();
+    let xml = build_xml(&[], &[], COMET)
+        .replace("MetaCastOnCritPlayer", "MetaCastWhileChannellingPlayer")
+        .replace("Cast on Critical", "Cast while Channelling");
+    let options = options(EnemyTier::None, &[]);
+    let out = calculate(&data, &xml, &options);
+    // 1 s base cast + 2 × Comet's 1 s added total cast time = 300 Energy;
+    // cast_while_channelling_gain_X_energy_per_second_while_channelling = 60.
+    assert_eq!(out.channel_time_to_trigger, 5.0);
+    let faster = calculate(
+        &data,
+        &xml,
+        &DataOrchestratorOptions {
+            extra_modifier_texts: vec![
+                SPELL_DAMAGE.into(),
+                "Meta Skills gain 100% increased Energy".into(),
+            ],
+            ..options.clone()
+        },
+    );
+    assert_eq!(faster.channel_time_to_trigger, 2.5);
+    assert_eq!(out.dps, faster.dps);
+    let two_spells = xml.replace("</Skill>", &format!("{}</Skill>", spark()));
+    assert_eq!(
+        calculate(&data, &two_spells, &options).channel_time_to_trigger,
+        (370.0_f64 / 60.0 * 1e9).round() / 1e9
+    );
+    assert_eq!(
+        comet(&data, EnemyTier::None, &[]).channel_time_to_trigger,
+        0.0
+    );
+}
+
 fn gem(skill_id: &str, name: &str) -> String {
     format!(
         r#"<Gem skillId="{skill_id}" nameSpec="{name}" level="20" quality="0" enabled="true"/>"#
@@ -366,4 +401,474 @@ fn a_skill_outside_a_meta_gem_is_untouched() {
     );
     assert_eq!(by_hand.energy_trigger_maximum, 0.0);
     assert_eq!(by_hand, off);
+}
+
+fn meta_xml(meta: &str, others: &[String], inputs: &[(&str, f64)]) -> String {
+    let config: String = inputs
+        .iter()
+        .map(|(key, value)| format!(r#"<Input name="{key}" number="{value}"/>"#))
+        .collect();
+    build_xml(&[], others, COMET)
+        .replace("MetaCastOnCritPlayer", meta)
+        .replace(
+            "</PathOfBuilding2>",
+            &format!("<Config>{config}</Config></PathOfBuilding2>"),
+        )
+}
+
+#[test]
+fn cast_on_block_uses_25_energy_per_block_and_configured_incoming_hits() {
+    let data = data();
+    let xml = meta_xml(
+        "MetaCastOnBlockPlayer",
+        &[],
+        &[("energyIncomingHitRate", 8.0)],
+    );
+    let options = options(BOSS.0, &["+50% to Block chance"]);
+    let out = calculate(&data, &xml, &options);
+    assert_eq!(out.effective_block_chance, 50.0);
+    assert_eq!(out.energy_trigger_maximum, 300.0);
+    assert_eq!(out.energy_per_trigger_event, 25.0 * 1.57);
+    // 8 incoming hits/s × 50% block / ceil(300 / 39.25) = 0.5.
+    assert_eq!(out.skill_trigger_rate, 0.5);
+    assert_eq!(out.trigger_rate_cap, 4.0);
+    let zero = calculate(
+        &data,
+        &xml.replace("number=\"8\"", "number=\"0\""),
+        &options,
+    );
+    assert_eq!(zero.dps, 0.0);
+    assert_eq!(zero.skill_trigger_rate, 0.0);
+    assert!(!zero.energy_trigger.as_ref().unwrap().at_own_rate);
+    let speed = xml
+        .replace("energyIncomingHitRate", "enemySpeed")
+        .replace("number=\"8\"", "number=\"125\"");
+    assert_eq!(calculate(&data, &speed, &options).skill_trigger_rate, 0.5);
+    let both = meta_xml(
+        "MetaCastOnBlockPlayer",
+        &[],
+        &[("energyIncomingHitRate", 0.0), ("enemySpeed", 125.0)],
+    );
+    assert_eq!(calculate(&data, &both, &options).dps, 0.0);
+    let both = both.replace(
+        "energyIncomingHitRate\" number=\"0",
+        "energyIncomingHitRate\" number=\"4",
+    );
+    assert_eq!(calculate(&data, &both, &options).skill_trigger_rate, 0.25);
+    let stopped = meta_xml("MetaCastOnBlockPlayer", &[], &[("enemySpeed", 0.0)]);
+    assert_eq!(calculate(&data, &stopped, &options).dps, 0.0);
+    let no_block = calculate(
+        &data,
+        &xml,
+        &DataOrchestratorOptions {
+            extra_modifier_texts: vec![SPELL_DAMAGE.into()],
+            ..options
+        },
+    );
+    assert!(no_block.energy_trigger.as_ref().unwrap().at_own_rate);
+    assert_eq!(
+        no_block.energy_trigger.as_ref().unwrap().missing_source,
+        Some("EnergyNeedsBlockChance")
+    );
+}
+
+#[test]
+fn cast_on_minion_death_uses_50_energy_times_killed_minion_power() {
+    let data = data();
+    let xml = meta_xml(
+        "MetaCastOnMinionDeathPlayer",
+        &[],
+        &[
+            ("energyMinionDeathsPerSecond", 6.0),
+            ("energyMinionPower", 2.0),
+        ],
+    );
+    let out = calculate(&data, &xml, &options(BOSS.0, &[]));
+    assert_eq!(out.energy_trigger_maximum, 300.0);
+    // 100 / stat value 2 = 50; 2 Power × 57% increased = 157 Energy.
+    assert_eq!(out.energy_per_trigger_event, 157.0);
+    assert_eq!(out.skill_trigger_rate, 3.0);
+    let refund = calculate(
+        &data,
+        &xml,
+        &options(
+            BOSS.0,
+            &["25% chance for Trigger skills to refund half of Energy Spent"],
+        ),
+    );
+    assert_rate(refund.skill_trigger_rate, 6.0 / 1.75);
+    let unset = calculate(
+        &data,
+        &meta_xml("MetaCastOnMinionDeathPlayer", &[], &[]),
+        &options(BOSS.0, &[]),
+    );
+    assert!(unset.dps > 0.0);
+    assert!(unset.energy_trigger.as_ref().unwrap().at_own_rate);
+    let stopped = meta_xml(
+        "MetaCastOnMinionDeathPlayer",
+        &[],
+        &[("energyMinionDeathsPerSecond", 0.0)],
+    );
+    let stopped = calculate(&data, &stopped, &options(BOSS.0, &[]));
+    assert_eq!(stopped.dps, 0.0);
+    assert!(!stopped.energy_trigger.as_ref().unwrap().at_own_rate);
+}
+
+#[test]
+fn cast_on_elemental_ailment_uses_shocks_from_the_source_skill() {
+    let data = data();
+    let xml = meta_xml("MetaCastOnElementalAilmentPlayer", &[spark()], &[]);
+    let options = options(BOSS.0, &["100% chance to Shock"]);
+    let out = calculate(&data, &xml, &options);
+    let source = calculate(&data, &build_xml(&[], &[spark()], OTHER), &options);
+    assert_eq!(out.energy_trigger_maximum, 300.0);
+    // 100 centienergy / 100 × unique Power 20 × 1.57 = 31.4/shock.
+    assert_eq!(out.energy_per_trigger_event, 31.4);
+    assert_rate(out.skill_trigger_rate, source.effective_action_rate / 10.0);
+    assert_eq!(out.energy_trigger_source.as_deref(), Some("SparkPlayer"));
+}
+
+#[test]
+fn spellslinger_stores_500_but_spends_300_on_comet_and_gains_14_per_spark() {
+    let data = data();
+    let xml = meta_xml("MetaSpellslingerPlayer", &[spark()], &[]);
+    let options = options(BOSS.0, &[]);
+    let out = calculate(&data, &xml, &options);
+    let source = calculate(&data, &build_xml(&[], &[spark()], OTHER), &options);
+    let terms = out.energy_trigger.as_ref().unwrap();
+    assert_eq!(out.energy_trigger_maximum, 500.0);
+    assert_eq!(terms.energy_per_trigger, 300.0);
+    // 20 centienergy per 10 ms = 14 per 700 ms cast, then 57% increased.
+    assert_eq!(out.energy_per_trigger_event, 21.98);
+    assert_rate(
+        out.skill_trigger_rate,
+        source.effective_action_rate * 21.98 / 300.0,
+    );
+    assert!(terms.invocation);
+    let stopped = meta_xml(
+        "MetaSpellslingerPlayer",
+        &[spark()],
+        &[("energyInvocationUsesPerSecond", 0.0)],
+    );
+    assert_eq!(calculate(&data, &stopped, &options).dps, 0.0);
+}
+
+#[test]
+fn elemental_invocation_spends_cast_time_energy_instead_of_its_500_storage() {
+    let data = data();
+    let xml = meta_xml("MetaElementalInvocationPlayer", &[spark()], &[]);
+    let options = options(BOSS.0, &["100% chance to Shock"]);
+    let out = calculate(&data, &xml, &options);
+    let source = calculate(&data, &build_xml(&[], &[spark()], OTHER), &options);
+    assert_eq!(out.energy_trigger_maximum, 500.0);
+    assert_eq!(
+        out.energy_trigger.as_ref().unwrap().energy_per_trigger,
+        300.0
+    );
+    // 1 Energy × Power 20 × 68% increased at level 20 = 33.6.
+    assert_eq!(out.energy_per_trigger_event, 33.6);
+    assert_rate(
+        out.skill_trigger_rate,
+        source.effective_action_rate * 33.6 / 300.0,
+    );
+    let quality = xml.replace(
+        "MetaElementalInvocationPlayer\" nameSpec=\"Cast on Critical\" level=\"20\" quality=\"0",
+        "MetaElementalInvocationPlayer\" nameSpec=\"Cast on Critical\" level=\"20\" quality=\"20",
+    );
+    assert_eq!(
+        calculate(&data, &quality, &options).energy_trigger_maximum,
+        600.0
+    );
+}
+
+#[test]
+fn meta_supports_modify_energy_without_changing_the_payloads_own_rate() {
+    let data = data();
+    let xml = meta_xml(
+        "MetaCastOnBlockPlayer",
+        &[],
+        &[("energyIncomingHitRate", 8.0)],
+    )
+    .replace(
+        "</Skill>",
+        &format!(
+            "{}{}{}{}",
+            gem("SupportBoundlessEnergyPlayerTwo", "Boundless Energy II"),
+            gem("SupportEnergyRetentionPlayer", "Energy Retention"),
+            "",
+            "</Skill>"
+        ),
+    );
+    let options = options(BOSS.0, &["+50% to Block chance"]);
+    let out = calculate(&data, &xml, &options);
+    // 25 × (1 + 0.57 + 0.45) = 50.5; 6 events from empty, 3 from half;
+    // Energy Retention refunds half in 35% of cycles.
+    assert_eq!(out.energy_per_trigger_event, 50.5);
+    assert_rate(out.skill_trigger_rate, 4.0 / (0.65 * 6.0 + 0.35 * 3.0));
+    let own = calculate(
+        &data,
+        &xml,
+        &DataOrchestratorOptions {
+            energy_triggers: false,
+            ..options
+        },
+    );
+    let expected = own.dps * out.energy_trigger.as_ref().unwrap().triggers_per_second
+        / own.effective_action_rate;
+    assert!((out.dps / expected - 1.0).abs() < 1e-9);
+    assert_eq!(own.energy_trigger, None);
+}
+
+#[test]
+fn ailment_energy_counts_ignite_damage_and_freeze_buildup_but_not_chill() {
+    let data = data();
+    let options = options(BOSS.0, &["100% chance to Ignite"]);
+    let fireball = gem("FireballPlayer", "Fireball");
+    let xml = meta_xml("MetaCastOnElementalAilmentPlayer", &[fireball.clone()], &[]);
+    let build = parse_build(&build_xml(&[], &[fireball], OTHER)).unwrap();
+    let source = pobr_build::calculate_with_data_session(&build, &data, &options).unwrap();
+    let stats = source.energy_source_ailments();
+    assert_eq!(stats.ignite_chance, 1.0);
+    assert!(stats.ignite_damage > 0.0);
+    let out = calculate(&data, &xml, &options);
+    assert_rate(
+        out.energy_per_trigger_event,
+        20.0 * 1.57 * stats.ignite_damage / f64::from(enemy_ailment_threshold(ENEMY_LEVEL)),
+    );
+    assert!(out.skill_trigger_rate > 0.0);
+
+    let cold = gem("FrostboltPlayer", "Frostbolt");
+    let xml = meta_xml("MetaCastOnElementalAilmentPlayer", &[cold], &[]);
+    let frozen = calculate(&data, &xml, &options);
+    assert_eq!(frozen.energy_per_trigger_event, 314.0); // 10 × 20 × 1.57.
+    assert!(frozen.skill_trigger_rate > 0.0);
+    let chilled = calculate(
+        &data,
+        &xml,
+        &DataOrchestratorOptions {
+            extra_modifier_texts: vec![SPELL_DAMAGE.into(), "Cannot immobilise enemies".into()],
+            ..options
+        },
+    );
+    assert_eq!(chilled.skill_trigger_rate, 0.0);
+    assert!(chilled.dps > 0.0);
+    assert!(chilled.energy_trigger.as_ref().unwrap().at_own_rate);
+    assert_eq!(chilled.energy_trigger_source, None);
+}
+
+#[test]
+fn energy_meta_worked_builds_keep_reference_dps_and_expose_game_rates() {
+    let data = data();
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    for (path, meta, spell, ordinal, inputs) in [
+        (
+            "examples/wasm-benchmark/builds/ninja-2026-10-11-sorceress-stormweaver-comet-f085a4410120",
+            "MetaCastOnElementalAilmentPlayer",
+            "CometPlayer",
+            2,
+            vec![],
+        ),
+        (
+            "examples/reference-builds/tuned/builds/ninja-2026-10-13-druid-shaman-comet-dd7f512456b6",
+            "MetaCastOnBlockPlayer",
+            "IceNovaPlayer",
+            3,
+            vec![("energyIncomingHitRate", 8.0)],
+        ),
+        (
+            "examples/wasm-benchmark/builds/ninja-2026-10-11-witch-blood-mage-impending-doom-add19135df93",
+            "MetaSpellslingerPlayer",
+            "LivingBombPlayer",
+            2,
+            vec![],
+        ),
+        (
+            "examples/reference-builds/tuned/builds/ninja-2026-10-13-druid-shaman-comet-dd7f512456b6",
+            "MetaCastOnMinionDeathPlayer",
+            "CometPlayer",
+            2,
+            vec![("energyMinionDeathsPerSecond", 6.0)],
+        ),
+    ] {
+        let code = std::fs::read_to_string(root.join(path).join("code.txt")).unwrap();
+        let mut build = parse_build(&pobr_build::decode_pob_code(&code).unwrap()).unwrap();
+        let group = build
+            .socket_groups
+            .iter()
+            .position(|g| {
+                g.gem_skills.iter().any(|gem| gem.skill_id == meta)
+                    && g.gem_skills.iter().any(|gem| gem.skill_id == spell)
+            })
+            .unwrap();
+        build.main_socket_group = Some(group + 1);
+        build.socket_groups[group].main_active_skill = Some(ordinal);
+        for (name, value) in inputs {
+            build.config.raw_inputs.values.insert(
+                name.into(),
+                pobr_core::rules::config_interpreter::ConfigInputValue::Number(value),
+            );
+        }
+        assert_eq!(
+            pobr_build::resolve_main_skill_selection(&build, &data)
+                .unwrap()
+                .2,
+            spell
+        );
+        let options = DataOrchestratorOptions::against_reference_enemy();
+        let session = pobr_build::calculate_with_data_session(&build, &data, &options).unwrap();
+        let game = session.output();
+        let reference =
+            calculate_with_data(&build, &data, &options.clone().on_reference_basis()).unwrap();
+        let own = calculate_with_data(
+            &build,
+            &data,
+            &DataOrchestratorOptions {
+                energy_triggers: false,
+                ..options
+            },
+        )
+        .unwrap();
+        assert!(game.energy_trigger.is_some(), "{meta}");
+        assert!(!game.energy_trigger.as_ref().unwrap().at_own_rate, "{meta}");
+        assert!(
+            game.skill_trigger_rate > 0.0,
+            "{meta}: {:?}",
+            game.energy_trigger
+        );
+        assert!(game.dps != reference.dps, "{meta}");
+        assert_eq!(reference.dps, own.dps, "{meta}");
+        let expected_reference = match meta {
+            "MetaCastOnElementalAilmentPlayer" => 419_890.254_016_925,
+            "MetaCastOnBlockPlayer" => 102_277.722_856_159,
+            "MetaSpellslingerPlayer" => 173_633.921_810_672,
+            "MetaCastOnMinionDeathPlayer" => 522_250.578_473_133,
+            _ => unreachable!(),
+        };
+        assert!(
+            (reference.dps / expected_reference - 1.0).abs() < 1e-9,
+            "{meta}: {}",
+            reference.dps
+        );
+        assert_eq!(reference.energy_trigger, None);
+        if matches!(
+            meta,
+            "MetaCastOnBlockPlayer" | "MetaCastOnMinionDeathPlayer"
+        ) {
+            for key in [
+                "energyIncomingHitRate",
+                "enemySpeed",
+                "energyMinionDeathsPerSecond",
+            ] {
+                build.config.raw_inputs.values.remove(key);
+            }
+            let unset = calculate_with_data(
+                &build,
+                &data,
+                &DataOrchestratorOptions::against_reference_enemy(),
+            )
+            .unwrap();
+            assert!(unset.energy_trigger.as_ref().unwrap().at_own_rate, "{meta}");
+            assert_eq!(unset.energy_trigger_source, None, "{meta}");
+            assert_eq!(unset.dps, reference.dps, "{meta}");
+        }
+        assert!(session.derived_detail("SkillTriggerRate").is_some());
+        let steps = session.stat_formula("TotalDPS").expect("trigger DPS steps");
+        assert_eq!(steps.value, game.dps);
+        assert!(
+            steps
+                .steps
+                .iter()
+                .any(|step| step.op == pobr_core::calc::FormulaOp::EnergyTrigger)
+        );
+        eprintln!(
+            "{meta} {spell}: game TotalDPS={} reference TotalDPS={}, maximum={}, energy/event={}, rate={}",
+            game.dps,
+            reference.dps,
+            game.energy_trigger_maximum,
+            game.energy_per_trigger_event,
+            game.skill_trigger_rate
+        );
+    }
+}
+
+#[test]
+fn meta_gems_keep_their_own_rate_and_explain_missing_energy_sources() {
+    let data = data();
+    for meta in [
+        "MetaCastOnCritPlayer",
+        "MetaCastOnElementalAilmentPlayer",
+        "MetaCastOnBlockPlayer",
+        "MetaSpellslingerPlayer",
+        "MetaCastOnMinionDeathPlayer",
+        "MetaElementalInvocationPlayer",
+    ] {
+        let xml = meta_xml(meta, &[], &[]).replace("CometPlayer", "FireballPlayer");
+        let build = parse_build(&xml).unwrap();
+        let session =
+            pobr_build::calculate_with_data_session(&build, &data, &options(BOSS.0, &[])).unwrap();
+        let game = session.output();
+        let own = calculate(&data, &xml, &options(BOSS.0, &[]).on_reference_basis());
+        assert!(own.dps > 0.0, "{meta}");
+        assert_eq!(own.energy_trigger, None, "{meta}");
+        assert_eq!(game.dps, own.dps, "{meta}");
+        assert_eq!(game.ignite_dps, own.ignite_dps, "{meta}");
+        assert_eq!(game.combined_dps, own.combined_dps, "{meta}");
+        assert_eq!(
+            game.effective_action_rate, own.effective_action_rate,
+            "{meta}"
+        );
+        let terms = game.energy_trigger.as_ref().unwrap();
+        assert!(terms.at_own_rate, "{meta}");
+        assert_eq!(terms.source, None, "{meta}");
+        assert_eq!(terms.rate_multiplier, 1.0, "{meta}");
+        for stat in ["SkillTriggerRate", "TriggerRateCap"] {
+            let detail = session.derived_detail(stat).unwrap();
+            assert_eq!(detail.formula, "0 * EnergyAtOwnRate", "{meta}: {stat}");
+            assert!(
+                detail
+                    .context
+                    .iter()
+                    .any(|(id, value)| Some(id.as_str()) == terms.missing_source && *value == 1.0)
+            );
+        }
+        let detail = session.derived_detail("EffectiveActionRate").unwrap();
+        assert_eq!(
+            detail.inputs,
+            vec![("ActionRate".into(), own.action_rate)],
+            "{meta}"
+        );
+    }
+}
+
+#[test]
+fn explicit_zero_invocation_use_stops_even_without_an_energy_source() {
+    let data = data();
+    for meta in ["MetaSpellslingerPlayer", "MetaElementalInvocationPlayer"] {
+        let xml = meta_xml(meta, &[], &[("energyInvocationUsesPerSecond", 0.0)])
+            .replace("CometPlayer", "FireballPlayer");
+        let out = calculate(&data, &xml, &options(BOSS.0, &[]));
+        assert_eq!(out.dps, 0.0, "{meta}");
+        assert_eq!(out.ignite_dps, 0.0, "{meta}");
+        assert_eq!(out.combined_dps, 0.0, "{meta}");
+        assert!(!out.energy_trigger.as_ref().unwrap().at_own_rate, "{meta}");
+    }
+}
+
+#[test]
+fn manual_invocation_cadence_caps_energy_throughput() {
+    let data = data();
+    let xml = meta_xml(
+        "MetaSpellslingerPlayer",
+        &[spark()],
+        &[("energyInvocationUsesPerSecond", 0.1)],
+    );
+    let out = calculate(
+        &data,
+        &xml,
+        &options(BOSS.0, &["Meta Skills gain 10000% increased Energy"]),
+    );
+    assert_eq!(out.energy_trigger_maximum, 500.0);
+    assert_eq!(out.trigger_rate_cap, 0.1); // one 300-Energy cycle per activation fits in 500.
+    assert_eq!(out.skill_trigger_rate, 0.1);
+    assert!(out.energy_trigger.as_ref().unwrap().energy_limited_rate > 0.1);
 }

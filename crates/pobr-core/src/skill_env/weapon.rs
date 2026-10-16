@@ -262,15 +262,25 @@ pub fn per_shield_defence_scale(
     equipment: &dyn EquipmentView,
     data: &dyn ArmourBaseLookup,
 ) -> Option<(bool, f64)> {
+    typed_shield_defence_scale(stat, "physical", equipment, data)
+}
+
+fn typed_shield_defence_scale(
+    stat: &str,
+    damage_type: &str,
+    equipment: &dyn EquipmentView,
+    data: &dyn ArmourBaseLookup,
+) -> Option<(bool, f64)> {
     let rest = stat.strip_prefix("off_hand_")?;
-    let (is_max, rest) = if let Some(r) = rest.strip_prefix("maximum_added_physical_damage_per_") {
-        (true, r)
-    } else {
-        (
-            false,
-            rest.strip_prefix("minimum_added_physical_damage_per_")?,
-        )
-    };
+    let (is_max, rest) =
+        if let Some(r) = rest.strip_prefix(&format!("maximum_added_{damage_type}_damage_per_")) {
+            (true, r)
+        } else {
+            (
+                false,
+                rest.strip_prefix(&format!("minimum_added_{damage_type}_damage_per_"))?,
+            )
+        };
     // rest = "<N>_shield_<defence>"
     let (n_str, defence) = rest.split_once("_shield_")?;
     let div: f64 = n_str.parse().ok()?;
@@ -284,6 +294,51 @@ pub fn per_shield_defence_scale(
         _ => return None,
     };
     Some((is_max, (defence_value / div).floor()))
+}
+
+/// Shield attacks can provide elemental base damage as well as physical
+/// damage. Magma Spray supplies fire damage and more fire per complete
+/// fifteen Armour/Evasion on the shield. AddedDamage applies the skill's
+/// damage multiplier to these flat values, just once.
+pub fn shield_elemental_damage_modifiers(
+    skill_id: &str,
+    skill: &ResolvedSkillLevel,
+    equipment: &dyn EquipmentView,
+    data: &dyn ArmourBaseLookup,
+) -> Vec<crate::Modifier> {
+    use pobr_data::modifier::ModType;
+    use pobr_data::source::{ModifierSource, SourceId, SourceKind};
+    let mut mods = Vec::new();
+    for kind in ["Fire", "Cold", "Lightning", "Chaos"] {
+        let lower = kind.to_lowercase();
+        for stat in &skill.base_damage {
+            let part = if stat.stat == format!("off_hand_weapon_minimum_{lower}_damage") {
+                Some((false, 1.0))
+            } else if stat.stat == format!("off_hand_weapon_maximum_{lower}_damage") {
+                Some((true, 1.0))
+            } else {
+                typed_shield_defence_scale(&stat.stat, &lower, equipment, data)
+            };
+            if let Some((is_max, scale)) = part {
+                let bound = if is_max { "Max" } else { "Min" };
+                mods.push(
+                    crate::Modifier::number(
+                        format!("{kind}Damage{bound}"),
+                        ModType::Base,
+                        stat.value * scale,
+                    )
+                    .with_origin(
+                        ModifierSource::new(SourceId::new(
+                            SourceKind::SkillGem,
+                            format!("skill.{skill_id}.{}", stat.stat),
+                        ))
+                        .with_raw_text(stat.stat.clone()),
+                    ),
+                );
+            }
+        }
+    }
+    mods
 }
 
 /// The off-hand's own (the shield in [`EquipmentSlot::Weapon2`]) defence value (`idx`

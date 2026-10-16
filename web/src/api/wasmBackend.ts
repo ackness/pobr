@@ -42,11 +42,13 @@ interface WasmModule {
   decodeBuildJson(code: string): string;
   decodeBuildLoadoutJson(requestJson: string): string;
   manageLoadoutJson(requestJson: string): string;
+  encodeBuildFileJson(request: string): string;
   decodeBuildFileJson(content: string): string;
   importTradeItemsJson(input: string): string;
   calculateBuildJson(requestJson: string): string;
   encodeBuildJson(requestJson: string): string;
   skillMetricsJson(requestJson: string): string;
+  importPartyMemberJson(code: string): string;
   attributionJson(requestJson: string): string;
   lineUsageJson(requestJson: string): string;
   gemCatalogJson(): string;
@@ -61,6 +63,7 @@ interface WasmModule {
   itemCraftingCatalogJson(): string;
   normalizeItemDraftJson(text: string): string;
   nodePowerJson(requestJson: string): string;
+  previewTreeConversionJson(requestJson: string): string;
   previewTreeEditJson(requestJson: string): string;
   optimizeVariantsJson(requestJson: string): string;
   supportGroupsCompatibleJson(requestJson: string): string;
@@ -188,9 +191,13 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     async calculateBuild(request: CalculateBuildRequest) {
       return JSON.parse(wasm.calculateBuildJson(JSON.stringify(request))) as CalculateBuildResponse;
     },
+    async encodeBuildFile(request) {
+      return JSON.parse(wasm.encodeBuildFileJson(JSON.stringify(request)));
+    },
     async encodeBuild(request) {
       return wasm.encodeBuildJson(JSON.stringify(request));
     },
+    async importPartyMember(code) { return JSON.parse(wasm.importPartyMemberJson(code)); },
     async skillMetrics(request) {
       return JSON.parse(wasm.skillMetricsJson(JSON.stringify(request))) as SkillMetricsResponse;
     },
@@ -258,13 +265,16 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     async classifyItemLines(text) {
       return JSON.parse(wasm.classifyItemLinesJson(text)) as ItemLineJson[];
     },
+    async previewTreeConversion(code, allSpecs) {
+      return JSON.parse(wasm.previewTreeConversionJson(JSON.stringify({ code, all_specs: allSpecs })));
+    },
     async previewTreeEdit(request, node, mode, action) {
       return JSON.parse(wasm.previewTreeEditJson(JSON.stringify({ request, node, mode, action })));
     },
-    async nodePower(request, powerStat, maxDepth) {
+    async nodePower(request, powerStat, maxDepth, nodes) {
       return JSON.parse(
         wasm.nodePowerJson(
-          JSON.stringify({ request, power_stat: powerStat, max_depth: maxDepth }),
+          JSON.stringify({ request, power_stat: powerStat, max_depth: maxDepth, nodes }),
         ),
       ) as NodePowerResponse;
     },

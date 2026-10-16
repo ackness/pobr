@@ -36,9 +36,20 @@ pub struct ConfigOptionsDoc {
 
 /// Run the extraction, returning the final (byte-stable) JSON text.
 pub fn run_extract_config_options(args: &ExtractLuaArgs) -> io::Result<String> {
-    let entries = invoke_headless_luajit(args)?;
+    let mut entries = invoke_headless_luajit(args)?;
+    append_energy_options(&mut entries);
     let meta = build_meta(args)?;
     Ok(assemble_document(meta, entries))
+}
+
+fn append_energy_options(entries: &mut Vec<ConfigOptionDef>) {
+    // Engine-owned combat inputs are retained when refreshing the extracted catalog.
+    let native: pobr_data::catalog::config_def::ConfigOptionsDef = serde_json::from_str(
+        include_str!("../../../data/overlay-common/energy_config_options.json"),
+    )
+    .expect("valid built-in Energy config options");
+    entries.retain(|entry| !native.options.iter().any(|native| native.var == entry.var));
+    entries.extend(native.options);
 }
 
 /// Assemble the final document: sort by var + serde_json serialization (identical input always yields identical output).
@@ -171,6 +182,23 @@ mod tests {
             r#"{{"var":"{var}","input_type":"check","section":"General","verified":true}}"#
         ))
         .unwrap()
+    }
+
+    #[test]
+    fn energy_inputs_survive_refresh_without_duplicate_keys() {
+        let mut entries = vec![entry("energyIncomingHitRate"), entry("other")];
+        append_energy_options(&mut entries);
+        append_energy_options(&mut entries);
+        assert_eq!(entries.len(), 5);
+        let incoming = entries
+            .iter()
+            .find(|entry| entry.var == "energyIncomingHitRate")
+            .unwrap();
+        assert_eq!(incoming.effects[0].name, "Multiplier:EnergyIncomingHitRate");
+        assert!(
+            incoming.default.is_none(),
+            "absent external rate must not override explicit enemySpeed"
+        );
     }
 
     /// Assembly is sorted by var and byte-stable (two assemblies of the same input are byte-identical).

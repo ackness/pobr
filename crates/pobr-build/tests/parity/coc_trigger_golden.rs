@@ -32,8 +32,9 @@ const GOLDEN_ENERGY_PER_CRITICAL_HIT: f64 = 0.005642624;
 /// Fireballs per second: Armour Breaker's critical hits per second over the
 /// whole number of them that fills the gem.
 const GOLDEN_SKILL_TRIGGER_RATE: f64 = 0.000002024;
-/// The gem has no cooldown to cap it.
-const GOLDEN_TRIGGER_RATE_CAP: f64 = 0.0;
+/// With sufficient Energy per event, each critical hit can trigger once:
+/// 1.15942029 uses/s × 0.742558559 hit chance × 0.05 crit chance.
+const GOLDEN_TRIGGER_RATE_CAP: f64 = 0.043046873;
 /// The Fireball's average hit at the rate above.
 const GOLDEN_DPS: f64 = 0.000159187;
 /// The Fireball's own numbers.

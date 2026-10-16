@@ -1,3 +1,4 @@
+import { NamedSets } from '../shared/NamedSets';
 import { WeaponSetControl } from '../shared/WeaponSetControl';
 import { PageHeader } from '../shared/PageHeader';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -106,6 +107,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
       {active && <PageHeader id="skills-heading" title={tt('skills.title')} description={tt('skills.hint')}>
         <WeaponSetControl session={session} lang={lang} />
       </PageHeader>}
+      {active && <NamedSets session={session} lang={lang} kind="skill" />}
       {active && <div className="skills-toolbar">
         {mainIndex !== undefined && groups[mainIndex] && <button onClick={() => {
           setOpenIdx(mainIndex);

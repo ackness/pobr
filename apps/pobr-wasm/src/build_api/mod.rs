@@ -44,8 +44,8 @@ pub use catalog::{
 };
 pub use crafting::{item_crafting_catalog_json, normalize_item_draft_json};
 pub use decode::{
-    decode_build_file_json, decode_build_json, decode_build_loadout_json, import_trade_items_json,
-    manage_loadout_json,
+    decode_build_file_json, decode_build_json, decode_build_loadout_json, encode_build_file_json,
+    import_trade_items_json, manage_loadout_json,
 };
 pub use encode::encode_build_json;
 pub use request::{
@@ -166,3 +166,14 @@ fn localize_input_text(text: &str) -> String {
 
 mod tree_edit;
 pub use tree_edit::preview_tree_edit_json;
+
+mod tree_convert;
+pub use tree_convert::preview_tree_conversion_json;
+
+/// Resolves a member's outgoing party blocks from their build code.
+pub fn import_party_member_json(code: &str) -> Result<String, String> {
+    let data = state::build_data().map_err(|e| ApiError::not_initialized(e).into_json())?;
+    let member = pobr_build::party::import_member(code, &data)
+        .map_err(|e| ApiError::decode_error(e.to_string()).into_json())?;
+    serde_json::to_string(&member).map_err(|e| e.to_string())
+}

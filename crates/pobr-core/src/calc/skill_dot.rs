@@ -96,6 +96,8 @@ pub struct SkillDotPart {
 /// parts of the skill's own damage over time and the sums of the merge family.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct SkillDotTerms {
+    pub dot_active: bool,
+    pub stack_factors: Option<[f64; 4]>,
     pub parts: Vec<SkillDotPart>,
     /// The parts' totals added up, limited to the cap.
     pub instance: f64,
@@ -432,6 +434,7 @@ pub fn skill_dot_terms(
     // TotalDot (`:5931-5973`): under DotCanStack, instance × speed × duration
     // × dpsMultiplier × quantityMultiplier; the three ground-dot flags are
     // not modeled; otherwise = instance.
+    let mut stack_factors = None;
     let total_dot = if db.flag(cfg, "DotCanStack") && inputs.duration > 0.0 {
         // Rate branch (`:5934-5940`): switches to
         // MineLayingSpeed/TrapThrowingSpeed when keywordFlags has Mine/Trap
@@ -439,6 +442,12 @@ pub fn skill_dot_terms(
         // this always uses Speed.
         let speed = inputs.speed;
         let end = dps_end_factors(db, cfg, None);
+        stack_factors = Some([
+            speed,
+            inputs.duration,
+            end.dps_multiplier,
+            end.quantity_multiplier,
+        ]);
         (instance * speed * inputs.duration * end.dps_multiplier * end.quantity_multiplier).min(cap)
     } else {
         instance
@@ -473,6 +482,8 @@ pub fn skill_dot_terms(
     let combined_dps = (inputs.base_dps + total_dot_dps) * cull * reservation;
 
     SkillDotTerms {
+        dot_active,
+        stack_factors,
         parts,
         instance,
         total_dot,

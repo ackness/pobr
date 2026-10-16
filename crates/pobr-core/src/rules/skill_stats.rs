@@ -262,6 +262,42 @@ pub fn crushes_on_hit(stat: &str) -> bool {
 /// leaves the stat to the extracted stat map.
 pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
     match stat {
+        // "{0}% increased amount of Life/Mana Leeched" and "Leech ...
+        // {0}% faster" are distinct: speed changes duration, not amount.
+        "base_life_leech_amount_+%" => Some(vec![Modifier::number(
+            "LifeLeechAmount",
+            ModType::Inc,
+            value,
+        )]),
+        "base_mana_leech_amount_+%" => Some(vec![Modifier::number(
+            "ManaLeechAmount",
+            ModType::Inc,
+            value,
+        )]),
+        "base_life_leech_rate_+%" => {
+            Some(vec![Modifier::number("LifeLeechRate", ModType::Inc, value)])
+        }
+        "base_mana_leech_rate_+%" => {
+            Some(vec![Modifier::number("ManaLeechRate", ModType::Inc, value)])
+        }
+        "base_energy_shield_leech_rate_+%" => Some(vec![Modifier::number(
+            "EnergyShieldLeechRate",
+            ModType::Inc,
+            value,
+        )]),
+        // Life Thief / Soul Thief: "Leech {0}% of Physical Attack Damage
+        // as Life/Mana". The game stores the percentage in hundredths.
+        "base_life_leech_from_physical_attack_damage_permyriad"
+        | "base_mana_leech_from_physical_attack_damage_permyriad" => {
+            let name = if stat == "base_life_leech_from_physical_attack_damage_permyriad" {
+                "PhysicalDamageLifeLeech"
+            } else {
+                "PhysicalDamageManaLeech"
+            };
+            Some(vec![
+                Modifier::number(name, ModType::Base, value / 100.0).with_flags(ModFlags::ATTACK),
+            ])
+        }
         "skill_disabled_unless_cloned" => Some(vec![Modifier::flag("MirageSkill")]),
         // The action's own movement penalty, with Mobility/Deliberation
         // modifying the penalty rather than the character's movement speed.
@@ -497,6 +533,15 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
             Modifier::number("AttackSpeed", ModType::Inc, value)
                 .with_keyword_flags(KeywordFlags::TOTEM),
         ]),
+        // Chayula's Will attacks every 200 ms while its tornado exists;
+        // the character's attack speed does not change that interval.
+        "archon_of_chayula_tornado_attack_interval_ms" if value > 0.0 => {
+            Some(vec![Modifier::number(
+                "SkillUseRate",
+                ModType::Base,
+                1000.0 / value,
+            )])
+        }
         // Rain of Arrows: "One arrow lands every {0} seconds", with
         // "Modifiers to Projectile speed apply to arrow landing frequency"
         // (`calc::rain`).
@@ -561,6 +606,15 @@ fn while_using_weapon_set(set: u8) -> ModTag {
 pub fn granted_skill_modifiers(stat: &str, value: f64, stats: &[SkillDamageStat]) -> Vec<Modifier> {
     let sibling = |id: &str| stats.iter().find(|ds| ds.stat == id).map(|ds| ds.value);
     match stat {
+        // Walking Calamity and The Stars Answer repeatedly trigger their
+        // granted meteor at this interval while the parent skill is active.
+        // This is the arrival rate for the selected meteor damage form,
+        // assuming a single target, rather than the character's attack rate.
+        "walking_calamity_spawn_meteor_every_ms" if value > 0.0 => vec![Modifier::number(
+            "SkillUseRate",
+            ModType::Base,
+            1000.0 / value,
+        )],
         // Doedre's Undoing: "Each Cursed Ground area from Supported Skills
         // spawns a Witchtoad every {0} seconds", with "Limit {0} areas of
         // Cursed Ground". The skill the gem grants, Dark Consequences, "is

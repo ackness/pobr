@@ -9,7 +9,7 @@
  * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
  * 任何破坏性形状变更两侧同时 +1；boot 时握手校验（见 wasmBackend.ts）。
  */
-export const EXPECTED_SCHEMA_VERSION = 9;
+export const EXPECTED_SCHEMA_VERSION = 15;
 
 // ---------------------------------------------------------------------------
 // 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）
@@ -146,8 +146,19 @@ export interface CustomModifierBlock {
   text: string;
 }
 
+export interface BuildPlannerExport { files: { filename: string; content: string }[]; warnings: string[] }
+
+export interface NamedSetJson { id: number; title: string }
+export interface SetSelection { tree?: number | null; item?: number | null; skill?: number | null; config?: number | null }
+
 export interface BuildJson {
+  planner_source?: string;
+  config_sets?: NamedSetJson[];
+  active_config_set?: number;
+  skill_sets?: NamedSetJson[];
+  active_skill_set?: number;
   custom_modifier_blocks?: CustomModifierBlock[];
+  party?: Party;
   weapon_swap?: WeaponSwap | null;
   character: CharacterJson;
   tree: TreeJson;
@@ -177,6 +188,7 @@ export interface SelectedLoadoutJson extends BuildJson {
  * 一套属多组）。某类只有一套时该类不参与绑定，对应字段为 null。
  */
 export interface LoadoutJson {
+  config?: number | null;
   name: string;
   /** 1-based 文档序，回传 `switchLoadout` 用。 */
   tree: number;
@@ -310,7 +322,7 @@ export interface NodePowerEntry {
   skill: number;
   /** 单点试加后目标属性的增量（可为负）。 */
   delta: number;
-  /** 距已加点前沿的 BFS 步数（1 = 相邻）。 */
+  /** 距已加点前沿的 BFS 步数（1 = 相邻；显式单点探测为 0，路线成本由 planner 提供）。 */
   distance: number;
 }
 
@@ -450,6 +462,7 @@ export interface CalculateBuildRequest {
   enemy_tier?: EnemyTier;
   extra_modifiers?: string[];
   custom_modifier_blocks?: CustomModifierBlock[];
+  party?: Party;
   config_inputs?: Record<string, ConfigInputValue>;
 }
 
@@ -552,6 +565,7 @@ export type FormulaOp =
   | 'off_hand_either'
   | 'off_hand_alternating'
   | 'reload'
+  | 'energy_trigger'
   | 'hit_interval'
   | 'stronger_hand'
   | 'stronger_share'
@@ -823,12 +837,30 @@ export interface FullDpsSkill {
   error: string | null;
 }
 
+export interface EnergyTriggerTerms {
+  maximum_energy: number;
+  energy_per_trigger: number;
+  source: string | null;
+  at_own_rate: boolean;
+  missing_source: string | null;
+  events_per_second: number;
+  energy_per_event: number;
+  refund_half_chance: number;
+  events_per_trigger: number;
+  energy_limited_rate: number;
+  trigger_rate_cap: number;
+  triggers_per_second: number;
+  invocation: boolean;
+  rate_multiplier: number;
+}
+
 export interface CalculateBuildResponse {
   /** Present only when config_context was requested. */
   config_context?: ConfigContext;
   minions?: MinionOutput[];
   main_minion_index?: number | null;
   full_dps?: { dps: number; dot_dps: number; skills: FullDpsSkill[] };
+  energy_trigger?: EnergyTriggerTerms;
   stats: DisplayStatValue[];
   /**
    * Lines the calculation could not apply, so their effect is missing from the
@@ -1218,3 +1250,35 @@ export interface TreeEditResult {
   weapon_points_max: number;
 }
 export interface TreeEditResponse { valid: boolean; reason: string | null; result: TreeEditResult | null }
+
+/** Conversion is a detached preview; the caller must explicitly apply its code. */
+export interface TreeConversionNode {
+  id: number;
+  name: string;
+  stats: string[];
+  reason: 'missing' | 'changed_identity' | 'socket_missing_or_changed' | 'disconnected' | null;
+  jewel_item_id: number | null;
+}
+export interface TreeConversionResponse {
+  code: string;
+  specs: {
+    index: number;
+    title: string;
+    from_version: string;
+    to_version: string;
+    kept: number[];
+    dropped: TreeConversionNode[];
+    disconnected: TreeConversionNode[];
+    disconnected_by_set: [number[], number[], number[]];
+    allocation: TreeAllocation;
+  }[];
+}
+
+export interface PartyMember {
+  id: string;
+  name: string;
+  enabled: boolean;
+  blocks: Record<string, string>;
+  warnings: string[];
+}
+export interface Party { members: PartyMember[]; exports: Record<string, string> }

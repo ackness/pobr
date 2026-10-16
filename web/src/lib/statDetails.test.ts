@@ -2,29 +2,32 @@ import { expect, test } from 'vitest';
 import { detailFormula, detailKind, StatDetailCache } from './statDetails';
 import type { CalculateBuildResponse, Breakdown } from '../api/types';
 import details from '../fixtures/stat_details.json';
+import declaredInputs from '../fixtures/detail_inputs.json';
 import { statNameLabel, type Lang } from './i18n';
 
 test('detail inputs and modifier groups have readable labels in every language', () => {
-  const ids = new Set(Object.values(details as Record<string, Breakdown>).flatMap(detail => [
+  const ids = new Set(['SkillGroup2Effect1DPS', ...declaredInputs, ...Object.values(details as Record<string, Breakdown>).flatMap(detail => [
     ...(detail.derived?.inputs ?? []).map(input => input.id),
     ...(detail.derived?.context ?? []).map(input => input.id),
     ...(detail.sources ?? []).map(source => source.name),
-  ]));
+  ])]);
+  const missing: string[] = [];
   for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as Lang[]) {
     for (const id of ids) {
       // Single-word English names such as Life and Ward are already readable.
       if (lang !== 'en-US' || /[a-z][A-Z]/.test(id)) {
-        expect(statNameLabel(lang, id), `${lang}: ${id}`).not.toBe(id);
+        if (statNameLabel(lang, id) === id) missing.push(`${lang}: ${id}`);
       }
     }
   }
+  expect(missing).toEqual([]);
 });
 
 test('descriptors enable unopened details and explicitly distinguish none', () => {
-  const calc = { breakdowns: {}, breakdown_descriptors: { ManaCost: 'sources', TotalEHP: 'derived', Str: 'none' } } as unknown as CalculateBuildResponse;
-  expect(detailKind(calc, 'ManaCost')).toBe('sources');
-  expect(detailKind(calc, 'TotalEHP')).toBe('derived');
-  expect(detailKind(calc, 'Str')).toBe('none');
+  const calc = { breakdowns: {}, breakdown_descriptors: { Str: 'sources', AverageBurstDamage: 'derived', NumberOfDamagingHits: 'none' } } as unknown as CalculateBuildResponse;
+  expect(detailKind(calc, 'Str')).toBe('sources');
+  expect(detailKind(calc, 'AverageBurstDamage')).toBe('derived');
+  expect(detailKind(calc, 'NumberOfDamagingHits')).toBe('none');
 });
 
 test('details are deduplicated within a revision but never reused after an edit', async () => {
