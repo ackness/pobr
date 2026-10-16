@@ -198,6 +198,12 @@ const REQUIRED_EN: &[(&str, &[&str])] = &[
         &["Id", "GrantedEffect", "AdditionalGrantedEffects", "GemTags"],
     ),
     ("GemTags.json", &["Id"]),
+    ("MonsterVarieties.json", &["Id", "MonsterType"]),
+    ("MonsterTypes.json", &["MonsterResistances"]),
+    (
+        "MonsterResistances.json",
+        &["Fire1", "Cold1", "Lightning1", "Chaos1"],
+    ),
     // The character level each gem level requires.
     (
         "ItemExperiencePerLevel.json",

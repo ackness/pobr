@@ -229,6 +229,28 @@
       ]
     },
     {
+      "name": "MonsterVarieties",
+      "columns": [
+        "Id",
+        "MonsterType"
+      ]
+    },
+    {
+      "name": "MonsterTypes",
+      "columns": [
+        "MonsterResistances"
+      ]
+    },
+    {
+      "name": "MonsterResistances",
+      "columns": [
+        "Fire1",
+        "Cold1",
+        "Lightning1",
+        "Chaos1"
+      ]
+    },
+    {
       "name": "GemTags",
       "columns": [
         "Id",

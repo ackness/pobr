@@ -28,6 +28,7 @@ pub mod character_constants;
 pub mod enemy_presets;
 pub mod game_constants;
 pub mod jewel_radii;
+pub mod monster_resistances;
 pub mod monster_scaling;
 pub mod non_damaging_ailments;
 pub mod passive_jewels;
@@ -87,6 +88,7 @@ pub use item_overlay::{
 pub use items::{ArmourBaseStats, BaseItemDef, WeaponBaseStats};
 pub use manifest::{CATALOG_SCHEMA_VERSION, DataManifest, DomainSections};
 pub use mods::{ModDef, ModStat, SpawnWeight, StatDef};
+pub use monster_resistances::{MonsterResistanceDef, MonsterResistancesDef};
 pub use parser_rules::{
     FlagPhraseDef, FlagTypeDef, FlagTypeModDef, FormDef, MOD_PARSER_RULES_SCHEMA,
     ModParserRulesDoc, ModTemplateDef, NameMapDef, PhraseNamesDef, PhraseValueDef, PreFlagDef,

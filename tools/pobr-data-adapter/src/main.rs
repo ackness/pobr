@@ -37,6 +37,7 @@ use pobr_data::catalog::{
 use serde::Deserialize;
 
 mod mods;
+mod monsters;
 mod raw_source;
 mod required_columns;
 mod skills;
@@ -541,6 +542,8 @@ fn run(args: Args) -> Result<String, String> {
     let cost_types = skills::adapt_cost_types(&en)?;
     write_pretty(&base_dir.join("cost_types.json"), &cost_types)?;
 
+    monsters::write(&args.raw, &base_dir, &args.patch)?;
+
     // manifest: **merged** with the existing on-disk manifest — this step
     // only registers the base domains and the zh-TW language it produced;
     // overlay/generated/zh-CN etc. are maintained by the regen pipeline's
@@ -574,6 +577,7 @@ fn run(args: Args) -> Result<String, String> {
         "granted_effect_levels",
         "granted_effect_stat_sets",
         "cost_types",
+        "monster_resistances",
     ] {
         if !manifest.domains.base.iter().any(|d| d == domain) {
             manifest.domains.base.push(domain.into());
