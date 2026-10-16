@@ -24,6 +24,8 @@ mod charge_regulation;
 mod charm_slots;
 #[path = "skills/combined_dps.rs"]
 mod combined_dps;
+#[path = "skills/conditional_offence.rs"]
+mod conditional_offence;
 #[path = "skills/config_handlers.rs"]
 mod config_handlers;
 #[path = "skills/configured_lines.rs"]

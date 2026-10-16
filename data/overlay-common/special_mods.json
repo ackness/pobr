@@ -5257,6 +5257,56 @@
         "10% chance to create an additional Remnant",
         "+17% chance to create an additional Remnant"
       ]
+    },
+    {
+      "id": "physical_spell_critical_pin_unmodelled",
+      "pattern": "^physical spell critical hits build pin$",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: physical_spell_damage_can_pin_on_critical_hit; base/passive_tree.json: Bone Chains (26563)",
+      "source_note": "Pin buildup and application timing are not modelled. Capability to build Pin does not establish an already Pinned enemy; conditionEnemyPinned remains an explicit target-state input.",
+      "examples": [
+        "Physical Spell Critical Hits build Pin"
+      ]
+    },
+    {
+      "id": "stun_buildup_unmodelled",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased stun buildup",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: hit_damage_stun_multiplier_+%; base/passive_tree.json: Stun Buildup (10047)",
+      "source_note": "Enemy heavy-stun buildup is not modelled. Existing StunThreshold, StunDuration and SelfStunChance outputs describe stuns received by the player, not buildup inflicted on an enemy.",
+      "examples": [
+        "15% increased Stun Buildup"
+      ]
+    },
+    {
+      "id": "daze_duration_unmodelled",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased daze duration",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: daze_duration_+%; base/passive_tree.json: Seeing Stars (5009)",
+      "source_note": "Daze duration and uptime are not modelled. DazeChance reports application chance per hit, which duration does not change.",
+      "examples": [
+        "25% increased Daze Duration"
+      ],
+      "exporter": "absent"
+    },
+    {
+      "id": "attack_maim_chance_unmodelled",
+      "pattern": "attacks have (\\d+(?:\\.\\d+)?)% chance to maim on hit",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: maim_on_hit_%; base/passive_tree.json: Maiming Strike (41580), Impair (46696)",
+      "source_note": "Maim application and enemy movement are not modelled. A chance to Maim cannot establish an unconditional Maimed target or change player movement speed.",
+      "examples": [
+        "Attacks have 25% chance to Maim on Hit"
+      ],
+      "exporter": "absent"
     }
   ]
 }

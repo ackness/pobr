@@ -386,3 +386,43 @@ fn remnant_and_armour_break_limits_keep_their_game_sources() {
         }
     }
 }
+
+#[test]
+fn conditional_offence_limits_keep_game_provenance_and_model_reasons() {
+    let def = load();
+    for (id, stat, reason, absent) in [
+        (
+            "physical_spell_critical_pin_unmodelled",
+            "physical_spell_damage_can_pin_on_critical_hit",
+            "Pin buildup",
+            false,
+        ),
+        (
+            "stun_buildup_unmodelled",
+            "hit_damage_stun_multiplier_+%",
+            "heavy-stun buildup",
+            false,
+        ),
+        (
+            "daze_duration_unmodelled",
+            "daze_duration_+%",
+            "Daze duration",
+            true,
+        ),
+        (
+            "attack_maim_chance_unmodelled",
+            "maim_on_hit_%",
+            "enemy movement",
+            true,
+        ),
+    ] {
+        let entry = def.entries.iter().find(|entry| entry.id == id).unwrap();
+        assert_eq!(entry.batch, "unmodelled");
+        assert!(entry.mods.is_empty() && entry.handler_id.is_none());
+        assert!(entry.game_source.as_deref().unwrap().contains(stat));
+        assert!(entry.source_note.as_deref().unwrap().contains(reason));
+        if absent {
+            assert_eq!(entry.exporter, pobr_data::source::ExporterCoverage::Absent);
+        }
+    }
+}

@@ -245,6 +245,23 @@ and makes non-player targets take 20% increased Physical damage from Hits;
 and it affects hits only when the enemy is configured as fully broken.
 These fields expose source details through the display catalog.
 
+Conditional offence uses existing state: `conditionEnemyFrozen` and
+`conditionEnemyPinned` pass through `config_resolve::bridge_enemy_conditions`;
+enabled Herald skills set `AffectedByHeraldofAsh` / `AffectedByHeraldofThunder`
+in `calc_orchestrator::inject`, and the selected triggered payload receives
+`Triggered` in `prepare::stage_resolve_main_skill`. Possessing a freeze or Pin
+source does not establish the target state. Coming Calamity's 40% elemental
+bonuses require their matching Herald; added attack damage (including
+Asphyxia's Wrath) applies only to attacks. Pin buildup, enemy heavy-stun buildup,
+Daze duration and Maim application remain `unmodelled` entries with explicit
+reasons: player stun defences and per-hit `DazeChance` do not measure those
+mechanics. Sources: game `base/stats.json` (`damage_+%_vs_frozen_enemies`,
+`bleeding_magnitude_+%_against_pinned_enemies`, `triggered_spell_spell_damage_+%`,
+`physical_spell_damage_can_pin_on_critical_hit`, `hit_damage_stun_multiplier_+%`,
+`daze_duration_+%`, `maim_on_hit_%`) and `base/passive_tree.json` (Coming
+Calamity, Bone Chains, Seeing Stars, Maiming Strike). The Daze-duration and
+attack-Maim rules are exporter-absent; recognizing them does not implement them.
+
 伤害型异常（流血、点燃、毒）的同时层数 = 命中率 × 施加几率 × 持续时间 × 每秒命中数，持续时间是基础时间乘持续时间加成（含 “increased duration of Ailments you inflict”，`EnemyAilmentDuration`）与敌人身上效果的过期速度，再除以 “Damaging Ailments deal damage #% faster”：伤害总量不变、造成得更快，每份结束得更早（`calc/perform.rs`，分解里写作 “faster /N”）。
 
 “你和 Presence 内的友军 …” 类词条（例如 Infernalist 的 Bringer of Flame：“All Damage from you and Allies in your Presence contributes to Flammability and Ignite Magnitudes”）角色自己也有。PoBR 的 `ExtraAura` 只给友军，所以抽取器把 PoB2 规则里不带 `onlyAllies` 的 `ExtraAura` 展开为角色自己的词条（带同样的条件）加给友军的 `ExtraAura`（`sync-pob-catalog` 的 `character_share_of_aura`）；带 `onlyAllies` 的规则抽取器不收。

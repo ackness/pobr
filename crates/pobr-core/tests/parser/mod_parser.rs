@@ -1753,6 +1753,31 @@ fn additional_remnant_chance_reports_the_missing_count_model() {
 }
 
 #[test]
+fn conditional_offence_limits_stay_visible_as_unmodelled() {
+    // Bone Chains, a 15% Stun Buildup passive, Seeing Stars (25% duration),
+    // and Maiming Strike (25% chance) from the game's passive table.
+    for (text, id) in [
+        (
+            "Physical Spell Critical Hits build Pin",
+            "physical_spell_critical_pin_unmodelled",
+        ),
+        ("15% increased Stun Buildup", "stun_buildup_unmodelled"),
+        ("25% increased Daze Duration", "daze_duration_unmodelled"),
+        (
+            "Attacks have 25% chance to Maim on Hit",
+            "attack_maim_chance_unmodelled",
+        ),
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed, "{text}: {parsed:?}");
+        assert!(parsed.mods.is_empty(), "{text}: {parsed:?}");
+        let meta = parsed.special_meta.unwrap();
+        assert!(!meta.no_effect, "{text} must remain a model gap");
+        assert_eq!(meta.entry_id, id);
+    }
+}
+
+#[test]
 fn chaos_inoculation_line_grants_bleed_immunity() {
     // keystone_chaos_inoculation: "Immune to Chaos Damage and Bleeding". The
     // chaos half comes from the keystone's "Maximum Life is 1" line.

@@ -8698,14 +8698,7 @@
     },
     {
       "text": "10% increased [Stun] Buildup",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "EnemyHeavyStunBuildup",
-          "type": "Inc",
-          "value": 10.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "10% increased [Thorns|Thorns] damage",
@@ -10769,14 +10762,7 @@
     },
     {
       "text": "12% increased [Stun] Buildup",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "EnemyHeavyStunBuildup",
-          "type": "Inc",
-          "value": 12.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "12% increased [Thorns|Thorns] damage",
@@ -12994,14 +12980,7 @@
     },
     {
       "text": "15% increased [Stun] Buildup",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "EnemyHeavyStunBuildup",
-          "type": "Inc",
-          "value": 15.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "15% increased [Stun] Buildup with [Melee|Melee Damage]",
@@ -14319,14 +14298,7 @@
     },
     {
       "text": "18% increased [Stun] Buildup",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "EnemyHeavyStunBuildup",
-          "type": "Inc",
-          "value": 18.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "18% increased [Stun] Buildup with [Melee|Melee Damage]",
@@ -16803,14 +16775,7 @@
     },
     {
       "text": "20% increased [Stun] Buildup",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "EnemyHeavyStunBuildup",
-          "type": "Inc",
-          "value": 20.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "20% increased [Stun] Buildup with [Quarterstaff|Quarterstaves]",
@@ -19226,14 +19191,7 @@
     },
     {
       "text": "25% increased [Daze] Duration",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Duration",
-          "type": "Inc",
-          "value": 25.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "25% increased [Electrocute|Electrocute Buildup]",
@@ -22474,14 +22432,7 @@
     },
     {
       "text": "30% increased [Stun] Buildup",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "EnemyHeavyStunBuildup",
-          "type": "Inc",
-          "value": 30.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "30% increased [Stun] Buildup against enemies within 2 metres",
@@ -23369,14 +23320,7 @@
     },
     {
       "text": "35% increased [Stun] Buildup",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "EnemyHeavyStunBuildup",
-          "type": "Inc",
-          "value": 35.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "35% increased amount of Life [LifeLeech|Leeched]",
@@ -47013,19 +46957,7 @@
     },
     {
       "text": "[Physical] [Spell] [Critical] [Hit|Hits] build [Pinned|Pin]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "CanPin",
-          "type": "Flag",
-          "value": true,
-          "flags": 2,
-          "kw": 16,
-          "tags": [
-            "Condition { var: \"CriticalStrike\", negated: false, actor: None }"
-          ]
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "[Pinned] Enemies cannot deal [Critical|Critical Hits]",

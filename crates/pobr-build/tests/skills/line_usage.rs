@@ -54,6 +54,31 @@ fn line<'a>(ledger: &'a LineUsage, source: &str, text: &str) -> &'a UsageLine {
 }
 
 #[test]
+fn conditional_offence_limits_report_the_missing_models() {
+    let data = data();
+    let cases = [
+        (
+            "Physical Spell Critical Hits build Pin",
+            "physical_spell_critical_pin_unmodelled",
+        ),
+        ("15% increased Stun Buildup", "stun_buildup_unmodelled"),
+        ("25% increased Daze Duration", "daze_duration_unmodelled"),
+        (
+            "Attacks have 25% chance to Maim on Hit",
+            "attack_maim_chance_unmodelled",
+        ),
+    ];
+    let texts: Vec<_> = cases.iter().map(|(text, _)| *text).collect();
+    let ledger = ledger(&data, &[], &texts);
+    for (text, reason) in cases {
+        let row = line(&ledger, "item.amulet.explicit", text);
+        assert_eq!(row.status, LineStatus::Unmodelled, "{row:?}");
+        assert!(row.reason.as_deref().unwrap().contains(reason), "{row:?}");
+        assert!(row.modifiers.is_empty());
+    }
+}
+
+#[test]
 fn every_line_says_what_became_of_it() {
     let data = data();
     let ledger = ledger(
