@@ -75,6 +75,38 @@ fn is_item_skill_source(source: Option<&str>) -> bool {
     source.is_some_and(|source| source == ITEM_SKILL_SOURCE || source.starts_with("Item:"))
 }
 
+/// Spear Throw is an inherent default attack, whose level follows the
+/// character rather than the level-1 placeholder in an imported item group.
+/// Its game SkillGems / ItemExperiencePerLevel rows reach level 20 at
+/// character level 90. Global skill levels are added later, with the group's
+/// weapon set. See the game's Default Attack keyword and Granted skill rules.
+pub(crate) fn resolve_spear_throw_level(build: &Build, data: &BuildData) -> Option<Build> {
+    let def = data
+        .skill_gems
+        .get("Metadata/Items/Gem/SkillGemPlayerDefaultSpearThrow")?;
+    let skill_id = def.granted_effect_id.as_deref()?;
+    let level = (1..=def.level_requirements.len() as u32)
+        .rev()
+        .find(|level| {
+            def.level_requirement(*level)
+                .is_some_and(|required| required <= build.character.level)
+        })?;
+    let mut resolved = None;
+    for (index, group) in build.socket_groups.iter().enumerate() {
+        for (gem_index, gem) in group.gem_skills.iter().enumerate() {
+            if gem.skill_id != skill_id || gem.gem_level == level {
+                continue;
+            }
+            let group = &mut resolved.get_or_insert_with(|| build.clone()).socket_groups[index];
+            group.gem_skills[gem_index].gem_level = level;
+            if group.active_skill_id.as_deref() == Some(skill_id) {
+                group.active_gem_level = Some(level);
+            }
+        }
+    }
+    resolved
+}
+
 /// XML uses `Weapon 1` / `Weapon 1 Swap`, the equipment table uses `weapon1`; normalizes to the stable slot key.
 fn normalized_slot(slot: &str) -> String {
     let mut normalized = slot

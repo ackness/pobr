@@ -867,6 +867,10 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
         build = Cow::Owned(augmented);
     }
 
+    if let Some(resolved) = granted_skills::resolve_spear_throw_level(&build, data) {
+        build = Cow::Owned(resolved);
+    }
+
     // The groups of the skills the passive tree grants, at the level the
     // character's level allows; an ordinary group listing the same skill
     // stands for it.
