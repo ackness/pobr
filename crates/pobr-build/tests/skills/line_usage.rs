@@ -623,6 +623,87 @@ Implicits: 0
 }
 
 #[test]
+fn shield_defence_ledger_gates_missing_bases() {
+    let data = data();
+    let text = "100% increased Armour, Evasion and Energy Shield from Equipped Shield";
+    fn run(data: &BuildData, text: &str, base: &str) -> LineUsage {
+        let build = parse_build(&format!(r#"<PathOfBuilding2>
+<Build level="80" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: RARE
+Test Shield
+{base}
+Implicits: 0
+</Item><ItemSet id="1"><Slot name="Weapon 2" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#)).unwrap();
+        let options = DataOrchestratorOptions {
+            extra_modifier_texts: vec![text.to_string()],
+            ..Default::default()
+        };
+        let diagnosis = diagnose(&build, data, &options).unwrap();
+        pobr_build::usage::line_usage(&diagnosis, &build, data)
+    }
+    fn by_name<'a>(
+        ledger: &'a LineUsage,
+        text: &str,
+        name: &str,
+    ) -> &'a pobr_build::usage::UsageModifier {
+        ledger
+            .lines
+            .iter()
+            .find(|line| line.text.as_deref() == Some(text))
+            .unwrap()
+            .modifiers
+            .iter()
+            .find(|modifier| modifier.name == name)
+            .unwrap()
+    }
+
+    // Armour-only shield (Splintered Tower Shield: 18 armour, no evasion or
+    // energy shield): Armour applies, Evasion and Energy Shield are inactive
+    // with the missing-base gate rather than dropped.
+    let armour_only = run(&data, text, "Splintered Tower Shield");
+    let armour = by_name(&armour_only, text, "Armour");
+    assert_eq!(armour.status, ModifierStatus::Applied, "{armour:?}");
+    for (name, state) in [
+        ("Evasion", "the equipped shield has no base Evasion"),
+        (
+            "EnergyShield",
+            "the equipped shield has no base Energy Shield",
+        ),
+    ] {
+        let modifier = by_name(&armour_only, text, name);
+        assert_eq!(modifier.status, ModifierStatus::Inactive, "{modifier:?}");
+        let gate = modifier.read_gate.as_ref().unwrap();
+        assert_eq!(gate.state, state, "{modifier:?}");
+        assert_eq!(gate.config_option, None, "{modifier:?}");
+        assert!(
+            modifier.reason.as_deref().unwrap().contains(state),
+            "{modifier:?}"
+        );
+    }
+
+    // Armour/Evasion shield (Hardwood Targe: 10 armour, 7 evasion): Evasion
+    // applies once the shield has that base.
+    let mixed = run(&data, text, "Hardwood Targe");
+    for name in ["Armour", "Evasion"] {
+        let modifier = by_name(&mixed, text, name);
+        assert_eq!(modifier.status, ModifierStatus::Applied, "{modifier:?}");
+        assert!(modifier.read_gate.is_none(), "{modifier:?}");
+    }
+    let energy_shield = by_name(&mixed, text, "EnergyShield");
+    assert_eq!(
+        energy_shield.status,
+        ModifierStatus::Inactive,
+        "{energy_shield:?}"
+    );
+    assert_eq!(
+        energy_shield.read_gate.as_ref().unwrap().state,
+        "the equipped shield has no base Energy Shield"
+    );
+}
+
+#[test]
 fn charm_recharge_event_stays_visible_as_unmodelled() {
     let data = data();
     let text = "Energy Shield Recharge starts on use";

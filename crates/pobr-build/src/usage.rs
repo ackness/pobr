@@ -358,6 +358,7 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
         read: session.minion_read_names(),
     };
     let uses = breakdown_uses(session);
+    let slot_bases = slot_defence_bases(session);
 
     // The stored modifiers by the line they came from. Whole-db iteration
     // has no order across names; the map and the sort below give one.
@@ -396,8 +397,14 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
                 } else {
                     &main
                 };
-                let (status, reason) =
-                    judge(modifier, &diagnosis.reads, context, &variables, &minions);
+                let (status, reason) = judge(
+                    modifier,
+                    &diagnosis.reads,
+                    context,
+                    &variables,
+                    &minions,
+                    &slot_bases,
+                );
                 UsageModifier {
                     name: modifier.name.as_str().to_string(),
                     mod_type: modifier.mod_type.as_trace_label(),
@@ -407,10 +414,15 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
                         && modifier.matches(main.cfg))
                     .then(|| modifier.effective_number(main))
                     .flatten(),
-                    read_gate: (status == ModifierStatus::Inactive
-                        && !diagnosis.reads.sites.contains_key(modifier.name.as_str()))
-                    .then(|| read_under_a_state(modifier.name.as_str()))
-                    .flatten(),
+                    read_gate: (status == ModifierStatus::Inactive)
+                        .then(|| {
+                            missing_slot_base_gate(modifier, &slot_bases).or_else(|| {
+                                (!diagnosis.reads.sites.contains_key(modifier.name.as_str()))
+                                    .then(|| read_under_a_state(modifier.name.as_str()))
+                                    .flatten()
+                            })
+                        })
+                        .flatten(),
                     status,
                     reason,
                     used_in: uses
@@ -696,6 +708,68 @@ impl MinionReads {
     }
 }
 
+/// The per-slot defence bases present in the calculation: `(slot, defence)` for
+/// every `BASE Armour/Evasion/EnergyShield` with a `SlotName` that matches the
+/// session config. The defence stage's per-slot query (`sum_for_slot` /
+/// `more_for_slot`) only runs for slots with such a base, so a slot-scoped
+/// `INC`/`MORE` whose `(slot, defence)` is absent here was never queried,
+/// however its name was read globally.
+fn slot_defence_bases(session: &CalculationSession) -> BTreeSet<(String, String)> {
+    let cfg = session.config();
+    session
+        .mod_db()
+        .iter_mods()
+        .filter(|modifier| {
+            modifier.mod_type == ModType::Base
+                && matches!(
+                    modifier.name.as_str(),
+                    "Armour" | "Evasion" | "EnergyShield"
+                )
+                && modifier.slot_name().is_some()
+                && modifier.matches(cfg)
+        })
+        .filter_map(|modifier| {
+            Some((
+                modifier.slot_name()?.to_string(),
+                modifier.name.as_str().to_string(),
+            ))
+        })
+        .collect()
+}
+
+/// A slot-scoped defence increase with no base to scale: the shield-local
+/// query for that defence never runs when the equipped shield has no base of
+/// it (the per-slot loop iterates the slot bases). Reports as inactive with a
+/// state gate so the gap queue files it as state-gated, not dropped. Only the
+/// off-hand slot (`weapon2`, the shield/focus slot) is covered: other slots'
+/// missing-base lines keep the existing classification.
+fn missing_slot_base_gate(
+    modifier: &Modifier,
+    bases: &BTreeSet<(String, String)>,
+) -> Option<ReadGate> {
+    if !matches!(modifier.mod_type, ModType::Inc | ModType::More) {
+        return None;
+    }
+    let slot = modifier.slot_name()?;
+    if slot != "weapon2" {
+        return None;
+    }
+    let name = modifier.name.as_str();
+    let state = match name {
+        "Armour" => "the equipped shield has no base Armour",
+        "Evasion" => "the equipped shield has no base Evasion",
+        "EnergyShield" => "the equipped shield has no base Energy Shield",
+        _ => return None,
+    };
+    if bases.contains(&(slot.to_string(), name.to_string())) {
+        return None;
+    }
+    Some(ReadGate {
+        state,
+        config_option: None,
+    })
+}
+
 /// What became of `modifier`, and why when it is not applied.
 fn judge(
     modifier: &Modifier,
@@ -703,6 +777,7 @@ fn judge(
     main: &EvalContext<'_>,
     variables: &Variables<'_>,
     minions: &MinionReads,
+    slot_bases: &BTreeSet<(String, String)>,
 ) -> (ModifierStatus, Option<String>) {
     let name = modifier.name.as_str();
     if name == "MinionModifier" {
@@ -727,6 +802,9 @@ fn judge(
     };
     if let Some(reason) = modifier.unmet_requirement(main) {
         return (ModifierStatus::Inactive, Some(reason));
+    }
+    if let Some(gate) = missing_slot_base_gate(modifier, slot_bases) {
+        return (ModifierStatus::Inactive, Some(gate.reason()));
     }
     // It would count in the main skill's context. A consumer that inspects
     // the modifiers itself is taken to use one that does.
