@@ -894,6 +894,8 @@ pub struct BuildSummary {
 /// The key output fields from a `calculate-build` result.
 #[derive(Debug, Clone, Serialize)]
 pub struct CalculateBuildOutput {
+    pub archon_duration: f64,
+    pub archon_recovery_period: f64,
     pub utility_stats: std::collections::BTreeMap<String, f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub full_dps: Option<f64>,
@@ -1206,6 +1208,8 @@ pub fn calculate_build_detailed(
 
     let summary = build_summary(&build);
     let output = CalculateBuildOutput {
+        archon_duration: out.archon_duration,
+        archon_recovery_period: out.archon_recovery_period,
         utility_stats: out.utility_stats.clone(),
         full_dps: out.full_dps.as_ref().map(|full| full.dps),
         full_dot_dps: out.full_dps.as_ref().map(|full| full.dot_dps),

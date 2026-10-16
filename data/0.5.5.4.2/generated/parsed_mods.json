@@ -7558,7 +7558,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Duration",
+          "name": "ArchonDuration",
           "type": "Inc",
           "value": 10.0
         }
@@ -8817,7 +8817,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LocalEffect",
+          "name": "ArchonEffect",
           "type": "Inc",
           "value": 10.0
         }
@@ -11409,7 +11409,14 @@
     },
     {
       "text": "15% chance to gain [UndeadArchon|Archon of Undeath] when you use a [Command|Command] skill",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArchonOfUndeathOnCommandChance",
+          "type": "Base",
+          "value": 15.0
+        }
+      ]
     },
     {
       "text": "15% chance to inflict [Bleeding|Bleeding] on [Critical|Critical Hit]",
@@ -12097,7 +12104,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Duration",
+          "name": "ArchonDuration",
           "type": "Inc",
           "value": 15.0
         }
@@ -13087,7 +13094,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LocalEffect",
+          "name": "ArchonEffect",
           "type": "Inc",
           "value": 15.0
         }
@@ -14926,7 +14933,10 @@
         {
           "name": "EnergyShieldRechargeFaster",
           "type": "Inc",
-          "value": 20.0
+          "value": 20.0,
+          "tags": [
+            "Condition { var: \"AffectedByArchon\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -21686,7 +21696,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Duration",
+          "name": "ArchonDuration",
           "type": "Inc",
           "value": 30.0
         }
@@ -26277,7 +26287,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LocalEffect",
+          "name": "ArchonEffect",
           "type": "Inc",
           "value": 5.0
         }
@@ -27452,7 +27462,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LocalEffect",
+          "name": "ArchonEffect",
           "type": "Inc",
           "value": -50.0
         }
@@ -29779,7 +29789,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Duration",
+          "name": "ArchonDuration",
           "type": "Inc",
           "value": 8.0
         }
@@ -42607,11 +42617,25 @@
     },
     {
       "text": "[Archon] Buffs also grant +20% to all [ElementalDamage|Elemental] [Resistances]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArchonElementalResistance",
+          "type": "Base",
+          "value": 20.0
+        }
+      ]
     },
     {
       "text": "[Archon] Buffs also grant 10% increased Movement Speed",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArchonMovementSpeed",
+          "type": "Base",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "[Archon] Buffs also grant 30% increased [Critical|Critical Hit Chance]",
@@ -42623,19 +42647,47 @@
     },
     {
       "text": "[Archon] Buffs have no recovery period after you lose one",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArchonNoRecovery",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "[Archon] recovery period expires 10% faster",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArchonRecoveryRate",
+          "type": "Inc",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "[Archon] recovery period expires 25% faster",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArchonRecoveryRate",
+          "type": "Inc",
+          "value": 25.0
+        }
+      ]
     },
     {
       "text": "[Archon] recovery period expires 30% slower",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArchonRecoveryRate",
+          "type": "Inc",
+          "value": -30.0
+        }
+      ]
     },
     {
       "text": "[ArmourBreak|Break Armour] equal to 10% of [Hit|Hit Damage] dealt",

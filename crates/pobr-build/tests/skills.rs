@@ -3,6 +3,9 @@
 //! Aggregated test binary: originally separate test files, merged into submodules (22→4) to cut the number of linked test binaries and speed up builds.
 #![allow(clippy::all)]
 
+#[path = "skills/archon.rs"]
+mod archon;
+
 #[path = "skills/aura_gems.rs"]
 mod aura_gems;
 #[path = "skills/bear_form.rs"]

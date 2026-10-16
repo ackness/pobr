@@ -109,6 +109,9 @@ pub struct OutputTable {
     pub warcry_cast_time: f64,
     pub channel_time: f64,
     pub channel_time_to_trigger: f64,
+    /// Nominal Archon buff duration and post-buff recovery, in seconds.
+    pub archon_duration: f64,
+    pub archon_recovery_period: f64,
 
     pub mana_percent_cost: f64,
     pub mana_percent_per_second_cost: f64,
@@ -614,6 +617,8 @@ impl Default for OutputTable {
             warcry_cast_time: 0.0,
             channel_time: 0.0,
             channel_time_to_trigger: 0.0,
+            archon_duration: 0.0,
+            archon_recovery_period: 0.0,
 
             mana_percent_cost: 0.0,
             mana_percent_per_second_cost: 0.0,

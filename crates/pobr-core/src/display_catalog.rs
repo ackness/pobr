@@ -311,6 +311,18 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::TimeSeconds,
             "ChannelTimeToTrigger",
         ),
+        computed(
+            "ArchonDuration",
+            Cat::SkillMechanics,
+            Vt::TimeSeconds,
+            "ArchonDuration",
+        ),
+        computed(
+            "ArchonRecoveryPeriod",
+            Cat::SkillMechanics,
+            Vt::TimeSeconds,
+            "ArchonRecoveryPeriod",
+        ),
         // Offence
         computed("TotalDPS", Cat::Offence, Vt::Number, "TotalDPS"),
         computed("TotalHitAvg", Cat::HitDamage, Vt::Number, "AverageHit"),
@@ -1082,6 +1094,8 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "WarcryCastTime" => output.warcry_cast_time,
         "ChannelTime" => output.channel_time,
         "ChannelTimeToTrigger" => output.channel_time_to_trigger,
+        "ArchonDuration" => output.archon_duration,
+        "ArchonRecoveryPeriod" => output.archon_recovery_period,
         "ManaPercentCost" => output.mana_percent_cost,
         "ManaPercentPerSecondCost" => output.mana_percent_per_second_cost,
         "ManaPerSecondCost" => output.mana_per_second_cost,

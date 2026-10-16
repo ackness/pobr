@@ -6,10 +6,10 @@
   },
   "summary": {
     "total": 4277,
-    "parsed": 3502,
-    "unsupported": 775,
+    "parsed": 3509,
+    "unsupported": 768,
     "err": 0,
-    "coverage_ratio": 0.818798
+    "coverage_ratio": 0.820435
   },
   "by_source": [
     {
@@ -20,8 +20,8 @@
     },
     {
       "source": "C2_tree",
-      "parsed": 2255,
-      "unsupported": 286,
+      "parsed": 2262,
+      "unsupported": 279,
       "err": 0
     },
     {
@@ -34,11 +34,6 @@
   "gaps_top_n": [
     {
       "text": "10% chance to gain [Volatility] on Kill",
-      "status": "unsupported",
-      "source": "C2_tree"
-    },
-    {
-      "text": "15% chance to gain [UndeadArchon|Archon of Undeath] when you use a [Command|Command] skill",
       "status": "unsupported",
       "source": "C2_tree"
     },
@@ -231,6 +226,11 @@
       "text": "Attribute Passive Skills can instead grant 5% increased Damage\nAttribute Passive Skills can instead grant 5% increased [Armour], [Evasion] and [EnergyShield|Energy Shield]\nAttribute Passive Skills can instead grant 5% increased Cost [Efficiency]",
       "status": "unsupported",
       "source": "C2_tree"
+    },
+    {
+      "text": "Attuned Wand",
+      "status": "unsupported",
+      "source": "C1_build"
     }
   ]
 }

@@ -480,7 +480,7 @@ pub fn expand_misc_buffs(env: &mut Env) {
 
     use crate::rules::buff_expander::{self, BuffExpandState};
 
-    if !env.cfg.mode_combat || env.buff_definitions.is_empty() {
+    if !env.cfg.mode_combat {
         return;
     }
 
@@ -499,9 +499,6 @@ pub fn expand_misc_buffs(env: &mut Env) {
         .filter(|def| !expanded_ids.contains(format!("buff.{}", def.id).as_str()))
         .cloned()
         .collect();
-    if pending.is_empty() {
-        return;
-    }
 
     let expansion = buff_expander::expand_misc_buffs(
         &BuffExpandState {

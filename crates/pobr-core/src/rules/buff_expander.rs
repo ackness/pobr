@@ -264,6 +264,11 @@ pub fn expand_misc_buffs(
     character_cfg.flags = ModFlags::NONE;
     character_cfg.keyword_flags = KeywordFlags::NONE;
     character_cfg.skill_types = SkillTypes::NONE;
+    out.mods.extend(super::archon::expand(
+        state.db,
+        &character_cfg,
+        state.mode_combat,
+    ));
     for def in defs {
         // Mode gate (doActorMisc's whole block at :510 is gated on
         // `env.mode_combat`).

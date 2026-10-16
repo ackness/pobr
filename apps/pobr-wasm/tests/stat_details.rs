@@ -623,3 +623,33 @@ fn unticked_utility_items_keep_their_properties_without_activating_their_buffs()
     );
     assert!(inactive["breakdowns"]["Flask1Recovery"]["derived"].is_object());
 }
+
+#[test]
+fn archon_timings_have_derived_json_details() {
+    init();
+    let result = calculate(json!({
+        "character": {"class_name":"Witch", "level":80},
+        "extra_modifiers":[
+            "30% increased Archon Buff duration",
+            "Archon recovery period expires 25% faster"
+        ],
+        "breakdowns":["ArchonDuration", "ArchonRecoveryPeriod"]
+    }));
+    for (stat, expected) in [("ArchonDuration", 13.0), ("ArchonRecoveryPeriod", 16.0)] {
+        let value = result["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["id"] == stat)
+            .unwrap();
+        assert_eq!(value["value"], expected);
+        assert_eq!(result["breakdown_descriptors"][stat], "derived");
+        assert!(
+            result["breakdowns"][stat]["derived"]["inputs"]
+                .as_array()
+                .unwrap()
+                .len()
+                >= 2
+        );
+    }
+}

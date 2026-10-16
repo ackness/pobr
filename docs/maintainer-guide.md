@@ -317,6 +317,22 @@ Into the Breach 的紫色火焰（“7% of damage as extra Chaos … stacks up t
 
 光环由 `calc/buff_pass.rs` 统一处理；旧的 `buff-pass-aura` Cargo feature 和编排层直接注入光环的通道均已删除。运行时 buff 阶段受 `mode_buffs` 控制，curse/debuff 另受 `mode_effective` 控制；不要按历史迁移文档重新引入旧开关。
 
+Archon shared bonuses use the explicit `conditionAffectedByArchon` configuration
+(default off; possessing a source does not establish uptime). The game's
+[Archon keyword](https://poe2db.tw/us/Archon_Buff) defines a 10-second duration
+and a 20-second recovery period; `ArchonDuration` and `ArchonRecoveryPeriod`
+report these nominal timings after `archon_duration_+%`,
+`archon_delay_expires_x%_faster` and `archon_no_recovery_period` (Dominion).
+Invigorating Archon's movement and elemental-resistance grants are scaled by
+Archon effect plus buff effect on self; Energising Archon's conditional recharge
+start bonus is not part of the buff and is not scaled. Rules are exporter-absent.
+The Command-use gain chance is recognized but does not imply an active buff;
+proc timing, uptime, and intrinsic payloads of individual Archon types are not
+modelled by this shared-bonus state. Nature's Archon needs direct BuffTemplates
+verification before its intrinsic damage is implemented: the keyword says 25%
+more damage, while the displayed `ArchonNature` template uses
+`plant_skill_damage_+% = 25` (increased).
+
 队伍保存在 `Build.party`；`party::parse_party` / `party::party_xml` 保留 `<Party>` 的 `ImportedBuffs` / `ExportedBuffs`，导出启用成员的合并标准块，并用可忽略的 `PoBRMember` 保留成员边界与禁用状态。`party::import_member` / WASM `build_api::import_party_member_json(code)` 先清空成员自身的队伍输入，再算生命、能量护盾、魔力、属性和已支持的外放光环／诅咒；能重算的同名效果替换导出值，其余沿用原始块。队友效果走 `calc::buff_pass` 的接收者缩放、召唤物投递、最强副本与施法者各自的诅咒上限，敌人效果走既有敌人通道；来源 id 为 `party.<成员>.<目标>.<来源>`，参与缓存身份与逐行归因。战吼、链接等不能从原生技能重建的效果依赖导出块或手填文本；仅支持简单的 `parent` / `partyMembers` 资源属性缩放。嵌套 LIST、复杂标签及不支持的 `GlobalEffect` 字段保留并诊断，不能剥掉限制后当作无条件词条；成员导出的跳过项有警告，PoB2 再保存可能丢弃成员边界。
 
 ## 与 PoB2 的关系（逐步独立）

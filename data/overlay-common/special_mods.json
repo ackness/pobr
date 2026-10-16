@@ -4533,6 +4533,209 @@
       "source_note": "Recovery per kill is a percentage of maximum Energy Shield; no kill rate is assumed."
     },
     {
+      "id": "archon_grants_movement_speed",
+      "pattern": "archon buffs also grant (\\d+(?:\\.\\d+)?)% increased movement speed",
+      "mods": [
+        {
+          "name": "ArchonMovementSpeed",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "archon_grants_movement_speed_+%",
+      "source_note": "Game stat archon_grants_movement_speed_+%. Archon regression: engine::archon."
+    },
+    {
+      "id": "archon_grants_elemental_resistance",
+      "pattern": "archon buffs also grant \\+?(\\d+(?:\\.\\d+)?)% to all elemental resistances",
+      "mods": [
+        {
+          "name": "ArchonElementalResistance",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "archon_grants_all_elemental_resistance_+%",
+      "source_note": "Game stat archon_grants_all_elemental_resistance_+%. Archon regression: engine::archon."
+    },
+    {
+      "id": "archon_effect_increased",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased effect of archon buffs on you",
+      "mods": [
+        {
+          "name": "ArchonEffect",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "archon_effect_on_you_+%",
+      "source_note": "Game stat archon_effect_on_you_+%. Archon regression: engine::archon."
+    },
+    {
+      "id": "archon_duration_increased",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased archon buff duration",
+      "mods": [
+        {
+          "name": "ArchonDuration",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "archon_duration_+%",
+      "source_note": "Game stat archon_duration_+%. Archon regression: engine::archon."
+    },
+    {
+      "id": "archon_effect_reduced",
+      "pattern": "(\\d+(?:\\.\\d+)?)% reduced effect of archon buffs on you",
+      "mods": [
+        {
+          "name": "ArchonEffect",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "archon_effect_on_you_+%",
+      "source_note": "Game stat archon_effect_on_you_+%. Archon regression: engine::archon."
+    },
+    {
+      "id": "archon_duration_reduced",
+      "pattern": "(\\d+(?:\\.\\d+)?)% reduced archon buff duration",
+      "mods": [
+        {
+          "name": "ArchonDuration",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "archon_duration_+%",
+      "source_note": "Game stat archon_duration_+%. Archon regression: engine::archon."
+    },
+    {
+      "id": "archon_recovery_faster",
+      "pattern": "archon recovery period expires (\\d+(?:\\.\\d+)?)% faster",
+      "mods": [
+        {
+          "name": "ArchonRecoveryRate",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "archon_delay_expires_x%_faster",
+      "source_note": "Game stat archon_delay_expires_x%_faster. Archon regression: engine::archon."
+    },
+    {
+      "id": "archon_recovery_slower",
+      "pattern": "archon recovery period expires (\\d+(?:\\.\\d+)?)% slower",
+      "mods": [
+        {
+          "name": "ArchonRecoveryRate",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "archon_delay_expires_x%_faster",
+      "source_note": "Game stat archon_delay_expires_x%_faster. Archon regression: engine::archon."
+    },
+    {
+      "id": "archon_no_recovery",
+      "pattern": "archon buffs have no recovery period after you lose one",
+      "mods": [
+        {
+          "name": "ArchonNoRecovery",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "archon_no_recovery_period",
+      "source_note": "Game stat archon_no_recovery_period. Archon regression: engine::archon."
+    },
+    {
+      "id": "archon_energy_shield_recharge_start",
+      "pattern": "(\\d+(?:\\.\\d+)?)% faster start of energy shield recharge while affected by an archon buff",
+      "mods": [
+        {
+          "name": "EnergyShieldRechargeFaster",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "AffectedByArchon"
+            }
+          ]
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "energy_shield_delay_-%_while_affected_by_archon",
+      "source_note": "Game stat energy_shield_delay_-%_while_affected_by_archon. Archon regression: engine::archon."
+    },
+    {
+      "id": "archon_undeath_on_command",
+      "pattern": "(\\d+(?:\\.\\d+)?)% chance to gain archon of undeath when you use a command skill",
+      "mods": [
+        {
+          "name": "ArchonOfUndeathOnCommandChance",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "chance_%_to_gain_archon_of_undeath_on_using_command_skill",
+      "source_note": "Game stat chance_%_to_gain_archon_of_undeath_on_using_command_skill. Archon regression: engine::archon."
+    },
+    {
       "id": "utility_use_triggers",
       "pattern": "used when (?:charges reach full|an adjacent flask is used|you block|you hit a rare or unique enemy, if not already in effect|you use a guard skill|you use a travel skill|you are affected by a slow|you become chilled|you become cursed|you become frozen|you become ignited|you become poisoned|you become shocked|you become stunned|you kill a rare or unique enemy|you lose a guard skill buff|you release a skill with perfect timing|you start bleeding|you take chaos damage from a hit|you take cold damage from a hit|you take fire damage from a hit|you take lightning damage from a hit|you take a savage hit|you use a life flask)",
       "mods": [],

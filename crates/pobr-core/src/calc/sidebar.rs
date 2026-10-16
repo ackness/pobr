@@ -89,7 +89,10 @@ pub(super) fn fill_sidebar(env: &mut Env) {
     global.keyword_flags = KeywordFlags::NONE;
     global.skill_types = SkillTypes::NONE;
     global.skill_name = None;
+    let archon = crate::rules::archon::timing(db, &global);
     let out = &mut env.player.output;
+    out.archon_duration = archon.duration;
+    out.archon_recovery_period = archon.recovery_period;
     let armour_penalty = if db.flag(&global, "Condition:IgnoreMovementPenalties")
         || global.condition("IgnoreMovementPenalties")
     {

@@ -8,6 +8,9 @@
 #[path = "support/parse.rs"]
 mod support;
 
+#[path = "engine/archon.rs"]
+mod archon;
+
 #[path = "engine/attribution.rs"]
 mod attribution;
 #[path = "engine/attribution_passes.rs"]

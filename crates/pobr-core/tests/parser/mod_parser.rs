@@ -836,14 +836,17 @@ fn weapon_type_guard_keeps_damage_as_weapon_keyword_name() {
 }
 
 #[test]
-fn buffs_also_grant_is_unsupported() {
-    // "Archon Buffs also grant +20% to all Elemental Resistances" -- vendor doesn't
-    // support this mod family (ModCache.lua:4527-4532 caches it as nil); the panel
-    // should not inject any numeric value (the stormweaver FireResist golden value of
-    // 71 confirms PoB2 does not apply the +20).
+fn archon_grants_are_scoped_buff_payloads() {
+    // Game stat archon_grants_all_elemental_resistance_+%: the buff grants
+    // resistance only while active, after its effect modifiers are applied.
     let outcome = parse_mod("Archon Buffs also grant +20% to all Elemental Resistances").unwrap();
-    assert_eq!(outcome.status, ParseStatus::Unsupported);
-    assert!(outcome.mods.is_empty());
+    assert_eq!(outcome.status, ParseStatus::Parsed);
+    assert_eq!(outcome.mods.len(), 1);
+    assert_eq!(
+        outcome.mods[0].name,
+        ModName::from("ArchonElementalResistance")
+    );
+    assert_eq!(outcome.mods[0].value.as_number(), Some(20.0));
 }
 
 #[test]

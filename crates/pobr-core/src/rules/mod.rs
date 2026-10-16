@@ -16,6 +16,7 @@
 //! snapshot); config_interpreter / stat_map_engine / buff_expander /
 //! special_mod and other interpreters land in later phases.
 
+pub mod archon;
 pub mod buff_expander;
 pub mod config_interpreter;
 pub mod handlers;
