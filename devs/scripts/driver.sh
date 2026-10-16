@@ -372,19 +372,19 @@ cmd_gate() {
     for name in "${GATE_STEPS[@]}"; do [[ "$step" == "$name" ]] && known=1; done
     (( known )) || { echo "unknown gate step '$step'; steps: ${GATE_STEPS[*]}" >&2; return 2; }
   done
-  local failed=() status
+  # A comma list, not an array: bash 3.2 (macOS) rejects an empty array under `set -u`.
+  local failed="" status
   for step in "${steps[@]}"; do
     say "gate: $step"
     gate_step "$step"; status=$?
-    (( status == 0 )) || failed+=("$step")
+    (( status == 0 )) || failed="${failed:+$failed,}$step"
   done
   say "gate summary"
   for step in "${steps[@]}"; do
-    if [[ " ${failed[*]} " == *" $step "* ]]; then echo "  FAIL $step"; else echo "  ok   $step"; fi
+    if [[ ",$failed," == *",$step,"* ]]; then echo "  FAIL $step"; else echo "  ok   $step"; fi
   done
-  if (( ${#failed[@]} )); then
-    local IFS=,
-    echo "Rerun the failures after fixing: mise run gate --only ${failed[*]}"
+  if [[ -n "$failed" ]]; then
+    echo "Rerun the failures after fixing: mise run gate --only $failed"
     return 1
   fi
 }
