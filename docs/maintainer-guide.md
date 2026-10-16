@@ -463,6 +463,39 @@ more damage, while the displayed `ArchonNature` template uses
   - 引导攻击（Detonating Arrow、Supercharged Slam、Perfect Strike、Gathering Storm、Snipe、Shield Charge，`calc::channel::skill_modifiers`）的一次使用近似为“释放前引导 + 释放”（`pobr-core/src/calc/channel.rs`）。引导取 `base_minimum_channel_time_ms`、`channel_start_lock_cancelling_of_attack_time_%` × 攻击时间、层数 × 攻击时间中最大的一个；完美时机只给出窗口宽度（如 `perfect_strike_timing_window_base_ms`），没有开启时间的 stat，所以完美与普通 stat set 各算自己的伤害，时间都用最短引导 / 起手锁定。释放取 `channel_end_duration_as_%_of_attack_time` 的比例，或 `channel_skill_end_animation_duration_override_ms`（有时优先，两者不相加）；比例随攻击速度缩放，固定毫秒不缩放，只有动画倍率、没有基础时长的阶段不另计。层数同时用于伤害和时间，默认取上限（含品质），构筑配置的 multiplier `ChannelStages`（配置输入 `skillChannelStages`，Web 技能页的层数输入）可覆盖（取整并限制在 1 到上限）：Detonating Arrow 每层 `detonating_arrow_all_damage_%_to_gain_as_fire_per_stage` = 120；Supercharged Slam 每层 “40% more Damage with Hits for each stage”（只加命中），“Releases 1 Aftershock per Stage”，冲击 stat set 计冲击加全部余震、余震 stat set 只计余震，用等级行 850 毫秒不受攻击速度影响的攻击时间，余震延迟不阻止下一次引导。Shield Charge 按 1300 毫秒最短引导，不模拟行进与碰撞。PoB2 多只把释放阶段当作命中间隔、默认一层并用武器的攻击时间。**没有游戏内实测**。
   - 带 `base_skill_show_average_damage_instead_of_dps` 的技能（Grim Pillars、Lightning Warp、Vile Disruption、Skyfall、Living Bomb、Volcano、Incinerate、Rake、Parry、Raise Shield、Hand of Chayula、Stampede、Gathering Storm、Perfect Strike 等）在游戏面板上显示平均伤害；这个 stat 没有词条文本，不改变伤害或使用速率。PoBR 的 `CombinedDPS` 仍是每秒伤害：命中 DPS 加持续伤害 DPS，再计 Culling Strike；PoB2 在这里改填平均命中伤害，也不加它已算出的持续伤害（Incinerate 的 `base_fire_damage_to_deal_per_minute`、Living Bomb / Volcano 的点燃、Rake 的流血）。这是输出口径不同，不能拿这一行当作伤害倍率去补。Vivid Stampede（`skill_triggered_on_hit_while_have_vivid_stag_wisps`，攻击命中触发、每个 Vivid Wisp 一只鹿）同样只显示平均伤害：PoB2 的 TotalDPS 为 0、CombinedDPS 是每次触发的伤害；PoBR 暂按武器攻击速率每次攻击一只估算，精灵数量与触发来源还没有建模，两边不能比较。
   - 伤害区间与命中率保留小数：Earthquake / Stampede 的 Wooden Club 6–10 乘等级行的 `damage_multiplier` 1.25 为 7.5–12.5，Toxic Growth 的 6–9 乘 0.62 为 3.72–5.58；PoB2 先把伤害上下界取整（8–13、4–6）、命中率取整到百分数，低伤害的合成构筑上差别可超过 5%。这是计算精度的约定，游戏内部是否取整**没有游戏内实测**。
+
+    The 2026-10-16 ranged sweep has the same precision difference. All six fixtures use
+    the game's Makeshift Crossbow (`base/base_items.json`, `FourCrossbow1`):
+    7–12 Physical damage, 625 ms attack time and 5% base crit. Level-20 damage
+    multipliers and conversion percentages below come from the first stat set
+    in `base/granted_effect_stat_sets.json`; attack-speed multipliers come from
+    `base/granted_effect_levels.json`. No added damage or damage increases apply.
+    Each bounds cell shows PoBR's result after conversion → PoB2's integer bounds
+    before mitigation and crit; the arrows do not indicate an engine change.
+
+    | Selected effect | Damage multiplier / conversion | Physical bounds | Elemental bounds | TotalDPS PoBR / PoB2 |
+    |---|---|---|---|---|
+    | `IceShardsPlayer` | 0.29 / 60% Cold | 0.812–1.392 → 1–1 | 1.218–2.088 → 1–2 | 5.423944799 / 4.952566667 |
+    | `ShockburstRoundsPlayer` | 0.36 / 40% Lightning | 1.512–2.592 → 2–3 | 1.008–1.728 → 1–2 | 4.615380330 / 5.334733228 |
+    | `PermafrostBoltsPlayer` | 0.49 / 80% Cold | 0.686–1.176 → 1–1 | 2.744–4.704 → 3–5 | 1.183943073 / 1.279610526 |
+    | `RapidShotPlayer` | 0.94 / 60% Fire | 2.632–4.512 → 3–5 | 3.948–6.768 → 4–7 | 23.651653516 / 24.984921520 |
+    | `ArtilleryBallistaProjectilePlayer` | 0.40 / none | 2.8–4.8 → 3–5 | — | 0.306053311 / 0.324168000 |
+    | `SiegeBallistaProjectilePlayer` | 0.66 / 60% Fire | 1.848–3.168 → 2–3 | 2.772–4.752 → 3–5 | 0.807980742 / 0.850941000 |
+
+    Both sides use one projectile hit per action in these selected stat sets,
+    75% Physical reduction and 50% elemental resistance. With physical and
+    elemental midpoints P and E, DPS is `(0.25P + 0.5E) × h × (1 + 0.05h) × rate`:
+    PoBR retains hit chance h = 0.775345425; PoB2 uses 0.78 (also in crit
+    confirmation). In table order, both sides' sustained rates are
+    6.111111111, 4.787401575, 0.701754386, 8.221225710, 0.4 and 0.4/s.
+    The four ammo skills' firing rates are 8.8, 6.4, 1.6 and 8.8/s; magazine
+    sizes are 16, 19, 1 and 100, with reload times 0.8, 1, 0.8 and 0.8 seconds.
+    Substituting the respective bounds and h reproduces every TotalDPS above;
+    no projectile-count, damage-multiplier or reload correction is justified.
+    This confirms the existing precision convention, not the game's internal
+    rounding. No benchmark or tuned build carries these six skills at this
+    audit, so no worked-build row is added to `known-differences.json`.
+
   - Bursting Fen Toad、Conductive Runes 的 Explosion、Blood Explosion 与 Repulsion Wave 是非武器攻击（游戏类型 `Attack` / `NonWeaponAttack`，Bursting Fen Toad 的说明是 “dealing Attack damage”），stat set 没有 `global_always_hit`，照常检查命中；PoB2 给它们的基础标志缺少攻击，不检查命中。没有游戏内实测证明这类爆炸不能被闪避。Primal Strikes 的 Exposure（`all_exposure_on_hit_magnitude` = 50，“The third attack is a large swipe that inflicts Elemental Exposure”）只在第三击的 stat set `PrimalStrikesFinalPlayer` 上，计算普通击时不假设已用过第三击；PoB2 默认计入（敌人元素抗性由 50 降到 25）。连段的覆盖率还没有建模。
   - 主 stat set 带 `base_deal_no_damage` 的效果（Conductive Runes 的放置、Rolling Slam、Spearfield、Tempest Bell 的主 stat set，Hollow Focus 的 Bells）PoBR 为 0，钉定的 PoB2 可能给它们算出默认武器或附加伤害（见“计算引擎架构”的无伤害效果）。
   - Black Powder Blitz 按游戏等级表的冷却限制使用频率；Requiem 按 `crossbow_skill_has_no_ammo` 不计弹匣与装填时间，不能用重复装填降低它的持续射击频率。两者与钉定 PoB2 的默认周期可不同，不改伤害倍率追平。
