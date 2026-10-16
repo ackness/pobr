@@ -88,6 +88,12 @@ KNOWN_MODELS = {
     "BloodhoundsMarkExplosionPlayer": ("non-weapon attack hit checks", None),
     "CurseOfRepulsionShockwavePlayer": ("non-weapon attack hit checks", None),
     "PrimalStrikesPlayer": ("Primal Strikes exposure", "PrimalStrikesPlayer"),
+    # Event-triggered hits: the average hit is computed, but the curse-hit,
+    # empowered-hit or dodge/hazard event rate is not modelled, so the rate is 0
+    # (skill_env::triggers, `EventTriggerRateUnmodelled`).
+    **{skill: ("event trigger rate unmodelled", None) for skill in (
+        "FortifyingCryShockwavePlayer", "TemperWeaponCombustionPlayer",
+        "TriggeredTrailOfCaltropsPlayer")},
 }
 FAMILY_TYPES = {
     "warcries": {"Warcry"}, "totems": {"SummonsTotem", "SummonsAttackTotem"},
