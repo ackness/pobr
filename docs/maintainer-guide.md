@@ -173,9 +173,11 @@ CLI 完整构筑与 marginal 结果包含数据版本、树版本和未支持词
 
 WASM 的 `calculate_build_json`（JS 名 `calculateBuildJson`）响应另有 `minions` 与 `main_minion_index`。`minions` 是计算创建的每个召唤物：`index`、怪物 `minion_id` 与名字、召唤它的技能 `summoned_by`、它所用的技能 `skill_id`、等级、DPS、生命、护甲、闪避、能量护盾，以及已支持的 `stats`、`breakdowns` 与 `breakdown_descriptors`；每项是一个召唤物的快照，不乘召唤数量，`stats` 包含火、冰、电、混沌抗性及其最大值、超上限值（与角色相同的 `*Resist` / `*ResistMax` / `*ResistOverCap` id）；四种最终抗性有逐步分解。未建模的值不出现，也不补 0。`main_minion_index` 是主技能召唤的那一个，按提供该效果的宝石与召唤来源定位（`reference_check::main_skill_minion`），同名召唤宝石各有自己的结果，主技能组禁用时为空。请求的 `breakdowns` 选择要生成的明细：省略时是 `BREAKDOWN_STATS` 加每个召唤物的全部明细，`[]` 不生成任何明细，列表只生成所列 id（先去重，不认识的 id 是参数错误）；`breakdown_actor`（`{kind: "player"}` / `{kind: "minion", index}`，索引属于本次响应，越界是参数错误）选择计算对象，每份明细带 `actor`。数值与 `actor` 不随所请求的明细变化，逐技能总览与 Full DPS 的缓存忽略这两个字段。`breakdown_descriptors` 给每个可展示字段一种明细（`pobr_build::breakdown::detail::detail_kind`）：`steps`（逐步计算）、`sources`（每组是引擎的一次 ModDb 查询，`pobr_core::calc::session::detail::source_names`）、`derived`（公式与实际输入，`CalculationSession::derived_detail`）或 `none`。新增明细先声明种类，不为凑齐明细把上游输入包成可相加的词条行：来源组直接用计算阶段同一份 ModDb 查询、配置与 MORE 精度；派生项重用实际的计算项并给出公式输入，测试验证这些输入能重建结果；WASM 测试还要验证空选择与未请求的 id 不运行明细生成。`config_context`（Config 页按它筛选配置项）只在请求带 `config_context: true` 时计算并返回：它走读取跟踪的入口 `calculate_with_data_session_tracked`，在分解查询之前取快照；读取跟踪在 benchmark 构筑上最多慢 17.5%（Blood Mage），所以普通重算不跟踪、不返回该字段。这些字段在界面上的行为见 [Web 功能契约](web-contracts.md)。
 
-EHP 的 Calcs 字段直接读取计算保留的同一份 `EhpTerms`：五种类型（Physical / Fire / Cold / Lightning / Chaos）的 `EnemyDamage`（敌人加成与暴击后）、`TakenDamage`（承伤转换后、减免前）、`TakenHit`（减免后）、`TakenHitMult`（后两者之比；转换后输入为 0 时为 0）和 `EnergyShieldBypass`（百分比），三种元素的 `DamageReduction`，以及 `totalEnemyDamage` / `totalTakenDamage` / `totalTakenHit`、`ConfiguredDamageChance` / `ConfiguredNotHitChance` 和 `DamageTakenOnBlock`。总量与比值只是已有命中的展示视图；减免和概率的 `derived` 明细保留实际阶段输入，不重跑求解器；五种 `EnemyDamage` 与五种 `EnergyShieldBypass` 为 `none`，因为当前只保留聚合／覆盖后的值，没有可展示的来源轨迹。未提供五种 `TotalPool`：现有 `total_hit_pool` 用的是命中资源池，并含伤害损失防止、护盾技能等扩展层，不能冒充用于持续伤害的资源池；五种 `DotEHP` / `TakenDotMult` 和 `EHPSurvivalTime` 也未提供，前者尚无防御持续伤害模型，后者没有 EHP 敌人命中间隔模型。展示不改变既有计算；Evergrasping 的全部伤害额外混沌、Runic Ward 和恢复规则差异仍按本指南的约定解释。
+EHP 的 Calcs 字段直接读取计算保留的同一份 `EhpTerms`：五种类型（Physical / Fire / Cold / Lightning / Chaos）的 `EnemyDamage`（敌人加成与暴击后）、`TakenDamage`（承伤转换后、减免前）、`TakenHit`（减免后）、`TakenHitMult`（后两者之比；转换后输入为 0 时为 0）和 `EnergyShieldBypass`（百分比），三种元素的 `DamageReduction`，以及 `totalEnemyDamage` / `totalTakenDamage` / `totalTakenHit`、`ConfiguredDamageChance` / `ConfiguredNotHitChance` 和 `DamageTakenOnBlock`。总量与比值只是已有命中的展示视图；减免和概率的 `derived` 明细保留实际阶段输入，不重跑求解器；五种 `EnemyDamage` 与五种 `EnergyShieldBypass` 为 `none`，因为当前只保留聚合／覆盖后的值，没有可展示的来源轨迹。持续伤害一侧的字段见下文“防御持续伤害”一段。展示不改变既有计算；Evergrasping 的全部伤害额外混沌、Runic Ward 和恢复规则差异仍按本指南的约定解释。
 
-同一份 `EhpTerms` 还保留敌人组装、减免快照（`MitigationCtx`）与资源池，作为五种类型的 `EnemyDamageMult`、`EnemyPen`（百分点；物理与混沌没有穿透输入，为 0）、`ResistTakenHitMulti`（穿透后的抗性倍率，负抗性不受穿透）、`AttackTakenHitMult` / `SpellTakenHitMult`（攻击与法术命中的承伤层，Average 类别取两者之平均）、`AfterReductionTakenHitMulti`（所选命中类别的承伤倍率 × 偏斜倍率）、`BaseTakenHitMult`（抗性 × 减伤 × 减伤后倍率，不含固定承伤）、`DamageReductionMax`、`ManaEffectiveLife` / `MoMHitPool`（Mind over Matter 分担后的生命池与命中资源池）和 `TotalHitPool`，以及全局 `DamageReductionMax`、`LifeHitPool`（可恢复生命计入生命流失防止）和四种抗性的 `ResistTotal`（截断后、上限与下限之前的总值，与 `resolve_resistance` 同一份结果）。Chaos Inoculation 的混沌承伤层同为 0。`EnemyDamageMult` 与 `EnemyPen` 只保留敌人一侧聚合后的值，明细为 `none`；攻击与法术承伤层为 `sources`（实际查询的承伤名字）；其余为 `derived`，资源池拆成已保留的阶段（生命 + Mind over Matter 分担的魔力、Energy Shield、Runic Ward / Aegis / Guard / 友军层）。未提供 `ResistOverTime`（没有只对持续伤害的抗性，自身持续伤害直接用最终抗性）和 `TakenReflect`（没有反射伤害模型）。tuned 组 Infernalist Comet `d7afa87a05ea` 的 `LifeHitPool` 与各类型 MoM 资源池随它的生命按上文的符文原文约定低于 PoB2；其余抗性差异与 `TakenHit` 已有的抗性差异相同。
+同一份 `EhpTerms` 还保留敌人组装、减免快照（`MitigationCtx`）与资源池，作为五种类型的 `EnemyDamageMult`、`EnemyPen`（百分点；物理与混沌没有穿透输入，为 0）、`ResistTakenHitMulti`（穿透后的抗性倍率，负抗性不受穿透）、`AttackTakenHitMult` / `SpellTakenHitMult`（攻击与法术命中的承伤层，Average 类别取两者之平均）、`AfterReductionTakenHitMulti`（所选命中类别的承伤倍率 × 偏斜倍率）、`BaseTakenHitMult`（抗性 × 减伤 × 减伤后倍率，不含固定承伤）、`DamageReductionMax`、`ManaEffectiveLife` / `MoMHitPool`（Mind over Matter 分担后的生命池与命中资源池）和 `TotalHitPool`，以及全局 `DamageReductionMax`、`LifeHitPool`（可恢复生命计入生命流失防止）和四种抗性的 `ResistTotal`（截断后、上限与下限之前的总值，与 `resolve_resistance` 同一份结果）。Chaos Inoculation 的混沌承伤层同为 0。`EnemyDamageMult` 与 `EnemyPen` 只保留敌人一侧聚合后的值，明细为 `none`；攻击与法术承伤层为 `sources`（实际查询的承伤名字）；其余为 `derived`，资源池拆成已保留的阶段（生命 + Mind over Matter 分担的魔力、Energy Shield、Runic Ward / Aegis / Guard / 友军层）。未提供 `TakenReflect`（没有反射伤害模型）。
+
+防御持续伤害：四种 `ResistOverTime`（火、冰、电、混沌；带 `Dot` 标志重新解析的同一份 `resolve_resistance`，所以 “+1% Chaos Resistance against Damage Over Time” 这类游戏 stat `additional_*_resistance_against_damage_over_time_%` 只进入这里）、五种 `TakenDotMult` = max((1 − ResistOverTime/100) × (1 − 基础减伤/100) × 持续伤害承伤倍率, 0)（物理没有抗性；护甲不作用于持续伤害，只计不分命中的额外减伤，按各类型的减伤上限；Chaos Inoculation 的 “Immune to Chaos Damage” 使混沌为 0）、五种 `TotalPool`（非命中资源池：Mind over Matter 分担后的生命池 + 按旁路比例计的 Energy Shield + 未被旁路时的 Runic Ward；不含伤害损失防止、护盾技能、Guard 等只对命中的层）、五种 `DotEHP` = TotalPool / TakenDotMult（免疫时为无穷）和 `EHPSurvivalTime`。自身持续伤害的净恢复（`calc::recovery::net_recovery_terms`）与这些视图共用 `recovery::dot_taken`：持续伤害只对持续伤害的抗性、元素基础减伤和 CI 的混沌免疫因此同样计入净恢复，此前净恢复只用命中口径的最终抗性。`EHPSurvivalTime` = TotalNumberOfHits × 敌人攻击时间 ÷ 敌人行动速度（`calc::skill_use_time::action_speed_factor` 读敌人 ModDb，冰缓等减速随之计入）；攻击时间只取显式的配置 `enemySpeed`（毫秒，`EnemyActionTime`），游戏没有定义默认的敌人攻击时间，构筑码里的 700 毫秒 Placeholder 是导出工具的假设，不采用，没有配置时为 0。PoB2 用 Placeholder 并另有敌人行动速度修正，在 benchmark / tuned / demo 上它的 `enemySkillTime` 多为 1.75 或 3.5 秒，与 PoBR 不可比，`output-coverage` 中这一行不吻合是口径不同，不是缺陷。四种抗性有逐步分解，其余字段是重建自实际输入的 `derived` 明细。tuned Smith of Kitava Shield Wall `fb03d7dce08e` 的混沌持续伤害倍率 0.36（PoB2 0.34）沿用上文 Soul Core of Tacati 的原文约定；其余 `ResistOverTime` 差异与 `ResistTotal` 已有的抗性差异相同（例如 Blood Mage Comet `bc750d615159` 混沌 55 对 65），没有游戏内实测。tuned 组 Infernalist Comet `d7afa87a05ea` 的 `LifeHitPool` 与各类型 MoM 资源池随它的生命按上文的符文原文约定低于 PoB2；其余抗性差异与 `TakenHit` 已有的抗性差异相同。
 
 装备的两瓶药剂和三个护符（含未勾选启用的物品）按槽位输出 `Flask<N>*` / `Charm<N>*`：恢复总量、立即恢复量、每秒持续恢复、持续时间、充能上限、每次消耗、满充能使用次数及每秒充能；`*ChargesGained` 是充能获取倍率。基底数字来自官方游戏表 `Flasks`（药剂与护符的 `LifePerUse`、`ManaPerUse`、`RecoveryTime`，后者为十分之一秒）及 `ComponentCharges`（`MaxCharges`、`PerCharge`），适配到 `base/base_items.json` 的 `utility`；护符持续时间也来自 `Flasks.RecoveryTime`，品质提升药剂恢复量或护符持续时间；`local_*` 对应的裸恢复、时间、充能词条只查询该物品，不能进入全域效果池。全域 `FlaskEffect`、`*FlaskChargeGen` 沿用 PoB key 并提供来源查询，逐槽位数字提供保留实际输入的派生公式；CLI 的 `utility_stats` 与 WASM 的展示字段使用同一结果。单次使用与充能不推算触发或覆盖率；启用时的额外效果沿用下文的生效约定。
 
@@ -400,7 +402,7 @@ Smith of Kitava 的 “Modifiers to Fire Resistance also grant Cold and Lightnin
 
 Three equipment-adjacent readings share one convention: the value is the item's own displayed number, and suppression is tracked per modifier name. Strong Chin's `stun_threshold_+_from_lowest_of_base_helmet_evasion_rating_and_armour` grants Stun Threshold equal to the lower of the helmet's displayed Armour and Evasion (pre-global scaling; the stat name's "base" is the pre-global item base). The Invoker's `cannot_gain_spirit_from_equipment` drops only BASE Spirit with an equipment origin (per-item base Spirit, explicit +N lines, socketed runes); passive and quest Spirit still count, and the suppressed equipment lines still show as applied in the usage ledger because modifier reads are tracked per name. Elemental recoup (`recoup_%_elemental_damage_as_energy_shield`, parsed as `Fire/Cold/LightningEnergyShieldRecoup`) adds its percentage to its own damage type's recoupable only, sharing the Energy Shield recoup duration and recovery rate (`calc::survivability::es_recoup_terms`, which also feeds the EsRecoupRate derived detail).
 
-“Physical Damage prevented Recouped as Life” (`physical_damage_prevented_recouped_as_life_%`, [Made to Last](https://poe2db.tw/us/Made_to_Last) 5%, Wandering Reliquary 50%) uses an explicit convention: prevented damage is the Physical damage entering the physical reduction stage minus that leaving it, counting Armour and additional physical damage reduction after the cap and overwhelm. This follows [Iron Ward's game text](https://poe2db.tw/us/Iron_Ward), which describes damage prevented by Armour or other sources of damage reduction; it is an assumption, **没有游戏内实测 / no in-game test**. Damage shifted to another type before reduction and later damage-taken multipliers do not count; blocked and deflected hits contribute nothing, including partially damaging blocks. Evaded hits never enter the landed-hit loop. The [December 2024 bug report](https://www.pathofexile.com/forum/view-thread/3661840) and [November 2025 discussion](https://www.pathofexile.com/forum/view-thread/3882155) are verification leads, not a developer ruling on this convention. The mitigated EHP loop accumulates prevented damage alongside ordinary damage-taken recoup; `calc::survivability::life_recoup_terms` combines both using Life's 8-second duration (4 seconds with either Life/global flag) and LifeRecoveryRate, and also supplies the `LifeRecoupRate` detail. The parser rule is `exporter: "absent"`, so reference-basis calculations omit it.
+“Physical Damage prevented Recouped as Life” (`physical_damage_prevented_recouped_as_life_%`, [Made to Last](https://poe2db.tw/us/Made_to_Last) 5%, Wandering Reliquary 50%) uses an explicit convention: prevented damage is the Physical damage entering the physical reduction stage minus that leaving it, counting Armour and additional physical damage reduction after the cap and overwhelm. This follows [Iron Ward's game text](https://poe2db.tw/us/Iron_Ward), which describes damage prevented by Armour or other sources of damage reduction; it is an assumption, **没有游戏内实测 / no in-game test**. Damage shifted to another type before reduction and later damage-taken multipliers do not count; blocked and deflected hits contribute nothing, including partially damaging blocks. Evaded hits never enter the landed-hit loop. The [December 2024 bug report](https://www.pathofexile.com/forum/view-thread/3661840) and [November 2025 discussion](https://www.pathofexile.com/forum/view-thread/3882155) are verification leads, not a developer ruling on this convention. The mitigated EHP loop accumulates prevented damage alongside ordinary damage-taken recoup; `calc::survivability::life_recoup_terms` combines both using Life's 8-second duration (4 seconds with either Life/global flag) and LifeRecoveryRate, and also supplies the `LifeRecoupRate` detail. The parser rule is `exporter: "absent"`, so reference-basis calculations omit it. The Chaos counterpart (Forsaken Bangle, below) reuses this definition with Chaos resistance in place of Armour, and the Mana side uses `mana_recoup_terms`.
 
 几条暗金词条接到已有的计算入口（`overlay-common/special_mods.json`）：Blackheart 的 `base_armour_%_applies_to_chaos_damage` 让这一比例的护甲也用于混沌命中的减伤；Vigilant View 的 `maximum_chance_to_evade_is_50%` 与 Goregirdle 的 `maximum_physical_damage_reduction_is_50%` 限制闪避率与物理命中减伤；Matsya 的 “Skills reserve 50% less Spirit”（`unique_spirit_reservations_are_halved`）乘在保留量上，不是保留效率；Plaguefinger 的 `all_damage_can_poison` 让元素命中也计入中毒的伤害，不提供中毒几率；`ignore_hexproof`（“Curses you inflict can affect Hexproof Enemies”）让诅咒越过敌人的 Hexproof；Venopuncture / Icefang Orbit（`all_damage_to_bleeding_enemies_contributes_to_chill` / `all_damage_to_poisoned_enemies_contributes_to_chill`）只在敌人流血 / 中毒时让全部命中伤害计入冰缓强度。Parry 的 “increased Parry Damage”（`parry_damage_+%`，Silverthorne 与天赋）和 Kaltenhalt 的 Parry 物理转冰（`parry_physical_damage_%_to_convert_to_cold`）只作用于 Parry。Chober Chaber、Trenchtimbre、Crown of Eyes 的 “increases and reductions … also …”（`minion_damage_increases_and_reductions_also_affects_you`、`additive_modifiers_to_minion_attack_speed_also_affect_you`、`additive_spell_damage_modifiers_apply_to_attack_damage`）只复制相应的 INC 词条：召唤物伤害、召唤物攻击速度、法术伤害分别给角色伤害、角色攻击速度、攻击伤害，保留来源和条件，不复制 MORE / LESS、点伤和只限定某类召唤物的词条（`calc::shared_modifiers::apply_shared_increases`）。
 
@@ -799,12 +801,56 @@ Shot `71a879f43f2f`) to every damage type, and the pinned PoB2 drops the line
 because its mid-line form leaves an unparsed remainder. The rule is
 `exporter: "absent"`.
 
+Three flask/charm lines that the generic phrase table read in part now have rules
+(`special_mods.json`, all `exporter: "absent"`). “N% more Recovery if used while on Low
+Mana / Low Life” (game stats `local_flask_amount_to_recover_+%_when_on_low_mana` /
+`_on_low_life`, mods `FlaskIncreasedRecoveryOnLowMana` / `OnLowLife`) is a local
+`FlaskRecovery` MORE tagged with the existing `LowMana` / `LowLife` condition: the
+ledger reports it `inactive` until that condition holds (config `conditionLowMana` /
+`conditionLowLife`; `LowLife` is also derived from Life reservation), then the flask's
+recovery is multiplied by `1 + N / 100`. The generic rule had made it a
+`FlaskLifeRecoveryLowLife` bonus that nothing read, even for the Low Mana wording. No
+use timing or uptime of the Low pool is inferred, and there is no in-game test of the
+stacking with other flask recovery modifiers. “Removes N% of Life Recovered from Mana
+when used” and its Mana-from-Life twin (game stats
+`local_flask_removes_%_of_life_recovery_from_mana_on_use` /
+`..._mana_recovery_from_life_on_use`; rules `flask_removes_life_recovery_from_mana_on_use` /
+`flask_removes_mana_recovery_from_life_on_use`, local utility properties
+`UtilityLifeRecoveryRemovedFromMana` / `UtilityManaRecoveryRemovedFromLife`) make the
+other resource pay a share of the flask's recovery each use. Each Flask slot reports
+`Flask<N>ManaRemovedOnUse` (on a Life flask) or `Flask<N>LifeRemovedOnUse` (on a Mana
+flask) as N% of that flask's total `Flask<N>Recovery` (instant plus gradual, after the
+flask's own recovery modifiers such as the Low Life MORE); the opposite direction and
+every flask without the line report 0, and the flask's own recovery is not reduced (the
+generic rule used to make it a −N `FlaskRecovery`). Charms do not have these fields.
+The derived detail is `UtilityRecovery * UtilityRemovedPercent / 100`
+(`calc::utility`); it is a per-use amount, so no use frequency, current-pool state or net
+resource model is assumed, and nothing is subtracted from `Net*Regen`. The Forsaken Bangle
+charm line “N% of Chaos damage you prevent when Hit Recouped as Life and Mana during
+effect” (game stat
+`charm_x%_of_chaos_damage_from_hits_prevented_recouped_as_life_and_mana_during_effect`,
+rule `charm_chaos_damage_prevented_recouped_as_life_and_mana`) stores
+`ChaosDamagePreventedLifeRecoup` and `ChaosDamagePreventedManaRecoup`, each N, under the
+enabled-charm convention above (the charm must be enabled and within the charm limit; no
+uptime is inferred). The Chaos damage a hit “prevents” follows the physical definition: Chaos
+damage entering the Chaos mitigation stage after taken-as shifts, minus what leaves it
+after Chaos resistance and Chaos damage reduction, never below zero (negative resistance
+prevents nothing). Flat damage taken and later damage-taken multipliers do not count, and
+blocked and deflected hits contribute nothing; evaded hits never enter the landed-hit
+loop. The game text does not call resistance “prevention”, so this is an assumption with
+**no in-game test**. The mitigated EHP loop accumulates the per-type prevented damage
+(`EhpTerms::prevented`); `survivability::life_recoup_terms` adds Chaos to the Life rate and
+`survivability::mana_recoup_terms` returns the same amount as Mana (`ManaRecoupRate`,
+with its own derived detail), each over its own recoup duration (8 seconds, 4 seconds
+with `4SecondManaRecoup` / `4SecondRecoup` for Mana) and recovery rate
+(`ManaRecoveryRate`). Ordinary `ManaRecoup` shares the Mana timing. Physical prevented
+recoup still returns Life only. All three rules are batch `S2` and `exporter: "absent"`.
+
 A line the parser reads only in part is not applied. A parse that returns `Parsed`
-with a non-empty `unparsed` remainder (for example “Removes 15% of Life Recovered
-from Mana when used”, which was a −15 `FlaskRecovery`, “88% more Recovery if used
-while on Low Mana”, which was a `FlaskLifeRecoveryLowLife` bonus, and “50% of Chaos
-damage you prevent when Hit Recouped as Life and Mana during effect”, which was +50
-`ChaosDamage`) used to be applied by ingest as a wrong modifier. Every ingest path now
+with a non-empty `unparsed` remainder (for example “2% more Mana Flask Recovery”,
+which is read as 2% more maximum Mana, “1% more Life Flask Recovery” as 1% more
+maximum Life, and “1% increased speed of Recoup Effects” as a `LocalEffect` increase)
+used to be applied by ingest as a wrong modifier. Every ingest path now
 goes through `ParseOutcome::into_applicable`: item sections, flasks and charms,
 passive nodes, gem and support-gem stat texts, free `extra_modifier_texts`, jewel
 texts and local requirement lines apply a line only when `ParseOutcome::is_complete`

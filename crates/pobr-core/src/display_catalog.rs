@@ -1288,6 +1288,12 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             "LifeRecoupRate",
         ),
         computed(
+            "ManaRecoupRate",
+            Cat::Recovery,
+            Vt::Number,
+            "ManaRecoupRate",
+        ),
+        computed(
             "EsRecoupRate",
             Cat::Recovery,
             Vt::Number,
@@ -2092,6 +2098,101 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Percent,
             "ChaosResistTotal",
         ),
+        computed(
+            "FireResistOverTime",
+            Cat::Resistance,
+            Vt::Percent,
+            "FireResistOverTime",
+        ),
+        computed(
+            "ColdResistOverTime",
+            Cat::Resistance,
+            Vt::Percent,
+            "ColdResistOverTime",
+        ),
+        computed(
+            "LightningResistOverTime",
+            Cat::Resistance,
+            Vt::Percent,
+            "LightningResistOverTime",
+        ),
+        computed(
+            "ChaosResistOverTime",
+            Cat::Resistance,
+            Vt::Percent,
+            "ChaosResistOverTime",
+        ),
+        computed(
+            "PhysicalTakenDotMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "PhysicalTakenDotMult",
+        ),
+        computed(
+            "FireTakenDotMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "FireTakenDotMult",
+        ),
+        computed(
+            "ColdTakenDotMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "ColdTakenDotMult",
+        ),
+        computed(
+            "LightningTakenDotMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "LightningTakenDotMult",
+        ),
+        computed(
+            "ChaosTakenDotMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "ChaosTakenDotMult",
+        ),
+        computed(
+            "PhysicalTotalPool",
+            Cat::Resource,
+            Vt::Number,
+            "PhysicalTotalPool",
+        ),
+        computed("FireTotalPool", Cat::Resource, Vt::Number, "FireTotalPool"),
+        computed("ColdTotalPool", Cat::Resource, Vt::Number, "ColdTotalPool"),
+        computed(
+            "LightningTotalPool",
+            Cat::Resource,
+            Vt::Number,
+            "LightningTotalPool",
+        ),
+        computed(
+            "ChaosTotalPool",
+            Cat::Resource,
+            Vt::Number,
+            "ChaosTotalPool",
+        ),
+        computed(
+            "PhysicalDotEHP",
+            Cat::Mitigation,
+            Vt::Number,
+            "PhysicalDotEHP",
+        ),
+        computed("FireDotEHP", Cat::Mitigation, Vt::Number, "FireDotEHP"),
+        computed("ColdDotEHP", Cat::Mitigation, Vt::Number, "ColdDotEHP"),
+        computed(
+            "LightningDotEHP",
+            Cat::Mitigation,
+            Vt::Number,
+            "LightningDotEHP",
+        ),
+        computed("ChaosDotEHP", Cat::Mitigation, Vt::Number, "ChaosDotEHP"),
+        computed(
+            "EHPSurvivalTime",
+            Cat::Mitigation,
+            Vt::TimeSeconds,
+            "EHPSurvivalTime",
+        ),
         // The old lowest-max-hit semantics are kept as a supplementary metric
         // (still comparable after F switches total_ehp's semantics).
         computed(
@@ -2209,11 +2310,16 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
                 catalog.push(
                     DisplayStatDefinition::computed(id.as_str(), Cat::Recovery, vt)
                         .with_pob_key(id.as_str())
-                        .with_higher_is_better(if *field == "ChargesUsed" {
-                            Some(false)
-                        } else {
-                            None
-                        }),
+                        .with_higher_is_better(
+                            if matches!(
+                                *field,
+                                "ChargesUsed" | "ManaRemovedOnUse" | "LifeRemovedOnUse"
+                            ) {
+                                Some(false)
+                            } else {
+                                None
+                            },
+                        ),
                 );
             }
         }
@@ -2458,6 +2564,7 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "ManaLeechRate" => output.mana_leech_rate,
         "EsLeechRate" => output.es_leech_rate,
         "LifeRecoupRate" => output.life_recoup_rate,
+        "ManaRecoupRate" => output.mana_recoup_rate,
         "EsRecoupRate" => output.es_recoup_rate,
 
         // Ailment extensions
@@ -2835,6 +2942,44 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "ColdResistTotal" => output.cold_resistance_total,
         "LightningResistTotal" => output.lightning_resistance_total,
         "ChaosResistTotal" => output.chaos_resistance_total,
+        "FireResistOverTime" => output.resistance_over_time[0],
+        "ColdResistOverTime" => output.resistance_over_time[1],
+        "LightningResistOverTime" => output.resistance_over_time[2],
+        "ChaosResistOverTime" => output.resistance_over_time[3],
+        "PhysicalTakenDotMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.dot_taken[0].multiplier()),
+        "FireTakenDotMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.dot_taken[1].multiplier()),
+        "ColdTakenDotMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.dot_taken[2].multiplier()),
+        "LightningTakenDotMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.dot_taken[3].multiplier()),
+        "ChaosTakenDotMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.dot_taken[4].multiplier()),
+        "PhysicalTotalPool" => output.ehp_terms.as_ref().map_or(0.0, |t| t.total_pool[0]),
+        "FireTotalPool" => output.ehp_terms.as_ref().map_or(0.0, |t| t.total_pool[1]),
+        "ColdTotalPool" => output.ehp_terms.as_ref().map_or(0.0, |t| t.total_pool[2]),
+        "LightningTotalPool" => output.ehp_terms.as_ref().map_or(0.0, |t| t.total_pool[3]),
+        "ChaosTotalPool" => output.ehp_terms.as_ref().map_or(0.0, |t| t.total_pool[4]),
+        "PhysicalDotEHP" => output.ehp_terms.as_ref().map_or(0.0, |t| t.dot_ehp(0)),
+        "FireDotEHP" => output.ehp_terms.as_ref().map_or(0.0, |t| t.dot_ehp(1)),
+        "ColdDotEHP" => output.ehp_terms.as_ref().map_or(0.0, |t| t.dot_ehp(2)),
+        "LightningDotEHP" => output.ehp_terms.as_ref().map_or(0.0, |t| t.dot_ehp(3)),
+        "ChaosDotEHP" => output.ehp_terms.as_ref().map_or(0.0, |t| t.dot_ehp(4)),
+        "EHPSurvivalTime" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.survival_time(output.total_number_of_hits)),
 
         _ => 0.0,
     }

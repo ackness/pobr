@@ -6063,6 +6063,119 @@
       "examples": [
         "+1 to maximum number of Elemental Infusions"
       ]
+    },
+    {
+      "id": "flask_more_recovery_if_used_on_low_mana",
+      "exporter": "absent",
+      "game_source": "base/stats.json: local_flask_amount_to_recover_+%_when_on_low_mana; base/mods.json: FlaskIncreasedRecoveryOnLowMana (Mana flasks)",
+      "pattern": "(\\d+(?:\\.\\d+)?)% more recovery if used while on low mana",
+      "mods": [
+        {
+          "name": "FlaskRecovery",
+          "type": "MORE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "LowMana"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat local_flask_amount_to_recover_+%_when_on_low_mana, whose description reads '1% more Recovery if used while on Low Mana' (a MORE on this flask's own recovery, Mana flasks only). It is the flask's local FlaskRecovery with a LowMana condition, so it applies only while the existing Low Mana state holds (config conditionLowMana): the flask counts as used on Low Mana only when that state is set, and no use timing or Low Mana uptime is inferred (no in-game test). The generic path read the line as FlaskLifeRecoveryLowLife (a Life-flask name with no reader) and left 'if used' unparsed. Regression: parser::mod_parser::flask_more_recovery_if_used_on_low_pool_is_a_conditional_more, engine::utility::flask_more_recovery_if_used_on_low_pool_applies_only_under_its_condition and skills::line_usage::low_pool_flask_recovery_applies_under_the_matching_condition.",
+      "examples": [
+        "88% more Recovery if used while on Low Mana"
+      ]
+    },
+    {
+      "id": "flask_more_recovery_if_used_on_low_life",
+      "exporter": "absent",
+      "game_source": "base/stats.json: local_flask_amount_to_recover_+%_when_on_low_life; base/mods.json: FlaskIncreasedRecoveryOnLowLife (Life flasks)",
+      "pattern": "(\\d+(?:\\.\\d+)?)% more recovery if used while on low life",
+      "mods": [
+        {
+          "name": "FlaskRecovery",
+          "type": "MORE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "LowLife"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat local_flask_amount_to_recover_+%_when_on_low_life, whose description reads '1% more Recovery if used while on Low Life'. Same reading as the Low Mana line: this flask's local FlaskRecovery MORE gated on the existing LowLife condition (derived from Life reservation, or config conditionLowLife); no use timing or Low Life uptime is inferred (no in-game test).",
+      "examples": [
+        "88% more Recovery if used while on Low Life"
+      ]
+    },
+    {
+      "id": "flask_removes_life_recovery_from_mana_on_use",
+      "exporter": "absent",
+      "game_source": "base/stats.json: local_flask_removes_%_of_life_recovery_from_mana_on_use; base/mods.json: FlaskExtraLifeCostsMana",
+      "pattern": "removes (\\d+(?:\\.\\d+)?)% of life recovered from mana when used",
+      "mods": [
+        {
+          "name": "UtilityLifeRecoveryRemovedFromMana",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Local flask property: each use takes this percentage of the flask's total Life recovery away from Mana. Read per flask slot as Flask<N>ManaRemovedOnUse = percentage x Flask<N>Recovery; the amount is per use, with no use frequency or net Mana model assumed (no in-game test). The recovery itself is kept. The generic path read the line as FlaskRecovery BASE -15 on the flask, which is not the stat's meaning.",
+      "examples": [
+        "Removes 15% of Life Recovered from Mana when used"
+      ]
+    },
+    {
+      "id": "flask_removes_mana_recovery_from_life_on_use",
+      "exporter": "absent",
+      "game_source": "base/stats.json: local_flask_removes_%_of_mana_recovery_from_life_on_use; base/mods.json: FlaskExtraManaCostsLife",
+      "pattern": "removes (\\d+(?:\\.\\d+)?)% of mana recovered from life when used",
+      "mods": [
+        {
+          "name": "UtilityManaRecoveryRemovedFromLife",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Local flask property: each use takes this percentage of the flask's total Mana recovery away from Life. Read per flask slot as Flask<N>LifeRemovedOnUse = percentage x Flask<N>Recovery; the amount is per use, with no use frequency or net Life model assumed (no in-game test). The recovery itself is kept. The generic path read the line as FlaskRecovery BASE -15 on the flask, which is not the stat's meaning.",
+      "examples": [
+        "Removes 15% of Mana Recovered from Life when used"
+      ]
+    },
+    {
+      "id": "charm_chaos_damage_prevented_recouped_as_life_and_mana",
+      "exporter": "absent",
+      "game_source": "base/stats.json: charm_x%_of_chaos_damage_from_hits_prevented_recouped_as_life_and_mana_during_effect; overlay/uniques.json: Forsaken Bangle",
+      "pattern": "(\\d+(?:\\.\\d+)?)% of chaos damage you prevent when hit recouped as life and mana(?: during effect)?",
+      "mods": [
+        {
+          "name": "ChaosDamagePreventedLifeRecoup",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "ChaosDamagePreventedManaRecoup",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Assumption, no in-game test: the Chaos damage a hit 'prevents' is the Chaos damage entering the Chaos mitigation stage (after taken-as shifts) minus what leaves it, so Chaos resistance and Chaos damage reduction count, negative resistance prevents nothing, and flat damage taken and later damage-taken multipliers do not. Blocked/deflected hits contribute nothing. The same percentage is recouped as Life and as Mana, each over its own recoup duration at its own recovery rate. 'During effect' is the charm's enabled-item convention (active charm within the charm limit), not an uptime model. See maintainer guide and defence::prevented_recoup.",
+      "examples": [
+        "50% of Chaos damage you prevent when Hit Recouped as Life and Mana during effect",
+        "50% of Chaos damage you prevent when Hit Recouped as Life and Mana"
+      ]
     }
   ]
 }

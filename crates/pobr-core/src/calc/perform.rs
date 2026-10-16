@@ -667,6 +667,19 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.max_chaos_resistance = chaos_resistance.max;
     env.player.output.chaos_resistance_over_cap = chaos_resistance.over_cap;
     env.player.output.chaos_resistance_total = chaos_resistance.total;
+    env.player.output.resistance_over_time = {
+        let input = player_input(env);
+        [
+            ("Fire", input.base_fire_resistance, true),
+            ("Cold", input.base_cold_resistance, true),
+            ("Lightning", input.base_lightning_resistance, true),
+            ("Chaos", 0.0, false),
+        ]
+        .map(|(element, base, elemental)| {
+            super::offence::resolve_resistance_over_time(db, cfg, base, element, elemental)
+                .final_value
+        })
+    };
     // Accuracy rating as the main-hand pass reads it (the hit chance input).
     env.player.output.accuracy = {
         let input = player_input(env);
@@ -911,29 +924,29 @@ fn fill_mechanics(env: &mut Env) {
     let recoupable_by_type = super::ehp::fill_ehp_pob2(env, &keystones, &resistances);
     let recoupable_total: f64 = recoupable_by_type.iter().sum();
 
-    // Both resources use damage accumulated in the mitigated EHP loop. Life
-    // additionally recoups Physical damage prevented by the reduction stage;
-    // ES retains its per-type damage-taken percentages. Shared terms also
-    // supply the derived details.
-    let (life_recoup_rate, es_recoup_rate) = {
+    // Life, Mana and ES use damage accumulated in the mitigated EHP loop. Life
+    // additionally recoups Physical and Chaos damage prevented by mitigation,
+    // Mana recoups Chaos damage prevented, and ES retains its per-type
+    // damage-taken percentages. Shared terms also supply the derived details.
+    let (life_recoup_rate, mana_recoup_rate, es_recoup_rate) = {
         let db = &env.player.mod_db;
         let cfg = &env.cfg;
+        let prevented = env
+            .player
+            .output
+            .ehp_terms
+            .as_ref()
+            .map_or_else(Default::default, |terms| terms.prevented());
         (
-            super::survivability::life_recoup_terms(
-                db,
-                cfg,
-                recoupable_total,
-                env.player
-                    .output
-                    .ehp_terms
-                    .as_ref()
-                    .map_or(0.0, |terms| terms.physical_prevented),
-            )
-            .rate_per_second,
+            super::survivability::life_recoup_terms(db, cfg, recoupable_total, prevented)
+                .rate_per_second,
+            super::survivability::mana_recoup_terms(db, cfg, recoupable_total, prevented)
+                .rate_per_second,
             super::survivability::calc_es_recoup_rate_by_type(db, cfg, recoupable_by_type),
         )
     };
     env.player.output.life_recoup_rate = life_recoup_rate;
+    env.player.output.mana_recoup_rate = mana_recoup_rate;
     env.player.output.es_recoup_rate = es_recoup_rate;
 }
 

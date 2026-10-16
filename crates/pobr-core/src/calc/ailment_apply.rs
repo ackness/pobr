@@ -70,8 +70,8 @@
 //! - Vendor writes the folded Base/Minimum value back to
 //!   `modDB:NewMod(<X>Override, …)` (:3147) — this write-back only serves
 //!   PoB's UI/config linkage, which pobr has no consumer for, so it's not written;
-//! - Enemy `ActionSpeed` has no consumption point (enemy action speed only
-//!   affects the EHP estimate);
+//! - Enemy `ActionSpeed` is read only by `EHPSurvivalTime` (the enemy's
+//!   attack / cast time over its action speed, `calc::ehp`);
 //! - Vendor's outer gate's second operand is always truthy because Lua's `0`
 //!   is truthy (:3128-3129), so the effective behavior is "write a zero-value
 //!   mod plus the Already flag even with no source"; pobr uses an explicit
