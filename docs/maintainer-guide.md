@@ -296,7 +296,8 @@ Stun buildup as a percentage of poise. The game's `KeywordPopups` entries
 Stun / HeavyStun (55 / 57) base buildup on damage dealt; Premitigation (422)
 distinguishes damage before enemy mitigation. The calculation reuses the
 hit-DPS pass's per-type mitigated damage, with armour applied separately to
-non-critical and critical hits before crit weighting. It does not multiply
+non-critical and critical hits before crit weighting. Damage types present
+only on critical hits remain in the average. It does not multiply
 by hit chance; alternating hands are averaged per successful hit. Player
 physical damage and melee hits each give 50% more buildup, multiplicatively;
 cold contributes zero (`KeywordPopups[3] Cold`). The monster 100% physical /

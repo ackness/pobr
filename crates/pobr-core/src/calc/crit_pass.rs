@@ -80,8 +80,8 @@ pub struct CritPassOutput {
     /// Effective total average after CritBlend (after enemy mitigation; used for DPS).
     pub total_hit_avg_mitigated: f64,
     /// Each type's share of `total_hit_avg_mitigated`: both legs after the
-    /// enemy's mitigation, weighted by crit chance. In the order of
-    /// `stored_combined_avg`; empty outside `mode_effective`.
+    /// enemy's mitigation, weighted by crit chance, including types present
+    /// in only one leg. Empty outside `mode_effective`.
     pub mitigated_avg: Vec<(DamageType, f64)>,
     /// Whether the equivalence short circuit was taken (both legs'
     /// aggregation inputs bit-identical → old single-factor formula).
@@ -235,16 +235,26 @@ where
         (round(player_side), round(mitigated))
     };
 
-    // Pairs the legs by position like `stored_combined_avg`; left empty when
-    // the legs hold different components.
+    // Blend by damage type: critical-only additions or conversions can give
+    // the two legs different components. Reuse the mitigation already computed.
     let mitigated_avg = match mitigated_legs {
-        Some((hit_parts, crit_parts)) if hit_parts.len() == crit_parts.len() => non_crit
-            .avgs
-            .iter()
-            .zip(hit_parts.iter().zip(&crit_parts))
-            .map(|((ty, _), (hit, crit_v))| (*ty, hit * (1.0 - c) + crit_v * c))
-            .collect(),
-        _ => Vec::new(),
+        Some((hit_parts, crit_parts)) => {
+            let mut blended: Vec<(DamageType, f64)> = non_crit
+                .avgs
+                .iter()
+                .zip(hit_parts)
+                .map(|((ty, _), hit)| (*ty, hit * (1.0 - c)))
+                .collect();
+            for ((ty, _), crit_v) in crit_leg.avgs.iter().zip(crit_parts) {
+                if let Some((_, value)) = blended.iter_mut().find(|(kind, _)| kind == ty) {
+                    *value += crit_v * c;
+                } else {
+                    blended.push((*ty, crit_v * c));
+                }
+            }
+            blended
+        }
+        None => Vec::new(),
     };
 
     CritPassOutput {

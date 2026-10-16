@@ -299,6 +299,40 @@ fn heavy_stun_reuses_separate_hit_and_crit_armour_mitigation() {
 }
 
 #[test]
+fn heavy_stun_keeps_damage_types_that_only_occur_on_critical_hits() {
+    for noncrit_cold in [false, true] {
+        let mut s = session(&[]);
+        s.setup_enemy(10, pobr_data::monster::EnemyTier::None);
+        s.add_modifiers([Modifier::number("SkillBaseCritChance", ModType::Base, 50.0)]);
+        for name in ["FireDamageMin", "FireDamageMax"] {
+            s.add_modifiers([Modifier::number(name, ModType::Base, 100.0)
+                .with_tag(pobr_core::ModTag::condition("CriticalStrike", false))]);
+        }
+        if noncrit_cold {
+            for name in ["ColdDamageMin", "ColdDamageMax"] {
+                s.add_modifiers([Modifier::number(name, ModType::Base, 100.0)
+                    .with_tag(pobr_core::ModTag::condition("CriticalStrike", true))]);
+            }
+        }
+        s.add_enemy_modifiers([
+            Modifier::number("Armour", ModType::Override, 0.0),
+            Modifier::number("FireResist", ModType::Base, 50.0),
+        ]);
+        s.perform_minimal().unwrap();
+        // Physical: (100 + 200)/2 = 150. Crit-only fire: 200*.5 resist*.5 crit = 50.
+        // KeywordPopups[55]/[3]: physical gets 1.5; noncrit-only cold is excluded.
+        // The two legs may have different lengths OR different types at the same index.
+        let per_damage = (0.58 / 142.0 * 100.0 * 1e9_f64).round() / 1e9;
+        let expected = (150.0 * 1.5 + 50.0) * per_damage;
+        assert!(
+            (s.output().heavy_stun_buildup_avg - expected).abs() < 1e-6,
+            "noncrit cold={noncrit_cold}: {} vs {expected}",
+            s.output().heavy_stun_buildup_avg
+        );
+    }
+}
+
+#[test]
 fn heavy_stun_daze_bonus_follows_the_effective_enemy_condition() {
     let run = |effective, dazed| {
         let mut s = session(&[]).with_config(CalcConfig::spell().with_mode_effective(effective));
