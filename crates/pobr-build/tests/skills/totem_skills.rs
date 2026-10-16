@@ -331,3 +331,35 @@ fn the_characters_auras_reach_its_totem() {
         .1;
     assert_eq!(flat, 116.0);
 }
+
+/// The Spell Totem's defences from the game's monster tables: a level-40
+/// totem has `DefaultMonsterStats.Armour` 418 (`base/monster_scaling.json`);
+/// the `SpellTotem` monster type's `MonsterTypes.Armour` is 100% and its
+/// `Evasion` and `EnergyShieldFromLife` are 0, so the totem has 418 Armour,
+/// no Evasion and no Energy Shield. The character's own Grim Pillars places
+/// no totem.
+#[test]
+fn a_spell_totem_has_the_armour_of_its_monster_type() {
+    let data = data();
+    let options = DataOrchestratorOptions::default();
+    let output = calculate_with_data(&build(true, ""), &data, &options).expect("calculate");
+    assert_eq!(output.totem_armour, 418.0);
+    assert_eq!(output.totem_evasion, 0.0);
+    assert_eq!(output.totem_energy_shield, 0.0);
+    let own = calculate_with_data(&build(false, ""), &data, &options).expect("calculate");
+    assert_eq!(own.totem_armour, 0.0);
+
+    let result = diagnose(&build(true, ""), &data, &options).expect("diagnose");
+    let detail = result
+        .session
+        .derived_detail("TotemArmour")
+        .expect("detail");
+    let input = |id: &str| detail.inputs.iter().find(|(n, _)| n == id).unwrap().1;
+    assert_eq!(
+        (input("TotemDefenceBase")
+            * (1.0 + input("TotemDefenceInc") / 100.0)
+            * input("TotemDefenceMore"))
+        .round(),
+        418.0
+    );
+}

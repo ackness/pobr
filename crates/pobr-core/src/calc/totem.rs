@@ -13,6 +13,14 @@
 //!   × MonsterVarieties.LifeMultiplier)`, level from `MinionGemLevelScaling` for the
 //!   totem gem; then `totem_life_+%` (INC) and `totem_life_+%_final` (MORE).
 //! - Duration multiplier: `totem_duration_+%` (INC) and its MORE.
+//! - Armour / Evasion / Energy Shield: `TotemArmourBase` / `TotemEvasionBase`
+//!   are the orchestrator's `floor(DefaultMonsterStats.Armour/Evasion[level] ×
+//!   MonsterTypes.Armour/Evasion / 100)` (Armour 100 for the Spell, Ballista,
+//!   Ancestral Warrior and Mortar Cannon totems, 0 for Shockwave and Dark
+//!   Effigy; Evasion 0 for every totem type). Energy Shield is
+//!   `MonsterTypes.EnergyShieldFromLife` (0 for every totem type) of TotemLife
+//!   plus `totem_maximum_energy_shield`, scaled by `totem_energy_shield_+%`.
+//!   No game table gives a totem Block chance, so none is reported.
 //! - Auras: a totem is an Ally in the character's Presence, and an aura affects
 //!   "you and Allies in your Presence" (Purity of Fire: "Aura grants +#% to Fire
 //!   Resistance"), so the character's auras and ally-only auras (`ExtraAura`)
@@ -50,6 +58,70 @@ pub(crate) fn life_terms(db: &ModDb, cfg: &CalcConfig) -> TotemLifeTerms {
         more,
         value,
     }
+}
+
+/// A totem defence ([`defence_terms`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TotemDefence {
+    Armour,
+    Evasion,
+    EnergyShield,
+}
+
+/// The terms of a totem defence: `round(base × max((1 + INC/100) × MORE, 0))`.
+/// `from_life` is the Energy Shield share of TotemLife (0 for the others).
+pub(crate) struct TotemDefenceTerms {
+    pub(crate) base: f64,
+    pub(crate) from_life: f64,
+    pub(crate) inc: f64,
+    pub(crate) more: f64,
+    pub(crate) value: f64,
+}
+
+pub(crate) fn defence_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    defence: TotemDefence,
+    life: f64,
+) -> TotemDefenceTerms {
+    let (base_name, name) = match defence {
+        TotemDefence::Armour => ("TotemArmourBase", "TotemArmour"),
+        TotemDefence::Evasion => ("TotemEvasionBase", "TotemEvasion"),
+        TotemDefence::EnergyShield => ("TotemEnergyShieldBase", "TotemEnergyShield"),
+    };
+    let names = [ModName::from(name)];
+    let from_life = if defence == TotemDefence::EnergyShield {
+        let pct = db.sum(
+            ModType::Base,
+            cfg,
+            &[ModName::from("TotemEnergyShieldFromLife")],
+        );
+        (life * pct / 100.0).round()
+    } else {
+        0.0
+    };
+    let base = db.sum(ModType::Base, cfg, &[ModName::from(base_name)])
+        + db.sum(ModType::Base, cfg, &names)
+        + from_life;
+    let inc = db.sum(ModType::Inc, cfg, &names);
+    let more = db.more(cfg, &names);
+    let value = (base * ((1.0 + inc / 100.0) * more).max(0.0)).round();
+    TotemDefenceTerms {
+        base,
+        from_life,
+        inc,
+        more,
+        value,
+    }
+}
+
+fn defence_stat(stat: &str) -> Option<TotemDefence> {
+    Some(match stat {
+        "TotemArmour" => TotemDefence::Armour,
+        "TotemEvasion" => TotemDefence::Evasion,
+        "TotemEnergyShield" => TotemDefence::EnergyShield,
+        _ => return None,
+    })
 }
 
 /// `(1 + INC/100) × MORE` of `TotemDuration`, at least 0.
@@ -131,7 +203,16 @@ pub(super) fn calculate(env: &mut Env) {
     }
     let life = life_terms(db, cfg).value;
     let duration = duration_mod_terms(db, cfg).2;
+    let [armour, evasion, energy_shield] = [
+        TotemDefence::Armour,
+        TotemDefence::Evasion,
+        TotemDefence::EnergyShield,
+    ]
+    .map(|defence| defence_terms(db, cfg, defence, life).value);
     let out = &mut env.player.output;
+    out.totem_armour = armour;
+    out.totem_evasion = evasion;
+    out.totem_energy_shield = energy_shield;
     out.totem_resist = resist;
     out.totem_resist_total = total;
     out.missing_totem_resist = missing;
@@ -154,6 +235,31 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<super::session::detail::De
                     ("TotemLifeMore", t.more),
                 ],
             )
+        }
+        stat if defence_stat(stat).is_some() => {
+            let defence = defence_stat(stat)?;
+            let t = defence_terms(db, cfg, defence, life_terms(db, cfg).value);
+            let mut inputs = vec![
+                ("TotemDefenceBase", t.base),
+                ("TotemDefenceInc", t.inc),
+                ("TotemDefenceMore", t.more),
+            ];
+            if defence == TotemDefence::EnergyShield {
+                inputs.push(("TotemEnergyShieldFromLife", t.from_life));
+            }
+            return Some(super::session::detail::DerivedDetail {
+                formula:
+                    "round(TotemDefenceBase * max((1 + TotemDefenceInc / 100) * TotemDefenceMore, 0), 0)"
+                        .into(),
+                inputs: inputs[..3]
+                    .iter()
+                    .map(|(id, value)| (id.to_string(), *value))
+                    .collect(),
+                context: inputs[3..]
+                    .iter()
+                    .map(|(id, value)| (id.to_string(), *value))
+                    .collect(),
+            });
         }
         "TotemDurationMod" => {
             let (inc, more, _) = duration_mod_terms(db, cfg);

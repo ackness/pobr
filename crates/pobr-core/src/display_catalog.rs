@@ -918,6 +918,14 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             "TotemPlacementTime",
         ),
         computed("TotemLife", Cat::SkillMechanics, Vt::Number, "TotemLife"),
+        computed("TotemArmour", Cat::SkillMechanics, Vt::Number, "TotemArmour"),
+        computed("TotemEvasion", Cat::SkillMechanics, Vt::Number, "TotemEvasion"),
+        computed(
+            "TotemEnergyShield",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "TotemEnergyShield",
+        ),
         computed(
             "TotemDurationMod",
             Cat::SkillMechanics,
@@ -2577,6 +2585,9 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
     }
     match id {
         "TotemLife" => output.totem_life,
+        "TotemArmour" => output.totem_armour,
+        "TotemEvasion" => output.totem_evasion,
+        "TotemEnergyShield" => output.totem_energy_shield,
         "TotemDurationMod" => output.totem_duration_mod,
         "DecayDPS" => output.decay_dps,
         "MirageBurningGroundDPS" => output.mirage_burning_ground_dps,
