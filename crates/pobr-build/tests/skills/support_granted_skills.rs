@@ -62,3 +62,48 @@ fn the_supported_curse_keeps_the_characters_cast_rate() {
     let faster = calculate(&data, 1, FASTER_CASTING);
     assert!((faster.action_rate / curse.action_rate - 1.5).abs() < 1e-6);
 }
+
+/// GrantedEffectsPerLevel has only row 1 for Armour Explosion and Raise
+/// Shield, only row 20 for Pinnacle of Power, and rows 1–40 for Spark.
+#[test]
+fn usage_reports_the_effects_actual_level_row() {
+    use pobr_build::{Build, SocketGroup, diagnose};
+    let data = data();
+    let mut build = Build::new();
+    for (id, level) in [
+        ("ArmourExplosionPlayer", 29),
+        ("ShieldBlockPlayer", 7),
+        ("PinnacleOfPowerPlayer", 31),
+        ("SparkPlayer", 41),
+    ] {
+        build = build.add_socket_group(SocketGroup::new().with_gem_skill(id, level));
+    }
+    let diagnosis = diagnose(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+    let usage = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+    assert_eq!(
+        usage.skills.iter().map(|s| s.level).collect::<Vec<_>>(),
+        [1, 1, 20, 40]
+    );
+}
+
+/// Global quality applies to granted skills, but Thorns/EnemyExplode are
+/// exporter damage entries with no game GrantedEffects or SkillGems rows.
+#[test]
+fn quality_does_not_turn_exporter_damage_entries_into_gems() {
+    use pobr_build::{Build, SocketGroup, diagnose};
+    let data = data();
+    let mut build = Build::new();
+    for id in ["ThornsPlayer", "EnemyExplode", "ShieldBlockPlayer"] {
+        build = build.add_socket_group(SocketGroup::new().with_gem_skill(id, 1));
+    }
+    build.config.global_modifier_texts = vec!["+5% to Quality of all Skills".into()];
+    let diagnosis = diagnose(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+    assert_eq!(
+        diagnosis
+            .skills
+            .iter()
+            .map(|s| s.quality)
+            .collect::<Vec<_>>(),
+        [0, 0, 5]
+    );
+}

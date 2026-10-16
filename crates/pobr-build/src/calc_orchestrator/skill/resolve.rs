@@ -604,11 +604,13 @@ pub(crate) fn apply_gem_quality_bonuses(build: &Build, data: &BuildData) -> Opti
                 .gem_skills
                 .iter()
                 .map(|gem| {
-                    let skill_types = data
-                        .granted_effects
-                        .get(&gem.skill_id)
-                        .map(|e| e.skill_types.as_slice())
-                        .unwrap_or(&[]);
+                    // Exporters also list synthetic damage entries (Thorns,
+                    // Enemy Explode) as gems. They have no game skill and
+                    // cannot acquire skill quality.
+                    let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
+                        return 0;
+                    };
+                    let skill_types = effect.skill_types.as_slice();
                     let from_mods: u32 = bonuses
                         .iter()
                         .filter(|b| {
