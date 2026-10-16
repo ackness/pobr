@@ -340,19 +340,39 @@ impl CalculationSession {
                 }
                 (format!("max({})", expressions.join(", ")), rows)
             }
-            "LifeRecoupRate" | "EsRecoupRate" => {
+            "LifeRecoupRate" => {
                 use crate::calc::survivability::{RecoupResource, recoup_terms};
-                let resource = if stat == "LifeRecoupRate" {
-                    RecoupResource::Life
-                } else {
-                    RecoupResource::EnergyShield
-                };
-                let t = recoup_terms(db, cfg, self.ehp_terms()?.recoupable_total, resource);
+                let t = recoup_terms(
+                    db,
+                    cfg,
+                    self.ehp_terms()?.recoupable_total,
+                    RecoupResource::Life,
+                );
                 (if t.damage <= 0.0 || t.percent <= 0.0 || t.duration <= 0.0 { "0 * RecoupableDamage" }
                     else { "round(RecoupableDamage * RecoupPercent / 100 / RecoupDuration * max(0, RecoupRecovery), 9)" }.into(), vec![
                         ("RecoupableDamage".into(), t.damage), ("RecoupPercent".into(), t.percent),
                         ("RecoupDuration".into(), t.duration), ("RecoupRecovery".into(), t.recovery),
                     ])
+            }
+            "EsRecoupRate" => {
+                use crate::calc::survivability::es_recoup_terms;
+                let t = es_recoup_terms(db, cfg, self.ehp_terms()?.recoupable_by_type);
+                let inputs = vec![
+                    ("RecoupablePhysical".into(), t.recoupable_by_type[0]),
+                    ("RecoupableFire".into(), t.recoupable_by_type[1]),
+                    ("RecoupableCold".into(), t.recoupable_by_type[2]),
+                    ("RecoupableLightning".into(), t.recoupable_by_type[3]),
+                    ("RecoupableChaos".into(), t.recoupable_by_type[4]),
+                    ("RecoupPctPhysical".into(), t.percent_by_type[0]),
+                    ("RecoupPctFire".into(), t.percent_by_type[1]),
+                    ("RecoupPctCold".into(), t.percent_by_type[2]),
+                    ("RecoupPctLightning".into(), t.percent_by_type[3]),
+                    ("RecoupPctChaos".into(), t.percent_by_type[4]),
+                    ("RecoupDuration".into(), t.duration),
+                    ("RecoupRecovery".into(), t.recovery),
+                ];
+                (if t.rate_per_second <= 0.0 { "0 * RecoupablePhysical" }
+                    else { "round((RecoupablePhysical * RecoupPctPhysical + RecoupableFire * RecoupPctFire + RecoupableCold * RecoupPctCold + RecoupableLightning * RecoupPctLightning + RecoupableChaos * RecoupPctChaos) / 100 / RecoupDuration * max(0, RecoupRecovery), 9)" }.into(), inputs)
             }
             "DeflectionRating" | "DeflectChance" => {
                 let (base, evasion, armour, scaling) =

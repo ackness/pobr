@@ -333,3 +333,33 @@ fn spirit_reservation_efficiency_not_applied_twice_at_aggregate() {
 
     assert_eq!(r.final_cost, 100.0);
 }
+
+/// Invoker's "Cannot gain Spirit from Equipment" (passive 8143 Lead me through
+/// Grace...): equipment BASE Spirit (per-item sceptre/body-armour Spirit +
+/// explicit "+N to Spirit" + runes) is not gained; passive grants (including the
+/// node's own "+1 per 8 Item ES / 20 Evasion on Body Armour", a passive-origin
+/// Spirit) still count.
+///
+/// Hand calc: equipment 50 (Item origin) + passive 30 (no origin = tree/quest)
+/// = 80 without the flag; with the flag, 80 − 50 = 30.
+#[test]
+fn cannot_gain_spirit_from_equipment_suppresses_item_base() {
+    use pobr_data::source::{ModifierSource, SourceId, SourceKind};
+    let mut db = ModDb::new();
+    // Equipment Spirit 50 (sceptre Spirit: line / +N on equipment / rune).
+    db.add_mod(
+        pobr_core::Modifier::number("Spirit", ModType::Base, 50.0).with_origin(
+            ModifierSource::new(SourceId::new(SourceKind::Item, "base.Spirit"))
+                .with_raw_text("sceptre item Spirit"),
+        ),
+    );
+    // Passive / quest Spirit 30 (tree grant, no equipment origin).
+    add_base(&mut db, "Spirit", 30.0);
+    let cfg = CalcConfig::new();
+    // Without the flag: 50 + 30 = 80.
+    assert_eq!(calc::calc_spirit_pool(&db, &cfg), 80.0);
+    // With the flag: equipment 50 suppressed → 30.
+    let mut flagged = db;
+    flagged.add_mod(pobr_core::Modifier::flag("CannotGainSpiritFromEquipment"));
+    assert_eq!(calc::calc_spirit_pool(&flagged, &cfg), 30.0);
+}

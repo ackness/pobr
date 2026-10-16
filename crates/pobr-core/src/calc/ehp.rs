@@ -478,6 +478,10 @@ pub struct EhpTerms {
     pub enemy_damage_multipliers: [f64; 5],
     pub physical_reduction: DamageReductionTerms,
     pub recoupable_total: f64,
+    /// The recoupable damage of each type (Physical/Fire/Cold/Lightning/Chaos
+    /// order), feeding per-type recoup (elemental Energy Shield recoup) and
+    /// the EsRecoupRate derived detail.
+    pub recoupable_by_type: [f64; 5],
 }
 
 /// Enemy incoming-damage assembly result (vendor CalcDefence.lua:2040-2168's enemy-damage section).
@@ -1188,16 +1192,19 @@ pub fn not_hit_suite(out: &OutputTable) -> NotHitSuite {
 ///   halving condition :2554-2557 / the threshold chance :2525-2643) --
 ///   replacing the reference_hit approximation from the Track E wiring period.
 ///
-/// Return value (part of 13-G15): the total recoupable damage accumulated by
-/// the mitigated EHP loop (vendor `Σ <X>RecoupableDamageTaken`, :3347-3357)
-/// -- perform uses this as the damage-taken base for the recoup panel rate
-/// (replacing the old life×10% estimate). 0 when there's no recoup mod / the
-/// mitigated loop wasn't recomputed (the consumer's recoup pct is likewise 0 → rate 0, consistent semantics).
+/// Return value (part of 13-G15): the per-type recoupable damage accumulated by
+/// the mitigated EHP loop (`Σ <X>RecoupableDamageTaken`),
+/// in Physical/Fire/Cold/Lightning/Chaos order — perform uses this as the
+/// damage-taken base for the recoup panel rates (replacing the old life×10%
+/// estimate). All zero when there's no recoup mod / the mitigated loop wasn't
+/// recomputed (the consumer's recoup pct is likewise 0 → rate 0, consistent semantics).
+/// Life recoup sums the array; ES recoup reads it per-type (elemental ES recoup
+/// applies to fire/cold/lightning recoupable only).
 pub fn fill_ehp_pob2(
     env: &mut Env,
     keystones: &DefenceKeystones,
     resistances: &ResistanceSuite,
-) -> f64 {
+) -> [f64; 5] {
     struct Computed {
         life_recoverable: f64,
         es_recovery_cap: f64,
@@ -1211,7 +1218,7 @@ pub fn fill_ehp_pob2(
         stun_threshold: f64,
         self_stun_chance: f64,
         stun_duration: f64,
-        recoupable_total: f64,
+        recoupable_by_type: [f64; 5],
         terms: EhpTerms,
     }
     let computed = {
@@ -1397,9 +1404,19 @@ pub fn fill_ehp_pob2(
         // F-4: anyRecoup now reads the mod itself (vendor `:1795-1812`'s
         // `Σ <Resource>Recoup` BASE; the recoup rate field hasn't been
         // written yet at this point -- its base value comes precisely from this section's mitigated loop accumulation).
-        let any_recoup = ["LifeRecoup", "ManaRecoup", "EnergyShieldRecoup"]
-            .iter()
-            .any(|name| db.sum(ModType::Base, cfg, &[ModName::from(*name)]) > 0.0);
+        // Elemental ES recoup (Fire/Cold/LightningEnergyShieldRecoup) also
+        // triggers the loop — otherwise a pure-elemental-recoup build would
+        // never accumulate recoupable and the mods would stay unread.
+        let any_recoup = [
+            "LifeRecoup",
+            "ManaRecoup",
+            "EnergyShieldRecoup",
+            "FireEnergyShieldRecoup",
+            "ColdEnergyShieldRecoup",
+            "LightningEnergyShieldRecoup",
+        ]
+        .iter()
+        .any(|name| db.sum(ModType::Base, cfg, &[ModName::from(*name)]) > 0.0);
         // Recovery on block (:1948-1960 outputs, :3261-3268 `× BlockChance`). PoBR
         // evaluates the "Average" damage category, so spell-block recovery counts
         // half (:3266-3267); `DisableEHPGainOnBlock` turns the whole layer off.
@@ -1425,43 +1442,43 @@ pub fn fill_ehp_pob2(
                 ward: on_block("WardOnBlock") * avg_block_frac,
             }
         };
-        let (n_mitigated, recoupable_total) = if (configured_damage_chance - 100.0).abs()
-            > f64::EPSILON
-            || any_recoup
-            || prevented_total
-            || gain.any()
-        {
-            // Per-type reduction (vendor :3277-3300's DamageIn[type] × (1 - avoid_type/100)) --
-            // per-type avoidance can't go through scale_damage's uniform
-            // factor (that's reused elsewhere in the hits_to_die iteration
-            // and must stay uniform). With no per-type avoidance, avoid is
-            // entirely 0, matching the old uniform scaling bit-for-bit.
-            let base_mult = block_effect_mult * deflect_mult;
-            let mitigated_in = super::pool_damage::TypedDamage {
-                physical: taken_hit.physical * base_mult * (1.0 - avoid[0] / 100.0),
-                fire: taken_hit.fire * base_mult * (1.0 - avoid[1] / 100.0),
-                cold: taken_hit.cold * base_mult * (1.0 - avoid[2] / 100.0),
-                lightning: taken_hit.lightning * base_mult * (1.0 - avoid[3] / 100.0),
-                chaos: taken_hit.chaos * base_mult * (1.0 - avoid[4] / 100.0),
+        let (n_mitigated, recoupable_by_type, recoupable_total) =
+            if (configured_damage_chance - 100.0).abs() > f64::EPSILON
+                || any_recoup
+                || prevented_total
+                || gain.any()
+            {
+                // Per-type reduction (vendor :3277-3300's DamageIn[type] × (1 - avoid_type/100)) --
+                // per-type avoidance can't go through scale_damage's uniform
+                // factor (that's reused elsewhere in the hits_to_die iteration
+                // and must stay uniform). With no per-type avoidance, avoid is
+                // entirely 0, matching the old uniform scaling bit-for-bit.
+                let base_mult = block_effect_mult * deflect_mult;
+                let mitigated_in = super::pool_damage::TypedDamage {
+                    physical: taken_hit.physical * base_mult * (1.0 - avoid[0] / 100.0),
+                    fire: taken_hit.fire * base_mult * (1.0 - avoid[1] / 100.0),
+                    cold: taken_hit.cold * base_mult * (1.0 - avoid[2] / 100.0),
+                    lightning: taken_hit.lightning * base_mult * (1.0 - avoid[3] / 100.0),
+                    chaos: taken_hit.chaos * base_mult * (1.0 - avoid[4] / 100.0),
+                };
+                // :3338 LimitEHPSpeedup = TrackRecoupable or TrackLifeLossOverTime or GainWhenHit.
+                let m_params = EhpLoopParams {
+                    gain,
+                    ..EhpLoopParams::from_constants(
+                        &cfg.constants,
+                        any_recoup || prevented_total || gain.any(),
+                    )
+                };
+                // F-4 (part of 13-G15): the mitigated loop simultaneously
+                // accumulates recoupable (vendor's TrackRecoupable is set at
+                // `:3232-3236` before NumberOfMitigatedDamagingHits is recomputed;
+                // `:3347-3361`'s totalDamage = Σ <X>RecoupableDamageTaken serves as the recoup base value).
+                let (hits, recoupable) =
+                    number_of_hits_to_die_tracked(&mitigated_in, &pools, &ctx, &m_params);
+                (hits, recoupable, recoupable.iter().sum::<f64>())
+            } else {
+                (n_hits, [0.0; 5], 0.0)
             };
-            // :3338 LimitEHPSpeedup = TrackRecoupable or TrackLifeLossOverTime or GainWhenHit.
-            let m_params = EhpLoopParams {
-                gain,
-                ..EhpLoopParams::from_constants(
-                    &cfg.constants,
-                    any_recoup || prevented_total || gain.any(),
-                )
-            };
-            // F-4 (part of 13-G15): the mitigated loop simultaneously
-            // accumulates recoupable (vendor's TrackRecoupable is set at
-            // `:3232-3236` before NumberOfMitigatedDamagingHits is recomputed;
-            // `:3347-3361`'s totalDamage = Σ <X>RecoupableDamageTaken serves as the recoup base value).
-            let (hits, recoupable) =
-                number_of_hits_to_die_tracked(&mitigated_in, &pools, &ctx, &m_params);
-            (hits, recoupable.iter().sum::<f64>())
-        } else {
-            (n_hits, 0.0)
-        };
 
         // TotalEHP (`:3271`'s TotalNumberOfHits + `:3322`)
         let not_hit_frac = (not_hit / 100.0).clamp(0.0, 1.0);
@@ -1516,7 +1533,7 @@ pub fn fill_ehp_pob2(
             stun_threshold: stun.threshold,
             self_stun_chance: stun.self_stun_chance,
             stun_duration: stun.stun_duration,
-            recoupable_total,
+            recoupable_by_type,
             terms: EhpTerms {
                 enemy_damage: by_type(&enemy_in.damage),
                 taken_hit: by_type(&taken_hit),
@@ -1537,6 +1554,7 @@ pub fn fill_ehp_pob2(
                     0,
                 ),
                 recoupable_total,
+                recoupable_by_type,
                 max_hit_solutions,
                 enemy_damage_multipliers: enemy_in.mult_by_type,
             },
@@ -1574,5 +1592,5 @@ pub fn fill_ehp_pob2(
     out.self_stun_chance = computed.self_stun_chance;
     out.stun_duration = computed.stun_duration;
 
-    computed.recoupable_total
+    computed.recoupable_by_type
 }

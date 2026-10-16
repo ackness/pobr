@@ -130,12 +130,13 @@ pub use stat_boundary::{StatBoundary, stat_boundary};
 pub use stun::{StunInputs, StunResult, calc_stun, calc_stun_threshold};
 pub use survivability::{
     AllChargeStates, ChargeKind, ChargeState, DEFAULT_CHARGE_DURATION_SECONDS, DEFAULT_MAX_CHARGES,
-    LEECH_DURATION_SECONDS, LEECH_EFFECTIVE_MAX_HIT_DAMAGE, LEECH_MAX_ES_RATE_PCT,
+    EsRecoupTerms, LEECH_DURATION_SECONDS, LEECH_EFFECTIVE_MAX_HIT_DAMAGE, LEECH_MAX_ES_RATE_PCT,
     LEECH_MAX_LIFE_RATE_PCT, LEECH_MAX_MANA_RATE_PCT, LeechResource, LeechResult,
     RECOUP_DURATION_4S, RECOUP_DURATION_DEFAULT, RecoupResource, RecoupResult, Reservation,
-    block_chance, calc_leech, calc_leech_from_db, calc_recoup, calc_recoup_from_db, calc_regen,
-    capped_chance, charge_maximum, charge_minimum, regen, regen_with_rate, reservation,
-    reservation_with_efficiency, resolve_all_charges, resolve_charge_state,
+    block_chance, calc_es_recoup_rate_by_type, calc_leech, calc_leech_from_db, calc_recoup,
+    calc_recoup_from_db, calc_regen, capped_chance, charge_maximum, charge_minimum,
+    es_recoup_terms, regen, regen_with_rate, reservation, reservation_with_efficiency,
+    resolve_all_charges, resolve_charge_state,
 };
 pub use taken::{
     MitigationCtx, MitigationInputs, armour_applies_pct, build_mitigation_ctx, damage_shift_table,
