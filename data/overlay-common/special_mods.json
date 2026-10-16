@@ -5439,6 +5439,35 @@
       "batch": "unmodelled",
       "game_source": "charm_energy_shield_recharge_starts_when_used",
       "source_note": "Game stat charm_energy_shield_recharge_starts_when_used: Energy Shield Recharge starts on use (Thawing Charm). The one-off charm-use recharge event and its uptime are not modelled; it cannot change a steady-state recharge rate or delay."
+    },
+    {
+      "id": "energy_shield_from_equipped_focus",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased energy shield from equipped focus",
+      "mods": [
+        {
+          "name": "EnergyShield",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SlotName",
+              "slotName": "Weapon 2"
+            },
+            {
+              "type": "Condition",
+              "var": "UsingFocus"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "es-defence",
+      "exporter": "differs",
+      "game_source": "energy_shield_from_focus_+%",
+      "source_note": "Game stat energy_shield_from_focus_+% increases Energy Shield from the equipped Focus only, additively with global increases after local item defences. The exporter restricts the bonus to the off-hand slot without requiring a Focus, so it can also scale another off-hand item's Energy Shield. This special rule precedes the generic extracted phrase rule; UsingFocus is set from the equipped item's game class.",
+      "examples": [
+        "75% increased Energy Shield from Equipped Focus"
+      ]
     }
   ]
 }

@@ -1871,3 +1871,58 @@ fn charm_recharge_on_use_is_unmodelled_not_no_effect() {
     );
     assert!(!meta.no_effect);
 }
+
+#[test]
+fn focus_special_rule_precedes_the_generic_offhand_phrase() {
+    use pobr_core::mod_parser::{CompiledParserRules, parse_mod_engine};
+    use pobr_data::catalog::parser_rules::ModParserRulesDoc;
+    use pobr_data::source::ExporterCoverage;
+
+    // The extracted phrase scopes any off-hand. The curated game rule adds
+    // the Focus requirement without changing the generic compiler or its data.
+    let raw = std::fs::read_to_string(
+        crate::support::test_data_dir().join("overlay/mod_parser_rules.json"),
+    )
+    .unwrap();
+    let doc: ModParserRulesDoc = serde_json::from_str(&raw).unwrap();
+    let generic_rules = CompiledParserRules::compile(&doc).unwrap();
+    for (text, value) in [
+        ("75% increased Energy Shield from Equipped Focus", 75.0),
+        (
+            "40% increased [EnergyShield|Energy Shield] from Equipped [Focus]",
+            40.0,
+        ),
+    ] {
+        let generic = parse_mod_engine(text, &generic_rules);
+        assert_eq!(generic.status, ParseStatus::Parsed);
+        assert!(generic.special_meta.is_none());
+        assert_eq!(generic.mods.len(), 1);
+        assert_eq!(generic.mods[0].slot_name(), Some("weapon2"));
+        assert!(
+            !generic.mods[0]
+                .tags
+                .contains(&ModTag::condition("UsingFocus", false))
+        );
+
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed);
+        assert_eq!(
+            parsed.special_meta.as_ref().unwrap().entry_id,
+            "energy_shield_from_equipped_focus"
+        );
+        assert_eq!(parsed.mods.len(), 1);
+        let modifier = &parsed.mods[0];
+        assert_eq!(modifier.name.as_str(), "EnergyShield");
+        assert_eq!(modifier.mod_type, ModType::Inc);
+        assert_eq!(modifier.value.as_number(), Some(value));
+        assert_eq!(modifier.slot_name(), Some("weapon2"));
+        assert!(
+            modifier
+                .tags
+                .contains(&ModTag::condition("UsingFocus", false))
+        );
+        let rule = modifier.exporter_rule.as_ref().unwrap();
+        assert_eq!(rule.exporter, ExporterCoverage::Differs);
+        assert_eq!(rule.game_source, "energy_shield_from_focus_+%");
+    }
+}
