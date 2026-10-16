@@ -557,15 +557,18 @@ fn ingest_flask_onslaught_during_effect_stays_in_the_payload() {
     assert_eq!(nested[3].value.as_number(), Some(10.0));
 }
 
-/// Every line unparseable -> **still produces an empty payload** (behavior switch:
-/// vendor's condition-setting is independent of modList, CalcPerform.lua:1634-1643);
-/// unsupported still collects line by line as usual.
+/// No line yields a modifier -> **still produces an empty payload**: the item's
+/// in-effect condition is independent of its modifier list. Lines no rule
+/// recognises are still collected as unsupported, line by line.
 #[test]
 fn ingest_flask_charm_emits_empty_payload_when_nothing_parses() {
     let charm = utility_item(
         "Thawing Charm",
         &["Used when you become Frozen"],
-        &["Energy Shield Recharge starts on use"],
+        &[
+            "Energy Shield Recharge starts on use",
+            "Wibble the enemy's flask",
+        ],
     );
     let ingest = ingest_flask_charm("Charm 2", &charm);
     assert_eq!(ingest.modifiers.len(), 1);
@@ -575,11 +578,11 @@ fn ingest_flask_charm_emits_empty_payload_when_nothing_parses() {
             .as_nested_mods()
             .is_some_and(<[_]>::is_empty)
     );
-    // "Used when you become Frozen" is a trigger-description line (silently
-    // skipped); "Energy Shield Recharge starts on use" is still an unsupported-mod
-    // gap.
+    // "Used when you become Frozen" is a trigger-description line and "Energy
+    // Shield Recharge starts on use" a recognised, unmodelled event: neither
+    // stores a modifier. Only the line no rule recognises is unsupported.
     assert_eq!(
         ingest.unsupported,
-        vec!["Energy Shield Recharge starts on use".to_string()]
+        vec!["Wibble the enemy's flask".to_string()]
     );
 }
