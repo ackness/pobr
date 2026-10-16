@@ -501,9 +501,39 @@ pub struct EhpTerms {
     /// order), feeding per-type recoup (elemental Energy Shield recoup) and
     /// the EsRecoupRate derived detail.
     pub recoupable_by_type: [f64; 5],
+    /// Enemy penetration of each type (`<X>EnemyPen`; Physical and Chaos 0).
+    pub enemy_pen: [f64; 5],
+    /// The player's final resistance before penetration (Physical 0).
+    pub resist_before_pen: [f64; 5],
+    /// The mitigation snapshot every typed hit above was taken through.
+    pub mitigation: MitigationCtx,
+    /// Life and Mind over Matter hit pools (`LifeHitPool`, `<X>MoMHitPool`,
+    /// `<X>ManaEffectiveLife`).
+    pub mom: MomHitPools,
+    pub life_hit_pool_terms: LifeHitPoolTerms,
+    /// The Mind over Matter pool with Energy Shield folded in, before the
+    /// Runic Ward/Aegis/Guard/ally layers of `total_hit_pool`.
+    pub base_hit_pool: [f64; 5],
+}
+
+/// Inputs of the life hit pool: recoverable Life with loss prevention.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct LifeHitPoolTerms {
+    pub life: f64,
+    pub max_life: f64,
+    pub loss_prevented: f64,
+    pub below_half_loss_prevented: f64,
 }
 
 impl EhpTerms {
+    /// Resistance, reduction and post-reduction multipliers together
+    /// (`<X>BaseTakenHitMult`); flat damage taken is outside it.
+    pub(crate) fn base_taken_hit_multiplier(&self, i: usize) -> f64 {
+        self.resist_taken_multi[i]
+            * self.damage_reduction[i].taken_multiplier()
+            * self.after_reduction_multi[i]
+    }
+
     /// Ratio view of the mitigated hit to its converted incoming damage.
     /// An absent incoming type has a zero multiplier, even with flat damage.
     pub(crate) fn taken_hit_multiplier(&self, i: usize) -> f64 {
@@ -970,6 +1000,18 @@ pub fn total_hit_pools(
     pools: &PoolState,
     ctx: &PoolCtx,
 ) -> [f64; 5] {
+    total_hit_pool_stages(mom, energy_shield_recovery_cap, pools, ctx).1
+}
+
+/// The two stages of [`total_hit_pools`]: the Mind over Matter pool with
+/// Energy Shield folded in, then with the Runic Ward/Aegis/Guard/ally layers.
+fn total_hit_pool_stages(
+    mom: &MomHitPools,
+    energy_shield_recovery_cap: f64,
+    pools: &PoolState,
+    ctx: &PoolCtx,
+) -> ([f64; 5], [f64; 5]) {
+    let mut base_by_type = [0.0_f64; 5];
     let mut out = [0.0_f64; 5];
     for dtype in DAMAGE_TYPE_BY_INDEX {
         let i = dtype as usize;
@@ -979,9 +1021,10 @@ pub fn total_hit_pools(
             energy_shield_recovery_cap,
             ctx,
         );
+        base_by_type[i] = base;
         out[i] = extend_total_hit_pool(base, dtype, pools, ctx);
     }
-    out
+    (base_by_type, out)
 }
 
 /// Inputs for the new-view max-hit solver (assembled once per actor, reused per type).
@@ -1299,6 +1342,21 @@ pub fn fill_ehp_pob2(
         // (Pinnacle 3 / Uber 8, ConfigOptions.lua:2072-2074, Modules/Data.lua:231);
         // physical/chaos have no pen.
         let enemy_pen = |name: &str| enemy_base(enemy_db, cfg, name);
+        // Physical and Chaos have no enemy penetration input.
+        let enemy_pen = [
+            0.0,
+            enemy_pen("EnemyFirePen"),
+            enemy_pen("EnemyColdPen"),
+            enemy_pen("EnemyLightningPen"),
+            0.0,
+        ];
+        let resist_before_pen = [
+            0.0,
+            resistances.fire,
+            resistances.cold,
+            resistances.lightning,
+            resistances.chaos,
+        ];
         let resist_after_pen = |resist: f64, pen: f64| -> f64 {
             if resist > 0.0 {
                 (resist - pen).max(0.0)
@@ -1317,13 +1375,9 @@ pub fn fill_ehp_pob2(
                 armour: out.armour,
                 evasion: out.evasion,
                 energy_shield: out.energy_shield,
-                resist_pct: [
-                    0.0,
-                    resist_after_pen(resistances.fire, enemy_pen("EnemyFirePen")),
-                    resist_after_pen(resistances.cold, enemy_pen("EnemyColdPen")),
-                    resist_after_pen(resistances.lightning, enemy_pen("EnemyLightningPen")),
-                    resistances.chaos,
-                ],
+                resist_pct: std::array::from_fn(|i| {
+                    resist_after_pen(resist_before_pen[i], enemy_pen[i])
+                }),
                 deflect_chance_pct: out.deflect_chance,
                 deflect_effect_pct,
             },
@@ -1337,7 +1391,11 @@ pub fn fill_ehp_pob2(
         // mod yet (to avoid disturbing the old view's output), so the new
         // pipeline applies the equivalent via the C-1 keystone snapshot instead.
         if keystones.chaos_inoculation {
-            mit.after_reduction_multi[DamageType::Chaos as usize] = 0.0;
+            let chaos = DamageType::Chaos as usize;
+            mit.after_reduction_multi[chaos] = 0.0;
+            mit.hit_taken_multi[chaos] = 0.0;
+            mit.attack_taken_multi[chaos] = 0.0;
+            mit.spell_taken_multi[chaos] = 0.0;
         }
 
         // The not-hit layer (:2018-2026, reads Track E's evade for all four variants + the avoid output)
@@ -1560,7 +1618,8 @@ pub fn fill_ehp_pob2(
         };
 
         // New-view max hit (:3540-3697)
-        let pool_by_type = total_hit_pools(&mom, es_recovery_cap, &pools, &ctx);
+        let (base_hit_pool, pool_by_type) =
+            total_hit_pool_stages(&mom, es_recovery_cap, &pools, &ctx);
         // Diagnostics: dumps the pool breakdown when POBR_DBG_EHPPOOL=1 (for
         // comparison against the oracle's <Type>TotalHitPool / MoMHitPool / Ward).
         if dbg_env!("POBR_DBG_EHPPOOL").is_some() {
@@ -1627,6 +1686,17 @@ pub fn fill_ehp_pob2(
                 recoupable_by_type,
                 max_hit_solutions,
                 enemy_damage_multipliers: enemy_in.mult_by_type,
+                enemy_pen,
+                resist_before_pen,
+                mitigation: mit,
+                mom,
+                life_hit_pool_terms: LifeHitPoolTerms {
+                    life: base.life_recoverable,
+                    max_life: base.max_life,
+                    loss_prevented: ctx.prevented_life_loss,
+                    below_half_loss_prevented: ctx.life_loss_below_half_prevented,
+                },
+                base_hit_pool,
             },
         }
     };

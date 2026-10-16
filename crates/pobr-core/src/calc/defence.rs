@@ -1372,6 +1372,11 @@ pub fn taken_mult_for_type_with_source(
 pub fn taken_mult_for_type_default(db: &ModDb, cfg: &CalcConfig, damage_type: DamageType) -> f64 {
     let attack = taken_mult_for_type_with_source(db, cfg, damage_type, Some(HitSource::Attack));
     let spell = taken_mult_for_type_with_source(db, cfg, damage_type, Some(HitSource::Spell));
+    average_taken_mult(attack, spell)
+}
+
+/// The Average hit category's multiplier: the mean of the attack and spell layers.
+pub fn average_taken_mult(attack: f64, spell: f64) -> f64 {
     round((attack + spell) / 2.0)
 }
 

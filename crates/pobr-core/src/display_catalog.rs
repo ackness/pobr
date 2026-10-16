@@ -1700,6 +1700,358 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Percent,
             "DamageTakenOnBlock",
         ),
+        // Further retained EHP terms: enemy assembly, the mitigation snapshot and hit pools.
+        computed(
+            "PhysicalEnemyDamageMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "PhysicalEnemyDamageMult",
+        ),
+        computed(
+            "FireEnemyDamageMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "FireEnemyDamageMult",
+        ),
+        computed(
+            "ColdEnemyDamageMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "ColdEnemyDamageMult",
+        ),
+        computed(
+            "LightningEnemyDamageMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "LightningEnemyDamageMult",
+        ),
+        computed(
+            "ChaosEnemyDamageMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "ChaosEnemyDamageMult",
+        ),
+        computed(
+            "PhysicalEnemyPen",
+            Cat::Mitigation,
+            Vt::Percent,
+            "PhysicalEnemyPen",
+        ),
+        computed("FireEnemyPen", Cat::Mitigation, Vt::Percent, "FireEnemyPen"),
+        computed("ColdEnemyPen", Cat::Mitigation, Vt::Percent, "ColdEnemyPen"),
+        computed(
+            "LightningEnemyPen",
+            Cat::Mitigation,
+            Vt::Percent,
+            "LightningEnemyPen",
+        ),
+        computed(
+            "ChaosEnemyPen",
+            Cat::Mitigation,
+            Vt::Percent,
+            "ChaosEnemyPen",
+        ),
+        computed(
+            "PhysicalResistTakenHitMulti",
+            Cat::Mitigation,
+            Vt::Number,
+            "PhysicalResistTakenHitMulti",
+        ),
+        computed(
+            "FireResistTakenHitMulti",
+            Cat::Mitigation,
+            Vt::Number,
+            "FireResistTakenHitMulti",
+        ),
+        computed(
+            "ColdResistTakenHitMulti",
+            Cat::Mitigation,
+            Vt::Number,
+            "ColdResistTakenHitMulti",
+        ),
+        computed(
+            "LightningResistTakenHitMulti",
+            Cat::Mitigation,
+            Vt::Number,
+            "LightningResistTakenHitMulti",
+        ),
+        computed(
+            "ChaosResistTakenHitMulti",
+            Cat::Mitigation,
+            Vt::Number,
+            "ChaosResistTakenHitMulti",
+        ),
+        computed(
+            "PhysicalAttackTakenHitMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "PhysicalAttackTakenHitMult",
+        ),
+        computed(
+            "FireAttackTakenHitMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "FireAttackTakenHitMult",
+        ),
+        computed(
+            "ColdAttackTakenHitMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "ColdAttackTakenHitMult",
+        ),
+        computed(
+            "LightningAttackTakenHitMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "LightningAttackTakenHitMult",
+        ),
+        computed(
+            "ChaosAttackTakenHitMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "ChaosAttackTakenHitMult",
+        ),
+        computed(
+            "PhysicalSpellTakenHitMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "PhysicalSpellTakenHitMult",
+        ),
+        computed(
+            "FireSpellTakenHitMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "FireSpellTakenHitMult",
+        ),
+        computed(
+            "ColdSpellTakenHitMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "ColdSpellTakenHitMult",
+        ),
+        computed(
+            "LightningSpellTakenHitMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "LightningSpellTakenHitMult",
+        ),
+        computed(
+            "ChaosSpellTakenHitMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "ChaosSpellTakenHitMult",
+        ),
+        computed(
+            "PhysicalAfterReductionTakenHitMulti",
+            Cat::Mitigation,
+            Vt::Number,
+            "PhysicalAfterReductionTakenHitMulti",
+        ),
+        computed(
+            "FireAfterReductionTakenHitMulti",
+            Cat::Mitigation,
+            Vt::Number,
+            "FireAfterReductionTakenHitMulti",
+        ),
+        computed(
+            "ColdAfterReductionTakenHitMulti",
+            Cat::Mitigation,
+            Vt::Number,
+            "ColdAfterReductionTakenHitMulti",
+        ),
+        computed(
+            "LightningAfterReductionTakenHitMulti",
+            Cat::Mitigation,
+            Vt::Number,
+            "LightningAfterReductionTakenHitMulti",
+        ),
+        computed(
+            "ChaosAfterReductionTakenHitMulti",
+            Cat::Mitigation,
+            Vt::Number,
+            "ChaosAfterReductionTakenHitMulti",
+        ),
+        computed(
+            "PhysicalBaseTakenHitMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "PhysicalBaseTakenHitMult",
+        ),
+        computed(
+            "FireBaseTakenHitMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "FireBaseTakenHitMult",
+        ),
+        computed(
+            "ColdBaseTakenHitMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "ColdBaseTakenHitMult",
+        ),
+        computed(
+            "LightningBaseTakenHitMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "LightningBaseTakenHitMult",
+        ),
+        computed(
+            "ChaosBaseTakenHitMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "ChaosBaseTakenHitMult",
+        ),
+        computed(
+            "PhysicalDamageReductionMax",
+            Cat::Mitigation,
+            Vt::Percent,
+            "PhysicalDamageReductionMax",
+        ),
+        computed(
+            "FireDamageReductionMax",
+            Cat::Mitigation,
+            Vt::Percent,
+            "FireDamageReductionMax",
+        ),
+        computed(
+            "ColdDamageReductionMax",
+            Cat::Mitigation,
+            Vt::Percent,
+            "ColdDamageReductionMax",
+        ),
+        computed(
+            "LightningDamageReductionMax",
+            Cat::Mitigation,
+            Vt::Percent,
+            "LightningDamageReductionMax",
+        ),
+        computed(
+            "ChaosDamageReductionMax",
+            Cat::Mitigation,
+            Vt::Percent,
+            "ChaosDamageReductionMax",
+        ),
+        computed(
+            "PhysicalManaEffectiveLife",
+            Cat::Resource,
+            Vt::Number,
+            "PhysicalManaEffectiveLife",
+        ),
+        computed(
+            "FireManaEffectiveLife",
+            Cat::Resource,
+            Vt::Number,
+            "FireManaEffectiveLife",
+        ),
+        computed(
+            "ColdManaEffectiveLife",
+            Cat::Resource,
+            Vt::Number,
+            "ColdManaEffectiveLife",
+        ),
+        computed(
+            "LightningManaEffectiveLife",
+            Cat::Resource,
+            Vt::Number,
+            "LightningManaEffectiveLife",
+        ),
+        computed(
+            "ChaosManaEffectiveLife",
+            Cat::Resource,
+            Vt::Number,
+            "ChaosManaEffectiveLife",
+        ),
+        computed(
+            "PhysicalMoMHitPool",
+            Cat::Resource,
+            Vt::Number,
+            "PhysicalMoMHitPool",
+        ),
+        computed(
+            "FireMoMHitPool",
+            Cat::Resource,
+            Vt::Number,
+            "FireMoMHitPool",
+        ),
+        computed(
+            "ColdMoMHitPool",
+            Cat::Resource,
+            Vt::Number,
+            "ColdMoMHitPool",
+        ),
+        computed(
+            "LightningMoMHitPool",
+            Cat::Resource,
+            Vt::Number,
+            "LightningMoMHitPool",
+        ),
+        computed(
+            "ChaosMoMHitPool",
+            Cat::Resource,
+            Vt::Number,
+            "ChaosMoMHitPool",
+        ),
+        computed(
+            "PhysicalTotalHitPool",
+            Cat::Resource,
+            Vt::Number,
+            "PhysicalTotalHitPool",
+        ),
+        computed(
+            "FireTotalHitPool",
+            Cat::Resource,
+            Vt::Number,
+            "FireTotalHitPool",
+        ),
+        computed(
+            "ColdTotalHitPool",
+            Cat::Resource,
+            Vt::Number,
+            "ColdTotalHitPool",
+        ),
+        computed(
+            "LightningTotalHitPool",
+            Cat::Resource,
+            Vt::Number,
+            "LightningTotalHitPool",
+        ),
+        computed(
+            "ChaosTotalHitPool",
+            Cat::Resource,
+            Vt::Number,
+            "ChaosTotalHitPool",
+        ),
+        computed(
+            "DamageReductionMax",
+            Cat::Mitigation,
+            Vt::Percent,
+            "DamageReductionMax",
+        ),
+        computed("LifeHitPool", Cat::Resource, Vt::Number, "LifeHitPool"),
+        computed(
+            "FireResistTotal",
+            Cat::Resistance,
+            Vt::Percent,
+            "FireResistTotal",
+        ),
+        computed(
+            "ColdResistTotal",
+            Cat::Resistance,
+            Vt::Percent,
+            "ColdResistTotal",
+        ),
+        computed(
+            "LightningResistTotal",
+            Cat::Resistance,
+            Vt::Percent,
+            "LightningResistTotal",
+        ),
+        computed(
+            "ChaosResistTotal",
+            Cat::Resistance,
+            Vt::Percent,
+            "ChaosResistTotal",
+        ),
         // The old lowest-max-hit semantics are kept as a supplementary metric
         // (still comparable after F switches total_ehp's semantics).
         computed(
@@ -2219,6 +2571,223 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "ConfiguredNotHitChance" => output.ehp_terms.as_ref().map_or(0.0, |t| t.not_hit_chance),
         "DamageTakenOnBlock" => output.block_effect,
         "TotalEHPLowestMaxHit" => output.total_ehp_lowest_max_hit,
+        "PhysicalEnemyDamageMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.enemy_damage_multipliers[0]),
+        "FireEnemyDamageMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.enemy_damage_multipliers[1]),
+        "ColdEnemyDamageMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.enemy_damage_multipliers[2]),
+        "LightningEnemyDamageMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.enemy_damage_multipliers[3]),
+        "ChaosEnemyDamageMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.enemy_damage_multipliers[4]),
+        "PhysicalEnemyPen" => output.ehp_terms.as_ref().map_or(0.0, |t| t.enemy_pen[0]),
+        "FireEnemyPen" => output.ehp_terms.as_ref().map_or(0.0, |t| t.enemy_pen[1]),
+        "ColdEnemyPen" => output.ehp_terms.as_ref().map_or(0.0, |t| t.enemy_pen[2]),
+        "LightningEnemyPen" => output.ehp_terms.as_ref().map_or(0.0, |t| t.enemy_pen[3]),
+        "ChaosEnemyPen" => output.ehp_terms.as_ref().map_or(0.0, |t| t.enemy_pen[4]),
+        "PhysicalResistTakenHitMulti" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.resist_taken_multi[0]),
+        "FireResistTakenHitMulti" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.resist_taken_multi[1]),
+        "ColdResistTakenHitMulti" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.resist_taken_multi[2]),
+        "LightningResistTakenHitMulti" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.resist_taken_multi[3]),
+        "ChaosResistTakenHitMulti" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.resist_taken_multi[4]),
+        "PhysicalAttackTakenHitMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mitigation.attack_taken_multi[0]),
+        "FireAttackTakenHitMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mitigation.attack_taken_multi[1]),
+        "ColdAttackTakenHitMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mitigation.attack_taken_multi[2]),
+        "LightningAttackTakenHitMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mitigation.attack_taken_multi[3]),
+        "ChaosAttackTakenHitMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mitigation.attack_taken_multi[4]),
+        "PhysicalSpellTakenHitMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mitigation.spell_taken_multi[0]),
+        "FireSpellTakenHitMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mitigation.spell_taken_multi[1]),
+        "ColdSpellTakenHitMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mitigation.spell_taken_multi[2]),
+        "LightningSpellTakenHitMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mitigation.spell_taken_multi[3]),
+        "ChaosSpellTakenHitMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mitigation.spell_taken_multi[4]),
+        "PhysicalAfterReductionTakenHitMulti" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.after_reduction_multi[0]),
+        "FireAfterReductionTakenHitMulti" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.after_reduction_multi[1]),
+        "ColdAfterReductionTakenHitMulti" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.after_reduction_multi[2]),
+        "LightningAfterReductionTakenHitMulti" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.after_reduction_multi[3]),
+        "ChaosAfterReductionTakenHitMulti" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.after_reduction_multi[4]),
+        "PhysicalBaseTakenHitMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.base_taken_hit_multiplier(0)),
+        "FireBaseTakenHitMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.base_taken_hit_multiplier(1)),
+        "ColdBaseTakenHitMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.base_taken_hit_multiplier(2)),
+        "LightningBaseTakenHitMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.base_taken_hit_multiplier(3)),
+        "ChaosBaseTakenHitMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.base_taken_hit_multiplier(4)),
+        "PhysicalDamageReductionMax" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mitigation.dr_max_pct[0]),
+        "FireDamageReductionMax" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mitigation.dr_max_pct[1]),
+        "ColdDamageReductionMax" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mitigation.dr_max_pct[2]),
+        "LightningDamageReductionMax" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mitigation.dr_max_pct[3]),
+        "ChaosDamageReductionMax" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mitigation.dr_max_pct[4]),
+        "PhysicalManaEffectiveLife" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mom.effective_life_by_type[0]),
+        "FireManaEffectiveLife" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mom.effective_life_by_type[1]),
+        "ColdManaEffectiveLife" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mom.effective_life_by_type[2]),
+        "LightningManaEffectiveLife" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mom.effective_life_by_type[3]),
+        "ChaosManaEffectiveLife" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mom.effective_life_by_type[4]),
+        "PhysicalMoMHitPool" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mom.hit_pool_by_type[0]),
+        "FireMoMHitPool" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mom.hit_pool_by_type[1]),
+        "ColdMoMHitPool" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mom.hit_pool_by_type[2]),
+        "LightningMoMHitPool" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mom.hit_pool_by_type[3]),
+        "ChaosMoMHitPool" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mom.hit_pool_by_type[4]),
+        "PhysicalTotalHitPool" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.total_hit_pool[0]),
+        "FireTotalHitPool" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.total_hit_pool[1]),
+        "ColdTotalHitPool" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.total_hit_pool[2]),
+        "LightningTotalHitPool" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.total_hit_pool[3]),
+        "ChaosTotalHitPool" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.total_hit_pool[4]),
+        "DamageReductionMax" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mitigation.dr_max_global),
+        "LifeHitPool" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.mom.life_hit_pool),
+        "FireResistTotal" => output.fire_resistance_total,
+        "ColdResistTotal" => output.cold_resistance_total,
+        "LightningResistTotal" => output.lightning_resistance_total,
+        "ChaosResistTotal" => output.chaos_resistance_total,
 
         _ => 0.0,
     }

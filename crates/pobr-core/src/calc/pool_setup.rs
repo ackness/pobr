@@ -254,6 +254,8 @@ pub fn minimum_es_bypass(ctx: &PoolCtx) -> f64 {
 /// starting point at :2945); `effective_life_by_type` is the base for TotalPool (the panel view).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct MomHitPools {
+    /// Recoverable Life with loss prevention (`LifeHitPool`), the life side of every hit pool.
+    pub life_hit_pool: f64,
     pub shared_effective_life: f64,
     pub shared_hit_pool: f64,
     pub effective_life_by_type: [f64; 5],
@@ -363,6 +365,7 @@ pub fn mom_hit_pools(ctx: &PoolCtx, base: &PoolBaseStats) -> MomHitPools {
         }
     }
     MomHitPools {
+        life_hit_pool,
         shared_effective_life,
         shared_hit_pool,
         effective_life_by_type,

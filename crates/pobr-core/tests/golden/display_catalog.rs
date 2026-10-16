@@ -152,13 +152,17 @@ fn catalog_entry_counts_locked() {
         // Damaging-ailment chance/duration/multipliers/roll/stacks/source ranges and ShockChance (+34).
         // Hit Calcs: five types × Min/Max/EffMult, TotalMin/TotalMax/CritEffect/
         // DpsMultiplier, each with MainHand/OffHand; Repeats and TotalNumberOfHits (+59).
+        // {Physical,Fire,Cold,Lightning,Chaos}{EnemyDamageMult,EnemyPen,ResistTakenHitMulti,
+        // AttackTakenHitMult,SpellTakenHitMult,AfterReductionTakenHitMulti,BaseTakenHitMult,
+        // DamageReductionMax,ManaEffectiveLife,MoMHitPool,TotalHitPool}, DamageReductionMax,
+        // LifeHitPool and {Fire,Cold,Lightning,Chaos}ResistTotal (+61).
         // Limit and modifier views: PresenceRadius, CharmLimit, EnemyCurseLimit,
         // EnemyMarkLimit, ActionSpeedMod, MovementSpeedMod, LightRadiusMod,
         // {Life,Mana,EnergyShield}RecoveryRateMod, LowLifePercentage, LowestAttribute,
         // Global{Gem,Item,Weapon}AttributeRequirements, MaximumChill, MaximumShock,
         // CurrentChill and CurrentShock (+19).
         // PinBuildupAvg (+1).
-        444,
+        505,
         "a change in Computed entry count needs explicit review"
     );
 }
@@ -770,5 +774,105 @@ fn ehp_catalog_fields_have_neutral_defaults_and_preserve_units() {
         assert_eq!(def.value_type, unit);
         assert_eq!(def.category, DisplayStatCategory::Mitigation);
         assert_eq!(display_value(&OutputTable::default(), &id), 0.0);
+    }
+}
+
+#[test]
+fn further_ehp_catalog_fields_have_units_and_neutral_defaults() {
+    let catalog = display_catalog();
+    let mut ids = vec![
+        (
+            "DamageReductionMax".to_string(),
+            StatValueType::Percent,
+            DisplayStatCategory::Mitigation,
+        ),
+        (
+            "LifeHitPool".to_string(),
+            StatValueType::Number,
+            DisplayStatCategory::Resource,
+        ),
+    ];
+    for kind in ["Physical", "Fire", "Cold", "Lightning", "Chaos"] {
+        for (suffix, unit, category) in [
+            (
+                "EnemyDamageMult",
+                StatValueType::Number,
+                DisplayStatCategory::Mitigation,
+            ),
+            (
+                "EnemyPen",
+                StatValueType::Percent,
+                DisplayStatCategory::Mitigation,
+            ),
+            (
+                "ResistTakenHitMulti",
+                StatValueType::Number,
+                DisplayStatCategory::Mitigation,
+            ),
+            (
+                "AttackTakenHitMult",
+                StatValueType::Number,
+                DisplayStatCategory::Mitigation,
+            ),
+            (
+                "SpellTakenHitMult",
+                StatValueType::Number,
+                DisplayStatCategory::Mitigation,
+            ),
+            (
+                "AfterReductionTakenHitMulti",
+                StatValueType::Number,
+                DisplayStatCategory::Mitigation,
+            ),
+            (
+                "BaseTakenHitMult",
+                StatValueType::Number,
+                DisplayStatCategory::Mitigation,
+            ),
+            (
+                "DamageReductionMax",
+                StatValueType::Percent,
+                DisplayStatCategory::Mitigation,
+            ),
+            (
+                "ManaEffectiveLife",
+                StatValueType::Number,
+                DisplayStatCategory::Resource,
+            ),
+            (
+                "MoMHitPool",
+                StatValueType::Number,
+                DisplayStatCategory::Resource,
+            ),
+            (
+                "TotalHitPool",
+                StatValueType::Number,
+                DisplayStatCategory::Resource,
+            ),
+        ] {
+            ids.push((format!("{kind}{suffix}"), unit, category));
+        }
+        if kind != "Physical" {
+            ids.push((
+                format!("{kind}ResistTotal"),
+                StatValueType::Percent,
+                DisplayStatCategory::Resistance,
+            ));
+        }
+        // No reflect model and no damage-over-time-only resistance.
+        for missing in ["TakenReflect", "ResistOverTime"] {
+            assert!(
+                !catalog
+                    .iter()
+                    .any(|d| d.id.as_str() == format!("{kind}{missing}"))
+            );
+        }
+    }
+    for (id, unit, category) in ids {
+        let def = catalog.iter().find(|d| d.id.as_str() == id).unwrap();
+        assert_eq!(def.pob_key.as_deref(), Some(id.as_str()));
+        assert_eq!(def.value_type, unit, "{id}");
+        assert_eq!(def.category, category, "{id}");
+        assert_eq!(display_value(&OutputTable::default(), &id), 0.0, "{id}");
     }
 }

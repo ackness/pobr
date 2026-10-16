@@ -658,6 +658,7 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.chaos_resistance = chaos_resistance.final_value;
     env.player.output.max_chaos_resistance = chaos_resistance.max;
     env.player.output.chaos_resistance_over_cap = chaos_resistance.over_cap;
+    env.player.output.chaos_resistance_total = chaos_resistance.total;
     // Accuracy rating as the main-hand pass reads it (the hit chance input).
     env.player.output.accuracy = {
         let input = player_input(env);
