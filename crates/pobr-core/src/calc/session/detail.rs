@@ -117,6 +117,13 @@ pub fn source_names(stat: &str) -> Vec<String> {
         ],
         "ShockEffect" => &["EnemyShockMagnitude", "AilmentMagnitude", "CannotShock"],
         "AilmentThreshold" => &["AilmentThreshold"],
+        "LifeOnKill" => &[
+            "LifeOnKill",
+            "CannotGainLife",
+            "CannotRecoverLifeOutsideLeech",
+        ],
+        "ManaOnKill" => &["ManaOnKill", "CannotGainMana"],
+        "EnergyShieldOnKill" => &["EnergyShieldOnKill", "CannotGainEnergyShield"],
         "FreezeBuildupPct" => &[
             "FreezeBuildup",
             "EnemyFreezeBuildup",

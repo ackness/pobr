@@ -4464,6 +4464,28 @@
       ],
       "exporter": "absent",
       "game_source": "charm_gain_onslaught_during_effect; gain_onslaught_during_flask_effect; https://poe2db.tw/us/Onslaught"
+    },
+    {
+      "id": "energy_shield_recovery_on_kill_maximum",
+      "pattern": "recover (\\d+(?:\\.\\d+)?)% of maximum energy shield on kill",
+      "mods": [
+        {
+          "name": "EnergyShieldOnKill",
+          "type": "BASE",
+          "value": 1,
+          "tags": [
+            {
+              "type": "PercentStat",
+              "stat": "EnergyShield",
+              "percent": "$1"
+            }
+          ]
+        }
+      ],
+      "verified": true,
+      "batch": "affix-coverage",
+      "game_source": "recover_energy_shield_%_on_kill: Recover #% of maximum Energy Shield on Kill",
+      "source_note": "Recovery per kill is a percentage of maximum Energy Shield; no kill rate is assumed."
     }
   ]
 }

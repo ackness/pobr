@@ -29,6 +29,9 @@ pub struct FullDpsOutput {
 pub struct OutputTable {
     /// Threshold, recovery per kill, and selected-hit debuff views.
     pub ailment_threshold: f64,
+    pub life_on_kill: f64,
+    pub mana_on_kill: f64,
+    pub energy_shield_on_kill: f64,
     pub utility_stats: std::collections::BTreeMap<String, f64>,
     pub decay_dps: f64,
     pub mirage_burning_ground_dps: f64,
@@ -536,6 +539,9 @@ impl Default for OutputTable {
     fn default() -> Self {
         Self {
             ailment_threshold: 0.0,
+            life_on_kill: 0.0,
+            mana_on_kill: 0.0,
+            energy_shield_on_kill: 0.0,
             utility_stats: Default::default(),
             decay_dps: 0.0,
             mirage_burning_ground_dps: 0.0,

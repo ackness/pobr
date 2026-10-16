@@ -677,6 +677,14 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "AilmentThreshold",
         ),
+        computed("LifeOnKill", Cat::Recovery, Vt::Number, "LifeOnKill"),
+        computed("ManaOnKill", Cat::Recovery, Vt::Number, "ManaOnKill"),
+        computed(
+            "EnergyShieldOnKill",
+            Cat::Recovery,
+            Vt::Number,
+            "EnergyShieldOnKill",
+        ),
         // Ailment extensions (Wave 2 / Lane B)
         computed("ChillEffect", Cat::Ailment, Vt::Percent, "ChillEffect"),
         computed(
@@ -1229,6 +1237,9 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         // Ailment extensions
         "ChillEffect" => output.chill_effect,
         "AilmentThreshold" => output.ailment_threshold,
+        "LifeOnKill" => output.life_on_kill,
+        "ManaOnKill" => output.mana_on_kill,
+        "EnergyShieldOnKill" => output.energy_shield_on_kill,
         "FreezeBuildupPct" => output.freeze_buildup_pct,
         "ElectrocuteBuildupPct" => output.electrocute_buildup_pct,
         "BleedStackedDPS" => output.bleed_stacked_dps,

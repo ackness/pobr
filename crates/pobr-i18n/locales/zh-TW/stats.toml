@@ -463,3 +463,6 @@ SpellProjectileBlockChanceIsUnlucky = "法術投射物格擋為不幸"
 
 # Threshold and per-kill/debuff outputs
 AilmentThreshold = "元素異常狀態門檻"
+LifeOnKill = "擊殺恢復生命"
+ManaOnKill = "擊殺恢復魔力"
+EnergyShieldOnKill = "擊殺恢復能量護盾"

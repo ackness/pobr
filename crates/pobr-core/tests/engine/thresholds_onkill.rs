@@ -33,6 +33,85 @@ fn ailment_threshold_adds_arbitrary_es_rolls_before_increases() {
 }
 
 #[test]
+fn on_kill_recovery_adds_flat_and_percent_of_final_maximum_pools() {
+    let mut session = session(&[
+        "+2000 to maximum Energy Shield",
+        "7 Life per Enemy Killed",
+        "11 Mana per Enemy Killed",
+        "13 Energy Shield per Enemy Killed",
+        "Recover 2% of maximum Life on Kill",
+        "Recover 3% of maximum Mana on Kill",
+        "Recover 4% of maximum Energy Shield on Kill",
+        "50% increased maximum Life",
+        "100% increased maximum Mana",
+    ]);
+    session.perform_minimal().unwrap();
+    // 7 + 1500*.02 = 37; 11 + 1000*.03 = 41; 13 + 2000*.04 = 93.
+    for (id, expected) in [
+        ("LifeOnKill", 37.0),
+        ("ManaOnKill", 41.0),
+        ("EnergyShieldOnKill", 93.0),
+    ] {
+        assert_eq!(display_value(session.output(), id), expected, "{id}");
+        assert!(
+            session
+                .detail_sources(id)
+                .iter()
+                .any(|group| !group.rows.is_empty())
+        );
+    }
+    assert!(
+        session.unsupported_modifier_texts().is_empty(),
+        "{:?}",
+        session.unsupported_modifier_texts()
+    );
+}
+
+#[test]
+fn on_kill_recovery_respects_resource_gain_restrictions() {
+    for restriction in [
+        "CannotGainLife",
+        "CannotRecoverLifeOutsideLeech",
+        "CannotGainMana",
+        "CannotGainEnergyShield",
+    ] {
+        let mut session = session(&[
+            "+2000 to maximum Energy Shield",
+            "Recover 2% of maximum Life on Kill",
+            "Recover 3% of maximum Mana on Kill",
+            "Recover 4% of maximum Energy Shield on Kill",
+        ]);
+        session.add_modifiers([Modifier::flag(restriction)]);
+        session.perform_minimal().unwrap();
+        let out = session.output();
+        assert_eq!(
+            out.life_on_kill,
+            if restriction.contains("Life") {
+                0.0
+            } else {
+                20.0
+            }
+        );
+        assert_eq!(
+            out.mana_on_kill,
+            if restriction.contains("Mana") {
+                0.0
+            } else {
+                15.0
+            }
+        );
+        assert_eq!(
+            out.energy_shield_on_kill,
+            if restriction.contains("EnergyShield") {
+                0.0
+            } else {
+                80.0
+            }
+        );
+    }
+}
+
+#[test]
 fn freeze_buildup_reads_the_game_text_modifier() {
     let db = {
         let mut session = session(&[

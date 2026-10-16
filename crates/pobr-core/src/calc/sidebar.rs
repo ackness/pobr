@@ -203,4 +203,24 @@ fn fill_threshold_and_kill_views(env: &mut Env) {
                 * factor(db, cfg, &["AilmentThreshold"])
         })
         .max(0.0);
+    for (resource, value) in [
+        ("Life", &mut out.life_on_kill),
+        ("Mana", &mut out.mana_on_kill),
+        ("EnergyShield", &mut out.energy_shield_on_kill),
+    ] {
+        // Flat and PercentStat-tagged gains share this query. It describes
+        // one kill, independently of the build's damage or kill frequency.
+        let gain = db.sum(
+            ModType::Base,
+            cfg,
+            &[ModName::from(format!("{resource}OnKill"))],
+        );
+        *value = if db.flag(cfg, &format!("CannotGain{resource}"))
+            || resource == "Life" && db.flag(cfg, "CannotRecoverLifeOutsideLeech")
+        {
+            0.0
+        } else {
+            gain.max(0.0).floor()
+        };
+    }
 }

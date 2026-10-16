@@ -505,3 +505,6 @@ SpellProjectileBlockChanceIsUnlucky = "Spell projectile block is unlucky"
 
 # Threshold and per-kill/debuff outputs
 AilmentThreshold = "Elemental Ailment Threshold"
+LifeOnKill = "Life Recovery on Kill"
+ManaOnKill = "Mana Recovery on Kill"
+EnergyShieldOnKill = "Energy Shield Recovery on Kill"
