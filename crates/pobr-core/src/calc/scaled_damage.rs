@@ -181,8 +181,13 @@ pub fn all_mult(scaled: &ScaledDamage, extras: &AllMultExtras) -> f64 {
 /// The two DPS end factors (PoB2 `CalcOffence.lua:3128-3130` / `:3863` / `:4407`).
 ///
 /// `TotalDPS = AverageDamage × (HitSpeed or Speed) × dps_multiplier × quantity_multiplier`.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct DpsEndFactors {
+    pub skill: f64,
+    pub increased: f64,
+    pub more: f64,
+    pub grenade: f64,
+    pub barrage: f64,
     /// `skillData.dpsMultiplier × calcLib.mod(skillModList, cfg, "DPS")` (`:3863`).
     pub dps_multiplier: f64,
     /// `max(Sum(BASE, cfg, "QuantityMultiplier"), 1)` (`:3128`, floors at 1.0).
@@ -252,15 +257,20 @@ pub fn dps_end_factors(
             1.0
         }
     };
-    let dps_multiplier = skill_dps_multiplier.unwrap_or(1.0)
-        * (1.0 + db.sum(ModType::Inc, cfg, &dps_names) / 100.0)
-        * db.more(cfg, &dps_names)
-        * (1.0 + activate_twice / 100.0)
-        * barrage_repeats_more;
+    let skill = skill_dps_multiplier.unwrap_or(1.0);
+    let increased = db.sum(ModType::Inc, cfg, &dps_names);
+    let more = db.more(cfg, &dps_names);
+    let grenade = 1.0 + activate_twice / 100.0;
+    let dps_multiplier = skill * (1.0 + increased / 100.0) * more * grenade * barrage_repeats_more;
     let quantity_multiplier = db
         .sum(ModType::Base, cfg, &[ModName::from("QuantityMultiplier")])
         .max(1.0);
     DpsEndFactors {
+        skill,
+        increased,
+        more,
+        grenade,
+        barrage: barrage_repeats_more,
         dps_multiplier,
         quantity_multiplier,
     }

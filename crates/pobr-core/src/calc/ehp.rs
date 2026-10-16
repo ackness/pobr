@@ -1259,6 +1259,7 @@ pub fn fill_ehp_pob2(
         physical_dr: f64,
         n_hits: f64,
         n_mitigated: f64,
+        total_hits: f64,
         total_in: f64,
         total_ehp_pob2: f64,
         max_hits: [f64; 5],
@@ -1590,6 +1591,7 @@ pub fn fill_ehp_pob2(
             physical_dr: 100.0 - physical_reduction.taken_multiplier() * 100.0,
             n_hits,
             n_mitigated,
+            total_hits,
             total_in: enemy_in.total_in,
             total_ehp_pob2,
             max_hits,
@@ -1635,6 +1637,7 @@ pub fn fill_ehp_pob2(
     out.physical_damage_reduction = computed.physical_dr;
     out.number_of_damaging_hits = computed.n_hits;
     out.number_of_mitigated_hits = computed.n_mitigated;
+    out.total_number_of_hits = computed.total_hits;
     out.total_enemy_damage_in = computed.total_in;
     out.total_ehp_pob2 = computed.total_ehp_pob2;
     out.physical_max_hit_pob2 = computed.max_hits[DamageType::Physical as usize];
