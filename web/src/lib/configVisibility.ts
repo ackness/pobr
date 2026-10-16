@@ -1,7 +1,14 @@
 import type { ConfigContext, ConfigInputValue, ConfigOption } from '../api/types';
 import { configDefaultValue } from './configDefaults';
+import gameRelevance from './configGameRelevance.json';
 
 export type Applicability = 'applicable' | 'not_applicable' | 'unknown';
+
+/** Generated from the same game-data rule as config:coverage. Unknown versions
+ * stay visible until their snapshot has been audited. Saved inputs are separate. */
+export function configExistsInGame(option: ConfigOption, dataVersion: string | null | undefined): boolean {
+  return dataVersion !== gameRelevance.data_version || !Object.hasOwn(gameRelevance.excluded, option.var);
+}
 
 /** Resolve dependencies against defaults without turning defaults into saved values. */
 export function configVisibilityInputs(options: ConfigOption[], inputs: Record<string, ConfigInputValue>): Record<string, ConfigInputValue> {
