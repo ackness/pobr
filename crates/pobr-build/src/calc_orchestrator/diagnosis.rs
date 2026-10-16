@@ -169,6 +169,73 @@ pub(crate) const READ_OUTSIDE_THE_DATABASE: &[(&str, &str)] = &[
     ),
 ];
 
+/// A confirmed reader that only runs under a particular state. Every entry
+/// needs an off/on ledger regression in `tests/skills/line_usage.rs`; this is
+/// not a list of names presumed to be implemented.
+#[derive(Debug, Clone, Copy, serde::Serialize)]
+pub struct ReadGate {
+    pub state: &'static str,
+    pub config_option: Option<&'static str>,
+}
+
+impl ReadGate {
+    pub(crate) fn reason(self) -> String {
+        match self.config_option {
+            Some(option) => format!("needs config: {} ({option})", self.state),
+            None => format!("read only while {}", self.state),
+        }
+    }
+}
+
+/// Gated readers, alongside the consumers outside the database. Keep the
+/// actual consumer here so a registry entry can be checked against its code.
+pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
+    // `calc::skill_use_time::action_speed_factor`.
+    (
+        "UnaffectedBySlows",
+        ReadGate {
+            state: "a slow applies to you",
+            config_option: None,
+        },
+    ),
+    (
+        "SlowEffectOnSelf",
+        ReadGate {
+            state: "a slow applies to you and you are not unaffected by slows",
+            config_option: None,
+        },
+    ),
+    // `rules::archon::expand` (combat snapshot).
+    (
+        "ArchonMovementSpeed",
+        ReadGate {
+            state: "Affected by an Archon buff",
+            config_option: Some("conditionAffectedByArchon"),
+        },
+    ),
+    (
+        "ArchonElementalResistance",
+        ReadGate {
+            state: "Affected by an Archon buff",
+            config_option: Some("conditionAffectedByArchon"),
+        },
+    ),
+    (
+        "ArchonEffect",
+        ReadGate {
+            state: "Affected by an Archon buff",
+            config_option: Some("conditionAffectedByArchon"),
+        },
+    ),
+];
+
+pub(crate) fn read_under_a_state(name: &str) -> Option<ReadGate> {
+    READ_UNDER_A_STATE
+        .iter()
+        .find(|(registered, _)| *registered == name)
+        .map(|(_, gate)| *gate)
+}
+
 /// What consumes `name` outside the modifier database, when something does.
 pub(crate) fn read_outside_the_database(name: &str) -> Option<&'static str> {
     if matches!(
@@ -243,12 +310,19 @@ const SET_BY_THE_ORCHESTRATION: &[&str] = &[
     "DisableEHPGainOnBlock",
 ];
 
+/// A condition determined from the build or by a calculation pass, rather
+/// than a missing input. Share the diagnosis registries with the line ledger.
+pub(crate) fn condition_set_from_build(condition: &str) -> bool {
+    SET_BY_THE_ORCHESTRATION.contains(&condition)
+        || pobr_core::calc::session::CONDITIONS_SET_BY_A_PASS.contains(&condition)
+}
+
 /// The config option that sets `condition`, if one does: its own
 /// `condition<condition>` input first, else an option that implies it or
 /// whose effect writes `Condition:<X>`. Written on the enemy, that is
 /// `Enemy<X>` in the calculation's conditions (and `<X>` as well when the
 /// effect has no tags or flags).
-fn config_option_setting(catalog: &ConfigCatalog, condition: &str) -> Option<String> {
+pub(crate) fn config_option_setting(catalog: &ConfigCatalog, condition: &str) -> Option<String> {
     let own = format!("condition{condition}");
     if catalog.by_var.contains_key(&own) {
         return Some(own);
@@ -376,6 +450,7 @@ pub fn diagnose(
         .unread_modifiers()
         .into_iter()
         .filter(|modifier| read_outside_the_database(modifier.name.as_str()).is_none())
+        .filter(|modifier| read_under_a_state(modifier.name.as_str()).is_none())
         .filter(|modifier| !depended_on(modifier.name.as_str()))
         .map(ModifierRef::of)
         .collect();

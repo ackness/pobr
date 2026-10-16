@@ -697,13 +697,16 @@ def gather_lines(results: list, status: str) -> list:
         -len(item[1]["actionable"]), -len(item[1]["builds"]), item[0]))
 
 
+def reader_union(ledgers) -> set:
+    """Names queried by any worked build, shared with the game-text gap queue."""
+    return {name for ledger in ledgers for name in (ledger.get("reads") or [])}
+
+
 def gather_unread(results: list) -> list:
     """Modifier names stored and never read, by name. First the names no
     triaged build reads, which have no reader at all; a name another build
     reads is one this build's skills have no use for."""
-    read = set()
-    for result in results:
-        read.update(result["ledger"]["reads"])
+    read = reader_union(result["ledger"] for result in results)
     gathered = {}
     for result in results:
         for item in result["ledger"]["unread"]:
