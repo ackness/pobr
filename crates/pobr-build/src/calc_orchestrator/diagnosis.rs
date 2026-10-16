@@ -486,6 +486,31 @@ pub(crate) fn config_option_setting(catalog: &ConfigCatalog, condition: &str) ->
         .map(|option| option.var.clone())
 }
 
+/// The config option that writes `Multiplier:<multiplier>`, if one does:
+/// an effect (or per-option effect) with that exact name. Used by the line
+/// ledger to file a multiplier-scaled-to-0 line as config-gated instead of
+/// dropped. Unlike [`config_option_setting`], there is no `condition`-prefix
+/// convention to honour: the multiplier name is the whole key.
+///
+/// [`config_option_setting`]: crate::calc_orchestrator::diagnosis::config_option_setting
+pub(crate) fn multiplier_option_setting(
+    catalog: &ConfigCatalog,
+    multiplier: &str,
+) -> Option<String> {
+    let wanted = format!("Multiplier:{multiplier}");
+    catalog
+        .options
+        .iter()
+        .find(|option| {
+            option
+                .effects
+                .iter()
+                .chain(option.option_effects.values().flatten())
+                .any(|effect| effect.name == wanted)
+        })
+        .map(|option| option.var.clone())
+}
+
 /// [`CalculationSession::unset_conditions`] less what the orchestration would
 /// have set for another build, each condition once with the modifiers that
 /// wait for it and the config option that could set it.

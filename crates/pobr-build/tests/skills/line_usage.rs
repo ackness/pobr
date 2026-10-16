@@ -481,6 +481,64 @@ Implicits: 0
 }
 
 #[test]
+fn curse_on_self_count_gates_per_curse_damage() {
+    // Game stat damage_+%_per_active_curse_on_self (Warding Fetish passive
+    // 31925): 30% per curse, so 2 curses is 60% increased Damage.
+    let data = data();
+    let text = "30% increased Damage per Curse on you";
+    for curses in [None, Some(2.0)] {
+        let config = curses
+            .map(|n| {
+                format!(r#"<Config><Input name="multiplierCursesOnSelf" number="{n}"/></Config>"#)
+            })
+            .unwrap_or_default();
+        let build = parse_build(&format!(
+            r#"<PathOfBuilding2>
+<Build level="80" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
+{config}</PathOfBuilding2>"#
+        ))
+        .unwrap();
+        let diagnosis = diagnose(
+            &build,
+            &data,
+            &DataOrchestratorOptions {
+                extra_modifier_texts: vec![text.to_string()],
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let ledger = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+        let row = ledger
+            .lines
+            .iter()
+            .find(|row| row.text.as_deref() == Some(text))
+            .unwrap();
+        let modifier = &row.modifiers[0];
+        assert_eq!(modifier.name, "Damage", "{row:?}");
+        match curses {
+            None => {
+                assert_eq!(modifier.status, ModifierStatus::Inactive, "{row:?}");
+                assert_eq!(
+                    modifier.reason.as_deref(),
+                    Some("scaled to 0: Multiplier CurseOnSelf is 0"),
+                    "{row:?}"
+                );
+                assert_eq!(
+                    modifier.read_gate.map(|gate| gate.config_option),
+                    Some(Some("multiplierCursesOnSelf")),
+                    "{modifier:?}"
+                );
+            }
+            Some(_) => {
+                assert_eq!(modifier.status, ModifierStatus::Applied, "{row:?}");
+                assert_eq!(modifier.applied, Some(60.0), "{row:?}");
+            }
+        }
+    }
+}
+
+#[test]
 fn config_setters_include_conditions_already_known_to_the_engine() {
     let data = data();
     let text = "20% faster start of Energy Shield Recharge while affected by an Archon Buff";

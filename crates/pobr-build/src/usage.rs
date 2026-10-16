@@ -39,7 +39,7 @@ use serde::Serialize;
 use crate::breakdown::BREAKDOWN_STATS;
 use crate::calc_orchestrator::{
     ReadGate, condition_set_from_build, config_option_setting, engine_ctx,
-    read_outside_the_database, read_under_a_state,
+    multiplier_option_setting, read_outside_the_database, read_under_a_state,
 };
 use crate::{Build, BuildData, Diagnosis, LineFate, ModifierRef};
 
@@ -416,11 +416,17 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
                     .flatten(),
                     read_gate: (status == ModifierStatus::Inactive)
                         .then(|| {
-                            missing_slot_base_gate(modifier, &slot_bases).or_else(|| {
-                                (!diagnosis.reads.sites.contains_key(modifier.name.as_str()))
-                                    .then(|| read_under_a_state(modifier.name.as_str()))
-                                    .flatten()
-                            })
+                            missing_slot_base_gate(modifier, &slot_bases)
+                                .or_else(|| {
+                                    (!diagnosis.reads.sites.contains_key(modifier.name.as_str()))
+                                        .then(|| read_under_a_state(modifier.name.as_str()))
+                                        .flatten()
+                                })
+                                .or_else(|| {
+                                    reason
+                                        .as_ref()
+                                        .and_then(|reason| multiplier_zero_gate(reason, data))
+                                })
                         })
                         .flatten(),
                     status,
@@ -768,6 +774,38 @@ fn missing_slot_base_gate(
         state,
         config_option: None,
     })
+}
+
+/// An inactive line scaled to 0 by a multiplier with a config input writing
+/// it: gated on that count so the gap queue files it as config-gated, not
+/// dropped. The option comes from the config catalog (the same source as
+/// `condition_configs`); nothing is hand-listed. `ReadGate` holds `&'static
+/// str`, so the dynamic state and option names are leaked: the ledger is a
+/// diagnostic path, not hot, and a gated line costs two small strings.
+fn multiplier_zero_gate(reason: &str, data: &BuildData) -> Option<ReadGate> {
+    let rest = reason.strip_prefix("scaled to 0: ")?;
+    let catalog = data.config_catalog.as_deref()?;
+    for part in rest.split("; ") {
+        let after = part.strip_prefix("Multiplier ")?;
+        let name = after.split(" is ").next()?;
+        let bare = name.rsplit('.').next().unwrap_or(name);
+        for candidate in std::iter::once(bare).chain(bare.split('|').filter(|piece| *piece != bare))
+        {
+            let candidate = candidate.trim();
+            if candidate.is_empty() {
+                continue;
+            }
+            if let Some(option) = multiplier_option_setting(catalog, candidate) {
+                let state: &'static str = Box::leak(format!("{candidate} is 0").into_boxed_str());
+                let option: &'static str = Box::leak(option.into_boxed_str());
+                return Some(ReadGate {
+                    state,
+                    config_option: Some(option),
+                });
+            }
+        }
+    }
+    None
 }
 
 /// What became of `modifier`, and why when it is not applied.

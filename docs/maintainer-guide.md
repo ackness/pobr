@@ -633,7 +633,7 @@ simulated. “#% Chance to gain a Charge when you kill an enemy”
 factor. The kill rate is the PoBR config input `enemyKillsPerSecond`
 (`Multiplier:EnemyKillsPerSecond`, merged with the Energy inputs by
 `append_energy_options`); left empty, the line is inactive with that config
-gate and no kill rate is assumed. The rule is exporter-absent. Lavianga's “This Flask cannot be Used but
+gate and no kill rate is assumed. The rule is exporter-absent. “#% increased Damage per Curse on you” (`damage_+%_per_active_curse_on_self`) scales by the PoBR config input `multiplierCursesOnSelf` (`Multiplier:CurseOnSelf`); with no count the line is inactive with that config gate. Lavianga's “This Flask cannot be Used but
 applies its Effect constantly” (`local_flask_always_drinking`) reports zero
 available uses while keeping its recovery rate.
 
