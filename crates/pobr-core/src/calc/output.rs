@@ -27,6 +27,18 @@ pub struct FullDpsOutput {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutputTable {
+    /// Player debuff modifier views; durations are percentages of base duration.
+    pub curse_effect_on_self: f64,
+    pub self_bleed_duration: f64,
+    pub self_poison_duration: f64,
+    pub self_ignite_duration: f64,
+    pub self_chill_duration: f64,
+    pub self_freeze_duration: f64,
+    pub self_shock_duration: f64,
+    pub corrupted_blood_immunity: bool,
+    pub maim_immunity: bool,
+    pub hinder_immunity: bool,
+
     /// Threshold, recovery per kill, and selected-hit debuff views.
     pub ailment_threshold: f64,
     pub life_on_kill: f64,
@@ -547,6 +559,17 @@ pub struct MinionOutput {
 impl Default for OutputTable {
     fn default() -> Self {
         Self {
+            curse_effect_on_self: 100.0,
+            self_bleed_duration: 100.0,
+            self_poison_duration: 100.0,
+            self_ignite_duration: 100.0,
+            self_chill_duration: 100.0,
+            self_freeze_duration: 100.0,
+            self_shock_duration: 100.0,
+            corrupted_blood_immunity: false,
+            maim_immunity: false,
+            hinder_immunity: false,
+
             ailment_threshold: 0.0,
             life_on_kill: 0.0,
             mana_on_kill: 0.0,

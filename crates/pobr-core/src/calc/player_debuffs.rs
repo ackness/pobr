@@ -10,6 +10,70 @@ use crate::{CalcConfig, ModDb, Modifier};
 
 use super::Env;
 
+/// Exact player-side query names, shared with source details. Enemy curses
+/// query their own database and never read these player modifiers.
+pub(super) fn view_names(stat: &str) -> &'static [&'static str] {
+    match stat {
+        "CurseEffectOnSelf" => &["CurseEffectOnSelf"],
+        "SelfBleedDuration" => &["SelfBleedDuration", "SelfAilmentDuration"],
+        "SelfPoisonDuration" => &["SelfPoisonDuration", "SelfAilmentDuration"],
+        "SelfIgniteDuration" => &[
+            "SelfIgniteDuration",
+            "SelfAilmentDuration",
+            "SelfElementalAilmentDuration",
+        ],
+        "SelfChillDuration" => &[
+            "SelfChillDuration",
+            "SelfAilmentDuration",
+            "SelfElementalAilmentDuration",
+        ],
+        "SelfFreezeDuration" => &[
+            "SelfFreezeDuration",
+            "SelfAilmentDuration",
+            "SelfElementalAilmentDuration",
+        ],
+        "SelfShockDuration" => &[
+            "SelfShockDuration",
+            "SelfAilmentDuration",
+            "SelfElementalAilmentDuration",
+        ],
+        "CorruptedBloodImmunity" => &["CorruptedBloodImmune"],
+        "MaimImmunity" => &["MaimImmune"],
+        "HinderImmunity" => &["HinderImmune"],
+        _ => &[],
+    }
+}
+
+/// These are modifier views, even without a configured incoming debuff.
+/// The engine has no player debuff-expiration-rate modifier to apply here.
+pub(super) fn calculate_views(env: &mut Env) {
+    let db = &env.player.mod_db;
+    let cfg = &env.cfg;
+    let percent = |stat| {
+        let names: Vec<_> = view_names(stat)
+            .iter()
+            .map(|name| ModName::from(*name))
+            .collect();
+        let value = (100.0 + db.sum(ModType::Inc, cfg, &names)) * db.more(cfg, &names);
+        if stat == "CurseEffectOnSelf" {
+            value.max(0.0)
+        } else {
+            value
+        }
+    };
+    let out = &mut env.player.output;
+    out.curse_effect_on_self = percent("CurseEffectOnSelf");
+    out.self_bleed_duration = percent("SelfBleedDuration");
+    out.self_poison_duration = percent("SelfPoisonDuration");
+    out.self_ignite_duration = percent("SelfIgniteDuration");
+    out.self_chill_duration = percent("SelfChillDuration");
+    out.self_freeze_duration = percent("SelfFreezeDuration");
+    out.self_shock_duration = percent("SelfShockDuration");
+    out.corrupted_blood_immunity = db.flag(cfg, "CorruptedBloodImmune");
+    out.maim_immunity = db.flag(cfg, "MaimImmune");
+    out.hinder_immunity = db.flag(cfg, "HinderImmune");
+}
+
 fn effect(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
     let names = [ModName::from(name)];
     ((1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)).max(0.0)

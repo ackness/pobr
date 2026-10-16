@@ -2,6 +2,22 @@ import type { Lang } from './i18n';
 
 /** Modifier input names for optional Calcs details; no calculation logic. */
 export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
+  CurseEffectOnSelf: { 'en-US': 'Curse Effect on You', 'zh-TW': '自身受到的詛咒效果', 'zh-CN': '自身受到的诅咒效果' },
+  SelfAilmentDuration: { 'en-US': 'Ailment Duration on You', 'zh-TW': '自身異常狀態持續時間', 'zh-CN': '自身异常状态持续时间' },
+  SelfElementalAilmentDuration: { 'en-US': 'Elemental Ailment Duration on You', 'zh-TW': '自身元素異常狀態持續時間', 'zh-CN': '自身元素异常状态持续时间' },
+  SelfBleedDuration: { 'en-US': 'Bleeding Duration on You', 'zh-TW': '自身流血持續時間', 'zh-CN': '自身流血持续时间' },
+  SelfPoisonDuration: { 'en-US': 'Poison Duration on You', 'zh-TW': '自身中毒持續時間', 'zh-CN': '自身中毒持续时间' },
+  SelfIgniteDuration: { 'en-US': 'Ignite Duration on You', 'zh-TW': '自身點燃持續時間', 'zh-CN': '自身点燃持续时间' },
+  SelfChillDuration: { 'en-US': 'Chill Duration on You', 'zh-TW': '自身冰緩持續時間', 'zh-CN': '自身冰缓持续时间' },
+  SelfFreezeDuration: { 'en-US': 'Freeze Duration on You', 'zh-TW': '自身凍結持續時間', 'zh-CN': '自身冻结持续时间' },
+  SelfShockDuration: { 'en-US': 'Shock Duration on You', 'zh-TW': '自身感電持續時間', 'zh-CN': '自身感电持续时间' },
+  CorruptedBloodImmunity: { 'en-US': 'Corrupted Blood Immunity', 'zh-TW': '免疫腐化之血', 'zh-CN': '免疫腐化之血' },
+  CorruptedBloodImmune: { 'en-US': 'Corrupted Blood Immunity', 'zh-TW': '免疫腐化之血', 'zh-CN': '免疫腐化之血' },
+  MaimImmunity: { 'en-US': 'Maim Immunity', 'zh-TW': '免疫癱瘓', 'zh-CN': '免疫瘫痪' },
+  MaimImmune: { 'en-US': 'Maim Immunity', 'zh-TW': '免疫癱瘓', 'zh-CN': '免疫瘫痪' },
+  HinderImmunity: { 'en-US': 'Hinder Immunity', 'zh-TW': '免疫阻礙', 'zh-CN': '免疫阻碍' },
+  HinderImmune: { 'en-US': 'Hinder Immunity', 'zh-TW': '免疫阻礙', 'zh-CN': '免疫阻碍' },
+
   AilmentThreshold: { 'en-US': 'Elemental Ailment Threshold', 'zh-TW': '元素異常狀態門檻', 'zh-CN': '元素异常状态门槛' },
   LifeOnKill: { 'en-US': 'Life Recovery on Kill', 'zh-TW': '擊殺恢復生命', 'zh-CN': '击杀恢复生命' },
   ManaOnKill: { 'en-US': 'Mana Recovery on Kill', 'zh-TW': '擊殺恢復魔力', 'zh-CN': '击杀恢复魔力' },

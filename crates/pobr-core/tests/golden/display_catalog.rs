@@ -139,7 +139,9 @@ fn catalog_entry_counts_locked() {
         // ArchonDuration and ArchonRecoveryPeriod (+2).
         // Charm{1,2,3}LifeRecoveryOnUse (+3), game charm_recover_X_life_when_used.
         // Flask{1,2}EnergyShieldRecovery / InstantRecovery / RecoveryPerSecond (+6).
-        278,
+        // CurseEffectOnSelf, Self{Bleed,Poison,Ignite,Chill,Freeze,Shock}Duration,
+        // CorruptedBloodImmunity, MaimImmunity and HinderImmunity (+10).
+        288,
         "a change in Computed entry count needs explicit review"
     );
 }

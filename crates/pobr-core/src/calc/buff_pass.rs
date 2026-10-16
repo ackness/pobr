@@ -1430,10 +1430,15 @@ mod tests {
     // The CurseEffect factor + Condition:Effective semantics (vendor :2295-2316)
 
     /// 20% inc CurseEffect → hex mods ×1.2; the enemy-side CurseEffectOnSelf
-    /// MORE only applies to hexes (not marks, :2303-2305); scaled output carries Condition:Effective (doesn't match the panel view).
+    /// MORE only applies to hexes, not marks; player-side incoming curse
+    /// modifiers never affect either. Output is gated on Condition:Effective.
     #[test]
     fn curse_effect_scales_hex_not_mark() {
         let mut env = buffed_env();
+        env.player.mod_db.add_list([
+            Modifier::number("CurseEffectOnSelf", ModType::Inc, -30.0),
+            Modifier::number("CurseEffectOnSelf", ModType::More, -50.0),
+        ]);
         env.player
             .mod_db
             .add_mod(Modifier::number("CurseEffect", ModType::Inc, 20.0));

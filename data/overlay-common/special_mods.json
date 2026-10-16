@@ -5353,73 +5353,190 @@
       "exporter": "absent"
     },
     {
-      "id": "curse_effect_on_you_unmodelled",
-      "pattern": "\\d+% (?:increased|reduced) effect of curses on you",
-      "mods": [],
-      "verified": false,
-      "batch": "unmodelled",
+      "id": "reduced_curse_effect_on_you",
+      "pattern": "(\\d+(?:\\.\\d+)?)% reduced effect of curses on you",
+      "mods": [
+        {
+          "name": "CurseEffectOnSelf",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "S1",
       "game_source": "base/stats.json: curse_effect_on_self_+%",
-      "source_note": "Incoming curses on the player are not modelled. CurseEffectOnSelf currently scales only curses on the enemy; it must not scale outgoing curses.",
+      "source_note": "Displays player-side debuff modifiers only; incoming debuff effects and uptime are not modelled.",
       "examples": [
         "30% reduced effect of Curses on you"
       ]
     },
     {
-      "id": "bleeding_duration_on_you_unmodelled",
-      "pattern": "\\d+% (?:increased|reduced) duration of bleeding on you",
-      "mods": [],
-      "verified": false,
-      "batch": "unmodelled",
+      "id": "increased_curse_effect_on_you",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased effect of curses on you",
+      "mods": [
+        {
+          "name": "CurseEffectOnSelf",
+          "type": "INC",
+          "value": {
+            "ref": "$1"
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "S1",
+      "game_source": "base/stats.json: curse_effect_on_self_+%",
+      "source_note": "Displays player-side debuff modifiers only; incoming debuff effects and uptime are not modelled.",
+      "examples": [
+        "30% increased effect of Curses on you"
+      ]
+    },
+    {
+      "id": "reduced_bleeding_duration_on_you",
+      "pattern": "(\\d+(?:\\.\\d+)?)% reduced duration of bleeding on you",
+      "mods": [
+        {
+          "name": "SelfBleedDuration",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "S1",
       "game_source": "base/stats.json: self_bleed_duration_+%",
-      "source_note": "Incoming Bleeding duration and total damage are not modelled. Generic PhysicalDegen is a rate without a Bleeding identity or duration; duration reduction must not lower its DPS.",
+      "source_note": "Displays player-side debuff modifiers only; incoming debuff effects and uptime are not modelled.",
       "examples": [
         "40% reduced Duration of Bleeding on You"
       ]
     },
     {
-      "id": "ailment_duration_on_you_unmodelled",
-      "pattern": "\\d+% (?:increased|reduced) duration of ailments on you",
-      "mods": [],
-      "verified": false,
-      "batch": "unmodelled",
+      "id": "increased_bleeding_duration_on_you",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased duration of bleeding on you",
+      "mods": [
+        {
+          "name": "SelfBleedDuration",
+          "type": "INC",
+          "value": {
+            "ref": "$1"
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "S1",
+      "game_source": "base/stats.json: self_bleed_duration_+%",
+      "source_note": "Displays player-side debuff modifiers only; incoming debuff effects and uptime are not modelled.",
+      "examples": [
+        "40% increased Duration of Bleeding on You"
+      ]
+    },
+    {
+      "id": "reduced_ailment_duration_on_you",
+      "pattern": "(\\d+(?:\\.\\d+)?)% reduced duration of ailments on you",
+      "mods": [
+        {
+          "name": "SelfAilmentDuration",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "S1",
       "game_source": "base/stats.json: base_all_ailment_duration_on_self_+%",
-      "source_note": "Incoming ailment durations and uptime are not modelled. Duration must not scale configured Shock or Chill magnitude or generic degeneration rates.",
+      "source_note": "Displays player-side debuff modifiers only; incoming debuff effects and uptime are not modelled.",
       "examples": [
         "15% reduced Duration of Ailments on You"
       ]
     },
     {
-      "id": "corrupted_blood_immunity_unmodelled",
+      "id": "increased_ailment_duration_on_you",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased duration of ailments on you",
+      "mods": [
+        {
+          "name": "SelfAilmentDuration",
+          "type": "INC",
+          "value": {
+            "ref": "$1"
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "S1",
+      "game_source": "base/stats.json: base_all_ailment_duration_on_self_+%",
+      "source_note": "Displays player-side debuff modifiers only; incoming debuff effects and uptime are not modelled.",
+      "examples": [
+        "15% increased Duration of Ailments on You"
+      ]
+    },
+    {
+      "id": "corrupted_blood_immunity",
       "pattern": "immune to corrupted blood",
-      "mods": [],
-      "verified": false,
-      "batch": "unmodelled",
+      "mods": [
+        {
+          "name": "CorruptedBloodImmune",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": true,
+      "batch": "S1",
       "game_source": "base/stats.json: immune_to_corrupted_blood",
-      "source_note": "Incoming Corrupted Blood stacks and degeneration are not modelled. Generic PhysicalDegen does not identify Corrupted Blood, and must not be removed by this immunity.",
+      "source_note": "Displays player-side debuff modifiers only; incoming debuff effects and uptime are not modelled.",
       "examples": [
         "Immune to Corrupted Blood"
       ]
     },
     {
-      "id": "maim_immunity_unmodelled",
+      "id": "maim_immunity",
       "pattern": "immune to maim",
-      "mods": [],
-      "verified": false,
-      "batch": "unmodelled",
+      "mods": [
+        {
+          "name": "MaimImmune",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": true,
+      "batch": "S1",
       "game_source": "base/stats.json: immune_to_maim",
-      "source_note": "Maim on the player is not modelled: no player Maim state supplies movement or evasion penalties. Enemy Maim is a separate state.",
+      "source_note": "Displays player-side debuff modifiers only; incoming debuff effects and uptime are not modelled.",
       "examples": [
         "Immune to Maim"
       ]
     },
     {
-      "id": "hinder_immunity_unmodelled",
+      "id": "hinder_immunity",
       "pattern": "immune to hinder",
-      "mods": [],
-      "verified": false,
-      "batch": "unmodelled",
+      "mods": [
+        {
+          "name": "HinderImmune",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": true,
+      "batch": "S1",
       "game_source": "base/stats.json: immune_to_hinder",
-      "source_note": "Hinder on the player is not modelled: no player Hinder state supplies a movement penalty. Enemy Hinder is a separate state.",
+      "source_note": "Displays player-side debuff modifiers only; incoming debuff effects and uptime are not modelled.",
       "examples": [
         "Immune to Hinder"
       ]

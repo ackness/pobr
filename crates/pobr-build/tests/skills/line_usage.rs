@@ -1087,3 +1087,27 @@ fn utility_followups_keep_missing_models_visible_and_crafting_no_effect() {
         LineStatus::NoEffect
     );
 }
+
+#[test]
+fn self_debuff_modifier_views_read_each_previously_unmodelled_line() {
+    let data = data();
+    let texts = [
+        "30% reduced effect of Curses on you",
+        "50% reduced Duration of Bleeding on You",
+        "20% reduced Duration of Ailments on You",
+        "Immune to Corrupted Blood",
+        "Immune to Maim",
+        "Immune to Hinder",
+    ];
+    let usage = ledger(&data, &[], &texts);
+    for text in texts {
+        let row = line(&usage, "item.amulet.explicit", text);
+        assert_eq!(row.status, LineStatus::Applied, "{row:?}");
+        assert!(
+            row.modifiers
+                .iter()
+                .all(|m| m.status == ModifierStatus::Applied),
+            "{row:?}"
+        );
+    }
+}

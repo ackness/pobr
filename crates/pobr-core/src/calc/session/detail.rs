@@ -24,6 +24,10 @@ pub struct DerivedDetail {
 /// Each group represents a genuine query. Explicit enemy groups use the enemy
 /// database; derived relationships never appear as synthetic modifier rows.
 pub fn source_names(stat: &str) -> Vec<String> {
+    let names = super::super::player_debuffs::view_names(stat);
+    if !names.is_empty() {
+        return names.iter().map(|name| (*name).to_string()).collect();
+    }
     if let Some((_, names)) = super::super::utility::GLOBAL_STATS
         .iter()
         .find(|(id, _)| *id == stat)
@@ -513,6 +517,21 @@ pub fn source_names(stat: &str) -> Vec<String> {
 impl CalculationSession {
     pub fn detail_sources(&self, stat: &str) -> Vec<SourceGroup<'_>> {
         let db = &self.env.player.mod_db;
+        let view_names = super::super::player_debuffs::view_names(stat);
+        if !view_names.is_empty() {
+            let cfg = &self.env.cfg;
+            let names: Vec<_> = view_names.iter().map(|name| ModName::from(*name)).collect();
+            return vec![SourceGroup {
+                name: stat.into(),
+                more_precision: None,
+                totals: (
+                    db.sum(ModType::Base, cfg, &names),
+                    db.sum(ModType::Inc, cfg, &names),
+                    db.more(cfg, &names),
+                ),
+                rows: db.evaluate_names(cfg, &names),
+            }];
+        }
         let mut cfg = if super::super::utility::GLOBAL_STATS
             .iter()
             .any(|(id, _)| *id == stat)

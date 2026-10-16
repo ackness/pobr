@@ -513,3 +513,15 @@ FullyBrokenArmourEffect = "Fully Broken Armour Physical Hit Damage Taken"
 
 ArchonDuration = "Archon Buff Duration (s)"
 ArchonRecoveryPeriod = "Archon Recovery Period (s)"
+
+# Player-side debuff modifier views.
+CurseEffectOnSelf = "Curse Effect on You"
+SelfBleedDuration = "Bleeding Duration on You"
+SelfPoisonDuration = "Poison Duration on You"
+SelfIgniteDuration = "Ignite Duration on You"
+SelfChillDuration = "Chill Duration on You"
+SelfFreezeDuration = "Freeze Duration on You"
+SelfShockDuration = "Shock Duration on You"
+CorruptedBloodImmunity = "Corrupted Blood Immunity"
+MaimImmunity = "Maim Immunity"
+HinderImmunity = "Hinder Immunity"
