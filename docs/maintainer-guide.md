@@ -175,6 +175,8 @@ WASM 的 `calculate_build_json`（JS 名 `calculateBuildJson`）响应另有 `mi
 
 EHP 的 Calcs 字段直接读取计算保留的同一份 `EhpTerms`：五种类型（Physical / Fire / Cold / Lightning / Chaos）的 `EnemyDamage`（敌人加成与暴击后）、`TakenDamage`（承伤转换后、减免前）、`TakenHit`（减免后）、`TakenHitMult`（后两者之比；转换后输入为 0 时为 0）和 `EnergyShieldBypass`（百分比），三种元素的 `DamageReduction`，以及 `totalEnemyDamage` / `totalTakenDamage` / `totalTakenHit`、`ConfiguredDamageChance` / `ConfiguredNotHitChance` 和 `DamageTakenOnBlock`。总量与比值只是已有命中的展示视图；减免和概率的 `derived` 明细保留实际阶段输入，不重跑求解器；五种 `EnemyDamage` 与五种 `EnergyShieldBypass` 为 `none`，因为当前只保留聚合／覆盖后的值，没有可展示的来源轨迹。未提供五种 `TotalPool`：现有 `total_hit_pool` 用的是命中资源池，并含伤害损失防止、护盾技能等扩展层，不能冒充用于持续伤害的资源池；五种 `DotEHP` / `TakenDotMult` 和 `EHPSurvivalTime` 也未提供，前者尚无防御持续伤害模型，后者没有 EHP 敌人命中间隔模型。展示不改变既有计算；Evergrasping 的全部伤害额外混沌、Runic Ward 和恢复规则差异仍按本指南的约定解释。
 
+同一份 `EhpTerms` 还保留敌人组装、减免快照（`MitigationCtx`）与资源池，作为五种类型的 `EnemyDamageMult`、`EnemyPen`（百分点；物理与混沌没有穿透输入，为 0）、`ResistTakenHitMulti`（穿透后的抗性倍率，负抗性不受穿透）、`AttackTakenHitMult` / `SpellTakenHitMult`（攻击与法术命中的承伤层，Average 类别取两者之平均）、`AfterReductionTakenHitMulti`（所选命中类别的承伤倍率 × 偏斜倍率）、`BaseTakenHitMult`（抗性 × 减伤 × 减伤后倍率，不含固定承伤）、`DamageReductionMax`、`ManaEffectiveLife` / `MoMHitPool`（Mind over Matter 分担后的生命池与命中资源池）和 `TotalHitPool`，以及全局 `DamageReductionMax`、`LifeHitPool`（可恢复生命计入生命流失防止）和四种抗性的 `ResistTotal`（截断后、上限与下限之前的总值，与 `resolve_resistance` 同一份结果）。Chaos Inoculation 的混沌承伤层同为 0。`EnemyDamageMult` 与 `EnemyPen` 只保留敌人一侧聚合后的值，明细为 `none`；攻击与法术承伤层为 `sources`（实际查询的承伤名字）；其余为 `derived`，资源池拆成已保留的阶段（生命 + Mind over Matter 分担的魔力、Energy Shield、Runic Ward / Aegis / Guard / 友军层）。未提供 `ResistOverTime`（没有只对持续伤害的抗性，自身持续伤害直接用最终抗性）和 `TakenReflect`（没有反射伤害模型）。tuned 组 Infernalist Comet `d7afa87a05ea` 的 `LifeHitPool` 与各类型 MoM 资源池随它的生命按上文的符文原文约定低于 PoB2；其余抗性差异与 `TakenHit` 已有的抗性差异相同。
+
 装备的两瓶药剂和三个护符（含未勾选启用的物品）按槽位输出 `Flask<N>*` / `Charm<N>*`：恢复总量、立即恢复量、每秒持续恢复、持续时间、充能上限、每次消耗、满充能使用次数及每秒充能；`*ChargesGained` 是充能获取倍率。基底数字来自官方游戏表 `Flasks`（药剂与护符的 `LifePerUse`、`ManaPerUse`、`RecoveryTime`，后者为十分之一秒）及 `ComponentCharges`（`MaxCharges`、`PerCharge`），适配到 `base/base_items.json` 的 `utility`；护符持续时间也来自 `Flasks.RecoveryTime`，品质提升药剂恢复量或护符持续时间；`local_*` 对应的裸恢复、时间、充能词条只查询该物品，不能进入全域效果池。全域 `FlaskEffect`、`*FlaskChargeGen` 沿用 PoB key 并提供来源查询，逐槽位数字提供保留实际输入的派生公式；CLI 的 `utility_stats` 与 WASM 的展示字段使用同一结果。单次使用与充能不推算触发或覆盖率；启用时的额外效果沿用下文的生效约定。
 
 明细覆盖分组侧栏的全部字段；除上述 EHP 原始项外，目录中的 `NumberOfDamagingHits` 与 `NumberOfMitigatedHits` 为 `none`，两者来自资源耗尽模拟，尚未保留可展示的迭代轨迹。最大承伤明细复用已求解的值、敌人倍率和资源池上下文，不另跑求解器；来源组的 BASE / INC / MORE 只描述实际查询贡献，不承诺等于含角色基础值等其他输入的最终结果。`ChannelTimeToTrigger` 是所选 Cast While Channelling 组从空 Energy 到首次触发的秒数：被支持法术的总容量除以持续 Energy 获取速率，含宝石及全局增益；不改变 DPS、持续触发频率或返还模型（`calc::energy::channel_trigger_terms`）。目录不提供 `CausticGroundDPS`、`MirageCausticGroundDPS`、`SustainableTrauma` 或 `TrapCooldown` 标量；`SkillDPS` 的逐技能信息由技能总览和 Full DPS 贡献行承载。
@@ -280,15 +282,16 @@ in `calc_orchestrator::inject`, and the selected triggered payload receives
 `Triggered` in `prepare::stage_resolve_main_skill`. Possessing a freeze or Pin
 source does not establish the target state. Coming Calamity's 40% elemental
 bonuses require their matching Herald; added attack damage (including
-Asphyxia's Wrath) applies only to attacks. Pin buildup, Daze duration and Maim
-application remain `unmodelled` entries with explicit
+Asphyxia's Wrath) applies only to attacks. Daze duration, Maim application and
+primed-Pin thresholds remain `unmodelled` entries with explicit
 reasons: player stun defences and per-hit `DazeChance` do not measure those
 mechanics. Sources: game `base/stats.json` (`damage_+%_vs_frozen_enemies`,
 `bleeding_magnitude_+%_against_pinned_enemies`, `triggered_spell_spell_damage_+%`,
-`physical_spell_damage_can_pin_on_critical_hit`, `hit_damage_stun_multiplier_+%`,
-`daze_duration_+%`, `maim_on_hit_%`) and `base/passive_tree.json` (Coming
-Calamity, Bone Chains, Seeing Stars, Maiming Strike). The Daze-duration and
-attack-Maim rules are exporter-absent; recognizing them does not implement them.
+`hit_damage_stun_multiplier_+%`, `daze_duration_+%`, `maim_on_hit_%`,
+`pin_almost_pinned_enemies`) and `base/passive_tree.json` (Coming
+Calamity, Seeing Stars, Maiming Strike, Constricting Command). The Daze-duration
+and attack-Maim rules are exporter-absent; recognizing them does not implement
+them.
 `FireDamage`, `LightningDamage` and `AilmentMagnitude` have readers gated by
 the selected skill's source damage; the usage ledger reports that gate when a
 non-damaging skill such as Mana Remnants does not reach those readers.
@@ -323,9 +326,50 @@ Map Boss/Xesht Poise entries in `base/enemy_presets.json` remain unused.
 `CannotStun` / `CannotHeavyStun` suppress buildup. The derived detail reuses the
 retained calculation terms. Mauling Stuns uses `enemyDistance <= metres * 10`,
 sharing Focused Thrust's handler and ledger gate; unset distance retains the
-zero-distance convention. Pin remains unmodelled in this implementation;
-inspection found `GameConstants.PinDamageScale = 420 / 100` (4.2), so its
-remaining work is calculation/reader wiring rather than a missing scale.
+zero-distance convention.
+
+`PinBuildupAvg` reports the selected successful hit's average enemy Pin buildup
+as a percentage of the Pin threshold. The game's `KeywordPopups[60]` says that
+"Certain skills and effects allow damage to build up Pinned", so buildup is
+opt-in per damage type: a hit builds Pin only from the types that an applying
+source enables. The sources are the selected skill's
+`base_physical_damage_can_pin` (Physical) and `base_all_damage_can_pin`, a
+weapon's `local_all_damage_can_pin` (that hand's hits only),
+`all_projectile_damage_can_pin` (projectile hits only),
+`physical_spell_damage_can_pin_on_critical_hit` (Bone Chains: the Physical part
+of a critical spell hit only; the non-critical leg and other types add nothing)
+and the Pin support's `support_pin_physical_damage_can_pin`. `cannot_pin` and
+"Cannot Immobilise" force 0. They are the `CanPin` / `<Type>CanPin` flags;
+critical-only sources reuse Heavy Stun's separate critical and non-critical
+mitigated legs (`calc::ailment::pin_terms`). The scale is
+`GameConstants[45].PinDamageScale = 420 / 100` (4.2) over the same poise
+threshold as Heavy Stun (`PinThresholdModifier` [48] and
+`HeavyStunThresholdModifier` [29] are both 500, so the boss poise rows above
+apply unchanged). Player `EnemyPinBuildup` / `EnemyImmobilisationBuildup` (Pin
+support, "increased Pin Buildup", `active_skill_pins_as_though_dealt_damage_+%_final`)
+and the enemy's `PinBuildup` / `ImmobilisationBuildup` scale it. Heavy Stun's
+50% physical and melee multipliers are not applied: the game text gives them
+only for Light Stun chance and Heavy Stun buildup (`KeywordPopups[55]` / [57]).
+That is a convention, **no in-game test**. A skill with
+`support_pin_buildup_pin_instead_of_stun` (the Pin support) builds no Heavy Stun
+(`HeavyStunBuildupAvg` is 0) and its damage counts toward Pin; the support's
+buildup modifiers are the Pin ones, and PoBR does not copy the skill's Heavy
+Stun modifiers to Pin as PoB2 does. Primed-Pin thresholds (`KeywordPopups[400]`:
+40% / 50% / 60% / 70% by rarity, `pin_almost_pinned_enemies`) and the 3-second
+Pin duration are not modelled: `primed_pin_unmodelled` is exporter-absent and
+`conditionEnemyPinned` stays a configured state. PoB2 pins from unmitigated hit
+averages and evaluates `Physical Spell Critical Hits build Pin` once against the
+skill, so a physical spell pins with every damage type; that rule declares
+`exporter: "differs"`. Worked comparisons against the pinned oracle: Chronomancer
+Reap `3875ffe5d15e` 12.976 vs 55.896 (0.232 = 0.552 from the Xesht 17 / 9.38
+poise factor, as for Heavy Stun, times 0.42 because PoBR pins only the Physical
+critical portion while PoB2 adds Cold, Fire and Lightning); Tactician Oil Barrage
+`02b94461578f` 6.615 vs 17.082 (0.387) and Crossbow Shot `406c76f8e89a` 6.747 vs
+12.506 (0.539) follow their `HeavyStunBuildupAvg` ratios (0.396 and 0.541), so the
+remaining gap there is the shared poise and mitigated-versus-unmitigated source
+damage, not Pin; Blood Mage Impending Doom `add19135df93` is 0.364 vs 0, because
+the 3260 Physical part of the Dark Consequences frog explosion (a Spell by game
+skill type) pins in PoBR while the oracle reports empty `skillFlags` for it.
 
 伤害型异常（流血、点燃、毒）的同时层数 = 命中率 × 施加几率 × 持续时间 × 每秒命中数，持续时间是基础时间乘持续时间加成（含 “increased duration of Ailments you inflict”，`EnemyAilmentDuration`）与敌人身上效果的过期速度，再除以 “Damaging Ailments deal damage #% faster”：伤害总量不变、造成得更快，每份结束得更早（`calc/perform.rs`，分解里写作 “faster /N”）。
 

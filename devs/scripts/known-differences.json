@@ -231,7 +231,7 @@
     },
     {
       "build": "witch-infernalist-comet-d7afa87a05ea",
-      "stats": ["Life", "LifeUnreserved", "LifeRecoverable"],
+      "stats": ["Life", "LifeUnreserved", "LifeRecoverable", "LifeHitPool", "PhysicalManaEffectiveLife", "FireManaEffectiveLife", "ColdManaEffectiveLife", "LightningManaEffectiveLife", "ChaosManaEffectiveLife", "PhysicalMoMHitPool", "FireMoMHitPool", "ColdMoMHitPool", "LightningMoMHitPool", "ChaosMoMHitPool"],
       "reason": "the weapon's runes read as the item says, one \"45% less maximum Life\", not PoB2's two runes of 15% and 30% less (docs/maintainer-guide.md, runes)"
     },
     {

@@ -1271,9 +1271,13 @@ pub(crate) fn heavy_stun_terms(env: &super::Env, combined: &[(DamageType, f64)])
         more: player.more(&cfg, &names),
         enemy_multiplier: (1.0 + enemy.sum(ModType::Inc, &cfg, &enemy_names) / 100.0)
             * enemy.more(&cfg, &enemy_names),
+        // A skill that Pins instead of Stunning (Pin support: "making it unable
+        // to Stun", `support_pin_buildup_pin_instead_of_stun`) builds no Heavy
+        // Stun; its damage counts toward Pin (`pin_terms`).
         enabled: can_hit
             && !player.flag(&cfg, "CannotHeavyStun")
-            && !player.flag(&cfg, "CannotStun"),
+            && !player.flag(&cfg, "CannotStun")
+            && !player.flag(&cfg, "PinBuildupInsteadOfHeavyStunBuildup"),
         ..Default::default()
     };
     // KeywordPopups[55]/[57]: buildup depends on damage dealt. Reuse the
@@ -1307,6 +1311,175 @@ pub(crate) fn heavy_stun_terms(env: &super::Env, combined: &[(DamageType, f64)])
                 DamageType::Physical => terms.physical += damage / parts.len() as f64,
                 DamageType::Cold => {}
                 _ => terms.other += damage / parts.len() as f64,
+            }
+        }
+    }
+    terms
+}
+
+/// Damage types in the order `PinTerms::damage` stores them.
+pub(crate) const PIN_DAMAGE_TYPES: [DamageType; 5] = [
+    DamageType::Physical,
+    DamageType::Fire,
+    DamageType::Cold,
+    DamageType::Lightning,
+    DamageType::Chaos,
+];
+
+fn can_pin_flag(kind: DamageType) -> &'static str {
+    match kind {
+        DamageType::Physical => "PhysicalCanPin",
+        DamageType::Fire => "FireCanPin",
+        DamageType::Cold => "ColdCanPin",
+        DamageType::Lightning => "LightningCanPin",
+        DamageType::Chaos => "ChaosCanPin",
+    }
+}
+
+/// One hand's average hit damage per type and its critical-leg share.
+struct PinHandDamage<'a> {
+    /// `Some(true)` for the main hand, `Some(false)` for the off hand, `None`
+    /// when the calculation has no hand split.
+    main_hand: Option<bool>,
+    total: &'a [(DamageType, f64)],
+    crit: &'a [(DamageType, f64)],
+}
+
+/// Terms of Pin buildup, retained by the calculation and reused verbatim by
+/// the derived view.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct PinTerms {
+    /// Average hit damage that builds Pin, per type in [`PIN_DAMAGE_TYPES`]
+    /// order (mitigated when the effective pass ran).
+    pub damage: [f64; 5],
+    pub threshold: f64,
+    pub damage_scale: f64,
+    pub increased: f64,
+    pub more: f64,
+    pub enemy_multiplier: f64,
+    pub enabled: bool,
+}
+
+impl PinTerms {
+    pub fn pinning_damage(&self) -> f64 {
+        self.damage.iter().sum()
+    }
+
+    pub fn value(&self) -> f64 {
+        if !self.enabled || self.threshold <= 0.0 {
+            return 0.0;
+        }
+        self.pinning_damage()
+            * poise_buildup_inner(self.damage_scale, self.threshold, self.increased, self.more)
+            * self.enemy_multiplier
+    }
+}
+
+/// Pin buildup per hit, as a percentage of the enemy's Pin threshold.
+///
+/// Game Keywords ("Pinned", KeywordPopups 60): "Certain skills and effects allow
+/// damage to build up Pinned. Once this build up passes the enemy's Pinned
+/// Threshold, they are Pinned". Damage is opt-in: a hit builds Pin only for
+/// the types that an applying source enables, which is the skill's
+/// `base_physical_damage_can_pin` / `base_all_damage_can_pin`, the weapon's
+/// `local_all_damage_can_pin` (that hand only), `all_projectile_damage_can_pin`
+/// (projectile hits), `physical_spell_damage_can_pin_on_critical_hit` (the
+/// critical portion of physical spell hits) and the Pin support's
+/// `support_pin_physical_damage_can_pin`; `cannot_pin` forces 0. These are the
+/// `CanPin` / `<Type>CanPin` flags.
+///
+/// The scale is `GameConstants.PinDamageScale` (4.2) over the same poise
+/// threshold as Heavy Stun (`PinThresholdModifier` = `HeavyStunThresholdModifier`
+/// = 500). Heavy Stun's physical and melee multipliers are not applied: the
+/// game text gives them only for Light Stun chance and Heavy Stun buildup.
+/// This is a convention with no in-game test.
+///
+/// `combined` is the per-type average (effective when the mitigation pass ran)
+/// and `crit` is its crit-weighted crit-leg share, so the critical-only source
+/// can take the crit portion alone.
+pub(crate) fn pin_terms(
+    env: &super::Env,
+    combined: &[(DamageType, f64)],
+    crit: &[(DamageType, f64)],
+) -> PinTerms {
+    let can_hit = env.cfg.flags.intersects(ModFlags::HIT) || env.cfg.skill_name.is_none();
+    let mut cfg = env.cfg.clone();
+    cfg.keyword_flags = cfg.keyword_flags | KeywordFlags::HIT;
+    cfg.flags |= ModFlags::HIT;
+    let player = &env.player.mod_db;
+    let enemy = &env.enemy.mod_db;
+    let names = ["EnemyPinBuildup", "EnemyImmobilisationBuildup"].map(ModName::from);
+    let enemy_names = ["PinBuildup", "ImmobilisationBuildup"].map(ModName::from);
+    let thresholds = ["PoiseThreshold"].map(ModName::from);
+    let threshold = (pobr_data::monster::enemy_poise_threshold(env.enemy.level as u32) as f64
+        * (1.0 + enemy.sum(ModType::Inc, &cfg, &thresholds) / 100.0)
+        * enemy.more(&cfg, &thresholds))
+    .floor();
+    let mut terms = PinTerms {
+        threshold,
+        damage_scale: cfg.constants.game().pin_damage_scale,
+        increased: player.sum(ModType::Inc, &cfg, &names),
+        more: player.more(&cfg, &names),
+        enemy_multiplier: (1.0 + enemy.sum(ModType::Inc, &cfg, &enemy_names) / 100.0)
+            * enemy.more(&cfg, &enemy_names),
+        enabled: can_hit && !player.flag(&cfg, "CannotPin"),
+        ..Default::default()
+    };
+    if !terms.enabled {
+        return terms;
+    }
+    // Each hand is a separate source of damage (a weapon's own Pin source
+    // names its hand); alternating weapons contribute equally per hit.
+    let output = &env.player.output;
+    let mut parts: Vec<PinHandDamage> = Vec::new();
+    for (is_main, hand) in [(true, &output.main_hand), (false, &output.off_hand)] {
+        if let Some(hand) = hand {
+            let total = if hand.mitigated_avg.is_empty() {
+                hand.stored_combined_avg.as_slice()
+            } else {
+                hand.mitigated_avg.as_slice()
+            };
+            parts.push(PinHandDamage {
+                main_hand: Some(is_main),
+                total,
+                crit: hand.crit_avg.as_slice(),
+            });
+        }
+    }
+    if parts.is_empty() {
+        parts.push(PinHandDamage {
+            main_hand: None,
+            total: combined,
+            crit,
+        });
+    }
+    let share = 1.0 / parts.len() as f64;
+    for part in parts {
+        let (total, crit_share) = (part.total, part.crit);
+        let mut leg_cfg = cfg.clone();
+        if let Some(is_main) = part.main_hand {
+            leg_cfg.conditions.insert("MainHandAttack".into(), is_main);
+            leg_cfg.conditions.insert("OffHandAttack".into(), !is_main);
+        }
+        let hit_cfg = leg_cfg.clone().with_condition("CriticalStrike", false);
+        let crit_cfg = leg_cfg.with_condition("CriticalStrike", true);
+        for &(kind, damage) in total {
+            let crit_damage = crit_share
+                .iter()
+                .find(|(crit_kind, _)| *crit_kind == kind)
+                .map_or(0.0, |(_, value)| value.min(damage));
+            let opted_in = |leg: &CalcConfig| {
+                player.flag(leg, "CanPin") || player.flag(leg, can_pin_flag(kind))
+            };
+            let mut pinning = 0.0;
+            if opted_in(&hit_cfg) {
+                pinning += damage - crit_damage;
+            }
+            if crit_damage > 0.0 && opted_in(&crit_cfg) {
+                pinning += crit_damage;
+            }
+            if let Some(slot) = PIN_DAMAGE_TYPES.iter().position(|&known| known == kind) {
+                terms.damage[slot] += pinning * share;
             }
         }
     }

@@ -33,7 +33,7 @@ use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModDb};
 
-use super::defence::{armour_reduction, taken_mult_for_type_default};
+use super::defence::{armour_reduction, average_taken_mult};
 use super::round;
 
 /// Damage types in enum order (the per-type array index order).
@@ -200,7 +200,7 @@ pub fn effective_applied_armour(
 /// (written by CalcDefence.lua:2336-2437, consumed by `:422-455`'s
 /// `takenHitFromDamage`). Assembly entry point: [`build_mitigation_ctx`];
 /// evaluation entry point: [`taken_hit_from_damage`] (pure arithmetic, doesn't read ModDb).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MitigationCtx {
     /// The taken-as conversion matrix `shift[src][dst]` (fraction, includes source retention; [`damage_shift_table`]).
     pub shift: [[f64; 5]; 5],
@@ -226,6 +226,21 @@ pub struct MitigationCtx {
     /// taken inc/more (Average view) × the deflect multiplier, :2436-2437;
     /// PoE2 has no spell suppression).
     pub after_reduction_multi: [f64; 5],
+    /// Hit damage-taken multiplier for the selected hit category, before
+    /// deflection (`after_reduction_multi = hit_taken_multi × deflect_multi`).
+    pub hit_taken_multi: [f64; 5],
+    /// Damage-taken multipliers of attack and spell hits (`<X>AttackTakenHitMult`
+    /// / `<X>SpellTakenHitMult`); Average uses their mean.
+    pub attack_taken_multi: [f64; 5],
+    pub spell_taken_multi: [f64; 5],
+    /// Deflection multiplier, applied only when deflection is certain.
+    pub deflect_multi: f64,
+    /// Global ceiling (`DamageReductionMax`) and the highest modifiers it came
+    /// from (0 when absent: the global ceiling falls back to the game constant,
+    /// a per-type ceiling to the global one).
+    pub dr_max_global: f64,
+    pub dr_max_global_modifier: f64,
+    pub dr_max_type_modifier: [f64; 5],
 }
 
 impl Default for MitigationCtx {
@@ -247,6 +262,13 @@ impl Default for MitigationCtx {
             resist_taken_multi: [1.0; 5],
             taken_flat: [0.0; 5],
             after_reduction_multi: [1.0; 5],
+            hit_taken_multi: [1.0; 5],
+            attack_taken_multi: [1.0; 5],
+            spell_taken_multi: [1.0; 5],
+            deflect_multi: 1.0,
+            dr_max_global: 90.0,
+            dr_max_global_modifier: 0.0,
+            dr_max_type_modifier: [0.0; 5],
         }
     }
 }
@@ -287,8 +309,10 @@ pub(crate) fn build_mitigation_ctx_for_category(
     category: HitCategory,
 ) -> MitigationCtx {
     // Global damage reduction ceiling: `Max("DamageReductionMax") or DamageReductionCap(=90)` (:1862).
+    let global_dr_max_modifier =
+        db.max_of(ModType::Base, cfg, &[ModName::from("DamageReductionMax")]);
     let global_dr_max = {
-        let v = db.max_of(ModType::Base, cfg, &[ModName::from("DamageReductionMax")]);
+        let v = global_dr_max_modifier;
         if v > 0.0 {
             v
         } else {
@@ -306,6 +330,9 @@ pub(crate) fn build_mitigation_ctx_for_category(
 
     let mut ctx = MitigationCtx {
         shift: damage_shift_table(db, cfg),
+        deflect_multi,
+        dr_max_global: global_dr_max,
+        dr_max_global_modifier: global_dr_max_modifier,
         ..MitigationCtx::default()
     };
     for dt in DAMAGE_TYPE_BY_INDEX {
@@ -318,6 +345,7 @@ pub(crate) fn build_mitigation_ctx_for_category(
                 cfg,
                 &[ModName::from(format!("{name}DamageReductionMax"))],
             );
+            ctx.dr_max_type_modifier[i] = v;
             if v > 0.0 {
                 v.min(global_dr_max)
             } else {
@@ -386,16 +414,17 @@ pub(crate) fn build_mitigation_ctx_for_category(
             ) * category.select([0.0, 0.0, 0.0, 1.0], 0.0);
         // Post-reduction multiplier (:2429/:2436-2437): taken inc/more (Average) × deflect; PoE2 has no suppression.
         use super::defence::{HitSource, taken_mult_for_type_with_source};
+        let attack = taken_mult_for_type_with_source(db, cfg, dt, Some(HitSource::Attack));
+        let spell = taken_mult_for_type_with_source(db, cfg, dt, Some(HitSource::Spell));
+        ctx.attack_taken_multi[i] = attack;
+        ctx.spell_taken_multi[i] = spell;
         let taken_mult = match category {
-            HitCategory::Average => taken_mult_for_type_default(db, cfg, dt),
+            HitCategory::Average => average_taken_mult(attack, spell),
             HitCategory::Untyped => taken_mult_for_type_with_source(db, cfg, dt, None),
-            HitCategory::Melee | HitCategory::Projectile => {
-                taken_mult_for_type_with_source(db, cfg, dt, Some(HitSource::Attack))
-            }
-            HitCategory::Spell | HitCategory::SpellProjectile => {
-                taken_mult_for_type_with_source(db, cfg, dt, Some(HitSource::Spell))
-            }
+            HitCategory::Melee | HitCategory::Projectile => attack,
+            HitCategory::Spell | HitCategory::SpellProjectile => spell,
         };
+        ctx.hit_taken_multi[i] = taken_mult;
         ctx.after_reduction_multi[i] = taken_mult * deflect_multi;
         // Armour-applies percentage and effective applied armour (13-G7 percentage model).
         ctx.armour_applies_pct[i] = armour_applies_pct(db, cfg, dt);

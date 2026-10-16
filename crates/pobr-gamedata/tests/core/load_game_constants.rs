@@ -150,6 +150,8 @@ fn vendor_only_values_pinned_to_pob2_source() {
     assert_eq!(gc.game.heavy_stun_damage_scale_player, 0.65);
     assert_eq!(gc.game.heavy_stun_threshold_modifier_player, 100.0);
     assert_eq!(gc.game.heavy_stun_modifier_duration_player, 10.0);
+    // Game table GameConstants (0.5.5.4.2): PinDamageScale 420 / 100 = 4.2.
+    assert_eq!(gc.game.pin_damage_scale, 4.2);
 
     // The game section: negative-armour damage-bonus cap (Modules/Data.lua:194).
     assert_eq!(gc.game.neg_armour_dmg_bonus_cap, 100.0);

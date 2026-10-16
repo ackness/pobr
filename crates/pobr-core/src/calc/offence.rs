@@ -73,6 +73,9 @@ pub struct MinimalOutput {
     pub fire_resistance_over_cap: f64,
     pub cold_resistance_over_cap: f64,
     pub lightning_resistance_over_cap: f64,
+    pub fire_resistance_total: f64,
+    pub cold_resistance_total: f64,
+    pub lightning_resistance_total: f64,
     pub crit_chance: f64,
     /// Crit chance (fraction) before the hit-chance downgrade / lucky /
     /// bifurcate / inevitable, but after the cap. Used to show overflow in breakdowns.
@@ -98,6 +101,9 @@ pub struct MinimalOutput {
     /// Crit-weighted per-type hit damage after the effective-DPS mitigation pass.
     /// Empty in panel mode, where `stored_combined_avg` is the hit basis.
     pub mitigated_avg: Vec<(DamageType, f64)>,
+    /// The crit leg's crit-weighted share of the per-type average above
+    /// (`mitigated_avg`, or `stored_combined_avg` when that is empty).
+    pub crit_avg: Vec<(DamageType, f64)>,
     /// The `Stored<Type>{Hit,Crit}{Min,Max}` family (appended, vendor
     /// `:4050-4056`): the min/max input surface for damaging ailment source
     /// damage (RollAverage interpolation operates on this range).
@@ -139,6 +145,9 @@ impl MinimalOutput {
             fire_resistance_over_cap: output.fire_resistance_over_cap,
             cold_resistance_over_cap: output.cold_resistance_over_cap,
             lightning_resistance_over_cap: output.lightning_resistance_over_cap,
+            fire_resistance_total: output.fire_resistance_total,
+            cold_resistance_total: output.cold_resistance_total,
+            lightning_resistance_total: output.lightning_resistance_total,
             crit_chance: output.crit_chance,
             pre_effective_crit_chance: output.pre_effective_crit_chance,
             crit_multiplier: output.crit_multiplier,
@@ -173,6 +182,11 @@ impl MinimalOutput {
                 .as_ref()
                 .map(|hand| hand.mitigated_avg.clone())
                 .unwrap_or_default(),
+            crit_avg: output
+                .main_hand
+                .as_ref()
+                .map(|hand| hand.crit_avg.clone())
+                .unwrap_or_default(),
             stored_ranges: output
                 .main_hand
                 .as_ref()
@@ -191,11 +205,11 @@ pub(crate) struct ResistanceResolution {
     pub(crate) max: f64,
     pub(crate) over_cap: f64,
     /// The terms the total was built from, kept for [`Self::formula`].
-    base: f64,
-    flat: f64,
-    inc: f64,
-    more: f64,
-    override_total: Option<f64>,
+    pub(crate) base: f64,
+    pub(crate) flat: f64,
+    pub(crate) inc: f64,
+    pub(crate) more: f64,
+    pub(crate) override_total: Option<f64>,
     floor: f64,
 }
 
@@ -1064,6 +1078,9 @@ pub fn calculate_minimal_vs_enemy(
         fire_resistance_over_cap: fire.over_cap,
         cold_resistance_over_cap: cold.over_cap,
         lightning_resistance_over_cap: lightning.over_cap,
+        fire_resistance_total: fire.total,
+        cold_resistance_total: cold.total,
+        lightning_resistance_total: lightning.total,
         crit_chance,
         pre_effective_crit_chance: crit.pre_effective_chance,
         crit_multiplier,
@@ -1079,6 +1096,7 @@ pub fn calculate_minimal_vs_enemy(
         stored_hit_avg: crit_pass.stored_hit_avg,
         stored_combined_avg: crit_pass.stored_combined_avg,
         mitigated_avg: crit_pass.mitigated_avg,
+        crit_avg: crit_pass.crit_avg,
         stored_ranges: crit_pass.stored_ranges,
         breakdown: vec![
             BreakdownStep {

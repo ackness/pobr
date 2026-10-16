@@ -395,16 +395,10 @@ fn conditional_offence_limits_keep_game_provenance_and_model_reasons() {
     let def = load();
     for (id, stat, reason, absent) in [
         (
-            "physical_spell_critical_pin_unmodelled",
-            "physical_spell_damage_can_pin_on_critical_hit",
-            "Pin buildup",
-            false,
-        ),
-        (
-            "stun_buildup_unmodelled",
-            "hit_damage_stun_multiplier_+%",
-            "heavy-stun buildup",
-            false,
+            "primed_pin_unmodelled",
+            "pin_almost_pinned_enemies",
+            "Primed-pin thresholds",
+            true,
         ),
         (
             "daze_duration_unmodelled",

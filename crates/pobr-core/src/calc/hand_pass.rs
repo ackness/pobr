@@ -352,6 +352,9 @@ fn combine_legs(mh: &MinimalOutput, oh: &MinimalOutput, double_hits: bool) -> Mi
         fire_resistance_over_cap: mh.fire_resistance_over_cap,
         cold_resistance_over_cap: mh.cold_resistance_over_cap,
         lightning_resistance_over_cap: mh.lightning_resistance_over_cap,
+        fire_resistance_total: mh.fire_resistance_total,
+        cold_resistance_total: mh.cold_resistance_total,
+        lightning_resistance_total: mh.lightning_resistance_total,
         crit_chance,
         pre_effective_crit_chance,
         crit_multiplier,
@@ -389,6 +392,7 @@ fn combine_legs(mh: &MinimalOutput, oh: &MinimalOutput, double_hits: bool) -> Mi
             double_hits,
         ),
         mitigated_avg: combine_stored_by_type(&mh.mitigated_avg, &oh.mitigated_avg, double_hits),
+        crit_avg: combine_stored_by_type(&mh.crit_avg, &oh.crit_avg, double_hits),
         breakdown: combined_breakdown(
             mh,
             crit_chance,
@@ -476,6 +480,7 @@ impl HandOutput {
             stored_hit_avg: leg.stored_hit_avg.clone(),
             stored_combined_avg: leg.stored_combined_avg.clone(),
             mitigated_avg: leg.mitigated_avg.clone(),
+            crit_avg: leg.crit_avg.clone(),
             stored_ranges: leg.stored_ranges.clone(),
         }
     }

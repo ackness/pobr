@@ -181,7 +181,10 @@ pub const HEAVY_STUN_DAMAGE_SCALE: f64 = 0.58;
 
 /// Pin damage scale (monster target).
 ///
-/// Source: PoB2 `src/Data/Misc.lua::data.gameConstants["PinDamageScale"] = 4.2`.
+/// Source: the game table `GameConstants` (patch 0.5.5.4.2, row `PinDamageScale`,
+/// 420 / 100 = 4.2). The calculation reads the same value from
+/// `base/game_constants.json` (`pin_damage_scale`); this constant is the
+/// Rust-side mirror that locks it in.
 pub const PIN_DAMAGE_SCALE: f64 = 4.2;
 
 /// Boss poise-threshold MORE correction (%, from ConfigOptions.lua's

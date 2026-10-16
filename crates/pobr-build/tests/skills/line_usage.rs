@@ -212,8 +212,8 @@ fn conditional_offence_limits_report_the_missing_models() {
     let data = data();
     let cases = [
         (
-            "Physical Spell Critical Hits build Pin",
-            "physical_spell_critical_pin_unmodelled",
+            "Pin Enemies which are Primed for Pinning",
+            "primed_pin_unmodelled",
         ),
         ("25% increased Daze Duration", "daze_duration_unmodelled"),
         (
@@ -1313,6 +1313,74 @@ fn heavy_stun_uses_loaded_boss_poise_and_the_dazed_configuration() {
     let ordinary = run(false);
     assert!(ordinary > 0.0);
     assert!((run(true) - ordinary * 1.5).abs() < 1e-9);
+}
+
+#[test]
+fn pin_source_lines_have_a_reader_and_only_enabled_types_build_pin() {
+    let data = data();
+    let weapon_line = "All Damage from Hits with this Weapon Contributes to Pin Buildup";
+    let run = |weapon_lines: &str, extra: &[&str]| {
+        let build = parse_build(&format!(
+            r#"<PathOfBuilding2>
+<Build level="80" className="Huntress" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="MeleePlayer" level="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: UNIQUE
+Pin Test Spear
+Hardwood Spear
+Implicits: 0
+{weapon_lines}
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#
+        ))
+        .unwrap();
+        let options = DataOrchestratorOptions {
+            mode_effective: true,
+            extra_modifier_texts: extra.iter().map(|line| line.to_string()).collect(),
+            ..Default::default()
+        };
+        let diagnosis = diagnose(&build, &data, &options).unwrap();
+        let usage = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+        (diagnosis.session.output().pin_buildup_avg, usage)
+    };
+    // Nothing enables Pin: the hit builds none.
+    let (none, _) = run("", &[]);
+    assert_eq!(none, 0.0);
+    // Physical Damage is Pinning (base_physical_damage_can_pin) and the increase
+    // are both consumed by PinBuildupAvg.
+    let extra = ["Physical Damage is Pinning", "30% increased Pin Buildup"];
+    let (physical, usage) = run("", &extra);
+    assert!(physical > 0.0, "{physical}");
+    for text in extra {
+        let row = usage
+            .lines
+            .iter()
+            .find(|row| row.text.as_deref() == Some(text))
+            .unwrap();
+        assert_eq!(
+            row.modifiers[0].status,
+            ModifierStatus::Applied,
+            "{text}: {row:?}"
+        );
+    }
+    let (plain, _) = run("", &["Physical Damage is Pinning"]);
+    // The boss poise threshold is large, so the shared 9-decimal rounding of the
+    // per-damage percentage limits the ratio to about 1e-4.
+    assert!((physical / plain - 1.3).abs() < 1e-3, "{physical} {plain}");
+    // The weapon's own line enables every damage type of that hand's hits.
+    let (weapon, usage) = run(weapon_line, &[]);
+    assert!(weapon >= plain, "{weapon} {plain}");
+    let row = line(&usage, "item.weapon1.explicit", weapon_line);
+    assert_eq!(row.modifiers[0].status, ModifierStatus::Applied, "{row:?}");
+    // A spell-only critical source on an attack is read but has no effect.
+    let spell_line = "Physical Spell Critical Hits build Pin";
+    let (spell, usage) = run("", &[spell_line]);
+    assert_eq!(spell, 0.0);
+    let row = usage
+        .lines
+        .iter()
+        .find(|row| row.text.as_deref() == Some(spell_line))
+        .unwrap();
+    assert_ne!(row.modifiers[0].status, ModifierStatus::Unread, "{row:?}");
 }
 
 #[test]

@@ -3,6 +3,47 @@ use super::{CalculationSession, detail::DerivedDetail};
 use crate::calc::{perform, survivability::ChargeKind};
 
 pub const DERIVED_STATS: &[&str] = &[
+    "PhysicalResistTakenHitMulti",
+    "FireResistTakenHitMulti",
+    "ColdResistTakenHitMulti",
+    "LightningResistTakenHitMulti",
+    "ChaosResistTakenHitMulti",
+    "PhysicalAfterReductionTakenHitMulti",
+    "FireAfterReductionTakenHitMulti",
+    "ColdAfterReductionTakenHitMulti",
+    "LightningAfterReductionTakenHitMulti",
+    "ChaosAfterReductionTakenHitMulti",
+    "PhysicalBaseTakenHitMult",
+    "FireBaseTakenHitMult",
+    "ColdBaseTakenHitMult",
+    "LightningBaseTakenHitMult",
+    "ChaosBaseTakenHitMult",
+    "PhysicalDamageReductionMax",
+    "FireDamageReductionMax",
+    "ColdDamageReductionMax",
+    "LightningDamageReductionMax",
+    "ChaosDamageReductionMax",
+    "PhysicalManaEffectiveLife",
+    "FireManaEffectiveLife",
+    "ColdManaEffectiveLife",
+    "LightningManaEffectiveLife",
+    "ChaosManaEffectiveLife",
+    "PhysicalMoMHitPool",
+    "FireMoMHitPool",
+    "ColdMoMHitPool",
+    "LightningMoMHitPool",
+    "ChaosMoMHitPool",
+    "PhysicalTotalHitPool",
+    "FireTotalHitPool",
+    "ColdTotalHitPool",
+    "LightningTotalHitPool",
+    "ChaosTotalHitPool",
+    "DamageReductionMax",
+    "LifeHitPool",
+    "FireResistTotal",
+    "ColdResistTotal",
+    "LightningResistTotal",
+    "ChaosResistTotal",
     "LowLifePercentage",
     "LowestAttribute",
     "MaximumChill",
@@ -10,6 +51,7 @@ pub const DERIVED_STATS: &[&str] = &[
     "CurrentChill",
     "CurrentShock",
     "HeavyStunBuildupAvg",
+    "PinBuildupAvg",
     "PhysicalTakenDamage",
     "FireTakenDamage",
     "ColdTakenDamage",
@@ -237,6 +279,38 @@ impl CalculationSession {
                     )
                 }
             }
+            "PinBuildupAvg" => {
+                let t = env.pin_terms.as_ref()?;
+                let rows: Vec<_> = crate::calc::ailment::PIN_DAMAGE_TYPES
+                    .iter()
+                    .zip(t.damage)
+                    .filter(|(_, damage)| *damage != 0.0)
+                    .map(|(kind, damage)| (format!("{kind:?}PinningHitAverage"), damage))
+                    .collect();
+                if !t.enabled || t.threshold <= 0.0 || rows.is_empty() {
+                    ("0 * CanPin".into(), vec![("CanPin".into(), 0.0)])
+                } else {
+                    let damage = rows
+                        .iter()
+                        .map(|(id, _)| id.as_str())
+                        .collect::<Vec<_>>()
+                        .join(" + ");
+                    let mut inputs = rows;
+                    inputs.extend([
+                        ("PinDamageScale".into(), t.damage_scale),
+                        ("EnemyPoiseThreshold".into(), t.threshold),
+                        ("PinBuildupIncreased".into(), t.increased),
+                        ("PinBuildupMore".into(), t.more),
+                        ("EnemyPinBuildupMultiplier".into(), t.enemy_multiplier),
+                    ]);
+                    (
+                        format!(
+                            "({damage}) * round(PinDamageScale / EnemyPoiseThreshold * (1 + PinBuildupIncreased / 100) * PinBuildupMore * 100, 9) * EnemyPinBuildupMultiplier"
+                        ),
+                        inputs,
+                    )
+                }
+            }
             "totalEnemyDamage" | "totalTakenDamage" | "totalTakenHit" => {
                 let t = self.ehp_terms()?;
                 let (suffix, values) = match stat {
@@ -332,6 +406,168 @@ impl CalculationSession {
                 }
             }
 
+            "DamageReductionMax" => {
+                let m = &self.ehp_terms()?.mitigation;
+                if m.dr_max_global_modifier > 0.0 {
+                    one("HighestDamageReductionMax", m.dr_max_global_modifier)
+                } else {
+                    one("DamageReductionCap", m.dr_max_global)
+                }
+            }
+            "LifeHitPool" => {
+                let t = self.ehp_terms()?.life_hit_pool_terms;
+                (
+                    "max(Life - MaximumLife / 2, 0) / (1 - LifeLossPrevented / 100) + min(Life, MaximumLife / 2) / (1 - LifeLossBelowHalfPrevented / 100) / (1 - LifeLossPrevented / 100)".into(),
+                    vec![
+                        ("Life".into(), t.life),
+                        ("MaximumLife".into(), t.max_life),
+                        ("LifeLossPrevented".into(), t.loss_prevented),
+                        ("LifeLossBelowHalfPrevented".into(), t.below_half_loss_prevented),
+                    ],
+                )
+            }
+            "FireResistTotal" | "ColdResistTotal" | "LightningResistTotal" | "ChaosResistTotal" => {
+                let input = perform::player_input(env);
+                let (element, base) = match stat {
+                    "FireResistTotal" => ("Fire", input.base_fire_resistance),
+                    "ColdResistTotal" => ("Cold", input.base_cold_resistance),
+                    "LightningResistTotal" => ("Lightning", input.base_lightning_resistance),
+                    _ => ("Chaos", 0.0),
+                };
+                let r = crate::calc::offence::resolve_resistance(
+                    db,
+                    cfg,
+                    base,
+                    element,
+                    element != "Chaos",
+                );
+                // Resistance truncates toward zero: floor when positive, ceil when negative.
+                let raw = r.override_total.unwrap_or_else(|| {
+                    (r.base + r.flat) * ((1.0 + r.inc / 100.0) * r.more).max(0.0)
+                });
+                let toward_zero = if raw >= 0.0 { "floor" } else { "ceil" };
+                match r.override_total {
+                    Some(value) => (
+                        format!("{toward_zero}(OverrideResistance)"),
+                        vec![("OverrideResistance".into(), value)],
+                    ),
+                    None => (
+                        format!(
+                            "{toward_zero}((BaseResistance + FlatResistance) * max((1 + IncreasedResistance / 100) * MoreResistance, 0))"
+                        ),
+                        vec![
+                            ("BaseResistance".into(), r.base),
+                            ("FlatResistance".into(), r.flat),
+                            ("IncreasedResistance".into(), r.inc),
+                            ("MoreResistance".into(), r.more),
+                        ],
+                    ),
+                }
+            }
+            "PhysicalResistTakenHitMulti"
+            | "FireResistTakenHitMulti"
+            | "ColdResistTakenHitMulti"
+            | "LightningResistTakenHitMulti"
+            | "ChaosResistTakenHitMulti"
+            | "PhysicalAfterReductionTakenHitMulti"
+            | "FireAfterReductionTakenHitMulti"
+            | "ColdAfterReductionTakenHitMulti"
+            | "LightningAfterReductionTakenHitMulti"
+            | "ChaosAfterReductionTakenHitMulti"
+            | "PhysicalBaseTakenHitMult"
+            | "FireBaseTakenHitMult"
+            | "ColdBaseTakenHitMult"
+            | "LightningBaseTakenHitMult"
+            | "ChaosBaseTakenHitMult"
+            | "PhysicalDamageReductionMax"
+            | "FireDamageReductionMax"
+            | "ColdDamageReductionMax"
+            | "LightningDamageReductionMax"
+            | "ChaosDamageReductionMax"
+            | "PhysicalManaEffectiveLife"
+            | "FireManaEffectiveLife"
+            | "ColdManaEffectiveLife"
+            | "LightningManaEffectiveLife"
+            | "ChaosManaEffectiveLife"
+            | "PhysicalMoMHitPool"
+            | "FireMoMHitPool"
+            | "ColdMoMHitPool"
+            | "LightningMoMHitPool"
+            | "ChaosMoMHitPool"
+            | "PhysicalTotalHitPool"
+            | "FireTotalHitPool"
+            | "ColdTotalHitPool"
+            | "LightningTotalHitPool"
+            | "ChaosTotalHitPool" => {
+                let t = self.ehp_terms()?;
+                let (i, kind) = ["Physical", "Fire", "Cold", "Lightning", "Chaos"]
+                    .into_iter()
+                    .enumerate()
+                    .find(|(_, kind)| stat.starts_with(kind))?;
+                let m = &t.mitigation;
+                match &stat[kind.len()..] {
+                    "ResistTakenHitMulti" => (
+                        if t.resist_before_pen[i] > 0.0 { "1 - max(Resistance - EnemyPenetration, 0) / 100" }
+                        else { "1 - Resistance / 100 + 0 * EnemyPenetration" }.into(),
+                        vec![
+                            ("Resistance".into(), t.resist_before_pen[i]),
+                            ("EnemyPenetration".into(), t.enemy_pen[i]),
+                        ],
+                    ),
+                    "AfterReductionTakenHitMulti" => (
+                        "HitDamageTakenMultiplier * DeflectMultiplier".into(),
+                        vec![
+                            ("HitDamageTakenMultiplier".into(), m.hit_taken_multi[i]),
+                            ("DeflectMultiplier".into(), m.deflect_multi),
+                        ],
+                    ),
+                    "BaseTakenHitMult" => (
+                        "ResistTakenMultiplier * ReductionTakenMultiplier * AfterReductionMultiplier".into(),
+                        vec![
+                            ("ResistTakenMultiplier".into(), t.resist_taken_multi[i]),
+                            ("ReductionTakenMultiplier".into(), t.damage_reduction[i].taken_multiplier()),
+                            ("AfterReductionMultiplier".into(), t.after_reduction_multi[i]),
+                        ],
+                    ),
+                    "DamageReductionMax" => {
+                        let type_cap = format!("Highest{kind}DamageReductionMax");
+                        if m.dr_max_type_modifier[i] > 0.0 {
+                            (
+                                format!("min({type_cap}, DamageReductionMax)"),
+                                vec![
+                                    (type_cap, m.dr_max_type_modifier[i]),
+                                    ("DamageReductionMax".into(), m.dr_max_global),
+                                ],
+                            )
+                        } else {
+                            one("DamageReductionMax", m.dr_max_global)
+                        }
+                    }
+                    "ManaEffectiveLife" => (
+                        "LifeRecoverable + ManaThroughMindOverMatter".into(),
+                        vec![
+                            ("LifeRecoverable".into(), t.life_hit_pool_terms.life),
+                            ("ManaThroughMindOverMatter".into(), t.mom.effective_life_by_type[i] - t.life_hit_pool_terms.life),
+                        ],
+                    ),
+                    "MoMHitPool" => (
+                        "LifeHitPool + ManaThroughMindOverMatter".into(),
+                        vec![
+                            ("LifeHitPool".into(), t.mom.life_hit_pool),
+                            ("ManaThroughMindOverMatter".into(), t.mom.hit_pool_by_type[i] - t.mom.life_hit_pool),
+                        ],
+                    ),
+                    "TotalHitPool" => (
+                        "MoMHitPool + EnergyShieldInPool + WardAegisGuardAllyLayers".into(),
+                        vec![
+                            ("MoMHitPool".into(), t.mom.hit_pool_by_type[i]),
+                            ("EnergyShieldInPool".into(), t.base_hit_pool[i] - t.mom.hit_pool_by_type[i]),
+                            ("WardAegisGuardAllyLayers".into(), t.total_hit_pool[i] - t.base_hit_pool[i]),
+                        ],
+                    ),
+                    _ => unreachable!(),
+                }
+            }
             "ArchonDuration" | "ArchonRecoveryPeriod" => {
                 let timing = crate::rules::archon::timing(db, cfg);
                 if stat == "ArchonDuration" {

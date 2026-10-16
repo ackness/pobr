@@ -272,6 +272,10 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     stun.enabled &= !no_trigger_events(env);
     env.player.output.heavy_stun_buildup_avg = stun.value();
     env.heavy_stun_terms = Some(stun);
+    let mut pin = super::ailment::pin_terms(env, stun_damage, &output.crit_avg);
+    pin.enabled &= !no_trigger_events(env);
+    env.player.output.pin_buildup_avg = pin.value();
+    env.pin_terms = Some(pin);
     // Skill DoT + combined-DPS family: runs after fill_ailments — TotalDotDPS only reads the
     // current bleed/poison/ignite values from the ailment side (ailment.rs is untouched, per the T4 wave agreement).
     fill_skill_dot_stage(env);
@@ -654,6 +658,7 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.chaos_resistance = chaos_resistance.final_value;
     env.player.output.max_chaos_resistance = chaos_resistance.max;
     env.player.output.chaos_resistance_over_cap = chaos_resistance.over_cap;
+    env.player.output.chaos_resistance_total = chaos_resistance.total;
     // Accuracy rating as the main-hand pass reads it (the hit chance input).
     env.player.output.accuracy = {
         let input = player_input(env);

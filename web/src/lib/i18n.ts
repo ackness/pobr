@@ -1191,6 +1191,7 @@ const STAT_EXTRA_LABELS: Record<string, { 'zh-TW': string; 'zh-CN': string }> = 
   EsRecoupRate: { 'zh-TW': '護盾回得速率', 'zh-CN': '护盾回得速率' },
   ChillEffect: { 'zh-TW': '冰緩效果', 'zh-CN': '冰缓效果' },
   HeavyStunBuildupAvg: { 'zh-TW': '每次擊中重度暈眩累積', 'zh-CN': '每次击中重度晕眩积累' },
+  PinBuildupAvg: { 'zh-TW': '每次擊中定身累積', 'zh-CN': '每次击中定身积累' },
   FreezeBuildupPct: { 'zh-TW': '凍結積累 %', 'zh-CN': '冻结积累 %' },
   ElectrocuteBuildupPct: { 'zh-TW': '感電麻痺積累 %', 'zh-CN': '感电麻痹积累 %' },
   BleedStackedDPS: { 'zh-TW': '流血疊層 DPS', 'zh-CN': '流血叠层 DPS' },

@@ -238,6 +238,12 @@ pub struct GameMechanicsConstantsDef {
     /// Heavy stun modifier duration — against monsters (seconds).
     /// Misc.lua:50 HeavyStunModifierDuration = 16.5.
     pub heavy_stun_modifier_duration: f64,
+    /// Pin damage scale — against monsters. Game table `GameConstants`
+    /// (patch 0.5.5.4.2, `PinDamageScale` = 420 / 100 = 4.2); Pin buildup uses
+    /// the same poise threshold as Heavy Stun (`PinThresholdModifier` = 500 =
+    /// `HeavyStunThresholdModifier`).
+    #[serde(default = "default_pin_damage_scale")]
+    pub pin_damage_scale: f64,
     /// Negative-armour damage-bonus cap (%). Data.lua:194
     /// NegArmourDmgBonusCap = 100.
     pub neg_armour_dmg_bonus_cap: f64,
@@ -308,6 +314,9 @@ pub struct GameMechanicsConstantsDef {
 // single numeric source of truth).
 fn default_ehp_calc_max_damage() -> f64 {
     100_000_000.0
+}
+fn default_pin_damage_scale() -> f64 {
+    4.2
 }
 fn default_base_block_chance_max() -> f64 {
     50.0
@@ -430,6 +439,7 @@ impl Default for GameMechanicsConstantsDef {
             heavy_stun_damage_scale: 0.58,
             heavy_stun_threshold_modifier: 500.0,
             heavy_stun_modifier_duration: 16.5,
+            pin_damage_scale: default_pin_damage_scale(),
             neg_armour_dmg_bonus_cap: 100.0,
             //  EHP loop magic numbers + normal-monster DPS multiplier
             //  (Data.lua:228/235/237/239).

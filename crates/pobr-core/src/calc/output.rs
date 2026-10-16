@@ -127,6 +127,11 @@ pub struct OutputTable {
     pub cold_resistance_over_cap: f64,
     pub lightning_resistance_over_cap: f64,
     pub chaos_resistance_over_cap: f64,
+    /// Truncated resistance before the maximum and floor (`<X>ResistTotal`).
+    pub fire_resistance_total: f64,
+    pub cold_resistance_total: f64,
+    pub lightning_resistance_total: f64,
+    pub chaos_resistance_total: f64,
     pub crit_chance: f64,
     /// Crit chance (fraction) before the hit-chance downgrade / lucky /
     /// bifurcate / inevitable, but after the cap. Used to show overflow in breakdowns.
@@ -347,6 +352,9 @@ pub struct OutputTable {
     pub freeze_buildup_pct: f64,
     /// Average enemy Heavy Stun buildup (% of poise per successful hit).
     pub heavy_stun_buildup_avg: f64,
+    /// Average enemy Pin buildup (% of the Pin threshold per successful hit);
+    /// only damage that a Pin source enables counts.
+    pub pin_buildup_avg: f64,
     /// Shock buildup (% per hit; 0 = not accumulating).
     pub electrocute_buildup_pct: f64,
     /// Bleed/poison/ignite multi-stack DPS and active stack count (0 = no
@@ -571,6 +579,9 @@ pub struct HandOutput {
     /// Per-type effective hit averages, including crit weighting but not hit chance.
     /// Reused from the effective-DPS pass; empty in panel mode.
     pub mitigated_avg: Vec<(DamageType, f64)>,
+    /// The crit leg's crit-weighted share of the per-type average above
+    /// (`mitigated_avg`, or `stored_combined_avg` in panel mode).
+    pub crit_avg: Vec<(DamageType, f64)>,
     /// The `Stored<Type>{Hit,Crit}{Min,Max}` family (appended; the damaging
     /// ailment source damage input, resolved by vendor `:4050-4056` / consumed at `:4833-4857`).
     pub stored_ranges: Vec<StoredDamageRange>,
@@ -677,6 +688,10 @@ impl Default for OutputTable {
             fire_resistance_over_cap: 0.0,
             cold_resistance_over_cap: 0.0,
             lightning_resistance_over_cap: 0.0,
+            fire_resistance_total: 0.0,
+            cold_resistance_total: 0.0,
+            lightning_resistance_total: 0.0,
+            chaos_resistance_total: 0.0,
             chaos_resistance_over_cap: 0.0,
             crit_chance: 0.0,
             pre_effective_crit_chance: 0.0,
@@ -830,6 +845,7 @@ impl Default for OutputTable {
             chill_effect: 0.0,
             freeze_buildup_pct: 0.0,
             heavy_stun_buildup_avg: 0.0,
+            pin_buildup_avg: 0.0,
             electrocute_buildup_pct: 0.0,
             bleed_stacked_dps: 0.0,
             bleed_active_stacks: 0.0,
@@ -918,6 +934,9 @@ impl From<&MinimalOutput> for OutputTable {
             fire_resistance_over_cap: value.fire_resistance_over_cap,
             cold_resistance_over_cap: value.cold_resistance_over_cap,
             lightning_resistance_over_cap: value.lightning_resistance_over_cap,
+            fire_resistance_total: value.fire_resistance_total,
+            cold_resistance_total: value.cold_resistance_total,
+            lightning_resistance_total: value.lightning_resistance_total,
             crit_chance: value.crit_chance,
             pre_effective_crit_chance: value.pre_effective_crit_chance,
             crit_multiplier: value.crit_multiplier,

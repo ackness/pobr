@@ -47024,7 +47024,18 @@
     },
     {
       "text": "[Physical] [Spell] [Critical] [Hit|Hits] build [Pinned|Pin]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "PhysicalCanPin",
+          "type": "Flag",
+          "value": true,
+          "flags": 2,
+          "tags": [
+            "Condition { var: \"CriticalStrike\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Pinned] Enemies cannot deal [Critical|Critical Hits]",
