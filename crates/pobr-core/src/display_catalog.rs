@@ -116,6 +116,145 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         ),
         computed("MaimImmunity", Cat::Defence, Vt::Bool, "MaimImmunity"),
         computed("HinderImmunity", Cat::Defence, Vt::Bool, "HinderImmunity"),
+        computed(
+            "IgniteChancePerHit",
+            Cat::Ailment,
+            Vt::Percent,
+            "IgniteChancePerHit",
+        ),
+        computed(
+            "IgniteDuration",
+            Cat::Ailment,
+            Vt::TimeSeconds,
+            "IgniteDuration",
+        ),
+        computed("IgniteEffMult", Cat::Ailment, Vt::Number, "IgniteEffMult"),
+        computed(
+            "IgniteMagnitudeEffect",
+            Cat::Ailment,
+            Vt::Number,
+            "IgniteMagnitudeEffect",
+        ),
+        computed(
+            "IgniteRollAverage",
+            Cat::Ailment,
+            Vt::Percent,
+            "IgniteRollAverage",
+        ),
+        computed(
+            "IgniteStacksMax",
+            Cat::Ailment,
+            Vt::Number,
+            "IgniteStacksMax",
+        ),
+        computed(
+            "IgniteStackPotentialPercent",
+            Cat::Ailment,
+            Vt::Percent,
+            "IgniteStackPotentialPercent",
+        ),
+        computed("IgniteFireMin", Cat::Ailment, Vt::Number, "IgniteFireMin"),
+        computed("IgniteFireMax", Cat::Ailment, Vt::Number, "IgniteFireMax"),
+        computed("IgniteColdMin", Cat::Ailment, Vt::Number, "IgniteColdMin"),
+        computed("IgniteColdMax", Cat::Ailment, Vt::Number, "IgniteColdMax"),
+        computed(
+            "IgniteLightningMin",
+            Cat::Ailment,
+            Vt::Number,
+            "IgniteLightningMin",
+        ),
+        computed(
+            "IgniteLightningMax",
+            Cat::Ailment,
+            Vt::Number,
+            "IgniteLightningMax",
+        ),
+        computed("BleedChance", Cat::Ailment, Vt::Percent, "BleedChance"),
+        computed(
+            "BleedDuration",
+            Cat::Ailment,
+            Vt::TimeSeconds,
+            "BleedDuration",
+        ),
+        computed("BleedEffMult", Cat::Ailment, Vt::Number, "BleedEffMult"),
+        computed(
+            "BleedMagnitudeEffect",
+            Cat::Ailment,
+            Vt::Number,
+            "BleedMagnitudeEffect",
+        ),
+        computed(
+            "BleedRollAverage",
+            Cat::Ailment,
+            Vt::Percent,
+            "BleedRollAverage",
+        ),
+        computed("BleedStacksMax", Cat::Ailment, Vt::Number, "BleedStacksMax"),
+        computed(
+            "BleedStackPotentialPercent",
+            Cat::Ailment,
+            Vt::Percent,
+            "BleedStackPotentialPercent",
+        ),
+        computed(
+            "BleedPhysicalMin",
+            Cat::Ailment,
+            Vt::Number,
+            "BleedPhysicalMin",
+        ),
+        computed(
+            "BleedPhysicalMax",
+            Cat::Ailment,
+            Vt::Number,
+            "BleedPhysicalMax",
+        ),
+        computed("PoisonChance", Cat::Ailment, Vt::Percent, "PoisonChance"),
+        computed(
+            "PoisonDuration",
+            Cat::Ailment,
+            Vt::TimeSeconds,
+            "PoisonDuration",
+        ),
+        computed("PoisonEffMult", Cat::Ailment, Vt::Number, "PoisonEffMult"),
+        computed(
+            "PoisonMagnitudeEffect",
+            Cat::Ailment,
+            Vt::Number,
+            "PoisonMagnitudeEffect",
+        ),
+        computed(
+            "PoisonRollAverage",
+            Cat::Ailment,
+            Vt::Percent,
+            "PoisonRollAverage",
+        ),
+        computed(
+            "PoisonStacksMax",
+            Cat::Ailment,
+            Vt::Number,
+            "PoisonStacksMax",
+        ),
+        computed(
+            "PoisonStackPotentialPercent",
+            Cat::Ailment,
+            Vt::Percent,
+            "PoisonStackPotentialPercent",
+        ),
+        computed(
+            "PoisonPhysicalMin",
+            Cat::Ailment,
+            Vt::Number,
+            "PoisonPhysicalMin",
+        ),
+        computed(
+            "PoisonPhysicalMax",
+            Cat::Ailment,
+            Vt::Number,
+            "PoisonPhysicalMax",
+        ),
+        computed("PoisonChaosMin", Cat::Ailment, Vt::Number, "PoisonChaosMin"),
+        computed("PoisonChaosMax", Cat::Ailment, Vt::Number, "PoisonChaosMax"),
+        computed("ShockChance", Cat::Ailment, Vt::Percent, "ShockChance"),
         computed("DecayDPS", Cat::DotDamage, Vt::Number, "DecayDPS"),
         computed(
             "MirageBurningGroundDPS",
@@ -1178,6 +1317,9 @@ pub fn extract_display_values(output: &OutputTable) -> Vec<DisplayStatValue> {
 pub fn display_value(output: &OutputTable, id: &str) -> f64 {
     if let Some(value) = output.utility_stats.get(id) {
         return *value;
+    }
+    if let Some(value) = crate::calc::ailment_display::display_value(output, id) {
+        return value;
     }
     match id {
         "DecayDPS" => output.decay_dps,

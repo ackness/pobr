@@ -69,10 +69,6 @@ pub struct Env {
     /// `None` means `buff_pass` didn't run (mode_buffs off / no spec), and
     /// the output fields stay at their Default 0.
     pub curse_pass_output: Option<CursePassOutput>,
-    /// The terms behind each damaging ailment's displayed DPS, written by
-    /// `perform`'s ailment stage: every pass that applies it and, for two
-    /// weapon passes, how they were merged.
-    pub ailment_terms: Vec<(AilmentType, super::AilmentStageTerms)>,
     /// The crossbow reload cycle `perform` scaled the rate and DPS by
     /// (`None` when the stage changed nothing).
     pub crossbow_reload: Option<super::CrossbowReload>,
@@ -128,7 +124,6 @@ impl Env {
             buff_handler_registry: Arc::new(HandlerRegistry::new()),
             curse_priority: None,
             curse_pass_output: None,
-            ailment_terms: Vec::new(),
             crossbow_reload: None,
             ehp_terms: None,
             legacy_ehp_terms: None,

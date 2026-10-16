@@ -773,3 +773,131 @@ fn slower_buff_expiry_divides_elapsed_time_and_does_not_change_non_buff_duration
         assert!((display_value(session.output(), "ArchonDuration") - 10.0 / 0.9).abs() < 1e-9);
     }
 }
+
+#[test]
+fn ailment_calcs_expose_retained_chance_duration_roll_and_source_ranges() {
+    // Existing game bases: ignite 4s, bleed 5s, poison 2s. 50% duration
+    // and 50% faster damage cancel; 50% magnitude and 20% more give 1.8.
+    for (prefix, damage_type, damage_name, base_duration) in [
+        ("Ignite", DamageType::Fire, "Fire", 4.0),
+        ("Ignite", DamageType::Cold, "Cold", 4.0),
+        ("Ignite", DamageType::Lightning, "Lightning", 4.0),
+        ("Bleed", DamageType::Physical, "Physical", 5.0),
+        ("Poison", DamageType::Physical, "Physical", 2.0),
+        ("Poison", DamageType::Chaos, "Chaos", 2.0),
+    ] {
+        let mut session = super::support::session(MinimalInput {
+            base_hit_min: 100.0,
+            base_hit_max: 200.0,
+            base_action_rate: 2.0,
+            ..Default::default()
+        })
+        .with_config(
+            CalcConfig::spell()
+                .with_damage_type(damage_type)
+                .with_mode_effective(true),
+        );
+        if damage_type != DamageType::Physical {
+            session.add_modifiers([Modifier::number(
+                "PhysicalDamageConvertTo".to_string() + damage_name,
+                ModType::Base,
+                100.0,
+            )]);
+        }
+        session.add_modifiers([
+            Modifier::number("AilmentChance", ModType::Base, 100.0),
+            Modifier::number("EnemyAilmentDuration", ModType::Inc, 50.0),
+            Modifier::number(format!("{prefix}Faster"), ModType::Inc, 50.0),
+            Modifier::number("AilmentMagnitude", ModType::Inc, 50.0),
+            Modifier::number("AilmentMagnitude", ModType::More, 20.0),
+            Modifier::flag(format!("{damage_name}Can{prefix}")),
+            Modifier::number(format!("{damage_name}{prefix}Buildup"), ModType::More, 25.0),
+        ]);
+        session.add_enemy_modifiers([
+            Modifier::number("FireResist", ModType::Base, 25.0),
+            Modifier::number("ChaosResist", ModType::Base, 25.0),
+            Modifier::number("DamageTakenOverTime", ModType::Inc, 20.0),
+        ]);
+        session.perform_minimal().unwrap();
+        if damage_type == DamageType::Lightning {
+            assert_eq!(display_value(session.output(), "ShockChance"), 100.0);
+            let detail = session.derived_detail("ShockChance").unwrap();
+            assert_eq!(detail.inputs[0].1 * 100.0, 100.0);
+        }
+        let expected_stacks = base_duration * 2.0;
+        let chance_suffix = if prefix == "Ignite" {
+            "ChancePerHit"
+        } else {
+            "Chance"
+        };
+        for (suffix, expected) in [
+            (chance_suffix.to_string(), 100.0),
+            ("Duration".into(), base_duration),
+            ("EffMult".into(), if prefix == "Bleed" { 1.2 } else { 0.9 }),
+            ("MagnitudeEffect".into(), 1.8),
+            ("StacksMax".into(), 1.0),
+            ("StackPotentialPercent".into(), expected_stacks * 100.0),
+            (
+                "RollAverage".into(),
+                expected_stacks / (expected_stacks + 1.0) * 100.0,
+            ),
+            (format!("{damage_name}Min"), 125.0),
+            (format!("{damage_name}Max"), 250.0),
+        ] {
+            let id = format!("{prefix}{suffix}");
+            let value = display_value(session.output(), &id);
+            assert!(
+                (value - expected).abs() < 1e-8,
+                "{id}: {value} != {expected}"
+            );
+            let detail = session.derived_detail(&id).expect(&id);
+            assert!(!detail.inputs.iter().any(|(input, _)| input == &id));
+            let input = |id: &str| detail.inputs.iter().find(|(name, _)| name == id).unwrap().1;
+            let reconstructed = match suffix.as_str() {
+                "Duration" => {
+                    input("AilmentDurationBeforeRate") * input("EnemyDebuffDuration")
+                        / input("AilmentDamageRate")
+                }
+                "MagnitudeEffect" => {
+                    (1.0 + input("AilmentMagnitudeIncreased") / 100.0)
+                        * input("AilmentMagnitudeMore")
+                }
+                "StackPotentialPercent" => {
+                    input("EstimatedAilmentStacks") / input("MaximumAilmentStacks") * 100.0
+                }
+                "RollAverage" => {
+                    (input("EstimatedAilmentStacks") - (input("MaximumAilmentStacks") - 1.0) / 2.0)
+                        / (input("EstimatedAilmentStacks") + 1.0)
+                        * 100.0
+                }
+                "EffMult" => {
+                    (1.0 - input("AilmentEnemyResistance") / 100.0)
+                        * (1.0 + input("AilmentDamageTakenIncreased") / 100.0)
+                        * input("AilmentDamageTakenMore")
+                }
+                "ChancePerHit" => input("AilmentApplicationChance") * 100.0,
+                "Chance" => input("AilmentPass1Chance") / input("AilmentPassCount") * 100.0,
+                _ => detail.inputs[0].1,
+            };
+            assert!((value - reconstructed).abs() < 1e-8, "{id} detail");
+        }
+    }
+    // No damage/chance creates no ailment instance, including neutral multipliers.
+    let mut empty = super::support::session(MinimalInput::default());
+    empty.perform_minimal().unwrap();
+    for id in [
+        "IgniteChancePerHit",
+        "BleedDuration",
+        "PoisonEffMult",
+        "IgniteMagnitudeEffect",
+        "PoisonRollAverage",
+        "BleedStacksMax",
+        "IgniteStackPotentialPercent",
+        "IgniteFireMin",
+        "PoisonChaosMax",
+        "ShockChance",
+    ] {
+        assert_eq!(display_value(empty.output(), id), 0.0, "{id}");
+        assert!(empty.derived_detail(id).is_some(), "{id}");
+    }
+}
