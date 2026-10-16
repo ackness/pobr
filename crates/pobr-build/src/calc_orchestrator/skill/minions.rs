@@ -13,7 +13,15 @@ use crate::build_data::BuildData;
 
 pub(crate) fn spawn_minions(session: &mut CalculationSession, build: &Build, data: &BuildData) {
     let bonuses = gem_property_bonuses(build, data);
-    pobr_core::skill_env::spawn_minions(session, build, data, &bonuses, build);
+    let main_skill =
+        super::resolve::resolve_main_skill(build, data).and_then(|(_, selected_group, _, _)| {
+            let group_index = build
+                .enabled_socket_groups()
+                .position(|group| std::ptr::eq(group, selected_group))?;
+            let effect = super::resolve::selected_group_effect(data, selected_group)?;
+            Some((group_index, effect))
+        });
+    pobr_core::skill_env::spawn_minions(session, build, data, &bonuses, build, main_skill);
     // "... equal to ... your main hand Weapon's damage" includes its local
     // elemental and chaos damage, as well as physical damage.
     if let Some(item) =

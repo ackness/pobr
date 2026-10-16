@@ -143,6 +143,70 @@ fn non_summon_build_has_empty_minions() {
     );
 }
 
+/// Pounce's third effect summons one wolf plus the rarity bonus from its
+/// game stat set: Rare +0, Unique +1. Its level-20 limit of six wolves is
+/// not the number created by one activation.
+#[test]
+fn pounce_wolves_exist_only_for_the_selected_summon_effect() {
+    let data = load_data();
+    let make_build = |main_group, effect, enemy: &str| {
+        pobr_build::parse_build(&format!(
+            r#"<PathOfBuilding2><Build level="90" className="Witch" mainSocketGroup="{main_group}"/>
+<Skills>
+<Skill enabled="false"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill>
+<Skill enabled="true" mainActiveSkill="{effect}"><Gem skillId="WolfPouncePlayer" level="20" enabled="true" skillMinion="WolfMinion"/></Skill>
+<Skill enabled="true" mainActiveSkill="3"><Gem skillId="WolfPouncePlayer" level="20" enabled="true" skillMinion="WolfMinion"/></Skill>
+<Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill>
+</Skills><Config>{enemy}</Config></PathOfBuilding2>"#
+        ))
+        .unwrap()
+    };
+    let options = DataOrchestratorOptions::reference_conditions();
+    for (enemy, count) in [
+        (r#"<Input name="enemyIsBoss" string="None"/>"#, 1.0),
+        (
+            r#"<Input name="enemyIsBoss" string="None"/><Input name="conditionEnemyRareOrUnique" boolean="true"/>"#,
+            1.0,
+        ),
+        (r#"<Input name="enemyIsBoss" string="Pinnacle"/>"#, 2.0),
+    ] {
+        let build = make_build(2, 3, enemy);
+        let session = pobr_build::calculate_with_data_session(&build, &data, &options).unwrap();
+        let output = session.output();
+        assert_eq!(output.minions.len(), 1, "only the selected group summons");
+        let wolf = pobr_build::reference_check::main_skill_minion(&build, &data, output)
+            .expect("the additional summon effect has a main minion");
+        assert_eq!(wolf.minion_id, "WolfMinion");
+        assert_eq!(wolf.summoned_by, "WolfPounceSummonWolfPlayer");
+        assert_eq!(wolf.skill_id, "MeleeAtAnimationSpeedWolfCompanion");
+        assert_eq!(wolf.summoner, Some((0, 0)));
+        assert_eq!(wolf.level, 40);
+        assert!(wolf.dps > 0.0);
+        assert_eq!(output.dps, 0.0);
+        assert_eq!(session.config().multiplier("SummonedMinion"), count);
+        assert_eq!(session.config().multiplier("MinionPresenceCount"), count);
+        assert_eq!(output.active_minion_limit, count);
+    }
+    for (main_group, effect) in [(2, 1), (2, 2), (4, 3)] {
+        let build = make_build(main_group, effect, "");
+        let session = pobr_build::calculate_with_data_session(&build, &data, &options).unwrap();
+        assert!(session.output().minions.is_empty());
+        assert_eq!(session.config().multiplier("SummonedMinion"), 0.0);
+        assert_eq!(session.config().multiplier("MinionPresenceCount"), 0.0);
+    }
+    let build = make_build(2, 3, "");
+    let boosted = calculate_with_data(
+        &build,
+        &data,
+        &DataOrchestratorOptions {
+            extra_modifier_texts: vec!["+2 to Level of all Minion Skills".into()],
+            ..options
+        },
+    )
+    .unwrap();
+    assert_eq!(boosted.minions[0].level, 44, "the parent gem gains levels");
+}
+
 /// Game MonsterResistances: Skeletal Arsonist has 50 Fire, 0 Cold,
 /// Lightning and Chaos. The player's campaign penalty never transfers.
 #[test]
