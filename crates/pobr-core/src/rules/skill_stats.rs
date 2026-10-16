@@ -574,6 +574,11 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         "support_spell_echo_number_of_echo_cascades" => {
             Some(vec![Modifier::number("RepeatCount", ModType::Base, value)])
         }
+        "echoed_spell_area_of_effect_+%" => Some(vec![Modifier::number(
+            "RepeatAreaOfEffect",
+            ModType::Inc,
+            value,
+        )]),
         // Rigwald's Ferocity: increased Attack Speed and more Damage for
         // Supported Skills, each only while using one of the two weapon sets.
         "support_rigwald_attack_speed_+%_in_weapon_set_one" => Some(vec![

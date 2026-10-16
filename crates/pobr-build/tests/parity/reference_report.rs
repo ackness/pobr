@@ -252,7 +252,10 @@ const BASELINES: [Baseline; 3] = [
         corpus: "examples/wasm-benchmark/builds",
         dps_builds: 5,
         // Sanguimantic Rituals redirects Arcane Surge regeneration to Life (+2 rows).
-        agreeing_rows: 661,
+        // base_spell_mana_cost_efficiency_+% applies to Spells; the exporter only parses attacks.
+        // Gemling Comet c60ba778fabb and Titan His Scattering Calamity a46026af415f
+        // lose ManaCost / ManaPerSecondCost agreement (-4 rows; known-differences.json).
+        agreeing_rows: 657,
     },
     // Was 22 builds and 1024 rows. A code whose main skill summons a minion
     // also carries `<MinionStat>` values for that minion, which were not
@@ -422,7 +425,12 @@ const BASELINES: [Baseline; 3] = [
         // (devs/scripts/known-differences.json).
         // Smith sharing excludes all-elemental modifiers; ancient Idols use their category (+5 rows).
         // Non-spell casts include Cast Speed (+1 Wildwood's Gifts ActionRate row).
-        agreeing_rows: 5786,
+        // Spell Echo's average repeated area fixes Frost Bomb's radius (+1 row).
+        // base_spell_mana_cost_efficiency_+% applies to Spells; the exporter only parses attacks.
+        // Shaman Comet ccfea76a6890, Lich Spark ce24558eff0b / 0a17a1a7df6d,
+        // Shaman Spark 5dcf9ecdd375 and Stormweaver Comet 32a7d948edf8 lose
+        // ManaCost / ManaPerSecondCost agreement (-10 rows; known-differences.json).
+        agreeing_rows: 5777,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
@@ -470,7 +478,9 @@ const BASELINES: [Baseline; 3] = [
         dps_builds: 18,
         // Measured only: local flat requirements follow base conversion (+1 row).
         // Measured only: resistance truncation, Smith sharing and Idol categories (+5 rows).
-        agreeing_rows: 1912,
+        // Measured only: base_spell_mana_cost_efficiency_+% corrects the exporter's
+        // missing Spell phrase (-4 rows; no holdout builds diagnosed).
+        agreeing_rows: 1908,
     },
 ];
 

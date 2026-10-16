@@ -384,3 +384,25 @@ fn local_flask_duration_does_not_extend_skill_effects() {
         47.0
     );
 }
+
+#[test]
+fn spell_mana_efficiency_only_reduces_spell_mana_cost() {
+    use pobr_core::calc::skill_mechanics::{calc_life_cost, calc_mana_cost};
+    let outcome =
+        crate::support::parse_mod("39% increased Mana Cost Efficiency of Spells").unwrap();
+    let mut db = ModDb::new();
+    db.add_list(outcome.mods);
+    // 139 mana / (1 + 39/100) = 100 mana; Attack and Life costs stay 139.
+    assert_eq!(
+        calc_mana_cost(&db, &CalcConfig::spell(), 139.0).final_cost,
+        100.0
+    );
+    assert_eq!(
+        calc_mana_cost(&db, &CalcConfig::attack(), 139.0).final_cost,
+        139.0
+    );
+    assert_eq!(
+        calc_life_cost(&db, &CalcConfig::spell(), 139.0).final_cost,
+        139.0
+    );
+}

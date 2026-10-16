@@ -64,14 +64,31 @@ pub fn calc_radius(base_radius: f64, area_mod: f64) -> f64 {
 /// Aggregation formula: `areaMod = (1 + Σinc/100) × Πmore`.
 /// `base_radius + extra_base` is calcRadius's input.
 ///
-/// Source: PoB2 `CalcOffence.lua` L414-430 (`calcAreaOfEffect`),
-///       `agent-docs/skill-mechanics.md` §AoE.
+/// The skill's radius stats and area modifiers determine its circular area;
+/// echoes use the selected repeat view (`agent-docs/skill-mechanics.md` §AoE).
 pub fn calc_aoe(db: &ModDb, cfg: &CalcConfig, base_radius: f64, extra_base: f64) -> AoeResult {
     let aoe_names = [
         ModName::from("AreaOfEffect"),
         ModName::from("AreaOfEffectPrimary"),
     ];
-    let inc = db.sum(ModType::Inc, cfg, &aoe_names);
+    // Spell Echo's area bonus belongs to echoes only. The Average view
+    // weights it by echo count / all casts; Final shows the echo's area.
+    // Game stats: support_spell_echo_number_of_echo_cascades and
+    // echoed_spell_area_of_effect_+% (one echo, 40% increased area).
+    let repeats = db.sum(ModType::Base, cfg, &[ModName::from("RepeatCount")]);
+    let repeat_inc = if repeats > 0.0 && !db.flag(cfg, "CannotRepeat") {
+        let weight = if cfg.condition("averageRepeat") {
+            repeats / (1.0 + repeats)
+        } else if cfg.condition("alwaysFinalRepeat") {
+            1.0
+        } else {
+            0.0
+        };
+        db.sum(ModType::Inc, cfg, &[ModName::from("RepeatAreaOfEffect")]) * weight
+    } else {
+        0.0
+    };
+    let inc = db.sum(ModType::Inc, cfg, &aoe_names) + repeat_inc;
     let more = db.more(cfg, &aoe_names);
     let area_mod = round((1.0 + inc / 100.0) * more);
     let effective_base = base_radius + extra_base + db.sum(ModType::Base, cfg, &aoe_names);

@@ -311,8 +311,11 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "FireResistMaxAppliesToLightningResist",
         ],
         "BlockEffect" => &["BlockEffect"],
-        "AoeRadius" | "AoeAreaMod" => &[
-            "SkillRadiusBase",
+        "AoeRadius" | "AoeAreaMod" | "AreaOfEffectRadiusMetres" => &[
+            "SkillAreaRadiusBase",
+            "SkillAreaRadiusExtra",
+            "RepeatCount",
+            "RepeatAreaOfEffect",
             "AreaOfEffect",
             "AreaOfEffectPrimary",
             "AreaOfEffectRadius",

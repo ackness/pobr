@@ -2,6 +2,16 @@
   "_doc": "Reference rows `mise run triage` files as known: differences the repository already explains, so a triage lists only what is left to look at. `build` is a fragment of the build folder's name, `stats` the rows it explains, `reason` where the explanation is. Add an entry when a difference is documented as deliberate; remove it when the engine changes.",
   "differences": [
     {
+      "build": "warrior-smith-of-kitava-shield-wall-fb03d7dce08e",
+      "stats": ["ChaosMaxHit", "TotalEHP"],
+      "reason": "The imported boots explicitly grant +11% Chaos Resistance from Soul Core of Tacati, plus +53% on the item: 64%, so 386 Chaos damage becomes 138.96. The current socketable catalog and pinned PoB2 substitute +13%, giving 66% resistance and 131.24 taken. Preserve the imported item's text. Its 2162 Runic Ward, including The Brass Dome's local +991 Ward, gives ChaosMaxHit 8001 and TotalEHP 35908.717951478; the older exporter references are 2468 and 11096.445514375 (docs/maintainer-guide.md, runes and Runic Ward; the build's code.txt item 16 and item 18; base/stats.json local_ward and overlay/runes.json Soul Core of Tacati)."
+    },
+    {
+      "build": "mercenary-gemling-legionnaire-twister-682f26ed1957",
+      "stats": ["LifeRegenRecovery"],
+      "reason": "Virtuous Barrier counts skills requiring the Attribute, including the sceptre's Purity of Fire (Strength/Intelligence), once: 3 base + Purity + Herald of Ice + Ghost Dance + Trinity = 7 Intelligence Motes. The game stat gem_barrier_blue_grants_life_regeneration_rate_+% is 5, plus 2 from 19 quality, so the buff grants 49% increased regeneration. Pinned PoB2 excludes the item-granted Purity and grants 42%. PoBR recovery is 110.3391, reference 103.34, pinned PoB2 101.76 (docs/maintainer-guide.md, Virtuous Barrier; https://poe2db.tw/us/Virtuous_Barrier; base/skill_gems.json and base/granted_effect_stat_sets.json)."
+    },
+    {
       "build": "ranger-deadeye-twister-bed1edc6d8b2",
       "stats": [
         "ManaLeechGainRate"
@@ -332,6 +342,62 @@
       "build": "witch-blood-mage-impending-doom-add19135df93",
       "stats": ["ReqDex"],
       "reason": "The Vertex's Equipment has no Attribute Requirements (game stat global_equipment_no_attribute_requirements) removes equipment requirements, including weapons; PoB2 leaves this line out (docs/maintainer-guide.md, The Vertex)"
+    },
+    {
+      "build": "mercenary-gemling-legionnaire-comet-c60ba778fabb",
+      "stats": [
+        "ManaCost",
+        "ManaPerSecondCost"
+      ],
+      "reason": "Game stat base_spell_mana_cost_efficiency_+% (increased Mana Cost Efficiency of Spells) applies unconditionally to Spell mana costs. The exporter parses mana cost efficiency of attacks but has no rule for of spells, so its reference omits this modifier; ManaCost and ManaPerSecondCost intentionally decrease (docs/maintainer-guide.md, known intentional differences)."
+    },
+    {
+      "build": "warrior-titan-his-scattering-calamity-a46026af415f",
+      "stats": [
+        "ManaCost",
+        "ManaPerSecondCost"
+      ],
+      "reason": "Game stat base_spell_mana_cost_efficiency_+% (increased Mana Cost Efficiency of Spells) applies unconditionally to Spell mana costs. The exporter parses mana cost efficiency of attacks but has no rule for of spells, so its reference omits this modifier; ManaCost and ManaPerSecondCost intentionally decrease (docs/maintainer-guide.md, known intentional differences)."
+    },
+    {
+      "build": "druid-shaman-comet-ccfea76a6890",
+      "stats": [
+        "ManaCost",
+        "ManaPerSecondCost"
+      ],
+      "reason": "Game stat base_spell_mana_cost_efficiency_+% (increased Mana Cost Efficiency of Spells) applies unconditionally to Spell mana costs. The exporter parses mana cost efficiency of attacks but has no rule for of spells, so its reference omits this modifier; ManaCost and ManaPerSecondCost intentionally decrease (docs/maintainer-guide.md, known intentional differences)."
+    },
+    {
+      "build": "witch-lich-spark-ce24558eff0b",
+      "stats": [
+        "ManaCost",
+        "ManaPerSecondCost"
+      ],
+      "reason": "Game stat base_spell_mana_cost_efficiency_+% (increased Mana Cost Efficiency of Spells) applies unconditionally to Spell mana costs. The exporter parses mana cost efficiency of attacks but has no rule for of spells, so its reference omits this modifier; ManaCost and ManaPerSecondCost intentionally decrease (docs/maintainer-guide.md, known intentional differences)."
+    },
+    {
+      "build": "druid-shaman-spark-5dcf9ecdd375",
+      "stats": [
+        "ManaCost",
+        "ManaPerSecondCost"
+      ],
+      "reason": "Game stat base_spell_mana_cost_efficiency_+% (increased Mana Cost Efficiency of Spells) applies unconditionally to Spell mana costs. The exporter parses mana cost efficiency of attacks but has no rule for of spells, so its reference omits this modifier; ManaCost and ManaPerSecondCost intentionally decrease (docs/maintainer-guide.md, known intentional differences)."
+    },
+    {
+      "build": "sorceress-stormweaver-comet-32a7d948edf8",
+      "stats": [
+        "ManaCost",
+        "ManaPerSecondCost"
+      ],
+      "reason": "Game stat base_spell_mana_cost_efficiency_+% (increased Mana Cost Efficiency of Spells) applies unconditionally to Spell mana costs. The exporter parses mana cost efficiency of attacks but has no rule for of spells, so its reference omits this modifier; ManaCost and ManaPerSecondCost intentionally decrease (docs/maintainer-guide.md, known intentional differences)."
+    },
+    {
+      "build": "witch-lich-spark-0a17a1a7df6d",
+      "stats": [
+        "ManaCost",
+        "ManaPerSecondCost"
+      ],
+      "reason": "Game stat base_spell_mana_cost_efficiency_+% (increased Mana Cost Efficiency of Spells) applies unconditionally to Spell mana costs. The exporter parses mana cost efficiency of attacks but has no rule for of spells, so its reference omits this modifier; ManaCost and ManaPerSecondCost intentionally decrease (docs/maintainer-guide.md, known intentional differences)."
     }
   ]
 }

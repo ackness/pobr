@@ -1321,3 +1321,86 @@ fn an_item_granting_unholy_might_gains_chaos_damage() {
     let plain = fireball(&[]);
     assert!(mighty > plain * 1.2, "{mighty} against {plain}");
 }
+
+#[test]
+fn virtuous_barrier_counts_purity_of_fires_attribute_requirement() {
+    let data = data();
+    let imported = pobr_build::import_build_from_code(include_str!(
+        "../../../../examples/reference-builds/tuned/builds/ninja-2026-10-13-mercenary-gemling-legionnaire-twister-682f26ed1957/code.txt"
+    ))
+    .unwrap();
+    let result = calculate_with_data_session(
+        &imported.build,
+        &data,
+        &DataOrchestratorOptions::reference_conditions(),
+    )
+    .unwrap();
+    // The skill text counts skills requiring Intelligence, including the
+    // sceptre's Purity of Fire: base 3 + Purity + Herald of Ice + Ghost Dance
+    // + Trinity = 7 motes. Base 5% + floor(19 quality * 0.125) = 7% per mote.
+    // The ring adds another 23% regeneration rate: 49 + 23 = 72% total.
+    close(
+        result.config().multipliers["IntelligenceMoteSkillCount"],
+        7.0,
+    );
+    close(result.stat_totals("LifeRegen").1, 72.0);
+    assert!((result.output().life_regen_recovery - 110.3391).abs() < 0.0001);
+}
+
+#[test]
+fn spell_echo_area_uses_the_selected_repeat_view() {
+    use pobr_core::rules::config_interpreter::ConfigInputValue;
+
+    let data = data();
+    let mut base = build("FrostBombPlayer");
+    base.socket_groups[0] = SocketGroup::new()
+        .with_gem_skill("FrostBombPlayer", 20)
+        .with_gem_skill("SupportSpellEchoPlayer", 1)
+        .with_gem_skill("SupportSpellCascadePlayer", 1);
+    // Frost Bomb: 24 base + 7 at level 20 = 31 units. Spell Cascade:
+    // 20% less area. Spell Echo: one echo with 40% increased area.
+    for (mode, area, radius) in [
+        ("NONE", 0.8, 27.0),
+        ("AVERAGE", 0.96, 30.0),
+        ("FINAL", 1.12, 32.0),
+        ("FINAL_DPS", 1.12, 32.0),
+    ] {
+        let mut build = base.clone();
+        build
+            .config
+            .raw_inputs
+            .values
+            .insert("repeatMode".into(), ConfigInputValue::Text(mode.into()));
+        let result = run(&build, &data);
+        assert!(
+            (result.output().aoe_area_mod - area).abs() < 1e-7,
+            "{mode}: {} != {area}",
+            result.output().aoe_area_mod,
+        );
+        close(result.output().aoe_radius, radius);
+    }
+}
+
+#[test]
+fn chaos_max_hit_uses_the_imported_tacati_resistance() {
+    let data = data();
+    let imported = pobr_build::import_build_from_code(include_str!(
+        "../../../../examples/reference-builds/tuned/builds/ninja-2026-10-14-warrior-smith-of-kitava-shield-wall-fb03d7dce08e/code.txt"
+    ))
+    .unwrap();
+    let result = calculate_with_data_session(
+        &imported.build,
+        &data,
+        &DataOrchestratorOptions::reference_conditions(),
+    )
+    .unwrap();
+    // The boots say +11% Chaos Resistance from Tacati and +53% on the
+    // item, not the socketable catalog's current +13%. A 386 Chaos hit
+    // therefore deals 386 * (1 - 0.64) = 138.96, rather than 131.24.
+    close(result.output().chaos_resistance, 64.0);
+    close(result.ehp_terms().unwrap().taken_hit[4], 138.96);
+    // The Brass Dome's 991 local Ward, with its base, sockets and quality,
+    // contributes to 2162 Ward, which must remain in the max-hit pool.
+    close(result.output().ward, 2162.0);
+    close(result.output().chaos_max_hit, 8001.0);
+}

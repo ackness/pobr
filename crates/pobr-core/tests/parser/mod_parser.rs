@@ -1581,3 +1581,18 @@ fn blood_price_and_radiant_grief_preserve_presence_semantics() {
     assert_eq!(doubled.status, ParseStatus::Parsed);
     assert_eq!(doubled.mods[0].name.as_str(), "PresenceRadius");
 }
+
+#[test]
+fn spell_mana_cost_efficiency_retains_its_spell_scope() {
+    // base_spell_mana_cost_efficiency_+%: 39% applies only to Spell skills.
+    let outcome = parse_mod("39% increased Mana Cost Efficiency of Spells").unwrap();
+    assert_eq!(outcome.status, ParseStatus::Parsed);
+    assert_eq!(outcome.mods.len(), 1);
+    let modifier = &outcome.mods[0];
+    assert_eq!(modifier.name, ModName::from("ManaCostEfficiency"));
+    assert_eq!(modifier.mod_type, ModType::Inc);
+    assert_eq!(modifier.value, ModValue::Number(39.0));
+    assert!(modifier.matches(&pobr_core::CalcConfig::spell()));
+    assert!(!modifier.matches(&pobr_core::CalcConfig::attack()));
+    assert!(!modifier.matches(&pobr_core::CalcConfig::new()));
+}

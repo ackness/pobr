@@ -4479,6 +4479,29 @@
       "examples": [
         "Life Recovery from Regeneration is not applied"
       ]
+    },
+    {
+      "id": "spell_mana_cost_efficiency",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased mana cost efficiency of spells",
+      "mods": [
+        {
+          "name": "ManaCostEfficiency",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "SkillType:Spell"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat base_spell_mana_cost_efficiency_+%: increases Mana Cost Efficiency only for Spell skills. Calculation regression: sources::env_finalize_flasks::spell_mana_efficiency_only_reduces_spell_mana_cost.",
+      "examples": [
+        "39% increased Mana Cost Efficiency of Spells"
+      ]
     }
   ]
 }
