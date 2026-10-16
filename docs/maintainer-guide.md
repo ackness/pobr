@@ -284,16 +284,15 @@ in `calc_orchestrator::inject`, and the selected triggered payload receives
 `Triggered` in `prepare::stage_resolve_main_skill`. Possessing a freeze or Pin
 source does not establish the target state. Coming Calamity's 40% elemental
 bonuses require their matching Herald; added attack damage (including
-Asphyxia's Wrath) applies only to attacks. Daze duration, Maim application and
-primed-Pin thresholds remain `unmodelled` entries with explicit
-reasons: player stun defences and per-hit `DazeChance` do not measure those
-mechanics. Sources: game `base/stats.json` (`damage_+%_vs_frozen_enemies`,
+Asphyxia's Wrath) applies only to attacks. Daze duration and attack Maim chance
+feed the debuff uptime views described under “On-hit effect views” below;
+primed-Pin thresholds remain an `unmodelled` entry (KeywordPopups PrimedPin
+40/50/60/70% thresholds need a pin-state model). Sources: game `base/stats.json` (`damage_+%_vs_frozen_enemies`,
 `bleeding_magnitude_+%_against_pinned_enemies`, `triggered_spell_spell_damage_+%`,
 `hit_damage_stun_multiplier_+%`, `daze_duration_+%`, `maim_on_hit_%`,
 `pin_almost_pinned_enemies`) and `base/passive_tree.json` (Coming
 Calamity, Seeing Stars, Maiming Strike, Constricting Command). The Daze-duration
-and attack-Maim rules are exporter-absent; recognizing them does not implement
-them.
+and attack-Maim rules are exporter-absent.
 `FireDamage`, `LightningDamage` and `AilmentMagnitude` have readers gated by
 the selected skill's source damage; the usage ledger reports that gate when a
 non-damaging skill such as Mana Remnants does not reach those readers.
@@ -418,9 +417,15 @@ Snap 的 `snap_damage_+%_final_if_created_from_unique`（“{0}% more damage wit
 
 Crystallised Immunities uses the game stats `immune_to_chill_if_majority_blue_supports_socketed`, `immune_to_ignite_if_majority_red_supports_socketed` and `immune_to_shock_if_majority_green_supports_socketed` (Crystallised Immunities, node 5332). Count socketed support gems across enabled groups using the official `SkillGems.GemColour` values: strength/red, dexterity/green and intelligence/blue. A majority means **strictly more than half of all counted supports**; empty sets, ties and a mere plurality grant no immunity. The existing `ChillImmune` / `IgniteImmune` / `ShockImmune` path gives 100% avoidance. PoB2 accepts a strict plurality instead; these rules carry `exporter: "differs"`. Sources: `base/stats.json`, `base/passive_tree.json` and `base/skill_gems.json`.
 
-`armour_break_amount_+%` and `armour_break_amount_+%_vs_enemies_affected_by_ailments` (Exposed Wounds, node 43383) are explicitly recognised as unmodelled because per-hit Armour Break has no calculation model: the configured amount is already removed Armour and must not be scaled again. The [game Armour Break keyword](https://poe2db.tw/us/Keywords) and `ArmourBreakerPlayer` level 20's `apply_X_armour_break_on_hit = 4918` distinguish per-hit break from that total; a complete model also needs damage-derived break, event conditions and monster rarity scaling. Sources: `base/stats.json`, `base/granted_effect_levels.json` and `base/granted_effect_stat_sets.json`.
+On-hit effect views (`calc::effect_views`, all reported only: configured enemy states such as Fully Broken Armour, Dazed, Maimed or Blinded still decide every damage and defence effect; **没有游戏内实测 / no in-game test**). Shared terms feed both each value and its derived detail:
 
-`chance_%_to_create_additional_remnant` (Remnant Attraction, node 1506) is recognised with the reason “remnant count not modelled” and `exporter: "absent"`. Into the Breach's configured collected Purple Flame stacks are not a creation rate, so extra creation chance does not multiply them. Arcane Remnants, Empowering Remnants, Elemental Equilibrium and Storm's Recollection still need a remnant generation/collection model. These entries use batch `unmodelled`: the ledger reports `unmodelled`, the audit reports `recognized_empty`, and the gap queue keeps them as dropped input. Sources: `base/stats.json` and `base/passive_tree.json`.
+- `ArmourBreakPerHit` = (flat `ArmourBreakPerHit` BASE + Σ dealt damage × `<Type>DamageAsArmourBreak` %) × (1 + INC / 100) × MORE × rarity. Dealt damage is the selected hit's average after enemy mitigation (crit-weighted, before hit chance); “Break Armour on Critical Hit with Spells” uses only the critical share c·m / (1 − c + c·m). KeywordPopups ArmourBreak: “Players Break 3 times Armour against Normal Monsters and 2 times Armour against Magic Monsters”; there is no Magic enemy configuration, so non-Rare/Unique enemies use 3×. `HitsToFullyBreakArmour` = ⌈enemy Armour before break ÷ per hit⌉, `TimeToFullyBreakArmour` = hits ÷ landed hits per second (action rate × repeats × hit chance). Sources: `armour_break_amount_+%` / `_vs_enemies_affected_by_ailments` (Exposed Wounds), `ArmourBreakerPlayer`'s `apply_X_armour_break_on_hit`, `armour_break_{physical,fire}_damage_%_dealt_as_armour_break`, `support_increased_armour_break_armour_break_amount_+%_final`.
+- `DazeUptime` / `MaimUptime` / `BlindUptime` use KeywordPopups durations (Daze 8 s, Maim 4 s, Blind 4 s) times duration modifiers and enemy debuff expiration. With evenly spaced landed hits, n = rate × duration, k = ⌊n⌋, f = n − k and per-hit chance p, uptime = f·(1 − (1 − p)^(k+1)) + (1 − f)·(1 − (1 − p)^k); at 100% chance this is min(1, rate × duration). Attack-only chances (`maim_on_hit_%`, `attacks_chance_to_blind_on_hit_%`) apply to attacks; `Cannot*` and enemy immunity give zero. Turning a ≥99.9% uptime at 100% chance into the enemy state automatically is a possible follow-up, not implemented.
+- `Maximum{Fire,Cold,Lightning}Infusions` = 3 (GameConstants `BaseMaximumInfusionCount`, KeywordPopups “up to 3 of each Infusion”) + per-type and all-type additions. `SurroundedRadiusMetres` is the 3 m Surrounded radius (KeywordPopups; `BaseRequiredEnemiesToBeConsideredSurrounded` = 5) scaled by `SurroundedArea` like other areas.
+- `CurseActivationDelay` is the selected curse's `curse_delay_duration_ms` × (1 + delay increase − activation-speed increase) × MORE; Whispers of Doom (`keystone_hex_master`, KeywordPopups HexMaster “Double Activation Delay of Curses”) is MORE 100. The view and its readers need a curse as the selected skill (a registered read gate).
+- `RemnantsPerUse` = 1 + `chance_%_to_create_additional_remnant` / 100 (Remnant Attraction 10%; Lingering Illusion's 156%) for skills with `GeneratesRemnants`. Into the Breach's configured collected Purple Flame stacks are not a creation rate, so extra creation chance does not multiply them; remnant collection, Arcane / Empowering Remnants, Elemental Equilibrium and Storm's Recollection still need a collection model.
+
+The new rules are `exporter: "absent"`. Standalone “Immune to Chaos Damage” (game stat `chaos_immunity`) sets `ChaosImmune`, which `defence::chaos_immune` shares with Chaos Inoculation for chaos hits and chaos damage over time (`exporter: "differs"`); the CI pool rerouting stays tied to the keystone.
 
 `mise run config:coverage [--json <文件>]` 按配置分区报告 `read` / `handler` / `implied` / `unread` / `no_effect`：复用 benchmark、tuned 的 `.cache/build-usage/` 读取并集，条件与倍率另用台账的 `condition_reads`、`multiplier_reads`、`referenced_variables` 和计算阶段条件清单；列出未覆盖技能、引擎及活动数据中没有精确名字引用的项、未注册 handler、stub / context gate，以及空 effects 中已有 scalar 读取方与丢失的机制。`--binary <pobr>` 复用已构建 CLI，`--refresh` 重算台账；不读 holdout。这是读取覆盖，静态名字引用与 handler 注册都不证明选项改变了数值；近似名字不是别名，已穿透／连锁次数不能映射为穿透／连锁上限。
 
@@ -527,9 +532,9 @@ snapshot convention, not a simulated recent-consumption event.
 
 Additional skill slots (`local_item_additional_skill_slots` /
 `num_additional_skill_slots`) and knockback distance (`knockback_distance_+%`)
-change no reported output. Whispers of Doom's curse delay (`keystone_hex_master`)
-and Totem Life (`totem_life_+%`) remain `unmodelled`, with the missing
-activation/life models named.
+change no reported output. Totem Life (`totem_life_+%`) remains `unmodelled`,
+with the missing life model named; Whispers of Doom's curse delay feeds
+`CurseActivationDelay`.
 
 Charge durations (`PowerChargesDuration`, `FrenzyChargesDuration`,
 `EnduranceChargesDuration`) display seconds: the [game's Charges keyword
@@ -554,8 +559,11 @@ marked `exporter: differs`: the exporter applies it to any off-hand, whereas
 the game text requires a Focus (`UsingFocus`). Recharge rate stats
 (`energy_shield_recharge_rate_+%`, `virtual_energy_shield_recharge_rate_+%`)
 read `EnergyShieldRecharge`, faster start (`energy_shield_delay_-%_while_affected_by_archon`)
-reads `EnergyShieldRechargeFaster`. `charm_energy_shield_recharge_starts_when_used`
-remains an unmodelled charm-use event without an uptime model.
+reads `EnergyShieldRechargeFaster`. Thawing Charm's
+`charm_energy_shield_recharge_starts_when_used` follows the enabled-charm
+convention: an enabled, in-budget charm is in effect (`UsingCharm`), so
+`EnergyShieldRechargeBase` is 0 and recharge starts immediately; charm
+uptime is not simulated (exporter-absent).
 
 Scarred Faith's “Energy Shield does not Recharge” (`keystone_alternate_es_recovery`,
 [game text](https://poe2db.tw/us/Scarred_Faith)) sets recharge rate, amount and
@@ -900,9 +908,9 @@ absorbs 100% of hit damage before Life/ES, and is capped at 200% maximum Life
 uptime is inferred. Both charm rules are exporter-absent. `BleedFaster`,
 `IgniteFaster` and `PoisonFaster` retain their existing DPS/duration calculation
 and the ledger identifies the selected skill's ability to inflict that ailment
-as their read gate. Attack Blind chance (`attacks_chance_to_blind_on_hit_%`) is
-explicitly unmodelled: Blind uses the configured enemy state, with no
-chance-to-uptime conversion even at 100%. “Your Totem Limit is doubled”
+as their read gate. Attack Blind chance (`attacks_chance_to_blind_on_hit_%`)
+feeds `BlindUptime`; Blind's effects still use the configured enemy state.
+“Your Totem Limit is doubled”
 (`keystone_ancestral_bond`) remains unmodelled without a totem-limit model;
 “Corrupting will always result in change”
 (`soul_core_cannot_roll_no_outcome_with_corruption`) is crafting-only `S0`.
