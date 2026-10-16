@@ -75,6 +75,10 @@ pub struct Env {
     /// stage, retained for the Calcs `Maximum*` and `Current*` views.
     pub(crate) applied_ailments: super::ailment_apply::AppliedAilments,
     pub(crate) pin_terms: Option<super::ailment::PinTerms>,
+    /// Shock / Chill duration and magnitude-modifier inputs of the selected
+    /// hit, retained for their derived views.
+    pub(crate) non_damaging_terms: Vec<(AilmentType, super::ailment::NonDamagingAilmentTerms)>,
+    pub(crate) freeze_buildup_terms: Option<super::ailment::FreezeBuildupTerms>,
     /// The crossbow reload cycle `perform` scaled the rate and DPS by
     /// (`None` when the stage changed nothing).
     pub crossbow_reload: Option<super::CrossbowReload>,
@@ -135,6 +139,8 @@ impl Env {
             heavy_stun_terms: None,
             applied_ailments: super::ailment_apply::AppliedAilments::default(),
             pin_terms: None,
+            non_damaging_terms: Vec::new(),
+            freeze_buildup_terms: None,
             crossbow_reload: None,
             legacy_ehp_terms: None,
             leech_gain_terms: [[[0.0; 3]; 3]; 2],

@@ -1694,3 +1694,112 @@ fn perform_snapshots_defence_output_stats_before_offence() {
         "per-ES increased damage should take effect in offence: base={base_hit} scaled={scaled_hit}"
     );
 }
+
+/// Shock and Chill last 8 seconds on non-players by default (game Keywords:
+/// Shock "lasts 4 seconds on players or 8 seconds on non-players", Chill "2
+/// seconds on players or 8 seconds on non-players"). Increases from the
+/// attacker and the target add; the enemy's debuff expiration divides.
+#[test]
+fn perform_fills_shock_and_chill_durations_and_chill_effect_mod() {
+    let lightning = [
+        Modifier::number("LightningDamageMin", ModType::Base, 200000.0),
+        Modifier::number("LightningDamageMax", ModType::Base, 200000.0),
+    ];
+    let mut plain = cold_hit_env(lightning.to_vec());
+    perform(&mut plain).unwrap();
+    assert_eq!(plain.player.output.chill_duration, 8.0);
+    assert_eq!(plain.player.output.shock_duration, 8.0);
+    assert_eq!(plain.player.output.chill_effect_mod, 1.0);
+
+    let mut mods = lightning.to_vec();
+    mods.extend([
+        Modifier::number("EnemyChillDuration", ModType::Inc, 25.0),
+        Modifier::number("EnemyShockDuration", ModType::Inc, 40.0),
+        Modifier::number("EnemyElementalAilmentDuration", ModType::Inc, 10.0),
+        Modifier::number("EnemyAilmentDuration", ModType::Inc, 5.0),
+        Modifier::number("EnemyChillMagnitude", ModType::Inc, 30.0),
+    ]);
+    let mut env = cold_hit_env(mods);
+    env.cfg.mode_effective = true;
+    env.enemy
+        .mod_db
+        .add_mod(Modifier::number("SelfChillDuration", ModType::Inc, -15.0));
+    env.enemy
+        .mod_db
+        .add_mod(Modifier::number("SelfChillMagnitude", ModType::Inc, -50.0));
+    // Effects on the enemy expire 20% slower: duration / 0.8.
+    env.enemy
+        .mod_db
+        .add_mod(Modifier::number("BuffExpireFaster", ModType::More, -20.0));
+    perform(&mut env).unwrap();
+    let out = &env.player.output;
+    // Chill: 8 * (1 + (25 + 10 + 5 - 15) / 100) / 0.8 = 12.5.
+    assert!(
+        (out.chill_duration - 12.5).abs() < 1e-9,
+        "{}",
+        out.chill_duration
+    );
+    // Shock: 8 * (1 + (40 + 10 + 5) / 100) / 0.8 = 15.5.
+    assert!(
+        (out.shock_duration - 15.5).abs() < 1e-9,
+        "{}",
+        out.shock_duration
+    );
+    // ChillEffectMod: 1.3 (attacker) * 0.5 (target) = 0.65.
+    assert!((out.chill_effect_mod - 0.65).abs() < 1e-9);
+
+    // Without a lightning hit no Shock duration is reported.
+    let mut cold_only = cold_hit_env(vec![]);
+    perform(&mut cold_only).unwrap();
+    assert_eq!(cold_only.player.output.shock_duration, 0.0);
+    assert_eq!(cold_only.player.output.chill_duration, 8.0);
+}
+
+/// FreezeBuildupAvg is the hit's Cold damage times FreezeBuildupPct, times
+/// the target's own Freeze buildup multiplier; FreezeBuildupPct is unchanged.
+#[test]
+fn perform_fills_freeze_buildup_average_from_cold_damage() {
+    let mut plain = cold_hit_env(vec![]);
+    perform(&mut plain).unwrap();
+    let out = &plain.player.output;
+    let pct = out.freeze_buildup_pct;
+    let avg = out.freeze_buildup_avg;
+    // Panel mode, no crit: the hit's 200000 Cold damage times the per-damage
+    // buildup percentage.
+    assert_eq!(out.crit_chance, 0.0);
+    assert!(pct > 0.0);
+    assert!(
+        (avg - 200000.0 * pct).abs() < 1e-6,
+        "{avg} vs 200000 * {pct}"
+    );
+
+    let mut env = cold_hit_env(vec![]);
+    env.enemy
+        .mod_db
+        .add_mod(Modifier::number("FreezeBuildup", ModType::Inc, 50.0));
+    perform(&mut env).unwrap();
+    assert_eq!(env.player.output.freeze_buildup_pct, pct);
+    assert!((env.player.output.freeze_buildup_avg - avg * 1.5).abs() < 1e-9 * avg.max(1.0));
+
+    let mut cannot = cold_hit_env(vec![Modifier::flag("CannotFreeze")]);
+    perform(&mut cannot).unwrap();
+    assert_eq!(cannot.player.output.freeze_buildup_avg, 0.0);
+
+    // A 100000 Fire part builds Freeze only with `FireCanFreeze`
+    // (Pinnacle of Power): 200000 → 300000 contributing damage.
+    let fire = || {
+        vec![
+            Modifier::number("FireDamageMin", ModType::Base, 100000.0),
+            Modifier::number("FireDamageMax", ModType::Base, 100000.0),
+        ]
+    };
+    let mut without = cold_hit_env(fire());
+    perform(&mut without).unwrap();
+    let base = without.player.output.freeze_buildup_avg;
+    assert!((base - 200000.0 * without.player.output.freeze_buildup_pct).abs() < 1e-6);
+    let mut flagged = fire();
+    flagged.push(Modifier::flag("FireCanFreeze"));
+    let mut with = cold_hit_env(flagged);
+    perform(&mut with).unwrap();
+    assert!((with.player.output.freeze_buildup_avg - base * 1.5).abs() < 1e-9 * base);
+}

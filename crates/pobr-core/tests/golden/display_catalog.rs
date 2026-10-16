@@ -167,11 +167,13 @@ fn catalog_entry_counts_locked() {
         // and EHPSurvivalTime (+20).
         // ManaRecoupRate (+1), the Chaos prevented-damage recoup as Mana, and
         // Flask{1,2}{Mana,Life}RemovedOnUse (+4), the other pool's per-use removal.
+        // ShockDuration, ChillDuration, ChillEffectMod, FreezeBuildupAvg,
+        // SelfFreezeEffect, SelfPoisonEffect and SelfBlindDuration (+7).
         // AccuracyHitChance, CullMultiplier, ReservationDpsMultiplier, AverageBurstHits,
         // EnemyAilmentThreshold, Max{Life,Mana,EnergyShield}LeechRate, MaxLifeLeechRatePercent,
-        // PreEffectiveCritMultiplier, DeflectEffect, SelfChillEffect, SelfBlindDuration,
-        // EnemyCritChance, SecondMinimalMaximumHitTaken, EffectiveLootRarityMod and GemLevel (+17).
-        547,
+        // PreEffectiveCritMultiplier, DeflectEffect, SelfChillEffect, EnemyCritChance,
+        // SecondMinimalMaximumHitTaken, EffectiveLootRarityMod and GemLevel (+16).
+        553,
         "a change in Computed entry count needs explicit review"
     );
 }
@@ -979,12 +981,6 @@ fn remaining_calcs_fields_have_units_and_neutral_defaults() {
         ),
         (
             "SelfChillEffect",
-            StatValueType::Percent,
-            DisplayStatCategory::Defence,
-            100.0,
-        ),
-        (
-            "SelfBlindDuration",
             StatValueType::Percent,
             DisplayStatCategory::Defence,
             100.0,

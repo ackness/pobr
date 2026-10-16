@@ -272,6 +272,14 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     stun.enabled &= !no_trigger_events(env);
     env.player.output.heavy_stun_buildup_avg = stun.value();
     env.heavy_stun_terms = Some(stun);
+    let mut freeze = super::ailment::freeze_buildup_terms(
+        env,
+        stun_damage,
+        env.player.output.freeze_buildup_pct,
+    );
+    freeze.enabled &= !no_trigger_events(env);
+    env.player.output.freeze_buildup_avg = freeze.value();
+    env.freeze_buildup_terms = Some(freeze);
     let mut pin = super::ailment::pin_terms(env, stun_damage, &output.crit_avg);
     pin.enabled &= !no_trigger_events(env);
     env.player.output.pin_buildup_avg = pin.value();
@@ -2135,10 +2143,20 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
     let cold_hit = cross_type_source_hit(AilmentType::Chill, components, player, cfg);
     let lightning_hit = cross_type_source_hit(AilmentType::Shock, components, player, cfg);
 
+    let mut non_damaging_terms = Vec::new();
     if cold_hit > 0.0 {
         // Lane B: chill's action-speed reduction (%). 0 (doesn't apply) when the magnitude is below the minimum threshold.
-        let (chill, _) = chill_traced(cold_hit, threshold, player, cfg, &mut trace);
+        let (chill, _) = chill_traced(cold_hit, threshold, player, enemy, cfg, &mut trace);
         env.player.output.chill_effect = chill;
+        // The duration and magnitude modifier of a Chill this hit can inflict.
+        if !player.flag(cfg, "CannotChill")
+            && let Some(terms) =
+                super::ailment::non_damaging_ailment_terms(AilmentType::Chill, player, enemy, cfg)
+        {
+            env.player.output.chill_duration = terms.duration();
+            env.player.output.chill_effect_mod = terms.effect_mod();
+            non_damaging_terms.push((AilmentType::Chill, terms));
+        }
         // Lane B: freeze poise buildup (% per hit).
         let (freeze_buildup, _) = freeze_poise_buildup_traced(poise_thr, player, cfg, &mut trace);
         env.player.output.freeze_buildup_pct = freeze_buildup;
@@ -2152,12 +2170,20 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
             shock_traced(&source, player, enemy, cfg, threshold, &mut trace);
         env.player.output.shock_chance = chance;
         env.player.output.shock_effect = magnitude;
+        if chance > 0.0
+            && let Some(terms) =
+                super::ailment::non_damaging_ailment_terms(AilmentType::Shock, player, enemy, cfg)
+        {
+            env.player.output.shock_duration = terms.duration();
+            non_damaging_terms.push((AilmentType::Shock, terms));
+        }
         // Lane B: electrocute poise buildup (% per hit).
         let (electrocute_buildup, _) =
             electrocute_poise_buildup_traced(poise_thr, player, cfg, &mut trace);
         env.player.output.electrocute_buildup_pct = electrocute_buildup;
     }
     env.player.output.ailment_terms = ailment_terms;
+    env.non_damaging_terms = non_damaging_terms;
 }
 
 /// Lane C: applies `AilmentEffect` (MORE) × `rateMod` (Faster/Slower) to a damaging ailment's

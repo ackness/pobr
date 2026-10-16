@@ -57,6 +57,8 @@ pub struct OutputTable {
     pub self_bleed_effect: f64,
     pub self_ignite_effect: f64,
     pub self_chill_effect: f64,
+    pub self_freeze_effect: f64,
+    pub self_poison_effect: f64,
     pub self_blind_duration: f64,
     pub debuff_expiration_modifier: f64,
     pub curse_effect_on_self: f64,
@@ -376,6 +378,15 @@ pub struct OutputTable {
     // Ailment extensions (Lane B: chill / freeze·shock buildup / bleed·poison stacks; written by perform's fill_ailments)
     /// Chill's action speed reduction (%, e.g. 30.0 = 30%; 0 = not applied).
     pub chill_effect: f64,
+    /// Duration (seconds) of the Shock / Chill the selected hit inflicts;
+    /// 0 when it cannot inflict that ailment.
+    pub shock_duration: f64,
+    pub chill_duration: f64,
+    /// Chill magnitude modifier: attacker factor times the target's factor
+    /// (neutral 1; 0 when the selected hit cannot Chill).
+    pub chill_effect_mod: f64,
+    /// Average Freeze buildup of one hit (% of the Freeze threshold).
+    pub freeze_buildup_avg: f64,
     /// Freeze buildup (% per damage point; 0 = not accumulating).
     pub freeze_buildup_pct: f64,
     /// Average enemy Heavy Stun buildup (% of poise per successful hit).
@@ -664,6 +675,8 @@ impl Default for OutputTable {
             self_bleed_effect: 100.0,
             self_ignite_effect: 100.0,
             self_chill_effect: 100.0,
+            self_freeze_effect: 100.0,
+            self_poison_effect: 100.0,
             self_blind_duration: 100.0,
             debuff_expiration_modifier: 100.0,
             curse_effect_on_self: 100.0,
@@ -896,6 +909,10 @@ impl Default for OutputTable {
             es_recoup_rate: 0.0,
             // Lane B: ailment extensions default to 0 (not applied without a matching hit/mod).
             chill_effect: 0.0,
+            shock_duration: 0.0,
+            chill_duration: 0.0,
+            chill_effect_mod: 0.0,
+            freeze_buildup_avg: 0.0,
             freeze_buildup_pct: 0.0,
             heavy_stun_buildup_avg: 0.0,
             pin_buildup_avg: 0.0,

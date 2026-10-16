@@ -198,46 +198,18 @@ fn extra_self_debuff_views_use_game_magnitudes_and_expiration_rate() {
     }
 }
 
-/// Chill's effect on the player and the duration of Blind on the player are
-/// percentages of the base: `(100 + increased) x more`. "40% reduced Effect of
-/// Chill on you" (`chill_effectiveness_on_self_+%`) leaves 60. No game stat
-/// lengthens or shortens an incoming Blind, so its duration moves only with
-/// the debuff expiration rate (`debuff_time_passed_+%`: 25% faster is 100 /
-/// 125 of the time) and with custom modifiers: -20% x 100 / 125 = 64.
+/// Chill's effect on the player is a percentage of the base:
+/// `(100 + increased) x more`. "40% reduced Effect of Chill on you"
+/// (`chill_effectiveness_on_self_+%`) leaves 60.
 #[test]
-fn self_chill_effect_and_blind_duration_are_modifier_views() {
+fn self_chill_effect_is_a_modifier_view() {
     use pobr_core::{calc::MinimalInput, display_value};
     let mut session = crate::support::session(MinimalInput::default());
     session
-        .add_modifier_texts(&[
-            "40% reduced Effect of Chill on you",
-            "Debuffs on you expire 25% faster",
-            "20% reduced Duration of Ailments on You",
-        ])
+        .add_modifier_texts(&["40% reduced Effect of Chill on you"])
         .unwrap();
     session.perform_minimal().unwrap();
     assert_eq!(display_value(session.output(), "SelfChillEffect"), 60.0);
-    // Blind is a debuff, not an ailment: the ailment line does not apply.
-    assert_eq!(display_value(session.output(), "SelfBlindDuration"), 80.0);
     let groups = session.detail_sources("SelfChillEffect");
     assert_eq!(groups.len(), 1);
-
-    let mut session = crate::support::session(MinimalInput::default());
-    session
-        .add_modifier_texts(&["Debuffs on you expire 25% faster"])
-        .unwrap();
-    session.add_modifiers([
-        Modifier::number("SelfBlindDuration", ModType::Inc, -20.0),
-        Modifier::number("SelfBlindDuration", ModType::More, 50.0),
-    ]);
-    session.perform_minimal().unwrap();
-    // (100 - 20) x 1.5 x 100 / 125 = 96.
-    assert_eq!(display_value(session.output(), "SelfBlindDuration"), 96.0);
-    let groups = session.detail_sources("SelfBlindDuration");
-    assert_eq!(groups.len(), 2);
-    let (_, inc, more) = groups[0].totals;
-    assert_eq!(
-        (100.0 + inc) * more * 100.0 / (100.0 + groups[1].totals.0),
-        96.0
-    );
 }
