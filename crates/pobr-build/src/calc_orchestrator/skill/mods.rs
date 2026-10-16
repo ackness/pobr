@@ -6,6 +6,7 @@ use super::super::skill::resolve::config_enemy_level;
 use super::super::stat_map::mapped_stat_modifiers;
 
 use pobr_core::Modifier;
+use pobr_core::rules::config_interpreter::ConfigInputValue;
 use pobr_core::rules::stat_map_engine::{self, MappedItem, MappedOutcome};
 use pobr_data::modifier::ModType;
 use pobr_data::monster::EnemyTier;
@@ -119,13 +120,14 @@ pub(crate) fn dot_flag_modifiers(
 /// - Gate = the selected statSet's `explodeCorpse` (catalog
 ///   `StatSetDef::explode_corpse`, from the skill_overrides overlay; e.g.
 ///   DetonateDeadPlayer);
-/// - Corpse life = `monster_scaling.life_at(enemy_level)`, using the same
-///   resolved level as enemy mitigation;
+/// - Corpse life = the explicit corpse-Life assumption, otherwise
+///   `monster_scaling.life_at(enemy_level)`;
 /// - Injection = `<Type>DamageMin/Max` BASE, added to the skill's base.
 ///
 /// Returns empty (zero injection) for a non-corpse skill or a skill without
 /// such a stat.
 pub(crate) fn corpse_explosion_modifiers(
+    build: &Build,
     data: &BuildData,
     enemy_level: u32,
     group: &SocketGroup,
@@ -138,7 +140,12 @@ pub(crate) fn corpse_explosion_modifiers(
     if !data.selected_set_explode_corpse(skill_id, set_index) {
         return Vec::new();
     }
-    let monster_life = f64::from(data.constants.monster_scaling.life_at(enemy_level));
+    let configured_life = match build.config.raw_inputs.values.get("detonateDeadCorpseLife") {
+        Some(ConfigInputValue::Number(value)) if value.is_finite() && *value >= 0.0 => Some(*value),
+        _ => None,
+    };
+    let corpse_life = configured_life
+        .unwrap_or_else(|| f64::from(data.constants.monster_scaling.life_at(enemy_level)));
     let mut mods = Vec::new();
     // A stat set that only poisons with the corpse's Life (Decompose's
     // cloud) and deals no damage of its own does not hit, so it cannot
@@ -168,13 +175,18 @@ pub(crate) fn corpse_explosion_modifiers(
         else {
             continue;
         };
-        let bonus = monster_life * share;
+        let bonus = corpse_life * share;
         let origin = ModifierSource::new(SourceId::new(
             SourceKind::SkillGem,
             format!("skill.{skill_id}.corpseExplosion"),
         ))
         .with_raw_text(format!(
-            "corpse explosion {bonus:.1} (monster life {monster_life} x {share})"
+            "corpse explosion {bonus:.1} (corpse life {corpse_life} x {share}; {})",
+            if configured_life.is_some() {
+                "detonateDeadCorpseLife"
+            } else {
+                "monster life at enemy level"
+            }
         ));
         for bound in ["Min", "Max"] {
             mods.push(
