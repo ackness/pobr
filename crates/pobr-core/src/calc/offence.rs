@@ -210,7 +210,7 @@ pub(crate) struct ResistanceResolution {
     pub(crate) inc: f64,
     pub(crate) more: f64,
     pub(crate) override_total: Option<f64>,
-    floor: f64,
+    pub(crate) floor: f64,
 }
 
 impl ResistanceResolution {
@@ -307,6 +307,24 @@ pub(crate) fn resolve_resistance(
         override_total,
         floor,
     }
+}
+
+/// The resistance that applies to damage over time (`<X>ResistOverTime`):
+/// [`resolve_resistance`] in a damage-over-time context, so resistance
+/// modifiers restricted to damage over time also count, for example the game
+/// stat `additional_chaos_resistance_against_damage_over_time_%` ("+#% Chaos
+/// Resistance against Damage Over Time", parsed with the `Dot` flag). The
+/// same maximum and floor apply.
+pub(crate) fn resolve_resistance_over_time(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    base: f64,
+    element: &str,
+    is_elemental: bool,
+) -> ResistanceResolution {
+    let mut dot_cfg = cfg.clone();
+    dot_cfg.flags |= ModFlags::DOT;
+    resolve_resistance(db, &dot_cfg, base, element, is_elemental)
 }
 
 /// What Cold or Lightning Resistance gains from the modifiers to Fire

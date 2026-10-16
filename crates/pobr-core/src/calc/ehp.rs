@@ -450,6 +450,11 @@ pub fn enemy_damage_placeholder(
     }
 }
 
+/// The configured enemy attack / cast time in milliseconds (an explicit
+/// `enemySpeed` input; never the exporter's placeholder), set by the build's
+/// config resolution. Only `EHPSurvivalTime` reads it.
+pub const ENEMY_ACTION_TIME: &str = "EnemyActionTime";
+
 /// What the EHP stage computed with, per damage type in the order Physical,
 /// Fire, Cold, Lightning, Chaos: the enemy's hit, the part of it taken, and
 /// the pool that type of damage has to deplete.
@@ -517,6 +522,45 @@ pub struct EhpTerms {
     /// The Mind over Matter pool with Energy Shield folded in, before the
     /// Runic Ward/Aegis/Guard/ally layers of `total_hit_pool`.
     pub base_hit_pool: [f64; 5],
+    /// Damage over time of each type: resistance, reduction and taken
+    /// modifiers (`<X>TakenDotMult`, [`super::defence::dot_taken_terms`]).
+    pub dot_taken: [super::defence::DotTakenTerms; 5],
+    /// The pool damage that is not a hit depletes (`<X>TotalPool`): recoverable
+    /// Life and Mind over Matter Mana without hit-only Life loss prevention,
+    /// Energy Shield, then Runic Ward; no Aegis, Guard or ally layers.
+    pub total_pool: [f64; 5],
+    /// `total_pool` before Runic Ward.
+    pub pool_before_ward: [f64; 5],
+    /// The configured enemy attack / cast time in milliseconds (0 when the
+    /// build gives none) and the enemy's action speed multiplier, for
+    /// `EHPSurvivalTime`.
+    pub enemy_action_time_ms: f64,
+    pub enemy_action_speed: f64,
+}
+
+impl EhpTerms {
+    /// `<X>DotEHP`: the non-hit pool over the damage-over-time multiplier
+    /// (infinite when that damage is not taken at all).
+    pub(crate) fn dot_ehp(&self, i: usize) -> f64 {
+        let mult = self.dot_taken[i].multiplier();
+        if mult > 0.0 {
+            self.total_pool[i] / mult
+        } else {
+            f64::INFINITY
+        }
+    }
+
+    /// `EHPSurvivalTime`: hits to die, at one enemy hit per its configured
+    /// attack / cast time after its action speed; 0 without a configured time.
+    pub(crate) fn survival_time(&self, total_hits: f64) -> f64 {
+        if self.enemy_action_time_ms <= 0.0 {
+            return 0.0;
+        }
+        if self.enemy_action_speed <= 0.0 {
+            return f64::INFINITY;
+        }
+        total_hits * self.enemy_action_time_ms / 1000.0 / self.enemy_action_speed
+    }
 }
 
 /// Inputs of the life hit pool: recoverable Life with loss prevention.
@@ -1665,6 +1709,30 @@ pub fn fill_ehp_pob2(
         // New-view max hit (:3540-3697)
         let (base_hit_pool, pool_by_type) =
             total_hit_pool_stages(&mom, es_recovery_cap, &pools, &ctx);
+        // Damage that is not a hit: the same Life, Mind over Matter and
+        // Energy Shield layers without hit-only Life loss prevention, then
+        // Runic Ward, which takes damage once Life is depleted.
+        let pool_before_ward = DAMAGE_TYPE_BY_INDEX.map(|dtype| {
+            total_hit_pool_base(
+                dtype,
+                mom.effective_life_by_type[dtype as usize],
+                es_recovery_cap,
+                &ctx,
+            )
+        });
+        let ward_in_pool = if ctx.ward_bypass == 0.0 {
+            pools.ward
+        } else {
+            0.0
+        };
+        let total_pool = pool_before_ward.map(|pool| pool + ward_in_pool);
+        let dot_taken =
+            DAMAGE_TYPE_BY_INDEX.map(|dtype| super::recovery::dot_taken(db, cfg, out, dtype));
+        let enemy_action_time_ms = cfg
+            .multiplier_if_set(ENEMY_ACTION_TIME)
+            .filter(|ms| ms.is_finite() && *ms > 0.0)
+            .unwrap_or(0.0);
+        let enemy_action_speed = super::skill_use_time::action_speed_factor(enemy_db, cfg);
         // Diagnostics: dumps the pool breakdown when POBR_DBG_EHPPOOL=1 (for
         // comparison against the oracle's <Type>TotalHitPool / MoMHitPool / Ward).
         if dbg_env!("POBR_DBG_EHPPOOL").is_some() {
@@ -1743,6 +1811,11 @@ pub fn fill_ehp_pob2(
                     below_half_loss_prevented: ctx.life_loss_below_half_prevented,
                 },
                 base_hit_pool,
+                dot_taken,
+                total_pool,
+                pool_before_ward,
+                enemy_action_time_ms,
+                enemy_action_speed,
             },
         }
     };

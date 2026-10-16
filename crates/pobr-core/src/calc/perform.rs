@@ -659,6 +659,19 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.max_chaos_resistance = chaos_resistance.max;
     env.player.output.chaos_resistance_over_cap = chaos_resistance.over_cap;
     env.player.output.chaos_resistance_total = chaos_resistance.total;
+    env.player.output.resistance_over_time = {
+        let input = player_input(env);
+        [
+            ("Fire", input.base_fire_resistance, true),
+            ("Cold", input.base_cold_resistance, true),
+            ("Lightning", input.base_lightning_resistance, true),
+            ("Chaos", 0.0, false),
+        ]
+        .map(|(element, base, elemental)| {
+            super::offence::resolve_resistance_over_time(db, cfg, base, element, elemental)
+                .final_value
+        })
+    };
     // Accuracy rating as the main-hand pass reads it (the hit chance input).
     env.player.output.accuracy = {
         let input = player_input(env);
