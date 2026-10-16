@@ -472,6 +472,7 @@ FullyBrokenArmourEffect = "完全破甲物理擊中承傷"
 ArchonDuration = "執政官增益效果持續時間（秒）"
 ArchonRecoveryPeriod = "執政官恢復期（秒）"
 
+HeavyStunBuildupAvg = "每次擊中重度暈眩累積"
 # Player-side debuff modifier views.
 CurseEffectOnSelf = "自身受到的詛咒效果"
 SelfBleedDuration = "自身流血持續時間"

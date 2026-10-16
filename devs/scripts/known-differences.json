@@ -522,6 +522,13 @@
       "reason": "The game Charges keyword gives a 15-second base without specifying whole-second rounding. PoBR retains fractional seconds: 3% reduced charge duration gives 14.55s; PoB2 floors each duration to 14s. The in-game tick rounding boundary has not been measured (docs/maintainer-guide.md, charge durations; https://poe2db.tw/us/Charges)."
     },
     {
+      "build": "druid-shaman-spark-5dcf9ecdd375",
+      "stats": [
+        "HeavyStunBuildupAvg"
+      ],
+      "reason": "Official 0.5.5.4.2 MonsterVarieties.PoiseThreshold for Xesht (row 1946) is 1700 (17x); pinned PoB2 uses 838% MORE (9.38x). PoBR follows the game, yielding 3.627930% vs 6.578395% on the worked Spark build; oracle/engine is 17/9.38 within 0.05% from hit/rounding differences. Source rows/export SHA are in data/overlay-common/boss_poise_thresholds.json; see docs/maintainer-guide.md, known intentional differences."
+    },
+    {
       "build": "sorceress-chronomancer-mana-remnants-859e60e18169",
       "stats": [
         "ChaosEnemyDamage",

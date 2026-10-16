@@ -5,6 +5,8 @@
 //! submodules (26→4), reducing the number of linked binaries to speed up builds.
 #![allow(clippy::all)]
 
+#[path = "skills/load_boss_poise_thresholds.rs"]
+mod load_boss_poise_thresholds;
 #[path = "skills/load_buff_definitions.rs"]
 mod load_buff_definitions;
 #[path = "skills/load_enemy_presets.rs"]
