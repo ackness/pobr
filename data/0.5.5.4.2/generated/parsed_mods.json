@@ -8683,7 +8683,14 @@
     },
     {
       "text": "10% increased [Stun] Buildup",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyHeavyStunBuildup",
+          "type": "Inc",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "10% increased [Thorns|Thorns] damage",
@@ -10747,7 +10754,14 @@
     },
     {
       "text": "12% increased [Stun] Buildup",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyHeavyStunBuildup",
+          "type": "Inc",
+          "value": 12.0
+        }
+      ]
     },
     {
       "text": "12% increased [Thorns|Thorns] damage",
@@ -12957,7 +12971,14 @@
     },
     {
       "text": "15% increased [Stun] Buildup",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyHeavyStunBuildup",
+          "type": "Inc",
+          "value": 15.0
+        }
+      ]
     },
     {
       "text": "15% increased [Stun] Buildup with [Melee|Melee Damage]",
@@ -14268,7 +14289,14 @@
     },
     {
       "text": "18% increased [Stun] Buildup",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyHeavyStunBuildup",
+          "type": "Inc",
+          "value": 18.0
+        }
+      ]
     },
     {
       "text": "18% increased [Stun] Buildup with [Melee|Melee Damage]",
@@ -16745,7 +16773,14 @@
     },
     {
       "text": "20% increased [Stun] Buildup",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyHeavyStunBuildup",
+          "type": "Inc",
+          "value": 20.0
+        }
+      ]
     },
     {
       "text": "20% increased [Stun] Buildup with [Quarterstaff|Quarterstaves]",
@@ -22437,7 +22472,14 @@
     },
     {
       "text": "30% increased [Stun] Buildup",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyHeavyStunBuildup",
+          "type": "Inc",
+          "value": 30.0
+        }
+      ]
     },
     {
       "text": "30% increased [Stun] Buildup against enemies within 2 metres",
@@ -23318,7 +23360,14 @@
     },
     {
       "text": "35% increased [Stun] Buildup",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyHeavyStunBuildup",
+          "type": "Inc",
+          "value": 35.0
+        }
+      ]
     },
     {
       "text": "35% increased amount of Life [LifeLeech|Leeched]",

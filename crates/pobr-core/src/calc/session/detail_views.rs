@@ -3,6 +3,7 @@ use super::{CalculationSession, detail::DerivedDetail};
 use crate::calc::{perform, survivability::ChargeKind};
 
 pub const DERIVED_STATS: &[&str] = &[
+    "HeavyStunBuildupAvg",
     "PhysicalTakenDamage",
     "FireTakenDamage",
     "ColdTakenDamage",
@@ -27,6 +28,65 @@ pub const DERIVED_STATS: &[&str] = &[
     "ConfiguredDamageChance",
     "ConfiguredNotHitChance",
     "DamageTakenOnBlock",
+    "PhysicalMin",
+    "PhysicalMax",
+    "PhysicalEffMult",
+    "FireMin",
+    "FireMax",
+    "FireEffMult",
+    "ColdMin",
+    "ColdMax",
+    "ColdEffMult",
+    "LightningMin",
+    "LightningMax",
+    "LightningEffMult",
+    "ChaosMin",
+    "ChaosMax",
+    "ChaosEffMult",
+    "TotalMin",
+    "TotalMax",
+    "CritEffect",
+    "DpsMultiplier",
+    "MainHandPhysicalMin",
+    "MainHandPhysicalMax",
+    "MainHandPhysicalEffMult",
+    "MainHandFireMin",
+    "MainHandFireMax",
+    "MainHandFireEffMult",
+    "MainHandColdMin",
+    "MainHandColdMax",
+    "MainHandColdEffMult",
+    "MainHandLightningMin",
+    "MainHandLightningMax",
+    "MainHandLightningEffMult",
+    "MainHandChaosMin",
+    "MainHandChaosMax",
+    "MainHandChaosEffMult",
+    "MainHandTotalMin",
+    "MainHandTotalMax",
+    "MainHandCritEffect",
+    "MainHandDpsMultiplier",
+    "OffHandPhysicalMin",
+    "OffHandPhysicalMax",
+    "OffHandPhysicalEffMult",
+    "OffHandFireMin",
+    "OffHandFireMax",
+    "OffHandFireEffMult",
+    "OffHandColdMin",
+    "OffHandColdMax",
+    "OffHandColdEffMult",
+    "OffHandLightningMin",
+    "OffHandLightningMax",
+    "OffHandLightningEffMult",
+    "OffHandChaosMin",
+    "OffHandChaosMax",
+    "OffHandChaosEffMult",
+    "OffHandTotalMin",
+    "OffHandTotalMax",
+    "OffHandCritEffect",
+    "OffHandDpsMultiplier",
+    "Repeats",
+    "TotalNumberOfHits",
     "IgniteChancePerHit",
     "IgniteDuration",
     "IgniteEffMult",
@@ -131,6 +191,9 @@ pub const DERIVED_STATS: &[&str] = &[
 
 impl CalculationSession {
     pub(super) fn derived_view(&self, stat: &str) -> Option<DerivedDetail> {
+        if crate::calc::hit_display::is_display_stat(stat) {
+            return crate::calc::hit_display::detail(&self.env, stat);
+        }
         if crate::calc::ailment_display::is_display_stat(stat) {
             return crate::calc::ailment_display::detail(&self.env, stat);
         }
@@ -141,6 +204,30 @@ impl CalculationSession {
         let mut context = Vec::new();
         let one = |id: &str, value| (id.to_string(), vec![(id.to_string(), value)]);
         let (formula, inputs) = match stat {
+            "HeavyStunBuildupAvg" => {
+                let t = env.heavy_stun_terms.as_ref()?;
+                if !t.enabled || t.threshold <= 0.0 {
+                    (
+                        "0 * CanHeavyStun".into(),
+                        vec![("CanHeavyStun".into(), 0.0)],
+                    )
+                } else {
+                    (
+                        "(PhysicalHitAverage * PhysicalStunMultiplier + OtherStunHitAverage) * MeleeStunMultiplier * round(HeavyStunDamageScale / EnemyPoiseThreshold * (1 + StunBuildupIncreased / 100) * StunBuildupMore * 100, 9) * EnemyStunBuildupMultiplier".into(),
+                        vec![
+                            ("PhysicalHitAverage".into(), t.physical),
+                            ("PhysicalStunMultiplier".into(), 1.5),
+                            ("OtherStunHitAverage".into(), t.other),
+                            ("MeleeStunMultiplier".into(), t.melee_multiplier),
+                            ("HeavyStunDamageScale".into(), t.damage_scale),
+                            ("EnemyPoiseThreshold".into(), t.threshold),
+                            ("StunBuildupIncreased".into(), t.increased),
+                            ("StunBuildupMore".into(), t.more),
+                            ("EnemyStunBuildupMultiplier".into(), t.enemy_multiplier),
+                        ],
+                    )
+                }
+            }
             "totalEnemyDamage" | "totalTakenDamage" | "totalTakenHit" => {
                 let t = self.ehp_terms()?;
                 let (suffix, values) = match stat {

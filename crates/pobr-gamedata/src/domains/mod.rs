@@ -18,6 +18,7 @@ pub mod unarmed_data;
 pub mod weapon_types;
 
 // Small lookup tables (overlay layer)
+pub mod boss_poise_thresholds;
 pub mod high_precision_mods;
 pub mod item_granted_skills;
 pub mod local_mods;

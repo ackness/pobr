@@ -1795,14 +1795,13 @@ fn additional_remnant_chance_reports_the_missing_count_model() {
 
 #[test]
 fn conditional_offence_limits_stay_visible_as_unmodelled() {
-    // Bone Chains, a 15% Stun Buildup passive, Seeing Stars (25% duration),
+    // Bone Chains, Seeing Stars (25% duration),
     // and Maiming Strike (25% chance) from the game's passive table.
     for (text, id) in [
         (
             "Physical Spell Critical Hits build Pin",
             "physical_spell_critical_pin_unmodelled",
         ),
-        ("15% increased Stun Buildup", "stun_buildup_unmodelled"),
         ("25% increased Daze Duration", "daze_duration_unmodelled"),
         (
             "Attacks have 25% chance to Maim on Hit",

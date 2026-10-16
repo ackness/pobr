@@ -61,6 +61,7 @@ impl From<MinimalInput> for ActorBaseStats {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MinimalOutput {
+    pub hit_calcs: super::output::HitCalcs,
     pub life: f64,
     pub mana: f64,
     pub fire_resistance: f64,
@@ -94,6 +95,9 @@ pub struct MinimalOutput {
     pub stored_crit_avg: Vec<(DamageType, f64)>,
     pub stored_hit_avg: Vec<(DamageType, f64)>,
     pub stored_combined_avg: Vec<(DamageType, f64)>,
+    /// Crit-weighted per-type hit damage after the effective-DPS mitigation pass.
+    /// Empty in panel mode, where `stored_combined_avg` is the hit basis.
+    pub mitigated_avg: Vec<(DamageType, f64)>,
     /// The `Stored<Type>{Hit,Crit}{Min,Max}` family (appended, vendor
     /// `:4050-4056`): the min/max input surface for damaging ailment source
     /// damage (RollAverage interpolation operates on this range).
@@ -123,6 +127,7 @@ impl MinimalOutput {
         breakdown: &BreakdownTable,
     ) -> Self {
         Self {
+            hit_calcs: output.hit_calcs.clone(),
             life: output.life,
             mana: output.mana,
             fire_resistance: output.fire_resistance,
@@ -162,6 +167,11 @@ impl MinimalOutput {
                 .main_hand
                 .as_ref()
                 .map(|hand| hand.stored_combined_avg.clone())
+                .unwrap_or_default(),
+            mitigated_avg: output
+                .main_hand
+                .as_ref()
+                .map(|hand| hand.mitigated_avg.clone())
                 .unwrap_or_default(),
             stored_ranges: output
                 .main_hand
@@ -755,6 +765,7 @@ pub struct HitMitigationPart {
 /// displayed steps ([`HitPass::average_hit_formula`], [`HitPass::dps_formula`])
 /// read the same numbers.
 pub(crate) struct HitPass {
+    pub effective: Vec<super::output::HitEffectiveTerms>,
     pub action_rate: f64,
     pub hit: HitChanceTerms,
     pub crit: super::CritOutcome,
@@ -808,6 +819,7 @@ pub(crate) fn hit_pass(
     // Both legs aggregated + canDeal + lucky + CritBlend (vendor `:4395`).
     // Short-circuits to the old single-factor formula when there's no
     // CriticalStrike-conditioned mod (rounding order copied, bit-identical).
+    let mut effective = Vec::new();
     let crit_pass = run_crit_passes(
         db,
         &hit_cfg,
@@ -817,7 +829,17 @@ pub(crate) fn hit_pass(
         &scaled,
         cfg.mode_effective,
         |pass_cfg, damage_type, raw_hit| {
-            enemy_damage_multiplier(db, enemy_db, pass_cfg, damage_type, raw_hit)
+            let terms = enemy_mitigation_terms(db, enemy_db, pass_cfg, damage_type, raw_hit);
+            let multiplier = terms.multiplier();
+            if !pass_cfg.condition("CriticalStrike") {
+                effective.push(super::output::HitEffectiveTerms {
+                    multiplier,
+                    damage_type,
+                    reduction: terms.reduction,
+                    taken: terms.taken,
+                });
+            }
+            multiplier
         },
     );
     // For DPS: under the effective view, the total hit including the enemy damage-taken chain/resistance/armour mitigation.
@@ -837,6 +859,7 @@ pub(crate) fn hit_pass(
     );
 
     HitPass {
+        effective,
         action_rate,
         hit: hit_terms,
         crit,
@@ -1011,6 +1034,8 @@ pub fn calculate_minimal_vs_enemy(
         hit: hit_terms,
         crit,
         crit_pass,
+        effective,
+        end,
         dps,
         ..
     } = hit_pass(db, enemy_db, cfg, input);
@@ -1023,6 +1048,11 @@ pub fn calculate_minimal_vs_enemy(
     let total_hit_avg = crit_pass.total_hit_avg;
 
     MinimalOutput {
+        hit_calcs: super::output::HitCalcs {
+            effective,
+            crit_effect: crit.effect,
+            dps: end,
+        },
         life,
         mana,
         fire_resistance,
@@ -1048,6 +1078,7 @@ pub fn calculate_minimal_vs_enemy(
         stored_crit_avg: crit_pass.stored_crit_avg,
         stored_hit_avg: crit_pass.stored_hit_avg,
         stored_combined_avg: crit_pass.stored_combined_avg,
+        mitigated_avg: crit_pass.mitigated_avg,
         stored_ranges: crit_pass.stored_ranges,
         breakdown: vec![
             BreakdownStep {
@@ -2307,7 +2338,7 @@ pub(crate) fn apply_cooldown_cap(db: &ModDb, cfg: &CalcConfig, uncapped_rate: f6
 
 /// How many times one use of the skill casts it: `1 + RepeatCount` (Spell
 /// Echo's echoes, see `rules::skill_stats`).
-fn repeats(db: &ModDb, cfg: &CalcConfig) -> f64 {
+pub(crate) fn repeats(db: &ModDb, cfg: &CalcConfig) -> f64 {
     1.0 + db
         .sum(ModType::Base, cfg, &[ModName::from("RepeatCount")])
         .max(0.0)

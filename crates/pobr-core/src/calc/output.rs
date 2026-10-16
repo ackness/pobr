@@ -2,6 +2,23 @@ use pobr_data::prelude::DamageType;
 
 use super::{DamageComponent, MinimalOutput, SkillUseTime};
 
+/// Non-critical enemy mitigation resolved while calculating hit DPS.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HitEffectiveTerms {
+    pub multiplier: f64,
+    pub damage_type: DamageType,
+    pub reduction: f64,
+    pub taken: f64,
+}
+
+/// Calcs inputs retained from one hit pass, without another damage calculation.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct HitCalcs {
+    pub effective: Vec<HitEffectiveTerms>,
+    pub crit_effect: f64,
+    pub dps: super::scaled_damage::DpsEndFactors,
+}
+
 /// One included effect. `hit_dps` is per instance; `dot_dps` is its allocated
 /// share after stacking limits. `dps` includes count, DoT and culling, and the
 /// rows sum to FullDPS. Failures remain visible instead of disappearing.
@@ -29,6 +46,11 @@ pub struct FullDpsOutput {
 pub struct OutputTable {
     /// Inputs and resolved terms retained by the EHP stage for display and details.
     pub ehp_terms: Option<super::EhpTerms>,
+    /// Retained inputs from the selected hit pass; hand tables retain their own.
+    pub hit_calcs: HitCalcs,
+    pub repeats: f64,
+    /// Expected incoming hits until death, including avoidance.
+    pub total_number_of_hits: f64,
     /// Player debuff modifier views; durations are percentages of base duration.
     pub exposure_effect_on_self: f64,
     pub wither_effect_on_self: f64,
@@ -321,6 +343,8 @@ pub struct OutputTable {
     pub chill_effect: f64,
     /// Freeze buildup (% per damage point; 0 = not accumulating).
     pub freeze_buildup_pct: f64,
+    /// Average enemy Heavy Stun buildup (% of poise per successful hit).
+    pub heavy_stun_buildup_avg: f64,
     /// Shock buildup (% per hit; 0 = not accumulating).
     pub electrocute_buildup_pct: f64,
     /// Bleed/poison/ignite multi-stack DPS and active stack count (0 = no
@@ -512,6 +536,7 @@ pub struct StoredDamageRange {
 ///  `stored_ranges` was appended per the C6c convention -- the min/max input surface for ailment magnitude).
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct HandOutput {
+    pub hit_calcs: HitCalcs,
     /// Accuracy Rating evaluated in this hand's modifier scope.
     pub accuracy: f64,
     /// This hand's hit chance (fraction; vendor `HitChance`, the AVERAGE input).
@@ -541,6 +566,9 @@ pub struct HandOutput {
     /// The `Stored<Type>CombinedAvg` family (both legs accumulated weighted
     /// by crit chance; merged with the DPS mode at the outer level, :4588).
     pub stored_combined_avg: Vec<(DamageType, f64)>,
+    /// Per-type effective hit averages, including crit weighting but not hit chance.
+    /// Reused from the effective-DPS pass; empty in panel mode.
+    pub mitigated_avg: Vec<(DamageType, f64)>,
     /// The `Stored<Type>{Hit,Crit}{Min,Max}` family (appended; the damaging
     /// ailment source damage input, resolved by vendor `:4050-4056` / consumed at `:4833-4857`).
     pub stored_ranges: Vec<StoredDamageRange>,
@@ -577,6 +605,9 @@ impl Default for OutputTable {
     fn default() -> Self {
         Self {
             ehp_terms: None,
+            hit_calcs: HitCalcs::default(),
+            repeats: 0.0,
+            total_number_of_hits: 0.0,
             exposure_effect_on_self: 100.0,
             wither_effect_on_self: 100.0,
             self_bleed_effect: 100.0,
@@ -795,6 +826,7 @@ impl Default for OutputTable {
             // Lane B: ailment extensions default to 0 (not applied without a matching hit/mod).
             chill_effect: 0.0,
             freeze_buildup_pct: 0.0,
+            heavy_stun_buildup_avg: 0.0,
             electrocute_buildup_pct: 0.0,
             bleed_stacked_dps: 0.0,
             bleed_active_stacks: 0.0,
@@ -871,6 +903,7 @@ impl Default for OutputTable {
 impl From<&MinimalOutput> for OutputTable {
     fn from(value: &MinimalOutput) -> Self {
         Self {
+            hit_calcs: value.hit_calcs.clone(),
             life: value.life,
             mana: value.mana,
             fire_resistance: value.fire_resistance,

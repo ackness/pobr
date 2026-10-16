@@ -27,7 +27,7 @@
 
 - 普通眩晕伤害积累**眩晕**
 - **重眩晕 (Heavy Stun)** 属于**姿态 (Poise)** 相关 debuff，与冻结、电击、钉刺 (Pin) 同属一类[^pob2-deepwiki-stun]
-- 重眩晕积累可由**所有伤害类型**（物理、火焰、冰霜、闪电、混沌）贡献，但物理近战伤害通常有额外加成[^pob2-deepwiki-stun]
+- 重眩晕积累由物理、火焰、闪电和混沌击中贡献；冰霜伤害不能积累重眩晕。玩家物理伤害和近战击中各有 50% more，彼此相乘[^game-keywords]。
 - 不同怪物有不同的重眩晕阈值和持续时间
 
 ### 重眩晕效果
@@ -44,7 +44,7 @@
 
 ## 玩家对重眩晕的加成
 
-玩家物理和近战击中伤害对重眩晕积累通常有额外加成（如 **50% More**），但所有伤害类型均可贡献积累[^pob2-deepwiki-stun]。
+玩家物理伤害和近战击中对重眩晕积累各有 **50% More**，彼此相乘；冰霜伤害不能积累重眩晕。怪物造成的伤害另有 100% 物理、33% 近战加成，不能用于玩家的伤害[^game-keywords]。
 
 这意味着：
 - 物理近战构建更容易使怪物进入重眩晕状态
@@ -110,7 +110,7 @@
 
 ### 眩晕施加构建
 
-- 物理近战构建有 50% More 重眩晕积累加成
+- 物理近战击中的重眩晕积累倍率为 1.5 × 1.5 = 2.25
 - 堆叠高单次击中伤害
 - 某些技能或装备可能增加眩晕持续时间或效果
 
@@ -129,3 +129,5 @@
 [^mobalytics-damage-order]: Mobalytics — Damage & Defence Calculation Order. https://mobalytics.gg/poe-2/guides/damage-defence-calc-order
 [^maxroll-050-patchnotes]: Maxroll — 0.5.0 Patch Notes – Return of the Ancients. https://maxroll.gg/poe2/news/0-5-0-patch-notes-return-of-the-ancients
 [^pob2-deepwiki-stun]: Path of Building for PoE2 DeepWiki — CalcOffence & CalcDefence / Stun & HeavyStun. https://deepwiki.com/PathOfBuildingCommunity/PathOfBuilding-PoE2
+
+[^game-keywords]: Game keyword text — Stun / Heavy Stun / Cold Damage (verified 2026-10-16). https://poe2db.tw/us/Keywords
