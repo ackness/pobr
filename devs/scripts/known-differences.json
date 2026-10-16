@@ -206,27 +206,27 @@
     },
     {
       "build": "mercenary-witchhunter-crossbow-shot",
-      "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "IgniteDPS", "AverageDamage", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
+      "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "IgniteDPS", "AverageDamage", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS", "IgniteEffMult"],
       "reason": "Pounce's Predator's Mark counts the minions already in Presence, not the wolves Pounce summons (docs/maintainer-guide.md, Pounce)"
     },
     {
       "build": "mercenary-tactician-oil-barrage-02b94461578f",
-      "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "IgniteDPS", "AverageDamage", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
+      "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "IgniteDPS", "AverageDamage", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS", "IgniteEffMult"],
       "reason": "the talisman's Soul Core of Topotante penetrates 15% as the item says, not PoB2's rune table's 25%, and Pounce's Predator's Mark counts the minions already in Presence (docs/maintainer-guide.md, runes and Pounce)"
     },
     {
       "build": "grim-pillars-f74c11ce4b4d",
-      "stats": ["TotalDotDPS", "IgniteDPS", "IgniteDamage"],
+      "stats": ["TotalDotDPS", "IgniteDPS", "IgniteDamage", "IgniteStackPotentialPercent"],
       "reason": "a skill in a Spell Totem ignites with the totem's hits; PoB2 counts no totems for it (docs/maintainer-guide.md, totems)"
     },
     {
       "build": "grim-pillars-5dda2982b793",
-      "stats": ["TotalDotDPS", "IgniteDPS", "IgniteDamage"],
+      "stats": ["TotalDotDPS", "IgniteDPS", "IgniteDamage", "IgniteStackPotentialPercent"],
       "reason": "a skill in a Spell Totem ignites with the totem's hits; PoB2 counts no totems for it (docs/maintainer-guide.md, totems)"
     },
     {
       "build": "mercenary-gemling-legionnaire-twister-a479eff2b320",
-      "stats": ["TotalDotDPS", "IgniteDPS"],
+      "stats": ["TotalDotDPS", "IgniteDPS", "IgniteEffMult"],
       "reason": "enemies in Presence resist each element with their lowest Elemental Resistance, ailments included (docs/maintainer-guide.md, Presence)"
     },
     {
@@ -261,7 +261,7 @@
     },
     {
       "build": "monk-acolyte-of-chayula-decompose",
-      "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "PoisonDPS", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
+      "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "PoisonDPS", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS", "PoisonEffMult"],
       "reason": "the strongest Despair, Doedre's Undoing's, applies; PoB2 picks Blasphemy's (docs/maintainer-guide.md, curses)"
     },
     {

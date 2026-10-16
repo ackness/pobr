@@ -1,6 +1,7 @@
 pub mod actor;
 pub mod ailment;
 pub mod ailment_apply;
+pub(crate) mod ailment_display;
 mod armour_break;
 pub mod bear_form;
 pub mod blind;

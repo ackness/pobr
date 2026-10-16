@@ -4,6 +4,40 @@ use crate::calc::{perform, survivability::ChargeKind};
 
 pub const DERIVED_STATS: &[&str] = &[
     "HeavyStunBuildupAvg",
+    "IgniteChancePerHit",
+    "IgniteDuration",
+    "IgniteEffMult",
+    "IgniteMagnitudeEffect",
+    "IgniteRollAverage",
+    "IgniteStacksMax",
+    "IgniteStackPotentialPercent",
+    "IgniteFireMin",
+    "IgniteFireMax",
+    "IgniteColdMin",
+    "IgniteColdMax",
+    "IgniteLightningMin",
+    "IgniteLightningMax",
+    "BleedChance",
+    "BleedDuration",
+    "BleedEffMult",
+    "BleedMagnitudeEffect",
+    "BleedRollAverage",
+    "BleedStacksMax",
+    "BleedStackPotentialPercent",
+    "BleedPhysicalMin",
+    "BleedPhysicalMax",
+    "PoisonChance",
+    "PoisonDuration",
+    "PoisonEffMult",
+    "PoisonMagnitudeEffect",
+    "PoisonRollAverage",
+    "PoisonStacksMax",
+    "PoisonStackPotentialPercent",
+    "PoisonPhysicalMin",
+    "PoisonPhysicalMax",
+    "PoisonChaosMin",
+    "PoisonChaosMax",
+    "ShockChance",
     "AverageBurstDamage",
     "CombinedAvg",
     "CombinedAvgToMonsterLife",
@@ -74,6 +108,9 @@ pub const DERIVED_STATS: &[&str] = &[
 
 impl CalculationSession {
     pub(super) fn derived_view(&self, stat: &str) -> Option<DerivedDetail> {
+        if crate::calc::ailment_display::is_display_stat(stat) {
+            return crate::calc::ailment_display::detail(&self.env, stat);
+        }
         let env = &self.env;
         let out = &env.player.output;
         let db = &env.player.mod_db;

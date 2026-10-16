@@ -1602,6 +1602,8 @@ impl CalculationSession {
     pub fn ailment_stage_terms(&self, stat: &str) -> Option<&super::AilmentStageTerms> {
         let kind = ailment_of(stat)?;
         self.env
+            .player
+            .output
             .ailment_terms
             .iter()
             .find(|(ailment, _)| *ailment == kind)

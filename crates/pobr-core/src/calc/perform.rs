@@ -1641,7 +1641,8 @@ fn damaging_ailment_for_pass(
     // "Damaging Ailments deal damage #% faster" — the same damage in less
     // time, so fewer instances are active at once.
     let rate = ailment_rate_mod(player, enemy, cfg, name);
-    let duration = ailment_duration(kind, player, cfg) * debuff_duration_mult(enemy, cfg)
+    let duration_before_rate = ailment_duration(kind, player, cfg);
+    let duration = duration_before_rate * debuff_duration_mult(enemy, cfg)
         / if rate > 0.0 { rate } else { 1.0 };
     let stack = resolve_stack_config(
         player,
@@ -1696,6 +1697,8 @@ fn damaging_ailment_for_pass(
         apply_chance_rolled: out.chance,
         hit_chance: ctx.hit_chance,
         duration,
+        duration_before_rate,
+        stack_potential: sp,
         hits_per_second: ctx.speed,
         base_duration: super::ailment::ailment_base_duration(kind, cfg).unwrap_or(0.0),
         enemy_duration: debuff_duration_mult(enemy, cfg),
@@ -2000,6 +2003,7 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
         ailment_terms.push((
             kind,
             AilmentStageTerms {
+                pass_count: passes.len(),
                 passes: results
                     .iter()
                     .take(2)
@@ -2070,15 +2074,16 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
         // Shock is a non-damaging ailment: the panel's `shock_effect` is kept as the **effect
         // magnitude** (fraction), not multiplied by chance (a different convention from DoT's
         // chance × expected-value). chance is already written to trace for attribution/future stacking.
-        let (_chance, magnitude, _) =
+        let (chance, magnitude, _) =
             shock_traced(&source, player, enemy, cfg, threshold, &mut trace);
+        env.player.output.shock_chance = chance;
         env.player.output.shock_effect = magnitude;
         // Lane B: electrocute poise buildup (% per hit).
         let (electrocute_buildup, _) =
             electrocute_poise_buildup_traced(poise_thr, player, cfg, &mut trace);
         env.player.output.electrocute_buildup_pct = electrocute_buildup;
     }
-    env.ailment_terms = ailment_terms;
+    env.player.output.ailment_terms = ailment_terms;
 }
 
 /// Lane C: applies `AilmentEffect` (MORE) × `rateMod` (Faster/Slower) to a damaging ailment's
