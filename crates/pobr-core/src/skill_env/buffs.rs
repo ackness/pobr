@@ -14,7 +14,7 @@ use crate::skill_env::buff_stat_map::map_self_buff_offensive_stat;
 use crate::skill_env::lookup::{EffectLookup, MinionLookup, SocketGroupView, StatSetLookup};
 use crate::skill_env::mods::GemPropertyBonus;
 use crate::skill_env::mods::skill_type_bits;
-use crate::skill_env::resolve::{GemPropertyLookup, additional_gem_levels};
+use crate::skill_env::resolve::GemPropertyLookup;
 
 /// The buff display names of all **herald active skills** among the enabled groups
 /// (deduplicated by name, deterministically sorted).
@@ -180,7 +180,9 @@ impl ReservationDb for crate::ModDb {
 /// into a `SkillSpiritReservationBase` BASE modifier (one per effect, SkillGem
 /// attributed), summed by perform's `fill_skill_mechanics` into
 /// [`crate::OutputTable`]'s `spirit_reserved`. Overload is only **reported, not
-/// blocked** (matching PoB2: it's calculated and highlighted red, with no pool-side clamping).
+/// blocked**: the requested total is not capped at the Spirit pool. PoB2 caps
+/// its displayed `SpiritReserved`, while retaining the uncapped skill rows
+/// and a negative `SpiritUnreserved`.
 ///
 /// Semantics (matching PoB2's `CalcDefence.lua:192-249` Reservation section):
 /// - Selected = `skill_types` includes `HasReservation` and excludes
@@ -262,8 +264,7 @@ pub fn spirit_reservation_modifiers(
             }
             // The level the skill is used at: "+N to Level of all Minion
             // Skills" lowers what a minion skill reserves.
-            let level = gem.gem_level
-                + additional_gem_levels(gem_level_bonuses, data, &gem.skill_id, gem.corrupted);
+            let level = gem.gem_level + gem.global_levels(gem_level_bonuses, data);
             let es = data.effect_stats(&gem.skill_id, level, gem.quality, gem.stat_set_index);
             // Only skills explicitly marked by the game keep reserving when
             // their weapon set is inactive (Blink, Convalescence, etc.). Do

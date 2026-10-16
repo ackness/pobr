@@ -122,5 +122,7 @@ mise run builds:fetch examples/reference-builds/holdout --pick last
 | 2026-10-16（同一批改动，仅测量总数，未查看其中任何构筑） | `holdout/` | 23 | 18（78%） | 1912/2030（94.2%） |
 | 2026-10-16 (round 44: Light Radius transfers, granted passive-point budgets, buff expiry rate, flask recovery copied to ES, melee-weapon conditions, and explicit unmodelled/no-effect fates; reference agreement unchanged) | `tuned/` | 69 | 58 (84%) | 5787/6113 (94.7%) |
 | 2026-10-16 (same changes; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1912/2030 (94.2%) |
+| 2026-10-16 (round 45: skill-level audit; effect-row limits, support host levels, named gem bonuses, inherent Spear Throw levels, and weapon-set equipment/attribute context reduce worked-build level/quality leads from 99 to 24; reference agreement unchanged) | `tuned/` | 69 | 58 (84%) | 5787/6113 (94.7%) |
+| 2026-10-16 (same changes; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1912/2030 (94.2%) |
 
 吻合行里有按游戏规则有意不同于参考值的行（例如护身符授予的技能不保留精魄，见 `reference_report.rs` 基线旁的说明），所以上限不是 100%。

@@ -29,6 +29,19 @@ fn calculate(skills: &str, modifiers: &[&str]) -> OutputTable {
 }
 
 #[test]
+fn on_kill_sidebar_attributes_totem_hit_kills_to_the_totem() {
+    for (skill, expected) in [("FireballPlayer", 13.0), ("ShockwaveTotemPlayer", 0.0)] {
+        let out = calculate(
+            &format!(r#"<Skill mainActiveSkill="1"><Gem skillId="{skill}" level="20"/></Skill>"#),
+            &["13 Life per Enemy Killed"],
+        );
+        // Totems use their own skills and have their own Life; the player's
+        // 13 Life per kill is recovered only for the player's own kill.
+        assert_eq!(out.life_on_kill, expected, "{skill}");
+    }
+}
+
+#[test]
 fn movement_reads_game_penalty_and_presence_ignores_skill_area() {
     let skill = r#"<Skill mainActiveSkill="1"><Gem skillId="FireballPlayer" level="20"/></Skill>"#;
     let base = calculate(skill, &[]);

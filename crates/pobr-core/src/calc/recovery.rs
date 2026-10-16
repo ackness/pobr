@@ -129,7 +129,7 @@ struct Gain {
     on_hit: f64,
 }
 
-fn proxy(cfg: &CalcConfig) -> bool {
+pub(super) fn proxy(cfg: &CalcConfig) -> bool {
     use pobr_data::skill::SkillTypes;
     cfg.skill_types.intersects(
         SkillTypes::TRAPPED

@@ -345,7 +345,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         computed("BleedDPS", Cat::DotDamage, Vt::Number, "BleedDPS"),
         computed("IgniteDPS", Cat::DotDamage, Vt::Number, "IgniteDPS"),
         computed("PoisonDPS", Cat::DotDamage, Vt::Number, "PoisonDPS"),
-        computed("ShockEffect", Cat::Ailment, Vt::Percent, "ShockEffectMod"),
+        computed("ShockEffect", Cat::Ailment, Vt::Number, "ShockEffectMod"),
         // Resource
         computed("Life", Cat::Resource, Vt::Number, "Life"),
         computed("Mana", Cat::Resource, Vt::Number, "Mana"),
@@ -747,7 +747,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         computed(
             "AoeAreaMod",
             Cat::SkillMechanics,
-            Vt::Percent,
+            Vt::Number,
             "AreaOfEffectMod",
         ),
         computed(
@@ -817,9 +817,8 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Percent,
             "EffectiveSpellBlockChance",
         ),
-        // The share of damage still taken on a blocked hit: lower is better.
-        computed("BlockEffect", Cat::Mitigation, Vt::Percent, "BlockEffect")
-            .with_higher_is_better(Some(false)),
+        // The percentage of incoming hit damage prevented by a block.
+        computed("BlockEffect", Cat::Mitigation, Vt::Percent, "BlockEffect"),
         // Deflection (Track D; CalcDefence.lua:48-54, :1487-1506).
         computed(
             "DeflectionRating",
@@ -1179,7 +1178,7 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "BleedDPS" => output.bleed_dps,
         "IgniteDPS" => output.ignite_dps,
         "PoisonDPS" => output.poison_dps,
-        "ShockEffect" => output.shock_effect,
+        "ShockEffect" => output.shock_effect_mod,
         "Life" => output.life,
         "Mana" => output.mana,
         "EnergyShield" => output.energy_shield,
@@ -1301,7 +1300,7 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "SpellBlockChanceMax" => output.spell_block_chance_max,
         "EffectiveBlockChance" => output.effective_block_chance,
         "EffectiveSpellBlockChance" => output.effective_spell_block_chance,
-        "BlockEffect" => output.block_effect,
+        "BlockEffect" => 100.0 - output.block_effect,
         "DeflectionRating" => output.deflection_rating,
         "DeflectChance" => output.deflect_chance,
         "EvadeChance" => output.evade_chance,

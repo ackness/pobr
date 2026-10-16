@@ -250,6 +250,11 @@ impl CalculationSession {
         self.env.player.mod_db.flag(&self.env.cfg, name)
     }
 
+    /// Queries an enemy FLAG modifier using the current calculation context.
+    pub fn enemy_has_flag(&self, name: &str) -> bool {
+        self.env.enemy.mod_db.flag(&self.env.cfg, name)
+    }
+
     /// Automatic low-life condition bridge (vendor CalcDefence.lua:335-350:
     /// `(max − reserved)/max ≤ LowPoolThreshold(0.35)` →
     /// `condList["LowLife"] = true`). Since 0.5.4b, Spirit→Life reservation

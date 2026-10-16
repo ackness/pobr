@@ -1,6 +1,137 @@
 {
-  "_doc": "Reference rows `mise run triage` files as known: differences the repository already explains, so a triage lists only what is left to look at. `build` is a fragment of the build folder's name, `stats` the rows it explains, `reason` where the explanation is. Add an entry when a difference is documented as deliberate; remove it when the engine changes.",
+  "_doc": "Reference rows `mise run triage` files as known: differences the repository already explains, so a triage lists only what is left to look at. `build` is a fragment of the build folder's name (or a synthetic skill-sweep case id), `stats` the rows it explains, `reason` where the explanation is. Synthetic case entries document sweep findings; skill-sweep does not yet consume this registry. Add an entry when a difference is documented as deliberate; remove it when the engine changes.",
   "differences": [
+    {
+      "build": "druid-oracle-ember-fusillade",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (229); PoB2 caps this displayed field at the Spirit pool (179), while both report -50 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "mercenary-gemling-legionnaire-explosive-grenade",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (268); PoB2 caps this displayed field at the Spirit pool (250), while both report -18 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "huntress-ritualist-twister-882c4b7d4c91",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (285); PoB2 caps this displayed field at the Spirit pool (268), while both report -17 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "monk-acolyte-of-chayula-convalescence-8743aac6ec75",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (398); PoB2 caps this displayed field at the Spirit pool (312), while both report -86 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "monk-invoker-grim-pillars-19a4efbb971d",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (266); PoB2 caps this displayed field at the Spirit pool (236), while both report -30 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "warrior-smith-of-kitava-maul-f3d9b042531d",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (225); PoB2 caps this displayed field at the Spirit pool (189), while both report -36 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "warrior-warbringer-infernal-cry-e2a8fe48cefb",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (160); PoB2 caps this displayed field at the Spirit pool (100), while both report -60 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "witch-blood-mage-comet-bc750d615159",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (355); PoB2 caps this displayed field at the Spirit pool (200), while both report -155 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "witch-infernalist-convalescence-6e6130dfbff5",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (361); PoB2 caps this displayed field at the Spirit pool (296), while both report -65 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "witch-lich-blasphemy-c72f0f283724",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (318); PoB2 caps this displayed field at the Spirit pool (281), while both report -37 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "mercenary-tactician-oil-barrage-02b94461578f",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (273); PoB2 caps this displayed field at the Spirit pool (232), while both report -41 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "witch-abyssal-lich-bonestorm-be0d16c86268",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (244); PoB2 caps this displayed field at the Spirit pool (137), while both report -107 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "witch-blood-mage-impending-doom-c0dcbc68022c",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (220); PoB2 caps this displayed field at the Spirit pool (143), while both report -77 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "ranger-deadeye-ice-shot-b6ce7b3a4329",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (223); PoB2 caps this displayed field at the Spirit pool (146), while both report -77 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved).",
+      "build": "3bfac6cd6482",
+      "stats": ["AilmentThreshold"],
+      "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/maintainer-guide.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
+    },
+    {
+      "build": "4651a9629c46",
+      "stats": ["AilmentThreshold"],
+      "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/maintainer-guide.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
+    },
+    {
+      "build": "2983379c06aa",
+      "stats": ["AilmentThreshold"],
+      "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/maintainer-guide.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
+    },
+    {
+      "build": "druid-oracle-ember-fusillade",
+      "stats": ["AilmentThreshold"],
+      "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/maintainer-guide.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
+    },
+    {
+      "build": "dd7f512456b6",
+      "stats": ["TotalHitAvg"],
+      "reason": "TotalHitAvg intentionally retains the game's Pre-mitigation Damage view; PoB2 AverageHit includes enemy mitigation. Comet's cold/lightning effective multipliers are 0.5, explaining the approximately 2x ratio. This display pair is already excluded from reference agreement (docs/maintainer-guide.md, sidebar damage views; https://poe2db.tw/us/Keywords)."
+    },
+    {
+      "build": "9a0fb35e890a",
+      "stats": ["TotalHitAvg"],
+      "reason": "TotalHitAvg intentionally retains the game's Pre-mitigation Damage view; PoB2 AverageHit includes enemy mitigation. Living Bomb's fire/cold effective multipliers are 0.5, explaining the approximately 2x ratio. This display pair is already excluded from reference agreement (docs/maintainer-guide.md, sidebar damage views; https://poe2db.tw/us/Keywords)."
+    },
+    {
+      "build": "3e588bde3126",
+      "stats": ["TotalHitAvg"],
+      "reason": "TotalHitAvg intentionally retains the game's Pre-mitigation Damage view; PoB2 AverageHit includes enemy mitigation. Seismic Cry's physical/cold effective multipliers are 0.25/0.5, explaining the approximately 3.3x ratio. This display pair is already excluded from reference agreement (docs/maintainer-guide.md, sidebar damage views; https://poe2db.tw/us/Keywords)."
+    },
     {
       "build": "warrior-smith-of-kitava-shield-wall-fb03d7dce08e",
       "stats": ["ChaosMaxHit", "TotalEHP"],
@@ -342,6 +473,44 @@
       "build": "witch-blood-mage-impending-doom-add19135df93",
       "stats": ["ReqDex"],
       "reason": "The Vertex's Equipment has no Attribute Requirements (game stat global_equipment_no_attribute_requirements) removes equipment requirements, including weapons; PoB2 leaves this line out (docs/maintainer-guide.md, The Vertex)"
+    },
+    {
+      "build": "BloodhoundsMarkPlayer/BloodhoundsMarkExplosionPlayer@2",
+      "stats": [
+        "TotalDPS",
+        "CombinedDPS",
+        "CritChance"
+      ],
+      "reason": "ActiveSkills.Description defines Physical Attack damage independent of weapons; game types Attack/NonWeaponAttack and no global_always_hit require accuracy. Level 20 base damage is 196–294 × 4.08, crit 5%; pinned PoB2 skips the accuracy and critical confirmation checks (docs/maintainer-guide.md, event-triggered hits). The existing 1/s presentation is not a model of blood loss, heavy stun or death events."
+    },
+    {
+      "build": "CurseOfRepulsionPlayer/CurseOfRepulsionShockwavePlayer@2",
+      "stats": [
+        "CombinedDPS",
+        "CritChance"
+      ],
+      "reason": "The hit is already calculated (level 20: 128–192 physical × 2.04); ActiveSkills.Description requires hitting a cursed enemy. Event rate is unmodelled: PoBR reports average_damage and zero DPS; PoB2 puts average hit into CombinedDPS and skips the attack accuracy check (docs/maintainer-guide.md, event-triggered hits)."
+    },
+    {
+      "build": "FortifyingCryPlayer/FortifyingCryShockwavePlayer@2",
+      "stats": [
+        "CombinedDPS"
+      ],
+      "reason": "The hit is already calculated (level 20: 85–128 plus 5–7 per complete 15 shield Armour, all × 2.04); ActiveSkills.Description triggers it when subsequent shield attacks deal damage. Event rate is unmodelled: PoBR reports average_damage and zero DPS; PoB2 puts average damage into CombinedDPS (docs/maintainer-guide.md, event-triggered hits)."
+    },
+    {
+      "build": "TemperWeaponPlayer/TemperWeaponCombustionPlayer@2",
+      "stats": [
+        "CombinedDPS"
+      ],
+      "reason": "ActiveSkills.Description requires an empowered weapon attack to hit; the 100% imbue_weapon_combust_trigger_chance_% does not supply empowered attack frequency. PoBR keeps average_damage and zero DPS with an unmodelled event rate; PoB2 puts average damage into CombinedDPS (docs/maintainer-guide.md, event-triggered hits)."
+    },
+    {
+      "build": "TrailOfCaltropsPlayer/TriggeredTrailOfCaltropsPlayer@2",
+      "stats": [
+        "CombinedDPS"
+      ],
+      "reason": "ActiveSkills.Description lays caltrops during dodges and deals damage when an enemy triggers them. The game provides 3 placements at 5%/20% dodge timing, not dodge/enemy-trigger frequency. PoBR keeps average_damage and zero DPS with an unmodelled event rate; PoB2 puts average damage into CombinedDPS (docs/maintainer-guide.md, event-triggered hits)."
     }
   ]
 }

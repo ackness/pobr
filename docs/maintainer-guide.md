@@ -183,6 +183,21 @@ WASM 的 `calculate_build_json`（JS 名 `calculateBuildJson`）响应另有 `mi
 
 精魄保留按当前计算的武器组计：绑定到另一组的技能（包括它的辅助宝石追加的保留量）不保留，游戏 stat `display_skill_reserves_in_all_weapon_sets` 明确要求在所有武器组保留的技能除外，例如 Blink、Convalescence 和 Eternal Rage。Svalinn 授予的 Cast on Block 本身没有基础保留量，Direstrike II 与 Herbalism II 的 40 和 30 精魄只在拿着该盾的武器组计入，再应用保留效率。tuned Titan His Scattering Calamity 的主技能在第一组，其他常驻技能绑定到平时持有的第二组，因此计算第一组时保留为 0；构筑码参考值按另一组保留，与当前钉定 PoB2 不同。这里只改变保留量：绑定到另一组的常驻技能的 buff、光环仍按生效计算，与 PoB2 和构筑码参考值一致；游戏里切换武器组后这类 buff 是否保持，没有找到说明，也没有游戏内实测。
 
+`SpiritReserved` reports the total reservation requested by the enabled skills,
+even when it exceeds the Spirit pool; `SpiritUnreserved = Spirit - SpiritReserved`
+can be negative, and the calculator does not disable skills to fit the pool.
+This is an output convention for an overcommitted build, not a claim that the game
+allows over-reservation. PoB2 caps its displayed `SpiritReserved` at `Spirit` but
+keeps the negative `SpiritUnreserved` and the uncapped per-skill breakdown. Thus
+tuned Bonestorm `be0d16c86268` reserves 100 + 54 + 60 + 30 = 244 in both skill
+breakdowns, yet PoB2 displays 137 reserved; both report −107 unreserved. Blood
+Mage Comet `bc750d615159` similarly requests 355 with a pool of 200 and −155
+unreserved. `output-coverage.py` retains the direct field comparison and shows
+`oracle_before_pool_cap` on capped Spirit reservation pairs; compare that total
+and the per-skill rows before investigating efficiency or support costs. Free
+amulet grants and deduplicated item skills remain separate differences described
+below; undoing the display cap does not undo those differences.
+
 JSON/WASM 握手版本为 15（`pobr_wasm::SCHEMA_VERSION`，与 Web 的 `EXPECTED_SCHEMA_VERSION` 配对）。解码返回 `config_sets` / `skill_sets` 及各自的活动 id；配置和技能集按 XML 稳定 id 选择，不把稀疏 id 当作文档序号。`xml_merge::manage_named_set` 支持新建、复制、重命名、删除，拒绝不存在的 id 和删除最后一组；旧平铺 Config / Skills 管理时包装为 Default，导出平铺 Skills 同样包装。合并只替换活动片段，保留其他组、未知配置标量、原值拼写、扩展属性和子节点；技能／宝石扩展属性只在来源身份可识别时保留，删除重复组造成歧义时不猜归属。`SkillSet.mainSocketGroup` 记忆各集主技能组（从 1 起，0 为未指定），当前值同时写入 `Build.mainSocketGroup`；未记忆的非活动集首次选择第一组，PoB2 再保存可能丢弃扩展记忆。`loadout::derive_loadouts` 按同名或花括号标识同时关联配置与技能集，只有一组的类别豁免匹配。
 
 游戏 Build Planner v1 `.build` 由 `build_api::decode_build_file_json` 识别，旧国服 `items` 与 WeGame 导入仍可用；`build_api::encode_build_file_json({ code, name, all_loadouts, source })` 返回 `files`（文件名与 JSON 内容）和去重的 `warnings`，可按来源 loadout 分别导出，不切换会话。格式使用游戏的天赋／宝石 id 和武器组，装备栏内容只是提示，不生成装备、药剂或珠宝；角色等级默认为 1，宝石等级／品质默认为 1/0，只识别精确的 `Level N, Q% Quality` 等级提示。`planner_source` 保存作者、链接、说明、等级区间和文本，供存档与再导出使用；区间不参与计算。未知 id 会诊断，导出跳过 meta 宝石及无游戏映射的条目，珠宝与肢体无装备栏映射；历史树须先转换。兼容性由格式契约和合成 fixture 验证，尚无游戏内导入验证。
@@ -235,9 +250,20 @@ with lookup implementations organized under `build_data/{skills,equipment,passiv
 Player `AilmentThreshold` starts at half maximum Life, adds flat threshold and
 percentages of final maximum Energy Shield, then applies threshold increases
 and multipliers ([game keyword text](https://poe2db.tw/us/Keywords)).
+The display retains fractional threshold: Chaos Inoculation's 1 Life gives
+0.5, rather than PoB2's 1 from rounding percentage contributions upward.
+The keyword specifies half Life and no integer ceiling; this is an intentional
+precision convention, without an in-game measurement of the rounding boundary.
 `LifeOnKill`, `ManaOnKill` and `EnergyShieldOnKill` report flat recovery plus
 percentages of their final maximum pool per kill, respecting recovery blocks;
-they do not assume a kill frequency. `DazeChance` reports the selected hit's
+the selected skill's hit kills must belong to the player. Totems, traps, mines
+and other proxies report zero player recovery, consistent with the keyword's
+separate entity using the skill. They do not assume a kill frequency or model
+damage-over-time kill attribution. Cannibalism support's
+`support_cannibalism_recover_%_maximum_life_on_kill` remains an unmapped buff
+stat (Cannibalism II gives 3 in `base/granted_effect_stat_sets.json`); the
+Amazon Twister `5355205a1743` missing 81 is a mechanic gap, not a different
+unit or default. `DazeChance` reports the selected hit's
 chance, capped at 100%. Freeze buildup reads `FreezeBuildup` alongside the
 existing enemy/immobilisation modifiers. Fully Broken Armour removes Armour
 and makes non-player targets take 20% increased Physical damage from Hits;
@@ -306,11 +332,35 @@ Crystallised Immunities uses the game stats `immune_to_chill_if_majority_blue_su
 
 `chance_%_to_create_additional_remnant` (Remnant Attraction, node 1506) is recognised with the reason “remnant count not modelled” and `exporter: "absent"`. Into the Breach's configured collected Purple Flame stacks are not a creation rate, so extra creation chance does not multiply them. Arcane Remnants, Empowering Remnants, Elemental Equilibrium and Storm's Recollection still need a remnant generation/collection model. These entries use batch `unmodelled`: the ledger reports `unmodelled`, the audit reports `recognized_empty`, and the gap queue keeps them as dropped input. Sources: `base/stats.json` and `base/passive_tree.json`.
 
+`mise run config:coverage [--json <文件>]` 按配置分区报告 `read` / `handler` / `implied` / `unread` / `no_effect`：复用 benchmark、tuned 的 `.cache/build-usage/` 读取并集，条件与倍率另用台账的 `condition_reads`、`multiplier_reads`、`referenced_variables` 和计算阶段条件清单；列出未覆盖技能、引擎及活动数据中没有精确名字引用的项、未注册 handler、stub / context gate，以及空 effects 中已有 scalar 读取方与丢失的机制。`--binary <pobr>` 复用已构建 CLI，`--refresh` 重算台账；不读 holdout。这是读取覆盖，静态名字引用与 handler 注册都不证明选项改变了数值；近似名字不是别名，已穿透／连锁次数不能映射为穿透／连锁上限。
+
 配置项进入计算的方式各不相同，有 handler id 不等于选项已生效。破甲（`conditionEnemyArmourBroken` 与破甲量 `multiplierArmourBreak`）由 `calc::armour_break::apply_armour_break` 在有效 DPS 口径下从敌人护甲中扣掉所填的量，没填时全部扣掉，“You can Break enemy Armour to below 0” 时下限为原护甲的相反数；没勾选时数值框里的残留不生效。致盲与 Elusive 的效果覆盖（`overrideBuffBlinded` / `overrideBuffElusive`）按百分数读取，不超过角色能施加的致盲、能得到的 Elusive 效果（`calc::blind`、`rules::buff_expander`）。Inexorable Critical 按配置的距上次暴击秒数（`SecondsSinceInevitableCrit`，不到 4 秒时另置 `CritRecently`）乘每秒的加成，受 `support_inevitable_criticals_*_cap` 限制（`calc::crit::apply_inexorable_critical`）。Dark Pact 的目标骷髅生命（`darkPactSkeletonLife`）乘 `skeletal_chains_aoe_%_health_dealt_as_chaos_damage` 为基础混沌伤害，Herald of Ash 的过量伤害（`hoaOverkill`）乘每分钟的燃烧比例 `herald_of_ash_burning_%_overkill_damage_per_minute` 为火焰持续伤害（`calc::configured_damage`）。
 
 敌人受击配置（`calc_orchestrator::enemy_config::modifiers`）以 OVERRIDE 覆盖等级与敌人类别的预设：五种伤害（`enemyPhysicalDamage` 等）、三种元素穿透、暴击率、暴击伤害和物理压制（`enemyPhysicalOverwhelm`）；显式的 0 同样覆盖，负数按 0，非有限值忽略；来源标为 `EnemyConfig`、id `config.<输入名>`，被覆盖的预设行在 TotalEHP 与最大承伤的敌人输入（`CalculationSession::enemy_hit_mods`）里保留但不计入。`enemyDamageType` 选择命中类别（平均、无类型、近战、投射物、法术、法术投射物；持续伤害不是命中），决定闪避、格挡与承伤的上下文（`calc::taken::HitCategory`）；`EHPUnluckyWorstOf` 按 1 / 2 / 4 次中最差的结果估计防御概率。`enemySpeed` 只在 Energy 格挡事件缺少来袭频率时提供回退，不是 EHP 的通用伤害倍率；`enemyDamageRollRange` 和持续伤害的防御视图还没有读取方。敌人等级只解析一次（`calc_orchestrator::skill::mods::resolved_enemy_level`），尸体生命与敌人的减伤共用：调用方显式给的等级优先，其次构筑码 `enemyLevel` 的 Input、Placeholder；都没有时普通怪物和普通首领跟随角色等级，Pinnacle / Uber 取该档的默认等级（82），最后限制在该档的最低等级与敌人最高等级（85）之间。尸体爆炸按这一等级取怪物生命表（82 级 32956，85 级 36012），例如 Detonate Dead 的 `corpse_explosion_monster_life_permillage_physical` = 107 是 10.7%。
 
-侧栏的伤害视图以稳定 ID 区分：`TotalHitAvg` 是角色一侧的平均命中；`AverageDamage` 计入敌人减伤与命中概率，`AverageBurstDamage` 再计一次使用中的重复攻击；`CombinedAvg` 与 `WithIgniteDPS` / `WithBleedDPS` / `WithPoisonDPS` 按技能的平均伤害或 DPS 口径组合；`IgniteDamage` 等异常总伤害是该异常的 DPS 乘有效持续时间，不是叠层 DPS 再乘时间；`MainHandAccuracy` / `OffHandAccuracy` 各读自己那只手的作用域。技能数据的四个持续时间通道进入 `Duration`、`DurationSecondary`、`AuraDuration`、`ReserveDuration`，通用的技能持续时间加成只应用一次。范围半径按内部距离单位计算，`AreaOfEffectRadiusMetres` 除以 10 显示米；`PierceCount`、`ForkCount`、`ChainMax`、`SplitCount` 与投射物行为解析共用禁止与转换规则，几率产生的次数可以是小数，无限穿透沿用 100。弩的 `FiringRate` 是装填前的射击速率，`ReloadTime` 是立即装填几率折算前的装填时间。可展示字段的 id 与 PoB key 相同，只有 `TotalTotemPlacementTime`（PoB key `TotemPlacementTime`）例外。
+侧栏的伤害视图以稳定 ID 区分：`TotalHitAvg` 是角色一侧的平均命中；`AverageDamage` 计入敌人减伤与命中概率，`AverageBurstDamage` 再计一次使用中的重复攻击；`CombinedAvg` 与 `WithIgniteDPS` / `WithBleedDPS` / `WithPoisonDPS` 按技能的平均伤害或 DPS 口径组合；`IgniteDamage` 等异常总伤害是该异常的 DPS 乘有效持续时间，不是叠层 DPS 再乘时间；`MainHandAccuracy` / `OffHandAccuracy` 各读自己那只手的作用域。技能数据的四个持续时间通道进入 `Duration`、`DurationSecondary`、`AuraDuration`、`ReserveDuration`，通用的技能持续时间加成只应用一次。范围半径按内部距离单位计算，`AreaOfEffectRadiusMetres` 除以 10 显示米；`PierceCount`、`ForkCount`、`ChainMax`、`SplitCount` 与投射物行为解析共用禁止与转换规则，几率产生的次数可以是小数，无限穿透沿用 100。弩的 `FiringRate` 是装填前的射击速率，`ReloadTime` 是立即装填几率折算前的装填时间。可展示字段的 id 保留 JSON 兼容性，与 PoB 对照用 `display_catalog.pob_key`；既有别名包括 `TotalHitAvg` → `AverageHit`、`ShockEffect` → `ShockEffectMod`、`AoeAreaMod` → `AreaOfEffectMod` 和 `TotalTotemPlacementTime` → `TotemPlacementTime`。除明确记录的有意差异外，单位与默认值须与对应 key 一致。
+
+`TotalHitAvg` deliberately retains the game's [Pre-mitigation Damage](https://poe2db.tw/us/Keywords)
+view, including critical-hit averaging. PoB2's `AverageHit` includes enemy
+mitigation but not hit chance; `AverageDamage` additionally includes hit chance.
+These are different views, so `TotalHitAvg` remains excluded from reference
+agreement. Comet `dd7f512456b6` and Living Bomb `9a0fb35e890a` face a 0.5
+elemental damage multiplier, explaining their approximately twofold difference;
+Seismic Cry `3e588bde3126` has physical and cold multipliers of 0.25 and 0.5.
+Do not change the underlying hit or DPS to reconcile these display definitions.
+
+`BlockEffect` is the percentage of hit damage prevented by a block: 100 by
+default, as the [Blocking keyword](https://poe2db.tw/us/Keywords) prevents the
+whole hit. The internal `block_effect` remains the damage-taken share used by
+EHP; only its catalog view is complemented. `ShockEffect` (`ShockEffectMod`)
+is the magnitude modifier, `(1 + increased / 100) * more` on the player times
+the corresponding modifier on the enemy, with neutral value 1 (zero if the
+selected skill cannot inflict shock); it is not shock's base 20% increased
+damage taken or the hit/threshold-derived magnitude.
+The existing `shock_effect` calculation is retained separately.
+`AoeAreaMod` (`AreaOfEffectMod`) is likewise a multiplier (neutral 1), even
+without a known base radius; unknown radius remains zero. Both multiplier
+fields use numeric catalog units, not percentage points.
 
 侧栏其余的机制视图由 `calc/sidebar.rs` 在已算出的结果上取值：
 
@@ -462,7 +512,41 @@ more damage, while the displayed `ArchonNature` template uses
   - 球与风暴的命中不随施法速率（`pobr-core/src/calc/periodic.rs`，stat 由 `rules::spell_hits::modifiers` 映射）：Ball Lightning “Hits enemies in range every {0} seconds”（`ball_lightning_base_hit_frequency_ms` = 200），Solar Orb “Pulses every {0} seconds”（`solar_orb_base_pulse_frequency_ms` = 1400）；Firestorm / Icestorm 每 `fire_storm_fireball_delay_ms`（200 / 150）落一次，按上一条箭雨的落点规则受 `rain_hit_delay_ms`（150）限制；Thunderstorm “Hits one target every {0} seconds”（`lightning_storm_hit_frequency_ms` = 350），同一敌人 `lightning_storm_hit_prevention_duration_ms`（500）内只被命中一次，取两者约束下的潜在频率，不模拟 `lightning_storm_hit_frequency_variance_ms` 的随机间隔。角色维持一场风暴或一个球，多个不叠加；有持续时间的按 min(持续时间 × 每秒使用次数, 实例上限) 计覆盖率（最多 1），Ball Lightning 没有这类持续时间 stat，假设目标一直在范围内、不估算球的行进。Ball Lightning、Solar Orb 的其他 stat set 不继承这个频率。PoB2 假设风暴与球始终覆盖目标，参考口径关掉 `DataOrchestratorOptions::periodic_uptime` 按它比较。**没有游戏内实测**：假设敌人始终在范围内，每个符合间隔的落点都命中。
   - 引导攻击（Detonating Arrow、Supercharged Slam、Perfect Strike、Gathering Storm、Snipe、Shield Charge，`calc::channel::skill_modifiers`）的一次使用近似为“释放前引导 + 释放”（`pobr-core/src/calc/channel.rs`）。引导取 `base_minimum_channel_time_ms`、`channel_start_lock_cancelling_of_attack_time_%` × 攻击时间、层数 × 攻击时间中最大的一个；完美时机只给出窗口宽度（如 `perfect_strike_timing_window_base_ms`），没有开启时间的 stat，所以完美与普通 stat set 各算自己的伤害，时间都用最短引导 / 起手锁定。释放取 `channel_end_duration_as_%_of_attack_time` 的比例，或 `channel_skill_end_animation_duration_override_ms`（有时优先，两者不相加）；比例随攻击速度缩放，固定毫秒不缩放，只有动画倍率、没有基础时长的阶段不另计。层数同时用于伤害和时间，默认取上限（含品质），构筑配置的 multiplier `ChannelStages`（配置输入 `skillChannelStages`，Web 技能页的层数输入）可覆盖（取整并限制在 1 到上限）：Detonating Arrow 每层 `detonating_arrow_all_damage_%_to_gain_as_fire_per_stage` = 120；Supercharged Slam 每层 “40% more Damage with Hits for each stage”（只加命中），“Releases 1 Aftershock per Stage”，冲击 stat set 计冲击加全部余震、余震 stat set 只计余震，用等级行 850 毫秒不受攻击速度影响的攻击时间，余震延迟不阻止下一次引导。Shield Charge 按 1300 毫秒最短引导，不模拟行进与碰撞。PoB2 多只把释放阶段当作命中间隔、默认一层并用武器的攻击时间。**没有游戏内实测**。
   - 带 `base_skill_show_average_damage_instead_of_dps` 的技能（Grim Pillars、Lightning Warp、Vile Disruption、Skyfall、Living Bomb、Volcano、Incinerate、Rake、Parry、Raise Shield、Hand of Chayula、Stampede、Gathering Storm、Perfect Strike 等）在游戏面板上显示平均伤害；这个 stat 没有词条文本，不改变伤害或使用速率。PoBR 的 `CombinedDPS` 仍是每秒伤害：命中 DPS 加持续伤害 DPS，再计 Culling Strike；PoB2 在这里改填平均命中伤害，也不加它已算出的持续伤害（Incinerate 的 `base_fire_damage_to_deal_per_minute`、Living Bomb / Volcano 的点燃、Rake 的流血）。这是输出口径不同，不能拿这一行当作伤害倍率去补。Vivid Stampede（`skill_triggered_on_hit_while_have_vivid_stag_wisps`，攻击命中触发、每个 Vivid Wisp 一只鹿）同样只显示平均伤害：PoB2 的 TotalDPS 为 0、CombinedDPS 是每次触发的伤害；PoBR 暂按武器攻击速率每次攻击一只估算，精灵数量与触发来源还没有建模，两边不能比较。
+  - Repulsion Wave、Shield Wave、Combust 与 Caltrops 保留平均命中伤害，事件频率未建模时 `ActionRate` / `TotalDPS` 为 0。官方 `ActiveSkills.Description` 中，Repulsion 需要命中被诅咒的敌人，Fortifying Cry 需要后续盾牌攻击造成伤害，Temper Weapon 需要被强化的攻击命中；Trail of Caltrops 在闪避时布置，敌人触发时才造成伤害。`caltrops_on_dodge_X_triggers = 3`、首次在闪避的 5%、间隔为闪避的 20% 只定义布置时机，不能从武器攻速推算闪避或敌人触发频率；Combust 的 100% 触发几率也不能替代强化次数与攻击来源。`CombinedDPS` 仍是每秒伤害，不改填平均命中；因此 sweep 的 `pobr_zero` 分类可能已有非零 `AverageHit`，不能据此判定没有伤害。20 级 Repulsion Wave 的基础物理伤害为 128–192 × 2.04，Shield Wave 为 (85–128 + 每完整 15 点盾牌护甲的 5–7) × 2.04。Blood Explosion 为 196–294 × 4.08、基础暴击率 5%；其 sweep 差异来自前述攻击命中检查，不补伤害倍率。Blood Explosion 的现有每秒一次口径尚未按失血、重度眩晕或死亡事件建模。这些事件模型均未做游戏内实测。
   - 伤害区间与命中率保留小数：Earthquake / Stampede 的 Wooden Club 6–10 乘等级行的 `damage_multiplier` 1.25 为 7.5–12.5，Toxic Growth 的 6–9 乘 0.62 为 3.72–5.58；PoB2 先把伤害上下界取整（8–13、4–6）、命中率取整到百分数，低伤害的合成构筑上差别可超过 5%。这是计算精度的约定，游戏内部是否取整**没有游戏内实测**。
+
+    The 2026-10-16 ranged sweep has the same precision difference. All six fixtures use
+    the game's Makeshift Crossbow (`base/base_items.json`, `FourCrossbow1`):
+    7–12 Physical damage, 625 ms attack time and 5% base crit. Level-20 damage
+    multipliers and conversion percentages below come from the first stat set
+    in `base/granted_effect_stat_sets.json`; attack-speed multipliers come from
+    `base/granted_effect_levels.json`. No added damage or damage increases apply.
+    Each bounds cell shows PoBR's result after conversion → PoB2's integer bounds
+    before mitigation and crit; the arrows do not indicate an engine change.
+
+    | Selected effect | Damage multiplier / conversion | Physical bounds | Elemental bounds | TotalDPS PoBR / PoB2 |
+    |---|---|---|---|---|
+    | `IceShardsPlayer` | 0.29 / 60% Cold | 0.812–1.392 → 1–1 | 1.218–2.088 → 1–2 | 5.423944799 / 4.952566667 |
+    | `ShockburstRoundsPlayer` | 0.36 / 40% Lightning | 1.512–2.592 → 2–3 | 1.008–1.728 → 1–2 | 4.615380330 / 5.334733228 |
+    | `PermafrostBoltsPlayer` | 0.49 / 80% Cold | 0.686–1.176 → 1–1 | 2.744–4.704 → 3–5 | 1.183943073 / 1.279610526 |
+    | `RapidShotPlayer` | 0.94 / 60% Fire | 2.632–4.512 → 3–5 | 3.948–6.768 → 4–7 | 23.651653516 / 24.984921520 |
+    | `ArtilleryBallistaProjectilePlayer` | 0.40 / none | 2.8–4.8 → 3–5 | — | 0.306053311 / 0.324168000 |
+    | `SiegeBallistaProjectilePlayer` | 0.66 / 60% Fire | 1.848–3.168 → 2–3 | 2.772–4.752 → 3–5 | 0.807980742 / 0.850941000 |
+
+    Both sides use one projectile hit per action in these selected stat sets,
+    75% Physical reduction and 50% elemental resistance. With physical and
+    elemental midpoints P and E, DPS is `(0.25P + 0.5E) × h × (1 + 0.05h) × rate`:
+    PoBR retains hit chance h = 0.775345425; PoB2 uses 0.78 (also in crit
+    confirmation). In table order, both sides' sustained rates are
+    6.111111111, 4.787401575, 0.701754386, 8.221225710, 0.4 and 0.4/s.
+    The four ammo skills' firing rates are 8.8, 6.4, 1.6 and 8.8/s; magazine
+    sizes are 16, 19, 1 and 100, with reload times 0.8, 1, 0.8 and 0.8 seconds.
+    Substituting the respective bounds and h reproduces every TotalDPS above;
+    no projectile-count, damage-multiplier or reload correction is justified.
+    This confirms the existing precision convention, not the game's internal
+    rounding. No benchmark or tuned build carries these six skills at this
+    audit, so no worked-build row is added to `known-differences.json`.
+
   - Bursting Fen Toad、Conductive Runes 的 Explosion、Blood Explosion 与 Repulsion Wave 是非武器攻击（游戏类型 `Attack` / `NonWeaponAttack`，Bursting Fen Toad 的说明是 “dealing Attack damage”），stat set 没有 `global_always_hit`，照常检查命中；PoB2 给它们的基础标志缺少攻击，不检查命中。没有游戏内实测证明这类爆炸不能被闪避。Primal Strikes 的 Exposure（`all_exposure_on_hit_magnitude` = 50，“The third attack is a large swipe that inflicts Elemental Exposure”）只在第三击的 stat set `PrimalStrikesFinalPlayer` 上，计算普通击时不假设已用过第三击；PoB2 默认计入（敌人元素抗性由 50 降到 25）。连段的覆盖率还没有建模。
   - 主 stat set 带 `base_deal_no_damage` 的效果（Conductive Runes 的放置、Rolling Slam、Spearfield、Tempest Bell 的主 stat set，Hollow Focus 的 Bells）PoBR 为 0，钉定的 PoB2 可能给它们算出默认武器或附加伤害（见“计算引擎架构”的无伤害效果）。
   - Black Powder Blitz 按游戏等级表的冷却限制使用频率；Requiem 按 `crossbow_skill_has_no_ammo` 不计弹匣与装填时间，不能用重复装填降低它的持续射击频率。两者与钉定 PoB2 的默认周期可不同，不改伤害倍率追平。
@@ -479,7 +563,7 @@ more damage, while the displayed `ArchonNature` template uses
   - Purity of Fire 这类光环的技能类型（`Buff`、`Aura` 等）里没有 `Spell`，“increased Critical Spell Damage Bonus” 这类法术词条不作用于它；PoB2 给它的 stat set 写了 `spell = true` 的基础标志，主技能是光环时暴击伤害加成按法术计（tuned 组的 Ritualist Purity of Fire，2.24 对参考值 2.49）。这一行对光环没有实际意义。
   - Lich 的 Crystalline Phylactery 让其中的珠宝按两倍计（见上文 `Build.jewels`），The Adorned 不作用于它。PoB2 不解析 “Effect of bonuses gained from Socketed Jewel”，并把 The Adorned 用在护符匣里的珠宝上，构筑码自带的参考值也是这样算的：tuned 组四个护符匣构筑（Abyssal Lich Twister 4028 / 9d1c、Lich Spark ce24 / 0a17）的伤害、暴击与个别抗性随之与参考值不同。
   - Bear form 按游戏的形态说明 “+10 to Armour per level” 给 10 × 角色等级的护甲，并让 30% 的护甲也作用于元素伤害（`pobr-core/src/calc/bear_form.rs`，主技能带 `Shapeshift` 与 `Bear` 类型时生效）；PoB2 多给 10 点（10 + 10 × 等级），参考值因此略高（约 0.2%）。
-  - Pounce 的 Predator's Mark（“Marked target takes {0}% increased damage for each of its enemies within 6 metres of it, up to {1}%”，`skill_wolf_mark_damage_taken_+%_per_nearby_enemy` / `skill_wolf_mark_damage_taken_+%_cap`，品质加在等级值上，20 品质为 4% / 60%）按角色在 Presence 内已有的召唤物计数：计算中创建的召唤物，或配置的 “# of Minions in your Presence”（`MinionPresenceCount`，`skill_stats::curse_modifiers`）。不计 Pounce 在被标记的敌人死亡时召唤的狼（`WolfPounceSummonWolfPlayer` 的 `skill_cross_slash_triggered_summon_+_wolves_if_rare` / `_if_unique`），被计算的敌人活着时它们还不存在。tuned 组的 Witchhunter 构筑上这个数是 0：它的 Living Lightning II 所在组没有能被辅助的技能，不会出现 Living Lightning；构筑码自带的参考值按 8 只计（+32%），比 PoBR 高。辅助宝石授予的召唤物在辅助能生效时也还没有创建。
+  - Pounce 的 Predator's Mark（“Marked target takes {0}% increased damage for each of its enemies within 6 metres of it, up to {1}%”，`skill_wolf_mark_damage_taken_+%_per_nearby_enemy` / `skill_wolf_mark_damage_taken_+%_cap`，品质加在等级值上，20 品质为 4% / 60%）按角色在 Presence 内已有的召唤物计数：计算中创建的召唤物，或配置的 “# of Minions in your Presence”（`MinionPresenceCount`，`skill_stats::curse_modifiers`）。计算 Pounce、Predator's Mark 或其他主技能时，不计 Pounce 在被标记的敌人死亡时召唤的狼：被计算的敌人活着时它们还不存在。显式选择 Pounce 的第三个效果 `WolfPounceSummonWolfPlayer` 为主技能时，创建该效果的主召唤物（`WolfMinion`，默认使用 `MeleeAtAnimationSpeedWolfCompanion`），继承来源宝石的有效等级与辅助。数量按一次激活的一只狼加游戏 stat `skill_cross_slash_triggered_summon_+_wolves_if_rare` / `_if_unique` 的稀有度加成（Rare +0、Unique +1），即普通／稀有敌人一只、独特敌人两只；不是假设达到 20 级 `number_of_wolves_allowed` 的六只上限。只有这个效果是所选主技能时，这些狼才计入 `MinionPresenceCount` / `SummonedMinion`；不推算击杀频率或持续累积的狼数。所选召唤效果的最小 sweep 仍有差异：PoBR 的两只狼使同颗宝石的 Mark 增加 6% 承伤，单只狼 DPS 为 49.8971；只保留召唤效果、去掉 Mark 时为 47.0728，钉定 PoB2 为 46.9565（剩余约 0.25% 来自伤害区间与敌人护甲取整）。这里保留现有 Mark 应用规则，不按参考值补伤害倍率。tuned 组的 Witchhunter 构筑上这个数是 0：它的 Living Lightning II 所在组没有能被辅助的技能，不会出现 Living Lightning；构筑码自带的参考值按 8 只计（+32%），比 PoBR 高。辅助宝石授予的召唤物在辅助能生效时也还没有创建。
   - Presence 内的召唤物数（`MinionPresenceCount`）计入计算中创建的每个召唤物，包括没有数量上限 stat 的同伴，例如 Rhoa Mount 的 Rhoa（技能类型 `Minion` / `Companion`）；PoB2 只计入技能带数量上限 stat 的召唤物。所以 Minion Pact（“Supported Skills remove {0}% of your maximum Life from a nearby Minion on use to deal {1}% more damage”，`support_minion_pact_user_life_%_removed_from_nearby_minion` / `support_minion_pact_damage_+%_final`）在只有这类召唤物的构筑上，PoBR 计入、参考值不计：benchmark 组的 Chaos Inoculation Deadeye 最大生命为 1，每次只从 4182 生命的 Rhoa 抽 1.5 点，35% 更多伤害生效。宝石说明里的 “Only takes effect if you have a Minion with enough life to drain the full amount” 还没有建模（PoB2 也不检查），召唤物生命不够抽取时两边都会多算。
   - Wolf Pack 召唤的狼数按游戏的 `skill_wolf_pack_size` 随有效宝石等级取值（1 / 18 / 20 级为 3 / 5 / 6 只），整群狼都计入召唤物数，并假设都在 Presence 内（**没有游戏内实测**）。Licking Wounds（天赋 55375，“5% increased Life and Mana Regeneration Rate for each Minion in your Presence, up to a maximum of 40%”）因此按整群计：tuned 组 Ritualist Purity of Fire（d557864ceebc）的 `LifeRegenRecovery` / `ManaRegenRecovery` 为 104.4 / 40.8，参考值 91.2 / 33.2。侧栏的 `ActiveMinionLimit` 是主技能实际创建的召唤物上限，没有上限 stat 的召唤物为 1；PoB2 对这类主技能输出 0：tuned 组三个 Spirit Walker（Zekoa the Headcrusher）构筑 PoBR 为 1，参考值为 0。
   - Evergrasping Ring 的 “Enemies in your Presence Gain (6-12)% of Damage as Extra Chaos Damage”（游戏 stat `enemies_in_presence_non_skill_base_all_damage_%_to_gain_as_chaos`）按 stat 名是敌人全部伤害的份额：敌人的每种伤害都按这个比例额外获得混沌伤害，再按敌人对两种类型的加成缩放（`calc::ehp::assemble_enemy_damage`）。PoB2 只从物理伤害获得，所以有这枚戒指的构筑 EHP 比参考值低：tuned 组的 Ritualist Purity of Fire 三枚戒指共 39%，TotalEHP 140,103 对参考值 174,152；Stormweaver Frost Bomb 14%，12,061 对 14,185。
@@ -624,7 +708,7 @@ PoB2 对照值与逻辑回归都使用活动数据版本，没有单独钉住的
 
 从队列选中一行后运行 `mise run gap "<模板或文本>"`，一次列出数字变体、从 `overlay/stat_descriptions.json` 反查的单 stat 或 compound 全部成员（逐项确认 `base/stats.json` 是否存在）、每个来源的完整词条文本（含暗金其他行与咒符触发隐式）、节点名、每个携带它的 worked 构筑及台账去向和桶（包含门控原因）、引擎名字和 special/mod_parser 近似规则。引擎与规则候选仅按关键词匹配，不证明支持；暗金与节点的 poe2db 链接标为猜测，未经联网验证。确认游戏含义时可再把卡片上的稳定 id 交给 `mise run lookup <id>`。
 
-已入库构筑覆盖不到的技能用 `mise run skills:sweep`（`devs/scripts/skill-sweep.py`）：对活动数据里每颗非辅助宝石（含 meta）的所有非辅助主动效果，按 `GemEffects` 显示顺序枚举，保留来源宝石与主效果，以 `mainActiveSkill` / `mainActiveSkillCalcs` 选择效果；行标识为 `主效果/所选效果@序号`，主／附加效果分别计数，弹药装填不能代替射击覆盖。最小合成构筑使用 90 级 Witch、20 级零品质宝石、普通武器基底，同时计算 PoBR 与钉定 PoB2，按技能族汇总 `agree` / `differs` / `pobr_zero` / `pob2_zero` / `both_zero` / `error` / `pob2_other_skill`；纯指令与占位效果另列。扫描不读 holdout；两边实际效果均须核对，vendor 缺少效果或附加效果的来源宝石不算吻合。`both_zero` 不证明 buff、无载荷幻影、无事件触发或召唤物已实现；召唤物只看一个主召唤物，不代表整支召唤物队伍。平均命中因减伤口径不同只展示、不分类；速率优先对照 PoB2 的 `HitSpeed`，并对照 CLI JSON 的 `firing_rate` / `reload_time`（`FiringRate` / `ReloadTime`）。每效果只测第一个 stat set，不穷举辅助、触发载荷、尸体、充能、目标与战斗条件，不混合轮转或过热。完整扫描写 `.cache/skill-sweep/report.json` / `report.txt`，`--skill` 定向扫描默认写 `report-selected.json` / `report-selected.txt`，显式 `--json` / `--text` 优先；保留完整轮次再做定向扫描。结果缓存在 `.cache/skill-sweep/`，oracle 缓存键含 XML、vendor commit 与 wrapper 内容。
+已入库构筑覆盖不到的技能用 `mise run skills:sweep`（`devs/scripts/skill-sweep.py`）：对活动数据里每颗非辅助宝石（含 meta）的所有非辅助主动效果，按 `GemEffects` 显示顺序枚举，保留来源宝石与主效果，以 `mainActiveSkill` / `mainActiveSkillCalcs` 选择效果；行标识为 `主效果/所选效果@序号`，主／附加效果分别计数，弹药装填不能代替射击覆盖。最小合成构筑使用 90 级 Witch、20 级零品质宝石、普通武器基底，同时计算 PoBR 与钉定 PoB2，按技能族汇总 `agree` / `known` / `differs` / `pobr_zero` / `pob2_zero` / `both_zero` / `error` / `pob2_other_skill`；纯指令与占位效果另列。扫描不读 holdout；两边实际效果均须核对，vendor 缺少效果或附加效果的来源宝石不算吻合。`both_zero` 不证明 buff、无载荷幻影、无事件触发或召唤物已实现；召唤物只看一个主召唤物，不代表整支召唤物队伍。`known` 只按所选 stat set 的平均伤害显示／无伤害 stat、本指南列明的技能模型或可重算解释 DPS 比值的伤害区间取整分类，保留两边数值与原因、从技能族的未解释差异排名中排除；平均伤害显示只豁免 `CombinedDPS`，其余字段仍须吻合，取整须在 0.1% 内解释 DPS。平均命中因减伤口径不同只展示、不分类；速率优先对照 PoB2 的 `HitSpeed`，并对照 CLI JSON 的 `firing_rate` / `reload_time`（`FiringRate` / `ReloadTime`）。每效果只测第一个 stat set，不穷举辅助、触发载荷、尸体、充能、目标与战斗条件，不混合轮转或过热。完整扫描写 `.cache/skill-sweep/report.json` / `report.txt`，`--skill` 定向扫描默认写 `report-selected.json` / `report-selected.txt`，显式 `--json` / `--text` 优先；保留完整轮次再做定向扫描。结果缓存在 `.cache/skill-sweep/`，oracle 缓存键含 XML、vendor commit 与 wrapper 内容。
 
 侧栏字段的覆盖与数值吻合分开衡量：`python3 devs/scripts/output-coverage.py` 用已构建的 `target/debug/pobr`，按 `display_catalog` 的 PoB key 逐字段对照 oracle 的完整输出（默认 benchmark、tuned 与 demo 三组，拒绝 holdout），给出每个字段两边都有有限值的构筑数、非零样本数、5% / 10% 内的吻合数和最差的构筑；`--oracle-cache` 只读已有缓存（键与 `compare-build.py` 相同），`--refresh-missing` 补算缺少的。没有样本不算验证通过，大量零值吻合也不证明非零的机制正确。
 
@@ -637,6 +721,42 @@ PoB2 对照值与逻辑回归都使用活动数据版本，没有单独钉住的
 物品授予的技能（“Grants Skill: Level 18 Purity of Ice”）有自己的等级和属性需求，与物品的穿戴需求无关；角色达不到时降到能满足的最高等级（[poe2wiki: Granted skill](https://www.poe2wiki.net/wiki/Granted_skill)），一级都达不到时用它最低的等级。每个宝石等级需要的角色等级取自游戏表 `ItemExperiencePerLevel`（`SkillGemDef::level_requirement`；表里没列的等级沿用前一级）；属性需求按宝石的属性占比计算，L 为该等级需要的角色等级：round((5 + (L − 3) × 1.7) × (占比 / 100)^0.9) + 4（`SkillGemDef::attribute_requirements`，与游戏显示的逐级数值一致，例如 Purity of Ice 18 级需要 42 力量、106 智力）。被授予的组在构筑视图里记下授予等级（`SocketGroup::granted_level`，物品自己的组和上面那个被认作授予技能的普通组），`prepared_build_view` 再按角色等级和属性降级（`granted_skills::scale_granted_skills`）。属性来自不含技能的一次来源写入（`attributes_without_skills`：职业、装备、肢体、珠宝、配置、天赋和额外词条），技能自己的效果不计入；只有构筑有需要属性的授予技能时才运行，计算量约为一次计算的来源写入阶段。没有等级的授予行（“Grants Skill: Raise Shield”）不降级。已分配天赋授予的技能在构筑码里是 `<Skill source="Tree:<节点>">`，等级只是占位；它按角色等级取宝石能达到的最高等级（宝石经验表列到的最后一级，例如 98 级角色的 Sorcery Ward 为 20），同样记下授予等级、再检查属性。游戏导出的角色还把它列成一个普通组（排在组首、等级相同、带辅助宝石），那个组就是被授予的技能，天赋的组让位给它，主技能组随之改指；节点未分配时天赋的组不授予任何技能（`granted_skills::resolve_tree_granted_skills`）。
 
 辅助宝石辅助一颗宝石的任一效果时，它给的等级和品质作用于整颗宝石：Physical Mastery（要求 Physical）辅助 Iron Ward 的物理新星，Iron Ward 的 buff 也高一级。等级计算接收宝石每个效果的辅助判定（`skill_env::buff_specs::gem_judgements`，主效果在前），同一个辅助只算一次；Uhtred 系列“没有其他辅助时”的“其他辅助”也按整颗宝石计。
+
+The usage ledger reports the selected `GrantedEffectsPerLevel` row, rather than
+the requested gem level before row selection: Armour Explosion and Raise Shield
+have only level 1, Pinnacle of Power only level 20, and ordinary player skills
+end at level 40 in the current game tables. Their former higher ledger levels
+did not mean the calculation extrapolated beyond those rows. Support-granted
+effects inherit the first compatible host gem's level, checking all that gem's
+effects ([Living Lightning's game text](https://poe2db.tw/us/Living_Lightning)
+explicitly says it copies its socketing gem's level): Living Lightning can
+support Repulsion Wave, and Shock Siphon can support Pounce's mark. Buff assembly
+uses the same host. Named skill bonuses
+also apply to the whole gem: “+3 to Level of all Galvanic Shards Skills” raises
+both the attack and Load Galvanic Shards (`GemEffects` links the two effects).
+
+Spear Throw's imported level-1 entries are default-attack placeholders. Its
+base level follows the character (`ItemExperiencePerLevel`: level 19 at character
+84, level 20 at 90), then receives global skill bonuses, per the game's
+[Default Attack keyword](https://poe2db.tw/us/Keywords). Unbound crossbow, spear
+and shapeshift groups use the other weapon set when only that set has the
+required weapon class ([Rend requires Talismans](https://poe2db.tw/us/Rend)).
+Granted-skill attribute checks likewise use the granting weapon set's equipment;
+its Bonded modifiers are settled before attributes and level bonuses are read.
+The prepared global level bonus stays separate from the base gem level, so a
+level-3 Pounce plus five non-weapon levels stays level 8 after swapping away
+from a +5 melee weapon; an intermediate base level must not clamp to 1.
+The alternate set's passive allocation is not retained in the `Build` view, so
+these checks still share the imported passive tree. Global quality applies to
+[granted skills](https://www.poe2wiki.net/wiki/Granted_skill), including Raise
+Shield even though it has no quality effect; the exporter's synthetic Thorns and
+Enemy Explode entries have no game skill definition and receive no bonus quality.
+The ledger lists all enabled imported groups. PoB2 consolidates some item grants
+with their supported ordinary group and adds some default attacks automatically;
+therefore extra lower Mirror of Refraction / The Stars Answer entries, another
+weapon set's Spear Throw, or an extra PoB2 Spear Stab can remain inventory
+differences even when the supported skill's effective level agrees. They do not
+justify changing the imported gem or the game's level bonuses.
 
 配置行指任务奖励与自定义词条。其中解析不了的行以 `Config: <行>` 记入未支持清单，其余行照常生效；任务奖励选项的 “None”（未领取）不是词条行。对任何计算输出都没有影响的词条在 `overlay-common/special_mods.json` 里登记为只识别、不产生 modifier 的条目（`"mods": []`、`"batch": "S0"`，例如游戏 stat `experience_gain_+%` 的 “5% increased Experience Gain”；除 `unmodelled` 外的其他批次必须产生 modifier 或挂 handler，`pobr-gamedata` 的 `non_s0_has_traceable_provenance` 检查），它不是丢失的输入；尚未实现的机制不能用这种条目消掉，必须留在未支持清单里。规则能识别、但机制尚未建模的行登记为 `"batch": "unmodelled"`（同样 `"mods": []`，`source_note` 写明缺的模型，例如 “per-hit Armour Break is not modelled”、“remnant count not modelled”、“kill rate not modelled”）：台账报 `unmodelled`，审计报 `recognized_empty`，缺口队列照常列出它，不会当作无效果隐藏。
 

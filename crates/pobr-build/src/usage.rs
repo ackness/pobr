@@ -28,6 +28,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use pobr_core::calc::CalculationSession;
+use pobr_core::skill_env::StatSetLookup;
 use pobr_core::{EvalContext, ModEvaluation, ModValue, Modifier, ReadSnapshot, ReadVariables};
 use pobr_data::catalog::PassiveNodeDef;
 use pobr_data::item::Item;
@@ -82,14 +83,20 @@ pub struct LineUsage {
     /// ([`ReadSnapshot::sites`]): the kind of query and the names it asked
     /// for together, such as `INC Damage+FireDamage+ElementalDamage`.
     pub reads: BTreeMap<String, Vec<String>>,
+    /// Variables queried by calculation passes, including absent inputs.
+    pub condition_reads: BTreeSet<String>,
+    pub multiplier_reads: BTreeSet<String>,
+    /// Variables referenced by stored modifier tags (conditions or multipliers).
+    pub referenced_variables: BTreeSet<String>,
 }
 
 /// An active effect and the level and quality it runs at.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SkillLevel {
     pub skill_id: String,
-    /// The gem's level, corruption included, with the levels items,
-    /// passives and supports add.
+    /// The effect's actual data level after gem bonuses and row selection.
+    /// Single-row effects retain that row's level; ordinary skills clamp at
+    /// the highest level present in the game's table.
     pub level: u32,
     pub quality: u32,
 }
@@ -550,7 +557,12 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
             .iter()
             .map(|skill| SkillLevel {
                 skill_id: skill.skill_id.clone(),
-                level: skill.gem_level + skill.bonus_levels,
+                level: data
+                    .effect_level_row(
+                        &skill.skill_id,
+                        skill.gem_level.saturating_add(skill.bonus_levels),
+                    )
+                    .map_or(skill.gem_level + skill.bonus_levels, |row| row.level),
                 quality: skill.quality,
             })
             .collect(),
@@ -559,6 +571,13 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
             .sites
             .iter()
             .map(|(name, sites)| (name.as_str().to_string(), sites.clone()))
+            .collect(),
+        condition_reads: diagnosis.variables.conditions.clone(),
+        multiplier_reads: diagnosis.variables.multipliers.clone(),
+        referenced_variables: variables
+            .referenced
+            .iter()
+            .map(|name| (*name).to_string())
             .collect(),
     }
 }

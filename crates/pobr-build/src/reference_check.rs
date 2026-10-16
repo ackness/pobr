@@ -49,8 +49,8 @@ impl ReferenceRow {
 /// Catalog pairs whose two sides are defined differently, so comparing them
 /// measures the definitions rather than the calculation.
 const NOT_COMPARABLE: &[&str] = &[
-    // PoBR's value is the hit before the enemy's mitigation and chance to
-    // hit; PoB2's `AverageHit` includes both.
+    // PoBR's value is the hit before the enemy's mitigation; PoB2's
+    // `AverageHit` includes mitigation. Neither includes chance to hit.
     "TotalHitAvg",
     // Same PoB2 key as `ActionRate`; listed once.
     "EffectiveActionRate",

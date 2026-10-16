@@ -62,3 +62,168 @@ fn the_supported_curse_keeps_the_characters_cast_rate() {
     let faster = calculate(&data, 1, FASTER_CASTING);
     assert!((faster.action_rate / curse.action_rate - 1.5).abs() < 1e-6);
 }
+
+/// GrantedEffectsPerLevel has only row 1 for Armour Explosion and Raise
+/// Shield, only row 20 for Pinnacle of Power, and rows 1–40 for Spark.
+#[test]
+fn usage_reports_the_effects_actual_level_row() {
+    use pobr_build::{Build, SocketGroup, diagnose};
+    let data = data();
+    let mut build = Build::new();
+    for (id, level) in [
+        ("ArmourExplosionPlayer", 29),
+        ("ShieldBlockPlayer", 7),
+        ("PinnacleOfPowerPlayer", 31),
+        ("SparkPlayer", 41),
+    ] {
+        build = build.add_socket_group(SocketGroup::new().with_gem_skill(id, level));
+    }
+    let diagnosis = diagnose(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+    let usage = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+    assert_eq!(
+        usage.skills.iter().map(|s| s.level).collect::<Vec<_>>(),
+        [1, 1, 20, 40]
+    );
+}
+
+/// Global quality applies to granted skills, but Thorns/EnemyExplode are
+/// exporter damage entries with no game GrantedEffects or SkillGems rows.
+#[test]
+fn quality_does_not_turn_exporter_damage_entries_into_gems() {
+    use pobr_build::{Build, SocketGroup, diagnose};
+    let data = data();
+    let mut build = Build::new();
+    for id in ["ThornsPlayer", "EnemyExplode", "ShieldBlockPlayer"] {
+        build = build.add_socket_group(SocketGroup::new().with_gem_skill(id, 1));
+    }
+    build.config.global_modifier_texts = vec!["+5% to Quality of all Skills".into()];
+    let diagnosis = diagnose(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+    assert_eq!(
+        diagnosis
+            .skills
+            .iter()
+            .map(|s| s.quality)
+            .collect::<Vec<_>>(),
+        [0, 0, 5]
+    );
+}
+
+/// Repulsion's damaging secondary effect accepts Living Lightning; Pounce's
+/// mark accepts Shock Siphon. The support applies to the whole originating
+/// gem for level inheritance, even though its primary effect is incompatible.
+#[test]
+fn secondary_effect_supports_inherit_the_host_gem_level() {
+    use pobr_build::{Build, SocketGroup, diagnose};
+    let data = data();
+    for (host, support, granted) in [
+        (
+            "CurseOfRepulsionPlayer",
+            "SupportLivingLightningPlayerTwo",
+            "TriggeredLivingLightningPlayerTwo",
+        ),
+        (
+            "WolfPouncePlayer",
+            "SupportChargedMarkPlayer",
+            "TriggeredChargedMarkPlayer",
+        ),
+        (
+            "HeraldOfIcePlayer",
+            "SupportMorrigansInsight",
+            "TriggeredMorrigansInsightPlayer",
+        ),
+    ] {
+        let build = Build::new().add_socket_group(
+            SocketGroup::new()
+                .with_gem_skill(host, 19)
+                .with_gem_skill(support, 1),
+        );
+        let diagnosis = diagnose(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+        let effect = diagnosis
+            .skills
+            .iter()
+            .find(|s| s.skill_id == granted)
+            .unwrap();
+        assert_eq!(effect.gem_id, host);
+        assert_eq!(effect.gem_level, 19);
+    }
+}
+
+/// GemEffects links Load Galvanic Shards and Galvanic Shards to one gem.
+/// The item's +3 named levels raises both effects from 20 to 23.
+#[test]
+fn named_levels_on_a_secondary_effect_raise_the_whole_gem() {
+    use pobr_build::{Build, SocketGroup, diagnose};
+    let data = data();
+    let mut build = Build::new()
+        .add_socket_group(SocketGroup::new().with_gem_skill("GalvanicShardsAmmoPlayer", 20));
+    build.config.global_modifier_texts = vec!["+3 to Level of all Galvanic Shards Skills".into()];
+    let diagnosis = diagnose(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+    let usage = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+    assert_eq!(usage.skills.len(), 2);
+    assert!(usage.skills.iter().all(|skill| skill.level == 23));
+}
+
+/// ItemExperiencePerLevel: level 19 requires character level 84, level 20
+/// requires 90. Spear Throw's imported 1 is a placeholder; +3 Attack levels
+/// apply after that character-level baseline, giving 22 and 23 respectively.
+#[test]
+fn spear_throw_uses_character_level_before_skill_bonuses() {
+    use pobr_build::{Build, SocketGroup, diagnose};
+    let data = data();
+    for (character, expected) in [(89, 22), (90, 23)] {
+        let mut build =
+            Build::new().add_socket_group(SocketGroup::new().with_gem_skill("SpearThrowPlayer", 1));
+        build.character.level = character;
+        build.config.global_modifier_texts = vec!["+3 to Level of all Attack Skills".into()];
+        let diagnosis = diagnose(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+        let usage = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+        assert_eq!(usage.skills[0].level, expected);
+    }
+}
+
+/// The equipped bow gives +3 Attack levels, but Rend requires a Talisman,
+/// Crossbow Shot requires a Crossbow, and Spear Stab requires a Spear. Their
+/// other-set weapon gives +5, so each level-20 skill runs at 25, not 23.
+#[test]
+fn weapon_specific_skills_read_the_usable_weapon_sets_bonuses() {
+    use pobr_build::diagnose;
+    let data = data();
+    for (base, skill) in [
+        ("Changeling Talisman", "WyvernRendPlayer"),
+        ("Makeshift Crossbow", "MeleeCrossbowPlayer"),
+        ("Hardwood Spear", "MeleeSpearPlayer"),
+    ] {
+        let xml = format!(
+            r#"<PathOfBuilding2><Build level="100" className="Ranger"/>
+<Items activeItemSet="1"><Item id="1">Rarity: RARE
+Test Bow
+Crude Bow
+Implicits: 0
++3 to Level of all Attack Skills
+</Item><Item id="2">Rarity: RARE
+Test Weapon
+{base}
+Implicits: 0
++5 to Level of all Attack Skills
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/><Slot name="Weapon 1 Swap" itemId="2"/></ItemSet></Items>
+<Skills><Skill enabled="true"><Gem skillId="{skill}" level="20" quality="0" enabled="true"/></Skill></Skills>
+</PathOfBuilding2>"#
+        );
+        let build = parse_build(&xml).unwrap();
+        let diagnosis = diagnose(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+        let usage = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+        assert_eq!(usage.skills[0].level, 25, "{skill}");
+        // Removing a +10 weapon bonus from a level-3 gem used to clamp the
+        // intermediate base to 1, then incorrectly add those 10 levels back.
+        let low = xml
+            .replace("+3 to Level", "+10 to Level")
+            .replace("level=\"20\"", "level=\"3\"");
+        let build = parse_build(&low).unwrap();
+        let diagnosis = diagnose(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+        let usage = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+        assert_eq!(
+            usage.skills[0].level, 8,
+            "{skill}: 3 base + 5 from the other weapon"
+        );
+    }
+}
