@@ -47,7 +47,13 @@ pub fn is_off_hand_weapon_base_stat(stat: &str) -> bool {
     matches!(
         stat,
         "off_hand_weapon_minimum_physical_damage" | "off_hand_weapon_maximum_physical_damage"
-    )
+    ) || ["fire", "cold", "lightning", "chaos"].iter().any(|kind| {
+        ["minimum", "maximum"].iter().any(|bound| {
+            stat == format!("off_hand_weapon_{bound}_{kind}_damage")
+                || stat.starts_with(&format!("off_hand_{bound}_added_{kind}_damage_per_"))
+                    && stat.contains("_shield_")
+        })
+    })
 }
 
 /// Resolves the enemy level for calculations (matching vendor `CalcSetup.lua:529`'s
@@ -328,15 +334,29 @@ pub fn clean_grant_text(text: &str) -> String {
 /// Parses a `+N to [Level|Quality] of all <category> Skills [with a <Attr> requirement]`
 /// mod into a [`GemPropertyBonus`]. Returns `None` for any other form. The game
 /// writes the kind either way, "all Cold Skills" or "all Nova Skill Gems"; both
-/// leave the kind alone as the category.
+/// leave the kind alone as the category. Named skills also omit "all":
+/// Cursecarver's `despair_gem_level_+` is "+N to Level of Despair Skills".
 pub fn parse_gem_property_bonus(text: &str) -> Option<GemPropertyBonus> {
     let clean = clean_grant_text(text);
     let body = clean.strip_prefix('+')?;
     let (num, rest) = body.split_once(" to ")?;
     let num = num.strip_suffix('%').unwrap_or(num);
     let value: u32 = num.trim().parse().ok()?;
-    let (kind, rest) = if let Some(r) = rest.strip_prefix("level of all") {
-        (GemPropertyKind::Level, r)
+    let (kind, rest) = if let Some(r) = rest.strip_prefix("level of ") {
+        let target = if let Some(category) = r.strip_prefix("all ") {
+            category
+        } else {
+            // Named skills have a complete Skills/Skill Gems suffix. Local
+            // socketed and supported-gem bonuses need their own scope.
+            if !(r.ends_with(" skills") || r.ends_with(" skill gems"))
+                || r.starts_with("socketed ")
+                || r.starts_with("supported ")
+            {
+                return None;
+            }
+            r
+        };
+        (GemPropertyKind::Level, target)
     } else {
         (
             GemPropertyKind::Quality,
@@ -580,6 +600,9 @@ pub struct GemInput {
     pub skill_id: String,
     /// The gem's level.
     pub gem_level: u32,
+    /// Global levels resolved in this gem's weapon set, if different from the
+    /// calculation's current set. Kept separate from the base gem level.
+    pub global_level_bonus: Option<u32>,
     /// The gem's quality.
     pub quality: u32,
     /// The gem's selected statSet index (0-based; `None` = default).
@@ -685,13 +708,31 @@ pub fn crossbow_reload_modifiers(
                     .effect(eid)
                     .is_some_and(|e| e.skill_types.iter().any(|t| t == "CrossbowAmmoSkill"))
             })
-            .map(|eid| (eid.to_string(), g.gem_level))
+            .map(|eid| (eid.to_string(), g.gem_level, g.quality))
     });
-    if let Some((ammo_id, gem_level)) = ammo {
-        let bolts: f64 = stat_sets
-            .effect_stats(&ammo_id, gem_level, 0, None)
-            .base
-            .iter()
+    if let Some((ammo_id, gem_level, quality)) = ammo {
+        let stats = stat_sets.effect_stats(&ammo_id, gem_level, quality, None);
+        // The reload action owns both the magazine and its reload-speed stats;
+        // selecting the shot must retain these parts of the ammunition cycle.
+        let reload_stat = "active_skill_reload_speed_+%_final";
+        let reload_speed: f64 = stats
+            .all()
+            .filter(|s| s.stat == reload_stat)
+            .map(|s| s.value)
+            .sum();
+        if reload_speed != 0.0 {
+            mods.push(
+                Modifier::number("ReloadSpeed", ModType::More, reload_speed).with_origin(
+                    ModifierSource::new(SourceId::new(
+                        SourceKind::SkillGem,
+                        format!("skill.{ammo_id}.{reload_stat}"),
+                    ))
+                    .with_raw_text(reload_stat),
+                ),
+            );
+        }
+        let bolts: f64 = stats
+            .all()
             .filter(|ds| ds.stat == "base_number_of_crossbow_bolts")
             .map(|ds| ds.value)
             .sum();
@@ -702,6 +743,23 @@ pub fn crossbow_reload_modifiers(
                 format!("ammo skill {ammo_id} bolt count"),
             ));
         }
+    }
+    // Requiem explicitly fires freely without ammunition. Neither a one-bolt
+    // fallback magazine nor a reload belongs in its active firing cadence.
+    if stat_sets
+        .effect_stats(skill_id, 1, 0, None)
+        .all()
+        .any(|s| s.stat == "crossbow_skill_has_no_ammo" && s.value != 0.0)
+    {
+        mods.push(
+            Modifier::flag("CrossbowHasNoAmmo").with_origin(
+                ModifierSource::new(SourceId::new(
+                    SourceKind::SkillGem,
+                    format!("skill.{skill_id}.crossbow_skill_has_no_ammo"),
+                ))
+                .with_raw_text("crossbow_skill_has_no_ammo"),
+            ),
+        );
     }
     mods
 }
@@ -723,7 +781,7 @@ pub struct ActiveEffect<'a> {
     pub stat_set_index: Option<u32>,
 }
 
-/// Enumerates each gem's primary effect followed by its additional active effects.
+/// Enumerates each gem's active effects in its granted-effect display order.
 /// Support primaries are omitted, but their granted active effects are not.
 /// Unknown effects remain visible so callers can report missing data, not silently
 /// renumber or substitute a different skill.
@@ -734,8 +792,24 @@ pub fn group_active_effects<'a>(
     gems.enumerate()
         .flat_map(
             move |(gem_index, (id, gem_level, quality, stat_set_index))| {
-                std::iter::once(id)
-                    .chain(effects.additional_effects(id).iter().map(String::as_str))
+                let additional = effects.additional_effects(id);
+                let order = effects.effect_display_order(id);
+                order
+                    .iter()
+                    .copied()
+                    .enumerate()
+                    .filter(move |&(position, index)| {
+                        index <= additional.len() && !order[..position].contains(&index)
+                    })
+                    .map(|(_, index)| index)
+                    .chain((0..=additional.len()).filter(move |index| !order.contains(index)))
+                    .map(move |index| {
+                        if index == 0 {
+                            id
+                        } else {
+                            additional[index - 1].as_str()
+                        }
+                    })
                     .filter(move |id| {
                         !id.is_empty() && effects.effect(id).is_none_or(|effect| !effect.is_support)
                     })
@@ -808,4 +882,47 @@ pub fn data_mapped_stat_modifiers(
         effect_id,
         set_key,
     )
+}
+
+/// The CostTypes channel is already divided into points or percent per use
+/// or per second. Mana is injected by the existing base-parameter adapter.
+pub fn additional_resource_cost_modifiers(costs: &[super::ResolvedCost]) -> Vec<Modifier> {
+    costs
+        .iter()
+        .filter_map(|cost| {
+            if cost.resource == "Mana" && !cost.per_second {
+                return None;
+            }
+            let key = cost.resource.replace("PerMinute", "PerSecond");
+            if !matches!(
+                key.as_str(),
+                "Life"
+                    | "ES"
+                    | "Ward"
+                    | "Rage"
+                    | "ManaPercent"
+                    | "LifePercent"
+                    | "ESPercent"
+                    | "WardPercent"
+                    | "UnreservedManaPercent"
+                    | "ManaPerSecond"
+                    | "LifePerSecond"
+                    | "ESPerSecond"
+                    | "WardPerSecond"
+                    | "RagePerSecond"
+                    | "ManaPercentPerSecond"
+                    | "LifePercentPerSecond"
+                    | "ESPercentPerSecond"
+            ) {
+                return None;
+            }
+            Some(
+                Modifier::number(format!("Skill{key}CostBase"), ModType::Base, cost.amount)
+                    .with_origin(ModifierSource::new(SourceId::new(
+                        SourceKind::SkillGem,
+                        format!("skill.{key}Cost"),
+                    ))),
+            )
+        })
+        .collect()
 }

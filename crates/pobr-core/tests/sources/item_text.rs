@@ -74,8 +74,8 @@ fn xml_entry_accepts_clipboard_utility_items_without_structural_modifiers() {
         assert_eq!(item.modifier_texts, ["Also grants 102 Guard"]);
         let ingest =
             pobr_core::item::ingest_flask_charm_with_ctx("Charm 1", &item, crate::support::ctx());
-        // Real effects must still be diagnosed while their mechanics are unmodeled.
-        assert_eq!(ingest.unsupported, ["Also grants 102 Guard"]);
+        // Guard is recognized through an exporter-absent game rule.
+        assert!(ingest.unsupported.is_empty());
         let old_editor = parse_pob_xml_item(&format!(
             "Rarity: MAGIC\n{base}\n{base}\nAlso grants 102 Guard"
         ))

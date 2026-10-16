@@ -31,6 +31,22 @@ use super::round;
 // Re-export MinionDef types so callers can use them via pobr_core::calc::minion.
 pub use pobr_data::minion::{MinionCategory, MinionDef, MinionLimitId};
 
+/// Resistance outputs supported by each minion, in the player's display units.
+pub const MINION_RESISTANCE_STATS: [&str; 12] = [
+    "FireResist",
+    "ColdResist",
+    "LightningResist",
+    "ChaosResist",
+    "FireResistMax",
+    "ColdResistMax",
+    "LightningResistMax",
+    "ChaosResistMax",
+    "FireResistOverCap",
+    "ColdResistOverCap",
+    "LightningResistOverCap",
+    "ChaosResistOverCap",
+];
+
 /// A minion's intrinsic crit damage bonus (`playerMinionIntrinsicStats.base_critical_hit_damage_bonus`).
 /// A minion's final crit damage base = the monster base
 /// (`MONSTER_BASE_CRIT_DAMAGE_BONUS`=30) + this intrinsic (70) = 100.
@@ -343,6 +359,8 @@ pub fn granted_minion_modifiers(db: &ModDb, cfg: &CalcConfig) -> Vec<MinionModif
 /// What summoned a minion.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct MinionOrigin {
+    /// Enabled-group ordinal and gem index (both 0-based) of this summoner.
+    pub summoner: Option<(usize, usize)>,
     /// The id of the skill that summoned it (`SummonBeastPlayer`); empty
     /// when no skill did.
     pub summoned_by: String,
@@ -354,6 +372,9 @@ pub struct MinionOrigin {
     pub skill: MinionSkill,
     /// Whether it is a monster the player picked: a Spectre or a tamed beast.
     pub picked_monster: bool,
+    /// Manifest Weapon copies the summoner's main hand instead of using
+    /// the monster's level-scaled attack damage.
+    pub copied_weapon: Option<super::WeaponBase>,
 }
 
 /// The skill a minion uses: one of its monster's skills, chosen by the
@@ -368,6 +389,9 @@ pub struct MinionSkill {
     /// The skill's cast time in seconds (0 when the data gives none): how
     /// often a minion casting a spell uses it, before cast speed.
     pub cast_time: f64,
+    /// The selected attack's weapon and added damage multiplier; absent
+    /// when the skill data gives none.
+    pub damage_multiplier: Option<f64>,
     /// Whether it is a Command skill
     /// ([`crate::rules::skill_stats::COMMAND_SKILL_STAT`]).
     pub command: bool,
@@ -634,20 +658,8 @@ pub const GIGANTIC: &str = "Gigantic";
 
 // Count limit / per-minion multiplier (agent-docs/minions.md §4.1)
 
-/// Reads the limit from a `MinionDef` and exposes it as `Multiplier:SummonedMinion` + `MinionPresenceCount`.
-///
-/// PoB2 `CalcPerform.lua`'s flow:
-/// ```lua
-/// limit = floor(Override(limitName) or (skillModList:Sum(limitName) * More(ActiveMinionLimit)))
-/// modDB:NewMod("Multiplier:SummonedMinion", "BASE", limit, ...)
-/// modDB:NewMod("Multiplier:MinionPresenceCount", "BASE", limit, ...)
-/// ```
-///
-/// This function is a simplified, pure-function version: given a final
-/// `limit` count, it writes these two Multiplier mods into the **player**
-/// `ModDb` (held by the caller), for "per Minion / per Minion in Presence" mods to reference.
-///
-/// Source: agent-docs/minions.md §4.1; PoB2 CalcPerform.lua's Limit→Multiplier section.
+/// Records the created population for "per Minion" and Presence modifiers.
+/// The calculation bridges these source values once before either actor is evaluated.
 pub fn write_summoned_minion_multipliers(player_db: &mut ModDb, limit: u32, def_id: &str) {
     let src = SourceId::new(SourceKind::GameConstant, format!("minion.limit.{}", def_id));
     let origin = ModifierSource::new(src);
@@ -663,6 +675,53 @@ pub fn write_summoned_minion_multipliers(player_db: &mut ModDb, limit: u32, def_
         )
         .with_origin(origin),
     );
+}
+
+/// Resolve counts into one snapshot shared by player and minion calculations.
+/// Explicit counts replace the created population; Presence can have its own count.
+/// An existing snapshot is not added to the source population again.
+pub(crate) fn bridge_count_multipliers(db: &ModDb, cfg: &mut CalcConfig) {
+    let mut scope = cfg.clone();
+    scope
+        .conditions
+        .entry("Combat".into())
+        .or_insert(scope.mode_combat);
+    let resolve = |var: &str| {
+        let name = format!("Multiplier:{var}");
+        db.override_(&scope, &name)
+            .or_else(|| scope.multiplier_if_set(var))
+            .or_else(|| {
+                let count = db.sum(ModType::Base, &scope, &[ModName::from(name)]);
+                (count != 0.0).then_some(count)
+            })
+    };
+    let summoned = resolve("SummonedMinion");
+    let presence = db
+        .override_(&scope, "Multiplier:MinionPresenceCount")
+        .or_else(|| scope.multiplier_if_set("MinionPresenceCount"))
+        .or(summoned)
+        .or_else(|| resolve("MinionPresenceCount"));
+    for (var, count) in [
+        ("SummonedMinion", summoned),
+        ("MinionPresenceCount", presence),
+    ] {
+        if let Some(count) = count {
+            cfg.multipliers.insert(var.into(), count);
+            cfg.stats.insert(var.into(), count);
+        }
+    }
+    // "per Summoned <kind>" uses that kind's created population, not the total.
+    for var in [
+        "ActiveGolemLimit",
+        "ActiveRagingSpiritLimit",
+        "ActiveSentinelOfPurityLimit",
+        "ActiveSkeletonLimit",
+    ] {
+        if let Some(count) = resolve(var) {
+            cfg.multipliers.insert(var.into(), count);
+            cfg.stats.insert(var.into(), count);
+        }
+    }
 }
 
 /// Derives the monster level corresponding to a summoning gem from
@@ -706,6 +765,7 @@ pub fn definition_modifiers(def: &MinionDef) -> Vec<Modifier> {
             ("CritMultiplier", 0.0) => "CriticalStrikeMultiplier",
             ("PhysicalDamage", 0.0) => "PhysicalDamage",
             ("DamageTaken", 0.0) => "DamageTaken",
+            ("EnemyCurseLimit", 0.0) => "EnemyCurseLimit",
             ("Speed", 1.0) => "AttackSpeed",
             _ => continue,
         };

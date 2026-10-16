@@ -89,3 +89,15 @@ test('a gem carries its corrupted state only while corrupted, so toggling it bac
   expect('corrupted' in withGemCorrupted(corrupted, false)).toBe(false);
   expect(gem).toEqual({ skill_id: 'Curse', level: 20, quality: 12, stat_set_index: 2 });
 });
+
+test('disabled gems contribute no effects, and toggling a preceding gem retains selection', async () => {
+  const { withGemEnabled } = await import('./skillSelection');
+  const original: SocketGroupInput = { enabled: true, main_active_skill: 2, gems: [
+    { skill_id: 'Spark', level: 20, quality: 0 }, { skill_id: 'IceNova', level: 20, quality: 0, stat_set_index: 2 },
+  ] };
+  const disabled = withGemEnabled(original, 0, false, new Map());
+  expect(activeSkillEffects(disabled, new Map())).toEqual([{ skillId: 'IceNova', gemIndex: 1 }]);
+  expect(disabled.main_active_skill).toBe(1);
+  expect(disabled.gems[1].stat_set_index).toBe(2);
+  expect(withGemEnabled(disabled, 0, true, new Map()).main_active_skill).toBe(2);
+});

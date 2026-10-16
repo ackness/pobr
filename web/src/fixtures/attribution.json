@@ -1,67 +1,67 @@
 {
   "baseline": {
-    "EnergyShield": 10005.12,
+    "EnergyShield": 9593.0,
     "Life": 1.0,
-    "TotalDPS": 4143.747968815,
-    "TotalEHP": 23661.486537325
+    "TotalDPS": 6265.33506007,
+    "TotalEHP": 22686.945773096
   },
   "entries": [
     {
       "deltas": {
-        "EnergyShield": 1052.3200000000015,
+        "EnergyShield": 1012.0,
         "Life": 0.0,
-        "TotalDPS": 1365.2811226729996,
-        "TotalEHP": 2488.4226366420007
+        "TotalDPS": 2142.825145334999,
+        "TotalEHP": 2393.0778739179987
       },
       "id": "amulet",
       "kind": "item"
     },
     {
       "deltas": {
-        "EnergyShield": 407.3299999999999,
+        "EnergyShield": 408.0,
         "Life": 0.0,
-        "TotalDPS": 1256.5181661909996,
-        "TotalEHP": 963.2138442520009
+        "TotalDPS": 1930.9774623679996,
+        "TotalEHP": 964.7981942279984
       },
       "id": "belt",
       "kind": "item"
     },
     {
       "deltas": {
-        "EnergyShield": 4487.650000000001,
+        "EnergyShield": 4462.0,
         "Life": 0.0,
         "TotalDPS": 0.0,
-        "TotalEHP": 12117.667957882
+        "TotalEHP": 11951.564961076998
       },
       "id": "bodyarmour",
       "kind": "item"
     },
     {
       "deltas": {
-        "EnergyShield": 1031.550000000001,
+        "EnergyShield": 1032.0,
         "Life": 0.0,
-        "TotalDPS": 0.0,
-        "TotalEHP": 7044.972111846
+        "TotalDPS": 178.1422233129997,
+        "TotalEHP": 6834.309211014999
       },
       "id": "boots",
       "kind": "item"
     },
     {
       "deltas": {
-        "EnergyShield": 862.2700000000004,
+        "EnergyShield": 857.0,
         "Life": 0.0,
-        "TotalDPS": 0.0,
-        "TotalEHP": 6512.626727428
+        "TotalDPS": 178.1422233129997,
+        "TotalEHP": 6301.11396712
       },
       "id": "gloves",
       "kind": "item"
     },
     {
       "deltas": {
-        "EnergyShield": 2846.0200000000004,
+        "EnergyShield": 2836.0,
         "Life": 0.0,
         "TotalDPS": 0.0,
-        "TotalEHP": 9035.21518859
+        "TotalEHP": 8882.062911857998
       },
       "id": "helmet",
       "kind": "item"
@@ -70,7 +70,7 @@
       "deltas": {
         "EnergyShield": 0.0,
         "Life": 0.0,
-        "TotalDPS": 0.0,
+        "TotalDPS": 356.2844466259994,
         "TotalEHP": 0.0
       },
       "id": "ring1",
@@ -80,8 +80,8 @@
       "deltas": {
         "EnergyShield": 0.0,
         "Life": 0.0,
-        "TotalDPS": 0.0,
-        "TotalEHP": 1103.385382569999
+        "TotalDPS": 356.2844466259994,
+        "TotalEHP": 1057.940476464999
       },
       "id": "ring2",
       "kind": "item"
@@ -90,7 +90,7 @@
       "deltas": {
         "EnergyShield": 0.0,
         "Life": 0.0,
-        "TotalDPS": 3081.320854497,
+        "TotalDPS": 4564.526591041999,
         "TotalEHP": 0.0
       },
       "id": "weapon1",
@@ -100,7 +100,7 @@
       "deltas": {
         "EnergyShield": 0.0,
         "Life": 0.0,
-        "TotalDPS": 0.0,
+        "TotalDPS": 267.2133349699998,
         "TotalEHP": 0.0
       },
       "id": "weapon2",
@@ -130,7 +130,7 @@
       "deltas": {
         "EnergyShield": 0.0,
         "Life": 0.0,
-        "TotalDPS": 884.9393137339998,
+        "TotalDPS": 409.8817329019994,
         "TotalEHP": 0.0
       },
       "id": "2",
@@ -150,7 +150,7 @@
       "deltas": {
         "EnergyShield": 0.0,
         "Life": 0.0,
-        "TotalDPS": 0.0,
+        "TotalDPS": 409.8817329019994,
         "TotalEHP": 0.0
       },
       "id": "4",
@@ -160,7 +160,7 @@
       "deltas": {
         "EnergyShield": 0.0,
         "Life": 0.0,
-        "TotalDPS": 0.0,
+        "TotalDPS": 1781.4222331319995,
         "TotalEHP": 0.0
       },
       "id": "5",

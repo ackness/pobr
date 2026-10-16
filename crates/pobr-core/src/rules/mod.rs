@@ -16,6 +16,7 @@
 //! snapshot); config_interpreter / stat_map_engine / buff_expander /
 //! special_mod and other interpreters land in later phases.
 
+pub mod archon;
 pub mod buff_expander;
 pub mod config_interpreter;
 pub mod handlers;
@@ -24,6 +25,7 @@ pub mod registry;
 pub mod skill_stats;
 pub mod skill_type_expr;
 pub mod special_mod;
+pub mod spell_hits;
 pub mod stat_map_engine;
 pub mod umbral_souls;
 pub mod value_expr;

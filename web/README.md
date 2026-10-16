@@ -60,7 +60,8 @@ slot or inventing its identity; PoBR JSON sharing and backups remain lossless.
 Whether a gem is corrupted is kept with the gem through import, saves, stage
 calculation and PoB export, because modifiers such as "+1 to Level of all
 Corrupted Skill Gems" test it. A gem's level already includes what corruption
-did to it. The Skills page does not yet offer a way to change the state.
+did to it. Skills shows the state as a checkbox beside level and quality;
+toggling it does not change the level.
 
 Custom modifiers keep ordered groups, titles, raw text and enabled state in saves
 and PoB exports. Only enabled groups affect calculations. Unchanged legacy saves
@@ -110,6 +111,14 @@ filter and advanced imported inputs remain available. This hit-only shortlist
 does not establish DoT/minion relevance, mechanic coverage or a guaranteed gain;
 configured does not mean effective. Reset restores the imported value, or the
 catalog default when no value was imported.
+
+Config opens on **Applicable to this build**, filtered by the skills, conditions
+and modifiers the current calculation reads; **Show all options** lists the whole
+catalog. Imported or saved values always stay visible, marked when they do not
+apply, and an option whose relevance cannot be decided stays visible. Rows show
+the catalog's help text with the raw key beside it. Applicable does not mean the
+option is modelled. The extra calculation context is requested only while Config
+is open.
 
 The Power/Frenzy/Endurance count controls distinguish **Player** from **Minions**
 in visible labels, accessible input/reset names and localized search. This is
@@ -227,8 +236,16 @@ web/src/
   See [WeGame import](../docs/wegame-import.md) for deployment and calculation limits.
 - **Items**: paper-doll slot layout with full PoB-text editing, rune sockets,
   flask/charm slots, an item library with compare/equip, and per-slot notes.
-- **Skills**: socket-group editing (gems, levels, quality, supports),
-  main-skill selection with a live damage breakdown.
+  **Craft item** builds a hypothetical item from a game base with legal affix
+  tiers and rolls; **Unique catalogue** searches every unique with its versions,
+  variants and roll ranges. Both preview against the equipped item (empty slots
+  included) and save to the library without changing the build until you apply.
+- **Skills**: socket-group editing (gems, levels, quality, corruption, supports),
+  main-skill selection with a live damage breakdown. Choose an effect's form
+  (stat set) and, for Flameblast, staged channelled attacks and Incinerate, its
+  stages; disable a gem without removing it; pick a Companion's or Spectre's
+  monster and the skill it uses; include groups in Full DPS with group and gem
+  counts. Full DPS adds the included skills as if used at once, not a rotation.
 - **Tree**: allocation, attribute picks, jewel sockets, search, and a
   node-power heatmap. Search and choose **Next** to focus a node-details panel
   with its current modifiers and allocation state. Searching, cycling, closing
@@ -236,6 +253,16 @@ web/src/
   **Refund** or **Apply choice** explicitly; jewel sockets open the existing editor.
   Ordinary allocation follows the existing shortest path and leaves travel
   Attributes unassigned. Escape closes details and returns focus to search controls.
+  Allocate in **Shared**, **Weapon set 1** or **Weapon set 2** mode: every edit
+  follows a legal path, previews what it allocates, promotes or refunds, and shows
+  the per-set and total point budgets (planned for all 24 campaign points).
+- **Compare**: pick any two saved builds or stages as A and B to see stat
+  differences, item text, skills, configuration and both passive trees on one
+  canvas, then copy a single item, skill group or configuration value from B to A.
+  B and the current selection never change.
+- **Calcs**: the skill overview, Full DPS contributions, and an explanation for
+  each stat (steps, sources or the formula's inputs), loaded when you open it;
+  switch between the character and each minion.
 - **Optimizers & trade**: objective-driven gem/item/tree suggestions and a
   category-constrained official market links with local affix scores and budget filters.
 
@@ -334,8 +361,10 @@ passives, simultaneous multiple-jewel swaps and equipment-plus-tree searches are
    text / socket groups / config).
 3. Calculation: `useBuildSession` materializes editable state into a request →
    `calculateBuildJson(request)` → full
-   display-catalog key-values + unsupported mod lines + aggregated stat
-   breakdowns.
+   display-catalog key-values + unsupported mod lines + created minions and
+   per-stat explanation kinds. Ordinary recalculation sends `breakdowns: []`;
+   opening a stat requests that one explanation for the player or a minion, and
+   Config adds `config_context: true` while it is open.
 4. Attribution: `attributionJson(request)` → per-source
    remove-and-recalculate marginal contributions (click-triggered; cost =
    1 + number of sources).

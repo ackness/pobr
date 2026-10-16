@@ -100,10 +100,13 @@ struct Agreement {
     agreeing_rows: usize,
     /// stat id -> (agreeing builds, compared builds)
     per_stat: BTreeMap<String, (usize, usize)>,
+    // (coverage, present builds, changed builds, changed rows); no holdout identities.
+    beyond: BTreeMap<String, (pobr_data::source::ExporterCoverage, usize, usize, usize)>,
 }
 
 /// Compares every build under `root`; `verbose` prints each build's misses.
-fn corpus_agreement(root: &Path, verbose: bool) -> Agreement {
+fn corpus_agreement(root: &Path, verbose: bool, impact: bool) -> Agreement {
+    let verbose = verbose && !root.components().any(|part| part.as_os_str() == "holdout");
     let data =
         BuildData::load(&GameData::new(pobr_gamedata::current_data_dir())).expect("load BuildData");
     // The same convention as `ninja_parity`: the conditions the references
@@ -129,6 +132,21 @@ fn corpus_agreement(root: &Path, verbose: bool) -> Agreement {
                 continue;
             }
         };
+        if impact {
+            for rule in pobr_build::exporter_impact::exporter_rule_impacts(
+                &build, &data, &options, &report, &session,
+            )
+            .expect("rule impact")
+            {
+                let entry = total
+                    .beyond
+                    .entry(rule.rule_id)
+                    .or_insert((rule.exporter, 0, 0, 0));
+                entry.1 += 1;
+                entry.2 += usize::from(rule.changed_rows > 0);
+                entry.3 += rule.changed_rows;
+            }
+        }
         let rows = compare_build_to_reference(&build, &data, session.output(), &report);
         let misses: Vec<&ReferenceRow> = rows.iter().filter(|row| !row.agrees(TOL)).collect();
         total.builds += 1;
@@ -224,10 +242,36 @@ const BASELINES: [Baseline; 3] = [
     // comes off a skill's cooldown before Cooldown Recovery Rate, down to 0.1
     // seconds: the Oracle's Lightning Bolt (0.5 seconds) has 0.1, as its
     // reference does, where the line was read by nothing (0.27).
+    //
+    // Then 448 rows: the sidebar's attributes, Rage, resistance over cap,
+    // unreserved percentages, pre-effective critical chance, stored uses,
+    // skill DoT, crossbow timing, culling and projectile speed became
+    // display stats, so the reference's rows for them are compared too
+    // (new rows, not changed calculations).
+    //
+    // Then 501 rows: regeneration, net recovery, leech and gain-on-hit
+    // outputs became display stats, so the reference's rows for them are
+    // compared; characters' inherent 4% Mana regeneration per second
+    // (`character_inherent_mana_regeneration_rate_per_minute_%`) and
+    // Berserk's Life loss per Rage brought most of them into agreement.
+    //
+    // Then 628 rows: the rest of the sidebar became display stats (damage
+    // and ailment views, accuracy per hand, durations, area radius,
+    // projectile counts, attribute requirements, costs and spending per
+    // second, placement and channel timing), so the reference's rows for
+    // them are compared too.
+    //
+    // Then 659 rows: the last sidebar mechanics (movement speed, Presence
+    // radius, aura and curse effect, minion limit, ground and mirage damage,
+    // CritBifurcates) became display stats and are compared. Wolf Pack now
+    // reads `skill_wolf_pack_size` (3 / 5 / 6 wolves at levels 1 / 18 / 20),
+    // which moves two Ritualist regeneration rows away from the reference.
     Baseline {
         corpus: "examples/wasm-benchmark/builds",
         dps_builds: 5,
-        agreeing_rows: 349,
+        // Sanguimantic Rituals redirects Arcane Surge regeneration to Life (+2 rows).
+        // Exporter-absent Spell Mana Cost Efficiency is excluded on reference basis.
+        agreeing_rows: 661,
     },
     // Was 22 builds and 1024 rows. A code whose main skill summons a minion
     // also carries `<MinionStat>` values for that minion, which were not
@@ -360,10 +404,46 @@ const BASELINES: [Baseline; 3] = [
     // Adorned leaves it alone. The reference, as the pinned PoB2, reads
     // neither: Abyssal Lich Twister 4028 and 9d1c, Lich Spark ce24 and 0a17
     // (4 builds' damage, 20 rows).
+    //
+    // Then 3902 rows: the sidebar's attributes, Rage, resistance over cap,
+    // unreserved percentages, pre-effective critical chance, stored uses,
+    // skill DoT, crossbow timing, culling and projectile speed became
+    // display stats, so the reference's rows for them are compared too
+    // (new rows, not changed calculations).
+    //
+    // Then 4368 rows: regeneration, net recovery, leech and gain-on-hit
+    // outputs became display stats, so the reference's rows for them are
+    // compared; characters' inherent 4% Mana regeneration per second
+    // (`character_inherent_mana_regeneration_rate_per_minute_%`) and
+    // Berserk's Life loss per Rage brought most of them into agreement.
+    //
+    // Then 5525 rows: the rest of the sidebar became display stats (damage
+    // and ailment views, accuracy per hand, durations, area radius,
+    // projectile counts, attribute requirements, costs and spending per
+    // second, placement and channel timing), so the reference's rows for
+    // them are compared too.
+    //
+    // Then 5774 rows: the last sidebar mechanics (movement speed, Presence
+    // radius, aura and curse effect, minion limit, ground and mirage damage,
+    // CritBifurcates) became display stats and are compared. Wolf Pack now
+    // reads `skill_wolf_pack_size` (3 / 5 / 6 wolves at levels 1 / 18 / 20),
+    // which moves two Ritualist regeneration rows away from the reference.
     Baseline {
         corpus: "examples/reference-builds/tuned/builds",
         dps_builds: 58,
-        agreeing_rows: 3049,
+        // Local flat requirements are added after base requirement conversion (+3 rows).
+        // Explicit sustained drains do not repeat the upfront cost (+1 Oil Barrage row).
+        // Sanguimantic Rituals redirects Arcane Surge regeneration to Life (+3 rows).
+        // Soul Thief's physical attack Mana leech maps from the game stat (+1, Tactician 406c).
+        // 0.5 leech (strongest instance, one-second recovery, no pool cap; patch notes and
+        // poe2db Keywords): gain Warbringer af6a, lose LifeLeechGainRate on 1e4e329e5e5c,
+        // bc750d615159 and 42f790c0f9ba, where the reference still caps by the pool
+        // (devs/scripts/known-differences.json).
+        // Smith sharing excludes all-elemental modifiers; ancient Idols use their category (+5 rows).
+        // Non-spell casts include Cast Speed (+1 Wildwood's Gifts ActionRate row).
+        // Spell Echo's average repeated area fixes Frost Bomb's radius (+1 row).
+        // Exporter-absent Spell Mana Cost Efficiency is excluded on reference basis.
+        agreeing_rows: 5787,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
@@ -378,10 +458,41 @@ const BASELINES: [Baseline; 3] = [
     // Lich's Crystalline Phylactery, which doubles the jewel; their
     // references don't (see the tuned set's note). Measured only, by
     // switching that one rule back.
+    //
+    // Then 1291 rows: the sidebar's attributes, Rage, resistance over cap,
+    // unreserved percentages, pre-effective critical chance, stored uses,
+    // skill DoT, crossbow timing, culling and projectile speed became
+    // display stats, so the reference's rows for them are compared too
+    // (new rows, not changed calculations).
+    //
+    // Then 1293 rows: unique lines that were not parsed now compute by their
+    // game stats (Blackheart's Armour against Chaos hits, Vigilant View's and
+    // Goregirdle's caps, Matsya's halved Spirit reservation and others).
+    //
+    // Then 1448 rows: regeneration, net recovery, leech and gain-on-hit
+    // outputs became display stats, so the reference's rows for them are
+    // compared; characters' inherent 4% Mana regeneration per second
+    // (`character_inherent_mana_regeneration_rate_per_minute_%`) and
+    // Berserk's Life loss per Rage brought most of them into agreement.
+    //
+    // Then 1828 rows: the rest of the sidebar became display stats (damage
+    // and ailment views, accuracy per hand, durations, area radius,
+    // projectile counts, attribute requirements, costs and spending per
+    // second, placement and channel timing), so the reference's rows for
+    // them are compared too.
+    //
+    // Then 1906 rows: the last sidebar mechanics (movement speed, Presence
+    // radius, aura and curse effect, minion limit, ground and mirage damage,
+    // CritBifurcates) became display stats and are compared. Wolf Pack now
+    // reads `skill_wolf_pack_size` (3 / 5 / 6 wolves at levels 1 / 18 / 20),
+    // which moves two Ritualist regeneration rows away from the reference.
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
         dps_builds: 18,
-        agreeing_rows: 1003,
+        // Measured only: local flat requirements follow base conversion (+1 row).
+        // Measured only: resistance truncation, Smith sharing and Idol categories (+5 rows).
+        // Measured only: reference basis excludes exporter-absent rules.
+        agreeing_rows: 1912,
     },
 ];
 
@@ -390,7 +501,7 @@ const BASELINES: [Baseline; 3] = [
 #[test]
 fn reference_agreement_does_not_regress() {
     for set in BASELINES {
-        let total = corpus_agreement(&repo_path(set.corpus), false);
+        let total = corpus_agreement(&repo_path(set.corpus), false, false);
         assert!(
             total.dps_builds >= set.dps_builds,
             "{}: TotalDPS agrees on {} builds, was {}",
@@ -445,6 +556,66 @@ fn amulet_granted_skills_do_not_overdraw_spirit() {
     assert_eq!(checked, BUILDS.len());
 }
 
+#[test]
+fn sanguimantic_rituals_regeneration_matches_build_references() {
+    let data =
+        BuildData::load(&GameData::new(pobr_gamedata::current_data_dir())).expect("load BuildData");
+    let options = DataOrchestratorOptions::reference_conditions();
+    for (path, life, mana) in [
+        (
+            "examples/wasm-benchmark/builds/ninja-2026-10-11-druid-oracle-lightning-bolt-950c9ad4451d",
+            20.7,
+            Some(24.5),
+        ),
+        (
+            "examples/reference-builds/tuned/builds/ninja-2026-10-14-druid-oracle-lightning-bolt-7b2a679e8c58",
+            19.5,
+            Some(176.3),
+        ),
+        (
+            "examples/reference-builds/tuned/builds/ninja-2026-10-14-huntress-ritualist-living-bomb-9a0fb35e890a",
+            88.0,
+            None,
+        ),
+    ] {
+        let ImportedBuild { build, report } = import(&repo_path(path));
+        let session = calculate_with_data_session(&build, &data, &options).unwrap();
+        let out = session.output();
+        eprintln!(
+            "{path}: LifeRegenRecovery {:.3}, ManaRegenRecovery {:.3}",
+            out.life_regen_recovery, out.mana_regen_recovery
+        );
+        assert!(
+            (out.life_regen_recovery - life).abs() < 0.15,
+            "{path}: Life regeneration"
+        );
+        assert!(
+            (out.life_regen_recovery - report.reference_stats["LifeRegenRecovery"]).abs() < 0.15
+        );
+        if let Some(mana) = mana {
+            assert!(
+                (out.mana_regen_recovery - mana).abs() < 0.15,
+                "{path}: Mana regeneration"
+            );
+            assert!(
+                (out.mana_regen_recovery - report.reference_stats["ManaRegenRecovery"]).abs()
+                    < 0.15
+            );
+        }
+    }
+}
+
+fn print_beyond(total: &Agreement) {
+    eprintln!(
+        "  beyond PoB2 (each absent rule enabled alone on reference basis; differs stays enabled):"
+    );
+    for (id, (coverage, present, builds, rows)) in &total.beyond {
+        eprintln!(
+            "    {id} [{coverage:?}]: {present} present builds; {builds} changed builds, {rows} changed rows"
+        );
+    }
+}
+
 fn percent(part: usize, whole: usize) -> f64 {
     100.0 * part as f64 / whole.max(1) as f64
 }
@@ -464,7 +635,7 @@ fn reference_report() {
             "set", "builds", "TotalDPS", "rows"
         );
         for set in BASELINES {
-            let total = corpus_agreement(&repo_path(set.corpus), false);
+            let total = corpus_agreement(&repo_path(set.corpus), false, true);
             eprintln!(
                 "{:<44}{:>8}{:>8} {:>4.0}%{:>11}/{:<5}{:>5.1}%",
                 set.corpus,
@@ -475,10 +646,11 @@ fn reference_report() {
                 total.rows,
                 percent(total.agreeing_rows, total.rows)
             );
+            print_beyond(&total);
         }
         return;
     };
-    let total = corpus_agreement(&root, true);
+    let total = corpus_agreement(&root, true, true);
 
     eprintln!(
         "\n================ REFERENCE SUMMARY (tol {:.0}%) ================",
@@ -495,6 +667,7 @@ fn reference_report() {
         total.rows,
         percent(total.agreeing_rows, total.rows)
     );
+    print_beyond(&total);
     eprintln!("stats that disagree on at least one build (agree/compared):");
     let mut stats: Vec<_> = total
         .per_stat

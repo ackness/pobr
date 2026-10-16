@@ -8,6 +8,7 @@ use super::super::stat_map::mapped_stat_modifiers;
 use pobr_core::Modifier;
 use pobr_core::rules::stat_map_engine::{self, MappedItem, MappedOutcome};
 use pobr_data::modifier::ModType;
+use pobr_data::monster::EnemyTier;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 use crate::build::{Build, SocketGroup};
@@ -36,6 +37,17 @@ pub(crate) fn skill_base_modifiers(
         skill.crit_chance,
         skill.skill_attack_speed_more,
     );
+    mods.extend(pobr_core::skill_env::additional_resource_cost_modifiers(
+        &skill.costs,
+    ));
+    mods.extend(pobr_core::calc::channel::skill_modifiers(
+        skill_id,
+        skill.use_time_s,
+        skill
+            .base_damage
+            .iter()
+            .any(|stat| stat.stat == "aftershock_delay_ms"),
+    ));
     // The skill's stats (base damage + its own damage% scaling) are injected via
     // SkillStatMap mapping. Exception: `off_hand_weapon_*physical_damage` (base hit
     // damage for a non-weapon attack) is already counted into `base_hit_min/max` as a
@@ -77,7 +89,27 @@ pub(crate) fn dot_flag_modifiers(
         .filter(|effect| effect.skill_id == skill_id)
         .and_then(|effect| effect.stat_set_index);
     let flags = data.selected_set_dot_flags(skill_id, set_index);
-    pobr_core::skill_env::dot_flag_modifiers(flags, skill_id)
+    let mut mods = pobr_core::skill_env::dot_flag_modifiers(flags, skill_id);
+    if skill_id == "TriggeredDecayingHexPlayer" {
+        mods.push(Modifier::flag("ProfaneDecay"));
+    }
+    if let Some(set) = data.select_stat_set(skill_id, set_index) {
+        // The game gives Ignited Ground its own fire-damage stat set. The
+        // resulting ailment is already calculated; this only identifies its view.
+        if matches!(
+            set.set_id.as_str(),
+            "BallLightningIgnitedGround"
+                | "IncinerateGroundPlayer"
+                | "OilGrenadeOilGroundPlayer"
+                | "SpearOfSolarisGroundPlayer"
+        ) {
+            mods.push(Modifier::flag("IgnitedGround"));
+        }
+        if set.set_id == "CGEMonsterModAbyssVolatileRockBurningGroundPlayer" {
+            mods.push(Modifier::flag("BurningGround"));
+        }
+    }
+    mods
 }
 
 /// Corpse explosion base damage: the skill deals a share of the corpse's
@@ -87,18 +119,15 @@ pub(crate) fn dot_flag_modifiers(
 /// - Gate = the selected statSet's `explodeCorpse` (catalog
 ///   `StatSetDef::explode_corpse`, from the skill_overrides overlay; e.g.
 ///   DetonateDeadPlayer);
-/// - Corpse life = the monster life of the enemy level
-///   (`monster_scaling.life_at`; the level resolved in the same order as
-///   setup_enemy: orchestrator option → config enemyLevel → min(MaxEnemyLevel,
-///   character level));
+/// - Corpse life = `monster_scaling.life_at(enemy_level)`, using the same
+///   resolved level as enemy mitigation;
 /// - Injection = `<Type>DamageMin/Max` BASE, added to the skill's base.
 ///
 /// Returns empty (zero injection) for a non-corpse skill or a skill without
 /// such a stat.
 pub(crate) fn corpse_explosion_modifiers(
-    build: &Build,
     data: &BuildData,
-    options: &DataOrchestratorOptions,
+    enemy_level: u32,
     group: &SocketGroup,
     skill: &ResolvedSkillLevel,
     skill_id: &str,
@@ -109,7 +138,6 @@ pub(crate) fn corpse_explosion_modifiers(
     if !data.selected_set_explode_corpse(skill_id, set_index) {
         return Vec::new();
     }
-    let enemy_level = resolved_enemy_level(build, data, options);
     let monster_life = f64::from(data.constants.monster_scaling.life_at(enemy_level));
     let mut mods = Vec::new();
     // A stat set that only poisons with the corpse's Life (Decompose's
@@ -162,20 +190,30 @@ pub(crate) fn corpse_explosion_modifiers(
     mods
 }
 
-/// Resolves the enemy level (in the same order as `calculate_with_data` step 5's
-/// setup_enemy, vendor CalcSetup.lua:529): orchestrator option's explicit level → build
-/// config's `enemyLevel` (Input/Placeholder) → `min(MaxEnemyLevel, character level)`.
+/// One level for corpse Life and enemy mitigation. Explicit options override
+/// the build's input/placeholder. Otherwise ordinary monsters follow the
+/// character, while Pinnacle/Uber use their preset's default/minimum level.
+/// Every path respects the preset's level floor and the maximum enemy level.
 pub(crate) fn resolved_enemy_level(
     build: &Build,
     data: &BuildData,
     options: &DataOrchestratorOptions,
+    tier: EnemyTier,
 ) -> u32 {
-    pobr_core::skill_env::resolved_enemy_level(
-        options.enemy_level,
-        config_enemy_level(build),
-        build.character.level,
-        data.constants.enemy_presets.max_enemy_level,
-    )
+    let presets = &data.constants.enemy_presets;
+    let min_level = presets
+        .tier_for(tier)
+        .map_or_else(|| tier.min_level(), |preset| preset.min_level);
+    let default_level = match tier {
+        EnemyTier::Pinnacle | EnemyTier::Uber => min_level,
+        EnemyTier::None | EnemyTier::Boss => build.character.level,
+    };
+    let level = if options.enemy_level != 0 {
+        options.enemy_level
+    } else {
+        config_enemy_level(build).unwrap_or(default_level)
+    };
+    level.max(min_level).min(presets.max_enemy_level)
 }
 
 /// Crossbow reload data channel (matching vendor `CalcOffence.lua:1118-1122`'s
@@ -436,4 +474,86 @@ pub(crate) fn support_modifiers(
     }
     context.support_limits.extend(limits);
     mods
+}
+
+/// The action that places a proxy comes from its summoning skill, not from
+/// the attack or spell the proxy performs. CastTime is in milliseconds.
+pub(crate) fn skill_timing_modifiers(
+    data: &BuildData,
+    group: &SocketGroup,
+    skill_id: &str,
+    final_types: &[String],
+) -> Vec<Modifier> {
+    let has = |kind: &str| final_types.iter().any(|t| t == kind);
+    let main = data.granted_effects.get(skill_id);
+    let totem = has("SummonsTotem") || has("UsedByTotem");
+    let placement = if totem {
+        group
+            .gem_skills
+            .iter()
+            .filter_map(|gem| data.granted_effects.get(&gem.skill_id))
+            .find(|effect| effect.skill_types.iter().any(|t| t == "SummonsTotem"))
+            .or(main)
+            .and_then(|effect| effect.cast_time)
+    } else {
+        None
+    };
+    let mut modifiers: Vec<_> = [
+        ("SkillTotemPlacementTimeBase", placement),
+        (
+            "SkillWarcryCastTimeBase",
+            main.filter(|_| has("Warcry"))
+                .and_then(|effect| effect.cast_time),
+        ),
+        (
+            "SkillTrapThrowingTimeBase",
+            main.filter(|_| has("Trap"))
+                .and_then(|effect| effect.cast_time),
+        ),
+        (
+            "SkillMineLayingTimeBase",
+            main.filter(|_| has("Mine"))
+                .and_then(|effect| effect.cast_time),
+        ),
+    ]
+    .into_iter()
+    .filter_map(|(name, time)| {
+        time.filter(|time| *time > 0).map(|time| {
+            Modifier::number(name, ModType::Base, time as f64 / 1000.0).with_origin(
+                ModifierSource::new(SourceId::new(SourceKind::SkillGem, format!("skill.{name}"))),
+            )
+        })
+    })
+    .collect();
+    // A granted meteor's cadence belongs to its originating gem. Retain
+    // the parent's level and quality when its active effect is selected.
+    if let Some(selected) = super::resolve::selected_group_effect(data, group)
+        && selected.skill_id == skill_id
+    {
+        let gems = group.gem_inputs();
+        if let Some(parent) = gems.get(selected.gem_index)
+            && parent.skill_id != skill_id
+        {
+            let stats = data.effect_stats(&parent.skill_id, parent.gem_level, parent.quality, None);
+            let all: Vec<_> = stats.all().cloned().collect();
+            for stat in all
+                .iter()
+                .filter(|s| s.stat == "walking_calamity_spawn_meteor_every_ms")
+            {
+                let origin = ModifierSource::new(SourceId::new(
+                    SourceKind::SkillGem,
+                    format!("skill.{}.{}", parent.skill_id, stat.stat),
+                ))
+                .with_raw_text(stat.stat.clone());
+                modifiers.extend(
+                    pobr_core::rules::skill_stats::granted_skill_modifiers(
+                        &stat.stat, stat.value, &all,
+                    )
+                    .into_iter()
+                    .map(|modifier| modifier.with_origin(origin.clone())),
+                );
+            }
+        }
+    }
+    modifiers
 }

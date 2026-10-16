@@ -64,20 +64,42 @@ pub fn calc_radius(base_radius: f64, area_mod: f64) -> f64 {
 /// Aggregation formula: `areaMod = (1 + Σinc/100) × Πmore`.
 /// `base_radius + extra_base` is calcRadius's input.
 ///
-/// Source: PoB2 `CalcOffence.lua` L414-430 (`calcAreaOfEffect`),
-///       `agent-docs/skill-mechanics.md` §AoE.
+/// The skill's radius stats and area modifiers determine its circular area;
+/// echoes use the selected repeat view (`agent-docs/skill-mechanics.md` §AoE).
 pub fn calc_aoe(db: &ModDb, cfg: &CalcConfig, base_radius: f64, extra_base: f64) -> AoeResult {
     let aoe_names = [
         ModName::from("AreaOfEffect"),
         ModName::from("AreaOfEffectPrimary"),
     ];
-    let inc = db.sum(ModType::Inc, cfg, &aoe_names);
+    // Spell Echo's area bonus belongs to echoes only. The Average view
+    // weights it by echo count / all casts; Final shows the echo's area.
+    // Game stats: support_spell_echo_number_of_echo_cascades and
+    // echoed_spell_area_of_effect_+% (one echo, 40% increased area).
+    let repeats = db.sum(ModType::Base, cfg, &[ModName::from("RepeatCount")]);
+    let repeat_inc = if repeats > 0.0 && !db.flag(cfg, "CannotRepeat") {
+        let weight = if cfg.condition("averageRepeat") {
+            repeats / (1.0 + repeats)
+        } else if cfg.condition("alwaysFinalRepeat") {
+            1.0
+        } else {
+            0.0
+        };
+        db.sum(ModType::Inc, cfg, &[ModName::from("RepeatAreaOfEffect")]) * weight
+    } else {
+        0.0
+    };
+    let inc = db.sum(ModType::Inc, cfg, &aoe_names) + repeat_inc;
     let more = db.more(cfg, &aoe_names);
     let area_mod = round((1.0 + inc / 100.0) * more);
     let effective_base = base_radius + extra_base + db.sum(ModType::Base, cfg, &aoe_names);
+    let radius_names = [ModName::from("AreaOfEffectRadius")];
+    let radius_mod = ((1.0 + db.sum(ModType::Inc, cfg, &radius_names) / 100.0)
+        * db.more(cfg, &radius_names))
+    .max(0.0);
+    let radius_percent = ((100.0 * area_mod.max(0.0).sqrt()).floor() * radius_mod).floor();
     AoeResult {
         area_mod,
-        radius: calc_radius(effective_base, area_mod),
+        radius: (effective_base.max(0.0) * radius_percent / 100.0).floor(),
         base_radius_input: base_radius,
     }
 }
@@ -190,7 +212,7 @@ pub struct ProjectileBehaviorResult {
     pub effective_pierce_all: bool,
     /// Split count (0 = not active).
     pub split_count: u32,
-    /// Effective pierce count (chance folded in; 0 = not active; `u32::MAX` = infinite pierce).
+    /// Effective pierce count (chance folded in; 0 = not active; 100 = infinite pierce).
     pub pierce_count: u32,
     /// Fork max count (0 = not active).
     pub fork_count_max: u32,
@@ -222,7 +244,7 @@ pub fn resolve_projectile_behavior(
     let mut split_count = 0u32;
     let mut pierce_count = 0u32;
     let mut fork_count_max = 0u32;
-    let mut chain_count_max = input.chain_count_max;
+    let mut chain_count_max = 0;
     let mut effective_pierce_all = false;
 
     // Additional projectile conversion (PoB2 L1307-1311):
@@ -282,6 +304,7 @@ pub fn resolve_projectile_behavior(
 
     // Chain (only considered when infinite pierce isn't active)
     if !effective_pierce_all && !input.cannot_chain {
+        chain_count_max = input.chain_count_max;
         // AdditionalProjectilesAddChainsInstead converts additional projectiles into chains
         if input.additional_projectiles_add_chains_instead {
             chain_count_max += extra;
@@ -754,8 +777,17 @@ pub struct SkillCosts {
 /// cost between the two. A resource the skill has no cost in stays 0.
 pub fn skill_costs(db: &ModDb, cfg: &CalcConfig) -> SkillCosts {
     let base = |name: &str| db.sum(ModType::Base, cfg, &[ModName::from(name)]);
-    let base_mana = base("SkillManaCostBase") + cost_from_maximum_pool(db, cfg, "Mana");
-    let base_life = base("SkillLifeCostBase") + cost_from_maximum_pool(db, cfg, "Life");
+    let base_mana = db
+        .override_(cfg, "BaseManaCostOverride")
+        .unwrap_or_else(|| base("SkillManaCostBase"))
+        + base("ManaCostBase")
+        + cost_from_maximum_pool(db, cfg, "Mana")
+        + cfg.stat("ManaUnreserved") * base("SkillUnreservedManaPercentCostBase") / 100.0;
+    let base_life = db
+        .override_(cfg, "BaseLifeCostOverride")
+        .unwrap_or_else(|| base("SkillLifeCostBase"))
+        + base("LifeCostBase")
+        + cost_from_maximum_pool(db, cfg, "Life");
     let has_mana_cost = base_mana > 0.0 || unscaled_cost(db, cfg, "Mana") > 0.0;
     let hybrid = hybrid_life_cost_share(db, cfg);
     let mana = if has_mana_cost {
@@ -964,4 +996,428 @@ pub fn calc_skill_cost_traced(
     trace.add_edge(support_mult_node.node_id, cost_node);
 
     (result, cost_node)
+}
+
+/// Skill effect durations share the general Duration modifiers; the first
+/// two channels also read their own PrimaryDuration / SecondaryDuration.
+/// The base_*_skill_effect_duration game stats arrive in seconds.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct SkillDurations {
+    pub primary: f64,
+    pub secondary: f64,
+    pub aura: f64,
+    pub reservation: f64,
+}
+
+/// The exact duration terms used by both calculation and the detail panel.
+#[derive(Debug, Clone, Copy)]
+pub struct DurationTerms {
+    pub base: f64,
+    pub modifier: f64,
+    pub expiration: f64,
+    pub tick: f64,
+}
+impl DurationTerms {
+    pub fn value(self) -> f64 {
+        if self.base <= 0.0 {
+            0.0
+        } else {
+            round((self.base * self.modifier * self.expiration / self.tick).ceil() * self.tick)
+        }
+    }
+}
+/// buff_time_passed_+%_only_buff_category: slower elapsed time extends buffs.
+pub fn buff_expiration_mult(db: &ModDb, cfg: &CalcConfig) -> f64 {
+    let rate = 1.0 + db.sum(ModType::Inc, cfg, &[ModName::from("BuffExpiryRate")]) / 100.0;
+    // A zero expiry rate has no finite duration; use the same finite 75% slow
+    // ceiling as other effect-expiry calculations.
+    1.0 / rate.max(cfg.constants.game().buff_expiration_slow_cap)
+}
+
+pub fn duration_terms(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig, stat: &str) -> DurationTerms {
+    let (base_name, scope, debuff) = match stat {
+        "Duration" => (
+            "SkillDurationBase",
+            Some("PrimaryDuration"),
+            "SkillDurationIsDebuff",
+        ),
+        "DurationSecondary" => (
+            "SkillDurationSecondaryBase",
+            Some("SecondaryDuration"),
+            "SkillDurationSecondaryIsDebuff",
+        ),
+        "AuraDuration" => ("SkillAuraDurationBase", None, "SkillAuraDurationIsDebuff"),
+        _ => (
+            "SkillReserveDurationBase",
+            None,
+            "SkillReserveDurationIsDebuff",
+        ),
+    };
+    let mut names = vec![ModName::from("Duration")];
+    if let Some(scope) = scope {
+        names.push(ModName::from(scope));
+    }
+    let base = db.sum(ModType::Base, cfg, &[ModName::from(base_name)])
+        + if scope.is_some() {
+            db.sum(ModType::Base, cfg, &names)
+        } else {
+            0.0
+        };
+    DurationTerms {
+        base,
+        modifier: ((1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names))
+            .max(0.0),
+        expiration: if db.flag(cfg, debuff) {
+            super::ailment::debuff_duration_mult(enemy, cfg)
+        } else if cfg
+            .skill_types
+            .intersects(SkillTypes::from_pob2_name("Buff").unwrap())
+        {
+            buff_expiration_mult(db, cfg)
+        } else {
+            1.0
+        },
+        tick: cfg.constants.game().server_tick_seconds,
+    }
+}
+pub fn skill_durations(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig) -> SkillDurations {
+    SkillDurations {
+        primary: duration_terms(db, enemy, cfg, "Duration").value(),
+        secondary: duration_terms(db, enemy, cfg, "DurationSecondary").value(),
+        aura: duration_terms(db, enemy, cfg, "AuraDuration").value(),
+        reservation: duration_terms(db, enemy, cfg, "ReserveDuration").value(),
+    }
+}
+
+/// Available projectile interactions. Fractional chance-based counts are
+/// averages, while the pure resolver determines which interactions can occur.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct ProjectileCounts {
+    pub pierce: f64,
+    pub fork: f64,
+    pub chain: f64,
+    pub split: f64,
+    pub bounce: f64,
+}
+
+pub fn projectile_behavior_counts(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig) -> ProjectileCounts {
+    let sum = |name: &str| db.sum(ModType::Base, cfg, &[ModName::from(name)]);
+    let flag = |name: &str| db.flag(cfg, name);
+    let projectile = cfg.flags.intersects(ModFlags::PROJECTILE) || sum("ProjectileCount") > 0.0;
+    // Conversions use additional projectiles even when the launched count is
+    // locked to one by "modifiers ... instead apply to chaining/splitting".
+    let additional = ((sum("ProjectileCount")
+        + 2.0 * sum("TwoAdditionalProjectilesChance") / 100.0
+        + sum("SurpassingProjectileChance") / 100.0
+        - 1.0)
+        * db.more(cfg, &[ModName::from("ProjectileCount")]))
+    .max(0.0);
+    let chain_names = if projectile {
+        vec![ModName::from("ChainCountMax")]
+    } else {
+        vec![
+            ModName::from("ChainCountMax"),
+            ModName::from("BeamChainCountMax"),
+        ]
+    };
+    let chain = ((db.sum(ModType::Base, cfg, &chain_names) + sum("ChainChance") / 100.0)
+        * db.more(cfg, &chain_names)
+        + if flag("AdditionalProjectilesAddChainsInstead") {
+            additional
+        } else {
+            0.0
+        })
+    .max(0.0);
+    let split = (sum("SplitCount")
+        + enemy.sum(ModType::Base, cfg, &[ModName::from("SelfSplitCount")])
+        + if flag("AdditionalProjectilesAddSplitsInstead") {
+            additional
+        } else {
+            0.0
+        }
+        + if flag("AdditionalChainsAddSplitsInstead") {
+            sum("ChainCountMax")
+        } else {
+            0.0
+        })
+    .max(0.0);
+    let pierce = (sum("PierceCount") + sum("PierceChance") / 100.0).max(0.0);
+    let projectile_number = SkillTypes::from_pob2_name("ProjectileNumber")
+        .is_some_and(|kind| cfg.skill_types.intersects(kind));
+    let input = ProjectileBehaviorInput {
+        cannot_split: !projectile || flag("CannotSplit") || projectile_number,
+        split_count: split.ceil() as u32,
+        cannot_pierce: !projectile || flag("CannotPierce"),
+        pierce_all_targets: flag("PierceAllTargets") || enemy.flag(cfg, "AlwaysPierceSelf"),
+        pierce_count: pierce.ceil() as u32,
+        cannot_fork: !projectile || flag("CannotFork"),
+        fork_once: flag("ForkOnce"),
+        fork_twice: flag("ForkTwice"),
+        fork_count_max: sum("ForkCountMax").max(0.0) as u32,
+        cannot_chain: flag("CannotChain") || flag("NoAdditionalChains"),
+        chain_count_max: chain.ceil() as u32,
+        ..ProjectileBehaviorInput::default()
+    };
+    let resolved = resolve_projectile_behavior(&input, 0);
+    ProjectileCounts {
+        pierce: if resolved.effective_pierce_all {
+            100.0
+        } else if resolved.pierce_count > 0 {
+            pierce
+        } else {
+            0.0
+        },
+        fork: resolved.fork_count_max as f64,
+        chain: if resolved.chain_count_max > 0 {
+            chain
+        } else {
+            0.0
+        },
+        split: if resolved.split_count > 0 { split } else { 0.0 },
+        bounce: if projectile {
+            (sum("BounceCount") * db.more(cfg, &[ModName::from("ProjectileCount")])
+                + if flag("AdditionalProjectilesAddBouncesInstead") {
+                    additional
+                } else {
+                    0.0
+                })
+            .max(0.0)
+        } else {
+            0.0
+        },
+    }
+}
+
+/// Highest requirement among equipment and active gems; support gems require
+/// five of their attribute each across the build. Global gem modifiers do not
+/// change this cumulative support requirement.
+pub fn attribute_requirements(db: &ModDb, cfg: &CalcConfig) -> [f64; 3] {
+    attribute_requirement_terms(db, cfg).map(|values| values.into_iter().fold(0.0, f64::max))
+}
+
+/// Adjusted category requirements, after substitutions and ignored requirements.
+pub fn attribute_requirement_terms(db: &ModDb, cfg: &CalcConfig) -> [[f64; 6]; 3] {
+    if db.flag(cfg, "IgnoreAttributeRequirements") {
+        return [[0.0; 6]; 3];
+    }
+    let mut global = cfg.clone();
+    global.flags = ModFlags::NONE;
+    global.keyword_flags = KeywordFlags::NONE;
+    let stat = |name: &str| cfg.stats.get(name).copied().unwrap_or(0.0);
+    let highest = ["Strength", "Dexterity", "Intelligence"]
+        .map(stat)
+        .into_iter()
+        .fold(0.0, f64::max);
+    let highest_satisfies = db.flag(
+        &global,
+        "GemAttributeRequirementsSatisfiedByHighestAttribute",
+    );
+    let strength_satisfies = db.flag(&global, "StrengthSatisfiesMeleeWeaponsAndSkills");
+    ["Str", "Dex", "Int"].map(|attr| {
+        let mut result = [0.0; 6];
+        result[0] = stat(&format!("SupportRequirement{attr}"));
+        for (index, category) in ["Item", "Weapon", "MeleeWeapon", "Gem", "MeleeGem"]
+            .into_iter()
+            .enumerate()
+        {
+            let gem = category.ends_with("Gem");
+            let mut names = vec![
+                ModName::from("GlobalAttributeRequirements"),
+                ModName::from(if gem {
+                    "GlobalGemAttributeRequirements"
+                } else {
+                    "GlobalItemAttributeRequirements"
+                }),
+            ];
+            if category.ends_with("Weapon") {
+                names.push(ModName::from("GlobalWeaponAttributeRequirements"));
+            }
+            let modifier = ((1.0 + db.sum(ModType::Inc, &global, &names) / 100.0)
+                * db.more(&global, &names))
+            .max(0.0);
+            let requirement = (stat(&format!("{category}Requirement{attr}")) * modifier).floor();
+            if (gem && highest_satisfies && highest >= requirement)
+                || (category.starts_with("Melee")
+                    && strength_satisfies
+                    && attr != "Str"
+                    && stat("Strength") >= requirement)
+            {
+                continue;
+            }
+            result[index + 1] = requirement;
+        }
+        result
+    })
+}
+
+/// Cost channels in Mana, Life, Energy Shield, Rage, Ward order.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct ResourceCosts {
+    pub upfront: [f64; 5],
+    pub percent: [f64; 5],
+    pub per_second: [f64; 5],
+    pub percent_per_second: [f64; 5],
+}
+
+pub fn resource_costs(db: &ModDb, cfg: &CalcConfig) -> ResourceCosts {
+    let mut costs = ResourceCosts::default();
+    if db.flag(cfg, "HasNoCost") {
+        return costs;
+    }
+    let sum = |name: &str| db.sum(ModType::Base, cfg, &[ModName::from(name)]);
+    let mult = support_cost_multiplier(db, cfg);
+    for (suffix, output) in [
+        ("", &mut costs.upfront),
+        ("Percent", &mut costs.percent),
+        ("PerSecond", &mut costs.per_second),
+        ("PercentPerSecond", &mut costs.percent_per_second),
+    ] {
+        let mut bases = [0.0; 5];
+        let mut raw_bases = [0.0; 5];
+        for (i, resource) in ["Mana", "Life", "ES", "Rage", "Ward"]
+            .into_iter()
+            .enumerate()
+        {
+            let key = format!("{resource}{suffix}");
+            let mut base = db
+                .override_(cfg, &format!("Base{key}CostOverride"))
+                .unwrap_or_else(|| sum(&format!("Skill{key}CostBase")))
+                + sum(&format!("{key}CostBase"));
+            if suffix.is_empty() && i < 2 {
+                base += cost_from_maximum_pool(db, cfg, resource);
+            }
+            if suffix.is_empty() && i == 0 {
+                base +=
+                    cfg.stat("ManaUnreserved") * sum("SkillUnreservedManaPercentCostBase") / 100.0;
+            }
+            raw_bases[i] = base * mult;
+            bases[i] = (raw_bases[i] + unscaled_cost(db, cfg, &key)).floor();
+        }
+        let hybrid = hybrid_life_cost_share(db, cfg);
+        bases[1] += (bases[0] * hybrid).round()
+            + raw_bases[0].floor() * base_mana_cost_as_life_share(db, cfg);
+        bases[2] += (bases[0] * sum("ManaCostAsEnergyShieldCost") / 100.0).round();
+        if suffix.is_empty() {
+            bases[4] += (bases[0] * sum("WardCostAsPercentOfManaCost") / 100.0).round()
+                + (bases[1] * sum("WardCostAsPercentOfLifeCost") / 100.0).round();
+        }
+        for (i, resource) in ["Mana", "Life", "ES", "Rage", "Ward"]
+            .into_iter()
+            .enumerate()
+        {
+            let flat = if suffix.is_empty() || suffix == "Percent" {
+                sum(&format!("{resource}{suffix}Cost")) + sum("Cost")
+            } else {
+                0.0
+            };
+            output[i] = (apply_cost_chain(db, cfg, resource, bases[i]) + flat).max(0.0);
+            if i == 0 && hybrid > 0.0 {
+                output[i] = (output[i] * (1.0 - hybrid)).floor();
+            }
+        }
+    }
+    // Keep the established Mana/Life rounding and conversion behavior. Their
+    // base channel is also used before damage for "per Life cost" modifiers.
+    let basic = skill_costs(db, cfg);
+    costs.upfront[0] = basic.mana;
+    costs.upfront[1] = basic.life;
+    costs
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct SkillTimings {
+    pub totem: f64,
+    pub trap: f64,
+    pub trap_count: f64,
+    pub mine: f64,
+    pub mine_count: f64,
+    pub warcry: f64,
+    pub channel: f64,
+}
+
+/// Placement and throwing speed apply to the character's use, independently
+/// of the proxy's hit rate. A channel's displayed time excludes its release.
+pub fn skill_timings(db: &ModDb, cfg: &CalcConfig, base_use_time: f64) -> SkillTimings {
+    let sum = |name: &str| db.sum(ModType::Base, cfg, &[ModName::from(name)]);
+    let modifier = |names: &[ModName]| {
+        ((1.0 + db.sum(ModType::Inc, cfg, names) / 100.0) * db.more(cfg, names)).max(0.0)
+    };
+    let action = super::skill_use_time::action_speed_factor(db, cfg);
+    let time = |base_name: &str, time_name: &str, speed_name: &str, time_mod: Option<&str>| {
+        let base = sum(base_name) + sum(time_name);
+        if base <= 0.0 || action <= 0.0 {
+            return 0.0;
+        }
+        let speed = modifier(&[ModName::from(speed_name)]) * action;
+        if speed <= 0.0 {
+            return 0.0;
+        }
+        let time_factor = time_mod.map_or(1.0, |name| modifier(&[ModName::from(name)]));
+        round((base * time_factor / speed).max(cfg.constants.game().server_tick_seconds))
+    };
+    let count = |name: &str| {
+        db.override_(cfg, name)
+            .unwrap_or_else(|| (1.0 + sum(name)) * modifier(&[ModName::from(name)]))
+            .max(0.0)
+    };
+    let trap_count = count("TrapThrowCount");
+    let mine_count = count("MineThrowCount");
+    let trap = time(
+        "SkillTrapThrowingTimeBase",
+        "TrapThrowingTime",
+        "TrapThrowingSpeed",
+        Some("SkillTrapThrowingTime"),
+    );
+    let mine = time(
+        "SkillMineLayingTimeBase",
+        "MineLayingTime",
+        "MineLayingSpeed",
+        Some("SkillMineThrowingTime"),
+    );
+    let minimum = sum("ChannelMinimumTime").max(sum(super::flameblast::MIN_CHANNEL) / 1000.0);
+    let channel = if minimum > 0.0
+        || sum("SkillChannelStages") > 0.0
+        || sum("SkillChannelStageTimeOverride") > 0.0
+    {
+        let speed = modifier(&super::skill_use_time::speed_names_for(cfg)) * action;
+        let stage = if sum("SkillChannelStageTimeOverride") > 0.0 {
+            sum("SkillChannelStageTimeOverride")
+        } else if speed > 0.0 {
+            base_use_time / speed
+        } else {
+            0.0
+        };
+        let stages = if sum(super::flameblast::MAX_STAGES) > 0.0 {
+            cfg.multiplier_if_set(super::flameblast::STAGE)
+                .unwrap_or(1.0)
+        } else {
+            sum("SkillChannelStages").max(1.0)
+        };
+        round((stage * stages).max(minimum))
+    } else {
+        0.0
+    };
+    SkillTimings {
+        totem: time(
+            "SkillTotemPlacementTimeBase",
+            "TotemPlacementTime",
+            "TotemPlacementSpeed",
+            None,
+        ),
+        trap,
+        trap_count: if trap > 0.0 { trap_count } else { 0.0 },
+        mine,
+        mine_count: if mine > 0.0 { mine_count } else { 0.0 },
+        warcry: if db.flag(cfg, "InstantWarcry") {
+            0.0
+        } else {
+            time(
+                "SkillWarcryCastTimeBase",
+                "WarcryCastTime",
+                "WarcrySpeed",
+                None,
+            )
+        },
+        channel,
+    }
 }

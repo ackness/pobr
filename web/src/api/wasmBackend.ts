@@ -1,3 +1,5 @@
+import type { UniqueEntry, UniqueDraft } from './uniques';
+import type { CraftingMetadata } from './itemCrafting';
 /**
  * wasm 后端：wasm-pack 产物加载 + 游戏数据 fetch/注入 + JSON 契约调用。
  *
@@ -18,6 +20,7 @@ import type {
   ConfigCatalogFile,
   SkillMetricsResponse,
   GemCatalogEntry,
+  MinionCatalog,
   ItemLineJson,
   NodePowerResponse,
   OptimizeVariantsResponse,
@@ -39,20 +42,29 @@ interface WasmModule {
   decodeBuildJson(code: string): string;
   decodeBuildLoadoutJson(requestJson: string): string;
   manageLoadoutJson(requestJson: string): string;
+  encodeBuildFileJson(request: string): string;
   decodeBuildFileJson(content: string): string;
   importTradeItemsJson(input: string): string;
   calculateBuildJson(requestJson: string): string;
   encodeBuildJson(requestJson: string): string;
   skillMetricsJson(requestJson: string): string;
+  importPartyMemberJson(code: string): string;
   attributionJson(requestJson: string): string;
   lineUsageJson(requestJson: string): string;
   gemCatalogJson(): string;
+  minionCatalogJson(): string;
   translateLinesToZhCn(linesJson: string): string;
   classifyItemLinesJson(text: string): string;
   runeCatalogJson(itemText: string): string;
   itemAugmentInfoJson(itemText: string): string;
   reforgeRunesJson(requestJson: string): string;
+  uniqueCatalogJson(): string;
+  uniqueItemDraftJson(request: string): string;
+  itemCraftingCatalogJson(): string;
+  normalizeItemDraftJson(text: string): string;
   nodePowerJson(requestJson: string): string;
+  previewTreeConversionJson(requestJson: string): string;
+  previewTreeEditJson(requestJson: string): string;
   optimizeVariantsJson(requestJson: string): string;
   supportGroupsCompatibleJson(requestJson: string): string;
   translate(lang: string, key: string): string;
@@ -179,9 +191,13 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     async calculateBuild(request: CalculateBuildRequest) {
       return JSON.parse(wasm.calculateBuildJson(JSON.stringify(request))) as CalculateBuildResponse;
     },
+    async encodeBuildFile(request) {
+      return JSON.parse(wasm.encodeBuildFileJson(JSON.stringify(request)));
+    },
     async encodeBuild(request) {
       return wasm.encodeBuildJson(JSON.stringify(request));
     },
+    async importPartyMember(code) { return JSON.parse(wasm.importPartyMemberJson(code)); },
     async skillMetrics(request) {
       return JSON.parse(wasm.skillMetricsJson(JSON.stringify(request))) as SkillMetricsResponse;
     },
@@ -237,6 +253,9 @@ export async function createWasmBackend(): Promise<PobrBackend> {
         return null; // 美术未生成（未跑 build-tree-art）→ 回退纯圆点。
       }
     },
+    async minionCatalog() {
+      return JSON.parse(wasm.minionCatalogJson()) as MinionCatalog;
+    },
     async gemCatalog() {
       return JSON.parse(wasm.gemCatalogJson()) as GemCatalogEntry[];
     },
@@ -246,10 +265,16 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     async classifyItemLines(text) {
       return JSON.parse(wasm.classifyItemLinesJson(text)) as ItemLineJson[];
     },
-    async nodePower(request, powerStat, maxDepth) {
+    async previewTreeConversion(code, allSpecs) {
+      return JSON.parse(wasm.previewTreeConversionJson(JSON.stringify({ code, all_specs: allSpecs })));
+    },
+    async previewTreeEdit(request, node, mode, action) {
+      return JSON.parse(wasm.previewTreeEditJson(JSON.stringify({ request, node, mode, action })));
+    },
+    async nodePower(request, powerStat, maxDepth, nodes) {
       return JSON.parse(
         wasm.nodePowerJson(
-          JSON.stringify({ request, power_stat: powerStat, max_depth: maxDepth }),
+          JSON.stringify({ request, power_stat: powerStat, max_depth: maxDepth, nodes }),
         ),
       ) as NodePowerResponse;
     },
@@ -266,6 +291,14 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     },
     async itemAugmentInfo(text) {
       return JSON.parse(wasm.itemAugmentInfoJson(text)) as ItemAugmentInfo;
+    },
+    async uniqueCatalog() { return JSON.parse(wasm.uniqueCatalogJson()) as UniqueEntry[]; },
+    async uniqueItemDraft(selection) { return JSON.parse(wasm.uniqueItemDraftJson(JSON.stringify(selection))) as UniqueDraft; },
+    async itemCraftingCatalog() {
+      return JSON.parse(wasm.itemCraftingCatalogJson()) as CraftingMetadata;
+    },
+    async normalizeItemDraft(text) {
+      return (JSON.parse(wasm.normalizeItemDraftJson(text)) as { text: string }).text;
     },
     async reforgeRunes(text, runes, sockets) {
       const out = JSON.parse(

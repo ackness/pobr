@@ -3,7 +3,7 @@ import type { GemCatalogEntry, SkillMetricsEntry, SocketGroupInput } from '../ap
 /** PoB ordinals count all active effects, not gems or display/stat-set aliases. */
 export function activeSkillEffects(group: SocketGroupInput, catalog: ReadonlyMap<string, Pick<GemCatalogEntry, 'active_effect_ids'>>) {
   return group.gems.flatMap((gem, gemIndex) => {
-    if (!gem.skill_id) return [];
+    if (!gem.skill_id || gem.enabled === false) return [];
     const entry = catalog.get(gem.skill_id);
     const ids = entry ? entry.active_effect_ids : [gem.skill_id];
     return ids.map(skillId => ({ skillId, gemIndex }));
@@ -74,4 +74,11 @@ export function highestDpsSkill(
     if (!best || entry.metrics.combined_dps > best.metrics!.combined_dps) best = entry;
   }
   return best;
+}
+
+/** Preserve the inspected effect when another gem is enabled or disabled. */
+export function withGemEnabled(group: SocketGroupInput, gemIndex: number, enabled: boolean,
+  catalog: ReadonlyMap<string, GemCatalogEntry>): SocketGroupInput {
+  const next = { ...group, gems: group.gems.map((gem, index) => index === gemIndex ? { ...gem, enabled } : gem) };
+  return preserveSkillSelection(group, next, catalog) ?? { ...next, main_active_skill: 1 };
 }

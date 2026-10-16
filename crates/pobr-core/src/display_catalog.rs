@@ -3,13 +3,11 @@
 //! Maps calculation results ([`OutputTable`](crate::calc::OutputTable)) to the
 //! stable [`DisplayStatDefinition`] / [`DisplayStatValue`] (pobr-data
 //! contract) consumed by upstream UI / parity checks. Calculations use only
-//! stable IDs internally; display text goes through i18n (not yet
-//! implemented).
+//! stable IDs internally; display text goes through i18n.
 //!
 //! - [`display_catalog`]: statically declares every display field (id /
 //!   category / value type / higher-is-better / PoB key). Computed fields are
-//!   marked `Computed`, not-yet-landed ones `Planned` (the defence extension
-//!   batch was fully flipped to `Computed` in F-3).
+//!   marked `Computed`, not-yet-landed ones `Planned`.
 //! - [`extract_display_values`]: extracts the current value of every
 //!   `Computed` field from an `OutputTable`.
 
@@ -25,15 +23,311 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
     let computed = |id: &str, cat: Cat, vt: Vt, pob: &str| {
         DisplayStatDefinition::computed(id, cat, vt).with_pob_key(pob)
     };
-    // Defence extensions (entered the catalog as Planned in W0.2): once the
-    // C/D/E/F tracks finish wiring up, F-3 (the sole exception to the
-    // output.rs/display_catalog freeze) flips them all to Computed at once —
-    // all 24 extension fields are produced by the perform fill stage.
-
-    vec![
+    let mut catalog = vec![
+        computed("DecayDPS", Cat::DotDamage, Vt::Number, "DecayDPS"),
+        computed(
+            "MirageBurningGroundDPS",
+            Cat::DotDamage,
+            Vt::Number,
+            "MirageBurningGroundDPS",
+        ),
+        computed("ReservationDPS", Cat::Offence, Vt::Number, "ReservationDPS"),
+        computed("NetWardRegen", Cat::Recovery, Vt::Number, "NetWardRegen"),
+        computed("MirageDPS", Cat::Offence, Vt::Number, "MirageDPS"),
+        computed(
+            "BurningGroundDPS",
+            Cat::DotDamage,
+            Vt::Number,
+            "BurningGroundDPS",
+        ),
+        computed(
+            "EffectiveMovementSpeedMod",
+            Cat::Defence,
+            Vt::Number,
+            "EffectiveMovementSpeedMod",
+        ),
+        computed(
+            "MovementSpeedWhileUsingSkill",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "MovementSpeedWhileUsingSkill",
+        ),
+        computed(
+            "PresenceRadiusMetres",
+            Cat::Defence,
+            Vt::Number,
+            "PresenceRadiusMetres",
+        ),
+        computed(
+            "AuraEffectMod",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "AuraEffectMod",
+        ),
+        computed(
+            "CurseEffectMod",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "CurseEffectMod",
+        ),
+        computed(
+            "ActiveMinionLimit",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "ActiveMinionLimit",
+        ),
+        computed("ExplodeChance", Cat::Offence, Vt::Percent, "ExplodeChance"),
+        computed(
+            "CombinedAvgToMonsterLife",
+            Cat::Offence,
+            Vt::Percent,
+            "CombinedAvgToMonsterLife",
+        ),
+        computed("CritBifurcates", Cat::Offence, Vt::Number, "CritBifurcates"),
+        // Damage and accuracy views
+        computed("AverageDamage", Cat::Offence, Vt::Number, "AverageDamage"),
+        computed(
+            "AverageBurstDamage",
+            Cat::Offence,
+            Vt::Number,
+            "AverageBurstDamage",
+        ),
+        computed("CombinedAvg", Cat::Offence, Vt::Number, "CombinedAvg"),
+        computed("HitSpeed", Cat::SkillMechanics, Vt::Number, "HitSpeed"),
+        computed("IgniteDamage", Cat::DotDamage, Vt::Number, "IgniteDamage"),
+        computed("BleedDamage", Cat::DotDamage, Vt::Number, "BleedDamage"),
+        computed("PoisonDamage", Cat::DotDamage, Vt::Number, "PoisonDamage"),
+        computed("WithIgniteDPS", Cat::Offence, Vt::Number, "WithIgniteDPS"),
+        computed("WithBleedDPS", Cat::Offence, Vt::Number, "WithBleedDPS"),
+        computed("WithPoisonDPS", Cat::Offence, Vt::Number, "WithPoisonDPS"),
+        computed(
+            "MainHandAccuracy",
+            Cat::Offence,
+            Vt::Number,
+            "MainHand.Accuracy",
+        ),
+        computed(
+            "OffHandAccuracy",
+            Cat::Offence,
+            Vt::Number,
+            "OffHand.Accuracy",
+        ),
+        computed(
+            "AccuracyHitChanceUncapped",
+            Cat::Offence,
+            Vt::Percent,
+            "AccuracyHitChanceUncapped",
+        ),
+        computed(
+            "QuantityMultiplier",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "QuantityMultiplier",
+        ),
+        computed("Duration", Cat::SkillMechanics, Vt::TimeSeconds, "Duration"),
+        computed(
+            "DurationSecondary",
+            Cat::SkillMechanics,
+            Vt::TimeSeconds,
+            "DurationSecondary",
+        ),
+        computed(
+            "AuraDuration",
+            Cat::SkillMechanics,
+            Vt::TimeSeconds,
+            "AuraDuration",
+        ),
+        computed(
+            "ReserveDuration",
+            Cat::SkillMechanics,
+            Vt::TimeSeconds,
+            "ReserveDuration",
+        ),
+        computed(
+            "AreaOfEffectRadiusMetres",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "AreaOfEffectRadiusMetres",
+        ),
+        computed(
+            "PierceCount",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "PierceCountString",
+        ),
+        computed(
+            "ForkCount",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "ForkCountString",
+        ),
+        computed(
+            "ChainMax",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "ChainMaxString",
+        ),
+        computed(
+            "SplitCount",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "SplitCountString",
+        ),
+        computed(
+            "BounceCount",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "BounceCount",
+        ),
+        computed("ReqStr", Cat::Requirement, Vt::Number, "ReqStr"),
+        computed("ReqDex", Cat::Requirement, Vt::Number, "ReqDex"),
+        computed("ReqInt", Cat::Requirement, Vt::Number, "ReqInt"),
+        computed(
+            "ManaPercentCost",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "ManaPercentCost",
+        ),
+        computed(
+            "ManaPercentPerSecondCost",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "ManaPercentPerSecondCost",
+        ),
+        computed(
+            "ManaPerSecondCost",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "ManaPerSecondCost",
+        ),
+        computed(
+            "LifePercentCost",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "LifePercentCost",
+        ),
+        computed(
+            "LifePercentPerSecondCost",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "LifePercentPerSecondCost",
+        ),
+        computed(
+            "LifePerSecondCost",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "LifePerSecondCost",
+        ),
+        computed("ESCost", Cat::SkillMechanics, Vt::Number, "ESCost"),
+        computed(
+            "ESPercentCost",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "ESPercentCost",
+        ),
+        computed(
+            "ESPercentPerSecondCost",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "ESPercentPerSecondCost",
+        ),
+        computed(
+            "ESPerSecondCost",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "ESPerSecondCost",
+        ),
+        computed("WardCost", Cat::SkillMechanics, Vt::Number, "WardCost"),
+        computed(
+            "WardPercentCost",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "WardPercentCost",
+        ),
+        computed(
+            "WardPercentPerSecondCost",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "WardPercentPerSecondCost",
+        ),
+        computed(
+            "WardPerSecondCost",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "WardPerSecondCost",
+        ),
+        computed("RageCost", Cat::SkillMechanics, Vt::Number, "RageCost"),
+        computed(
+            "RagePerSecondCost",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "RagePerSecondCost",
+        ),
+        computed(
+            "TotalTotemPlacementTime",
+            Cat::SkillMechanics,
+            Vt::TimeSeconds,
+            "TotemPlacementTime",
+        ),
+        computed(
+            "TrapThrowingTime",
+            Cat::SkillMechanics,
+            Vt::TimeSeconds,
+            "TrapThrowingTime",
+        ),
+        computed(
+            "TrapThrowCount",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "TrapThrowCount",
+        ),
+        computed(
+            "MineLayingTime",
+            Cat::SkillMechanics,
+            Vt::TimeSeconds,
+            "MineLayingTime",
+        ),
+        computed(
+            "MineThrowCount",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "MineThrowCount",
+        ),
+        computed(
+            "WarcryCastTime",
+            Cat::SkillMechanics,
+            Vt::TimeSeconds,
+            "WarcryCastTime",
+        ),
+        computed(
+            "ChannelTime",
+            Cat::SkillMechanics,
+            Vt::TimeSeconds,
+            "ChannelTime",
+        ),
+        computed(
+            "ChannelTimeToTrigger",
+            Cat::SkillMechanics,
+            Vt::TimeSeconds,
+            "ChannelTimeToTrigger",
+        ),
+        computed(
+            "ArchonDuration",
+            Cat::SkillMechanics,
+            Vt::TimeSeconds,
+            "ArchonDuration",
+        ),
+        computed(
+            "ArchonRecoveryPeriod",
+            Cat::SkillMechanics,
+            Vt::TimeSeconds,
+            "ArchonRecoveryPeriod",
+        ),
         // Offence
         computed("TotalDPS", Cat::Offence, Vt::Number, "TotalDPS"),
         computed("TotalHitAvg", Cat::HitDamage, Vt::Number, "AverageHit"),
+        computed("FullDPS", Cat::Offence, Vt::Number, "FullDPS"),
+        computed("FullDotDPS", Cat::DotDamage, Vt::Number, "FullDotDPS"),
         computed("CombinedDPS", Cat::Offence, Vt::Number, "CombinedDPS"),
         computed("Accuracy", Cat::Offence, Vt::Number, "Accuracy"),
         computed("HitChance", Cat::Offence, Vt::Percent, "HitChance"),
@@ -51,7 +345,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         computed("BleedDPS", Cat::DotDamage, Vt::Number, "BleedDPS"),
         computed("IgniteDPS", Cat::DotDamage, Vt::Number, "IgniteDPS"),
         computed("PoisonDPS", Cat::DotDamage, Vt::Number, "PoisonDPS"),
-        computed("ShockEffect", Cat::Ailment, Vt::Percent, "ShockEffectMod"),
+        computed("ShockEffect", Cat::Ailment, Vt::Number, "ShockEffectMod"),
         // Resource
         computed("Life", Cat::Resource, Vt::Number, "Life"),
         computed("Mana", Cat::Resource, Vt::Number, "Mana"),
@@ -73,6 +367,87 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             "ManaUnreserved",
         ),
         // Recovery
+        computed(
+            "LifeRegenRecovery",
+            Cat::Recovery,
+            Vt::Number,
+            "LifeRegenRecovery",
+        ),
+        computed(
+            "ManaRegenRecovery",
+            Cat::Recovery,
+            Vt::Number,
+            "ManaRegenRecovery",
+        ),
+        computed(
+            "EnergyShieldRegenRecovery",
+            Cat::Recovery,
+            Vt::Number,
+            "EnergyShieldRegenRecovery",
+        ),
+        computed(
+            "WardRegenRecovery",
+            Cat::Recovery,
+            Vt::Number,
+            "WardRegenRecovery",
+        ),
+        computed(
+            "RageRegenRecovery",
+            Cat::Recovery,
+            Vt::Number,
+            "RageRegenRecovery",
+        ),
+        computed("NetLifeRegen", Cat::Recovery, Vt::Number, "NetLifeRegen"),
+        computed("NetManaRegen", Cat::Recovery, Vt::Number, "NetManaRegen"),
+        computed(
+            "NetEnergyShieldRegen",
+            Cat::Recovery,
+            Vt::Number,
+            "NetEnergyShieldRegen",
+        ),
+        computed("TotalNetRegen", Cat::Recovery, Vt::Number, "TotalNetRegen"),
+        computed(
+            "TotalBuildDegen",
+            Cat::Recovery,
+            Vt::Number,
+            "TotalBuildDegen",
+        ),
+        computed(
+            "LifeLeechGainRate",
+            Cat::Recovery,
+            Vt::Number,
+            "LifeLeechGainRate",
+        ),
+        computed(
+            "ManaLeechGainRate",
+            Cat::Recovery,
+            Vt::Number,
+            "ManaLeechGainRate",
+        ),
+        computed(
+            "EnergyShieldLeechGainRate",
+            Cat::Recovery,
+            Vt::Number,
+            "EnergyShieldLeechGainRate",
+        ),
+        computed(
+            "LifeLeechGainPerHit",
+            Cat::Recovery,
+            Vt::Number,
+            "LifeLeechGainPerHit",
+        ),
+        computed(
+            "ManaLeechGainPerHit",
+            Cat::Recovery,
+            Vt::Number,
+            "ManaLeechGainPerHit",
+        ),
+        computed(
+            "EnergyShieldLeechGainPerHit",
+            Cat::Recovery,
+            Vt::Number,
+            "EnergyShieldLeechGainPerHit",
+        ),
         computed("LifeRegen", Cat::Recovery, Vt::Number, "LifeRegen"),
         computed("ManaRegen", Cat::Recovery, Vt::Number, "ManaRegen"),
         computed(
@@ -93,6 +468,30 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             "LightningResist",
         ),
         computed("ChaosResist", Cat::Resistance, Vt::Percent, "ChaosResist"),
+        computed(
+            "FireResistMax",
+            Cat::Resistance,
+            Vt::Percent,
+            "FireResistMax",
+        ),
+        computed(
+            "ColdResistMax",
+            Cat::Resistance,
+            Vt::Percent,
+            "ColdResistMax",
+        ),
+        computed(
+            "LightningResistMax",
+            Cat::Resistance,
+            Vt::Percent,
+            "LightningResistMax",
+        ),
+        computed(
+            "ChaosResistMax",
+            Cat::Resistance,
+            Vt::Percent,
+            "ChaosResistMax",
+        ),
         computed("BlockChance", Cat::Avoidance, Vt::Percent, "BlockChance"),
         computed(
             "SpellBlockChance",
@@ -284,6 +683,27 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "EnergyShieldRecoupRate",
         ),
+        computed(
+            "AilmentThreshold",
+            Cat::Defence,
+            Vt::Number,
+            "AilmentThreshold",
+        ),
+        computed("LifeOnKill", Cat::Recovery, Vt::Number, "LifeOnKill"),
+        computed("ManaOnKill", Cat::Recovery, Vt::Number, "ManaOnKill"),
+        computed(
+            "EnergyShieldOnKill",
+            Cat::Recovery,
+            Vt::Number,
+            "EnergyShieldOnKill",
+        ),
+        computed("DazeChance", Cat::Ailment, Vt::Percent, "DazeChance"),
+        computed(
+            "FullyBrokenArmourEffect",
+            Cat::Ailment,
+            Vt::Percent,
+            "FullyBrokenArmourEffect",
+        ),
         // Ailment extensions (Wave 2 / Lane B)
         computed("ChillEffect", Cat::Ailment, Vt::Percent, "ChillEffect"),
         computed(
@@ -327,7 +747,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         computed(
             "AoeAreaMod",
             Cat::SkillMechanics,
-            Vt::Percent,
+            Vt::Number,
             "AreaOfEffectMod",
         ),
         computed(
@@ -397,9 +817,8 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Percent,
             "EffectiveSpellBlockChance",
         ),
-        // The share of damage still taken on a blocked hit: lower is better.
-        computed("BlockEffect", Cat::Mitigation, Vt::Percent, "BlockEffect")
-            .with_higher_is_better(Some(false)),
+        // The percentage of incoming hit damage prevented by a block.
+        computed("BlockEffect", Cat::Mitigation, Vt::Percent, "BlockEffect"),
         // Deflection (Track D; CalcDefence.lua:48-54, :1487-1506).
         computed(
             "DeflectionRating",
@@ -498,7 +917,125 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "TotalEHPLowestMaxHit",
         ),
-    ]
+        // Additional sidebar views of the calculation's existing results.
+        computed("Str", Cat::Requirement, Vt::Number, "Str"),
+        computed("Dex", Cat::Requirement, Vt::Number, "Dex"),
+        computed("Int", Cat::Requirement, Vt::Number, "Int"),
+        computed("Rage", Cat::Resource, Vt::Number, "Rage"),
+        computed(
+            "FireResistOverCap",
+            Cat::Resistance,
+            Vt::Percent,
+            "FireResistOverCap",
+        ),
+        computed(
+            "ColdResistOverCap",
+            Cat::Resistance,
+            Vt::Percent,
+            "ColdResistOverCap",
+        ),
+        computed(
+            "LightningResistOverCap",
+            Cat::Resistance,
+            Vt::Percent,
+            "LightningResistOverCap",
+        ),
+        computed(
+            "ChaosResistOverCap",
+            Cat::Resistance,
+            Vt::Percent,
+            "ChaosResistOverCap",
+        ),
+        computed(
+            "LifeUnreservedPercent",
+            Cat::Resource,
+            Vt::Percent,
+            "LifeUnreservedPercent",
+        ),
+        computed(
+            "ManaUnreservedPercent",
+            Cat::Resource,
+            Vt::Percent,
+            "ManaUnreservedPercent",
+        ),
+        computed(
+            "SpiritUnreservedPercent",
+            Cat::Resource,
+            Vt::Percent,
+            "SpiritUnreservedPercent",
+        ),
+        computed(
+            "PreEffectiveCritChance",
+            Cat::Offence,
+            Vt::Percent,
+            "PreEffectiveCritChance",
+        ),
+        computed("StoredUses", Cat::SkillMechanics, Vt::Number, "StoredUses"),
+        computed("TotalDot", Cat::DotDamage, Vt::Number, "TotalDot"),
+        computed("WithDotDPS", Cat::Offence, Vt::Number, "WithDotDPS"),
+        computed("FiringRate", Cat::SkillMechanics, Vt::Number, "FiringRate"),
+        computed(
+            "ReloadTime",
+            Cat::SkillMechanics,
+            Vt::TimeSeconds,
+            "ReloadTime",
+        )
+        .with_higher_is_better(Some(false)),
+        computed("CullingDPS", Cat::Offence, Vt::Number, "CullingDPS"),
+        computed(
+            "ProjectileSpeedMod",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "ProjectileSpeedMod",
+        ),
+    ];
+    for (id, _) in crate::calc::utility::GLOBAL_STATS {
+        catalog.push(computed(
+            id,
+            Cat::Recovery,
+            if *id == "FlaskEffect" {
+                Vt::Percent
+            } else {
+                Vt::Number
+            },
+            id,
+        ));
+    }
+    for (kind, count) in [("Flask", 2), ("Charm", 3)] {
+        for slot in 1..=count {
+            for field in crate::calc::utility::ITEM_STATS
+                .iter()
+                .chain(if kind == "Charm" {
+                    crate::calc::utility::CHARM_STATS
+                } else {
+                    crate::calc::utility::FLASK_STATS
+                })
+            {
+                if kind == "Charm"
+                    && field.contains("Recovery")
+                    && !crate::calc::utility::CHARM_STATS.contains(field)
+                {
+                    continue;
+                }
+                let id = format!("{kind}{slot}{field}");
+                let vt = if *field == "Duration" {
+                    Vt::TimeSeconds
+                } else {
+                    Vt::Number
+                };
+                catalog.push(
+                    DisplayStatDefinition::computed(id.as_str(), Cat::Recovery, vt)
+                        .with_pob_key(id.as_str())
+                        .with_higher_is_better(if *field == "ChargesUsed" {
+                            Some(false)
+                        } else {
+                            None
+                        }),
+                );
+            }
+        }
+    }
+    catalog
 }
 
 /// Extracts the current value of every `Computed` display field from an
@@ -507,6 +1044,13 @@ pub fn extract_display_values(output: &OutputTable) -> Vec<DisplayStatValue> {
     display_catalog()
         .into_iter()
         .filter(|def| def.parity_status == ParityStatus::Computed)
+        .filter(|def| {
+            output.full_dps.is_some() || !matches!(def.id.as_str(), "FullDPS" | "FullDotDPS")
+        })
+        .filter(|def| {
+            crate::calc::utility::item_stat(def.id.as_str()).is_none()
+                || output.utility_stats.contains_key(def.id.as_str())
+        })
         .map(|def| {
             let value = display_value(output, def.id.as_str());
             DisplayStatValue {
@@ -522,7 +1066,100 @@ pub fn extract_display_values(output: &OutputTable) -> Vec<DisplayStatValue> {
 /// [`extract_display_values`], including fractional chance to percent conversion.
 /// Unknown ids return 0.
 pub fn display_value(output: &OutputTable, id: &str) -> f64 {
+    if let Some(value) = output.utility_stats.get(id) {
+        return *value;
+    }
     match id {
+        "DecayDPS" => output.decay_dps,
+        "MirageBurningGroundDPS" => output.mirage_burning_ground_dps,
+
+        "ReservationDPS" => output.reservation_dps,
+        "NetWardRegen" => output.net_ward_regen,
+        "MirageDPS" => output.mirage_dps,
+        "BurningGroundDPS" => output.burning_ground_dps,
+
+        "EffectiveMovementSpeedMod" => output.effective_movement_speed_mod,
+        "MovementSpeedWhileUsingSkill" => output.movement_speed_while_using_skill,
+        "PresenceRadiusMetres" => output.presence_radius_metres,
+        "AuraEffectMod" => output.aura_effect_mod,
+        "CurseEffectMod" => output.curse_effect_mod,
+        "ActiveMinionLimit" => output.active_minion_limit,
+        "ExplodeChance" => output.explode_chance,
+        "CombinedAvgToMonsterLife" => output.combined_avg_to_monster_life,
+        "CritBifurcates" => output.crit_bifurcates,
+
+        "TotalTotemPlacementTime" => output.total_totem_placement_time,
+        "TrapThrowingTime" => output.trap_throwing_time,
+        "TrapThrowCount" => output.trap_throw_count,
+        "MineLayingTime" => output.mine_laying_time,
+        "MineThrowCount" => output.mine_throw_count,
+        "WarcryCastTime" => output.warcry_cast_time,
+        "ChannelTime" => output.channel_time,
+        "ChannelTimeToTrigger" => output.channel_time_to_trigger,
+        "ArchonDuration" => output.archon_duration,
+        "ArchonRecoveryPeriod" => output.archon_recovery_period,
+        "ManaPercentCost" => output.mana_percent_cost,
+        "ManaPercentPerSecondCost" => output.mana_percent_per_second_cost,
+        "ManaPerSecondCost" => output.mana_per_second_cost,
+        "LifePercentCost" => output.life_percent_cost,
+        "LifePercentPerSecondCost" => output.life_percent_per_second_cost,
+        "LifePerSecondCost" => output.life_per_second_cost,
+        "ESCost" => output.es_cost,
+        "ESPercentCost" => output.es_percent_cost,
+        "ESPercentPerSecondCost" => output.es_percent_per_second_cost,
+        "ESPerSecondCost" => output.es_per_second_cost,
+        "WardCost" => output.ward_cost,
+        "WardPercentCost" => output.ward_percent_cost,
+        "WardPercentPerSecondCost" => output.ward_percent_per_second_cost,
+        "WardPerSecondCost" => output.ward_per_second_cost,
+        "RageCost" => output.rage_cost,
+        "RagePerSecondCost" => output.rage_per_second_cost,
+        "ReqStr" => output.req_str,
+        "ReqDex" => output.req_dex,
+        "ReqInt" => output.req_int,
+        "PierceCount" => output.pierce_count,
+        "ForkCount" => output.fork_count,
+        "ChainMax" => output.chain_max,
+        "SplitCount" => output.split_count,
+        "BounceCount" => output.bounce_count,
+        "AreaOfEffectRadiusMetres" => output.aoe_radius / 10.0,
+        "Duration" => output.duration,
+        "DurationSecondary" => output.duration_secondary,
+        "AuraDuration" => output.aura_duration,
+        "ReserveDuration" => output.reserve_duration,
+        "AverageDamage" => output.average_damage,
+        "AverageBurstDamage" => output.average_burst_damage,
+        "CombinedAvg" => output.combined_avg,
+        "HitSpeed" => output.hit_speed,
+        "IgniteDamage" => output.ignite_damage,
+        "BleedDamage" => output.bleed_damage,
+        "PoisonDamage" => output.poison_damage,
+        "WithIgniteDPS" => output.with_ignite_dps,
+        "WithBleedDPS" => output.with_bleed_dps,
+        "WithPoisonDPS" => output.with_poison_dps,
+        "MainHandAccuracy" => output.main_hand.as_ref().map_or(0.0, |hand| hand.accuracy),
+        "OffHandAccuracy" => output.off_hand.as_ref().map_or(0.0, |hand| hand.accuracy),
+        "AccuracyHitChanceUncapped" => output.accuracy_hit_chance_uncapped,
+        "QuantityMultiplier" => output.quantity_multiplier,
+        "Str" => output.strength,
+        "Dex" => output.dexterity,
+        "Int" => output.intelligence,
+        "Rage" => output.rage,
+        "FireResistOverCap" => output.fire_resistance_over_cap,
+        "ColdResistOverCap" => output.cold_resistance_over_cap,
+        "LightningResistOverCap" => output.lightning_resistance_over_cap,
+        "ChaosResistOverCap" => output.chaos_resistance_over_cap,
+        "LifeUnreservedPercent" => unreserved_percent(output.life_unreserved, output.life),
+        "ManaUnreservedPercent" => unreserved_percent(output.mana_unreserved, output.mana),
+        "SpiritUnreservedPercent" => unreserved_percent(output.spirit_unreserved, output.spirit),
+        "PreEffectiveCritChance" => output.pre_effective_crit_chance * 100.0,
+        "StoredUses" => f64::from(output.cooldown_stored_uses),
+        "TotalDot" => output.skill_total_dot,
+        "WithDotDPS" => output.with_dot_dps,
+        "FiringRate" => output.firing_rate,
+        "ReloadTime" => output.reload_time,
+        "CullingDPS" => output.culling_dps,
+        "ProjectileSpeedMod" => output.projectile_speed_mod,
         "TotalDPS" => output.dps,
         "TotalHitAvg" => output.total_hit_avg,
         // hit_chance / crit_chance are fractions (0..1) on the calc side, but
@@ -534,12 +1171,14 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "EffectiveActionRate" => output.effective_action_rate,
         "CritChance" => output.crit_chance * 100.0,
         "CritMultiplier" => output.crit_multiplier,
+        "FullDPS" => output.full_dps.as_ref().map_or(0.0, |full| full.dps),
+        "FullDotDPS" => output.full_dps.as_ref().map_or(0.0, |full| full.dot_dps),
         "CombinedDPS" => output.combined_dps,
         "TotalDotDPS" => output.total_dot_dps,
         "BleedDPS" => output.bleed_dps,
         "IgniteDPS" => output.ignite_dps,
         "PoisonDPS" => output.poison_dps,
-        "ShockEffect" => output.shock_effect,
+        "ShockEffect" => output.shock_effect_mod,
         "Life" => output.life,
         "Mana" => output.mana,
         "EnergyShield" => output.energy_shield,
@@ -547,6 +1186,22 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "LifeUnreserved" => output.life_unreserved,
         "ManaReserved" => output.mana_reserved,
         "ManaUnreserved" => output.mana_unreserved,
+        "LifeRegenRecovery" => output.life_regen_recovery,
+        "ManaRegenRecovery" => output.mana_regen_recovery,
+        "EnergyShieldRegenRecovery" => output.energy_shield_regen_recovery,
+        "WardRegenRecovery" => output.ward_regen_recovery,
+        "RageRegenRecovery" => output.rage_regen_recovery,
+        "NetLifeRegen" => output.net_life_regen,
+        "NetManaRegen" => output.net_mana_regen,
+        "NetEnergyShieldRegen" => output.net_energy_shield_regen,
+        "TotalNetRegen" => output.total_net_regen,
+        "TotalBuildDegen" => output.total_build_degen,
+        "LifeLeechGainRate" => output.life_leech_gain_rate,
+        "ManaLeechGainRate" => output.mana_leech_gain_rate,
+        "EnergyShieldLeechGainRate" => output.energy_shield_leech_gain_rate,
+        "LifeLeechGainPerHit" => output.life_leech_gain_per_hit,
+        "ManaLeechGainPerHit" => output.mana_leech_gain_per_hit,
+        "EnergyShieldLeechGainPerHit" => output.energy_shield_leech_gain_per_hit,
         "LifeRegen" => output.life_regen,
         "ManaRegen" => output.mana_regen,
         "EnergyShieldRegen" => output.energy_shield_regen,
@@ -556,6 +1211,10 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "ColdResist" => output.cold_resistance,
         "LightningResist" => output.lightning_resistance,
         "ChaosResist" => output.chaos_resistance,
+        "FireResistMax" => output.max_fire_resistance,
+        "ColdResistMax" => output.max_cold_resistance,
+        "LightningResistMax" => output.max_lightning_resistance,
+        "ChaosResistMax" => output.max_chaos_resistance,
         "BlockChance" => output.block_chance,
         "SpellBlockChance" => output.spell_block_chance,
         "TotalEHP" => output.total_ehp,
@@ -607,6 +1266,12 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
 
         // Ailment extensions
         "ChillEffect" => output.chill_effect,
+        "AilmentThreshold" => output.ailment_threshold,
+        "LifeOnKill" => output.life_on_kill,
+        "ManaOnKill" => output.mana_on_kill,
+        "EnergyShieldOnKill" => output.energy_shield_on_kill,
+        "DazeChance" => output.daze_chance,
+        "FullyBrokenArmourEffect" => output.fully_broken_armour_effect,
         "FreezeBuildupPct" => output.freeze_buildup_pct,
         "ElectrocuteBuildupPct" => output.electrocute_buildup_pct,
         "BleedStackedDPS" => output.bleed_stacked_dps,
@@ -635,7 +1300,7 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "SpellBlockChanceMax" => output.spell_block_chance_max,
         "EffectiveBlockChance" => output.effective_block_chance,
         "EffectiveSpellBlockChance" => output.effective_spell_block_chance,
-        "BlockEffect" => output.block_effect,
+        "BlockEffect" => 100.0 - output.block_effect,
         "DeflectionRating" => output.deflection_rating,
         "DeflectChance" => output.deflect_chance,
         "EvadeChance" => output.evade_chance,
@@ -656,5 +1321,14 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "TotalEHPLowestMaxHit" => output.total_ehp_lowest_max_hit,
 
         _ => 0.0,
+    }
+}
+
+/// A pool with no capacity has no unreserved share to display.
+fn unreserved_percent(unreserved: f64, maximum: f64) -> f64 {
+    if maximum > 0.0 {
+        unreserved / maximum * 100.0
+    } else {
+        0.0
     }
 }

@@ -48,6 +48,9 @@ pub struct GemEffectRow {
     /// Additional granted effects (in `additionalGrantedEffectId1..N` order).
     #[serde(default)]
     pub additional_granted_effects: Vec<String>,
+    /// Zero-based display positions of the primary and additional effects.
+    #[serde(default)]
+    pub granted_effect_display_order: Vec<usize>,
     /// Additional statSets for the primary effect (in `additionalStatSet1..N` order).
     #[serde(default)]
     pub additional_stat_sets: Vec<String>,
@@ -87,6 +90,7 @@ pub fn assemble_gem_effects_document(
             variant_id: row.variant_id,
             granted_effect_id: row.granted_effect,
             additional_granted_effect_ids: row.additional_granted_effects,
+            granted_effect_display_order: row.granted_effect_display_order,
             additional_stat_set_ids: row.additional_stat_sets,
         })
         .collect();
@@ -148,6 +152,7 @@ mod tests {
             variant_id: variant.into(),
             granted_effect: granted.into(),
             additional_granted_effects: vec![],
+            granted_effect_display_order: vec![],
             additional_stat_sets: vec![],
         }
     }
@@ -177,12 +182,14 @@ mod tests {
     fn consumer_schema_roundtrip() {
         let mut entry = row("A", "a", "APlayer");
         entry.additional_granted_effects = vec!["AExtraPlayer".into()];
+        entry.granted_effect_display_order = vec![1, 0];
         entry.additional_stat_sets = vec!["AOnFrostbolt".into()];
         let json = assemble_gem_effects_document(meta(), vec![entry]).unwrap();
         let def: pobr_data::catalog::GemEffectsDef = serde_json::from_str(&json).unwrap();
         assert_eq!(def.gems.len(), 1);
         assert_eq!(def.gems[0].granted_effect_id, "APlayer");
         assert_eq!(def.gems[0].additional_granted_effect_ids, ["AExtraPlayer"]);
+        assert_eq!(def.gems[0].granted_effect_display_order, [1, 0]);
         assert_eq!(def.gems[0].additional_stat_set_ids, ["AOnFrostbolt"]);
     }
 }

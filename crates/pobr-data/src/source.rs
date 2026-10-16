@@ -104,3 +104,28 @@ impl ModifierSource {
         self
     }
 }
+
+/// How the reference exporter handles a PoBR-owned game rule.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ExporterCoverage {
+    #[default]
+    Same,
+    Absent,
+    Differs,
+}
+
+impl ExporterCoverage {
+    pub fn is_same(&self) -> bool {
+        *self == Self::Same
+    }
+}
+
+/// Shared once per compiled rule; modifiers clone its pointer, not its strings.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ExporterRule {
+    pub id: String,
+    pub exporter: ExporterCoverage,
+    /// Game stat id, literal game text, or a game-data link.
+    pub game_source: String,
+}

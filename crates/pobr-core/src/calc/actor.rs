@@ -57,6 +57,8 @@ pub struct Actor {
 /// Which minion an actor is.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct MinionIdentity {
+    /// Enabled-group ordinal and gem index (both 0-based) of this summoner.
+    pub summoner: Option<(usize, usize)>,
     /// The minion's catalog id (`MinionDef::id`).
     pub minion_id: String,
     /// The id of the skill that summoned it; empty when no skill did.

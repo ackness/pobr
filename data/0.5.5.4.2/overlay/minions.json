@@ -6,13 +6,15 @@
     "vendor_commit": "bb52d6b368307457eb9c54bb13f1829993d390b1",
     "vendor_commit_subject": "bb52d6b368307457eb9c54bb13f1829993d390b1",
     "extracted_files": [
-      "Data/Minions.lua"
+      "Data/Minions.lua",
+      "Export/Minions/Minions.txt"
     ],
     "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --what minions --vendor-root vendor/PathOfBuilding-PoE2/src --out data/0.5.5.4.2/overlay/minions.json"
   },
   "minions": [
     {
       "id": "AncestralSpiritCaster",
+      "monster_variety_id": "Metadata/Monsters/LeagueAncestral/AncestralSpiritCasterTotemSpirit",
       "name": "Ancestral Jadecaster",
       "monster_tags": [
         "bludgeoning_weapon",
@@ -61,6 +63,7 @@
     },
     {
       "id": "AncestralSpiritHulk",
+      "monster_variety_id": "Metadata/Monsters/LeagueAncestral/AncestralJadeHulkTotemSpirit",
       "name": "Ancestral Jade Hulk",
       "monster_tags": [
         "beast",
@@ -109,6 +112,7 @@
     },
     {
       "id": "AncestralSpiritTurtle",
+      "monster_variety_id": "Metadata/Monsters/LeagueAncestral/AncestralTurtleTotemSpirit",
       "name": "Ancestral Spirit Turtle",
       "monster_tags": [
         "beast",
@@ -162,6 +166,7 @@
     },
     {
       "id": "AncestralSpiritWarhorn",
+      "monster_variety_id": "Metadata/Monsters/LeagueAncestral/AncestralKaruiHornTotemSpirit",
       "name": "Ancestral Warhorn",
       "monster_tags": [
         "bludgeoning_weapon",
@@ -207,6 +212,7 @@
     },
     {
       "id": "AzmerianSwarm",
+      "monster_variety_id": "Metadata/Monsters/UniqueItemMonsters/AzmerianSwarmMinion/AzmerianSwarmMinion",
       "name": "[DNT] Azmerian Wisp Swarm",
       "monster_tags": [
         "beast",
@@ -314,6 +320,7 @@
     },
     {
       "id": "AzmerianWolf",
+      "monster_variety_id": "Metadata/Monsters/UniqueItemMonsters/AzmerianPackleader/PackleaderWolfMinion",
       "name": "Azmerian Wolf",
       "monster_tags": [
         "beast",
@@ -369,6 +376,7 @@
     },
     {
       "id": "BearCompanion",
+      "monster_variety_id": "Metadata/Monsters/CompanionBear/CompanionBearPlayerSummoned",
       "name": "Wild Bear Spirit",
       "monster_tags": [
         "beast",
@@ -420,6 +428,7 @@
     },
     {
       "id": "BeetleMinion",
+      "monster_variety_id": "Metadata/Monsters/Monsters/CorpseBeetlePlayerSummoned",
       "name": "Corpse Beetle",
       "monster_tags": [
         "allows_inc_aoe",
@@ -499,6 +508,7 @@
     },
     {
       "id": "FireDjinn",
+      "monster_variety_id": "Metadata/Monsters/MarakethTimeDjinn/FireDjinn",
       "name": "Ruzhan, the Blazing Sword",
       "monster_tags": [
         "elemental",
@@ -560,6 +570,7 @@
     },
     {
       "id": "HyenaMinion",
+      "monster_variety_id": "Metadata/Monsters/HyenaMonster/HyenaCompanionPlayerSummoned",
       "name": "Cackling Companion",
       "monster_tags": [
         "beast",
@@ -602,6 +613,7 @@
     },
     {
       "id": "LivingLightning",
+      "monster_variety_id": "Metadata/Monsters/Monsters/LivingLightningPlayerSummoned",
       "name": "Living Lightning",
       "monster_tags": [
         "construct",
@@ -697,6 +709,7 @@
     },
     {
       "id": "ManifestWeapon",
+      "monster_variety_id": "Metadata/Monsters/AnimatedItem/AnimatedWeaponPlayerSummoned",
       "name": "Animated Weapon",
       "monster_tags": [
         "construct",
@@ -763,6 +776,7 @@
     },
     {
       "id": "MistRaven",
+      "monster_variety_id": "Metadata/Monsters/Daemon/TangmazuRavensDaemon/TangmazuRavensDaemon",
       "name": "Raven Conspiracy",
       "monster_tags": [
         "ranged",
@@ -853,6 +867,7 @@
     },
     {
       "id": "RaisedSkeletonArsonist",
+      "monster_variety_id": "Metadata/Monsters/Skeletons/PlayerSummoned/SkeletonArsonistPlayerSummoned",
       "name": "Skeletal Arsonist",
       "monster_tags": [
         "bone_armour",
@@ -900,6 +915,7 @@
     },
     {
       "id": "RaisedSkeletonBrute",
+      "monster_variety_id": "Metadata/Monsters/Skeletons/PlayerSummoned/SkeletonBrutePlayerSummoned_",
       "name": "Skeletal Brute",
       "monster_tags": [
         "bone_armour",
@@ -957,6 +973,7 @@
     },
     {
       "id": "RaisedSkeletonCleric",
+      "monster_variety_id": "Metadata/Monsters/Skeletons/PlayerSummoned/SkeletonClericPlayerSummoned_",
       "name": "Skeletal Cleric",
       "monster_tags": [
         "bone_armour",
@@ -1005,6 +1022,7 @@
     },
     {
       "id": "RaisedSkeletonFrostMage",
+      "monster_variety_id": "Metadata/Monsters/Skeletons/PlayerSummoned/SkeletonFrostMagePlayerSummoned",
       "name": "Skeletal Frost Mage",
       "monster_tags": [
         "bone_armour",
@@ -1052,6 +1070,7 @@
     },
     {
       "id": "RaisedSkeletonReaver",
+      "monster_variety_id": "Metadata/Monsters/Skeletons/PlayerSummoned/SkeletonReaverPlayerSummoned",
       "name": "Skeletal Reaver",
       "monster_tags": [
         "Axe1HMetal_onhit_audio",
@@ -1107,6 +1126,7 @@
     },
     {
       "id": "RaisedSkeletonSniper",
+      "monster_variety_id": "Metadata/Monsters/Skeletons/PlayerSummoned/SkeletonArcherPlayerSummoned",
       "name": "Skeletal Sniper",
       "monster_tags": [
         "bone_armour",
@@ -1149,6 +1169,7 @@
     },
     {
       "id": "RaisedSkeletonStormMage",
+      "monster_variety_id": "Metadata/Monsters/Skeletons/PlayerSummoned/SkeletonStormMagePlayerSummoned_",
       "name": "Skeletal Storm Mage",
       "monster_tags": [
         "bone_armour",
@@ -1196,6 +1217,7 @@
     },
     {
       "id": "RaisedSkeletonWarriors",
+      "monster_variety_id": "Metadata/Monsters/Skeletons/PlayerSummoned/SkeletonWarriorPlayerSummoned",
       "name": "Skeletal Warrior",
       "monster_tags": [
         "bone_armour",
@@ -1259,6 +1281,7 @@
     },
     {
       "id": "RaisedZombie",
+      "monster_variety_id": "Metadata/Monsters/Zombies/PlayerSummoned/PlayerSummonedZombie_",
       "name": "Raised Zombie",
       "monster_tags": [
         "animal_claw_weapon",
@@ -1300,6 +1323,7 @@
     },
     {
       "id": "RavenousSwarm",
+      "monster_variety_id": "Metadata/Monsters/Daemon/RavenousSwarmPlayer/RavenousSwarmPlayerSummoned",
       "name": "Ravenous Swarm",
       "monster_tags": [
         "beast",
@@ -1332,6 +1356,7 @@
     },
     {
       "id": "SandDjinn",
+      "monster_variety_id": "Metadata/Monsters/MarakethSamdDjinn/SandDjinn",
       "name": "Kelari, the Tainted Sands",
       "monster_tags": [
         "earth_elemental",
@@ -1391,6 +1416,7 @@
     },
     {
       "id": "SummonedHellhound",
+      "monster_variety_id": "Metadata/Monsters/Hellhound/HellhoundPlayerSummoned",
       "name": "Infernal Hound",
       "monster_tags": [
         "beast",
@@ -1428,6 +1454,7 @@
     },
     {
       "id": "SummonedRagingSpirit",
+      "monster_variety_id": "Metadata/Monsters/RagingSpirit/RagingSpiritPlayerSummoned",
       "name": "Raging Spirit",
       "monster_tags": [
         "bone_armour",
@@ -1477,6 +1504,7 @@
     },
     {
       "id": "SummonedRhoa",
+      "monster_variety_id": "Metadata/Monsters/RhoaPlayerSummoned/RhoaPlayerSummoned",
       "name": "Rhoa Companion",
       "monster_tags": [
         "beast",
@@ -1514,6 +1542,7 @@
     },
     {
       "id": "TacticianMinion",
+      "monster_variety_id": "Metadata/Monsters/Daemon/ArtilleryPlayer/SummonArtilleryDaemon",
       "name": "Artillery Squad",
       "monster_tags": [
         "ranged",
@@ -1603,6 +1632,7 @@
     },
     {
       "id": "UnearthBoneConstruct",
+      "monster_variety_id": "Metadata/Monsters/SkeletalConstruct/BoneConstructPlayerSummoned",
       "name": "Bone Crawler",
       "monster_tags": [
         "bones",
@@ -1649,6 +1679,7 @@
     },
     {
       "id": "Wardbound",
+      "monster_variety_id": "Metadata/Monsters/LeagueExpeditionNew/PlayerSummoned/WardboundMinionPlayerSummoned",
       "name": "Wardbound Caster",
       "monster_tags": [
         "fast_movement",
@@ -1686,6 +1717,7 @@
     },
     {
       "id": "WaterDjinn",
+      "monster_variety_id": "Metadata/Monsters/MarakethWaterDjinn/WaterDjinn",
       "name": "Navira, the Last Mirage",
       "monster_tags": [
         "humanoid",
@@ -1747,6 +1779,7 @@
     },
     {
       "id": "WolfMinion",
+      "monster_variety_id": "Metadata/Monsters/Wolves/WolfCompanionPlayerSummoned",
       "name": "Wolf Companion",
       "monster_tags": [
         "beast",

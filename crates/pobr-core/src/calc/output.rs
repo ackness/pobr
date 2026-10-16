@@ -2,8 +2,65 @@ use pobr_data::prelude::DamageType;
 
 use super::{DamageComponent, MinimalOutput, SkillUseTime};
 
+/// One included effect. `hit_dps` is per instance; `dot_dps` is its allocated
+/// share after stacking limits. `dps` includes count, DoT and culling, and the
+/// rows sum to FullDPS. Failures remain visible instead of disappearing.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct FullDpsSkill {
+    pub group_index: usize,
+    pub active_skill_index: usize,
+    pub skill_id: String,
+    pub count: f64,
+    pub hit_dps: f64,
+    pub dot_dps: f64,
+    pub dps: f64,
+    pub unsupported_modifiers: Vec<String>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct FullDpsOutput {
+    pub dps: f64,
+    pub dot_dps: f64,
+    pub skills: Vec<FullDpsSkill>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutputTable {
+    /// Threshold, recovery per kill, and selected-hit debuff views.
+    pub ailment_threshold: f64,
+    pub life_on_kill: f64,
+    pub mana_on_kill: f64,
+    pub energy_shield_on_kill: f64,
+    pub daze_chance: f64,
+    pub fully_broken_armour_effect: f64,
+    pub utility_stats: std::collections::BTreeMap<String, f64>,
+    pub decay_dps: f64,
+    pub mirage_burning_ground_dps: f64,
+
+    pub reservation_dps: f64,
+    pub net_ward_regen: f64,
+    pub mirage_dps: f64,
+    pub burning_ground_dps: f64,
+
+    /// Selected skill and character sidebar views. Movement values are multipliers.
+    pub effective_movement_speed_mod: f64,
+    pub movement_speed_while_using_skill: f64,
+    pub presence_radius_metres: f64,
+    pub aura_effect_mod: f64,
+    pub curse_effect_mod: f64,
+    pub active_minion_limit: f64,
+    pub explode_chance: f64,
+    pub combined_avg_to_monster_life: f64,
+    /// One plus the conditional double-critical probability; zero when absent.
+    pub crit_bifurcates: f64,
+
+    /// Optional because evaluating every included effect is a separate, opt-in pass.
+    pub full_dps: Option<FullDpsOutput>,
+    pub strength: f64,
+    pub dexterity: f64,
+    pub intelligence: f64,
+    pub rage: f64,
     pub life: f64,
     pub mana: f64,
     pub armour: f64,
@@ -18,9 +75,11 @@ pub struct OutputTable {
     pub max_fire_resistance: f64,
     pub max_cold_resistance: f64,
     pub max_lightning_resistance: f64,
+    pub max_chaos_resistance: f64,
     pub fire_resistance_over_cap: f64,
     pub cold_resistance_over_cap: f64,
     pub lightning_resistance_over_cap: f64,
+    pub chaos_resistance_over_cap: f64,
     pub crit_chance: f64,
     /// Crit chance (fraction) before the hit-chance downgrade / lucky /
     /// bifurcate / inevitable, but after the cap. Used to show overflow in breakdowns.
@@ -29,6 +88,63 @@ pub struct OutputTable {
     /// Non-crit hit components split by damage type; summing gives total non-crit hit damage.
     pub damage_components: Vec<DamageComponent>,
     pub total_hit_avg: f64,
+    /// Damage views include enemy mitigation; TotalHitAvg keeps its player-side meaning.
+    pub average_damage: f64,
+    pub accuracy_hit_chance_uncapped: f64,
+    pub average_burst_damage: f64,
+    pub combined_avg: f64,
+    pub hit_speed: f64,
+    pub ignite_damage: f64,
+    pub bleed_damage: f64,
+    pub poison_damage: f64,
+    pub with_ignite_dps: f64,
+    pub with_bleed_dps: f64,
+    pub with_poison_dps: f64,
+    pub quantity_multiplier: f64,
+    pub total_totem_placement_time: f64,
+    pub trap_throwing_time: f64,
+    pub trap_throw_count: f64,
+    pub mine_laying_time: f64,
+    pub mine_throw_count: f64,
+    pub warcry_cast_time: f64,
+    pub channel_time: f64,
+    pub channel_time_to_trigger: f64,
+    /// Nominal Archon buff duration and post-buff recovery, in seconds.
+    pub archon_duration: f64,
+    pub archon_recovery_period: f64,
+
+    pub mana_percent_cost: f64,
+    pub mana_percent_per_second_cost: f64,
+    pub mana_per_second_cost: f64,
+    pub life_percent_cost: f64,
+    pub life_percent_per_second_cost: f64,
+    pub life_per_second_cost: f64,
+    pub es_cost: f64,
+    pub es_percent_cost: f64,
+    pub es_percent_per_second_cost: f64,
+    pub es_per_second_cost: f64,
+    pub ward_cost: f64,
+    pub ward_percent_cost: f64,
+    pub ward_percent_per_second_cost: f64,
+    pub ward_per_second_cost: f64,
+    pub rage_cost: f64,
+    pub rage_per_second_cost: f64,
+
+    pub req_str: f64,
+    pub req_dex: f64,
+    pub req_int: f64,
+
+    pub pierce_count: f64,
+    pub fork_count: f64,
+    pub chain_max: f64,
+    pub split_count: f64,
+    pub bounce_count: f64,
+
+    pub duration: f64,
+    pub duration_secondary: f64,
+    pub aura_duration: f64,
+    pub reserve_duration: f64,
+
     /// The average damage of a critical hit before the enemy's mitigation, all
     /// damage types together (written by `perform`; 0 for a skill that does
     /// not hit).
@@ -44,12 +160,19 @@ pub struct OutputTable {
     pub skill_use_time: Option<SkillUseTime>,
     /// Effective action rate after applying the server tick cap (actions/s).
     pub effective_action_rate: f64,
+    /// Crossbow shots per second before accounting for reloading.
+    pub firing_rate: f64,
+    /// Time to reload, before the chance to reload instantly.
+    pub reload_time: f64,
     /// Ailment DPS.
     pub bleed_dps: f64,
     pub ignite_dps: f64,
     pub poison_dps: f64,
     /// Shock's damage bonus magnitude (fraction, e.g. 0.20).
     pub shock_effect: f64,
+    /// Shock magnitude modifier (1 is unchanged, 0 when no shock is inflicted),
+    /// displayed as ShockEffectMod.
+    pub shock_effect_mod: f64,
     /// Maximum single hit each damage type can take (starting semantics =
     /// PoB2's view: TotalHitPool's pool-expansion layer + taken-as,
     /// CalcDefence.lua:3540-3697; `*_max_hit_pob2` is an alias with the same value).
@@ -75,6 +198,26 @@ pub struct OutputTable {
     /// Runic Ward regenerated per second (PoB2 `WardRegen`, CalcDefence.lua:1712-1746,
     /// rounded to one decimal).
     pub ward_regen: f64,
+    /// Recovery after regeneration restrictions, resource drains and direct recovery.
+    pub life_regen_recovery: f64,
+    pub mana_regen_recovery: f64,
+    pub energy_shield_regen_recovery: f64,
+    pub ward_regen_recovery: f64,
+    pub rage_regen_recovery: f64,
+    /// Sustained recovery less the build's own resource loss and skill costs.
+    pub net_life_regen: f64,
+    pub net_mana_regen: f64,
+    pub net_energy_shield_regen: f64,
+    pub total_net_regen: f64,
+    pub total_build_degen: f64,
+    /// Main skill leech plus gain on hit, at its hit frequency or per successful hit.
+    pub life_leech_gain_rate: f64,
+    pub mana_leech_gain_rate: f64,
+    pub energy_shield_leech_gain_rate: f64,
+    pub life_leech_gain_per_hit: f64,
+    pub mana_leech_gain_per_hit: f64,
+    pub energy_shield_leech_gain_per_hit: f64,
+
     /// Defence chance family.
     pub block_chance: f64,
     pub spell_block_chance: f64,
@@ -119,9 +262,11 @@ pub struct OutputTable {
     pub skill_trigger_rate: f64,
     /// Maximum Energy of the meta gem that holds the main skill (0 outside one).
     pub energy_trigger_maximum: f64,
+    /// Terms of the selected meta gem, including storage versus consumption.
+    pub energy_trigger: Option<super::energy::EnergyTriggerTerms>,
     /// Energy one event of the chosen source gives that gem.
     pub energy_per_trigger_event: f64,
-    /// The skill whose critical hits fill the gem most often; `None` when the
+    /// The skill or external event that fills the gem most often; `None` when the
     /// main skill is not in an Energy meta gem or nothing can fill it.
     pub energy_trigger_source: Option<String>,
 
@@ -164,12 +309,14 @@ pub struct OutputTable {
     pub ignite_max_stacks: f64,
 
     // Skill functionality (Lane C: AoE / projectiles / cooldown / cost;
-    // written by perform fill, 0 with no base)
+    // written by perform fill; unknown radius is 0, neutral area modifier is 1)
     /// Final AoE radius (internal coordinate units) and the area multiplier.
     pub aoe_radius: f64,
     pub aoe_area_mod: f64,
     /// Projectile count (0 without a projectile mod).
     pub projectile_count: f64,
+    /// Projectile speed multiplier (1 is unchanged).
+    pub projectile_speed_mod: f64,
     /// Cooldown (seconds; 0 = no cooldown) and the number of storable uses.
     pub cooldown: f64,
     pub cooldown_stored_uses: u32,
@@ -204,7 +351,8 @@ pub struct OutputTable {
     /// `EffectiveSpellProjectileBlockChance`, vendor :1013 takes the max with ProjectileBlock).
     pub effective_spell_projectile_block_chance: f64,
     /// Block damage-taken share (%; the fraction of damage still taken from
-    /// a blocked hit, PoB2 `BlockEffect`, ModParser.lua:2479; 0 = fully blocked).
+    /// a blocked hit; 0 = fully blocked). The catalog's BlockEffect displays
+    /// the complementary prevented share; EHP keeps using this taken share.
     pub block_effect: f64,
     /// Deflection rating (PoB2 `DeflectionRating` = BASE + Evasion/Armour
     /// GainAsDeflection, CalcDefence.lua:1487-1490).
@@ -290,6 +438,8 @@ pub struct OutputTable {
     pub with_dot_dps: f64,
     /// Combined DPS (PoB2 `CombinedDPS`).
     pub combined_dps: f64,
+    /// Equivalent damage per second contributed by Culling Strike.
+    pub culling_dps: f64,
     // Per-hand sub-tables (decision D4: strongly-typed sub-tables, with the
     // flat PoB key `MainHand.X` resolved through display_catalog's pob_key).
     // The existing top-level fields' semantics = after combineStat (a
@@ -333,6 +483,8 @@ pub struct StoredDamageRange {
 ///  `stored_ranges` was appended per the C6c convention -- the min/max input surface for ailment magnitude).
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct HandOutput {
+    /// Accuracy Rating evaluated in this hand's modifier scope.
+    pub accuracy: f64,
     /// This hand's hit chance (fraction; vendor `HitChance`, the AVERAGE input).
     pub hit_chance: f64,
     /// This hand's crit chance (fraction; vendor `CritChance`, the CRIT input).
@@ -368,6 +520,8 @@ pub struct HandOutput {
 /// A single minion's output snapshot (same structure as the subset of the player's key offence/defence output).
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct MinionOutput {
+    /// Enabled-group ordinal and gem index (both 0-based) of this summoner.
+    pub summoner: Option<(usize, usize)>,
     /// The minion's catalog id.
     pub minion_id: String,
     /// The id of the skill that summoned it; empty when no skill did.
@@ -386,11 +540,43 @@ pub struct MinionOutput {
     pub evasion: f64,
     /// Energy shield.
     pub energy_shield: f64,
+    /// Supported resistance outputs, using the player's display stat ids.
+    pub stats: std::collections::BTreeMap<String, f64>,
 }
 
 impl Default for OutputTable {
     fn default() -> Self {
         Self {
+            ailment_threshold: 0.0,
+            life_on_kill: 0.0,
+            mana_on_kill: 0.0,
+            energy_shield_on_kill: 0.0,
+            daze_chance: 0.0,
+            fully_broken_armour_effect: 0.0,
+            utility_stats: Default::default(),
+            decay_dps: 0.0,
+            mirage_burning_ground_dps: 0.0,
+
+            reservation_dps: 0.0,
+            net_ward_regen: 0.0,
+            mirage_dps: 0.0,
+            burning_ground_dps: 0.0,
+
+            effective_movement_speed_mod: 0.0,
+            movement_speed_while_using_skill: 0.0,
+            presence_radius_metres: 0.0,
+            aura_effect_mod: 0.0,
+            curse_effect_mod: 0.0,
+            active_minion_limit: 0.0,
+            explode_chance: 0.0,
+            combined_avg_to_monster_life: 0.0,
+            crit_bifurcates: 0.0,
+
+            full_dps: None,
+            strength: 0.0,
+            dexterity: 0.0,
+            intelligence: 0.0,
+            rage: 0.0,
             life: 0.0,
             mana: 0.0,
             armour: 0.0,
@@ -401,6 +587,7 @@ impl Default for OutputTable {
             cold_resistance: 0.0,
             lightning_resistance: 0.0,
             chaos_resistance: 0.0,
+            max_chaos_resistance: 0.0,
             accuracy: 0.0,
             max_fire_resistance: 0.0,
             max_cold_resistance: 0.0,
@@ -408,21 +595,80 @@ impl Default for OutputTable {
             fire_resistance_over_cap: 0.0,
             cold_resistance_over_cap: 0.0,
             lightning_resistance_over_cap: 0.0,
+            chaos_resistance_over_cap: 0.0,
             crit_chance: 0.0,
             pre_effective_crit_chance: 0.0,
             crit_multiplier: 0.0,
             damage_components: Vec::new(),
             total_hit_avg: 0.0,
+            average_damage: 0.0,
+            accuracy_hit_chance_uncapped: 0.0,
+            average_burst_damage: 0.0,
+            combined_avg: 0.0,
+            hit_speed: 0.0,
+            ignite_damage: 0.0,
+            bleed_damage: 0.0,
+            poison_damage: 0.0,
+            with_ignite_dps: 0.0,
+            with_bleed_dps: 0.0,
+            with_poison_dps: 0.0,
+            quantity_multiplier: 0.0,
+            total_totem_placement_time: 0.0,
+            trap_throwing_time: 0.0,
+            trap_throw_count: 0.0,
+            mine_laying_time: 0.0,
+            mine_throw_count: 0.0,
+            warcry_cast_time: 0.0,
+            channel_time: 0.0,
+            channel_time_to_trigger: 0.0,
+            archon_duration: 0.0,
+            archon_recovery_period: 0.0,
+
+            mana_percent_cost: 0.0,
+            mana_percent_per_second_cost: 0.0,
+            mana_per_second_cost: 0.0,
+            life_percent_cost: 0.0,
+            life_percent_per_second_cost: 0.0,
+            life_per_second_cost: 0.0,
+            es_cost: 0.0,
+            es_percent_cost: 0.0,
+            es_percent_per_second_cost: 0.0,
+            es_per_second_cost: 0.0,
+            ward_cost: 0.0,
+            ward_percent_cost: 0.0,
+            ward_percent_per_second_cost: 0.0,
+            ward_per_second_cost: 0.0,
+            rage_cost: 0.0,
+            rage_per_second_cost: 0.0,
+
+            req_str: 0.0,
+            req_dex: 0.0,
+            req_int: 0.0,
+
+            pierce_count: 0.0,
+            fork_count: 0.0,
+            chain_max: 0.0,
+            split_count: 0.0,
+            bounce_count: 0.0,
+
+            duration: 0.0,
+            duration_secondary: 0.0,
+            aura_duration: 0.0,
+            reserve_duration: 0.0,
+
             crit_hit_avg: 0.0,
             hit_chance: 0.0,
             action_rate: 0.0,
             dps: 0.0,
             skill_use_time: None,
             effective_action_rate: 0.0,
+            firing_rate: 0.0,
+            reload_time: 0.0,
             bleed_dps: 0.0,
             ignite_dps: 0.0,
             poison_dps: 0.0,
             shock_effect: 0.0,
+            shock_effect_mod: 0.0,
             physical_max_hit: 0.0,
             fire_max_hit: 0.0,
             cold_max_hit: 0.0,
@@ -437,6 +683,23 @@ impl Default for OutputTable {
             mana_regen: 0.0,
             energy_shield_regen: 0.0,
             ward_regen: 0.0,
+            life_regen_recovery: 0.0,
+            mana_regen_recovery: 0.0,
+            energy_shield_regen_recovery: 0.0,
+            ward_regen_recovery: 0.0,
+            rage_regen_recovery: 0.0,
+            net_life_regen: 0.0,
+            net_mana_regen: 0.0,
+            net_energy_shield_regen: 0.0,
+            total_net_regen: 0.0,
+            total_build_degen: 0.0,
+            life_leech_gain_rate: 0.0,
+            mana_leech_gain_rate: 0.0,
+            energy_shield_leech_gain_rate: 0.0,
+            life_leech_gain_per_hit: 0.0,
+            mana_leech_gain_per_hit: 0.0,
+            energy_shield_leech_gain_per_hit: 0.0,
+
             block_chance: 0.0,
             spell_block_chance: 0.0,
             es_recharge_rate: 0.0,
@@ -463,6 +726,7 @@ impl Default for OutputTable {
             trigger_rate_cap: 0.0,
             skill_trigger_rate: 0.0,
             energy_trigger_maximum: 0.0,
+            energy_trigger: None,
             energy_per_trigger_event: 0.0,
             energy_trigger_source: None,
             // Lane A: charges / leech / Recoup default to neutral 0 (no effect on the panel without a source mod).
@@ -490,10 +754,11 @@ impl Default for OutputTable {
             bleed_max_stacks: 0.0,
             poison_max_stacks: 0.0,
             ignite_max_stacks: 0.0,
-            // Lane C: skill functionality defaults to 0 (not written without a base configuration).
+            // Unknown skill mechanics default to 0; an area multiplier is neutral at 1.
             aoe_radius: 0.0,
-            aoe_area_mod: 0.0,
+            aoe_area_mod: 1.0,
             projectile_count: 0.0,
+            projectile_speed_mod: 0.0,
             cooldown: 0.0,
             cooldown_stored_uses: 0,
             mana_cost: 0.0,
@@ -544,6 +809,7 @@ impl Default for OutputTable {
             total_dot_dps: 0.0,
             with_dot_dps: 0.0,
             combined_dps: 0.0,
+            culling_dps: 0.0,
             //  Per-hand sub-tables default to None (always None in the fallback state; consumers skip on None).
             main_hand: None,
             off_hand: None,
@@ -570,6 +836,9 @@ impl From<&MinimalOutput> for OutputTable {
             crit_multiplier: value.crit_multiplier,
             damage_components: value.damage_components.clone(),
             total_hit_avg: value.total_hit_avg,
+            average_damage: value.average_damage,
+            accuracy: value.accuracy,
+            accuracy_hit_chance_uncapped: value.accuracy_hit_chance_uncapped,
             hit_chance: value.hit_chance,
             action_rate: value.action_rate,
             dps: value.dps,

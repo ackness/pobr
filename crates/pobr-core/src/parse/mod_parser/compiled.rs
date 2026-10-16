@@ -516,7 +516,14 @@ fn compile_name_map(defs: &[NameMapDef]) -> Result<PlainTable<NameMapPayload>, C
             .map(|d| PlainEntry {
                 phrase: d.phrase.clone(),
                 payload: NameMapPayload {
-                    names: d.names.clone(),
+                    // Game stats base_{life,mana}_leech_amount_+% change
+                    // the amount recovered, not the maximum recovery rate.
+                    names: match d.phrase.as_str() {
+                        "amount of life leeched" => vec!["LifeLeechAmount".into()],
+                        "amount of mana leeched" => vec!["ManaLeechAmount".into()],
+                        "amount of energy shield leeched" => vec!["EnergyShieldLeechAmount".into()],
+                        _ => d.names.clone(),
+                    },
                     effects: d.effects.clone(),
                 },
             })

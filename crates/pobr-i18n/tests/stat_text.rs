@@ -202,3 +202,172 @@ fn display_stat_text_wave2_avoidance_labels() {
         "規避冰凍"
     );
 }
+
+#[test]
+fn sidebar_extensions_have_both_labels() {
+    let en = Translator::new(LanguageId::new("en-US")).unwrap();
+    let zh = Translator::new(LanguageId::new("zh-TW")).unwrap();
+    for (id, english, chinese) in [
+        ("AverageDamage", "Average Damage", "平均傷害"),
+        ("AverageBurstDamage", "Average Burst Damage", "平均爆發傷害"),
+        ("CombinedAvg", "Combined Average", "合計平均傷害"),
+        ("HitSpeed", "Hit Rate", "命中速率"),
+        ("IgniteDamage", "Ignite Damage", "點燃傷害"),
+        ("BleedDamage", "Bleed Damage", "流血傷害"),
+        ("PoisonDamage", "Poison Damage", "中毒傷害"),
+        ("WithIgniteDPS", "DPS including Ignite", "包含點燃 DPS"),
+        ("WithBleedDPS", "DPS including Bleed", "包含流血 DPS"),
+        ("WithPoisonDPS", "DPS including Poison", "包含中毒 DPS"),
+        ("MainHandAccuracy", "Main Hand Accuracy", "主手命中值"),
+        ("OffHandAccuracy", "Off Hand Accuracy", "副手命中值"),
+        (
+            "AccuracyHitChanceUncapped",
+            "Uncapped Chance to Hit",
+            "無上限命中率",
+        ),
+        ("QuantityMultiplier", "Quantity Multiplier", "數量倍率"),
+        ("Duration", "Skill Duration (s)", "技能持續時間（秒）"),
+        (
+            "DurationSecondary",
+            "Secondary Duration (s)",
+            "次要持續時間（秒）",
+        ),
+        ("AuraDuration", "Aura Duration (s)", "光環持續時間（秒）"),
+        (
+            "ReserveDuration",
+            "Reservation Duration (s)",
+            "保留持續時間（秒）",
+        ),
+        (
+            "AreaOfEffectRadiusMetres",
+            "Area Radius (m)",
+            "範圍半徑（公尺）",
+        ),
+        ("PierceCount", "Pierce Count", "穿透次數"),
+        ("ForkCount", "Fork Count", "分岔次數"),
+        ("ChainMax", "Maximum Chains", "最大連鎖次數"),
+        ("SplitCount", "Split Count", "分裂數量"),
+        ("BounceCount", "Bounce Count", "彈跳次數"),
+        ("ReqStr", "Strength Required", "力量需求"),
+        ("ReqDex", "Dexterity Required", "敏捷需求"),
+        ("ReqInt", "Intelligence Required", "智慧需求"),
+        ("ManaPercentCost", "Mana Cost (%)", "魔力消耗（%）"),
+        (
+            "ManaPercentPerSecondCost",
+            "Mana Cost (%/s)",
+            "魔力每秒消耗（%）",
+        ),
+        ("ManaPerSecondCost", "Mana Cost / s", "魔力每秒消耗"),
+        ("LifePercentCost", "Life Cost (%)", "生命消耗（%）"),
+        (
+            "LifePercentPerSecondCost",
+            "Life Cost (%/s)",
+            "生命每秒消耗（%）",
+        ),
+        ("LifePerSecondCost", "Life Cost / s", "生命每秒消耗"),
+        ("ESCost", "Energy Shield Cost", "能量護盾消耗"),
+        (
+            "ESPercentCost",
+            "Energy Shield Cost (%)",
+            "能量護盾消耗（%）",
+        ),
+        (
+            "ESPercentPerSecondCost",
+            "Energy Shield Cost (%/s)",
+            "能量護盾每秒消耗（%）",
+        ),
+        (
+            "ESPerSecondCost",
+            "Energy Shield Cost / s",
+            "能量護盾每秒消耗",
+        ),
+        ("WardCost", "Runic Ward Cost", "符文守護消耗"),
+        (
+            "WardPercentCost",
+            "Runic Ward Cost (%)",
+            "符文守護消耗（%）",
+        ),
+        (
+            "WardPercentPerSecondCost",
+            "Runic Ward Cost (%/s)",
+            "符文守護每秒消耗（%）",
+        ),
+        (
+            "WardPerSecondCost",
+            "Runic Ward Cost / s",
+            "符文守護每秒消耗",
+        ),
+        ("RageCost", "Rage Cost", "盛怒消耗"),
+        ("RagePerSecondCost", "Rage Cost / s", "盛怒每秒消耗"),
+        (
+            "TotalTotemPlacementTime",
+            "Totem Placement Time (s)",
+            "圖騰放置時間（秒）",
+        ),
+        (
+            "TrapThrowingTime",
+            "Trap Throwing Time (s)",
+            "陷阱投擲時間（秒）",
+        ),
+        ("TrapThrowCount", "Traps per Throw", "每次投擲陷阱數"),
+        (
+            "MineLayingTime",
+            "Mine Throwing Time (s)",
+            "地雷投擲時間（秒）",
+        ),
+        ("MineThrowCount", "Mines per Throw", "每次投擲地雷數"),
+        ("WarcryCastTime", "Warcry Time (s)", "戰吼施放時間（秒）"),
+        ("ChannelTime", "Channel Time (s)", "引導時間（秒）"),
+        ("Str", "Strength", "力量"),
+        ("Dex", "Dexterity", "敏捷"),
+        ("Int", "Intelligence", "智慧"),
+        ("Rage", "Rage", "盛怒"),
+        (
+            "FireResistOverCap",
+            "Fire Res. Over Max",
+            "超過上限火焰抗性",
+        ),
+        (
+            "ColdResistOverCap",
+            "Cold Res. Over Max",
+            "超過上限冰冷抗性",
+        ),
+        (
+            "LightningResistOverCap",
+            "Lightning Res. Over Max",
+            "超過上限閃電抗性",
+        ),
+        (
+            "ChaosResistOverCap",
+            "Chaos Res. Over Max",
+            "超過上限混沌抗性",
+        ),
+        ("LifeUnreservedPercent", "Unreserved Life", "未保留生命"),
+        ("ManaUnreservedPercent", "Unreserved Mana", "未保留魔力"),
+        ("SpiritUnreservedPercent", "Unreserved Spirit", "未保留精魂"),
+        (
+            "PreEffectiveCritChance",
+            "Crit Chance before Accuracy",
+            "命中確認前暴擊率",
+        ),
+        ("StoredUses", "Stored Uses", "儲存使用次數"),
+        ("TotalDot", "Skill DoT DPS", "技能持續傷害 DPS"),
+        (
+            "WithDotDPS",
+            "Hit and Skill DoT DPS",
+            "擊中與技能持續傷害 DPS",
+        ),
+        ("FiringRate", "Firing Rate", "射擊速率"),
+        ("ReloadTime", "Reload Time (s)", "裝填時間（秒）"),
+        ("CullingDPS", "Culling DPS", "撲殺 DPS"),
+        (
+            "ProjectileSpeedMod",
+            "Projectile Speed Multiplier",
+            "投射物速度倍率",
+        ),
+    ] {
+        let id = DisplayStatId::new(id);
+        assert_eq!(en.display_stat_text(&id), english);
+        assert_eq!(zh.display_stat_text(&id), chinese);
+    }
+}

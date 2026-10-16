@@ -10,7 +10,7 @@ import './replacementAffixEditor.css';
 
 /** Draft edits are local to the candidate; only the caller can run or apply a comparison. */
 export function ReplacementAffixEditor({ report, catalog, characterLevel, lang, disabled, onCompare, onDirtyChange }: {
-  report: ReplacementReport; catalog: TradeCatalog; characterLevel: number; lang: Lang; disabled: boolean;
+  report: Pick<ReplacementReport, 'text' | 'base' | 'lines'>; catalog: TradeCatalog; characterLevel: number; lang: Lang; disabled: boolean;
   onCompare: (text: string) => void; onDirtyChange: (dirty: boolean) => void;
 }) {
   const t = (key: Parameters<typeof affixT>[1]) => affixT(lang, key);
@@ -39,6 +39,7 @@ export function ReplacementAffixEditor({ report, catalog, characterLevel, lang, 
   const displayed = useLocalizedLines(selectedLines, lang);
   const previewLines = choice ? affixRollLines(choice) : [];
   const preview = useLocalizedLines(previewLines, lang);
+  const ranges = useLocalizedLines(choice?.roll_lines ?? [], lang);
   useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
   const update = (value: AffixDraft) => { setDraft(value); setError(''); onDirtyChange(true); };
   let lineOffset = 0;
@@ -86,7 +87,7 @@ export function ReplacementAffixEditor({ report, catalog, characterLevel, lang, 
           options={options.map(mod => ({ value: mod.id, label: `${mod.lines.map(line => aliases.get(line) ?? line).join(' / ')} · T${tiers.get(mod.id)}`,
             hint: `${t('itemLevel')} ${mod.level} · ${t('requirement')} ${Math.max(report.base.level, Math.floor(mod.level * 0.8))}` }))} onChange={setPicked} />
         {!options.length && <p className="affix-editor-hint">{t('noOptions')}</p>}
-        {!!preview.length && <div className="affix-editor-preview"><small>{t('midpoint')}</small>{preview.map((line, index) => <p key={index}>{line}</p>)}</div>}
+        {!!preview.length && <div className="affix-editor-preview">{ranges.map((line, index) => <p key={`range-${index}`}>{t('range')}: {line}</p>)}<small>{t('midpoint')}</small>{preview.map((line, index) => <p key={index}>{line}</p>)}</div>}
         <button className="trade-primary" disabled={disabled || !choice} onClick={add}>{t(replacing ? 'replace' : 'add')}</button>
       </div>
       <p className="affix-editor-hint">{t('estimate')}</p>

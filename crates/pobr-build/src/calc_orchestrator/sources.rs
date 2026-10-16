@@ -156,6 +156,19 @@ impl SourceWriter {
         self.session.add_limb(slot, item)
     }
 
+    pub fn add_utility_base(
+        &mut self,
+        slot: &str,
+        item: &Item,
+        base: &pobr_data::catalog::UtilityBaseStats,
+    ) {
+        self.session.add_utility_base(slot, item, base);
+    }
+
+    pub fn add_inactive_utility_properties(&mut self, slot: &str, item: &Item) {
+        self.session.add_inactive_utility_properties(slot, item);
+    }
+
     pub fn add_flask_charm(&mut self, slot: &str, item: &Item) {
         if self.received.is_some() {
             let source = pobr_core::item::flask_charm_source(slot);
@@ -189,6 +202,10 @@ impl SourceWriter {
 
     pub fn add_support_gem(&mut self, gem: &GemModSource) -> Result<(), ParseError> {
         self.session.add_support_gem(gem)
+    }
+
+    pub fn add_party_buff_skill(&mut self, spec: pobr_core::calc::session::PartyBuffSpec) {
+        self.session.add_party_buff_skill(spec);
     }
 
     pub fn add_buff_skill(&mut self, spec: BuffSpec) {

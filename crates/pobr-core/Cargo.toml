@@ -11,6 +11,7 @@ edition.workspace = true
 test-rules = ["dep:serde_json"]
 
 [dependencies]
+serde.workspace = true
 pobr-data.workspace = true
 # special 词条模板的整行锚定匹配（M5b rules::special_mod，载入期编译 RegexSet）。
 regex.workspace = true

@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import type { GemCatalogEntry } from '../api/types';
-import { skillDisplayName } from './skillNames';
+import { gemDisplayName, skillDisplayName } from './skillNames';
 
 const wind: GemCatalogEntry = { skill_id: 'WindDancerPlayer', name: 'Wind Dancer', name_zh_cn: '风舞者',
   name_zh_tw: '風魔舞者', additional_skill_ids: ['TriggeredWindDancerPlayer'], colour: 'dex',
@@ -20,4 +20,13 @@ test('exact skill names win over aliases and unknown IDs remain identifiable', (
   expect(skillDisplayName(exact.skill_id, 'zh-CN', new Map([...catalog, [exact.skill_id, exact]]))).toBe('独立技能');
   expect(skillDisplayName('UnknownSkillPlayer', 'zh-CN', catalog)).toBe('Unknown Skill');
   expect(skillDisplayName('TriggeredWindDancerPlayer', 'zh-CN', new Map([[wind.skill_id, { ...wind, additional_skill_ids: undefined }]]))).toBe('Triggered Wind Dancer');
+});
+
+test('summoner gem names omit the unresolved monster template in each language', () => {
+  const summoner = { ...wind, name: 'Companion: {0}', name_zh_cn: '召唤伙伴：{0}', name_zh_tw: '召喚夥伴：{0}' };
+  expect(gemDisplayName(summoner, 'en-US')).toBe('Companion');
+  expect(gemDisplayName(summoner, 'zh-CN')).toBe('召唤伙伴');
+  expect(gemDisplayName(summoner, 'zh-TW')).toBe('召喚夥伴');
+  expect(gemDisplayName({ ...summoner, name: 'Spectre: {0}' }, 'en-US')).toBe('Spectre');
+  expect(gemDisplayName({ ...summoner, name: 'Command: Charge' }, 'en-US')).toBe('Command: Charge');
 });

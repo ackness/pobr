@@ -110,5 +110,19 @@ mise run builds:fetch examples/reference-builds/holdout --pick last
 | 2026-10-15（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 19（83%） | 1008/1077（93.6%） |
 | 2026-10-15（第三十八轮：写明 “this Weapon” 的词条按武器所在的手生效；配置的元素曝露需要角色能施加它；“Damage with Maces” 只作用于用该武器的攻击；Styrn's Ferocity 的 Crush 降低敌人物理伤害减免；Lich 的 Crystalline Phylactery 让其中的珠宝按两倍计、不受 The Adorned 影响，4 个护符匣构筑的参考值没有这条规则，伤害改与参考值不同） | `tuned/` | 69 | 58（84%） | 3049/3222（94.6%） |
 | 2026-10-15（同一批改动，未查看其中任何构筑；2 个护符匣构筑同样改与参考值不同） | `holdout/` | 23 | 18（78%） | 1003/1077（93.1%） |
+| 2026-10-16（第三十九轮：在当前侧栏覆盖基线上，Oil Barrage 的持续魔力消耗不再重复计入启动消耗，tuned 增加 1 个吻合行；Dark Consequences 的 Archmage 消耗仍按爆炸频率支付，登记为有意差异） | `tuned/` | 69 | 58（84%） | 5778/6113（94.5%） |
+| 2026-10-16（同一批改动，仅测量总数，未查看其中任何构筑） | `holdout/` | 23 | 18（78%） | 1907/2030（93.9%） |
+| 2026-10-16（第四十轮：Smith 的火抗转换不重复转换全元素抗性词条，最终抗性向零截断；Carved Majesty 等古代 Idol 按插槽物类别计数，不多扣一次非 Idol 的抗性惩罚） | `tuned/` | 69 | 58（84%） | 5786/6113（94.7%） |
+| 2026-10-16（同一批改动，仅测量总数，未查看其中任何构筑） | `holdout/` | 23 | 18（78%） | 1912/2030（94.2%） |
+| 2026-10-16（第四十一轮：PoBR 规则声明导出器 coverage，参考口径自动排除 absent；恢复 Spell Mana Cost Efficiency 的参考基线，并让 The Fall of the Axe 的 Onslaught 在游戏口径生效。逐规则影响由 accuracy 的 beyond PoB2 计数报告，不逐构筑降低基线） | `tuned/` | 69 | 58（84%） | 5787/6113（94.7%） |
+| 2026-10-16（同一批改动，仅测量总数，未查看其中任何构筑） | `holdout/` | 23 | 18（78%） | 1912/2030（94.2%） |
+| 2026-10-16（第四十二轮：输出角色异常门槛、击杀恢复、Daze 几率与完全破甲效果；ES 门槛接受任意词缀数值；冻结积累读取游戏词条名，完全破甲按游戏文本增加物理击中承伤。新增字段不在这批构筑码的参考行中，现有吻合总数不变） | `tuned/` | 69 | 58（84%） | 5787/6113（94.7%） |
+| 2026-10-16（同一批改动，仅测量总数，未查看其中任何构筑） | `holdout/` | 23 | 18（78%） | 1912/2030（94.2%） |
+| 2026-10-16（第四十三轮：Crystallised Immunities 按启用组中超过半数的辅助宝石颜色给予异常免疫；额外残骸与每次命中破甲量登记为尚无模型的 no-effect。AvoidChill / AvoidIgnite / AvoidShock 不在这批构筑码的参考行中，现有吻合总数不变） | `tuned/` | 69 | 58（84%） | 5787/6113（94.7%） |
+| 2026-10-16（同一批改动，仅测量总数，未查看其中任何构筑） | `holdout/` | 23 | 18（78%） | 1912/2030（94.2%） |
+| 2026-10-16 (round 44: Light Radius transfers, granted passive-point budgets, buff expiry rate, flask recovery copied to ES, melee-weapon conditions, and explicit unmodelled/no-effect fates; reference agreement unchanged) | `tuned/` | 69 | 58 (84%) | 5787/6113 (94.7%) |
+| 2026-10-16 (same changes; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1912/2030 (94.2%) |
+| 2026-10-16 (round 45: skill-level audit; effect-row limits, support host levels, named gem bonuses, inherent Spear Throw levels, and weapon-set equipment/attribute context reduce worked-build level/quality leads from 99 to 24; reference agreement unchanged) | `tuned/` | 69 | 58 (84%) | 5787/6113 (94.7%) |
+| 2026-10-16 (same changes; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1912/2030 (94.2%) |
 
 吻合行里有按游戏规则有意不同于参考值的行（例如护身符授予的技能不保留精魄，见 `reference_report.rs` 基线旁的说明），所以上限不是 100%。

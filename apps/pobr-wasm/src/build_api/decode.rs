@@ -1,6 +1,6 @@
 //! Build decoding: PoB Build Code -> structured build JSON
-//! (`decode_build_json`), plus a China-server `.build` file -> an
-//! isomorphic `BuildJson` (`decode_build_file_json`).
+//! (`decode_build_json`), plus current game planner and legacy China-server
+//! `.build` files (`decode_build_file_json`).
 
 use std::collections::BTreeMap;
 
@@ -15,8 +15,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::state;
 
+#[path = "planner_file.rs"]
+mod planner_file;
 #[path = "wegame.rs"]
 mod wegame;
+pub use planner_file::encode_build_file_json;
 pub use wegame::import_trade_items_json;
 
 // 0.1 decode_build_json
@@ -68,8 +71,20 @@ struct ItemsJson {
     limbs: Vec<SlotItemJson>,
 }
 
+fn is_true(value: &bool) -> bool {
+    *value
+}
+
 #[derive(Debug, Serialize)]
 struct GemJson {
+    #[serde(skip_serializing_if = "is_true")]
+    enabled: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    count: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    enable_global_1: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    enable_global_2: Option<bool>,
     skill_id: String,
     level: u32,
     quality: u32,
@@ -91,6 +106,8 @@ struct GemJson {
 
 #[derive(Debug, Serialize)]
 struct SocketGroupJson {
+    include_in_full_dps: bool,
+    group_count: Option<f64>,
     weapon_set: Option<u8>,
     slot: Option<String>,
     enabled: bool,
@@ -118,6 +135,7 @@ fn config_value_json(value: &ConfigInputValue) -> serde_json::Value {
 
 #[derive(Debug, Serialize)]
 struct BuildJson {
+    party: pobr_build::party::Party,
     weapon_swap: Option<super::request::WeaponSwapInput>,
     character: CharacterJson,
     tree: TreeJson,
@@ -128,6 +146,10 @@ struct BuildJson {
     main_socket_group: Option<usize>,
     /// The raw `<Config>` input key/values (the initial state shown/edited on the Config page).
     config_inputs: BTreeMap<String, serde_json::Value>,
+    config_sets: Vec<NamedSetJson>,
+    active_config_set: usize,
+    skill_sets: Vec<NamedSetJson>,
+    active_skill_set: usize,
     /// Editable groups from the selected ConfigSet, including disabled text.
     custom_modifier_blocks: Vec<pobr_data::build_config::CustomModifierBlock>,
     /// Free-text `<Notes>` (PoB's notes page; `null` if that section is absent).
@@ -141,6 +163,12 @@ struct BuildJson {
     active_loadout: Option<usize>,
 }
 
+#[derive(Debug, Serialize)]
+struct NamedSetJson {
+    id: usize,
+    title: String,
+}
+
 /// A single switchable loadout. `tree`/`item`/`skill` are 1-based document
 /// indices; passing them back as `decodeBuildJson`'s selection switches to
 /// it; `null` means that category didn't participate in the binding (the single-set exemption).
@@ -150,6 +178,7 @@ struct LoadoutJson {
     tree: usize,
     item: Option<usize>,
     skill: Option<usize>,
+    config: Option<usize>,
 }
 
 fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
@@ -166,14 +195,47 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
             tree: l.tree,
             item: l.item,
             skill: l.skill,
+            config: l.config,
         })
         .collect();
     let active_loadout = loadouts.iter().position(|l| {
         l.tree == active.tree.unwrap_or(1)
             && l.item.is_none_or(|i| Some(i) == active.item)
             && l.skill.is_none_or(|s| Some(s) == active.skill)
+            && l.config.is_none_or(|s| s == active.config.unwrap_or(1))
     });
     Ok(BuildJson {
+        party: build.party.clone(),
+        skill_sets: if sets.skills.is_empty() {
+            vec![NamedSetJson {
+                id: 1,
+                title: "Default".into(),
+            }]
+        } else {
+            sets.skills
+                .into_iter()
+                .map(|s| NamedSetJson {
+                    id: s.id,
+                    title: s.title,
+                })
+                .collect()
+        },
+        active_skill_set: active.skill.unwrap_or(1),
+        config_sets: if sets.configs.is_empty() {
+            vec![NamedSetJson {
+                id: 1,
+                title: "Default".into(),
+            }]
+        } else {
+            sets.configs
+                .into_iter()
+                .map(|s| NamedSetJson {
+                    id: s.id,
+                    title: s.title,
+                })
+                .collect()
+        },
+        active_config_set: active.config.unwrap_or(1),
         weapon_swap: Some(super::request::WeaponSwapInput {
             active: raw_items.active_weapon_set,
             alternate_items: raw_items
@@ -225,6 +287,8 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
             .socket_groups
             .iter()
             .map(|g| SocketGroupJson {
+                include_in_full_dps: g.include_in_full_dps,
+                group_count: g.group_count,
                 weapon_set: g.weapon_set,
                 slot: g.slot.clone(),
                 enabled: g.enabled,
@@ -235,9 +299,13 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
                     .gem_skills
                     .iter()
                     .map(|gem| GemJson {
+                        count: gem.count,
+                        enable_global_1: gem.enable_global_1,
+                        enable_global_2: gem.enable_global_2,
                         skill_id: gem.skill_id.clone(),
                         level: gem.gem_level,
                         quality: gem.quality,
+                        enabled: gem.enabled,
                         stat_set_index: gem.stat_set_index,
                         name_spec: if gem.skill_id.is_empty() {
                             gem.name_spec.clone()
@@ -303,6 +371,8 @@ struct LoadoutRequest {
     item: Option<usize>,
     #[serde(default)]
     skill: Option<usize>,
+    #[serde(default)]
+    config: Option<usize>,
 }
 
 #[derive(Serialize)]
@@ -321,6 +391,7 @@ fn decode_loadout_impl(request_json: &str) -> Result<String, super::ApiError> {
             tree: req.tree,
             item: req.item,
             skill: req.skill,
+            config: req.config,
         },
     )?;
     let selected = SelectedLoadoutJson {
@@ -348,6 +419,8 @@ pub fn manage_loadout_json(request_json: &str) -> Result<String, String> {
 
 #[derive(Debug, Deserialize)]
 struct ManageRequest {
+    #[serde(default)]
+    kind: Option<String>,
     code: String,
     op: String,
     #[serde(default)]
@@ -358,6 +431,8 @@ struct ManageRequest {
     item: Option<usize>,
     #[serde(default)]
     skill: Option<usize>,
+    #[serde(default)]
+    config: Option<usize>,
 }
 
 fn manage_loadout_impl(request_json: &str) -> Result<String, super::ApiError> {
@@ -366,14 +441,79 @@ fn manage_loadout_impl(request_json: &str) -> Result<String, super::ApiError> {
     let xml = decode_pob_code(req.code.trim())
         .map_err(|e| super::ApiError::decode_error(format!("decode build code: {e}")))?;
     let active = active_selection(&xml);
+    if let Some(kind) = &req.kind {
+        let (kind, id) = match kind.as_str() {
+            "config" => (SetKind::Config, req.config.or(active.config).unwrap_or(1)),
+            "skill" => (SetKind::Skill, req.skill.or(active.skill).unwrap_or(1)),
+            _ => return Err(super::ApiError::bad_request("unknown set kind")),
+        };
+        let title = req.name.as_deref().unwrap_or("").trim();
+        if req.op != "remove" && title.is_empty() {
+            return Err(super::ApiError::bad_request("name is required"));
+        }
+        let out = pobr_build::manage_named_set(&xml, kind, &req.op, id, title)
+            .map_err(super::ApiError::bad_request)?;
+        return Ok(serde_json::to_string(
+            &pobr_build::encode_pob_code(&out).map_err(|e| format!("encode: {e}"))?,
+        )
+        .map_err(|e| format!("serialize: {e}"))?);
+    }
     let targets = [
         (SetKind::Tree, req.tree.or(active.tree).unwrap_or(1)),
         (SetKind::Item, req.item.or(active.item).unwrap_or(1)),
         (SetKind::Skill, req.skill.or(active.skill).unwrap_or(1)),
+        (SetKind::Config, req.config.or(active.config).unwrap_or(1)),
     ];
 
     let mut out = xml;
     for (kind, index) in targets {
+        if matches!(kind, SetKind::Config | SetKind::Skill) {
+            let sets = parse_build_sets(&out).map_err(|e| format!("parse sets: {e}"))?;
+            if (if kind == SetKind::Config {
+                sets.configs
+            } else {
+                sets.skills
+            })
+            .is_empty()
+            {
+                continue;
+            }
+            let original = active_selection(&out);
+            out = pobr_build::manage_named_set(
+                &out,
+                kind,
+                &req.op,
+                index,
+                req.name.as_deref().unwrap_or("Default"),
+            )
+            .or_else(|error| {
+                if req.op == "remove" && error == "cannot remove the last set" {
+                    Ok(out.clone())
+                } else {
+                    Err(error)
+                }
+            })
+            .map_err(super::ApiError::bad_request)?;
+            if req.op != "remove" {
+                out = select_sets(
+                    &out,
+                    &SetSelection {
+                        config: if kind == SetKind::Config {
+                            original.config
+                        } else {
+                            None
+                        },
+                        skill: if kind == SetKind::Skill {
+                            original.skill
+                        } else {
+                            None
+                        },
+                        ..Default::default()
+                    },
+                );
+            }
+            continue;
+        }
         let applied = match req.op.as_str() {
             "duplicate" => {
                 let name = req.name.as_deref().ok_or_else(|| {
@@ -408,7 +548,27 @@ fn manage_loadout_impl(request_json: &str) -> Result<String, super::ApiError> {
 fn decode_selected(code: &str, sel: &SetSelection) -> Result<(BuildJson, String), super::ApiError> {
     let raw = decode_pob_code(code.trim())
         .map_err(|e| super::ApiError::decode_error(format!("decode build code: {e}")))?;
-    let xml = select_sets(&raw, sel);
+    let mut selection = sel.clone();
+    if let Some(id) = sel.config {
+        let sets =
+            parse_build_sets(&raw).map_err(|e| super::ApiError::decode_error(e.to_string()))?;
+        if !(sets.configs.iter().any(|set| set.id == id) || sets.configs.is_empty() && id == 1) {
+            return Err(super::ApiError::bad_request("config set does not exist"));
+        }
+    }
+    if let Some(id) = sel.skill {
+        let sets =
+            parse_build_sets(&raw).map_err(|e| super::ApiError::decode_error(e.to_string()))?;
+        if !(sets.skills.iter().any(|set| set.id == id) || sets.skills.is_empty() && id == 1) {
+            return Err(super::ApiError::bad_request("skill set does not exist"));
+        }
+        // A flat legacy Skills section already is its sole set; adding an
+        // active marker without a wrapper would hide those legacy groups.
+        if sets.skills.is_empty() {
+            selection.skill = None;
+        }
+    }
+    let xml = select_sets(&raw, &selection);
     let build = parse_build(&xml)
         .map_err(|e| super::ApiError::decode_error(format!("parse build xml: {e}")))?;
     let json = build_to_json(&build, &xml)?;
@@ -505,6 +665,9 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
     if value.get("format").is_some() {
         return wegame::decode(value);
     }
+    if value.get("items").is_none() && value.get("name").is_some() {
+        return planner_file::decode(value);
+    }
     let file: CnBuildFile = serde_json::from_value(value)
         .map_err(|e| super::ApiError::decode_error(format!("invalid .build json: {e}")))?;
     let data = state::build_data().map_err(super::ApiError::not_initialized)?;
@@ -595,9 +758,13 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                 }
             };
             let mut gems = vec![GemJson {
+                count: None,
+                enable_global_1: None,
+                enable_global_2: None,
                 skill_id: active.clone(),
                 level: 20,
                 quality: 0,
+                enabled: true,
                 stat_set_index: None,
                 name_spec: None,
                 corrupted: false,
@@ -607,9 +774,13 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
             for support in &group.support_skills {
                 match cn_gem_effect_id(&data, &support.id) {
                     Some(id) => gems.push(GemJson {
+                        count: None,
+                        enable_global_1: None,
+                        enable_global_2: None,
                         skill_id: id,
                         level: 20,
                         quality: 0,
+                        enabled: true,
                         stat_set_index: None,
                         name_spec: None,
                         corrupted: false,
@@ -620,6 +791,8 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                 }
             }
             Some(SocketGroupJson {
+                include_in_full_dps: false,
+                group_count: None,
                 weapon_set: None,
                 slot: None,
                 enabled: true,
@@ -632,6 +805,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
         .collect();
 
     let json = BuildJson {
+        party: Default::default(),
         weapon_swap: None,
         character: CharacterJson {
             level,
@@ -653,6 +827,10 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
         socket_groups,
         main_socket_group: None,
         config_inputs: BTreeMap::new(),
+        config_sets: vec![NamedSetJson { id: 1, title: "Default".into() }],
+        active_config_set: 1,
+        skill_sets: vec![NamedSetJson { id: 1, title: "Default".into() }],
+        active_skill_set: 1,
         custom_modifier_blocks: Vec::new(),
         notes: (!file.name.trim().is_empty()).then(|| {
             let mut note = file.name.trim().to_string();
@@ -675,6 +853,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
             tree: 1,
             item: None,
             skill: None,
+            config: None,
         }],
         active_loadout: Some(0),
     };

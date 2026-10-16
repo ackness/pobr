@@ -16134,36 +16134,6 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
-      "id": "vnd_enemies_in_your_presence_have_at_least_d_828d7ffd",
-      "pattern": "enemies in your presence have at least (\\d+)% of life reserved",
-      "vendor_pattern": "^enemies in your presence have at least (%d+)%% of life reserved$",
-      "mods": [
-        {
-          "name": "EnemyModifier",
-          "type": "LIST",
-          "value": {
-            "mods": [
-              {
-                "name": "LifeReservationPercent",
-                "type": "BASE",
-                "value": "$1",
-                "tags": [
-                  {
-                    "type": "ActorCondition",
-                    "actor": "enemy",
-                    "var": "EnemyInPresence"
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      ],
-      "verified": false,
-      "batch": "V0",
-      "source_note": "vendor specialModList 批量抽取（闭包探针）"
-    },
-    {
       "id": "vnd_enemies_in_your_presence_have_exposure_2b3f3ef8",
       "pattern": "enemies in your presence have exposure",
       "vendor_pattern": "^enemies in your presence have exposure$",

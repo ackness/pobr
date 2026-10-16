@@ -132,10 +132,23 @@ pub enum FormulaOp {
     OffHandAlternating,
     /// Multiplies by `operand`: the share of time not spent reloading.
     Reload,
+    /// Changes the spell's use rate to its meta gem's Energy trigger rate.
+    EnergyTrigger,
     /// A target can be hit once every `operand` seconds: of the arrows
     /// landing at the running rate, the first to land once that time has
     /// passed hits, one in every `⌈operand × value⌉`.
     HitInterval,
+    /// Attack time used by the channel, including an immutable skill time.
+    ChannelAttackTime,
+    /// Stage-count annotations; preserve the running rate.
+    ChannelMaximumStages,
+    ChannelDefaultStages,
+    ChannelRequestedStages,
+    ChannelStages,
+    /// Replace the rate with one use per channel duration (seconds).
+    ChannelTime,
+    /// Add the release duration to the channel, then invert to uses/second.
+    ChannelRelease,
     /// Starts from the stronger hand's ailment damage per second, `operand`.
     StrongerHand,
     /// `operand` percent of the active instances come from the stronger hand.
@@ -149,6 +162,13 @@ impl FormulaOp {
     /// The stable name used in serialized output.
     pub fn as_str(self) -> &'static str {
         match self {
+            Self::ChannelMaximumStages => "channel_maximum_stages",
+            Self::ChannelDefaultStages => "channel_default_stages",
+            Self::ChannelRequestedStages => "channel_requested_stages",
+            Self::ChannelStages => "channel_stages",
+            Self::ChannelAttackTime => "channel_attack_time",
+            Self::ChannelTime => "channel_time",
+            Self::ChannelRelease => "channel_release",
             Self::Base => "base",
             Self::Flat => "flat",
             Self::EnemyFlat => "enemy_flat",
@@ -207,6 +227,7 @@ impl FormulaOp {
             Self::OffHandEither => "off_hand_either",
             Self::OffHandAlternating => "off_hand_alternating",
             Self::Reload => "reload",
+            Self::EnergyTrigger => "energy_trigger",
             Self::HitInterval => "hit_interval",
             Self::StrongerHand => "stronger_hand",
             Self::StrongerShare => "stronger_share",

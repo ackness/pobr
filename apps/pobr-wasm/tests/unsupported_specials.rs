@@ -4,12 +4,11 @@
 //! recovery/mana overflow/possession -> structured mod registration
 //! (vendor cross-reference and sourcing are in the overlay's source_note).
 //!
-//! Exception: `Also grants N Guard` was once modeled by the curated entry
-//! also_grants_guard as an absorption layer, but vendor's ModParser doesn't
-//! parse it at all — against PoB2 golden, that was a phantom Guard pool
-//! (removed by an existing #7 cleanup, dropping ritualist EHP from 1.10x to
-//! 1.00x). Now aligned with PoB2, it's back to "unmodeled -> loudly land in
-//! the unsupported report, and doesn't affect the hit pool" basis.
+//! `Also grants N Guard` (game stat `charm_gain_X_guard_for_duration`) is
+//! implemented from the game's Guard definition under the enabled-charm
+//! convention: the strongest grant absorbs hit damage before Life/ES, capped
+//! at 200% of maximum Life. The exporter does not parse the line, so the rule
+//! is exporter-absent and the reference basis leaves it out.
 
 use pobr_gamedata::repo_data_root;
 use serde_json::{Value, json};
@@ -62,41 +61,34 @@ fn charm_flask_use_effect_lines_are_recognized() {
         "Recover 295 Mana when Used",
         "Mana Recovery from Flasks can Overflow maximum Mana during Effect",
         "Possessed by Spirit Of The Stag for 19 seconds on use",
+        "Also grants 481 Guard",
     ] {
         assert!(
             !unsupported.iter().any(|u| u.contains(line)),
             "`{line}` is still in the unsupported list: {unsupported:?}"
         );
     }
-    // The guard line is unmodeled (vendor doesn't parse it either) — it must be loudly reported, not silently dropped.
-    assert!(
-        unsupported
-            .iter()
-            .any(|u| u.contains("Also grants 481 Guard")),
-        "`Also grants 481 Guard` should be in the unsupported list (consistent with PoB2 after #7 removed the phantom modeling): {unsupported:?}"
-    );
 }
 
 #[test]
-fn guard_line_does_not_extend_hit_pool() {
+fn charm_guard_extends_the_hit_pool() {
     let dir = repo_data_root().join(pobr_gamedata::data_version());
     pobr_wasm::init_data_from_dir(dir.to_str().unwrap()).expect("init data");
 
     let without = calculate(false);
     let with = calculate(true);
-    // After #7 removed the also_grants_guard phantom modeling, the guard
-    // line must no longer expand the hit pool (vendor doesn't parse this
-    // line; the previous +481 was a phantom pool PoBR had modeled unilaterally).
+    // An enabled charm is in effect: its 481 Guard absorbs a hit before Life,
+    // well under the 200% of maximum Life cap for a level 90 character.
     let delta = stat(&with, "PhysicalMaxHit") - stat(&without, "PhysicalMaxHit");
     assert!(
-        delta.abs() < 1.0,
-        "the guard line should not change physical max hit (actual delta {delta})"
+        delta > 1.0,
+        "the charm's Guard should raise physical max hit (actual delta {delta})"
     );
 }
 
 /// `line_usage_json` takes the request `calculate_build_json` takes and names
-/// the holder of every line: the unmodelled guard line is listed under its
-/// charm, and the immunities the charm grants are applied.
+/// the holder of every line: the charm's guard line and the immunities it
+/// grants are listed under the charm and applied.
 #[test]
 fn the_ledger_names_the_charm_holding_each_line() {
     let dir = repo_data_root().join(pobr_gamedata::data_version());
@@ -121,7 +113,57 @@ fn the_ledger_names_the_charm_holding_each_line() {
             .unwrap_or_else(|| panic!("`{text}` is not listed under the charm: {lines:#?}"))
     };
     let guard = line("Also grants 481 Guard");
-    assert_eq!(guard["status"], "unparsed");
+    assert_eq!(guard["status"], "applied");
     assert_eq!(guard["holder"], "Golden Charm");
     assert_eq!(line("Immune to Ignite")["status"], "applied");
+}
+
+/// Gated readers are inactive, with machine-readable gate metadata; activating
+/// the config must reach the real reader and omit that inactive-only field.
+#[test]
+fn the_ledger_serializes_registered_reader_gates() {
+    let dir = repo_data_root().join(pobr_gamedata::data_version());
+    pobr_wasm::init_data_from_dir(dir.to_str().unwrap()).unwrap();
+    for active in [false, true] {
+        let request = json!({
+            "character": { "level": 80, "class_name": "Witch" },
+            "allocated_nodes": [], "socket_groups": [],
+            "items": [{ "slot": "amulet", "text": "Rarity: RARE\nTest\nGold Amulet\nImplicits: 0\nArchon Buffs also grant 10% increased Movement Speed\n20% faster start of Energy Shield Recharge while affected by an Archon Buff\nImmune to Chill if a majority of your Socketed Support Gems are Blue" }],
+            "config_inputs": { "conditionAffectedByArchon": active },
+        });
+        let out = pobr_wasm::line_usage_json(&request.to_string()).unwrap();
+        let response: Value = serde_json::from_str(&out).unwrap();
+        assert!(
+            response["usage"]["condition_states"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|condition| condition == "MajorityBlueSocketedSupports")
+        );
+        assert_eq!(
+            response["usage"]["condition_configs"]["AffectedByArchon"],
+            "conditionAffectedByArchon"
+        );
+        let modifier = response["usage"]["lines"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|line| line["modifiers"].as_array().unwrap())
+            .find(|modifier| modifier["name"] == "ArchonMovementSpeed")
+            .unwrap();
+        assert_eq!(
+            modifier["status"],
+            if active { "applied" } else { "inactive" }
+        );
+        if active {
+            assert!(modifier.get("read_gate").is_none());
+        } else {
+            assert_eq!(
+                modifier["read_gate"],
+                json!({
+                    "state": "Affected by an Archon buff", "config_option": "conditionAffectedByArchon"
+                })
+            );
+        }
+    }
 }

@@ -485,6 +485,7 @@ dependencies = [
  "criterion",
  "pobr-data",
  "regex",
+ "serde",
  "serde_json",
 ]
 
@@ -566,6 +567,7 @@ dependencies = [
  "pobr-gamedata",
  "pobr-i18n",
  "pobr-item",
+ "pobr-tree",
  "serde",
  "serde_json",
  "wasm-bindgen",

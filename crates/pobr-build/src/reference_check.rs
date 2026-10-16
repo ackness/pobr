@@ -49,8 +49,8 @@ impl ReferenceRow {
 /// Catalog pairs whose two sides are defined differently, so comparing them
 /// measures the definitions rather than the calculation.
 const NOT_COMPARABLE: &[&str] = &[
-    // PoBR's value is the hit before the enemy's mitigation and chance to
-    // hit; PoB2's `AverageHit` includes both.
+    // PoBR's value is the hit before the enemy's mitigation; PoB2's
+    // `AverageHit` includes mitigation. Neither includes chance to hit.
     "TotalHitAvg",
     // Same PoB2 key as `ActionRate`; listed once.
     "EffectiveActionRate",
@@ -68,6 +68,9 @@ pub fn compare_to_reference(
         .into_iter()
         .filter(|def| def.parity_status == ParityStatus::Computed)
         .filter(|def| !NOT_COMPARABLE.contains(&def.id.as_str()))
+        .filter(|def| {
+            output.full_dps.is_some() || !matches!(def.id.as_str(), "FullDPS" | "FullDotDPS")
+        })
         .filter_map(|def| {
             let mut pob_key = def.pob_key?;
             // PoB2 reports how often a skill is used as `Speed` and, where
@@ -88,12 +91,24 @@ pub fn compare_to_reference(
 }
 
 /// The minion rows: (row id, the reference's `<MinionStat>` name).
-const MINION_ROWS: [(&str, &str); 5] = [
+const MINION_ROWS: [(&str, &str); 17] = [
     ("MinionTotalDPS", "TotalDPS"),
     ("MinionLife", "Life"),
     ("MinionEnergyShield", "EnergyShield"),
     ("MinionArmour", "Armour"),
     ("MinionEvasion", "Evasion"),
+    ("MinionFireResist", "FireResist"),
+    ("MinionColdResist", "ColdResist"),
+    ("MinionLightningResist", "LightningResist"),
+    ("MinionChaosResist", "ChaosResist"),
+    ("MinionFireResistMax", "FireResistMax"),
+    ("MinionColdResistMax", "ColdResistMax"),
+    ("MinionLightningResistMax", "LightningResistMax"),
+    ("MinionChaosResistMax", "ChaosResistMax"),
+    ("MinionFireResistOverCap", "FireResistOverCap"),
+    ("MinionColdResistOverCap", "ColdResistOverCap"),
+    ("MinionLightningResistOverCap", "LightningResistOverCap"),
+    ("MinionChaosResistOverCap", "ChaosResistOverCap"),
 ];
 
 fn minion_value(minion: &MinionOutput, key: &str) -> f64 {
@@ -102,7 +117,8 @@ fn minion_value(minion: &MinionOutput, key: &str) -> f64 {
         "Life" => minion.life,
         "EnergyShield" => minion.energy_shield,
         "Armour" => minion.armour,
-        _ => minion.evasion,
+        "Evasion" => minion.evasion,
+        _ => minion.stats.get(key).copied().unwrap_or(0.0),
     }
 }
 
@@ -134,13 +150,41 @@ pub fn main_skill_minion<'a>(
     data: &crate::BuildData,
     output: &'a OutputTable,
 ) -> Option<&'a MinionOutput> {
-    let (group, _, skill_id) = crate::resolve_main_skill_selection(build, data)?;
-    let chosen = build
-        .socket_groups
-        .get(group)
-        .and_then(|group| group.gem_skills.iter().find(|gem| gem.skill_id == skill_id))
+    if output.minions.is_empty() {
+        return None;
+    }
+    let prepared = crate::calc_orchestrator::prepared_build_view(build, data, &Default::default());
+    let (group_index, ordinal, skill_id) = crate::resolve_main_skill_selection(&prepared, data)?;
+    let group = prepared.socket_groups.get(group_index)?;
+    if !group.enabled {
+        return None;
+    }
+    let effect = pobr_core::skill_env::group_active_effects(
+        group.gem_skills.iter().map(|gem| {
+            (
+                gem.skill_id.as_str(),
+                gem.gem_level,
+                gem.quality,
+                gem.stat_set_index,
+            )
+        }),
+        data,
+    )
+    .nth(ordinal.checked_sub(1)?)?;
+    let chosen = group
+        .gem_skills
+        .get(effect.gem_index)
         .and_then(|gem| gem.minion.as_deref());
-    let summoned = |minion: &&MinionOutput| minion.summoned_by == skill_id;
+    let origin = (
+        prepared.socket_groups[..group_index]
+            .iter()
+            .filter(|group| group.enabled)
+            .count(),
+        effect.gem_index,
+    );
+    let summoned = |minion: &&MinionOutput| {
+        minion.summoned_by == skill_id && minion.summoner.is_none_or(|summoner| summoner == origin)
+    };
     chosen
         .and_then(|id| {
             output

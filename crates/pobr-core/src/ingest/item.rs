@@ -311,9 +311,8 @@ fn substitute_slot_placeholder(modifier: &mut Modifier, slot_id: &str) {
 // A List mod doesn't participate in sum/more/flag aggregation → the payload
 // has zero effect on output before merging (a migration invariant).
 //
-// Scope: only covers "modifiers enter calc + apply the effect multiplier
-// bucket"; charge/duration/recovery modeling (vendor
-// flaskData.duration/charges, calcFlaskRecovery) isn't built.
+// Local duration, recovery and charge properties are stored separately for
+// calc::utility; only effect modifiers enter the buff payload.
 
 /// The List mod name for a flask's modifier payload (consumed by `merge_flasks_charms`).
 pub const FLASK_BUFF_LIST_NAME: &str = "FlaskBuff";
@@ -371,8 +370,8 @@ pub fn flask_charm_source(slot_name: &str) -> SourceId {
 ///   (`"Charm 1"` → `charm1`); inner mods each carry their own origin (slot +
 ///   raw_text), so they're traceable modifier-by-modifier once merged.
 /// - `N% increased/reduced effect` → the payload's [`LOCAL_UTILITY_EFFECT_NAME`] Inc.
-/// - `Grants Onslaught [during effect]` → an `Onslaught` Flag (consumed after
-///   merging by env_finalize stage 6's buff_definitions `OnslaughtFlask`).
+/// - `Grants Onslaught during effect` → `Condition:Onslaught`, gated on an
+///   active utility effect; the buff expands after the payload merges.
 /// - Other lines strip the `... during effect` suffix and reuse [`parse_mod`]
 ///   (the active-state semantics are already handled by the slot's `active`
 ///   gate); unparseable lines (including hard parse errors — flask text is
@@ -399,9 +398,6 @@ pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'
         .chain(&item.modifier_texts)
         .chain(&item.enchant_texts)
     {
-        if is_trigger_line(text) {
-            continue;
-        }
         if let Some(value) = parse_local_effect_inc(text) {
             nested.push(
                 Modifier::number(LOCAL_UTILITY_EFFECT_NAME, ModType::Inc, value)
@@ -412,8 +408,23 @@ pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'
         }
         match ctx.parse(strip_during_effect(text)) {
             Ok(outcome) if outcome.status == ParseStatus::Parsed => {
-                for modifier in outcome.mods {
-                    nested.push(modifier.with_origin(make_origin(text)));
+                for mut modifier in outcome.mods {
+                    // A flask's bare "increased Duration" describes that
+                    // item, not the character's skill effects.
+                    if modifier.name.as_str() == "Duration" && is_local_utility_duration(text) {
+                        modifier.name = ModName::from("LocalUtilityDuration");
+                    }
+                    let modifier = modifier.with_origin(make_origin(text));
+                    if crate::calc::utility::is_local_property(modifier.name.as_str(), text) {
+                        let mut modifier = modifier;
+                        modifier.name = ModName::from(
+                            crate::calc::utility::local_name(slot_name, modifier.name.as_str())
+                                .as_str(),
+                        );
+                        ingest.modifiers.push(modifier);
+                    } else {
+                        nested.push(modifier);
+                    }
                 }
             }
             // Unsupported or a hard error: report the original line (with
@@ -449,11 +460,20 @@ pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'
     ingest
 }
 
-/// A flask/charm's trigger condition is inherent base text, silently skipped rather than reported as unsupported.
-/// Effect lines (e.g. `Also grants N Guard` and `Possessed by ...`) still go
-/// through parsing, and stay in the unsupported report while unmodeled.
-fn is_trigger_line(text: &str) -> bool {
-    text.trim().to_lowercase().starts_with("used when ")
+fn is_local_utility_duration(text: &str) -> bool {
+    let lower = text.trim().to_lowercase();
+    [
+        "% increased duration",
+        "% reduced duration",
+        "% more duration",
+        "% less duration",
+    ]
+    .iter()
+    .any(|suffix| {
+        lower
+            .strip_suffix(suffix)
+            .is_some_and(|n| n.parse::<f64>().is_ok())
+    })
 }
 
 /// `N% increased effect` / `N% reduced effect` (case-insensitive) → this item's local effect inc.
@@ -465,23 +485,6 @@ fn parse_local_effect_inc(text: &str) -> Option<f64> {
         .or_else(|| lower.strip_suffix("% reduced effect").map(|n| (n, -1.0)))?;
     number.parse::<f64>().ok().map(|value| value * sign)
 }
-
-// Note: `Grants Onslaught during effect` (the sole modifier on Silver Charm
-// The Fall of the Axe, etc.) is **deliberately no longer special-cased**.
-// PoB2's ModParser returns `unsupported` for this line (no mod is produced,
-// verified via `tools/pob2-oracle/run-parsemod.sh`) — its Onslaught never
-// enters modDB, and golden doesn't include that Onslaught speed boost. An
-// earlier `parse_granted_buff_flag` exceeded PoB2's parsing capability by
-// unconditionally emitting `flag("Onslaught")`, inflating Speed relative to
-// golden (detonate-dead 2.87 vs 2.62 = 1.09x, coiling 1.08x, flicker 1.15x;
-// cooldown/trigger-rate-capped grenade/frost-bomb were unaffected, hence
-// 1.00x). After removal, this line falls through to `ctx.parse` below →
-// Unsupported, matching PoB2 line-for-line (also consistent with PoBR's
-// design philosophy: unparseable text is Unsupported). Silver **Flask**'s
-// Onslaught (CalcPerform.lua:618-648's `item.baseName:match("Silver Flask")`
-// active form) is a separate channel unrelated to this text modifier; it
-// should be wired up through its own source when that real mechanic lands,
-// not via text special-casing.
 
 /// Strips the `... during [flask] effect` suffix (case-insensitive), returning the remaining slice.
 fn strip_during_effect(text: &str) -> &str {

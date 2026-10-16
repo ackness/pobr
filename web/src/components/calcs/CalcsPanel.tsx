@@ -3,6 +3,7 @@ import { formatApiError } from '../../api/error';
 import { useMemo, useRef, useState } from 'react';
 import type {
   AttributionResponse,
+  MinionOutput,
   Breakdown,
   BreakdownMod,
   FormulaStep,
@@ -16,7 +17,7 @@ import type {
   SkillMetricsResponse,
 } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { formatStatValue, statMap } from '../../lib/statDisplay';
+import { STAT_SECTIONS, formatStatValue, statMap } from '../../lib/statDisplay';
 import {
   bindT,
   damageTypeLabel,
@@ -29,8 +30,11 @@ import {
 } from '../../lib/i18n';
 import { getBackend } from '../../api/backend';
 import { useEffect } from 'react';
-import { useSkillName } from '../../hooks/useSkillName';
+import { useSkillName, useSkillCatalog } from '../../hooks/useSkillName';
 import './calcs.css';
+import { detailKind, detailFormula, StatDetailCache } from '../../lib/statDetails';
+import { AppSelect } from '../shared/AppSelect';
+import { SkillFormControls } from '../skills/SkillFormControls';
 import { highestDpsSkill } from '../../lib/skillSelection';
 
 interface Props {
@@ -96,6 +100,7 @@ function formulaOperand(step: FormulaStep): string {
     case 'enemy_mitigation':
     case 'uses_per_second':
     case 'dps_multiplier':
+    case 'energy_trigger':
     case 'reload':
       return `×${n}`;
     case 'vs_evasion':
@@ -651,8 +656,35 @@ function ModLines({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
   );
 }
 
-function BreakdownTable({ breakdown, lang }: { breakdown: Breakdown; lang: Lang }) {
+export function BreakdownTable({ breakdown, lang }: { breakdown: Breakdown; lang: Lang }) {
   const tt = bindT(lang);
+  if (breakdown.derived) {
+    const derived = breakdown.derived;
+    const sourceHints = derived.context.filter(input => input.id.startsWith('EnergyNeeds'));
+    const context = derived.context.filter(input => !input.id.startsWith('EnergyNeeds'));
+    return <div className="breakdown-detail breakdown-derived">
+      {sourceHints.map(hint => <p className="breakdown-note" key={hint.id}>{statNameLabel(lang, hint.id)}</p>)}
+      <p className="derived-formula">{detailFormula(derived.formula, derived.inputs, lang)}</p>
+      <table className="breakdown-table"><caption>{tt('calcs.inputs')}</caption><tbody>
+        {derived.inputs.map(input => <tr key={input.id}><th scope="row">{statNameLabel(lang, input.id)}</th><td>{formatStatValue(input.value, 'float2')}</td></tr>)}
+      </tbody></table>
+      {context.length > 0 && <table className="breakdown-table"><caption>{tt('calcs.context')}</caption><tbody>
+        {context.map(input => <tr key={input.id}><th scope="row">{statNameLabel(lang, input.id)}</th><td>{formatStatValue(input.value, 'float2')}</td></tr>)}
+      </tbody></table>}
+    </div>;
+  }
+  if (breakdown.kind === 'sources' && breakdown.actor?.kind !== 'minion') {
+    const groups = breakdown.sources?.filter(group => group.mods.length > 0) ?? [];
+    return <div className="breakdown-detail breakdown-sources">
+      <p className="breakdown-note">{tt('calcs.sourcesNote')}</p>
+      {groups.length === 0 && <p>{tt('calcs.noSources')}</p>}
+      {groups.map(group => <section key={group.name}>
+        <h4>{statNameLabel(lang, group.name)}</h4>
+        {group.mods.some(mod => mod.active && mod.mod_type === 'MORE') && <p className="breakdown-note">{tt(group.more_precision === null ? 'calcs.moreRounded' : 'calcs.moreFloored')} {group.more_precision ?? 2}</p>}
+        <BreakdownTable breakdown={{ ...group, formula: null }} lang={lang} />
+      </section>)}
+    </div>;
+  }
   const damageLines = [
     ...(breakdown.damage ? [breakdown.damage.shared_mods, ...breakdown.damage.rows.map((row) => row.mods)] : []),
     ...(breakdown.skill_dot ?? []).map((row) => row.mods),
@@ -758,6 +790,7 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
   }, [stateVersion, runSkillMetrics]);
 
   const skillName = useSkillName(lang);
+  const catalog = useSkillCatalog();
   const mainIndex = session.calcParams.main_socket_group;
   const highest = report ? highestDpsSkill(report.skills, session.socketGroups) : null;
   const columns = [
@@ -773,6 +806,16 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
     <section className="ui-card attribution-view" aria-labelledby="skill-metrics-heading" aria-busy={running}>
       <h3 id="skill-metrics-heading" tabIndex={-1}>{tt('calcs.skillMetrics')}</h3>
       <p className="calcs-hint">{tt('calcs.skillMetricsHint')}</p>
+      {mainIndex !== undefined && <SkillFormControls session={session} lang={lang} groupIndex={mainIndex} catalog={catalog} />}
+      {session.calc?.full_dps && <div className="breakdown-scroll"><table className="breakdown-table full-dps-table">
+        <caption>{tt('calcs.fullDpsContribution')}</caption>
+        <thead><tr><th>{tt('calcs.skill')}</th><th>{tt('skills.count')}</th><th>{tt('calcs.fullDpsContribution')}</th><th>{tt('calcs.diagnostics')}</th></tr></thead>
+        <tbody>{session.calc.full_dps.skills.map(row => <tr key={`${row.group_index}-${row.active_skill_index}`}>
+          <th>{tt('calcs.group')} {row.group_index + 1} · {skillName(row.skill_id)}</th><td>{fmtNum(row.count)}</td>
+          <td>{row.error ? '—' : fmtNum(row.dps)}</td><td>{row.error}{row.unsupported_modifiers.length > 0 && <details><summary>{tt('calcs.unsupported')} ({row.unsupported_modifiers.length})</summary>
+            <ul>{row.unsupported_modifiers.map((issue, index) => <li key={index}>{issue}</li>)}</ul></details>}</td>
+        </tr>)}</tbody>
+      </table></div>}
       {running && <p className="calcs-hint" role="status">{tt('calcs.running')}</p>}
       {error && <div className="calc-error" role="alert">{error}</div>}
       {report?.item_errors.map((issue, index) => (
@@ -946,6 +989,29 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
   const tt = bindT(lang);
   const calc = session.calcError ? null : session.calc;
   const [open, setOpen] = useState<string | null>(null);
+  const [actor, setActor] = useState('player');
+  const actorKey = (minion: MinionOutput) =>
+    `${minion.index}:${minion.minion_id}:${minion.summoned_by}`;
+  const selectedMinion = calc?.minions?.find(minion => actorKey(minion) === actor);
+  const actorBreakdowns = selectedMinion?.breakdowns ?? calc?.breakdowns ?? {};
+  const cache = useRef(new StatDetailCache());
+  const [loaded, setLoaded] = useState<{ calc: typeof calc; id: string; actor: string; detail: Breakdown | null; error?: string } | null>(null);
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    if (!calc || !open || detailKind(selectedMinion ?? calc, open) === 'none' || actorBreakdowns[open]) return;
+    const request = session.currentRequest();
+    if (!request) return;
+    let cancelled = false;
+    cache.current.load(calc, `${actor}:${open}`, async () => {
+      const result = await (await getBackend()).calculateBuild({ ...request, breakdowns: [open], breakdown_actor: selectedMinion ? { kind: 'minion', index: selectedMinion.index } : { kind: 'player' } });
+      return (selectedMinion ? result.minions?.find(minion => minion.index === selectedMinion.index)?.breakdowns[open] : result.breakdowns[open]) ?? null;
+    }).then(detail => {
+      if (!cancelled) setLoaded({ calc, id: open, actor, detail });
+    }).catch(error => {
+      if (!cancelled) setLoaded({ calc, id: open, actor, detail: null, error: formatApiError(error) });
+    });
+    return () => { cancelled = true; };
+  }, [calc, open, actor, selectedMinion, actorBreakdowns, session.currentRequest, retry]);
 
   // 侧边栏跳转：展开目标 breakdown 并滚动到可视区（渲染提交后再滚）。
   // 消费后立即让父级清空 focus——否则切走再切回本页签会带着旧 focus 重新
@@ -953,9 +1019,16 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
   useEffect(() => {
     if (!focus) return;
     const overview = focus.id === 'skill-metrics';
-    if (!overview) setOpen(focus.id);
+    const minionFocus = /^Minion:(\d+):(.+)$/.exec(focus.id);
+    const stat = minionFocus?.[2] ?? focus.id;
+    if (!overview) {
+      setQuery('');
+      const minion = minionFocus && calc?.minions?.find(row => row.index === Number(minionFocus[1]));
+      setActor(minion ? actorKey(minion) : 'player');
+      setOpen(stat);
+    }
     const frame = requestAnimationFrame(() => {
-      const target = document.getElementById(overview ? 'skill-metrics-heading' : `breakdown-${focus.id}`);
+      const target = document.getElementById(overview ? 'skill-metrics-heading' : `breakdown-${stat}`);
       if (overview) target?.focus({ preventScroll: true });
       target?.scrollIntoView({ block: 'start', behavior: 'smooth' });
       onFocusConsumed?.();
@@ -973,7 +1046,8 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
     const catOf = new Map<string, DisplayStatCategory>(calc.stats.map((s) => [s.id, s.category]));
     const catalogOrder = new Map<string, number>(calc.stats.map((s, i) => [s.id, i]));
     const q = query.trim().toLowerCase();
-    const names = Object.keys(calc.breakdowns)
+    const names = selectedMinion ? Object.keys(selectedMinion.stats) : calc.stats.map(stat => stat.id);
+    const filteredNames = names
       .filter(
         (name) =>
           q === '' ||
@@ -986,7 +1060,7 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
         return ia !== ib ? ia - ib : a.localeCompare(b);
       });
     const byCat = new Map<string, string[]>();
-    for (const name of names) {
+    for (const name of filteredNames) {
       const cat = catOf.get(name) ?? 'Other';
       if (!byCat.has(cat)) byCat.set(cat, []);
       byCat.get(cat)!.push(name);
@@ -1000,9 +1074,9 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
       category,
       names: byCat.get(category)!,
     }));
-  }, [calc, query, lang]);
+  }, [calc, query, lang, selectedMinion]);
 
-  const values = statMap(calc?.stats ?? []);
+  const values = selectedMinion ? new Map(Object.entries(selectedMinion.stats)) : statMap(calc?.stats ?? []);
 
   return (
     <section className="ui-page calcs-page" aria-labelledby="calcs-heading">
@@ -1025,7 +1099,14 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
       />
       </div>
       <SkillMetricsView session={session} lang={lang} />
+      {(calc?.minions?.length ?? 0) > 0 && <label className="calcs-actor-picker">{tt('minion.actor')}
+        <AppSelect ariaLabel={tt('minion.actor')} value={selectedMinion ? actorKey(selectedMinion) : 'player'}
+          options={[{ value: 'player', label: tt('minion.player') }, ...(calc?.minions ?? []).map(minion => ({ value: actorKey(minion),
+            label: `${tt('minion.title')}: ${minion.name || tt('minion.unavailable')} · ${minion.index + 1}` }))]}
+          onChange={value => { setActor(value); setOpen(null); }} />
+      </label>}
       <div className="calcs-breakdowns">
+      {selectedMinion && Object.values(selectedMinion.breakdown_descriptors ?? {}).every(kind => kind === 'none') && <p>{tt('minion.noBreakdown')}</p>}
       {query.trim() && sections.length === 0 && <div className="search-empty" role="status">
         <p>{tt('common.noResults')}</p>
         <button onClick={() => setQuery('')}>{tt('common.clearSearch')}</button>
@@ -1035,12 +1116,16 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
           <h3 className="calcs-section-title">{statCategoryLabel(lang, category)}</h3>
           <div className="breakdown-list">
             {names.map((name) => {
-              const breakdown = calc!.breakdowns[name];
+              const kind = detailKind(selectedMinion ?? calc!, name);
+              const current = loaded?.calc === calc && loaded.actor === actor && loaded.id === name ? loaded : null;
+              const breakdown = actorBreakdowns[name] ?? current?.detail;
+              const rowFormat = selectedMinion ? 'float2' : STAT_SECTIONS.flatMap(section => section.rows).find(row => row.id === name)?.format ?? 'float2';
               const isOpen = open === name;
               return (
                 <div
                   key={name}
                   id={`breakdown-${name}`}
+                  data-detail-kind={kind}
                   className={`breakdown-item${isOpen ? ' is-open' : ''}`}
                 >
                   <button
@@ -1049,17 +1134,20 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
                     onClick={() => setOpen(isOpen ? null : name)}
                   >
                     <span className="row-caret" aria-hidden>▸</span>
-                    <span className="breakdown-name">{statNameLabel(lang, name)}</span>
+                    <span className="breakdown-name" title={selectedMinion ? `${tt('minion.title')}: ${selectedMinion.name}` : undefined}>{selectedMinion && `${tt('minion.title')}: `}{statNameLabel(lang, name)}</span>
                     <span className="breakdown-value">
-                      {values.has(name) ? formatStatValue(values.get(name) ?? null, 'float2') : ''}
+                      {values.has(name) ? formatStatValue(values.get(name) ?? null, rowFormat, lang) : ''}
                     </span>
-                    {breakdown.mods.length > 0 && (
+                    {breakdown && breakdown.mods.length > 0 && (
                       <span className="breakdown-count">
                         {breakdown.mods.filter((m) => m.active).length} {tt('calcs.mods')}
                       </span>
                     )}
                   </button>
-                  {isOpen && <BreakdownTable breakdown={breakdown} lang={lang} />}
+                  {isOpen && (kind === 'none' ? <p className="breakdown-detail" role="status">{tt('calcs.noBreakdown')}</p>
+                    : breakdown ? <BreakdownTable breakdown={breakdown} lang={lang} />
+                    : current?.error ? <div className="breakdown-detail" role="alert">{current.error} <button onClick={() => { setLoaded(null); setRetry(value => value + 1); }}>{tt('calcs.retry')}</button></div>
+                    : <p className="breakdown-detail" role="status">{tt(current ? 'calcs.noBreakdown' : 'calcs.loadingDetail')}</p>)}
                 </div>
               );
             })}

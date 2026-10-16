@@ -352,6 +352,10 @@ impl ReadSnapshot {
 
 #[derive(Debug, Clone, Default)]
 pub struct ModDb {
+    /// Filter at insertion, before any condition, buff or nested payload is read.
+    exclude_exporter_absent: bool,
+    exporter_rule_overrides: BTreeMap<String, bool>,
+    exporter_rules: BTreeMap<String, std::sync::Arc<pobr_data::source::ExporterRule>>,
     mods: HashMap<ModName, Vec<Modifier>>,
     /// Which stored names queries have asked for, by which queries, and
     /// which modifiers they counted, once [`Self::track_reads`] turns it on.
@@ -528,7 +532,59 @@ impl ModDb {
         self.high_precision = rules;
     }
 
-    pub fn add_mod(&mut self, modifier: Modifier) {
+    /// Set before ingest. Overrides are used only by the per-rule impact report.
+    pub fn set_exporter_rules(&mut self, include_absent: bool, overrides: BTreeMap<String, bool>) {
+        self.exclude_exporter_absent = !include_absent;
+        self.exporter_rule_overrides = overrides;
+    }
+
+    /// A newly created minion inherits the player's rule policy before any
+    /// derived calculation. Its initial context has only stored source mods.
+    pub(crate) fn inherit_exporter_rules(&mut self, parent: &Self) {
+        self.set_exporter_rules(
+            !parent.exclude_exporter_absent,
+            parent.exporter_rule_overrides.clone(),
+        );
+        if self.exclude_exporter_absent || !self.exporter_rule_overrides.is_empty() {
+            let mods = std::mem::take(&mut self.mods);
+            for modifier in mods.into_values().flatten() {
+                self.add_mod(modifier);
+            }
+        }
+    }
+
+    /// Includes skipped rules: reference-mode diagnostics can still enumerate them.
+    pub fn exporter_rules(&self) -> impl Iterator<Item = &pobr_data::source::ExporterRule> {
+        self.exporter_rules.values().map(|rule| rule.as_ref())
+    }
+
+    fn keep_exporter_rule(&mut self, modifier: &mut Modifier) -> bool {
+        if let Some(rule) = &modifier.exporter_rule {
+            if !self.exporter_rules.contains_key(&rule.id) {
+                self.exporter_rules.insert(rule.id.clone(), rule.clone());
+            }
+            let enabled = self
+                .exporter_rule_overrides
+                .get(&rule.id)
+                .copied()
+                .unwrap_or(
+                    !self.exclude_exporter_absent
+                        || rule.exporter != pobr_data::source::ExporterCoverage::Absent,
+                );
+            if !enabled {
+                return false;
+            }
+        }
+        if let ModValue::NestedMods(mods) = &mut modifier.value {
+            mods.retain_mut(|nested| self.keep_exporter_rule(nested));
+        }
+        true
+    }
+
+    pub fn add_mod(&mut self, mut modifier: Modifier) {
+        if !self.keep_exporter_rule(&mut modifier) {
+            return;
+        }
         self.note_global_limit(&modifier);
         self.mods
             .entry(modifier.name.clone())
@@ -553,7 +609,10 @@ impl ModDb {
     /// `Multiplier:BoltsReloadedPastSixSeconds` write-back
     /// (`CalcOffence.lua:2890-2894`, T4). Note: pobr's `ModDb` has no parent
     /// chain (vendor's parent recursion doesn't apply here).
-    pub fn replace_mod(&mut self, modifier: Modifier) -> bool {
+    pub fn replace_mod(&mut self, mut modifier: Modifier) -> bool {
+        if !self.keep_exporter_rule(&mut modifier) {
+            return false;
+        }
         self.note_global_limit(&modifier);
         if let Some(bucket) = self.mods.get_mut(&modifier.name)
             && let Some(slot) = bucket.iter_mut().find(|cur| {
@@ -583,7 +642,10 @@ impl ModDb {
     /// such marker — the case where `from` equals `to.name`, or a conversion
     /// chain loops back, isn't guarded against (no consumer currently
     /// triggers this; will be added if chain conversion shows up when T4/T5 land).
-    pub fn convert_mod(&mut self, from: &ModName, to: Modifier) -> bool {
+    pub fn convert_mod(&mut self, from: &ModName, mut to: Modifier) -> bool {
+        if !self.keep_exporter_rule(&mut to) {
+            return false;
+        }
         if let Some(old_bucket) = self.mods.get_mut(from)
             && let Some(index) = old_bucket.iter().position(|cur| {
                 cur.mod_type == to.mod_type
@@ -676,6 +738,9 @@ impl ModDb {
             })
             .collect();
         Self {
+            exclude_exporter_absent: self.exclude_exporter_absent,
+            exporter_rule_overrides: self.exporter_rule_overrides.clone(),
+            exporter_rules: self.exporter_rules.clone(),
             mods,
             reads: self.reads.clone(),
             high_precision: self.high_precision.clone(),
@@ -965,6 +1030,12 @@ impl ModDb {
             value,
             node_id: query_node,
         }
+    }
+
+    /// Per-name MORE precision: None rounds the product to two places;
+    /// Some(p) floors it to p places. Exposed for source-detail arithmetic.
+    pub fn more_precision_for(&self, name: &str) -> Option<u32> {
+        self.high_precision.precision_for(name, ModType::More)
     }
 
     /// The parameter is upgraded to `impl Into<EvalContext>` (same as [`sum`](Self::sum)).

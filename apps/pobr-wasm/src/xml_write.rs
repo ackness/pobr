@@ -29,6 +29,10 @@ macro_rules! wln {
 
 /// A gem's current values plus source display metadata for an unresolved slot.
 pub(crate) struct XmlGem {
+    pub enabled: bool,
+    pub count: Option<f64>,
+    pub enable_global_1: Option<bool>,
+    pub enable_global_2: Option<bool>,
     pub gem_id: String,
     pub skill_id: String,
     pub level: u32,
@@ -44,6 +48,8 @@ pub(crate) struct XmlGem {
 
 /// A socket group ready to write out (gem_id already reverse-looked-up).
 pub(crate) struct XmlSkillGroup {
+    pub include_in_full_dps: bool,
+    pub group_count: Option<f64>,
     pub weapon_set: Option<u8>,
     pub slot: Option<String>,
     pub enabled: bool,
@@ -202,7 +208,11 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
 
     // Skills.
     wln!(w, r#"  <Skills activeSkillSet="1">"#);
-    wln!(w, r#"    <SkillSet id="1">"#);
+    wln!(
+        w,
+        r#"    <SkillSet id="1" mainSocketGroup="{}">"#,
+        input.main_socket_group.map_or(0, |main| main + 1)
+    );
     for group in &input.socket_groups {
         w!(
             w,
@@ -211,6 +221,10 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
             group.weapon_set != Some(2),
             group.weapon_set != Some(1)
         );
+        w!(w, r#" includeInFullDPS="{}""#, group.include_in_full_dps);
+        if let Some(count) = group.group_count {
+            w!(w, r#" groupCount="{count}""#);
+        }
         if let Some(slot) = &group.slot {
             w!(w, r#" slot="{}""#, esc_attr(slot));
         }
@@ -234,6 +248,15 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
             if let Some(index) = gem.stat_set_index {
                 w!(w, r#" statSetIndex="{index}""#);
             }
+            if let Some(count) = gem.count {
+                w!(w, r#" count="{count}""#);
+            }
+            if let Some(enabled) = gem.enable_global_1 {
+                w!(w, r#" enableGlobal1="{enabled}""#);
+            }
+            if let Some(enabled) = gem.enable_global_2 {
+                w!(w, r#" enableGlobal2="{enabled}""#);
+            }
             if gem.corrupted {
                 w!(w, r#" corrupted="true""#);
             }
@@ -245,9 +268,10 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
             }
             wln!(
                 w,
-                r#" level="{}" quality="{}" enabled="true"/>"#,
+                r#" level="{}" quality="{}" enabled="{}"/>"#,
                 gem.level,
-                gem.quality
+                gem.quality,
+                gem.enabled
             );
         }
         wln!(w, "      </Skill>");

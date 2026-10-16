@@ -77,6 +77,7 @@ fn builds_dir() -> PathBuf {
 
 fn opts(mode: StatMapMode, catalog: Option<Arc<StatMapCatalog>>) -> DataOrchestratorOptions {
     DataOrchestratorOptions {
+        full_dps: false,
         base_input: MinimalInput::default(),
         inject_character_base: true,
         enemy_level: 0,
@@ -87,6 +88,8 @@ fn opts(mode: StatMapMode, catalog: Option<Arc<StatMapCatalog>>) -> DataOrchestr
         stat_map_catalog: catalog,
         energy_triggers: true,
         rain_landings: true,
+        periodic_uptime: true,
+        ..Default::default()
     }
 }
 

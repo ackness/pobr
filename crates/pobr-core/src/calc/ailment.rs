@@ -249,12 +249,19 @@ pub fn ailment_base_duration(ailment: AilmentType, cfg: &CalcConfig) -> Option<f
 /// The modifier names [`ailment_duration`] scales the base duration by.
 /// "increased duration of Ailments you inflict" reads as
 /// `EnemyAilmentDuration`; supports' stats map to `AilmentDuration`.
-pub(crate) fn duration_mod_names(ailment: AilmentType) -> [ModName; 3] {
-    [
+pub(crate) fn duration_mod_names(ailment: AilmentType) -> Vec<ModName> {
+    let mut names = vec![
         ModName::from(format!("{}Duration", ailment_mod_name(ailment))),
         ModName::from("AilmentDuration"),
         ModName::from("EnemyAilmentDuration"),
-    ]
+        ModName::from("DamagingAilmentDuration"),
+    ];
+    // "Duration of Elemental Ailments on Enemies" affects Ignite, not
+    // Bleeding or Poison; skill-effect duration alone affects none of them.
+    if ailment == AilmentType::Ignite {
+        names.push(ModName::from("EnemyElementalAilmentDuration"));
+    }
+    names
 }
 
 /// The player modifier names behind the chance to apply `ailment` (`"Bleed"`
@@ -445,7 +452,8 @@ pub fn shock_effect_with_mods(
 ///
 /// **Bug fix (player-ailment-threshold-bug)**: PoE2's player ailment threshold is 50% of max
 /// life (`PlayerAilmentThresholdLifeFactor = 0.5`), not full life. Source: agent-docs/ailments.md
-/// §Ailment threshold, PoB2 `CalcSetup.lua` `NewMod("AilmentThreshold","BASE",50,{PercentStat Life})`.
+/// §Ailment threshold and the game keyword Elemental Ailment Threshold
+/// (https://poe2db.tw/us/Keywords).
 pub fn player_ailment_threshold(max_life: f64) -> f64 {
     round(max_life * PLAYER_AILMENT_THRESHOLD_LIFE_FACTOR)
 }
@@ -596,6 +604,8 @@ pub struct AilmentTerms {
     /// The chance for a hit to apply the ailment at the average hit and at
     /// `damage_roll` (fractions).
     pub apply_chance: f64,
+    /// Average source damage of a newly applied instance, before over-stacking.
+    pub application_source_damage: f64,
     pub apply_chance_rolled: f64,
     /// The inputs of the active instance estimate
     /// `hit_chance × apply_chance × duration × hits_per_second`.
@@ -1190,7 +1200,7 @@ fn poise_buildup_inner(damage_scale: f64, enemy_poise_threshold: f64, inc: f64, 
 ///
 /// `freezeBuildup% = FREEZE_DAMAGE_SCALE / enemyPoiseThreshold × inc_more × 100`
 ///
-/// inc/more come from `EnemyFreezeBuildup`/`EnemyImmobilisationBuildup`/`ImmobilisationBuildup`
+/// inc/more come from `FreezeBuildup`/`EnemyFreezeBuildup` and the shared immobilisation modifiers
 /// (attacker side). This function takes an already-aggregated `inc` (percentage points) and
 /// `more` (multiplier, 1.0 = no more).
 ///
@@ -1206,7 +1216,7 @@ pub fn freeze_poise_buildup(enemy_poise_threshold: f64, inc: f64, more: f64) -> 
 ///
 /// `electrocuteBuildup% = ELECTROCUTE_DAMAGE_SCALE / enemyPoiseThreshold × inc_more × 100`
 ///
-/// inc/more come from `EnemyElectrocuteBuildup`/`EnemyImmobilisationBuildup`/`ImmobilisationBuildup`.
+/// inc/more come from `ElectrocuteBuildup`/`EnemyElectrocuteBuildup` and the shared immobilisation modifiers.
 ///
 /// Source: agent-docs/ailments.md §Electrocute buildup, PoB2 `CalcOffence.lua` poise buildup section.
 pub fn electrocute_poise_buildup(enemy_poise_threshold: f64, inc: f64, more: f64) -> f64 {
@@ -1216,7 +1226,7 @@ pub fn electrocute_poise_buildup(enemy_poise_threshold: f64, inc: f64, more: f64
 /// Freeze poise buildup with trace: writes mod contributions into the TraceGraph, returns
 /// `(buildup_pct, node)`.
 ///
-/// inc/more come from `EnemyFreezeBuildup`/`EnemyImmobilisationBuildup`/`ImmobilisationBuildup`.
+/// inc/more come from `FreezeBuildup`/`EnemyFreezeBuildup` and the shared immobilisation modifiers.
 pub fn freeze_poise_buildup_traced(
     enemy_poise_threshold: f64,
     player: &ModDb,
@@ -1275,6 +1285,7 @@ fn poise_buildup_traced(
     trace: &mut TraceGraph,
 ) -> (f64, TraceNodeId) {
     let buildup_names = [
+        ModName::from(format!("{ailment}Buildup")),
         ModName::from(format!("Enemy{ailment}Buildup")),
         ModName::from("EnemyImmobilisationBuildup"),
         ModName::from("ImmobilisationBuildup"),
@@ -1853,6 +1864,7 @@ impl HandAilmentMerge {
 /// when two passes do, how their DPS was merged.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AilmentStageTerms {
+    pub stacked_merge: Option<HandAilmentMerge>,
     pub passes: Vec<(crate::HandTag, AilmentTerms)>,
     /// Per pass, the source hit by damage type: the parts add up to that
     /// pass's `source_hit` and `source_crit`.

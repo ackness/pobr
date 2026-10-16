@@ -73,6 +73,8 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         ));
     }
 
+    super::minion::bridge_count_multipliers(&env.player.mod_db, &mut env.cfg);
+
     super::env_finalize::env_finalize(env); // M3 env-finalize stage (T0 is entirely no-op; blueprint §1 D1)
 
     // Projectile speed → projectile damage conversion (vendor CalcOffence.lua:840-845: when the
@@ -80,6 +82,9 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // copied as a Damage INC, with flags replaced wholesale by ModFlag.Projectile).
     // Must run after env_finalize (buff/flask sources already merged) and before aggregation.
     apply_projectile_speed_to_damage(env);
+
+    super::channel::resolve_stages(&env.player.mod_db, &mut env.cfg);
+    super::flameblast::configure(&env.player.mod_db, &mut env.cfg);
 
     // Resolve charge overrides/defaults before per-charge modifiers expand.
     // Charges have no inherent bonuses; disabled use retains only the minimum.
@@ -215,9 +220,14 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // family and main_hand=None, so it's captured here and passed to fill_ailments.
     let ailment_fallback_ranges = output.stored_ranges.clone();
     env.player.output = OutputTable::from(&output);
+    super::utility::calculate(env);
     env.player.output.crit_hit_avg = output.stored_crit_avg.iter().map(|(_, avg)| avg).sum();
     env.player.output.main_hand = hand_pass.main_hand;
     env.player.output.off_hand = hand_pass.off_hand;
+    env.player.output.strength = env.cfg.stat("Strength");
+    env.player.output.dexterity = env.cfg.stat("Dexterity");
+    env.player.output.intelligence = env.cfg.stat("Intelligence");
+    env.player.output.rage = env.cfg.stat("Rage");
     // Backfill the curse panel (buff_pass produces this during env_finalize stage 4, before the
     // whole-table overwrite above, relayed via Env::curse_pass_output; None = buff_pass didn't
     // run, keeps the Default 0).
@@ -255,6 +265,13 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // Skill DoT + combined-DPS family: runs after fill_ailments — TotalDotDPS only reads the
     // current bleed/poison/ignite values from the ailment side (ailment.rs is untouched, per the T4 wave agreement).
     fill_skill_dot_stage(env);
+    fill_damage_views(env);
+    fill_resource_cost_rates(env);
+    super::sidebar::fill_sidebar(env);
+    env.player.output.channel_time_to_trigger =
+        super::energy::channel_time_to_trigger(&env.player.mod_db, &env.cfg);
+
+    super::recovery::fill_recovery(env, &output.stored_hit_avg, &output.stored_crit_avg);
 
     env.performed = true;
     Ok(())
@@ -297,14 +314,18 @@ fn inject_companion_life(env: &mut Env) {
     );
 }
 
-/// The context a minion's stats are calculated in: the character's, with the
-/// minion's skill in place of the character's. The minion count cap (the
-/// player's `Multiplier:SummonedMinion`, written by add_minion_from_def) is
-/// injected as a multiplier so minion mods like `Damage per Summoned Minion`
-/// can reference it. A minion whose skill is not known keeps the character's
-/// skill.
+/// A minion keeps the resolved player count snapshot and uses its own skill.
+/// The count is already bridged: reading its source modifiers again would add
+/// the created population twice and discard the independent Presence override.
 pub(crate) fn minion_cfg(env: &Env, minion: &super::Actor) -> CalcConfig {
     let mut cfg = env.cfg.clone();
+    // The shared resistance pass reads the actor's inherent maximum.
+    // A minion uses the monster default (75%), independent of the player.
+    cfg.constants
+        .game_constants
+        .character
+        .base_maximum_all_resistances_pct =
+        cfg.constants.monster().base_maximum_all_resistances_pct;
     if let Some(skill) = minion
         .minion
         .as_ref()
@@ -321,13 +342,7 @@ pub(crate) fn minion_cfg(env: &Env, minion: &super::Actor) -> CalcConfig {
             cfg = cfg.with_condition(crate::rules::skill_stats::COMMAND_SKILL, true);
         }
     }
-    let minion_limit = env.player.mod_db.get_multiplier("SummonedMinion", &env.cfg);
-    if minion_limit > 0.0 {
-        cfg.with_multiplier("SummonedMinion", minion_limit)
-            .with_multiplier("MinionPresenceCount", minion_limit)
-    } else {
-        cfg
-    }
+    cfg
 }
 
 /// "Your Minions are Gigantic" (`minions_are_gigantic`, the minion's
@@ -350,12 +365,9 @@ fn apply_gigantic(minion: &mut super::Actor, cfg: &CalcConfig) {
 
 /// "Companions gain added Attack damage equal to N% of your main hand
 /// Weapon's damage": a minion with `GainMainHandDmgFromParent` adds N% (the
-/// character's `MainHandDamageToAllies`) of the physical damage of the
+/// character's `MainHandDamageToAllies`) of every damage type of the
 /// character's main hand weapon to its attacks.
 fn apply_main_hand_share(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env) {
-    let Some((min, max)) = env.main_hand_weapon_damage else {
-        return;
-    };
     if !cfg.flags.intersects(ModFlags::ATTACK)
         || !minion.mod_db.flag(cfg, "GainMainHandDmgFromParent")
     {
@@ -372,12 +384,22 @@ fn apply_main_hand_share(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env)
         ModifierSource::new(SourceId::new(SourceKind::Derived, "minion.main_hand_share"))
             .with_raw_text(format!("{share}% of your main hand Weapon's damage"))
     };
-    minion.mod_db.add_list([
-        Modifier::number("PhysicalDamageMin", ModType::Base, min * share / 100.0)
+    for &(kind, min, max) in &env.main_hand_weapon_damage {
+        minion.mod_db.add_list([
+            Modifier::number(
+                format!("{kind:?}DamageMin"),
+                ModType::Base,
+                min * share / 100.0,
+            )
             .with_origin(origin()),
-        Modifier::number("PhysicalDamageMax", ModType::Base, max * share / 100.0)
+            Modifier::number(
+                format!("{kind:?}DamageMax"),
+                ModType::Base,
+                max * share / 100.0,
+            )
             .with_origin(origin()),
-    ]);
+        ]);
+    }
 }
 
 /// "Allies in your Presence have …" (`ExtraAura`, an aura of the
@@ -434,7 +456,7 @@ fn perform_minions(env: &mut Env) {
         return;
     }
 
-    let minion_limit = env.player.mod_db.get_multiplier("SummonedMinion", &env.cfg);
+    let minion_limit = env.cfg.multiplier("SummonedMinion");
 
     // Cross-Actor attribution: player source (the count cap) → minion output; builds one source
     // node for the trace DAG to connect to.
@@ -465,6 +487,11 @@ fn perform_minions(env: &mut Env) {
         let output =
             calculate_minimal_vs_enemy(&minion.mod_db, &env.enemy.mod_db, &minion_cfg, &input);
         minion.output = OutputTable::from(&output);
+        let chaos =
+            super::offence::resolve_resistance(&minion.mod_db, &minion_cfg, 0.0, "Chaos", false);
+        minion.output.chaos_resistance = chaos.final_value;
+        minion.output.max_chaos_resistance = chaos.max;
+        minion.output.chaos_resistance_over_cap = chaos.over_cap;
         minion.breakdown = BreakdownTable::from_steps(output.breakdown);
         let enemy_accuracy = super::setup_env::enemy_accuracy(&env.enemy, &minion_cfg);
         calc_defence(minion, &minion_cfg, enemy_accuracy);
@@ -476,6 +503,7 @@ fn perform_minions(env: &mut Env) {
 
         let identity = minion.minion.clone().unwrap_or_default();
         snapshots.push(MinionOutput {
+            summoner: identity.summoner,
             minion_id: identity.minion_id,
             summoned_by: identity.summoned_by,
             skill_id: identity.skill.id,
@@ -485,6 +513,15 @@ fn perform_minions(env: &mut Env) {
             armour: minion.output.armour,
             evasion: minion.output.evasion,
             energy_shield: minion.output.energy_shield,
+            stats: super::minion::MINION_RESISTANCE_STATS
+                .into_iter()
+                .map(|id| {
+                    (
+                        id.into(),
+                        crate::display_catalog::display_value(&minion.output, id),
+                    )
+                })
+                .collect(),
         });
     }
     env.minions = minions;
@@ -593,7 +630,7 @@ fn fill_mechanics(env: &mut Env) {
     // (offence.rs:264-274), matching vendor's Speed convention exactly (bow-shot 1.342 = vendor
     // Speed 1.342 bit-for-bit). When action_rate=0 (a rate-less build), the local fallback chain
     // is kept (backward compatible with pure-single-hit entry points).
-    if env.player.output.action_rate > 0.0 {
+    if env.player.output.action_rate > 0.0 || db.flag(cfg, super::trigger::EVENT_RATE_UNMODELLED) {
         skill_use_time.effective_rate = env.player.output.action_rate;
     }
     env.player.output.effective_action_rate = skill_use_time.effective_rate;
@@ -603,8 +640,10 @@ fn fill_mechanics(env: &mut Env) {
     // Chaos resist goes through the same full-channel vendor convention as the three
     // elements (Override/INC/MORE + the dual-name convention + resist_floor; vendor's
     // resistTypeList includes Chaos, and isElemental=false doesn't merge in the shared name).
-    env.player.output.chaos_resistance =
-        super::offence::resolve_resistance(db, cfg, 0.0, "Chaos", false).final_value;
+    let chaos_resistance = super::offence::resolve_resistance(db, cfg, 0.0, "Chaos", false);
+    env.player.output.chaos_resistance = chaos_resistance.final_value;
+    env.player.output.max_chaos_resistance = chaos_resistance.max;
+    env.player.output.chaos_resistance_over_cap = chaos_resistance.over_cap;
     // Accuracy rating as the main-hand pass reads it (the hit chance input).
     env.player.output.accuracy = {
         let input = player_input(env);
@@ -710,6 +749,7 @@ fn fill_mechanics(env: &mut Env) {
     // by the new convention at the end of `fill_ehp_pob2`; this old pipeline's code is kept as-is
     // — reverting fill_ehp_pob2's switchover section brings back the old convention).
     env.player.output.total_ehp_lowest_max_hit = ehp.total_ehp;
+    env.legacy_ehp_terms = Some(ehp);
 
     // Reservation / remaining
     let (life_res, mana_res) =
@@ -796,66 +836,14 @@ fn fill_mechanics(env: &mut Env) {
     // that hand's modifier scope. Never pair an off-hand leech affix with the
     // main hand's hit. Preserve the current single-instance panel model:
     // among hands, only the strongest recovery instance is active.
-    let leech_rates_for = |scope: &CalcConfig, components: &[super::DamageComponent]| {
-        let physical_hit = component_avg(components, DamageType::Physical);
-        [
-            (LeechResource::Life, env.player.output.life),
-            (LeechResource::Mana, env.player.output.mana),
-            (LeechResource::EnergyShield, env.player.output.energy_shield),
-        ]
-        .map(|(resource, pool)| {
-            calc_leech_from_db(db, scope, pool, physical_hit, resource).display_rate_per_second
-        })
-    };
-    let has_leech_source = [
-        "LifeLeech",
-        "ManaLeech",
-        "EnergyShieldLeech",
-        "PhysicalDamageLifeLeech",
-        "PhysicalDamageManaLeech",
-        "PhysicalDamageEnergyShieldLeech",
-    ]
-    .iter()
-    .any(|name| db.named(name).next().is_some());
-    let leech_rates = if !has_leech_source {
-        // Most build variants have no leech: avoid cloning per-hand scopes.
-        [0.0; 3]
-    } else if env.hand_sources.is_empty() {
-        leech_rates_for(cfg, &env.player.output.damage_components)
-    } else {
-        let mut rates = [0.0_f64; 3];
-        for source in &env.hand_sources {
-            let hand = match source.label {
-                crate::HandTag::MainHand | crate::HandTag::Single => {
-                    env.player.output.main_hand.as_ref()
-                }
-                crate::HandTag::OffHand => env.player.output.off_hand.as_ref(),
-            };
-            let Some(hand) = hand else { continue };
-            // Damage is already calculated in HandOutput; only reuse the
-            // hand scope here, so the returned input is deliberately unused.
-            let (mut hand_cfg, _) =
-                super::hand_pass::hand_scope(db, source, cfg, &player_input(env));
-            hand_cfg.conditions.insert(
-                "MainHandAttack".into(),
-                matches!(
-                    source.label,
-                    crate::HandTag::MainHand | crate::HandTag::Single
-                ),
-            );
-            hand_cfg.conditions.insert(
-                "OffHandAttack".into(),
-                matches!(source.label, crate::HandTag::OffHand),
-            );
-            for (maximum, rate) in rates
-                .iter_mut()
-                .zip(leech_rates_for(&hand_cfg, &hand.damage_components))
-            {
-                *maximum = maximum.max(rate);
+    let leech_rates = leech_panel_terms(env)
+        .into_iter()
+        .fold([0.0_f64; 3], |mut rates, pass| {
+            for (rate, term) in rates.iter_mut().zip(pass) {
+                *rate = rate.max(term.display_rate_per_second);
             }
-        }
-        rates
-    };
+            rates
+        });
     [
         env.player.output.life_leech_rate,
         env.player.output.mana_leech_rate,
@@ -904,6 +892,64 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.es_recoup_rate = es_recoup_rate;
 }
 
+pub(super) fn leech_panel_terms(env: &Env) -> Vec<[super::survivability::LeechResult; 3]> {
+    let db = &env.player.mod_db;
+    let cfg = &env.cfg;
+    let leech_rates_for = |scope: &CalcConfig, components: &[super::DamageComponent]| {
+        let physical_hit = component_avg(components, DamageType::Physical);
+        [
+            (LeechResource::Life, env.player.output.life),
+            (LeechResource::Mana, env.player.output.mana),
+            (LeechResource::EnergyShield, env.player.output.energy_shield),
+        ]
+        .map(|(resource, pool)| calc_leech_from_db(db, scope, pool, physical_hit, resource))
+    };
+    let has_leech_source = [
+        "LifeLeech",
+        "ManaLeech",
+        "EnergyShieldLeech",
+        "PhysicalDamageLifeLeech",
+        "PhysicalDamageManaLeech",
+        "PhysicalDamageEnergyShieldLeech",
+    ]
+    .iter()
+    .any(|name| db.named(name).next().is_some());
+    if !has_leech_source {
+        // Most build variants have no leech: avoid cloning per-hand scopes.
+        Vec::new()
+    } else if env.hand_sources.is_empty() {
+        vec![leech_rates_for(cfg, &env.player.output.damage_components)]
+    } else {
+        let mut rates = Vec::new();
+        for source in &env.hand_sources {
+            let hand = match source.label {
+                crate::HandTag::MainHand | crate::HandTag::Single => {
+                    env.player.output.main_hand.as_ref()
+                }
+                crate::HandTag::OffHand => env.player.output.off_hand.as_ref(),
+            };
+            let Some(hand) = hand else { continue };
+            // Damage is already calculated in HandOutput; only reuse the
+            // hand scope here, so the returned input is deliberately unused.
+            let (mut hand_cfg, _) =
+                super::hand_pass::hand_scope(db, source, cfg, &player_input(env));
+            hand_cfg.conditions.insert(
+                "MainHandAttack".into(),
+                matches!(
+                    source.label,
+                    crate::HandTag::MainHand | crate::HandTag::Single
+                ),
+            );
+            hand_cfg.conditions.insert(
+                "OffHandAttack".into(),
+                matches!(source.label, crate::HandTag::OffHand),
+            );
+            rates.push(leech_rates_for(&hand_cfg, &hand.damage_components));
+        }
+        rates
+    }
+}
+
 /// Crossbow reload fill: folds the magazine-cycle average
 /// (bolt_count shots × attack speed + the reload interval) into the effective rate and DPS.
 ///
@@ -931,11 +977,27 @@ fn fill_crossbow_reload(env: &mut Env) {
     if base_reload <= 0.0 {
         return; // Non-crossbow skill / no reload data: no-op.
     }
-    let firing_rate = env.player.output.effective_action_rate;
+    // Hailstorm's target lockout reduces hits, not the rate bolts consume
+    // the magazine. Reload timing must retain the actual attack cadence.
+    let firing_rate = if db.flag(cfg, super::rain::USE_CADENCE) {
+        let input = player_input(env);
+        let hand = main_hand_scope(env);
+        let (cfg, input) = hand
+            .as_ref()
+            .map_or((cfg, &input), |(cfg, input)| (cfg, input));
+        super::offence::resolve_use_rate(db, cfg, input)
+    } else {
+        env.player.output.effective_action_rate
+    };
     if firing_rate <= 0.0 {
         return;
     }
+    env.player.output.firing_rate = firing_rate;
+    if db.flag(cfg, "CrossbowHasNoAmmo") {
+        return;
+    }
     let reload_time = super::skill_use_time::crossbow_reload_time(db, cfg, base_reload);
+    env.player.output.reload_time = reload_time;
     let bolt_count = db.sum(ModType::Base, cfg, &[ModName::from("CrossbowBoltCount")]);
     let chance_not_consume = db.sum(
         ModType::Base,
@@ -956,9 +1018,9 @@ fn fill_crossbow_reload(env: &mut Env) {
     }
     env.crossbow_reload = Some(reload);
     let out = &mut env.player.output;
-    out.effective_action_rate = round(reload.effective_rate);
+    out.effective_action_rate = round(out.action_rate * factor);
     if let Some(sut) = &mut out.skill_use_time {
-        sut.effective_rate = round(reload.effective_rate);
+        sut.effective_rate = out.effective_action_rate;
     }
     // Proportionally scales DPS / panel rate (equivalent to vendor rewriting Speed in
     // `TotalDPS = AverageDamage × Speed`; the AverageDamage = dps/action_rate identity is unaffected).
@@ -975,8 +1037,110 @@ fn fill_crossbow_reload(env: &mut Env) {
 /// present) is preferred, otherwise the single-stack expected DPS. With no skill DoT and no
 /// ailment DoT, the output is all zero and the contract fields stay at their neutral Default.
 fn fill_skill_dot_stage(env: &mut Env) {
-    let dot = skill_dot_terms(env).output();
+    if no_trigger_events(env) {
+        return;
+    }
+    let terms = skill_dot_terms(env);
+    // Culling Strike removes the last part of the enemy's Life. The same
+    // threshold multiplier already contributes to CombinedDPS.
+    env.player.output.culling_dps =
+        round((terms.base_dps + terms.total_dot_dps) * (terms.cull_multiplier - 1.0));
+    env.player.output.reservation_dps =
+        round((terms.base_dps + terms.total_dot_dps) * (terms.reservation_multiplier - 1.0));
+    let dot = terms.output();
     super::skill_dot::fill_skill_dot(&mut env.player.output, &dot);
+}
+
+/// Views of the already-resolved hit and ailment stages. Repeats affect a
+/// burst's damage; quantity affects throughput, not damage per hit.
+pub(super) struct DamageViewTerms {
+    pub burst_hits: f64,
+    pub show_average: bool,
+    pub base: f64,
+}
+
+pub(super) fn damage_view_terms(env: &Env) -> DamageViewTerms {
+    let db = &env.player.mod_db;
+    let cfg = &env.cfg;
+    let repeats = 1.0
+        + db.sum(ModType::Base, cfg, &[ModName::from("RepeatCount")])
+            .max(0.0);
+    let flickers = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("AdditionalFlickersPerPowerCharge")],
+    );
+    let removable = cfg.multiplier("RemovablePowerCharge");
+    let burst_hits = if flickers > 0.0 && removable > 0.0 {
+        let extra = db.sum(
+            ModType::Base,
+            cfg,
+            &[ModName::from("Multiplier:ExtraConsumablePowerCharges")],
+        );
+        let doubled = db
+            .sum(
+                ModType::Base,
+                cfg,
+                &[ModName::from("ConsumedChargeBenefitDoubleChance")],
+            )
+            .clamp(0.0, 100.0);
+        1.0 + flickers * (removable + extra).max(0.0) * (1.0 + doubled / 100.0)
+    } else {
+        repeats
+    };
+    let out = &env.player.output;
+    let show_average = db.flag(cfg, "ShowAverageDamage")
+        && out.cooldown == 0.0
+        && out.reload_time == 0.0
+        && out.skill_trigger_rate == 0.0;
+    let base = if show_average {
+        out.average_damage
+    } else {
+        out.dps
+    };
+    DamageViewTerms {
+        burst_hits,
+        show_average,
+        base,
+    }
+}
+
+fn fill_damage_views(env: &mut Env) {
+    let DamageViewTerms {
+        burst_hits,
+        show_average,
+        base,
+    } = damage_view_terms(env);
+    let db = &env.player.mod_db;
+    let cfg = &env.cfg;
+    let out = &mut env.player.output;
+    out.average_burst_damage = round(out.average_damage * burst_hits);
+    out.hit_speed = out.effective_action_rate;
+    out.quantity_multiplier =
+        super::scaled_damage::dps_end_factors(db, cfg, None).quantity_multiplier;
+    out.combined_avg = if show_average {
+        base + out.ignite_damage + out.bleed_damage + out.poison_damage
+    } else {
+        base
+    };
+    out.with_ignite_dps = base
+        + if show_average {
+            out.ignite_damage
+        } else {
+            out.ignite_stacked_dps.max(out.ignite_dps)
+        };
+    out.with_bleed_dps = base
+        + if show_average {
+            out.bleed_damage
+        } else {
+            out.bleed_stacked_dps.max(out.bleed_dps)
+        };
+    out.with_poison_dps = base
+        + if show_average {
+            out.poison_damage
+        } else {
+            out.poison_stacked_dps.max(out.poison_dps)
+        };
 }
 
 /// The skill DoT stage's terms, from the hit and ailment values already in the output.
@@ -985,10 +1149,7 @@ pub(super) fn skill_dot_terms(env: &Env) -> super::skill_dot::SkillDotTerms {
     let pick = |stacked: f64, single: f64| if stacked > 0.0 { stacked } else { single };
     let inputs = super::skill_dot::SkillDotInputs {
         speed: out.effective_action_rate.max(0.0),
-        // The skill-duration data channel isn't wired up (statmap skill_data's `duration` has no
-        // consumer); the DotCanStack branch conservatively degenerates to a single instance
-        // inside calc — pass the real value once it's wired in.
-        duration: 0.0,
+        duration: out.duration,
         base_dps: out.dps,
         bleed_dps: pick(out.bleed_stacked_dps, out.bleed_dps),
         poison_dps: pick(out.poison_stacked_dps, out.poison_dps),
@@ -1252,13 +1413,56 @@ fn fill_skill_mechanics(env: &mut Env) {
     if proj.base_count > 0.0 {
         env.player.output.projectile_count = proj.projectile_count;
     }
+    if cfg.flags.intersects(ModFlags::PROJECTILE) || proj.base_count > 0.0 {
+        let projectile_speed = [ModName::from("ProjectileSpeed")];
+        env.player.output.projectile_speed_mod = (1.0
+            + db.sum(ModType::Inc, cfg, &projectile_speed) / 100.0)
+            * db.more(cfg, &projectile_speed);
+    }
 
-    // AoE: needs the skill's base radius (SkillAreaRadiusBase BASE). Skipped if absent (stays 0).
+    let requirements = super::skill_mechanics::attribute_requirements(db, cfg);
+    [
+        env.player.output.req_str,
+        env.player.output.req_dex,
+        env.player.output.req_int,
+    ] = requirements;
+    let timings = super::skill_mechanics::skill_timings(
+        db,
+        cfg,
+        if env.player.base.action_rate > 0.0 {
+            1.0 / env.player.base.action_rate
+        } else {
+            0.0
+        },
+    );
+    env.player.output.total_totem_placement_time = timings.totem;
+    env.player.output.trap_throwing_time = timings.trap;
+    env.player.output.trap_throw_count = timings.trap_count;
+    env.player.output.mine_laying_time = timings.mine;
+    env.player.output.mine_throw_count = timings.mine_count;
+    env.player.output.warcry_cast_time = timings.warcry;
+    env.player.output.channel_time = timings.channel;
+    let behaviors = super::skill_mechanics::projectile_behavior_counts(db, &env.enemy.mod_db, cfg);
+    env.player.output.pierce_count = behaviors.pierce;
+    env.player.output.fork_count = behaviors.fork;
+    env.player.output.chain_max = behaviors.chain;
+    env.player.output.split_count = behaviors.split;
+    env.player.output.bounce_count = behaviors.bounce;
+
+    let durations = super::skill_mechanics::skill_durations(db, &env.enemy.mod_db, cfg);
+    env.player.output.duration = durations.primary;
+    env.player.output.duration_secondary = durations.secondary;
+    env.player.output.aura_duration = durations.aura;
+    env.player.output.reserve_duration = durations.reservation;
+
+    // Area scaling is defined even when the skill has no known base radius.
+    // Only the radius itself remains zero without SkillAreaRadiusBase.
     let base_radius = db.sum(ModType::Base, cfg, &[ModName::from("SkillAreaRadiusBase")]);
+    let extra = db.sum(ModType::Base, cfg, &[ModName::from("SkillAreaRadiusExtra")]);
+    let aoe = calc_aoe(db, cfg, base_radius, extra);
+    env.player.output.aoe_area_mod = aoe.area_mod;
     if base_radius > 0.0 {
-        let aoe = calc_aoe(db, cfg, base_radius, 0.0);
         env.player.output.aoe_radius = aoe.radius;
-        env.player.output.aoe_area_mod = aoe.area_mod;
     }
 
     // Cooldown: needs the skill's base cooldown (SkillCooldownBase BASE, seconds). Skipped if absent.
@@ -1458,6 +1662,7 @@ fn damaging_ailment_for_pass(
         magnitude_dps: out.magnitude_dps,
         expected_dps: out.expected_dps,
         apply_chance: probe_out.chance,
+        application_source_damage: probe_out.source_damage,
         apply_chance_rolled: out.chance,
         hit_chance: ctx.hit_chance,
         duration,
@@ -1644,7 +1849,19 @@ fn copy_projectile_speed_as_damage(
     env.player.mod_db.add_list(fresh);
 }
 
+fn no_trigger_events(env: &Env) -> bool {
+    env.player.output.effective_action_rate == 0.0
+        && (env.player.output.energy_trigger.is_some()
+            || env
+                .player
+                .mod_db
+                .flag(&env.cfg, super::trigger::EVENT_RATE_UNMODELLED))
+}
+
 fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
+    if no_trigger_events(env) {
+        return;
+    }
     let cfg = &env.cfg;
 
     let crit_mult = if env.player.output.crit_multiplier > 0.0 {
@@ -1763,25 +1980,37 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
                     .take(2)
                     .map(|pass| pass.source_parts.clone())
                     .collect(),
+                stacked_merge: results.get(1).map(|b| {
+                    HandAilmentMerge::new(
+                        results[0].stacked_dps,
+                        b.stacked_dps,
+                        results[0].stacks_estimate.max(b.stacks_estimate),
+                        results[0].max_stacks.max(b.max_stacks),
+                    )
+                }),
                 merge,
             },
         ));
+        let damage = round(dps * results[0].terms.duration);
         let out = &mut env.player.output;
         match kind {
             AilmentType::Bleed => {
                 out.bleed_dps = dps;
+                out.bleed_damage = damage;
                 out.bleed_stacked_dps = stacked;
                 out.bleed_active_stacks = active;
                 out.bleed_max_stacks = max_stacks;
             }
             AilmentType::Ignite => {
                 out.ignite_dps = dps;
+                out.ignite_damage = damage;
                 out.ignite_stacked_dps = stacked;
                 out.ignite_active_stacks = active;
                 out.ignite_max_stacks = max_stacks;
             }
             AilmentType::Poison => {
                 out.poison_dps = dps;
+                out.poison_damage = damage;
                 out.poison_stacked_dps = stacked;
                 out.poison_active_stacks = active;
                 out.poison_max_stacks = max_stacks;
@@ -1952,4 +2181,104 @@ fn physical_pdr_fraction(db: &ModDb, cfg: &CalcConfig) -> f64 {
     // armour+flat (CalcDefence.lua:396); the upper-bound clamp is handled uniformly by the ehp
     // layer (a variable dr_max). This only guarantees non-negativity.
     (pct / 100.0).max(0.0)
+}
+
+/// Costs are paid at uses, reloads, or triggers, not at every projectile hit.
+pub(super) fn resource_cost_use_rate(env: &Env) -> f64 {
+    let (cfg, input) = main_hand_scope(env).unwrap_or_else(|| (env.cfg.clone(), player_input(env)));
+    let terms = super::offence::action_rate_terms(&env.player.mod_db, &cfg, &input);
+    let mut rate = terms.uses;
+    if env.player.output.skill_trigger_rate > 0.0 {
+        rate = env.player.output.skill_trigger_rate;
+    } else if let Some(reload) = &env.crossbow_reload {
+        let cycle = reload.total_firing_time + reload.effective_reload_time;
+        rate = if cycle > 0.0 { 1.0 / cycle } else { 0.0 };
+    } else if env.player.mod_db.sum(
+        ModType::Base,
+        &cfg,
+        &[ModName::from("CrossbowReloadTimeBase")],
+    ) > 0.0
+        && env.player.mod_db.sum(
+            ModType::Base,
+            &cfg,
+            &[ModName::from("ChanceToNotConsumeAmmo")],
+        ) >= 100.0
+    {
+        rate = 0.0;
+    }
+    let placement = [
+        env.player.output.mine_laying_time,
+        env.player.output.trap_throwing_time,
+        env.player.output.total_totem_placement_time,
+        env.player.output.warcry_cast_time,
+    ]
+    .into_iter()
+    .find(|time| *time > 0.0);
+    if let Some(time) = placement
+        && env.player.output.skill_trigger_rate <= 0.0
+    {
+        rate = 1.0 / time;
+        if env.player.output.cooldown > 0.0 {
+            rate = rate.min(1.0 / env.player.output.cooldown);
+        }
+    }
+    let repeats = 1.0
+        + env
+            .player
+            .mod_db
+            .sum(ModType::Base, &cfg, &[ModName::from("RepeatCount")])
+            .max(0.0);
+    if env.crossbow_reload.is_none() {
+        rate /= repeats;
+    }
+    rate
+}
+
+fn fill_resource_cost_rates(env: &mut Env) {
+    let costs = super::skill_mechanics::resource_costs(&env.player.mod_db, &env.cfg);
+    let rate = resource_cost_use_rate(env);
+    let (cfg, input) = main_hand_scope(env).unwrap_or_else(|| (env.cfg.clone(), player_input(env)));
+    if let Some(channel) =
+        super::offence::action_rate_terms(&env.player.mod_db, &cfg, &input).channel
+    {
+        env.player.output.channel_time = round(channel.channel_time);
+    }
+    let out = &mut env.player.output;
+    [
+        out.mana_cost,
+        out.life_cost,
+        out.es_cost,
+        out.rage_cost,
+        out.ward_cost,
+    ] = costs.upfront;
+    [
+        out.mana_percent_cost,
+        out.life_percent_cost,
+        out.es_percent_cost,
+        _,
+        out.ward_percent_cost,
+    ] = costs.percent;
+    // A sustained skill's explicit drain already describes ongoing payment.
+    // Its upfront cost starts the channel; each attack during it does not
+    // start another channel. Keep that cost visible without charging it again.
+    let ongoing =
+        |drain: f64, upfront: f64| round(if drain > 0.0 { drain } else { upfront * rate });
+    let per_second =
+        std::array::from_fn::<_, 5, _>(|i| ongoing(costs.per_second[i], costs.upfront[i]));
+    [
+        out.mana_per_second_cost,
+        out.life_per_second_cost,
+        out.es_per_second_cost,
+        out.rage_per_second_cost,
+        out.ward_per_second_cost,
+    ] = per_second;
+    let percent_per_second =
+        std::array::from_fn::<_, 5, _>(|i| ongoing(costs.percent_per_second[i], costs.percent[i]));
+    [
+        out.mana_percent_per_second_cost,
+        out.life_percent_per_second_cost,
+        out.es_percent_per_second_cost,
+        _,
+        out.ward_percent_per_second_cost,
+    ] = percent_per_second;
 }

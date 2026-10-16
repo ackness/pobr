@@ -151,6 +151,8 @@ test('review and keyboard jump clear both filters, preserve the request and keep
   await ready(page);
   await importCode(page, syntheticCode(['Comet']));
   await nav(page, 'Config').click();
+  const allOptions = page.locator('.config-view').getByRole('button', { name: 'Show all options', exact: true });
+  await allOptions.click();
   const headers = page.locator('.config-section-header');
   for (let index = 0; index < await headers.count(); index++) {
     if (await headers.nth(index).getAttribute('aria-expanded') !== 'true') await headers.nth(index).click();
@@ -161,6 +163,7 @@ test('review and keyboard jump clear both filters, preserve the request and keep
   // An uncertain mechanic remains in the original catalog, not just quick entries.
   await page.locator('.config-search').fill('onLeyline');
   await expect(control(page, 'onLeyline')).toBeVisible();
+  await page.getByRole('button', { name: 'Applicable to this build', exact: true }).click();
   await page.locator('.config-search').fill('no-such-guidance-option');
   await page.locator('.config-filter input').check();
   await expect(control(page, 'enemyColdResist')).toHaveCount(0);
@@ -169,6 +172,7 @@ test('review and keyboard jump clear both filters, preserve the request and keep
   await openSetting(page, 'enemyColdResist', true);
   await expect(page.locator('.config-search')).toHaveValue('');
   await expect(page.locator('.config-filter input')).not.toBeChecked();
+  await expect(allOptions).toHaveAttribute('aria-pressed', 'true');
   await expect(row(page, 'enemyColdResist').locator('..').locator('..').locator('.config-section-header'))
     .toHaveAttribute('aria-expanded', 'true');
   const afterIds = await page.locator('.config-section .config-item input, .config-section .config-item select')

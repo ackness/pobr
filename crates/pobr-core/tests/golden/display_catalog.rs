@@ -3,6 +3,87 @@ use pobr_core::{display_catalog, display_value, extract_display_values};
 use pobr_data::prelude::*;
 
 #[test]
+fn block_effect_displays_damage_prevented_without_changing_the_taken_share() {
+    // Blocking prevents the entire hit by default. Taking 40% of blocked
+    // damage leaves 60% prevented; the EHP input must still be 40% taken.
+    for (taken, prevented) in [(0.0, 100.0), (40.0, 60.0), (100.0, 0.0)] {
+        let output = OutputTable {
+            block_effect: taken,
+            ..Default::default()
+        };
+        assert_eq!(display_value(&output, "BlockEffect"), prevented);
+        assert_eq!(output.block_effect, taken);
+    }
+}
+
+#[test]
+fn shock_effect_displays_the_magnitude_modifier_and_its_enemy_sources() {
+    use pobr_core::calc::MinimalInput;
+    use pobr_core::{CalcConfig, Modifier};
+
+    let mut session =
+        super::support::session(MinimalInput::default()).with_config(CalcConfig::spell());
+    session.setup_enemy(80, pobr_data::monster::EnemyTier::None);
+    session
+        .add_modifier_texts(&["Adds 1 to 1 Lightning Damage to Spells"])
+        .unwrap();
+    session.add_modifiers([Modifier::number("EnemyShockMagnitude", ModType::Inc, 30.0)]);
+    session.add_enemy_modifiers([Modifier::number("SelfShockMagnitude", ModType::Inc, 20.0)]);
+    session.perform_minimal().unwrap();
+    // 30% increased magnitude inflicted and 20% increased magnitude received
+    // scale shock by 1.3 * 1.2 = 1.56, independent of damage/threshold.
+    assert!((display_value(session.output(), "ShockEffect") - 1.56).abs() < 1e-9);
+    assert_eq!(
+        session.output().shock_effect,
+        0.2,
+        "existing magnitude is unchanged"
+    );
+    assert_eq!(
+        display_value(&OutputTable::default(), "ShockEffect"),
+        0.0,
+        "no shock source"
+    );
+    let sources = session.detail_sources("ShockEffect");
+    let enemy = sources
+        .iter()
+        .find(|s| s.name == "EnemySelfShockMagnitude")
+        .unwrap();
+    assert_eq!(enemy.totals.1, 20.0);
+    assert_eq!(enemy.rows.len(), 1);
+}
+
+#[test]
+fn area_modifier_is_defined_without_a_known_skill_radius() {
+    use pobr_core::calc::MinimalInput;
+
+    for (lines, expected) in [
+        (vec![], 1.0),
+        (vec!["11% less Area of Effect"], 0.89),
+        (vec!["40% increased Area of Effect"], 1.4),
+    ] {
+        let mut session = super::support::session(MinimalInput::default());
+        session.add_modifier_texts(&lines).unwrap();
+        session.perform_minimal().unwrap();
+        assert_eq!(display_value(session.output(), "AoeAreaMod"), expected);
+        assert_eq!(session.output().aoe_radius, 0.0);
+    }
+}
+
+#[test]
+fn ailment_threshold_preserves_half_life_for_ci_without_rounding_up() {
+    use pobr_core::calc::MinimalInput;
+
+    let mut session = super::support::session(MinimalInput {
+        base_life: 1.0,
+        ..Default::default()
+    });
+    session.perform_minimal().unwrap();
+    // The game keyword defines half of Life: 1 * 0.5 = 0.5. It does not
+    // specify the oracle's integer ceiling for percentage contributions.
+    assert_eq!(display_value(session.output(), "AilmentThreshold"), 0.5);
+}
+
+#[test]
 fn catalog_defines_core_display_stats() {
     let catalog = display_catalog();
     let ids: Vec<&str> = catalog.iter().map(|def| def.id.as_str()).collect();
@@ -33,7 +114,7 @@ fn catalog_entries_have_pob_keys_and_known_status() {
 }
 
 /// Entry count pinned: F-3 flipped all 24 fields in the defense-extension batch to
-/// Computed -> Planned = 0, Computed = 110 (chaos resistance, accuracy, combined and total DoT DPS added later); new entries must explicitly update this assertion.
+/// New entries must explicitly update this assertion.
 #[test]
 fn catalog_entry_counts_locked() {
     let catalog = display_catalog();
@@ -47,9 +128,82 @@ fn catalog_entry_counts_locked() {
     );
     assert_eq!(
         catalog.len() - planned,
-        110,
+        // Also includes the base's Fire/Cold/Lightning/ChaosResistMax additions (+4).
+        // FlaskEffect / FlaskChargeGen / LifeFlaskChargeGen / ManaFlaskChargeGen /
+        // UtilityFlaskChargeGen, plus Flask{1,2} and Charm{1,2,3} Duration,
+        // ChargesMax, ChargesUsed, Uses, ChargeGen and ChargesGained; flasks
+        // also expose Recovery, InstantRecovery and RecoveryPerSecond (+41).
+        // Charm{1,2,3}ManaRecoveryOnUse (+3), game charm_recover_X_mana_when_used.
+        // AilmentThreshold, LifeOnKill, ManaOnKill, EnergyShieldOnKill,
+        // DazeChance and FullyBrokenArmourEffect (+6).
+        // ArchonDuration and ArchonRecoveryPeriod (+2).
+        // Charm{1,2,3}LifeRecoveryOnUse (+3), game charm_recover_X_life_when_used.
+        // Flask{1,2}EnergyShieldRecovery / InstantRecovery / RecoveryPerSecond (+6).
+        278,
         "a change in Computed entry count needs explicit review"
     );
+}
+
+#[test]
+fn sidebar_views_preserve_units_and_zero_pool_semantics() {
+    let output = OutputTable {
+        strength: 101.0,
+        dexterity: 202.0,
+        intelligence: 303.0,
+        rage: 12.0,
+        fire_resistance_over_cap: 11.0,
+        cold_resistance_over_cap: 22.0,
+        lightning_resistance_over_cap: 33.0,
+        chaos_resistance_over_cap: 44.0,
+        life: 1000.0,
+        life_unreserved: 750.0,
+        mana: 400.0,
+        mana_unreserved: 300.0,
+        spirit: 120.0,
+        spirit_unreserved: 30.0,
+        pre_effective_crit_chance: 0.45,
+        crit_chance: 0.40,
+        cooldown_stored_uses: 3,
+        skill_total_dot: 500.0,
+        with_dot_dps: 750.0,
+        firing_rate: 5.0,
+        reload_time: 0.8,
+        culling_dps: 40.0,
+        channel_time_to_trigger: 5.0,
+        projectile_speed_mod: 1.8,
+        ..OutputTable::default()
+    };
+    for (id, expected) in [
+        ("ChannelTimeToTrigger", 5.0),
+        ("Str", 101.0),
+        ("Dex", 202.0),
+        ("Int", 303.0),
+        ("Rage", 12.0),
+        ("FireResistOverCap", 11.0),
+        ("ColdResistOverCap", 22.0),
+        ("LightningResistOverCap", 33.0),
+        ("ChaosResistOverCap", 44.0),
+        ("LifeUnreservedPercent", 75.0),
+        ("ManaUnreservedPercent", 75.0),
+        ("SpiritUnreservedPercent", 25.0),
+        ("PreEffectiveCritChance", 45.0),
+        ("StoredUses", 3.0),
+        ("TotalDot", 500.0),
+        ("WithDotDPS", 750.0),
+        ("FiringRate", 5.0),
+        ("ReloadTime", 0.8),
+        ("CullingDPS", 40.0),
+        ("ProjectileSpeedMod", 1.8),
+    ] {
+        assert_eq!(display_value(&output, id), expected, "{id}");
+    }
+    for id in [
+        "LifeUnreservedPercent",
+        "ManaUnreservedPercent",
+        "SpiritUnreservedPercent",
+    ] {
+        assert_eq!(display_value(&OutputTable::default(), id), 0.0, "{id}");
+    }
 }
 
 /// Defense-extension field batch: all Computed after F-3, golden keys aligned with meta.json.
@@ -101,8 +255,8 @@ fn catalog_defines_m2_defence_extension_stats_computed() {
         Some("NumberOfMitigatedDamagingHits")
     );
     assert_eq!(entry("Spirit").pob_key.as_deref(), Some("Spirit"));
-    // Damage-taken / stun-taken stats: lower is better.
-    assert_eq!(entry("BlockEffect").higher_is_better, Some(false));
+    // BlockEffect is damage prevented; stun-taken stats are lower-is-better.
+    assert_eq!(entry("BlockEffect").higher_is_better, Some(true));
     assert_eq!(entry("SelfStunChance").higher_is_better, Some(false));
     assert_eq!(entry("StunDuration").higher_is_better, Some(false));
 }
@@ -169,7 +323,24 @@ fn extract_covers_every_computed_catalog_entry() {
         .iter()
         .filter(|def| def.parity_status == ParityStatus::Computed)
         .count();
-    let values = extract_display_values(&OutputTable::default());
+    let mut output = OutputTable {
+        full_dps: Some(Default::default()),
+        ..Default::default()
+    };
+    // Per-slot figures are absent until that slot holds an item.
+    assert!(
+        extract_display_values(&output)
+            .iter()
+            .all(|value| pobr_core::calc::utility::item_stat(value.id.as_str()).is_none())
+    );
+    for def in display_catalog() {
+        if pobr_core::calc::utility::item_stat(def.id.as_str()).is_some() {
+            output
+                .utility_stats
+                .insert(def.id.as_str().to_string(), 0.0);
+        }
+    }
+    let values = extract_display_values(&output);
     assert_eq!(values.len(), computed);
 }
 
@@ -506,5 +677,27 @@ fn taken_multi_and_cost_entries_have_higher_is_better_false() {
         entry("EsRechargeDelay").higher_is_better,
         Some(false),
         "EsRechargeDelay should have higher_is_better=false"
+    );
+}
+
+#[test]
+fn full_dps_is_absent_until_requested_and_exposes_both_totals() {
+    let mut output = OutputTable::default();
+    assert!(
+        !extract_display_values(&output)
+            .iter()
+            .any(|row| row.id.as_str() == "FullDPS")
+    );
+    output.full_dps = Some(pobr_core::calc::output::FullDpsOutput {
+        dps: 1234.0,
+        dot_dps: 234.0,
+        skills: Vec::new(),
+    });
+    assert_eq!(display_value(&output, "FullDPS"), 1234.0);
+    assert_eq!(display_value(&output, "FullDotDPS"), 234.0);
+    assert!(
+        extract_display_values(&output)
+            .iter()
+            .any(|row| row.id.as_str() == "FullDPS")
     );
 }

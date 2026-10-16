@@ -65,6 +65,10 @@ pub struct CharacterOverride {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct GemInput {
+    pub(crate) enabled: bool,
+    pub(crate) count: Option<f64>,
+    pub(crate) enable_global_1: Option<bool>,
+    pub(crate) enable_global_2: Option<bool>,
     pub(crate) skill_id: String,
     pub(crate) level: u32,
     pub(crate) quality: u32,
@@ -85,6 +89,10 @@ pub struct GemInput {
 impl Default for GemInput {
     fn default() -> Self {
         Self {
+            enabled: true,
+            count: None,
+            enable_global_1: None,
+            enable_global_2: None,
             skill_id: String::new(),
             level: 20,
             quality: 0,
@@ -101,6 +109,11 @@ impl Default for GemInput {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct SocketGroupInput {
+    /// Original enabled state before the UI masks groups for the inspected weapon set.
+    /// Calculation-only metadata: Full DPS can still evaluate the other set.
+    pub(crate) full_dps_enabled: Option<bool>,
+    pub(crate) include_in_full_dps: bool,
+    pub(crate) group_count: Option<f64>,
     pub(crate) weapon_set: Option<u8>,
     pub(crate) slot: Option<String>,
     pub(crate) enabled: bool,
@@ -115,6 +128,9 @@ pub struct SocketGroupInput {
 impl Default for SocketGroupInput {
     fn default() -> Self {
         Self {
+            full_dps_enabled: None,
+            include_in_full_dps: false,
+            group_count: None,
             weapon_set: None,
             slot: None,
             enabled: true,
@@ -162,6 +178,14 @@ pub struct JewelInput {
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct CalculateBuildRequest {
+    /// Omitted: legacy defaults; empty: no detail work; otherwise only these ids.
+    pub(crate) breakdowns: Option<Vec<String>>,
+    /// Select an actor for requested ids; omitted keeps the player (legacy defaults include minions).
+    pub(crate) breakdown_actor: Option<pobr_build::breakdown::BreakdownActor>,
+    /// Collect visibility facts for Config; ordinary calculations keep read tracking off.
+    pub(crate) config_context: bool,
+    /// Opt in to evaluating all included effects; ordinary edits stay on the main-skill path.
+    pub(crate) full_dps: bool,
     /// The weapon set in use (`active`, which calculation reads), plus the
     /// editable inactive weapons and weapon-set passives that export writes.
     /// `None` keeps the set of the code's active item set (a new build: 1).
@@ -202,6 +226,7 @@ pub struct CalculateBuildRequest {
     /// Editable PoB groups. `None` keeps the legacy request behavior; an
     /// explicit empty array clears imported custom modifiers.
     pub(crate) custom_modifier_blocks: Option<Vec<CustomModifierBlock>>,
+    pub(crate) party: Option<pobr_build::party::Party>,
     /// The `<Config>` input override (Config page toggles; bool/number/string).
     pub(crate) config_inputs: BTreeMap<String, serde_json::Value>,
     /// Notes (only written into `<Notes>` by `encode_build_json`; ignored by the calculation path).
@@ -239,6 +264,8 @@ fn json_to_config_value(v: &serde_json::Value) -> Result<ConfigInputValue, Strin
 /// reverse-looked-up from the `gem_effects` table by effect id (support classification depends on it).
 pub(super) fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData) -> SocketGroup {
     let mut group = SocketGroup {
+        include_in_full_dps: input.include_in_full_dps,
+        group_count: input.group_count,
         weapon_set: input.weapon_set,
         slot: input.slot.clone(),
         enabled: input.enabled,
@@ -258,14 +285,19 @@ pub(super) fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData
             .as_deref()
             .and_then(|id| data.is_support_gem(id))
             .unwrap_or(false);
-        if group.active_skill_id.is_none() && !is_support {
+        if gem.enabled && group.active_skill_id.is_none() && !is_support {
             group.active_skill_id = Some(gem.skill_id.clone());
             group.active_gem_level = Some(gem.level);
             group.active_gem_quality = Some(gem.quality);
         }
         group.gem_skills.push(GemSkillRef {
+            enabled: gem.enabled,
+            count: gem.count,
+            enable_global_1: gem.enable_global_1,
+            enable_global_2: gem.enable_global_2,
             skill_id: gem.skill_id.clone(),
             gem_level: gem.level,
+            global_level_bonus: None,
             quality: gem.quality,
             stat_set_index: gem.stat_set_index,
             name_spec: None,
@@ -345,6 +377,19 @@ pub(crate) fn apply_request_overrides(
         build.weapon_set = WeaponSet::from_number(active).ok_or_else(|| {
             ApiError::bad_request(format!("weapon_swap.active must be 1 or 2, got {active}"))
         })?;
+        let mut other_nodes: Vec<_> = build
+            .tree
+            .allocated_nodes
+            .iter()
+            .copied()
+            .filter(|node| !swap.exclusive_nodes[usize::from(active - 1)].contains(&node.0))
+            .collect();
+        for &node in &swap.exclusive_nodes[usize::from(2 - active)] {
+            if !other_nodes.contains(&NodeId(node)) {
+                other_nodes.push(NodeId(node));
+            }
+        }
+        build.other_weapon_set_nodes = Some(other_nodes);
         build.other_weapons.clear();
         for item in &swap.alternate_items {
             let slot = slot_from_id(&item.slot)
@@ -448,6 +493,9 @@ pub(crate) fn apply_request_overrides(
         // representation matches PoB XML's 1-based indexing.
         build.main_socket_group = Some(main + 1);
     }
+    if let Some(party) = &req.party {
+        build.party = party.clone();
+    }
     for (key, value) in &req.config_inputs {
         build.config.raw_inputs.values.insert(
             key.clone(),
@@ -512,6 +560,7 @@ pub(crate) fn orchestrator_options(
         base_input: MinimalInput::default(),
         inject_character_base: true,
         mode_effective: req.mode_effective.unwrap_or(true),
+
         enemy_tier: req
             .enemy_tier
             .as_deref()
@@ -600,4 +649,25 @@ pub(crate) fn run_session_for_build(
     let data = state::build_data().map_err(ApiError::not_initialized)?;
     let opts = orchestrator_options(req)?;
     Ok(calculate_with_data_session(build, &data, &opts).map_err(|e| format!("calculate: {e}"))?)
+}
+
+pub(crate) fn full_dps_for_build(
+    build: &Build,
+    data: &BuildData,
+    req: &CalculateBuildRequest,
+) -> Result<pobr_core::calc::output::FullDpsOutput, ApiError> {
+    let mut full_build = build.clone();
+    for (group, input) in full_build
+        .socket_groups
+        .iter_mut()
+        .zip(req.socket_groups.iter().flatten())
+    {
+        group.enabled = input.full_dps_enabled.unwrap_or(input.enabled);
+    }
+    Ok(pobr_build::calc_orchestrator::full_dps::calculate(
+        &full_build,
+        data,
+        &orchestrator_options(req)?,
+    )
+    .map_err(|e| format!("Full DPS: {e}"))?)
 }

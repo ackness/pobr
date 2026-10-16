@@ -143,6 +143,160 @@ fn non_summon_build_has_empty_minions() {
     );
 }
 
+/// Pounce's third effect summons one wolf plus the rarity bonus from its
+/// game stat set: Rare +0, Unique +1. Its level-20 limit of six wolves is
+/// not the number created by one activation.
+#[test]
+fn pounce_wolves_exist_only_for_the_selected_summon_effect() {
+    let data = load_data();
+    let make_build = |main_group, effect, enemy: &str| {
+        pobr_build::parse_build(&format!(
+            r#"<PathOfBuilding2><Build level="90" className="Witch" mainSocketGroup="{main_group}"/>
+<Skills>
+<Skill enabled="false"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill>
+<Skill enabled="true" mainActiveSkill="{effect}"><Gem skillId="WolfPouncePlayer" level="20" enabled="true" skillMinion="WolfMinion"/></Skill>
+<Skill enabled="true" mainActiveSkill="3"><Gem skillId="WolfPouncePlayer" level="20" enabled="true" skillMinion="WolfMinion"/></Skill>
+<Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill>
+</Skills><Config>{enemy}</Config></PathOfBuilding2>"#
+        ))
+        .unwrap()
+    };
+    let options = DataOrchestratorOptions::reference_conditions();
+    for (enemy, count) in [
+        (r#"<Input name="enemyIsBoss" string="None"/>"#, 1.0),
+        (
+            r#"<Input name="enemyIsBoss" string="None"/><Input name="conditionEnemyRareOrUnique" boolean="true"/>"#,
+            1.0,
+        ),
+        (r#"<Input name="enemyIsBoss" string="Pinnacle"/>"#, 2.0),
+    ] {
+        let build = make_build(2, 3, enemy);
+        let session = pobr_build::calculate_with_data_session(&build, &data, &options).unwrap();
+        let output = session.output();
+        assert_eq!(output.minions.len(), 1, "only the selected group summons");
+        let wolf = pobr_build::reference_check::main_skill_minion(&build, &data, output)
+            .expect("the additional summon effect has a main minion");
+        assert_eq!(wolf.minion_id, "WolfMinion");
+        assert_eq!(wolf.summoned_by, "WolfPounceSummonWolfPlayer");
+        assert_eq!(wolf.skill_id, "MeleeAtAnimationSpeedWolfCompanion");
+        assert_eq!(wolf.summoner, Some((0, 0)));
+        assert_eq!(wolf.level, 40);
+        assert!(wolf.dps > 0.0);
+        assert_eq!(output.dps, 0.0);
+        assert_eq!(session.config().multiplier("SummonedMinion"), count);
+        assert_eq!(session.config().multiplier("MinionPresenceCount"), count);
+        assert_eq!(output.active_minion_limit, count);
+    }
+    for (main_group, effect) in [(2, 1), (2, 2), (4, 3)] {
+        let build = make_build(main_group, effect, "");
+        let session = pobr_build::calculate_with_data_session(&build, &data, &options).unwrap();
+        assert!(session.output().minions.is_empty());
+        assert_eq!(session.config().multiplier("SummonedMinion"), 0.0);
+        assert_eq!(session.config().multiplier("MinionPresenceCount"), 0.0);
+    }
+    let build = make_build(2, 3, "");
+    let boosted = calculate_with_data(
+        &build,
+        &data,
+        &DataOrchestratorOptions {
+            extra_modifier_texts: vec!["+2 to Level of all Minion Skills".into()],
+            ..options
+        },
+    )
+    .unwrap();
+    assert_eq!(boosted.minions[0].level, 44, "the parent gem gains levels");
+
+    // Selecting the child effect must preserve the prepared alternate-set
+    // bonus, replacing the current context's +5. Gem 20 + 2 gives monster 44.
+    let mut other_set = build;
+    other_set.socket_groups[1].gem_skills[0].global_level_bonus = Some(2);
+    other_set.config.global_modifier_texts = vec!["+5 to Level of all Minion Skills".into()];
+    let output = calculate_with_data(
+        &other_set,
+        &data,
+        &DataOrchestratorOptions::reference_conditions(),
+    )
+    .unwrap();
+    assert_eq!(
+        output.minions[0].level, 44,
+        "use the parent's prepared bonus"
+    );
+}
+
+/// Game MonsterResistances: Skeletal Arsonist has 50 Fire, 0 Cold,
+/// Lightning and Chaos. The player's campaign penalty never transfers.
+#[test]
+fn minion_resistances_use_monster_base_modifiers_and_caps() {
+    let data = load_data();
+    // MonsterTypes can link several resistance records. The official
+    // table preserves a vulnerability which the old overlay dropped.
+    let golem = data
+        .minion_def("Metadata/Monsters/MudGolem/MudGolem")
+        .unwrap();
+    assert_eq!(
+        (golem.fire_resist, golem.cold_resist, golem.lightning_resist),
+        (30.0, 30.0, -30.0)
+    );
+    assert_eq!(
+        data.minion_def("RaisedSkeletonArsonist")
+            .unwrap()
+            .fire_resist,
+        50.0
+    );
+    let build = Build::new()
+        .with_character(CharacterIdentity {
+            level: 90,
+            class_name: "Witch".into(),
+            ascendancy_name: String::new(),
+        })
+        .add_socket_group(
+            SocketGroup::new().with_active_skill("SummonSkeletalArsonistsPlayer", 20),
+        );
+    let mut options = default_opts();
+    options.extra_modifier_texts = vec![
+        "Minions have +40% to all Elemental Resistances".into(),
+        "Minions have +18% to Chaos Resistance".into(),
+    ];
+    let session = pobr_build::calculate_with_data_session(&build, &data, &options).unwrap();
+    let minion = &session.output().minions[0];
+    // 50 + 40 = 90, capped at 75, with 15 over-cap; other elements get 40.
+    for (id, expected) in [
+        ("FireResist", 75.0),
+        ("FireResistMax", 75.0),
+        ("FireResistOverCap", 15.0),
+        ("ColdResist", 40.0),
+        ("LightningResist", 40.0),
+        ("ChaosResist", 18.0),
+        ("ChaosResistMax", 75.0),
+    ] {
+        assert_eq!(minion.stats[id], expected, "{id}");
+    }
+    let detail = pobr_build::breakdown::minion_stat_breakdown(&session, 0, "FireResist").unwrap();
+    assert_eq!(detail.formula.unwrap().value, 75.0);
+    options
+        .extra_modifier_texts
+        .push("Minions have +5% to all maximum Elemental Resistances".into());
+    let raised = calculate_with_data(&build, &data, &options).unwrap();
+    assert_eq!(raised.minions[0].stats["FireResist"], 80.0);
+    assert_eq!(raised.minions[0].stats["FireResistMax"], 80.0);
+    assert_eq!(raised.minions[0].stats["FireResistOverCap"], 10.0);
+
+    // Elemental Army's game stat grants the supported minion +30% to
+    // elemental resistances; an ally aura adds another 12%.
+    let supported = Build::new().add_socket_group(
+        SocketGroup::new()
+            .with_gem_skill("SummonSkeletalArsonistsPlayer", 20)
+            .with_gem_skill("SupportElementalArmyPlayer", 1),
+    );
+    let mut aura = default_opts();
+    aura.extra_modifier_texts
+        .push("Allies in your Presence have +12% to all Elemental Resistances".into());
+    let output = calculate_with_data(&supported, &data, &aura).unwrap();
+    assert_eq!(output.minions[0].stats["ColdResist"], 42.0);
+    assert_eq!(output.minions[0].stats["FireResist"], 75.0);
+    assert_eq!(output.minions[0].stats["FireResistOverCap"], 17.0);
+}
+
 /// Minion life = monster-ally life table(level) × the life normalization
 /// multiplier (0.7) — matches core's `build_minion_context_from_def`
 /// derivation (the B2 wiring introduces no extra scaling).
@@ -422,6 +576,94 @@ fn a_minion_casts_its_spell_at_its_level() {
     assert!((1.6..1.75).contains(&bidding), "{bidding}");
 }
 
+/// The sweep's level-20 summons, with no equipment or supports, against
+/// the reference enemy. These exercise the minion's own attack multiplier,
+/// attack speed, the summoning gem's conversions and the player's attributes.
+#[test]
+fn summoned_attacks_use_their_skill_and_summoning_stats() {
+    let data = load_data();
+    let opts = DataOrchestratorOptions::against_reference_enemy().on_reference_basis();
+    for (summon, attack, expected) in [
+        (
+            "SupportingFirePlayer",
+            "DeathFromAboveDaemonMinion",
+            416.3720964,
+        ),
+        (
+            "SummonAzmerianWolfPlayer",
+            "MeleeAtAnimationSpeedWolfPackleader",
+            805.1703503,
+        ),
+        ("RagingSpiritsPlayer", "MinionMeleeStep", 89.11875),
+        ("AzmerianSwarmPlayer", "AzmerianSwarmAttack", 67.2091875),
+        ("WildProtectorPlayer", "CompanionBearMaul", 791.501979),
+        (
+            "AncestralSpiritsPlayer",
+            "MeleeAtAnimationSpeed",
+            73.84260429,
+        ),
+    ] {
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Witch".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(SocketGroup::new().with_gem_skill(summon, 20));
+        let out = calculate_with_data(&build, &data, &opts).expect("calculate summon");
+        let minion = out
+            .minions
+            .iter()
+            .find(|minion| minion.skill_id == attack)
+            .expect(attack);
+        assert_eq!(minion.level, 40);
+        assert!(
+            (minion.dps / expected - 1.0).abs() < 0.05,
+            "{summon}: {} vs {expected}",
+            minion.dps
+        );
+    }
+}
+
+fn manifested_weapon(
+    data: &BuildData,
+    weapon: &str,
+    level: u32,
+) -> Vec<pobr_core::calc::MinionOutput> {
+    let xml = format!(
+        r#"<PathOfBuilding2>
+<Build level="90" className="Witch"/>
+<Skills><Skill enabled="true"><Gem skillId="ManifestWeaponPlayer" level="{level}" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+{weapon}
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#
+    );
+    let build = pobr_build::parse_build(&xml).expect("manifest build");
+    calculate_with_data(&build, data, &default_opts())
+        .expect("calculate manifest")
+        .minions
+}
+
+/// Manifest Weapon copies a main-hand melee weapon, never an unarmed or
+/// monster-level fallback. Local added elemental damage is copied too.
+#[test]
+fn manifest_weapon_requires_and_copies_the_main_hand_weapon() {
+    let data = load_data();
+    assert!(manifested_weapon(&data, "", 20).is_empty());
+    assert!(manifested_weapon(&data, "Crude Bow", 20).is_empty());
+    let low = manifested_weapon(&data, "Hardwood Spear", 1);
+    let high = manifested_weapon(&data, "Hardwood Spear", 20);
+    assert_eq!(low.len(), 1);
+    assert!(low[0].dps > 0.0);
+    assert_eq!(
+        low[0].dps, high[0].dps,
+        "weapon damage is independent of monster level"
+    );
+    let fire = manifested_weapon(&data, "Hardwood Spear\nAdds 100 to 100 Fire Damage", 20);
+    assert!(fire[0].dps > high[0].dps * 2.0);
+}
+
 /// What reaches a companion's attack besides the lines for minions: the
 /// character's auras that affect only allies, a share of the character's
 /// main hand weapon, and physical damage gained as chaos damage.
@@ -508,4 +750,54 @@ fn every_companion_counts_with_its_own_supports() {
         twice.base_sum("Multiplier:SummonedMinion"),
         one.base_sum("Multiplier:SummonedMinion")
     );
+}
+
+/// The Catha's Balance shares every damage type on the weapon. The
+/// monster's damage multiplier and its attack's multiplier both scale the
+/// added damage; weapon damage without that sharing modifier stays local.
+#[test]
+fn companions_scale_shared_weapon_damage_of_every_type() {
+    let data = load_data();
+    for (summon, monster, attack_multiplier) in [
+        ("SummonAzmerianWolfPlayer", "AzmerianWolf", 2.5),
+        ("WildProtectorPlayer", "BearCompanion", 1.0),
+    ] {
+        let hit = |added: &str, share: bool| {
+            let xml = format!(
+                r#"<PathOfBuilding2><Build level="90" className="Witch"/>
+<Skills><Skill><Gem skillId="{summon}" level="20"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Wooden Club
+{added}
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#
+            );
+            let build = pobr_build::parse_build(&xml).unwrap();
+            let options = DataOrchestratorOptions {
+                extra_modifier_texts: if share {
+                    vec!["Companions gain added Attack damage equal to 60% of your main hand Weapon's damage".into()]
+                } else {
+                    vec![]
+                },
+                ..default_opts()
+            };
+            let session = pobr_build::calculate_with_data_session(&build, &data, &options).unwrap();
+            session.minion_stat_formula(0, "TotalHitAvg").unwrap().value
+        };
+        let base = hit("", true);
+        for kind in ["Physical", "Fire", "Cold", "Lightning", "Chaos"] {
+            let added = format!("Adds 100 to 100 {kind} Damage");
+            let delta = hit(&added, true) - base;
+            // The AddedDamage MORE product uses the engine's two-decimal
+            // aggregation precision (2.43 × 2.5 becomes 6.08).
+            let effectiveness =
+                (data.minions[monster].damage * attack_multiplier * 100.0).round() / 100.0;
+            let expected = 100.0 * 0.6 * effectiveness * 1.05;
+            assert!(
+                (delta - expected).abs() < 1e-6,
+                "{summon} {kind}: {delta} vs {expected}"
+            );
+            assert_eq!(hit(&added, false), hit("", false));
+        }
+    }
 }

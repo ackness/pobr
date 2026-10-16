@@ -24,12 +24,21 @@ use crate::build_config::BuildConfig;
 ///
 /// Contract C4 scope: `quality` is the T1 share (default 0 = no quality),
 /// `stat_set_index` is the T5 share (form selection).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GemSkillRef {
+    /// Disabled gems remain editable but supply no effects to calculations.
+    pub enabled: bool,
+    /// Number of simultaneous instances for Full DPS (`Gem.count`); omitted is one.
+    pub count: Option<f64>,
+    /// Saved primary/secondary global-effect switches, preserved on export.
+    pub enable_global_1: Option<bool>,
+    pub enable_global_2: Option<bool>,
     /// Granted effect id (PoB `<Gem skillId>`, e.g. `SupportAddedLightningDamagePlayer`).
     pub skill_id: String,
     /// Gem level (PoB `<Gem level>`).
     pub gem_level: u32,
+    /// Prepared alternate-weapon-set global levels; never part of the imported gem.
+    pub global_level_bonus: Option<u32>,
     /// Gem quality (PoB `<Gem quality>`, 0-23; 0 = no quality). The consumer applies the
     /// quality stat as `trunc(per_quality_rate × quality)` (see `BuildData::effect_stats`,
     /// matching PoB2 CalcTools.lua `buildSkillInstanceStats`).
@@ -63,10 +72,34 @@ pub struct GemSkillRef {
     pub minion_skill: Option<u32>,
 }
 
+impl Default for GemSkillRef {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            count: None,
+            enable_global_1: None,
+            enable_global_2: None,
+            skill_id: String::new(),
+            gem_level: 0,
+            global_level_bonus: None,
+            quality: 0,
+            stat_set_index: None,
+            name_spec: None,
+            corrupted: false,
+            minion: None,
+            minion_skill: None,
+        }
+    }
+}
+
 /// A group of skill gems in the same socket (active skill + its supports). A simplified
 /// equivalent represented by stable gem ids.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct SocketGroup {
+    /// Include all enabled active effects in the optional Full DPS calculation.
+    pub include_in_full_dps: bool,
+    /// Overrides each gem's instance count (`Skill.groupCount`).
+    pub group_count: Option<f64>,
     /// Exclusive weapon-set binding (1/2); None follows the active item set.
     /// A skill a weapon grants is bound to that weapon's set.
     pub weapon_set: Option<u8>,
@@ -94,12 +127,15 @@ pub struct SocketGroup {
     /// [`GemSkillRef::quality`] (T1.4: the data-fetch side actually looks up quality via
     /// `gem_skills`; this field exists to keep the builder/snapshot views consistent).
     pub active_gem_quality: Option<u32>,
-    /// Granted-effect references for **every enabled gem** in this group (in PoB Gem
+    /// Granted-effect references for **every gem** in this group (in PoB Gem
     /// list order, active and support included); used to resolve support gems' per-level
     /// stats (multipliers/added damage) and inject them into the supported skill.
     pub gem_skills: Vec<GemSkillRef>,
-    /// PoB `<Skill mainActiveSkill="N">` (**1-based**): indexes each gem's primary
-    /// non-support effect followed by its additional non-support effects, in order.
+    /// Gem levels before corruption or another weapon set adjusts skill levels.
+    /// Added skill levels do not raise the gems' attribute requirements.
+    pub gem_requirement_levels: Vec<u32>,
+    /// PoB `<Skill mainActiveSkill="N">` (**1-based**): indexes each gem's non-support
+    /// effects in granted-effect display order, preserving the group’s gem order.
     /// Effects granted by support gems also count. `None` selects the first effect;
     /// an invalid explicit ordinal is not clamped or replaced with another skill.
     pub main_active_skill: Option<usize>,
@@ -133,6 +169,7 @@ impl SocketGroup {
             .map(|g| pobr_core::skill_env::GemInput {
                 skill_id: g.skill_id.clone(),
                 gem_level: g.gem_level,
+                global_level_bonus: g.global_level_bonus,
                 quality: g.quality,
                 stat_set_index: g.stat_set_index,
                 corrupted: g.corrupted,
@@ -150,6 +187,7 @@ impl SocketGroup {
     ) -> pobr_core::skill_env::EnabledGroup<'a> {
         pobr_core::skill_env::EnabledGroup {
             gems,
+            active_in_weapon_set: true,
             from_gem: self.from_gem(),
             slot: self.slot.as_deref(),
             active_skill_id: self.active_skill_id.as_deref(),
@@ -160,6 +198,8 @@ impl SocketGroup {
 
     pub fn new() -> Self {
         Self {
+            include_in_full_dps: false,
+            group_count: None,
             weapon_set: None,
             source: None,
             slot: None,
@@ -169,6 +209,7 @@ impl SocketGroup {
             active_gem_level: None,
             active_gem_quality: None,
             gem_skills: Vec::new(),
+            gem_requirement_levels: Vec::new(),
             main_active_skill: None,
             reservation_free_skill: None,
             granted_level: None,
@@ -226,6 +267,7 @@ impl SocketGroup {
             corrupted: false,
             minion: None,
             minion_skill: None,
+            ..Default::default()
         });
         self
     }
@@ -246,6 +288,7 @@ impl SocketGroup {
             corrupted: false,
             minion: None,
             minion_skill: None,
+            ..Default::default()
         });
         self
     }
@@ -395,6 +438,9 @@ pub struct Build {
     /// enters the calculation via `ingest_flask_charm` → env_finalize stage 3
     /// `merge_flasks_charms`.
     pub utility_slots: Vec<(String, Item)>,
+    /// Equipped utility items whose active effects are unticked. Their local
+    /// properties still participate in per-item flask/charm figures.
+    pub inactive_utility_slots: Vec<(String, Item)>,
     /// The Transcendent limbs, by slot: a set of their own beside the
     /// equipment. Their lines are global modifiers, attributed to the slot.
     pub limbs: BTreeMap<LimbSlot, Item>,
@@ -407,6 +453,8 @@ pub struct Build {
     /// use it, so their "+N to Level of all Spell Skills" count for it and the
     /// weapons in `items` don't.
     pub other_weapons: HashMap<EquipmentSlot, Item>,
+    /// Allocations with the other weapon set active, before equipment grants.
+    pub other_weapon_set_nodes: Option<Vec<pobr_data::passive_tree::NodeId>>,
     /// Skill gem groups.
     pub socket_groups: Vec<SocketGroup>,
     /// Main skill group index (PoB `<Build mainSocketGroup>`, **1-based**, indexes
@@ -415,6 +463,7 @@ pub struct Build {
     pub main_socket_group: Option<usize>,
     /// Build-level config.
     pub config: BuildConfig,
+    pub party: crate::party::Party,
 }
 
 impl Build {
@@ -524,29 +573,12 @@ impl pobr_core::skill_env::EquipmentView for Build {
 impl pobr_core::skill_env::SocketGroupView for Build {
     fn for_each_enabled_group(&self, f: &mut dyn FnMut(pobr_core::skill_env::EnabledGroup<'_>)) {
         for group in self.enabled_socket_groups() {
-            // Project the concrete `GemSkillRef`s into the engine-semantics
-            // `GemInput` view (same field order, zero semantics change).
-            let gems: Vec<pobr_core::skill_env::GemInput> = group
-                .gem_skills
-                .iter()
-                .map(|g| pobr_core::skill_env::GemInput {
-                    skill_id: g.skill_id.clone(),
-                    gem_level: g.gem_level,
-                    quality: g.quality,
-                    stat_set_index: g.stat_set_index,
-                    corrupted: g.corrupted,
-                    minion: g.minion.clone(),
-                    minion_skill: g.minion_skill,
-                })
-                .collect();
-            f(pobr_core::skill_env::EnabledGroup {
-                gems: &gems,
-                from_gem: group.from_gem(),
-                slot: group.slot.as_deref(),
-                active_skill_id: group.active_skill_id.as_deref(),
-                active_gem_level: group.active_gem_level.unwrap_or(1),
-                reservation_free_skill: group.reservation_free_skill.as_deref(),
-            });
+            let gems = group.gem_inputs();
+            let mut enabled = group.enabled_group(&gems);
+            enabled.active_in_weapon_set = group
+                .weapon_set
+                .is_none_or(|set| set == self.weapon_set.number());
+            f(enabled);
         }
     }
 }

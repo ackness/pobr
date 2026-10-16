@@ -98,9 +98,7 @@ fn charm_mods_merge_and_scale_with_charm_effect() {
 /// together into the multiplier (10 x (1 + (20+25)/100) = 14.5 -> integer-truncated to 14);
 /// UsingFlask condition gets set.
 ///
-/// `Grants Onslaught during effect` **does not produce an Onslaught flag** — PoB2's
-/// ModParser returns unsupported for this line (see the item.rs comment + the corresponding
-/// item_source.rs test), and PoBR matches it line for line.
+/// Onslaught is granted only once this flask payload has merged.
 #[test]
 fn flask_local_and_global_effect_inc_stack_additively() {
     let mut carriers = carrier_for(
@@ -125,8 +123,8 @@ fn flask_local_and_global_effect_inc_stack_additively() {
         "10 x 1.45 = 14.5 -> m_modf(round(...,2)) truncates to 14"
     );
     assert!(
-        !env.player.mod_db.flag(&env.cfg, "Onslaught"),
-        "Grants Onslaught during effect is Unsupported matching PoB2, no Onslaught flag set"
+        env.player.mod_db.flag(&env.cfg, "Condition:Onslaught"),
+        "the active flask grants Onslaught"
     );
     assert_eq!(env.cfg.conditions.get("UsingFlask"), Some(&true));
     assert_eq!(env.cfg.conditions.get("UsingQuicksilverFlask"), Some(&true));
@@ -355,4 +353,156 @@ fn end_to_end_belt_charm_slots_text_unlocks_charm_budget() {
         15.0,
         "'Has 1 Charm Slot' parses to CharmLimit BASE -> unlocks the charm budget"
     );
+}
+
+#[test]
+fn local_flask_duration_does_not_extend_skill_effects() {
+    let carriers = carrier_for(
+        "Flask 1",
+        "Life Flask",
+        &[
+            "47% increased Duration",
+            "20% increased Skill Effect Duration during effect",
+        ],
+    );
+    let mut env = env_with_carriers(true, carriers);
+    merge_flasks_charms(&mut env);
+    assert_eq!(
+        env.player
+            .mod_db
+            .sum(ModType::Inc, &env.cfg, &[ModName::from("Duration")]),
+        20.0
+    );
+    assert_eq!(
+        env.player.mod_db.sum(
+            ModType::Inc,
+            &env.cfg,
+            &[ModName::from("LocalUtility:Flask1:LocalUtilityDuration")]
+        ),
+        47.0
+    );
+}
+
+#[test]
+fn spell_mana_efficiency_only_reduces_spell_mana_cost() {
+    use pobr_core::calc::skill_mechanics::{calc_life_cost, calc_mana_cost};
+    let outcome =
+        crate::support::parse_mod("39% increased Mana Cost Efficiency of Spells").unwrap();
+    let mut db = ModDb::new();
+    db.add_list(outcome.mods);
+    // 139 mana / (1 + 39/100) = 100 mana; Attack and Life costs stay 139.
+    assert_eq!(
+        calc_mana_cost(&db, &CalcConfig::spell(), 139.0).final_cost,
+        100.0
+    );
+    assert_eq!(
+        calc_mana_cost(&db, &CalcConfig::attack(), 139.0).final_cost,
+        139.0
+    );
+    assert_eq!(
+        calc_life_cost(&db, &CalcConfig::spell(), 139.0).final_cost,
+        139.0
+    );
+}
+
+#[test]
+fn onslaught_only_applies_during_the_source_items_effect() {
+    use pobr_data::catalog::buffs::BuffDefinitionsDef;
+    let path = crate::support::test_data_dir().join("../overlay-common/buff_definitions.json");
+    let definitions: BuffDefinitionsDef =
+        serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    for (slot, base) in [("Charm 1", "Silver Charm"), ("Flask 1", "Silver Flask")] {
+        for (combat, charm_slots, applies, expected_rate) in [
+            (true, 1.0, true, 2.4),
+            (false, 1.0, true, 2.0),
+            (true, 0.0, false, 2.0),
+        ] {
+            let mut session = crate::support::session(MinimalInput {
+                base_action_rate: 2.0,
+                ..MinimalInput::default()
+            })
+            .with_config(CalcConfig::attack().with_mode_combat(combat));
+            session.set_buff_definitions(definitions.buffs.clone());
+            session.add_modifiers(carrier_for(slot, base, &["Grants Onslaught during effect"]));
+            session.add_modifiers([Modifier::number("CharmLimit", ModType::Base, charm_slots)]);
+            if !applies {
+                // Another active utility item must not activate the excluded source's grant.
+                if slot.starts_with("Flask") {
+                    session.add_modifiers([Modifier::flag("FlasksDoNotApplyToPlayer")]);
+                    session.add_modifiers([Modifier::number("CharmLimit", ModType::Base, 1.0)]);
+                    session.add_modifiers(carrier_for("Charm 2", "Ruby Charm", &[]));
+                } else {
+                    session.add_modifiers(carrier_for("Flask 2", "Life Flask", &[]));
+                }
+            }
+            // Onslaught grants 20% attack speed: 2 attacks/s * 1.2 = 2.4.
+            assert_eq!(
+                session.perform_minimal().unwrap().action_rate,
+                expected_rate,
+                "{slot}: combat={combat}, slots={charm_slots}"
+            );
+        }
+    }
+}
+
+#[test]
+fn reference_basis_filters_nested_onslaught_and_stat_rules() {
+    use pobr_core::calc::skill_mechanics::calc_mana_cost;
+    use pobr_core::rules::skill_stats;
+    use pobr_data::catalog::buffs::BuffDefinitionsDef;
+    let path = crate::support::test_data_dir().join("../overlay-common/buff_definitions.json");
+    let definitions: BuffDefinitionsDef =
+        serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    for (include_absent, expected_rate, expected_cost) in [(true, 2.4, 100.0), (false, 2.0, 139.0)]
+    {
+        let mut session = crate::support::session(MinimalInput {
+            base_action_rate: 2.0,
+            ..MinimalInput::default()
+        })
+        .with_config(CalcConfig::spell().with_mode_combat(true));
+        session.set_exporter_rules(include_absent, Default::default());
+        session.set_buff_definitions(definitions.buffs.clone());
+        session.add_modifiers([Modifier::number("CharmLimit", ModType::Base, 1.0)]);
+        session.add_modifiers(carrier_for(
+            "Charm 1",
+            "Silver Charm",
+            &["Grants Onslaught during effect"],
+        ));
+        session.add_modifiers(
+            skill_stats::skill_modifiers("base_spell_mana_cost_efficiency_+%", 39.0).unwrap(),
+        );
+        assert_eq!(
+            session.perform_minimal().unwrap().action_rate,
+            expected_rate
+        );
+        // Game Onslaught: 20% Skill Speed and 10% Movement Speed.
+        assert_eq!(
+            session.stat_totals("MovementSpeed").1,
+            if include_absent { 10.0 } else { 0.0 }
+        );
+        assert_eq!(
+            calc_mana_cost(session.mod_db(), &CalcConfig::spell(), 139.0).final_cost,
+            expected_cost
+        );
+        assert_eq!(session.mod_db().exporter_rules().count(), 2);
+    }
+}
+
+#[test]
+fn exporter_differs_rule_stays_in_reference_mode() {
+    use pobr_data::source::{ExporterCoverage, ExporterRule};
+    let mut modifier = Modifier::number("Life", ModType::Base, 123.0);
+    modifier.exporter_rule = Some(std::sync::Arc::new(ExporterRule {
+        id: "test_differs".into(),
+        exporter: ExporterCoverage::Differs,
+        game_source: "+123 to maximum Life".into(),
+    }));
+    let mut db = ModDb::new();
+    db.set_exporter_rules(false, Default::default());
+    db.add_mod(modifier);
+    assert_eq!(
+        db.sum(ModType::Base, &CalcConfig::new(), &[ModName::from("Life")]),
+        123.0
+    );
+    assert_eq!(db.exporter_rules().count(), 1);
 }

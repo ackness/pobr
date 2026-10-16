@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { UpgradeGoalProvider } from './hooks/useUpgradeGoal';
 import { useBuildSession } from './hooks/useBuildSession';
+import { buildImportErrorMessage } from './api/import';
 import { t, type Lang } from './lib/i18n';
 import { TAB_IDS, TopBar, type TabId } from './components/shell/TopBar';
 import { WorkspaceSwitcher } from './components/import/BuildWorkspace';
@@ -12,6 +13,7 @@ import { SkillsPanel } from './components/skills/SkillsPanel';
 import { ConfigPanel } from './components/config/ConfigPanel';
 import './components/shell/shell.css';
 
+const ComparePanel = lazy(() => import('./components/compare/ComparePanel').then(module => ({ default: module.ComparePanel })));
 const TradePanel = lazy(() => import('./components/trade/TradePanel').then(module => ({ default: module.TradePanel })));
 const CalcsPanel = lazy(() => import('./components/calcs/CalcsPanel').then(module => ({ default: module.CalcsPanel })));
 const TreePanel = lazy(() => import('./components/tree/TreePanel').then(module => ({ default: module.TreePanel })));
@@ -21,7 +23,6 @@ export default function App() {
 }
 
 function BuildApp() {
-  const session = useBuildSession();
   const mainRef = useRef<HTMLElement>(null);
   const [statsOpen, setStatsOpen] = useState(false);
   const [reviewImportedConfig, setReviewImportedConfig] = useState(false);
@@ -36,6 +37,7 @@ function BuildApp() {
     const saved = localStorage.getItem('pobr-tab') as TabId | null;
     return saved && TAB_IDS.includes(saved) ? saved : 'build';
   });
+  const session = useBuildSession(tab === 'config');
   const [lang, setLangState] = useState<Lang>(
     () => (localStorage.getItem('pobr-lang') as Lang) || 'en-US',
   );
@@ -164,7 +166,7 @@ function BuildApp() {
           )}
           {session.operationError && (
             <div className="calc-error" role="alert">
-              {session.operationError}
+              {buildImportErrorMessage(session.operationError, lang)}
             </div>
           )}
           {tab === 'build' && <BuildPanel session={session} lang={lang} onImported={() => {
@@ -179,6 +181,7 @@ function BuildApp() {
             onTree={() => { setTreeFocus({nonce: Date.now()}); setTab('tree'); }}
             onConfig={() => setTab('config')} />}
           <Suspense fallback={<p className="panel-loading" role="status">{t(lang, 'ui.loadingPanel')}</p>}>
+          {tab === 'compare' && <ComparePanel session={session} lang={lang} />}
           {tab === 'items' && <ItemsPanel session={session} lang={lang} onUpgrade={slot => { setUpgradeFocus({slot, nonce:Date.now()}); setTab('trade'); }} />}
           {tab === 'calcs' && (
             <CalcsPanel

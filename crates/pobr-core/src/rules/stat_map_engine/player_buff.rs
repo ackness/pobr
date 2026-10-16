@@ -191,9 +191,14 @@ fn translate_player_buff_entry(
 fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, UnsupportedReason> {
     match name {
         "Accuracy" => Ok(vec!["Accuracy"]),
+        "MovementSpeed" => Ok(vec!["MovementSpeed"]),
         "ManaRegen" => Ok(vec!["ManaRegen"]),
         "LifeRegen" => Ok(vec!["LifeRegen"]),
         "LifeRegenPercent" => Ok(vec!["LifeRegenPercent"]),
+        // Berserk's loss per Rage and Savage Fury's Life drain are resource
+        // loss, consumed by calc::recovery, not incoming enemy damage.
+        "LifeDegenPercent" => Ok(vec!["LifeDegenPercent"]),
+        "LifeDegen" => Ok(vec!["LifeDegen"]),
         // Defensive buff family (Gemling ascendancy's Virtuous Barrier
         // per-Mote INC: `gem_barrier_green_grants_*` → Armour/Evasion/
         // EnergyShield INC ×Mote, `gem_barrier_red_grants_maximum_life_+%` →

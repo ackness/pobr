@@ -432,3 +432,42 @@ fn a_hit_is_what_its_stat_set_says() {
     assert!((gain(&rain, "50% increased Projectile Damage") - 1.5).abs() < 1e-3);
     assert!((gain(&rain, "50% increased Area Damage") - 1.5).abs() < 1e-3);
 }
+
+/// `global_always_hit` is a skill-local "Your Hits can't be Evaded".
+#[test]
+fn palms_and_glory_attacks_skip_accuracy_for_hits_and_crits() {
+    let data = load_build_data();
+    let options = DataOrchestratorOptions::against_reference_enemy();
+    for (skill, base) in [
+        ("CrushingFearPlayer", "Wrapped Quarterstaff"),
+        ("KillingPalmPlayer", "Wrapped Quarterstaff"),
+        ("ShatteringPalmPlayer", "Wrapped Quarterstaff"),
+        ("StaggeringPalmPlayer", "Wrapped Quarterstaff"),
+        ("HandOfChayulaPlayer", "Wrapped Quarterstaff"),
+        ("CullTheWeakPlayer", "Hardwood Spear"),
+        ("HammerOfTheGodsPlayer", "Wooden Club"),
+        ("SpearOfSolarisPlayer", "Hardwood Spear"),
+    ] {
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Warrior".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(SocketGroup::new().with_active_skill(skill, 20))
+            .set_item(EquipmentSlot::Weapon1, bare_weapon(base));
+        let output = calculate_with_data(&build, &data, &options).expect("always-hit skill");
+        assert_eq!(output.hit_chance, 1.0, "{skill}");
+        assert_eq!(
+            output.crit_chance, output.pre_effective_crit_chance,
+            "{skill}"
+        );
+        let mut ordinary = build.clone();
+        ordinary.socket_groups = vec![SocketGroup::new().with_active_skill("AxeChopPlayer", 20)];
+        let ordinary = calculate_with_data(&ordinary, &data, &options).expect("ordinary attack");
+        assert!(
+            ordinary.hit_chance < 1.0,
+            "{skill} must not grant other skills guaranteed hits"
+        );
+    }
+}

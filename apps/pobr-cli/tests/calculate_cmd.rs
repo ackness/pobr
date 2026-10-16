@@ -701,7 +701,7 @@ fn calculate_build_reports_the_minion_of_the_main_skill() {
     let report = calculate_build_detailed(
         &request,
         &BuildDetail {
-            breakdown: vec!["Minion:Life".into()],
+            breakdown: vec!["Minion:Life".into(), "Minion:FireResist".into()],
             ..BuildDetail::default()
         },
     )
@@ -714,6 +714,25 @@ fn calculate_build_reports_the_minion_of_the_main_skill() {
         .find(|minion| minion.minion_id == beast)
         .expect("the main skill's beast");
     assert_eq!(minion.summoned_by, "SummonBeastPlayer");
+    for id in pobr_core::calc::minion::MINION_RESISTANCE_STATS {
+        assert!(
+            minion.stats.contains_key(id),
+            "missing CLI minion stat {id}"
+        );
+    }
+    let resistance = &report.breakdowns[1];
+    assert_eq!(resistance.value, Some(minion.stats["FireResist"]));
+    assert_eq!(
+        resistance
+            .breakdown
+            .as_ref()
+            .unwrap()
+            .formula
+            .as_ref()
+            .unwrap()
+            .value,
+        minion.stats["FireResist"]
+    );
 
     let entry = &report.breakdowns[0];
     assert_eq!(entry.stat, "Minion:Life");
@@ -739,5 +758,146 @@ fn calculate_build_reports_the_minion_of_the_main_skill() {
             .iter()
             .all(|row| row.stat != "MinionLife"),
         "the beast's Life agrees: {reference:#?}"
+    );
+}
+
+#[test]
+fn periodic_spells_compare_on_continuous_exposure_despite_short_duration() {
+    let xml = r#"<PathOfBuilding2>
+<Build level="90" className="Sorceress" ascendClassName="None" mainSocketGroup="1">
+  <PlayerStat stat="Speed" value="1.25"/>
+  <PlayerStat stat="HitSpeed" value="0.7142857142857143"/>
+</Build>
+<Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true" mainActiveSkill="1">
+  <Gem gemId="Metadata/Items/Gem/SkillGemSolarOrb" skillId="SolarOrbPlayer" level="20" quality="0" enabled="true"/>
+</Skill></SkillSet></Skills>
+<Config><Input name="customMods" string="99% reduced Skill Effect Duration"/></Config>
+</PathOfBuilding2>"#;
+    let request = CalculateBuildRequest {
+        code: encode_code(xml).unwrap(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    };
+    let game = calculate_build(&request).unwrap();
+    assert!((game.output.action_rate - 0.125 / 1.4).abs() < 1e-6);
+    let reference = game.reference.as_ref().unwrap();
+    assert!(reference.periodic_hits_assume_sustained);
+    assert!(reference.compared > 0);
+    assert!(
+        reference
+            .differing
+            .iter()
+            .all(|row| row.stat != "ActionRate")
+    );
+    let on_basis = calculate_build_detailed(
+        &request,
+        &BuildDetail {
+            reference_basis: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert!((on_basis.output.action_rate - 1.0 / 1.4).abs() < 1e-6);
+    assert!(render_breakdowns(&game).contains("exporter's basis"));
+}
+
+#[test]
+fn full_dps_is_opt_in_and_the_json_contributions_sum_to_it() {
+    let xml = r#"<PathOfBuilding2><Build level="90" className="Witch"/>
+        <Skills><Skill includeInFullDPS="true"><Gem skillId="SparkPlayer" level="20" count="3"/></Skill></Skills>
+        </PathOfBuilding2>"#;
+    let request = CalculateBuildRequest {
+        code: pobr_build::encode_pob_code(xml).unwrap(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    };
+    assert!(
+        calculate_build_detailed(&request, &BuildDetail::default())
+            .unwrap()
+            .output
+            .full_dps
+            .is_none()
+    );
+    let report = calculate_build_detailed(
+        &request,
+        &BuildDetail {
+            breakdown: vec!["FullDPS".into(), "FullDotDPS".into()],
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(report.output.full_dps_skills.len(), 1);
+    assert_eq!(report.output.full_dps_skills[0].count, 3.0);
+    assert_eq!(
+        report.output.full_dps,
+        Some(
+            report
+                .output
+                .full_dps_skills
+                .iter()
+                .map(|row| row.dps)
+                .sum()
+        )
+    );
+    assert_eq!(report.breakdowns[0].value, report.output.full_dps);
+}
+
+#[test]
+fn calculate_build_exports_crossbow_firing_and_reload_rates() {
+    let xml = r#"<PathOfBuilding2><Build className="Witch" level="90" mainSocketGroup="1"/>
+<Skills><Skill mainActiveSkill="1"><Gem skillId="FragmentationRoundsAmmoPlayer" level="20"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Makeshift Crossbow
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items></PathOfBuilding2>"#;
+    let report = calculate_build(&CalculateBuildRequest {
+        code: encode_code(xml).unwrap(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    })
+    .unwrap();
+    assert!((report.output.firing_rate - 1.6).abs() < 1e-9);
+    assert!((report.output.reload_time - 0.8).abs() < 1e-9);
+    let json = serde_json::to_value(report).unwrap();
+    assert!(json["output"]["firing_rate"].as_f64().unwrap() > 0.0);
+    assert!(json["output"]["reload_time"].as_f64().unwrap() > 0.0);
+}
+
+#[test]
+fn exporter_absent_rules_are_reported_without_changing_reference_agreement() {
+    let request = CalculateBuildRequest {
+        code: GEMLING_COMET_CODE.trim().to_string(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    };
+    let report = calculate_build_detailed(
+        &request,
+        &BuildDetail {
+            usage: true,
+            reference_basis: true,
+            ..BuildDetail::default()
+        },
+    )
+    .unwrap();
+    let reference = report.reference.unwrap();
+    assert!(reference.exporter_absent_rules_omitted);
+    assert!(reference.differing.iter().all(|row| row.stat != "ManaCost"));
+    assert!(
+        report
+            .beyond_pob2
+            .iter()
+            .any(|rule| rule.rule_id == "spell_mana_cost_efficiency" && rule.changed_rows > 0)
+    );
+    let usage = serde_json::to_string(&report.usage.unwrap()).unwrap();
+    assert!(
+        usage.contains("ManaCostEfficiency"),
+        "game-mode usage keeps the absent rule"
     );
 }

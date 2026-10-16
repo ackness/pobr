@@ -56,3 +56,32 @@ describe('local build workspace', () => {
     expect(parseWorkspace(broken, parseSaved)).toBeNull();
   });
 });
+
+import { replaceComparedStage } from './buildWorkspace';
+
+describe('comparison section application', () => {
+  it('edits an inactive target without changing B or the active selection', () => {
+    const workspace = duplicateWorkspaceStage(createWorkspace(saved), 'B');
+    const [a, b] = workspace.builds[0].stages;
+    const ref = (stage: typeof a) => ({ buildId: workspace.activeBuild, stageId: stage.id, saved: stage.saved });
+    const state = { ...a.saved.state, items: [{ slot: 'ring1', text: 'Copied' }] };
+    const next = replaceComparedStage(workspace, ref(a), ref(b), state)!;
+    expect(next.activeBuild).toBe(workspace.activeBuild);
+    expect(next.builds[0].activeStage).toBe(b.id);
+    expect(next.builds[0].stages[1]).toBe(b);
+    expect(next.builds[0].stages[0].saved).toEqual({ ...a.saved, state });
+    expect(a.saved.state.items).toEqual(saved.state.items);
+  });
+  it('rejects stale A or B, self-copy, missing stages and unapplied A drafts', () => {
+    const workspace = duplicateWorkspaceStage(createWorkspace(saved), 'B');
+    const [a, b] = workspace.builds[0].stages;
+    const ref = (stage: typeof a) => ({ buildId: workspace.activeBuild, stageId: stage.id, saved: stage.saved });
+    const aa = ref(a), bb = ref(b);
+    for (const [target, source] of [[{ ...aa, saved: structuredClone(a.saved) }, bb], [aa, { ...bb, saved: structuredClone(b.saved) }],
+      [aa, aa], [{ ...aa, stageId: 'missing' }, bb]]) {
+      expect(replaceComparedStage(workspace, target, source, saved.state)).toBeNull();
+    }
+    a.drafts = { 'item:ring1': 'Unapplied' };
+    expect(replaceComparedStage(workspace, aa, bb, saved.state)).toBeNull();
+  });
+});

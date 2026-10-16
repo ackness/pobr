@@ -1,3 +1,5 @@
+import { PartyEditor } from './PartyEditor';
+import { NamedSets } from '../shared/NamedSets';
 import { PageHeader } from '../shared/PageHeader';
 import { useEffect, useMemo, useState } from 'react';
 import { getBackend } from '../../api/backend';
@@ -7,6 +9,7 @@ import { useSkillName } from '../../hooks/useSkillName';
 import { bindT, configSectionLabel, damageTypeLabel, enemyTierLabel, t, type Lang } from '../../lib/i18n';
 import { CONFIG_LABEL_ZH, LIST_OPTION_ZH } from '../../lib/configLabels';
 import { configDefaultValue } from '../../lib/configDefaults';
+import { configApplicability, configVisibilityInputs, showConfigOption, type Applicability } from '../../lib/configVisibility';
 import './config.css';
 
 interface Props {
@@ -71,6 +74,7 @@ function OptionRow({
   busy,
   lang,
   listLabels,
+  applicability,
   onChange,
   onReset,
 }: {
@@ -80,6 +84,7 @@ function OptionRow({
   busy: boolean;
   lang: Lang;
   listLabels: Record<string, string>;
+  applicability: Applicability;
   onChange: (value: ConfigInputValue) => void;
   onReset: () => void;
 }) {
@@ -90,11 +95,21 @@ function OptionRow({
   const [draft, setDraft] = useState(String(value ?? ''));
   useEffect(() => setDraft(String(value ?? '')), [value]);
   return (
-    <div className={`config-item${overridden ? ' is-overridden' : ''}`} title={option.var}>
-      <label className="config-key" htmlFor={`config-${option.var}`}>{label}</label>
+    <div className={`config-item${overridden ? ' is-overridden' : ''}`} data-config-var={option.var}>
+      <div className="config-description">
+        <label className="config-key" htmlFor={`config-${option.var}`}>{label}</label>
+        {option.tooltip && <p className="config-help" id={`config-help-${option.var}`}>{stripColorCodes(option.tooltip)}</p>}
+        <code className="config-raw-key">{option.var}</code>
+        <span className="config-source">{tt(value === undefined ? 'config.sourceDefault' : 'config.sourceSaved')}</span>
+        {applicability !== 'applicable' && <span className="config-applicability">
+          {tt(applicability === 'unknown' ? 'config.applicabilityUnknown' : 'config.notApplicable')}
+          {value !== undefined && <> · {tt('config.savedRetained')}</>}
+        </span>}
+      </div>
       {option.input_type === 'check' ? (
         <input
           id={`config-${option.var}`}
+          aria-describedby={option.tooltip ? `config-help-${option.var}` : undefined}
           type="checkbox"
           checked={typeof effective === 'number' ? effective !== 0 : effective === true}
           disabled={busy}
@@ -104,6 +119,7 @@ function OptionRow({
       ) : option.input_type === 'list' ? (
         <select
           id={`config-${option.var}`}
+          aria-describedby={option.tooltip ? `config-help-${option.var}` : undefined}
           value={String(effective ?? '')}
           disabled={busy}
           onChange={(e) => onChange(e.target.value)}
@@ -127,6 +143,7 @@ function OptionRow({
       ) : (
         <input
           id={`config-${option.var}`}
+          aria-describedby={option.tooltip ? `config-help-${option.var}` : undefined}
           className="config-value"
           type={option.input_type === 'text' ? 'text' : 'number'}
           value={draft}
@@ -173,6 +190,7 @@ export function ConfigPanel({ session, lang }: Props) {
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [query, setQuery] = useState('');
   const [configuredOnly, setConfiguredOnly] = useState(false);
+  const [allOptions, setAllOptions] = useState(false);
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['General', 'Quest Rewards', 'When In Combat']));
   // 词条文本型 list 选项（如任务奖励 "+5 to all Attributes"）的反查翻译缓存。
   const [listLabels, setListLabels] = useState<Record<string, string>>({});
@@ -226,6 +244,9 @@ export function ConfigPanel({ session, lang }: Props) {
     key in overrides ? overrides[key] : buildInputs[key];
   const isOverridden = (key: string) => key in overrides && overrides[key] !== buildInputs[key];
   const resetInput = (key: string) => session.setConfigInput(key, buildInputs[key] ?? null);
+  const inputs = useMemo(() => ({ ...buildInputs, ...overrides }), [buildInputs, overrides]);
+  const visibilityInputs = useMemo(() => configVisibilityInputs(options, inputs), [options, inputs]);
+  const context = !session.busy && !session.calcError ? session.calc?.config_context : null;
 
   // Previous output remains visible while the baseline recalculates or has failed.
   const calculatedMain = !session.busy && !session.calcError ? session.calc?.main_skill : null;
@@ -238,6 +259,7 @@ export function ConfigPanel({ session, lang }: Props) {
   const openSetting = (option: ConfigOption) => {
     setQuery('');
     setConfiguredOnly(false);
+    setAllOptions(true);
     setOpenSections(previous => new Set([...previous, option.section ?? 'General']));
     setFocusTarget(option.var);
   };
@@ -247,6 +269,7 @@ export function ConfigPanel({ session, lang }: Props) {
     const filtered = options.filter(
       (o) =>
         o.var !== 'customMods' && o.var !== 'enemyIsBoss' &&
+        showConfigOption(o, configApplicability(o, context, visibilityInputs), inputs, allOptions) &&
         (!configuredOnly || effective(o.var) !== undefined) && (q === '' ||
         (o.label ?? '').toLowerCase().includes(q) ||
         o.var.toLowerCase().includes(q) ||
@@ -262,7 +285,7 @@ export function ConfigPanel({ session, lang }: Props) {
     const known = SECTION_ORDER.filter((s) => bySection.has(s));
     const rest = [...bySection.keys()].filter((s) => !SECTION_ORDER.includes(s)).sort();
     return [...known, ...rest].map((name) => ({ name, options: bySection.get(name)! }));
-  }, [options, query, configuredOnly, overrides, buildInputs, lang]);
+  }, [options, query, configuredOnly, overrides, buildInputs, lang, context, inputs, visibilityInputs, allOptions]);
 
   useEffect(() => {
     if (!focusTarget || session.busy) return;
@@ -313,6 +336,8 @@ export function ConfigPanel({ session, lang }: Props) {
   return (
     <section className="ui-page config-page" aria-labelledby="config-heading">
       <PageHeader id="config-heading" title={tt('config.title')} description={tt('ui.configHint')} />
+      <NamedSets session={session} lang={lang} />
+      <PartyEditor session={session} lang={lang} />
 
       <div className="config-toolbar">
         <label className="config-row">
@@ -340,6 +365,11 @@ export function ConfigPanel({ session, lang }: Props) {
         <label className="config-filter"><input type="checkbox" checked={configuredOnly}
           onChange={event => setConfiguredOnly(event.target.checked)} />{tt('config.configuredOnly')} ({configuredCount})</label>
       </div>
+      <div className="config-view" role="group" aria-label={tt('config.view')}>
+        <button type="button" aria-pressed={!allOptions} onClick={() => setAllOptions(false)}>{tt('config.applicable')}</button>
+        <button type="button" aria-pressed={allOptions} onClick={() => setAllOptions(true)}>{tt('config.showAll')}</button>
+      </div>
+      <p className="config-hint">{tt('config.visibilityHint')}</p>
       <p className="config-hint">{tt('config.editHint')}</p>
       <p className="config-hint">{tt('config.defaultsHint')}</p>
       {loadState === 'loading' && <p role="status">{tt('config.loading')}</p>}
@@ -392,7 +422,7 @@ export function ConfigPanel({ session, lang }: Props) {
       </article>
       {loadState === 'ready' && searching && sections.length === 0 && <div className="search-empty" role="status">
         <p>{tt('common.noResults')}</p>
-        <button onClick={() => { setQuery(''); setConfiguredOnly(false); }}>{tt(configuredOnly ? 'config.showAll' : 'common.clearSearch')}</button>
+        <button onClick={() => { setQuery(''); setConfiguredOnly(false); setAllOptions(true); }}>{tt('config.showAll')}</button>
       </div>}
 
       {sections.map(({ name, options: sectionOptions }) => {
@@ -426,6 +456,7 @@ export function ConfigPanel({ session, lang }: Props) {
                     busy={session.busy}
                     lang={lang}
                     listLabels={listLabels}
+                    applicability={configApplicability(option, context, visibilityInputs)}
                     onChange={(value) => session.setConfigInput(option.var, value)}
                     onReset={() => resetInput(option.var)}
                   />

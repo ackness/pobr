@@ -157,7 +157,8 @@ pub(super) fn mapped_stat_modifiers_observed(
         // The engine's own definition of a stat comes first; the extracted
         // stat map is consulted only for the stats it does not define.
         let outcome = match (
-            skill_stats::skill_modifiers(&ds.stat, ds.value),
+            crate::rules::spell_hits::modifiers(effect_id, set_key, &ds.stat, ds.value)
+                .or_else(|| skill_stats::skill_modifiers(&ds.stat, ds.value)),
             ctx.catalog,
         ) {
             (Some(modifiers), _) => MappedOutcome::Mapped(
@@ -188,8 +189,18 @@ pub(super) fn mapped_stat_modifiers_observed(
             continue;
         };
         for item in items {
-            let MappedItem::Modifier(modifier) = item else {
-                continue;
+            let modifier = match item {
+                MappedItem::Modifier(modifier) => *modifier,
+                MappedItem::SkillData { key, value } => {
+                    let name = match key.as_str() {
+                        "duration" => "SkillDurationBase",
+                        "durationSecondary" => "SkillDurationSecondaryBase",
+                        "auraDuration" => "SkillAuraDurationBase",
+                        "reserveDuration" => "SkillReserveDurationBase",
+                        _ => continue,
+                    };
+                    Modifier::number(name, pobr_data::modifier::ModType::Base, value)
+                }
             };
             let origin = ModifierSource::new(SourceId::new(
                 source_kind.clone(),
@@ -374,13 +385,36 @@ pub fn curse_stat_modifiers(
     skill_id: &str,
     set_key: Option<&str>,
 ) -> Vec<Modifier> {
+    curse_stat_modifiers_owned(ctx, stats, skill_id, set_key, false)
+}
+
+pub(super) fn minion_curse_stat_modifiers(
+    ctx: &mut StatMapCtx<'_>,
+    stats: &EffectStats,
+    skill_id: &str,
+    set_key: Option<&str>,
+) -> Vec<Modifier> {
+    curse_stat_modifiers_owned(ctx, stats, skill_id, set_key, true)
+}
+
+fn curse_stat_modifiers_owned(
+    ctx: &mut StatMapCtx<'_>,
+    stats: &EffectStats,
+    skill_id: &str,
+    set_key: Option<&str>,
+    minion: bool,
+) -> Vec<Modifier> {
     let merged = merged_stats(stats);
     let mut mods = Vec::new();
     for ds in &merged {
         if ds.value == 0.0 {
             continue;
         }
-        let native = skill_stats::curse_modifiers(&ds.stat, ds.value, &merged);
+        let native = if minion {
+            skill_stats::minion_curse_modifiers(&ds.stat, ds.value, &merged)
+        } else {
+            skill_stats::curse_modifiers(&ds.stat, ds.value, &merged)
+        };
         let outcome = match (native, ctx.catalog) {
             (Some(modifiers), _) => MappedOutcome::Mapped(
                 modifiers

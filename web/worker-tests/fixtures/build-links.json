@@ -1,0 +1,26 @@
+[
+  {
+    "url": "https://pobb.in/Fixture_42",
+    "target": "https://pobb.in/pob/Fixture_42"
+  },
+  {
+    "url": "https://poe.ninja/poe2/pob/Fixture_42",
+    "target": "https://poe.ninja/poe2/pob/raw/Fixture_42"
+  },
+  {
+    "url": "https://pastebin.com/Fixture42",
+    "target": "https://pastebin.com/raw/Fixture42"
+  },
+  {
+    "url": "https://rentry.co/fixture42",
+    "target": "https://rentry.co/paste/fixture42/raw"
+  },
+  {
+    "url": "https://poe2db.tw/pob/Fixture_42",
+    "target": "https://poe2db.tw/pob/Fixture_42/raw"
+  },
+  {
+    "url": "https://maxroll.gg/poe2/pob/Fixture_42",
+    "target": "https://maxroll.gg/poe2/api/pob/Fixture_42"
+  }
+]

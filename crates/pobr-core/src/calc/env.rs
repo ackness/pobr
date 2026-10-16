@@ -17,6 +17,8 @@ pub struct Env {
     /// Derived modifiers are appended during perform, so an environment is single-use.
     pub(crate) performed: bool,
     pub player: Actor,
+    pub utility_items: Vec<super::utility::UtilityItemSpec>,
+    pub utility_details: BTreeMap<String, super::utility::UtilityTerms>,
     pub enemy: Actor,
     pub cfg: CalcConfig,
     /// Player minions (Lane4). Each minion is its own `Actor`, reusing the
@@ -24,13 +26,10 @@ pub struct Env {
     /// (backward compatible: behaves the same as when this field didn't exist).
     pub minions: Vec<Actor>,
     /// The player's buff skill specs (written by `session::add_buff_skill`).
-    ///
-    /// Originally recorded as `player.buff_skills` — since `Actor` is defined
-    /// in actor.rs outside T0's ownership and minion buffs aren't implemented
-    /// yet, this pass keeps it at the top level of `Env` (semantically still
-    /// player-side); move it to per-actor if T3 consumption needs that later.
-    /// **Zero consumption this pass**: every output value is unchanged whether this is empty or not.
     pub buff_skills: Vec<BuffSpec>,
+    /// Buff skills owned by a minion (index in `minions`), not the summoner.
+    pub minion_buff_skills: Vec<(usize, BuffSpec)>,
+    pub party_buff_skills: Vec<super::session::PartyBuffSpec>,
     /// The player's warcry skill specs (backlog item #9; written by
     /// `session::add_warcry_skill`, consumed by `perform` before the hand
     /// pass via [`super::warcry::apply_warcry_uptime`] — the uptime-scaled
@@ -79,16 +78,20 @@ pub struct Env {
     pub crossbow_reload: Option<super::CrossbowReload>,
     /// What the EHP stage computed with (`None` before it runs).
     pub ehp_terms: Option<super::EhpTerms>,
+    /// The earlier single-hit estimate, retained for its optional legacy view.
+    pub(crate) legacy_ehp_terms: Option<super::ehp::EhpResult>,
+    /// Normal leech, instant leech and on-hit recovery by resource, for optional details.
+    pub(crate) leech_gain_terms: [[[f64; 3]; 3]; 2],
     /// MH/OH hand pass input (contract 1; written by the orchestration
     /// layer's weapon section via `session::set_hand_sources`). Empty means a
     /// non-attack skill / legacy entry point, and `perform` takes the
     /// single-pipeline path identical to the historical behavior (fallback
     /// state, output unchanged value-for-value).
     pub hand_sources: Vec<super::hand_pass::HandSource>,
-    /// The physical damage range of the character's main hand weapon, after
+    /// The damage ranges of the character's main hand weapon, after
     /// its own modifiers, whatever skill is calculated: what a minion that
     /// gains added damage equal to a share of it adds.
-    pub main_hand_weapon_damage: Option<(f64, f64)>,
+    pub main_hand_weapon_damage: Vec<(DamageType, f64, f64)>,
     /// Skill data's `doubleHitsWhenDualWielding` (flips the combineStat
     /// DPS/CRIT mode, vendor CalcOffence.lua:2459-2545). The data channel is
     /// the skill_overrides extraction; always false until the orchestration
@@ -109,11 +112,15 @@ impl Env {
     pub fn new(player: Actor) -> Self {
         Self {
             performed: false,
+            utility_items: Vec::new(),
+            utility_details: BTreeMap::new(),
             player,
             enemy: Actor::new(1, ActorBaseStats::default()),
             cfg: CalcConfig::attack().with_damage_type(DamageType::Physical),
             minions: Vec::new(),
             buff_skills: Vec::new(),
+            minion_buff_skills: Vec::new(),
+            party_buff_skills: Vec::new(),
             warcry_skills: Vec::new(),
             warcry_gain_injected: false,
             keystone_mods: BTreeMap::new(),
@@ -124,8 +131,10 @@ impl Env {
             ailment_terms: Vec::new(),
             crossbow_reload: None,
             ehp_terms: None,
+            legacy_ehp_terms: None,
+            leech_gain_terms: [[[0.0; 3]; 3]; 2],
             hand_sources: Vec::new(),
-            main_hand_weapon_damage: None,
+            main_hand_weapon_damage: Vec::new(),
             double_hits_when_dual_wielding: false,
             high_precision: HighPrecisionRules::default(),
         }
@@ -139,7 +148,9 @@ impl Env {
     /// injection result. Once this entry point is called during integration,
     /// `perform` runs the same offence/defence pipeline for every minion.
     pub fn add_minion(&mut self, ctx: super::MinionContext) -> &mut Self {
-        self.minions.push(minion_actor_from_context(&ctx));
+        let mut actor = minion_actor_from_context(&ctx);
+        actor.mod_db.inherit_exporter_rules(&self.player.mod_db);
+        self.minions.push(actor);
         self
     }
 
@@ -187,18 +198,63 @@ impl Env {
             origin.picked_monster,
         );
         super::write_summoned_minion_multipliers(&mut self.player.mod_db, limit, &def.id);
+        let kind_count = def.limit.to_pob2_str();
+        if !kind_count.is_empty() {
+            self.player.mod_db.add_mod(
+                crate::Modifier::number(
+                    format!("Multiplier:{kind_count}"),
+                    ModType::Base,
+                    f64::from(limit),
+                )
+                .with_origin(ModifierSource::new(SourceId::new(
+                    SourceKind::GameConstant,
+                    format!("minion.limit.{}", def.id),
+                ))),
+            );
+        }
         let mut actor = minion_actor_from_context(&ctx);
+        actor.mod_db.inherit_exporter_rules(&self.player.mod_db);
         // A minion created while the calculation notes its reads is noted too.
         if self.player.mod_db.tracks_reads() {
             actor.mod_db.track_reads();
         }
         if origin.skill.uses_weapon() {
+            if let Some(weapon) = origin.copied_weapon {
+                actor.base.hit_min = weapon.hit_min;
+                actor.base.hit_max = weapon.hit_max;
+                actor.base.action_rate = weapon.attack_rate.unwrap_or(0.0);
+            }
+            // MonsterVarieties.DamageMultiplier applies to added attack damage
+            // as well as the monster's base damage. Picked beasts/spectres and
+            // copied weapons keep their own damage bases.
+            if !origin.picked_monster && origin.copied_weapon.is_none() && def.damage != 1.0 {
+                actor.mod_db.add_mod(
+                    crate::Modifier::number(
+                        "AddedDamage",
+                        ModType::More,
+                        (def.damage - 1.0) * 100.0,
+                    )
+                    .with_flags(ModFlags::ATTACK),
+                );
+            }
+            // An attack's damage_multiplier scales its weapon and added damage.
+            if let Some(multiplier) = origin.skill.damage_multiplier {
+                actor.base.hit_min *= multiplier;
+                actor.base.hit_max *= multiplier;
+                actor.mod_db.add_mod(crate::Modifier::number(
+                    "AddedDamage",
+                    pobr_data::modifier::ModType::More,
+                    (multiplier - 1.0) * 100.0,
+                ));
+            }
             // A monster's attack crits at its weapon's chance.
             actor.mod_db.add_mod(
                 crate::Modifier::number(
                     "CriticalStrikeChance",
                     pobr_data::modifier::ModType::Base,
-                    ctx.base.weapon.crit_chance,
+                    origin
+                        .copied_weapon
+                        .map_or(ctx.base.weapon.crit_chance, |weapon| weapon.crit_chance),
                 )
                 .with_origin(pobr_data::source::ModifierSource::new(
                     pobr_data::source::SourceId::new(
@@ -218,8 +274,17 @@ impl Env {
                 0.0
             };
         }
+        if !origin.summoned_by.is_empty() {
+            self.player.mod_db.add_mod(
+                crate::Modifier::number("SelectedMinionLimit", ModType::Base, f64::from(limit))
+                    .with_tag(crate::ModTag::SkillName {
+                        names: vec![crate::skill_env::skill_name_from_id(&origin.summoned_by)],
+                    }),
+            );
+        }
         actor.is_companion = origin.is_companion;
         actor.minion = Some(MinionIdentity {
+            summoner: origin.summoner,
             minion_id: def.id.clone(),
             summoned_by: origin.summoned_by,
             skill: origin.skill,
@@ -238,16 +303,15 @@ impl Env {
 /// the offence/defence pipeline.
 ///
 /// Mapping strategy (avoids double-counting / missed values):
-/// - **Life / resistances / virtual weapon damage**: written to
+/// - **Life / virtual weapon damage**: written to
 ///   [`ActorBaseStats`]'s scalar base fields — because the player pipeline's
-///   pool query uses `MaximumLife` and resistance query uses
-///   `FireResistance`, which differ from the minion `ModDb`'s intrinsic
-///   `Life`/`FireResist` BASE names, so they can't be read from the db and
+///   pool query uses `MaximumLife`, which differs from the minion `ModDb`'s intrinsic
+///   `Life` BASE name, so it can't be read from the db and
 ///   must be supplied via the scalar base instead.
-/// - **Armour / evasion / ES**: scalar base left at 0, driven instead by the
-///   minion `ModDb`'s intrinsic `Armour`/`Evasion`/`EnergyShield` BASE
-///   through the defence pipeline (these query names match the intrinsic
-///   names, avoiding double-counting).
+/// - **Armour / evasion / ES / resistances**: scalar base left at 0, driven instead by the
+///   minion `ModDb`'s intrinsic BASE modifiers. Resistance queries read both
+///   `FireResistance` and `FireResist` (and likewise for other types),
+///   avoiding double-counting the monster base.
 /// - `mod_db` carries the three-channel injection result as-is.
 fn minion_actor_from_context(ctx: &super::MinionContext) -> Actor {
     let base = ActorBaseStats {
@@ -259,9 +323,9 @@ fn minion_actor_from_context(ctx: &super::MinionContext) -> Actor {
         evasion: 0.0,
         energy_shield: 0.0,
         accuracy: 0.0,
-        fire_resistance: ctx.base.fire_resist,
-        cold_resistance: ctx.base.cold_resist,
-        lightning_resistance: ctx.base.lightning_resist,
+        fire_resistance: 0.0,
+        cold_resistance: 0.0,
+        lightning_resistance: 0.0,
         // An attacking minion's virtual weapon damage feeds the attack damage pipeline.
         hit_min: ctx.base.weapon.physical_min,
         hit_max: ctx.base.weapon.physical_max,

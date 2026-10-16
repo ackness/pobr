@@ -736,3 +736,52 @@ pub(super) fn flag_source(player: &ModDb, cfg: &CalcConfig, flag: &str) -> Sourc
         .flag_origin(cfg, flag)
         .unwrap_or_else(|| SourceId::new(SourceKind::Derived, format!("{flag}.FLAG")))
 }
+
+/// Inexorable Critical gains increased critical chance each second since
+/// its last critical hit. Tier II also loses critical damage bonus. Each
+/// amount is capped by the support's `support_inevitable_criticals_*_cap`
+/// stat; the configured seconds are a statement of the current combat state.
+pub(crate) fn apply_inexorable_critical(env: &mut super::Env) {
+    if !env.cfg.mode_combat {
+        return;
+    }
+    let seconds = env.cfg.multiplier("SecondsSinceInevitableCrit").max(0.0);
+    for (rate, cap, name, kind) in [
+        (
+            "InexorableCritChancePerSecond",
+            "InexorableCritChanceCap",
+            "CriticalStrikeChance",
+            ModType::Inc,
+        ),
+        (
+            "InexorableCritBonusPerSecond",
+            "InexorableCritBonusCap",
+            "CriticalStrikeMultiplier",
+            ModType::More,
+        ),
+    ] {
+        let per_second = env
+            .player
+            .mod_db
+            .sum(ModType::Base, &env.cfg, &[ModName::from(rate)]);
+        let limit = env
+            .player
+            .mod_db
+            .sum(ModType::Base, &env.cfg, &[ModName::from(cap)])
+            .abs();
+        let value = (per_second * seconds).clamp(-limit, limit);
+        if value != 0.0 {
+            env.player.mod_db.add_mod(
+                crate::Modifier::number(name, kind, value).with_origin(
+                    ModifierSource::new(SourceId::new(
+                        SourceKind::SupportGem,
+                        "support.InexorableCritical",
+                    ))
+                    .with_raw_text(format!(
+                        "Inexorable Critical: {seconds} seconds since last critical hit"
+                    )),
+                ),
+            );
+        }
+    }
+}

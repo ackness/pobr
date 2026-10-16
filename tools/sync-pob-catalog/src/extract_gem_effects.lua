@@ -86,7 +86,9 @@ for variantKey, gem in pairs(gems) do
 					.. jsonEscape(granted)
 					.. '","additional_granted_effects":'
 					.. jsonStringArray(collectNumbered(gem, "additionalGrantedEffectId"))
-					.. ',"additional_stat_sets":'
+					.. ',"granted_effect_display_order":['
+					.. table.concat(gem.grantedEffectDisplayOrder or {}, ",")
+					.. '],"additional_stat_sets":'
 					.. jsonStringArray(collectNumbered(gem, "additionalStatSet"))
 					.. "}"
 			)

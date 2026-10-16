@@ -17,11 +17,13 @@ import type {
 } from './types';
 import decodeFixture from '../fixtures/decode.json';
 import calculateFixture from '../fixtures/calculate.json';
+import detailFixture from '../fixtures/stat_details.json';
 import attributionFixture from '../fixtures/attribution.json';
 import skillMetricsFixture from '../fixtures/skill_metrics.json';
 import treeFixture from '../fixtures/tree.json';
 import treeMetaFixture from '../fixtures/tree_meta.json';
 import gemCatalogFixture from '../fixtures/gem_catalog.json';
+import minionCatalogFixture from '../fixtures/minion_catalog.json';
 import configOptionsFixture from '../fixtures/config_options.json';
 
 export function createMockBackend(): PobrBackend {
@@ -45,12 +47,25 @@ export function createMockBackend(): PobrBackend {
     async decodeBuildFile() {
       return decodeFixture as unknown as BuildJson;
     },
-    async calculateBuild() {
-      return calculateFixture as unknown as CalculateBuildResponse;
+    async calculateBuild(request) {
+      const result = calculateFixture as unknown as CalculateBuildResponse;
+      if (request.breakdowns === undefined && request.breakdown_actor === undefined) return result;
+      const details = detailFixture as unknown as CalculateBuildResponse['breakdowns'];
+      const filter = (rows: CalculateBuildResponse['breakdowns']) => Object.fromEntries((request.breakdowns ?? Object.keys(rows)).filter(id => rows[id]).map(id => [id, rows[id]]));
+      return { ...result,
+        breakdowns: request.breakdown_actor?.kind === 'minion' ? {} : filter(details),
+        minions: result.minions?.map(minion => ({ ...minion,
+          breakdowns: request.breakdown_actor?.kind === 'minion' && request.breakdown_actor.index === minion.index ? filter(minion.breakdowns) : {},
+        })),
+      };
+    },
+    async encodeBuildFile() {
+      throw new Error("Build Planner export requires the WASM backend");
     },
     async encodeBuild() {
       return 'MOCK_POB_CODE';
     },
+    async importPartyMember() { return { id: '1', name: 'Party member', enabled: true, blocks: {}, warnings: [] }; },
     async skillMetrics() {
       return skillMetricsFixture as SkillMetricsResponse;
     },
@@ -78,6 +93,7 @@ export function createMockBackend(): PobrBackend {
     async loadClassNames() {
       return { classes: {}, ascendancies: {} };
     },
+    async minionCatalog() { return minionCatalogFixture as unknown as import('./types').MinionCatalog; },
     async gemCatalog() {
       return gemCatalogFixture as unknown as GemCatalogEntry[];
     },
@@ -108,6 +124,12 @@ export function createMockBackend(): PobrBackend {
     async importTradeItems(items) {
       return items.map(() => ({ error: 'Trade item import requires the calculation backend' }));
     },
+    async previewTreeConversion() {
+      throw new Error('Tree conversion requires the calculation backend');
+    },
+    async previewTreeEdit() {
+      return { valid: false, reason: 'backend_unavailable', result: null };
+    },
     async supportGroupsCompatible(groups) {
       // The UI fixture backend has no rule data; never guess legal candidates.
       return groups.map(() => false);
@@ -116,6 +138,10 @@ export function createMockBackend(): PobrBackend {
       // mock 无符文目录；面板隐藏符文编辑器。
       return [];
     },
+    async uniqueCatalog() { return []; },
+    async uniqueItemDraft() { throw new Error('No unique catalogue in mock data'); },
+    async itemCraftingCatalog() { return { bases: [], mods: [] }; },
+    async normalizeItemDraft(text) { return text; },
     async reforgeRunes(text) {
       return text;
     },

@@ -47,7 +47,9 @@ fn run_build(name: &str, data: &BuildData) -> OutputTable {
         mode_effective: false,
         extra_modifier_texts: vec![],
         ..Default::default()
-    };
+    }
+    // Compare the exporter's values without absent charm possession rules.
+    .on_reference_basis();
     calculate_with_data(&build, data, &opts).expect("calculate")
 }
 

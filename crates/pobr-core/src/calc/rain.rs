@@ -36,6 +36,13 @@
 //! The exporter of a build code's reference values counts a hit whenever
 //! the enemy can be hit again, as if an arrow landed at that moment:
 //! [`CalcConfig::rain_hits_whenever_allowed`] asks the same question.
+//!
+//! Hailstorm Rounds fires its loaded bolts in succession. Its landings
+//! follow that firing cadence, delayed by `siege_cascade_fall_time_ms`;
+//! that flight time is not an interval between bolts. `rain_hit_delay_ms`
+//! still limits hits on one enemy. We apply the same even-landing estimate
+//! while firing, then average over the reload cycle. This does not simulate
+//! the landing positions or a fresh lockout phase at each magazine boundary.
 
 use pobr_data::prelude::*;
 
@@ -48,6 +55,8 @@ use super::formula::{FormulaBuilder, FormulaOp, StatFormula};
 pub const LANDING_INTERVAL: &str = "RainLandingInterval";
 /// Milliseconds before what a rain drops can hit the same enemy again.
 pub const HIT_INTERVAL: &str = "RainHitInterval";
+/// Each attack supplies a landing, rather than starting a separately timed rain.
+pub const USE_CADENCE: &str = "RainUsesAttackCadence";
 /// What scales how often the arrows land.
 const LANDING_SPEED: &str = "ProjectileSpeed";
 
@@ -93,7 +102,13 @@ pub(crate) struct RainHits {
 
 /// Whether the skill `db` and `cfg` describe is a rain.
 pub(crate) fn is_rain(db: &ModDb, cfg: &CalcConfig) -> bool {
-    db.sum(ModType::Base, cfg, &[ModName::from(LANDING_INTERVAL)]) > 0.0
+    db.flag(cfg, USE_CADENCE)
+        || db.sum(ModType::Base, cfg, &[ModName::from(LANDING_INTERVAL)]) > 0.0
+}
+
+/// First evenly spaced landing after the target's hit lockout expires.
+pub(crate) fn landings_per_hit(landing_rate: f64, hit_interval: f64) -> f64 {
+    (hit_interval * landing_rate - 1e-9).ceil().max(1.0)
 }
 
 /// How often the rain of the skill that `db` and `cfg` describe hits an
@@ -101,21 +116,33 @@ pub(crate) fn is_rain(db: &ModDb, cfg: &CalcConfig) -> bool {
 /// `None` for a skill that is not a rain.
 pub(crate) fn rain_hits(db: &ModDb, cfg: &CalcConfig, uses_per_second: f64) -> Option<RainHits> {
     let landing_ms = db.sum(ModType::Base, cfg, &[ModName::from(LANDING_INTERVAL)]);
-    if landing_ms <= 0.0 {
+    let use_cadence = db.flag(cfg, USE_CADENCE);
+    if landing_ms <= 0.0 && !use_cadence {
         return None;
     }
     let hit_ms = db
         .sum(ModType::Base, cfg, &[ModName::from(HIT_INTERVAL)])
         .max(0.0);
     let speed = [ModName::from(LANDING_SPEED)];
-    let speed_inc = db.sum(ModType::Inc, cfg, &speed);
-    let speed_more = db.more(cfg, &speed);
-    let base_landing_rate = 1000.0 / landing_ms;
+    let (base_landing_rate, speed_inc, speed_more) = if use_cadence {
+        (uses_per_second.max(0.0), 0.0, 1.0)
+    } else {
+        (
+            1000.0 / landing_ms,
+            db.sum(ModType::Inc, cfg, &speed),
+            db.more(cfg, &speed),
+        )
+    };
     let landing_rate = (base_landing_rate * (1.0 + speed_inc / 100.0) * speed_more).max(0.0);
     let hit_interval = hit_ms / 1000.0;
-    let arrows = super::skill_mechanics::calc_projectile_count(db, cfg)
-        .projectile_count
-        .max(1.0);
+    // Projectiles of one attack land together and share the target lockout.
+    let arrows = if use_cadence {
+        1.0
+    } else {
+        super::skill_mechanics::calc_projectile_count(db, cfg)
+            .projectile_count
+            .max(1.0)
+    };
     let (arrows_per_hit, while_falling, per_use_limit) = if landing_rate <= 0.0 {
         (1.0, 0.0, None)
     } else if cfg.rain_hits_whenever_allowed {
@@ -129,12 +156,12 @@ pub(crate) fn rain_hits(db: &ModDb, cfg: &CalcConfig, uses_per_second: f64) -> O
         // The first arrow to land once the interval has passed. A tolerance
         // keeps an interval that is a whole number of landings at that
         // number.
-        let arrows_per_hit = (hit_interval * landing_rate - 1e-9).ceil().max(1.0);
+        let arrows_per_hit = landings_per_hit(landing_rate, hit_interval);
         let hits_per_rain = (arrows / arrows_per_hit).ceil();
         (
             arrows_per_hit,
             landing_rate / arrows_per_hit,
-            Some(hits_per_rain * uses_per_second.max(0.0)),
+            (!use_cadence).then_some(hits_per_rain * uses_per_second.max(0.0)),
         )
     };
     let rate = per_use_limit.map_or(while_falling, |limit| while_falling.min(limit));

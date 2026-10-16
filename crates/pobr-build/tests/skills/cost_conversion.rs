@@ -126,3 +126,55 @@ fn archmage_adds_a_share_of_maximum_mana_to_the_cost() {
         converted.life_cost
     );
 }
+
+#[test]
+fn inherent_mana_regeneration_scales_with_the_final_pool_and_rate() {
+    let data = data();
+    let plain = calculate(&data, &[], "", &[]);
+    assert!((plain.mana_regen - plain.mana * 0.04).abs() < 1e-6);
+    let increased = calculate(&data, &[], "", &["50% increased Mana Regeneration Rate"]);
+    assert!((increased.mana_regen - increased.mana * 0.06).abs() < 1e-6);
+    let no_regen = calculate(&data, &[], "", &["100% less Mana Regeneration Rate"]);
+    assert_eq!(no_regen.mana_regen_recovery, 0.0);
+    assert!(
+        (plain.net_mana_regen
+            - (plain.mana_regen_recovery - plain.mana_cost * plain.effective_action_rate))
+            .abs()
+            < 1e-6
+    );
+}
+
+#[test]
+fn no_inherent_mana_regen_preserves_granted_regeneration() {
+    let data = data();
+    let out = calculate(
+        &data,
+        &[],
+        "",
+        &[
+            "No inherent Mana Regeneration",
+            "Regenerate 10 Mana per second",
+        ],
+    );
+    assert_eq!(out.mana_regen, 10.0);
+}
+
+#[test]
+fn berserk_drains_life_in_proportion_to_the_characters_rage() {
+    let data = data();
+    let xml = r#"<PathOfBuilding2>
+<Build level="80" className="Warrior" ascendClassName="None" mainSocketGroup="1"/>
+<Config><Input name="multiplierRage" number="30"/></Config>
+<Skills><Skill enabled="true" mainActiveSkill="1">
+<Gem skillId="BerserkPlayer" gemId="Metadata/Items/Gem/SkillGemBerserk" nameSpec="Berserk" level="20" quality="0" enabled="true"/>
+</Skill><Skill enabled="true" mainActiveSkill="1">
+<Gem skillId="EternalRagePlayer" gemId="Metadata/Items/Gems/SkillGemEternalRage" nameSpec="Eternal Rage" level="20" quality="0" enabled="true"/>
+</Skill></Skills></PathOfBuilding2>"#;
+    let build = parse_build(xml).unwrap();
+    let out = calculate_with_data(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+    assert_eq!(out.rage, 30.0);
+    // skill_base_life_loss_%_per_minute_per_rage_while_not_losing_rage_to_apply
+    // = 6, divided by 60 seconds: 0.1% maximum Life per Rage per second.
+    assert!((out.life_regen_recovery + out.life * 0.03).abs() < 1e-6);
+    assert!((out.total_build_degen - out.life * 0.03).abs() < 1e-6);
+}

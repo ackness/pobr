@@ -65,6 +65,9 @@ pub struct BaseItemDef {
     /// non-charms / charms without a buff.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub charm_buff: Vec<String>,
+    /// Recovery/duration from Flasks and charge amounts from ComponentCharges.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub utility: Option<UtilityBaseStats>,
     /// The base's attribute requirements (vendor `Data/Bases/*.lua`'s
     /// `req = { str/dex/int }`; the corresponding GGG `.dat` table's bundle
     /// is unavailable, so this is extracted and merged via
@@ -180,4 +183,18 @@ mod m4_t4_reload_tests {
             "missing key in legacy JSON must fall back to None"
         );
     }
+}
+
+/// Flask/charm base properties. Duration is seconds; recovery and charges are amounts.
+/// From the game tables Flasks (including charms) and ComponentCharges.
+/// Flasks.RecoveryTime is converted from deciseconds by the data adapter.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UtilityBaseStats {
+    pub duration: f64,
+    pub charges_max: f64,
+    pub charges_used: f64,
+    #[serde(default)]
+    pub life: f64,
+    #[serde(default)]
+    pub mana: f64,
 }

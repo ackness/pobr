@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from unittest.mock import patch
 import zlib
 
@@ -207,6 +208,14 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         result = self.run_script("devs/scripts/driver.sh", "build")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [["build", "-p", "pobr-cli"]])
+
+    def test_skill_sweep_forwards_options_without_running_cargo_in_driver(self):
+        self.write("devs/scripts/skill-sweep.py", "import json, sys; print(json.dumps(sys.argv[1:]))\n")
+        result = self.run_script("devs/scripts/driver.sh", "skills:sweep", "--jobs", "4",
+                                 "--json", "report with spaces.json")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(result.stdout), ["--jobs", "4", "--json", "report with spaces.json"])
+        self.assertFalse((self.root / "calls.jsonl").exists())
 
     def test_cache_report_counts_files_without_building_or_following_symlinks(self):
         self.write("target/debug/incremental/session/object.o", "cache")
@@ -614,6 +623,31 @@ class CompareBuildTests(unittest.TestCase):
         self.compare = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.compare)
 
+    def test_action_rate_uses_hit_speed_when_present(self):
+        entry = {"stat": "ActionRate", "value": 4.0, "pob_key": "Speed"}
+        entries = {"ActionRate": entry}
+        for hit_speed in (4.0, 0.0):
+            entry["value"] = hit_speed
+            output = {"Speed": 1.5, "HitSpeed": hit_speed}
+            self.assertEqual(self.compare.disagreeing_stats(entries, output), [])
+            self.assertIn("(HitSpeed)", self.compare.stat_header("ActionRate", entry, output))
+            self.assertTrue(any(row.endswith("HitSpeed")
+                                for row in self.compare.factor_rows(entries, output)))
+            self.assertEqual(self.compare.reference_value({"mainOutput": output}, "Speed"), hit_speed)
+        entry["value"] = 1.5
+        for output in ({"Speed": 1.5}, {"Speed": 1.5, "HitSpeed": None}):
+            self.assertEqual(self.compare.disagreeing_stats(entries, output), [])
+            self.assertIn("(Speed)", self.compare.stat_header("ActionRate", entry, output))
+
+    def test_selected_minion_totals_appear_in_comparison(self):
+        entry = {"stat": "Minion:TotalDPS", "value": 200, "pob_key": "Minion:TotalDPS"}
+        oracle = {"mainOutput": {"TotalDPS": 0}, "minionOutput": {"TotalDPS": 210}}
+        report = {"breakdowns": [entry]}
+        text = self.compare.render("minion", report, oracle, "<PathOfBuilding2/>",
+                                   ["Minion:TotalDPS"], "asked")
+        self.assertIn("PoB2 210 (Minion:TotalDPS)", text)
+        self.assertEqual(self.compare.reference_value(oracle, "Minion:TotalDPS"), 210)
+
     def test_sources_of_both_sides_meet_on_one_key(self):
         slots = {"23": "item:gloves", "13": "flask:charm1"}
         pairs = [
@@ -856,6 +890,21 @@ class TriageTests(unittest.TestCase):
         self.triage = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.triage)
 
+    def test_beyond_pob2_aggregates_rule_impact_without_conflating_agreement(self):
+        results = []
+        for changed in [2, 0, 3]:
+            result = self.triage.analyse("build", "set", {
+                "reference": {"compared": 10, "differing": []},
+                "beyond_pob2": [
+                    {"rule_id": "absent_rule", "exporter": "absent", "changed_rows": changed},
+                    {"rule_id": "different_rule", "exporter": "differs", "changed_rows": 0},
+                ],
+            }, {}, "<PathOfBuilding/>", [])
+            results.append(result)
+        text = self.triage.render(results, [], "test", 3)
+        self.assertIn("absent_rule [absent]: 3 present builds; 2 changed builds, 5 changed rows", text)
+        self.assertIn("different_rule [differs]: 3 present builds; 0 changed builds, 0 changed rows", text)
+
     def test_rows_are_filed_by_what_pob2_says_today(self):
         classify = self.triage.classify
         self.assertEqual(classify(100.0, 120.0, 101.0), "reference")
@@ -947,14 +996,39 @@ class TriageTests(unittest.TestCase):
         xml = ("<PathOfBuilding2><Items><Item id=\"1\">Rarity: UNIQUE\nVoid\nLament Amulet\n"
                "Grants Skill: Level 20 Cast on Minion Death\n</Item></Items></PathOfBuilding2>")
         report = {"reference": {"compared": 1, "differing": [
-            {"stat": "SpiritUnreserved", "pobr": -26, "reference": -56, "pob_key": "SpiritUnreserved"}]},
+            {"stat": "SpiritUnreserved", "pobr": -26, "reference": -56, "pob_key": "SpiritUnreserved"},
+            {"stat": "SpiritUnreservedPercent", "pobr": -26, "reference": -56,
+             "pob_key": "SpiritUnreservedPercent"}]},
             "breakdowns": [{"stat": "SkillSpiritReservationBase",
                             **reserved(("MetaCastOnMinionDeathPlayer", 30.0))}]}
-        oracle = {"mainOutput": {"SpiritUnreserved": -56},
+        oracle = {"mainOutput": {"SpiritUnreserved": -56, "SpiritUnreservedPercent": -56},
                   "spiritReservedBreakdown": [{"skillName": "Cast on Minion Death", "total": 60}]}
         result = self.triage.analyse("build", "set", report, oracle, xml, [])
         self.assertEqual([(row["stat"], row["class"]) for row in result["rows"]],
-                         [("SpiritUnreserved", "known")])
+                         [("SpiritUnreserved", "known"), ("SpiritUnreservedPercent", "known")])
+
+    def test_spirit_matches_the_granted_effects_game_display_name(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = root / "data/test/base"
+            base.mkdir(parents=True)
+            (root / "data/CURRENT").write_text("test", encoding="utf-8")
+            # Neither the effect id nor the gem's metadata name is a display name.
+            (base / "skill_gems.json").write_text(json.dumps([
+                {"id": "Metadata/Items/Gems/SkillGemInternalTrigger",
+                 "granted_effect_id": "MetaCastOnCritPlayer"}]), encoding="utf-8")
+            (base / "granted_effects.json").write_text(json.dumps([
+                {"id": "MetaCastOnCritPlayer", "displayed_name": "Cast on Critical"}]),
+                encoding="utf-8")
+            entries = {"SkillSpiritReservationBase": {"breakdown": {"mods": [
+                {"origin_id": "spirit.MetaCastOnCritPlayer", "value": 91}]}}}
+            oracle = {"spiritReservedBreakdown": [
+                {"skillName": "Cast on Critical", "total": 85}]}
+            with patch.object(self.triage, "REPO", root):
+                found = self.triage.spirit_leads(entries, oracle)
+            self.assertEqual([(row["kind"], row["key"], row["pobr"], row["pob2"])
+                              for row in found],
+                             [("different", "Cast on Critical", 91, 85)])
 
     def test_leads_are_gathered_across_builds(self):
         lead = self.triage.lead
@@ -1074,6 +1148,848 @@ class LookupTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             self.lookup_output("Ruby Ring", version="missing")
         self.assertEqual(self.lookup_output("Ruby Ring", "--version", "test")[0], 0)
+
+
+class GapsTests(unittest.TestCase):
+    """Small game-text fixtures exercise the queue and research joins without Cargo."""
+
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location("gaps", REPO / "devs/scripts/gaps.py")
+        self.gaps = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.gaps)
+        temp = tempfile.TemporaryDirectory(prefix="pobr gaps tests ")
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+        self.directory = self.root / "data/test"
+        self.directory.mkdir(parents=True)
+        self.data = self.gaps.lookup.Data(self.directory)
+
+    @staticmethod
+    def entry(sources, status="unsupported", vendor="unsupported"):
+        return {"sources": sources, "status": status, "vendor_status": vendor, "mod_names": []}
+
+    @staticmethod
+    def build(name, *lines):
+        return {"build": name, "set": "worked", "path": f"worked/{name}", "usage": {"lines": list(lines)}}
+
+    def test_templates_group_rolls_markup_and_placeholders(self):
+        template = self.gaps.template
+        expected = "#% increased Effect of Charms"
+        for text in ("10% increased Effect of [Charms]", "Tree:42: 20% increased Effect of Charms",
+                     "(10-20)% increased Effect of Charms", "{0}% increased Effect of Charms"):
+            self.assertEqual(template(text), expected)
+        self.assertEqual(template("+{0:+d} to [Life|maximum Life]"), "# to maximum Life")
+        self.assertEqual(template("+# to maximum Life"), "# to maximum Life")
+        self.assertEqual(self.gaps.words("CharmEffect") & self.gaps.words("Effect of Charms"), {"charm", "effect"})
+
+    def test_ranking_counts_builds_then_player_sources_then_source_count(self):
+        entry = self.entry
+        audit = {"entries": {
+            "10% increased Effect of Charms": entry(["unique:Charm", "translation:charm"]),
+            "20% increased Effect of Charms": entry(["unique:Other Charm"], vendor="parsed"),
+            "17% increased Effect of Charms": entry(["translation:other charm"]),
+            "Many sources": entry(["passive:1", "passive:2", "mods:equipment:x"]),
+            "One unique": entry(["unique:One"]),
+            "Two uniques": entry(["unique:Two", "unique:Three"]),
+            "Only translation": entry(["translation:ignore"]),
+            "Parsed": entry(["passive:3"], "parsed", "parsed"),
+            "Recognised": entry(["passive:4"], "recognized_empty", "parsed"),
+            "Cosmetic": entry(["unique:Cosmetic"], "no_effect"),
+        }}
+        line = lambda text, fate: {"text": text, "status": fate}
+        builds = [self.build("a", line("30% increased Effect of Charms", "unparsed"),
+                             line("30% increased Effect of Charms", "unparsed")),
+                  self.build("b", line("40% increased Effect of Charms", "unmodelled")),
+                  self.build("c", line("Parsed", "unread"), line("Imported only", "no_modifier"))]
+        rows = self.gaps.ranked_queue(audit, builds)
+        self.assertEqual(rows[0]["template"], "#% increased Effect of Charms")
+        self.assertEqual(rows[0]["affected_builds"], 2)
+        self.assertEqual(rows[0]["source_count"], 4)
+        self.assertEqual(rows[0]["class"], "pobr_gap")
+        self.assertEqual(len(rows[0]["variants"]), 3)
+        self.assertEqual(len(rows[0]["builds"][0]["lines"]), 2)
+        self.assertEqual(rows[0]["ledger_variants"], ["30% increased Effect of Charms", "40% increased Effect of Charms"])
+        self.assertNotIn("Only translation", [row["template"] for row in rows])
+        # Equal build counts: unique before passive; more sources break the tie.
+        zero_builds = [r["template"] for r in rows if r["affected_builds"] == 0]
+        self.assertLess(zero_builds.index("Two uniques"), zero_builds.index("One unique"))
+        self.assertLess(zero_builds.index("One unique"), zero_builds.index("Many sources"))
+        self.assertNotIn("Imported only", [row["template"] for row in rows])
+        self.assertEqual(next(r for r in rows if r["template"] == "Recognised")["class"], "recognized_empty")
+        uniques = self.gaps.ranked_queue(audit, builds, "unique")
+        self.assertTrue(all("unique" in row["source_kinds"] for row in uniques))
+        self.assertEqual([r["rank"] for r in uniques], list(range(1, len(uniques) + 1)))
+
+    def test_gaps_use_reader_union_and_keep_all_reasons_on_mixed_lines(self):
+        def mod(name, status, **extra):
+            return {"name": name, "status": status, **extra}
+        def line(text, *mods):
+            return {"text": text, "status": "partial", "modifiers": list(mods)}
+        gate = {"state": "slow applies", "config_option": None}
+        archon = {"state": "Archon active", "config_option": "conditionAffectedByArchon"}
+        lines = [
+            line("Onslaught", mod("CastSpeed", "applied"), mod("AttackSpeed", "unread")),
+            line("Slows", mod("UnaffectedBySlows", "inactive", read_gate=gate)),
+            line("Archon", mod("ArchonEffect", "inactive", read_gate=archon)),
+            line("Conditional", mod("Damage", "inactive", reason="Condition EnemyFrozen not met")),
+            line("Mixed", mod("CastSpeed", "applied"), mod("Missing", "unread"),
+                 mod("ArchonEffect", "inactive", read_gate=archon)),
+            line("Unknown state", mod("Damage", "inactive", reason="Condition Missing not met")),
+            # A config condition elsewhere must not excuse a different unmet requirement.
+            line("Wrong flags", mod("Damage", "inactive", reason="needs Attack")),
+            line("Enemy condition", mod("Damage", "inactive", reason="Condition enemy.Frozen not met")),
+            line("Alternatives", mod("Damage", "inactive", reason="none of Conditions EnemyFrozen, Missing met")),
+            {"text": "No effect", "status": "no_effect", "modifiers": [mod("LootRarity", "unread")]},
+            {"text": "Unmodelled", "status": "unmodelled"},
+            {"text": "Unparsed", "status": "unparsed"},
+            {"text": "No modifier", "status": "no_modifier"},
+            {"text": "Left out", "status": "inactive", "reason": "no recorded consumer"},
+        ]
+        a = self.build("spell", *lines)
+        a["usage"]["conditions"] = [{"condition": "EnemyFrozen", "config_option": "conditionEnemyFrozen"}]
+        b = self.build("attack")
+        b["usage"]["reads"] = {"AttackSpeed": ["INC AttackSpeed"]}
+        audit = {"entries": {row["text"]: self.entry(["unique:Example"]) for row in lines}}
+        builds = [a, b]
+        rows = self.gaps.ranked_queue(audit, builds)
+        self.assertEqual({row["template"] for row in rows}, {
+            "Mixed", "Unknown state", "Alternatives", "Unmodelled", "Unparsed", "No modifier", "Left out"})
+        complete = self.gaps.ranked_queue(audit, builds, include_all=True)
+        buckets = {row["template"]: row["builds"][0]["buckets"] for row in complete}
+        self.assertEqual(buckets["Onslaught"], ["unused"])
+        self.assertEqual(buckets["Slows"], ["state-gated"])
+        self.assertEqual(buckets["Archon"], ["config-gated"])
+        self.assertEqual(buckets["Conditional"], ["config-gated"])
+        self.assertEqual(buckets["Enemy condition"], ["config-gated"])
+        self.assertEqual(buckets["Mixed"], ["dropped", "config-gated"])
+        self.assertEqual(buckets["Wrong flags"], ["skill-mismatch"])
+        self.assertEqual(self.gaps.bucket_counts(complete), {
+            "dropped": 7, "config-gated": 4, "state-gated": 1, "skill-mismatch": 1, "unused": 1, "handled": 1})
+        # The other build need not carry this template to prove its reader exists.
+        self.assertEqual(builds, [a, b])
+        self.assertNotIn("buckets", lines[0])
+
+    def test_config_gates_include_known_false_and_negated_conditions(self):
+        lines = [{"text": text, "status": "inactive", "modifiers": [
+            {"name": "EnergyShieldRechargeFaster", "status": "inactive", "reason": reason}]
+        } for text, reason in [
+            ("Known state", "Condition AffectedByArchon not met"),
+            ("Negated state", "Condition AffectedByArchon holds (applies only without it)"),
+            ("Player state", "Condition player.AffectedByArchon not met"),
+        ]]
+        build = self.build("a", *lines)
+        # Derived and explicitly false conditions do not appear in unset conditions.
+        build["usage"]["condition_configs"] = {"AffectedByArchon": "conditionAffectedByArchon"}
+        audit = {"entries": {line["text"]: self.entry(["passive:1"]) for line in lines}}
+        self.assertEqual(self.gaps.ranked_queue(audit, [build]), [])
+        rows = self.gaps.ranked_queue(audit, [build], include_all=True)
+        self.assertTrue(all(row["builds"][0]["buckets"] == ["config-gated"] for row in rows))
+
+    def test_thin_ice_hit_reports_the_config_gate(self):
+        text = "50% increased Damage with Hits against [Frozen] Enemies"
+        line = {"text": text, "status": "inactive", "modifiers": [
+            {"name": "Damage", "status": "inactive", "reason": "Condition EnemyFrozen not met"}]}
+        build = self.build("frostbolt", line)
+        build["usage"]["condition_configs"] = {"EnemyFrozen": "conditionEnemyFrozen"}
+        audit = {"entries": {text: self.entry(["passive:Thin Ice"], "parsed", "parsed")}}
+        self.assertEqual(self.gaps.ranked_queue(audit, [build]), [])
+        rows = self.gaps.ranked_queue(audit, [build], include_all=True)
+        self.assertEqual(rows[0]["builds"][0]["buckets"], ["config-gated"])
+        self.assertEqual(self.gaps.bucket_counts(rows)["dropped"], 0)
+
+    def test_affected_by_family_uses_build_state_metadata(self):
+        lines = []
+        states = ["AffectedByHeraldofAsh", "AffectedByHeraldofThunder", "AffectedByOtherBuff"]
+        for name, state in zip(["FireDamage", "LightningDamage", "Damage"], states):
+            lines.append({"text": state, "status": "inactive", "modifiers": [
+                {"name": name, "status": "inactive", "reason": f"Condition {state} not met"}]})
+        build = self.build("self-cast", *lines)
+        build["usage"]["condition_states"] = states
+        # Build state takes precedence even if a configuration entry also exists.
+        build["usage"]["condition_configs"] = {states[0]: "condition" + states[0]}
+        audit = {"entries": {line["text"]: self.entry(["passive:Coming Calamity"], "parsed", "parsed")
+                             for line in lines}}
+        self.assertEqual(self.gaps.ranked_queue(audit, [build]), [])
+        rows = self.gaps.ranked_queue(audit, [build], include_all=True)
+        for row in rows:
+            line = row["builds"][0]["lines"][0]
+            self.assertEqual(line["buckets"], ["state-gated"])
+            self.assertEqual(line["bucket_reasons"], [f"condition set from the build: {line['text']}"])
+
+    def test_skill_mismatches_are_visible_without_hiding_conditions_or_gaps(self):
+        mismatches = ["needs Attack", "needs Spell", "needs Melee", "needs Attack, Melee",
+                      "SkillType Triggered", "SkillType Attack or Spell", "not SkillType Triggered",
+                      "needs a keyword of Bleed", "needs every keyword of Hit, Cold"]
+        gaps = ["Condition NothingSetsThis not met", "Condition Attack not met",
+                "Multiplier Bleed is 0, needs at least 1", "Stat Strength is 0, needs at least 50",
+                "its distance ramp needs a configured enemy distance",
+                "DamageType Cold (the query is Fire)", "SkillName Fireball (the skill is Frostbolt)"]
+        lines = [{"text": reason, "status": "inactive", "modifiers": [
+            {"name": "Damage", "status": "inactive", "reason": reason}]} for reason in mismatches + gaps]
+        lines.append({"text": "Mixed skill and missing model", "status": "partial", "modifiers": [
+            {"name": "Damage", "status": "inactive", "reason": "needs Attack"},
+            {"name": "Missing", "status": "unread"}]})
+        build = self.build("spell", *lines)
+        audit = {"entries": {line["text"]: self.entry(["unique:Example"], "parsed", "parsed")
+                             for line in lines}}
+        rows = self.gaps.ranked_queue(audit, [build])
+        self.assertEqual({row["template"] for row in rows},
+                         {self.gaps.template(reason) for reason in gaps} | {"Mixed skill and missing model"})
+        complete = self.gaps.ranked_queue(audit, [build], include_all=True)
+        for row in complete:
+            if row["template"] in mismatches:
+                self.assertEqual(row["builds"][0]["buckets"], ["skill-mismatch"])
+            elif row["template"] == "Mixed skill and missing model":
+                self.assertEqual(row["builds"][0]["buckets"], ["dropped", "skill-mismatch"])
+        self.assertEqual(self.gaps.bucket_counts(complete)["skill-mismatch"], len(mismatches) + 1)
+
+    def test_build_and_pass_conditions_are_state_gated_without_hiding_unknowns(self):
+        states = ["MajorityRedSocketedSupports", "MajorityGreenSocketedSupports",
+                  "MajorityBlueSocketedSupports", "UsingBow", "CriticalStrike", "WeaponSet2"]
+        def line(text, reason, status="inactive"):
+            return {"text": text, "status": status, "modifiers": [
+                {"name": "Damage", "status": status, "reason": reason}]}
+        lines = [line(state, f"Condition {state} not met") for state in states]
+        lines += [line("Unknown", "Condition NothingSetsThis not met"),
+                  line("Mixed unknown", "none of Conditions UsingBow, NothingSetsThis met"),
+                  line("Wrong flags", "needs Attack"),
+                  line("Unread", None, "unread"),
+                  line("Already applied", None, "applied"),
+                  line("Negated", "Condition UsingBow holds (applies only without it)"),
+                  line("Player state", "Condition player.UsingBow not met"),
+                  line("Config and state", "none of Conditions UsingBow, EnemyFrozen met"),
+                  line("Derived state takes precedence", "Condition CriticalStrike not met")]
+        build = self.build("spell", *lines)
+        build["usage"]["condition_states"] = states
+        build["usage"]["condition_configs"] = {"EnemyFrozen": "conditionEnemyFrozen", "CriticalStrike": "criticalStrikeOption"}
+        audit = {"entries": {row["text"]: self.entry(["passive:1"], "parsed", "parsed") for row in lines}}
+        rows = self.gaps.ranked_queue(audit, [build])
+        self.assertEqual({row["template"] for row in rows}, {"Unknown", "Mixed unknown", "Unread"})
+        complete = {row["template"]: row for row in self.gaps.ranked_queue(audit, [build], include_all=True)}
+        for state in states:
+            row = complete[self.gaps.template(state)]
+            self.assertEqual(row["builds"][0]["buckets"], ["state-gated"])
+            self.assertEqual(row["builds"][0]["lines"][0]["bucket_reasons"],
+                             [f"condition set from the build: {state}"])
+        self.assertEqual(complete["Config and state"]["builds"][0]["buckets"], ["config-gated", "state-gated"])
+        self.assertEqual(complete["Derived state takes precedence"]["builds"][0]["buckets"], ["state-gated"])
+        self.assertEqual(complete["Already applied"]["builds"][0]["buckets"], ["handled"])
+        self.assertEqual(complete["Negated"]["builds"][0]["buckets"], ["state-gated"])
+        self.assertEqual(complete["Player state"]["builds"][0]["buckets"], ["state-gated"])
+        card = dict(complete["UsingBow"], stat_matches=[], source_details=[], candidate_names=[], nearby_rules=[])
+        self.assertIn("condition set from the build: UsingBow", self.gaps.render_card(card))
+        self.assertNotIn("bucket_reasons", lines[0])
+
+    def test_reverse_stat_match_checks_all_compound_members_in_base(self):
+        self.data.files = {
+            "base/stats.json": [{"id": "life"}, {"id": "min_fire"}],
+            "overlay/stat_descriptions.json": {"scopes": {"stat_descriptions": {
+                "single": {"life": ["+1 to maximum Life"], "mana": ["+1 to maximum Mana"]},
+                "compound": {"min_fire": {"member_stats": ["min_fire", "max_fire"],
+                                           "template": "Adds {0} to {1} Fire Damage"}},
+            }}},
+        }
+        matches = self.gaps.reverse_stats(self.data, ["+87 to maximum Life", "Adds 10 to 20 Fire Damage"])
+        self.assertEqual([s for m in matches for s in m["stats"]], [
+            {"id": "life", "base_exists": True}, {"id": "min_fire", "base_exists": True},
+            {"id": "max_fire", "base_exists": False}])
+        self.assertEqual(self.gaps.reverse_stats(self.data, ["+10 to maximum Energy Shield"]), [])
+
+    def test_generated_config_and_gem_labels_do_not_enter_the_game_text_queue(self):
+        audit = {"entries": {"Real game text": self.entry(["unique:Example"])}}
+        builds = [self.build("a", {"text": "Boss", "source_kind": "EnemyConfig", "status": "unread"},
+                             {"text": "Config", "source_kind": "Config", "status": "unread"},
+                             {"text": "skill stat (1)", "source_kind": "SkillGem", "status": "unread"},
+                             {"text": "Real game text", "source_kind": "Config", "status": "unread"})]
+        rows = self.gaps.ranked_queue(audit, builds)
+        self.assertEqual([row["template"] for row in rows], ["Real game text"])
+        self.assertEqual(rows[0]["affected_builds"], 1)
+
+    def test_research_retains_charm_implicit_node_name_and_all_ledger_fates(self):
+        text = "20% increased Effect of Charms"
+        self.data.files = {
+            "overlay/uniques.json": {"uniques": [{"name": "Test Charm", "base": "Ruby Charm",
+                "raw": "Test Charm\nRuby Charm\nUsed when you take Fire damage from a Hit\n" + text}]},
+            "base/passive_tree.json": [{"skill": 42, "name": "Charm Master", "stats": [text]}],
+        }
+        audit = {"entries": {text: self.entry(["unique:Test Charm", "passive:42"])}}
+        builds = [self.build("a", {"text": text, "status": "unparsed"}),
+                  self.build("b", {"text": text, "status": "applied"})]
+        with patch.object(self.gaps, "candidates", return_value=([], [])):
+            card = self.gaps.research_card(self.data, audit, builds, "#% increased Effect of Charms")
+        output = self.gaps.render_card(card)
+        self.assertIn("Used when you take Fire damage from a Hit", output)
+        self.assertIn("Charm Master", output)
+        self.assertIn("https://poe2db.tw/us/Test_Charm", output)
+        self.assertIn("https://poe2db.tw/us/Charm_Master", output)
+        self.assertIn("applied", output)
+        self.assertEqual(card["affected_builds"], 1)
+        self.assertEqual(len(card["builds"]), 2)
+
+    def test_usage_cache_is_shared_and_refreshable(self):
+        triage = self.gaps.triage
+        folder = self.root / "worked/build"
+        folder.mkdir(parents=True)
+        (folder / "code.txt").write_text("build code", encoding="utf-8")
+        report = {"usage": {"lines": [{"text": "Line", "status": "unparsed"}]}}
+        with patch.object(triage, "REPO", self.root), \
+                patch.object(triage, "engine_report", return_value=report) as engine:
+            triage.cache_usage(folder, report, "binary-and-data")
+            self.assertEqual(triage.build_usage(Path("binary"), folder, "binary-and-data")["usage"], report["usage"])
+            engine.assert_not_called()
+            triage.build_usage(Path("binary"), folder, "binary-and-data", refresh=True)
+            self.assertEqual(engine.call_count, 1)
+            triage.build_usage(Path("binary"), folder, "new-binary-or-data")
+            self.assertEqual(engine.call_count, 2)
+            (folder / "code.txt").write_text("changed build code", encoding="utf-8")
+            triage.build_usage(Path("binary"), folder, "new-binary-or-data")
+            self.assertEqual(engine.call_count, 3)
+
+
+class SkillSweepTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        spec = importlib.util.spec_from_file_location("skill_sweep", REPO / "devs/scripts/skill-sweep.py")
+        cls.sweep = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.sweep)
+        root = REPO / "data"
+        cls.data = root / (root / "CURRENT").read_text().strip()
+        cls.bases = cls.sweep.read_json(cls.data / "base/base_items.json")
+        # Fixed oracle identities make XML tests independent of the vendor checkout.
+        cls.vendor_gems = {
+            "FireballPlayer": [{"gameId": "Metadata/Items/Gem/SkillGemFireball",
+                                "variantId": "Fireball"}],
+            "IceStrikePlayer": [{"gameId": "Metadata/Items/Gems/SkillGemIceStrike",
+                                 "variantId": "IceStrike", "weaponRequirements": "Quarterstaff"}],
+            "WolfArcticHowlPlayer": [{"gameId": "Metadata/Items/Gem/SkillGemWolfArcticHowl",
+                                      "variantId": "WolfArcticHowl", "weaponRequirements": "Talisman"}],
+        }
+        cls.cases, cls.skipped, cls.inventory = cls.sweep.skill_cases(
+            cls.data, cls.vendor_gems, {*cls.vendor_gems, "UnloadAmmoPlayer"})
+
+    def case(self, effect_id):
+        return next(c for c in self.cases if c["skill_id"] == effect_id)
+
+    def test_fireball_uses_real_export_identity_and_explicit_main_selection(self):
+        xml, equipment = self.sweep.synthetic_xml(self.case("FireballPlayer"), self.bases)
+        root = ET.fromstring(xml)
+        self.assertEqual(root.tag, "PathOfBuilding2")
+        self.assertEqual(root.find("Build").get("level"), "90")
+        self.assertEqual(root.find("Build").get("mainSocketGroup"), "1")
+        self.assertEqual(root.find("Tree/Spec").get("classId"), "1")
+        skill = root.find("Skills/SkillSet/Skill")
+        self.assertEqual(skill.get("mainActiveSkill"), "1")
+        self.assertEqual(skill.get("mainActiveSkillCalcs"), "1")
+        gem = skill.find("Gem")
+        self.assertEqual(gem.get("gemId"), "Metadata/Items/Gem/SkillGemFireball")
+        self.assertEqual(gem.get("variantId"), "Fireball")
+        self.assertEqual(gem.get("skillId"), "FireballPlayer")
+        self.assertEqual((gem.get("level"), gem.get("quality")), ("20", "0"))
+        self.assertEqual(equipment, [])
+        self.assertEqual(root.findall("Items/Item"), [])
+        encoded = self.sweep.encode_code(xml)
+        self.assertEqual(zlib.decompress(base64.urlsafe_b64decode(encoded)).decode(), xml)
+
+    def test_attack_uses_a_normal_data_base_and_matching_equipped_slot(self):
+        xml, equipment = self.sweep.synthetic_xml(self.case("IceStrikePlayer"), self.bases)
+        root = ET.fromstring(xml)
+        self.assertEqual(equipment[0]["item_class"], "Warstaff")
+        item = root.find("Items/Item")
+        self.assertIn("Rarity: NORMAL\n" + equipment[0]["name"], item.text)
+        self.assertIn("Physical Damage:", item.text)
+        self.assertIn("Implicits: 0", item.text)
+        slot = root.find("Items/ItemSet/Slot")
+        self.assertEqual(slot.get("name"), "Weapon 1")
+        self.assertEqual(slot.get("itemId"), item.get("id"))
+
+    def test_non_attack_shapeshift_skill_gets_its_required_weapon(self):
+        case = self.case("WolfArcticHowlPlayer")
+        self.assertNotIn("Attack", case["skill_types"])
+        xml, equipment = self.sweep.synthetic_xml(case, self.bases)
+        self.assertEqual(equipment[0]["item_class"], "Talisman")
+        self.assertEqual(ET.fromstring(xml).find("Items/ItemSet/Slot").get("name"), "Weapon 1")
+
+    def test_effect_order_filters_supports_after_ordering_and_keeps_unknowns(self):
+        link = {"granted_effect_id": "Primary",
+                "additional_granted_effect_ids": ["Support", "Secondary", "Unknown", ""],
+                "granted_effect_display_order": [1, 2, 2, 90]}
+        effects = {"Primary": {}, "Secondary": {}, "Support": {"is_support": True}}
+        self.assertEqual(self.sweep.active_effects(link, effects),
+                         [(1, "Secondary"), (2, "Primary"), (3, "Unknown")])
+        link.pop("granted_effect_display_order")
+        self.assertEqual(self.sweep.active_effects(link, effects),
+                         [(1, "Primary"), (2, "Secondary"), (3, "Unknown")])
+
+    def test_crossbow_shots_keep_ammo_gem_identity_and_select_firing_ordinal(self):
+        ammo = [c for c in self.cases if c["is_primary"] and "CrossbowAmmoSkill" in c["skill_types"]]
+        self.assertEqual(len(ammo), 16)
+        for primary in ammo:
+            with self.subTest(skill=primary["skill_id"]):
+                shot = next(c for c in self.cases if c["primary_skill_id"] == primary["skill_id"]
+                            and not c["is_primary"])
+                self.assertEqual((shot["active_skill_index"], primary["active_skill_index"]), (1, 2))
+                self.assertIn("CrossbowSkill", shot["skill_types"])
+                xml, equipment = self.sweep.synthetic_xml(shot, self.bases)
+                skill = ET.fromstring(xml).find("Skills/SkillSet/Skill")
+                self.assertEqual(skill.get("mainActiveSkill"), "1")
+                self.assertEqual(skill.get("mainActiveSkillCalcs"), "1")
+                self.assertEqual(skill.find("Gem").get("skillId"), primary["skill_id"])
+                self.assertEqual([b["item_class"] for b in equipment], ["Crossbow"])
+
+    def test_banner_and_mirage_active_rows_retain_their_primary_rows(self):
+        pairs = [("WarBannerReservationPlayer", "WarBannerPlayer"),
+                 ("DefianceBannerReservationPlayer", "DefianceBannerPlayer"),
+                 ("DreadBannerReservationPlayer", "DreadBannerPlayer"),
+                 ("BlackPowderBlitzReservationPlayer", "BlackPowderBlitzPlayer"),
+                 ("MetaMirageArcherPlayer", "MirageArcherSpawnPlayer"),
+                 ("MetaMirageDeadeyePlayer", "MirageDeadeyeSpawnPlayer")]
+        for primary_id, active_id in pairs:
+            with self.subTest(primary=primary_id):
+                primary, active = self.case(primary_id), self.case(active_id)
+                self.assertTrue(primary["is_primary"])
+                self.assertFalse(active["is_primary"])
+                self.assertEqual(active["primary_skill_id"], primary_id)
+                self.assertEqual((active["active_skill_index"], primary["active_skill_index"]), (1, 2))
+                xml, _ = self.sweep.synthetic_xml(active, self.bases)
+                self.assertEqual(ET.fromstring(xml).find("Skills/SkillSet/Skill/Gem").get("skillId"), primary_id)
+
+    def test_missing_originating_gem_is_not_counted_as_vendor_supported(self):
+        case = next(c for c in self.cases if c["case_id"] == "SummonMercenaryCompanionPlayer/UnloadAmmoPlayer@2")
+        self.assertTrue(case["vendor_has_effect"])
+        self.assertFalse(case["vendor_has_gem"])
+        row = {**case, "classification": "pob2_other_skill", "pobr": None, "pob2": None}
+        summary = self.sweep.summarize([row])
+        self.assertEqual(summary["measured"], 1)
+        self.assertEqual(summary["vendor_supported"], 0)
+        # A primary can still be selected directly by skillId without gemId.
+        self.assertEqual(self.sweep.summarize([{**row, "is_primary": True}])["vendor_supported"], 1)
+
+    def test_unknown_vendor_gem_uses_effect_id_without_invalid_gem_id(self):
+        xml, _ = self.sweep.synthetic_xml(self.case("Melee1HAxePlayer"), self.bases)
+        gem = ET.fromstring(xml).find("Skills/SkillSet/Skill/Gem")
+        self.assertEqual(gem.get("skillId"), "Melee1HAxePlayer")
+        self.assertIsNone(gem.get("gemId"))
+
+    def test_meta_gems_are_included_and_effect_ids_are_deduplicated(self):
+        all_cases = self.cases + self.skipped
+        self.assertEqual(len({c["case_id"] for c in all_cases}), len(all_cases))
+        self.assertEqual(sum(c["is_primary"] for c in all_cases), self.inventory["primary_active_effects"])
+        self.assertEqual(sum(not c["is_primary"] for c in all_cases), self.inventory["additional_active_effects"])
+        self.assertEqual(self.case("MetaCastOnCritPlayer")["gem"]["gem_type"], 2)
+        self.assertIn("meta", self.case("MetaCastOnCritPlayer")["families"])
+        self.assertTrue(all(not c["gem"]["is_support"] for c in all_cases))
+        self.assertTrue(any(c["skill_id"] == "DoLiterallyNothingPlayer" for c in self.skipped))
+
+    def test_every_case_generates_a_valid_build_without_oracle(self):
+        for case in self.cases:
+            with self.subTest(skill=case["skill_id"]):
+                xml, equipment = self.sweep.synthetic_xml(case, self.bases)
+                root = ET.fromstring(xml)
+                self.assertEqual(len(root.findall("Skills/SkillSet/Skill/Gem")), 1)
+                self.assertEqual(len(root.findall("Items/Item")), len(equipment))
+
+    def result(self, dps, skill="FireballPlayer"):
+        return {"main_skill": skill, "metrics": dict.fromkeys(self.sweep.METRICS, dps), "minion": None}
+
+    def test_classification_checks_identity_before_zero_or_agreement(self):
+        classify = lambda a, b: self.sweep.classify("FireballPlayer", a, b)[0]
+        self.assertEqual(classify(self.result(100), self.result(100)), "agree")
+        self.assertEqual(classify(self.result(105), self.result(100)), "agree")
+        self.assertEqual(classify(self.result(106), self.result(100)), "differs")
+        self.assertEqual(classify(self.result(0), self.result(100)), "pobr_zero")
+        self.assertEqual(classify(self.result(100), self.result(0)), "pob2_zero")
+        self.assertEqual(classify(self.result(0), self.result(0)), "both_zero")
+        self.assertEqual(classify(self.result(0), self.result(0, "MeleeUnarmedPlayer")), "pob2_other_skill")
+        self.assertEqual(classify(self.result(100, "other"), self.result(100)), "error")
+
+    def test_average_hit_basis_and_hit_rate_do_not_create_false_differences(self):
+        left, right = self.result(100), self.result(100)
+        left["metrics"]["AverageHit"] = 200
+        right["metrics"]["Speed"] = 10
+        right["comparison_rate"] = 100
+        self.assertEqual(self.sweep.classify("FireballPlayer", left, right)[0], "agree")
+
+    def test_crossbow_firing_and_reload_metrics_are_compared(self):
+        for metric in ("FiringRate", "ReloadTime"):
+            left, right = self.result(100), self.result(100)
+            left["metrics"][metric] = 106
+            classification, differences, _ = self.sweep.classify("FireballPlayer", left, right)
+            self.assertEqual(classification, "differs")
+            self.assertEqual(differences, [metric])
+
+    def test_minion_damage_is_not_hidden_as_both_zero(self):
+        left, right = self.result(0), self.result(0)
+        right["minion"] = {"TotalDPS": 100, "skill_id": "minion_attack"}
+        self.assertEqual(self.sweep.classify("FireballPlayer", left, right)[0], "pobr_zero")
+
+    def test_selected_stat_evidence_uses_only_the_selected_set_and_level(self):
+        selected = self.sweep.selected_stat_set([
+            {"set_id": "first", "implicit_stats": ["implicit"],
+             "constant_stats": [{"stat": "constant", "value": 1}],
+             "levels": [{"gem_level": 20, "stats": [{"stat": "level", "value": 2}]},
+                        {"gem_level": 21, "stats": [{"stat": "future", "value": 3}]}]},
+            {"set_id": "sibling", "implicit_stats": [self.sweep.AVERAGE_DAMAGE_STAT]}])
+        self.assertEqual(selected, {"id": "first", "stats": {"implicit": 1, "constant": 1, "level": 2}})
+        # Conductive Runes' placement and explosion must not share flags/models.
+        case = self.case("ConductiveRunesPlayer")
+        self.assertEqual(case["selected_stat_set"]["id"], "ConductiveRunesPlayer")
+        self.assertTrue(case["selected_stat_set"]["stats"]["base_deal_no_damage"])
+
+    def test_average_display_is_known_only_when_other_metrics_agree(self):
+        case = {"selected_stat_set": {"stats": {self.sweep.AVERAGE_DAMAGE_STAT: 1}}}
+        left, right = self.result(100), self.result(100)
+        right["metrics"]["CombinedDPS"] = 50
+        self.assertEqual(self.sweep.classify("FireballPlayer", left, right)[0], "differs")
+        cls, differences, reason = self.sweep.classify("FireballPlayer", left, right, case)
+        self.assertEqual((cls, differences, reason),
+                         ("known", ["CombinedDPS"], "known: average-damage display"))
+        for metric in ("TotalDPS", "Speed", "CritChance", "FiringRate", "ReloadTime"):
+            with self.subTest(metric=metric):
+                right["metrics"][metric] = 120
+                self.assertEqual(self.sweep.classify("FireballPlayer", left, right, case)[0], "differs")
+                right["metrics"][metric] = 100
+        # A displayed average can be nonzero even when both DPS/rate values are zero.
+        left, right = self.result(0), self.result(0)
+        right["metrics"]["CombinedDPS"] = 50
+        self.assertEqual(self.sweep.classify("FireballPlayer", left, right, case)[0], "known")
+
+    def test_average_display_examples_really_have_the_game_stat(self):
+        for skill in ("GrimPillarsPlayer", "IncineratePlayer", "LightningWarpPlayer", "LivingBombPlayer",
+                      "VolcanoPlayer", "VileDisruptionPlayer", "ParryPlayer", "RakePlayer",
+                      "HandOfChayulaPlayer", "StampedePlayer", "SkyfallPlayer", "AmazonTriggerElementalSurgePlayer",
+                      "ChaosSpearTriggerChaosSurgePlayer", "GeminiSurgePlayer", "ShatteringPalmExplosionPlayer",
+                      "StaggeringPalmProjectilePlayer", "LeapSlamPlayer", "ThunderousLeapPlayer", "SunderPlayer",
+                      "WhirlingAssaultPlayer", "EscapeShotPlayer", "BearRampagePlayer", "ShieldBlockPlayer",
+                      "TheStarsAnswerCometPlayer"):
+            with self.subTest(skill=skill):
+                self.assertTrue(self.case(skill)["selected_stat_set"]["stats"][self.sweep.AVERAGE_DAMAGE_STAT])
+
+    def test_no_damage_stat_requires_zero_engine_damage_and_matching_identity(self):
+        for skill in ("ConductiveRunesPlayer", "RollingSlamPlayer", "SpearfieldPlayer", "TempestBellPlayer"):
+            with self.subTest(skill=skill):
+                case = self.case(skill)
+                left, right = self.result(0, skill), self.result(100, skill)
+                cls, _, reason = self.sweep.classify(skill, left, right, case)
+                self.assertEqual((cls, reason), ("known", "known: no-damage stat set"))
+                left["metrics"]["TotalDPS"] = 10
+                self.assertEqual(self.sweep.classify(skill, left, right, case)[0], "differs")
+                right["main_skill"] = "other"
+                self.assertEqual(self.sweep.classify(skill, left, right, case)[0], "pob2_other_skill")
+
+    def test_documented_models_are_keyed_by_effect_and_scoped_stat_set(self):
+        for skill, (reason, selected_set) in self.sweep.KNOWN_MODELS.items():
+            with self.subTest(skill=skill):
+                case = {"case_id": "any-parent/any-case@9", "selected_stat_set": {"id": selected_set, "stats": {}}}
+                left, right = self.result(100, skill), self.result(200, skill)
+                self.assertEqual(self.sweep.classify(skill, left, right, case),
+                                 ("known", [k for k in self.sweep.METRICS if k != "AverageHit"], "known: " + reason))
+                self.assertEqual(self.sweep.classify(skill, left, left, case)[0], "agree")
+                if selected_set:
+                    case["selected_stat_set"]["id"] = "different-form"
+                    self.assertEqual(self.sweep.classify(skill, left, right, case)[0], "differs")
+
+    def test_rounding_recomputes_bounds_and_must_explain_the_damage_ratio(self):
+        # Guide game numbers: Wooden Club 6-10 * Earthquake 1.25 = 7.5-12.5;
+        # integer bounds 8-13, 75% physical reduction, 5% crit and 2x crit damage.
+        left, right = self.result(0), self.result(0)
+        hit = 0.775345425
+        left["metrics"].update(TotalDPS=10 * .25 * hit * (1 + .05 * hit),
+                               CombinedDPS=10 * .25 * hit * (1 + .05 * hit),
+                               Speed=1, CritChance=5 * hit)
+        right["metrics"].update(TotalDPS=10.5 * .25 * .78 * 1.039,
+                                CombinedDPS=10.5 * .25 * .78 * 1.039, Speed=1, CritChance=3.9)
+        left["rounding_inputs"] = {"damage": [{"damage_type": "Physical", "min": 7.5, "max": 12.5,
+                                               "avg": 10, "crit_avg": 20}],
+                                   "mitigation": [{"damage_type": "Physical", "reduction": 75, "multiplier": .25}],
+                                   "damage_effect": 1, "hit_chance": hit, "crit_multiplier": 2}
+        self.assertEqual(self.sweep.classify("FireballPlayer", left, right)[0], "known")
+        self.assertIn("known: rounding", self.sweep.classify("FireballPlayer", left, right)[2])
+        case = {"selected_stat_set": {"stats": {self.sweep.AVERAGE_DAMAGE_STAT: 1}}}
+        right["metrics"]["CombinedDPS"] = 30
+        self.assertEqual(self.sweep.classify("FireballPlayer", left, right)[0], "differs")
+        self.assertIn("average-damage display", self.sweep.classify("FireballPlayer", left, right, case)[2])
+        right["metrics"]["TotalDPS"] *= 1.02
+        # Within 5% after rounding is insufficient evidence; the ratio must match.
+        self.assertEqual(self.sweep.classify("FireballPlayer", left, right, case)[0], "differs")
+        right["metrics"]["TotalDPS"] /= 1.02
+        left["rounding_inputs"]["mitigation"][0]["reduction"] = 70
+        self.assertEqual(self.sweep.classify("FireballPlayer", left, right, case)[0], "differs")
+
+    def test_known_rows_remain_visible_but_do_not_rank_as_unexplained(self):
+        case = self.case("GrimPillarsPlayer")
+        left, right = self.result(100, case["skill_id"]), self.result(100, case["skill_id"])
+        right["metrics"]["CombinedDPS"] = 50
+        cls, differences, reason = self.sweep.classify(case["skill_id"], left, right, case)
+        row = {**case, "classification": cls, "differing_metrics": differences,
+               "reasons": [reason], "pobr": left, "pob2": right}
+        summary = self.sweep.summarize([row])
+        self.assertEqual(summary["counts"]["known"], 1)
+        self.assertTrue(all(f["different"] == 0 and not f["examples"] for f in summary["families"]))
+        text = self.sweep.text_report({"summary": summary, "data_version": "test", "vendor_commit": "test",
+                                      "inventory": self.inventory, "skipped": [], "skills": [row],
+                                      "elapsed_seconds": 0, "limitations": []})
+        for expected in ("known=1", "known: average-damage display", "pobr [GrimPillarsPlayer]",
+                         "pob2 [GrimPillarsPlayer]"):
+            self.assertIn(expected, text)
+
+    def test_cache_reuses_oracle_and_engine_failure_keeps_oracle_result(self):
+        case = self.case("FireballPlayer")
+        oracle = {"mainOutput": {"TotalDPS": 100}, "skillInfo": {"grantedEffectId": "FireballPlayer"}}
+        engine = {"output": {"dps": 100, "action_rate": 1, "total_hit_avg": 100, "crit_chance": 0, "firing_rate": 0, "reload_time": 0},
+                  "main_skill": {"skill_id": "FireballPlayer", "combined_dps": 100}}
+        with tempfile.TemporaryDirectory() as temp, patch.object(self.sweep, "CACHE", Path(temp)):
+            with patch.object(self.sweep, "run", side_effect=[json.dumps(engine), json.dumps(oracle)]) as run:
+                first = self.sweep.measure(case, self.bases, Path("pobr"), "commit", b"wrapper", False)
+                self.assertEqual(run.call_count, 2)
+                self.assertFalse(first["oracle_cached"])
+            with patch.object(self.sweep, "run", return_value="{}") as run:
+                second = self.sweep.measure(case, self.bases, Path("pobr"), "commit", b"wrapper", False)
+                self.assertEqual(run.call_count, 1)
+                self.assertEqual(second["classification"], "error")
+                self.assertTrue(second["oracle_cached"])
+                self.assertEqual(second["pob2"]["main_skill"], "FireballPlayer")
+            with patch.object(self.sweep, "run", side_effect=[json.dumps(engine), json.dumps(oracle)]) as run:
+                refreshed = self.sweep.measure(case, self.bases, Path("pobr"), "commit", b"wrapper", True)
+                self.assertEqual(run.call_count, 2)
+                self.assertFalse(refreshed["oracle_cached"])
+
+    def test_cache_key_changes_with_xml_vendor_or_wrapper(self):
+        key = self.sweep.cache_key("xml", "commit", b"wrapper")
+        self.assertEqual(key, self.sweep.cache_key("xml", "commit", b"wrapper"))
+        for xml, commit, wrapper in [("changed", "commit", b"wrapper"),
+                                     ("xml", "changed", b"wrapper"), ("xml", "commit", b"changed")]:
+            self.assertNotEqual(key, self.sweep.cache_key(xml, commit, wrapper))
+
+    def test_focused_run_preserves_full_report_and_honors_explicit_destinations(self):
+        effect = "FireballPlayer"
+        result = self.result(100, effect)
+        row = {"skill_id": effect, "classification": "agree", "families": [],
+               "vendor_has_effect": True, "pobr": result, "pob2": result, "reasons": []}
+        commit = self.sweep.read_json(self.data / "overlay/skill_overrides.json")["_meta"]["vendor_commit"]
+        with tempfile.TemporaryDirectory() as temp, contextlib.ExitStack() as stack:
+            root = Path(temp)
+            cache = root / "cache"
+            cache.mkdir()
+            vendor = root / "vendor"
+            (vendor / "src").mkdir(parents=True)
+            (vendor / "src/HeadlessWrapper.lua").touch()
+            (root / "target/debug").mkdir(parents=True)
+            (root / "target/debug/pobr").touch()
+            for suffix in ("json", "txt"):
+                (cache / f"report.{suffix}").write_text("previous full inventory")
+            for name, value in (("REPO", root), ("CACHE", cache), ("VENDOR", vendor)):
+                stack.enter_context(patch.object(self.sweep, name, value))
+            stack.enter_context(patch.dict(os.environ, {"POBR_DATA_ROOT": str(self.data.parent),
+                                                      "POBR_DATA_VERSION": self.data.name}))
+            stack.enter_context(patch.object(self.sweep, "run", return_value=commit))
+            stack.enter_context(patch.object(self.sweep, "vendor_metadata", return_value=({}, set())))
+            stack.enter_context(patch.object(self.sweep, "skill_cases", return_value=(
+                [{"skill_id": effect}], [], {"primary_active_effects": 1, "additional_active_effects": 0})))
+            stack.enter_context(patch.object(self.sweep, "measure", return_value=row))
+            stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
+            stack.enter_context(contextlib.redirect_stderr(io.StringIO()))
+            self.assertEqual(self.sweep.main(["--no-build", "--skill", effect]), 0)
+            self.assertEqual(self.sweep.read_json(cache / "report-selected.json")["selection"], [effect])
+            self.assertTrue((cache / "report-selected.txt").is_file())
+            for suffix in ("json", "txt"):
+                self.assertEqual((cache / f"report.{suffix}").read_text(), "previous full inventory")
+            custom_json, custom_text = root / "chosen.json", root / "chosen.txt"
+            self.assertEqual(self.sweep.main(["--no-build", "--skill", effect,
+                "--json", str(custom_json), "--text", str(custom_text)]), 0)
+            self.assertEqual(self.sweep.read_json(custom_json)["selection"], [effect])
+            self.assertTrue(custom_text.is_file())
+            self.assertEqual(self.sweep.main(["--no-build"]), 0)
+            self.assertEqual(self.sweep.read_json(cache / "report.json")["selection"], "all")
+            self.assertIn("Skill sweep:", (cache / "report.txt").read_text())
+
+    def test_oracle_attack_average_falls_back_to_average_damage(self):
+        result = self.sweep.oracle_result({"mainOutput": {"AverageDamage": 42}, "skillInfo": {}})
+        self.assertEqual(result["metrics"]["AverageHit"], 42)
+        self.assertEqual(result["average_hit_field"], "AverageDamage")
+        with self.assertRaises(ValueError):
+            self.sweep.oracle_result({"mainOutput": {"TotalDPS": "Infinity"}})
+
+
+class ConfigCoverageTests(unittest.TestCase):
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location(
+            "config_coverage", REPO / "devs/scripts/config-coverage.py")
+        self.coverage = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.coverage)
+
+    def test_all_effects_list_variants_conditions_and_handlers(self):
+        def option(var, names=(), **extra):
+            return {"var": var, "section": "Combat", "effects": [
+                {"name": name, "target": "player"} for name in names], **extra}
+        options = [option("read", ["Damage"]), option("mixed", ["Damage", "Missing"]),
+                   option("variants", option_effects={"one": [{"name": "Damage"}],
+                                                      "two": [{"name": "Missing"}]}),
+                   option("condition", ["Condition:Frozen"]),
+                   option("multiplier", ["Multiplier:Stacks"]),
+                   option("referenced", ["Condition:Waiting"]),
+                   option("derived", ["Condition:Combat"]),
+                   option("implied", imply_conditions=["Frozen"]),
+                   option("missing_implied", imply_conditions=["Unasked"]),
+                   option("handler", handler_id="config:ok"),
+                   option("unregistered", handler_id="config:missing"),
+                   option("scalar"), option("lost"),
+                   option("unworked", ["Missing"], visibility={"if_skill": ["Fireball"]}),
+                   option("worked", ["Missing"], visibility={"if_skill": ["Arc"]})]
+        builds = [{"usage": {"reads": {"Damage": []}, "condition_reads": ["Frozen"],
+                             "multiplier_reads": ["Stacks"], "referenced_variables": ["Waiting"],
+                             "skills": [{"skill_id": "ArcPlayer"}]}}]
+        report = self.coverage.classify(options, builds,
+            {"engine": {"scalar": {"consumer.rs"}}, "data": {}}, {"config:ok"},
+            pass_conditions={"Combat"}, skill_names={"ArcPlayer": "Arc"})
+        rows = {r["var"]: r for r in report["options"]}
+        self.assertEqual(report["counts"], {"read": 5, "handler": 1, "implied": 1,
+                                            "unread": 6, "no_effect": 2})
+        self.assertEqual(report["sections"]["Combat"], report["counts"])
+        self.assertEqual(rows["variants"]["missing"][0]["name"], "Missing")
+        self.assertEqual(rows["unworked"]["unworked_skills"], ["Fireball"])
+        self.assertEqual(rows["worked"]["unworked_skills"], [])
+        self.assertEqual(rows["scalar"]["no_effect_kind"], "scalar_consumer")
+        self.assertEqual(rows["lost"]["no_effect_kind"], "lost_mechanic")
+        self.assertEqual(report["unregistered_handlers"], [
+            {"var": "unregistered", "handler_id": "config:missing"}])
+        self.assertEqual(rows["mixed"]["missing"][0]["absent_from"], ["engine", "data"])
+        self.assertEqual(rows["missing_implied"]["class"], "unread")
+        self.assertIn("No reader anywhere", self.coverage.render(report))
+
+    def test_nested_effects_and_enemy_condition_namespace(self):
+        options = [{"var": "nested", "section": "Minions", "effects": [{
+            "target": "player", "name": "MinionModifier", "list_value": {
+                "kind": "nested_mod", "mod": {"name": "Damage"}}}]},
+            {"var": "enemy", "section": "Enemy", "effects": [{
+                "target": "enemy", "name": "Condition:Frozen"}]},
+            {"var": "direct", "section": "Player", "effects": [{
+                "name": "Condition:Direct"}]}]
+        report = self.coverage.classify(options, [{"usage": {
+            "reads": {"Damage": [], "Condition:Direct": []}, "condition_configs": {"EnemyFrozen": "enemy"}}}],
+            {"engine": {}, "data": {}}, set())
+        self.assertEqual(report["counts"]["read"], 3)
+        self.assertEqual(self.coverage.effect_names(options[0]), [("minion", "Damage")])
+
+    def test_registry_only_counts_registrations_not_comments_or_stubs(self):
+        text = '''
+        // registry.register("config:comment", stub);
+        const STUB_HANDLER_IDS: &[&str] = &["config:unregistered"];
+        registry.register("config:direct", handler);
+        for (id, flag) in [("config:table", "Flag")] {
+            registry.register(id, handler);
+        }
+        #[cfg(test)] mod tests { registry.register("config:test", handler); }
+        '''
+        self.assertEqual(self.coverage.registrations(text), {"config:direct", "config:table"})
+
+    def test_source_search_excludes_tests_comments_and_the_catalog(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "crates/core/src/calc.rs"
+            source.parent.mkdir(parents=True)
+            source.write_text('let x = "Read"; // "Comment"\n#[cfg(test)] mod tests { "Test" }')
+            directory = root / "data/test"
+            directory.mkdir(parents=True)
+            (directory / "config_options.json").write_text('{"name": "OnlyWritten"}')
+            (directory / "rules.json").write_text('{"name": "Producer"}')
+            index, *_ = self.coverage.source_index(root, directory)
+            self.assertIn("Read", index["engine"])
+            self.assertNotIn("Comment", index["engine"])
+            self.assertNotIn("Test", index["engine"])
+            self.assertNotIn("OnlyWritten", index["data"])
+            self.assertIn("Producer", index["data"])
+
+    def test_failed_ledger_aborts_instead_of_reporting_a_partial_union(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            (directory / "overlay").mkdir()
+            (directory / "overlay/config_options.json").write_text('{"options": []}')
+            with patch.object(self.coverage.gaps.lookup, "data_dir", return_value=directory), \
+                 patch.object(self.coverage.gaps, "collect_usage", return_value=([], [{"error": "failed"}])), \
+                 contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(self.coverage.main(["--binary", "unused"]), 1)
+
+
+class OutputCoverageTests(unittest.TestCase):
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location(
+            "output_coverage", REPO / "devs/scripts/output-coverage.py")
+        self.coverage = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.coverage)
+
+    def test_catalog_aliases_and_sidebar_exclusions(self):
+        catalog = self.coverage.catalog_stats('''
+            computed("TotalHitAvg", Cat::HitDamage, Vt::Number, "AverageHit"),
+            computed("Life", Cat::Resource, Vt::Number, "Life"),
+        ''')
+        self.assertEqual(catalog, {"TotalHitAvg": "AverageHit", "Life": "Life"})
+        sidebar = self.coverage.sidebar_stats('''
+            { stat = "Life" },
+            { stat = "Life" },
+            { stat = "MainHand", childStat = "Accuracy" },
+            { stat = "QuantityMultiplier" },
+            { stat = "PvpTotalDPS" },
+            { stat = "Spec:LifeInc" },
+            { stat = "SpellDodgeChance" },
+            -- { stat = "OldStat" },
+            local minionDisplayStats = { { stat = "MinionOnly" } }
+        ''')
+        self.assertEqual(sidebar, {"Life", "MainHand.Accuracy", "QuantityMultiplier"})
+
+    def test_agreement_handles_missing_zero_nonfinite_and_aliases(self):
+        builds = [
+            {"build": "near", "values": {"Avg": 95}, "oracle": {"calcsOutput": {"AverageHit": 100}}},
+            {"build": "far", "values": {"Avg": 80}, "oracle": {"calcsOutput": {"AverageHit": 100}}},
+            {"build": "zero", "values": {"Avg": 0}, "oracle": {"calcsOutput": {"AverageHit": 0}}},
+            {"build": "zero_ref", "values": {"Avg": 3}, "oracle": {"calcsOutput": {"AverageHit": 0}}},
+            {"build": "missing", "values": {}, "oracle": {"calcsOutput": {"AverageHit": 2}}},
+            {"build": "nan", "values": {"Avg": 2}, "oracle": {"calcsOutput": {"AverageHit": "nan"}}},
+        ]
+        row = self.coverage.summarize("Avg", "AverageHit", builds)
+        self.assertEqual((row["both"], row["nonzero"], row["within_5pct"], row["within_10pct"]), (4, 3, 2, 2))
+        self.assertEqual([pair["build"] for pair in row["worst"]], ["zero_ref", "far"])
+        self.assertEqual(self.coverage.oracle_value({"calcsMainHandOutput": {"Accuracy": 123}}, "MainHand.Accuracy"), 123)
+        self.assertIsNone(self.coverage.number(True))
+        self.assertIsNone(self.coverage.number("inf"))
+        json.dumps(row, allow_nan=False)
+
+    def test_holdout_and_nested_holdout_are_rejected(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / "holdout" / "build"
+            path.mkdir(parents=True)
+            (path / "code.txt").write_text("example")
+            with self.assertRaisesRegex(ValueError, "holdout"):
+                self.coverage.build_files([path])
+            with self.assertRaisesRegex(ValueError, "holdout"):
+                self.coverage.build_files([Path(root)])
+
+    def test_spirit_pool_cap_is_explained_without_changing_agreement(self):
+        # Bonestorm's skills reserve 100 + 54 + 60 + 30 = 244, in a pool of
+        # 137. Both engines retain -107 unreserved; PoB2 displays 137 reserved.
+        builds = [{"build": "bonestorm", "values": {"SpiritReserved": 244},
+                   "oracle": {"calcsOutput": {
+                       "Spirit": 137, "SpiritReserved": 137, "SpiritUnreserved": -107}}}]
+        row = self.coverage.summarize("SpiritReserved", "SpiritReserved", builds)
+        self.assertEqual(row["within_5pct"], 0)
+        self.assertEqual(row["disagreements"][0]["oracle"], 137)
+        self.assertEqual(row["disagreements"][0]["oracle_before_pool_cap"], 244)
+
+        # A free amulet skill still creates a real per-skill difference: the
+        # Witchhunter reserves 300, versus 445 before the oracle's pool cap.
+        builds[0] = {"build": "witchhunter", "values": {"SpiritReserved": 300},
+                     "oracle": {"calcsOutput": {
+                         "Spirit": 155, "SpiritReserved": 155, "SpiritUnreserved": -290}}}
+        row = self.coverage.summarize("SpiritReserved", "SpiritReserved", builds)
+        self.assertEqual(row["within_5pct"], 0)
+        self.assertEqual(row["disagreements"][0]["oracle_before_pool_cap"], 445)
+
+        # Missing inputs and an uncapped reservation are not guessed to be caps.
+        for output in ({"Spirit": 137, "SpiritReserved": 137},
+                       {"Spirit": 137, "SpiritReserved": 130, "SpiritUnreserved": 7},
+                       {"Spirit": 137, "SpiritReserved": 244, "SpiritUnreserved": -107}):
+            builds[0]["oracle"]["calcsOutput"] = output
+            row = self.coverage.summarize("SpiritReserved", "SpiritReserved", builds)
+            self.assertNotIn("oracle_before_pool_cap", row["disagreements"][0])
 
 
 if __name__ == "__main__":

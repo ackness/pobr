@@ -94,3 +94,21 @@ export function parseWorkspace(raw: unknown, parseSession: (json: string) => Sav
     return { version: 1, activeBuild: workspace.activeBuild, builds };
   } catch { return null; }
 }
+
+export interface StageSnapshot {
+  buildId: string;
+  stageId: string;
+  saved: SavedSession;
+}
+
+/** Apply only to the exact snapshots inspected, retaining selection and every other stage. */
+export function replaceComparedStage(workspace: BuildWorkspace, a: StageSnapshot, b: StageSnapshot,
+  state: SavedSession['state']): BuildWorkspace | null {
+  const find = (ref: StageSnapshot) => workspace.builds.find(build => build.id === ref.buildId)?.stages.find(stage => stage.id === ref.stageId);
+  const target = find(a), source = find(b);
+  if (!target || !source || target === source || target.saved !== a.saved || source.saved !== b.saved
+    || Object.keys(target.drafts).length) return null;
+  return { ...workspace, builds: workspace.builds.map(build => build.id !== a.buildId ? build : {
+    ...build, stages: build.stages.map(stage => stage !== target ? stage : { ...stage, saved: { ...stage.saved, state } }),
+  }) };
+}

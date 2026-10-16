@@ -375,9 +375,24 @@ def as_dict(value) -> dict:
 def reference_value(oracle: dict, pob_key: str) -> Optional[float]:
     """PoB2's value for a reference row: `Minion:<stat>` is the main skill's
     minion's, any other key the character's."""
-    if pob_key.startswith("Minion:"):
-        return number(as_dict(oracle.get("minionOutput")).get(pob_key[len("Minion:"):]))
-    return number(as_dict(oracle.get("mainOutput")).get(pob_key))
+    output = oracle_outputs(oracle)
+    return number(output.get(comparison_key(pob_key, output)))
+
+
+def oracle_outputs(oracle: dict) -> dict:
+    """Player totals and the selected minion's explicitly prefixed totals."""
+    return {**as_dict(oracle.get("mainOutput")),
+            **{"Minion:" + key: value
+               for key, value in as_dict(oracle.get("minionOutput")).items()}}
+
+
+def comparison_key(pob_key: str, output: dict) -> str:
+    """ActionRate is a hit rate when the skill has a separate HitSpeed."""
+    if pob_key in ("Speed", "Minion:Speed"):
+        hit_key = pob_key.removesuffix("Speed") + "HitSpeed"
+        if number(output.get(hit_key)) is not None:
+            return hit_key
+    return pob_key
 
 
 def as_list(value) -> list:
@@ -541,7 +556,7 @@ def disagreeing_stats(entries: dict, main_output: dict) -> list:
     found = []
     for stat, entry in entries.items():
         ours = number(entry.get("value"))
-        theirs = number(main_output.get(entry.get("pob_key") or ""))
+        theirs = number(main_output.get(comparison_key(entry.get("pob_key") or "", main_output)))
         if ours is not None and theirs is not None and not agrees(ours, theirs):
             found.append(stat)
     return found
@@ -708,7 +723,7 @@ def comparison_rows(comparison: Comparison, indent: str = "   ") -> list:
 
 
 def stat_header(stat: str, entry: dict, main_output: dict) -> str:
-    pob_key = entry.get("pob_key") or stat
+    pob_key = comparison_key(entry.get("pob_key") or stat, main_output)
     ours = number(entry.get("value"))
     theirs = number(main_output.get(pob_key))
     text = (f"\n== {stat}: PoBR {num(ours)} · PoB2 {num(theirs)} ({pob_key}) · "
@@ -747,7 +762,7 @@ def factor_rows(entries: dict, main_output: dict) -> list:
     rows = [f"   {'factor':<18}{'PoBR':>14}{'PoB2':>14}  PoB2 name"]
     for stat in DPS_FACTORS:
         entry = entries.get(stat) or {}
-        key = entry.get("pob_key") or stat
+        key = comparison_key(entry.get("pob_key") or stat, main_output)
         rows.append(f"   {stat:<18}{num(number(entry.get('value'))):>14}"
                     f"{num(number(main_output.get(key))):>14}  {key}")
     return rows
@@ -802,7 +817,7 @@ def render(name: str, report: dict, oracle: dict, xml: str, stats, basis: str,
     (the reference rows that differ) or `oracle` (the panel stats where the
     engine and the oracle disagree)."""
     entries = {entry.get("stat"): entry for entry in report.get("breakdowns") or []}
-    main_output = as_dict(oracle.get("mainOutput"))
+    main_output = oracle_outputs(oracle)
     item_slots = item_slot_keys(xml)
     skill = report.get("main_skill") or {}
     info = as_dict(oracle.get("skillInfo"))
@@ -930,7 +945,7 @@ def main(argv=None) -> int:
         oracle = load_json(cached)
 
     if basis == "oracle":
-        stats = disagreeing_stats(entries, as_dict(oracle.get("mainOutput")))
+        stats = disagreeing_stats(entries, oracle_outputs(oracle))
     sys.stdout.write(render(name, report, oracle, xml, stats, basis, commit))
     return 0
 

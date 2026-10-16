@@ -354,6 +354,15 @@ fn combine_legs(mh: &MinimalOutput, oh: &MinimalOutput, double_hits: bool) -> Mi
         // HandSource yet, there's no consumer exercising this branch).
         damage_components: mh.damage_components.clone(),
         total_hit_avg,
+        average_damage: round(combine(
+            "AverageDamage",
+            mh.average_damage,
+            oh.average_damage,
+        )),
+        accuracy: mh.accuracy,
+        accuracy_hit_chance_uncapped: (mh.accuracy_hit_chance_uncapped
+            + oh.accuracy_hit_chance_uncapped)
+            / 2.0,
         hit_chance,
         action_rate,
         dps,
@@ -442,6 +451,7 @@ impl HandOutput {
     /// Extracts combineStat's input surface from one leg's `MinimalOutput`.
     pub fn from_minimal(leg: &MinimalOutput) -> Self {
         Self {
+            accuracy: leg.accuracy,
             hit_chance: leg.hit_chance,
             crit_chance: leg.crit_chance,
             pre_effective_crit_chance: leg.pre_effective_crit_chance,
@@ -449,9 +459,7 @@ impl HandOutput {
             speed: leg.action_rate,
             damage_components: leg.damage_components.clone(),
             average_hit: leg.total_hit_avg,
-            // vendor AverageDamage = AverageHit × HitChance (around :4406);
-            // the panel view uses the player-side total_hit_avg (same source as the top-level field).
-            average_damage: round(leg.total_hit_avg * leg.hit_chance),
+            average_damage: leg.average_damage,
             total_dps: leg.dps,
             //  Stored family (produced by crit_pass; the vendor-view input for ailment magnitude).
             stored_crit_avg: leg.stored_crit_avg.clone(),

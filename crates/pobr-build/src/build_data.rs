@@ -324,6 +324,7 @@ impl BuildData {
                     variant_id: gem.gem_effect_id.clone().unwrap_or_default(),
                     granted_effect_id: effect_id.clone(),
                     additional_granted_effect_ids: gem.additional_granted_effect_ids.clone(),
+                    granted_effect_display_order: Vec::new(),
                     additional_stat_set_ids: Vec::new(),
                 });
         }
@@ -444,16 +445,28 @@ impl BuildData {
         // Missing file = empty table (no minions, backward compatible); every other
         // load/parse error still propagates as normal.
         let mut minions: HashMap<String, MinionDef> = HashMap::new();
+        let resistances = data.monster_resistances()?;
+        let minion_def = |entry: &pobr_data::catalog::actors::MinionEntryDef| {
+            let mut def = MinionDef::from_entry(entry);
+            let variety = entry.monster_variety_id.as_deref().unwrap_or(&entry.id);
+            if let Some(base) = resistances.monsters.get(variety) {
+                def.fire_resist = f64::from(base.fire);
+                def.cold_resist = f64::from(base.cold);
+                def.lightning_resist = f64::from(base.lightning);
+                def.chaos_resist = f64::from(base.chaos);
+            }
+            def
+        };
         if let Some(spectres) = data.spectres()? {
             for entry in &spectres.minions {
-                minions.insert(entry.id.clone(), MinionDef::from_entry(entry));
+                minions.insert(entry.id.clone(), minion_def(entry));
             }
         }
         if let Some(minion_defs) = data.minions()? {
             // minions overrides spectres on a shared id (they don't actually overlap in
             // practice; the override just guarantees minions-takes-priority semantics).
             for entry in &minion_defs.minions {
-                minions.insert(entry.id.clone(), MinionDef::from_entry(entry));
+                minions.insert(entry.id.clone(), minion_def(entry));
             }
         }
         let augments = data

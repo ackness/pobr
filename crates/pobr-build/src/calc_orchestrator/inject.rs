@@ -46,10 +46,10 @@ use super::skill::buffs::{
 };
 use super::skill::mods::{
     corpse_explosion_modifiers, crossbow_reload_modifiers, dot_flag_modifiers,
-    main_skill_quality_modifiers, skill_base_modifiers, support_modifiers,
+    main_skill_quality_modifiers, resolved_enemy_level, skill_base_modifiers, support_modifiers,
     unselected_set_global_modifiers,
 };
-use super::skill::resolve::{config_enemy_level, parse_gem_property_bonus};
+use super::skill::resolve::parse_gem_property_bonus;
 use super::skill::triggers::trigger_modifiers;
 use super::sources::{GEM_PROPERTY_READER, LineFate, LineHolder, SourceWriter, item_sections_mut};
 use super::stat_map::exposure_support_modifiers;
@@ -92,7 +92,12 @@ pub(super) fn inject_flasks_charms(session: &mut SourceWriter, build: &Build, da
     //       CalcPerform.lua:1429-1663). A charm needs a CharmLimit source (a belt
     //       implicit etc.) to enter the budget (:1589); unparseable lines (trigger/
     //       recovery lines) are skip-and-collected.
-    for (slot_name, item) in &build.utility_slots {
+    for (active, (slot_name, item)) in build.utility_slots.iter().map(|item| (true, item)).chain(
+        build
+            .inactive_utility_slots
+            .iter()
+            .map(|item| (false, item)),
+    ) {
         // A charm base's inherent buff (e.g. Ruby Charm's `+25% to Fire Resistance`) is
         // **not in the item text** — it's a base attribute (vendor's
         // `Item.lua:838-844` folds `base.charm.buff` line by line into
@@ -109,12 +114,21 @@ pub(super) fn inject_flasks_charms(session: &mut SourceWriter, build: &Build, da
         // base name" reliably locates it (a normal/rare item whose full name equals
         // the base name matches too).
         let item_name = item.base.to_string();
-        let base_buff: &[String] = data
+        let base = data
             .base_items
             .values()
-            .filter(|def| !def.charm_buff.is_empty())
-            .find(|def| item_name.contains(def.name.as_str()))
-            .map(|def| def.charm_buff.as_slice())
+            .filter(|def| def.utility.is_some() || !def.charm_buff.is_empty())
+            .filter(|def| item_name.contains(def.name.as_str()))
+            .max_by_key(|def| def.name.len());
+        if let Some(utility) = base.and_then(|base| base.utility.as_ref()) {
+            session.add_utility_base(slot_name, item, utility);
+        }
+        if !active {
+            session.add_inactive_utility_properties(slot_name, item);
+            continue;
+        }
+        let base_buff = base
+            .map(|base| base.charm_buff.as_slice())
             .unwrap_or_default();
         if base_buff.is_empty() {
             session.add_flask_charm(slot_name, item);
@@ -154,6 +168,42 @@ pub(super) fn inject_buffs_and_heralds(
     build: &Build,
     data: &BuildData,
 ) {
+    for (index, member) in build
+        .party
+        .members
+        .iter()
+        .enumerate()
+        .filter(|(_, m)| m.enabled)
+    {
+        let effects = crate::party::member_effects(member, index);
+        for (source, text, parsed) in effects.lines {
+            session.note_line(
+                &source,
+                &text,
+                if parsed && source.id.ends_with(".EnemyConditions") {
+                    super::sources::LineFate::ReadBy("party enemy condition")
+                } else if parsed {
+                    super::sources::LineFate::LeftOut(
+                        "a stronger copy or the curse limit excluded this party effect",
+                    )
+                } else {
+                    super::sources::LineFate::Unparsed
+                },
+            );
+            if !parsed {
+                context
+                    .support_limits
+                    .push(format!("Party {}: {}", member.name, text));
+            }
+        }
+        for spec in effects.buffs {
+            session.add_party_buff_skill(spec);
+        }
+        session.add_enemy_modifiers(effects.enemy);
+        for condition in effects.conditions {
+            session.set_condition(condition, true);
+        }
+    }
     // 4b. Aura/curse skills → BuffSpec injected via `session.add_buff_skill` (per the
     //     §2.4 contract), consumed by pobr-core's buff_pass (env_finalize stage 4;
     //     cfg.mode_buffs is already set above): an aura defensive buff (Discipline→
@@ -216,22 +266,17 @@ pub(super) fn inject_buffs_and_heralds(
     }
 }
 
-/// Equipped support gems counted by color → `Red/Green/BlueSupportGems` multipliers
-/// (matching PoB2 CalcSetup.lua:2015-2044: walks **enabled** socket groups, counting
-/// support gems by `grantedEffect.color` (1=R/2=G/3=B, the same enum as GGG's
-/// `gem_colour`) and writing to `env.modDB.multipliers`). Consumed by the pinned entries
-/// in a2-real-gaps's `MultiplierThreshold{<Color>SupportGems, 10}` (produced blind
-/// against the lower bound; a missing key = no effect — activates automatically once
-/// this injection lands). Also sets the `MostNumerous<Color>SocketedSupports`
-/// condition. Vendor's same-location `Majority<Color>SocketedSupports` conditions
-/// have no PoBR data consumer yet and aren't injected (YAGNI, add in this same
-/// function when a need arises).
+/// Socketed supports in enabled groups, using the game's SkillGems.GemColour:
+/// 1 = strength/red, 2 = dexterity/green, 3 = intelligence/blue.
+/// Crystallised Immunities requires a strict majority (more than half of all
+/// socketed supports), distinct from Gem Studded's most numerous colour.
 pub(super) fn inject_support_gem_counts(
     session: &mut CalculationSession,
     build: &Build,
     data: &BuildData,
 ) {
     let (mut r, mut g, mut b) = (0.0_f64, 0.0_f64, 0.0_f64);
+    let mut total = 0.0;
     for group in build.enabled_socket_groups() {
         for gem_id in &group.gem_ids {
             let Some(def) = data.skill_gems.get(gem_id) else {
@@ -240,6 +285,7 @@ pub(super) fn inject_support_gem_counts(
             if !def.is_support {
                 continue;
             }
+            total += 1.0;
             match def.gem_colour {
                 Some(1) => r += 1.0,
                 Some(2) => g += 1.0,
@@ -251,6 +297,12 @@ pub(super) fn inject_support_gem_counts(
     session.set_multiplier("RedSupportGems", r);
     session.set_multiplier("GreenSupportGems", g);
     session.set_multiplier("BlueSupportGems", b);
+    for (colour, count) in [("Red", r), ("Green", g), ("Blue", b)] {
+        session.set_condition(
+            format!("Majority{colour}SocketedSupports"),
+            count > total / 2.0,
+        );
+    }
     // Gemling "Gem Studded" (CalcSetup.lua:2594-2601): exactly one colour counts as
     // most numerous; the vendor's `>=` chain resolves ties in red, green, blue order.
     let most_numerous = if r >= g && r >= b {
@@ -293,7 +345,9 @@ fn is_grand_spectrum(jewel: &pobr_data::item::Item) -> bool {
 
 /// The augments in the equipment's sockets, as `(Idols, the others)`. The
 /// game's base items class every augment (Rune, Soul Core, Idol) as
-/// `SoulCore` and tag the Idols `idol`. A socket entry that is no augment,
+/// `SoulCore`. The socketable category distinguishes Idols: some ancient
+/// Idols, such as Carved Majesty, only have the generic `rune` base tag.
+/// A socket entry that is no augment,
 /// such as the skill a Talisman grants, is not counted.
 fn augments_in_equipment(build: &Build, data: &BuildData) -> (usize, usize) {
     let (mut idols, mut others) = (0, 0);
@@ -304,7 +358,11 @@ fn augments_in_equipment(build: &Build, data: &BuildData) -> (usize, usize) {
         if base.item_class != "SoulCore" {
             continue;
         }
-        if base.tags.iter().any(|tag| tag == "idol") {
+        let is_idol = data.augments.get(name).map_or_else(
+            || base.tags.iter().any(|tag| tag == "idol"),
+            |augment| augment.slots.values().any(|slot| slot.kind == "Idol"),
+        );
+        if is_idol {
             idols += 1;
         } else {
             others += 1;
@@ -402,8 +460,10 @@ pub(super) fn inject_build_multipliers(
     // `output[attr.."RequirementsOn"..slot] = floor(itemReq × reqMult)`) — the fetch
     // source for "Gain Armour equal to N% of total Strength Requirements of Equipped
     // Boots, Gloves and Helmet" (a PercentStat, `StrRequirementsOn<slot>`).
-    // ponytail: reqMult (the GlobalAttributeRequirements mod family) is always treated
-    // as 1; wire up the multiplier when a build with "reduced attribute requirements" shows up.
+    // The separate requirement snapshot also includes gems and supports.
+    for (var, value) in super::requirements::requirement_snapshots(build, data) {
+        session.set_stat(var, value);
+    }
     for (var, value) in per_slot_attribute_requirements(build, data) {
         session.set_stat(var, value);
     }
@@ -481,23 +541,16 @@ pub(super) fn virtuous_mote_counts(build: &Build, data: &BuildData) -> (f64, f64
 pub(super) fn inject_enemy(
     session: &mut SourceWriter,
     build: &Build,
+    data: &BuildData,
     options: &DataOrchestratorOptions,
     enemy_tier: EnemyTier,
     resolved_config: &crate::config_resolve::ResolvedConfig,
 ) {
-    // 5. Enemy + effective DPS: setup_enemy writes enemy scaling/resistances/damage
-    //    reduction; mode_effective is already in cfg. Enemy level resolution matches
-    //    vendor (CalcSetup.lua:529's `env.enemyLevel =
-    //    build.configTab.enemyLevel or m_min(data.misc.MaxEnemyLevel, charLevel)`): the
-    //    caller's explicit level (an orchestrator option ≠0) takes priority; otherwise
-    //    the build XML Config's `enemyLevel` scalar; if both are missing, falls back to
-    //    0 → setup_enemy internally derives it as min(MaxEnemyLevel, character level).
-    let enemy_level = if options.enemy_level != 0 {
-        options.enemy_level
-    } else {
-        config_enemy_level(build).unwrap_or(0)
-    };
+    // Use the build's resolved level, also used for corpse Life; the
+    // calculation session's actor does not carry the character's level.
+    let enemy_level = resolved_enemy_level(build, data, options, enemy_tier);
     session.setup_enemy(enemy_level, enemy_tier);
+    session.add_enemy_modifiers(super::enemy_config::modifiers(build));
     // Config "Disable EHP gain on block/suppress" (vendor CalcDefence.lua:3261).
     if matches!(
         build.config.raw_inputs.values.get("DisableEHPGainOnBlock"),
@@ -568,6 +621,12 @@ pub(super) fn inject_main_skill_mods(
             skill_id,
             main_set_key.as_deref(),
         ));
+        session.add_modifiers(super::skill::mods::skill_timing_modifiers(
+            data,
+            group,
+            skill_id,
+            &ctx.main.main_skill_types,
+        ));
         // 1b-i-q. Main skill gem's quality stats (T1.7): the quality segment is
         //         mapped via stat-map and injected with SourceKind::GemQuality
         //         attribution (id prefix gem.<effect id>.q<Q>).
@@ -586,17 +645,30 @@ pub(super) fn inject_main_skill_mods(
         //         directly on statSet baseMods; calc::skill_dot preserves the dotCfg
         //         bits based on these).
         session.add_modifiers(dot_flag_modifiers(group, data, skill_id));
-        // 1b-i-c. Corpse explosion base damage: the explodeCorpse-gated statSet's
-        //         `monsterLife × corpseExplosionLifeMultiplier` → Physical BASE
-        //         (matching vendor CalcOffence.lua:2211-2217; e.g. Detonate Dead).
+        // The skill's corpse-Life share uses the same monster level as
+        // enemy mitigation, including the selected tier's default/floor.
         session.add_modifiers(corpse_explosion_modifiers(
-            build, data, options, group, skill, skill_id,
+            data,
+            resolved_enemy_level(build, data, options, ctx.enemy_tier),
+            group,
+            skill,
+            skill_id,
         ));
         // 1b-i-x. Crossbow reload data channel: CrossbowReloadTimeBase (the weapon's
         //         reload_time_ms) + CrossbowBoltCount (the ammo sibling skill's stat),
         //         consumed by perform's `fill_crossbow_reload`. Returns empty for a
         //         non-crossbow/grenade skill.
         session.add_modifiers(crossbow_reload_modifiers(build, data, group, skill_id));
+        if ctx
+            .main
+            .main_skill_types
+            .iter()
+            .any(|kind| kind == "NonWeaponAttack")
+        {
+            session.add_modifiers(pobr_core::skill_env::shield_elemental_damage_modifiers(
+                skill_id, skill, build, data,
+            ));
+        }
         session.add_modifiers(support_modifiers(
             context,
             group,
@@ -647,6 +719,26 @@ pub(super) fn inject_character_base(
     {
         // The derivation coefficients are read from the injected character_constants domain (value-for-value equal to Default).
         session.add_modifiers(base.modifiers(&data.constants.character_constants));
+        // character_inherent_mana_regeneration_rate_per_minute_% = 240:
+        // a character regenerates 4% of maximum Mana per second.
+        session.add_modifiers(vec![
+            Modifier::number(
+                "ManaRegenPercent",
+                ModType::Base,
+                data.constants
+                    .character()
+                    .mana_regeneration_rate_per_minute_pct
+                    / 60.0,
+            )
+            .with_tag(pobr_core::ModTag::condition("NoInherentManaRegen", true))
+            .with_origin(
+                ModifierSource::new(SourceId::new(
+                    SourceKind::CharacterBase,
+                    "base.ManaRegenPercent",
+                ))
+                .with_raw_text("character inherent Mana regeneration"),
+            ),
+        ]);
         // Elemental resistance penalty (fire/cold/lightning; chaos has no penalty): the
         // XML Config's explicit `resistancePenalty` tier takes priority; when omitted,
         // falls back to PoB2 CalcSetup.lua's `configInput.resistancePenalty or -60`

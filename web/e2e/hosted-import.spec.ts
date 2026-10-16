@@ -1,0 +1,55 @@
+import { expect, test } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { inflateSync } from 'node:zlib';
+
+const code = readFileSync(new URL('../worker-tests/fixtures/build-code.txt', import.meta.url), 'utf8').trim();
+
+test('hosted import keeps selection and loadouts through editing and export; failures preserve the build', async ({ page }, testInfo) => {
+  let calls = 0;
+  await page.route('**/api/import/build-code', async route => {
+    calls++;
+    const url = route.request().postDataJSON().url;
+    expect(url).toMatch(/^https:\/\/pobb.in\//);
+    await route.fulfill(url.endsWith('/missing')
+      ? { status: 404, json: { error_code: 'not_found' } } : { json: { code } });
+  });
+  await page.goto('/');
+  await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
+  await page.getByRole('textbox', { name: 'Build code' }).fill('https://pobb.in/Fixture_42');
+  await page.locator('.import-submit').click();
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator('.main-skill-select .app-select-value')).toContainText('Fireball');
+  const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!));
+  expect((await saved()).state.socketGroups[0].main_active_skill).toBe(2);
+  expect((await saved()).state.pobCode).toBe(code);
+  await page.getByRole('button', { name: 'Build', exact: true }).click();
+  await page.locator('.workspace-loadouts summary').click();
+  await expect(page.getByLabel('PoB loadout', { exact: true }).locator('option')).toHaveCount(2);
+  await page.getByRole('textbox', { name: 'Notes', exact: true }).fill('Edited hosted build');
+  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
+  const exportedCode = await page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
+  const xml = inflateSync(Buffer.from(exportedCode, 'base64url')).toString('utf8');
+  expect(xml).toContain('mainActiveSkill="2"');
+  expect(xml).toContain('title="Boss"');
+  expect(xml.match(/<SkillSet\b/g)).toHaveLength(2);
+  expect(xml.match(/<ItemSet\b/g)).toHaveLength(2);
+  expect(xml).toContain('Edited hosted build');
+  await page.getByRole('textbox', { name: 'Build code' }).fill(exportedCode);
+  await page.locator('.import-submit').click();
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible();
+  await expect(page.locator('.main-skill-select .app-select-value')).toContainText('Fireball');
+  await page.getByRole('button', { name: 'Build', exact: true }).click();
+  const before = (await saved()).state;
+  await page.getByRole('textbox', { name: 'Build code' }).fill('https://pobb.in/missing');
+  await page.locator('.import-submit').click();
+  await expect(page.locator('.calc-error')).toContainText('not found');
+  expect((await saved()).state).toEqual(before);
+  await page.getByRole('textbox', { name: 'Build code' }).fill('https://poe.ninja/poe2/builds/league/character/account/name');
+  await page.locator('.import-submit').click();
+  await expect(page.locator('.calc-error')).toContainText('not supported yet');
+  expect(calls).toBe(2);
+  await page.screenshot({ path: testInfo.outputPath('hosted-import.png'), fullPage: true });
+  await page.reload();
+  await expect(page.locator('.main-skill-select .app-select-value')).toContainText('Fireball', { timeout: 90_000 });
+  expect((await saved()).state.socketGroups[0].main_active_skill).toBe(2);
+});

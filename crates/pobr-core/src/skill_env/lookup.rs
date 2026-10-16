@@ -19,6 +19,11 @@ pub trait EffectLookup {
     /// Returns the additional granted effect ids linked to `primary_id` via the
     /// `gem_effects` foreign key (empty when the domain is missing).
     fn additional_effects(&self, primary_id: &str) -> &[String];
+
+    /// Zero-based primary/additional positions in the gem's display order.
+    fn effect_display_order(&self, _primary_id: &str) -> &[usize] {
+        &[]
+    }
 }
 
 /// Per-level stat table lookup (the `granted_effect_levels` + `skill_stat_sets` +
@@ -162,6 +167,9 @@ pub trait SocketGroupView {
 pub struct EnabledGroup<'a> {
     /// The group's gems (granted effect ids + level/quality/set selection).
     pub gems: &'a [GemInput],
+    /// Whether this group is used with the weapon set being calculated.
+    /// Buffs may persist from another set; reservation normally does not.
+    pub active_in_weapon_set: bool,
     /// Whether the group comes from a real gem (vs an item-granted / other source:
     /// vendor's `source="Item:…"` groups don't pass the support-gems-only gate).
     pub from_gem: bool,

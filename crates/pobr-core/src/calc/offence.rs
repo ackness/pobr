@@ -80,6 +80,11 @@ pub struct MinimalOutput {
     /// Non-crit hit components split by damage type; summing gives total non-crit hit damage.
     pub damage_components: Vec<DamageComponent>,
     pub total_hit_avg: f64,
+    /// Expected damage per hit, including enemy mitigation and chance to hit.
+    pub average_damage: f64,
+    pub accuracy: f64,
+    /// Chance to pass the accuracy check before the 100% ceiling (percent).
+    pub accuracy_hit_chance_uncapped: f64,
     pub hit_chance: f64,
     pub action_rate: f64,
     pub dps: f64,
@@ -134,6 +139,9 @@ impl MinimalOutput {
             crit_multiplier: output.crit_multiplier,
             damage_components: output.damage_components.clone(),
             total_hit_avg: output.total_hit_avg,
+            average_damage: output.average_damage,
+            accuracy: output.accuracy,
+            accuracy_hit_chance_uncapped: output.accuracy_hit_chance_uncapped,
             hit_chance: output.hit_chance,
             action_rate: output.action_rate,
             dps: output.dps,
@@ -167,9 +175,11 @@ impl MinimalOutput {
 
 /// A single resistance's resolution result: the capped final value / max resistance / over-cap.
 pub(crate) struct ResistanceResolution {
+    pub(crate) total: f64,
+    pub(crate) uncapped_max: f64,
     pub(crate) final_value: f64,
-    max: f64,
-    over_cap: f64,
+    pub(crate) max: f64,
+    pub(crate) over_cap: f64,
     /// The terms the total was built from, kept for [`Self::formula`].
     base: f64,
     flat: f64,
@@ -186,6 +196,9 @@ impl ResistanceResolution {
         match self.override_total {
             Some(value) => steps.set(FormulaOp::Override, value, value),
             None => steps.scaled(self.base, self.flat, self.inc, self.more),
+        }
+        if steps.current() != self.total {
+            steps.set(FormulaOp::Round, 0.0, self.total);
         }
         steps.at_most(FormulaOp::Cap, self.max);
         steps.at_least(self.floor);
@@ -236,11 +249,15 @@ pub(crate) fn resolve_resistance(
     let override_total = db
         .override_(cfg, long.as_str())
         .or_else(|| db.override_(cfg, short.as_str()));
-    let total = override_total.unwrap_or_else(|| {
-        let summed = base + flat;
-        let factor = ((1.0 + inc / 100.0) * more).max(0.0);
-        summed * factor
-    });
+    // Resistance is an integer stat. Keep fractions through summing and
+    // scaling (including shared Fire modifiers), then truncate toward zero.
+    let total = override_total
+        .unwrap_or_else(|| {
+            let summed = base + flat;
+            let factor = ((1.0 + inc / 100.0) * more).max(0.0);
+            summed * factor
+        })
+        .trunc();
     let max = db
         .override_(cfg, max_long.as_str())
         .or_else(|| db.override_(cfg, max_short.as_str()))
@@ -250,9 +267,12 @@ pub(crate) fn resolve_resistance(
                 + db.sum(ModType::Base, cfg, &max_names)
                 + shared.max)
                 .min(cfg.constants.game().resist_hard_cap)
-        });
+        })
+        .trunc();
     let floor = cfg.constants.game().resist_floor;
     ResistanceResolution {
+        total,
+        uncapped_max: max,
         final_value: round(total.min(max).max(floor)),
         max: round(max),
         over_cap: round((total - max).max(0.0)),
@@ -293,6 +313,22 @@ fn shared_fire_resistance(db: &ModDb, cfg: &CalcConfig, element: &str) -> Shared
             .filter(|row| {
                 row.modifier.origin.as_ref().is_none_or(|origin| {
                     origin.source_id.id != crate::ingest::campaign::RESISTANCE_PENALTY_SOURCE
+                })
+            })
+            .filter(|row| {
+                // The parser expands all-elemental lines into three names.
+                // They already grant Cold/Lightning and must not be shared
+                // again. Keep their original scope when selecting Fire mods.
+                let text = row.modifier.source.as_deref().or_else(|| {
+                    row.modifier
+                        .origin
+                        .as_ref()
+                        .and_then(|origin| origin.raw_text.as_deref())
+                });
+                text.is_none_or(|text| {
+                    let text =
+                        crate::mod_parser::engine::strip_display_markup(text).to_ascii_lowercase();
+                    !text.contains("all elemental resistances") && !text.contains("all resistances")
                 })
             })
             .filter_map(|row| row.value)
@@ -343,7 +379,7 @@ pub fn calculate_minimal(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> 
 /// speed), and finally the cooldown speed cap + the server tick cap.
 ///
 /// The rate a skill's hits come at, which is its rate of use except for a
-/// rain: the hits of a rain come as its arrows land (`calc::rain`).
+/// rain or periodic spell (`calc::rain`, `calc::periodic`).
 pub(crate) fn resolve_action_rate(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> f64 {
     action_rate_terms(db, cfg, input).value
 }
@@ -375,7 +411,9 @@ pub(crate) struct ActionRateTerms {
     pub(crate) uses: f64,
     /// How the uses turn into hits, for a rain.
     rain: Option<super::rain::RainHits>,
-    /// The rate the hits come at: the uses, or the hits of a rain.
+    pub(crate) channel: Option<super::channel::ChannelCycle>,
+    periodic: Option<super::periodic::PeriodicHits>,
+    /// The rate the hits come at: uses, rain landings, or periodic hits.
     pub(crate) value: f64,
 }
 
@@ -385,6 +423,9 @@ impl ActionRateTerms {
     pub(crate) fn formula(&self) -> StatFormula {
         if let Some(rain) = &self.rain {
             return rain.formula(self.value);
+        }
+        if let Some(periodic) = &self.periodic {
+            return periodic.formula(self.value);
         }
         let mut steps = FormulaBuilder::default();
         steps.scaled(self.base, 0.0, self.inc, self.more);
@@ -398,6 +439,9 @@ impl ActionRateTerms {
         if self.action_speed != 1.0 {
             steps.set(FormulaOp::ActionSpeed, self.action_speed, self.uncapped);
         }
+        if let Some(channel) = &self.channel {
+            channel.append_formula(&mut steps);
+        }
         steps.at_most(FormulaOp::CooldownCap, self.cooled);
         steps.at_most(FormulaOp::ServerTickCap, self.ticked);
         steps.finish(self.value)
@@ -408,6 +452,9 @@ impl ActionRateTerms {
 /// second: a skill triggered by what another skill creates (`SkillUseRate`).
 /// The character's cast, attack and action speed do not change it.
 fn fixed_use_rate(db: &ModDb, cfg: &CalcConfig) -> Option<f64> {
+    if db.flag(cfg, super::trigger::EVENT_RATE_UNMODELLED) {
+        return Some(0.0);
+    }
     let rate = db.sum(ModType::Base, cfg, &[ModName::from("SkillUseRate")]);
     (rate > 0.0).then_some(rate)
 }
@@ -419,8 +466,11 @@ pub(crate) fn action_rate_terms(
 ) -> ActionRateTerms {
     let mut terms = use_rate_terms(db, cfg, input);
     terms.rain = super::rain::rain_hits(db, cfg, terms.uses);
+    terms.periodic = super::periodic::periodic_hits(db, cfg, terms.uses);
     if let Some(rain) = &terms.rain {
         terms.value = round(rain.rate);
+    } else if let Some(periodic) = &terms.periodic {
+        terms.value = round(periodic.rate);
     }
     terms
 }
@@ -442,15 +492,15 @@ fn use_rate_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> ActionR
             ticked,
             uses: round(ticked),
             rain: None,
+            channel: None,
+            periodic: None,
             value: round(ticked),
         };
     }
     let speed_names = super::skill_use_time::speed_names_for(cfg);
-    let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
     let inc_speed = db.sum(ModType::Inc, cfg, &speed_names);
     let more_speed = db.more(cfg, &speed_names);
-    let action_speed_mod = (1.0 + db.sum(ModType::Inc, cfg, &action_speed_names) / 100.0)
-        * db.more(cfg, &action_speed_names);
+    let action_speed_mod = super::skill_use_time::action_speed_factor(db, cfg);
     let inc_more_rate = input.base_action_rate * (1.0 + inc_speed / 100.0) * more_speed;
     let scaled_rate = apply_total_time(db, cfg, inc_more_rate);
     let uncapped_action_rate = scaled_rate * action_speed_mod;
@@ -465,7 +515,9 @@ fn use_rate_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> ActionR
             speed_names
         );
     }
-    let cooled = apply_cooldown_cap(db, cfg, uncapped_action_rate);
+    let channel = super::channel::cycle(db, cfg, uncapped_action_rate);
+    let use_rate = channel.map_or(uncapped_action_rate, |cycle| 1.0 / cycle.cycle_time);
+    let cooled = apply_cooldown_cap(db, cfg, use_rate);
     let ticked = apply_server_tick_cap(db, cfg, cooled);
     ActionRateTerms {
         base: input.base_action_rate,
@@ -479,6 +531,8 @@ fn use_rate_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> ActionR
         ticked,
         uses: round(ticked),
         rain: None,
+        channel,
+        periodic: None,
         value: round(ticked),
     }
 }
@@ -487,11 +541,11 @@ fn use_rate_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> ActionR
 /// or the OVERRIDE value when one applies.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct AccuracyTerms {
-    base: f64,
-    flat: f64,
-    inc: f64,
-    more: f64,
-    override_value: Option<f64>,
+    pub(crate) base: f64,
+    pub(crate) flat: f64,
+    pub(crate) inc: f64,
+    pub(crate) more: f64,
+    pub(crate) override_value: Option<f64>,
     pub(crate) value: f64,
 }
 
@@ -985,6 +1039,9 @@ pub fn calculate_minimal_vs_enemy(
         crit_multiplier,
         damage_components,
         total_hit_avg,
+        average_damage: round(crit_pass.total_hit_avg_mitigated * hit_chance),
+        accuracy: hit_terms.accuracy,
+        accuracy_hit_chance_uncapped: round(hit_terms.accuracy_chance * 100.0 + hit_terms.excess),
         hit_chance,
         action_rate,
         dps,
@@ -1407,7 +1464,6 @@ fn total_dps_traced(
         (action_rate, node)
     } else {
         let speed_names = super::skill_use_time::speed_names_for(cfg);
-        let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
         let base_rate_node = trace.add_source_node(
             "base action rate",
             input.base_action_rate,
@@ -1421,8 +1477,7 @@ fn total_dps_traced(
             "Speed INC modifier sum (Attack/Cast/Skill)",
         );
         let more_speed = more_factor_traced(db, cfg, &speed_names, "Speed MORE factor", trace);
-        let action_speed_mod = (1.0 + db.sum(ModType::Inc, cfg, &action_speed_names) / 100.0)
-            * db.more(cfg, &action_speed_names);
+        let action_speed_mod = super::skill_use_time::action_speed_factor(db, cfg);
         let scaled_rate = apply_total_time(
             db,
             cfg,
@@ -1444,12 +1499,21 @@ fn total_dps_traced(
     // (`calc::rain`); the uses only limit it.
     let (action_rate, action_rate_node) = match super::rain::rain_hits(db, cfg, use_rate) {
         Some(rain) => {
+            let landing_stat = if db.flag(cfg, super::rain::USE_CADENCE) {
+                super::rain::HIT_INTERVAL
+            } else {
+                "ProjectileSpeed"
+            };
             let landing_speed = db.sum_traced(
-                ModType::Inc,
+                if landing_stat == "ProjectileSpeed" {
+                    ModType::Inc
+                } else {
+                    ModType::Base
+                },
                 cfg,
-                &[ModName::from("ProjectileSpeed")],
+                &[ModName::from(landing_stat)],
                 trace,
-                "Projectile speed INC (how often the arrows land)",
+                "Rain landing timing",
             );
             let rate = round(rain.rate);
             let node = trace.add_node("rain hit rate", rate, TraceOperation::Multiply);
@@ -1459,6 +1523,30 @@ fn total_dps_traced(
         }
         None => (use_rate, use_rate_node),
     };
+
+    let (action_rate, action_rate_node) =
+        if let Some(periodic) = super::periodic::periodic_hits(db, cfg, use_rate) {
+            let rate = round(periodic.rate);
+            let node = trace.add_node("periodic hit rate", rate, TraceOperation::Multiply);
+            trace.add_edge(use_rate_node, node);
+            for name in [
+                super::periodic::INTERVAL,
+                super::rain::HIT_INTERVAL,
+                super::periodic::DURATION,
+                super::periodic::LIMIT,
+            ] {
+                let term = db.sum_traced(ModType::Base, cfg, &[ModName::from(name)], trace, name);
+                trace.add_edge(term.node_id, node);
+            }
+            let duration = [ModName::from("Duration")];
+            let inc = db.sum_traced(ModType::Inc, cfg, &duration, trace, "Periodic duration INC");
+            let more = more_factor_traced(db, cfg, &duration, "Periodic duration MORE", trace);
+            trace.add_edge(inc.node_id, node);
+            trace.add_edge(more.node_id, node);
+            (rate, node)
+        } else {
+            (action_rate, action_rate_node)
+        };
 
     // TotalDPS final
     let end = dps_end_factors(db, cfg, None);
@@ -1515,7 +1603,7 @@ fn total_dps_traced(
 ///
 /// `raw_hit` approximates this component's (unmitigated) average hit (PoB2
 /// uses the per-hit amount; the panel approximation is good enough), only needed for physical armour mitigation.
-fn enemy_damage_multiplier(
+pub(crate) fn enemy_damage_multiplier(
     player_db: &ModDb,
     enemy_db: &ModDb,
     cfg: &CalcConfig,
@@ -2171,10 +2259,11 @@ fn apply_total_time(db: &ModDb, cfg: &CalcConfig, scaled_rate: f64) -> f64 {
             ModName::from("TotalAttackTime"),
         ],
     );
-    if extra_time <= 0.0 {
+    let channel_time = super::flameblast::release_time(db, cfg, 1.0 / scaled_rate);
+    if extra_time <= 0.0 && channel_time == 1.0 / scaled_rate {
         return scaled_rate;
     }
-    let effective_time = 1.0 / scaled_rate + extra_time;
+    let effective_time = channel_time + extra_time.max(0.0);
     1.0 / effective_time
 }
 

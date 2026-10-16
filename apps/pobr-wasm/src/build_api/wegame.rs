@@ -392,9 +392,13 @@ fn gem(
         1
     });
     Some(GemJson {
+        count: None,
+        enable_global_1: None,
+        enable_global_2: None,
         skill_id: id.clone(),
         level,
         quality: property(item, 6).unwrap_or(0),
+        enabled: true,
         stat_set_index: None,
         name_spec: None,
         // The same flag a corrupted piece of equipment carries.
@@ -552,6 +556,8 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
             }
         }
         groups.push(SocketGroupJson {
+            include_in_full_dps: false,
+            group_count: None,
             main_active_skill: None,
             weapon_set: None,
             slot: None,
@@ -594,6 +600,17 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
             .join("\n")
     );
     let json = BuildJson {
+        party: Default::default(),
+        config_sets: vec![super::NamedSetJson {
+            id: 1,
+            title: "Default".into(),
+        }],
+        active_config_set: 1,
+        skill_sets: vec![super::NamedSetJson {
+            id: 1,
+            title: "Default".into(),
+        }],
+        active_skill_set: 1,
         weapon_swap: Some(super::super::request::WeaponSwapInput {
             active: 1,
             alternate_items,
@@ -622,6 +639,7 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
             tree: 1,
             item: None,
             skill: None,
+            config: None,
         }],
         active_loadout: Some(0),
     };

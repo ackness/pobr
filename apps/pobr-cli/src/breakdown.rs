@@ -21,6 +21,8 @@ use crate::CalculateBuildReport;
 /// What `calculate-build` reports beyond its default output.
 #[derive(Debug, Clone, Default)]
 pub struct BuildDetail {
+    /// Evaluate all included effects, exposing FullDPS and its contributions.
+    pub full_dps: bool,
     /// The stats to break down, in the order wanted: display stat ids such
     /// as `TotalDPS` or `Life`, `all` for the panel's set
     /// ([`BREAKDOWN_STATS`]), or modifier names, which are aggregated under
@@ -84,7 +86,7 @@ fn minion_value(minion: &MinionOutput, stat: &str) -> Option<f64> {
         "Armour" => Some(minion.armour),
         "Evasion" => Some(minion.evasion),
         "EnergyShield" => Some(minion.energy_shield),
-        _ => None,
+        _ => minion.stats.get(stat).copied(),
     }
 }
 
@@ -480,7 +482,9 @@ pub fn render_breakdowns(report: &CalculateBuildReport) -> String {
         );
     }
     if let Some(reference) = &report.reference
-        && (reference.at_own_rate_of_use || reference.rain_hits_whenever_allowed)
+        && (reference.at_own_rate_of_use
+            || reference.rain_hits_whenever_allowed
+            || reference.periodic_hits_assume_sustained)
     {
         let _ = writeln!(
             s,

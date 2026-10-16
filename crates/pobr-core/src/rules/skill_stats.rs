@@ -11,6 +11,37 @@ use pobr_data::prelude::*;
 
 use crate::{ModTag, ModValue, Modifier};
 
+/// Coverage of PoBR-owned stat rules. Unlisted game stats retain `same`.
+/// The stat id itself is the game source; use the same metadata for every channel.
+fn exporter_rule(stat: &str) -> Option<std::sync::Arc<pobr_data::source::ExporterRule>> {
+    static RULES: std::sync::LazyLock<Vec<std::sync::Arc<pobr_data::source::ExporterRule>>> =
+        std::sync::LazyLock::new(|| {
+            [(
+                "base_spell_mana_cost_efficiency_+%",
+                pobr_data::source::ExporterCoverage::Absent,
+            )]
+            .into_iter()
+            .map(|(stat, exporter)| {
+                std::sync::Arc::new(pobr_data::source::ExporterRule {
+                    id: stat.to_string(),
+                    exporter,
+                    game_source: stat.to_string(),
+                })
+            })
+            .collect()
+        });
+    RULES.iter().find(|rule| rule.id == stat).cloned()
+}
+
+fn with_exporter_rule(stat: &str, mut mods: Vec<Modifier>) -> Vec<Modifier> {
+    if let Some(rule) = exporter_rule(stat) {
+        for modifier in &mut mods {
+            modifier.set_exporter_rule(&rule);
+        }
+    }
+    mods
+}
+
 /// The ailment each element builds up on its own.
 const ELEMENTAL_AILMENTS: [(&str, &str); 3] = [
     ("Fire", "Ignite"),
@@ -116,9 +147,11 @@ pub fn corpse_explosion_damage(stat: &str, value: f64) -> Option<(DamageType, f6
 
 /// The stats that say how many minions a summoning skill creates, of each
 /// kind of minion it summons.
-const SUMMONED_MINION_COUNTS: [&str; 1] = [
+const SUMMONED_MINION_COUNTS: [&str; 2] = [
     // Cackling Companions: "Summons {0} Hyenas".
     "skill_hyena_cackle_size",
+    // Wolf Pack: pack size grows from 3 at gem level 1 to 6 at level 20.
+    "skill_wolf_pack_size",
 ];
 
 /// Whether the stat `stat` of a summoning skill is the number of minions it
@@ -135,12 +168,23 @@ pub struct SummonedMinions {
     /// How many different kinds of Reviving Minion the character summons:
     /// the distinct skills of the `Minion` and `Persistent` types it uses.
     pub reviving_kinds: u32,
+    /// The summoner's final attributes, before any sharing with minions.
+    pub player_strength: f64,
+    pub player_dexterity: f64,
 }
 
 /// The modifiers the stat `stat` of a summoning skill, or of a support that
 /// applies to it, grants that skill's minions at `value`, when this table
 /// defines the stat. The skill itself gets nothing from it.
 pub fn minion_modifiers(stat: &str, value: f64, minions: SummonedMinions) -> Option<Vec<Modifier>> {
+    minion_modifiers_impl(stat, value, minions).map(|mods| with_exporter_rule(stat, mods))
+}
+
+fn minion_modifiers_impl(
+    stat: &str,
+    value: f64,
+    minions: SummonedMinions,
+) -> Option<Vec<Modifier>> {
     let modifier = match stat {
         // "Minions deal {0}% more damage", of the summoning skill itself.
         "active_skill_minion_damage_+%_final"
@@ -156,6 +200,35 @@ pub fn minion_modifiers(stat: &str, value: f64, minions: SummonedMinions) -> Opt
         }
         // "Supported Skills have {0}% increased Minion Attack Speed".
         "minion_attack_speed_+%" => Modifier::number("AttackSpeed", ModType::Inc, value),
+        // Elemental Army and resistance stats on summoning skills affect
+        // the summoned ally, not the summoner.
+        "minion_elemental_resistance_%" => Modifier::number("ElementalResist", ModType::Base, value),
+        "minion_fire_damage_resistance_%" => Modifier::number("FireResist", ModType::Base, value),
+        "minion_cold_damage_resistance_%" => Modifier::number("ColdResist", ModType::Base, value),
+        "minion_lightning_damage_resistance_%" => Modifier::number("LightningResist", ModType::Base, value),
+        "minion_chaos_resistance_%" => Modifier::number("ChaosResist", ModType::Base, value),
+        "minion_base_maximum_fire_damage_resistance_%" => Modifier::number("FireResistMax", ModType::Base, value),
+        "minion_base_maximum_cold_damage_resistance_%" => Modifier::number("ColdResistMax", ModType::Base, value),
+        "minion_base_maximum_lightning_damage_resistance_%" => Modifier::number("LightningResistMax", ModType::Base, value),
+        "minion_maximum_all_elemental_resistances_%" => Modifier::number("ElementalResistMax", ModType::Base, value),
+        // "Minions from this skill have 1% increased Damage per {0} of your Strength".
+        "minion_1%_damage_+%_per_X_player_strength" => Modifier::number(
+            "Damage", ModType::Inc,
+            if value > 0.0 { (minions.player_strength / value).floor() } else { 0.0 },
+        ),
+        // "Minions from this skill have 1% increased Attack Speed per {0} of your Dexterity".
+        "active_skill_minion_1%_attack_speed_+%_per_X_player_dexterity" => Modifier::number(
+            "AttackSpeed", ModType::Inc,
+            if value > 0.0 { (minions.player_dexterity / value).floor() } else { 0.0 },
+        ),
+        "minion_1%_area_of_effect_+%_per_X_player_dexterity" => Modifier::number(
+            "AreaOfEffect", ModType::Inc,
+            if value > 0.0 { (minions.player_dexterity / value).floor() } else { 0.0 },
+        ),
+        // Raging Spirits: "Minions convert {0}% of Physical Damage to Fire Damage".
+        "minion_skill_physical_damage_%_to_convert_to_fire" => {
+            Modifier::number("SkillPhysicalDamageConvertToFire", ModType::Base, value)
+        }
         // Tangmazu's Thurible: "Companions from Supported Skills are
         // Gigantic"; a summoning skill's "Minions are Gigantic".
         "companions_are_gigantic" | "minions_are_gigantic" => {
@@ -238,7 +311,192 @@ pub fn crushes_on_hit(stat: &str) -> bool {
 /// it, grants that skill at `value`, when this table defines the stat. `None`
 /// leaves the stat to the extracted stat map.
 pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
+    skill_modifiers_impl(stat, value).map(|mods| with_exporter_rule(stat, mods))
+}
+
+fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
     match stat {
+        // "{0}% increased amount of Life/Mana Leeched" and "Leech ...
+        // {0}% faster" are distinct: speed changes duration, not amount.
+        "base_life_leech_amount_+%" => Some(vec![Modifier::number(
+            "LifeLeechAmount",
+            ModType::Inc,
+            value,
+        )]),
+        "base_mana_leech_amount_+%" => Some(vec![Modifier::number(
+            "ManaLeechAmount",
+            ModType::Inc,
+            value,
+        )]),
+        "base_life_leech_rate_+%" => {
+            Some(vec![Modifier::number("LifeLeechRate", ModType::Inc, value)])
+        }
+        "base_mana_leech_rate_+%" => {
+            Some(vec![Modifier::number("ManaLeechRate", ModType::Inc, value)])
+        }
+        "base_energy_shield_leech_rate_+%" => Some(vec![Modifier::number(
+            "EnergyShieldLeechRate",
+            ModType::Inc,
+            value,
+        )]),
+        // Life Thief / Soul Thief: "Leech {0}% of Physical Attack Damage
+        // as Life/Mana". The game stores the percentage in hundredths.
+        "base_life_leech_from_physical_attack_damage_permyriad"
+        | "base_mana_leech_from_physical_attack_damage_permyriad" => {
+            let name = if stat == "base_life_leech_from_physical_attack_damage_permyriad" {
+                "PhysicalDamageLifeLeech"
+            } else {
+                "PhysicalDamageManaLeech"
+            };
+            Some(vec![
+                Modifier::number(name, ModType::Base, value / 100.0).with_flags(ModFlags::ATTACK),
+            ])
+        }
+        "skill_disabled_unless_cloned" => Some(vec![Modifier::flag("MirageSkill")]),
+        // The action's own movement penalty, with Mobility/Deliberation
+        // modifying the penalty rather than the character's movement speed.
+        "movement_speed_+%_final_while_performing_action" => Some(vec![Modifier::number(
+            "SkillMovementSpeed",
+            ModType::More,
+            value,
+        )]),
+        "movement_speed_penalty_+%_while_performing_action" => Some(vec![Modifier::number(
+            "MovementSpeedPenalty",
+            ModType::Inc,
+            value,
+        )]),
+        "support_mobility_movement_speed_penalty_+%_final_while_performing_action"
+        | "support_deliberation_movement_speed_penalty_+%_final_while_performing_action" => {
+            Some(vec![Modifier::number(
+                "MovementSpeedPenalty",
+                ModType::More,
+                value,
+            )])
+        }
+        "can_perform_skill_while_moving" => Some(vec![Modifier::flag("UsableWhileMoving")]),
+        "aura_effect_+%" => Some(vec![Modifier::number(
+            "SelectedMagnitude",
+            ModType::Inc,
+            value,
+        )]),
+        "curse_effect_+%" => Some(vec![Modifier::number(
+            "SelectedCurseEffect",
+            ModType::Inc,
+            value,
+        )]),
+
+        // The selected effect deals no damage; secondary explosions have
+        // their own stat sets without this stat.
+        "base_deal_no_damage" => Some(vec![Modifier::flag("DealNoDamage")]),
+        // Explosive Demise detonates an allied minion below this life
+        // threshold. With no minion present there is nothing to detonate.
+        "command_minion_target_ally_below_x_life" => {
+            Some(vec![Modifier::flag("DealNoDamage").with_tag(
+                ModTag::MultiplierThreshold {
+                    var: "MinionPresenceCount".into(),
+                    threshold: 0.0,
+                    upper: true,
+                },
+            )])
+        }
+        "base_minimum_channel_time_ms" => Some(vec![Modifier::number(
+            "ChannelMinimumTime",
+            ModType::Base,
+            value / 1000.0,
+        )]),
+        // Spectral Helix: "can Bounce up to +{0} times".
+        "spectral_spiral_weapon_base_number_of_bounces" => {
+            Some(vec![Modifier::number("BounceCount", ModType::Base, value)])
+        }
+        "channel_start_lock_cancelling_of_attack_time_%" => Some(vec![Modifier::number(
+            "ChannelStartLock",
+            ModType::Base,
+            value,
+        )]),
+        "channel_end_duration_as_%_of_attack_time" => Some(vec![Modifier::number(
+            "ChannelReleaseFraction",
+            ModType::Base,
+            value,
+        )]),
+        "channel_skill_end_animation_duration_override_ms" => Some(vec![Modifier::number(
+            "ChannelReleaseTime",
+            ModType::Base,
+            value / 1000.0,
+        )]),
+        "channelled_slam_max_stages" | "detonating_arrow_max_number_of_stages" => {
+            Some(vec![Modifier::number(
+                "ChannelMaxStages",
+                ModType::Base,
+                value,
+            )])
+        }
+        // "40% more Damage with Hits for each stage"; not ailment damage.
+        "channelled_slam_damage_+%_final_per_stage" => Some(vec![
+            Modifier::number("Damage", ModType::More, value)
+                .with_keyword_flags(KeywordFlags::HIT)
+                .with_tag(ModTag::multiplier(crate::calc::channel::STAGES, 1.0, None)),
+        ]),
+        "detonating_arrow_all_damage_%_to_gain_as_fire_per_stage" => Some(vec![
+            Modifier::number("DamageGainAsFire", ModType::Base, value)
+                .with_tag(ModTag::multiplier(crate::calc::channel::STAGES, 1.0, None)),
+        ]),
+        // Supporting Fire: "{0} Volleys" per command, each dealing
+        // the attack's damage. Volley count changes DPS, not each hit.
+        "death_from_above_number_of_volleys" => Some(vec![Modifier::number(
+            "DPS",
+            ModType::More,
+            (value.max(1.0) - 1.0) * 100.0,
+        )]),
+        // Dark Pact adds a percentage of the target skeleton's maximum Life.
+        "skeletal_chains_aoe_%_health_dealt_as_chaos_damage" => Some(vec![Modifier::number(
+            "DarkPactLifeAsChaos",
+            ModType::Base,
+            value,
+        )]),
+        // The burning stat is a percentage per minute, not per second.
+        "herald_of_ash_burning_%_overkill_damage_per_minute" => Some(vec![Modifier::number(
+            "HeraldOfAshBurningPerMinute",
+            ModType::Base,
+            value,
+        )]),
+        "support_inevitable_criticals_critical_strike_chance_+%_per_second" => {
+            Some(vec![Modifier::number(
+                "InexorableCritChancePerSecond",
+                ModType::Base,
+                value,
+            )])
+        }
+        "support_inevitable_criticals_critical_strike_chance_+%_cap" => {
+            Some(vec![Modifier::number(
+                "InexorableCritChanceCap",
+                ModType::Base,
+                value,
+            )])
+        }
+        "support_inevitable_criticals_critical_strike_multiplier_+%_final_per_second" => {
+            Some(vec![Modifier::number(
+                "InexorableCritBonusPerSecond",
+                ModType::Base,
+                value,
+            )])
+        }
+        "support_inevitable_criticals_critical_strike_multiplier_+%_final_cap" => {
+            Some(vec![Modifier::number(
+                "InexorableCritBonusCap",
+                ModType::Base,
+                value,
+            )])
+        }
+        // "{0}% more damage with Hits for blasts originating from a Unique enemy".
+        "snap_damage_+%_final_if_created_from_unique" => Some(vec![
+            Modifier::number("Damage", ModType::More, value)
+                .with_flags(ModFlags::HIT)
+                .with_tag(ModTag::Condition {
+                    var: "Unique".into(),
+                    negated: false,
+                    actor: None,
+                }),
+        ]),
         stat if inflicts_withered(stat) => Some(Vec::new()),
         stat if is_summoned_minion_count(stat) => Some(Vec::new()),
         // Granted to the skill's minions where they are created
@@ -246,8 +504,23 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         stat if is_minion_stat(stat) => Some(Vec::new()),
         // Read where a minion's skill is chosen (`calc::MinionSkill`).
         COMMAND_SKILL_STAT => Some(Vec::new()),
+        // Read by the weapon source resolver: a shield's defence replaces
+        // the character's unarmed damage for Raise Shield and Parry.
+        "replace_off_hand_unarmed_attack_stats_with_shield_type" => Some(Vec::new()),
+        // "Your Hits can't be Evaded" (including the implicit stat on palms).
+        "global_always_hit" => Some(vec![Modifier::flag("CannotBeEvaded")]),
+        // Mace Strike hits once with each weapon. Keep each hit's damage and
+        // critical chance, but count both hits when dual wielding.
+        "skill_double_hits_when_dual_wielding" => Some(vec![
+            Modifier::number("DPS", ModType::More, 100.0)
+                .with_tag(ModTag::condition("DualWielding", false)),
+        ]),
         // Reap: "Culling Strike" (`calc::skill_dot::cull_multiplier`).
         "kill_enemy_on_hit_if_under_10%_life" => Some(vec![Modifier::flag("CanCull")]),
+        // Detonate Living: "Your Spells have Culling Strike".
+        "spells_have_culling_strike" => {
+            Some(vec![Modifier::flag("CanCull").with_flags(ModFlags::SPELL)])
+        }
         // Put on the enemy whichever skill crushes it
         // (`skill_env::skill_crushing_on_hit`).
         stat if crushes_on_hit(stat) => Some(Vec::new()),
@@ -287,6 +560,11 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         "support_inspiration_cost_+%_final" => {
             Some(vec![Modifier::number("Cost", ModType::More, value)])
         }
+        // "{0}% increased Mana Cost Efficiency of Spells".
+        "base_spell_mana_cost_efficiency_+%" => Some(vec![
+            Modifier::number("ManaCostEfficiency", ModType::Inc, value)
+                .with_tag(ModTag::SkillTypes(SkillTypes::SPELL)),
+        ]),
         // "Supported Skills have {0}% increased Mana Cost Efficiency".
         "base_mana_cost_efficiency_+%" => Some(vec![Modifier::number(
             "ManaCostEfficiency",
@@ -314,6 +592,15 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
             Modifier::number("AttackSpeed", ModType::Inc, value)
                 .with_keyword_flags(KeywordFlags::TOTEM),
         ]),
+        // Chayula's Will attacks every 200 ms while its tornado exists;
+        // the character's attack speed does not change that interval.
+        "archon_of_chayula_tornado_attack_interval_ms" if value > 0.0 => {
+            Some(vec![Modifier::number(
+                "SkillUseRate",
+                ModType::Base,
+                1000.0 / value,
+            )])
+        }
         // Rain of Arrows: "One arrow lands every {0} seconds", with
         // "Modifiers to Projectile speed apply to arrow landing frequency"
         // (`calc::rain`).
@@ -329,12 +616,28 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
             ModType::Base,
             value,
         )]),
+        // Flicker Strike performs additional strikes per Power Charge consumed.
+        "flicker_strike_additional_flickers_from_power_charges" => Some(vec![Modifier::number(
+            "AdditionalFlickersPerPowerCharge",
+            ModType::Base,
+            value,
+        )]),
+        CONSUMED_CHARGE_BENEFIT_DOUBLE_CHANCE => Some(vec![Modifier::number(
+            "ConsumedChargeBenefitDoubleChance",
+            ModType::Base,
+            value,
+        )]),
         // Spell Echo: "Supported Spells Echo {0} times". Each echo repeats
         // the spell, so a use under a cooldown is that many more casts
         // (`calc::offence::apply_cooldown_cap`).
         "support_spell_echo_number_of_echo_cascades" => {
             Some(vec![Modifier::number("RepeatCount", ModType::Base, value)])
         }
+        "echoed_spell_area_of_effect_+%" => Some(vec![Modifier::number(
+            "RepeatAreaOfEffect",
+            ModType::Inc,
+            value,
+        )]),
         // Rigwald's Ferocity: increased Attack Speed and more Damage for
         // Supported Skills, each only while using one of the two weapon sets.
         "support_rigwald_attack_speed_+%_in_weapon_set_one" => Some(vec![
@@ -365,8 +668,25 @@ fn while_using_weapon_set(set: u8) -> ModTag {
 /// active skill that the same gem grants. `stats` is every stat of the
 /// support. Empty when this table has nothing to say about the stat.
 pub fn granted_skill_modifiers(stat: &str, value: f64, stats: &[SkillDamageStat]) -> Vec<Modifier> {
+    with_exporter_rule(stat, granted_skill_modifiers_impl(stat, value, stats))
+}
+
+fn granted_skill_modifiers_impl(
+    stat: &str,
+    value: f64,
+    stats: &[SkillDamageStat],
+) -> Vec<Modifier> {
     let sibling = |id: &str| stats.iter().find(|ds| ds.stat == id).map(|ds| ds.value);
     match stat {
+        // Walking Calamity and The Stars Answer repeatedly trigger their
+        // granted meteor at this interval while the parent skill is active.
+        // This is the arrival rate for the selected meteor damage form,
+        // assuming a single target, rather than the character's attack rate.
+        "walking_calamity_spawn_meteor_every_ms" if value > 0.0 => vec![Modifier::number(
+            "SkillUseRate",
+            ModType::Base,
+            1000.0 / value,
+        )],
         // Doedre's Undoing: "Each Cursed Ground area from Supported Skills
         // spawns a Witchtoad every {0} seconds", with "Limit {0} areas of
         // Cursed Ground". The skill the gem grants, Dark Consequences, "is
@@ -400,6 +720,10 @@ const OIL_EXPOSURE: &str = "skill_base_oil_exposure_-_to_total_elemental_resista
 /// skill's debuff (`skill_env::buff_specs::buff_skill_specs`). `None` leaves
 /// the stat to the extracted stat map.
 pub fn debuff_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
+    debuff_modifiers_impl(stat, value).map(|mods| with_exporter_rule(stat, mods))
+}
+
+fn debuff_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
     match stat {
         // The enemy is taken to stand in the Oil. Exposure of each element
         // is reduced with the others (`calc::setup_env::reduce_enemy_exposure`).
@@ -418,11 +742,70 @@ const PREDATORS_MARK_PER_ENEMY: &str = "skill_wolf_mark_damage_taken_+%_per_near
 /// The stat of `{1}` in [`PREDATORS_MARK_PER_ENEMY`]'s text, the maximum.
 const PREDATORS_MARK_MAXIMUM: &str = "skill_wolf_mark_damage_taken_+%_cap";
 
+/// Enemy payloads from a monster's own curse stat set. Player curses keep
+/// their skill-specific mappings (including their target and value transforms).
+pub fn minion_curse_modifiers(
+    stat: &str,
+    value: f64,
+    stats: &[SkillDamageStat],
+) -> Option<Vec<Modifier>> {
+    minion_curse_modifiers_impl(stat, value, stats).map(|mods| with_exporter_rule(stat, mods))
+}
+
+fn minion_curse_modifiers_impl(
+    stat: &str,
+    value: f64,
+    stats: &[SkillDamageStat],
+) -> Option<Vec<Modifier>> {
+    let sibling = |id: &str| stats.iter().find(|ds| ds.stat == id).map(|ds| ds.value);
+    match stat {
+        // The curse's own stats describe what its target receives. These
+        // also occur on monster curses, without a player-skill stat map.
+        "base_chaos_damage_resistance_%" => {
+            Some(vec![Modifier::number("ChaosResist", ModType::Base, value)])
+        }
+        "physical_damage_taken_+%" => Some(vec![Modifier::number(
+            "PhysicalDamageTaken",
+            ModType::Inc,
+            value,
+        )]),
+        "accuracy_rating_+%" => Some(vec![Modifier::number("Accuracy", ModType::Inc, value)]),
+        "base_skill_buff_damage_+%_final_to_apply" => {
+            let mut modifier = Modifier::number("Damage", ModType::More, value);
+            // Enfeeble has a separate value against Unique enemies;
+            // the monster version has only one value for every target.
+            if sibling("base_skill_buff_damage_+%_final_vs_unique_to_apply").is_some() {
+                modifier.tags.push(ModTag::condition("Unique", true));
+            }
+            Some(vec![modifier])
+        }
+        "base_skill_buff_damage_+%_final_vs_unique_to_apply" => Some(vec![
+            Modifier::number("Damage", ModType::More, value)
+                .with_tag(ModTag::condition("Unique", false)),
+        ]),
+        "base_temporal_chains_other_buff_time_passed_+%_to_apply" => Some(vec![Modifier::number(
+            "BuffExpireFaster",
+            ModType::More,
+            value,
+        )]),
+
+        _ => curse_modifiers(stat, value, stats),
+    }
+}
+
 /// The modifiers the stat `stat` of a curse or a mark puts on the enemy at
 /// `value`, when this table defines the stat. `stats` is every stat of the
 /// skill, each with its quality added. `None` leaves the stat to the
 /// extracted stat map.
 pub fn curse_modifiers(stat: &str, value: f64, stats: &[SkillDamageStat]) -> Option<Vec<Modifier>> {
+    curse_modifiers_impl(stat, value, stats).map(|mods| with_exporter_rule(stat, mods))
+}
+
+fn curse_modifiers_impl(
+    stat: &str,
+    value: f64,
+    stats: &[SkillDamageStat],
+) -> Option<Vec<Modifier>> {
     let sibling = |id: &str| stats.iter().find(|ds| ds.stat == id).map(|ds| ds.value);
     match stat {
         // Predator's Mark: the enemies of the marked target near it are the
@@ -462,6 +845,10 @@ pub const ELEMENTAL_EXPOSURE_PER_1000_ARMOUR: &str = "BannerElementalExposurePer
 /// when this table defines the stat. `None` leaves the stat to the extracted
 /// stat map.
 pub fn player_buff_modifiers(stat: &str, value: f64, skill: BuffSkill) -> Option<Vec<Modifier>> {
+    player_buff_modifiers_impl(stat, value, skill).map(|mods| with_exporter_rule(stat, mods))
+}
+
+fn player_buff_modifiers_impl(stat: &str, value: f64, skill: BuffSkill) -> Option<Vec<Modifier>> {
     match stat {
         // Refraction III: the banner applies Elemental Exposure to the
         // enemies in its area, this much per 1000 of the character's Armour,
@@ -744,6 +1131,14 @@ mod tests {
         assert_eq!(mods[0].value.as_number(), Some(-100.0));
     }
 
+    #[test]
+    fn spells_have_culling_strike_only_grants_culling_to_spells() {
+        let mut db = ModDb::new();
+        db.add_list(skill_modifiers("spells_have_culling_strike", 1.0).expect("defined"));
+        assert!(db.flag(&CalcConfig::new().with_flags(ModFlags::SPELL), "CanCull"));
+        assert!(!db.flag(&CalcConfig::new().with_flags(ModFlags::ATTACK), "CanCull"));
+    }
+
     /// The damage type is in the stat id, or, for Fiery Death's
     /// `corpse_explosion_monster_life_%`, in its text: "base Fire Damage".
     #[test]
@@ -968,6 +1363,28 @@ mod tests {
         assert!(curse_modifiers("base_skill_effect_duration", 5000.0, &[]).is_none());
     }
 
+    #[test]
+    fn enfeeble_uses_the_unique_value_only_when_its_skill_has_one() {
+        let common = "base_skill_buff_damage_+%_final_to_apply";
+        let unique = "base_skill_buff_damage_+%_final_vs_unique_to_apply";
+        let factor = |stats: &[SkillDamageStat], is_unique| {
+            let mut db = ModDb::new();
+            for ds in stats {
+                db.add_list(minion_curse_modifiers(&ds.stat, ds.value, stats).unwrap());
+            }
+            db.more(
+                &CalcConfig::new().with_condition("Unique", is_unique),
+                &[ModName::from("Damage")],
+            )
+        };
+        let player = [stat(common, -40.0), stat(unique, -15.0)];
+        assert_eq!(factor(&player, false), 0.6);
+        assert_eq!(factor(&player, true), 0.85);
+        let monster = [stat(common, -60.0)];
+        assert_eq!(factor(&monster, false), 0.4);
+        assert_eq!(factor(&monster, true), 0.4);
+    }
+
     /// Predator's Mark at 20 quality: 4% increased damage taken for each of
     /// the character's minions in its Presence, up to 60%.
     #[test]
@@ -1163,7 +1580,10 @@ mod tests {
     fn minion_stats_are_for_the_minions() {
         const MUSTER: &str =
             "support_varied_troops_damage_+%_final_per_different_persistent_ominion";
-        let three = SummonedMinions { reviving_kinds: 3 };
+        let three = SummonedMinions {
+            reviving_kinds: 3,
+            ..Default::default()
+        };
         let mut db = ModDb::new();
         db.add_list(minion_modifiers(MUSTER, 7.0, three).expect("a rule"));
         let damage = [ModName::from("Damage")];
@@ -1177,5 +1597,43 @@ mod tests {
             Some(Vec::new())
         );
         assert!(!is_minion_stat("active_skill_damage_+%_final"));
+    }
+
+    #[test]
+    fn minion_attribute_bonuses_count_complete_player_attribute_groups() {
+        let facts = SummonedMinions {
+            player_strength: 127.0,
+            player_dexterity: 19.0,
+            ..Default::default()
+        };
+        for (stat, divisor, name, expected) in [
+            (
+                "minion_1%_damage_+%_per_X_player_strength",
+                10.0,
+                "Damage",
+                12.0,
+            ),
+            (
+                "active_skill_minion_1%_attack_speed_+%_per_X_player_dexterity",
+                3.0,
+                "AttackSpeed",
+                6.0,
+            ),
+            (
+                "minion_1%_area_of_effect_+%_per_X_player_dexterity",
+                3.0,
+                "AreaOfEffect",
+                6.0,
+            ),
+        ] {
+            let mods = minion_modifiers(stat, divisor, facts).expect("minion stat");
+            assert_eq!(mods[0].name.as_str(), name);
+            assert_eq!(mods[0].value.as_number(), Some(expected));
+            assert_eq!(
+                skill_modifiers(stat, divisor),
+                Some(Vec::new()),
+                "the summoner gains nothing"
+            );
+        }
     }
 }

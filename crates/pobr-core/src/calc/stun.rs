@@ -73,7 +73,28 @@ pub struct StunResult {
 ///
 /// Addition (:2544-2548): `AddESToStunThreshold` → `+ ES × ΣBASE ESToStunThresholdPercent / 100`.
 /// Aggregation (:2549-2552): `(base + ΣBASE StunThreshold) × (1 + ΣINC/100) × ΠMORE`.
+pub(crate) struct StunThresholdTerms {
+    pub base: f64,
+    pub flat: f64,
+    pub inc: f64,
+    pub more: f64,
+}
+
+impl StunThresholdTerms {
+    pub fn value(&self) -> f64 {
+        round((self.base + self.flat) * self.inc * self.more)
+    }
+}
+
 pub fn calc_stun_threshold(db: &ModDb, cfg: &CalcConfig, inp: &StunInputs) -> f64 {
+    stun_threshold_terms(db, cfg, inp).value()
+}
+
+pub(crate) fn stun_threshold_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    inp: &StunInputs,
+) -> StunThresholdTerms {
     let names = [ModName::from("StunThreshold")];
     let base = if db.flag(cfg, "StunThresholdBasedOnEnergyShieldInsteadOfLife") {
         let pct = db.sum(
@@ -110,7 +131,12 @@ pub fn calc_stun_threshold(db: &ModDb, cfg: &CalcConfig, inp: &StunInputs) -> f6
     let flat = db.sum(ModType::Base, cfg, &names);
     let inc = 1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0;
     let more = db.more(cfg, &names);
-    round((base + flat) * inc * more)
+    StunThresholdTerms {
+        base,
+        flat,
+        inc,
+        more,
+    }
 }
 
 /// Full stun pipeline (PoB2 CalcDefence.lua:2525-2643; threshold → duration → self-stun chance).
@@ -128,27 +154,52 @@ pub fn calc_stun_threshold(db: &ModDb, cfg: &CalcConfig, inp: &StunInputs) -> f6
 ///   up this gains parameters, but the formula skeleton doesn't change.
 /// - Chance (:2623-2624): `baseStunChance = min(StunBaseMult × effective damage / threshold, 100)`;
 ///   below `MinStunChanceNeeded`(20) it's zeroed; then `× notAvoidChance / 100`.
-pub fn calc_stun(db: &ModDb, cfg: &CalcConfig, inp: &StunInputs) -> StunResult {
+pub(crate) fn stun_duration_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    avoid_stun: f64,
+) -> (f64, f64, f64, f64) {
     let game = cfg.constants.game();
+    let duration = if avoid_stun >= 100.0 {
+        0.0
+    } else {
+        game.stun_base_duration_seconds
+    };
+    let increase = 1.0 + db.sum(ModType::Inc, cfg, &[ModName::from("StunDuration")]) / 100.0;
+    let recovery = 1.0 + db.sum(ModType::Inc, cfg, &[ModName::from("StunRecovery")]) / 100.0;
+    (duration, increase, recovery, game.server_tick_seconds)
+}
+
+pub fn calc_stun(db: &ModDb, cfg: &CalcConfig, inp: &StunInputs) -> StunResult {
     let threshold = calc_stun_threshold(db, cfg, inp);
 
     // :2554-2558 notAvoidChance is recovered from the upstream avoid_stun
     // (already includes StunImmune / the implicit ES halving).
     let not_avoid = (100.0 - inp.avoid_stun).max(0.0);
 
-    // Duration (:2584-2595)
+    let (duration, increase, recovery, tick) = stun_duration_terms(db, cfg, inp.avoid_stun);
     let stun_duration = if not_avoid <= 0.0 {
-        // :2584-2586 "Cannot be Stunned" → 0.
         0.0
     } else {
-        let dur_inc = 1.0 + db.sum(ModType::Inc, cfg, &[ModName::from("StunDuration")]) / 100.0;
-        let recovery = 1.0 + db.sum(ModType::Inc, cfg, &[ModName::from("StunRecovery")]) / 100.0;
-        let tick = game.server_tick_seconds;
-        // :2594 m_ceil(base × dur / recovery × ServerTickRate) / ServerTickRate.
-        let raw = game.stun_base_duration_seconds * dur_inc / recovery;
-        round((raw / tick).ceil() * tick)
+        round((duration * increase / recovery / tick).ceil() * tick)
     };
 
+    let (_, gated, _) = stun_chance_terms(cfg, inp, threshold);
+    let self_stun_chance = round(gated * not_avoid / 100.0);
+
+    StunResult {
+        threshold,
+        self_stun_chance,
+        stun_duration,
+    }
+}
+
+pub(crate) fn stun_chance_terms(
+    cfg: &CalcConfig,
+    inp: &StunInputs,
+    threshold: f64,
+) -> (f64, f64, f64) {
+    let game = cfg.constants.game();
     // Self-stun chance (:2617-2624)
     // :2617 physical weighted ×0.25; :2620-2621 default "Average" scope × PhysicalStunMult.
     let effective_damage = (inp.total_taken_hit + inp.physical_taken_hit * 0.25)
@@ -168,11 +219,5 @@ pub fn calc_stun(db: &ModDb, cfg: &CalcConfig, inp: &StunInputs) -> StunResult {
     } else {
         0.0
     };
-    let self_stun_chance = round(gated * not_avoid / 100.0);
-
-    StunResult {
-        threshold,
-        self_stun_chance,
-        stun_duration,
-    }
+    (base_chance, gated, effective_damage)
 }

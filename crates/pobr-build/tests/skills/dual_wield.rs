@@ -245,10 +245,13 @@ fn dual_wield_golden_baseline() {
         );
     };
     let data = load_build_data();
+    // The golden's hit and critical chances were recorded against a level-1 target.
+    let mut options = opts(&[]);
+    options.enemy_level = 1;
     let out = calculate_with_data(
         &dual_build(Some(weapon("Shortsword", &[]))),
         &data,
-        &opts(&[]),
+        &options,
     )
     .expect("dual wield golden calc");
     let mh = out.main_hand.as_ref().expect("MH sub-table");
@@ -430,4 +433,26 @@ fn weapon_local_reduced_attack_speed_is_the_weapons_own() {
         (on_ring / plain - 1.3 / 1.5).abs() < 1e-9,
         "{on_ring} / {plain}"
     );
+}
+
+/// `skill_double_hits_when_dual_wielding`: Mace Strike hits once with each
+/// weapon. DPS counts both hits; crit chance and average hit describe one hit.
+#[test]
+fn mace_strike_counts_both_weapon_hits() {
+    let data = load_build_data();
+    let build = |off_hand| {
+        let mut build = dual_build(off_hand);
+        build.socket_groups = vec![SocketGroup::new().with_active_skill("MeleeMaceMacePlayer", 20)];
+        build
+    };
+    let dual = calculate_with_data(&build(Some(weapon("Wooden Club", &[]))), &data, &opts(&[]))
+        .expect("dual mace strike");
+    let mh = dual.main_hand.as_ref().expect("main hand");
+    let oh = dual.off_hand.as_ref().expect("off hand");
+    assert!((dual.dps - 2.0 * mh.average_hit * mh.speed * mh.hit_chance).abs() < 1e-6);
+    assert!((dual.crit_chance - mh.crit_chance).abs() < 1e-9);
+    assert!((mh.average_hit - oh.average_hit).abs() < 1e-9);
+    let single = calculate_with_data(&build(None), &data, &opts(&[])).expect("single mace strike");
+    let hand = single.main_hand.as_ref().expect("single hand");
+    assert!((single.dps - hand.average_hit * hand.speed * hand.hit_chance).abs() < 1e-6);
 }

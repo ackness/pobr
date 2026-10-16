@@ -6,7 +6,9 @@ use std::path::Path;
 
 use pobr_core::apply_range::apply_range;
 use pobr_core::item_text::{parse_pob_xml_item, strip_pob_annotations};
+use pobr_core::mod_parser::engine::strip_display_markup;
 use pobr_core::mod_parser::{ParseStatus, parse_mod_engine_diag};
+use pobr_core::skill_env::parse_gem_property_bonus;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -39,6 +41,10 @@ pub struct Entry {
     /// Payload parsed by the build radius-grant consumer, not a global modifier.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub radius_grant: Option<String>,
+    /// Recognized syntax routed outside the modifier parser; this does not
+    /// certify the granted skill or gem category has calculation support.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_channel: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vendor_status: Option<Status>,
     pub mod_names: BTreeSet<String>,
@@ -75,8 +81,18 @@ fn read_json(path: &Path) -> Result<Value, String> {
     serde_json::from_slice(&bytes).map_err(|e| format!("{}: {e}", path.display()))
 }
 
+fn clean_source_text(text: &str) -> String {
+    // Item annotations are not glossary links. Resolve game display markup
+    // before the item cleaner, which otherwise drops every bracketed word.
+    let mut text = text.to_string();
+    for annotation in ["[augmented]", "[crafted]", "[fractured]"] {
+        text = text.replace(annotation, "");
+    }
+    strip_pob_annotations(&strip_display_markup(&text))
+}
+
 fn add(corpus: &mut Corpus, text: &str, source: String) {
-    let text = strip_pob_annotations(text);
+    let text = clean_source_text(text);
     // Low/high samples exercise roll boundaries; no template becomes a rule.
     for roll in [0.0, 1.0] {
         let text = apply_range(&text, roll, None, 1.0);
@@ -112,7 +128,7 @@ fn add_unique(corpus: &mut Corpus, name: &str, raw: &str) -> Result<(), String> 
     // Audit every variant and both endpoints before the calculation view resolves rolls.
     let raw = raw
         .lines()
-        .map(strip_pob_annotations)
+        .map(clean_source_text)
         .collect::<Vec<_>>()
         .join("\n");
     for roll in [0.0, 1.0] {
@@ -337,7 +353,20 @@ fn parse_entry(
     let radius_grant = pobr_core::passive::parse_grant_line(text).map(|(_, payload)| payload);
     let parsed_text = radius_grant.as_deref().unwrap_or(text);
     let (outcome, diag) = parse_mod_engine_diag(parsed_text, rules);
-    let status = if diag.dropped_pre_flag_tags > 0
+    let text_channel = if parse_gem_property_bonus(parsed_text).is_some() {
+        Some("gem_property".to_string())
+    } else if parsed_text
+        .to_ascii_lowercase()
+        .strip_prefix("grants skill:")
+        .is_some_and(|rest| !rest.trim().is_empty())
+    {
+        Some("granted_skill".to_string())
+    } else {
+        None
+    };
+    let status = if text_channel.is_some() {
+        Status::Parsed
+    } else if diag.dropped_pre_flag_tags > 0
         || outcome
             .unparsed
             .as_ref()
@@ -369,6 +398,7 @@ fn parse_entry(
         sources,
         status,
         radius_grant,
+        text_channel,
         vendor_status,
         mod_names: outcome.mods.iter().map(|m| m.name.to_string()).collect(),
         special_rule_id: outcome.special_meta.map(|m| m.entry_id),
@@ -394,6 +424,7 @@ pub fn build(data: &Path, oracle: Option<&Path>) -> Result<Audit, String> {
         };
         let entry = parse_entry(&text, sources, &rules, vendor_status);
         let class = match (entry.status, vendor_status) {
+            _ if entry.text_channel.is_some() => "text_channel",
             (Status::Parsed, _) => "parsed",
             (Status::NoEffect, _) => "no_effect",
             (Status::RecognizedEmpty, _) => "recognized_empty",
@@ -619,6 +650,67 @@ mod tests {
         }
     }
 
+    #[test]
+    fn glossary_links_keep_the_words_that_determine_the_mechanic() {
+        let mut corpus = Corpus::new();
+        add(
+            &mut corpus,
+            "Body Armour grants 100% increased [Thorns|Thorns] damage",
+            "passive:20195".into(),
+        );
+        add(
+            &mut corpus,
+            "+2 to Level of all Skills with a [Strength] requirement",
+            "passive:test".into(),
+        );
+        add(
+            &mut corpus,
+            "{crafted}+10 to maximum Life [crafted]",
+            "unique:test".into(),
+        );
+        assert!(corpus.contains_key("Body Armour grants 100% increased Thorns damage"));
+        assert!(corpus.contains_key("+2 to Level of all Skills with a Strength requirement"));
+        assert!(corpus.contains_key("+10 to maximum Life"));
+    }
+
+    #[test]
+    fn separate_text_consumers_are_not_modifier_parser_gaps() {
+        let rules =
+            crate::parsed::compile_parser_rules(&pobr_gamedata::current_data_dir()).unwrap();
+        for (text, channel) in [
+            ("+2 to Level of all Cold Skills", "gem_property"),
+            ("+4 to Level of Despair Skills", "gem_property"),
+            ("+10% to Quality of all Spell Skills", "gem_property"),
+            (
+                "+2 to Level of all Skills with a Strength requirement",
+                "gem_property",
+            ),
+            ("Grants Skill: Level 20 Firebolt", "granted_skill"),
+        ] {
+            let entry = parse_entry(text, BTreeSet::new(), &rules, Some(Status::Parsed));
+            assert_eq!(entry.status, Status::Parsed, "{text}");
+            assert_eq!(entry.text_channel.as_deref(), Some(channel));
+        }
+        for text in [
+            "+2 to Level of Socketed Skill Gems",
+            "+2 to Level of Supported Cold Skills",
+            "+2 to Level of dropped Reward Items",
+            "+2 to Level of Despair Skills if an Enemy is nearby",
+            "Grants Skill:",
+            "Unknown Future Mechanic",
+        ] {
+            assert!(
+                parse_entry(text, BTreeSet::new(), &rules, None)
+                    .text_channel
+                    .is_none()
+            );
+        }
+        assert_eq!(
+            parse_entry("Allocates Paragon", BTreeSet::new(), &rules, None).status,
+            Status::Parsed
+        );
+    }
+
     fn snapshot(rows: &[(&str, &str, Status)]) -> Audit {
         Audit {
             schema: "modifier-audit/v1".into(),
@@ -636,6 +728,7 @@ mod tests {
                             sources: BTreeSet::from([source.to_string()]),
                             status: *status,
                             radius_grant: None,
+                            text_channel: None,
                             vendor_status: None,
                             mod_names: BTreeSet::new(),
                             special_rule_id: None,
