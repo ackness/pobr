@@ -1810,6 +1810,106 @@ class SkillSweepTests(unittest.TestCase):
             self.sweep.oracle_result({"mainOutput": {"TotalDPS": "Infinity"}})
 
 
+class ConfigCoverageTests(unittest.TestCase):
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location(
+            "config_coverage", REPO / "devs/scripts/config-coverage.py")
+        self.coverage = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.coverage)
+
+    def test_all_effects_list_variants_conditions_and_handlers(self):
+        def option(var, names=(), **extra):
+            return {"var": var, "section": "Combat", "effects": [
+                {"name": name, "target": "player"} for name in names], **extra}
+        options = [option("read", ["Damage"]), option("mixed", ["Damage", "Missing"]),
+                   option("variants", option_effects={"one": [{"name": "Damage"}],
+                                                      "two": [{"name": "Missing"}]}),
+                   option("condition", ["Condition:Frozen"]),
+                   option("multiplier", ["Multiplier:Stacks"]),
+                   option("referenced", ["Condition:Waiting"]),
+                   option("derived", ["Condition:Combat"]),
+                   option("implied", imply_conditions=["Frozen"]),
+                   option("missing_implied", imply_conditions=["Unasked"]),
+                   option("handler", handler_id="config:ok"),
+                   option("unregistered", handler_id="config:missing"),
+                   option("scalar"), option("lost"),
+                   option("unworked", ["Missing"], visibility={"if_skill": ["Fireball"]}),
+                   option("worked", ["Missing"], visibility={"if_skill": ["Arc"]})]
+        builds = [{"usage": {"reads": {"Damage": []}, "condition_reads": ["Frozen"],
+                             "multiplier_reads": ["Stacks"], "referenced_variables": ["Waiting"],
+                             "skills": [{"skill_id": "ArcPlayer"}]}}]
+        report = self.coverage.classify(options, builds,
+            {"engine": {"scalar": {"consumer.rs"}}, "data": {}}, {"config:ok"},
+            pass_conditions={"Combat"}, skill_names={"ArcPlayer": "Arc"})
+        rows = {r["var"]: r for r in report["options"]}
+        self.assertEqual(report["counts"], {"read": 5, "handler": 1, "implied": 1,
+                                            "unread": 6, "no_effect": 2})
+        self.assertEqual(report["sections"]["Combat"], report["counts"])
+        self.assertEqual(rows["variants"]["missing"][0]["name"], "Missing")
+        self.assertEqual(rows["unworked"]["unworked_skills"], ["Fireball"])
+        self.assertEqual(rows["worked"]["unworked_skills"], [])
+        self.assertEqual(rows["scalar"]["no_effect_kind"], "scalar_consumer")
+        self.assertEqual(rows["lost"]["no_effect_kind"], "lost_mechanic")
+        self.assertEqual(report["unregistered_handlers"], [
+            {"var": "unregistered", "handler_id": "config:missing"}])
+        self.assertEqual(rows["mixed"]["missing"][0]["absent_from"], ["engine", "data"])
+        self.assertEqual(rows["missing_implied"]["class"], "unread")
+        self.assertIn("No reader anywhere", self.coverage.render(report))
+
+    def test_nested_effects_and_enemy_condition_namespace(self):
+        options = [{"var": "nested", "section": "Minions", "effects": [{
+            "target": "player", "name": "MinionModifier", "list_value": {
+                "kind": "nested_mod", "mod": {"name": "Damage"}}}]},
+            {"var": "enemy", "section": "Enemy", "effects": [{
+                "target": "enemy", "name": "Condition:Frozen"}]},
+            {"var": "direct", "section": "Player", "effects": [{
+                "name": "Condition:Direct"}]}]
+        report = self.coverage.classify(options, [{"usage": {
+            "reads": {"Damage": [], "Condition:Direct": []}, "condition_configs": {"EnemyFrozen": "enemy"}}}],
+            {"engine": {}, "data": {}}, set())
+        self.assertEqual(report["counts"]["read"], 3)
+        self.assertEqual(self.coverage.effect_names(options[0]), [("minion", "Damage")])
+
+    def test_registry_only_counts_registrations_not_comments_or_stubs(self):
+        text = '''
+        // registry.register("config:comment", stub);
+        const STUB_HANDLER_IDS: &[&str] = &["config:unregistered"];
+        registry.register("config:direct", handler);
+        for (id, flag) in [("config:table", "Flag")] {
+            registry.register(id, handler);
+        }
+        #[cfg(test)] mod tests { registry.register("config:test", handler); }
+        '''
+        self.assertEqual(self.coverage.registrations(text), {"config:direct", "config:table"})
+
+    def test_source_search_excludes_tests_comments_and_the_catalog(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "crates/core/src/calc.rs"
+            source.parent.mkdir(parents=True)
+            source.write_text('let x = "Read"; // "Comment"\n#[cfg(test)] mod tests { "Test" }')
+            directory = root / "data/test"
+            directory.mkdir(parents=True)
+            (directory / "config_options.json").write_text('{"name": "OnlyWritten"}')
+            (directory / "rules.json").write_text('{"name": "Producer"}')
+            index, *_ = self.coverage.source_index(root, directory)
+            self.assertIn("Read", index["engine"])
+            self.assertNotIn("Comment", index["engine"])
+            self.assertNotIn("Test", index["engine"])
+            self.assertNotIn("OnlyWritten", index["data"])
+            self.assertIn("Producer", index["data"])
+
+    def test_failed_ledger_aborts_instead_of_reporting_a_partial_union(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            (directory / "overlay").mkdir()
+            (directory / "overlay/config_options.json").write_text('{"options": []}')
+            with patch.object(self.coverage.gaps.lookup, "data_dir", return_value=directory), \
+                 patch.object(self.coverage.gaps, "collect_usage", return_value=([], [{"error": "failed"}])), \
+                 contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(self.coverage.main(["--binary", "unused"]), 1)
+
+
 class OutputCoverageTests(unittest.TestCase):
     def setUp(self):
         spec = importlib.util.spec_from_file_location(
