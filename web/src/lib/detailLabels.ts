@@ -2,6 +2,13 @@ import type { Lang } from './i18n';
 
 /** Modifier input names for optional Calcs details; no calculation logic. */
 export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
+  ExposureEffectOnSelf: { 'en-US': 'Exposure Effect on You', 'zh-TW': '自身受到的曝露效果', 'zh-CN': '自身受到的曝露效果' },
+  WitherEffectOnSelf: { 'en-US': 'Withered Effect on You', 'zh-TW': '自身受到的凋零效果', 'zh-CN': '自身受到的凋零效果' },
+  SelfBleedEffect: { 'en-US': 'Bleeding Magnitude on You', 'zh-TW': '自身受到的流血幅度', 'zh-CN': '自身受到的流血幅度' },
+  SelfIgniteEffect: { 'en-US': 'Ignite Magnitude on You', 'zh-TW': '自身受到的點燃幅度', 'zh-CN': '自身受到的点燃幅度' },
+  DebuffExpirationModifier: { 'en-US': 'Debuff Duration Multiplier on You', 'zh-TW': '自身減益持續時間倍率', 'zh-CN': '自身减益持续时间倍率' },
+  SelfDebuffExpirationRate: { 'en-US': 'Debuff Expiration Rate on You', 'zh-TW': '自身減益消退速度', 'zh-CN': '自身减益消退速度' },
+
   CurseEffectOnSelf: { 'en-US': 'Curse Effect on You', 'zh-TW': '自身受到的詛咒效果', 'zh-CN': '自身受到的诅咒效果' },
   SelfAilmentDuration: { 'en-US': 'Ailment Duration on You', 'zh-TW': '自身異常狀態持續時間', 'zh-CN': '自身异常状态持续时间' },
   SelfElementalAilmentDuration: { 'en-US': 'Elemental Ailment Duration on You', 'zh-TW': '自身元素異常狀態持續時間', 'zh-CN': '自身元素异常状态持续时间' },

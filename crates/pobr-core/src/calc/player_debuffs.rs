@@ -14,6 +14,11 @@ use super::Env;
 /// query their own database and never read these player modifiers.
 pub(super) fn view_names(stat: &str) -> &'static [&'static str] {
     match stat {
+        "ExposureEffectOnSelf" => &["ExposureEffectOnSelf"],
+        "WitherEffectOnSelf" => &["WitherEffectOnSelf"],
+        "SelfBleedEffect" => &["SelfBleedEffect"],
+        "SelfIgniteEffect" => &["SelfIgniteEffect"],
+        "DebuffExpirationModifier" => &["SelfDebuffExpirationRate"],
         "CurseEffectOnSelf" => &["CurseEffectOnSelf"],
         "SelfBleedDuration" => &["SelfBleedDuration", "SelfAilmentDuration"],
         "SelfPoisonDuration" => &["SelfPoisonDuration", "SelfAilmentDuration"],
@@ -44,24 +49,39 @@ pub(super) fn view_names(stat: &str) -> &'static [&'static str] {
     }
 }
 
+pub(super) fn is_duration_view(stat: &str) -> bool {
+    view_names(stat).contains(&"SelfAilmentDuration")
+}
+
 /// These are modifier views, even without a configured incoming debuff.
-/// The engine has no player debuff-expiration-rate modifier to apply here.
+/// Game debuff_time_passed_+% scales the rate at which duration elapses.
 pub(super) fn calculate_views(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
+    let expiration_rate = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("SelfDebuffExpirationRate")],
+    );
+    let expiration = 100.0 / (100.0 + expiration_rate);
     let percent = |stat| {
         let names: Vec<_> = view_names(stat)
             .iter()
             .map(|name| ModName::from(*name))
             .collect();
         let value = (100.0 + db.sum(ModType::Inc, cfg, &names)) * db.more(cfg, &names);
-        if stat == "CurseEffectOnSelf" {
-            value.max(0.0)
+        if is_duration_view(stat) {
+            value * expiration
         } else {
-            value
+            value.max(0.0)
         }
     };
     let out = &mut env.player.output;
+    out.exposure_effect_on_self = percent("ExposureEffectOnSelf");
+    out.wither_effect_on_self = percent("WitherEffectOnSelf");
+    out.self_bleed_effect = percent("SelfBleedEffect");
+    out.self_ignite_effect = percent("SelfIgniteEffect");
+    out.debuff_expiration_modifier = 100.0 * expiration;
     out.curse_effect_on_self = percent("CurseEffectOnSelf");
     out.self_bleed_duration = percent("SelfBleedDuration");
     out.self_poison_duration = percent("SelfPoisonDuration");

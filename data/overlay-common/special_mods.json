@@ -5367,6 +5367,26 @@
       "exporter": "absent"
     },
     {
+      "id": "self_debuff_expiration_rate",
+      "pattern": "debuffs on you expire (\\d+(?:\\.\\d+)?)% faster",
+      "mods": [
+        {
+          "name": "SelfDebuffExpirationRate",
+          "type": "BASE",
+          "value": {
+            "ref": "$1"
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "S1",
+      "game_source": "base/stats.json: debuff_time_passed_+%; game text: Debuffs on you expire #% faster",
+      "source_note": "Displays the self debuff duration multiplier and applies it to self-ailment duration views; no incoming debuff uptime is modelled.",
+      "examples": [
+        "Debuffs on you expire 25% faster"
+      ]
+    },
+    {
       "id": "reduced_curse_effect_on_you",
       "pattern": "(\\d+(?:\\.\\d+)?)% reduced effect of curses on you",
       "mods": [

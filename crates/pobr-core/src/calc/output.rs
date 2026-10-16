@@ -28,6 +28,11 @@ pub struct FullDpsOutput {
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutputTable {
     /// Player debuff modifier views; durations are percentages of base duration.
+    pub exposure_effect_on_self: f64,
+    pub wither_effect_on_self: f64,
+    pub self_bleed_effect: f64,
+    pub self_ignite_effect: f64,
+    pub debuff_expiration_modifier: f64,
     pub curse_effect_on_self: f64,
     pub self_bleed_duration: f64,
     pub self_poison_duration: f64,
@@ -565,6 +570,11 @@ pub struct MinionOutput {
 impl Default for OutputTable {
     fn default() -> Self {
         Self {
+            exposure_effect_on_self: 100.0,
+            wither_effect_on_self: 100.0,
+            self_bleed_effect: 100.0,
+            self_ignite_effect: 100.0,
+            debuff_expiration_modifier: 100.0,
             curse_effect_on_self: 100.0,
             self_bleed_duration: 100.0,
             self_poison_duration: 100.0,

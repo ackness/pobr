@@ -100,7 +100,11 @@ fn self_debuff_views_report_modifiers_without_changing_other_outputs() {
     ] {
         assert_eq!(display_value(session.output(), id), expected, "{id}");
         let sources = session.detail_sources(id);
-        assert_eq!(sources.len(), 1, "{id}");
+        assert_eq!(
+            sources.len(),
+            if id.ends_with("Duration") { 2 } else { 1 },
+            "{id}"
+        );
         assert!(!sources[0].rows.is_empty(), "{id}");
         if !id.ends_with("Immunity") {
             let (_, inc, more) = sources[0].totals;
@@ -143,4 +147,53 @@ fn self_debuff_views_report_modifiers_without_changing_other_outputs() {
         reduced.player.output.effective_movement_speed_mod,
         neutral.player.output.effective_movement_speed_mod
     );
+}
+
+#[test]
+fn extra_self_debuff_views_use_game_magnitudes_and_expiration_rate() {
+    use pobr_core::{calc::MinimalInput, display_value};
+    let mut session = crate::support::session(MinimalInput::default());
+    session
+        .add_modifier_texts(&[
+            "30% reduced Effect of Exposure on you",
+            "20% reduced effect of Withered on you",
+            "40% reduced Magnitude of Bleeding on You",
+            "50% reduced Magnitude of Ignite on you",
+            "Debuffs on you expire 25% faster",
+            "20% reduced Duration of Ailments on You",
+        ])
+        .unwrap();
+    session.perform_minimal().unwrap();
+    // Game exposure/wither/bleeding/ignite magnitude stats are additive
+    // percentages. debuff_time_passed_+%: 25% faster expires in 100/125 time.
+    for (id, expected) in [
+        ("ExposureEffectOnSelf", 70.0),
+        ("WitherEffectOnSelf", 80.0),
+        ("SelfBleedEffect", 60.0),
+        ("SelfIgniteEffect", 50.0),
+        ("DebuffExpirationModifier", 80.0),
+    ] {
+        assert_eq!(display_value(session.output(), id), expected, "{id}");
+        let groups = session.detail_sources(id);
+        assert_eq!(groups.len(), 1);
+        let (base, inc, more) = groups[0].totals;
+        let value = if id == "DebuffExpirationModifier" {
+            10000.0 / (100.0 + base)
+        } else {
+            ((100.0 + inc) * more).max(0.0)
+        };
+        assert_eq!(value, expected);
+    }
+    for ailment in ["Bleed", "Poison", "Ignite", "Chill", "Freeze", "Shock"] {
+        let id = format!("Self{ailment}Duration");
+        // (100 - 20) * 100 / (100 + 25) = 64% of base duration.
+        assert_eq!(display_value(session.output(), &id), 64.0);
+        let groups = session.detail_sources(&id);
+        assert_eq!(groups.len(), 2);
+        let (_, inc, more) = groups[0].totals;
+        assert_eq!(
+            (100.0 + inc) * more * 100.0 / (100.0 + groups[1].totals.0),
+            64.0
+        );
+    }
 }

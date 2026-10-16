@@ -25,6 +25,41 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
     };
     let mut catalog = vec![
         computed(
+            "ExposureEffectOnSelf",
+            Cat::Defence,
+            Vt::Percent,
+            "ExposureEffectOnSelf",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "WitherEffectOnSelf",
+            Cat::Defence,
+            Vt::Percent,
+            "WitherEffectOnSelf",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "SelfBleedEffect",
+            Cat::Defence,
+            Vt::Percent,
+            "SelfBleedEffect",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "SelfIgniteEffect",
+            Cat::Defence,
+            Vt::Percent,
+            "SelfIgniteEffect",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "DebuffExpirationModifier",
+            Cat::Defence,
+            Vt::Percent,
+            "DebuffExpirationModifier",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
             "CurseEffectOnSelf",
             Cat::Defence,
             Vt::Percent,
@@ -1387,6 +1422,11 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "ProjectileEvadeChance" => output.projectile_evade_chance,
         "SpellEvadeChance" => output.spell_evade_chance,
         "SpellProjectileEvadeChance" => output.spell_projectile_evade_chance,
+        "ExposureEffectOnSelf" => output.exposure_effect_on_self,
+        "WitherEffectOnSelf" => output.wither_effect_on_self,
+        "SelfBleedEffect" => output.self_bleed_effect,
+        "SelfIgniteEffect" => output.self_ignite_effect,
+        "DebuffExpirationModifier" => output.debuff_expiration_modifier,
         "CurseEffectOnSelf" => output.curse_effect_on_self,
         "SelfBleedDuration" => output.self_bleed_duration,
         "SelfPoisonDuration" => output.self_poison_duration,

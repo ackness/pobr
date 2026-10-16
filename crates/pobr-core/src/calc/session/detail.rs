@@ -26,7 +26,11 @@ pub struct DerivedDetail {
 pub fn source_names(stat: &str) -> Vec<String> {
     let names = super::super::player_debuffs::view_names(stat);
     if !names.is_empty() {
-        return names.iter().map(|name| (*name).to_string()).collect();
+        let mut names: Vec<_> = names.iter().map(|name| (*name).to_string()).collect();
+        if super::super::player_debuffs::is_duration_view(stat) {
+            names.push("SelfDebuffExpirationRate".into());
+        }
+        return names;
     }
     if let Some((_, names)) = super::super::utility::GLOBAL_STATS
         .iter()
@@ -524,7 +528,7 @@ impl CalculationSession {
         if !view_names.is_empty() {
             let cfg = &self.env.cfg;
             let names: Vec<_> = view_names.iter().map(|name| ModName::from(*name)).collect();
-            return vec![SourceGroup {
+            let mut groups = vec![SourceGroup {
                 name: stat.into(),
                 more_precision: None,
                 totals: (
@@ -534,6 +538,20 @@ impl CalculationSession {
                 ),
                 rows: db.evaluate_names(cfg, &names),
             }];
+            if super::super::player_debuffs::is_duration_view(stat) {
+                let names = [ModName::from("SelfDebuffExpirationRate")];
+                groups.push(SourceGroup {
+                    name: "SelfDebuffExpirationRate".into(),
+                    more_precision: None,
+                    totals: (
+                        db.sum(ModType::Base, cfg, &names),
+                        db.sum(ModType::Inc, cfg, &names),
+                        db.more(cfg, &names),
+                    ),
+                    rows: db.evaluate_names(cfg, &names),
+                });
+            }
+            return groups;
         }
         let mut cfg = if super::super::utility::GLOBAL_STATS
             .iter()

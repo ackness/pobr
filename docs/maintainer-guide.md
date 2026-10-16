@@ -660,11 +660,19 @@ Effect reductions cannot make a debuff beneficial. `CurseEffectOnSelf`, the six
 `HinderImmunity` display player-side modifier views. Curse effect and durations
 are percentages of base: `(100 + INC) * MORE` (curse effect is floored at zero).
 Durations combine the ailment-specific and all-ailment modifiers, plus
-elemental-ailment modifiers for Ignite, Chill, Freeze and Shock. Cool Headed, Warm Blooded and Strong
-Hearted supply their game-data 50% less duration through the same views.
+elemental-ailment modifiers for Ignite, Chill, Freeze and Shock. Cool Headed,
+Warm Blooded and Strong Hearted supply their game-data 50% less duration through
+the same views.
 Immunity views reuse the existing `*Immune` modifiers, including “cannot be
-inflicted” text. No player debuff-expiration-rate modifier is currently modelled. Their game sources include `curse_effect_on_self_+%`,
-`self_bleed_duration_+%`, `base_all_ailment_duration_on_self_+%` and the three
+inflicted” text. `DebuffExpirationModifier` is `10000 / (100 + expiration rate)`
+percent (game `debuff_time_passed_+%`); each duration view is multiplied by
+`DebuffExpirationModifier / 100`. `ExposureEffectOnSelf`, `WitherEffectOnSelf`,
+`SelfBleedEffect` and `SelfIgniteEffect` likewise expose nonnegative
+`(100 + INC) * MORE` views from
+`exposure_effect_on_you_+%`, `withered_effect_on_self_+%`,
+`base_bleeding_magnitude_+%_on_self` and `ignite_effect_on_self_+%`. The other
+views use `curse_effect_on_self_+%`, `self_bleed_duration_+%`,
+`base_all_ailment_duration_on_self_+%` and the three
 `immune_to_*` stats. Incoming curses, ailments, Corrupted Blood, Maim and Hinder
 remain unmodelled, so these views change no other output. Enemy curses read the
 enemy database separately. Generic `PhysicalDegen` has neither ailment identity

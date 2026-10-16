@@ -142,7 +142,9 @@ fn catalog_entry_counts_locked() {
         // CurseEffectOnSelf, Self{Bleed,Poison,Ignite,Chill,Freeze,Shock}Duration,
         // CorruptedBloodImmunity, MaimImmunity and HinderImmunity (+10).
         // PowerChargesDuration, FrenzyChargesDuration and EnduranceChargesDuration (+3).
-        291,
+        // ExposureEffectOnSelf, WitherEffectOnSelf, SelfBleedEffect,
+        // SelfIgniteEffect and DebuffExpirationModifier (+5).
+        296,
         "a change in Computed entry count needs explicit review"
     );
 }
