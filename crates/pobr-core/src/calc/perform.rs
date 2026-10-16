@@ -831,10 +831,28 @@ fn fill_mechanics(env: &mut Env) {
     let charges = resolve_all_charges(db, cfg);
     env.player.output.charge_power_current = charges.power.current;
     env.player.output.charge_power_maximum = charges.power.maximum;
+    env.player.output.charge_power_duration = super::survivability::charge_duration_terms(
+        db,
+        cfg,
+        super::survivability::ChargeKind::Power,
+    )
+    .seconds();
     env.player.output.charge_frenzy_current = charges.frenzy.current;
     env.player.output.charge_frenzy_maximum = charges.frenzy.maximum;
+    env.player.output.charge_frenzy_duration = super::survivability::charge_duration_terms(
+        db,
+        cfg,
+        super::survivability::ChargeKind::Frenzy,
+    )
+    .seconds();
     env.player.output.charge_endurance_current = charges.endurance.current;
     env.player.output.charge_endurance_maximum = charges.endurance.maximum;
+    env.player.output.charge_endurance_duration = super::survivability::charge_duration_terms(
+        db,
+        cfg,
+        super::survivability::ChargeKind::Endurance,
+    )
+    .seconds();
 
     // Physical leech uses each attacking hand's post-conversion damage and
     // that hand's modifier scope. Never pair an off-hand leech affix with the

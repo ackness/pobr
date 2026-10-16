@@ -2,8 +2,8 @@ import type { Lang } from './i18n';
 
 /** Modifier input names for optional Calcs details; no calculation logic. */
 export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
-  PhysicalHitAverage: { 'en-US': 'Physical hit average', 'zh-TW': '物理擊中平均傷害', 'zh-CN': '物理击中平均伤害' },
-  OtherStunHitAverage: { 'en-US': 'Other stun-building hit average', 'zh-TW': '其他可累積暈眩的平均擊中傷害', 'zh-CN': '其他可积累晕眩的平均击中伤害' },
+  PhysicalHitAverage: { 'en-US': 'Physical hit average after mitigation', 'zh-TW': '減傷後物理擊中平均傷害', 'zh-CN': '减伤后物理击中平均伤害' },
+  OtherStunHitAverage: { 'en-US': 'Other stun-building hit average after mitigation', 'zh-TW': '減傷後其他可累積暈眩的平均擊中傷害', 'zh-CN': '减伤后其他可积累晕眩的平均击中伤害' },
   PhysicalStunMultiplier: { 'en-US': 'Physical stun multiplier', 'zh-TW': '物理暈眩倍率', 'zh-CN': '物理晕眩倍率' },
   MeleeStunMultiplier: { 'en-US': 'Melee stun multiplier', 'zh-TW': '近戰暈眩倍率', 'zh-CN': '近战晕眩倍率' },
   HeavyStunDamageScale: { 'en-US': 'Heavy Stun damage scale', 'zh-TW': '重度暈眩傷害係數', 'zh-CN': '重度晕眩伤害系数' },
@@ -12,6 +12,13 @@ export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
   StunBuildupMore: { 'en-US': 'More Stun Buildup multiplier', 'zh-TW': '暈眩累積更多倍率', 'zh-CN': '晕眩积累更多倍率' },
   EnemyStunBuildupMultiplier: { 'en-US': 'Enemy Stun Buildup multiplier', 'zh-TW': '敵人暈眩累積倍率', 'zh-CN': '敌人晕眩积累倍率' },
   CanHeavyStun: { 'en-US': 'Can build Heavy Stun', 'zh-TW': '可累積重度暈眩', 'zh-CN': '可积累重度晕眩' },
+  ChargeDuration: { 'en-US': 'Charge duration', 'zh-TW': '充能持續時間', 'zh-CN': '充能持续时间' },
+  PowerChargesDuration: { 'en-US': 'Power Charge Duration', 'zh-TW': '魔力充能持續時間', 'zh-CN': '暴击球持续时间' },
+  FrenzyChargesDuration: { 'en-US': 'Frenzy Charge Duration', 'zh-TW': '狂怒充能持續時間', 'zh-CN': '狂怒球持续时间' },
+  EnduranceChargesDuration: { 'en-US': 'Endurance Charge Duration', 'zh-TW': '耐力充能持續時間', 'zh-CN': '耐力球持续时间' },
+  BaseChargeDuration: { 'en-US': 'Base charge duration (seconds)', 'zh-TW': '基礎充能持續時間（秒）', 'zh-CN': '基础充能持续时间（秒）' },
+  ChargeDurationIncreased: { 'en-US': 'Increased charge duration (%)', 'zh-TW': '充能持續時間增加（%）', 'zh-CN': '充能持续时间提高（%）' },
+  ChargeDurationMore: { 'en-US': 'Charge duration more/less multiplier', 'zh-TW': '充能持續時間更多／更少倍率', 'zh-CN': '充能持续时间总增／总降倍率' },
   AilmentThreshold: { 'en-US': 'Elemental Ailment Threshold', 'zh-TW': '元素異常狀態門檻', 'zh-CN': '元素异常状态门槛' },
   LifeOnKill: { 'en-US': 'Life Recovery on Kill', 'zh-TW': '擊殺恢復生命', 'zh-CN': '击杀恢复生命' },
   ManaOnKill: { 'en-US': 'Mana Recovery on Kill', 'zh-TW': '擊殺恢復魔力', 'zh-CN': '击杀恢复魔力' },

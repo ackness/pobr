@@ -515,3 +515,6 @@ ArchonDuration = "Archon Buff Duration (s)"
 ArchonRecoveryPeriod = "Archon Recovery Period (s)"
 
 HeavyStunBuildupAvg = "Heavy Stun Buildup per Hit"
+PowerChargesDuration = "Power Charge Duration (s)"
+FrenzyChargesDuration = "Frenzy Charge Duration (s)"
+EnduranceChargesDuration = "Endurance Charge Duration (s)"

@@ -662,6 +662,24 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "EnduranceChargesMax",
         ),
+        computed(
+            "PowerChargesDuration",
+            Cat::Utility,
+            Vt::TimeSeconds,
+            "PowerChargesDuration",
+        ),
+        computed(
+            "FrenzyChargesDuration",
+            Cat::Utility,
+            Vt::TimeSeconds,
+            "FrenzyChargesDuration",
+        ),
+        computed(
+            "EnduranceChargesDuration",
+            Cat::Utility,
+            Vt::TimeSeconds,
+            "EnduranceChargesDuration",
+        ),
         // Leech / Recoup (Wave 2 / Lane A)
         computed("LifeLeechRate", Cat::Recovery, Vt::Number, "LifeLeechRate"),
         computed("ManaLeechRate", Cat::Recovery, Vt::Number, "ManaLeechRate"),
@@ -1262,6 +1280,10 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "ChargeFrenzyMaximum" => output.charge_frenzy_maximum as f64,
         "ChargeEnduranceCurrent" => output.charge_endurance_current,
         "ChargeEnduranceMaximum" => output.charge_endurance_maximum as f64,
+
+        "PowerChargesDuration" => output.charge_power_duration,
+        "FrenzyChargesDuration" => output.charge_frenzy_duration,
+        "EnduranceChargesDuration" => output.charge_endurance_duration,
 
         // Leech / Recoup
         "LifeLeechRate" => output.life_leech_rate,

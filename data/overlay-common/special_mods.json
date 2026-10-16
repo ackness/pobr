@@ -5569,18 +5569,6 @@
       ]
     },
     {
-      "id": "charge_duration_unmodelled",
-      "pattern": "\\d+(?:\\.\\d+)?% (?:increased|reduced) endurance, frenzy and power charge duration",
-      "mods": [],
-      "verified": true,
-      "batch": "unmodelled",
-      "source_note": "Charge duration and charge uptime are not modelled; configured charge counts are snapshots.",
-      "game_source": "charge_duration_+%",
-      "examples": [
-        "20% increased Endurance, Frenzy and Power Charge Duration"
-      ]
-    },
-    {
       "id": "totem_life_unmodelled",
       "pattern": "\\d+(?:\\.\\d+)?% (?:increased|reduced) totem life",
       "mods": [],

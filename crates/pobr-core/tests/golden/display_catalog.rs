@@ -140,7 +140,8 @@ fn catalog_entry_counts_locked() {
         // Charm{1,2,3}LifeRecoveryOnUse (+3), game charm_recover_X_life_when_used.
         // Flask{1,2}EnergyShieldRecovery / InstantRecovery / RecoveryPerSecond (+6).
         // HeavyStunBuildupAvg (+1).
-        279,
+        // PowerChargesDuration, FrenzyChargesDuration and EnduranceChargesDuration (+3).
+        282,
         "a change in Computed entry count needs explicit review"
     );
 }
