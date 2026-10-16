@@ -4418,6 +4418,26 @@
       ]
     },
     {
+      "id": "physical_damage_prevented_recouped_as_life",
+      "exporter": "absent",
+      "game_source": "base/stats.json: physical_damage_prevented_recouped_as_life_%; base/passive_tree.json: Made to Last (44952); https://poe2db.tw/us/Iron_Ward",
+      "pattern": "(\\d+(?:\\.\\d+)?)% of physical damage prevented recouped as life",
+      "mods": [
+        {
+          "name": "PhysicalDamagePreventedLifeRecoup",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Assumption, no in-game test: Armour plus additional physical damage reduction, after taken-as shifts, excluding blocked/deflected hits and damage-taken multipliers. Uses Life recoup timing/recovery. See maintainer guide and defence::prevented_recoup.",
+      "examples": [
+        "5% of Physical Damage prevented Recouped as Life",
+        "50% of Physical Damage prevented Recouped as Life"
+      ]
+    },
+    {
       "id": "life_recoup_also_energy_shield",
       "pattern": "damage taken recouped as life is also recouped as energy shield",
       "mods": [

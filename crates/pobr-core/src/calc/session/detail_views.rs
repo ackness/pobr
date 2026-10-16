@@ -341,16 +341,17 @@ impl CalculationSession {
                 (format!("max({})", expressions.join(", ")), rows)
             }
             "LifeRecoupRate" => {
-                use crate::calc::survivability::{RecoupResource, recoup_terms};
-                let t = recoup_terms(
+                use crate::calc::survivability::life_recoup_terms;
+                let t = life_recoup_terms(
                     db,
                     cfg,
                     self.ehp_terms()?.recoupable_total,
-                    RecoupResource::Life,
+                    self.ehp_terms()?.physical_prevented,
                 );
-                (if t.damage <= 0.0 || t.percent <= 0.0 || t.duration <= 0.0 { "0 * RecoupableDamage" }
-                    else { "round(RecoupableDamage * RecoupPercent / 100 / RecoupDuration * max(0, RecoupRecovery), 9)" }.into(), vec![
+                ("round((RecoupableDamage * RecoupPercent + PhysicalDamagePrevented * PreventedRecoupPercent) / 100 / RecoupDuration * RecoupRecovery, 9)".into(), vec![
                         ("RecoupableDamage".into(), t.damage), ("RecoupPercent".into(), t.percent),
+                        ("PhysicalDamagePrevented".into(), t.physical_prevented),
+                        ("PreventedRecoupPercent".into(), t.prevented_percent),
                         ("RecoupDuration".into(), t.duration), ("RecoupRecovery".into(), t.recovery),
                     ])
             }

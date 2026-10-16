@@ -20,6 +20,8 @@ mod ehp_pob2;
 mod evade_stun;
 #[path = "defence/keystone_defence.rs"]
 mod keystone_defence;
+#[path = "defence/prevented_recoup.rs"]
+mod prevented_recoup;
 #[path = "defence/recovery.rs"]
 mod recovery;
 #[path = "defence/resistance_cap.rs"]

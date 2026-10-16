@@ -20,11 +20,11 @@ use super::trigger::{
 };
 use super::{
     BreakdownTable, CalcError, EhpOptions, Env, LeechResource, MinimalInput, MinionOutput,
-    MitigationInputs, OutputTable, RecoupResource, ResistanceSuite, build_mitigation_ctx,
-    calc_avoidance, calc_crit_extra_reduction, calc_defence, calc_ehp_with_opts, calc_es_recharge,
-    calc_leech_from_db, calc_recoup_from_db, calc_regen, calc_skill_use_time,
-    calc_taken_multi_suite, calculate_minimal_vs_enemy, enemy_crit_effect, es_recharge_per_second,
-    reservation, resolve_all_charges, round, taken_mult_for_type_default,
+    MitigationInputs, OutputTable, ResistanceSuite, build_mitigation_ctx, calc_avoidance,
+    calc_crit_extra_reduction, calc_defence, calc_ehp_with_opts, calc_es_recharge,
+    calc_leech_from_db, calc_regen, calc_skill_use_time, calc_taken_multi_suite,
+    calculate_minimal_vs_enemy, enemy_crit_effect, es_recharge_per_second, reservation,
+    resolve_all_charges, round, taken_mult_for_type_default,
 };
 use crate::{TraceGraph, TraceOperation};
 
@@ -870,25 +870,23 @@ fn fill_mechanics(env: &mut Env) {
     let recoupable_by_type = super::ehp::fill_ehp_pob2(env, &keystones, &resistances);
     let recoupable_total: f64 = recoupable_by_type.iter().sum();
 
-    // Recoup (13-G15 partial: base-value replacement)
-    // Old convention = life × 10% estimate (decoupled from the hit pipeline); new convention =
-    // the recoupable damage accumulated by reduce_pools over the mitigated EHP loop (vendor's
-    // reducePoolsByDamage :489/:537 records damageTakenThatCanBeRecouped → accumulated at
-    // :3119-3123 → :3347-3361 `TotalRecoupRecovery = Recoup%/100 × totalDamage`,
-    // :3382 `RecoupRecoveryMax = Total / recoupTime` — calc_recoup_from_db's
-    // total/duration×rateMod formula skeleton is unchanged, only the damage_taken input is
-    // swapped for the real value).
-    // With no enemy incoming damage (a bare Env) → base 0 → rate 0 (matches vendor's
-    // no-incoming-damage semantics).
-    // ES recoup is per-type: generic EnergyShieldRecoup (+ Life transfer) applies
-    // to all recoupable, while Fire/Cold/LightningEnergyShieldRecoup (from
-    // recoup_%_elemental_damage_as_energy_shield) apply to their damage type's
-    // recoupable only — same duration and ES recovery rate for both.
+    // Both resources use damage accumulated in the mitigated EHP loop. Life
+    // additionally recoups Physical damage prevented by the reduction stage;
+    // ES retains its per-type damage-taken percentages. Shared terms also
+    // supply the derived details.
     let (life_recoup_rate, es_recoup_rate) = {
         let db = &env.player.mod_db;
         let cfg = &env.cfg;
         (
-            calc_recoup_from_db(db, cfg, recoupable_total, RecoupResource::Life).rate_per_second,
+            super::survivability::life_recoup_terms(
+                db,
+                cfg,
+                recoupable_total,
+                env.ehp_terms
+                    .as_ref()
+                    .map_or(0.0, |terms| terms.physical_prevented),
+            )
+            .rate_per_second,
             super::survivability::calc_es_recoup_rate_by_type(db, cfg, recoupable_by_type),
         )
     };

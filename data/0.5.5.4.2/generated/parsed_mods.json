@@ -26210,12 +26210,9 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "PhysicalDamage",
+          "name": "PhysicalDamagePreventedLifeRecoup",
           "type": "Base",
-          "value": 5.0,
-          "tags": [
-            "DamageType(Physical)"
-          ]
+          "value": 5.0
         }
       ]
     },
