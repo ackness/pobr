@@ -20,8 +20,9 @@
 //! calculation kept ([`pobr_core::ReadSnapshot`]). A query that reads a name in
 //! another context than the main skill's (one hand, an ailment, a damage
 //! type) is judged by that query, so a modifier it counted is applied however
-//! the main skill's context sees it; the reason given for one left out is the
-//! main skill's context's. The CLI (`calculate-build --usage`) and the web
+//! the main skill's context sees it. Reasons for hit-keyword modifiers reuse
+//! the hit context when the skill produces hits; other reasons use the main
+//! skill's context. The CLI (`calculate-build --usage`) and the web
 //! contract (`line_usage_json`) return it as JSON.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -30,7 +31,7 @@ use pobr_core::calc::CalculationSession;
 use pobr_core::{EvalContext, ModEvaluation, ModValue, Modifier, ReadSnapshot, ReadVariables};
 use pobr_data::catalog::PassiveNodeDef;
 use pobr_data::item::Item;
-use pobr_data::modifier::{ModName, ModType};
+use pobr_data::modifier::{KeywordFlags, ModName, ModType};
 use pobr_data::source::SourceKind;
 use serde::Serialize;
 
@@ -47,8 +48,8 @@ use crate::{Build, BuildData, Diagnosis, LineFate, ModifierRef};
 pub struct LineUsage {
     /// Counts of what is below.
     pub summary: UsageSummary,
-    /// The effect that was calculated: the main skill whose context the
-    /// reasons below are given in. `null` when no skill resolves.
+    /// The effect that was calculated: the main skill whose base or hit
+    /// context explains the reasons below. `null` when no skill resolves.
     pub main_skill: Option<String>,
     /// Every line of the build the calculation received, and every other
     /// stored player modifier grouped by the line or source it came from; by
@@ -318,6 +319,14 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
     let session = &diagnosis.session;
     let nodes = data.passive_nodes_for(build.tree_version.as_deref());
     let main = EvalContext::new(session.config());
+    // `offence::hit_pass` adds Hit for damage aggregation; the base skill
+    // config deliberately lacks it because ailments use their own keywords.
+    // Only reuse that context when this skill actually produces a hit.
+    let hit_cfg = session
+        .config()
+        .clone()
+        .with_keyword_flags(main.cfg.keyword_flags | KeywordFlags::HIT);
+    let hit = (session.output().total_hit_avg > 0.0).then(|| EvalContext::new(&hit_cfg));
     let variables = Variables {
         referenced: session.referenced_variables(),
         asked: &diagnosis.variables,
@@ -375,8 +384,13 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
         let modifiers: Vec<UsageModifier> = modifiers
             .into_iter()
             .map(|modifier| {
+                let context = if modifier.keyword_flags.intersects(KeywordFlags::HIT) {
+                    hit.as_ref().unwrap_or(&main)
+                } else {
+                    &main
+                };
                 let (status, reason) =
-                    judge(modifier, &diagnosis.reads, &main, &variables, &minions);
+                    judge(modifier, &diagnosis.reads, context, &variables, &minions);
                 UsageModifier {
                     name: modifier.name.as_str().to_string(),
                     mod_type: modifier.mod_type.as_trace_label(),

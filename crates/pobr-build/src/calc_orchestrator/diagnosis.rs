@@ -378,6 +378,9 @@ const SET_BY_THE_ORCHESTRATION: &[&str] = &[
 pub(crate) fn condition_set_from_build(condition: &str) -> bool {
     SET_BY_THE_ORCHESTRATION.contains(&condition)
         || pobr_core::calc::session::CONDITIONS_SET_BY_A_PASS.contains(&condition)
+        // `condition_set_by_a_pass` also recognises the family emitted for
+        // enabled buffs/auras, including each Herald's display name.
+        || condition.starts_with("AffectedBy")
 }
 
 /// The config option that sets `condition`, if one does: its own

@@ -24,7 +24,7 @@ _SPEC.loader.exec_module(triage)
 lookup = triage.lookup
 SOURCE_KINDS = ("unique", "passive", "mods", "compound", "jewel_node", "bases")
 FATES = {"unparsed", "unmodelled", "no_modifier"}
-BUCKETS = ("dropped", "config-gated", "state-gated", "unused", "handled")
+BUCKETS = ("dropped", "config-gated", "state-gated", "skill-mismatch", "unused", "handled")
 CLASSES = ("pobr_gap", "upstream_gap", "recognized_empty", "no_effect")
 STOPWORDS = set("a an the to of in on for from with and or you your have has is are "
                 "increased reduced more less maximum minimum per when while gain grants "
@@ -97,6 +97,14 @@ def line_buckets(line, reads, conditions, states):
                 buckets.add("config-gated" if gate.get("config_option") else "state-gated")
             else:
                 reason = modifier.get("reason") or ""
+                # Exact formats from Modifier::unmet_requirement for flags,
+                # keywords and skill types. Conditions, thresholds and other
+                # unmet requirements must keep their own classification.
+                if re.fullmatch(
+                        r"needs (?:a keyword of |every keyword of )?[A-Za-z][A-Za-z0-9]*(?:, [A-Za-z][A-Za-z0-9]*)*"
+                        r"|(?:not )?SkillType [A-Za-z][A-Za-z0-9]*(?: or [A-Za-z][A-Za-z0-9]*)*", reason):
+                    buckets.add("skill-mismatch")
+                    continue
                 condition = re.fullmatch(r"Condition (.+) (?:not met|holds \(applies only without it\))", reason)
                 names = (condition.group(1).split(", ") if condition else
                          reason[len("none of Conditions "):-len(" met")].split(", ")
@@ -391,7 +399,7 @@ def main(argv=None):
     parser.add_argument("--limit", type=int, default=30)
     parser.add_argument("--kind", help="source kind, e.g. unique, passive, mods, compound, jewel_node")
     parser.add_argument("--binary", type=Path, help="use an already built pobr executable (default: build CLI once)")
-    parser.add_argument("--all", action="store_true", help="also show gated, unused and handled rows")
+    parser.add_argument("--all", action="store_true", help="also show gated, skill-mismatch, unused and handled rows")
     parser.add_argument("--refresh", action="store_true", help="recalculate worked usage ledgers")
     args = parser.parse_args(argv)
     if args.command == "gap" and not args.query:
