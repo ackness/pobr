@@ -13898,7 +13898,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "DamageTaken",
+          "name": "LifeRecoup",
           "type": "Base",
           "value": 16.0,
           "tags": [

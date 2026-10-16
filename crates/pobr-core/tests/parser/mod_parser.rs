@@ -558,6 +558,37 @@ fn parses_flask_fire_lightning_from_hits_taken_as_cold() {
     }
 }
 
+/// Game stat `local_flask_damage_taken_goes_to_life_over_4_seconds_%_during_effect`:
+/// the line is one Life recoup mod gated on an active flask. The generic path read it
+/// as `DamageTaken` BASE 29 and left "Recouped as Life" unparsed.
+#[test]
+fn flask_damage_taken_recouped_as_life_is_life_recoup() {
+    for text in [
+        "29% of Damage taken during effect Recouped as Life",
+        "21% of Damage taken during flask effect Recouped as Life",
+    ] {
+        let o = parse_mod(text).unwrap();
+        assert_eq!(o.status, ParseStatus::Parsed, "{text}");
+        assert!(o.unparsed.is_none(), "{text}: {:?}", o.unparsed);
+        assert_eq!(o.mods.len(), 1, "{text}");
+        let m = &o.mods[0];
+        assert_eq!(m.name, ModName::from("LifeRecoup"), "{text}");
+        assert!(
+            !o.mods
+                .iter()
+                .any(|m| m.name == ModName::from("DamageTaken")),
+            "{text}: no flat damage taken"
+        );
+        assert!(
+            m.tags.contains(&ModTag::condition("UsingFlask", false)),
+            "{text}: missing UsingFlask condition"
+        );
+        assert!(m.exporter_rule.is_some(), "{text}: exporter-absent rule");
+    }
+    let o = parse_mod("29% of Damage taken during effect Recouped as Life").unwrap();
+    assert_eq!(o.mods[0].value, ModValue::Number(29.0));
+}
+
 /// Random element damage taken (vendor ModParser.lua:5661-5665): AVERAGE splits the
 /// value three ways (num/3). Real-world corpus text (`5% of Physical Damage from Hits
 /// taken as Damage of a Random Element`) regressed to `PhysicalDamageFromHitsTaken

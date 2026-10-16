@@ -701,7 +701,17 @@ factor. The kill rate is the PoBR config input `enemyKillsPerSecond`
 `append_energy_options`); left empty, the line is inactive with that config
 gate and no kill rate is assumed. The rule is exporter-absent. Lavianga's “This Flask cannot be Used but
 applies its Effect constantly” (`local_flask_always_drinking`) reports zero
-available uses while keeping its recovery rate.
+available uses while keeping its recovery rate. The flask line “N% of Damage taken
+during effect Recouped as Life” (`local_flask_damage_taken_goes_to_life_over_4_seconds_%_during_effect`,
+for example Blood of the Warrior) is `LifeRecoup` under `UsingFlask`, so it follows
+the enabled-flask convention and shares the Life recoup duration (8 seconds by
+default; the stat id's `over_4_seconds` is legacy naming, and the line states no
+duration). It is not flat Damage Taken: the generic `N% of` rule used to read it
+that way, adding 29 (Abyssal Lich Twister `4028d0b52984`) or 21 (Martial Artist Ice
+Shot `71a879f43f2f`) to every damage type, and the pinned PoB2 drops the line
+because its mid-line form leaves an unparsed remainder. The rule is
+`exporter: "absent"`. A parse that leaves an `unparsed` remainder still returns
+`Parsed` and is applied by ingest; that general behaviour is unchanged here.
 
 Focused Thrust (`projectile_damage_+%_with_spears_while_there_no_enemies_surrounding_you`, passive 9227) grants 40% increased Damage to Projectile hits with Spears when `enemyDistance` is at least 30 (3 m; ten units per metre), remains inactive with an `enemyDistance` config gate when unset, and assumes the configured target is the only enemy; this single-target convention has no in-game test, and the rule is `exporter: "absent"`.
 
