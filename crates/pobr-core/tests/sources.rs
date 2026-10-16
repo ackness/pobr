@@ -18,6 +18,8 @@ mod item_source;
 mod item_text;
 #[path = "sources/minion.rs"]
 mod minion;
+#[path = "sources/partial_parse.rs"]
+mod partial_parse;
 #[path = "sources/passive_source.rs"]
 mod passive_source;
 #[path = "sources/skill_source.rs"]

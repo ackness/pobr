@@ -465,12 +465,11 @@ fn session_preserves_unsupported_modifier_texts() {
     assert_eq!(session.unsupported_modifier_texts(), ["Mirrored"]);
 }
 
-/// A tag-suffix clause (threshold/condition) legitimately consumes the tail and
-/// attaches a tag to the mod; even if a cosmetic residue remains, the mod must
-/// still be injected -- it must not be blanket-downgraded just because of
-/// "Parsed+residue" (this previously broke the RedSupportGems threshold).
+/// A tag-suffix clause (threshold/condition) consumes the tail of the line and attaches
+/// a tag to the modifier, so the line parses completely and the modifier is injected.
+/// (A line with leftover text is not injected: see `sources::partial_parse`.)
 #[test]
-fn session_injects_tag_suffixed_mod_despite_leftover() {
+fn session_injects_tag_suffixed_threshold_mod() {
     let mut session = session(MinimalInput::default());
     session
         .add_modifier_texts([
@@ -479,7 +478,8 @@ fn session_injects_tag_suffixed_mod_despite_leftover() {
         .expect("engine never errors");
 
     // The threshold mod was injected (carrying a MultiplierThreshold tag, non-empty
-    // aggregation); leftover fragments don't block injection.
+    // aggregation) and nothing was reported as unsupported.
+    assert!(session.unsupported_modifier_texts().is_empty());
     assert!(
         !session.mods_named("Life").is_empty() || !session.mods_named("MaximumLife").is_empty(),
         "tag-suffixed threshold mod must be injected"

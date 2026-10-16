@@ -745,8 +745,22 @@ duration). It is not flat Damage Taken: the generic `N% of` rule used to read it
 that way, adding 29 (Abyssal Lich Twister `4028d0b52984`) or 21 (Martial Artist Ice
 Shot `71a879f43f2f`) to every damage type, and the pinned PoB2 drops the line
 because its mid-line form leaves an unparsed remainder. The rule is
-`exporter: "absent"`. A parse that leaves an `unparsed` remainder still returns
-`Parsed` and is applied by ingest; that general behaviour is unchanged here.
+`exporter: "absent"`.
+
+A line the parser reads only in part is not applied. A parse that returns `Parsed`
+with a non-empty `unparsed` remainder (for example “Removes 15% of Life Recovered
+from Mana when used”, which was a −15 `FlaskRecovery`, “88% more Recovery if used
+while on Low Mana”, which was a `FlaskLifeRecoveryLowLife` bonus, and “50% of Chaos
+damage you prevent when Hit Recouped as Life and Mana during effect”, which was +50
+`ChaosDamage`) used to be applied by ingest as a wrong modifier. Every ingest path now
+goes through `ParseOutcome::into_applicable`: item sections, flasks and charms,
+passive nodes, gem and support-gem stat texts, free `extra_modifier_texts`, jewel
+texts and local requirement lines apply a line only when `ParseOutcome::is_complete`
+holds; otherwise the original line is kept in `unsupported_modifier_texts` and
+the usage ledger reports it as `unparsed`, exactly like a line no rule matched. A
+remainder that is only display residue is fixed in the parser rule, not tolerated at
+ingest; the benchmark and tuned groups had none. Silently dropped pre-flag tags
+(`dropped_pre_flag_tags`, audit class `Partial`) are a separate, unchanged diagnostic.
 
 Focused Thrust (`projectile_damage_+%_with_spears_while_there_no_enemies_surrounding_you`, passive 9227) grants 40% increased Damage to Projectile hits with Spears when `enemyDistance` is at least 30 (3 m; ten units per metre), remains inactive with an `enemyDistance` config gate when unset, and assumes the configured target is the only enemy; this single-target convention has no in-game test, and the rule is `exporter: "absent"`.
 
@@ -812,7 +826,7 @@ PoB2 对照值与逻辑回归都使用活动数据版本，没有单独钉住的
 | 环节 | 丢失方式 | 记录位置 |
 |------|----------|----------|
 | 导入（XML → `Build`） | 物品块被拒、物品所在装备槽没有模型 | `ImportReport::skipped_items` / `unmodelled_slots` |
-| 文本 → Modifier | 没有规则能解析的词条行（物品、珠宝、已分配天赋 `Tree:<节点>: …`、配置行 `Config: …`） | `unsupported_modifier_texts` |
+| 文本 → Modifier | 没有规则能解析的词条行（物品、珠宝、已分配天赋 `Tree:<节点>: …`、配置行 `Config: …`）；只读懂一部分、留有未解析余文的行（`Parsed` 但 `unparsed` 非空）同样不应用，按原文记入 | `unsupported_modifier_texts`（台账 `unparsed`） |
 | 宝石 stat → Modifier | stat map 有条目但引擎拒绝（未知 mod 名、不支持的 tag）；完全没有条目的 stat 多数是展示或动画数据，按所属宝石列出供查找缺失的机制 | `Diagnosis::unmapped_stats` / `unknown_stats` |
 | Modifier → 计算 | 存入的名字从未被查询；依赖的 `Multiplier` 没有任何地方赋值（含从角色快照读取的 `actor: player` 类，例如 “per non-Idol Augment in your Equipment”）；等待的条件不在条件表里，也没有计算阶段推导它 | `Diagnosis::unread_modifiers` / `unprovided_multipliers` / `unset_conditions` |
 

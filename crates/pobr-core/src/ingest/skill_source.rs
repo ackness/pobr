@@ -86,7 +86,7 @@ use std::collections::HashSet;
 
 use pobr_data::prelude::*;
 
-use crate::mod_parser::{ParseError, ParseStatus};
+use crate::mod_parser::ParseError;
 use crate::rules::skill_type_expr;
 use crate::{ModTag, Modifier};
 
@@ -521,10 +521,9 @@ pub fn ingest_gem_with_ctx(
 
     let mut ingest = GemIngest::default();
     for text in &gem.modifier_texts {
-        let outcome = ctx.parse(text)?;
-        match outcome.status {
-            ParseStatus::Parsed => {
-                for modifier in outcome.mods {
+        match ctx.parse(text)?.into_applicable(text) {
+            Ok(mods) => {
+                for modifier in mods {
                     let mut origin =
                         ModifierSource::new(source_id.clone()).with_raw_text(text.clone());
                     if let Some(parent) = &parent_source_id {
@@ -533,11 +532,7 @@ pub fn ingest_gem_with_ctx(
                     ingest.modifiers.push(modifier.with_origin(origin));
                 }
             }
-            ParseStatus::Unsupported => {
-                if let Some(unparsed) = outcome.unparsed {
-                    ingest.unsupported.push(unparsed);
-                }
-            }
+            Err(unsupported) => ingest.unsupported.push(unsupported),
         }
     }
 
@@ -556,19 +551,14 @@ pub fn ingest_active_gem_with_ctx(
     let mut ingest = GemIngest::default();
 
     for text in &spec.modifier_texts {
-        let outcome = ctx.parse(text)?;
-        match outcome.status {
-            ParseStatus::Parsed => {
-                for modifier in outcome.mods {
+        match ctx.parse(text)?.into_applicable(text) {
+            Ok(mods) => {
+                for modifier in mods {
                     let origin = ModifierSource::new(source_id.clone()).with_raw_text(text.clone());
                     ingest.modifiers.push(modifier.with_origin(origin));
                 }
             }
-            ParseStatus::Unsupported => {
-                if let Some(unparsed) = outcome.unparsed {
-                    ingest.unsupported.push(unparsed);
-                }
-            }
+            Err(unsupported) => ingest.unsupported.push(unsupported),
         }
     }
 
@@ -671,10 +661,9 @@ pub fn ingest_support_gem_with_ctx(
 
     // Modifier text parsing (including more-multiplier isolation)
     for text in &spec.modifier_texts {
-        let outcome = ctx.parse(text)?;
-        match outcome.status {
-            ParseStatus::Parsed => {
-                for modifier in outcome.mods {
+        match ctx.parse(text)?.into_applicable(text) {
+            Ok(mods) => {
+                for modifier in mods {
                     let mut origin =
                         ModifierSource::new(source_id.clone()).with_raw_text(text.clone());
                     if let Some(parent) = &parent_source_id {
@@ -687,11 +676,7 @@ pub fn ingest_support_gem_with_ctx(
                     ingest.modifiers.push(modifier);
                 }
             }
-            ParseStatus::Unsupported => {
-                if let Some(unparsed) = outcome.unparsed {
-                    ingest.unsupported.push(unparsed);
-                }
-            }
+            Err(unsupported) => ingest.unsupported.push(unsupported),
         }
     }
 

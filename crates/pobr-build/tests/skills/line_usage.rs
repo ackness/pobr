@@ -1342,3 +1342,89 @@ fn self_debuff_modifier_views_read_each_previously_unmodelled_line() {
         );
     }
 }
+
+/// A flask line the parser read only in part applies nothing and is listed as
+/// unparsed. These three lines parse to a wrong modifier plus leftover text:
+/// "Removes 15% of Life Recovered from Mana when used" to -15 `FlaskRecovery`,
+/// "88% more Recovery if used while on Low Mana" to 88% more
+/// `FlaskLifeRecoveryLowLife` (Low Life, not Low Mana), and the Chaos recoup line to
+/// +50 `ChaosDamage`.
+#[test]
+fn partially_parsed_flask_lines_are_unparsed_and_apply_nothing() {
+    let data = data();
+    let lines = [
+        "Removes 15% of Life Recovered from Mana when used",
+        "88% more Recovery if used while on Low Mana",
+        "50% of Chaos damage you prevent when Hit Recouped as Life and Mana during effect",
+    ];
+    let build = parse_build(&format!(
+        r#"<PathOfBuilding2>
+<Build level="80" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: MAGIC
+Undiluted Ultimate Life Flask
+Implicits: 0
+{}
+</Item><ItemSet id="1"><Slot name="Flask 1" itemId="1" active="true"/></ItemSet></Items>
+</PathOfBuilding2>"#,
+        lines.join("\n")
+    ))
+    .unwrap();
+    let diagnosis = diagnose(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+    let ledger = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+    for text in lines {
+        let row = line(&ledger, "flask.flask1", text);
+        assert_eq!(row.status, LineStatus::Unparsed, "{row:?}");
+        assert!(row.modifiers.is_empty(), "{row:?}");
+        assert!(
+            diagnosis
+                .unparsed_lines
+                .iter()
+                .any(|unparsed| unparsed == text),
+            "{text} is in the unsupported list: {:?}",
+            diagnosis.unparsed_lines
+        );
+    }
+}
+
+/// Free modifier texts (`extra_modifier_texts`) follow the same rule: the partly read
+/// line "1% more Life Flask Recovery" is reported as unsupported and is not stored as a
+/// 1% more maximum Life modifier; the whole-line "1% more maximum Life" is.
+#[test]
+fn partially_parsed_extra_text_is_unparsed_and_applies_nothing() {
+    let data = data();
+    let text = "1% more Life Flask Recovery";
+    let build = parse_build(
+        r#"<PathOfBuilding2>
+<Build level="80" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
+</PathOfBuilding2>"#,
+    )
+    .unwrap();
+    let with = |line: Option<&str>| {
+        let options = DataOrchestratorOptions {
+            extra_modifier_texts: line.map(str::to_string).into_iter().collect(),
+            ..Default::default()
+        };
+        let session = pobr_build::calculate_with_data_session(&build, &data, &options).unwrap();
+        (
+            pobr_core::display_value(session.output(), "Life"),
+            session.unsupported_modifier_texts().to_vec(),
+        )
+    };
+    let (base_life, base_unsupported) = with(None);
+    assert!(base_life > 0.0);
+    assert!(base_unsupported.is_empty(), "{base_unsupported:?}");
+
+    let (life, unsupported) = with(Some(text));
+    assert_eq!(life, base_life, "the partial line changed Life");
+    assert_eq!(unsupported, vec![text.to_string()]);
+
+    // The same wording read completely does apply: 1% more Life.
+    let (more_life, unsupported) = with(Some("1% more maximum Life"));
+    assert!(unsupported.is_empty(), "{unsupported:?}");
+    assert!(
+        (more_life / base_life - 1.01).abs() < 0.001,
+        "{more_life} / {base_life}"
+    );
+}

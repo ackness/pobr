@@ -15,7 +15,6 @@
 // The orchestration backbone's (`mod.rs`) types and sibling-module helpers are brought
 // in via glob import — matching the style of the rest of the `calc_orchestrator::*` submodules.
 use pobr_core::calc::CalculationSession;
-use pobr_core::mod_parser::ParseStatus;
 use pobr_core::{ItemModSection, Modifier};
 use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::modifier::ModType;
@@ -1226,13 +1225,13 @@ pub(super) fn stage_inject_jewels(
             let outcome = parse_ctx
                 .parse(text)
                 .map_err(|e| BuildError::Parse(e.to_string()))?;
-            if outcome.status == ParseStatus::Unsupported {
+            let Ok(parsed_mods) = outcome.into_applicable(text) else {
                 session.record_unsupported_modifier_text(text.clone());
                 session.note_line(&source, text, LineFate::Unparsed);
                 continue;
-            }
+            };
             session.note_line(&source, text, LineFate::Parsed);
-            for mut m in outcome.mods {
+            for mut m in parsed_mods {
                 if let Some(scale) = scale
                     && let pobr_core::ModValue::Number(v) = m.value
                 {
