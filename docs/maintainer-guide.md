@@ -627,8 +627,13 @@ quality. “Mana Recovery from Flasks can Overflow maximum Mana during Effect”
 (`local_unique_flask_mana_flask_recovery_can_overcap_mana_during_flask_effect`)
 changes no output: recovery amounts are uncapped and current mana is not
 simulated. “#% Chance to gain a Charge when you kill an enemy”
-(`local_%_chance_to_gain_flask_charge_on_kill`) adds no passive generation
-because kill rate is not modelled. Lavianga's “This Flask cannot be Used but
+(`local_%_chance_to_gain_flask_charge_on_kill`) is the local
+`FlaskChargeOnKillChance`: one charge per kill at that chance, so the slot's
+`*ChargeGen` adds kills per second × chance / 100, times its charges-gained
+factor. The kill rate is the PoBR config input `enemyKillsPerSecond`
+(`Multiplier:EnemyKillsPerSecond`, merged with the Energy inputs by
+`append_energy_options`); left empty, the line is inactive with that config
+gate and no kill rate is assumed. The rule is exporter-absent. Lavianga's “This Flask cannot be Used but
 applies its Effect constantly” (`local_flask_always_drinking`) reports zero
 available uses while keeping its recovery rate.
 
