@@ -76,7 +76,9 @@ pub use diagnosis::{
     Diagnosis, MainSkillSummary, ModifierRef, READ_UNDER_A_STATE, ReadGate, UnmappedStat,
     UnsetCondition, diagnose,
 };
-pub(crate) use diagnosis::{config_option_setting, read_outside_the_database, read_under_a_state};
+pub(crate) use diagnosis::{
+    condition_set_from_build, config_option_setting, read_outside_the_database, read_under_a_state,
+};
 mod sources;
 use sources::SourceWriter;
 pub use sources::{LineFate, ReceivedLine};

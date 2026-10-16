@@ -363,3 +363,45 @@ fn config_setters_include_conditions_already_known_to_the_engine() {
             .any(|entry| entry.condition == "AffectedByArchon")
     );
 }
+
+#[test]
+fn build_and_calc_pass_conditions_are_declared_even_when_not_met() {
+    let data = data();
+    // Crystallised Immunities grants 100% avoidance for the majority colour;
+    // this Fireball build has no supports, so none of its three states holds.
+    let lines = [
+        "Immune to Ignite if a majority of your Socketed Support Gems are Red",
+        "Immune to Shock if a majority of your Socketed Support Gems are Green",
+        "Immune to Chill if a majority of your Socketed Support Gems are Blue",
+        "10% increased Damage while wielding a Bow",
+        "Critical Hits deal 10% increased Damage",
+    ];
+    let ledger = ledger(&data, &[], &lines);
+    for (text, condition) in lines.iter().zip([
+        "MajorityRedSocketedSupports",
+        "MajorityGreenSocketedSupports",
+        "MajorityBlueSocketedSupports",
+        "UsingBow",
+        "CriticalStrike",
+    ]) {
+        let row = line(&ledger, "item.amulet.explicit", text);
+        assert!(
+            ledger.condition_states.contains(condition),
+            "{condition}: {row:?}"
+        );
+        assert!(
+            !ledger
+                .conditions
+                .iter()
+                .any(|entry| entry.condition == condition)
+        );
+        if condition != "CriticalStrike" {
+            assert_eq!(row.status, LineStatus::Inactive, "{row:?}");
+            assert_eq!(
+                row.modifiers[0].reason,
+                Some(format!("Condition {condition} not met"))
+            );
+        }
+    }
+    assert!(!ledger.condition_states.contains("NothingSetsThis"));
+}

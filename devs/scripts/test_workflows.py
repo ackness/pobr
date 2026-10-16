@@ -1284,6 +1284,43 @@ class GapsTests(unittest.TestCase):
         rows = self.gaps.ranked_queue(audit, [build], include_all=True)
         self.assertTrue(all(row["builds"][0]["buckets"] == ["config-gated"] for row in rows))
 
+    def test_build_and_pass_conditions_are_state_gated_without_hiding_unknowns(self):
+        states = ["MajorityRedSocketedSupports", "MajorityGreenSocketedSupports",
+                  "MajorityBlueSocketedSupports", "UsingBow", "CriticalStrike", "WeaponSet2"]
+        def line(text, reason, status="inactive"):
+            return {"text": text, "status": status, "modifiers": [
+                {"name": "Damage", "status": status, "reason": reason}]}
+        lines = [line(state, f"Condition {state} not met") for state in states]
+        lines += [line("Unknown", "Condition NothingSetsThis not met"),
+                  line("Mixed unknown", "none of Conditions UsingBow, NothingSetsThis met"),
+                  line("Wrong flags", "needs Attack"),
+                  line("Unread", None, "unread"),
+                  line("Already applied", None, "applied"),
+                  line("Negated", "Condition UsingBow holds (applies only without it)"),
+                  line("Player state", "Condition player.UsingBow not met"),
+                  line("Config and state", "none of Conditions UsingBow, EnemyFrozen met"),
+                  line("Derived state takes precedence", "Condition CriticalStrike not met")]
+        build = self.build("spell", *lines)
+        build["usage"]["condition_states"] = states
+        build["usage"]["condition_configs"] = {"EnemyFrozen": "conditionEnemyFrozen", "CriticalStrike": "criticalStrikeOption"}
+        audit = {"entries": {row["text"]: self.entry(["passive:1"], "parsed", "parsed") for row in lines}}
+        rows = self.gaps.ranked_queue(audit, [build])
+        self.assertEqual({row["template"] for row in rows}, {"Unknown", "Mixed unknown", "Wrong flags", "Unread"})
+        complete = {row["template"]: row for row in self.gaps.ranked_queue(audit, [build], include_all=True)}
+        for state in states:
+            row = complete[self.gaps.template(state)]
+            self.assertEqual(row["builds"][0]["buckets"], ["state-gated"])
+            self.assertEqual(row["builds"][0]["lines"][0]["bucket_reasons"],
+                             [f"condition set from the build: {state}"])
+        self.assertEqual(complete["Config and state"]["builds"][0]["buckets"], ["config-gated", "state-gated"])
+        self.assertEqual(complete["Derived state takes precedence"]["builds"][0]["buckets"], ["state-gated"])
+        self.assertEqual(complete["Already applied"]["builds"][0]["buckets"], ["handled"])
+        self.assertEqual(complete["Negated"]["builds"][0]["buckets"], ["state-gated"])
+        self.assertEqual(complete["Player state"]["builds"][0]["buckets"], ["state-gated"])
+        card = dict(complete["UsingBow"], stat_matches=[], source_details=[], candidate_names=[], nearby_rules=[])
+        self.assertIn("condition set from the build: UsingBow", self.gaps.render_card(card))
+        self.assertNotIn("bucket_reasons", lines[0])
+
     def test_reverse_stat_match_checks_all_compound_members_in_base(self):
         self.data.files = {
             "base/stats.json": [{"id": "life"}, {"id": "min_fire"}],

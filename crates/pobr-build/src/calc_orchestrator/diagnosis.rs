@@ -310,6 +310,13 @@ const SET_BY_THE_ORCHESTRATION: &[&str] = &[
     "DisableEHPGainOnBlock",
 ];
 
+/// A condition determined from the build or by a calculation pass, rather
+/// than a missing input. Share the diagnosis registries with the line ledger.
+pub(crate) fn condition_set_from_build(condition: &str) -> bool {
+    SET_BY_THE_ORCHESTRATION.contains(&condition)
+        || pobr_core::calc::session::CONDITIONS_SET_BY_A_PASS.contains(&condition)
+}
+
 /// The config option that sets `condition`, if one does: its own
 /// `condition<condition>` input first, else an option that implies it or
 /// whose effect writes `Condition:<X>`. Written on the enemy, that is

@@ -74,17 +74,17 @@ def collect_usage(binary, refresh=False, jobs=3):
     return sorted(results, key=lambda row: (row["set"], row["build"])), failures
 
 
-def line_buckets(line, reads, conditions):
+def line_buckets(line, reads, conditions, states):
     """Keep every unmet modifier's bucket; one working part cannot hide a gap.
 
-    Only explicit registry metadata or the *reported* unmet config condition
+    Only explicit registry metadata or the *reported* unmet config/build condition
     exempts an inactive modifier. Merely sharing its name with one does not.
     """
     if line.get("status") == "no_effect":
-        return ["handled"]
+        return ["handled"], []
     if line.get("status") in FATES:
-        return ["dropped"]
-    buckets = set()
+        return ["dropped"], []
+    buckets, reasons = set(), set()
     for modifier in line.get("modifiers") or []:
         status = modifier.get("status")
         if status in FATES:
@@ -104,13 +104,20 @@ def line_buckets(line, reads, conditions):
                 # Actor conditions use enemy.X in reasons, EnemyX in the ledger.
                 names = ["Enemy" + name[6:] if name.startswith("enemy.") else
                          name[7:] if name.startswith("player.") else name for name in names]
-                buckets.add("config-gated" if names and all(conditions.get(name) for name in names)
-                            else "dropped")
+                if names and all(conditions.get(name) or name in states for name in names):
+                    for name in names:
+                        if name in states:
+                            buckets.add("state-gated")
+                            reasons.add(f"condition set from the build: {name}")
+                        else:
+                            buckets.add("config-gated")
+                else:
+                    buckets.add("dropped")
     if not buckets and line.get("status") in ("unread", "inactive", "partial"):
         # A received line without modifiers has no proven reader/gate.
         if not line.get("modifiers"):
             buckets.add("dropped")
-    return [bucket for bucket in BUCKETS if bucket in buckets] or ["handled"]
+    return ([bucket for bucket in BUCKETS if bucket in buckets] or ["handled"], sorted(reasons))
 
 
 def bucket_counts(queue):
@@ -138,6 +145,7 @@ def ranked_queue(audit, builds, kind=None, include_handled=False, include_all=Fa
         conditions = {entry["condition"]: entry.get("config_option")
                       for entry in usage.get("conditions") or []}
         conditions.update(usage.get("condition_configs") or {})
+        states = set(usage.get("condition_states") or [])
         for line in lines:
             text = line.get("text") or ""
             if not text:
@@ -156,7 +164,9 @@ def ranked_queue(audit, builds, kind=None, include_handled=False, include_all=Fa
             if carrier is None:
                 carrier = {"build": build["build"], "path": identity, "lines": []}
                 row["builds"].append(carrier)
-            carrier["lines"].append({**line, "buckets": line_buckets(line, reads, conditions)})
+            buckets, reasons = line_buckets(line, reads, conditions, states)
+            carrier["lines"].append({**line, "buckets": buckets,
+                                     **({"bucket_reasons": reasons} if reasons else {})})
     queue = []
     for row in grouped.values():
         if not include_handled and row["sources"] and all(
@@ -361,6 +371,7 @@ def render_card(card):
             rows.append(f"    {line.get('status')} [{', '.join(line['buckets'])}] · {triage.line_source(line)} · {line.get('text')}")
             if line.get("reason"):
                 rows.append(f"      {line['reason']}")
+            rows += [f"      {reason}" for reason in line.get("bucket_reasons") or []]
             for mod in line.get("modifiers") or []:
                 rows.append(f"      {mod.get('name')}: {mod.get('status')}"
                             + (f" · {mod['reason']}" if mod.get("reason") else ""))

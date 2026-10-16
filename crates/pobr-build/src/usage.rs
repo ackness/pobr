@@ -36,7 +36,8 @@ use serde::Serialize;
 
 use crate::breakdown::BREAKDOWN_STATS;
 use crate::calc_orchestrator::{
-    ReadGate, config_option_setting, engine_ctx, read_outside_the_database, read_under_a_state,
+    ReadGate, condition_set_from_build, config_option_setting, engine_ctx,
+    read_outside_the_database, read_under_a_state,
 };
 use crate::{Build, BuildData, Diagnosis, LineFate, ModifierRef};
 
@@ -67,6 +68,10 @@ pub struct LineUsage {
     /// (even to false) or normally derived by a pass, absent from `conditions`.
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     pub condition_configs: BTreeMap<String, String>,
+    /// Referenced conditions set from the build or derived by a calc pass,
+    /// including ones this build does not meet.
+    #[serde(skip_serializing_if = "BTreeSet::is_empty")]
+    pub condition_states: BTreeSet<String>,
     /// Multipliers modifiers scale by, or are gated on, that nothing provided.
     pub multipliers: Vec<MultiplierUsage>,
     /// Every active effect of the enabled groups, at the level and quality
@@ -317,6 +322,12 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
         referenced: session.referenced_variables(),
         asked: &diagnosis.variables,
     };
+    let condition_states = variables
+        .referenced
+        .iter()
+        .flat_map(|name| [name.to_string(), format!("Enemy{name}")])
+        .filter(|name| condition_set_from_build(name))
+        .collect();
     let condition_configs = variables
         .referenced
         .iter()
@@ -518,6 +529,7 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
         gem_stats,
         conditions,
         condition_configs,
+        condition_states,
         multipliers,
         skills: diagnosis
             .skills

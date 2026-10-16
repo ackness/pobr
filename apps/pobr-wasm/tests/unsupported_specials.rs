@@ -136,11 +136,18 @@ fn the_ledger_serializes_registered_reader_gates() {
         let request = json!({
             "character": { "level": 80, "class_name": "Witch" },
             "allocated_nodes": [], "socket_groups": [],
-            "items": [{ "slot": "amulet", "text": "Rarity: RARE\nTest\nGold Amulet\nImplicits: 0\nArchon Buffs also grant 10% increased Movement Speed\n20% faster start of Energy Shield Recharge while affected by an Archon Buff" }],
+            "items": [{ "slot": "amulet", "text": "Rarity: RARE\nTest\nGold Amulet\nImplicits: 0\nArchon Buffs also grant 10% increased Movement Speed\n20% faster start of Energy Shield Recharge while affected by an Archon Buff\nImmune to Chill if a majority of your Socketed Support Gems are Blue" }],
             "config_inputs": { "conditionAffectedByArchon": active },
         });
         let out = pobr_wasm::line_usage_json(&request.to_string()).unwrap();
         let response: Value = serde_json::from_str(&out).unwrap();
+        assert!(
+            response["usage"]["condition_states"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|condition| condition == "MajorityBlueSocketedSupports")
+        );
         assert_eq!(
             response["usage"]["condition_configs"]["AffectedByArchon"],
             "conditionAffectedByArchon"

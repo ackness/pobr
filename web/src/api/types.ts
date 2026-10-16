@@ -1065,6 +1065,8 @@ export interface LineUsage {
   conditions: LineUsageCondition[];
   /** 被引用条件的配置入口，包含已设置或由计算阶段推导的条件。 */
   condition_configs?: Record<string, string>;
+  /** Referenced conditions set by the build or a calc pass, even when unmet. */
+  condition_states?: string[];
   multipliers: LineUsageMultiplier[];
   /** 启用组里的每个主动效果，以及它实际使用的等级（含加成）与品质。 */
   skills: LineUsageSkill[];
