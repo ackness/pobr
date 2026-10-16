@@ -167,6 +167,12 @@ impl CalculationSession {
                 "Condition:CeremonialAblution",
                 crate::rules::skill_stats::CEREMONIAL_ABLUTION,
             ),
+            // Wind-ground "counts as boosted" (Berek's Grip/Pass/Respite, The
+            // Taming): read by Twister's SkillDamageGainAs tags, like the
+            // Twister config checkboxes.
+            ("Condition:TwisterFire", "TwisterFire"),
+            ("Condition:TwisterLightning", "TwisterLightning"),
+            ("Condition:TwisterCold", "TwisterCold"),
         ] {
             if self.has_flag(flag) {
                 self.set_condition(condition, true);

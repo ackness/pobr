@@ -5631,6 +5631,105 @@
       "examples": [
         "Corrupting will always result in change"
       ]
+    },
+    {
+      "id": "wind_ground_ignited",
+      "pattern": "wind skills which can be boosted by elemental ground surfaces count as being boosted by ignited ground",
+      "mods": [
+        {
+          "name": "Condition:TwisterFire",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "wind_skills_count_as_empowered_by_ignited_ground; base/stats.json; Berek's Respite game text",
+      "source_note": "Game stat wind_skills_count_as_empowered_by_ignited_ground (compound template 'Wind Skills which can be boosted by Elemental Ground Surfaces count as being boosted by Chilled Ground'). The item text wraps across two lines; the joined line counts the skill as boosted, which sets the Twister element condition the Twister config checkbox sets. Only Twister reads these conditions today (SkillDamageGainAsFire gated by TwisterFire in skill_stat_map.json).",
+      "examples": [
+        "Wind Skills which can be boosted by Elemental Ground Surfaces count as being boosted by Ignited Ground"
+      ]
+    },
+    {
+      "id": "wind_ground_shocked",
+      "pattern": "wind skills which can be boosted by elemental ground surfaces count as being boosted by shocked ground",
+      "mods": [
+        {
+          "name": "Condition:TwisterLightning",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "wind_skills_count_as_empowered_by_shocked_ground; base/stats.json; Berek's Grip game text",
+      "source_note": "Game stat wind_skills_count_as_empowered_by_shocked_ground (compound template 'Wind Skills which can be boosted by Elemental Ground Surfaces count as being boosted by Chilled Ground'). The item text wraps across two lines; the joined line counts the skill as boosted, which sets the Twister element condition the Twister config checkbox sets. Only Twister reads these conditions today (SkillDamageGainAsLightning gated by TwisterLightning in skill_stat_map.json).",
+      "examples": [
+        "Wind Skills which can be boosted by Elemental Ground Surfaces count as being boosted by Shocked Ground"
+      ]
+    },
+    {
+      "id": "wind_ground_chilled",
+      "pattern": "wind skills which can be boosted by elemental ground surfaces count as being boosted by chilled ground",
+      "mods": [
+        {
+          "name": "Condition:TwisterCold",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "wind_skills_count_as_empowered_by_chilled_ground; base/stats.json; Berek's Pass game text",
+      "source_note": "Game stat wind_skills_count_as_empowered_by_chilled_ground (compound template 'Wind Skills which can be boosted by Elemental Ground Surfaces count as being boosted by Chilled Ground'). The item text wraps across two lines; the joined line counts the skill as boosted, which sets the Twister element condition the Twister config checkbox sets. Only Twister reads these conditions today (SkillDamageGainAsCold gated by TwisterCold in skill_stat_map.json).",
+      "examples": [
+        "Wind Skills which can be boosted by Elemental Ground Surfaces count as being boosted by Chilled Ground"
+      ]
+    },
+    {
+      "id": "wind_ground_all_elements",
+      "pattern": "wind skills which can be boosted by elemental ground surfaces count as being boosted by ignited, shocked, and chilled ground",
+      "mods": [
+        {
+          "name": "Condition:TwisterFire",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "Condition:TwisterLightning",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "Condition:TwisterCold",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "wind_skills_count_as_empowered_by_ignited_ground, wind_skills_count_as_empowered_by_shocked_ground, wind_skills_count_as_empowered_by_chilled_ground; base/stats.json; The Taming game text",
+      "source_note": "The Taming carries all three wind-ground game stats, rendered as one compound line. The item text wraps across two lines; the joined line counts the skill as boosted by every element, setting all three Twister element conditions. Only Twister reads these conditions today (SkillDamageGainAsCold/Fire/Lightning gated by TwisterCold/Fire/Lightning in skill_stat_map.json).",
+      "examples": [
+        "Wind Skills which can be boosted by Elemental Ground Surfaces count as being boosted by Ignited, Shocked, and Chilled Ground"
+      ]
+    },
+    {
+      "id": "wind_ground_multiple_surfaces",
+      "pattern": "wind skills which can be boosted by elemental ground surfaces can be boosted by multiple elemental ground surfaces",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "exporter": "absent",
+      "game_source": "wind_skills_can_be_empowered_by_multiple_elements; base/stats.json; The Taming game text",
+      "source_note": "Game stat wind_skills_can_be_empowered_by_multiple_elements. PoBR applies each Twister element condition independently and does not limit a Twister to one element, so this line changes nothing any calculation reports: recognised with no modifier.",
+      "examples": [
+        "Wind Skills which can be boosted by Elemental Ground Surfaces can be boosted by multiple Elemental Ground Surfaces"
+      ]
     }
   ]
 }
