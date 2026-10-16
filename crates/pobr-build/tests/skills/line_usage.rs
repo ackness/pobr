@@ -54,6 +54,23 @@ fn line<'a>(ledger: &'a LineUsage, source: &str, text: &str) -> &'a UsageLine {
 }
 
 #[test]
+fn config_coverage_reports_reads_even_without_a_configured_value() {
+    let data = data();
+    let usage = ledger(
+        &data,
+        &[],
+        &["50% increased Damage with Hits against Frozen Enemies"],
+    );
+    // This item waits for Frozen even when that config checkbox is absent.
+    assert!(usage.referenced_variables.contains("EnemyFrozen"));
+    // The rage and trigger passes query absent inputs too; there need not
+    // be a stored Multiplier:TriggerChance modifier to record the query.
+    assert!(usage.condition_reads.contains("CanGainRage"));
+    assert!(usage.multiplier_reads.contains("TriggerChance"));
+    assert!(!usage.reads.contains_key("Multiplier:TriggerChance"));
+}
+
+#[test]
 fn conditional_offence_limits_report_the_missing_models() {
     let data = data();
     let cases = [

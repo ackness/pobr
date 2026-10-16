@@ -94,6 +94,9 @@ KNOWN_MODELS = {
     **{skill: ("event trigger rate unmodelled", None) for skill in (
         "FortifyingCryShockwavePlayer", "TemperWeaponCombustionPlayer",
         "TriggeredTrailOfCaltropsPlayer")},
+    # Pounce bullet: selecting the summon effect creates its wolves, which then
+    # count toward Predator's Mark (6% for two wolves); PoB2 does not count them.
+    "WolfPounceSummonWolfPlayer": ("Pounce wolves counted for Predator's Mark", None),
 }
 FAMILY_TYPES = {
     "warcries": {"Warcry"}, "totems": {"SummonsTotem", "SummonsAttackTotem"},
