@@ -339,6 +339,7 @@ pub fn source_names(stat: &str) -> Vec<String> {
         "Ward" => &["Ward", "Defences"],
         "LifeReserved" => &[
             "LifeReserved",
+            "ExtraLifeReserved",
             "LifeReservedPercent",
             "LifeReservationEfficiency",
             "ReservationEfficiency",
@@ -346,6 +347,7 @@ pub fn source_names(stat: &str) -> Vec<String> {
         ],
         "ManaReserved" => &[
             "ManaReserved",
+            "ExtraManaReserved",
             "ManaReservedPercent",
             "ManaReservationEfficiency",
             "ReservationEfficiency",

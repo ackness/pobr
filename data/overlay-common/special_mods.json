@@ -6141,6 +6141,48 @@
         "50% of Chaos damage you prevent when Hit Recouped as Life and Mana during effect",
         "50% of Chaos damage you prevent when Hit Recouped as Life and Mana"
       ]
+    },
+    {
+      "id": "full_life_threshold_override",
+      "exporter": "absent",
+      "game_source": "base/stats.json: full_life_threshold_%_override (stat description: You count as on Full Life while at {0}% of maximum Life or above)",
+      "pattern": "you count as on full life while at (\\d+(?:\\.\\d+)?)% of maximum life or above",
+      "mods": [
+        {
+          "name": "FullLifePercentage",
+          "type": "OVERRIDE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "The threshold the FullLifePercentage view reports (calc::limit_display); the default is 100 because the game exports no constant for it and there is no in-game test. The Full Life condition itself stays the explicit config/Chaos Inoculation state: possessing the line does not establish that the character is at the threshold, so the line changes no other output. No current game mod, passive node or unique carries the stat.",
+      "examples": [
+        "You count as on Full Life while at 90% of maximum Life or above"
+      ]
+    },
+    {
+      "id": "strike_skills_target_additional_enemies",
+      "pattern": "non-vaal strike skills target (\\d+) additional nearby enem(?:y|ies)",
+      "mods": [
+        {
+          "name": "AdditionalStrikeTarget",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "SkillType:MeleeSingleTarget"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat melee_attack_number_of_spirit_strikes (Non-Vaal Strike Skills target {0} additional nearby Enemy[ies]); Strike skills are the MeleeSingleTarget skill type. The additional targets are shown as StrikeTargets (calc::limit_display) and multiply no damage. PoE2 has no Vaal skills, so the Non-Vaal qualifier excludes nothing. No current game mod, passive node or unique carries the stat.",
+      "examples": [
+        "Non-Vaal Strike Skills target 1 additional nearby Enemy"
+      ]
     }
   ]
 }

@@ -162,7 +162,9 @@ fn catalog_entry_counts_locked() {
         // Global{Gem,Item,Weapon}AttributeRequirements, MaximumChill, MaximumShock,
         // CurrentChill and CurrentShock (+19).
         // PinBuildupAvg (+1).
-        505,
+        // {Life,Mana}CancellableReservation, FullLifePercentage, DurationMod and
+        // StrikeTargets (+5).
+        510,
         "a change in Computed entry count needs explicit review"
     );
 }

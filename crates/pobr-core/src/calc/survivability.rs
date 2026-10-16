@@ -88,6 +88,27 @@ pub fn reservation_with_efficiency(
     }
 }
 
+/// The share of a pool the character itself reserves, as a percentage of the
+/// pool: the `Extra<Pool>Reserved` modifiers (Beidat's Hand, Gaze and Will,
+/// "Reserves 25% of Life"; Midnight Bargain's game stat
+/// `life_reserved_by_stat_only_for_midnight_bargain_and_infernalist_%`).
+/// Unlike a skill's reservation, it is not scaled by `ReservationMultiplier`
+/// or Reservation Efficiency, and no skill can release it, so it is also the
+/// part of the reservation that is not cancellable.
+pub fn permanent_reserved_percent(db: &ModDb, cfg: &CalcConfig, pool: &str) -> f64 {
+    db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from(format!("Extra{pool}Reserved").as_str())],
+    )
+}
+
+/// The percentage of a pool's reservation that can be cancelled by turning a
+/// skill off: everything but the permanent share (`100 - permanent`, at least 0).
+pub fn cancellable_reservation_percent(permanent: f64) -> f64 {
+    (100.0 - permanent).max(0.0)
+}
+
 // Regeneration
 
 /// Calculates per-second regen.

@@ -602,6 +602,36 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             "LowLifePercentage",
         ),
         computed(
+            "LifeCancellableReservation",
+            Cat::Resource,
+            Vt::Percent,
+            "LifeCancellableReservation",
+        ),
+        computed(
+            "ManaCancellableReservation",
+            Cat::Resource,
+            Vt::Percent,
+            "ManaCancellableReservation",
+        ),
+        computed(
+            "FullLifePercentage",
+            Cat::Resource,
+            Vt::Percent,
+            "FullLifePercentage",
+        ),
+        computed(
+            "DurationMod",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "DurationMod",
+        ),
+        computed(
+            "StrikeTargets",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "StrikeTargets",
+        ),
+        computed(
             "LowestAttribute",
             Cat::Resource,
             Vt::Number,

@@ -1034,6 +1034,45 @@ pub fn buff_expiration_mult(db: &ModDb, cfg: &CalcConfig) -> f64 {
     1.0 / rate.max(cfg.constants.game().buff_expiration_slow_cap)
 }
 
+/// The names a duration is modified by: every skill's `Duration` and the
+/// duration scope of the channel being measured.
+fn duration_names(scope: Option<&str>) -> Vec<ModName> {
+    let mut names = vec![ModName::from("Duration")];
+    if let Some(scope) = scope {
+        names.push(ModName::from(scope));
+    }
+    names
+}
+
+/// The increased and more/less terms behind a duration's modifier, shared by
+/// the duration calculation, the `DurationMod` view and its derived detail so
+/// that the modifier is applied once.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct DurationModifierTerms {
+    pub increased: f64,
+    pub more: f64,
+}
+impl DurationModifierTerms {
+    /// `(1 + increased / 100) * more`, never below zero.
+    pub fn value(self) -> f64 {
+        ((1.0 + self.increased / 100.0) * self.more).max(0.0)
+    }
+}
+
+/// The modifier terms of a duration scope (`None` for the generic `Duration`
+/// alone, `Some("PrimaryDuration")` for the primary duration).
+pub fn duration_modifier_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    scope: Option<&str>,
+) -> DurationModifierTerms {
+    let names = duration_names(scope);
+    DurationModifierTerms {
+        increased: db.sum(ModType::Inc, cfg, &names),
+        more: db.more(cfg, &names),
+    }
+}
+
 pub fn duration_terms(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig, stat: &str) -> DurationTerms {
     let (base_name, scope, debuff) = match stat {
         "Duration" => (
@@ -1053,10 +1092,7 @@ pub fn duration_terms(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig, stat: &str) -
             "SkillReserveDurationIsDebuff",
         ),
     };
-    let mut names = vec![ModName::from("Duration")];
-    if let Some(scope) = scope {
-        names.push(ModName::from(scope));
-    }
+    let names = duration_names(scope);
     let base = db.sum(ModType::Base, cfg, &[ModName::from(base_name)])
         + if scope.is_some() {
             db.sum(ModType::Base, cfg, &names)
@@ -1065,8 +1101,7 @@ pub fn duration_terms(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig, stat: &str) -
         };
     DurationTerms {
         base,
-        modifier: ((1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names))
-            .max(0.0),
+        modifier: duration_modifier_terms(db, cfg, scope).value(),
         expiration: if db.flag(cfg, debuff) {
             super::ailment::debuff_duration_mult(enemy, cfg)
         } else if cfg
