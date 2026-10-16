@@ -396,7 +396,7 @@ Smith of Kitava 的 “Modifiers to Fire Resistance also grant Cold and Lightnin
 
 Three equipment-adjacent readings share one convention: the value is the item's own displayed number, and suppression is tracked per modifier name. Strong Chin's `stun_threshold_+_from_lowest_of_base_helmet_evasion_rating_and_armour` grants Stun Threshold equal to the lower of the helmet's displayed Armour and Evasion (pre-global scaling; the stat name's "base" is the pre-global item base). The Invoker's `cannot_gain_spirit_from_equipment` drops only BASE Spirit with an equipment origin (per-item base Spirit, explicit +N lines, socketed runes); passive and quest Spirit still count, and the suppressed equipment lines still show as applied in the usage ledger because modifier reads are tracked per name. Elemental recoup (`recoup_%_elemental_damage_as_energy_shield`, parsed as `Fire/Cold/LightningEnergyShieldRecoup`) adds its percentage to its own damage type's recoupable only, sharing the Energy Shield recoup duration and recovery rate (`calc::survivability::es_recoup_terms`, which also feeds the EsRecoupRate derived detail).
 
-“Physical Damage prevented Recouped as Life” (`physical_damage_prevented_recouped_as_life_%`, [Made to Last](https://poe2db.tw/us/Made_to_Last) 5%, Wandering Reliquary 50%) uses an explicit convention: prevented damage is the Physical damage entering the physical reduction stage minus that leaving it, counting Armour and additional physical damage reduction after the cap and overwhelm. This follows [Iron Ward's game text](https://poe2db.tw/us/Iron_Ward), which describes damage prevented by Armour or other sources of damage reduction; it is an assumption, **没有游戏内实测 / no in-game test**. Damage shifted to another type before reduction and later damage-taken multipliers do not count; blocked and deflected hits contribute nothing, including partially damaging blocks. Evaded hits never enter the landed-hit loop. The [December 2024 bug report](https://www.pathofexile.com/forum/view-thread/3661840) and [November 2025 discussion](https://www.pathofexile.com/forum/view-thread/3882155) are verification leads, not a developer ruling on this convention. The mitigated EHP loop accumulates prevented damage alongside ordinary damage-taken recoup; `calc::survivability::life_recoup_terms` combines both using Life's 8-second duration (4 seconds with either Life/global flag) and LifeRecoveryRate, and also supplies the `LifeRecoupRate` detail. The parser rule is `exporter: "absent"`, so reference-basis calculations omit it.
+“Physical Damage prevented Recouped as Life” (`physical_damage_prevented_recouped_as_life_%`, [Made to Last](https://poe2db.tw/us/Made_to_Last) 5%, Wandering Reliquary 50%) uses an explicit convention: prevented damage is the Physical damage entering the physical reduction stage minus that leaving it, counting Armour and additional physical damage reduction after the cap and overwhelm. This follows [Iron Ward's game text](https://poe2db.tw/us/Iron_Ward), which describes damage prevented by Armour or other sources of damage reduction; it is an assumption, **没有游戏内实测 / no in-game test**. Damage shifted to another type before reduction and later damage-taken multipliers do not count; blocked and deflected hits contribute nothing, including partially damaging blocks. Evaded hits never enter the landed-hit loop. The [December 2024 bug report](https://www.pathofexile.com/forum/view-thread/3661840) and [November 2025 discussion](https://www.pathofexile.com/forum/view-thread/3882155) are verification leads, not a developer ruling on this convention. The mitigated EHP loop accumulates prevented damage alongside ordinary damage-taken recoup; `calc::survivability::life_recoup_terms` combines both using Life's 8-second duration (4 seconds with either Life/global flag) and LifeRecoveryRate, and also supplies the `LifeRecoupRate` detail. The parser rule is `exporter: "absent"`, so reference-basis calculations omit it. The Chaos counterpart (Forsaken Bangle, below) reuses this definition with Chaos resistance in place of Armour, and the Mana side uses `mana_recoup_terms`.
 
 几条暗金词条接到已有的计算入口（`overlay-common/special_mods.json`）：Blackheart 的 `base_armour_%_applies_to_chaos_damage` 让这一比例的护甲也用于混沌命中的减伤；Vigilant View 的 `maximum_chance_to_evade_is_50%` 与 Goregirdle 的 `maximum_physical_damage_reduction_is_50%` 限制闪避率与物理命中减伤；Matsya 的 “Skills reserve 50% less Spirit”（`unique_spirit_reservations_are_halved`）乘在保留量上，不是保留效率；Plaguefinger 的 `all_damage_can_poison` 让元素命中也计入中毒的伤害，不提供中毒几率；`ignore_hexproof`（“Curses you inflict can affect Hexproof Enemies”）让诅咒越过敌人的 Hexproof；Venopuncture / Icefang Orbit（`all_damage_to_bleeding_enemies_contributes_to_chill` / `all_damage_to_poisoned_enemies_contributes_to_chill`）只在敌人流血 / 中毒时让全部命中伤害计入冰缓强度。Parry 的 “increased Parry Damage”（`parry_damage_+%`，Silverthorne 与天赋）和 Kaltenhalt 的 Parry 物理转冰（`parry_physical_damage_%_to_convert_to_cold`）只作用于 Parry。Chober Chaber、Trenchtimbre、Crown of Eyes 的 “increases and reductions … also …”（`minion_damage_increases_and_reductions_also_affects_you`、`additive_modifiers_to_minion_attack_speed_also_affect_you`、`additive_spell_damage_modifiers_apply_to_attack_damage`）只复制相应的 INC 词条：召唤物伤害、召唤物攻击速度、法术伤害分别给角色伤害、角色攻击速度、攻击伤害，保留来源和条件，不复制 MORE / LESS、点伤和只限定某类召唤物的词条（`calc::shared_modifiers::apply_shared_increases`）。
 
@@ -808,16 +808,37 @@ use timing or uptime of the Low pool is inferred, and there is no in-game test o
 stacking with other flask recovery modifiers. “Removes N% of Life Recovered from Mana
 when used” and its Mana-from-Life twin (game stats
 `local_flask_removes_%_of_life_recovery_from_mana_on_use` /
-`..._mana_recovery_from_life_on_use`, mods `FlaskExtraLifeCostsMana` /
-`FlaskExtraManaCostsLife`) make the other resource pay a share of the recovery each
-use; the line is recognised as `unmodelled` because no flask-use net resource model
-exists and no use frequency is assumed (it used to be a −N `FlaskRecovery` on the flask's
-own recovery). The Forsaken Bangle charm line “N% of Chaos damage you prevent when Hit
-Recouped as Life and Mana during effect”
-(`charm_x%_of_chaos_damage_from_hits_prevented_recouped_as_life_and_mana_during_effect`)
-is also `unmodelled`: the prevented-damage recoup described above counts only Physical
-damage recouped as Life, and there is no Chaos “prevented” definition or Mana
-prevented-damage recoup (it used to be +N `ChaosDamage`).
+`..._mana_recovery_from_life_on_use`; rules `flask_removes_life_recovery_from_mana_on_use` /
+`flask_removes_mana_recovery_from_life_on_use`, local utility properties
+`UtilityLifeRecoveryRemovedFromMana` / `UtilityManaRecoveryRemovedFromLife`) make the
+other resource pay a share of the flask's recovery each use. Each Flask slot reports
+`Flask<N>ManaRemovedOnUse` (on a Life flask) or `Flask<N>LifeRemovedOnUse` (on a Mana
+flask) as N% of that flask's total `Flask<N>Recovery` (instant plus gradual, after the
+flask's own recovery modifiers such as the Low Life MORE); the opposite direction and
+every flask without the line report 0, and the flask's own recovery is not reduced (the
+generic rule used to make it a −N `FlaskRecovery`). Charms do not have these fields.
+The derived detail is `UtilityRecovery * UtilityRemovedPercent / 100`
+(`calc::utility`); it is a per-use amount, so no use frequency, current-pool state or net
+resource model is assumed, and nothing is subtracted from `Net*Regen`. The Forsaken Bangle
+charm line “N% of Chaos damage you prevent when Hit Recouped as Life and Mana during
+effect” (game stat
+`charm_x%_of_chaos_damage_from_hits_prevented_recouped_as_life_and_mana_during_effect`,
+rule `charm_chaos_damage_prevented_recouped_as_life_and_mana`) stores
+`ChaosDamagePreventedLifeRecoup` and `ChaosDamagePreventedManaRecoup`, each N, under the
+enabled-charm convention above (the charm must be enabled and within the charm limit; no
+uptime is inferred). The Chaos damage a hit “prevents” follows the physical definition: Chaos
+damage entering the Chaos mitigation stage after taken-as shifts, minus what leaves it
+after Chaos resistance and Chaos damage reduction, never below zero (negative resistance
+prevents nothing). Flat damage taken and later damage-taken multipliers do not count, and
+blocked and deflected hits contribute nothing; evaded hits never enter the landed-hit
+loop. The game text does not call resistance “prevention”, so this is an assumption with
+**no in-game test**. The mitigated EHP loop accumulates the per-type prevented damage
+(`EhpTerms::prevented`); `survivability::life_recoup_terms` adds Chaos to the Life rate and
+`survivability::mana_recoup_terms` returns the same amount as Mana (`ManaRecoupRate`,
+with its own derived detail), each over its own recoup duration (8 seconds, 4 seconds
+with `4SecondManaRecoup` / `4SecondRecoup` for Mana) and recovery rate
+(`ManaRecoveryRate`). Ordinary `ManaRecoup` shares the Mana timing. Physical prevented
+recoup still returns Life only. All three rules are batch `S2` and `exporter: "absent"`.
 
 A line the parser reads only in part is not applied. A parse that returns `Parsed`
 with a non-empty `unparsed` remainder (for example “2% more Mana Flask Recovery”,

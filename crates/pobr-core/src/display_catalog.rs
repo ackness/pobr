@@ -1267,6 +1267,12 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             "LifeRecoupRate",
         ),
         computed(
+            "ManaRecoupRate",
+            Cat::Recovery,
+            Vt::Number,
+            "ManaRecoupRate",
+        ),
+        computed(
             "EsRecoupRate",
             Cat::Recovery,
             Vt::Number,
@@ -2169,11 +2175,16 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
                 catalog.push(
                     DisplayStatDefinition::computed(id.as_str(), Cat::Recovery, vt)
                         .with_pob_key(id.as_str())
-                        .with_higher_is_better(if *field == "ChargesUsed" {
-                            Some(false)
-                        } else {
-                            None
-                        }),
+                        .with_higher_is_better(
+                            if matches!(
+                                *field,
+                                "ChargesUsed" | "ManaRemovedOnUse" | "LifeRemovedOnUse"
+                            ) {
+                                Some(false)
+                            } else {
+                                None
+                            },
+                        ),
                 );
             }
         }
@@ -2418,6 +2429,7 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "ManaLeechRate" => output.mana_leech_rate,
         "EsLeechRate" => output.es_leech_rate,
         "LifeRecoupRate" => output.life_recoup_rate,
+        "ManaRecoupRate" => output.mana_recoup_rate,
         "EsRecoupRate" => output.es_recoup_rate,
 
         // Ailment extensions
