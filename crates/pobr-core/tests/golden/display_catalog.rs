@@ -167,7 +167,9 @@ fn catalog_entry_counts_locked() {
         // and EHPSurvivalTime (+20).
         // ManaRecoupRate (+1), the Chaos prevented-damage recoup as Mana, and
         // Flask{1,2}{Mana,Life}RemovedOnUse (+4), the other pool's per-use removal.
-        530,
+        // ShockDuration, ChillDuration, ChillEffectMod, FreezeBuildupAvg,
+        // SelfFreezeEffect, SelfPoisonEffect and SelfBlindDuration (+7).
+        537,
         "a change in Computed entry count needs explicit review"
     );
 }
