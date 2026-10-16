@@ -645,9 +645,10 @@ pub(super) fn inject_main_skill_mods(
         //         directly on statSet baseMods; calc::skill_dot preserves the dotCfg
         //         bits based on these).
         session.add_modifiers(dot_flag_modifiers(group, data, skill_id));
-        // The skill's corpse-Life share uses the same monster level as
-        // enemy mitigation, including the selected tier's default/floor.
+        // Without an explicit corpse-Life assumption, use the same monster
+        // level as enemy mitigation, including the selected tier's floor.
         session.add_modifiers(corpse_explosion_modifiers(
+            build,
             data,
             resolved_enemy_level(build, data, options, ctx.enemy_tier),
             group,

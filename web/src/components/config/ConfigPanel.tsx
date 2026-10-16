@@ -9,7 +9,7 @@ import { useSkillName } from '../../hooks/useSkillName';
 import { bindT, configSectionLabel, damageTypeLabel, enemyTierLabel, t, type Lang } from '../../lib/i18n';
 import { CONFIG_LABEL_ZH, LIST_OPTION_ZH } from '../../lib/configLabels';
 import { configDefaultValue } from '../../lib/configDefaults';
-import { configApplicability, configVisibilityInputs, showConfigOption, type Applicability } from '../../lib/configVisibility';
+import { configApplicability, configExistsInGame, configVisibilityInputs, showConfigOption, type Applicability } from '../../lib/configVisibility';
 import './config.css';
 
 interface Props {
@@ -269,6 +269,7 @@ export function ConfigPanel({ session, lang }: Props) {
     const filtered = options.filter(
       (o) =>
         o.var !== 'customMods' && o.var !== 'enemyIsBoss' &&
+        configExistsInGame(o, session.dataVersion) &&
         showConfigOption(o, configApplicability(o, context, visibilityInputs), inputs, allOptions) &&
         (!configuredOnly || effective(o.var) !== undefined) && (q === '' ||
         (o.label ?? '').toLowerCase().includes(q) ||
@@ -285,7 +286,7 @@ export function ConfigPanel({ session, lang }: Props) {
     const known = SECTION_ORDER.filter((s) => bySection.has(s));
     const rest = [...bySection.keys()].filter((s) => !SECTION_ORDER.includes(s)).sort();
     return [...known, ...rest].map((name) => ({ name, options: bySection.get(name)! }));
-  }, [options, query, configuredOnly, overrides, buildInputs, lang, context, inputs, visibilityInputs, allOptions]);
+  }, [options, query, configuredOnly, overrides, buildInputs, lang, context, inputs, visibilityInputs, allOptions, session.dataVersion]);
 
   useEffect(() => {
     if (!focusTarget || session.busy) return;
@@ -299,15 +300,16 @@ export function ConfigPanel({ session, lang }: Props) {
 
   const searching = query.trim() !== '' || configuredOnly;
   const configuredCount = options.filter(option =>
-    option.var !== 'customMods' && option.var !== 'enemyIsBoss' && effective(option.var) !== undefined).length;
+    option.var !== 'customMods' && option.var !== 'enemyIsBoss' &&
+    configExistsInGame(option, session.dataVersion) && effective(option.var) !== undefined).length;
 
-  // build 自带但不在目录里的键（导入 build 的自定义/未映射 Input）→ 高级区可见。
+  // Unknown and game-excluded saved inputs remain editable in the raw advanced view.
   const extraKeys = useMemo(() => {
-    const known = new Set(options.map((o) => o.var));
+    const known = new Set(options.filter(o => configExistsInGame(o, session.dataVersion)).map((o) => o.var));
     return [...new Set([...Object.keys(buildInputs), ...Object.keys(overrides)])]
       .filter((k) => k !== 'customMods' && k !== 'enemyIsBoss' && !known.has(k))
       .sort();
-  }, [options, buildInputs, overrides]);
+  }, [options, buildInputs, overrides, session.dataVersion]);
 
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('true');

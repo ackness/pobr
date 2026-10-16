@@ -82,6 +82,78 @@ fn detonate_dead_physical_base_is_corpse_life_times_multiplier() {
 }
 
 #[test]
+fn explicit_corpse_life_overrides_the_monster_table_for_each_corpse_skill() {
+    let data = load_build_data();
+    for (skill_id, damage_type, share) in [
+        ("DetonateDeadPlayer", DamageType::Physical, 0.107),
+        ("CorpseCloudPlayer", DamageType::Chaos, 0.1),
+    ] {
+        let mut build =
+            Build::new().add_socket_group(SocketGroup::new().with_active_skill(skill_id, 20));
+        for (value, life) in [
+            (ConfigInputValue::Number(10000.0), 10000.0),
+            (ConfigInputValue::Number(0.0), 0.0),
+            (ConfigInputValue::Number(-1.0), 2556.0),
+            (ConfigInputValue::Number(f64::NAN), 2556.0),
+            (ConfigInputValue::Text("10000".into()), 2556.0),
+        ] {
+            build
+                .config
+                .raw_inputs
+                .values
+                .insert("detonateDeadCorpseLife".into(), value);
+            let out = calculate_with_data(&build, &data, &opts(50)).unwrap();
+            // Game level-20 stats: 107 permillage Physical for Detonate Dead,
+            // 100 permillage Chaos for Decompose. Level-50 monster Life is 2556.
+            let component = out
+                .damage_components
+                .iter()
+                .find(|c| c.damage_type == damage_type);
+            let (min, max) = component.map_or((0.0, 0.0), |c| (c.min, c.max));
+            assert!((min - life * share).abs() < 1e-6, "{skill_id}: {min}");
+            assert!((max - life * share).abs() < 1e-6, "{skill_id}: {max}");
+        }
+    }
+    let mut fireball =
+        Build::new().add_socket_group(SocketGroup::new().with_active_skill("FireballPlayer", 20));
+    let plain = calculate_with_data(&fireball, &data, &opts(50)).unwrap();
+    fireball.config.raw_inputs.values.insert(
+        "detonateDeadCorpseLife".into(),
+        ConfigInputValue::Number(10000.0),
+    );
+    let configured = calculate_with_data(&fireball, &data, &opts(50)).unwrap();
+    assert_eq!(plain.dps, configured.dps);
+}
+
+#[test]
+fn configured_shock_magnitude_uses_the_existing_dynamic_ailment_reader() {
+    let data = load_build_data();
+    let mut build = detonate_dead_build();
+    let mut options = opts(50);
+    options.mode_effective = true;
+    let plain = calculate_with_data(&build, &data, &options).unwrap();
+    build
+        .config
+        .raw_inputs
+        .values
+        .insert("conditionEnemyShocked".into(), ConfigInputValue::Bool(true));
+    build.config.raw_inputs.values.insert(
+        "conditionShockEffect".into(),
+        ConfigInputValue::Number(30.0),
+    );
+    let shocked = calculate_with_data(&build, &data, &options).unwrap();
+    // base_damage_taken_+%_from_shock: a configured 30% shock increases damage taken
+    // by 30%; it is not a 30% modifier to the player's shock magnitude.
+    assert!((shocked.dps / plain.dps - 1.3).abs() < 1e-6);
+    build.config.raw_inputs.values.insert(
+        "conditionEnemyShocked".into(),
+        ConfigInputValue::Bool(false),
+    );
+    let disabled = calculate_with_data(&build, &data, &options).unwrap();
+    assert_eq!(plain.dps, disabled.dps);
+}
+
+#[test]
 fn corpse_life_uses_the_configured_level_without_changing_the_skills_share() {
     let data = load_build_data();
     for (skill, damage_type, share) in [

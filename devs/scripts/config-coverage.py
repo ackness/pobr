@@ -12,11 +12,13 @@ from pathlib import Path
 import re
 import sys
 
+import config_relevance
+
 REPO = Path(__file__).resolve().parents[2]
 _SPEC = importlib.util.spec_from_file_location("gaps", REPO / "devs/scripts/gaps.py")
 gaps = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(gaps)
-CLASSES = ("read", "handler", "implied", "unread", "no_effect")
+CLASSES = ("read", "handler", "implied", "unread", "no_effect", "not_in_game")
 
 
 def production(text):
@@ -43,6 +45,24 @@ def registrations(text):
     return result
 
 
+def config_tag_reads(value):
+    """Catalog effects produce names, but their tags consume variables.
+
+    For example, ShockVal reads ShockedConfig and the Corrosion Armour effect
+    reads CorrosionStack. Do not count the surrounding producer or visibility.
+    """
+    if isinstance(value, dict):
+        for tag in value.get("tags") or []:
+            if tag.get("type") in ("condition", "actor_condition", "multiplier"):
+                if isinstance(tag.get("var"), str):
+                    yield tag["var"]
+        for item in value.values():
+            yield from config_tag_reads(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from config_tag_reads(item)
+
+
 def source_index(root, directory):
     """Exact string-token references, with producer data kept separate.
 
@@ -60,6 +80,15 @@ def source_index(root, directory):
             relative = str(path.relative_to(root))
             for name in strings(text):
                 index["engine"][name].add(relative)
+            # Computed modifier names are search leads too: ailment_apply uses
+            # format!("{}Val", spec.name) with literal Chill/Shock specifications.
+            # This never promotes a static reference to an observed read.
+            literals = strings(text)
+            for template in re.findall(r'format!\(\s*"([^"\n]*\{\}[^"\n]*)"', text):
+                if template.count("{}") == 1:
+                    for name in literals:
+                        if re.fullmatch(r"[A-Za-z]+", name):
+                            index["engine"][template.replace("{}", name)].add(relative)
             if path.name == "handlers.rs" or "handlers" in path.parts:
                 handlers.update(registrations(text))
                 stubs.update(constant(text, "STUB_HANDLER_IDS"))
@@ -67,7 +96,9 @@ def source_index(root, directory):
             pass_conditions.update(constant(text, "CONDITIONS_SET_BY_A_PASS"))
     for base in (directory, directory.parent / "overlay-common"):
         for path in sorted(base.rglob("*.json")):
-            if path.name == "config_options.json":
+            if path.name.endswith("config_options.json"):
+                for name in config_tag_reads(json.loads(path.read_text())):
+                    index["data"][name].add(str(path.relative_to(root)))
                 continue
             for name in set(strings(path.read_text())):
                 index["data"][name].add(str(path.relative_to(root)))
@@ -120,7 +151,8 @@ def effect_names(option):
     return sorted(result)
 
 
-def classify(options, builds, index, handlers, stubs=(), gated=(), pass_conditions=(), skill_names=None):
+def classify(options, builds, index, handlers, stubs=(), gated=(), pass_conditions=(), skill_names=None,
+             relevance=None):
     reads, conditions, multipliers, skills = read_union(builds)
     conditions.update(pass_conditions)
     skills.update((skill_names or {}).get(skill, skill) for skill in list(skills))
@@ -144,6 +176,7 @@ def classify(options, builds, index, handlers, stubs=(), gated=(), pass_conditio
                 read = name in reads
                 if name.startswith("SkillData:"):
                     candidates.add(variable)
+                    candidates.add(option["var"])
             if read:
                 continue
             refs = {kind: sorted(set().union(*(names.get(n, set()) for n in candidates)))
@@ -184,9 +217,19 @@ def classify(options, builds, index, handlers, stubs=(), gated=(), pass_conditio
             evidence.append("interpreter text lane bypasses handler dispatch; custom lines are parsed separately")
         if evidence:
             row["notes"] = evidence
+        if relevance is not None:
+            row["game_evidence"] = relevance[option["var"]]
+            if row["game_evidence"]["class"] == "not_in_game":
+                row["reader_class"] = category
+                row["class"] = "not_in_game"
+                row["unread_kind"] = None
         rows.append(row)
     counts = lambda items: {kind: sum(row["class"] == kind for row in items) for kind in CLASSES}
+    relevant = [row for row in rows if row["class"] != "not_in_game"]
+    covered = sum(row["class"] in ("read", "handler") for row in relevant)
     return {"counts": counts(rows),
+            "relevant_coverage": {"covered": covered, "total": len(relevant),
+                                  "percent": 100 * covered / len(relevant) if relevant else 0},
             "unread_counts": {kind: sum(r["unread_kind"] == kind for r in rows)
                               for kind in ("unworked_skill", "no_reader_anywhere", "unobserved_reader")},
             "no_effect_counts": {kind: sum(r.get("no_effect_kind") == kind for r in rows)
@@ -195,15 +238,18 @@ def classify(options, builds, index, handlers, stubs=(), gated=(), pass_conditio
                          for section in sorted({r["section"] for r in rows})},
             "unread": [r["var"] for r in rows if r["class"] == "unread"],
             "no_reader_anywhere": [{"var": r["var"], "names": r["no_reader_anywhere"]}
-                                   for r in rows if r["no_reader_anywhere"]],
+                                   for r in relevant if r["no_reader_anywhere"]],
             "unregistered_handlers": [{"var": r["var"], "handler_id": r["handler_id"]}
                                       for r in rows if r.get("registered") is False],
             "options": rows}
 
 
 def render(report):
+    coverage = report["relevant_coverage"]
     lines = ["Config reader coverage (not numeric-effect validation)",
              f"Worked builds: {report.get('build_count', 0)}; options: {len(report['options'])}",
+             f"PoE2-relevant read+handler: {coverage['covered']}/{coverage['total']} ({coverage['percent']:.1f}%)",
+             "Relevance rule: " + config_relevance.RULE,
              "Section | " + " | ".join(CLASSES)]
     for section, counts in [("TOTAL", report["counts"]), *report["sections"].items()]:
         lines.append(section + " | " + " | ".join(str(counts[c]) for c in CLASSES))
@@ -212,7 +258,8 @@ def render(report):
     for heading, rows in [
         ("Unread options", [r for r in report["options"] if r["class"] == "unread"]),
         ("No reader anywhere (absent in engine and data; computed names need review)",
-         [r for r in report["options"] if r["no_reader_anywhere"]]),
+         [r for r in report["options"] if r["class"] != "not_in_game" and r["no_reader_anywhere"]]),
+        ("Not in the game snapshot", [r for r in report["options"] if r["class"] == "not_in_game"]),
         ("Unregistered handlers", [r for r in report["options"] if r.get("registered") is False]),
         ("No declarative effect", [r for r in report["options"] if r["class"] == "no_effect"]),
         ("Registered stubs / context gates", [r for r in report["options"] if r.get("stub") or r.get("context_gated")]),
@@ -228,6 +275,8 @@ def render(report):
                 detail = row["no_effect_kind"] + ": " + (row.get("explanation") or "")
             if row.get("stub") or row.get("context_gated"):
                 detail += "; " + ("stub" if row.get("stub") else "context-gated")
+            if row["class"] == "not_in_game":
+                detail = row["game_evidence"]["reason"] + ": " + ", ".join(row["game_evidence"]["queries"])
             lines.append(f"  {row['var']}: {detail}")
             for item in row["missing"]:
                 if item["name"] in row["no_reader_anywhere"]:
@@ -253,11 +302,13 @@ def main(argv=None):
     index, handlers, stubs, gated, conditions = source_index(REPO, directory)
     names = {row["id"]: row.get("displayed_name", row["id"])
              for row in json.loads((directory / "base/granted_effects.json").read_text())}
-    report = classify(catalog["options"], builds, index, handlers, stubs, gated, conditions, names)
+    options = config_relevance.catalog_options(directory)
+    report = classify(options, builds, index, handlers, stubs, gated, conditions, names,
+                      config_relevance.relevance(directory, options))
     report.update(build_count=len(builds), sets=list(gaps.triage.DEFAULT_SETS),
                   data_version=directory.name, generator=catalog.get("_meta", {}).get("generator"),
                   search_scope={"engine": "crates/*/src, without tests/comments",
-                                "data": "active snapshot + overlay-common, excluding config_options.json"})
+                                "data": "active snapshot + overlay-common; config catalogs contribute only tag consumers"})
     if args.json:
         payload = json.dumps(report, indent=2, ensure_ascii=False) + "\n"
         if str(args.json) == "-":
