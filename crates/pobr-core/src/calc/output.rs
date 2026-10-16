@@ -132,6 +132,9 @@ pub struct OutputTable {
     pub cold_resistance_total: f64,
     pub lightning_resistance_total: f64,
     pub chaos_resistance_total: f64,
+    /// Fire, Cold, Lightning and Chaos resistance against damage over time
+    /// (`<X>ResistOverTime`, `offence::resolve_resistance_over_time`).
+    pub resistance_over_time: [f64; 4],
     pub crit_chance: f64,
     /// Crit chance (fraction) before the hit-chance downgrade / lucky /
     /// bifurcate / inevitable, but after the cap. Used to show overflow in breakdowns.
@@ -693,6 +696,7 @@ impl Default for OutputTable {
             lightning_resistance_total: 0.0,
             chaos_resistance_total: 0.0,
             chaos_resistance_over_cap: 0.0,
+            resistance_over_time: [0.0; 4],
             crit_chance: 0.0,
             pre_effective_crit_chance: 0.0,
             crit_multiplier: 0.0,

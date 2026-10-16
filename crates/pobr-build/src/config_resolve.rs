@@ -138,6 +138,19 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
         }
     }
 
+    // The enemy attack / cast time for EHPSurvivalTime: only an explicit
+    // input, as for the Energy fallback below. The game defines no default
+    // enemy attack time; the 700 ms placeholder in exported build codes is the
+    // exporter's assumption, so it is not used.
+    if let Some(ConfigInputValue::Number(ms)) = config.raw_inputs.values.get("enemySpeed")
+        && ms.is_finite()
+        && *ms >= 0.0
+    {
+        config
+            .multipliers
+            .insert(pobr_core::calc::ehp::ENEMY_ACTION_TIME.into(), *ms);
+    }
+
     if !config.multipliers.contains_key("EnergyIncomingHitRate")
         && let Some(ConfigInputValue::Number(ms)) = config.raw_inputs.values.get("enemySpeed")
         && ms.is_finite()
