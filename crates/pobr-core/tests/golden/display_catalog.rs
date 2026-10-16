@@ -169,7 +169,9 @@ fn catalog_entry_counts_locked() {
         // Flask{1,2}{Mana,Life}RemovedOnUse (+4), the other pool's per-use removal.
         // ShockDuration, ChillDuration, ChillEffectMod, FreezeBuildupAvg,
         // SelfFreezeEffect, SelfPoisonEffect and SelfBlindDuration (+7).
-        537,
+        // {Life,Mana}CancellableReservation, FullLifePercentage, DurationMod and
+        // StrikeTargets (+5).
+        542,
         "a change in Computed entry count needs explicit review"
     );
 }

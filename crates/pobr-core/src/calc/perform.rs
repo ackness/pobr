@@ -555,11 +555,12 @@ fn perform_minions(env: &mut Env) {
 /// change existing fields.
 /// What the character's reservations take from its Life and Mana pools.
 ///
-/// (13-G11): ReservationMultiplier more and Reservation Efficiency division semantics
-/// (CalcDefence.lua:197/:240-241/:249-258) — mult = floor(More(ReservationMultiplier), 4);
-/// efficiency inc/more acts as a **divisor**; the divisor is floored at a tiny positive
-/// number: when efficiency is −100%, the raw value diverges, and reservation's [0, pool]
-/// clamp resolves it to "the pool is fully reserved", matching vendor's semantics.
+/// Skill reservations are scaled by `floor(More(ReservationMultiplier), 4)` and
+/// divided by Reservation Efficiency (increases and more/less as a divisor; the
+/// divisor is floored at a tiny positive number, so at -100% efficiency the raw
+/// value diverges and the `[0, pool]` clamp resolves it to "the pool is fully
+/// reserved"). The character's own permanent share (`Extra<Pool>Reserved`, e.g.
+/// "Reserves 25% of Life") is added afterwards, unscaled.
 fn pool_reservations(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -585,12 +586,14 @@ fn pool_reservations(
         reservation(
             life,
             db.sum(ModType::Base, cfg, &[ModName::from("LifeReserved")]) * life_factor,
-            db.sum(ModType::Inc, cfg, &[ModName::from("LifeReservedPercent")]) * life_factor,
+            db.sum(ModType::Inc, cfg, &[ModName::from("LifeReservedPercent")]) * life_factor
+                + super::survivability::permanent_reserved_percent(db, cfg, "Life"),
         ),
         reservation(
             mana,
             db.sum(ModType::Base, cfg, &[ModName::from("ManaReserved")]) * mana_factor,
-            db.sum(ModType::Inc, cfg, &[ModName::from("ManaReservedPercent")]) * mana_factor,
+            db.sum(ModType::Inc, cfg, &[ModName::from("ManaReservedPercent")]) * mana_factor
+                + super::survivability::permanent_reserved_percent(db, cfg, "Mana"),
         ),
     )
 }

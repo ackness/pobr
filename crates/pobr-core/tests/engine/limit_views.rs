@@ -4,7 +4,7 @@ use pobr_core::calc::{
     CalculationSession, DEFAULT_ENEMY_CURSE_LIMIT, DEFAULT_ENEMY_MARK_LIMIT, DEFAULT_MAX_CHARGES,
     MinimalInput,
 };
-use pobr_core::{Modifier, display_value};
+use pobr_core::{ModDb, Modifier, display_value};
 use pobr_data::prelude::*;
 
 fn run(mods: Vec<Modifier>, enemy: Vec<Modifier>) -> CalculationSession {
@@ -351,4 +351,264 @@ fn ailment_maximums_take_bonuses_overrides_and_cap_the_current_value() {
     let detail = session.derived_detail("MaximumChill").unwrap();
     assert_eq!(detail.inputs.len(), 1);
     close(detail.inputs[0].1, 25.0, "override input");
+}
+
+fn pool_session(mods: Vec<Modifier>) -> CalculationSession {
+    let mut session = super::support::session(MinimalInput {
+        base_life: 1000.0,
+        base_mana: 500.0,
+        ..Default::default()
+    });
+    session.add_modifiers(mods);
+    session.prepare_player_stats(1, None);
+    session.perform_minimal().unwrap();
+    session
+}
+
+#[test]
+fn cancellable_reservation_excludes_the_permanent_share_and_ignores_efficiency() {
+    // "Reserves 25% of Life" (Beidat's Hand) is a permanent 25% of 1000 Life,
+    // and 10% of 500 Mana is reserved the same way. Neither share is scaled by
+    // Reservation Efficiency or the reservation multiplier.
+    let session = pool_session(vec![
+        Modifier::number("ExtraLifeReserved", ModType::Base, 25.0),
+        Modifier::number("ExtraManaReserved", ModType::Base, 10.0),
+        Modifier::number("ReservationEfficiency", ModType::Inc, 100.0),
+        Modifier::number("ReservationMultiplier", ModType::More, -50.0),
+    ]);
+    close(value(&session, "LifeReserved"), 250.0, "LifeReserved");
+    close(value(&session, "LifeUnreserved"), 750.0, "LifeUnreserved");
+    close(value(&session, "ManaReserved"), 50.0, "ManaReserved");
+    close(
+        value(&session, "LifeCancellableReservation"),
+        75.0,
+        "LifeCancellableReservation",
+    );
+    close(
+        value(&session, "ManaCancellableReservation"),
+        90.0,
+        "ManaCancellableReservation",
+    );
+    // The permanent share is a source group of the reservation total.
+    let (base, _, _) = group_totals(&session, "LifeReserved", "ExtraLifeReserved");
+    close(base, 25.0, "LifeReserved source group");
+    // Each detail reconstructs the displayed value from its input.
+    for (stat, input) in [
+        ("LifeCancellableReservation", "ExtraLifeReserved"),
+        ("ManaCancellableReservation", "ExtraManaReserved"),
+    ] {
+        let detail = session.derived_detail(stat).unwrap();
+        assert_eq!(detail.inputs[0].0, input);
+        close(
+            (100.0 - detail.inputs[0].1).max(0.0),
+            value(&session, stat),
+            stat,
+        );
+    }
+}
+
+#[test]
+fn nothing_permanent_leaves_the_whole_reservation_cancellable() {
+    // A skill's reservation is cancellable: turning the skill off releases it.
+    let session = pool_session(vec![Modifier::number("LifeReserved", ModType::Base, 400.0)]);
+    close(value(&session, "LifeReserved"), 400.0, "LifeReserved");
+    close(
+        value(&session, "LifeCancellableReservation"),
+        100.0,
+        "LifeCancellableReservation",
+    );
+    close(
+        value(&session, "ManaCancellableReservation"),
+        100.0,
+        "ManaCancellableReservation",
+    );
+    // More than the whole pool permanently reserved cancels nothing, not less.
+    let session = pool_session(vec![Modifier::number(
+        "ExtraLifeReserved",
+        ModType::Base,
+        130.0,
+    )]);
+    close(
+        value(&session, "LifeCancellableReservation"),
+        0.0,
+        "over-reserved",
+    );
+}
+
+#[test]
+fn duration_mod_is_the_increased_and_more_terms_of_the_duration_calculation() {
+    use pobr_core::calc::skill_mechanics::{duration_modifier_terms, duration_terms};
+    let neutral = run(Vec::new(), Vec::new());
+    close(value(&neutral, "DurationMod"), 1.0, "neutral DurationMod");
+    // 40% increased and 10% more Duration: 1.4 * 1.1.
+    let mods = vec![
+        Modifier::number("Duration", ModType::Inc, 40.0),
+        Modifier::number("Duration", ModType::More, 10.0),
+        Modifier::number("SkillDurationBase", ModType::Base, 4.0),
+    ];
+    let session = run(mods.clone(), Vec::new());
+    close(value(&session, "DurationMod"), 1.54, "DurationMod");
+    let detail = session.derived_detail("DurationMod").unwrap();
+    let input = |id: &str| detail.inputs.iter().find(|(name, _)| name == id).unwrap().1;
+    close(
+        ((1.0 + input("DurationIncreased") / 100.0) * input("DurationMore")).max(0.0),
+        value(&session, "DurationMod"),
+        "DurationMod detail",
+    );
+    // The skill duration applies the same modifier exactly once.
+    let mut db = ModDb::new();
+    for modifier in mods {
+        db.add_mod(modifier);
+    }
+    let cfg = pobr_core::CalcConfig::spell();
+    close(
+        duration_terms(&db, &ModDb::new(), &cfg, "Duration").modifier,
+        duration_modifier_terms(&db, &cfg, Some("PrimaryDuration")).value(),
+        "duration uses the shared terms",
+    );
+    // Reduced below zero cannot make the modifier negative.
+    let session = run(
+        vec![Modifier::number("Duration", ModType::Inc, -150.0)],
+        Vec::new(),
+    );
+    close(value(&session, "DurationMod"), 0.0, "floored DurationMod");
+}
+
+#[test]
+fn full_life_percentage_defaults_to_the_whole_pool_and_takes_the_override() {
+    let overridden = |context: &[(String, f64)]| {
+        context
+            .iter()
+            .find(|(name, _)| name == "FullLifeThresholdOverridden")
+            .unwrap()
+            .1
+    };
+    let session = run(Vec::new(), Vec::new());
+    close(value(&session, "FullLifePercentage"), 100.0, "default");
+    let detail = session.derived_detail("FullLifePercentage").unwrap();
+    close(detail.inputs[0].1, 100.0, "default detail");
+    close(overridden(&detail.context), 0.0, "not overridden");
+    // "You count as on Full Life while at 90% of maximum Life or above"
+    // (game stat `full_life_threshold_%_override`).
+    let parsed = super::support::parse_mod(
+        "You count as on Full Life while at 90% of maximum Life or above",
+    )
+    .unwrap();
+    assert_eq!(
+        parsed.status,
+        pobr_core::mod_parser::ParseStatus::Parsed,
+        "{parsed:?}"
+    );
+    let session = run(parsed.mods, Vec::new());
+    close(value(&session, "FullLifePercentage"), 90.0, "override");
+    let detail = session.derived_detail("FullLifePercentage").unwrap();
+    close(detail.inputs[0].1, 90.0, "override detail");
+    close(overridden(&detail.context), 1.0, "overridden");
+}
+
+fn strike_session(skill_types: SkillTypes, mods: Vec<Modifier>) -> CalculationSession {
+    let mut cfg = pobr_core::CalcConfig::attack();
+    cfg.skill_types = skill_types;
+    let mut session = super::support::session(MinimalInput {
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        base_action_rate: 2.0,
+        ..Default::default()
+    })
+    .with_config(cfg);
+    session.add_modifiers(mods);
+    session.bridge_player_conditions();
+    session.perform_minimal().unwrap();
+    session
+}
+
+#[test]
+fn strike_targets_count_the_enemy_hit_plus_the_additional_targets_without_changing_dps() {
+    let strike = SkillTypes::from_pob2_name("MeleeSingleTarget").unwrap();
+    // Not a Strike (a Slam, or any other skill): the view is 0.
+    let plain = strike_session(SkillTypes::default(), Vec::new());
+    close(value(&plain, "StrikeTargets"), 0.0, "non-strike");
+    let granted = strike_session(
+        SkillTypes::default(),
+        vec![Modifier::number(
+            "AdditionalStrikeTarget",
+            ModType::Base,
+            3.0,
+        )],
+    );
+    close(
+        value(&granted, "StrikeTargets"),
+        0.0,
+        "additional targets do not make a Strike",
+    );
+    // A Strike hits one enemy; "Non-Vaal Strike Skills target 1 additional
+    // nearby Enemy" (game stat `melee_attack_number_of_spirit_strikes`) adds one.
+    let base = strike_session(strike, Vec::new());
+    close(value(&base, "StrikeTargets"), 1.0, "strike");
+    let parsed =
+        super::support::parse_mod("Non-Vaal Strike Skills target 1 additional nearby Enemy")
+            .unwrap();
+    assert_eq!(
+        parsed.status,
+        pobr_core::mod_parser::ParseStatus::Parsed,
+        "{parsed:?}"
+    );
+    let extra = strike_session(strike, parsed.mods);
+    close(
+        value(&extra, "StrikeTargets"),
+        2.0,
+        "strike with an additional target",
+    );
+    // The targets multiply no damage.
+    close(
+        value(&extra, "TotalDPS"),
+        value(&base, "TotalDPS"),
+        "TotalDPS with additional targets",
+    );
+    let detail = extra.derived_detail("StrikeTargets").unwrap();
+    let input = |id: &str| detail.inputs.iter().find(|(name, _)| name == id).unwrap().1;
+    close(
+        input("StrikeSkill") * (1.0 + input("AdditionalStrikeTarget")),
+        value(&extra, "StrikeTargets"),
+        "StrikeTargets detail",
+    );
+}
+
+#[test]
+fn ancestrally_boosted_strikes_target_two_additional_enemies_per_boost_effect() {
+    // "An Ancestrally Boosted Strike will target 2 additional Enemies"
+    // (`ancestral_cry_empowered_attacks_strike_X_additional_enemies` = 2);
+    // `double_ancestral_boost_effect` doubles the effect.
+    let targets = Modifier::number("AdditionalStrikeTarget", ModType::Base, 2.0)
+        .with_tag(pobr_core::ModTag::multiplier(
+            "AncestralBoostEffect",
+            1.0,
+            None,
+        ))
+        .with_tag(pobr_core::ModTag::condition("AncestrallyBoosted", false));
+    let strike = SkillTypes::from_pob2_name("MeleeSingleTarget").unwrap();
+    let boosted = strike_session(
+        strike,
+        vec![
+            Modifier::flag("Condition:AncestrallyBoosted"),
+            targets.clone(),
+        ],
+    );
+    close(value(&boosted, "StrikeTargets"), 3.0, "one boost effect");
+    let doubled = strike_session(
+        strike,
+        vec![
+            Modifier::flag("Condition:AncestrallyBoosted"),
+            Modifier::number("Multiplier:AncestralBoostEffect", ModType::Base, 1.0),
+            targets.clone(),
+        ],
+    );
+    close(
+        value(&doubled, "StrikeTargets"),
+        5.0,
+        "doubled boost effect",
+    );
+    // Without the boosted state the additional targets wait.
+    let idle = strike_session(strike, vec![targets]);
+    close(value(&idle, "StrikeTargets"), 1.0, "not boosted");
 }
