@@ -69,6 +69,8 @@ pub struct Env {
     /// `None` means `buff_pass` didn't run (mode_buffs off / no spec), and
     /// the output fields stay at their Default 0.
     pub curse_pass_output: Option<CursePassOutput>,
+    /// The selected hit's Heavy Stun buildup inputs, retained for its derived view.
+    pub(crate) heavy_stun_terms: Option<super::ailment::HeavyStunTerms>,
     /// The crossbow reload cycle `perform` scaled the rate and DPS by
     /// (`None` when the stage changed nothing).
     pub crossbow_reload: Option<super::CrossbowReload>,
@@ -122,6 +124,7 @@ impl Env {
             buff_handler_registry: Arc::new(HandlerRegistry::new()),
             curse_priority: None,
             curse_pass_output: None,
+            heavy_stun_terms: None,
             crossbow_reload: None,
             legacy_ehp_terms: None,
             leech_gain_terms: [[[0.0; 3]; 3]; 2],

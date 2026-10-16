@@ -45,9 +45,11 @@
 //!   penetration into enemy `Enemy{Fire,Cold,Lightning}Pen`, never the player's
 //!   offensive penetration. The legacy `EnemyTierDefaults::base_damage_for_ehp`
 //!   scalar remains unrounded but is not used by the EHP pipeline.
-//! - The enemy runtime still omits the table's Knockback/MinimumMovementSpeed
-//!   and additional Map Boss/Xesht Poise modifiers; the presence of these
-//!   extracted entries alone does not establish calculation support.
+//! - The table's vendor Map Boss/Xesht Poise entries remain unused. Runtime
+//!   poise instead uses the game rows in `overlay-common/boss_poise_thresholds.json`:
+//!   MonsterVarieties.PoiseThreshold 313 for map bosses and 1700 for Xesht
+//!   (Pinnacle/Uber), separate from the common unique-rarity 500 MORE.
+//!   Knockback/MinimumMovementSpeed entries also remain unused.
 
 use serde::{Deserialize, Serialize};
 

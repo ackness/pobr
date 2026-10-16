@@ -95,6 +95,9 @@ pub struct MinimalOutput {
     pub stored_crit_avg: Vec<(DamageType, f64)>,
     pub stored_hit_avg: Vec<(DamageType, f64)>,
     pub stored_combined_avg: Vec<(DamageType, f64)>,
+    /// Crit-weighted per-type hit damage after the effective-DPS mitigation pass.
+    /// Empty in panel mode, where `stored_combined_avg` is the hit basis.
+    pub mitigated_avg: Vec<(DamageType, f64)>,
     /// The `Stored<Type>{Hit,Crit}{Min,Max}` family (appended, vendor
     /// `:4050-4056`): the min/max input surface for damaging ailment source
     /// damage (RollAverage interpolation operates on this range).
@@ -164,6 +167,11 @@ impl MinimalOutput {
                 .main_hand
                 .as_ref()
                 .map(|hand| hand.stored_combined_avg.clone())
+                .unwrap_or_default(),
+            mitigated_avg: output
+                .main_hand
+                .as_ref()
+                .map(|hand| hand.mitigated_avg.clone())
                 .unwrap_or_default(),
             stored_ranges: output
                 .main_hand
@@ -1070,6 +1078,7 @@ pub fn calculate_minimal_vs_enemy(
         stored_crit_avg: crit_pass.stored_crit_avg,
         stored_hit_avg: crit_pass.stored_hit_avg,
         stored_combined_avg: crit_pass.stored_combined_avg,
+        mitigated_avg: crit_pass.mitigated_avg,
         stored_ranges: crit_pass.stored_ranges,
         breakdown: vec![
             BreakdownStep {

@@ -359,6 +359,14 @@ impl BuildData {
         if let Some(enemy_presets) = ruleset.enemy_presets {
             constants.enemy_presets = enemy_presets;
         }
+        // Curated game rows until the adapter exports MonsterVarieties.PoiseThreshold.
+        // Old packs retain the game-sourced defaults; malformed files still fail loading.
+        match data.boss_poise_thresholds() {
+            Ok(def) => constants.boss_poise_thresholds = def,
+            Err(LoadError::Io { ref source, .. })
+                if source.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => return Err(e),
+        }
         if let Some(unarmed_data) = ruleset.unarmed_data {
             constants.unarmed_data = unarmed_data;
         }

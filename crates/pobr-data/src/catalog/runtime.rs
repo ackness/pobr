@@ -61,6 +61,9 @@ pub struct RuntimeConstants {
     /// Enemy tier presets (`base/enemy_presets.json`; consumed by
     /// `setup_env`'s tier bonuses/penetration).
     pub enemy_presets: EnemyPresetsTable,
+    /// Game-table monster-variety poise percentages, separate from vendor presets.
+    #[serde(default)]
+    pub boss_poise_thresholds: super::boss_poise_thresholds::BossPoiseThresholdsDef,
     /// Per-class unarmed base table (`base/unarmed_data.json`, sourced from
     /// PoB2's `data.unarmedWeaponData`). The weaponData source for attack
     /// skills when there's no main-hand weapon (consumed by pobr-build's
