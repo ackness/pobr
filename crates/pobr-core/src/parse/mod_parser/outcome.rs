@@ -40,6 +40,33 @@ pub struct ParseOutcome {
     pub special_meta: Option<SpecialMatchMeta>,
 }
 
+impl ParseOutcome {
+    /// Whether the parser read the whole line. A [`ParseStatus::Parsed`] outcome
+    /// that still carries leftover text ([`Self::unparsed`]) understood only part of
+    /// it, and the part it did read can mean something else than the line says:
+    /// "1% more Life Flask Recovery" reads as a maximum Life modifier with
+    /// "Flask Recovery" left over, "50% of Chaos damage you prevent when Hit
+    /// Recouped as Life" as +50 Chaos damage.
+    pub fn is_complete(&self) -> bool {
+        self.status == ParseStatus::Parsed && self.unparsed.is_none()
+    }
+
+    /// The modifiers an ingest may apply for `line`, or the text it reports as
+    /// unsupported when it applies nothing: the line itself for a partial parse,
+    /// the parser's own remainder for an unsupported one. Every ingest path
+    /// (items, flasks and charms, passive nodes, gems, free modifier texts) goes
+    /// through this, so a partly read line never reaches the ModDb.
+    pub fn into_applicable(self, line: &str) -> Result<Vec<Modifier>, String> {
+        if self.is_complete() {
+            return Ok(self.mods);
+        }
+        Err(match self.status {
+            ParseStatus::Unsupported => self.unparsed.unwrap_or_else(|| line.to_string()),
+            ParseStatus::Parsed => line.to_string(),
+        })
+    }
+}
+
 /// Metadata for a special-channel match ([`ParseOutcome::special_meta`]).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SpecialMatchMeta {

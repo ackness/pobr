@@ -28,7 +28,10 @@ pub(super) fn requirement_snapshots(build: &Build, data: &BuildData) -> Vec<(Str
                 .chain(&item.modifier_texts)
                 .chain(&item.enchant_texts)
             {
-                local.add_list(parse_mod_engine(line, rules).mods);
+                // A partly read line (`ParseOutcome::into_applicable`) changes no requirement.
+                if let Ok(mods) = parse_mod_engine(line, rules).into_applicable(line) {
+                    local.add_list(mods);
+                }
             }
         }
         let cfg = CalcConfig::new();

@@ -48,7 +48,7 @@
 
 use pobr_data::prelude::*;
 
-use crate::mod_parser::{ParseCtx, ParseError, ParseStatus};
+use crate::mod_parser::{ParseCtx, ParseError};
 use crate::{ModTag, Modifier};
 
 /// An item modifier's section, which determines the attributed [`SourceKind`] and `SourceId` suffix.
@@ -168,10 +168,9 @@ fn ingest_section(
     );
 
     for text in texts {
-        let outcome = ctx.parse(text)?;
-        match outcome.status {
-            ParseStatus::Parsed => {
-                for mut modifier in outcome.mods {
+        match ctx.parse(text)?.into_applicable(text) {
+            Ok(mods) => {
+                for mut modifier in mods {
                     substitute_slot_placeholder(&mut modifier, slot);
                     let origin = ModifierSource::new(source_id.clone())
                         .with_slot(slot)
@@ -179,11 +178,7 @@ fn ingest_section(
                     ingest.modifiers.push(modifier.with_origin(origin));
                 }
             }
-            ParseStatus::Unsupported => {
-                if let Some(unparsed) = outcome.unparsed {
-                    ingest.unsupported.push(unparsed);
-                }
-            }
+            Err(unsupported) => ingest.unsupported.push(unsupported),
         }
     }
 
@@ -406,9 +401,12 @@ pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'
             );
             continue;
         }
-        match ctx.parse(strip_during_effect(text)) {
-            Ok(outcome) if outcome.status == ParseStatus::Parsed => {
-                for mut modifier in outcome.mods {
+        match ctx
+            .parse(strip_during_effect(text))
+            .map(|outcome| outcome.into_applicable(text))
+        {
+            Ok(Ok(mods)) => {
+                for mut modifier in mods {
                     // A flask's bare "increased Duration" describes that
                     // item, not the character's skill effects.
                     if modifier.name.as_str() == "Duration" && is_local_utility_duration(text) {
@@ -427,9 +425,10 @@ pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'
                     }
                 }
             }
-            // Unsupported or a hard error: report the original line (with
-            // suffix), so it can be matched line-by-line against the item text.
-            Ok(_) | Err(_) => ingest.unsupported.push(text.clone()),
+            // Unsupported, partly read or a hard error: report the original
+            // line (with suffix), so it can be matched line-by-line against
+            // the item text.
+            Ok(Err(_)) | Err(_) => ingest.unsupported.push(text.clone()),
         }
     }
 

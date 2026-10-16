@@ -22,7 +22,7 @@
 use pobr_data::prelude::*;
 
 use crate::Modifier;
-use crate::mod_parser::{ParseError, ParseStatus};
+use crate::mod_parser::ParseError;
 
 /// The target node kind for a radius jewel's `also grant` line (the granted object is determined by its prefix).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -104,20 +104,15 @@ pub fn ingest_passive_nodes_with_ctx(
         let source_id = node_source(node.node_id.0, node.ascendancy);
 
         for text in &node.modifier_texts {
-            let outcome = ctx.parse(text)?;
-            match outcome.status {
-                ParseStatus::Parsed => {
-                    for modifier in outcome.mods {
+            match ctx.parse(text)?.into_applicable(text) {
+                Ok(mods) => {
+                    for modifier in mods {
                         let origin =
                             ModifierSource::new(source_id.clone()).with_raw_text(text.clone());
                         ingest.modifiers.push(modifier.with_origin(origin));
                     }
                 }
-                ParseStatus::Unsupported => {
-                    if let Some(unparsed) = outcome.unparsed {
-                        ingest.unsupported.push(unparsed);
-                    }
-                }
+                Err(unsupported) => ingest.unsupported.push(unsupported),
             }
         }
     }

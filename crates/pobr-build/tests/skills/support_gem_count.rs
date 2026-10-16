@@ -3,7 +3,7 @@
 //! pinned-value entry from a2-real-gaps, the
 //! `MultiplierThreshold{<Color>SupportGems, 10}` lower-bound threshold).
 //!
-//! Asserts: the `5% increased Max Life if you have at least 10 Red Support
+//! Asserts: the `5% increased maximum Life if you have at least 10 Red Support
 //! Gems Socketed` mod activates (Life ×~1.05) with **10 red supports
 //! socketed**, and stays inactive with **0** (a missing lower-bound key means
 //! "not active" — a fail-safe under-count semantics).
@@ -26,7 +26,7 @@ fn opts_with_threshold_line() -> DataOrchestratorOptions {
         enemy_tier: EnemyTier::None,
         mode_effective: false,
         extra_modifier_texts: vec![
-            "5% increased Max Life if you have at least 10 Red Support Gems Socketed".into(),
+            "5% increased maximum Life if you have at least 10 Red Support Gems Socketed".into(),
         ],
         ..Default::default()
     }
