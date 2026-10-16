@@ -92,6 +92,24 @@
         }
       ],
       "verified": true
+    },
+    {
+      "var": "enemyKillsPerSecond",
+      "input_type": "count_allow_zero",
+      "section": "When In Combat",
+      "label": "Enemies you kill per second:",
+      "tooltip": "Enemies you kill per second. Used for on-kill charge gain only. Leave empty for no on-kill charges; set 0 for zero kills.",
+      "effects": [
+        {
+          "target": "player",
+          "name": "Multiplier:EnemyKillsPerSecond",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "input"
+          }
+        }
+      ],
+      "verified": true
     }
   ]
 }

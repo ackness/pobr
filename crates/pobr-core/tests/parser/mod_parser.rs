@@ -1681,13 +1681,23 @@ fn flask_overflow_does_not_change_uncapped_per_use_recovery() {
 }
 
 #[test]
-fn kill_charge_chance_does_not_invent_a_kill_rate() {
-    // FlaskChanceRechargeOnKill3: 31..35% chance, not 35 charges per second.
+fn kill_charge_chance_reports_chance_for_configured_kill_rate() {
+    // FlaskChanceRechargeOnKill3: 31..35% chance; the engine turns kills/s x
+    // chance into charges/s once enemyKillsPerSecond is configured, so the
+    // rule stores the chance instead of staying unmodelled.
     let parsed = parse_mod("35% Chance to gain a Charge when you kill an enemy").unwrap();
     assert_eq!(parsed.status, ParseStatus::Parsed);
-    assert!(parsed.mods.is_empty());
-    // A kill-rate model would turn this into charge gain: unmodelled, not no-effect.
-    assert!(!parsed.special_meta.unwrap().no_effect);
+    assert_eq!(parsed.mods.len(), 1);
+    let modifier = &parsed.mods[0];
+    assert_eq!(modifier.name.as_str(), "FlaskChargeOnKillChance");
+    assert_eq!(modifier.mod_type, ModType::Base);
+    assert_eq!(modifier.value, ModValue::Number(35.0));
+    let rule = modifier.exporter_rule.as_ref().unwrap();
+    assert_eq!(rule.exporter, pobr_data::source::ExporterCoverage::Absent);
+    assert!(
+        rule.game_source
+            .contains("local_%_chance_to_gain_flask_charge_on_kill")
+    );
 }
 
 #[test]

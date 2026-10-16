@@ -4827,13 +4827,19 @@
     },
     {
       "id": "utility_charge_on_kill",
-      "pattern": "(?:\\d+(?:\\.\\d+)?)% chance to gain a charge when you kill an enemy",
-      "mods": [],
+      "pattern": "(\\d+(?:\\.\\d+)?)% chance to gain a charge when you kill an enemy",
+      "mods": [
+        {
+          "name": "FlaskChargeOnKillChance",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
       "verified": false,
-      "batch": "unmodelled",
+      "batch": "S2",
       "exporter": "absent",
       "game_source": "local_%_chance_to_gain_flask_charge_on_kill; base/mods.json: FlaskChanceRechargeOnKill1..3",
-      "source_note": "kill rate not modelled; passive charge generation per second is unchanged.",
+      "source_note": "Game stat local_%_chance_to_gain_flask_charge_on_kill; each kill grants 1 charge to this flask/charm, so kills/s x chance/100 charges/s scaled by the slot's charges-gained factor; without a configured kill rate the line stays gated.",
       "examples": [
         "35% Chance to gain a Charge when you kill an enemy"
       ]

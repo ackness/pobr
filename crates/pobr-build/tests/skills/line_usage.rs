@@ -335,6 +335,7 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
                 "Archon Buffs also grant +20% to all Elemental Resistances"
             }
             "ArchonEffect" => "50% reduced effect of Archon Buffs on you",
+            "FlaskChargeOnKillChance" => "25% Chance to gain a Charge when you kill an enemy",
             _ => panic!("new registered reader {name} needs an off/on fixture"),
         };
         for active in [false, true] {
@@ -354,30 +355,59 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
             } else {
                 "FireballPlayer"
             };
+            let is_charge_on_kill = name == "FlaskChargeOnKillChance";
             let config = gate
                 .config_option
                 .map(|option| {
-                    // An explicit 50% Chill with 40% reduced effect slows
-                    // actions by 30%; the state alone supplies no magnitude.
-                    let magnitude = if option == "conditionChilled" {
-                        r#"<Input name="conditionChilledEffect" number="50"/>"#
+                    if option == "enemyKillsPerSecond" {
+                        // Count-type kill rate: absent when off, 2/s when on.
+                        if active {
+                            r#"<Config><Input name="enemyKillsPerSecond" number="2"/></Config>"#.to_string()
+                        } else {
+                            String::new()
+                        }
                     } else {
-                        ""
-                    };
-                    format!(
-                        r#"<Config><Input name="{option}" boolean="{active}"/>{magnitude}</Config>"#
-                    )
+                        // An explicit 50% Chill with 40% reduced effect slows
+                        // actions by 30%; the state alone supplies no magnitude.
+                        let magnitude = if option == "conditionChilled" {
+                            r#"<Input name="conditionChilledEffect" number="50"/>"#
+                        } else {
+                            ""
+                        };
+                        format!(
+                            r#"<Config><Input name="{option}" boolean="{active}"/>{magnitude}</Config>"#
+                        )
+                    }
                 })
                 .unwrap_or_default();
-            let build = parse_build(&format!(
-                r#"<PathOfBuilding2>
+            let build = if is_charge_on_kill {
+                parse_build(&format!(
+                    r#"<PathOfBuilding2>
+<Build level="80" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="{skill}" level="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: MAGIC
+Undiluted Ultimate Life Flask
+Implicits: 0
+{text}
+</Item><ItemSet id="1"><Slot name="Flask 1" itemId="1" active="true"/></ItemSet></Items>
+{config}</PathOfBuilding2>"#
+                ))
+                .unwrap()
+            } else {
+                parse_build(&format!(
+                    r#"<PathOfBuilding2>
 <Build level="80" className="Witch" mainSocketGroup="1"/>
 <Skills><Skill enabled="true"><Gem skillId="{skill}" level="20" enabled="true"/></Skill></Skills>
 {config}</PathOfBuilding2>"#
-            ))
-            .unwrap();
+                ))
+                .unwrap()
+            };
             let mut options = DataOrchestratorOptions {
-                extra_modifier_texts: vec![text.to_string()],
+                extra_modifier_texts: if is_charge_on_kill {
+                    Vec::new()
+                } else {
+                    vec![text.to_string()]
+                },
                 ..Default::default()
             };
             if active && matches!(name, "UnaffectedBySlows" | "SlowEffectOnSelf") {
@@ -406,7 +436,13 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
                 .lines
                 .iter()
                 .flat_map(|line| &line.modifiers)
-                .find(|modifier| modifier.name == name)
+                .find(|modifier| {
+                    if is_charge_on_kill {
+                        modifier.name.ends_with(":FlaskChargeOnKillChance")
+                    } else {
+                        modifier.name == name
+                    }
+                })
                 .unwrap();
             assert_eq!(
                 modifier.status,
@@ -420,16 +456,24 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
             assert_eq!(modifier.read_gate.is_some(), !active, "{name}");
             if active {
                 assert!(
-                    ledger.reads.contains_key(name),
+                    if is_charge_on_kill {
+                        ledger
+                            .reads
+                            .keys()
+                            .any(|key| key.ends_with(":FlaskChargeOnKillChance"))
+                    } else {
+                        ledger.reads.contains_key(name)
+                    },
                     "{name}: reader must actually run"
                 );
             } else {
-                assert!(
-                    !diagnosis
-                        .unread_modifiers
-                        .iter()
-                        .any(|modifier| modifier.name == name)
-                );
+                assert!(!diagnosis.unread_modifiers.iter().any(|modifier| {
+                    if is_charge_on_kill {
+                        modifier.name.ends_with(":FlaskChargeOnKillChance")
+                    } else {
+                        modifier.name == name
+                    }
+                }));
                 assert!(modifier.reason.as_deref().unwrap().contains(gate.state));
             }
         }

@@ -323,13 +323,37 @@ pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
             config_option: Some("conditionAffectedByArchon"),
         },
     ),
+    // `calc::utility::calculate`: on-kill flask/charm charges need a kill rate.
+    (
+        "FlaskChargeOnKillChance",
+        ReadGate {
+            state: "a kill rate is configured for on-kill charge gain",
+            config_option: Some("enemyKillsPerSecond"),
+        },
+    ),
 ];
 
 pub(crate) fn read_under_a_state(name: &str) -> Option<ReadGate> {
-    READ_UNDER_A_STATE
+    if let Some(gate) = READ_UNDER_A_STATE
         .iter()
         .find(|(registered, _)| *registered == name)
         .map(|(_, gate)| *gate)
+    {
+        return Some(gate);
+    }
+    // Flask/charm local modifiers are stored per slot
+    // (`LocalUtility:<slot>:<name>`); a gated local reader is registered
+    // under its bare name and applies to every slot's copy.
+    if let Some(bare) = name
+        .strip_prefix("LocalUtility:")
+        .and_then(|rest| rest.split(':').next_back())
+    {
+        return READ_UNDER_A_STATE
+            .iter()
+            .find(|(registered, _)| *registered == bare)
+            .map(|(_, gate)| *gate);
+    }
+    None
 }
 
 /// What consumes `name` outside the modifier database, when something does.

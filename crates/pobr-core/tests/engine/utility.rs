@@ -90,6 +90,64 @@ fn ultimate_flask_local_properties_and_global_bonuses_are_separate() {
     assert_eq!(session.detail_sources("LifeFlaskChargeGen").len(), 2);
 }
 
+#[test]
+fn charge_on_kill_scales_with_kill_rate_and_gain() {
+    use pobr_core::{CalcConfig, Modifier};
+    // Game stat local_%_chance_to_gain_flask_charge_on_kill (Flasks/
+    // ComponentCharges via base/mods.json FlaskChanceRechargeOnKill1..3):
+    // each kill grants 1 charge, so 25% x 2 kills/s = 0.5 charges/s base.
+    let base = UtilityBaseStats {
+        life: 0.0,
+        mana: 0.0,
+        duration: 1.0,
+        charges_max: 80.0,
+        charges_used: 80.0,
+    };
+    let with_line = charm(&["25% Chance to gain a Charge when you kill an enemy"]);
+    let without = charm(&[]);
+    let run = |kills: Option<f64>, gain_inc: f64| {
+        let cfg = match kills {
+            Some(k) => CalcConfig::default().with_multiplier("EnemyKillsPerSecond", k),
+            None => CalcConfig::default(),
+        };
+        let mut session = super::support::session(MinimalInput::default()).with_config(cfg);
+        session.add_utility_base("Charm 1", &with_line, &base);
+        session.add_flask_charm("Charm 1", &with_line);
+        session.add_utility_base("Charm 2", &without, &base);
+        session.add_flask_charm("Charm 2", &without);
+        if gain_inc != 0.0 {
+            session.add_modifiers([Modifier::number(
+                "CharmChargesGained",
+                ModType::Inc,
+                gain_inc,
+            )]);
+        }
+        session.perform_minimal().unwrap();
+        assert!(
+            session.unsupported_modifier_texts().is_empty(),
+            "{:?}",
+            session.unsupported_modifier_texts()
+        );
+        let out = session.output().utility_stats.clone();
+        (out["Charm1ChargeGen"], out["Charm2ChargeGen"])
+    };
+    // Without a kill rate the line stays gated: no passive generation.
+    let (gated1, gated2) = run(None, 0.0);
+    assert_eq!(gated1, 0.0);
+    assert_eq!(gated2, 0.0);
+    // 2 kills/s x 25% = 0.5/s; the unrelated slot is unchanged.
+    let (on1, on2) = run(Some(2.0), 0.0);
+    assert!((on1 - 0.5).abs() < 1e-9, "{on1}");
+    assert_eq!(on2, 0.0);
+    // The slot's charges-gained factor scales the on-kill amount: 0.5 x 2 = 1.0.
+    let (scaled1, scaled2) = run(Some(2.0), 100.0);
+    assert!((scaled1 - 1.0).abs() < 1e-9, "{scaled1}");
+    assert_eq!(scaled2, 0.0);
+    // An explicit zero kill rate is configured and still yields zero.
+    let (zero1, _) = run(Some(0.0), 0.0);
+    assert_eq!(zero1, 0.0);
+}
+
 fn charm(lines: &[&str]) -> Item {
     Item {
         base: pobr_data::item::ItemBaseId::from("Golden Charm"),
