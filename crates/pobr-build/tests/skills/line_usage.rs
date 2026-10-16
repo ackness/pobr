@@ -748,6 +748,55 @@ Implicits: 0
 }
 
 #[test]
+fn outranked_max_loser_is_state_gated() {
+    let data = data();
+    // "Defend with N% of Armour" stores `ArmourDefense` BASE N-100; the hit-taken
+    // stage takes the strongest (`MAX`), so 150% (BASE 50) applies and 120%
+    // (BASE 20) loses without being dropped input.
+    let build = parse_build(
+        r#"<PathOfBuilding2>
+<Build level="80" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
+</PathOfBuilding2>"#,
+    )
+    .unwrap();
+    let options = DataOrchestratorOptions {
+        extra_modifier_texts: vec![
+            "Defend with 120% of Armour".into(),
+            "Defend with 150% of Armour".into(),
+        ],
+        ..Default::default()
+    };
+    let diagnosis = diagnose(&build, &data, &options).unwrap();
+    let ledger = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+    let row = |text: &str| {
+        ledger
+            .lines
+            .iter()
+            .find(|line| line.text.as_deref() == Some(text))
+            .unwrap()
+    };
+    let winner = &row("Defend with 150% of Armour").modifiers[0];
+    assert_eq!(winner.name, "ArmourDefense");
+    assert_eq!(winner.status, ModifierStatus::Applied, "{winner:?}");
+    assert!(winner.read_gate.is_none(), "{winner:?}");
+    let loser = &row("Defend with 120% of Armour").modifiers[0];
+    assert_eq!(loser.name, "ArmourDefense");
+    assert_eq!(loser.status, ModifierStatus::Inactive, "{loser:?}");
+    let gate = loser.read_gate.as_ref().unwrap();
+    assert_eq!(
+        gate.state, "a stronger modifier of the same name applies",
+        "{loser:?}"
+    );
+    assert_eq!(gate.config_option, None, "{loser:?}");
+    assert_eq!(
+        loser.reason.as_deref(),
+        Some("only the strongest ArmourDefense counts, and another is stronger"),
+        "{loser:?}"
+    );
+}
+
+#[test]
 fn charm_recharge_event_stays_visible_as_unmodelled() {
     let data = data();
     let text = "Energy Shield Recharge starts on use";
