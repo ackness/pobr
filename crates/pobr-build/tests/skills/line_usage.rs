@@ -458,3 +458,54 @@ fn build_and_calc_pass_conditions_are_declared_even_when_not_met() {
     }
     assert!(!ledger.condition_states.contains("NothingSetsThis"));
 }
+
+#[test]
+fn equipped_defence_lines_require_the_corresponding_offhand() {
+    let data = data();
+    let focus = "75% increased Energy Shield from Equipped Focus";
+    let shield = "100% increased Armour, Evasion and Energy Shield from Equipped Shield";
+    for (base, active_text, inactive_text, condition) in [
+        ("Woven Focus", focus, shield, "UsingShield"),
+        ("Splintered Tower Shield", shield, focus, "UsingFocus"),
+    ] {
+        // Every defence is nonzero to exercise every member of the Shield line.
+        let build = parse_build(&format!(r#"<PathOfBuilding2>
+<Build level="80" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: RARE
+Test Offhand
+{base}
+Implicits: 0
++20 to Armour
++20 to Evasion Rating
++50 to maximum Energy Shield
+</Item><ItemSet id="1"><Slot name="Weapon 2" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#)).unwrap();
+        let options = DataOrchestratorOptions {
+            extra_modifier_texts: vec![focus.into(), shield.into()],
+            ..Default::default()
+        };
+        let diagnosis = diagnose(&build, &data, &options).unwrap();
+        let ledger = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+        for (text, status) in [
+            (active_text, LineStatus::Applied),
+            (inactive_text, LineStatus::Inactive),
+        ] {
+            let row = ledger
+                .lines
+                .iter()
+                .find(|line| line.text.as_deref() == Some(text))
+                .unwrap();
+            assert_eq!(row.status, status, "{row:?}");
+            if status == LineStatus::Inactive {
+                for modifier in &row.modifiers {
+                    assert_eq!(
+                        modifier.reason.as_deref(),
+                        Some(format!("Condition {condition} not met").as_str())
+                    );
+                }
+            }
+        }
+        assert!(ledger.condition_states.contains(condition));
+    }
+}

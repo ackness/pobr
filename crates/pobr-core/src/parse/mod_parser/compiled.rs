@@ -536,9 +536,28 @@ fn compile_flag_phrases(
 ) -> Result<PlainTable<RuleEffectsDef>, CompileError> {
     PlainTable::build(
         defs.iter()
-            .map(|d| PlainEntry {
-                phrase: d.phrase.clone(),
-                payload: d.effects.clone(),
+            .map(|d| {
+                let mut effects = d.effects.clone();
+                // energy_shield_from_focus_+% requires a Focus, not any
+                // defensive off-hand item occupying the same slot.
+                if d.phrase == "from equipped focus" {
+                    effects
+                        .tags
+                        .push(pobr_data::catalog::parser_rules::TagTemplate {
+                            tag_type: "Condition".into(),
+                            fields: [(
+                                "var".into(),
+                                pobr_data::catalog::stat_map::StatMapValue::Text(
+                                    "UsingFocus".into(),
+                                ),
+                            )]
+                            .into(),
+                        });
+                }
+                PlainEntry {
+                    phrase: d.phrase.clone(),
+                    payload: effects,
+                }
             })
             .collect(),
     )

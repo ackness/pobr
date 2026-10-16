@@ -1456,3 +1456,102 @@ fn exporter_absent_item_rules_apply_only_on_the_game_basis() {
         "efficiency changes ManaCost, not Life"
     );
 }
+
+fn defence_with_lines(build: &Build, data: &BuildData, lines: &[&str]) -> CalculationSession {
+    calculate_with_data_session(
+        build,
+        data,
+        &DataOrchestratorOptions {
+            inject_character_base: false,
+            enemy_tier: EnemyTier::None,
+            extra_modifier_texts: lines.iter().map(|line| (*line).into()).collect(),
+            ..Default::default()
+        },
+    )
+    .unwrap()
+}
+
+#[test]
+fn focus_energy_shield_increase_shares_global_bucket_and_requires_a_focus() {
+    let data = data();
+    // Game base_items: Woven Focus has 15 ES, Grand Regalia has 50 ES.
+    // Local 100% and 20% quality make the Focus 15 * 2 * 1.2 = 36 ES.
+    // Dreamcatcher's 75% applies to those 36 alongside global 50%, not locally.
+    let mut focus = item("Woven Focus", &["100% increased Energy Shield"]);
+    focus.quality = 20;
+    let mut build = build("FireballPlayer");
+    build
+        .items
+        .insert(EquipmentSlot::BodyArmour, item("Grand Regalia", &[]));
+    build.items.insert(EquipmentSlot::Weapon2, focus);
+    let global = "50% increased maximum Energy Shield";
+    let focus_bonus = "75% increased Energy Shield from Equipped Focus";
+    close(
+        defence_with_lines(&build, &data, &[global])
+            .output()
+            .energy_shield,
+        129.0,
+    );
+    close(
+        defence_with_lines(&build, &data, &[global, focus_bonus])
+            .output()
+            .energy_shield,
+        156.0,
+    );
+    // A shield can have its own flat ES; sharing weapon2 does not make it a Focus.
+    build.items.insert(
+        EquipmentSlot::Weapon2,
+        item("Splintered Tower Shield", &["+50 to maximum Energy Shield"]),
+    );
+    close(
+        defence_with_lines(&build, &data, &[global, focus_bonus])
+            .output()
+            .energy_shield,
+        150.0,
+    );
+    build.items.remove(&EquipmentSlot::Weapon2);
+    close(
+        defence_with_lines(&build, &data, &[global, focus_bonus])
+            .output()
+            .energy_shield,
+        75.0,
+    );
+}
+
+#[test]
+fn shield_defences_increase_only_the_shield_alongside_global_increases() {
+    let data = data();
+    // Game bases: Grand Regalia = 182 armour / 165 evasion / 50 ES;
+    // Splintered Tower Shield = 18 armour, with local flat 20 evasion / 50 ES.
+    // Fortified Aegis gives 100% shield defences; global increases are 50%.
+    let mut build = build("FireballPlayer");
+    build
+        .items
+        .insert(EquipmentSlot::BodyArmour, item("Grand Regalia", &[]));
+    build.items.insert(
+        EquipmentSlot::Weapon2,
+        item(
+            "Splintered Tower Shield",
+            &["+20 to Evasion Rating", "+50 to maximum Energy Shield"],
+        ),
+    );
+    let global = "50% increased Armour, Evasion and Energy Shield";
+    let shield_bonus = "100% increased Armour, Evasion and Energy Shield from Equipped Shield";
+    let base = defence_with_lines(&build, &data, &[global]);
+    close(base.output().armour, 300.0);
+    close(base.output().evasion, 278.0);
+    close(base.output().energy_shield, 150.0);
+    let boosted = defence_with_lines(&build, &data, &[global, shield_bonus]);
+    close(boosted.output().armour, 318.0);
+    close(boosted.output().evasion, 298.0);
+    close(boosted.output().energy_shield, 200.0);
+    build
+        .items
+        .insert(EquipmentSlot::Weapon2, item("Woven Focus", &[]));
+    close(
+        defence_with_lines(&build, &data, &[global, shield_bonus])
+            .output()
+            .energy_shield,
+        98.0,
+    );
+}

@@ -24631,7 +24631,8 @@
           "type": "Inc",
           "value": 40.0,
           "tags": [
-            "SlotName(\"weapon2\")"
+            "SlotName(\"weapon2\")",
+            "Condition { var: \"UsingFocus\", negated: false, actor: None }"
           ]
         }
       ]
@@ -25263,7 +25264,8 @@
           "type": "Inc",
           "value": 44.0,
           "tags": [
-            "SlotName(\"weapon2\")"
+            "SlotName(\"weapon2\")",
+            "Condition { var: \"UsingFocus\", negated: false, actor: None }"
           ]
         }
       ]
@@ -25501,7 +25503,8 @@
           "type": "Inc",
           "value": 48.0,
           "tags": [
-            "SlotName(\"weapon2\")"
+            "SlotName(\"weapon2\")",
+            "Condition { var: \"UsingFocus\", negated: false, actor: None }"
           ]
         }
       ]
@@ -28495,7 +28498,8 @@
           "type": "Inc",
           "value": 60.0,
           "tags": [
-            "SlotName(\"weapon2\")"
+            "SlotName(\"weapon2\")",
+            "Condition { var: \"UsingFocus\", negated: false, actor: None }"
           ]
         }
       ]
@@ -29208,7 +29212,8 @@
           "type": "Inc",
           "value": 75.0,
           "tags": [
-            "SlotName(\"weapon2\")"
+            "SlotName(\"weapon2\")",
+            "Condition { var: \"UsingFocus\", negated: false, actor: None }"
           ]
         }
       ]

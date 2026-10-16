@@ -1806,3 +1806,32 @@ fn incoming_debuffs_without_player_models_remain_visible_gaps() {
         assert!(!parsed.special_meta.unwrap().no_effect, "{text}");
     }
 }
+
+#[test]
+fn equipped_defence_and_recharge_text_keep_their_scope_and_reader_names() {
+    for (text, names, condition) in [
+        (
+            "75% increased Energy Shield from Equipped Focus",
+            vec!["EnergyShield"],
+            "UsingFocus",
+        ),
+        (
+            "100% increased Armour, Evasion and Energy Shield from Equipped Shield",
+            vec!["Armour", "Evasion", "EnergyShield"],
+            "UsingShield",
+        ),
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed);
+        assert_eq!(parsed.mods.len(), names.len());
+        for name in names {
+            let modifier = parsed
+                .mods
+                .iter()
+                .find(|m| m.name.as_str() == name)
+                .unwrap();
+            assert_eq!(modifier.slot_name(), Some("weapon2"));
+            assert!(modifier.tags.contains(&ModTag::condition(condition, false)));
+        }
+    }
+}

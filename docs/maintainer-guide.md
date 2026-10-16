@@ -335,6 +335,10 @@ apply Light Radius modifiers to skill area (`calc::skill_mechanics::calc_aoe`).
 
 恢复（`pobr-core/src/calc/recovery.rs`）分三层：原始再生；经过再生限制与直接恢复后的恢复（`LifeRegenRecovery` 等，含 Runic Ward 与怒气，来自 `base_ward_regeneration_per_minute` “Regenerate 1 Runic Ward per second”、`base_rage_regeneration_per_minute` 等游戏 stat）；扣掉构筑自身损耗后的净恢复（`NetLifeRegen`、`NetManaRegen`、`NetEnergyShieldRegen`、`NetWardRegen`、`TotalNetRegen`）。角色固有的魔力再生是 `character_inherent_mana_regeneration_rate_per_minute_%` = 240（每秒 4% 最大魔力），“No inherent Mana Regeneration” 只去掉这一份（`calc_orchestrator::inject::inject_character_base`）。自身损耗是资源流失（“Lose … per second”，不经减免）、自己受到的类型化持续伤害（经抗性与承伤修正）和主技能的每秒消耗（百分比消耗按资源池换算）：生命、魔力、能量护盾各扣自己的消耗，`NetWardRegen` 是 Runic Ward 的恢复减去它的每秒消耗，`TotalNetRegen` 是这四种净恢复之和，怒气消耗只进入 `TotalBuildDegen`；敌人的持续伤害不计入。Berserk 的 `skill_base_life_loss_%_per_minute_per_rage_while_not_losing_rage_to_apply` = 6 是每点怒气每秒流失 0.1% 最大生命。偷取与命中获得（`LifeLeechGainRate`、`LifeLeechGainPerHit` 等）按[游戏关键词](https://poe2db.tw/us/Keywords)使用一秒基础持续时间，不再把每次偷取量限制为资源池的 10%。[0.5 补丁说明](https://www.pathofexile.com/forum/view-thread/3932540)中的单次命中 40,000 伤害上限已实现：命中总伤害超过上限时，各伤害类型按相同比例缩小，再按各自的偷取比例计算，不能用额外元素伤害补足物理偷取。`base_life_leech_amount_+%` / `base_mana_leech_amount_+%` 的“increased amount of Life Leeched” / “increased amount of Mana Leeched”增加偷取量；`base_life_leech_rate_+%` 等“Leech Life 1% faster”加快速率，不增加总量。最大偷取速率先应用增加/减少与更多/更少修正，再限制实例速率；生命和魔力每秒 20%、能量护盾每秒 10% 的默认上限仍是项目保留的兼容约定，并非 0.5 补丁说明确认的游戏常量。按主技能平均命中频率估计实例覆盖时间，优先计算恢复速率最高的实例，较慢实例只填补其过期后留下的时间，不模拟随机暴击的时间序列；命中获得与瞬间偷取仍按每次命中相加。PoB2 在没有自身类型化持续伤害时不给出净恢复字段，PoBR 照常计算。
 
+Equipped Focus/Shield defence increases (`energy_shield_from_focus_+%`,
+`shield_armour_evasion_energy_shield_+%`) add to global increases only for the
+matching off-hand item's locally computed defences.
+
 Scarred Faith's “Energy Shield does not Recharge” (`keystone_alternate_es_recovery`,
 [game text](https://poe2db.tw/us/Scarred_Faith)) sets recharge rate, amount and
 start delay to zero; its separate regeneration prohibition makes net ES
