@@ -47,7 +47,8 @@ fn catalog_entry_counts_locked() {
     );
     assert_eq!(
         catalog.len() - planned,
-        213,
+        // +4: Fire/Cold/Lightning/Chaos ResistMax, shared by the player and minions.
+        217,
         "a change in Computed entry count needs explicit review"
     );
 }
