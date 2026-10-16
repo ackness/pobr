@@ -173,6 +173,8 @@ export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
   PhysicalDamageAsArmourBreakDamage: { 'en-US': "Physical damage dealt per hit", 'zh-TW': "每次擊中造成的物理傷害", 'zh-CN': "每次击中造成的物理伤害" },
   FireDamageAsArmourBreakDamage: { 'en-US': "Fire damage dealt per hit", 'zh-TW': "每次擊中造成的火焰傷害", 'zh-CN': "每次击中造成的火焰伤害" },
   ChaosDamageAsArmourBreakDamage: { 'en-US': "Chaos damage dealt per hit", 'zh-TW': "每次擊中造成的混沌傷害", 'zh-CN': "每次击中造成的混沌伤害" },
+  PhysicalCritDamageAsArmourBreak: { 'en-US': "Critical Physical damage dealt as Armour Break (%)", 'zh-TW': "暴擊物理傷害轉為破甲（%）", 'zh-CN': "暴击物理伤害转为破甲（%）" },
+  PhysicalCritDamageAsArmourBreakDamage: { 'en-US': "Critical Physical damage dealt per hit", 'zh-TW': "每次擊中的暴擊物理傷害", 'zh-CN': "每次击中的暴击物理伤害" },
   HitDamageAsArmourBreakDamage: { 'en-US': "Hit damage dealt per hit", 'zh-TW': "每次擊中造成的傷害", 'zh-CN': "每次击中造成的伤害" },
   ArmourBreakIncreased: { 'en-US': "Increased Armour Break (%)", 'zh-TW': "破甲增加（%）", 'zh-CN': "破甲增加（%）" },
   ArmourBreakMore: { 'en-US': "Armour Break more multiplier", 'zh-TW': "破甲總增倍率", 'zh-CN': "破甲总增倍率" },

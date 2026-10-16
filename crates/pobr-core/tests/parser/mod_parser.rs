@@ -943,12 +943,13 @@ fn keystone_no_mana_yields_zero_override() {
 }
 
 #[test]
-fn standalone_chaos_immunity_is_recognised_but_unmodelled() {
-    // Outside Chaos Inoculation there is no chaos-immunity flag: the line is
-    // recognised, stores nothing, and stays reported as unmodelled.
+fn standalone_chaos_immunity_sets_the_chaos_immune_flag() {
+    // Game stat `chaos_immunity` ("Provides Immunity to Chaos Damage"): the
+    // same immunity Chaos Inoculation grants, read by `defence::chaos_immune`.
     let o = parse_mod("Immune to Chaos Damage").unwrap();
-    assert!(o.mods.is_empty());
-    assert!(!o.special_meta.unwrap().no_effect);
+    assert_eq!(o.mods.len(), 1);
+    assert_eq!(o.mods[0].name, ModName::from("ChaosImmune"));
+    assert_eq!(o.mods[0].mod_type, ModType::Flag);
 }
 
 #[test]
@@ -1853,66 +1854,125 @@ fn slowing_potency_uses_the_game_stat_and_marks_exporter_absence() {
 }
 
 #[test]
-fn armour_break_increases_report_the_missing_per_hit_model() {
-    // Exposed Wounds gives 30% increased break against ailmented targets;
-    // a global 20% increase cannot scale an already-configured broken total.
-    for text in [
-        "Break 20% increased Armour",
+fn armour_break_increases_scale_the_per_hit_break() {
+    // Exposed Wounds gives 30% increased break against ailmented targets.
+    let plain = parse_mod("Break 20% increased Armour").unwrap();
+    assert_eq!(plain.mods.len(), 1, "{plain:?}");
+    assert_eq!(plain.mods[0].name.as_str(), "ArmourBreakPerHit");
+    assert_eq!(plain.mods[0].mod_type, ModType::Inc);
+    assert_eq!(plain.mods[0].value, ModValue::Number(20.0));
+    assert!(plain.mods[0].tags.is_empty());
+    let ailments = parse_mod(
         "[Hit|Hits] [ArmourBreak|Break] 30% increased [Armour] on targets with [Ailments]",
-    ] {
-        let parsed = parse_mod(text).unwrap();
-        assert_eq!(parsed.status, ParseStatus::Parsed, "{text}: {parsed:?}");
-        assert!(parsed.mods.is_empty(), "{text}: {parsed:?}");
-        let meta = parsed.special_meta.unwrap();
-        assert!(
-            !meta.no_effect,
-            "an unmodelled mechanic is not a no-effect line"
-        );
+    )
+    .unwrap();
+    assert_eq!(ailments.mods.len(), 1, "{ailments:?}");
+    assert_eq!(ailments.mods[0].value, ModValue::Number(30.0));
+    match &ailments.mods[0].tags[..] {
+        [ModTag::ConditionAnyOf { vars, negated: false }] => {
+            assert!(vars.iter().any(|var| var == "EnemyIgnited"), "{vars:?}");
+            assert!(vars.iter().any(|var| var == "EnemyBleeding"), "{vars:?}");
+        }
+        tags => panic!("expected an enemy ailment condition, got {tags:?}"),
     }
 }
 
+/// Lines that feed the effect views (`calc::effect_views`): one modifier
+/// each, with the game's numbers. Remnant Attraction 10%, Seeing Stars 25%
+/// Daze duration, Maiming Strike 25% attack Maim, Exposed Wounds' Armour
+/// Break increases, Hex Master's doubled curse delay, Thawing Charm's
+/// recharge start and the Elemental Infusion limits.
 #[test]
-fn additional_remnant_chance_reports_the_missing_count_model() {
-    // Remnant Attraction gives 10%; the preceding small passive gives 5%.
-    for text in [
-        "10% chance to create an additional [Remnant]",
-        "5% chance to create an additional Remnant",
-        "+17% chance to create an additional Remnant",
+fn effect_view_lines_parse_to_their_modifiers() {
+    for (text, name, mod_type, value) in [
+        (
+            "10% chance to create an additional [Remnant]",
+            "AdditionalRemnantChance",
+            ModType::Base,
+            10.0,
+        ),
+        (
+            "+17% chance to create an additional Remnant",
+            "AdditionalRemnantChance",
+            ModType::Base,
+            17.0,
+        ),
+        ("25% increased Daze Duration", "DazeDuration", ModType::Inc, 25.0),
+        (
+            "Attacks have 25% chance to Maim on Hit",
+            "MaimChance",
+            ModType::Base,
+            25.0,
+        ),
+        (
+            "10% chance to Blind Enemies on Hit with Attacks",
+            "BlindChance",
+            ModType::Base,
+            10.0,
+        ),
+        ("50% increased Blind duration", "BlindDuration", ModType::Inc, 50.0),
+        ("Break 30% increased Armour", "ArmourBreakPerHit", ModType::Inc, 30.0),
+        ("Hits Break 50 Armour", "ArmourBreakPerHit", ModType::Base, 50.0),
+        (
+            "Break Armour equal to 10% of Physical Damage dealt",
+            "PhysicalDamageAsArmourBreak",
+            ModType::Base,
+            10.0,
+        ),
+        (
+            "Double Activation Delay of Curses",
+            "CurseDelay",
+            ModType::More,
+            100.0,
+        ),
+        (
+            "Energy Shield Recharge starts on use",
+            "EnergyShieldRechargeBase",
+            ModType::Override,
+            0.0,
+        ),
+        (
+            "+1 to maximum Fire Infusions",
+            "MaximumFireInfusions",
+            ModType::Base,
+            1.0,
+        ),
+        (
+            "+1 to maximum number of Elemental Infusions",
+            "MaximumElementalInfusions",
+            ModType::Base,
+            1.0,
+        ),
+        (
+            "20% reduced Surrounded Area of Effect",
+            "SurroundedArea",
+            ModType::Inc,
+            -20.0,
+        ),
     ] {
         let parsed = parse_mod(text).unwrap();
         assert_eq!(parsed.status, ParseStatus::Parsed, "{text}: {parsed:?}");
-        assert!(parsed.mods.is_empty(), "{text}: {parsed:?}");
-        let meta = parsed.special_meta.unwrap();
-        assert!(
-            !meta.no_effect,
-            "an unmodelled mechanic is not a no-effect line"
-        );
-        assert_eq!(meta.entry_id, "additional_remnant_chance");
+        assert_eq!(parsed.mods.len(), 1, "{text}: {parsed:?}");
+        let modifier = &parsed.mods[0];
+        assert_eq!(modifier.name.as_str(), name, "{text}");
+        assert_eq!(modifier.mod_type, mod_type, "{text}");
+        assert_eq!(modifier.value.as_number(), Some(value), "{text}");
     }
+    let chaos = parse_mod("Immune to Chaos Damage").unwrap();
+    assert_eq!(chaos.mods.len(), 1, "{chaos:?}");
+    assert_eq!(chaos.mods[0].name.as_str(), "ChaosImmune");
 }
 
 #[test]
 fn conditional_offence_limits_stay_visible_as_unmodelled() {
-    // Seeing Stars (25% duration) and Maiming Strike (25% chance) from the
-    // game's passive table; Primed Pin thresholds (Constricting Command).
-    for (text, id) in [
-        (
-            "Pin Enemies which are Primed for Pinning",
-            "primed_pin_unmodelled",
-        ),
-        ("25% increased Daze Duration", "daze_duration_unmodelled"),
-        (
-            "Attacks have 25% chance to Maim on Hit",
-            "attack_maim_chance_unmodelled",
-        ),
-    ] {
-        let parsed = parse_mod(text).unwrap();
-        assert_eq!(parsed.status, ParseStatus::Parsed, "{text}: {parsed:?}");
-        assert!(parsed.mods.is_empty(), "{text}: {parsed:?}");
-        let meta = parsed.special_meta.unwrap();
-        assert!(!meta.no_effect, "{text} must remain a model gap");
-        assert_eq!(meta.entry_id, id);
-    }
+    // Primed Pin thresholds (Constricting Command) are not modelled.
+    let text = "Pin Enemies which are Primed for Pinning";
+    let parsed = parse_mod(text).unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed, "{text}: {parsed:?}");
+    assert!(parsed.mods.is_empty(), "{text}: {parsed:?}");
+    let meta = parsed.special_meta.unwrap();
+    assert!(!meta.no_effect, "{text} must remain a model gap");
+    assert_eq!(meta.entry_id, "primed_pin_unmodelled");
 }
 
 #[test]
@@ -2096,19 +2156,6 @@ fn equipped_defence_and_recharge_text_keep_their_scope_and_reader_names() {
 }
 
 #[test]
-fn charm_recharge_on_use_is_unmodelled_not_no_effect() {
-    let parsed = parse_mod("Energy Shield Recharge starts on use").unwrap();
-    assert_eq!(parsed.status, ParseStatus::Parsed);
-    assert!(parsed.mods.is_empty());
-    let meta = parsed.special_meta.unwrap();
-    assert_eq!(
-        meta.entry_id,
-        "charm_energy_shield_recharge_starts_when_used"
-    );
-    assert!(!meta.no_effect);
-}
-
-#[test]
 fn focus_special_rule_precedes_the_generic_offhand_phrase() {
     use pobr_core::mod_parser::{CompiledParserRules, parse_mod_engine};
     use pobr_data::catalog::parser_rules::ModParserRulesDoc;
@@ -2192,8 +2239,6 @@ fn utility_followup_rules_preserve_game_amounts_and_distinguish_missing_models()
     }
     for (text, no_effect) in [
         ("Your Totem Limit is doubled", false),
-        ("10% chance to Blind Enemies on Hit with Attacks", false),
-        ("100% chance to Blind Enemies on Hit with Attacks", false),
         ("Corrupting will always result in change", true),
     ] {
         let parsed = parse_mod(text).unwrap();

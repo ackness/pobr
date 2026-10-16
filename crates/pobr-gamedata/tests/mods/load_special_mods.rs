@@ -109,10 +109,7 @@ fn s0_crit_override_entry() {
 #[test]
 fn unmodelled_recognition_only_entries() {
     let def = load();
-    for id in [
-        "immune_to_chaos_damage",
-        "charm_energy_shield_recharge_starts_when_used",
-    ] {
+    for id in ["totem_life_unmodelled", "doubled_totem_limit_unmodelled"] {
         let e = def.entries.iter().find(|e| e.id == id).unwrap();
         assert_eq!(e.batch, "unmodelled", "{id}");
         assert!(
@@ -359,67 +356,78 @@ fn exporter_coverage_requires_a_game_source() {
     std::fs::remove_dir_all(root).unwrap();
 }
 
+/// Formerly unmodelled lines that now feed `calc::effect_views` (or the
+/// shared chaos immunity / charm recharge paths) keep their game sources.
 #[test]
-fn remnant_and_armour_break_limits_keep_their_game_sources() {
+fn modelled_effect_view_lines_keep_their_game_sources() {
+    use pobr_data::source::ExporterCoverage;
     let def = load();
-    for (id, stat, reason) in [
+    for (id, stat, exporter) in [
         (
             "additional_remnant_chance",
             "chance_%_to_create_additional_remnant",
-            "remnant count not modelled",
+            ExporterCoverage::Absent,
         ),
         (
             "break_increased_armour",
             "armour_break_amount_+%",
-            "per hit is not modelled",
+            ExporterCoverage::Absent,
         ),
         (
             "hits_break_increased_armour_on_ailmented_targets",
             "armour_break_amount_+%_vs_enemies_affected_by_ailments",
-            "per hit is not modelled",
+            ExporterCoverage::Absent,
         ),
+        ("daze_duration_unmodelled", "daze_duration_+%", ExporterCoverage::Absent),
+        ("attack_maim_chance_unmodelled", "maim_on_hit_%", ExporterCoverage::Absent),
+        (
+            "attack_blind_chance_unmodelled",
+            "attacks_chance_to_blind_on_hit_%",
+            ExporterCoverage::Absent,
+        ),
+        (
+            "double_activation_delay_of_curses",
+            "keystone_hex_master",
+            ExporterCoverage::Absent,
+        ),
+        (
+            "charm_energy_shield_recharge_starts_when_used",
+            "charm_energy_shield_recharge_starts_when_used",
+            ExporterCoverage::Absent,
+        ),
+        ("immune_to_chaos_damage", "chaos_immunity", ExporterCoverage::Differs),
     ] {
         let entry = def.entries.iter().find(|entry| entry.id == id).unwrap();
-        assert_eq!(entry.batch, "unmodelled");
-        assert!(entry.mods.is_empty() && entry.handler_id.is_none());
-        assert!(entry.game_source.as_deref().unwrap().contains(stat));
-        assert!(entry.source_note.as_deref().unwrap().contains(reason));
-        if id == "additional_remnant_chance" {
-            assert_eq!(entry.exporter, pobr_data::source::ExporterCoverage::Absent);
-        }
+        assert_ne!(entry.batch, "unmodelled", "{id}");
+        assert!(!entry.mods.is_empty(), "{id}");
+        assert!(entry.game_source.as_deref().unwrap().contains(stat), "{id}");
+        assert_eq!(entry.exporter, exporter, "{id}");
     }
 }
 
 #[test]
 fn conditional_offence_limits_keep_game_provenance_and_model_reasons() {
     let def = load();
-    for (id, stat, reason, absent) in [
-        (
-            "primed_pin_unmodelled",
-            "pin_almost_pinned_enemies",
-            "Primed-pin thresholds",
-            true,
-        ),
-        (
-            "daze_duration_unmodelled",
-            "daze_duration_+%",
-            "Daze duration",
-            true,
-        ),
-        (
-            "attack_maim_chance_unmodelled",
-            "maim_on_hit_%",
-            "enemy movement",
-            true,
-        ),
-    ] {
-        let entry = def.entries.iter().find(|entry| entry.id == id).unwrap();
-        assert_eq!(entry.batch, "unmodelled");
-        assert!(entry.mods.is_empty() && entry.handler_id.is_none());
-        assert!(entry.game_source.as_deref().unwrap().contains(stat));
-        assert!(entry.source_note.as_deref().unwrap().contains(reason));
-        if absent {
-            assert_eq!(entry.exporter, pobr_data::source::ExporterCoverage::Absent);
-        }
-    }
+    let entry = def
+        .entries
+        .iter()
+        .find(|entry| entry.id == "primed_pin_unmodelled")
+        .unwrap();
+    assert_eq!(entry.batch, "unmodelled");
+    assert!(entry.mods.is_empty() && entry.handler_id.is_none());
+    assert!(
+        entry
+            .game_source
+            .as_deref()
+            .unwrap()
+            .contains("pin_almost_pinned_enemies")
+    );
+    assert!(
+        entry
+            .source_note
+            .as_deref()
+            .unwrap()
+            .contains("Primed-pin thresholds")
+    );
+    assert_eq!(entry.exporter, pobr_data::source::ExporterCoverage::Absent);
 }

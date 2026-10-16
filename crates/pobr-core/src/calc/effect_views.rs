@@ -49,6 +49,7 @@ const DAMAGE_BREAK: [(DamageType, &str); 3] = [
 ];
 /// "Break Armour equal to #% of Hit Damage dealt": every type counts.
 const HIT_DAMAGE_BREAK: &str = "HitDamageAsArmourBreak";
+const PHYSICAL_CRIT_DAMAGE_BREAK: &str = "PhysicalCritDamageAsArmourBreak";
 
 /// One per-hit Armour Break, with the inputs that reconstruct it.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -352,6 +353,27 @@ fn armour_break_terms(
     let percent = base(db, &cfg, HIT_DAMAGE_BREAK);
     if percent != 0.0 {
         from_damage.push((HIT_DAMAGE_BREAK.to_string(), total, percent));
+    }
+    // "Break Armour on Critical Hit with Spells equal to #% of Physical
+    // Damage dealt": only critical hits break, so the dealt damage is the
+    // critical share of the crit-weighted average, c·m / (1 − c + c·m).
+    let percent = base(db, &cfg, PHYSICAL_CRIT_DAMAGE_BREAK);
+    if percent != 0.0 {
+        let out = &env.player.output;
+        let c = out.crit_chance.clamp(0.0, 1.0);
+        let m = out.crit_multiplier.max(0.0);
+        let effect = 1.0 - c + c * m;
+        let share = if effect > 0.0 { c * m / effect } else { 0.0 };
+        let physical: f64 = damage
+            .iter()
+            .filter(|(k, _)| *k == DamageType::Physical)
+            .map(|(_, d)| d)
+            .sum();
+        from_damage.push((
+            PHYSICAL_CRIT_DAMAGE_BREAK.to_string(),
+            physical * share,
+            percent,
+        ));
     }
     let names = [ModName::from("ArmourBreakPerHit")];
     let rarity_multiplier =

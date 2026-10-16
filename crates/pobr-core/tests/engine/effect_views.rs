@@ -97,6 +97,33 @@ fn armour_break_per_hit_counts_flat_damage_increase_and_rarity() {
 }
 
 #[test]
+fn critical_spell_armour_break_uses_the_critical_share_of_physical_damage() {
+    let lines = [
+        "Break Armour on Critical Hit with Spells equal to 10% of Physical Damage dealt",
+        "+20% to Critical Hit Chance",
+    ];
+    let s = armour_session(EnemyTier::Boss, CalcConfig::spell(), &lines);
+    let out = s.output();
+    let c = out.crit_chance;
+    let m = out.crit_multiplier;
+    assert!(c > 0.0 && m > 1.0, "{c} {m}");
+    let crit_physical = input(&s, "ArmourBreakPerHit", "PhysicalCritDamageAsArmourBreakDamage");
+    assert!(crit_physical > 0.0);
+    // Boss (Rare/Unique): no rarity multiplier; 10% of the critical part.
+    close(display_value(out, "ArmourBreakPerHit"), crit_physical * 0.1);
+    // A spell that never crits breaks nothing.
+    let mut no_crit = session(
+        CalcConfig::spell().with_mode_effective(true),
+        &["Break Armour on Critical Hit with Spells equal to 10% of Physical Damage dealt"],
+    );
+    no_crit.setup_enemy(10, EnemyTier::Boss);
+    no_crit.add_enemy_modifiers([Modifier::number("Armour", ModType::Override, 1000.0)]);
+    no_crit.add_modifiers([Modifier::flag("NeverCrit")]);
+    no_crit.perform_minimal().unwrap();
+    assert_eq!(display_value(no_crit.output(), "ArmourBreakPerHit"), 0.0);
+}
+
+#[test]
 fn debuff_uptimes_use_keyword_durations_and_evenly_spaced_hits() {
     // Spell, one hit per second. Daze: 10% chance, 8 s * 1.25 = 10 hits per
     // window, 1 - 0.9^10.

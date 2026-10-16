@@ -242,6 +242,31 @@ pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
             config_option: None,
         },
     ),
+    (
+        "EnergyShieldRechargeBase",
+        ReadGate {
+            state: Cow::Borrowed(
+                "you have Energy Shield and recharge is enabled (no Zealot's Oath or recharge prohibition)",
+            ),
+            config_option: None,
+        },
+    ),
+    // `calc::effect_views`: the curse activation delay view reads its
+    // modifiers only when the selected skill applies a Curse.
+    (
+        "CurseDelay",
+        ReadGate {
+            state: Cow::Borrowed("the selected skill applies a Curse"),
+            config_option: None,
+        },
+    ),
+    (
+        "CurseActivation",
+        ReadGate {
+            state: Cow::Borrowed("the selected skill applies a Curse"),
+            config_option: None,
+        },
+    ),
     // `calc::damage::aggregate_inc_more` and `calc::skill_dot`: only the
     // damage types supplied by the selected skill reach these queries.
     (

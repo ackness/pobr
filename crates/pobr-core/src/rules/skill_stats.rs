@@ -371,7 +371,7 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         "skill_disabled_unless_cloned" => Some(vec![Modifier::flag("MirageSkill")]),
         // Armour Break per hit (`calc::effect_views`): "Break Armour equal to
         // {0}% of Physical / Fire / Hit Damage dealt", "Supported Skills Break
-        // {0}% more Armour". The flag keeps the Armour Break config visible.
+        // {0}% more Armour".
         "armour_break_physical_damage_%_dealt_as_armour_break"
         | "armour_break_fire_damage_%_dealt_as_armour_break"
         | "chaos_damage_%_dealt_as_armour_break"
@@ -384,10 +384,7 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
                 "chaos_damage_%_dealt_as_armour_break" => "ChaosDamageAsArmourBreak",
                 _ => "HitDamageAsArmourBreak",
             };
-            Some(vec![
-                Modifier::number(name, ModType::Base, value),
-                Modifier::flag("Condition:CanArmourBreak"),
-            ])
+            Some(vec![Modifier::number(name, ModType::Base, value)])
         }
         "support_increased_armour_break_armour_break_amount_+%_final" => Some(vec![
             Modifier::number("ArmourBreakPerHit", ModType::More, value),
@@ -1201,6 +1198,41 @@ mod tests {
         assert_eq!(mods[0].name.as_str(), "Cost");
         assert_eq!(mods[0].mod_type, ModType::More);
         assert_eq!(mods[0].value.as_number(), Some(-100.0));
+    }
+
+    /// Effect-view stats: Armour Break Player III's 15% of Physical damage
+    /// as Armour Break, Maim / Blind chances that only attacks carry, a
+    /// curse's 1000 ms activation delay, and Lingering Illusion's 156%
+    /// additional Remnant chance.
+    #[test]
+    fn effect_view_stats_map_to_their_readers() {
+        let one = |stat: &str, value: f64| {
+            let mods = skill_modifiers(stat, value).expect("defined");
+            assert_eq!(mods.len(), 1, "{stat}");
+            mods.into_iter().next().unwrap()
+        };
+        let physical = one("armour_break_physical_damage_%_dealt_as_armour_break", 15.0);
+        assert_eq!(physical.name.as_str(), "PhysicalDamageAsArmourBreak");
+        assert_eq!(physical.value.as_number(), Some(15.0));
+        assert_eq!(
+            one("curse_delay_duration_ms", 1000.0).value.as_number(),
+            Some(1.0)
+        );
+        assert_eq!(
+            one("chance_%_to_create_additional_remnant", 156.0).name.as_str(),
+            "AdditionalRemnantChance"
+        );
+        let mut db = ModDb::new();
+        db.add_list(vec![
+            one("maim_on_hit_%", 25.0),
+            one("attacks_chance_to_blind_on_hit_%", 10.0),
+        ]);
+        let attack = CalcConfig::new().with_flags(ModFlags::ATTACK);
+        let spell = CalcConfig::new().with_flags(ModFlags::SPELL);
+        assert_eq!(db.sum(ModType::Base, &attack, &["MaimChance".into()]), 25.0);
+        assert_eq!(db.sum(ModType::Base, &spell, &["MaimChance".into()]), 0.0);
+        assert_eq!(db.sum(ModType::Base, &attack, &["BlindChance".into()]), 10.0);
+        assert_eq!(db.sum(ModType::Base, &spell, &["BlindChance".into()]), 0.0);
     }
 
     #[test]

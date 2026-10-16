@@ -1881,21 +1881,19 @@
       "vendor_pattern": "break armour on critical hit with spells equal to (%d+)%% of physical damage dealt",
       "mods": [
         {
-          "name": "Condition:CanArmourBreak",
-          "type": "FLAG",
-          "value": true,
-          "tags": [
-            {
-              "type": "Condition",
-              "neg": true,
-              "var": "NeverCrit"
-            }
+          "name": "PhysicalCritDamageAsArmourBreak",
+          "type": "BASE",
+          "value": "$1",
+          "flags": [
+            "Spell"
           ]
         }
       ],
       "verified": false,
-      "batch": "a2-real-gaps",
-      "source_note": "ModParser.lua:3803（flag(Condition:CanArmourBreak, GlobalEffect{Buff, ArmourBreak}, Condition{neg NeverCrit})；数值不进 mods——vendor 同样忽略捕获，正则一条覆盖语料 {5,10}。GlobalEffect 无 PoBR 落点丢弃（已有评估：不值窄做）；CanArmourBreak 玩家侧 calc 暂无消费（armour break 机制未建模，解析对齐 vendor）"
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "base/stats.json: armour_break_equal_to_%_physical_damage_dealt_on_critical_strike_with_spells; KeywordPopups ArmourBreak",
+      "source_note": "Critical spell hits Break Armour equal to the percentage of their Physical damage dealt; the per-hit view (`calc::effect_views`) uses the critical share c·m / (1 − c + c·m) of the average dealt Physical damage. Reported only; the configured enemy state still decides Fully Broken Armour."
     },
     {
       "id": "limit_for_elemental_skills",

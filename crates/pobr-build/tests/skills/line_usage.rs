@@ -210,25 +210,41 @@ Implicits: 0
 #[test]
 fn conditional_offence_limits_report_the_missing_models() {
     let data = data();
-    let cases = [
-        (
-            "Pin Enemies which are Primed for Pinning",
-            "primed_pin_unmodelled",
-        ),
-        ("25% increased Daze Duration", "daze_duration_unmodelled"),
-        (
-            "Attacks have 25% chance to Maim on Hit",
-            "attack_maim_chance_unmodelled",
-        ),
+    let text = "Pin Enemies which are Primed for Pinning";
+    let ledger = ledger(&data, &[], &[text]);
+    let row = line(&ledger, "item.amulet.explicit", text);
+    assert_eq!(row.status, LineStatus::Unmodelled, "{row:?}");
+    assert!(
+        row.reason.as_deref().unwrap().contains("primed_pin_unmodelled"),
+        "{row:?}"
+    );
+    assert!(row.modifiers.is_empty());
+}
+
+/// Daze duration, attack Maim and attack Blind feed the uptime views
+/// (`calc::effect_views`); a curse delay line waits for a curse skill.
+#[test]
+fn debuff_uptime_and_curse_delay_lines_have_readers() {
+    let data = data();
+    let texts = [
+        "25% increased Daze Duration",
+        "Attacks have 25% chance to Maim on Hit",
+        "10% chance to Blind Enemies on Hit with Attacks",
+        "Double Activation Delay of Curses",
     ];
-    let texts: Vec<_> = cases.iter().map(|(text, _)| *text).collect();
     let ledger = ledger(&data, &[], &texts);
-    for (text, reason) in cases {
-        let row = line(&ledger, "item.amulet.explicit", text);
-        assert_eq!(row.status, LineStatus::Unmodelled, "{row:?}");
-        assert!(row.reason.as_deref().unwrap().contains(reason), "{row:?}");
-        assert!(row.modifiers.is_empty());
+    let modifier = |text| &line(&ledger, "item.amulet.explicit", text).modifiers[0];
+    assert_eq!(modifier(texts[0]).status, ModifierStatus::Applied, "{:?}", modifier(texts[0]));
+    for text in &texts[1..3] {
+        // Attack-only chances on a build without an attack.
+        assert_eq!(modifier(text).status, ModifierStatus::Inactive, "{:?}", modifier(text));
     }
+    let curse = modifier(texts[3]);
+    assert_eq!(curse.status, ModifierStatus::Inactive, "{curse:?}");
+    assert_eq!(
+        curse.read_gate.as_ref().map(|gate| &*gate.state),
+        Some("the selected skill applies a Curse")
+    );
 }
 
 #[test]
@@ -460,6 +476,9 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
             "AilmentMagnitude" => "40% increased Magnitude of Ailments you inflict",
             "EnergyShieldRecharge" => "50% increased Energy Shield Recharge Rate",
             "EnergyShieldRechargeFaster" => "20% faster start of Energy Shield Recharge",
+            "EnergyShieldRechargeBase" => "Your base Energy Shield Recharge delay is 2 seconds",
+            "CurseDelay" => "Double Activation Delay of Curses",
+            "CurseActivation" => "10% slower Curse Activation",
             "SelfShockEffect" => "40% reduced effect of Shock on you",
             "SelfChillEffect" => "40% reduced Effect of Chill on you",
             "SelfChillEffectIsReversed" => "The Effect of Chill on you is reversed",
@@ -487,6 +506,8 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
                 "ManaRemnantsPlayer"
             } else if name == "LightningDamage" {
                 "ArcPlayer"
+            } else if active && matches!(name, "CurseDelay" | "CurseActivation") {
+                "DespairPlayer"
             } else {
                 "FireballPlayer"
             };
@@ -551,7 +572,12 @@ Implicits: 0
                     .extra_modifier_texts
                     .push("50% reduced Action Speed".to_string());
             }
-            if active && matches!(name, "EnergyShieldRecharge" | "EnergyShieldRechargeFaster") {
+            if active
+                && matches!(
+                    name,
+                    "EnergyShieldRecharge" | "EnergyShieldRechargeFaster" | "EnergyShieldRechargeBase"
+                )
+            {
                 options
                     .extra_modifier_texts
                     .push("+100 to maximum Energy Shield".into());
@@ -1004,7 +1030,10 @@ fn outranked_max_loser_is_state_gated() {
 }
 
 #[test]
-fn charm_recharge_event_stays_visible_as_unmodelled() {
+fn charm_recharge_start_applies_while_the_charm_is_in_the_budget() {
+    // Thawing Charm: "Energy Shield Recharge starts on use". Under the
+    // enabled-charm convention an in-budget charm is in effect, so the
+    // recharge delay is zero (base 4 s otherwise).
     let data = data();
     let text = "Energy Shield Recharge starts on use";
     let build = parse_build(&format!(
@@ -1016,20 +1045,28 @@ Thawing Charm
 Implicits: 1
 Used when you become Frozen
 {text}
-</Item><ItemSet id="1"><Slot name="Charm 1" itemId="1" active="true"/></ItemSet></Items>
+</Item><Item id="2">Rarity: RARE
+Test Belt
+Heavy Belt
+Implicits: 1
+Has 1 Charm Slot
+</Item><ItemSet id="1"><Slot name="Charm 1" itemId="1" active="true"/><Slot name="Belt" itemId="2"/></ItemSet></Items>
 </PathOfBuilding2>"#
     ))
     .unwrap();
-    let diagnosis = diagnose(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+    let options = DataOrchestratorOptions {
+        extra_modifier_texts: vec!["+100 to maximum Energy Shield".into()],
+        ..Default::default()
+    };
+    let diagnosis = diagnose(&build, &data, &options).unwrap();
     let ledger = pobr_build::usage::line_usage(&diagnosis, &build, &data);
     let row = line(&ledger, "flask.charm1", text);
-    assert_eq!(row.status, LineStatus::Unmodelled, "{row:?}");
-    assert!(row.modifiers.is_empty());
-    assert!(
-        row.reason
-            .as_deref()
-            .unwrap()
-            .contains("charm_energy_shield_recharge_starts_when_used")
+    assert_eq!(row.modifiers[0].name, "EnergyShieldRechargeBase", "{row:?}");
+    assert_eq!(row.modifiers[0].status, ModifierStatus::Applied, "{row:?}");
+    let session = pobr_build::calculate_with_data_session(&build, &data, &options).unwrap();
+    assert_eq!(
+        pobr_core::display_value(session.output(), "EsRechargeDelay"),
+        0.0
     );
 }
 
@@ -1039,7 +1076,6 @@ fn miscellaneous_lines_distinguish_unmodelled_no_effect_and_external_readers() {
     let cases = [
         ("Grants 3 additional Skill Slots", LineStatus::NoEffect),
         ("25% increased Knockback Distance", LineStatus::NoEffect),
-        ("Double Activation Delay of Curses", LineStatus::Unmodelled),
         ("25% increased Totem Life", LineStatus::Unmodelled),
         ("Grants 1 Passive Skill Point", LineStatus::Applied),
         (
@@ -1192,14 +1228,10 @@ fn utility_followups_keep_missing_models_visible_and_crafting_no_effect() {
         &[],
         &[
             "Your Totem Limit is doubled",
-            "10% chance to Blind Enemies on Hit with Attacks",
             "Corrupting will always result in change",
         ],
     );
-    for text in [
-        "Your Totem Limit is doubled",
-        "10% chance to Blind Enemies on Hit with Attacks",
-    ] {
+    for text in ["Your Totem Limit is doubled"] {
         assert_eq!(
             line(&ledger, "item.amulet.explicit", text).status,
             LineStatus::Unmodelled
