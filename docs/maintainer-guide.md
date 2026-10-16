@@ -280,6 +280,12 @@ Culling Strike（Reap 的 `kill_enemy_on_hit_if_under_10%_life`，游戏文本�
 
 Snap 的 `snap_damage_+%_final_if_created_from_unique`（“{0}% more damage with Hits for blasts originating from a Unique enemy”）只加命中伤害，把所计算的独特敌人当作爆炸源头。Flameblast（`pobr-core/src/calc/flameblast.rs`）每层按 `charged_blast_spell_damage_+%_final_per_stack` = 75 加更多伤害，层数取 multiplier `FlameblastStage`（默认 1，最多 `flameblast_maximum_stages` = 10）；一次使用是每层施法时间 × 层数与 `base_minimum_channel_time_ms`（490 毫秒）中较大的一个，再加 `channel_skill_end_animation_duration_override_ms`（600 毫秒），仍受冷却限制。层数由配置输入 `skillFlameblastStages` 设置（Web 技能页的层数输入，`config_resolve::resolve_config` 写入 `FlameblastStage`，留空沿用默认）；PoB2 构筑码里自己的层数选择还没有接入。
 
+Crystallised Immunities uses the game stats `immune_to_chill_if_majority_blue_supports_socketed`, `immune_to_ignite_if_majority_red_supports_socketed` and `immune_to_shock_if_majority_green_supports_socketed` (Crystallised Immunities, node 5332). Count socketed support gems across enabled groups using the official `SkillGems.GemColour` values: strength/red, dexterity/green and intelligence/blue. A majority means **strictly more than half of all counted supports**; empty sets, ties and a mere plurality grant no immunity. The existing `ChillImmune` / `IgniteImmune` / `ShockImmune` path gives 100% avoidance. PoB2 accepts a strict plurality instead; these rules carry `exporter: "differs"`. Sources: `base/stats.json`, `base/passive_tree.json` and `base/skill_gems.json`.
+
+`armour_break_amount_+%` and `armour_break_amount_+%_vs_enemies_affected_by_ailments` (Exposed Wounds, node 43383) are explicitly recognised with no effect because per-hit Armour Break is not modelled: the configured amount is already removed Armour and must not be scaled again. The [game Armour Break keyword](https://poe2db.tw/us/Keywords) and `ArmourBreakerPlayer` level 20's `apply_X_armour_break_on_hit = 4918` distinguish per-hit break from that total; a complete model also needs damage-derived break, event conditions and monster rarity scaling. Sources: `base/stats.json`, `base/granted_effect_levels.json` and `base/granted_effect_stat_sets.json`.
+
+`chance_%_to_create_additional_remnant` (Remnant Attraction, node 1506) is recognised with the reason “remnant count not modelled” and `exporter: "absent"`. Into the Breach's configured collected Purple Flame stacks are not a creation rate, so extra creation chance does not multiply them. Arcane Remnants, Empowering Remnants, Elemental Equilibrium and Storm's Recollection still need a remnant generation/collection model. These scoped no-effect entries record model limits, not claims that the game modifiers do nothing. Sources: `base/stats.json` and `base/passive_tree.json`.
+
 配置项进入计算的方式各不相同，有 handler id 不等于选项已生效。破甲（`conditionEnemyArmourBroken` 与破甲量 `multiplierArmourBreak`）由 `calc::armour_break::apply_armour_break` 在有效 DPS 口径下从敌人护甲中扣掉所填的量，没填时全部扣掉，“You can Break enemy Armour to below 0” 时下限为原护甲的相反数；没勾选时数值框里的残留不生效。致盲与 Elusive 的效果覆盖（`overrideBuffBlinded` / `overrideBuffElusive`）按百分数读取，不超过角色能施加的致盲、能得到的 Elusive 效果（`calc::blind`、`rules::buff_expander`）。Inexorable Critical 按配置的距上次暴击秒数（`SecondsSinceInevitableCrit`，不到 4 秒时另置 `CritRecently`）乘每秒的加成，受 `support_inevitable_criticals_*_cap` 限制（`calc::crit::apply_inexorable_critical`）。Dark Pact 的目标骷髅生命（`darkPactSkeletonLife`）乘 `skeletal_chains_aoe_%_health_dealt_as_chaos_damage` 为基础混沌伤害，Herald of Ash 的过量伤害（`hoaOverkill`）乘每分钟的燃烧比例 `herald_of_ash_burning_%_overkill_damage_per_minute` 为火焰持续伤害（`calc::configured_damage`）。
 
 敌人受击配置（`calc_orchestrator::enemy_config::modifiers`）以 OVERRIDE 覆盖等级与敌人类别的预设：五种伤害（`enemyPhysicalDamage` 等）、三种元素穿透、暴击率、暴击伤害和物理压制（`enemyPhysicalOverwhelm`）；显式的 0 同样覆盖，负数按 0，非有限值忽略；来源标为 `EnemyConfig`、id `config.<输入名>`，被覆盖的预设行在 TotalEHP 与最大承伤的敌人输入（`CalculationSession::enemy_hit_mods`）里保留但不计入。`enemyDamageType` 选择命中类别（平均、无类型、近战、投射物、法术、法术投射物；持续伤害不是命中），决定闪避、格挡与承伤的上下文（`calc::taken::HitCategory`）；`EHPUnluckyWorstOf` 按 1 / 2 / 4 次中最差的结果估计防御概率。`enemySpeed` 只在 Energy 格挡事件缺少来袭频率时提供回退，不是 EHP 的通用伤害倍率；`enemyDamageRollRange` 和持续伤害的防御视图还没有读取方。敌人等级只解析一次（`calc_orchestrator::skill::mods::resolved_enemy_level`），尸体生命与敌人的减伤共用：调用方显式给的等级优先，其次构筑码 `enemyLevel` 的 Input、Placeholder；都没有时普通怪物和普通首领跟随角色等级，Pinnacle / Uber 取该档的默认等级（82），最后限制在该档的最低等级与敌人最高等级（85）之间。尸体爆炸按这一等级取怪物生命表（82 级 32956，85 级 36012），例如 Detonate Dead 的 `corpse_explosion_monster_life_permillage_physical` = 107 是 10.7%。
@@ -308,6 +314,35 @@ the original cast is 2.7 m and the echo is 3.2 m. This display convention does n
 apply Light Radius modifiers to skill area (`calc::skill_mechanics::calc_aoe`).
 
 恢复（`pobr-core/src/calc/recovery.rs`）分三层：原始再生；经过再生限制与直接恢复后的恢复（`LifeRegenRecovery` 等，含 Runic Ward 与怒气，来自 `base_ward_regeneration_per_minute` “Regenerate 1 Runic Ward per second”、`base_rage_regeneration_per_minute` 等游戏 stat）；扣掉构筑自身损耗后的净恢复（`NetLifeRegen`、`NetManaRegen`、`NetEnergyShieldRegen`、`NetWardRegen`、`TotalNetRegen`）。角色固有的魔力再生是 `character_inherent_mana_regeneration_rate_per_minute_%` = 240（每秒 4% 最大魔力），“No inherent Mana Regeneration” 只去掉这一份（`calc_orchestrator::inject::inject_character_base`）。自身损耗是资源流失（“Lose … per second”，不经减免）、自己受到的类型化持续伤害（经抗性与承伤修正）和主技能的每秒消耗（百分比消耗按资源池换算）：生命、魔力、能量护盾各扣自己的消耗，`NetWardRegen` 是 Runic Ward 的恢复减去它的每秒消耗，`TotalNetRegen` 是这四种净恢复之和，怒气消耗只进入 `TotalBuildDegen`；敌人的持续伤害不计入。Berserk 的 `skill_base_life_loss_%_per_minute_per_rage_while_not_losing_rage_to_apply` = 6 是每点怒气每秒流失 0.1% 最大生命。偷取与命中获得（`LifeLeechGainRate`、`LifeLeechGainPerHit` 等）按[游戏关键词](https://poe2db.tw/us/Keywords)使用一秒基础持续时间，不再把每次偷取量限制为资源池的 10%。[0.5 补丁说明](https://www.pathofexile.com/forum/view-thread/3932540)中的单次命中 40,000 伤害上限已实现：命中总伤害超过上限时，各伤害类型按相同比例缩小，再按各自的偷取比例计算，不能用额外元素伤害补足物理偷取。`base_life_leech_amount_+%` / `base_mana_leech_amount_+%` 的“increased amount of Life Leeched” / “increased amount of Mana Leeched”增加偷取量；`base_life_leech_rate_+%` 等“Leech Life 1% faster”加快速率，不增加总量。最大偷取速率先应用增加/减少与更多/更少修正，再限制实例速率；生命和魔力每秒 20%、能量护盾每秒 10% 的默认上限仍是项目保留的兼容约定，并非 0.5 补丁说明确认的游戏常量。按主技能平均命中频率估计实例覆盖时间，优先计算恢复速率最高的实例，较慢实例只填补其过期后留下的时间，不模拟随机暴击的时间序列；命中获得与瞬间偷取仍按每次命中相加。PoB2 在没有自身类型化持续伤害时不给出净恢复字段，PoBR 照常计算。
+
+Scarred Faith's “Energy Shield does not Recharge” (`keystone_alternate_es_recovery`,
+[game text](https://poe2db.tw/us/Scarred_Faith)) sets recharge rate, amount and
+start delay to zero; its separate regeneration prohibition makes net ES
+regeneration zero when there are no other gains or drains. Recharge is not
+included in the current EHP hit-pool simulation. Resonance (`keystone_charge_cycle`
+and `gain_*_charges_instead_of_*`, [game text](https://poe2db.tw/us/Resonance))
+redirects Power → Endurance → Frenzy → Power once. With no charge-gain event
+model, configured counts above their minima stand in for incoming gains;
+minima and maxima stay with their original type, incoming gains merge and
+are capped by the destination maximum. On-gain proc effects, duration and
+consumption timing are not simulated. Event Horizon
+(`lose_%_of_life_and_energy_shield_when_you_use_a_chaos_skill`, passive
+`chaos33_`: 3%, [game text](https://poe2db.tw/us/Event_Horizon)) subtracts
+3% of each final maximum pool per selected player-used Chaos skill use from
+net Life/ES recovery and includes it in `TotalBuildDegen`. It uses the existing
+cost-use frequency (one payment per repeat sequence), excludes triggered and
+proxy actions, and is neither mitigated damage nor a cost affected by cost
+modifiers. Other skills in a rotation and channel start/stop events are not
+simulated. These charge and loss rules, and the previously unrecognized Scarred Faith
+regeneration wording, declare `exporter: "absent"`.
+Thaumaturgical Dynamism (`ascendancy_gemling_charge_generator_buff_display`)
+is recognized as a five-second generator, from game
+`BuffTemplates.AscendancyGemlingChargeGenerator`'s
+`gain_random_charge_every_X_ms_from_total_socketed_gem_attribute_requirements = 5000`
+([buff data](https://poe2db.tw/us/Thaumaturgical_Dynamism)). Random charge
+selection weighted by socketed gem attribute requirements needs a gain-event
+model; the interval modifier remains unread in diagnostics and never assumes
+full charges or grants an unconditional damage buff.
 
 Full DPS（`calc_orchestrator::full_dps::calculate`，`DataOrchestratorOptions::full_dps`，默认关闭）是构筑码中勾选 `includeInFullDPS` 的组里每个启用效果的持续输出之和，不模拟技能轮转。数量取组的 `groupCount`，没有时取宝石的 `count`（可为小数，不是正的有限数时不计入）；每个效果按自己的武器组、天赋、辅助与触发环境计算，召唤物行用该召唤宝石创建的召唤物；物品内建触发技能的自动行在可编辑的组已纳入同一技能时跳过。命中 DPS 乘数量相加；流血、点燃、毒共用各自的层数上限，单层伤害高的先占层（`full_dps::allocate_stacks`）；同一技能不可叠加的持续伤害只取较强的一份，可叠加的（`DotCanStack`）乘数量，持续伤害总上限与最强的 Culling Strike 倍率各只计一次。逐技能的行（`FullDpsSkill`：数量、单实例命中 DPS、分到的持续伤害、最终贡献、未支持词条与错误）之和等于 `FullDPS`。`includeInFullDPS`、`groupCount`、宝石的 `count` 与 `enableGlobal1/2` 导入导出时保留，WASM 请求里是组的 `include_in_full_dps`、`group_count` 与宝石的 `count`；Web 的技能页编辑它们，只在有组纳入时请求 `full_dps: true`。
 
@@ -495,7 +530,7 @@ PoB2 对照值与逻辑回归都使用活动数据版本，没有单独钉住的
 
 辅助宝石辅助一颗宝石的任一效果时，它给的等级和品质作用于整颗宝石：Physical Mastery（要求 Physical）辅助 Iron Ward 的物理新星，Iron Ward 的 buff 也高一级。等级计算接收宝石每个效果的辅助判定（`skill_env::buff_specs::gem_judgements`，主效果在前），同一个辅助只算一次；Uhtred 系列“没有其他辅助时”的“其他辅助”也按整颗宝石计。
 
-配置行指任务奖励与自定义词条。其中解析不了的行以 `Config: <行>` 记入未支持清单，其余行照常生效；任务奖励选项的 “None”（未领取）不是词条行。对任何计算输出都没有影响的词条在 `overlay-common/special_mods.json` 里登记为只识别、不产生 modifier 的条目（`"mods": []`、`"batch": "S0"`，例如游戏 stat `experience_gain_+%` 的 “5% increased Experience Gain”；其他批次的条目必须产生 modifier 或挂 handler，`pobr-gamedata` 的 `non_s0_has_traceable_provenance` 检查），它不是丢失的输入；尚未实现的机制不能用这种条目消掉，必须留在未支持清单里。
+配置行指任务奖励与自定义词条。其中解析不了的行以 `Config: <行>` 记入未支持清单，其余行照常生效；任务奖励选项的 “None”（未领取）不是词条行。对任何计算输出都没有影响的词条在 `overlay-common/special_mods.json` 里登记为只识别、不产生 modifier 的条目（`"mods": []`、`"batch": "S0"`，例如游戏 stat `experience_gain_+%` 的 “5% increased Experience Gain”；其他批次的条目必须产生 modifier 或挂 handler，`pobr-gamedata` 的 `non_s0_has_traceable_provenance` 检查），它不是丢失的输入；尚未实现的机制不能用这种条目消掉，必须留在未支持清单里。规则能识别、但机制尚未建模的行登记为 `"batch": "unmodelled"`（同样 `"mods": []`，`source_note` 写明缺的模型，例如 “per-hit Armour Break is not modelled”、“remnant count not modelled”、“kill rate not modelled”）：台账报 `unmodelled`，审计报 `recognized_empty`，缺口队列照常列出它，不会当作无效果隐藏。
 
 `examples/demo-bd-test/builds/` 是回归门禁语料，构筑抓取于 2026-06（上一赛季开服第一周），不包含之后的物品和机制；门禁全绿只说明这批构筑没有回退。当前赛季的构筑分三组，都用构筑码自带的参考值衡量：`examples/wasm-benchmark/builds/`（8 个）和 `examples/reference-builds/tuned/`（每个升华三个：2026-10-13 抓的一批和之后的两批 holdout，都在 2026-10-15 并入）用来找差异、修引擎；`examples/reference-builds/holdout/`（每个升华另一个，2026-10-15 第二次抓取）只测量，不对它运行 `diagnose` 或 `compare`，也不按它的差异挑选要修的内容，它的总数回答“没人调过的构筑上有多准”。`mise run accuracy` 不带参数打印三组的总数。`reference_agreement_does_not_regress` 断言每组的吻合数（伤害吻合的构筑数——主技能召唤召唤物的构筑看召唤物的 `TotalDPS`——和吻合的行数）不低于 `reference_report.rs` 里记录的基线。改动提升了吻合数就上调基线，不为通过而下调；数据版本变化使数字移动时按 `ninja_parity` 的做法重录。导出工具未实现的词条规则标为 `exporter: "absent"`，由参考口径自动排除，游戏实现与参考基线分别验证；其他参考值被游戏数据证明有误时，在基线旁记录具体依据与影响。这个门禁防的是退步，不证明正确：参考值可能本身有误，构筑也可能因为错误的原因吻合。新增的展示字段让构筑码里更多 `<PlayerStat>` 行进入比较，行数随之变化不代表原有计算更准。需要新一轮目标或新赛季开始时，用 `mise run builds:fetch` 重新抓取（见 [reference-builds](../examples/reference-builds/README.md)）：原来的 holdout 并入 tuned，新抓的一批作 holdout。
 

@@ -402,9 +402,37 @@ pub fn charge_multipliers_panel_default(db: &ModDb, cfg: &CalcConfig) -> CalcCon
         if current != legacy {
             out = out.with_multiplier(key, current);
         }
-        // A skill that consumes charges takes every charge above the
-        // minimum; the minimum is always held.
-        let removable = (current - minimum).max(0.0);
+    }
+    // Resonance redirects gains once, simultaneously: Frenzy -> Power,
+    // Power -> Endurance, Endurance -> Frenzy. It does not convert maxima
+    // or always-held minima. With no gain-event model, configured removable
+    // counts are the incoming gains; destination capacity caps the result.
+    let kinds = [ChargeKind::Power, ChargeKind::Frenzy, ChargeKind::Endurance];
+    let redirects = [
+        ("GainEnduranceChargesInsteadOfPower", 2),
+        ("GainPowerChargesInsteadOfFrenzy", 0),
+        ("GainFrenzyChargesInsteadOfEndurance", 1),
+    ];
+    let redirected = redirects.map(|(flag, destination)| (db.flag(cfg, flag), destination));
+    if redirected.iter().any(|(active, _)| *active) {
+        let minima = kinds
+            .map(|kind| f64::from(charge_minimum(db, cfg, kind, charge_maximum(db, cfg, kind))));
+        let mut gains = [0.0; 3];
+        for (i, kind) in kinds.iter().enumerate() {
+            let destination = if redirected[i].0 { redirected[i].1 } else { i };
+            gains[destination] += (out.multiplier(kind.multiplier_key()) - minima[i]).max(0.0);
+        }
+        for (i, kind) in kinds.iter().enumerate() {
+            out.multipliers.insert(
+                kind.multiplier_key().into(),
+                (minima[i] + gains[i]).min(f64::from(charge_maximum(db, cfg, *kind))),
+            );
+        }
+    }
+    for kind in kinds {
+        let key = kind.multiplier_key();
+        let minimum = f64::from(charge_minimum(db, cfg, kind, charge_maximum(db, cfg, kind)));
+        let removable = (out.multiplier(key) - minimum).max(0.0);
         removable_total += removable;
         out.multipliers.insert(format!("Removable{key}"), removable);
     }

@@ -814,11 +814,12 @@ fn keystone_no_mana_yields_zero_override() {
 }
 
 #[test]
-fn pure_immunity_phrase_yields_no_mods() {
-    // A pure immunity phrase carries no numeric value: it produces no mods (the engine
-    // recognizes it as an empty-output line rather than erroring), avoiding noise.
-    let o = parse_mod("Immune to Chaos Damage and Bleeding").unwrap();
+fn standalone_chaos_immunity_is_recognised_but_unmodelled() {
+    // Outside Chaos Inoculation there is no chaos-immunity flag: the line is
+    // recognised, stores nothing, and stays reported as unmodelled.
+    let o = parse_mod("Immune to Chaos Damage").unwrap();
     assert!(o.mods.is_empty());
+    assert!(!o.special_meta.unwrap().no_effect);
 }
 
 #[test]
@@ -1685,7 +1686,8 @@ fn kill_charge_chance_does_not_invent_a_kill_rate() {
     let parsed = parse_mod("35% Chance to gain a Charge when you kill an enemy").unwrap();
     assert_eq!(parsed.status, ParseStatus::Parsed);
     assert!(parsed.mods.is_empty());
-    assert!(parsed.special_meta.unwrap().no_effect);
+    // A kill-rate model would turn this into charge gain: unmodelled, not no-effect.
+    assert!(!parsed.special_meta.unwrap().no_effect);
 }
 
 #[test]
@@ -1709,4 +1711,53 @@ fn slowing_potency_uses_the_game_stat_and_marks_exporter_absence() {
         assert_eq!(rule.exporter, pobr_data::source::ExporterCoverage::Absent);
         assert_eq!(rule.game_source, "base_slow_potency_+%");
     }
+}
+
+#[test]
+fn armour_break_increases_report_the_missing_per_hit_model() {
+    // Exposed Wounds gives 30% increased break against ailmented targets;
+    // a global 20% increase cannot scale an already-configured broken total.
+    for text in [
+        "Break 20% increased Armour",
+        "[Hit|Hits] [ArmourBreak|Break] 30% increased [Armour] on targets with [Ailments]",
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed, "{text}: {parsed:?}");
+        assert!(parsed.mods.is_empty(), "{text}: {parsed:?}");
+        let meta = parsed.special_meta.unwrap();
+        assert!(
+            !meta.no_effect,
+            "an unmodelled mechanic is not a no-effect line"
+        );
+    }
+}
+
+#[test]
+fn additional_remnant_chance_reports_the_missing_count_model() {
+    // Remnant Attraction gives 10%; the preceding small passive gives 5%.
+    for text in [
+        "10% chance to create an additional [Remnant]",
+        "5% chance to create an additional Remnant",
+        "+17% chance to create an additional Remnant",
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed, "{text}: {parsed:?}");
+        assert!(parsed.mods.is_empty(), "{text}: {parsed:?}");
+        let meta = parsed.special_meta.unwrap();
+        assert!(
+            !meta.no_effect,
+            "an unmodelled mechanic is not a no-effect line"
+        );
+        assert_eq!(meta.entry_id, "additional_remnant_chance");
+    }
+}
+
+#[test]
+fn chaos_inoculation_line_grants_bleed_immunity() {
+    // keystone_chaos_inoculation: "Immune to Chaos Damage and Bleeding". The
+    // chaos half comes from the keystone's "Maximum Life is 1" line.
+    let parsed = parse_mod("Immune to Chaos Damage and Bleeding").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed);
+    assert_eq!(parsed.mods.len(), 1);
+    assert_eq!(parsed.mods[0].name.as_str(), "BleedImmune");
 }

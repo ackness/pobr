@@ -6,10 +6,10 @@
   },
   "summary": {
     "total": 4277,
-    "parsed": 3509,
-    "unsupported": 768,
+    "parsed": 3512,
+    "unsupported": 765,
     "err": 0,
-    "coverage_ratio": 0.820435
+    "coverage_ratio": 0.821136
   },
   "by_source": [
     {
@@ -20,8 +20,8 @@
     },
     {
       "source": "C2_tree",
-      "parsed": 2262,
-      "unsupported": 279,
+      "parsed": 2265,
+      "unsupported": 276,
       "err": 0
     },
     {

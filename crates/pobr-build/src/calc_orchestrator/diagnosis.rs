@@ -303,6 +303,9 @@ const SET_BY_THE_ORCHESTRATION: &[&str] = &[
     "MostNumerousRedSocketedSupports",
     "MostNumerousGreenSocketedSupports",
     "MostNumerousBlueSocketedSupports",
+    "MajorityRedSocketedSupports",
+    "MajorityGreenSocketedSupports",
+    "MajorityBlueSocketedSupports",
     // `inject::inject_enemy`: the config input of the same name.
     "DisableEHPGainOnBlock",
 ];

@@ -185,3 +185,67 @@ fn integrated_efficiency_counts_each_colour_of_connected_support() {
     let ratio = damage.total_hit_avg / base.total_hit_avg;
     assert!((ratio - 1.2).abs() < 1e-3, "damage ratio {ratio}");
 }
+
+/// Crystallised Immunities (5332): strictly more than half, not just the
+/// largest colour. SkillGems gives Ancestral Call 100% Str/red, Fork 100%
+/// Dex/green and Magnified Effect 100% Int/blue. Immunity means 100% avoidance.
+#[test]
+fn crystallised_immunities_requires_more_than_half_of_socketed_supports() {
+    let data = load_build_data();
+    let supports = [
+        (
+            "Metadata/Items/Gem/SupportGemAncestralCall",
+            "SupportAncestralCallPlayer",
+        ),
+        ("Metadata/Items/Gems/SupportGemFork", "SupportForkPlayer"),
+        (
+            "Metadata/Items/Gems/SupportGemMagnifiedEffect",
+            "SupportMagnifiedAreaPlayer",
+        ),
+    ];
+    let opts = DataOrchestratorOptions {
+        extra_modifier_texts: vec![
+            "Immune to Chill if a majority of your Socketed Support Gems are Blue".into(),
+            "Immune to Ignite if a majority of your Socketed Support Gems are Red".into(),
+            "Immune to Shock if a majority of your Socketed Support Gems are Green".into(),
+        ],
+        ..opts_with_threshold_line()
+    };
+    for (counts, expected) in [
+        ([0, 0, 0], [0.0, 0.0, 0.0]),
+        ([1, 0, 0], [100.0, 0.0, 0.0]),
+        ([0, 1, 0], [0.0, 100.0, 0.0]),
+        ([0, 0, 1], [0.0, 0.0, 100.0]),
+        ([1, 1, 0], [0.0, 0.0, 0.0]),
+        ([2, 1, 1], [0.0, 0.0, 0.0]),
+        ([3, 2, 2], [0.0, 0.0, 0.0]),
+        ([3, 1, 1], [100.0, 0.0, 0.0]),
+        ([1, 3, 1], [0.0, 100.0, 0.0]),
+        ([1, 1, 3], [0.0, 0.0, 100.0]),
+    ] {
+        let mut groups = String::new();
+        for ((gem, skill), count) in supports.iter().zip(counts) {
+            // Count socketed gems even when they cannot support the main spell,
+            // and across groups rather than only its connected supports.
+            groups.push_str("<Skill enabled=\"true\">");
+            for _ in 0..count {
+                groups.push_str(&format!(
+                    r#"<Gem enabled="true" gemId="{gem}" skillId="{skill}" level="1"/>"#
+                ));
+            }
+            groups.push_str("</Skill>");
+        }
+        // Disabled groups and disabled gems never contribute. The blue active
+        // Fireball in xml_with_red_supports is not a support and cannot count.
+        groups.push_str(r#"<Skill enabled="false"><Gem gemId="Metadata/Items/Gems/SupportGemFork" skillId="SupportForkPlayer" enabled="true" level="1"/></Skill>
+<Skill enabled="true"><Gem gemId="Metadata/Items/Gems/SupportGemMagnifiedEffect" skillId="SupportMagnifiedAreaPlayer" enabled="false" level="1"/></Skill>"#);
+        let xml = xml_with_red_supports(0).replace("</SkillSet>", &format!("{groups}</SkillSet>"));
+        let build = parse_build(&xml).expect("parse synthetic socketed supports");
+        let out = calculate_with_data(&build, &data, &opts).expect("calculate immunity");
+        assert_eq!(
+            [out.avoid_ignite, out.avoid_shock, out.avoid_chill],
+            expected,
+            "red/green/blue supports: {counts:?}"
+        );
+    }
+}

@@ -266,22 +266,17 @@ pub(super) fn inject_buffs_and_heralds(
     }
 }
 
-/// Equipped support gems counted by color → `Red/Green/BlueSupportGems` multipliers
-/// (matching PoB2 CalcSetup.lua:2015-2044: walks **enabled** socket groups, counting
-/// support gems by `grantedEffect.color` (1=R/2=G/3=B, the same enum as GGG's
-/// `gem_colour`) and writing to `env.modDB.multipliers`). Consumed by the pinned entries
-/// in a2-real-gaps's `MultiplierThreshold{<Color>SupportGems, 10}` (produced blind
-/// against the lower bound; a missing key = no effect — activates automatically once
-/// this injection lands). Also sets the `MostNumerous<Color>SocketedSupports`
-/// condition. Vendor's same-location `Majority<Color>SocketedSupports` conditions
-/// have no PoBR data consumer yet and aren't injected (YAGNI, add in this same
-/// function when a need arises).
+/// Socketed supports in enabled groups, using the game's SkillGems.GemColour:
+/// 1 = strength/red, 2 = dexterity/green, 3 = intelligence/blue.
+/// Crystallised Immunities requires a strict majority (more than half of all
+/// socketed supports), distinct from Gem Studded's most numerous colour.
 pub(super) fn inject_support_gem_counts(
     session: &mut CalculationSession,
     build: &Build,
     data: &BuildData,
 ) {
     let (mut r, mut g, mut b) = (0.0_f64, 0.0_f64, 0.0_f64);
+    let mut total = 0.0;
     for group in build.enabled_socket_groups() {
         for gem_id in &group.gem_ids {
             let Some(def) = data.skill_gems.get(gem_id) else {
@@ -290,6 +285,7 @@ pub(super) fn inject_support_gem_counts(
             if !def.is_support {
                 continue;
             }
+            total += 1.0;
             match def.gem_colour {
                 Some(1) => r += 1.0,
                 Some(2) => g += 1.0,
@@ -301,6 +297,12 @@ pub(super) fn inject_support_gem_counts(
     session.set_multiplier("RedSupportGems", r);
     session.set_multiplier("GreenSupportGems", g);
     session.set_multiplier("BlueSupportGems", b);
+    for (colour, count) in [("Red", r), ("Green", g), ("Blue", b)] {
+        session.set_condition(
+            format!("Majority{colour}SocketedSupports"),
+            count > total / 2.0,
+        );
+    }
     // Gemling "Gem Studded" (CalcSetup.lua:2594-2601): exactly one colour counts as
     // most numerous; the vendor's `>=` chain resolves ties in red, green, blue order.
     let most_numerous = if r >= g && r >= b {

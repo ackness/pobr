@@ -354,6 +354,7 @@ pub(super) struct NetRecoveryTerms {
     pub costs: [f64; 5],
     pub loss: [f64; 3],
     pub direct_drain: f64,
+    pub use_loss: [f64; 3],
     pub typed_loss: f64,
 }
 
@@ -371,7 +372,31 @@ pub(super) fn net_recovery_terms(env: &Env) -> NetRecoveryTerms {
         out.ward_per_second_cost + out.ward * out.ward_percent_per_second_cost / 100.0,
         out.rage_per_second_cost,
     ];
-    let mut loss = [costs[0], costs[1], costs[2]];
+    // Event Horizon is resource loss on use, not a skill cost or Chaos
+    // damage: cost efficiency, resistance and immunity do not reduce it.
+    // Only the selected player-used Chaos skill contributes; triggered and
+    // proxy actions are not player uses. Repeats share the original use.
+    let percent = base(db, cfg, "ChaosSkillLifeAndEnergyShieldLossPercent").max(0.0);
+    let applies = cfg
+        .skill_types
+        .contains(pobr_data::skill::SkillTypes::from_pob2_name("Chaos").unwrap_or_default())
+        && !cfg
+            .skill_types
+            .contains(pobr_data::skill::SkillTypes::TRIGGERED)
+        && !db.flag(cfg, "SkillIsTriggered")
+        && out.skill_trigger_rate <= 0.0
+        && !proxy(cfg);
+    let use_rate = if percent > 0.0 && applies {
+        super::perform::resource_cost_use_rate(env)
+    } else {
+        0.0
+    };
+    let use_loss = [
+        out.life * percent / 100.0 * use_rate,
+        0.0,
+        out.energy_shield * percent / 100.0 * use_rate,
+    ];
+    let mut loss = std::array::from_fn(|i| costs[i] + use_loss[i]);
     let direct_drain: f64 = RESOURCES[..3]
         .iter()
         .enumerate()
@@ -457,6 +482,7 @@ pub(super) fn net_recovery_terms(env: &Env) -> NetRecoveryTerms {
         costs,
         loss,
         direct_drain,
+        use_loss,
         typed_loss,
     }
 }
@@ -466,10 +492,12 @@ fn fill_net_recovery(env: &mut Env) {
         costs,
         loss,
         direct_drain,
+        use_loss,
         typed_loss,
     } = net_recovery_terms(env);
     let out = &mut env.player.output;
-    out.total_build_degen = direct_drain + typed_loss + costs.iter().sum::<f64>();
+    out.total_build_degen =
+        direct_drain + use_loss.iter().sum::<f64>() + typed_loss + costs.iter().sum::<f64>();
     out.net_life_regen = out.life_regen_recovery - loss[0];
     out.net_mana_regen = out.mana_regen_recovery - loss[1];
     out.net_energy_shield_regen = out.energy_shield_regen_recovery - loss[2];
