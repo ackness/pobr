@@ -8759,7 +8759,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MaxLifeLeechRate",
+          "name": "LifeLeechAmount",
           "type": "Inc",
           "value": 10.0
         }
@@ -8770,7 +8770,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MaxLifeLeechRate",
+          "name": "LifeLeechAmount",
           "type": "Inc",
           "value": 10.0,
           "tags": [
@@ -8784,7 +8784,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MaxManaLeechRate",
+          "name": "ManaLeechAmount",
           "type": "Inc",
           "value": 10.0
         }
@@ -9693,7 +9693,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MaxLifeLeechRate",
+          "name": "LifeLeechAmount",
           "type": "Inc",
           "value": 11.0
         }
@@ -9704,7 +9704,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MaxManaLeechRate",
+          "name": "ManaLeechAmount",
           "type": "Inc",
           "value": 11.0
         }
@@ -10788,7 +10788,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MaxLifeLeechRate",
+          "name": "LifeLeechAmount",
           "type": "Inc",
           "value": 12.0
         }
@@ -13015,7 +13015,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MaxLifeLeechRate",
+          "name": "LifeLeechAmount",
           "type": "Inc",
           "value": 15.0
         }
@@ -13026,7 +13026,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MaxLifeLeechRate",
+          "name": "LifeLeechAmount",
           "type": "Inc",
           "value": 15.0,
           "tags": [
@@ -16888,7 +16888,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MaxLifeLeechRate",
+          "name": "LifeLeechAmount",
           "type": "Inc",
           "value": 20.0
         }
@@ -17587,7 +17587,9 @@
           "name": "ManaCostEfficiency",
           "type": "Inc",
           "value": 21.0,
-          "flags": 2
+          "tags": [
+            "SkillTypes(SkillTypes(2))"
+          ]
         }
       ]
     },
@@ -19543,7 +19545,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MaxManaLeechRate",
+          "name": "ManaLeechAmount",
           "type": "Inc",
           "value": 25.0
         }
@@ -20202,7 +20204,9 @@
           "name": "ManaCostEfficiency",
           "type": "Inc",
           "value": 28.0,
-          "flags": 2
+          "tags": [
+            "SkillTypes(SkillTypes(2))"
+          ]
         }
       ]
     },
@@ -22539,7 +22543,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MaxManaLeechRate",
+          "name": "ManaLeechAmount",
           "type": "Inc",
           "value": 30.0
         }
@@ -23334,7 +23338,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MaxLifeLeechRate",
+          "name": "LifeLeechAmount",
           "type": "Inc",
           "value": 35.0
         }
@@ -27096,7 +27100,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MaxManaLeechRate",
+          "name": "ManaLeechAmount",
           "type": "Inc",
           "value": 50.0
         }
@@ -27201,7 +27205,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MaxLifeLeechRate",
+          "name": "LifeLeechAmount",
           "type": "More",
           "value": 50.0
         }
@@ -28262,7 +28266,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MaxLifeLeechRate",
+          "name": "LifeLeechAmount",
           "type": "Inc",
           "value": 6.0
         }
@@ -30392,7 +30396,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MaxLifeLeechRate",
+          "name": "LifeLeechAmount",
           "type": "Inc",
           "value": 8.0
         }
@@ -38211,7 +38215,25 @@
     },
     {
       "text": "Grants Onslaught during effect",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:Onslaught",
+          "type": "Flag",
+          "value": true,
+          "tags": [
+            "Condition { var: \"UsingFlask\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "Condition:Onslaught",
+          "type": "Flag",
+          "value": true,
+          "tags": [
+            "Condition { var: \"UsingCharm\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Grants Skill: <underline>{Acidic Concoction}",
@@ -40148,10 +40170,7 @@
         {
           "name": "PresenceRadius",
           "type": "More",
-          "value": 100.0,
-          "tags": [
-            "GlobalLimit { value: 100.0, key: \"PresenceRadiusDoubledLimit\" }"
-          ]
+          "value": 100.0
         }
       ]
     },
