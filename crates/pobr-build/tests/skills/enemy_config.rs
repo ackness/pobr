@@ -438,3 +438,150 @@ fn ehp_zero_incoming_multiplier_is_zero_even_with_flat_damage() {
         .1;
     close(0.0 * input, 0.0);
 }
+
+#[test]
+fn further_ehp_fields_expose_mitigation_and_pool_terms() {
+    use pobr_build::breakdown::detail::detail_kind;
+    use pobr_core::{Modifier, display_value};
+    use pobr_data::prelude::ModType;
+
+    let mut session = CalculationSession::new(MinimalInput {
+        base_life: 1000.0,
+        base_mana: 500.0,
+        ..Default::default()
+    });
+    session.add_enemy_modifiers([
+        Modifier::flag("NeverCrit"),
+        Modifier::number("EnemyFireDamage", ModType::Base, 100.0),
+        Modifier::number("EnemyFirePen", ModType::Base, 10.0),
+        Modifier::number("EnemyColdPen", ModType::Base, 10.0),
+        Modifier::number("FireDamage", ModType::Inc, 50.0),
+    ]);
+    for (name, kind, value) in [
+        ("FireResist", ModType::Base, 50.0),
+        ("ColdResist", ModType::Base, -20.0),
+        ("LightningResist", ModType::Base, 120.0),
+        ("ChaosResist", ModType::Base, 30.0),
+        ("AttackDamageTaken", ModType::Inc, 20.0),
+        ("SpellDamageTaken", ModType::Inc, -10.0),
+        ("DamageTaken", ModType::More, -10.0),
+        ("DamageReductionMax", ModType::Base, 80.0),
+        ("FireDamageReductionMax", ModType::Base, 50.0),
+        ("FireDamageReduction", ModType::Base, 20.0),
+        ("DamageTakenFromManaBeforeLife", ModType::Base, 40.0),
+        ("LifeLossPrevented", ModType::Base, 20.0),
+    ] {
+        session.add_modifiers([Modifier::number(name, kind, value)]);
+    }
+    session.perform_minimal().unwrap();
+    let out = session.output();
+    // Attack 1.2 × 0.9 = 1.08 and spell 0.9 × 0.9 = 0.81 average to 0.945.
+    // Fire: 10 penetration leaves 40% resistance (0.6) and 20% reduction (0.8).
+    // Cold's negative resistance is not penetrated: 1.2. Lightning's 120 is
+    // capped at 75 for the hit but its total stays 120.
+    // MoM 40%: 500 Mana carries 40% of 1250 damage, Life the remaining 250
+    // (1500); against the 1250 Life hit pool (20% loss prevented) it is 1750.
+    let expected = [
+        ("FireEnemyDamageMult", 1.5),
+        ("ColdEnemyDamageMult", 1.0),
+        ("FireEnemyPen", 10.0),
+        ("PhysicalEnemyPen", 0.0),
+        ("FireResistTakenHitMulti", 0.6),
+        ("ColdResistTakenHitMulti", 1.2),
+        ("LightningResistTakenHitMulti", 0.25),
+        ("ChaosResistTakenHitMulti", 0.7),
+        ("PhysicalResistTakenHitMulti", 1.0),
+        ("FireAttackTakenHitMult", 1.08),
+        ("FireSpellTakenHitMult", 0.81),
+        ("FireAfterReductionTakenHitMulti", 0.945),
+        ("FireBaseTakenHitMult", 0.6 * 0.8 * 0.945),
+        ("DamageReductionMax", 80.0),
+        ("FireDamageReductionMax", 50.0),
+        ("PhysicalDamageReductionMax", 80.0),
+        ("LightningResistTotal", 120.0),
+        ("ColdResistTotal", -20.0),
+        ("LifeHitPool", 1250.0),
+        ("FireManaEffectiveLife", 1500.0),
+        ("FireMoMHitPool", 1750.0),
+        ("FireTotalHitPool", 1750.0),
+    ];
+    for (stat, value) in expected {
+        close(display_value(out, stat), value);
+        if stat.ends_with("EnemyDamageMult") || stat.ends_with("EnemyPen") {
+            assert_eq!(detail_kind(stat), DetailKind::None);
+            continue;
+        }
+        let detail = stat_detail(&session, stat).unwrap();
+        if stat.ends_with("AttackTakenHitMult") || stat.ends_with("SpellTakenHitMult") {
+            assert_eq!(detail.kind, DetailKind::Sources);
+            let names: Vec<_> = detail.sources.iter().map(|s| s.name.as_str()).collect();
+            // Groups with contributing modifiers: the shared 10% less and the layer.
+            assert!(names.contains(&"DamageTaken"), "{names:?}");
+            let layer = if stat.contains("Attack") {
+                "AttackDamageTaken"
+            } else {
+                "SpellDamageTaken"
+            };
+            assert!(names.contains(&layer));
+            continue;
+        }
+        assert_eq!(detail.kind, DetailKind::Derived, "{stat}");
+        let d = detail.derived.unwrap();
+        let input = |id: &str| {
+            d.inputs
+                .iter()
+                .find(|row| row.id == id)
+                .map(|row| row.value)
+        };
+        let get = |id: &str| input(id).unwrap();
+        let reconstructed = if stat.ends_with("ResistTakenHitMulti") {
+            let resist = get("Resistance");
+            let after = if resist > 0.0 {
+                (resist - get("EnemyPenetration")).max(0.0)
+            } else {
+                resist
+            };
+            1.0 - after / 100.0
+        } else if stat.ends_with("AfterReductionTakenHitMulti") {
+            get("HitDamageTakenMultiplier") * get("DeflectMultiplier")
+        } else if stat.ends_with("BaseTakenHitMult") {
+            get("ResistTakenMultiplier")
+                * get("ReductionTakenMultiplier")
+                * get("AfterReductionMultiplier")
+        } else if stat.ends_with("DamageReductionMax") {
+            let global = input("DamageReductionMax")
+                .or(input("HighestDamageReductionMax"))
+                .or(input("DamageReductionCap"))
+                .unwrap();
+            match input("HighestFireDamageReductionMax") {
+                Some(cap) => cap.min(global),
+                None => global,
+            }
+        } else if stat.ends_with("ResistTotal") {
+            ((get("BaseResistance") + get("FlatResistance"))
+                * ((1.0 + get("IncreasedResistance") / 100.0) * get("MoreResistance")).max(0.0))
+            .trunc()
+        } else if stat == "LifeHitPool" {
+            let (life, max, prevented, below) = (
+                get("Life"),
+                get("MaximumLife"),
+                get("LifeLossPrevented"),
+                get("LifeLossBelowHalfPrevented"),
+            );
+            (life - max / 2.0).max(0.0) / (1.0 - prevented / 100.0)
+                + life.min(max / 2.0) / (1.0 - below / 100.0) / (1.0 - prevented / 100.0)
+        } else {
+            // Pools add their retained stages.
+            d.inputs.iter().map(|row| row.value).sum()
+        };
+        close(reconstructed, value);
+    }
+    // Neither reflect nor a separate damage-over-time resistance is modelled.
+    for missing in ["FireTakenReflect", "FireResistOverTime"] {
+        assert!(
+            !pobr_core::display_catalog()
+                .iter()
+                .any(|d| d.id.as_str() == missing)
+        );
+    }
+}

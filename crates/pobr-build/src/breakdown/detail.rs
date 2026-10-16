@@ -37,7 +37,17 @@ pub fn detail_kind(stat: &str) -> DetailKind {
         | "FireEnergyShieldBypass"
         | "ColdEnergyShieldBypass"
         | "LightningEnergyShieldBypass"
-        | "ChaosEnergyShieldBypass" => DetailKind::None,
+        | "ChaosEnergyShieldBypass"
+        | "PhysicalEnemyDamageMult"
+        | "FireEnemyDamageMult"
+        | "ColdEnemyDamageMult"
+        | "LightningEnemyDamageMult"
+        | "ChaosEnemyDamageMult"
+        | "PhysicalEnemyPen"
+        | "FireEnemyPen"
+        | "ColdEnemyPen"
+        | "LightningEnemyPen"
+        | "ChaosEnemyPen" => DetailKind::None,
         "SkillTriggerRate"
         | "TriggerRateCap"
         | "LifeUnreservedPercent"

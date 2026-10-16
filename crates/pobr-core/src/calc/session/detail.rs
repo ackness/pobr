@@ -21,9 +21,37 @@ pub struct DerivedDetail {
     pub context: Vec<(String, f64)>,
 }
 
+/// `<X>AttackTakenHitMult` / `<X>SpellTakenHitMult` read the hit damage-taken
+/// names of that type plus the attack or spell layer
+/// (`defence::taken_mult_for_type_with_source`).
+fn hit_source_taken_names(stat: &str) -> Option<Vec<String>> {
+    let (kind, source) = ["Physical", "Fire", "Cold", "Lightning", "Chaos"]
+        .into_iter()
+        .find_map(|kind| {
+            let rest = stat.strip_prefix(kind)?;
+            let source = rest.strip_suffix("TakenHitMult")?;
+            matches!(source, "Attack" | "Spell").then_some((kind, source))
+        })?;
+    let mut names = vec![
+        "DamageTaken".to_string(),
+        format!("{kind}DamageTaken"),
+        "DamageTakenWhenHit".to_string(),
+        format!("{kind}DamageTakenWhenHit"),
+    ];
+    if kind != "Physical" && kind != "Chaos" {
+        names.push("ElementalDamageTaken".into());
+        names.push("ElementalDamageTakenWhenHit".into());
+    }
+    names.push(format!("{source}DamageTaken"));
+    Some(names)
+}
+
 /// Each group represents a genuine query. Explicit enemy groups use the enemy
 /// database; derived relationships never appear as synthetic modifier rows.
 pub fn source_names(stat: &str) -> Vec<String> {
+    if let Some(names) = hit_source_taken_names(stat) {
+        return names;
+    }
     let names = super::super::player_debuffs::view_names(stat);
     if !names.is_empty() {
         let mut names: Vec<_> = names.iter().map(|name| (*name).to_string()).collect();
