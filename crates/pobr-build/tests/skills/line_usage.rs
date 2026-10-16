@@ -135,13 +135,15 @@ fn every_line_says_what_became_of_it() {
         assert_eq!(modifier.reason.as_deref(), Some("needs Attack"));
     }
 
-    // Stored, and no query asks for it.
+    // Stored, and no query asks for it; it changes drops, not a stat a
+    // calculation reports, so the line is registered as having no effect.
     let rarity = line(
         &ledger,
         "item.amulet.explicit",
         "16% increased Rarity of Items found",
     );
-    assert_eq!(rarity.status, LineStatus::Unread);
+    assert_eq!(rarity.status, LineStatus::NoEffect);
+    assert_eq!(rarity.modifiers[0].status, ModifierStatus::Unread);
 
     // Recognised: registered as changing nothing a calculation reports, or
     // recognised by a rule that stores nothing, which is not modelled.
@@ -195,4 +197,32 @@ fn every_line_says_what_became_of_it() {
         let reason = line.modifiers[0].reason.as_deref().unwrap();
         assert!(reason.contains("no calculation stage asks"), "{reason}");
     }
+}
+
+/// A loot line changes no number the calculation reports: "15% increased
+/// Rarity of Items found" (a Gold Ring implicit in the game) parses to
+/// `LootRarity`, which no query reads, and the ledger calls the line
+/// `no_effect` rather than `unread`, so the gap queue leaves it alone.
+#[test]
+fn a_loot_line_is_reported_as_having_no_calculated_effect() {
+    let data = data();
+    let ledger = ledger(
+        &data,
+        &["15% increased Rarity of Items found"],
+        &["+10 to maximum Life"],
+    );
+    let rarity = line(
+        &ledger,
+        "item.bodyarmour.explicit",
+        "15% increased Rarity of Items found",
+    );
+    assert_eq!(rarity.status, LineStatus::NoEffect, "{rarity:#?}");
+    assert_eq!(rarity.modifiers.len(), 1, "{rarity:#?}");
+    assert_eq!(rarity.modifiers[0].name, "LootRarity");
+    assert_eq!(rarity.modifiers[0].status, ModifierStatus::Unread);
+    let reason = rarity.reason.as_deref().unwrap();
+    assert!(
+        reason.contains("item rarity changes drops, not a calculated stat"),
+        "{reason}"
+    );
 }

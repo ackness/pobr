@@ -3267,6 +3267,17 @@
       "source_note": "Game text of the stat experience_gain_+%, which an item, a rune and a quest reward carry. How fast a character gains experience is part of nothing a calculation reports, so the line is recognised and adds no modifier: it is not an input the calculation dropped."
     },
     {
+      "id": "gold_quantity_from_slain_enemies",
+      "pattern": "(?:\\d+(?:\\.\\d+)?)% (?:increased|reduced) quantity of gold dropped by slain enemies",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "examples": [
+        "15% increased Quantity of Gold Dropped by Slain Enemies"
+      ],
+      "source_note": "Game text of the stat gold_+%_from_enemies, which essence rolls, corruption modifiers and the Perandus Seal (Gold Ring) carry. How much gold enemies drop changes loot, not a stat a calculation reports, so the line is recognised and adds no modifier: it is not an input the calculation dropped."
+    },
+    {
       "id": "item_can_roll_modifiers",
       "pattern": "can (?:also )?roll [a-z ]+ modifiers",
       "mods": [],

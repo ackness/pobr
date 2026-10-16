@@ -374,7 +374,9 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
             && source_id
                 .as_deref()
                 .is_some_and(|id| id.starts_with("config."));
-        let (status, reason) = if !config_option {
+        let (status, reason) = if let Some(reason) = no_output_reason(&modifiers) {
+            (LineStatus::NoEffect, Some(reason))
+        } else if !config_option {
             (line_status(&modifiers), None)
         } else if modifiers.iter().all(is_unasked_variable) {
             (
@@ -707,6 +709,44 @@ fn uncounted_reason(modifier: &Modifier, sites: &[String]) -> String {
 fn is_unasked_variable(modifier: &UsageModifier) -> bool {
     modifier.status == ModifierStatus::Unread
         && (modifier.name.starts_with("Condition:") || modifier.name.starts_with("Multiplier:"))
+}
+
+/// Stored modifiers that change nothing a calculation reports, with the
+/// reason their line is registered under: drop-side effects, which change the
+/// loot the game gives, not a stat the calculation reports.
+const NO_OUTPUT_NAMES: &[(&str, &str)] = &[
+    (
+        "LootRarity",
+        "item rarity changes drops, not a calculated stat",
+    ),
+    (
+        "LootQuantity",
+        "item quantity changes drops, not a calculated stat",
+    ),
+];
+
+/// The reason a line whose every modifier is [`NO_OUTPUT_NAMES`] shows when no
+/// query read any of them ([`LineStatus::NoEffect`]); `None` when the line
+/// holds anything else or nothing at all.
+fn no_output_reason(modifiers: &[UsageModifier]) -> Option<String> {
+    let mut reasons: Vec<&str> = Vec::new();
+    for modifier in modifiers {
+        if modifier.status != ModifierStatus::Unread {
+            return None;
+        }
+        let (_, reason) = *NO_OUTPUT_NAMES
+            .iter()
+            .find(|(name, _)| *name == modifier.name.as_str())?;
+        if !reasons.contains(&reason) {
+            reasons.push(reason);
+        }
+    }
+    (!reasons.is_empty()).then(|| {
+        format!(
+            "registered as changing nothing a calculation reports ({})",
+            reasons.join("; ")
+        )
+    })
 }
 
 fn line_status<'a>(modifiers: impl IntoIterator<Item = &'a UsageModifier>) -> LineStatus {
