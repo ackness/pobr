@@ -101,6 +101,18 @@ run = "bash devs/scripts/driver.sh triage"
 description = "The game data records of an id or a name: `mise run lookup <skill id | stat id | base item | passive node | unique> [--level N]`"
 run = "bash devs/scripts/driver.sh lookup"
 
+[tasks.gaps]
+description = "Rank game-text gaps by worked builds and player sources: `mise run gaps [--json FILE] [--limit N] [--kind unique|passive|mods|...]`"
+run = "bash devs/scripts/driver.sh gaps"
+
+[tasks.gap]
+description = "Research one game line: `mise run gap \"<template or text>\"` (stats, full sources, build ledger, nearby engine rules)"
+run = "bash devs/scripts/driver.sh gap"
+
+[tasks."config:coverage"]
+description = "Config readers across benchmark + tuned builds, registered handlers and remaining gaps: `mise run config:coverage [--json FILE]`"
+run = "python3 devs/scripts/config-coverage.py"
+
 [tasks."skills:sweep"]
 description = "Every primary player active skill in a synthetic build against the pinned PoB2: `mise run skills:sweep [--jobs 4] [--refresh]`"
 run = "bash devs/scripts/driver.sh skills:sweep"

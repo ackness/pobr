@@ -58,6 +58,7 @@ struct ImportedItems {
     equipment: Vec<(EquipmentSlot, Item)>,
     jewels: Vec<(JewelSocket, Item)>,
     flask_charms: Vec<(String, Item)>,
+    inactive_flask_charms: Vec<(String, Item)>,
     limbs: Vec<(LimbSlot, Item)>,
 }
 /// What the active `<ItemSet>` assigns, by item id.
@@ -68,6 +69,7 @@ struct SlotAssignments {
     jewels: Vec<(u32, JewelSocket)>,
     /// Active Flask/Charm slots, by PoB slot name.
     flask_charms: Vec<(String, u32)>,
+    inactive_flask_charms: Vec<(String, u32)>,
     /// Transcendent limb slots.
     limbs: Vec<(LimbSlot, u32)>,
     /// Slots that hold an item and that the engine has no model for, by PoB
@@ -169,6 +171,7 @@ fn parse_build_with_allocated_nodes_impl(
             equipment: items,
             jewels,
             flask_charms,
+            inactive_flask_charms,
             limbs,
         },
         mut report,
@@ -244,6 +247,7 @@ fn parse_build_with_allocated_nodes_impl(
     if !radius_jewels.is_empty() {
         build = build.with_radius_jewels(radius_jewels);
     }
+    build.inactive_utility_slots = inactive_flask_charms;
     if !flask_charms.is_empty() {
         build = build.with_utility_slots(flask_charms);
     }
@@ -997,6 +1001,7 @@ fn parse_items_and_slots(
         equipment: slot_assignments,
         jewels: jewel_ids,
         flask_charms: flask_charm_ids,
+        inactive_flask_charms: inactive_flask_charm_ids,
         limbs: limb_ids,
         unmodelled,
         use_second_weapon_set: _,
@@ -1010,7 +1015,7 @@ fn parse_items_and_slots(
     for (item_id, _) in &jewel_ids {
         used_in.entry(*item_id).or_default().push("jewel".into());
     }
-    for (slot, item_id) in &flask_charm_ids {
+    for (slot, item_id) in flask_charm_ids.iter().chain(&inactive_flask_charm_ids) {
         used_in.entry(*item_id).or_default().push(slot.clone());
     }
     for (slot, item_id) in &limb_ids {
@@ -1049,6 +1054,10 @@ fn parse_items_and_slots(
         .iter()
         .filter_map(|(slot, id)| Some((slot.clone(), items.get(id).cloned()?)))
         .collect();
+    let inactive_flask_charms: Vec<(String, Item)> = inactive_flask_charm_ids
+        .iter()
+        .filter_map(|(slot, id)| Some((slot.clone(), items.get(id).cloned()?)))
+        .collect();
     let limbs: Vec<(LimbSlot, Item)> = limb_ids
         .iter()
         .filter_map(|(slot, id)| Some((*slot, items.get(id).cloned()?)))
@@ -1075,6 +1084,7 @@ fn parse_items_and_slots(
             equipment: out,
             jewels,
             flask_charms,
+            inactive_flask_charms,
             limbs,
         },
         ImportReport {
@@ -1637,12 +1647,14 @@ fn parse_item_set_for_weapons(
             out.jewels
                 .push((*item_id, item_set_jewel_socket(slot_name)));
         } else if is_flask_charm_slot(slot_name) {
-            // Only **active** (`active="true"`) flasks/charms enter the calculation —
-            // mirroring PoB2's flask/charm enable toggle (CalcSetup.lua:1014-1028's
-            // `slot.active` gating of env.flasks/charms).
+            // Active items enter the effect pool; unticked items retain only
+            // their per-use duration, recovery and charge properties.
             // The slot name is kept too (for `SourceId(Flask, "flask.<slot>")` attribution + flask/charm classification).
             if *active {
                 out.flask_charms.push((slot_name.clone(), *item_id));
+            } else {
+                out.inactive_flask_charms
+                    .push((slot_name.clone(), *item_id));
             }
         } else if let Some(slot) = LimbSlot::from_pob_name(slot_name) {
             out.limbs.push((slot, *item_id));
@@ -1845,6 +1857,7 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                                         .map(|v| v == "true"),
                                     skill_id: skill_id.unwrap_or_default(),
                                     gem_level: level,
+                                    global_level_bonus: None,
                                     quality,
                                     stat_set_index,
                                     name_spec: if name_spec_pending { name_spec } else { None },
@@ -2374,6 +2387,8 @@ Implicits: 0
     </Items>
 </PathOfBuilding2>"#;
         let build = parse_build(xml).expect("parse");
+        assert_eq!(build.inactive_utility_slots.len(), 1);
+        assert_eq!(build.inactive_utility_slots[0].0, "Flask 2");
         let names: Vec<(String, String)> = build
             .utility_slots
             .iter()

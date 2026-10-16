@@ -16,6 +16,9 @@ pub enum DetailKind {
 /// A descriptor exists for every catalog id, including explicit `none` entries.
 /// The legacy list is only the default request, not the supported surface.
 pub fn detail_kind(stat: &str) -> DetailKind {
+    if pobr_core::calc::utility::item_stat(stat).is_some() {
+        return DetailKind::Derived;
+    }
     if BREAKDOWN_STATS.contains(&stat) {
         return DetailKind::Steps;
     }
@@ -207,6 +210,20 @@ pub fn minion_detail_descriptors() -> BTreeMap<String, DetailKind> {
             },
         )
     })
+    .chain(
+        pobr_core::calc::minion::MINION_RESISTANCE_STATS
+            .into_iter()
+            .map(|id| {
+                (
+                    id.into(),
+                    if id.ends_with("Resist") {
+                        DetailKind::Steps
+                    } else {
+                        DetailKind::None
+                    },
+                )
+            }),
+    )
     .collect()
 }
 
@@ -216,6 +233,9 @@ pub fn minion_stat_detail(
     stat: &str,
 ) -> Option<StatDetail> {
     let kind = *minion_detail_descriptors().get(stat)?;
+    if kind == DetailKind::None {
+        return None;
+    }
     let breakdown = super::minion_stat_breakdown(session, index, stat)?;
     Some(StatDetail {
         kind,

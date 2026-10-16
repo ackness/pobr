@@ -27,6 +27,14 @@ pub struct FullDpsOutput {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutputTable {
+    /// Threshold, recovery per kill, and selected-hit debuff views.
+    pub ailment_threshold: f64,
+    pub life_on_kill: f64,
+    pub mana_on_kill: f64,
+    pub energy_shield_on_kill: f64,
+    pub daze_chance: f64,
+    pub fully_broken_armour_effect: f64,
+    pub utility_stats: std::collections::BTreeMap<String, f64>,
     pub decay_dps: f64,
     pub mirage_burning_ground_dps: f64,
 
@@ -67,6 +75,7 @@ pub struct OutputTable {
     pub max_fire_resistance: f64,
     pub max_cold_resistance: f64,
     pub max_lightning_resistance: f64,
+    pub max_chaos_resistance: f64,
     pub fire_resistance_over_cap: f64,
     pub cold_resistance_over_cap: f64,
     pub lightning_resistance_over_cap: f64,
@@ -100,6 +109,9 @@ pub struct OutputTable {
     pub warcry_cast_time: f64,
     pub channel_time: f64,
     pub channel_time_to_trigger: f64,
+    /// Nominal Archon buff duration and post-buff recovery, in seconds.
+    pub archon_duration: f64,
+    pub archon_recovery_period: f64,
 
     pub mana_percent_cost: f64,
     pub mana_percent_per_second_cost: f64,
@@ -158,6 +170,9 @@ pub struct OutputTable {
     pub poison_dps: f64,
     /// Shock's damage bonus magnitude (fraction, e.g. 0.20).
     pub shock_effect: f64,
+    /// Shock magnitude modifier (1 is unchanged, 0 when no shock is inflicted),
+    /// displayed as ShockEffectMod.
+    pub shock_effect_mod: f64,
     /// Maximum single hit each damage type can take (starting semantics =
     /// PoB2's view: TotalHitPool's pool-expansion layer + taken-as,
     /// CalcDefence.lua:3540-3697; `*_max_hit_pob2` is an alias with the same value).
@@ -294,7 +309,7 @@ pub struct OutputTable {
     pub ignite_max_stacks: f64,
 
     // Skill functionality (Lane C: AoE / projectiles / cooldown / cost;
-    // written by perform fill, 0 with no base)
+    // written by perform fill; unknown radius is 0, neutral area modifier is 1)
     /// Final AoE radius (internal coordinate units) and the area multiplier.
     pub aoe_radius: f64,
     pub aoe_area_mod: f64,
@@ -336,7 +351,8 @@ pub struct OutputTable {
     /// `EffectiveSpellProjectileBlockChance`, vendor :1013 takes the max with ProjectileBlock).
     pub effective_spell_projectile_block_chance: f64,
     /// Block damage-taken share (%; the fraction of damage still taken from
-    /// a blocked hit, PoB2 `BlockEffect`, ModParser.lua:2479; 0 = fully blocked).
+    /// a blocked hit; 0 = fully blocked). The catalog's BlockEffect displays
+    /// the complementary prevented share; EHP keeps using this taken share.
     pub block_effect: f64,
     /// Deflection rating (PoB2 `DeflectionRating` = BASE + Evasion/Armour
     /// GainAsDeflection, CalcDefence.lua:1487-1490).
@@ -524,11 +540,20 @@ pub struct MinionOutput {
     pub evasion: f64,
     /// Energy shield.
     pub energy_shield: f64,
+    /// Supported resistance outputs, using the player's display stat ids.
+    pub stats: std::collections::BTreeMap<String, f64>,
 }
 
 impl Default for OutputTable {
     fn default() -> Self {
         Self {
+            ailment_threshold: 0.0,
+            life_on_kill: 0.0,
+            mana_on_kill: 0.0,
+            energy_shield_on_kill: 0.0,
+            daze_chance: 0.0,
+            fully_broken_armour_effect: 0.0,
+            utility_stats: Default::default(),
             decay_dps: 0.0,
             mirage_burning_ground_dps: 0.0,
 
@@ -562,6 +587,7 @@ impl Default for OutputTable {
             cold_resistance: 0.0,
             lightning_resistance: 0.0,
             chaos_resistance: 0.0,
+            max_chaos_resistance: 0.0,
             accuracy: 0.0,
             max_fire_resistance: 0.0,
             max_cold_resistance: 0.0,
@@ -595,6 +621,8 @@ impl Default for OutputTable {
             warcry_cast_time: 0.0,
             channel_time: 0.0,
             channel_time_to_trigger: 0.0,
+            archon_duration: 0.0,
+            archon_recovery_period: 0.0,
 
             mana_percent_cost: 0.0,
             mana_percent_per_second_cost: 0.0,
@@ -640,6 +668,7 @@ impl Default for OutputTable {
             ignite_dps: 0.0,
             poison_dps: 0.0,
             shock_effect: 0.0,
+            shock_effect_mod: 0.0,
             physical_max_hit: 0.0,
             fire_max_hit: 0.0,
             cold_max_hit: 0.0,
@@ -725,9 +754,9 @@ impl Default for OutputTable {
             bleed_max_stacks: 0.0,
             poison_max_stacks: 0.0,
             ignite_max_stacks: 0.0,
-            // Lane C: skill functionality defaults to 0 (not written without a base configuration).
+            // Unknown skill mechanics default to 0; an area multiplier is neutral at 1.
             aoe_radius: 0.0,
-            aoe_area_mod: 0.0,
+            aoe_area_mod: 1.0,
             projectile_count: 0.0,
             projectile_speed_mod: 0.0,
             cooldown: 0.0,

@@ -80,6 +80,7 @@ fn critical_roll_view(env: &Env) -> f64 {
 }
 
 pub(super) fn fill_sidebar(env: &mut Env) {
+    fill_threshold_and_kill_views(env);
     let bifurcates = critical_roll_view(env);
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
@@ -88,7 +89,22 @@ pub(super) fn fill_sidebar(env: &mut Env) {
     global.keyword_flags = KeywordFlags::NONE;
     global.skill_types = SkillTypes::NONE;
     global.skill_name = None;
+    let archon = crate::rules::archon::timing(db, &global);
     let out = &mut env.player.output;
+    // ShockEffectMod describes magnitude scaling, independently of the
+    // hit-dependent shock magnitude retained in shock_effect.
+    out.shock_effect_mod = if out.shock_effect > 0.0 {
+        factor(db, cfg, &["EnemyShockMagnitude", "AilmentMagnitude"])
+            * factor(
+                &env.enemy.mod_db,
+                cfg,
+                &["SelfShockMagnitude", "AilmentMagnitude"],
+            )
+    } else {
+        0.0
+    };
+    out.archon_duration = archon.duration;
+    out.archon_recovery_period = archon.recovery_period;
     let armour_penalty = if db.flag(&global, "Condition:IgnoreMovementPenalties")
         || global.condition("IgnoreMovementPenalties")
     {
@@ -112,7 +128,8 @@ pub(super) fn fill_sidebar(env: &mut Env) {
         movement = movement.max(1.0);
     }
     out.effective_movement_speed_mod =
-        (movement * factor(db, &global, &["ActionSpeed"]) * 1000.0).round() / 1000.0;
+        (movement * super::skill_use_time::action_speed_factor(db, &global) * 1000.0).round()
+            / 1000.0;
     if cfg
         .skill_types
         .intersects(SkillTypes::from_pob2_name("UsableWhileMoving").unwrap())
@@ -184,5 +201,53 @@ pub(super) fn fill_sidebar(env: &mut Env) {
     }
     if db.flag(cfg, "ProfaneDecay") {
         out.decay_dps = out.skill_total_dot;
+    }
+}
+
+/// Game keywords: a player's base Elemental Ailment Threshold is half Life.
+/// PercentStat modifiers use the final pools already snapshotted in cfg.
+fn fill_threshold_and_kill_views(env: &mut Env) {
+    let db = &env.player.mod_db;
+    let cfg = &env.cfg;
+    let out = &mut env.player.output;
+    let names = [ModName::from("AilmentThreshold")];
+    out.ailment_threshold = db
+        .override_(cfg, "AilmentThreshold")
+        .unwrap_or_else(|| {
+            (super::ailment::player_ailment_threshold(out.life)
+                + db.sum(ModType::Base, cfg, &names))
+                * factor(db, cfg, &["AilmentThreshold"])
+        })
+        .max(0.0);
+    let hit_cfg = cfg
+        .clone()
+        .with_flags(cfg.flags | ModFlags::HIT)
+        .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT);
+    out.daze_chance = db
+        .sum(ModType::Base, &hit_cfg, &[ModName::from("DazeChance")])
+        .clamp(0.0, 100.0);
+    out.fully_broken_armour_effect = super::armour_break::fully_broken_effect(db, cfg);
+    for (resource, value) in [
+        ("Life", &mut out.life_on_kill),
+        ("Mana", &mut out.mana_on_kill),
+        ("EnergyShield", &mut out.energy_shield_on_kill),
+    ] {
+        // Flat and PercentStat-tagged gains share this query. A remote
+        // skill's hit kills belong to its proxy, not to the player. This
+        // view does not estimate kills or damage-over-time kill attribution.
+        let gain = db.sum(
+            ModType::Base,
+            cfg,
+            &[ModName::from(format!("{resource}OnKill"))],
+        );
+        *value = if super::recovery::proxy(cfg)
+            || cfg.skill_types.contains(SkillTypes::SUMMONS_TOTEM)
+            || db.flag(cfg, &format!("CannotGain{resource}"))
+            || resource == "Life" && db.flag(cfg, "CannotRecoverLifeOutsideLeech")
+        {
+            0.0
+        } else {
+            gain.max(0.0).floor()
+        };
     }
 }

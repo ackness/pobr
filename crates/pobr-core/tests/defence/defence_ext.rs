@@ -44,13 +44,13 @@ fn es_recharge_default_delay_is_4_seconds() {
     );
 }
 
-/// `EnergyShieldRechargeRate` INC mods raise the recharge rate.
+/// `EnergyShieldRecharge` INC mods raise the recharge rate.
 /// +100% INC → rate doubles (0.25/s).
 #[test]
 fn es_recharge_rate_scales_with_inc_modifier() {
     let mut db = ModDb::new();
     db.add_mod(Modifier::number(
-        "EnergyShieldRechargeRate",
+        "EnergyShieldRecharge",
         ModType::Inc,
         100.0,
     ));

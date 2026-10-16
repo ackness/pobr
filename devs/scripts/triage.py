@@ -44,6 +44,7 @@ compares at once. Standard library only.
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import hashlib
 import importlib.util
 import json
 import os
@@ -51,11 +52,15 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import tempfile
 
 REPO = Path(__file__).resolve().parents[2]
 _SPEC = importlib.util.spec_from_file_location("compare_build", REPO / "devs/scripts/compare-build.py")
 compare = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(compare)
+_SPEC = importlib.util.spec_from_file_location("lookup", REPO / "devs/scripts/lookup.py")
+lookup = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(lookup)
 
 DEFAULT_SETS = ("examples/wasm-benchmark/builds", "examples/reference-builds/tuned/builds")
 KNOWN_DIFFERENCES = REPO / "devs/scripts/known-differences.json"
@@ -145,13 +150,13 @@ def skill_key(name: str) -> str:
     return key[:-1] if key.endswith("s") else key
 
 
-_GEM_NAMES = {}
+_SKILL_NAMES = {}
 
 
-def gem_names() -> dict:
-    """The gem of each granted effect, by the gem's metadata name
-    (`SkillGemCastOnCritical` → `CastOnCritical`)."""
-    if not _GEM_NAMES:
+def skill_names() -> dict:
+    """Each effect's game display name, falling back to its gem's metadata
+    name when a snapshot has no display name."""
+    if not _SKILL_NAMES:
         version = (REPO / "data/CURRENT").read_text(encoding="utf-8").strip()
         try:
             gems = json.loads((REPO / f"data/{version}/base/skill_gems.json").read_text(encoding="utf-8"))
@@ -162,8 +167,16 @@ def gem_names() -> dict:
             name = re.sub(r"^SkillGem", "", name)
             for effect in [gem.get("granted_effect_id"), *(gem.get("additional_granted_effect_ids") or [])]:
                 if effect and name:
-                    _GEM_NAMES.setdefault(effect, name)
-    return _GEM_NAMES
+                    _SKILL_NAMES.setdefault(effect, name)
+        try:
+            effects = json.loads((REPO / f"data/{version}/base/granted_effects.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            effects = []
+        for effect in effects if isinstance(effects, list) else []:
+            name = effect.get("displayed_name")
+            if effect.get("id") and name and "{" not in name:
+                _SKILL_NAMES[effect["id"]] = name
+    return _SKILL_NAMES
 
 
 def reservation_free_skills(xml: str) -> set:
@@ -191,11 +204,12 @@ def spirit_leads(entries: dict, oracle: dict) -> list:
     ours = {}
     for mod in ((entries.get(SKILL_RESERVATION) or {}).get("breakdown") or {}).get("mods") or []:
         skill = (mod.get("origin_id") or "").partition("spirit.")[2] or mod.get("origin_id") or "?"
-        # The id's key, or its gem's when PoB2 names the skill as the gem.
+        # Internal ids need not resemble the name PoB2 displays (Crit vs
+        # Critical, etc.). Match through the game's displayed_name.
         key = skill_key(skill)
-        gem = gem_names().get(skill)
-        if key not in theirs and gem and skill_key(gem) in theirs:
-            key = skill_key(gem)
+        name = skill_names().get(skill)
+        if key not in theirs and name and skill_key(name) in theirs:
+            key = skill_key(name)
         ours[key] = ours.get(key, 0.0) + (compare.number(mod.get("value")) or 0.0)
         names.setdefault(key, skill)
     found = []
@@ -499,6 +513,7 @@ def analyse(name: str, corpus: str, report: dict, oracle: dict, xml: str, known:
         "rows": rows, "leads": leads, "pools": pool_line, "ehp": ehp_lines,
         "unsupported": report.get("unsupported_modifiers") or [],
         "ledger": ledger,
+        "beyond_pob2": report.get("beyond_pob2") or [],
         "related_unread": related_unread(rows, ledger["unread"]),
         "missing_items": report.get("missing_items") or [],
         "skill_levels": skill_levels(report.get("usage"), oracle),
@@ -537,18 +552,72 @@ def build_dirs(paths) -> list:
     return found
 
 
-def triage_build(binary: Path, corpus: str, folder: Path, commit: str, refresh: bool,
-                 known: list) -> dict:
-    code_file = folder / "code.txt"
-    code = code_file.read_text(encoding="utf-8")
-    xml = compare.decode_code(code)
+def engine_report(binary: Path, code_file: Path) -> dict:
+    """The same calculation and usage ledger for triage and the gaps tools."""
     command = [str(binary), "calculate-build", "--file", str(code_file), "--breakdown",
                f"all,{SKILL_RESERVATION}", "--json", "--reference-basis", "--usage"]
     result = subprocess.run(command, cwd=REPO, capture_output=True, text=True)
     if result.returncode != 0:
         tail = "\n".join(result.stderr.strip().splitlines()[-5:])
         raise RuntimeError(f"the engine failed ({result.returncode}): {tail}")
-    report = json.loads(result.stdout)
+    return json.loads(result.stdout)
+
+
+def usage_token(binary: Path) -> str:
+    """Invalidate ledgers when the executable, data snapshot or collector changes.
+
+    Snapshot file metadata avoids hashing the entire game data on every run.
+    Code contents are hashed separately for each build; oracle inputs play no part.
+    """
+    digest = hashlib.sha256(binary.read_bytes())
+    digest.update(Path(__file__).read_bytes())
+    directory = lookup.data_dir()
+    for root in (directory, directory.parent / "overlay-common"):
+        for path in sorted(root.rglob("*.json")):
+            stat = path.stat()
+            digest.update(f"{path.resolve()}:{stat.st_size}:{stat.st_mtime_ns}".encode())
+    return digest.hexdigest()
+
+
+def usage_cache_path(folder: Path, token: str) -> Path:
+    code_hash = hashlib.sha256((folder / "code.txt").read_bytes()).hexdigest()
+    return REPO / ".cache/build-usage" / f"{code_hash}-{token}.json"
+
+
+def cache_usage(folder: Path, report: dict, token: str):
+    path = usage_cache_path(folder, token)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {key: report.get(key) for key in ("usage", "unsupported_modifiers")}
+    if not isinstance(payload["usage"], dict):
+        raise ValueError("the engine returned no usage ledger; rebuild pobr-cli")
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                     suffix=".tmp", delete=False) as handle:
+        temporary = Path(handle.name)
+        try:
+            handle.write(json.dumps(payload))
+            handle.close()
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+
+def build_usage(binary: Path, folder: Path, token: str, refresh=False) -> dict:
+    """Read triage's ledger cache, calculating only a missing/stale build."""
+    path = usage_cache_path(folder, token)
+    if not refresh and path.is_file():
+        return json.loads(path.read_text(encoding="utf-8"))
+    report = engine_report(binary, folder / "code.txt")
+    cache_usage(folder, report, token)
+    return {key: report.get(key) for key in ("usage", "unsupported_modifiers")}
+
+
+def triage_build(binary: Path, corpus: str, folder: Path, commit: str, refresh: bool,
+                 known: list, token=None) -> dict:
+    code_file = folder / "code.txt"
+    code = code_file.read_text(encoding="utf-8")
+    xml = compare.decode_code(code)
+    report = engine_report(binary, code_file)
+    cache_usage(folder, report, token or usage_token(binary))
     entries = {entry.get("stat"): entry for entry in report.get("breakdowns") or []}
     differing = [row.get("stat") for row in (report.get("reference") or {}).get("differing") or []]
     # The names `mise run compare` asks for by default, so both share one cached run.
@@ -562,12 +631,13 @@ def triage_build(binary: Path, corpus: str, folder: Path, commit: str, refresh: 
 
 def run_all(found: list, jobs: int, refresh: bool) -> tuple:
     binary = engine_binary()
+    token = usage_token(binary)
     commit = compare.vendor_commit()
     known = load_known()
     results, failures = [], []
     print(f"triage: {len(found)} builds, {jobs} at a time", file=sys.stderr)
     with ThreadPoolExecutor(max_workers=jobs) as pool:
-        futures = {pool.submit(triage_build, binary, corpus, folder, commit, refresh, known):
+        futures = {pool.submit(triage_build, binary, corpus, folder, commit, refresh, known, token):
                    folder.name for corpus, folder in found}
         for done, future in enumerate(as_completed(futures), 1):
             name = futures[future]
@@ -627,13 +697,16 @@ def gather_lines(results: list, status: str) -> list:
         -len(item[1]["actionable"]), -len(item[1]["builds"]), item[0]))
 
 
+def reader_union(ledgers) -> set:
+    """Names queried by any worked build, shared with the game-text gap queue."""
+    return {name for ledger in ledgers for name in (ledger.get("reads") or [])}
+
+
 def gather_unread(results: list) -> list:
     """Modifier names stored and never read, by name. First the names no
     triaged build reads, which have no reader at all; a name another build
     reads is one this build's skills have no use for."""
-    read = set()
-    for result in results:
-        read.update(result["ledger"]["reads"])
+    read = reader_union(result["ledger"] for result in results)
     gathered = {}
     for result in results:
         for item in result["ledger"]["unread"]:
@@ -715,6 +788,17 @@ def render(results: list, failures: list, commit: str, top: int) -> str:
                + f") · PoB2 vendor {commit[:10]}")
     out.append(f"rows that differ from the build codes' references: {differing} of {compared}: "
                + " · ".join(f"{name} {count}" for name, count in classes.items() if count))
+    beyond = {}
+    for result in results:
+        for rule in result.get("beyond_pob2", []):
+            key = (rule["rule_id"], rule["exporter"])
+            counts = beyond.setdefault(key, [0, 0, 0])
+            counts[0] += 1
+            counts[1] += int(rule["changed_rows"] > 0)
+            counts[2] += rule["changed_rows"]
+    out.append("\n== beyond PoB2 (each absent rule enabled alone on reference basis; differs stays enabled)")
+    for (rule, coverage), (present, builds, rows) in sorted(beyond.items()):
+        out.append(f"  {rule} [{coverage}]: {present} present builds; {builds} changed builds, {rows} changed rows")
     for name, error in failures:
         out.append(f"!! {short(name)}: {error}")
 

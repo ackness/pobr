@@ -199,6 +199,14 @@ pipeline/diff-vendor-calcs.sh <old-sha> <new-sha> [--out <file>]
   数值 / 词条文本更新复用已实现机制；新的计算语义仍需实现。vendor pin 和数值 golden 保持显式选择，
   脚本不会把最新社区提交自动当作与游戏补丁匹配，也不在应用启动时联网改写数据。
 - 新数据域：在 `config.json` 的 `tables` 增表/列，并在 `pobr-data-adapter` 增对应适配器。
+- 怪物基础抗性由 `MonsterVarieties.MonsterType` → `MonsterTypes.MonsterResistances` →
+  `MonsterResistances.Fire1/Cold1/Lightning1/Chaos1` 导出到 `base/monster_resistances.json`，
+  按 monster variety id 索引。使用普通稀有度的基础值（0.5 每列只有一个值），合并类型链接的
+  全部抗性记录，保留负数弱点；空链接为零。该文件的 `_meta` 保存原始导出收据与三张输入表的
+  SHA-256；它目前只提供数据，不改变召唤物计算。
+- `GemEffects.GrantedEffectDisplayOrder` 在 `pathofexile-dat@15.2.0` 使用的社区 schema 中
+  尚未命名（2026-10-16 导出验证），不能按此列名导出。显示顺序继续由
+  `overlay/gem_effects.json` 提供；不为未命名列猜测 schema override。
 - **CDN 只保留当前补丁**：GGG patch CDN 会下线旧版本，旧补丁请求返回 404。`.cache/`
   里已缓存的 bundle 可继续离线导出**既有表的全部列**（整张 `.datc64` 在同一 bundle 里）；
   但**新增整表**若其 bundle 未缓存则无法补下——这类表记录在 `config.json` 的

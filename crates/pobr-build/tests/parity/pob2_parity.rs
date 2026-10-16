@@ -81,7 +81,9 @@ fn report(name: &str, code: &str, data: &BuildData) -> (OutputTable, HashMap<Str
         mode_effective: false,
         extra_modifier_texts: vec![],
         ..Default::default()
-    };
+    }
+    // Compare the exporter's values without absent charm possession rules.
+    .on_reference_basis();
     let out = calculate_with_data(&build, data, &opts).expect("calc");
 
     eprintln!("\n===== {name} :: PoBR vs PoB2 (embedded) =====");

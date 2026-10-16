@@ -4451,10 +4451,25 @@ fn minion_selection_catalog_output_and_actor_breakdowns_round_trip() {
         .abs()
             < 1e-6
     );
-    assert!(
-        main["stats"].get("FireResist").is_none(),
-        "unmodeled resistance must not be reported as zero"
-    );
+    for id in pobr_core::calc::minion::MINION_RESISTANCE_STATS {
+        assert!(
+            main["stats"][id].is_number(),
+            "missing minion resistance {id}"
+        );
+        assert!(main["breakdown_descriptors"].get(id).is_some());
+    }
+    assert_eq!(main["stats"]["FireResistMax"], 75.0);
+    assert_eq!(main["stats"]["ChaosResistMax"], 75.0);
+    for id in ["FireResist", "ColdResist", "LightningResist", "ChaosResist"] {
+        assert_eq!(
+            main["breakdowns"][id]["formula"]["value"],
+            main["stats"][id]
+        );
+        assert_eq!(
+            main["breakdowns"][id]["actor"],
+            serde_json::json!({"kind": "minion", "index": 1})
+        );
+    }
     assert_eq!(
         direct["minions"],
         calc(serde_json::json!({"pob_code": code}))["minions"]

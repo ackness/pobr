@@ -119,8 +119,9 @@ fn level_source<'a>(
     group: &'a SocketGroup,
     effect: &pobr_core::skill_env::ActiveEffect<'a>,
 ) -> (&'a str, u32, u32) {
-    let (gem_id, gem_level, corrupted) = source_gem(data, group, effect);
-    let bonus = additional_gem_levels(build, data, gem_id, corrupted)
+    let (gem_id, gem_level, corrupted, global) = source_gem(data, group, effect);
+    let bonus = global
+        .unwrap_or_else(|| additional_gem_levels(build, data, gem_id, corrupted))
         .saturating_add(support_granted_gem_levels(group, data, gem_id));
     (gem_id, gem_level, bonus)
 }
@@ -138,7 +139,7 @@ fn source_gem<'a>(
     data: &BuildData,
     group: &'a SocketGroup,
     effect: &pobr_core::skill_env::ActiveEffect<'a>,
-) -> (&'a str, u32, bool) {
+) -> (&'a str, u32, bool, Option<u32>) {
     let own = group
         .gem_skills
         .get(effect.gem_index)
@@ -157,9 +158,25 @@ fn source_gem<'a>(
     granted_by_support
         .then(|| supported_skill(group, data, effect.gem_index))
         .flatten()
-        .map_or((own, effect.gem_level, own_corrupted), |host| {
-            (host.skill_id.as_str(), host.gem_level, host.corrupted)
-        })
+        .map_or(
+            (
+                own,
+                effect.gem_level,
+                own_corrupted,
+                group
+                    .gem_skills
+                    .get(effect.gem_index)
+                    .and_then(|gem| gem.global_level_bonus),
+            ),
+            |host| {
+                (
+                    host.skill_id.as_str(),
+                    host.gem_level,
+                    host.corrupted,
+                    host.global_level_bonus,
+                )
+            },
+        )
 }
 
 /// The first active skill of `group` that the support at `support_index` applies to.
@@ -168,15 +185,13 @@ fn supported_skill<'a>(
     data: &BuildData,
     support_index: usize,
 ) -> Option<&'a crate::build::GemSkillRef> {
-    group.gem_skills.iter().find(|gem| {
-        data.granted_effects
-            .get(&gem.skill_id)
-            .is_some_and(|effect| !effect.is_support)
-            && crate::support::judge_group_supports(group, data, &gem.skill_id, group.from_gem())
-                .compatible
-                .iter()
-                .any(|support| support.gem_index == support_index)
-    })
+    let gems = group.gem_inputs();
+    let index = pobr_core::skill_env::supported_gem_index(
+        &group.enabled_group(&gems),
+        data,
+        support_index,
+    )?;
+    group.gem_skills.get(index)
 }
 
 /// What a calculation is of: the selected effect and the level it runs at.
@@ -400,17 +415,79 @@ pub(crate) fn gem_property_bonuses(build: &Build, data: &BuildData) -> Vec<GemPr
     bonuses
 }
 
+/// These attack families require their weapon class (game skill descriptions:
+/// Rend requires Talismans, Spear Stab requires Spears, crossbow ammunition
+/// requires Crossbows). An unbound group uses the only set that can use it.
+pub(crate) fn bind_required_weapon_sets(build: &Build, data: &BuildData) -> Option<Build> {
+    use pobr_data::item::EquipmentSlot::Weapon1;
+    let class = |items: &std::collections::HashMap<_, _>| {
+        items
+            .get(&Weapon1)
+            .and_then(|item: &pobr_data::item::Item| {
+                data.base_items
+                    .get(&item.base.to_string())
+                    .map(|base| base.item_class.as_str())
+            })
+    };
+    let here = class(&build.items);
+    let there = class(&build.other_weapons);
+    let mut adjusted = None;
+    for (index, group) in build.socket_groups.iter().enumerate() {
+        if group.weapon_set.is_some() {
+            continue;
+        }
+        let effect = group
+            .active_skill_id
+            .as_deref()
+            .and_then(|id| data.granted_effects.get(id));
+        let Some(effect) = effect else { continue };
+        let has = |kind| effect.skill_types.iter().any(|t| t == kind);
+        let required = if has("Shapeshift") {
+            "Talisman"
+        } else if has("Spear") || effect.id == "SpearThrowPlayer" {
+            "Spear"
+        } else if has("CrossbowSkill") || has("CrossbowAmmoSkill") {
+            "Crossbow"
+        } else {
+            continue;
+        };
+        if here != Some(required) && there == Some(required) {
+            adjusted.get_or_insert_with(|| build.clone()).socket_groups[index].weapon_set =
+                Some(3 - build.weapon_set.number());
+        }
+    }
+    adjusted
+}
+
+/// Equipment context for a skill used with the other weapon set. Settle its
+/// Bonded lines before either attributes or skill bonuses read that equipment.
+pub(crate) fn other_weapon_set_view(build: &Build, data: &BuildData) -> Build {
+    use pobr_data::item::EquipmentSlot::{Weapon1, Weapon2};
+    let mut swapped = build.clone();
+    for slot in [Weapon1, Weapon2] {
+        swapped.items.remove(&slot);
+        if let Some(item) = build.other_weapons.get(&slot) {
+            swapped.items.insert(slot, item.clone());
+        }
+    }
+    swapped.weapon_set = match build.weapon_set {
+        crate::build::WeaponSet::First => crate::build::WeaponSet::Second,
+        crate::build::WeaponSet::Second => crate::build::WeaponSet::First,
+    };
+    super::super::item::bonded::resolve_bonded_modifiers(&swapped, data).unwrap_or(swapped)
+}
+
 /// A group bound to the weapon set the build is not using
 /// ([`SocketGroup::weapon_set`]), such as a Sigil of Power a staff of that
 /// set grants, is used with that set's weapons ([`Build::other_weapons`]):
 /// their "+N to Level of all Spell Skills" count for it and the levels and
-/// quality the weapons in use give don't. The difference goes into each gem
-/// of the group, so every reader of its level and quality sees it.
+/// quality the weapons in use give don't. Store its global level bonus
+/// separately: subtracting a weapon bonus from a low base gem level would
+/// clamp too early. Quality is already prepared, so apply its difference.
 ///
 /// Returns `None` when no group is bound to the other set.
 pub(crate) fn apply_other_weapon_set_gem_bonuses(build: &Build, data: &BuildData) -> Option<Build> {
     use crate::build::WeaponSet;
-    use pobr_data::item::EquipmentSlot::{Weapon1, Weapon2};
     let other_set = match build.weapon_set {
         WeaponSet::First => WeaponSet::Second,
         WeaponSet::Second => WeaponSet::First,
@@ -419,14 +496,7 @@ pub(crate) fn apply_other_weapon_set_gem_bonuses(build: &Build, data: &BuildData
     if !build.socket_groups.iter().any(bound) {
         return None;
     }
-    let mut swapped = build.clone();
-    for slot in [Weapon1, Weapon2] {
-        swapped.items.remove(&slot);
-        if let Some(item) = build.other_weapons.get(&slot) {
-            swapped.items.insert(slot, item.clone());
-        }
-    }
-    swapped.weapon_set = other_set;
+    let swapped = other_weapon_set_view(build, data);
     let here = gem_property_bonuses(build, data);
     let there = gem_property_bonuses(&swapped, data);
     let mut adjusted = build.clone();
@@ -463,20 +533,17 @@ pub(crate) fn apply_other_weapon_set_gem_bonuses(build: &Build, data: &BuildData
                     .sum()
             };
             let change = |kind| total(&there, kind) - total(&here, kind);
-            let level =
-                u32::try_from((i64::from(gem.gem_level) + change(GemPropertyKind::Level)).max(1))
-                    .unwrap_or(gem.gem_level);
+            let level_bonus = total(&there, GemPropertyKind::Level) as u32;
             let quality =
                 u32::try_from((i64::from(gem.quality) + change(GemPropertyKind::Quality)).max(0))
                     .unwrap_or(gem.quality);
-            if level == gem.gem_level && quality == gem.quality {
+            if change(GemPropertyKind::Level) == 0 && quality == gem.quality {
                 continue;
             }
             if group.active_skill_id.as_deref() == Some(gem.skill_id.as_str()) {
-                group.active_gem_level = Some(level);
                 group.active_gem_quality = Some(quality);
             }
-            gem.gem_level = level;
+            gem.global_level_bonus = Some(level_bonus);
             gem.quality = quality;
             any = true;
         }
@@ -604,11 +671,13 @@ pub(crate) fn apply_gem_quality_bonuses(build: &Build, data: &BuildData) -> Opti
                 .gem_skills
                 .iter()
                 .map(|gem| {
-                    let skill_types = data
-                        .granted_effects
-                        .get(&gem.skill_id)
-                        .map(|e| e.skill_types.as_slice())
-                        .unwrap_or(&[]);
+                    // Exporters also list synthetic damage entries (Thorns,
+                    // Enemy Explode) as gems. They have no game skill and
+                    // cannot acquire skill quality.
+                    let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
+                        return 0;
+                    };
+                    let skill_types = effect.skill_types.as_slice();
                     let from_mods: u32 = bonuses
                         .iter()
                         .filter(|b| {

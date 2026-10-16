@@ -36,6 +36,7 @@ pub mod comparison;
 pub(crate) mod config_resolve;
 pub mod corpus;
 pub mod error;
+pub mod exporter_impact;
 pub mod handlers;
 pub mod import_detect;
 pub mod import_report;

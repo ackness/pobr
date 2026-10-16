@@ -1,0 +1,20 @@
+{
+  "options": [
+    {
+      "var": "conditionAffectedByArchon",
+      "input_type": "check",
+      "section": "When In Combat",
+      "label": "Affected by an Archon Buff?",
+      "tooltip": "Assume an Archon Buff is currently active. Default off: gaining a buff does not establish its uptime. Enables bonuses granted by your Archon modifiers; the intrinsic effects of individual Archon types are not included.",
+      "effects": [
+        {
+          "target": "player",
+          "name": "Condition:AffectedByArchon",
+          "mod_type": "FLAG",
+          "value_bool": true
+        }
+      ],
+      "verified": true
+    }
+  ]
+}

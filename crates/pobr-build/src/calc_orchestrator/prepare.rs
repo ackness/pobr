@@ -393,6 +393,14 @@ pub(super) fn stage_build_cfg(
     if main_hand_offhand_is_shield(build, data) {
         cfg = cfg.with_condition("UsingShield", true);
     }
+    if build
+        .items
+        .get(&EquipmentSlot::Weapon2)
+        .and_then(|item| data.base_items.get(&item.base.to_string()))
+        .is_some_and(|base| base.item_class.as_str() == "Focus")
+    {
+        cfg = cfg.with_condition("UsingFocus", true);
+    }
     // Enemy within Presence (matching vendor CalcPerform.lua:524's
     // `condList["EnemyInPresence"] = PresenceRadius >= enemyDistance`): the default
     // Presence radius (a few meters) is always greater than the default enemy distance

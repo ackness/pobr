@@ -463,20 +463,9 @@ fn ingest_charm_wraps_mods_into_list_payload_with_flask_attribution() {
     );
 }
 
-/// Even mods for effects a charm has that aren't currently modeled must still show
-/// up in the unsupported report. `Also grants N Guard` is a real explicit prefix
-/// from ModCharm.lua; `Possessed by ...` also comes from a real build -- silently
-/// dropping either would make callers think the effect is already in effect.
+/// Guard and possession use game rules even when the exporter cannot parse them.
 #[test]
 fn ingest_charm_parses_guard_and_possession_effects_via_engine() {
-    // The possession line is modeled through the engine's special channel
-    // (SpiritPossessionOnUse) and normally produces a mod. The guard line
-    // (`Also grants N Guard`) was once modeled by the curated entry
-    // also_grants_guard, but the vendor ModParser never actually parses it -- it was
-    // a phantom Guard pool relative to PoB2 golden values (removed in backlog item
-    // #7, ritualist EHP 1.10x -> 1.00x). Aligning with PoB2 puts it back in the
-    // "unmodeled -> must be loudly reported as unsupported" bucket; silently
-    // dropping it would be the failure mode.
     let charm = utility_item(
         "Thawing Charm",
         &["Used when you become Frozen"],
@@ -488,12 +477,7 @@ fn ingest_charm_parses_guard_and_possession_effects_via_engine() {
 
     let ingest = ingest_flask_charm("Charm 1", &charm);
 
-    assert_eq!(
-        ingest.unsupported,
-        vec!["Also grants 435 Guard".to_string()],
-        "the guard line is unmodeled and should be reported (matching PoB2), the possession line should parse; actual unsupported: {:?}",
-        ingest.unsupported
-    );
+    assert!(ingest.unsupported.is_empty());
 }
 
 /// An activated charm where every line fails to parse **still produces an empty
@@ -526,14 +510,9 @@ fn ingest_charm_with_no_parseable_mods_still_emits_empty_carrier() {
 /// Flask special lines: `N% increased effect` -> LocalUtilityEffect; the
 /// `... during effect` suffix is stripped and re-uses the parser (MovementSpeed).
 ///
-/// **`Grants Onslaught during effect` is deliberately Unsupported** -- PoB2's
-/// ModParser returns unsupported for this line (produces no mod, verified via
-/// `run-parsemod.sh`), so Onslaught never enters modDB. PoBR matches it line for
-/// line and no longer unconditionally emits `flag("Onslaught")` beyond what PoB2 can
-/// parse (that inflated Speed for detonate-dead/coiling/flicker by +20% relative to
-/// golden).
+/// Onslaught stays inside the active-item payload until its effect is merged.
 #[test]
-fn ingest_flask_onslaught_during_effect_is_unsupported_local_effect_still_parses() {
+fn ingest_flask_onslaught_during_effect_stays_in_the_payload() {
     let flask = utility_item(
         "Quicksilver Flask",
         &[],
@@ -546,37 +525,34 @@ fn ingest_flask_onslaught_during_effect_is_unsupported_local_effect_still_parses
     assert_eq!(classify_utility_item(&flask), UtilityItemKind::Flask);
 
     let ingest = ingest_flask_charm("Flask 1", &flask);
-    assert_eq!(
-        ingest.unsupported,
-        vec!["Grants Onslaught during effect".to_string()],
-        "the Onslaught line is Unsupported, matching PoB2 (no Onslaught flag emitted)"
-    );
+    assert!(ingest.unsupported.is_empty());
     let carrier = &ingest.modifiers[0];
     assert_eq!(carrier.name, ModName::from(FLASK_BUFF_LIST_NAME));
     let nested = carrier.value.as_nested_mods().unwrap();
-    // The Onslaught line produces no mod -> only LocalUtilityEffect + MovementSpeed
-    // remain.
-    assert_eq!(nested.len(), 2);
-    assert!(
-        nested.iter().all(|m| m.name != ModName::from("Onslaught")),
-        "must not have an Onslaught flag"
-    );
-    assert_eq!(nested[0].name, ModName::from(LOCAL_UTILITY_EFFECT_NAME));
-    assert_eq!(nested[0].value.as_number(), Some(25.0));
-    assert_eq!(nested[1].name, ModName::from("MovementSpeed"));
-    assert_eq!(nested[1].mod_type, ModType::Inc);
-    assert_eq!(nested[1].value.as_number(), Some(10.0));
+    assert_eq!(nested.len(), 4);
+    assert_eq!(nested[0].name, ModName::from("Condition:Onslaught"));
+    assert_eq!(nested[0].mod_type, ModType::Flag);
+    assert_eq!(nested[1].name, ModName::from("Condition:Onslaught"));
+    assert_eq!(nested[1].mod_type, ModType::Flag);
+    assert_eq!(nested[2].name, ModName::from(LOCAL_UTILITY_EFFECT_NAME));
+    assert_eq!(nested[2].value.as_number(), Some(25.0));
+    assert_eq!(nested[3].name, ModName::from("MovementSpeed"));
+    assert_eq!(nested[3].mod_type, ModType::Inc);
+    assert_eq!(nested[3].value.as_number(), Some(10.0));
 }
 
-/// Every line unparseable -> **still produces an empty payload** (behavior switch:
-/// vendor's condition-setting is independent of modList, CalcPerform.lua:1634-1643);
-/// unsupported still collects line by line as usual.
+/// No line yields a modifier -> **still produces an empty payload**: the item's
+/// in-effect condition is independent of its modifier list. Lines no rule
+/// recognises are still collected as unsupported, line by line.
 #[test]
 fn ingest_flask_charm_emits_empty_payload_when_nothing_parses() {
     let charm = utility_item(
         "Thawing Charm",
         &["Used when you become Frozen"],
-        &["Energy Shield Recharge starts on use"],
+        &[
+            "Energy Shield Recharge starts on use",
+            "Wibble the enemy's flask",
+        ],
     );
     let ingest = ingest_flask_charm("Charm 2", &charm);
     assert_eq!(ingest.modifiers.len(), 1);
@@ -586,11 +562,11 @@ fn ingest_flask_charm_emits_empty_payload_when_nothing_parses() {
             .as_nested_mods()
             .is_some_and(<[_]>::is_empty)
     );
-    // "Used when you become Frozen" is a trigger-description line (silently
-    // skipped); "Energy Shield Recharge starts on use" is still an unsupported-mod
-    // gap.
+    // "Used when you become Frozen" is a trigger-description line and "Energy
+    // Shield Recharge starts on use" a recognised, unmodelled event: neither
+    // stores a modifier. Only the line no rule recognises is unsupported.
     assert_eq!(
         ingest.unsupported,
-        vec!["Energy Shield Recharge starts on use".to_string()]
+        vec!["Wibble the enemy's flask".to_string()]
     );
 }

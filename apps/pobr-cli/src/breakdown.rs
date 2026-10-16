@@ -86,7 +86,7 @@ fn minion_value(minion: &MinionOutput, stat: &str) -> Option<f64> {
         "Armour" => Some(minion.armour),
         "Evasion" => Some(minion.evasion),
         "EnergyShield" => Some(minion.energy_shield),
-        _ => None,
+        _ => minion.stats.get(stat).copied(),
     }
 }
 

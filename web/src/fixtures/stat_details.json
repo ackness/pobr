@@ -77,8 +77,8 @@
         },
         {
           "op": "increased",
-          "operand": 120.0,
-          "result": 2.75
+          "operand": 140.0,
+          "result": 3.0
         },
         {
           "op": "cooldown_cap",
@@ -88,7 +88,7 @@
       ],
       "value": 0.204750205
     },
-    "inc_total": 120.0,
+    "inc_total": 140.0,
     "kind": "steps",
     "mods": [
       {
@@ -99,6 +99,15 @@
         "slot": null,
         "source_text": "ArcaneSurge",
         "value": 15.0
+      },
+      {
+        "active": true,
+        "mod_type": "INC",
+        "origin_id": "buff.Onslaught",
+        "origin_kind": "Buff",
+        "slot": null,
+        "source_text": "Onslaught",
+        "value": 20.0
       },
       {
         "active": true,
@@ -213,6 +222,55 @@
     "mods": [],
     "more_total": 1.0
   },
+  "AilmentThreshold": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 2688.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "node.14666",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "Gain additional [AilmentThreshold|Ailment Threshold] equal to 8% of maximum [EnergyShield|Energy Shield]",
+            "value": 768.0
+          },
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "node.517",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "Gain additional [AilmentThreshold|Ailment Threshold] equal to 8% of maximum [EnergyShield|Energy Shield]",
+            "value": 768.0
+          },
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "node.9642",
+            "origin_kind": "PassiveNode",
+            "slot": null,
+            "source_text": "Gain additional [AilmentThreshold|Ailment Threshold] equal to 12% of maximum [EnergyShield|Energy Shield]",
+            "value": 1152.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "AilmentThreshold"
+      }
+    ]
+  },
   "AoeAreaMod": {
     "actor": {
       "kind": "player"
@@ -224,6 +282,33 @@
     "mods": [],
     "more_total": 1.0,
     "sources": [
+      {
+        "base_total": 34.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "skill.active_skill_base_area_of_effect_radius",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 10.0
+          },
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "skill.active_skill_base_area_of_effect_radius",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 24.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "SkillAreaRadiusBase"
+      },
       {
         "base_total": 0.0,
         "inc_total": 35.0,
@@ -264,6 +349,33 @@
     "mods": [],
     "more_total": 1.0,
     "sources": [
+      {
+        "base_total": 34.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "skill.active_skill_base_area_of_effect_radius",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 10.0
+          },
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "skill.active_skill_base_area_of_effect_radius",
+            "origin_kind": "SkillGem",
+            "slot": null,
+            "source_text": null,
+            "value": 24.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "SkillAreaRadiusBase"
+      },
       {
         "base_total": 0.0,
         "inc_total": 35.0,
@@ -736,7 +848,7 @@
     "sources": [
       {
         "base_total": 0.0,
-        "inc_total": 101.0,
+        "inc_total": 121.0,
         "mods": [
           {
             "active": true,
@@ -746,6 +858,15 @@
             "slot": null,
             "source_text": "ArcaneSurge",
             "value": 15.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "buff.Onslaught",
+            "origin_kind": "Buff",
+            "slot": null,
+            "source_text": "Onslaught",
+            "value": 20.0
           },
           {
             "active": true,
@@ -1082,6 +1203,504 @@
     "mods": [],
     "more_total": 1.0
   },
+  "Charm1ChargeGen": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "UtilityBaseChargeGen * UtilityChargeGainMod",
+      "inputs": [
+        {
+          "id": "UtilityBaseChargeGen",
+          "value": 0.0
+        },
+        {
+          "id": "UtilityChargeGainMod",
+          "value": 1.22
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Charm1ChargesGained": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "UtilityChargeGainMod * UtilityLocalChargeRecoveryMod",
+      "inputs": [
+        {
+          "id": "UtilityChargeGainMod",
+          "value": 1.22
+        },
+        {
+          "id": "UtilityLocalChargeRecoveryMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Charm1ChargesMax": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "floor(UtilityBaseCharges * UtilityChargesMod)",
+      "inputs": [
+        {
+          "id": "UtilityBaseCharges",
+          "value": 40.0
+        },
+        {
+          "id": "UtilityChargesMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Charm1ChargesUsed": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "floor(UtilityLocalChargesUsed * UtilityChargesUsedMod)",
+      "inputs": [
+        {
+          "id": "UtilityLocalChargesUsed",
+          "value": 20.0
+        },
+        {
+          "id": "UtilityChargesUsedMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Charm1Duration": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(UtilityBaseDuration * UtilityLocalDurationMod * UtilityQualityMod / UtilityLocalRateMod, 1) * UtilityDurationMod / UtilityRateMod",
+      "inputs": [
+        {
+          "id": "UtilityBaseDuration",
+          "value": 3.0
+        },
+        {
+          "id": "UtilityLocalDurationMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityQualityMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityDurationMod",
+          "value": 1.3
+        },
+        {
+          "id": "UtilityLocalRateMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityRateMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Charm1Uses": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "floor(UtilityChargesMax / UtilityChargesUsed)",
+      "inputs": [
+        {
+          "id": "UtilityChargesMax",
+          "value": 40.0
+        },
+        {
+          "id": "UtilityChargesUsed",
+          "value": 20.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Charm2ChargeGen": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "UtilityBaseChargeGen * UtilityChargeGainMod",
+      "inputs": [
+        {
+          "id": "UtilityBaseChargeGen",
+          "value": 0.0
+        },
+        {
+          "id": "UtilityChargeGainMod",
+          "value": 1.22
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Charm2ChargesGained": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "UtilityChargeGainMod * UtilityLocalChargeRecoveryMod",
+      "inputs": [
+        {
+          "id": "UtilityChargeGainMod",
+          "value": 1.22
+        },
+        {
+          "id": "UtilityLocalChargeRecoveryMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Charm2ChargesMax": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "floor(UtilityBaseCharges * UtilityChargesMod)",
+      "inputs": [
+        {
+          "id": "UtilityBaseCharges",
+          "value": 80.0
+        },
+        {
+          "id": "UtilityChargesMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Charm2ChargesUsed": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "floor(UtilityLocalChargesUsed * UtilityChargesUsedMod)",
+      "inputs": [
+        {
+          "id": "UtilityLocalChargesUsed",
+          "value": 80.0
+        },
+        {
+          "id": "UtilityChargesUsedMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Charm2Duration": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(UtilityBaseDuration * UtilityLocalDurationMod * UtilityQualityMod / UtilityLocalRateMod, 1) * UtilityDurationMod / UtilityRateMod",
+      "inputs": [
+        {
+          "id": "UtilityBaseDuration",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityLocalDurationMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityQualityMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityDurationMod",
+          "value": 1.3
+        },
+        {
+          "id": "UtilityLocalRateMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityRateMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Charm2Uses": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "floor(UtilityChargesMax / UtilityChargesUsed)",
+      "inputs": [
+        {
+          "id": "UtilityChargesMax",
+          "value": 80.0
+        },
+        {
+          "id": "UtilityChargesUsed",
+          "value": 80.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Charm3ChargeGen": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "UtilityBaseChargeGen * UtilityChargeGainMod",
+      "inputs": [
+        {
+          "id": "UtilityBaseChargeGen",
+          "value": 0.0
+        },
+        {
+          "id": "UtilityChargeGainMod",
+          "value": 1.22
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Charm3ChargesGained": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "UtilityChargeGainMod * UtilityLocalChargeRecoveryMod",
+      "inputs": [
+        {
+          "id": "UtilityChargeGainMod",
+          "value": 1.22
+        },
+        {
+          "id": "UtilityLocalChargeRecoveryMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Charm3ChargesMax": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "floor(UtilityBaseCharges * UtilityChargesMod)",
+      "inputs": [
+        {
+          "id": "UtilityBaseCharges",
+          "value": 40.0
+        },
+        {
+          "id": "UtilityChargesMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Charm3ChargesUsed": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "floor(UtilityLocalChargesUsed * UtilityChargesUsedMod)",
+      "inputs": [
+        {
+          "id": "UtilityLocalChargesUsed",
+          "value": 40.0
+        },
+        {
+          "id": "UtilityChargesUsedMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Charm3Duration": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(UtilityBaseDuration * UtilityLocalDurationMod * UtilityQualityMod / UtilityLocalRateMod, 1) * UtilityDurationMod / UtilityRateMod",
+      "inputs": [
+        {
+          "id": "UtilityBaseDuration",
+          "value": 3.0
+        },
+        {
+          "id": "UtilityLocalDurationMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityQualityMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityDurationMod",
+          "value": 1.3
+        },
+        {
+          "id": "UtilityLocalRateMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityRateMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Charm3Uses": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "floor(UtilityChargesMax / UtilityChargesUsed)",
+      "inputs": [
+        {
+          "id": "UtilityChargesMax",
+          "value": 40.0
+        },
+        {
+          "id": "UtilityChargesUsed",
+          "value": 40.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
   "ChillEffect": {
     "actor": {
       "kind": "player"
@@ -1307,6 +1926,17 @@
         "value": 16.0
       }
     ],
+    "more_total": 1.0
+  },
+  "ColdResistMax": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
     "more_total": 1.0
   },
   "ColdResistOverCap": {
@@ -2033,6 +2663,17 @@
     "mods": [],
     "more_total": 1.0
   },
+  "DazeChance": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
   "DecayDPS": {
     "actor": {
       "kind": "player"
@@ -2550,8 +3191,17 @@
     "sources": [
       {
         "base_total": 0.0,
-        "inc_total": 47.0,
+        "inc_total": 57.0,
         "mods": [
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "buff.Onslaught",
+            "origin_kind": "Buff",
+            "slot": null,
+            "source_text": "Onslaught",
+            "value": 10.0
+          },
           {
             "active": true,
             "mod_type": "INC",
@@ -3028,6 +3678,17 @@
     "mods": [],
     "more_total": 1.0
   },
+  "EnergyShieldOnKill": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
   "EnergyShieldRecoveryCap": {
     "actor": {
       "kind": "player"
@@ -3480,6 +4141,17 @@
     ],
     "more_total": 1.0
   },
+  "FireResistMax": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
   "FireResistOverCap": {
     "actor": {
       "kind": "player"
@@ -3518,7 +4190,7 @@
     "sources": [
       {
         "base_total": 0.0,
-        "inc_total": 101.0,
+        "inc_total": 121.0,
         "mods": [
           {
             "active": true,
@@ -3528,6 +4200,15 @@
             "slot": null,
             "source_text": "ArcaneSurge",
             "value": 15.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "buff.Onslaught",
+            "origin_kind": "Buff",
+            "slot": null,
+            "source_text": "Onslaught",
+            "value": 20.0
           },
           {
             "active": true,
@@ -3662,6 +4343,558 @@
       }
     ]
   },
+  "Flask1ChargeGen": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "UtilityBaseChargeGen * UtilityChargeGainMod",
+      "inputs": [
+        {
+          "id": "UtilityBaseChargeGen",
+          "value": 0.0
+        },
+        {
+          "id": "UtilityChargeGainMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Flask1ChargesGained": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "UtilityChargeGainMod * UtilityLocalChargeRecoveryMod",
+      "inputs": [
+        {
+          "id": "UtilityChargeGainMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityLocalChargeRecoveryMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Flask1ChargesMax": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "floor(UtilityBaseCharges * UtilityChargesMod)",
+      "inputs": [
+        {
+          "id": "UtilityBaseCharges",
+          "value": 75.0
+        },
+        {
+          "id": "UtilityChargesMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Flask1ChargesUsed": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "floor(UtilityLocalChargesUsed * UtilityChargesUsedMod)",
+      "inputs": [
+        {
+          "id": "UtilityLocalChargesUsed",
+          "value": 8.0
+        },
+        {
+          "id": "UtilityChargesUsedMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Flask1Duration": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(UtilityBaseDuration * UtilityLocalDurationMod * UtilityQualityMod / UtilityLocalRateMod, 1) * UtilityDurationMod / UtilityRateMod",
+      "inputs": [
+        {
+          "id": "UtilityBaseDuration",
+          "value": 3.0
+        },
+        {
+          "id": "UtilityLocalDurationMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityQualityMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityDurationMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityLocalRateMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityRateMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Flask1InstantRecovery": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "UtilityRecoveryBeforeDuration * UtilityInstantFraction",
+      "inputs": [
+        {
+          "id": "UtilityRecoveryBeforeDuration",
+          "value": 1423.976
+        },
+        {
+          "id": "UtilityInstantFraction",
+          "value": -0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Flask1Recovery": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "UtilityBaseRecovery * UtilityQualityMod * UtilityLocalRecoveryMod * UtilityRecoveryMod * UtilityEffectMod * (UtilityInstantFraction + (1 - UtilityInstantFraction) * UtilityDurationMod * UtilityResourceRecoveryMod)",
+      "inputs": [
+        {
+          "id": "UtilityBaseRecovery",
+          "value": 920.0
+        },
+        {
+          "id": "UtilityQualityMod",
+          "value": 1.09
+        },
+        {
+          "id": "UtilityLocalRecoveryMod",
+          "value": 1.42
+        },
+        {
+          "id": "UtilityRecoveryMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityEffectMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityInstantFraction",
+          "value": -0.0
+        },
+        {
+          "id": "UtilityDurationMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityResourceRecoveryMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Flask1RecoveryPerSecond": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "UtilityGradualRecovery / UtilityDuration",
+      "inputs": [
+        {
+          "id": "UtilityGradualRecovery",
+          "value": 1423.976
+        },
+        {
+          "id": "UtilityDuration",
+          "value": 3.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Flask1Uses": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "floor(UtilityChargesMax / UtilityChargesUsed)",
+      "inputs": [
+        {
+          "id": "UtilityChargesMax",
+          "value": 75.0
+        },
+        {
+          "id": "UtilityChargesUsed",
+          "value": 8.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Flask2ChargeGen": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "UtilityBaseChargeGen * UtilityChargeGainMod",
+      "inputs": [
+        {
+          "id": "UtilityBaseChargeGen",
+          "value": 0.0
+        },
+        {
+          "id": "UtilityChargeGainMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Flask2ChargesGained": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "UtilityChargeGainMod * UtilityLocalChargeRecoveryMod",
+      "inputs": [
+        {
+          "id": "UtilityChargeGainMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityLocalChargeRecoveryMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Flask2ChargesMax": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "floor(UtilityBaseCharges * UtilityChargesMod)",
+      "inputs": [
+        {
+          "id": "UtilityBaseCharges",
+          "value": 75.0
+        },
+        {
+          "id": "UtilityChargesMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Flask2ChargesUsed": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "floor(UtilityLocalChargesUsed * UtilityChargesUsedMod)",
+      "inputs": [
+        {
+          "id": "UtilityLocalChargesUsed",
+          "value": 10.0
+        },
+        {
+          "id": "UtilityChargesUsedMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Flask2Duration": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "round(UtilityBaseDuration * UtilityLocalDurationMod * UtilityQualityMod / UtilityLocalRateMod, 1) * UtilityDurationMod / UtilityRateMod",
+      "inputs": [
+        {
+          "id": "UtilityBaseDuration",
+          "value": 3.0
+        },
+        {
+          "id": "UtilityLocalDurationMod",
+          "value": 3.5
+        },
+        {
+          "id": "UtilityQualityMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityDurationMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityLocalRateMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityRateMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Flask2InstantRecovery": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "UtilityRecoveryBeforeDuration * UtilityInstantFraction",
+      "inputs": [
+        {
+          "id": "UtilityRecoveryBeforeDuration",
+          "value": 467.48
+        },
+        {
+          "id": "UtilityInstantFraction",
+          "value": -0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Flask2Recovery": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "UtilityBaseRecovery * UtilityQualityMod * UtilityLocalRecoveryMod * UtilityRecoveryMod * UtilityEffectMod * (UtilityInstantFraction + (1 - UtilityInstantFraction) * UtilityDurationMod * UtilityResourceRecoveryMod)",
+      "inputs": [
+        {
+          "id": "UtilityBaseRecovery",
+          "value": 310.0
+        },
+        {
+          "id": "UtilityQualityMod",
+          "value": 1.16
+        },
+        {
+          "id": "UtilityLocalRecoveryMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityRecoveryMod",
+          "value": 1.3
+        },
+        {
+          "id": "UtilityEffectMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityInstantFraction",
+          "value": -0.0
+        },
+        {
+          "id": "UtilityDurationMod",
+          "value": 1.0
+        },
+        {
+          "id": "UtilityResourceRecoveryMod",
+          "value": 1.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Flask2RecoveryPerSecond": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "UtilityGradualRecovery / UtilityDuration",
+      "inputs": [
+        {
+          "id": "UtilityGradualRecovery",
+          "value": 467.48
+        },
+        {
+          "id": "UtilityDuration",
+          "value": 10.5
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "Flask2Uses": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "floor(UtilityChargesMax / UtilityChargesUsed)",
+      "inputs": [
+        {
+          "id": "UtilityChargesMax",
+          "value": 75.0
+        },
+        {
+          "id": "UtilityChargesUsed",
+          "value": 10.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "FlaskChargeGen": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "FlaskEffect": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
   "ForkCount": {
     "actor": {
       "kind": "player"
@@ -3682,7 +4915,27 @@
     "inc_total": 0.0,
     "kind": "sources",
     "mods": [],
-    "more_total": 1.0
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 0.0,
+        "inc_total": 30.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "item.gloves.enchant",
+            "origin_kind": "ItemEnchant",
+            "slot": "gloves",
+            "source_text": "30% increased Magnitude of Non-Damaging Ailments you inflict",
+            "value": 30.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "FreezeBuildup"
+      }
+    ]
   },
   "FullDPS": {
     "actor": {
@@ -3723,6 +4976,17 @@
     "formula": null,
     "inc_total": 0.0,
     "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "FullyBrokenArmourEffect": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
     "mods": [],
     "more_total": 1.0
   },
@@ -4393,6 +5657,17 @@
       }
     ]
   },
+  "LifeFlaskChargeGen": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
   "LifeLeechGainPerHit": {
     "actor": {
       "kind": "player"
@@ -4477,6 +5752,17 @@
     "formula": null,
     "inc_total": 0.0,
     "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "LifeOnKill": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
     "mods": [],
     "more_total": 1.0
   },
@@ -4922,6 +6208,17 @@
     ],
     "more_total": 1.0
   },
+  "LightningResistMax": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
   "LightningResistOverCap": {
     "actor": {
       "kind": "player"
@@ -5187,6 +6484,17 @@
       }
     ]
   },
+  "ManaFlaskChargeGen": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
   "ManaLeechGainPerHit": {
     "actor": {
       "kind": "player"
@@ -5273,6 +6581,37 @@
     "kind": "derived",
     "mods": [],
     "more_total": 1.0
+  },
+  "ManaOnKill": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0,
+    "sources": [
+      {
+        "base_total": 27.0,
+        "inc_total": 0.0,
+        "mods": [
+          {
+            "active": true,
+            "mod_type": "BASE",
+            "origin_id": "item.ring2.explicit",
+            "origin_kind": "ItemAffix",
+            "slot": "ring2",
+            "source_text": "Gain 27 Mana per enemy killed",
+            "value": 27.0
+          }
+        ],
+        "more_precision": null,
+        "more_total": 1.0,
+        "name": "ManaOnKill"
+      }
+    ]
   },
   "ManaPerSecondCost": {
     "actor": {
@@ -5913,8 +7252,17 @@
     "sources": [
       {
         "base_total": 0.0,
-        "inc_total": 47.0,
+        "inc_total": 57.0,
         "mods": [
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "buff.Onslaught",
+            "origin_kind": "Buff",
+            "slot": null,
+            "source_text": "Onslaught",
+            "value": 10.0
+          },
           {
             "active": true,
             "mod_type": "INC",
@@ -6616,7 +7964,7 @@
     "sources": [
       {
         "base_total": 0.0,
-        "inc_total": 101.0,
+        "inc_total": 121.0,
         "mods": [
           {
             "active": true,
@@ -6626,6 +7974,15 @@
             "slot": null,
             "source_text": "ArcaneSurge",
             "value": 15.0
+          },
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "buff.Onslaught",
+            "origin_kind": "Buff",
+            "slot": null,
+            "source_text": "Onslaught",
+            "value": 20.0
           },
           {
             "active": true,
@@ -8543,6 +9900,17 @@
     "mods": [],
     "more_total": 1.0
   },
+  "UtilityFlaskChargeGen": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "sources",
+    "mods": [],
+    "more_total": 1.0
+  },
   "WarcryCastTime": {
     "actor": {
       "kind": "player"
@@ -8556,8 +9924,17 @@
     "sources": [
       {
         "base_total": 0.0,
-        "inc_total": 19.0,
+        "inc_total": 39.0,
         "mods": [
+          {
+            "active": true,
+            "mod_type": "INC",
+            "origin_id": "buff.Onslaught",
+            "origin_kind": "Buff",
+            "slot": null,
+            "source_text": "Onslaught",
+            "value": 20.0
+          },
           {
             "active": false,
             "mod_type": "INC",

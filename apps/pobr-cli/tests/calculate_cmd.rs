@@ -701,7 +701,7 @@ fn calculate_build_reports_the_minion_of_the_main_skill() {
     let report = calculate_build_detailed(
         &request,
         &BuildDetail {
-            breakdown: vec!["Minion:Life".into()],
+            breakdown: vec!["Minion:Life".into(), "Minion:FireResist".into()],
             ..BuildDetail::default()
         },
     )
@@ -714,6 +714,25 @@ fn calculate_build_reports_the_minion_of_the_main_skill() {
         .find(|minion| minion.minion_id == beast)
         .expect("the main skill's beast");
     assert_eq!(minion.summoned_by, "SummonBeastPlayer");
+    for id in pobr_core::calc::minion::MINION_RESISTANCE_STATS {
+        assert!(
+            minion.stats.contains_key(id),
+            "missing CLI minion stat {id}"
+        );
+    }
+    let resistance = &report.breakdowns[1];
+    assert_eq!(resistance.value, Some(minion.stats["FireResist"]));
+    assert_eq!(
+        resistance
+            .breakdown
+            .as_ref()
+            .unwrap()
+            .formula
+            .as_ref()
+            .unwrap()
+            .value,
+        minion.stats["FireResist"]
+    );
 
     let entry = &report.breakdowns[0];
     assert_eq!(entry.stat, "Minion:Life");
@@ -847,4 +866,38 @@ Makeshift Crossbow
     let json = serde_json::to_value(report).unwrap();
     assert!(json["output"]["firing_rate"].as_f64().unwrap() > 0.0);
     assert!(json["output"]["reload_time"].as_f64().unwrap() > 0.0);
+}
+
+#[test]
+fn exporter_absent_rules_are_reported_without_changing_reference_agreement() {
+    let request = CalculateBuildRequest {
+        code: GEMLING_COMET_CODE.trim().to_string(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    };
+    let report = calculate_build_detailed(
+        &request,
+        &BuildDetail {
+            usage: true,
+            reference_basis: true,
+            ..BuildDetail::default()
+        },
+    )
+    .unwrap();
+    let reference = report.reference.unwrap();
+    assert!(reference.exporter_absent_rules_omitted);
+    assert!(reference.differing.iter().all(|row| row.stat != "ManaCost"));
+    assert!(
+        report
+            .beyond_pob2
+            .iter()
+            .any(|rule| rule.rule_id == "spell_mana_cost_efficiency" && rule.changed_rows > 0)
+    );
+    let usage = serde_json::to_string(&report.usage.unwrap()).unwrap();
+    assert!(
+        usage.contains("ManaCostEfficiency"),
+        "game-mode usage keeps the absent rule"
+    );
 }

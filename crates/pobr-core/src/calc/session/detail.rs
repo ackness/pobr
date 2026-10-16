@@ -24,6 +24,12 @@ pub struct DerivedDetail {
 /// Each group represents a genuine query. Explicit enemy groups use the enemy
 /// database; derived relationships never appear as synthetic modifier rows.
 pub fn source_names(stat: &str) -> Vec<String> {
+    if let Some((_, names)) = super::super::utility::GLOBAL_STATS
+        .iter()
+        .find(|(id, _)| *id == stat)
+    {
+        return names.iter().map(|name| (*name).to_string()).collect();
+    }
     let names: &[&str] = match stat {
         "Rage" => &[
             "MaximumRage",
@@ -37,6 +43,8 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "CastSpeed",
             "SkillSpeed",
             "ActionSpeed",
+            "SlowEffectOnSelf",
+            "UnaffectedBySlows",
             "TotalAttackTime",
             "TotalCastTime",
             "CooldownRecovery",
@@ -108,15 +116,35 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "CastSpeed",
             "SkillSpeed",
             "ActionSpeed",
+            "SlowEffectOnSelf",
+            "UnaffectedBySlows",
         ],
-        "ShockEffect" => &["EnemyShockMagnitude", "AilmentMagnitude", "CannotShock"],
+        "ShockEffect" => &[
+            "EnemyShockMagnitude",
+            "AilmentMagnitude",
+            "EnemySelfShockMagnitude",
+            "EnemyAilmentMagnitude",
+            "CannotShock",
+        ],
+        "AilmentThreshold" => &["AilmentThreshold"],
+        "LifeOnKill" => &[
+            "LifeOnKill",
+            "CannotGainLife",
+            "CannotRecoverLifeOutsideLeech",
+        ],
+        "ManaOnKill" => &["ManaOnKill", "CannotGainMana"],
+        "EnergyShieldOnKill" => &["EnergyShieldOnKill", "CannotGainEnergyShield"],
+        "DazeChance" => &["DazeChance"],
+        "FullyBrokenArmourEffect" => &["FullyBrokenArmourEffect"],
         "FreezeBuildupPct" => &[
+            "FreezeBuildup",
             "EnemyFreezeBuildup",
             "EnemyImmobilisationBuildup",
             "ImmobilisationBuildup",
             "CannotFreeze",
         ],
         "ElectrocuteBuildupPct" => &[
+            "ElectrocuteBuildup",
             "EnemyElectrocuteBuildup",
             "EnemyImmobilisationBuildup",
             "ImmobilisationBuildup",
@@ -129,11 +157,16 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "MovementSpeed",
             "ArmourMovementPenalty",
             "ActionSpeed",
+            "SlowEffectOnSelf",
+            "UnaffectedBySlows",
             "MovementSpeedCannotBeBelowBase",
             "Condition:IgnoreMovementPenalties",
         ],
         "MovementSpeedWhileUsingSkill" => &[
             "MovementSpeed",
+            "ActionSpeed",
+            "SlowEffectOnSelf",
+            "UnaffectedBySlows",
             "ArmourMovementPenalty",
             "MovementSpeedCannotBeBelowBase",
             "Condition:IgnoreMovementPenalties",
@@ -311,8 +344,11 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "FireResistMaxAppliesToLightningResist",
         ],
         "BlockEffect" => &["BlockEffect"],
-        "AoeRadius" | "AoeAreaMod" => &[
-            "SkillRadiusBase",
+        "AoeRadius" | "AoeAreaMod" | "AreaOfEffectRadiusMetres" => &[
+            "SkillAreaRadiusBase",
+            "SkillAreaRadiusExtra",
+            "RepeatCount",
+            "RepeatAreaOfEffect",
             "AreaOfEffect",
             "AreaOfEffectPrimary",
             "AreaOfEffectRadius",
@@ -338,6 +374,8 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "TotemPlacementTime",
             "TotemPlacementSpeed",
             "ActionSpeed",
+            "SlowEffectOnSelf",
+            "UnaffectedBySlows",
         ],
         "TrapThrowingTime" => &[
             "SkillTrapThrowingTimeBase",
@@ -345,6 +383,8 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "TrapThrowingSpeed",
             "SkillTrapThrowingTime",
             "ActionSpeed",
+            "SlowEffectOnSelf",
+            "UnaffectedBySlows",
         ],
         "MineLayingTime" => &[
             "SkillMineLayingTimeBase",
@@ -352,18 +392,30 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "MineLayingSpeed",
             "SkillMineThrowingTime",
             "ActionSpeed",
+            "SlowEffectOnSelf",
+            "UnaffectedBySlows",
         ],
         "WarcryCastTime" => &[
             "SkillWarcryCastTimeBase",
             "WarcryCastTime",
             "WarcrySpeed",
             "ActionSpeed",
+            "SlowEffectOnSelf",
+            "UnaffectedBySlows",
             "InstantWarcry",
         ],
         "TrapThrowCount" => &["TrapThrowCount"],
         "MineThrowCount" => &["MineThrowCount"],
-        "EsRechargeRate" => &["EnergyShieldRechargeRate", "ZealotsOath"],
-        "EsRechargeDelay" => &["EnergyShieldRechargeFaster", "EnergyShieldRechargeBase"],
+        "EsRechargeRate" => &[
+            "EnergyShieldRecharge",
+            "ZealotsOath",
+            "NoEnergyShieldRecharge",
+        ],
+        "EsRechargeDelay" => &[
+            "EnergyShieldRechargeFaster",
+            "EnergyShieldRechargeBase",
+            "NoEnergyShieldRecharge",
+        ],
         "ReqStr" | "ReqDex" | "ReqInt" => &[
             "GlobalAttributeRequirements",
             "GlobalGemAttributeRequirements",
@@ -461,7 +513,18 @@ pub fn source_names(stat: &str) -> Vec<String> {
 impl CalculationSession {
     pub fn detail_sources(&self, stat: &str) -> Vec<SourceGroup<'_>> {
         let db = &self.env.player.mod_db;
-        let mut cfg = self.env.cfg.clone();
+        let mut cfg = if super::super::utility::GLOBAL_STATS
+            .iter()
+            .any(|(id, _)| *id == stat)
+        {
+            super::super::utility::query_config(&self.env.cfg)
+        } else {
+            self.env.cfg.clone()
+        };
+        if stat == "DazeChance" {
+            cfg.flags |= pobr_data::prelude::ModFlags::HIT;
+            cfg.keyword_flags = cfg.keyword_flags | pobr_data::prelude::KeywordFlags::HIT;
+        }
         if stat.starts_with("ManaRegen") && db.flag(&cfg, "Condition:NoInherentManaRegen") {
             cfg.conditions.insert("NoInherentManaRegen".into(), true);
         }
@@ -513,6 +576,8 @@ impl CalculationSession {
                 let (db, query_name) = match name.as_str() {
                     "EnemySelfSplitCount" => (&self.env.enemy.mod_db, "SelfSplitCount"),
                     "EnemyAlwaysPierceSelf" => (&self.env.enemy.mod_db, "AlwaysPierceSelf"),
+                    "EnemySelfShockMagnitude" => (&self.env.enemy.mod_db, "SelfShockMagnitude"),
+                    "EnemyAilmentMagnitude" => (&self.env.enemy.mod_db, "AilmentMagnitude"),
                     _ => (db, name.as_str()),
                 };
                 let cfg = &query_cfg;
@@ -532,6 +597,9 @@ impl CalculationSession {
     }
 
     pub fn derived_detail(&self, stat: &str) -> Option<DerivedDetail> {
+        if let Some(terms) = self.env.utility_details.get(stat) {
+            return Some(super::super::utility::derived(terms));
+        }
         if let Some(terms) = &self.output().energy_trigger {
             if terms.at_own_rate && matches!(stat, "SkillTriggerRate" | "TriggerRateCap") {
                 return Some(DerivedDetail {
@@ -739,9 +807,10 @@ impl CalculationSession {
                 let terms = super::super::recovery::net_recovery_terms(&self.env);
                 if stat == "TotalBuildDegen" {
                     (
-                        "ResourceDrain + SelfDamage + Spending".into(),
+                        "ResourceDrain + UseLoss + SelfDamage + Spending".into(),
                         vec![
                             ("ResourceDrain".into(), terms.direct_drain),
+                            ("UseLoss".into(), terms.use_loss.iter().sum()),
                             ("SelfDamage".into(), terms.typed_loss),
                             ("Spending".into(), terms.costs.iter().sum()),
                         ],
@@ -756,14 +825,18 @@ impl CalculationSession {
                         _ => (3, "Ward", out.ward_regen_recovery),
                     };
                     (
-                        format!("{resource}RegenRecovery - Spending - SelfDamage"),
+                        format!("{resource}RegenRecovery - Spending - SelfDamage - UseLoss"),
                         vec![
                             (format!("{resource}RegenRecovery"), recovered),
                             ("Spending".into(), terms.costs[i]),
                             (
+                                "UseLoss".into(),
+                                terms.use_loss.get(i).copied().unwrap_or(0.0),
+                            ),
+                            (
                                 "SelfDamage".into(),
                                 if i < 3 {
-                                    terms.loss[i] - terms.costs[i]
+                                    terms.loss[i] - terms.costs[i] - terms.use_loss[i]
                                 } else {
                                     0.0
                                 },

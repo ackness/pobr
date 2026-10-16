@@ -17,6 +17,15 @@ impl GameData {
     /// When the table is missing, the caller tolerates it and falls back
     /// to the old path (`xml_build::parse_config`'s existing branch).
     pub fn config_options(&self) -> Result<ConfigOptionsDef, LoadError> {
-        self.load_json_at(self.overlay_path("config_options.json"))
+        let mut catalog: ConfigOptionsDef =
+            self.load_json_at(self.overlay_path("config_options.json"))?;
+        // PoBR-owned options are bundled for native and staged-memory loaders alike.
+        let own: ConfigOptionsDef = serde_json::from_str(include_str!(
+            "../../../../data/overlay-common/archon_config_options.json"
+        ))
+        .expect("bundled Archon config options");
+        catalog.options = crate::paths::merge_by_key(own.options, catalog.options, |o| &o.var);
+        catalog.options.sort_by(|a, b| a.var.cmp(&b.var));
+        Ok(catalog)
     }
 }

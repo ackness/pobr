@@ -502,3 +502,14 @@ ProjectileBlockChanceIsLucky = "Projectile block is lucky"
 ProjectileBlockChanceIsUnlucky = "Projectile block is unlucky"
 SpellProjectileBlockChanceIsLucky = "Spell projectile block is lucky"
 SpellProjectileBlockChanceIsUnlucky = "Spell projectile block is unlucky"
+
+# Threshold and per-kill/debuff outputs
+AilmentThreshold = "Elemental Ailment Threshold"
+LifeOnKill = "Life Recovery on Kill"
+ManaOnKill = "Mana Recovery on Kill"
+EnergyShieldOnKill = "Energy Shield Recovery on Kill"
+DazeChance = "Chance to Daze on Hit"
+FullyBrokenArmourEffect = "Fully Broken Armour Physical Hit Damage Taken"
+
+ArchonDuration = "Archon Buff Duration (s)"
+ArchonRecoveryPeriod = "Archon Recovery Period (s)"

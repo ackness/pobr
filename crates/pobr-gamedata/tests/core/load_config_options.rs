@@ -275,3 +275,13 @@ fn default_true_checks_present() {
         "should have a check entry with defaultState=true"
     );
 }
+
+#[test]
+fn archon_state_is_an_explicit_opt_in() {
+    let catalog = load();
+    let option = find(&catalog, "conditionAffectedByArchon");
+    assert_eq!(option.input_type, ConfigInputType::Check);
+    assert!(option.default.is_none());
+    assert_eq!(option.effects[0].name, "Condition:AffectedByArchon");
+    assert_eq!(option.effects[0].value_bool, Some(true));
+}

@@ -18,6 +18,7 @@
       "granted_effects",
       "jewel_radii",
       "mods",
+      "monster_resistances",
       "monster_scaling",
       "non_damaging_ailments",
       "passive_tree",
@@ -59,7 +60,7 @@
     ]
   },
   "files": {
-    "base/base_items.json": "ac652c7948396223fb8a51f30cb85204528926b2e7b57bc6708ab173e96bd3fe",
+    "base/base_items.json": "525275795877d850b993f1771b3809e081ed5da7d1e3da8de5e05ef7dda2b032",
     "base/base_player_mods.json": "5f93bf335cd2dd71ae1ce8bf137a7a0dfe621ee6e3778d0fc6c9f83befc85687",
     "base/character_constants.json": "e64bd63f5c2288447ff22e878297752aae8ec5ee9a6135e460f514914ed22150",
     "base/cost_types.json": "5dac3a7f08d63b8512f1d24870d50f876cf7907c6cc2a405473a4c65926fb88a",
@@ -70,6 +71,7 @@
     "base/granted_effects.json": "9ee4caaf5d398942e1a57cde4fc4245755feb38ba2035e1f80d607313da32518",
     "base/jewel_radii.json": "00c1e71af6666521c2e1fc3afd7af7f5eb9cb14b1a4537dbb44e8f2de6d7d336",
     "base/mods.json": "a776da514ee5ce151d17b67def3429811a7f78338d68bc0d165f72ee79199b5a",
+    "base/monster_resistances.json": "26109a7d9a76a5bdc83db0b3959fe57db94f85c00685a51dfbc7ae56ebc2fc08",
     "base/monster_scaling.json": "7117f594207dcfa249e9ce4accc0de89a3bb32e057bf891d0f5e3ecc2d6f988b",
     "base/non_damaging_ailments.json": "8a15a0840b02f76b5b3dbad8474f438e2611252582d2b57a747ec065e0da1291",
     "base/passive_tree.json": "7e021c17f9679b3ff4d72cacdba20ee3d17bf8d0acf7ea02311dd29886996851",
@@ -103,7 +105,7 @@
     "overlay/gem_effects.json": "6bee113b2068e80caece3d15db1c521d98f507c56c4726f5b927d9f259bd4f13",
     "overlay/gem_quality_stats.json": "d97dacea54e13a1d38b446b3572cf205b5d1c609b94335ebe16192cc29c1cb5d",
     "overlay/granted_effect_minions.json": "34f9e5e434c4b983ebbc784cbef6728969c0153d5dffd09c1cd9413c336b5621",
-    "overlay/minions.json": "7880fedd84c29b3e318219fac5911b41af982fab552d4d84ec7e3386ed052fe8",
+    "overlay/minions.json": "338aa6da92aa85143b3e4f0478c9c498ad52a154826ed1c15754573dee20799a",
     "overlay/mirage_configs.json": "57a0b855062e1ec1a62461c634900fcb0b97e8b634ad0db9e09cc88a70c104c9",
     "overlay/mod_parser_rules.json": "c719c7c3eeed65048067f264fd0a62f81cc20d89b917f05e2aa53753166242af",
     "overlay/mod_scalability.json": "4713a22c2f32dc21fe0c017f6fed792cb799ac449171187fbb2d2b7acd814fc8",

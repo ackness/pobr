@@ -35063,7 +35063,14 @@
     "implicits": [
       "CharmImplicitUseOnFreeze1"
     ],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 3.0,
+      "charges_max": 40.0,
+      "charges_used": 40.0,
+      "life": 0.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourCharm10",
@@ -35076,7 +35083,14 @@
     "implicits": [
       "CharmImplicitUseOnLightningDamage1"
     ],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 4.0,
+      "charges_max": 40.0,
+      "charges_used": 20.0,
+      "life": 0.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourCharm11",
@@ -35089,7 +35103,14 @@
     "implicits": [
       "CharmImplicitUseOnChaosDamage1"
     ],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 4.0,
+      "charges_max": 40.0,
+      "charges_used": 30.0,
+      "life": 0.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourCharm12",
@@ -35102,7 +35123,14 @@
     "implicits": [
       "CharmImplicitUseOnRareUniqueKill1"
     ],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 1.0,
+      "charges_max": 80.0,
+      "charges_used": 80.0,
+      "life": 0.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourCharm13",
@@ -35115,7 +35143,14 @@
     "implicits": [
       "CharmImplicitUseOnCurse1"
     ],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 3.0,
+      "charges_max": 40.0,
+      "charges_used": 20.0,
+      "life": 0.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourCharm2",
@@ -35128,7 +35163,14 @@
     "implicits": [
       "CharmImplicitUseOnBleed1"
     ],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 3.0,
+      "charges_max": 40.0,
+      "charges_used": 30.0,
+      "life": 0.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourCharm3",
@@ -35141,7 +35183,14 @@
     "implicits": [
       "CharmImplicitUseOnPoison1"
     ],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 3.0,
+      "charges_max": 40.0,
+      "charges_used": 20.0,
+      "life": 0.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourCharm4",
@@ -35154,7 +35203,14 @@
     "implicits": [
       "CharmImplicitUseOnIgnite1"
     ],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 3.0,
+      "charges_max": 40.0,
+      "charges_used": 30.0,
+      "life": 0.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourCharm5",
@@ -35167,7 +35223,14 @@
     "implicits": [
       "CharmImplicitUseOnShock1"
     ],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 3.0,
+      "charges_max": 40.0,
+      "charges_used": 30.0,
+      "life": 0.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourCharm6",
@@ -35180,7 +35243,14 @@
     "implicits": [
       "CharmImplicitUseOnStun1"
     ],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 3.0,
+      "charges_max": 40.0,
+      "charges_used": 20.0,
+      "life": 0.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourCharm7",
@@ -35193,7 +35263,14 @@
     "implicits": [
       "CharmImplicitUseOnSlow1"
     ],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 3.0,
+      "charges_max": 40.0,
+      "charges_used": 20.0,
+      "life": 0.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourCharm8",
@@ -35206,7 +35283,14 @@
     "implicits": [
       "CharmImplicitUseOnFireDamage1"
     ],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 4.0,
+      "charges_max": 40.0,
+      "charges_used": 20.0,
+      "life": 0.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourCharm9",
@@ -35219,7 +35303,14 @@
     "implicits": [
       "CharmImplicitUseOnColdDamage1"
     ],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 4.0,
+      "charges_max": 40.0,
+      "charges_used": 20.0,
+      "life": 0.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourFlaskLife1",
@@ -35230,7 +35321,14 @@
     "height": 2,
     "tags": [],
     "implicits": [],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 3.0,
+      "charges_max": 60.0,
+      "charges_used": 10.0,
+      "life": 50.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourFlaskLife2",
@@ -35241,7 +35339,14 @@
     "height": 2,
     "tags": [],
     "implicits": [],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 5.0,
+      "charges_max": 65.0,
+      "charges_used": 10.0,
+      "life": 90.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourFlaskLife3",
@@ -35252,7 +35357,14 @@
     "height": 2,
     "tags": [],
     "implicits": [],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 4.0,
+      "charges_max": 70.0,
+      "charges_used": 10.0,
+      "life": 150.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourFlaskLife4",
@@ -35263,7 +35375,14 @@
     "height": 2,
     "tags": [],
     "implicits": [],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 5.0,
+      "charges_max": 75.0,
+      "charges_used": 10.0,
+      "life": 260.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourFlaskLife5",
@@ -35274,7 +35393,14 @@
     "height": 2,
     "tags": [],
     "implicits": [],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 4.0,
+      "charges_max": 75.0,
+      "charges_used": 10.0,
+      "life": 340.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourFlaskLife6",
@@ -35285,7 +35411,14 @@
     "height": 2,
     "tags": [],
     "implicits": [],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 4.0,
+      "charges_max": 75.0,
+      "charges_used": 10.0,
+      "life": 450.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourFlaskLife7",
@@ -35296,7 +35429,14 @@
     "height": 2,
     "tags": [],
     "implicits": [],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 5.0,
+      "charges_max": 75.0,
+      "charges_used": 10.0,
+      "life": 710.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourFlaskLife8",
@@ -35307,7 +35447,14 @@
     "height": 2,
     "tags": [],
     "implicits": [],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 4.0,
+      "charges_max": 75.0,
+      "charges_used": 10.0,
+      "life": 840.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourFlaskLife9",
@@ -35318,7 +35465,14 @@
     "height": 2,
     "tags": [],
     "implicits": [],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 3.0,
+      "charges_max": 75.0,
+      "charges_used": 10.0,
+      "life": 920.0,
+      "mana": 0.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourFlaskMana1",
@@ -35329,7 +35483,14 @@
     "height": 2,
     "tags": [],
     "implicits": [],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 2.0,
+      "charges_max": 60.0,
+      "charges_used": 10.0,
+      "life": 0.0,
+      "mana": 50.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourFlaskMana2",
@@ -35340,7 +35501,14 @@
     "height": 2,
     "tags": [],
     "implicits": [],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 3.0,
+      "charges_max": 65.0,
+      "charges_used": 10.0,
+      "life": 0.0,
+      "mana": 70.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourFlaskMana3",
@@ -35351,7 +35519,14 @@
     "height": 2,
     "tags": [],
     "implicits": [],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 2.5,
+      "charges_max": 70.0,
+      "charges_used": 10.0,
+      "life": 0.0,
+      "mana": 90.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourFlaskMana4",
@@ -35362,7 +35537,14 @@
     "height": 2,
     "tags": [],
     "implicits": [],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 2.5,
+      "charges_max": 75.0,
+      "charges_used": 10.0,
+      "life": 0.0,
+      "mana": 110.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourFlaskMana5",
@@ -35373,7 +35555,14 @@
     "height": 2,
     "tags": [],
     "implicits": [],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 3.5,
+      "charges_max": 75.0,
+      "charges_used": 10.0,
+      "life": 0.0,
+      "mana": 165.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourFlaskMana6",
@@ -35384,7 +35573,14 @@
     "height": 2,
     "tags": [],
     "implicits": [],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 2.5,
+      "charges_max": 75.0,
+      "charges_used": 10.0,
+      "life": 0.0,
+      "mana": 165.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourFlaskMana7",
@@ -35395,7 +35591,14 @@
     "height": 2,
     "tags": [],
     "implicits": [],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 2.0,
+      "charges_max": 75.0,
+      "charges_used": 10.0,
+      "life": 0.0,
+      "mana": 185.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourFlaskMana8",
@@ -35406,7 +35609,14 @@
     "height": 2,
     "tags": [],
     "implicits": [],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 3.5,
+      "charges_max": 75.0,
+      "charges_used": 10.0,
+      "life": 0.0,
+      "mana": 285.0
+    }
   },
   {
     "id": "Metadata/Items/Flasks/FourFlaskMana9",
@@ -35417,7 +35627,14 @@
     "height": 2,
     "tags": [],
     "implicits": [],
-    "mod_domain": 2
+    "mod_domain": 2,
+    "utility": {
+      "duration": 3.0,
+      "charges_max": 75.0,
+      "charges_used": 10.0,
+      "life": 0.0,
+      "mana": 310.0
+    }
   },
   {
     "id": "Metadata/Items/Gem/SkillGemAbyssalLivingBomb",

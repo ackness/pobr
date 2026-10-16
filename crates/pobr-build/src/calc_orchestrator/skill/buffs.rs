@@ -117,7 +117,9 @@ pub(crate) fn self_buff_offensive_modifiers(build: &Build, data: &BuildData) -> 
 /// into a `SkillSpiritReservationBase` BASE modifier (one per effect, SkillGem
 /// attributed), summed by perform's `fill_skill_mechanics` into
 /// [`pobr_core::OutputTable`]'s `spirit_reserved`. Overload is only **reported, not
-/// blocked** (matching PoB2: it's calculated and highlighted red, with no pool-side clamping).
+/// blocked**: the requested total is not capped at the Spirit pool. PoB2 caps
+/// its displayed `SpiritReserved`, while retaining the uncapped skill rows
+/// and a negative `SpiritUnreserved`.
 ///
 /// Semantics (matching PoB2's `CalcDefence.lua:192-249` Reservation section):
 /// - Selected = `skill_types` includes `HasReservation` and excludes

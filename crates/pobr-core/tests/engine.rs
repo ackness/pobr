@@ -8,6 +8,9 @@
 #[path = "support/parse.rs"]
 mod support;
 
+#[path = "engine/archon.rs"]
+mod archon;
+
 #[path = "engine/attribution.rs"]
 mod attribution;
 #[path = "engine/attribution_passes.rs"]
@@ -36,3 +39,18 @@ mod recovery_outputs;
 
 #[path = "engine/recoup_transfer.rs"]
 mod recoup_transfer;
+
+#[path = "engine/utility.rs"]
+mod utility;
+
+#[path = "engine/thresholds_onkill.rs"]
+mod thresholds_onkill;
+
+#[path = "engine/player_slows.rs"]
+mod player_slows;
+
+#[path = "engine/player_debuffs.rs"]
+mod player_debuffs;
+
+#[path = "engine/keystones.rs"]
+mod keystones;

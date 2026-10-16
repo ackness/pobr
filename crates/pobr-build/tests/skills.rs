@@ -3,6 +3,9 @@
 //! Aggregated test binary: originally separate test files, merged into submodules (22→4) to cut the number of linked test binaries and speed up builds.
 #![allow(clippy::all)]
 
+#[path = "skills/archon.rs"]
+mod archon;
+
 #[path = "skills/aura_gems.rs"]
 mod aura_gems;
 #[path = "skills/bear_form.rs"]
@@ -21,6 +24,8 @@ mod charge_regulation;
 mod charm_slots;
 #[path = "skills/combined_dps.rs"]
 mod combined_dps;
+#[path = "skills/conditional_offence.rs"]
+mod conditional_offence;
 #[path = "skills/config_handlers.rs"]
 mod config_handlers;
 #[path = "skills/configured_lines.rs"]
@@ -45,6 +50,8 @@ mod enemy_debuffs;
 mod energy_triggers;
 #[path = "skills/equipment_affix_effects.rs"]
 mod equipment_affix_effects;
+#[path = "skills/event_triggered_hits.rs"]
+mod event_triggered_hits;
 #[path = "skills/gem_quality.rs"]
 mod gem_quality;
 #[path = "skills/grand_spectrum.rs"]
@@ -59,6 +66,8 @@ mod minion_curses;
 mod minions;
 #[path = "skills/no_damage.rs"]
 mod no_damage;
+#[path = "skills/player_debuffs.rs"]
+mod player_debuffs;
 #[path = "skills/quarterstaff_conditions.rs"]
 mod quarterstaff_conditions;
 #[path = "skills/rain.rs"]

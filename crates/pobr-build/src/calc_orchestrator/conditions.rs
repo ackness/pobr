@@ -177,6 +177,9 @@ pub(crate) fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'s
             }
         }
         if info.melee {
+            if !vars.contains(&"UsingMeleeWeapon") {
+                vars.push("UsingMeleeWeapon");
+            }
             let grip = if info.one_hand {
                 "UsingOneHandedMelee"
             } else {
@@ -385,6 +388,7 @@ mod weapon_condition_tests {
                 armour: None,
                 spirit: None,
                 charm_buff: vec![],
+                utility: None,
             },
         );
         build.set_item(
@@ -413,11 +417,19 @@ mod weapon_condition_tests {
             ("Wand", vec![]),
             (
                 "Warstaff",
-                vec!["UsingQuarterstaff", "UsingStaff", "UsingTwoHandedMelee"],
+                vec![
+                    "UsingQuarterstaff",
+                    "UsingStaff",
+                    "UsingMeleeWeapon",
+                    "UsingTwoHandedMelee",
+                ],
             ),
             ("Staff", vec![]),
-            ("Talisman", vec!["UsingTwoHandedMelee"]),
-            ("FishingRod", vec!["UsingTwoHandedMelee"]),
+            ("Talisman", vec!["UsingMeleeWeapon", "UsingTwoHandedMelee"]),
+            (
+                "FishingRod",
+                vec!["UsingMeleeWeapon", "UsingTwoHandedMelee"],
+            ),
         ] {
             let build = equip(Build::new(), &mut data, EquipmentSlot::Weapon1, class);
             assert_eq!(weapon_type_conditions(&build, &data), expected, "{class}");
@@ -444,6 +456,7 @@ mod weapon_condition_tests {
             weapon_type_conditions(&dual, &data),
             [
                 "UsingMace",
+                "UsingMeleeWeapon",
                 "UsingOneHandedMelee",
                 "UsingDagger",
                 "DualWielding"

@@ -72,9 +72,12 @@ mod context;
 use context::CalculationContext;
 mod diagnosis;
 pub(crate) use collect::engine_ctx;
-pub(crate) use diagnosis::read_outside_the_database;
 pub use diagnosis::{
-    Diagnosis, MainSkillSummary, ModifierRef, UnmappedStat, UnsetCondition, diagnose,
+    Diagnosis, MainSkillSummary, ModifierRef, READ_UNDER_A_STATE, ReadGate, UnmappedStat,
+    UnsetCondition, diagnose,
+};
+pub(crate) use diagnosis::{
+    condition_set_from_build, config_option_setting, read_outside_the_database, read_under_a_state,
 };
 mod sources;
 use sources::SourceWriter;
@@ -143,6 +146,10 @@ pub struct DataOrchestratorOptions {
     pub periodic_uptime: bool,
     /// Evaluate all groups marked includeInFullDPS. Defaults to false.
     pub full_dps: bool,
+    /// Include rules missing from the reference exporter (the game default).
+    pub exporter_absent_rules: bool,
+    /// Per-rule diagnostic overrides, used to measure isolated rule impact.
+    pub exporter_rule_overrides: std::collections::BTreeMap<String, bool>,
 }
 
 impl Default for DataOrchestratorOptions {
@@ -160,6 +167,8 @@ impl Default for DataOrchestratorOptions {
             rain_landings: true,
             periodic_uptime: true,
             full_dps: false,
+            exporter_absent_rules: true,
+            exporter_rule_overrides: Default::default(),
         }
     }
 }
@@ -189,6 +198,8 @@ impl DataOrchestratorOptions {
     /// A model added here is verified by its own tests, not by the reference.
     pub fn on_reference_basis(self) -> Self {
         Self {
+            exporter_absent_rules: false,
+            exporter_rule_overrides: Default::default(),
             energy_triggers: false,
             rain_landings: false,
             periodic_uptime: false,
@@ -519,8 +530,16 @@ pub(crate) fn prepared_build_view<'a>(
     // A skill an item grants is used at the level the character meets the
     // requirements of, which depends on the attributes its items and passives
     // give it: settled from the view without its skills.
-    let view = match scale_granted_skills(&view, data, || {
-        attributes_without_skills(&view, data, options)
+    let view = match scale_granted_skills(&view, data, |other_set| {
+        if other_set {
+            attributes_without_skills(
+                &skill::resolve::other_weapon_set_view(&view, data),
+                data,
+                options,
+            )
+        } else {
+            attributes_without_skills(&view, data, options)
+        }
     }) {
         Some(scaled) => Cow::Owned(scaled),
         None => view,
@@ -856,6 +875,10 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
         build = Cow::Owned(augmented);
     }
 
+    if let Some(resolved) = granted_skills::resolve_spear_throw_level(&build, data) {
+        build = Cow::Owned(resolved);
+    }
+
     // The groups of the skills the passive tree grants, at the level the
     // character's level allows; an ordinary group listing the same skill
     // stands for it.
@@ -868,6 +891,10 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
     // build's own: the next steps add quality to every gem.
     if let Some(marked) = mark_item_granted_skills(&build, data) {
         build = Cow::Owned(marked);
+    }
+
+    if let Some(bound) = skill::resolve::bind_required_weapon_sets(&build, data) {
+        build = Cow::Owned(bound);
     }
 
     // nameSpec-only gem references → skill_id backfilled (matching PoB2 SkillsTab
@@ -955,6 +982,10 @@ fn stage_create_session(ctx: &StageCtx<'_>, cfg: CalcConfig) -> SourceWriter {
     // into calc (must come after with_config — with_config replaces cfg wholesale). The
     // data is value-for-value equal to the Default fallback, zero behavior change.
     session.set_constants(data.constants.clone());
+    session.set_exporter_rules(
+        ctx.options.exporter_absent_rules,
+        ctx.options.exporter_rule_overrides.clone(),
+    );
     // CalcSetup supplies one base projectile; SkillStatMap count overrides
     // subtract that one. Only projectile skills expose this output.
     if ctx.main.skill_flags.intersects(ModFlags::PROJECTILE) {

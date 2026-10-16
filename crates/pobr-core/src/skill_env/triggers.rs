@@ -147,6 +147,24 @@ pub fn trigger_modifiers<S: TriggerSubCalc>(
     group_index: Option<usize>,
     main_skill_id: &str,
 ) -> Vec<Modifier> {
+    // ActiveSkills.Description: Repulsion needs a hit on the cursed enemy,
+    // Shield Wave/Combust need empowered shield/weapon hits, and Caltrops
+    // need an enemy to trigger a hazard laid during a dodge. No build input
+    // models those event frequencies or the supply of empowered attacks.
+    // Preserve each hit, without substituting weapon speed or container use
+    // time. This also applies when considered as another trigger's source.
+    if matches!(
+        main_skill_id,
+        "CurseOfRepulsionShockwavePlayer"
+            | "FortifyingCryShockwavePlayer"
+            | "TemperWeaponCombustionPlayer"
+            | "TriggeredTrailOfCaltropsPlayer"
+    ) {
+        return vec![mk_trigger_flag(
+            crate::calc::trigger::EVENT_RATE_UNMODELLED,
+            "trigger event frequency is not modelled",
+        )];
+    }
     let mut mods = trigger_rate_modifiers(
         ctx,
         data,
@@ -553,12 +571,7 @@ fn energy_stat(
 ) -> Option<f64> {
     let level = gem
         .gem_level
-        .saturating_add(crate::skill_env::additional_gem_levels(
-            gem_level_bonuses,
-            data.as_gem_property(),
-            &gem.skill_id,
-            gem.corrupted,
-        ));
+        .saturating_add(gem.global_levels(gem_level_bonuses, data.as_gem_property()));
     let set_index = (effect_id == gem.skill_id)
         .then_some(gem.stat_set_index)
         .flatten();
@@ -982,17 +995,13 @@ fn resolve_source_level<S: TriggerSubCalc>(
 ) -> Option<ResolvedSkillLevel> {
     let judgements =
         crate::skill_env::buff_specs::gem_judgements(group, data.as_buff_env(), &gem.skill_id);
-    let bonus = crate::skill_env::additional_gem_levels(
-        gem_level_bonuses,
-        data.as_gem_property(),
-        &gem.skill_id,
-        gem.corrupted,
-    )
-    .saturating_add(crate::skill_env::support_granted_gem_levels(
-        &judgements,
-        group.gems,
-        data.as_buff_env(),
-    ));
+    let bonus = gem
+        .global_levels(gem_level_bonuses, data.as_gem_property())
+        .saturating_add(crate::skill_env::support_granted_gem_levels(
+            &judgements,
+            group.gems,
+            data.as_buff_env(),
+        ));
     let _ = ctx;
     resolve_skill_level(
         data.as_skill_level(),

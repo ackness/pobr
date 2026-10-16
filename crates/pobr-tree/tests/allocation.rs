@@ -237,3 +237,49 @@ fn disconnected_conversion_can_be_explicitly_repaired_or_refunded() {
         "unknown_node"
     );
 }
+
+#[test]
+fn granted_passive_points_extend_the_budget_and_refunds_cannot_remove_spent_grants() {
+    let mut n = nodes();
+    // PassiveSkills AscendancyDruid1Small1 grants 1 ordinary point.
+    n[4].ascendancy_id = Some("Test1".into());
+    n[4].stats = vec!["Grants 1 Passive Skill Point".into()];
+    n[4].connections.clear();
+    n.push(
+        serde_json::from_value(serde_json::json!({
+            "skill":8,"id":"ascendancy_root","kind":"ascendancy_start",
+            "ascendancy_id":"Test1","connections":[5]
+        }))
+        .unwrap(),
+    );
+    let mut t = tree(&n);
+    t.roots.insert(8);
+    t.ascendancy = Some("Test1".into());
+    t.points_max = 1;
+    let before = Allocation {
+        shared: set(&[2]),
+        ..Default::default()
+    };
+    assert_eq!(
+        t.edit(&before, 3, 0, EditAction::Allocate).unwrap_err(),
+        "passive_point_budget"
+    );
+    let granted = t.edit(&before, 5, 0, EditAction::Allocate).unwrap();
+    assert_eq!((granted.points_used, granted.points_max), (1, 2));
+    let spent = t
+        .edit(&granted.allocation, 3, 0, EditAction::Allocate)
+        .unwrap();
+    assert_eq!((spent.points_used, spent.points_max), (2, 2));
+    assert_eq!(
+        t.edit(&spent.allocation, 5, 0, EditAction::Refund)
+            .unwrap_err(),
+        "passive_point_budget"
+    );
+    let unspent = t.edit(&spent.allocation, 3, 0, EditAction::Refund).unwrap();
+    assert_eq!(
+        t.edit(&unspent.allocation, 5, 0, EditAction::Refund)
+            .unwrap()
+            .points_max,
+        1
+    );
+}

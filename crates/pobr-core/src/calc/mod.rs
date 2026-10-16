@@ -7,6 +7,7 @@ pub mod blind;
 pub mod breakdown;
 pub mod buff_pass;
 pub mod channel;
+pub mod charm_spirits;
 mod configured_damage;
 pub mod crit;
 pub mod crit_pass;
@@ -28,6 +29,7 @@ pub mod offence;
 pub mod output;
 pub mod perform;
 pub mod periodic;
+mod player_debuffs;
 pub mod pool_damage;
 pub mod pool_setup;
 pub mod rage;
@@ -153,3 +155,5 @@ pub(crate) fn round(value: f64) -> f64 {
 }
 
 mod sidebar;
+
+pub mod utility;

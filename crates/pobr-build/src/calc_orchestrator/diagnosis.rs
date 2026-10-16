@@ -154,6 +154,10 @@ pub(crate) const READ_OUTSIDE_THE_DATABASE: &[(&str, &str)] = &[
         "GrantedPassive",
         "anointed notables become allocated nodes (append_granted_passives)",
     ),
+    (
+        "ExtraPoints",
+        "granted passive points (pobr_tree::allocation::AllocationTree::edit)",
+    ),
     ("JewelData", "radius, conquest and socket data (jewel_tree)"),
     (
         "MinionModifier",
@@ -168,6 +172,165 @@ pub(crate) const READ_OUTSIDE_THE_DATABASE: &[(&str, &str)] = &[
         "the configured number of summoned totems (prepare::stage_build_cfg)",
     ),
 ];
+
+/// A confirmed reader that only runs under a particular state. Every entry
+/// needs an off/on ledger regression in `tests/skills/line_usage.rs`; this is
+/// not a list of names presumed to be implemented.
+#[derive(Debug, Clone, Copy, serde::Serialize)]
+pub struct ReadGate {
+    pub state: &'static str,
+    pub config_option: Option<&'static str>,
+}
+
+impl ReadGate {
+    pub(crate) fn reason(self) -> String {
+        match self.config_option {
+            Some(option) => format!("needs config: {} ({option})", self.state),
+            None => format!("read only while {}", self.state),
+        }
+    }
+}
+
+/// Gated readers, alongside the consumers outside the database. Keep the
+/// actual consumer here so a registry entry can be checked against its code.
+pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
+    // `calc::perform::damaging_ailment_for_pass` reads rate only for active ailments.
+    (
+        "BleedFaster",
+        ReadGate {
+            state: "the selected skill inflicts Bleed",
+            config_option: None,
+        },
+    ),
+    (
+        "IgniteFaster",
+        ReadGate {
+            state: "the selected skill inflicts Ignite",
+            config_option: None,
+        },
+    ),
+    (
+        "PoisonFaster",
+        ReadGate {
+            state: "the selected skill inflicts Poison",
+            config_option: None,
+        },
+    ),
+    // calc::shared_modifiers::apply_shared_increases copies Light Radius INCs.
+    (
+        "LightRadius",
+        ReadGate {
+            state: "Light Radius modifiers also apply to Accuracy, Damage or Area of Effect",
+            config_option: None,
+        },
+    ),
+    // `calc::defence::calc_es_recharge`, after the resource/recharge gates.
+    (
+        "EnergyShieldRecharge",
+        ReadGate {
+            state: "you have Energy Shield and recharge is enabled (no Zealot's Oath or recharge prohibition)",
+            config_option: None,
+        },
+    ),
+    (
+        "EnergyShieldRechargeFaster",
+        ReadGate {
+            state: "you have Energy Shield and recharge is enabled (no Zealot's Oath or recharge prohibition)",
+            config_option: None,
+        },
+    ),
+    // `calc::damage::aggregate_inc_more` and `calc::skill_dot`: only the
+    // damage types supplied by the selected skill reach these queries.
+    (
+        "FireDamage",
+        ReadGate {
+            state: "the selected skill deals Fire damage",
+            config_option: None,
+        },
+    ),
+    (
+        "LightningDamage",
+        ReadGate {
+            state: "the selected skill deals Lightning damage",
+            config_option: None,
+        },
+    ),
+    // `calc::perform::fill_ailment_stage` calls the magnitude readers in
+    // `calc::ailment` only when the skill supplies source damage.
+    (
+        "AilmentMagnitude",
+        ReadGate {
+            state: "the selected skill supplies damage for an ailment",
+            config_option: None,
+        },
+    ),
+    // `calc::player_debuffs::apply`; Chill additionally needs ChillVal.
+    (
+        "SelfShockEffect",
+        ReadGate {
+            state: "Shocked in combat",
+            config_option: Some("conditionShocked"),
+        },
+    ),
+    (
+        "SelfChillEffect",
+        ReadGate {
+            state: "Chilled in combat with an explicit Chill magnitude",
+            config_option: Some("conditionChilled"),
+        },
+    ),
+    (
+        "SelfChillEffectIsReversed",
+        ReadGate {
+            state: "Chilled in combat with an explicit Chill magnitude",
+            config_option: Some("conditionChilled"),
+        },
+    ),
+    // `calc::skill_use_time::action_speed_factor`.
+    (
+        "UnaffectedBySlows",
+        ReadGate {
+            state: "a slow applies to you",
+            config_option: None,
+        },
+    ),
+    (
+        "SlowEffectOnSelf",
+        ReadGate {
+            state: "a slow applies to you and you are not unaffected by slows",
+            config_option: None,
+        },
+    ),
+    // `rules::archon::expand` (combat snapshot).
+    (
+        "ArchonMovementSpeed",
+        ReadGate {
+            state: "Affected by an Archon buff",
+            config_option: Some("conditionAffectedByArchon"),
+        },
+    ),
+    (
+        "ArchonElementalResistance",
+        ReadGate {
+            state: "Affected by an Archon buff",
+            config_option: Some("conditionAffectedByArchon"),
+        },
+    ),
+    (
+        "ArchonEffect",
+        ReadGate {
+            state: "Affected by an Archon buff",
+            config_option: Some("conditionAffectedByArchon"),
+        },
+    ),
+];
+
+pub(crate) fn read_under_a_state(name: &str) -> Option<ReadGate> {
+    READ_UNDER_A_STATE
+        .iter()
+        .find(|(registered, _)| *registered == name)
+        .map(|(_, gate)| *gate)
+}
 
 /// What consumes `name` outside the modifier database, when something does.
 pub(crate) fn read_outside_the_database(name: &str) -> Option<&'static str> {
@@ -211,10 +374,12 @@ const SET_BY_THE_ORCHESTRATION: &[&str] = &[
     "UsingBow",
     "UsingSpear",
     "UsingDagger",
+    "UsingMeleeWeapon",
     "UsingOneHandedMelee",
     "UsingTwoHandedMelee",
     "DualWielding",
     "UsingShield",
+    "UsingFocus",
     // `conditions::combat_conditions`: what using the main skill means.
     "HitRecently",
     "HitSpellRecently",
@@ -236,16 +401,29 @@ const SET_BY_THE_ORCHESTRATION: &[&str] = &[
     "MostNumerousRedSocketedSupports",
     "MostNumerousGreenSocketedSupports",
     "MostNumerousBlueSocketedSupports",
+    "MajorityRedSocketedSupports",
+    "MajorityGreenSocketedSupports",
+    "MajorityBlueSocketedSupports",
     // `inject::inject_enemy`: the config input of the same name.
     "DisableEHPGainOnBlock",
 ];
+
+/// A condition determined from the build or by a calculation pass, rather
+/// than a missing input. Share the diagnosis registries with the line ledger.
+pub(crate) fn condition_set_from_build(condition: &str) -> bool {
+    SET_BY_THE_ORCHESTRATION.contains(&condition)
+        || pobr_core::calc::session::CONDITIONS_SET_BY_A_PASS.contains(&condition)
+        // `condition_set_by_a_pass` also recognises the family emitted for
+        // enabled buffs/auras, including each Herald's display name.
+        || condition.starts_with("AffectedBy")
+}
 
 /// The config option that sets `condition`, if one does: its own
 /// `condition<condition>` input first, else an option that implies it or
 /// whose effect writes `Condition:<X>`. Written on the enemy, that is
 /// `Enemy<X>` in the calculation's conditions (and `<X>` as well when the
 /// effect has no tags or flags).
-fn config_option_setting(catalog: &ConfigCatalog, condition: &str) -> Option<String> {
+pub(crate) fn config_option_setting(catalog: &ConfigCatalog, condition: &str) -> Option<String> {
     let own = format!("condition{condition}");
     if catalog.by_var.contains_key(&own) {
         return Some(own);
@@ -373,6 +551,7 @@ pub fn diagnose(
         .unread_modifiers()
         .into_iter()
         .filter(|modifier| read_outside_the_database(modifier.name.as_str()).is_none())
+        .filter(|modifier| read_under_a_state(modifier.name.as_str()).is_none())
         .filter(|modifier| !depended_on(modifier.name.as_str()))
         .map(ModifierRef::of)
         .collect();

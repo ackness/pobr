@@ -63,6 +63,8 @@ pub const DERIVED_STATS: &[&str] = &[
     "SpellEvadeChance",
     "SpellProjectileEvadeChance",
     "ChannelTimeToTrigger",
+    "ArchonDuration",
+    "ArchonRecoveryPeriod",
     "TotalEHPLowestMaxHit",
 ];
 
@@ -75,6 +77,31 @@ impl CalculationSession {
         let mut context = Vec::new();
         let one = |id: &str, value| (id.to_string(), vec![(id.to_string(), value)]);
         let (formula, inputs) = match stat {
+            "ArchonDuration" | "ArchonRecoveryPeriod" => {
+                let timing = crate::rules::archon::timing(db, cfg);
+                if stat == "ArchonDuration" {
+                    (
+                        "BaseDuration * DurationFactor".into(),
+                        vec![
+                            ("BaseDuration".into(), 10.0),
+                            ("DurationFactor".into(), timing.duration_factor),
+                        ],
+                    )
+                } else if timing.no_recovery {
+                    (
+                        "0 * BaseRecoveryPeriod".into(),
+                        vec![("BaseRecoveryPeriod".into(), 20.0)],
+                    )
+                } else {
+                    (
+                        "BaseRecoveryPeriod / RecoveryRate".into(),
+                        vec![
+                            ("BaseRecoveryPeriod".into(), 20.0),
+                            ("RecoveryRate".into(), timing.recovery_rate),
+                        ],
+                    )
+                }
+            }
             "TotalEHPLowestMaxHit" => {
                 let t = env.legacy_ehp_terms.as_ref()?;
                 let rows: Vec<_> = [

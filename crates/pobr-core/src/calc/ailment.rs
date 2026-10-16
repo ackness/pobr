@@ -452,7 +452,8 @@ pub fn shock_effect_with_mods(
 ///
 /// **Bug fix (player-ailment-threshold-bug)**: PoE2's player ailment threshold is 50% of max
 /// life (`PlayerAilmentThresholdLifeFactor = 0.5`), not full life. Source: agent-docs/ailments.md
-/// §Ailment threshold, PoB2 `CalcSetup.lua` `NewMod("AilmentThreshold","BASE",50,{PercentStat Life})`.
+/// §Ailment threshold and the game keyword Elemental Ailment Threshold
+/// (https://poe2db.tw/us/Keywords).
 pub fn player_ailment_threshold(max_life: f64) -> f64 {
     round(max_life * PLAYER_AILMENT_THRESHOLD_LIFE_FACTOR)
 }
@@ -1199,7 +1200,7 @@ fn poise_buildup_inner(damage_scale: f64, enemy_poise_threshold: f64, inc: f64, 
 ///
 /// `freezeBuildup% = FREEZE_DAMAGE_SCALE / enemyPoiseThreshold × inc_more × 100`
 ///
-/// inc/more come from `EnemyFreezeBuildup`/`EnemyImmobilisationBuildup`/`ImmobilisationBuildup`
+/// inc/more come from `FreezeBuildup`/`EnemyFreezeBuildup` and the shared immobilisation modifiers
 /// (attacker side). This function takes an already-aggregated `inc` (percentage points) and
 /// `more` (multiplier, 1.0 = no more).
 ///
@@ -1215,7 +1216,7 @@ pub fn freeze_poise_buildup(enemy_poise_threshold: f64, inc: f64, more: f64) -> 
 ///
 /// `electrocuteBuildup% = ELECTROCUTE_DAMAGE_SCALE / enemyPoiseThreshold × inc_more × 100`
 ///
-/// inc/more come from `EnemyElectrocuteBuildup`/`EnemyImmobilisationBuildup`/`ImmobilisationBuildup`.
+/// inc/more come from `ElectrocuteBuildup`/`EnemyElectrocuteBuildup` and the shared immobilisation modifiers.
 ///
 /// Source: agent-docs/ailments.md §Electrocute buildup, PoB2 `CalcOffence.lua` poise buildup section.
 pub fn electrocute_poise_buildup(enemy_poise_threshold: f64, inc: f64, more: f64) -> f64 {
@@ -1225,7 +1226,7 @@ pub fn electrocute_poise_buildup(enemy_poise_threshold: f64, inc: f64, more: f64
 /// Freeze poise buildup with trace: writes mod contributions into the TraceGraph, returns
 /// `(buildup_pct, node)`.
 ///
-/// inc/more come from `EnemyFreezeBuildup`/`EnemyImmobilisationBuildup`/`ImmobilisationBuildup`.
+/// inc/more come from `FreezeBuildup`/`EnemyFreezeBuildup` and the shared immobilisation modifiers.
 pub fn freeze_poise_buildup_traced(
     enemy_poise_threshold: f64,
     player: &ModDb,
@@ -1284,6 +1285,7 @@ fn poise_buildup_traced(
     trace: &mut TraceGraph,
 ) -> (f64, TraceNodeId) {
     let buildup_names = [
+        ModName::from(format!("{ailment}Buildup")),
         ModName::from(format!("Enemy{ailment}Buildup")),
         ModName::from("EnemyImmobilisationBuildup"),
         ModName::from("ImmobilisationBuildup"),

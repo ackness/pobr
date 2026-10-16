@@ -75,6 +75,38 @@ fn is_item_skill_source(source: Option<&str>) -> bool {
     source.is_some_and(|source| source == ITEM_SKILL_SOURCE || source.starts_with("Item:"))
 }
 
+/// Spear Throw is an inherent default attack, whose level follows the
+/// character rather than the level-1 placeholder in an imported item group.
+/// Its game SkillGems / ItemExperiencePerLevel rows reach level 20 at
+/// character level 90. Global skill levels are added later, with the group's
+/// weapon set. See the game's Default Attack keyword and Granted skill rules.
+pub(crate) fn resolve_spear_throw_level(build: &Build, data: &BuildData) -> Option<Build> {
+    let def = data
+        .skill_gems
+        .get("Metadata/Items/Gem/SkillGemPlayerDefaultSpearThrow")?;
+    let skill_id = def.granted_effect_id.as_deref()?;
+    let level = (1..=def.level_requirements.len() as u32)
+        .rev()
+        .find(|level| {
+            def.level_requirement(*level)
+                .is_some_and(|required| required <= build.character.level)
+        })?;
+    let mut resolved = None;
+    for (index, group) in build.socket_groups.iter().enumerate() {
+        for (gem_index, gem) in group.gem_skills.iter().enumerate() {
+            if gem.skill_id != skill_id || gem.gem_level == level {
+                continue;
+            }
+            let group = &mut resolved.get_or_insert_with(|| build.clone()).socket_groups[index];
+            group.gem_skills[gem_index].gem_level = level;
+            if group.active_skill_id.as_deref() == Some(skill_id) {
+                group.active_gem_level = Some(level);
+            }
+        }
+    }
+    resolved
+}
+
 /// XML uses `Weapon 1` / `Weapon 1 Swap`, the equipment table uses `weapon1`; normalizes to the stable slot key.
 fn normalized_slot(slot: &str) -> String {
     let mut normalized = slot
@@ -444,13 +476,13 @@ pub(crate) fn resolve_tree_granted_skills(build: &Build, data: &BuildData) -> Op
 /// [`pobr_data::catalog::SkillGemDef::attribute_requirements`]); when no
 /// level qualifies, the skill is used at the lowest level it has.
 ///
-/// `attributes` gives the character's Strength, Dexterity and Intelligence;
-/// it is called only when a requirement needs them. Returns `None` when no
-/// group changes.
+/// `attributes` gives Strength, Dexterity and Intelligence in the current
+/// (`false`) or other (`true`) weapon set. Each set is evaluated at most once,
+/// only if a requirement needs it. Returns `None` when no group changes.
 pub(crate) fn scale_granted_skills(
     build: &Build,
     data: &BuildData,
-    attributes: impl FnOnce() -> [f64; 3],
+    mut attributes: impl FnMut(bool) -> [f64; 3],
 ) -> Option<Build> {
     let character_level = build.character.level;
     let granted: Vec<(usize, &pobr_data::catalog::SkillGemDef, u32)> = build
@@ -468,19 +500,11 @@ pub(crate) fn scale_granted_skills(
             Some((index, def, level))
         })
         .collect();
-    let needs_attributes = granted.iter().any(|(_, def, level)| {
-        def.attribute_requirements(*level)
-            .is_some_and(|required| required.iter().any(|r| *r > 0))
-    });
     if granted.is_empty() {
         return None;
     }
-    let attributes = if needs_attributes {
-        attributes().map(f64::floor)
-    } else {
-        [0.0; 3]
-    };
-    let meets = |def: &pobr_data::catalog::SkillGemDef, level: u32| {
+    let mut attribute_sets = [None, None];
+    let meets = |def: &pobr_data::catalog::SkillGemDef, level: u32, attributes: [f64; 3]| {
         def.level_requirement(level)
             .is_some_and(|required| required <= character_level)
             && def.attribute_requirements(level).is_some_and(|required| {
@@ -494,10 +518,22 @@ pub(crate) fn scale_granted_skills(
     let mut any = false;
     for (index, def, level) in granted {
         let group = &mut scaled.socket_groups[index];
+        let other_set = group
+            .weapon_set
+            .is_some_and(|set| set != build.weapon_set.number());
+        let attributes = if def
+            .attribute_requirements(level)
+            .is_some_and(|required| required.iter().any(|r| *r > 0))
+        {
+            *attribute_sets[usize::from(other_set)]
+                .get_or_insert_with(|| attributes(other_set).map(f64::floor))
+        } else {
+            [0.0; 3]
+        };
         let skill_id = group.gem_skills[0].skill_id.clone();
         let usable = (1..=level)
             .rev()
-            .find(|l| meets(def, *l))
+            .find(|l| meets(def, *l, attributes))
             .unwrap_or_else(|| {
                 data.granted_effect_levels
                     .get(&skill_id)
@@ -553,6 +589,7 @@ mod tests {
                 armour: None,
                 spirit: None,
                 charm_buff: Vec::new(),
+                utility: None,
             },
         );
         data.gem_effects.insert(
@@ -710,7 +747,7 @@ mod tests {
         let levels = |attributes: [f64; 3], character_level: u32| {
             let mut build = build.clone();
             build.character.level = character_level;
-            let scaled = scale_granted_skills(&build, &data, || attributes);
+            let scaled = scale_granted_skills(&build, &data, |_| attributes);
             scaled.map(|scaled| {
                 scaled
                     .socket_groups
@@ -729,6 +766,30 @@ mod tests {
             levels([200.0, 0.0, 200.0], 70),
             Some(vec![(16, Some(16)), (16, Some(16))])
         );
+    }
+
+    /// Purity of Ice 18 requires 42 Strength / 106 Intelligence. The weapon
+    /// in the other set supplies the missing Intelligence (70 -> 106); the
+    /// current set can only use level 12, whose Intelligence requirement is 64.
+    #[test]
+    fn granted_skill_requirements_use_the_granting_weapon_set() {
+        let data = with_requirements(data());
+        let mut build = Build::new();
+        build.character.level = 100;
+        for set in [1, 2] {
+            let mut group = SocketGroup::new()
+                .with_active_skill(SKILL_ID, 18)
+                .with_gem_skill(SKILL_ID, 18);
+            group.granted_level = Some(18);
+            group.weapon_set = Some(set);
+            build.socket_groups.push(group);
+        }
+        let scaled = scale_granted_skills(&build, &data, |other| {
+            [42.0, 0.0, if other { 106.0 } else { 70.0 }]
+        })
+        .unwrap();
+        assert_eq!(scaled.socket_groups[0].gem_skills[0].gem_level, 12);
+        assert_eq!(scaled.socket_groups[1].gem_skills[0].gem_level, 18);
     }
 
     /// A skill an allocated passive grants is used at the highest level the

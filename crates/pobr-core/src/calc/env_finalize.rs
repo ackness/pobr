@@ -44,6 +44,7 @@ pub fn env_finalize(env: &mut Env) {
     super::mageblood::apply_mageblood_legacies(env);
     // Stage 3 (T4): merges flask/charm mods per the active configuration (gated by mode_combat).
     merge_flasks_charms(env);
+    super::charm_spirits::apply(env);
     // Stage 4 (T3): the nine-way buff dispatch (aura factor / curse priority+limit / debuff→enemy).
     buff_pass(env);
     // Stage 5 (T5): a second keystone merge pass (for keystones granted by buffs/flasks).
@@ -61,7 +62,9 @@ pub fn env_finalize(env: &mut Env) {
     // Stage 6.8: Blind on whichever side is stated to be Blinded, after the
     // modifiers to its effect have reached that side.
     super::blind::apply_blind(env);
+    super::player_debuffs::apply(env);
     super::armour_break::apply_armour_break(env);
+    super::armour_break::apply_fully_broken_effect(env);
     super::crit::apply_inexorable_critical(env);
     super::configured_damage::apply(env);
     // Stage 6.9: what Bear form gives a character the main skill puts in it.
@@ -278,9 +281,9 @@ fn dedup_seed(m: &Modifier) -> DedupSeed {
 /// - `:1561`'s `FlasksDoNotApplyToPlayer` → the flask's buff and conditions
 ///   don't land on the player at all.
 ///
-/// Known differences: the charge/duration/recovery model
-/// (flaskData.duration/charges, calcFlaskRecovery, the Mageblood special
-/// case `:1387-1403`) isn't built; `MagicUtilityFlaskEffect`/`MagicCharmEffect`
+/// Per-item duration, charges and recovery are calculated by `calc::utility`.
+/// Known differences: Mageblood special behavior and
+/// `MagicUtilityFlaskEffect`/`MagicCharmEffect`
 /// (`:1406`/`:1588`, needs a rarity channel) and the minion-side application
 /// (`:1568-1586`) aren't implemented (the earlier "highPrecisionMods'
 /// per-mod precision override table isn't implemented" gap has since been
@@ -344,6 +347,7 @@ pub fn merge_flasks_charms(env: &mut Env) {
     // Idempotency guard: an existing non-List Flask-sourced mod means this Env has already merged them in.
     let already_merged = env.player.mod_db.iter_mods().any(|m| {
         m.mod_type != ModType::List
+            && !m.name.as_str().starts_with("LocalUtility:")
             && m.origin
                 .as_ref()
                 .is_some_and(|o| o.source_id.kind == SourceKind::Flask)
@@ -477,7 +481,7 @@ pub fn expand_misc_buffs(env: &mut Env) {
 
     use crate::rules::buff_expander::{self, BuffExpandState};
 
-    if !env.cfg.mode_combat || env.buff_definitions.is_empty() {
+    if !env.cfg.mode_combat {
         return;
     }
 
@@ -496,9 +500,6 @@ pub fn expand_misc_buffs(env: &mut Env) {
         .filter(|def| !expanded_ids.contains(format!("buff.{}", def.id).as_str()))
         .cloned()
         .collect();
-    if pending.is_empty() {
-        return;
-    }
 
     let expansion = buff_expander::expand_misc_buffs(
         &BuffExpandState {

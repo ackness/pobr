@@ -4,6 +4,7 @@
     "AccuracyHitChanceUncapped": "derived",
     "ActionRate": "steps",
     "ActiveMinionLimit": "sources",
+    "AilmentThreshold": "sources",
     "AoeAreaMod": "sources",
     "AoeRadius": "sources",
     "AreaOfEffectRadiusMetres": "derived",
@@ -35,6 +36,7 @@
     "ChannelTimeToTrigger": "derived",
     "ChaosMaxHit": "derived",
     "ChaosResist": "steps",
+    "ChaosResistMax": "none",
     "ChaosResistOverCap": "derived",
     "ChargeEnduranceCurrent": "derived",
     "ChargeEnduranceMaximum": "sources",
@@ -42,9 +44,28 @@
     "ChargeFrenzyMaximum": "sources",
     "ChargePowerCurrent": "derived",
     "ChargePowerMaximum": "sources",
+    "Charm1ChargeGen": "derived",
+    "Charm1ChargesGained": "derived",
+    "Charm1ChargesMax": "derived",
+    "Charm1ChargesUsed": "derived",
+    "Charm1Duration": "derived",
+    "Charm1Uses": "derived",
+    "Charm2ChargeGen": "derived",
+    "Charm2ChargesGained": "derived",
+    "Charm2ChargesMax": "derived",
+    "Charm2ChargesUsed": "derived",
+    "Charm2Duration": "derived",
+    "Charm2Uses": "derived",
+    "Charm3ChargeGen": "derived",
+    "Charm3ChargesGained": "derived",
+    "Charm3ChargesMax": "derived",
+    "Charm3ChargesUsed": "derived",
+    "Charm3Duration": "derived",
+    "Charm3Uses": "derived",
     "ChillEffect": "sources",
     "ColdMaxHit": "derived",
     "ColdResist": "steps",
+    "ColdResistMax": "sources",
     "ColdResistOverCap": "derived",
     "CombinedAvg": "derived",
     "CombinedAvgToMonsterLife": "derived",
@@ -57,6 +78,7 @@
     "CritMultiplier": "steps",
     "CullingDPS": "derived",
     "CurseEffectMod": "sources",
+    "DazeChance": "sources",
     "DecayDPS": "derived",
     "DeflectChance": "derived",
     "DeflectionRating": "derived",
@@ -76,6 +98,7 @@
     "EnergyShield": "steps",
     "EnergyShieldLeechGainPerHit": "derived",
     "EnergyShieldLeechGainRate": "derived",
+    "EnergyShieldOnKill": "sources",
     "EnergyShieldRecoveryCap": "derived",
     "EnergyShieldRegen": "sources",
     "EnergyShieldRegenRecovery": "sources",
@@ -89,12 +112,34 @@
     "ExplodeChance": "sources",
     "FireMaxHit": "derived",
     "FireResist": "steps",
+    "FireResistMax": "sources",
     "FireResistOverCap": "derived",
     "FiringRate": "sources",
+    "Flask1ChargeGen": "derived",
+    "Flask1ChargesGained": "derived",
+    "Flask1ChargesMax": "derived",
+    "Flask1ChargesUsed": "derived",
+    "Flask1Duration": "derived",
+    "Flask1InstantRecovery": "derived",
+    "Flask1Recovery": "derived",
+    "Flask1RecoveryPerSecond": "derived",
+    "Flask1Uses": "derived",
+    "Flask2ChargeGen": "derived",
+    "Flask2ChargesGained": "derived",
+    "Flask2ChargesMax": "derived",
+    "Flask2ChargesUsed": "derived",
+    "Flask2Duration": "derived",
+    "Flask2InstantRecovery": "derived",
+    "Flask2Recovery": "derived",
+    "Flask2RecoveryPerSecond": "derived",
+    "Flask2Uses": "derived",
+    "FlaskChargeGen": "sources",
+    "FlaskEffect": "sources",
     "ForkCount": "sources",
     "FreezeBuildupPct": "sources",
     "FullDPS": "derived",
     "FullDotDPS": "derived",
+    "FullyBrokenArmourEffect": "sources",
     "HitChance": "steps",
     "HitSpeed": "derived",
     "IgniteDPS": "steps",
@@ -102,9 +147,11 @@
     "Int": "sources",
     "Life": "steps",
     "LifeCost": "sources",
+    "LifeFlaskChargeGen": "sources",
     "LifeLeechGainPerHit": "derived",
     "LifeLeechGainRate": "derived",
     "LifeLeechRate": "derived",
+    "LifeOnKill": "sources",
     "LifePerSecondCost": "derived",
     "LifePercentCost": "sources",
     "LifePercentPerSecondCost": "derived",
@@ -117,13 +164,16 @@
     "LifeUnreservedPercent": "derived",
     "LightningMaxHit": "derived",
     "LightningResist": "steps",
+    "LightningResistMax": "sources",
     "LightningResistOverCap": "derived",
     "MainHandAccuracy": "derived",
     "Mana": "steps",
     "ManaCost": "sources",
+    "ManaFlaskChargeGen": "sources",
     "ManaLeechGainPerHit": "derived",
     "ManaLeechGainRate": "derived",
     "ManaLeechRate": "derived",
+    "ManaOnKill": "sources",
     "ManaPerSecondCost": "derived",
     "ManaPercentCost": "sources",
     "ManaPercentPerSecondCost": "derived",
@@ -201,6 +251,7 @@
     "TrapThrowCount": "sources",
     "TrapThrowingTime": "sources",
     "TriggerRateCap": "derived",
+    "UtilityFlaskChargeGen": "sources",
     "WarcryCastTime": "sources",
     "Ward": "sources",
     "WardCost": "sources",
@@ -268,8 +319,8 @@
           },
           {
             "op": "increased",
-            "operand": 120.0,
-            "result": 2.75
+            "operand": 140.0,
+            "result": 3.0
           },
           {
             "op": "cooldown_cap",
@@ -279,7 +330,7 @@
         ],
         "value": 0.204750205
       },
-      "inc_total": 120.0,
+      "inc_total": 140.0,
       "kind": "steps",
       "mods": [
         {
@@ -290,6 +341,15 @@
           "slot": null,
           "source_text": "ArcaneSurge",
           "value": 15.0
+        },
+        {
+          "active": true,
+          "mod_type": "INC",
+          "origin_id": "buff.Onslaught",
+          "origin_kind": "Buff",
+          "slot": null,
+          "source_text": "Onslaught",
+          "value": 20.0
         },
         {
           "active": true,
@@ -2618,12 +2678,12 @@
     {
       "category": "Defence",
       "id": "EffectiveMovementSpeedMod",
-      "value": 1.426
+      "value": 1.523
     },
     {
       "category": "SkillMechanics",
       "id": "MovementSpeedWhileUsingSkill",
-      "value": 0.42777
+      "value": 0.45687
     },
     {
       "category": "Defence",
@@ -3146,6 +3206,26 @@
       "value": 0.0
     },
     {
+      "category": "Resistance",
+      "id": "FireResistMax",
+      "value": 75.0
+    },
+    {
+      "category": "Resistance",
+      "id": "ColdResistMax",
+      "value": 75.0
+    },
+    {
+      "category": "Resistance",
+      "id": "LightningResistMax",
+      "value": 75.0
+    },
+    {
+      "category": "Resistance",
+      "id": "ChaosResistMax",
+      "value": 75.0
+    },
+    {
       "category": "Avoidance",
       "id": "BlockChance",
       "value": 0.0
@@ -3336,6 +3416,36 @@
       "value": 0.0
     },
     {
+      "category": "Defence",
+      "id": "AilmentThreshold",
+      "value": 2688.5
+    },
+    {
+      "category": "Recovery",
+      "id": "LifeOnKill",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "ManaOnKill",
+      "value": 27.0
+    },
+    {
+      "category": "Recovery",
+      "id": "EnergyShieldOnKill",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "DazeChance",
+      "value": -0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "FullyBrokenArmourEffect",
+      "value": 20.0
+    },
+    {
       "category": "Ailment",
       "id": "ChillEffect",
       "value": 0.0
@@ -3343,7 +3453,7 @@
     {
       "category": "Ailment",
       "id": "FreezeBuildupPct",
-      "value": 0.000147739
+      "value": 0.00019206
     },
     {
       "category": "Ailment",
@@ -3639,6 +3749,211 @@
       "category": "SkillMechanics",
       "id": "ProjectileSpeedMod",
       "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "FlaskEffect",
+      "value": -0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "FlaskChargeGen",
+      "value": -0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "LifeFlaskChargeGen",
+      "value": -0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "ManaFlaskChargeGen",
+      "value": -0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "UtilityFlaskChargeGen",
+      "value": -0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask1Duration",
+      "value": 3.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask1ChargesMax",
+      "value": 75.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask1ChargesUsed",
+      "value": 8.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask1Uses",
+      "value": 9.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask1ChargeGen",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask1ChargesGained",
+      "value": 1.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask1Recovery",
+      "value": 1423.976
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask1InstantRecovery",
+      "value": -0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask1RecoveryPerSecond",
+      "value": 474.6586666666667
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask2Duration",
+      "value": 10.5
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask2ChargesMax",
+      "value": 75.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask2ChargesUsed",
+      "value": 10.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask2Uses",
+      "value": 7.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask2ChargeGen",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask2ChargesGained",
+      "value": 1.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask2Recovery",
+      "value": 467.48
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask2InstantRecovery",
+      "value": -0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask2RecoveryPerSecond",
+      "value": 44.52190476190476
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm1Duration",
+      "value": 3.9
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm1ChargesMax",
+      "value": 40.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm1ChargesUsed",
+      "value": 20.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm1Uses",
+      "value": 2.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm1ChargeGen",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm1ChargesGained",
+      "value": 1.22
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm2Duration",
+      "value": 1.3
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm2ChargesMax",
+      "value": 80.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm2ChargesUsed",
+      "value": 80.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm2Uses",
+      "value": 1.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm2ChargeGen",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm2ChargesGained",
+      "value": 1.22
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm3Duration",
+      "value": 3.9
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm3ChargesMax",
+      "value": 40.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm3ChargesUsed",
+      "value": 40.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm3Uses",
+      "value": 1.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm3ChargeGen",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm3ChargesGained",
+      "value": 1.22
     }
   ],
   "tree_effects": {
@@ -3665,7 +3980,6 @@
   },
   "unsupported_modifiers": [
     "15% chance for Remnants you pick up to count as picking up an additional Remnant",
-    "Grants Onslaught during effect",
     "Every 3 seconds during Effect, deal 100% of Mana spent in those seconds as Chaos Damage to Enemies within 3 metres",
     "Deals 25% of current Mana as Chaos Damage to you when Effect ends",
     "25% Chance to gain a Charge when you kill an enemy",

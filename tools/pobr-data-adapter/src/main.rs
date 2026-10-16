@@ -37,9 +37,11 @@ use pobr_data::catalog::{
 use serde::Deserialize;
 
 mod mods;
+mod monsters;
 mod raw_source;
 mod required_columns;
 mod skills;
+mod utility;
 
 const ZH_TW: &str = "Traditional Chinese";
 
@@ -433,6 +435,7 @@ fn run(args: Args) -> Result<String, String> {
 
     // Weapon/armour base stats (WeaponTypes / ArmourTypes, joined by base item row index).
     let (weapon_map, armour_map) = weapon_armour_lookups(&en)?;
+    let utility_map = utility::adapt(&en)?;
 
     let mut bases = Vec::new();
     let mut i18n_zh: BTreeMap<String, String> = BTreeMap::new();
@@ -482,6 +485,7 @@ fn run(args: Args) -> Result<String, String> {
             // `charm.buff`): `.dat` has no such column -> always empty,
             // backfilled by the overlay during gamedata loading.
             charm_buff: Vec::new(),
+            utility: utility_map.get(&index).cloned(),
         });
     }
 
@@ -541,6 +545,8 @@ fn run(args: Args) -> Result<String, String> {
     let cost_types = skills::adapt_cost_types(&en)?;
     write_pretty(&base_dir.join("cost_types.json"), &cost_types)?;
 
+    monsters::write(&args.raw, &base_dir, &args.patch)?;
+
     // manifest: **merged** with the existing on-disk manifest — this step
     // only registers the base domains and the zh-TW language it produced;
     // overlay/generated/zh-CN etc. are maintained by the regen pipeline's
@@ -574,6 +580,7 @@ fn run(args: Args) -> Result<String, String> {
         "granted_effect_levels",
         "granted_effect_stat_sets",
         "cost_types",
+        "monster_resistances",
     ] {
         if !manifest.domains.base.iter().any(|d| d == domain) {
             manifest.domains.base.push(domain.into());

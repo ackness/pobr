@@ -65,3 +65,36 @@ fn dark_consequences_pays_archmages_added_cost_for_each_explosion() {
     assert_eq!(fast.dps, out.dps);
     assert_eq!(fast.combined_dps, out.combined_dps);
 }
+
+#[test]
+fn benchmark_dark_consequences_pays_life_at_witchtoad_frequency() {
+    let build = parse_build_from_code(include_str!(
+        "../../../../examples/wasm-benchmark/builds/ninja-2026-10-11-witch-blood-mage-impending-doom-add19135df93/code.txt"
+    )).unwrap();
+    let out = calculate_with_data(&build, data(), &DataOrchestratorOptions::default()).unwrap();
+    // Archmage adds ceil(4205.52 * .055) = 232 Mana to this zero-cost
+    // spell. Atalui converts it to Life; 15% increased Life cost and
+    // Efficiency II give ceil(floor(232 * 1.15) * .6) = 160. The gloves'
+    // 40% Life Cost Efficiency and helmet's 15% Cost Efficiency give
+    // 160 / 1.55 = 103.225806452 Life per explosion.
+    let life_cost = 160.0 / 1.55;
+    assert_eq!(out.mana_cost, 0.0);
+    assert!((out.life_cost - life_cost).abs() < 1e-9);
+    // Each of two Cursed Ground areas spawns one Witchtoad every 250 ms:
+    // 8 explosions/s cost 825.806451616 Life/s. The code's 204.387096774
+    // reference instead charges at the character's 1.98 casts/s.
+    assert_eq!(out.action_rate, 2.0 * 1000.0 / 250.0);
+    assert!((out.life_per_second_cost - life_cost * 8.0).abs() < 1e-8);
+    for options in [
+        DataOrchestratorOptions {
+            extra_modifier_texts: vec!["100% increased Cast Speed".into()],
+            ..Default::default()
+        },
+        DataOrchestratorOptions::reference_conditions(),
+    ] {
+        let other = calculate_with_data(&build, data(), &options).unwrap();
+        assert_eq!(other.action_rate, out.action_rate);
+        assert_eq!(other.life_cost, out.life_cost);
+        assert_eq!(other.life_per_second_cost, out.life_per_second_cost);
+    }
+}

@@ -123,6 +123,7 @@ pub(crate) fn same_build(a: &Build, b: &Build) -> bool {
         granted_socket_jewels,
         radius_jewels,
         utility_slots,
+        inactive_utility_slots,
         limbs,
         weapon_set,
         other_weapons,
@@ -160,6 +161,11 @@ pub(crate) fn same_build(a: &Build, b: &Build) -> bool {
         && utility_slots
             .iter()
             .zip(&b.utility_slots)
+            .all(|(a, b)| a.0 == b.0 && same_item(&a.1, &b.1))
+        && inactive_utility_slots.len() == b.inactive_utility_slots.len()
+        && inactive_utility_slots
+            .iter()
+            .zip(&b.inactive_utility_slots)
             .all(|(a, b)| a.0 == b.0 && same_item(&a.1, &b.1))
         && limbs.len() == b.limbs.len()
         && limbs

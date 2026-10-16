@@ -11,6 +11,7 @@ pub mod character_constants;
 pub mod enemy_presets;
 pub mod game_constants;
 pub mod jewel_radii;
+pub mod monster_resistances;
 pub mod monster_scaling;
 pub mod non_damaging_ailments;
 pub mod unarmed_data;

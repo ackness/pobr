@@ -82,18 +82,60 @@ pub fn run_extract_minions(args: &ExtractLuaArgs, kind: MinionsKind) -> io::Resu
         ));
     }
     let mut entries: Vec<MinionEntryDef> = invoke_luajit_jsonl(args, MINIONS_BOOTSTRAP_LUA)?;
+    let mut extracted_files = vec![format!("Data/{}.lua", kind.vendor_file())];
+    if matches!(kind, MinionsKind::Minions) {
+        let template = "Export/Minions/Minions.txt";
+        let text = std::fs::read_to_string(args.vendor_root.join(template))?;
+        let mappings = monster_variety_ids(&text)?;
+        for entry in &mut entries {
+            entry.monster_variety_id = Some(mappings.get(&entry.id).cloned().ok_or_else(|| {
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("missing monster variety for {}", entry.id),
+                )
+            })?);
+        }
+        extracted_files.push(template.into());
+    }
     entries.sort_by(|a, b| a.id.cmp(&b.id));
-    let meta = build_meta(
-        args,
-        kind.schema(),
-        kind.what(),
-        vec![format!("Data/{}.lua", kind.vendor_file())],
-    )?;
+    let meta = build_meta(args, kind.schema(), kind.what(), extracted_files)?;
     let doc = MinionsDoc {
         meta,
         minions: entries,
     };
     Ok(to_pretty_json(&doc))
+}
+
+/// The template links PoB minion names to the game's monster variety ids;
+/// resistance values themselves are loaded from the official game tables.
+fn monster_variety_ids(text: &str) -> io::Result<std::collections::BTreeMap<String, String>> {
+    let mut ids = std::collections::BTreeMap::new();
+    for line in text
+        .lines()
+        .filter_map(|line| line.strip_prefix("#monster "))
+    {
+        let fields: Vec<_> = line.split_whitespace().collect();
+        if fields.len() != 2 || ids.insert(fields[1].into(), fields[0].into()).is_some() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "invalid or duplicate #monster mapping",
+            ));
+        }
+    }
+    Ok(ids)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn monster_mapping_keeps_game_ids_and_rejects_duplicates() {
+        let ids = super::monster_variety_ids("#monster Metadata/Monsters/Skeletons/PlayerSummoned/SkeletonArsonistPlayerSummoned RaisedSkeletonArsonist\n#emit\n").unwrap();
+        assert_eq!(
+            ids["RaisedSkeletonArsonist"],
+            "Metadata/Monsters/Skeletons/PlayerSummoned/SkeletonArsonistPlayerSummoned"
+        );
+        assert!(super::monster_variety_ids("#monster A B\n#monster C B\n").is_err());
+    }
 }
 
 /// The full `overlay/granted_effect_minions.json` document (generation side).

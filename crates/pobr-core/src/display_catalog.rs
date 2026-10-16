@@ -23,7 +23,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
     let computed = |id: &str, cat: Cat, vt: Vt, pob: &str| {
         DisplayStatDefinition::computed(id, cat, vt).with_pob_key(pob)
     };
-    vec![
+    let mut catalog = vec![
         computed("DecayDPS", Cat::DotDamage, Vt::Number, "DecayDPS"),
         computed(
             "MirageBurningGroundDPS",
@@ -311,6 +311,18 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::TimeSeconds,
             "ChannelTimeToTrigger",
         ),
+        computed(
+            "ArchonDuration",
+            Cat::SkillMechanics,
+            Vt::TimeSeconds,
+            "ArchonDuration",
+        ),
+        computed(
+            "ArchonRecoveryPeriod",
+            Cat::SkillMechanics,
+            Vt::TimeSeconds,
+            "ArchonRecoveryPeriod",
+        ),
         // Offence
         computed("TotalDPS", Cat::Offence, Vt::Number, "TotalDPS"),
         computed("TotalHitAvg", Cat::HitDamage, Vt::Number, "AverageHit"),
@@ -333,7 +345,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         computed("BleedDPS", Cat::DotDamage, Vt::Number, "BleedDPS"),
         computed("IgniteDPS", Cat::DotDamage, Vt::Number, "IgniteDPS"),
         computed("PoisonDPS", Cat::DotDamage, Vt::Number, "PoisonDPS"),
-        computed("ShockEffect", Cat::Ailment, Vt::Percent, "ShockEffectMod"),
+        computed("ShockEffect", Cat::Ailment, Vt::Number, "ShockEffectMod"),
         // Resource
         computed("Life", Cat::Resource, Vt::Number, "Life"),
         computed("Mana", Cat::Resource, Vt::Number, "Mana"),
@@ -456,6 +468,30 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             "LightningResist",
         ),
         computed("ChaosResist", Cat::Resistance, Vt::Percent, "ChaosResist"),
+        computed(
+            "FireResistMax",
+            Cat::Resistance,
+            Vt::Percent,
+            "FireResistMax",
+        ),
+        computed(
+            "ColdResistMax",
+            Cat::Resistance,
+            Vt::Percent,
+            "ColdResistMax",
+        ),
+        computed(
+            "LightningResistMax",
+            Cat::Resistance,
+            Vt::Percent,
+            "LightningResistMax",
+        ),
+        computed(
+            "ChaosResistMax",
+            Cat::Resistance,
+            Vt::Percent,
+            "ChaosResistMax",
+        ),
         computed("BlockChance", Cat::Avoidance, Vt::Percent, "BlockChance"),
         computed(
             "SpellBlockChance",
@@ -647,6 +683,27 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "EnergyShieldRecoupRate",
         ),
+        computed(
+            "AilmentThreshold",
+            Cat::Defence,
+            Vt::Number,
+            "AilmentThreshold",
+        ),
+        computed("LifeOnKill", Cat::Recovery, Vt::Number, "LifeOnKill"),
+        computed("ManaOnKill", Cat::Recovery, Vt::Number, "ManaOnKill"),
+        computed(
+            "EnergyShieldOnKill",
+            Cat::Recovery,
+            Vt::Number,
+            "EnergyShieldOnKill",
+        ),
+        computed("DazeChance", Cat::Ailment, Vt::Percent, "DazeChance"),
+        computed(
+            "FullyBrokenArmourEffect",
+            Cat::Ailment,
+            Vt::Percent,
+            "FullyBrokenArmourEffect",
+        ),
         // Ailment extensions (Wave 2 / Lane B)
         computed("ChillEffect", Cat::Ailment, Vt::Percent, "ChillEffect"),
         computed(
@@ -690,7 +747,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         computed(
             "AoeAreaMod",
             Cat::SkillMechanics,
-            Vt::Percent,
+            Vt::Number,
             "AreaOfEffectMod",
         ),
         computed(
@@ -760,9 +817,8 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Percent,
             "EffectiveSpellBlockChance",
         ),
-        // The share of damage still taken on a blocked hit: lower is better.
-        computed("BlockEffect", Cat::Mitigation, Vt::Percent, "BlockEffect")
-            .with_higher_is_better(Some(false)),
+        // The percentage of incoming hit damage prevented by a block.
+        computed("BlockEffect", Cat::Mitigation, Vt::Percent, "BlockEffect"),
         // Deflection (Track D; CalcDefence.lua:48-54, :1487-1506).
         computed(
             "DeflectionRating",
@@ -932,7 +988,54 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "ProjectileSpeedMod",
         ),
-    ]
+    ];
+    for (id, _) in crate::calc::utility::GLOBAL_STATS {
+        catalog.push(computed(
+            id,
+            Cat::Recovery,
+            if *id == "FlaskEffect" {
+                Vt::Percent
+            } else {
+                Vt::Number
+            },
+            id,
+        ));
+    }
+    for (kind, count) in [("Flask", 2), ("Charm", 3)] {
+        for slot in 1..=count {
+            for field in crate::calc::utility::ITEM_STATS
+                .iter()
+                .chain(if kind == "Charm" {
+                    crate::calc::utility::CHARM_STATS
+                } else {
+                    crate::calc::utility::FLASK_STATS
+                })
+            {
+                if kind == "Charm"
+                    && field.contains("Recovery")
+                    && !crate::calc::utility::CHARM_STATS.contains(field)
+                {
+                    continue;
+                }
+                let id = format!("{kind}{slot}{field}");
+                let vt = if *field == "Duration" {
+                    Vt::TimeSeconds
+                } else {
+                    Vt::Number
+                };
+                catalog.push(
+                    DisplayStatDefinition::computed(id.as_str(), Cat::Recovery, vt)
+                        .with_pob_key(id.as_str())
+                        .with_higher_is_better(if *field == "ChargesUsed" {
+                            Some(false)
+                        } else {
+                            None
+                        }),
+                );
+            }
+        }
+    }
+    catalog
 }
 
 /// Extracts the current value of every `Computed` display field from an
@@ -943,6 +1046,10 @@ pub fn extract_display_values(output: &OutputTable) -> Vec<DisplayStatValue> {
         .filter(|def| def.parity_status == ParityStatus::Computed)
         .filter(|def| {
             output.full_dps.is_some() || !matches!(def.id.as_str(), "FullDPS" | "FullDotDPS")
+        })
+        .filter(|def| {
+            crate::calc::utility::item_stat(def.id.as_str()).is_none()
+                || output.utility_stats.contains_key(def.id.as_str())
         })
         .map(|def| {
             let value = display_value(output, def.id.as_str());
@@ -959,6 +1066,9 @@ pub fn extract_display_values(output: &OutputTable) -> Vec<DisplayStatValue> {
 /// [`extract_display_values`], including fractional chance to percent conversion.
 /// Unknown ids return 0.
 pub fn display_value(output: &OutputTable, id: &str) -> f64 {
+    if let Some(value) = output.utility_stats.get(id) {
+        return *value;
+    }
     match id {
         "DecayDPS" => output.decay_dps,
         "MirageBurningGroundDPS" => output.mirage_burning_ground_dps,
@@ -986,6 +1096,8 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "WarcryCastTime" => output.warcry_cast_time,
         "ChannelTime" => output.channel_time,
         "ChannelTimeToTrigger" => output.channel_time_to_trigger,
+        "ArchonDuration" => output.archon_duration,
+        "ArchonRecoveryPeriod" => output.archon_recovery_period,
         "ManaPercentCost" => output.mana_percent_cost,
         "ManaPercentPerSecondCost" => output.mana_percent_per_second_cost,
         "ManaPerSecondCost" => output.mana_per_second_cost,
@@ -1066,7 +1178,7 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "BleedDPS" => output.bleed_dps,
         "IgniteDPS" => output.ignite_dps,
         "PoisonDPS" => output.poison_dps,
-        "ShockEffect" => output.shock_effect,
+        "ShockEffect" => output.shock_effect_mod,
         "Life" => output.life,
         "Mana" => output.mana,
         "EnergyShield" => output.energy_shield,
@@ -1099,6 +1211,10 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "ColdResist" => output.cold_resistance,
         "LightningResist" => output.lightning_resistance,
         "ChaosResist" => output.chaos_resistance,
+        "FireResistMax" => output.max_fire_resistance,
+        "ColdResistMax" => output.max_cold_resistance,
+        "LightningResistMax" => output.max_lightning_resistance,
+        "ChaosResistMax" => output.max_chaos_resistance,
         "BlockChance" => output.block_chance,
         "SpellBlockChance" => output.spell_block_chance,
         "TotalEHP" => output.total_ehp,
@@ -1150,6 +1266,12 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
 
         // Ailment extensions
         "ChillEffect" => output.chill_effect,
+        "AilmentThreshold" => output.ailment_threshold,
+        "LifeOnKill" => output.life_on_kill,
+        "ManaOnKill" => output.mana_on_kill,
+        "EnergyShieldOnKill" => output.energy_shield_on_kill,
+        "DazeChance" => output.daze_chance,
+        "FullyBrokenArmourEffect" => output.fully_broken_armour_effect,
         "FreezeBuildupPct" => output.freeze_buildup_pct,
         "ElectrocuteBuildupPct" => output.electrocute_buildup_pct,
         "BleedStackedDPS" => output.bleed_stacked_dps,
@@ -1178,7 +1300,7 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "SpellBlockChanceMax" => output.spell_block_chance_max,
         "EffectiveBlockChance" => output.effective_block_chance,
         "EffectiveSpellBlockChance" => output.effective_spell_block_chance,
-        "BlockEffect" => output.block_effect,
+        "BlockEffect" => 100.0 - output.block_effect,
         "DeflectionRating" => output.deflection_rating,
         "DeflectChance" => output.deflect_chance,
         "EvadeChance" => output.evade_chance,

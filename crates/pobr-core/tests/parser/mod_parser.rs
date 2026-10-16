@@ -814,11 +814,12 @@ fn keystone_no_mana_yields_zero_override() {
 }
 
 #[test]
-fn pure_immunity_phrase_yields_no_mods() {
-    // A pure immunity phrase carries no numeric value: it produces no mods (the engine
-    // recognizes it as an empty-output line rather than erroring), avoiding noise.
-    let o = parse_mod("Immune to Chaos Damage and Bleeding").unwrap();
+fn standalone_chaos_immunity_is_recognised_but_unmodelled() {
+    // Outside Chaos Inoculation there is no chaos-immunity flag: the line is
+    // recognised, stores nothing, and stays reported as unmodelled.
+    let o = parse_mod("Immune to Chaos Damage").unwrap();
     assert!(o.mods.is_empty());
+    assert!(!o.special_meta.unwrap().no_effect);
 }
 
 #[test]
@@ -836,14 +837,17 @@ fn weapon_type_guard_keeps_damage_as_weapon_keyword_name() {
 }
 
 #[test]
-fn buffs_also_grant_is_unsupported() {
-    // "Archon Buffs also grant +20% to all Elemental Resistances" -- vendor doesn't
-    // support this mod family (ModCache.lua:4527-4532 caches it as nil); the panel
-    // should not inject any numeric value (the stormweaver FireResist golden value of
-    // 71 confirms PoB2 does not apply the +20).
+fn archon_grants_are_scoped_buff_payloads() {
+    // Game stat archon_grants_all_elemental_resistance_+%: the buff grants
+    // resistance only while active, after its effect modifiers are applied.
     let outcome = parse_mod("Archon Buffs also grant +20% to all Elemental Resistances").unwrap();
-    assert_eq!(outcome.status, ParseStatus::Unsupported);
-    assert!(outcome.mods.is_empty());
+    assert_eq!(outcome.status, ParseStatus::Parsed);
+    assert_eq!(outcome.mods.len(), 1);
+    assert_eq!(
+        outcome.mods[0].name,
+        ModName::from("ArchonElementalResistance")
+    );
+    assert_eq!(outcome.mods[0].value.as_number(), Some(20.0));
 }
 
 #[test]
@@ -1580,4 +1584,385 @@ fn blood_price_and_radiant_grief_preserve_presence_semantics() {
     let doubled = parse_mod("Presence Radius is doubled").unwrap();
     assert_eq!(doubled.status, ParseStatus::Parsed);
     assert_eq!(doubled.mods[0].name.as_str(), "PresenceRadius");
+}
+
+#[test]
+fn spell_mana_cost_efficiency_retains_its_spell_scope() {
+    // base_spell_mana_cost_efficiency_+%: 39% applies only to Spell skills.
+    let outcome = parse_mod("39% increased Mana Cost Efficiency of Spells").unwrap();
+    assert_eq!(outcome.status, ParseStatus::Parsed);
+    assert_eq!(outcome.mods.len(), 1);
+    let modifier = &outcome.mods[0];
+    assert_eq!(modifier.name, ModName::from("ManaCostEfficiency"));
+    assert_eq!(modifier.mod_type, ModType::Inc);
+    assert_eq!(modifier.value, ModValue::Number(39.0));
+    assert!(modifier.matches(&pobr_core::CalcConfig::spell()));
+    assert!(!modifier.matches(&pobr_core::CalcConfig::attack()));
+    assert!(!modifier.matches(&pobr_core::CalcConfig::new()));
+}
+
+#[test]
+fn grants_onslaught_requires_an_active_utility_effect() {
+    // charm_gain_onslaught_during_effect / gain_onslaught_during_flask_effect.
+    for text in [
+        "Grants Onslaught during effect",
+        "Grants Onslaught during flask effect",
+    ] {
+        let outcome = parse_mod(text).unwrap();
+        assert_eq!(outcome.status, ParseStatus::Parsed);
+        assert_eq!(outcome.mods.len(), 2);
+        let mut db = pobr_core::ModDb::new();
+        for modifier in outcome.mods {
+            assert_eq!(modifier.name, ModName::from("Condition:Onslaught"));
+            assert_eq!(modifier.mod_type, ModType::Flag);
+            db.add_mod(modifier);
+        }
+        assert!(!db.flag(&pobr_core::CalcConfig::new(), "Condition:Onslaught"));
+        for condition in ["UsingCharm", "UsingFlask"] {
+            assert!(db.flag(
+                &pobr_core::CalcConfig::new().with_condition(condition, true),
+                "Condition:Onslaught"
+            ));
+        }
+    }
+}
+
+#[test]
+fn utility_triggers_are_recognized_no_effect() {
+    // local_flask_use_on_*, local_charm_trigger_when_cursed,
+    // local_%_chance_to_gain_flask_charge_on_kill and the mana-overflow stat.
+    for text in [
+        "Used when you kill a Rare or Unique enemy",
+        "Used when you become Frozen",
+        "Used when you become Ignited",
+        "Used when you become Stunned",
+        "Used when you are affected by a Slow",
+        "Used when you start Bleeding",
+        "Used when you become Cursed",
+        "Used when you take Chaos damage from a Hit",
+        "Used when Charges reach full",
+        "Used when you Hit a Rare or Unique Enemy, if not already in effect",
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed, "{text}: {parsed:?}");
+        assert!(parsed.mods.is_empty(), "{text}: {parsed:?}");
+        assert!(parsed.special_meta.unwrap().no_effect, "{text}");
+    }
+    // Unknown triggers stay visible instead of accepting any arbitrary suffix.
+    assert_ne!(
+        parse_mod("Used when you invent a mechanic").unwrap().status,
+        ParseStatus::Parsed
+    );
+}
+
+#[test]
+fn charm_mana_on_use_is_an_amount_with_game_provenance() {
+    // CharmGainManaOnUse8 rolls 230..300 of charm_recover_X_mana_when_used.
+    let parsed = parse_mod("Recover 300 Mana when Used").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed);
+    assert_eq!(parsed.mods.len(), 1);
+    let modifier = &parsed.mods[0];
+    assert_eq!(modifier.name.as_str(), "UtilityManaOnUse");
+    assert_eq!(modifier.mod_type, ModType::Base);
+    assert_eq!(modifier.value, ModValue::Number(300.0));
+    let rule = modifier.exporter_rule.as_ref().unwrap();
+    assert_eq!(rule.exporter, pobr_data::source::ExporterCoverage::Absent);
+    assert!(rule.game_source.contains("charm_recover_X_mana_when_used"));
+}
+
+#[test]
+fn flask_overflow_does_not_change_uncapped_per_use_recovery() {
+    // local_unique_flask_mana_flask_recovery_can_overcap_mana_during_flask_effect.
+    let parsed =
+        parse_mod("Mana Recovery from Flasks can Overflow maximum Mana during Effect").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed);
+    assert!(parsed.mods.is_empty());
+    assert!(parsed.special_meta.unwrap().no_effect);
+}
+
+#[test]
+fn kill_charge_chance_does_not_invent_a_kill_rate() {
+    // FlaskChanceRechargeOnKill3: 31..35% chance, not 35 charges per second.
+    let parsed = parse_mod("35% Chance to gain a Charge when you kill an enemy").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed);
+    assert!(parsed.mods.is_empty());
+    // A kill-rate model would turn this into charge gain: unmodelled, not no-effect.
+    assert!(!parsed.special_meta.unwrap().no_effect);
+}
+
+#[test]
+fn slowing_potency_uses_the_game_stat_and_marks_exporter_absence() {
+    for (text, value) in [
+        ("30% reduced Slowing Potency of Debuffs on You", -30.0),
+        (
+            "8% reduced [Slow|Slowing] Potency of [Debuff|Debuffs] on You",
+            -8.0,
+        ),
+        ("10% increased Slowing Potency of Debuffs on You", 10.0),
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed, "{parsed:?}");
+        assert_eq!(parsed.mods.len(), 1);
+        let modifier = &parsed.mods[0];
+        assert_eq!(modifier.name.as_str(), "SlowEffectOnSelf");
+        assert_eq!(modifier.mod_type, ModType::Inc);
+        assert_eq!(modifier.value, ModValue::Number(value));
+        let rule = modifier.exporter_rule.as_ref().unwrap();
+        assert_eq!(rule.exporter, pobr_data::source::ExporterCoverage::Absent);
+        assert_eq!(rule.game_source, "base_slow_potency_+%");
+    }
+}
+
+#[test]
+fn armour_break_increases_report_the_missing_per_hit_model() {
+    // Exposed Wounds gives 30% increased break against ailmented targets;
+    // a global 20% increase cannot scale an already-configured broken total.
+    for text in [
+        "Break 20% increased Armour",
+        "[Hit|Hits] [ArmourBreak|Break] 30% increased [Armour] on targets with [Ailments]",
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed, "{text}: {parsed:?}");
+        assert!(parsed.mods.is_empty(), "{text}: {parsed:?}");
+        let meta = parsed.special_meta.unwrap();
+        assert!(
+            !meta.no_effect,
+            "an unmodelled mechanic is not a no-effect line"
+        );
+    }
+}
+
+#[test]
+fn additional_remnant_chance_reports_the_missing_count_model() {
+    // Remnant Attraction gives 10%; the preceding small passive gives 5%.
+    for text in [
+        "10% chance to create an additional [Remnant]",
+        "5% chance to create an additional Remnant",
+        "+17% chance to create an additional Remnant",
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed, "{text}: {parsed:?}");
+        assert!(parsed.mods.is_empty(), "{text}: {parsed:?}");
+        let meta = parsed.special_meta.unwrap();
+        assert!(
+            !meta.no_effect,
+            "an unmodelled mechanic is not a no-effect line"
+        );
+        assert_eq!(meta.entry_id, "additional_remnant_chance");
+    }
+}
+
+#[test]
+fn conditional_offence_limits_stay_visible_as_unmodelled() {
+    // Bone Chains, a 15% Stun Buildup passive, Seeing Stars (25% duration),
+    // and Maiming Strike (25% chance) from the game's passive table.
+    for (text, id) in [
+        (
+            "Physical Spell Critical Hits build Pin",
+            "physical_spell_critical_pin_unmodelled",
+        ),
+        ("15% increased Stun Buildup", "stun_buildup_unmodelled"),
+        ("25% increased Daze Duration", "daze_duration_unmodelled"),
+        (
+            "Attacks have 25% chance to Maim on Hit",
+            "attack_maim_chance_unmodelled",
+        ),
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed, "{text}: {parsed:?}");
+        assert!(parsed.mods.is_empty(), "{text}: {parsed:?}");
+        let meta = parsed.special_meta.unwrap();
+        assert!(!meta.no_effect, "{text} must remain a model gap");
+        assert_eq!(meta.entry_id, id);
+    }
+}
+
+#[test]
+fn chaos_inoculation_line_grants_bleed_immunity() {
+    // keystone_chaos_inoculation: "Immune to Chaos Damage and Bleeding". The
+    // chaos half comes from the keystone's "Maximum Life is 1" line.
+    let parsed = parse_mod("Immune to Chaos Damage and Bleeding").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed);
+    assert_eq!(parsed.mods.len(), 1);
+    assert_eq!(parsed.mods[0].name.as_str(), "BleedImmune");
+}
+
+#[test]
+fn incoming_debuffs_without_player_models_remain_visible_gaps() {
+    // Game stats: curse_effect_on_self_+%, self_bleed_duration_+%,
+    // base_all_ailment_duration_on_self_+%, immune_to_corrupted_blood,
+    // immune_to_maim and immune_to_hinder. None has an incoming model.
+    for text in [
+        "30% reduced effect of Curses on you",
+        "40% reduced Duration of Bleeding on You",
+        "15% reduced Duration of Ailments on You",
+        "Immune to [CorruptedBlood|Corrupted Blood]",
+        "Immune to [Maim]",
+        "Immune to [Hinder]",
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed, "{text}: {parsed:?}");
+        assert!(parsed.mods.is_empty(), "{text}: {parsed:?}");
+        assert!(!parsed.special_meta.unwrap().no_effect, "{text}");
+    }
+}
+
+#[test]
+fn equipped_defence_and_recharge_text_keep_their_scope_and_reader_names() {
+    for (text, names, condition) in [
+        (
+            "75% increased Energy Shield from Equipped Focus",
+            vec!["EnergyShield"],
+            "UsingFocus",
+        ),
+        (
+            "100% increased Armour, Evasion and Energy Shield from Equipped Shield",
+            vec!["Armour", "Evasion", "EnergyShield"],
+            "UsingShield",
+        ),
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed);
+        assert_eq!(parsed.mods.len(), names.len());
+        for name in names {
+            let modifier = parsed
+                .mods
+                .iter()
+                .find(|m| m.name.as_str() == name)
+                .unwrap();
+            assert_eq!(modifier.slot_name(), Some("weapon2"));
+            assert!(modifier.tags.contains(&ModTag::condition(condition, false)));
+        }
+    }
+    for (text, name, value) in [
+        (
+            "20% increased Energy Shield Recharge Rate",
+            "EnergyShieldRecharge",
+            20.0,
+        ),
+        (
+            "20% reduced Energy Shield Recharge Rate",
+            "EnergyShieldRecharge",
+            -20.0,
+        ),
+        (
+            "12% faster start of Energy Shield Recharge",
+            "EnergyShieldRechargeFaster",
+            12.0,
+        ),
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed);
+        assert_eq!(parsed.mods.len(), 1);
+        assert_eq!(parsed.mods[0].name.as_str(), name);
+        assert_eq!(parsed.mods[0].value.as_number(), Some(value));
+    }
+}
+
+#[test]
+fn charm_recharge_on_use_is_unmodelled_not_no_effect() {
+    let parsed = parse_mod("Energy Shield Recharge starts on use").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed);
+    assert!(parsed.mods.is_empty());
+    let meta = parsed.special_meta.unwrap();
+    assert_eq!(
+        meta.entry_id,
+        "charm_energy_shield_recharge_starts_when_used"
+    );
+    assert!(!meta.no_effect);
+}
+
+#[test]
+fn focus_special_rule_precedes_the_generic_offhand_phrase() {
+    use pobr_core::mod_parser::{CompiledParserRules, parse_mod_engine};
+    use pobr_data::catalog::parser_rules::ModParserRulesDoc;
+    use pobr_data::source::ExporterCoverage;
+
+    // The extracted phrase scopes any off-hand. The curated game rule adds
+    // the Focus requirement without changing the generic compiler or its data.
+    let raw = std::fs::read_to_string(
+        crate::support::test_data_dir().join("overlay/mod_parser_rules.json"),
+    )
+    .unwrap();
+    let doc: ModParserRulesDoc = serde_json::from_str(&raw).unwrap();
+    let generic_rules = CompiledParserRules::compile(&doc).unwrap();
+    for (text, value) in [
+        ("75% increased Energy Shield from Equipped Focus", 75.0),
+        (
+            "40% increased [EnergyShield|Energy Shield] from Equipped [Focus]",
+            40.0,
+        ),
+    ] {
+        let generic = parse_mod_engine(text, &generic_rules);
+        assert_eq!(generic.status, ParseStatus::Parsed);
+        assert!(generic.special_meta.is_none());
+        assert_eq!(generic.mods.len(), 1);
+        assert_eq!(generic.mods[0].slot_name(), Some("weapon2"));
+        assert!(
+            !generic.mods[0]
+                .tags
+                .contains(&ModTag::condition("UsingFocus", false))
+        );
+
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed);
+        assert_eq!(
+            parsed.special_meta.as_ref().unwrap().entry_id,
+            "energy_shield_from_equipped_focus"
+        );
+        assert_eq!(parsed.mods.len(), 1);
+        let modifier = &parsed.mods[0];
+        assert_eq!(modifier.name.as_str(), "EnergyShield");
+        assert_eq!(modifier.mod_type, ModType::Inc);
+        assert_eq!(modifier.value.as_number(), Some(value));
+        assert_eq!(modifier.slot_name(), Some("weapon2"));
+        assert!(
+            modifier
+                .tags
+                .contains(&ModTag::condition("UsingFocus", false))
+        );
+        let rule = modifier.exporter_rule.as_ref().unwrap();
+        assert_eq!(rule.exporter, ExporterCoverage::Differs);
+        assert_eq!(rule.game_source, "energy_shield_from_focus_+%");
+    }
+}
+
+#[test]
+fn utility_followup_rules_preserve_game_amounts_and_distinguish_missing_models() {
+    for (text, name, value, stat) in [
+        (
+            "Recover 350 Life when Used",
+            "UtilityLifeOnUse",
+            350.0,
+            "charm_recover_X_life_when_used",
+        ),
+        (
+            "Also grants 500 Guard",
+            "CharmGuard",
+            500.0,
+            "charm_gain_X_guard_for_duration",
+        ),
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed);
+        assert_eq!(parsed.mods.len(), 1);
+        let modifier = &parsed.mods[0];
+        assert_eq!(modifier.name.as_str(), name);
+        assert_eq!(modifier.mod_type, ModType::Base);
+        assert_eq!(modifier.value, ModValue::Number(value));
+        let rule = modifier.exporter_rule.as_ref().unwrap();
+        assert_eq!(rule.exporter, pobr_data::source::ExporterCoverage::Absent);
+        assert!(rule.game_source.contains(stat));
+    }
+    for (text, no_effect) in [
+        ("Your Totem Limit is doubled", false),
+        ("10% chance to Blind Enemies on Hit with Attacks", false),
+        ("100% chance to Blind Enemies on Hit with Attacks", false),
+        ("Corrupting will always result in change", true),
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed, "{text}");
+        assert!(parsed.mods.is_empty(), "{text}");
+        assert_eq!(parsed.special_meta.unwrap().no_effect, no_effect, "{text}");
+    }
 }

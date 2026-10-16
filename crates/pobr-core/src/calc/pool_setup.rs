@@ -143,14 +143,24 @@ pub fn build_pool_state(
     }
     // Guard (:2823-2845): rate = min(Σ BASE, 100); pool = calcLib.val(GuardAbsorbLimit)
     // (only evaluated when rate > 0, since vendor only writes output in that branch).
-    let guard_shared_rate = db
+    let mut guard_shared_rate = db
         .sum(ModType::Base, cfg, &[ModName::from("GuardAbsorbRate")])
         .min(100.0);
-    let guard_shared = if guard_shared_rate > 0.0 {
+    let mut guard_shared = if guard_shared_rate > 0.0 {
         calc_val(db, cfg, "GuardAbsorbLimit")
     } else {
         0.0
     };
+    // Game charm_gain_X_guard_for_duration: one Guard buff, strongest wins,
+    // absorbing all hit damage, capped at 200% maximum Life (Guard keyword).
+    // Enabled charms already have their local/global effect applied.
+    let charm_guard = db
+        .max_of(ModType::Base, cfg, &[ModName::from("CharmGuard")])
+        .clamp(0.0, 2.0 * base.max_life.max(0.0));
+    if charm_guard > 0.0 && charm_guard >= guard_shared {
+        guard_shared = charm_guard;
+        guard_shared_rate = 100.0;
+    }
     let mut guard_rate_by_type = [0.0_f64; 5];
     let mut guard_by_type = [0.0_f64; 5];
     for (idx, type_name) in TYPE_NAMES.iter().enumerate() {

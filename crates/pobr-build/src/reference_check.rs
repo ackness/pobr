@@ -49,8 +49,8 @@ impl ReferenceRow {
 /// Catalog pairs whose two sides are defined differently, so comparing them
 /// measures the definitions rather than the calculation.
 const NOT_COMPARABLE: &[&str] = &[
-    // PoBR's value is the hit before the enemy's mitigation and chance to
-    // hit; PoB2's `AverageHit` includes both.
+    // PoBR's value is the hit before the enemy's mitigation; PoB2's
+    // `AverageHit` includes mitigation. Neither includes chance to hit.
     "TotalHitAvg",
     // Same PoB2 key as `ActionRate`; listed once.
     "EffectiveActionRate",
@@ -91,12 +91,24 @@ pub fn compare_to_reference(
 }
 
 /// The minion rows: (row id, the reference's `<MinionStat>` name).
-const MINION_ROWS: [(&str, &str); 5] = [
+const MINION_ROWS: [(&str, &str); 17] = [
     ("MinionTotalDPS", "TotalDPS"),
     ("MinionLife", "Life"),
     ("MinionEnergyShield", "EnergyShield"),
     ("MinionArmour", "Armour"),
     ("MinionEvasion", "Evasion"),
+    ("MinionFireResist", "FireResist"),
+    ("MinionColdResist", "ColdResist"),
+    ("MinionLightningResist", "LightningResist"),
+    ("MinionChaosResist", "ChaosResist"),
+    ("MinionFireResistMax", "FireResistMax"),
+    ("MinionColdResistMax", "ColdResistMax"),
+    ("MinionLightningResistMax", "LightningResistMax"),
+    ("MinionChaosResistMax", "ChaosResistMax"),
+    ("MinionFireResistOverCap", "FireResistOverCap"),
+    ("MinionColdResistOverCap", "ColdResistOverCap"),
+    ("MinionLightningResistOverCap", "LightningResistOverCap"),
+    ("MinionChaosResistOverCap", "ChaosResistOverCap"),
 ];
 
 fn minion_value(minion: &MinionOutput, key: &str) -> f64 {
@@ -105,7 +117,8 @@ fn minion_value(minion: &MinionOutput, key: &str) -> f64 {
         "Life" => minion.life,
         "EnergyShield" => minion.energy_shield,
         "Armour" => minion.armour,
-        _ => minion.evasion,
+        "Evasion" => minion.evasion,
+        _ => minion.stats.get(key).copied().unwrap_or(0.0),
     }
 }
 
