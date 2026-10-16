@@ -11,6 +11,8 @@ export const CONFIG_LABEL_ZH: Record<string, string> = {
   energyMinionDeathsPerSecond: '每秒被击杀召唤物数：',
   energyMinionPower: '被击杀召唤物的平均威能：',
   energyInvocationUsesPerSecond: '每秒手动触发次数：',
+  enemyKillsPerSecond: '每秒击杀敌人数：',
+  multiplierCursesOnSelf: '你身上的诅咒数：',
   TotalCompanionLife: '同伴总生命覆盖值：',
   arcLightningInfused: '已灌注闪电？',
   conditionLowRunicWard: '处于低符文结界状态？',
