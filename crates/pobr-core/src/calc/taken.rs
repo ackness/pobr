@@ -292,6 +292,51 @@ pub struct MitigationInputs {
     pub deflect_effect_pct: f64,
 }
 
+/// The global damage reduction ceiling: the highest `DamageReductionMax`
+/// modifier (0 when absent) and the ceiling it gives, else the game constant.
+pub(crate) fn global_damage_reduction_max(db: &ModDb, cfg: &CalcConfig) -> (f64, f64) {
+    let modifier = db.max_of(ModType::Base, cfg, &[ModName::from("DamageReductionMax")]);
+    let cap = if modifier > 0.0 {
+        modifier
+    } else {
+        cfg.constants
+            .character()
+            .maximum_physical_damage_reduction_pct
+    };
+    (modifier, cap)
+}
+
+/// One type's damage reduction ceiling: the highest `<X>DamageReductionMax`
+/// modifier (0 when absent) and the ceiling, at most the global one.
+pub(crate) fn type_damage_reduction_max(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    dt: DamageType,
+    global_cap: f64,
+) -> (f64, f64) {
+    let name = ModName::from(format!("{}DamageReductionMax", dt_prefix(dt)));
+    let modifier = db.max_of(ModType::Base, cfg, &[name]);
+    let cap = if modifier > 0.0 {
+        modifier.min(global_cap)
+    } else {
+        global_cap
+    };
+    (modifier, cap)
+}
+
+/// A type's additional damage reduction, not from Armour: `Σ BASE
+/// <X>DamageReduction` (elemental types add `ElementalDamageReduction`),
+/// between 0 and the type's ceiling. It reduces hits and damage over time
+/// alike: additional Physical Damage Reduction also reduces Bleeding, where
+/// Armour does not (agent-docs/armour.md).
+pub(crate) fn base_damage_reduction(db: &ModDb, cfg: &CalcConfig, dt: DamageType, cap: f64) -> f64 {
+    let mut names = vec![ModName::from(format!("{}DamageReduction", dt_prefix(dt)))];
+    if dt.is_elemental() {
+        names.push(ModName::from("ElementalDamageReduction"));
+    }
+    db.sum(ModType::Base, cfg, &names).clamp(0.0, cap)
+}
+
 /// Assembles a [`MitigationCtx`] from a ModDb (assembling the per-type
 /// intermediate values from vendor CalcDefence.lua:2326-2437's defence mitigation section).
 pub fn build_mitigation_ctx(
@@ -308,19 +353,7 @@ pub(crate) fn build_mitigation_ctx_for_category(
     inputs: &MitigationInputs,
     category: HitCategory,
 ) -> MitigationCtx {
-    // Global damage reduction ceiling: `Max("DamageReductionMax") or DamageReductionCap(=90)` (:1862).
-    let global_dr_max_modifier =
-        db.max_of(ModType::Base, cfg, &[ModName::from("DamageReductionMax")]);
-    let global_dr_max = {
-        let v = global_dr_max_modifier;
-        if v > 0.0 {
-            v
-        } else {
-            cfg.constants
-                .character()
-                .maximum_physical_damage_reduction_pct
-        }
-    };
+    let (global_dr_max_modifier, global_dr_max) = global_damage_reduction_max(db, cfg);
     // Deflect multiplier: `DeflectChance == 100 and (1 − DeflectEffect/100) or 1` (:2433).
     let deflect_multi = if inputs.deflect_chance_pct >= 100.0 {
         1.0 - inputs.deflect_effect_pct / 100.0
@@ -338,30 +371,9 @@ pub(crate) fn build_mitigation_ctx_for_category(
     for dt in DAMAGE_TYPE_BY_INDEX {
         let i = dt as usize;
         let name = dt_prefix(dt);
-        // Per-type damage reduction ceiling, taken as the min with the global ceiling (:2333).
-        ctx.dr_max_pct[i] = {
-            let v = db.max_of(
-                ModType::Base,
-                cfg,
-                &[ModName::from(format!("{name}DamageReductionMax"))],
-            );
-            ctx.dr_max_type_modifier[i] = v;
-            if v > 0.0 {
-                v.min(global_dr_max)
-            } else {
-                global_dr_max
-            }
-        };
-        // Flat damage reduction: `max(0, Σ BASE(<X>DamageReduction[, ElementalDamageReduction]))`
-        // then clamped to the per-type ceiling (:2336-2340).
-        ctx.flat_dr_pct[i] = {
-            let mut names = vec![ModName::from(format!("{name}DamageReduction"))];
-            if dt.is_elemental() {
-                names.push(ModName::from("ElementalDamageReduction"));
-            }
-            db.sum(ModType::Base, cfg, &names)
-                .clamp(0.0, ctx.dr_max_pct[i])
-        };
+        (ctx.dr_max_type_modifier[i], ctx.dr_max_pct[i]) =
+            type_damage_reduction_max(db, cfg, dt, global_dr_max);
+        ctx.flat_dr_pct[i] = base_damage_reduction(db, cfg, dt, ctx.dr_max_pct[i]);
         // Enemy overwhelm (pobr's `Enemy<X>Overwhelm` BASE mod; currently only physical has a source).
         ctx.overwhelm_pct[i] = db.sum(
             ModType::Base,

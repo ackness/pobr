@@ -6115,16 +6115,40 @@
       ]
     },
     {
-      "id": "flask_removes_recovery_from_other_resource_on_use",
+      "id": "flask_removes_life_recovery_from_mana_on_use",
       "exporter": "absent",
-      "game_source": "base/stats.json: local_flask_removes_%_of_life_recovery_from_mana_on_use, local_flask_removes_%_of_mana_recovery_from_life_on_use; base/mods.json: FlaskExtraLifeCostsMana, FlaskExtraManaCostsLife",
-      "pattern": "removes (\\d+(?:\\.\\d+)?)% of (life|mana) recovered from (life|mana) when used",
-      "mods": [],
+      "game_source": "base/stats.json: local_flask_removes_%_of_life_recovery_from_mana_on_use; base/mods.json: FlaskExtraLifeCostsMana",
+      "pattern": "removes (\\d+(?:\\.\\d+)?)% of life recovered from mana when used",
+      "mods": [
+        {
+          "name": "UtilityLifeRecoveryRemovedFromMana",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
       "verified": false,
-      "batch": "unmodelled",
-      "source_note": "Resource removed per flask use not modelled. The line removes a share of the Life (or Mana) a flask recovers from the other resource each time it is used, but PoBR has no net Mana or Life model for flask uses: the flask outputs are per use and per second of charge generation, with no assumed use frequency, so the removed amount cannot change any output yet. The generic path read it as FlaskRecovery BASE -15 on the flask itself, which is not the stat's meaning (the recovery is kept; the other resource pays).",
+      "batch": "S2",
+      "source_note": "Local flask property: each use takes this percentage of the flask's total Life recovery away from Mana. Read per flask slot as Flask<N>ManaRemovedOnUse = percentage x Flask<N>Recovery; the amount is per use, with no use frequency or net Mana model assumed (no in-game test). The recovery itself is kept. The generic path read the line as FlaskRecovery BASE -15 on the flask, which is not the stat's meaning.",
       "examples": [
-        "Removes 15% of Life Recovered from Mana when used",
+        "Removes 15% of Life Recovered from Mana when used"
+      ]
+    },
+    {
+      "id": "flask_removes_mana_recovery_from_life_on_use",
+      "exporter": "absent",
+      "game_source": "base/stats.json: local_flask_removes_%_of_mana_recovery_from_life_on_use; base/mods.json: FlaskExtraManaCostsLife",
+      "pattern": "removes (\\d+(?:\\.\\d+)?)% of mana recovered from life when used",
+      "mods": [
+        {
+          "name": "UtilityManaRecoveryRemovedFromLife",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Local flask property: each use takes this percentage of the flask's total Mana recovery away from Life. Read per flask slot as Flask<N>LifeRemovedOnUse = percentage x Flask<N>Recovery; the amount is per use, with no use frequency or net Life model assumed (no in-game test). The recovery itself is kept. The generic path read the line as FlaskRecovery BASE -15 on the flask, which is not the stat's meaning.",
+      "examples": [
         "Removes 15% of Mana Recovered from Life when used"
       ]
     },
@@ -6133,10 +6157,21 @@
       "exporter": "absent",
       "game_source": "base/stats.json: charm_x%_of_chaos_damage_from_hits_prevented_recouped_as_life_and_mana_during_effect; overlay/uniques.json: Forsaken Bangle",
       "pattern": "(\\d+(?:\\.\\d+)?)% of chaos damage you prevent when hit recouped as life and mana(?: during effect)?",
-      "mods": [],
+      "mods": [
+        {
+          "name": "ChaosDamagePreventedLifeRecoup",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "ChaosDamagePreventedManaRecoup",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
       "verified": false,
-      "batch": "unmodelled",
-      "source_note": "Prevented Chaos damage and Mana prevented-damage recoup not modelled. The prevented-damage recoup (survivability::life_recoup_terms) counts only Physical damage that Armour and additional physical damage reduction remove, and recoups it as Life; there is no definition of the Chaos damage a hit 'prevents' (resistance is not named by the game text) and no Mana prevented-damage recoup. The generic path read the line as ChaosDamage BASE 50 with a UsingFlask condition, which is not the stat's meaning.",
+      "batch": "S2",
+      "source_note": "Assumption, no in-game test: the Chaos damage a hit 'prevents' is the Chaos damage entering the Chaos mitigation stage (after taken-as shifts) minus what leaves it, so Chaos resistance and Chaos damage reduction count, negative resistance prevents nothing, and flat damage taken and later damage-taken multipliers do not. Blocked/deflected hits contribute nothing. The same percentage is recouped as Life and as Mana, each over its own recoup duration at its own recovery rate. 'During effect' is the charm's enabled-item convention (active charm within the charm limit), not an uptime model. See maintainer guide and defence::prevented_recoup.",
       "examples": [
         "50% of Chaos damage you prevent when Hit Recouped as Life and Mana during effect",
         "50% of Chaos damage you prevent when Hit Recouped as Life and Mana"

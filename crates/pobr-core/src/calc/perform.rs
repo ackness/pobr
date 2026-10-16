@@ -272,6 +272,14 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     stun.enabled &= !no_trigger_events(env);
     env.player.output.heavy_stun_buildup_avg = stun.value();
     env.heavy_stun_terms = Some(stun);
+    let mut freeze = super::ailment::freeze_buildup_terms(
+        env,
+        stun_damage,
+        env.player.output.freeze_buildup_pct,
+    );
+    freeze.enabled &= !no_trigger_events(env);
+    env.player.output.freeze_buildup_avg = freeze.value();
+    env.freeze_buildup_terms = Some(freeze);
     let mut pin = super::ailment::pin_terms(env, stun_damage, &output.crit_avg);
     pin.enabled &= !no_trigger_events(env);
     env.player.output.pin_buildup_avg = pin.value();
@@ -662,6 +670,19 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.max_chaos_resistance = chaos_resistance.max;
     env.player.output.chaos_resistance_over_cap = chaos_resistance.over_cap;
     env.player.output.chaos_resistance_total = chaos_resistance.total;
+    env.player.output.resistance_over_time = {
+        let input = player_input(env);
+        [
+            ("Fire", input.base_fire_resistance, true),
+            ("Cold", input.base_cold_resistance, true),
+            ("Lightning", input.base_lightning_resistance, true),
+            ("Chaos", 0.0, false),
+        ]
+        .map(|(element, base, elemental)| {
+            super::offence::resolve_resistance_over_time(db, cfg, base, element, elemental)
+                .final_value
+        })
+    };
     // Accuracy rating as the main-hand pass reads it (the hit chance input).
     env.player.output.accuracy = {
         let input = player_input(env);
@@ -906,29 +927,29 @@ fn fill_mechanics(env: &mut Env) {
     let recoupable_by_type = super::ehp::fill_ehp_pob2(env, &keystones, &resistances);
     let recoupable_total: f64 = recoupable_by_type.iter().sum();
 
-    // Both resources use damage accumulated in the mitigated EHP loop. Life
-    // additionally recoups Physical damage prevented by the reduction stage;
-    // ES retains its per-type damage-taken percentages. Shared terms also
-    // supply the derived details.
-    let (life_recoup_rate, es_recoup_rate) = {
+    // Life, Mana and ES use damage accumulated in the mitigated EHP loop. Life
+    // additionally recoups Physical and Chaos damage prevented by mitigation,
+    // Mana recoups Chaos damage prevented, and ES retains its per-type
+    // damage-taken percentages. Shared terms also supply the derived details.
+    let (life_recoup_rate, mana_recoup_rate, es_recoup_rate) = {
         let db = &env.player.mod_db;
         let cfg = &env.cfg;
+        let prevented = env
+            .player
+            .output
+            .ehp_terms
+            .as_ref()
+            .map_or_else(Default::default, |terms| terms.prevented());
         (
-            super::survivability::life_recoup_terms(
-                db,
-                cfg,
-                recoupable_total,
-                env.player
-                    .output
-                    .ehp_terms
-                    .as_ref()
-                    .map_or(0.0, |terms| terms.physical_prevented),
-            )
-            .rate_per_second,
+            super::survivability::life_recoup_terms(db, cfg, recoupable_total, prevented)
+                .rate_per_second,
+            super::survivability::mana_recoup_terms(db, cfg, recoupable_total, prevented)
+                .rate_per_second,
             super::survivability::calc_es_recoup_rate_by_type(db, cfg, recoupable_by_type),
         )
     };
     env.player.output.life_recoup_rate = life_recoup_rate;
+    env.player.output.mana_recoup_rate = mana_recoup_rate;
     env.player.output.es_recoup_rate = es_recoup_rate;
 }
 
@@ -2070,10 +2091,20 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
     let cold_hit = cross_type_source_hit(AilmentType::Chill, components, player, cfg);
     let lightning_hit = cross_type_source_hit(AilmentType::Shock, components, player, cfg);
 
+    let mut non_damaging_terms = Vec::new();
     if cold_hit > 0.0 {
         // Lane B: chill's action-speed reduction (%). 0 (doesn't apply) when the magnitude is below the minimum threshold.
-        let (chill, _) = chill_traced(cold_hit, threshold, player, cfg, &mut trace);
+        let (chill, _) = chill_traced(cold_hit, threshold, player, enemy, cfg, &mut trace);
         env.player.output.chill_effect = chill;
+        // The duration and magnitude modifier of a Chill this hit can inflict.
+        if !player.flag(cfg, "CannotChill")
+            && let Some(terms) =
+                super::ailment::non_damaging_ailment_terms(AilmentType::Chill, player, enemy, cfg)
+        {
+            env.player.output.chill_duration = terms.duration();
+            env.player.output.chill_effect_mod = terms.effect_mod();
+            non_damaging_terms.push((AilmentType::Chill, terms));
+        }
         // Lane B: freeze poise buildup (% per hit).
         let (freeze_buildup, _) = freeze_poise_buildup_traced(poise_thr, player, cfg, &mut trace);
         env.player.output.freeze_buildup_pct = freeze_buildup;
@@ -2087,12 +2118,20 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
             shock_traced(&source, player, enemy, cfg, threshold, &mut trace);
         env.player.output.shock_chance = chance;
         env.player.output.shock_effect = magnitude;
+        if chance > 0.0
+            && let Some(terms) =
+                super::ailment::non_damaging_ailment_terms(AilmentType::Shock, player, enemy, cfg)
+        {
+            env.player.output.shock_duration = terms.duration();
+            non_damaging_terms.push((AilmentType::Shock, terms));
+        }
         // Lane B: electrocute poise buildup (% per hit).
         let (electrocute_buildup, _) =
             electrocute_poise_buildup_traced(poise_thr, player, cfg, &mut trace);
         env.player.output.electrocute_buildup_pct = electrocute_buildup;
     }
     env.player.output.ailment_terms = ailment_terms;
+    env.non_damaging_terms = non_damaging_terms;
 }
 
 /// Lane C: applies `AilmentEffect` (MORE) × `rateMod` (Faster/Slower) to a damaging ailment's

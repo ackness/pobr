@@ -162,9 +162,16 @@ fn catalog_entry_counts_locked() {
         // Global{Gem,Item,Weapon}AttributeRequirements, MaximumChill, MaximumShock,
         // CurrentChill and CurrentShock (+19).
         // PinBuildupAvg (+1).
+        // Defensive damage over time: {Fire,Cold,Lightning,Chaos}ResistOverTime,
+        // {Physical,Fire,Cold,Lightning,Chaos}{TakenDotMult,TotalPool,DotEHP}
+        // and EHPSurvivalTime (+20).
+        // ManaRecoupRate (+1), the Chaos prevented-damage recoup as Mana, and
+        // Flask{1,2}{Mana,Life}RemovedOnUse (+4), the other pool's per-use removal.
+        // ShockDuration, ChillDuration, ChillEffectMod, FreezeBuildupAvg,
+        // SelfFreezeEffect, SelfPoisonEffect and SelfBlindDuration (+7).
         // {Life,Mana}CancellableReservation, FullLifePercentage, DurationMod and
         // StrikeTargets (+5).
-        510,
+        542,
         "a change in Computed entry count needs explicit review"
     );
 }
@@ -460,6 +467,7 @@ fn catalog_defines_wave2_charges_leech_recoup_stats() {
 
     // Recoup
     assert!(ids.contains(&"LifeRecoupRate"), "missing LifeRecoupRate");
+    assert!(ids.contains(&"ManaRecoupRate"), "missing ManaRecoupRate");
     assert!(ids.contains(&"EsRecoupRate"), "missing EsRecoupRate");
 }
 
@@ -571,6 +579,7 @@ fn extract_wave2_charges_leech_recoup_from_output_table() {
         mana_leech_rate: 100.0,
         es_leech_rate: 200.0,
         life_recoup_rate: 50.0,
+        mana_recoup_rate: 40.0,
         es_recoup_rate: 30.0,
         ..OutputTable::default()
     };
@@ -593,6 +602,7 @@ fn extract_wave2_charges_leech_recoup_from_output_table() {
     assert_eq!(lookup("ManaLeechRate"), Some(100.0));
     assert_eq!(lookup("EsLeechRate"), Some(200.0));
     assert_eq!(lookup("LifeRecoupRate"), Some(50.0));
+    assert_eq!(lookup("ManaRecoupRate"), Some(40.0));
     assert_eq!(lookup("EsRecoupRate"), Some(30.0));
 }
 
@@ -748,13 +758,6 @@ fn ehp_catalog_fields_have_neutral_defaults_and_preserve_units() {
                 },
             ));
         }
-        for missing in ["TotalPool", "DotEHP", "TakenDotMult"] {
-            assert!(
-                !catalog
-                    .iter()
-                    .any(|d| d.id.as_str() == format!("{kind}{missing}"))
-            );
-        }
     }
     for id in [
         "FireDamageReduction",
@@ -769,7 +772,8 @@ fn ehp_catalog_fields_have_neutral_defaults_and_preserve_units() {
     for id in ["totalEnemyDamage", "totalTakenDamage", "totalTakenHit"] {
         ids.push((id.into(), StatValueType::Number));
     }
-    assert!(!catalog.iter().any(|d| d.id.as_str() == "EHPSurvivalTime"));
+    // TotalPool, DotEHP, TakenDotMult and EHPSurvivalTime are checked in
+    // `further_ehp_catalog_fields_have_units_and_neutral_defaults`.
     for (id, unit) in ids {
         let def = catalog.iter().find(|d| d.id.as_str() == id).unwrap();
         assert_eq!(def.pob_key.as_deref(), Some(id.as_str()));
@@ -792,6 +796,11 @@ fn further_ehp_catalog_fields_have_units_and_neutral_defaults() {
             "LifeHitPool".to_string(),
             StatValueType::Number,
             DisplayStatCategory::Resource,
+        ),
+        (
+            "EHPSurvivalTime".to_string(),
+            StatValueType::TimeSeconds,
+            DisplayStatCategory::Mitigation,
         ),
     ];
     for kind in ["Physical", "Fire", "Cold", "Lightning", "Chaos"] {
@@ -861,13 +870,37 @@ fn further_ehp_catalog_fields_have_units_and_neutral_defaults() {
                 DisplayStatCategory::Resistance,
             ));
         }
-        // No reflect model and no damage-over-time-only resistance.
-        for missing in ["TakenReflect", "ResistOverTime"] {
-            assert!(
-                !catalog
-                    .iter()
-                    .any(|d| d.id.as_str() == format!("{kind}{missing}"))
-            );
+        // No reflect model.
+        assert!(
+            !catalog
+                .iter()
+                .any(|d| d.id.as_str() == format!("{kind}TakenReflect"))
+        );
+        for (suffix, unit, category) in [
+            (
+                "TakenDotMult",
+                StatValueType::Number,
+                DisplayStatCategory::Mitigation,
+            ),
+            (
+                "TotalPool",
+                StatValueType::Number,
+                DisplayStatCategory::Resource,
+            ),
+            (
+                "DotEHP",
+                StatValueType::Number,
+                DisplayStatCategory::Mitigation,
+            ),
+        ] {
+            ids.push((format!("{kind}{suffix}"), unit, category));
+        }
+        if kind != "Physical" {
+            ids.push((
+                format!("{kind}ResistOverTime"),
+                StatValueType::Percent,
+                DisplayStatCategory::Resistance,
+            ));
         }
     }
     for (id, unit, category) in ids {

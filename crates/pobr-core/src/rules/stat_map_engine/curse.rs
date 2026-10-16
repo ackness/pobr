@@ -36,8 +36,8 @@ fn is_curse_effect(element: &StatMapMod) -> bool {
 ///   elements -- pobr's enemy-side resistance aggregation only reads
 ///   `<Type>Resist`, and vendor's `enemyDB:Sum(.. type.."Resist", "ElementalResist")`
 ///   collects both names, so the expansion is equivalent). Unknown names
-///   (pobr has no enemy-side consumer yet, e.g. `TemporalChainsActionSpeed` /
-///   `FreezeBuildup`) make the whole entry
+///   (pobr has no enemy-side consumer yet, e.g. `TemporalChainsActionSpeed`)
+///   make the whole entry
 ///   [`UnsupportedReason::UnknownModName`] (skip rather than miscompute; the
 ///   caller records the visibility report in Compare).
 /// - The `GlobalEffect` tag itself is stripped (routing metadata, not part
@@ -247,6 +247,10 @@ fn translate_curse_mod_name(name: &str) -> Result<Vec<&'static str>, Unsupported
         "Damage" => Ok(vec!["Damage"]),
         "SelfCritMultiplier" => Ok(vec!["SelfCritMultiplier"]),
         "BuffExpireFaster" => Ok(vec!["BuffExpireFaster"]),
+        // Freezing Mark's `freezing_mark_hit_damage_freeze_multiplier_+%_final`
+        // (more Freeze Buildup against the marked target), read by the
+        // enemy side of the Freeze buildup terms.
+        "FreezeBuildup" => Ok(vec!["FreezeBuildup"]),
         other => Err(UnsupportedReason::UnknownModName(other.to_string())),
     }
 }

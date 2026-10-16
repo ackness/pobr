@@ -134,8 +134,8 @@
     },
     {
       "build": "warrior-smith-of-kitava-shield-wall-fb03d7dce08e",
-      "stats": ["ChaosMaxHit", "TotalEHP"],
-      "reason": "The imported boots explicitly grant +11% Chaos Resistance from Soul Core of Tacati, plus +53% on the item: 64%, so 386 Chaos damage becomes 138.96. The current socketable catalog and pinned PoB2 substitute +13%, giving 66% resistance and 131.24 taken. Preserve the imported item's text. Its 2162 Runic Ward, including The Brass Dome's local +991 Ward, gives ChaosMaxHit 8001 and TotalEHP 35908.717951478; the older exporter references are 2468 and 11096.445514375 (docs/maintainer-guide.md, runes and Runic Ward; the build's code.txt item 16 and item 18; base/stats.json local_ward and overlay/runes.json Soul Core of Tacati)."
+      "stats": ["ChaosMaxHit", "TotalEHP", "ChaosTakenDotMult", "ChaosDotEHP"],
+      "reason": "The imported boots explicitly grant +11% Chaos Resistance from Soul Core of Tacati, plus +53% on the item: 64%, so 386 Chaos damage becomes 138.96 (and Chaos damage over time is taken at 0.36, not 0.34). The current socketable catalog and pinned PoB2 substitute +13%, giving 66% resistance and 131.24 taken. Preserve the imported item's text. Its 2162 Runic Ward, including The Brass Dome's local +991 Ward, gives ChaosMaxHit 8001 and TotalEHP 35908.717951478; the older exporter references are 2468 and 11096.445514375 (docs/maintainer-guide.md, runes and Runic Ward; the build's code.txt item 16 and item 18; base/stats.json local_ward and overlay/runes.json Soul Core of Tacati)."
     },
     {
       "build": "mercenary-gemling-legionnaire-twister-682f26ed1957",

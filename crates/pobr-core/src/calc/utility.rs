@@ -52,6 +52,11 @@ pub const FLASK_STATS: &[&str] = &[
     "EnergyShieldRecovery",
     "EnergyShieldInstantRecovery",
     "EnergyShieldRecoveryPerSecond",
+    // The other resource a use takes away (game stats
+    // local_flask_removes_%_of_life_recovery_from_mana_on_use and
+    // local_flask_removes_%_of_mana_recovery_from_life_on_use).
+    "ManaRemovedOnUse",
+    "LifeRemovedOnUse",
 ];
 
 pub const CHARM_STATS: &[&str] = &["LifeRecoveryOnUse", "ManaRecoveryOnUse"];
@@ -79,7 +84,11 @@ pub fn local_name(slot: &str, name: &str) -> String {
 pub fn is_local_property(name: &str, text: &str) -> bool {
     if matches!(
         name,
-        "UtilityLifeOnUse" | "UtilityManaOnUse" | "UtilityCannotBeUsed"
+        "UtilityLifeOnUse"
+            | "UtilityManaOnUse"
+            | "UtilityCannotBeUsed"
+            | "UtilityLifeRecoveryRemovedFromMana"
+            | "UtilityManaRecoveryRemovedFromLife"
     ) {
         return true;
     }
@@ -347,6 +356,40 @@ pub fn calculate(env: &mut Env) {
                 ("UtilityDurationMod", duration_global),
                 ("UtilityResourceRecoveryMod", resource_rate),
             ],
+        );
+        // "Removes N% of Life Recovered from Mana when used" takes that share
+        // of this use's total recovery from the other pool; the figure is per
+        // use and assumes no use frequency or pool-overflow model.
+        let removal_name = if resource == "Life" {
+            "UtilityLifeRecoveryRemovedFromMana"
+        } else {
+            "UtilityManaRecoveryRemovedFromLife"
+        };
+        let removed_percent = sum(db, cfg, ModType::Base, &local(removal_name)).max(0.0);
+        let removed = (instant + gradual) * removed_percent / 100.0;
+        let (removed_field, other_field) = if resource == "Life" {
+            ("ManaRemovedOnUse", "LifeRemovedOnUse")
+        } else {
+            ("LifeRemovedOnUse", "ManaRemovedOnUse")
+        };
+        write(
+            removed_field,
+            removed,
+            if removed_percent > 0.0 {
+                "UtilityRecovery * UtilityRemovedPercent / 100"
+            } else {
+                "0 * UtilityRecovery"
+            },
+            &[
+                ("UtilityRecovery", instant + gradual),
+                ("UtilityRemovedPercent", removed_percent),
+            ],
+        );
+        write(
+            other_field,
+            0.0,
+            "0 * UtilityRecovery",
+            &[("UtilityRecovery", instant + gradual)],
         );
         write(
             "InstantRecovery",

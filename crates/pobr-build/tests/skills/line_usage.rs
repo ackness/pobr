@@ -1455,9 +1455,11 @@ Implicits: 0
 /// `local_flask_amount_to_recover_+%_when_on_low_mana`) is a MORE on the flask's own recovery
 /// gated on the `LowMana` condition: it is `inactive` until `conditionLowMana` is set, then
 /// `applied`, and the flask's recovery rises by exactly 88%. "Removes 15% of Life Recovered
-/// from Mana when used" and the Forsaken Bangle line "50% of Chaos damage you prevent when Hit
-/// Recouped as Life and Mana during effect" are recognised and stay `unmodelled`: the per-use
-/// resource cost and a Chaos/Mana prevented-damage recoup have no model.
+/// from Mana when used" is the local utility property behind `Flask1ManaRemovedOnUse`
+/// (15% of the Life flask's total recovery, per use), and the Forsaken Bangle line "50% of
+/// Chaos damage you prevent when Hit Recouped as Life and Mana during effect" feeds the
+/// Chaos prevented-damage recoup of Life and Mana (`LifeRecoupRate` / `ManaRecoupRate`); both
+/// are `applied`.
 #[test]
 fn low_pool_flask_recovery_applies_under_the_matching_condition() {
     let data = data();
@@ -1484,7 +1486,12 @@ Amethyst Charm
 Implicits: 1
 Used when you take Chaos damage from a Hit
 {chaos_recoup}
-</Item><ItemSet id="1"><Slot name="Flask 1" itemId="1" active="true"/><Slot name="Flask 2" itemId="2" active="true"/><Slot name="Charm 1" itemId="3" active="true"/></ItemSet></Items>
+</Item><Item id="4">Rarity: RARE
+Test Belt
+Heavy Belt
+Implicits: 1
+Has 1 Charm Slot
+</Item><ItemSet id="1"><Slot name="Flask 1" itemId="1" active="true"/><Slot name="Flask 2" itemId="2" active="true"/><Slot name="Charm 1" itemId="3" active="true"/><Slot name="Belt" itemId="4"/></ItemSet></Items>
 <Config>{config}</Config>
 </PathOfBuilding2>"#
         ))
@@ -1496,11 +1503,12 @@ Used when you take Chaos damage from a Hit
         let diagnosis = diagnose(&build, &data, &options).unwrap();
         let ledger = pobr_build::usage::line_usage(&diagnosis, &build, &data);
         let session = pobr_build::calculate_with_data_session(&build, &data, &options).unwrap();
-        let recovery = session.output().utility_stats["Flask2Recovery"];
-        (diagnosis, ledger, recovery)
+        let stats = session.output().utility_stats.clone();
+        (diagnosis, ledger, stats)
     };
 
-    let (diagnosis, ledger, off_recovery) = run("");
+    let (diagnosis, ledger, off_stats) = run("");
+    let off_recovery = off_stats["Flask2Recovery"];
     for text in [low_mana, removes, chaos_recoup] {
         assert!(
             !diagnosis.unparsed_lines.iter().any(|line| line == text),
@@ -1519,27 +1527,34 @@ Used when you take Chaos damage from a Hit
             .is_some_and(|reason| reason.contains("LowMana")),
         "{row:?}"
     );
-    for (source, text, rule) in [
-        (
-            "flask.flask1",
-            removes,
-            "flask_removes_recovery_from_other_resource_on_use",
-        ),
-        (
-            "flask.charm1",
-            chaos_recoup,
-            "charm_chaos_damage_prevented_recouped_as_life_and_mana",
-        ),
-    ] {
-        let row = line(&ledger, source, text);
-        assert_eq!(row.status, LineStatus::Unmodelled, "{row:?}");
-        assert!(row.modifiers.is_empty(), "{row:?}");
-        assert!(row.reason.as_deref().unwrap().contains(rule), "{row:?}");
-    }
+    let row = line(&ledger, "flask.flask1", removes);
+    assert_eq!(row.status, LineStatus::Applied, "{row:?}");
+    assert_eq!(row.modifiers.len(), 1, "{row:?}");
+    let row = line(&ledger, "flask.charm1", chaos_recoup);
+    assert_eq!(row.status, LineStatus::Applied, "{row:?}");
+    assert_eq!(row.modifiers.len(), 2, "{row:?}");
+    assert!(
+        row.modifiers
+            .iter()
+            .all(|modifier| modifier.status == ModifierStatus::Applied),
+        "{row:?}"
+    );
+    // The Life flask line removes exactly 15% of that flask's total recovery from Mana per use.
+    let stats = &off_stats;
+    let life_flask_recovery = stats["Flask1Recovery"];
+    assert!(life_flask_recovery > 0.0, "{life_flask_recovery}");
+    assert!(
+        (stats["Flask1ManaRemovedOnUse"] - 0.15 * life_flask_recovery).abs() < 1e-9,
+        "{stats:?}"
+    );
+    assert_eq!(stats["Flask1LifeRemovedOnUse"], 0.0);
+    assert_eq!(stats["Flask2ManaRemovedOnUse"], 0.0);
+    assert_eq!(stats["Flask2LifeRemovedOnUse"], 0.0);
 
     // With the Low Mana state configured the same line is applied and the flask recovers 88%
     // more: the Ultimate Mana Flask's recovery is multiplied by exactly 1.88.
-    let (_, ledger, on_recovery) = run(r#"<Input name="conditionLowMana" boolean="true"/>"#);
+    let (_, ledger, on_stats) = run(r#"<Input name="conditionLowMana" boolean="true"/>"#);
+    let on_recovery = on_stats["Flask2Recovery"];
     let row = line(&ledger, "flask.flask2", low_mana);
     assert_eq!(row.status, LineStatus::Applied, "{row:?}");
     assert!(off_recovery > 0.0, "{off_recovery}");
