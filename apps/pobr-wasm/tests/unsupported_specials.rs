@@ -125,3 +125,46 @@ fn the_ledger_names_the_charm_holding_each_line() {
     assert_eq!(guard["holder"], "Golden Charm");
     assert_eq!(line("Immune to Ignite")["status"], "applied");
 }
+
+/// Gated readers are inactive, with machine-readable gate metadata; activating
+/// the config must reach the real reader and omit that inactive-only field.
+#[test]
+fn the_ledger_serializes_registered_reader_gates() {
+    let dir = repo_data_root().join(pobr_gamedata::data_version());
+    pobr_wasm::init_data_from_dir(dir.to_str().unwrap()).unwrap();
+    for active in [false, true] {
+        let request = json!({
+            "character": { "level": 80, "class_name": "Witch" },
+            "allocated_nodes": [], "socket_groups": [],
+            "items": [{ "slot": "amulet", "text": "Rarity: RARE\nTest\nGold Amulet\nImplicits: 0\nArchon Buffs also grant 10% increased Movement Speed\n20% faster start of Energy Shield Recharge while affected by an Archon Buff" }],
+            "config_inputs": { "conditionAffectedByArchon": active },
+        });
+        let out = pobr_wasm::line_usage_json(&request.to_string()).unwrap();
+        let response: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(
+            response["usage"]["condition_configs"]["AffectedByArchon"],
+            "conditionAffectedByArchon"
+        );
+        let modifier = response["usage"]["lines"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|line| line["modifiers"].as_array().unwrap())
+            .find(|modifier| modifier["name"] == "ArchonMovementSpeed")
+            .unwrap();
+        assert_eq!(
+            modifier["status"],
+            if active { "applied" } else { "inactive" }
+        );
+        if active {
+            assert!(modifier.get("read_gate").is_none());
+        } else {
+            assert_eq!(
+                modifier["read_gate"],
+                json!({
+                    "state": "Affected by an Archon buff", "config_option": "conditionAffectedByArchon"
+                })
+            );
+        }
+    }
+}
