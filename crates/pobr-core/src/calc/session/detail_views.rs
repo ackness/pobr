@@ -239,6 +239,7 @@ pub const DERIVED_STATS: &[&str] = &[
     "ManaLeechRate",
     "EsLeechRate",
     "LifeRecoupRate",
+    "ManaRecoupRate",
     "EsRecoupRate",
     "BleedActiveStacks",
     "PoisonActiveStacks",
@@ -967,16 +968,25 @@ impl CalculationSession {
             }
             "LifeRecoupRate" => {
                 use crate::calc::survivability::life_recoup_terms;
-                let t = life_recoup_terms(
-                    db,
-                    cfg,
-                    self.ehp_terms()?.recoupable_total,
-                    self.ehp_terms()?.physical_prevented,
-                );
-                ("round((RecoupableDamage * RecoupPercent + PhysicalDamagePrevented * PreventedRecoupPercent) / 100 / RecoupDuration * RecoupRecovery, 9)".into(), vec![
+                let terms = self.ehp_terms()?;
+                let t = life_recoup_terms(db, cfg, terms.recoupable_total, terms.prevented());
+                ("round((RecoupableDamage * RecoupPercent + PhysicalDamagePrevented * PreventedRecoupPercent + ChaosDamagePrevented * ChaosPreventedRecoupPercent) / 100 / RecoupDuration * RecoupRecovery, 9)".into(), vec![
                         ("RecoupableDamage".into(), t.damage), ("RecoupPercent".into(), t.percent),
                         ("PhysicalDamagePrevented".into(), t.physical_prevented),
-                        ("PreventedRecoupPercent".into(), t.prevented_percent),
+                        ("PreventedRecoupPercent".into(), t.physical_prevented_percent),
+                        ("ChaosDamagePrevented".into(), t.chaos_prevented),
+                        ("ChaosPreventedRecoupPercent".into(), t.chaos_prevented_percent),
+                        ("RecoupDuration".into(), t.duration), ("RecoupRecovery".into(), t.recovery),
+                    ])
+            }
+            "ManaRecoupRate" => {
+                use crate::calc::survivability::mana_recoup_terms;
+                let terms = self.ehp_terms()?;
+                let t = mana_recoup_terms(db, cfg, terms.recoupable_total, terms.prevented());
+                ("round((RecoupableDamage * RecoupPercent + ChaosDamagePrevented * ChaosPreventedRecoupPercent) / 100 / RecoupDuration * RecoupRecovery, 9)".into(), vec![
+                        ("RecoupableDamage".into(), t.damage), ("RecoupPercent".into(), t.percent),
+                        ("ChaosDamagePrevented".into(), t.chaos_prevented),
+                        ("ChaosPreventedRecoupPercent".into(), t.chaos_prevented_percent),
                         ("RecoupDuration".into(), t.duration), ("RecoupRecovery".into(), t.recovery),
                     ])
             }

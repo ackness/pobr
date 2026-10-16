@@ -82,6 +82,7 @@ LifeLeechRate = "Life Leeched per Second"
 ManaLeechRate = "Mana Leeched per Second"
 EsLeechRate = "Energy Shield Leeched per Second"
 LifeRecoupRate = "Life Recouped per Second"
+ManaRecoupRate = "Mana Recouped per Second"
 EsRecoupRate = "Energy Shield Recouped per Second"
 # --- Defence / Mitigation ---
 Armour = "Armour"

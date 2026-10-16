@@ -346,6 +346,7 @@ pub struct OutputTable {
     pub es_leech_rate: f64,
     /// Recoup return rate (per second; depends on the damage_taken estimate baseline).
     pub life_recoup_rate: f64,
+    pub mana_recoup_rate: f64,
     pub es_recoup_rate: f64,
 
     // Ailment extensions (Lane B: chill / freeze·shock buildup / bleed·poison stacks; written by perform's fill_ailments)
@@ -844,6 +845,7 @@ impl Default for OutputTable {
             mana_leech_rate: 0.0,
             es_leech_rate: 0.0,
             life_recoup_rate: 0.0,
+            mana_recoup_rate: 0.0,
             es_recoup_rate: 0.0,
             // Lane B: ailment extensions default to 0 (not applied without a matching hit/mod).
             chill_effect: 0.0,

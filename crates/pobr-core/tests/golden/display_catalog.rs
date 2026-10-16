@@ -165,7 +165,9 @@ fn catalog_entry_counts_locked() {
         // Defensive damage over time: {Fire,Cold,Lightning,Chaos}ResistOverTime,
         // {Physical,Fire,Cold,Lightning,Chaos}{TakenDotMult,TotalPool,DotEHP}
         // and EHPSurvivalTime (+20).
-        525,
+        // ManaRecoupRate (+1), the Chaos prevented-damage recoup as Mana, and
+        // Flask{1,2}{Mana,Life}RemovedOnUse (+4), the other pool's per-use removal.
+        530,
         "a change in Computed entry count needs explicit review"
     );
 }
@@ -461,6 +463,7 @@ fn catalog_defines_wave2_charges_leech_recoup_stats() {
 
     // Recoup
     assert!(ids.contains(&"LifeRecoupRate"), "missing LifeRecoupRate");
+    assert!(ids.contains(&"ManaRecoupRate"), "missing ManaRecoupRate");
     assert!(ids.contains(&"EsRecoupRate"), "missing EsRecoupRate");
 }
 
@@ -572,6 +575,7 @@ fn extract_wave2_charges_leech_recoup_from_output_table() {
         mana_leech_rate: 100.0,
         es_leech_rate: 200.0,
         life_recoup_rate: 50.0,
+        mana_recoup_rate: 40.0,
         es_recoup_rate: 30.0,
         ..OutputTable::default()
     };
@@ -594,6 +598,7 @@ fn extract_wave2_charges_leech_recoup_from_output_table() {
     assert_eq!(lookup("ManaLeechRate"), Some(100.0));
     assert_eq!(lookup("EsLeechRate"), Some(200.0));
     assert_eq!(lookup("LifeRecoupRate"), Some(50.0));
+    assert_eq!(lookup("ManaRecoupRate"), Some(40.0));
     assert_eq!(lookup("EsRecoupRate"), Some(30.0));
 }
 
