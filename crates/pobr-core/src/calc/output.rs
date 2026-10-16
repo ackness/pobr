@@ -27,6 +27,8 @@ pub struct FullDpsOutput {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutputTable {
+    /// Inputs and resolved terms retained by the EHP stage for display and details.
+    pub ehp_terms: Option<super::EhpTerms>,
     /// Threshold, recovery per kill, and selected-hit debuff views.
     pub ailment_threshold: f64,
     pub life_on_kill: f64,
@@ -553,6 +555,7 @@ pub struct MinionOutput {
 impl Default for OutputTable {
     fn default() -> Self {
         Self {
+            ehp_terms: None,
             ailment_threshold: 0.0,
             life_on_kill: 0.0,
             mana_on_kill: 0.0,
