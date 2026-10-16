@@ -1306,6 +1306,68 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Percent,
             "FullyBrokenArmourEffect",
         ),
+        // On-hit effect views (`calc::effect_views`): reported only; the
+        // configured enemy state still decides each effect.
+        computed(
+            "ArmourBreakPerHit",
+            Cat::Ailment,
+            Vt::Number,
+            "ArmourBreakPerHit",
+        ),
+        computed(
+            "HitsToFullyBreakArmour",
+            Cat::Ailment,
+            Vt::Number,
+            "HitsToFullyBreakArmour",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "TimeToFullyBreakArmour",
+            Cat::Ailment,
+            Vt::TimeSeconds,
+            "TimeToFullyBreakArmour",
+        )
+        .with_higher_is_better(Some(false)),
+        computed("DazeUptime", Cat::Ailment, Vt::Percent, "DazeUptime"),
+        computed("MaimUptime", Cat::Ailment, Vt::Percent, "MaimUptime"),
+        computed("BlindUptime", Cat::Ailment, Vt::Percent, "BlindUptime"),
+        computed(
+            "MaximumFireInfusions",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "MaximumFireInfusions",
+        ),
+        computed(
+            "MaximumColdInfusions",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "MaximumColdInfusions",
+        ),
+        computed(
+            "MaximumLightningInfusions",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "MaximumLightningInfusions",
+        ),
+        computed(
+            "SurroundedRadiusMetres",
+            Cat::Defence,
+            Vt::Number,
+            "SurroundedRadiusMetres",
+        ),
+        computed(
+            "CurseActivationDelay",
+            Cat::SkillMechanics,
+            Vt::TimeSeconds,
+            "CurseActivationDelay",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "RemnantsPerUse",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "RemnantsPerUse",
+        ),
         // Ailment extensions (Wave 2 / Lane B)
         computed("ChillEffect", Cat::Ailment, Vt::Percent, "ChillEffect"),
         computed(
@@ -2537,6 +2599,18 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "HeavyStunBuildupAvg" => output.heavy_stun_buildup_avg,
         "PinBuildupAvg" => output.pin_buildup_avg,
         "FullyBrokenArmourEffect" => output.fully_broken_armour_effect,
+        "ArmourBreakPerHit" => output.effect_terms.armour_break.per_hit(),
+        "HitsToFullyBreakArmour" => output.effect_terms.armour_break.hits_to_fully_break(),
+        "TimeToFullyBreakArmour" => output.effect_terms.armour_break.time_to_fully_break(),
+        "DazeUptime" => output.effect_terms.uptime[0].uptime(),
+        "MaimUptime" => output.effect_terms.uptime[1].uptime(),
+        "BlindUptime" => output.effect_terms.uptime[2].uptime(),
+        "MaximumFireInfusions" => output.effect_terms.maximum_infusions(0),
+        "MaximumColdInfusions" => output.effect_terms.maximum_infusions(1),
+        "MaximumLightningInfusions" => output.effect_terms.maximum_infusions(2),
+        "SurroundedRadiusMetres" => output.effect_terms.surrounded_radius_metres(),
+        "CurseActivationDelay" => output.effect_terms.curse_activation_delay(),
+        "RemnantsPerUse" => output.effect_terms.remnants_per_use(),
         "FreezeBuildupPct" => output.freeze_buildup_pct,
         "ElectrocuteBuildupPct" => output.electrocute_buildup_pct,
         "BleedStackedDPS" => output.bleed_stacked_dps,

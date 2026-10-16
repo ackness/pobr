@@ -15,6 +15,7 @@ pub mod crit_pass;
 pub mod damage;
 pub mod defence;
 pub mod defence_panels;
+pub mod effect_views;
 pub mod ehp;
 pub mod energy;
 pub mod env;

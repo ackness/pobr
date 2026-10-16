@@ -232,7 +232,7 @@ fn modifier(
 pub(super) fn tag(tag: &TemplateTagDef, count: usize) -> Result<(), String> {
     let (required, allowed): (&[&str], &[&str]) = match tag.tag_type.as_str() {
         "Condition" => (&["var"], &["var", "neg"]),
-        "ActorCondition" => (&["var", "actor"], &["var", "neg", "actor"]),
+        "ActorCondition" => (&["actor"], &["var", "varList", "neg", "actor"]),
         "SkillType" => (&[], &["skillType", "skillTypeList", "neg"]),
         "DamageType" => (&["damageType"], &["damageType"]),
         "Multiplier" => (&["var"], &["var", "div", "limit"]),
@@ -278,7 +278,7 @@ pub(super) fn tag(tag: &TemplateTagDef, count: usize) -> Result<(), String> {
                     return Err("limit must be nonnegative".into());
                 }
             }
-            "skillNameList" | "skillTypeList" | "ramp" => {
+            "skillNameList" | "skillTypeList" | "varList" | "ramp" => {
                 let TemplateScalarDef::TextList(items) = value else {
                     return Err(format!("{field} requires a text list"));
                 };
@@ -317,6 +317,11 @@ pub(super) fn tag(tag: &TemplateTagDef, count: usize) -> Result<(), String> {
         && tag.fields.contains_key("skillType") == tag.fields.contains_key("skillTypeList")
     {
         return Err("specify exactly one of skillType and skillTypeList".into());
+    }
+    if tag.tag_type == "ActorCondition"
+        && tag.fields.contains_key("var") == tag.fields.contains_key("varList")
+    {
+        return Err("specify exactly one of var and varList".into());
     }
     compile_tag(tag)
         .map(|_| ())

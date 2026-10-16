@@ -359,6 +359,9 @@ pub struct OutputTable {
     /// Average enemy Pin buildup (% of the Pin threshold per successful hit);
     /// only damage that a Pin source enables counts.
     pub pin_buildup_avg: f64,
+    /// Per-hit Armour Break, debuff uptimes, Infusion maximums, Surrounded
+    /// radius, curse activation delay and remnants per use (`effect_views`).
+    pub effect_terms: super::effect_views::EffectTerms,
     /// Shock buildup (% per hit; 0 = not accumulating).
     pub electrocute_buildup_pct: f64,
     /// Bleed/poison/ignite multi-stack DPS and active stack count (0 = no
@@ -852,6 +855,7 @@ impl Default for OutputTable {
             freeze_buildup_pct: 0.0,
             heavy_stun_buildup_avg: 0.0,
             pin_buildup_avg: 0.0,
+            effect_terms: Default::default(),
             electrocute_buildup_pct: 0.0,
             bleed_stacked_dps: 0.0,
             bleed_active_stacks: 0.0,

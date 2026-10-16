@@ -256,6 +256,18 @@ pub const DERIVED_STATS: &[&str] = &[
     "ArchonDuration",
     "ArchonRecoveryPeriod",
     "TotalEHPLowestMaxHit",
+    "ArmourBreakPerHit",
+    "HitsToFullyBreakArmour",
+    "TimeToFullyBreakArmour",
+    "DazeUptime",
+    "MaimUptime",
+    "BlindUptime",
+    "MaximumFireInfusions",
+    "MaximumColdInfusions",
+    "MaximumLightningInfusions",
+    "SurroundedRadiusMetres",
+    "CurseActivationDelay",
+    "RemnantsPerUse",
 ];
 
 impl CalculationSession {
@@ -268,6 +280,9 @@ impl CalculationSession {
         }
         if crate::calc::limit_display::has_derived_detail(stat) {
             return crate::calc::limit_display::detail(&self.env, stat);
+        }
+        if crate::calc::effect_views::has_derived_detail(stat) {
+            return crate::calc::effect_views::detail(&self.env, stat);
         }
         let env = &self.env;
         let out = &env.player.output;

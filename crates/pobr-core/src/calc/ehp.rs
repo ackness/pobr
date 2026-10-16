@@ -1465,12 +1465,10 @@ pub fn fill_ehp_pob2(
         );
         mit.overwhelm_pct[DamageType::Physical as usize] +=
             enemy_base(enemy_db, cfg, "EnemyPhysicalOverwhelm");
-        // CI chaos immunity: vendor's keystone mod set includes
-        // `ChaosDamageTaken MORE -100` (ModParser.lua:2356/2360) →
-        // ChaosTakenHitMult = 0. pobr's parse side doesn't emit this numeric
-        // mod yet (to avoid disturbing the old view's output), so the new
-        // pipeline applies the equivalent via the C-1 keystone snapshot instead.
-        if keystones.chaos_inoculation {
+        // Chaos immunity (Chaos Inoculation, or "Immune to Chaos Damage"):
+        // chaos hits deal no damage, so ChaosTakenHitMult = 0. Applied once
+        // whichever source grants it (`defence::chaos_immune`).
+        if crate::calc::defence::chaos_immune(db, cfg) {
             let chaos = DamageType::Chaos as usize;
             mit.after_reduction_multi[chaos] = 0.0;
             mit.hit_taken_multi[chaos] = 0.0;

@@ -126,11 +126,105 @@
       "id": "break_increased_armour",
       "pattern": "break (\\d+)% increased armour",
       "vendor_pattern": "break (%d+)%% increased armour",
-      "mods": [],
+      "mods": [
+        {
+          "name": "ArmourBreakPerHit",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
       "verified": false,
-      "batch": "unmodelled",
-      "source_note": "Armour broken per hit is not modelled. The configured ArmourBreakAmount is the total already removed from the enemy, not a base per-hit amount; increased break must not scale it. A per-hit model needs flat skill break, damage-based break, event conditions and monster rarity multipliers.",
-      "game_source": "base/stats.json: armour_break_amount_+%; https://poe2db.tw/us/Keywords"
+      "batch": "S2",
+      "source_note": "Game stat armour_break_amount_+% (\"Break #% increased Armour\") scales the per-hit Armour Break view (ArmourBreakPerHit, calc::effect_views). It does not scale the configured total ArmourBreakAmount, which is the Armour already removed and still decides damage.",
+      "game_source": "base/stats.json: armour_break_amount_+%; https://poe2db.tw/us/Keywords",
+      "exporter": "absent"
+    },
+    {
+      "id": "global_blind_chance_on_hit",
+      "pattern": "(\\d+(?:\\.\\d+)?)% global chance to blind enemies on hit",
+      "mods": [
+        {
+          "name": "BlindChance",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "base/stats.json: global_chance_to_blind_on_hit_%",
+      "source_note": "Per-hit Blind chance in the BlindUptime view (calc::effect_views). The configured conditionEnemyBlinded still decides Blind's effect.",
+      "examples": [
+        "10% Global chance to Blind Enemies on Hit"
+      ]
+    },
+    {
+      "id": "increased_blind_duration",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased blind duration",
+      "mods": [
+        {
+          "name": "BlindDuration",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "base/stats.json: blind_duration_+%",
+      "source_note": "Lengthens Blind (KeywordPopups Blind: 4 seconds) in the BlindUptime view (calc::effect_views); not a skill duration.",
+      "examples": [
+        "20% increased Blind duration"
+      ]
+    },
+    {
+      "id": "hits_break_flat_armour",
+      "pattern": "^hits break (\\d+) armour$",
+      "mods": [
+        {
+          "name": "ArmourBreakPerHit",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "base/stats.json: apply_X_armour_break_on_hit",
+      "source_note": "Flat per-hit Armour Break in the ArmourBreakPerHit view (calc::effect_views); the configured ArmourBreakAmount still decides damage.",
+      "examples": [
+        "Hits Break 50 Armour"
+      ]
+    },
+    {
+      "id": "break_armour_equal_to_damage_dealt",
+      "pattern": "^break armour equal to (\\d+(?:\\.\\d+)?)% of (physical|fire|chaos|hit) damage dealt$",
+      "mods": [
+        {
+          "name": {
+            "enum": 2
+          },
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "enums": {
+        "2": {
+          "physical": "PhysicalDamageAsArmourBreak",
+          "fire": "FireDamageAsArmourBreak",
+          "chaos": "ChaosDamageAsArmourBreak",
+          "hit": "HitDamageAsArmourBreak"
+        }
+      },
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "base/stats.json: armour_break_physical_damage_%_dealt_as_armour_break, armour_break_fire_damage_%_dealt_as_armour_break, chaos_damage_%_dealt_as_armour_break, armour_break_damage_%_dealt_as_armour_break",
+      "source_note": "Damage-derived per-hit Armour Break: the percentage of the selected hit's average dealt damage of that type, in the ArmourBreakPerHit view (calc::effect_views).",
+      "examples": [
+        "Break Armour equal to 10% of Physical Damage dealt",
+        "Break Armour equal to 5% of Hit Damage dealt"
+      ]
     },
     {
       "id": "buffs_on_you_expire_slower",
@@ -522,14 +616,21 @@
       "id": "double_activation_delay_of_curses",
       "pattern": "double activation delay of curses",
       "vendor_pattern": "double activation delay of curses",
-      "mods": [],
+      "mods": [
+        {
+          "name": "CurseDelay",
+          "type": "MORE",
+          "value": 100
+        }
+      ],
       "verified": false,
-      "batch": "unmodelled",
-      "source_note": "Curse activation delay is not modelled; curse effects assume an already applied curse.",
+      "batch": "S2",
+      "source_note": "Hex Master (keystone_hex_master, KeywordPopups HexMaster: \"Double Activation Delay of Curses\") doubles the selected curse's activation delay in the CurseActivationDelay view (calc::effect_views). Curse effects still assume an applied curse; the additional curse is a separate line.",
       "game_source": "keystone_hex_master",
       "examples": [
         "Double Activation Delay of Curses"
-      ]
+      ],
+      "exporter": "absent"
     },
     {
       "id": "empowered_attacks_deal_increased_damage",
@@ -942,10 +1043,18 @@
       "id": "immune_to_chaos_damage",
       "pattern": "immune to chaos damage",
       "vendor_pattern": "immune to chaos damage",
-      "mods": [],
+      "mods": [
+        {
+          "name": "ChaosImmune",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
       "verified": false,
-      "batch": "unmodelled",
-      "source_note": "Recognised, not modelled: a standalone chaos immunity outside Chaos Inoculation has no engine flag (EHP's chaos immunity is tied to the ChaosInoculation keystone flag)."
+      "batch": "S2",
+      "source_note": "\"Immune to Chaos Damage\": the ChaosImmune flag gives chaos hits and chaos damage over time zero damage taken in EHP and recovery (calc::defence::chaos_immune), the same immunity Chaos Inoculation's ChaosInoculation flag grants, applied once.",
+      "exporter": "differs",
+      "game_source": "base/passive_trees/0_1..0_4.json: Chaos Inoculation's 'Immune to Chaos Damage' line; base/stats.json: chaos_immunity ('Provides Immunity to Chaos Damage')"
     },
     {
       "id": "immune_to_chaos_damage_and_bleeding",
@@ -5319,24 +5428,52 @@
     {
       "id": "hits_break_increased_armour_on_ailmented_targets",
       "pattern": "hits break (\\d+)% increased armour on targets with ailments",
-      "mods": [],
+      "mods": [
+        {
+          "name": "ArmourBreakPerHit",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "varList": [
+                "Frozen",
+                "Chilled",
+                "Shocked",
+                "Ignited",
+                "Electrocuted",
+                "Poisoned",
+                "Bleeding"
+              ]
+            }
+          ]
+        }
+      ],
       "verified": false,
-      "batch": "unmodelled",
+      "batch": "S2",
       "game_source": "base/stats.json: armour_break_amount_+%_vs_enemies_affected_by_ailments; base/passive_tree.json: Exposed Wounds (43383)",
-      "source_note": "Armour broken per hit is not modelled. This scales per-hit break only against targets with an ailment; it must not scale the configured total ArmourBreakAmount. See break_increased_armour.",
+      "source_note": "Game stat armour_break_amount_+%_vs_enemies_affected_by_ailments: scales the per-hit Armour Break view only while the enemy has an ailment (the configured enemy ailment conditions). It does not scale the configured total ArmourBreakAmount.",
       "examples": [
         "Hits Break 30% increased Armour on targets with Ailments"
-      ]
+      ],
+      "exporter": "absent"
     },
     {
       "id": "additional_remnant_chance",
       "pattern": "\\+?(\\d+)% chance to create an additional remnant",
-      "mods": [],
+      "mods": [
+        {
+          "name": "AdditionalRemnantChance",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
       "verified": false,
-      "batch": "unmodelled",
+      "batch": "S2",
       "exporter": "absent",
       "game_source": "base/stats.json: chance_%_to_create_additional_remnant; base/passive_tree.json: Remnant Attraction (1506)",
-      "source_note": "remnant count not modelled. Into the Breach uses configured collected Purple Flame stacks, not a generated-remnant or collection rate. Extra creation chance cannot scale that supplied count. Arcane Remnants, Empowering Remnants, Elemental Equilibrium and Storm's Recollection need a remnant model.",
+      "source_note": "Game stat chance_%_to_create_additional_remnant feeds RemnantsPerUse = 1 + chance / 100 for a skill that creates Remnants (GeneratesRemnants; calc::effect_views). Into the Breach's configured Purple Flame stacks stay configured; collection is not modelled.",
       "examples": [
         "10% chance to create an additional Remnant",
         "+17% chance to create an additional Remnant"
@@ -5442,11 +5579,17 @@
     {
       "id": "daze_duration_unmodelled",
       "pattern": "(\\d+(?:\\.\\d+)?)% increased daze duration",
-      "mods": [],
+      "mods": [
+        {
+          "name": "DazeDuration",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
       "verified": false,
-      "batch": "unmodelled",
+      "batch": "S2",
       "game_source": "base/stats.json: daze_duration_+%; base/passive_tree.json: Seeing Stars (5009)",
-      "source_note": "Daze duration and uptime are not modelled. DazeChance reports application chance per hit, which duration does not change.",
+      "source_note": "Game stat daze_duration_+% lengthens Daze (KeywordPopups Daze: 8 seconds) in the DazeUptime view (calc::effect_views). The configured conditionEnemyDazed still decides Daze's effect.",
       "examples": [
         "25% increased Daze Duration"
       ],
@@ -5455,11 +5598,20 @@
     {
       "id": "attack_maim_chance_unmodelled",
       "pattern": "attacks have (\\d+(?:\\.\\d+)?)% chance to maim on hit",
-      "mods": [],
+      "mods": [
+        {
+          "name": "MaimChance",
+          "type": "BASE",
+          "value": "$1",
+          "flags": [
+            "Attack"
+          ]
+        }
+      ],
       "verified": false,
-      "batch": "unmodelled",
+      "batch": "S2",
       "game_source": "base/stats.json: maim_on_hit_%; base/passive_tree.json: Maiming Strike (41580), Impair (46696)",
-      "source_note": "Maim application and enemy movement are not modelled. A chance to Maim cannot establish an unconditional Maimed target or change player movement speed.",
+      "source_note": "Game stat maim_on_hit_% (\"Attacks have #% chance to Maim on Hit\") is the per-hit chance in the MaimUptime view (KeywordPopups Maim: 4 seconds; calc::effect_views). The configured conditionEnemyMaimed still decides Maim's effect; enemy movement is not modelled.",
       "examples": [
         "Attacks have 25% chance to Maim on Hit"
       ],
@@ -5728,11 +5880,24 @@
     {
       "id": "charm_energy_shield_recharge_starts_when_used",
       "pattern": "energy shield recharge starts on use",
-      "mods": [],
+      "mods": [
+        {
+          "name": "EnergyShieldRechargeBase",
+          "type": "OVERRIDE",
+          "value": 0,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
       "verified": false,
-      "batch": "unmodelled",
-      "game_source": "charm_energy_shield_recharge_starts_when_used",
-      "source_note": "Game stat charm_energy_shield_recharge_starts_when_used: Energy Shield Recharge starts on use (Thawing Charm). The one-off charm-use recharge event and its uptime are not modelled; it cannot change a steady-state recharge rate or delay."
+      "batch": "S2",
+      "game_source": "charm_energy_shield_recharge_starts_when_used; base/mods.json Thawing Charm",
+      "source_note": "Game stat charm_energy_shield_recharge_starts_when_used (\"Energy Shield Recharge starts on use\"). Enabled-charm convention: an enabled, in-budget charm counts as used, so the recharge delay (EsRechargeDelay) is 0. Use timing is not simulated.",
+      "exporter": "absent"
     },
     {
       "id": "energy_shield_from_equipped_focus",
@@ -5877,14 +6042,24 @@
     {
       "id": "attack_blind_chance_unmodelled",
       "pattern": "(\\d+)% chance to blind enemies on hit with attacks",
-      "mods": [],
+      "mods": [
+        {
+          "name": "BlindChance",
+          "type": "BASE",
+          "value": "$1",
+          "flags": [
+            "Attack"
+          ]
+        }
+      ],
       "verified": false,
-      "batch": "unmodelled",
+      "batch": "S2",
       "game_source": "attacks_chance_to_blind_on_hit_%; base/stats.json",
-      "source_note": "Chance-to-uptime model not implemented; Blind uses the configured enemy state, not on-hit chance (including 100%).",
+      "source_note": "Game stat attacks_chance_to_blind_on_hit_% is the per-hit chance in the BlindUptime view (KeywordPopups Blind: 4 seconds; calc::effect_views). The configured conditionEnemyBlinded still decides Blind's effect, even at 100%.",
       "examples": [
         "10% chance to Blind Enemies on Hit with Attacks"
-      ]
+      ],
+      "exporter": "absent"
     },
     {
       "id": "doubled_totem_limit_unmodelled",
@@ -6026,40 +6201,94 @@
     },
     {
       "id": "increased_surrounded_area_of_effect",
-      "pattern": "(\\d+(?:\\.\\d+)?)% (?:increased|reduced) surrounded area of effect",
-      "mods": [],
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased surrounded area of effect",
+      "mods": [
+        {
+          "name": "SurroundedArea",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
       "verified": false,
-      "batch": "unmodelled",
+      "batch": "S2",
       "game_source": "base/stats.json: surrounded_area_of_effect_+%; base/passive_tree.json: Paranoia (24766)",
-      "source_note": "Surrounded radius not modelled. PoBR's Surrounded bridge (calc/session/preparation.rs) has no distance model: being Surrounded is a binary state, so an increased Surrounded area (the radius in which enemies count) cannot scale anything yet. A distance model needs enemy positions and the Surrounded radius.",
+      "source_note": "Game stat surrounded_area_of_effect_+% enlarges the area in which enemies count toward Surrounded (KeywordPopups Surrounded: 5 enemies within 3 metres) in the SurroundedRadiusMetres view (calc::effect_views). Being Surrounded stays the configured binary state.",
       "examples": [
         "50% increased Surrounded Area of Effect"
-      ]
+      ],
+      "exporter": "absent"
+    },
+    {
+      "id": "reduced_surrounded_area_of_effect",
+      "pattern": "(\\d+(?:\\.\\d+)?)% reduced surrounded area of effect",
+      "mods": [
+        {
+          "name": "SurroundedArea",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "game_source": "base/stats.json: surrounded_area_of_effect_+%; base/passive_tree.json: Paranoia (24766)",
+      "source_note": "Game stat surrounded_area_of_effect_+% enlarges the area in which enemies count toward Surrounded (KeywordPopups Surrounded: 5 enemies within 3 metres) in the SurroundedRadiusMetres view (calc::effect_views). Being Surrounded stays the configured binary state.",
+      "examples": [
+        "20% reduced Surrounded Area of Effect"
+      ],
+      "exporter": "absent"
     },
     {
       "id": "maximum_elemental_infusions",
       "pattern": "\\+?(\\d+) to maximum (cold|fire|lightning) infusions",
-      "mods": [],
+      "mods": [
+        {
+          "name": {
+            "enum": 2
+          },
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
       "verified": false,
-      "batch": "unmodelled",
+      "batch": "S2",
       "exporter": "absent",
       "game_source": "base/stats.json: maximum_cold_infusion_stacks, maximum_fire_infusion_stacks, maximum_lightning_infusion_stacks; base/passive_tree.json: Frozen Limit (50715), Infernal Limit (61354), Shocking Limit (29800)",
-      "source_note": "Infusion count not modelled. PoBR models infusion consumption as per-skill conditions, without an infusion count (no maximum-infusion output or count-gated model), so a higher maximum cannot change anything yet.",
+      "source_note": "Game stats maximum_cold/fire/lightning_infusion_stacks raise that Infusion maximum (KeywordPopups Elemental Infusions: 3 of each by default; GameConstants BaseMaximumInfusionCount = 3) in the Maximum<Element>Infusions views. Infusion consumption stays a per-skill condition.",
       "examples": [
         "+1 to maximum Cold Infusions",
         "+1 to maximum Fire Infusions",
         "+1 to maximum Lightning Infusions"
-      ]
+      ],
+      "enums": {
+        "2": {
+          "cold": "MaximumColdInfusions",
+          "fire": "MaximumFireInfusions",
+          "lightning": "MaximumLightningInfusions"
+        }
+      }
     },
     {
       "id": "maximum_number_of_elemental_infusions",
       "pattern": "\\+?(\\d+) to maximum number of elemental infusions",
-      "mods": [],
+      "mods": [
+        {
+          "name": "MaximumElementalInfusions",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
       "verified": false,
-      "batch": "unmodelled",
+      "batch": "S2",
       "exporter": "absent",
       "game_source": "base/stats.json: additional_maximum_infusion_stacks; base/passive_tree.json: Infused Limits (38965)",
-      "source_note": "Infusion count not modelled. PoBR models infusion consumption as per-skill conditions, without an infusion count (no maximum-infusion output or count-gated model), so a higher maximum cannot change anything yet.",
+      "source_note": "Game stat additional_maximum_infusion_stacks raises each Elemental Infusion maximum (KeywordPopups Elemental Infusions: 3 of each by default; GameConstants BaseMaximumInfusionCount = 3) in the MaximumFire/Cold/LightningInfusions views. Infusion consumption stays a per-skill condition.",
       "examples": [
         "+1 to maximum number of Elemental Infusions"
       ]

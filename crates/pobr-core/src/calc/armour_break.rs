@@ -20,14 +20,9 @@ pub(crate) fn apply_armour_break(env: &mut Env) {
     {
         return;
     }
+    let original = enemy_armour(&env.enemy.mod_db, &env.cfg);
+    env.unbroken_enemy_armour = Some(original);
     let db = &env.enemy.mod_db;
-    let names = [ModName::from("Armour")];
-    let original = db.override_(&env.cfg, "Armour").unwrap_or_else(|| {
-        db.sum(ModType::Base, &env.cfg, &names)
-            * (1.0 + db.sum(ModType::Inc, &env.cfg, &names) / 100.0)
-            * db.more(&env.cfg, &names)
-    });
-    let original = original.max(0.0);
     let below_zero = env
         .player
         .mod_db
@@ -69,6 +64,18 @@ pub(crate) fn apply_armour_break(env: &mut Env) {
             .with_origin(origin.clone()),
         );
     }
+}
+
+/// The enemy's Armour, before a configured break replaces it.
+pub(crate) fn enemy_armour(db: &ModDb, cfg: &CalcConfig) -> f64 {
+    let names = [ModName::from("Armour")];
+    db.override_(cfg, "Armour")
+        .unwrap_or_else(|| {
+            db.sum(ModType::Base, cfg, &names)
+                * (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0)
+                * db.more(cfg, &names)
+        })
+        .max(0.0)
 }
 
 /// Game Armour Break keyword: non-player targets take 20% increased

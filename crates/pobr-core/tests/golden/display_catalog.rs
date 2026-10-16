@@ -167,7 +167,11 @@ fn catalog_entry_counts_locked() {
         // and EHPSurvivalTime (+20).
         // ManaRecoupRate (+1), the Chaos prevented-damage recoup as Mana, and
         // Flask{1,2}{Mana,Life}RemovedOnUse (+4), the other pool's per-use removal.
-        530,
+        // On-hit effect and limit views (`calc::effect_views`): ArmourBreakPerHit,
+        // HitsToFullyBreakArmour, TimeToFullyBreakArmour, {Daze,Maim,Blind}Uptime,
+        // Maximum{Fire,Cold,Lightning}Infusions, SurroundedRadiusMetres,
+        // CurseActivationDelay and RemnantsPerUse (+12).
+        542,
         "a change in Computed entry count needs explicit review"
     );
 }

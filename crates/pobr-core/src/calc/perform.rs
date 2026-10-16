@@ -282,6 +282,7 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     fill_damage_views(env);
     fill_resource_cost_rates(env);
     super::sidebar::fill_sidebar(env);
+    super::effect_views::fill(env, stun_damage);
     env.player.output.channel_time_to_trigger =
         super::energy::channel_time_to_trigger(&env.player.mod_db, &env.cfg);
 

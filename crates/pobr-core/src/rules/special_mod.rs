@@ -676,9 +676,20 @@ fn compile_literal_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             Some(ModTag::condition(var, neg))
         }
         "ActorCondition" => {
-            let var = scalar_text(tag.fields.get("var")?)?;
             let neg = tag.fields.get("neg").and_then(scalar_bool).unwrap_or(false);
             let actor = tag.fields.get("actor").and_then(scalar_text);
+            // An enemy `varList` holds if any of its conditions does
+            // ("on targets with Ailments").
+            if let (Some("enemy"), Some(TemplateScalarDef::TextList(vars))) =
+                (actor.as_deref(), tag.fields.get("varList"))
+                && !vars.is_empty()
+            {
+                return Some(ModTag::ConditionAnyOf {
+                    vars: vars.iter().map(|var| format!("Enemy{var}")).collect(),
+                    negated: neg,
+                });
+            }
+            let var = scalar_text(tag.fields.get("var")?)?;
             match actor.as_deref() {
                 Some("enemy") => Some(ModTag::condition(format!("Enemy{var}"), neg)),
                 Some("player") => Some(ModTag::Condition {

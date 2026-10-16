@@ -16,11 +16,27 @@ use crate::{ModTag, ModValue, Modifier};
 fn exporter_rule(stat: &str) -> Option<std::sync::Arc<pobr_data::source::ExporterRule>> {
     static RULES: std::sync::LazyLock<Vec<std::sync::Arc<pobr_data::source::ExporterRule>>> =
         std::sync::LazyLock::new(|| {
-            [(
+            [
                 "base_spell_mana_cost_efficiency_+%",
-                pobr_data::source::ExporterCoverage::Absent,
-            )]
+                // The per-hit Armour Break, debuff uptime, curse delay and
+                // remnant views (`calc::effect_views`).
+                "armour_break_physical_damage_%_dealt_as_armour_break",
+                "armour_break_fire_damage_%_dealt_as_armour_break",
+                "chaos_damage_%_dealt_as_armour_break",
+                "armour_break_damage_%_dealt_as_armour_break",
+                "support_increased_armour_break_armour_break_amount_+%_final",
+                "base_chance_to_daze_%",
+                "maim_on_hit_%",
+                "global_maim_on_hit",
+                "attacks_chance_to_blind_on_hit_%",
+                "cannot_daze",
+                "cannot_inflict_maim",
+                "cannot_inflict_blind",
+                "curse_delay_duration_ms",
+                "chance_%_to_create_additional_remnant",
+            ]
             .into_iter()
+            .map(|stat| (stat, pobr_data::source::ExporterCoverage::Absent))
             .map(|(stat, exporter)| {
                 std::sync::Arc::new(pobr_data::source::ExporterRule {
                     id: stat.to_string(),
@@ -353,6 +369,62 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
             ])
         }
         "skill_disabled_unless_cloned" => Some(vec![Modifier::flag("MirageSkill")]),
+        // Armour Break per hit (`calc::effect_views`): "Break Armour equal to
+        // {0}% of Physical / Fire / Hit Damage dealt", "Supported Skills Break
+        // {0}% more Armour". The flag keeps the Armour Break config visible.
+        "armour_break_physical_damage_%_dealt_as_armour_break"
+        | "armour_break_fire_damage_%_dealt_as_armour_break"
+        | "chaos_damage_%_dealt_as_armour_break"
+        | "armour_break_damage_%_dealt_as_armour_break" => {
+            let name = match stat {
+                "armour_break_physical_damage_%_dealt_as_armour_break" => {
+                    "PhysicalDamageAsArmourBreak"
+                }
+                "armour_break_fire_damage_%_dealt_as_armour_break" => "FireDamageAsArmourBreak",
+                "chaos_damage_%_dealt_as_armour_break" => "ChaosDamageAsArmourBreak",
+                _ => "HitDamageAsArmourBreak",
+            };
+            Some(vec![
+                Modifier::number(name, ModType::Base, value),
+                Modifier::flag("Condition:CanArmourBreak"),
+            ])
+        }
+        "support_increased_armour_break_armour_break_amount_+%_final" => Some(vec![
+            Modifier::number("ArmourBreakPerHit", ModType::More, value),
+        ]),
+        // On-hit debuff chances for the uptime views: "{0}% chance to Daze on
+        // Hit", "Attacks have {0}% chance to Maim on Hit", "Maim on Hit",
+        // "{0}% chance to Blind Enemies on Hit with Attacks".
+        "base_chance_to_daze_%" => Some(vec![Modifier::number(
+            "DazeChance",
+            ModType::Base,
+            value,
+        )]),
+        "maim_on_hit_%" => Some(vec![
+            Modifier::number("MaimChance", ModType::Base, value).with_flags(ModFlags::ATTACK),
+        ]),
+        "global_maim_on_hit" => Some(vec![Modifier::number(
+            "MaimChance",
+            ModType::Base,
+            100.0,
+        )]),
+        "attacks_chance_to_blind_on_hit_%" => Some(vec![
+            Modifier::number("BlindChance", ModType::Base, value).with_flags(ModFlags::ATTACK),
+        ]),
+        "cannot_daze" => Some(vec![Modifier::flag("CannotDaze")]),
+        "cannot_inflict_maim" => Some(vec![Modifier::flag("CannotMaim")]),
+        "cannot_inflict_blind" => Some(vec![Modifier::flag("CannotBlind")]),
+        // The curse's own activation delay, in milliseconds.
+        "curse_delay_duration_ms" => Some(vec![Modifier::number(
+            "CurseDelayBase",
+            ModType::Base,
+            value / 1000.0,
+        )]),
+        "chance_%_to_create_additional_remnant" => Some(vec![Modifier::number(
+            "AdditionalRemnantChance",
+            ModType::Base,
+            value,
+        )]),
         // The action's own movement penalty, with Mobility/Deliberation
         // modifying the penalty rather than the character's movement speed.
         "movement_speed_+%_final_while_performing_action" => Some(vec![Modifier::number(

@@ -1465,8 +1465,15 @@ pub fn dot_taken_terms(
         resistance,
         reduction: base_damage_reduction(db, cfg, damage_type, cap),
         taken: taken_mult_over_time(db, cfg, damage_type),
-        immune: damage_type == DamageType::Chaos && db.flag(cfg, "ChaosInoculation"),
+        immune: damage_type == DamageType::Chaos && chaos_immune(db, cfg),
     }
+}
+
+/// "Immune to Chaos Damage": Chaos Inoculation's keystone flag, or the
+/// standalone `ChaosImmune` flag. Either makes chaos hits and chaos damage
+/// over time deal nothing; holding both is still one immunity.
+pub fn chaos_immune(db: &ModDb, cfg: &CalcConfig) -> bool {
+    db.flag(cfg, "ChaosInoculation") || db.flag(cfg, "ChaosImmune")
 }
 
 /// Computes the full taken-multiplier suite (WhenHit for every damage type + all OverTime).

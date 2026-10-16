@@ -75,6 +75,8 @@ pub struct Env {
     /// stage, retained for the Calcs `Maximum*` and `Current*` views.
     pub(crate) applied_ailments: super::ailment_apply::AppliedAilments,
     pub(crate) pin_terms: Option<super::ailment::PinTerms>,
+    /// The enemy's Armour before the configured Armour Break, for the per-hit view.
+    pub(crate) unbroken_enemy_armour: Option<f64>,
     /// The crossbow reload cycle `perform` scaled the rate and DPS by
     /// (`None` when the stage changed nothing).
     pub crossbow_reload: Option<super::CrossbowReload>,
@@ -131,6 +133,7 @@ impl Env {
             heavy_stun_terms: None,
             applied_ailments: super::ailment_apply::AppliedAilments::default(),
             pin_terms: None,
+            unbroken_enemy_armour: None,
             crossbow_reload: None,
             legacy_ehp_terms: None,
             leech_gain_terms: [[[0.0; 3]; 3]; 2],

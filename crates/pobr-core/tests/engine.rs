@@ -8,6 +8,9 @@
 #[path = "support/parse.rs"]
 mod support;
 
+#[path = "engine/effect_views.rs"]
+mod effect_views;
+
 #[path = "engine/archon.rs"]
 mod archon;
 
