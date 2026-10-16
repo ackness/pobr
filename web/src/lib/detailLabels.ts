@@ -2,6 +2,8 @@ import type { Lang } from './i18n';
 
 /** Modifier input names for optional Calcs details; no calculation logic. */
 export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
+  FreezeBuildup: { 'en-US': 'Freeze buildup', 'zh-TW': '凍結積累', 'zh-CN': '冻结积累' },
+  ElectrocuteBuildup: { 'en-US': 'Electrocute buildup', 'zh-TW': '感電麻痺積累', 'zh-CN': '感电麻痹积累' },
   ColdResistMax: { 'en-US': "Maximum cold resistance", 'zh-TW': "最大冰冷抗性", 'zh-CN': "最大冰冷抗性" },
   ElementalResistMax: { 'en-US': "Maximum elemental resistance", 'zh-TW': "最大元素抗性", 'zh-CN': "最大元素抗性" },
   FireResistAppliesToColdResist: { 'en-US': "Fire resistance also applies to cold resistance", 'zh-TW': "火焰抗性同時套用至冰冷抗性", 'zh-CN': "火焰抗性同时套用于冰冷抗性" },

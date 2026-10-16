@@ -117,12 +117,14 @@ pub fn source_names(stat: &str) -> Vec<String> {
         ],
         "ShockEffect" => &["EnemyShockMagnitude", "AilmentMagnitude", "CannotShock"],
         "FreezeBuildupPct" => &[
+            "FreezeBuildup",
             "EnemyFreezeBuildup",
             "EnemyImmobilisationBuildup",
             "ImmobilisationBuildup",
             "CannotFreeze",
         ],
         "ElectrocuteBuildupPct" => &[
+            "ElectrocuteBuildup",
             "EnemyElectrocuteBuildup",
             "EnemyImmobilisationBuildup",
             "ImmobilisationBuildup",
