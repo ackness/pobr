@@ -219,6 +219,8 @@ fn spirit_boar_grants_20_percent_extra_fire_and_always_bleeds() {
 fn spirit_ox_grants_60_percent_armour_and_20_percent_reduced_damage_taken() {
     let session = possession("Ox", true, true);
     assert_eq!(session.output().armour, 160.0);
+    // 1000 Life / 2 * (1 + 60% from SpiritOfTheOxPossessedPlayer).
+    assert_eq!(session.output().ailment_threshold, 800.0);
     assert_eq!(session.output().taken_multi_physical, 0.8);
 }
 #[test]

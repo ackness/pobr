@@ -1537,9 +1537,8 @@
       "source_note": "pobr 准源 mod_parser.rs:490-506；vendor 无数值形同 key（仅 lucky 系 :3730-3732）"
     },
     {
-      "id": "ailment_threshold_from_es_8",
-      "pattern": "gain additional ailment threshold equal to 8% of maximum energy shield",
-      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
+      "id": "ailment_threshold_from_es_percent",
+      "pattern": "gain additional ailment threshold equal to (\\d+(?:\\.\\d+)?)% of maximum energy shield",
       "mods": [
         {
           "name": "AilmentThreshold",
@@ -1549,102 +1548,15 @@
             {
               "type": "PercentStat",
               "stat": "EnergyShield",
-              "percent": 8
+              "percent": "$1"
             }
           ]
         }
       ],
-      "verified": false,
-      "batch": "a2-real-gaps",
-      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
-    },
-    {
-      "id": "ailment_threshold_from_es_12",
-      "pattern": "gain additional ailment threshold equal to 12% of maximum energy shield",
-      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
-      "mods": [
-        {
-          "name": "AilmentThreshold",
-          "type": "BASE",
-          "value": 1,
-          "tags": [
-            {
-              "type": "PercentStat",
-              "stat": "EnergyShield",
-              "percent": 12
-            }
-          ]
-        }
-      ],
-      "verified": false,
-      "batch": "a2-real-gaps",
-      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
-    },
-    {
-      "id": "ailment_threshold_from_es_15",
-      "pattern": "gain additional ailment threshold equal to 15% of maximum energy shield",
-      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
-      "mods": [
-        {
-          "name": "AilmentThreshold",
-          "type": "BASE",
-          "value": 1,
-          "tags": [
-            {
-              "type": "PercentStat",
-              "stat": "EnergyShield",
-              "percent": 15
-            }
-          ]
-        }
-      ],
-      "verified": false,
-      "batch": "a2-real-gaps",
-      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
-    },
-    {
-      "id": "ailment_threshold_from_es_20",
-      "pattern": "gain additional ailment threshold equal to 20% of maximum energy shield",
-      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
-      "mods": [
-        {
-          "name": "AilmentThreshold",
-          "type": "BASE",
-          "value": 1,
-          "tags": [
-            {
-              "type": "PercentStat",
-              "stat": "EnergyShield",
-              "percent": 20
-            }
-          ]
-        }
-      ],
-      "verified": false,
-      "batch": "a2-real-gaps",
-      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
-    },
-    {
-      "id": "ailment_threshold_from_es_30",
-      "pattern": "gain additional ailment threshold equal to 30% of maximum energy shield",
-      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
-      "mods": [
-        {
-          "name": "AilmentThreshold",
-          "type": "BASE",
-          "value": 1,
-          "tags": [
-            {
-              "type": "PercentStat",
-              "stat": "EnergyShield",
-              "percent": 30
-            }
-          ]
-        }
-      ],
-      "verified": false,
-      "batch": "a2-real-gaps",
-      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
+      "verified": true,
+      "batch": "affix-coverage",
+      "game_source": "ailment_threshold_+_from_%_maximum_energy_shield: Gain additional Ailment Threshold equal to #% of maximum Energy Shield",
+      "source_note": "The game jewel stat rolls 5–15%; preserve arbitrary rolls as a percentage of final maximum Energy Shield."
     },
     {
       "id": "mana_regen_from_life_6",
@@ -4554,6 +4466,28 @@
       "game_source": "charm_gain_onslaught_during_effect; gain_onslaught_during_flask_effect; https://poe2db.tw/us/Onslaught"
     },
     {
+      "id": "energy_shield_recovery_on_kill_maximum",
+      "pattern": "recover (\\d+(?:\\.\\d+)?)% of maximum energy shield on kill",
+      "mods": [
+        {
+          "name": "EnergyShieldOnKill",
+          "type": "BASE",
+          "value": 1,
+          "tags": [
+            {
+              "type": "PercentStat",
+              "stat": "EnergyShield",
+              "percent": "$1"
+            }
+          ]
+        }
+      ],
+      "verified": true,
+      "batch": "affix-coverage",
+      "game_source": "recover_energy_shield_%_on_kill: Recover #% of maximum Energy Shield on Kill",
+      "source_note": "Recovery per kill is a percentage of maximum Energy Shield; no kill rate is assumed."
+    },
+    {
       "id": "utility_use_triggers",
       "pattern": "used when (?:charges reach full|an adjacent flask is used|you block|you hit a rare or unique enemy, if not already in effect|you use a guard skill|you use a travel skill|you are affected by a slow|you become chilled|you become cursed|you become frozen|you become ignited|you become poisoned|you become shocked|you become stunned|you kill a rare or unique enemy|you lose a guard skill buff|you release a skill with perfect timing|you start bleeding|you take chaos damage from a hit|you take cold damage from a hit|you take fire damage from a hit|you take lightning damage from a hit|you take a savage hit|you use a life flask)",
       "mods": [],
@@ -4673,7 +4607,7 @@
       "batch": "S2",
       "exporter": "absent",
       "game_source": "charm_possesed_by_bear_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheBearPossessedPlayer, SpiritPossessedStrPlayer; https://poe2db.tw/us/Spirit_Of_The_Bear",
-      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold, slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold feeds the player threshold output; slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
       "examples": [
         "Possessed by Spirit Of The Bear for 20 seconds on use"
       ]
@@ -4698,7 +4632,7 @@
       "batch": "S2",
       "exporter": "absent",
       "game_source": "charm_possesed_by_boar_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheBoarPossessedPlayer, SpiritPossessedStrPlayer; https://poe2db.tw/us/Spirit_Of_The_Boar",
-      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold, slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold feeds the player threshold output; slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
       "examples": [
         "Possessed by Spirit Of The Boar for 20 seconds on use"
       ]
@@ -4723,7 +4657,7 @@
       "batch": "S2",
       "exporter": "absent",
       "game_source": "charm_possesed_by_cat_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheCatPossessedPlayer, SpiritPossessedDexPlayer; https://poe2db.tw/us/Spirit_Of_The_Cat",
-      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold, slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold feeds the player threshold output; slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
       "examples": [
         "Possessed by Spirit Of The Cat for 20 seconds on use"
       ]
@@ -4748,7 +4682,7 @@
       "batch": "S2",
       "exporter": "absent",
       "game_source": "charm_possesed_by_owl_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheOwlPossessedPlayer, SpiritPossessedIntPlayer; https://poe2db.tw/us/Spirit_Of_The_Owl",
-      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold, slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold feeds the player threshold output; slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
       "examples": [
         "Possessed by Spirit Of The Owl for 20 seconds on use"
       ]
@@ -4773,7 +4707,7 @@
       "batch": "S2",
       "exporter": "absent",
       "game_source": "charm_possesed_by_ox_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheOxPossessedPlayer, SpiritPossessedStrPlayer; https://poe2db.tw/us/Spirit_Of_The_Ox",
-      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold, slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold feeds the player threshold output; slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
       "examples": [
         "Possessed by Spirit Of The Ox for 20 seconds on use"
       ]
@@ -4798,7 +4732,7 @@
       "batch": "S2",
       "exporter": "absent",
       "game_source": "charm_possesed_by_primate_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheMonkeyPossessedPlayer, SpiritPossessedIntPlayer; https://poe2db.tw/us/Spirit_Of_The_Primate",
-      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold, slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold feeds the player threshold output; slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
       "examples": [
         "Possessed by Spirit Of The Primate for 20 seconds on use"
       ]
@@ -4823,7 +4757,7 @@
       "batch": "S2",
       "exporter": "absent",
       "game_source": "charm_possesed_by_serpent_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheSnakePossessedPlayer, SpiritPossessedIntPlayer; https://poe2db.tw/us/Spirit_Of_The_Serpent",
-      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold, slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold feeds the player threshold output; slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
       "examples": [
         "Possessed by Spirit Of The Serpent for 20 seconds on use"
       ]
@@ -4848,7 +4782,7 @@
       "batch": "S2",
       "exporter": "absent",
       "game_source": "charm_possesed_by_stag_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheStagPossessedPlayer, SpiritPossessedDexPlayer; https://poe2db.tw/us/Spirit_Of_The_Stag",
-      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold, slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold feeds the player threshold output; slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
       "examples": [
         "Possessed by Spirit Of The Stag for 20 seconds on use"
       ]
@@ -4873,7 +4807,7 @@
       "batch": "S2",
       "exporter": "absent",
       "game_source": "charm_possesed_by_wolf_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheWolfPossessedPlayer, SpiritPossessedDexPlayer; https://poe2db.tw/us/Spirit_Of_The_Wolf",
-      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold, slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold feeds the player threshold output; slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
       "examples": [
         "Possessed by Spirit Of The Wolf for 20 seconds on use"
       ]

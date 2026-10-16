@@ -80,6 +80,7 @@ fn critical_roll_view(env: &Env) -> f64 {
 }
 
 pub(super) fn fill_sidebar(env: &mut Env) {
+    fill_threshold_and_kill_views(env);
     let bifurcates = critical_roll_view(env);
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
@@ -184,5 +185,50 @@ pub(super) fn fill_sidebar(env: &mut Env) {
     }
     if db.flag(cfg, "ProfaneDecay") {
         out.decay_dps = out.skill_total_dot;
+    }
+}
+
+/// Game keywords: a player's base Elemental Ailment Threshold is half Life.
+/// PercentStat modifiers use the final pools already snapshotted in cfg.
+fn fill_threshold_and_kill_views(env: &mut Env) {
+    let db = &env.player.mod_db;
+    let cfg = &env.cfg;
+    let out = &mut env.player.output;
+    let names = [ModName::from("AilmentThreshold")];
+    out.ailment_threshold = db
+        .override_(cfg, "AilmentThreshold")
+        .unwrap_or_else(|| {
+            (super::ailment::player_ailment_threshold(out.life)
+                + db.sum(ModType::Base, cfg, &names))
+                * factor(db, cfg, &["AilmentThreshold"])
+        })
+        .max(0.0);
+    let hit_cfg = cfg
+        .clone()
+        .with_flags(cfg.flags | ModFlags::HIT)
+        .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT);
+    out.daze_chance = db
+        .sum(ModType::Base, &hit_cfg, &[ModName::from("DazeChance")])
+        .clamp(0.0, 100.0);
+    out.fully_broken_armour_effect = super::armour_break::fully_broken_effect(db, cfg);
+    for (resource, value) in [
+        ("Life", &mut out.life_on_kill),
+        ("Mana", &mut out.mana_on_kill),
+        ("EnergyShield", &mut out.energy_shield_on_kill),
+    ] {
+        // Flat and PercentStat-tagged gains share this query. It describes
+        // one kill, independently of the build's damage or kill frequency.
+        let gain = db.sum(
+            ModType::Base,
+            cfg,
+            &[ModName::from(format!("{resource}OnKill"))],
+        );
+        *value = if db.flag(cfg, &format!("CannotGain{resource}"))
+            || resource == "Life" && db.flag(cfg, "CannotRecoverLifeOutsideLeech")
+        {
+            0.0
+        } else {
+            gain.max(0.0).floor()
+        };
     }
 }

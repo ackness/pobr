@@ -116,13 +116,25 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "ActionSpeed",
         ],
         "ShockEffect" => &["EnemyShockMagnitude", "AilmentMagnitude", "CannotShock"],
+        "AilmentThreshold" => &["AilmentThreshold"],
+        "LifeOnKill" => &[
+            "LifeOnKill",
+            "CannotGainLife",
+            "CannotRecoverLifeOutsideLeech",
+        ],
+        "ManaOnKill" => &["ManaOnKill", "CannotGainMana"],
+        "EnergyShieldOnKill" => &["EnergyShieldOnKill", "CannotGainEnergyShield"],
+        "DazeChance" => &["DazeChance"],
+        "FullyBrokenArmourEffect" => &["FullyBrokenArmourEffect"],
         "FreezeBuildupPct" => &[
+            "FreezeBuildup",
             "EnemyFreezeBuildup",
             "EnemyImmobilisationBuildup",
             "ImmobilisationBuildup",
             "CannotFreeze",
         ],
         "ElectrocuteBuildupPct" => &[
+            "ElectrocuteBuildup",
             "EnemyElectrocuteBuildup",
             "EnemyImmobilisationBuildup",
             "ImmobilisationBuildup",
@@ -478,6 +490,10 @@ impl CalculationSession {
         } else {
             self.env.cfg.clone()
         };
+        if stat == "DazeChance" {
+            cfg.flags |= pobr_data::prelude::ModFlags::HIT;
+            cfg.keyword_flags = cfg.keyword_flags | pobr_data::prelude::KeywordFlags::HIT;
+        }
         if stat.starts_with("ManaRegen") && db.flag(&cfg, "Condition:NoInherentManaRegen") {
             cfg.conditions.insert("NoInherentManaRegen".into(), true);
         }

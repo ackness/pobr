@@ -2,6 +2,14 @@ import type { Lang } from './i18n';
 
 /** Modifier input names for optional Calcs details; no calculation logic. */
 export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
+  AilmentThreshold: { 'en-US': 'Elemental Ailment Threshold', 'zh-TW': '元素異常狀態門檻', 'zh-CN': '元素异常状态门槛' },
+  LifeOnKill: { 'en-US': 'Life Recovery on Kill', 'zh-TW': '擊殺恢復生命', 'zh-CN': '击杀恢复生命' },
+  ManaOnKill: { 'en-US': 'Mana Recovery on Kill', 'zh-TW': '擊殺恢復魔力', 'zh-CN': '击杀恢复魔力' },
+  EnergyShieldOnKill: { 'en-US': 'Energy Shield Recovery on Kill', 'zh-TW': '擊殺恢復能量護盾', 'zh-CN': '击杀恢复能量护盾' },
+  DazeChance: { 'en-US': 'Chance to Daze on Hit', 'zh-TW': '擊中造成眩暈機率', 'zh-CN': '击中造成恍惚几率' },
+  FullyBrokenArmourEffect: { 'en-US': 'Fully Broken Armour Physical Hit Damage Taken', 'zh-TW': '完全破甲物理擊中承傷', 'zh-CN': '完全破甲物理击中承伤' },
+  FreezeBuildup: { 'en-US': 'Freeze buildup', 'zh-TW': '凍結積累', 'zh-CN': '冻结积累' },
+  ElectrocuteBuildup: { 'en-US': 'Electrocute buildup', 'zh-TW': '感電麻痺積累', 'zh-CN': '感电麻痹积累' },
   ColdResistMax: { 'en-US': "Maximum cold resistance", 'zh-TW': "最大冰冷抗性", 'zh-CN': "最大冰冷抗性" },
   ElementalResistMax: { 'en-US': "Maximum elemental resistance", 'zh-TW': "最大元素抗性", 'zh-CN': "最大元素抗性" },
   FireResistAppliesToColdResist: { 'en-US': "Fire resistance also applies to cold resistance", 'zh-TW': "火焰抗性同時套用至冰冷抗性", 'zh-CN': "火焰抗性同时套用于冰冷抗性" },

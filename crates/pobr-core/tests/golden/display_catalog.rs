@@ -53,7 +53,9 @@ fn catalog_entry_counts_locked() {
         // ChargesMax, ChargesUsed, Uses, ChargeGen and ChargesGained; flasks
         // also expose Recovery, InstantRecovery and RecoveryPerSecond (+41).
         // Charm{1,2,3}ManaRecoveryOnUse (+3), game charm_recover_X_mana_when_used.
-        261,
+        // AilmentThreshold, LifeOnKill, ManaOnKill, EnergyShieldOnKill,
+        // DazeChance and FullyBrokenArmourEffect (+6).
+        267,
         "a change in Computed entry count needs explicit review"
     );
 }

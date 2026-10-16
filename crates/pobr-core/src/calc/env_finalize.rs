@@ -63,6 +63,7 @@ pub fn env_finalize(env: &mut Env) {
     // modifiers to its effect have reached that side.
     super::blind::apply_blind(env);
     super::armour_break::apply_armour_break(env);
+    super::armour_break::apply_fully_broken_effect(env);
     super::crit::apply_inexorable_critical(env);
     super::configured_damage::apply(env);
     // Stage 6.9: what Bear form gives a character the main skill puts in it.

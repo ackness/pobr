@@ -4,7 +4,7 @@
 
 use pobr_data::prelude::*;
 
-use crate::Modifier;
+use crate::{CalcConfig, ModDb, Modifier};
 
 use super::Env;
 
@@ -69,6 +69,44 @@ pub(crate) fn apply_armour_break(env: &mut Env) {
             .with_origin(origin.clone()),
         );
     }
+}
+
+/// Game Armour Break keyword: non-player targets take 20% increased
+/// Physical damage from Hits while Fully Broken (poe2db.tw/us/Keywords).
+/// `broken_armour_and_sundered_armour_debuff_effect_+%` scales that effect.
+pub(super) fn fully_broken_effect(db: &ModDb, cfg: &CalcConfig) -> f64 {
+    let names = [ModName::from("FullyBrokenArmourEffect")];
+    20.0 * (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0).max(0.0) * db.more(cfg, &names)
+}
+
+pub(crate) fn apply_fully_broken_effect(env: &mut Env) {
+    if !env.cfg.mode_effective
+        || env.enemy.mod_db.flag(&env.cfg, "ArmourBreakImmune")
+        || !(env.cfg.condition("EnemyArmourFullyBroken")
+            || env
+                .enemy
+                .mod_db
+                .flag(&env.cfg, "Condition:ArmourFullyBroken"))
+        || env
+            .enemy
+            .mod_db
+            .named("PhysicalDamageTaken")
+            .any(|m| m.source.as_deref() == Some("FullyBrokenArmour"))
+    {
+        return;
+    }
+    let effect = fully_broken_effect(&env.player.mod_db, &env.cfg);
+    env.enemy.mod_db.add_mod(
+        Modifier::number("PhysicalDamageTaken", ModType::Inc, effect)
+            .with_keyword_flags(KeywordFlags::HIT)
+            .with_source("FullyBrokenArmour")
+            .with_origin(
+                ModifierSource::new(SourceId::new(SourceKind::Buff, "debuff.FullyBrokenArmour"))
+                    .with_raw_text(format!(
+                        "Fully Broken Armour: {effect}% increased Physical damage taken from Hits"
+                    )),
+            ),
+    );
 }
 
 #[cfg(test)]
