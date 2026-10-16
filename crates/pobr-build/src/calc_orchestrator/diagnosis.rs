@@ -168,6 +168,10 @@ pub(crate) const READ_OUTSIDE_THE_DATABASE: &[(&str, &str)] = &[
         "puts the Bonded lines of an item's Idols in effect (item::bonded)",
     ),
     (
+        "SmallPassiveSkillEffect",
+        "scales allocated small passive nodes (collect::passive_effect_copies)",
+    ),
+    (
         "TotemsSummoned",
         "the configured number of summoned totems (prepare::stage_build_cfg)",
     ),
