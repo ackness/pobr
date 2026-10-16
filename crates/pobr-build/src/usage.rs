@@ -815,10 +815,10 @@ fn outranked_gate(modifier: &Modifier, sites: &[String]) -> Option<ReadGate> {
 /// An inactive line scaled to 0 by a multiplier with a config input writing
 /// it: gated on that count so the gap queue files it as config-gated, not
 /// dropped. The option comes from the config catalog (the same source as
-/// `condition_configs`); nothing is hand-listed. The zero-scaling tags are
-/// read off the modifier itself (mirroring `zero_scaling`'s count), never
-/// parsed back out of the reason text. Player-scoped multipliers only:
-/// cross-actor tags keep the existing classification.
+/// `condition_configs`), including the inputs of derived charge counts.
+/// The zero-scaling tags are read off the modifier itself (mirroring
+/// `zero_scaling`'s count), never parsed back out of the reason text.
+/// Player-scoped multipliers only: cross-actor tags keep the existing classification.
 fn multiplier_zero_gate(
     modifier: &Modifier,
     ctx: &EvalContext<'_>,

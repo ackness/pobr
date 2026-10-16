@@ -344,9 +344,35 @@ pub fn resolve_all_charges(db: &ModDb, cfg: &CalcConfig) -> AllChargeStates {
     }
 }
 
-/// Fills the charge-stack multipliers per PoB2's charge semantics, returning a derived cfg.
+/// Inputs for each charge kind: its count override modifier and use condition.
+/// The plain count comes from these inputs (or the minimum while disabled);
+/// `Removable<Kind>Charge` is that count minus the minimum, after gain routing.
+/// Diagnostics resolve the use condition through the config catalog rather
+/// than maintaining a second list of config option ids. Every entry has an
+/// off/on ledger fixture in `pobr-build/tests/skills/line_usage.rs`.
+pub const CHARGE_MULTIPLIER_INPUTS: &[(ChargeKind, &str, &str)] = &[
+    (ChargeKind::Power, "PowerCharges", "UsePowerCharges"),
+    (ChargeKind::Frenzy, "FrenzyCharges", "UseFrenzyCharges"),
+    (
+        ChargeKind::Endurance,
+        "EnduranceCharges",
+        "UseEnduranceCharges",
+    ),
+];
+
+/// The charge-use condition driving a plain or removable charge multiplier.
+/// The catalog maps this condition to the player's charge configuration.
+pub fn charge_multiplier_use_condition(multiplier: &str) -> Option<&'static str> {
+    let count = multiplier.strip_prefix("Removable").unwrap_or(multiplier);
+    CHARGE_MULTIPLIER_INPUTS
+        .iter()
+        .find(|(kind, _, _)| kind.multiplier_key() == count)
+        .map(|(_, _, condition)| *condition)
+}
+
+/// Fills the charge-stack multipliers, returning a derived cfg.
 ///
-/// PoB2 `CalcPerform.lua:928-963`: when `UseXCharges` is enabled, a matching
+/// When `UseXCharges` is enabled, a matching
 /// `XCharges` OVERRIDE supplies the count, otherwise the maximum is used.
 /// The result is floored at the always-on minimum, including when use is off.
 /// Explicit counts are neither truncated nor upper-clamped. The config interpreter
@@ -365,15 +391,7 @@ pub fn charge_multipliers_panel_default(db: &ModDb, cfg: &CalcConfig) -> CalcCon
     let original_combat = cfg.conditions.get("Combat").copied();
     let mut projected_combat = false;
     let mut removable_total = 0.0;
-    for (kind, override_name, use_condition) in [
-        (ChargeKind::Power, "PowerCharges", "UsePowerCharges"),
-        (ChargeKind::Frenzy, "FrenzyCharges", "UseFrenzyCharges"),
-        (
-            ChargeKind::Endurance,
-            "EnduranceCharges",
-            "UseEnduranceCharges",
-        ),
-    ] {
+    for &(kind, override_name, use_condition) in CHARGE_MULTIPLIER_INPUTS {
         let key = kind.multiplier_key();
         let maximum = charge_maximum(db, cfg, kind);
         let minimum = f64::from(charge_minimum(db, cfg, kind, maximum));

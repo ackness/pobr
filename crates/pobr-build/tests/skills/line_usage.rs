@@ -937,8 +937,8 @@ fn miscellaneous_lines_distinguish_unmodelled_no_effect_and_external_readers() {
 
 #[test]
 fn consumed_power_charge_bonus_has_existing_config_controls() {
-    use pobr_build::calculate_with_data;
     let data = data();
+    let text = "20% increased Critical Damage Bonus if you've consumed a Power Charge Recently";
     let run = |enabled: bool, minimum: u32| {
         let build = parse_build(&format!(r#"<PathOfBuilding2>
 <Build level="80" className="Witch" mainSocketGroup="1"/>
@@ -946,16 +946,35 @@ fn consumed_power_charge_bonus_has_existing_config_controls() {
 <Config><Input name="usePowerCharges" boolean="{enabled}"/><Input name="overridePowerCharges" number="1"/></Config>
 </PathOfBuilding2>"#)).unwrap();
         let options = DataOrchestratorOptions {
-            extra_modifier_texts: vec![
-                "20% increased Critical Damage Bonus if you've consumed a Power Charge Recently"
-                    .into(),
-                format!("+{minimum} to Minimum Power Charges"),
-            ],
+            extra_modifier_texts: vec![text.into(), format!("+{minimum} to Minimum Power Charges")],
             ..Default::default()
         };
-        calculate_with_data(&build, &data, &options)
-            .unwrap()
-            .crit_multiplier
+        let diagnosis = diagnose(&build, &data, &options).unwrap();
+        let ledger = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+        let row = ledger
+            .lines
+            .iter()
+            .find(|row| row.text.as_deref() == Some(text))
+            .unwrap();
+        let modifier = &row.modifiers[0];
+        if enabled && minimum == 0 {
+            assert_eq!(modifier.status, ModifierStatus::Applied, "{row:?}");
+            assert_eq!(modifier.applied, Some(20.0), "{row:?}");
+            assert!(modifier.read_gate.is_none(), "{row:?}");
+        } else {
+            assert_eq!(modifier.status, ModifierStatus::Inactive, "{row:?}");
+            assert_eq!(
+                modifier
+                    .read_gate
+                    .as_ref()
+                    .unwrap()
+                    .config_option
+                    .as_deref(),
+                Some("usePowerCharges"),
+                "{row:?}"
+            );
+        }
+        diagnosis.session.output().crit_multiplier
     };
     // critical_hit_damage_bonus_+%_if_consumed_power_charge_recently = 20.
     // Existing snapshot convention: one removable charge enables the bonus;
@@ -963,6 +982,78 @@ fn consumed_power_charge_bonus_has_existing_config_controls() {
     let off = run(false, 0);
     assert!((run(true, 0) - (1.0 + (off - 1.0) * 1.2)).abs() < 1e-9);
     assert_eq!(run(true, 1), off);
+}
+
+#[test]
+fn every_charge_multiplier_input_has_an_off_on_ledger_fixture() {
+    use pobr_core::calc::survivability::{CHARGE_MULTIPLIER_INPUTS, ChargeKind};
+    let data = data();
+    for &(kind, _, _) in CHARGE_MULTIPLIER_INPUTS {
+        let (charge, use_option, override_option) = match kind {
+            ChargeKind::Power => ("Power", "usePowerCharges", "overridePowerCharges"),
+            ChargeKind::Frenzy => ("Frenzy", "useFrenzyCharges", "overrideFrenzyCharges"),
+            ChargeKind::Endurance => (
+                "Endurance",
+                "useEnduranceCharges",
+                "overrideEnduranceCharges",
+            ),
+        };
+        // Generalized parser fixtures for both count paths. At 2 charges a
+        // per-charge 20% bonus is 40%; the recently-consumed bonus caps at 20%.
+        let article = if kind == ChargeKind::Endurance {
+            "an"
+        } else {
+            "a"
+        };
+        let texts = [
+            format!("20% increased Critical Damage Bonus per {charge} Charge"),
+            format!(
+                "20% increased Critical Damage Bonus if you've consumed {article} {charge} Charge Recently"
+            ),
+        ];
+        for enabled in [false, true] {
+            let build = parse_build(&format!(r#"<PathOfBuilding2>
+<Build level="80" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
+<Config><Input name="{use_option}" boolean="{enabled}"/><Input name="{override_option}" number="2"/></Config>
+</PathOfBuilding2>"#)).unwrap();
+            let diagnosis = diagnose(
+                &build,
+                &data,
+                &DataOrchestratorOptions {
+                    extra_modifier_texts: texts.to_vec(),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            let ledger = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+            for (text, amount) in texts.iter().zip([40.0, 20.0]) {
+                let row = ledger
+                    .lines
+                    .iter()
+                    .find(|row| row.text.as_deref() == Some(text))
+                    .unwrap();
+                let modifier = &row.modifiers[0];
+                if enabled {
+                    assert_eq!(modifier.status, ModifierStatus::Applied, "{row:?}");
+                    assert_eq!(modifier.applied, Some(amount), "{row:?}");
+                    assert!(modifier.read_gate.is_none(), "{row:?}");
+                } else {
+                    assert_eq!(modifier.status, ModifierStatus::Inactive, "{row:?}");
+                    assert_eq!(
+                        modifier
+                            .read_gate
+                            .as_ref()
+                            .unwrap()
+                            .config_option
+                            .as_deref(),
+                        Some(use_option),
+                        "{row:?}"
+                    );
+                }
+            }
+        }
+    }
 }
 
 #[test]
