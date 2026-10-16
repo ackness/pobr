@@ -5,6 +5,8 @@
 //! submodules (26→4), reducing the number of linked binaries to speed up builds.
 #![allow(clippy::all)]
 
+#[path = "mods/charm_spirits.rs"]
+mod charm_spirits;
 #[path = "mods/load_base_player_mods.rs"]
 mod load_base_player_mods;
 #[path = "mods/load_curse_priority.rs"]
