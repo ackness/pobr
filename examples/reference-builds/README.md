@@ -124,5 +124,7 @@ mise run builds:fetch examples/reference-builds/holdout --pick last
 | 2026-10-16 (same changes; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1912/2030 (94.2%) |
 | 2026-10-16 (round 45: skill-level audit; effect-row limits, support host levels, named gem bonuses, inherent Spear Throw levels, and weapon-set equipment/attribute context reduce worked-build level/quality leads from 99 to 24; reference agreement unchanged) | `tuned/` | 69 | 58 (84%) | 5787/6113 (94.7%) |
 | 2026-10-16 (same changes; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1912/2030 (94.2%) |
+| 2026-10-16 (round 46 draft: HeavyStunBuildupAvg and its modifier readers; existing reference totals unchanged, but all 76 nonzero cached oracle samples remain different pending game-sourced boss poise inputs) | `tuned/` | 69 | 58 (84%) | 5787/6113 (94.7%) |
+| 2026-10-16 (same draft; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1912/2030 (94.2%) |
 
 吻合行里有按游戏规则有意不同于参考值的行（例如护身符授予的技能不保留精魄，见 `reference_report.rs` 基线旁的说明），所以上限不是 100%。

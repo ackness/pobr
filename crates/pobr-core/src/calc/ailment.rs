@@ -1174,7 +1174,7 @@ pub fn chill_traced(
     (effect, node)
 }
 
-// Freeze / Electrocute Poise Buildup
+// Freeze / Electrocute / Heavy Stun Poise Buildup
 
 /// Poise buildup percentage (each unit of damage's contribution to poise buildup, expressed as a
 /// percentage):
@@ -1194,6 +1194,102 @@ fn poise_buildup_inner(damage_scale: f64, enemy_poise_threshold: f64, inc: f64, 
     }
     let pct = damage_scale / enemy_poise_threshold * (1.0 + inc / 100.0) * more * 100.0;
     round(pct)
+}
+
+/// Terms retained by the calculation and reused verbatim by the derived view.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct HeavyStunTerms {
+    pub physical: f64,
+    pub other: f64,
+    pub melee_multiplier: f64,
+    pub threshold: f64,
+    pub damage_scale: f64,
+    pub increased: f64,
+    pub more: f64,
+    pub enemy_multiplier: f64,
+    pub enabled: bool,
+}
+
+impl HeavyStunTerms {
+    pub fn value(&self) -> f64 {
+        if !self.enabled || self.threshold <= 0.0 {
+            return 0.0;
+        }
+        (self.physical * 1.5 + self.other)
+            * self.melee_multiplier
+            * poise_buildup_inner(self.damage_scale, self.threshold, self.increased, self.more)
+            * self.enemy_multiplier
+    }
+}
+
+/// Game Keywords (Stun / Heavy Stun / Cold Damage): player physical damage
+/// and melee hits each have 50% more buildup, multiplicatively; cold cannot
+/// build Heavy Stun. The monster 100% physical / 33% melee constants describe
+/// damage dealt BY monsters and do not apply to the player's outgoing hit.
+/// https://poe2db.tw/us/Keywords
+pub(crate) fn heavy_stun_terms(env: &super::Env, combined: &[(DamageType, f64)]) -> HeavyStunTerms {
+    // Named skills carry the resolved Hit flag. The legacy MinimalInput API
+    // has no selected skill and supplies hit damage directly.
+    let can_hit = env.cfg.flags.intersects(ModFlags::HIT) || env.cfg.skill_name.is_none();
+    let mut cfg = env.cfg.clone();
+    cfg.keyword_flags = cfg.keyword_flags | KeywordFlags::HIT;
+    cfg.flags |= ModFlags::HIT;
+    let player = &env.player.mod_db;
+    let enemy = &env.enemy.mod_db;
+    let names = ["EnemyHeavyStunBuildup", "EnemyImmobilisationBuildup"].map(ModName::from);
+    let enemy_names =
+        ["HeavyStunBuildup", "StunBuildup", "ImmobilisationBuildup"].map(ModName::from);
+    let thresholds =
+        ["PoiseThreshold", "HeavyStunThreshold", "EnemyStunThreshold"].map(ModName::from);
+    let threshold = (pobr_data::monster::enemy_poise_threshold(env.enemy.level as u32) as f64
+        * (1.0 + enemy.sum(ModType::Inc, &cfg, &thresholds) / 100.0)
+        * enemy.more(&cfg, &thresholds))
+    .floor();
+    let mut terms = HeavyStunTerms {
+        melee_multiplier: if cfg.flags.intersects(ModFlags::MELEE) {
+            1.5
+        } else {
+            1.0
+        },
+        threshold,
+        damage_scale: cfg.constants.game().heavy_stun_damage_scale,
+        increased: player.sum(ModType::Inc, &cfg, &names),
+        more: player.more(&cfg, &names),
+        enemy_multiplier: (1.0 + enemy.sum(ModType::Inc, &cfg, &enemy_names) / 100.0)
+            * enemy.more(&cfg, &enemy_names),
+        enabled: can_hit
+            && !player.flag(&cfg, "CannotHeavyStun")
+            && !player.flag(&cfg, "CannotStun"),
+        ..Default::default()
+    };
+    // A successful selected hit, before enemy mitigation. Stored averages
+    // already include lucky rolls, the crit leg, and its probability.
+    // Alternating weapons contribute equally to the average per hit.
+    let hands: Vec<_> = env
+        .player
+        .output
+        .main_hand
+        .iter()
+        .chain(env.player.output.off_hand.iter())
+        .collect();
+    let parts: Vec<_> = if hands.is_empty() {
+        vec![combined]
+    } else {
+        hands
+            .iter()
+            .map(|hand| hand.stored_combined_avg.as_slice())
+            .collect()
+    };
+    for part in &parts {
+        for &(kind, damage) in *part {
+            match kind {
+                DamageType::Physical => terms.physical += damage / parts.len() as f64,
+                DamageType::Cold => {}
+                _ => terms.other += damage / parts.len() as f64,
+            }
+        }
+    }
+    terms
 }
 
 /// Freeze poise buildup percentage (buildup per unit of cold hit damage, %).

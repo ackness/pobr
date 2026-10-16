@@ -278,8 +278,8 @@ in `calc_orchestrator::inject`, and the selected triggered payload receives
 `Triggered` in `prepare::stage_resolve_main_skill`. Possessing a freeze or Pin
 source does not establish the target state. Coming Calamity's 40% elemental
 bonuses require their matching Herald; added attack damage (including
-Asphyxia's Wrath) applies only to attacks. Pin buildup, enemy heavy-stun buildup,
-Daze duration and Maim application remain `unmodelled` entries with explicit
+Asphyxia's Wrath) applies only to attacks. Pin buildup, Daze duration and Maim
+application remain `unmodelled` entries with explicit
 reasons: player stun defences and per-hit `DazeChance` do not measure those
 mechanics. Sources: game `base/stats.json` (`damage_+%_vs_frozen_enemies`,
 `bleeding_magnitude_+%_against_pinned_enemies`, `triggered_spell_spell_damage_+%`,
@@ -290,6 +290,35 @@ attack-Maim rules are exporter-absent; recognizing them does not implement them.
 `FireDamage`, `LightningDamage` and `AilmentMagnitude` have readers gated by
 the selected skill's source damage; the usage ledger reports that gate when a
 non-damaging skill such as Mana Remnants does not reach those readers.
+
+`HeavyStunBuildupAvg` reports the selected successful hit's average enemy Heavy
+Stun buildup as a percentage of poise. It reuses the poise formula with
+`game.heavy_stun_damage_scale = 0.58` from `base/game_constants.json`, the
+level's floored poise threshold, player `EnemyHeavyStunBuildup` /
+`EnemyImmobilisationBuildup`, and enemy buildup/threshold modifiers. Stored
+pre-mitigation hit averages include critical-hit weighting; alternating hands
+are averaged per hit. The game's [Keywords](https://poe2db.tw/us/Keywords)
+(Stun, Heavy Stun, Cold Damage) give player physical damage and melee hits
+separate multiplicative 50% bonuses and exclude cold damage. The stored monster
+100% physical / 33% melee constants apply to damage dealt by monsters, not
+player hits. `CannotStun` / `CannotHeavyStun` suppress buildup. The derived detail
+uses the retained calculation terms. Mauling Stuns uses `enemyDistance <=
+metres * 10`, sharing Focused Thrust's handler and ledger gate; unset distance
+retains the existing zero-distance convention. Pin stays unmodelled because the
+current game-constants snapshot contains no Pin damage scale.
+
+The shared enemy setup currently injects the common unique-monster poise
+bonus only (`Mods.MonsterUnique2`: `poise_threshold_+%_final_from_rarity = 500`).
+It omits boss-specific poise bonuses, so Heavy Stun buildup on boss targets is
+incomplete. `base/enemy_presets.json` stores additional Map Boss / Xesht
+multipliers, but its schema documents those entries as PoB-derived; the current
+game export has only `MonsterVarieties.Id` / `MonsterType`, not the needed
+monster-specific poise values (`monster_base_relative_poise_threshold_+%_final`).
+The 95-build cached oracle check agrees only on 19 zero outputs; no nonzero
+sample is validated. Other differences include the requested pre-mitigation
+hit convention versus PoB2's effective damage. These are unresolved engine/data
+limits, not evidence that the oracle is wrong, and are not registered as known
+intentional differences.
 
 伤害型异常（流血、点燃、毒）的同时层数 = 命中率 × 施加几率 × 持续时间 × 每秒命中数，持续时间是基础时间乘持续时间加成（含 “increased duration of Ailments you inflict”，`EnemyAilmentDuration`）与敌人身上效果的过期速度，再除以 “Damaging Ailments deal damage #% faster”：伤害总量不变、造成得更快，每份结束得更早（`calc/perform.rs`，分解里写作 “faster /N”）。
 
@@ -693,8 +722,8 @@ shared family bonuses apply once. Game Mods values take priority over the
 [Wolf tooltip](https://poe2db.tw/us/Spirit_Of_The_Wolf#SpiritOfTheWolfPossessedPlayerRef),
 which still says 10% skill speed / 5% movement speed. All new rules declare
 `exporter: "absent"` and a game source. Periodic spirit attacks, Wolf's
-maim/on-hit armour break and heavy-stun buildup remain outside reported
-calculations; heavy-stun buildup stays visible as unread. Ox's slow potency is
+maim/on-hit armour break remain outside reported calculations. Ox's slow
+potency is
 read when a slow applies, and its threshold bonus feeds `AilmentThreshold`. “Energy Shield Recharge starts on use”,
 “Creates Ignited Ground … when used”, “Creates Consecrated Ground on Use”,
 and “Gain Guard equal to Current Runic Ward … when Effect ends” remain
@@ -702,8 +731,8 @@ unsupported pending an event model.
 
 Cat possession's game `critical_strike_chance_+% = 100` is an INC modifier to
 `CriticalStrikeChance` (5% base becomes 10%); all possession names have reader
-coverage, with Bear's `hit_damage_stun_multiplier_+% = 60` explicitly left
-unmodelled as enemy heavy-stun buildup. Charm “Recover # Life when Used”
+coverage, including Bear's `hit_damage_stun_multiplier_+% = 60` in enemy Heavy
+Stun buildup. Charm “Recover # Life when Used”
 (`charm_recover_X_life_when_used`, `CharmGainLifeOnUse1..8`) reports local
 `Charm<N>LifeRecoveryOnUse`, independent of quality and regeneration, matching
 the Mana sibling. “Also grants # Guard” (`charm_gain_X_guard_for_duration`,

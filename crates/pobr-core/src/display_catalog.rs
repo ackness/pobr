@@ -697,6 +697,12 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "EnergyShieldOnKill",
         ),
+        computed(
+            "HeavyStunBuildupAvg",
+            Cat::Ailment,
+            Vt::Percent,
+            "HeavyStunBuildupAvg",
+        ),
         computed("DazeChance", Cat::Ailment, Vt::Percent, "DazeChance"),
         computed(
             "FullyBrokenArmourEffect",
@@ -1271,6 +1277,7 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "ManaOnKill" => output.mana_on_kill,
         "EnergyShieldOnKill" => output.energy_shield_on_kill,
         "DazeChance" => output.daze_chance,
+        "HeavyStunBuildupAvg" => output.heavy_stun_buildup_avg,
         "FullyBrokenArmourEffect" => output.fully_broken_armour_effect,
         "FreezeBuildupPct" => output.freeze_buildup_pct,
         "ElectrocuteBuildupPct" => output.electrocute_buildup_pct,

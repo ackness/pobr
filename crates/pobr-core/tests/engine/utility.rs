@@ -454,17 +454,7 @@ fn all_possession_modifiers_have_readers_except_documented_heavy_stun_buildup() 
                 .filter(|modifier| modifier.source.as_deref() == Some("CharmSpirit"))
                 .map(|modifier| modifier.name.as_str())
                 .collect();
-            // hit_damage_stun_multiplier_+% = 60 is enemy heavy-stun buildup,
-            // not the player's stun threshold, and has no calculation model.
-            assert_eq!(
-                unread,
-                if spirit == "Bear" {
-                    vec!["EnemyHeavyStunBuildup"]
-                } else {
-                    vec![]
-                },
-                "{spirit}"
-            );
+            assert!(unread.is_empty(), "{spirit}: {unread:?}");
             if spirit == "Cat" {
                 // SpiritOfTheCatPossessedPlayer: 100% increased critical chance.
                 assert_eq!(session.output().crit_chance, 0.10); // 5% * (1 + 100%).

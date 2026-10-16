@@ -215,7 +215,6 @@ fn conditional_offence_limits_report_the_missing_models() {
             "Physical Spell Critical Hits build Pin",
             "physical_spell_critical_pin_unmodelled",
         ),
-        ("15% increased Stun Buildup", "stun_buildup_unmodelled"),
         ("25% increased Daze Duration", "daze_duration_unmodelled"),
         (
             "Attacks have 25% chance to Maim on Hit",
@@ -1223,4 +1222,67 @@ fn utility_followups_keep_missing_models_visible_and_crafting_no_effect() {
         .status,
         LineStatus::NoEffect
     );
+}
+
+#[test]
+fn stun_buildup_lines_have_a_reader_and_mauling_stuns_uses_the_distance_gate() {
+    let data = data();
+    let text = "40% increased Stun Buildup against enemies within 2 metres";
+    for (distance, expected) in [
+        (10, ModifierStatus::Applied),
+        (20, ModifierStatus::Applied),
+        (21, ModifierStatus::Inactive),
+    ] {
+        let build = parse_build(&format!(r#"<PathOfBuilding2>
+<Build level="80" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: UNIQUE
+Facebreaker
+Stocky Mitts
+Implicits: 0
+50% increased Stun Buildup
+</Item><ItemSet id="1"><Slot name="Gloves" itemId="1"/></ItemSet></Items>
+<Config><Input name="enemyDistance" number="{distance}"/></Config></PathOfBuilding2>"#)).unwrap();
+        let options = DataOrchestratorOptions {
+            mode_effective: true,
+            extra_modifier_texts: vec!["15% increased Stun Buildup".into(), text.into()],
+            ..Default::default()
+        };
+        let diagnosis = diagnose(&build, &data, &options).unwrap();
+        assert!(diagnosis.session.output().heavy_stun_buildup_avg > 0.0);
+        let usage = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+        let plain = usage
+            .lines
+            .iter()
+            .find(|row| row.text.as_deref() == Some("15% increased Stun Buildup"))
+            .unwrap();
+        assert_eq!(
+            plain.modifiers[0].status,
+            ModifierStatus::Applied,
+            "{plain:?}"
+        );
+        let facebreaker = line(&usage, "item.gloves.explicit", "50% increased Stun Buildup");
+        assert_eq!(
+            facebreaker.modifiers[0].status,
+            ModifierStatus::Applied,
+            "{facebreaker:?}"
+        );
+        let row = usage
+            .lines
+            .iter()
+            .find(|row| row.text.as_deref() == Some(text))
+            .unwrap();
+        assert_eq!(row.modifiers[0].status, expected, "{row:?}");
+        if expected == ModifierStatus::Inactive {
+            assert_eq!(
+                row.modifiers[0]
+                    .read_gate
+                    .as_ref()
+                    .unwrap()
+                    .config_option
+                    .as_deref(),
+                Some("enemyDistance")
+            );
+        }
+    }
 }

@@ -69,6 +69,8 @@ pub struct Env {
     /// `None` means `buff_pass` didn't run (mode_buffs off / no spec), and
     /// the output fields stay at their Default 0.
     pub curse_pass_output: Option<CursePassOutput>,
+    /// The selected hit's Heavy Stun buildup inputs, retained for its derived view.
+    pub(crate) heavy_stun_terms: Option<super::ailment::HeavyStunTerms>,
     /// The terms behind each damaging ailment's displayed DPS, written by
     /// `perform`'s ailment stage: every pass that applies it and, for two
     /// weapon passes, how they were merged.
@@ -128,6 +130,7 @@ impl Env {
             buff_handler_registry: Arc::new(HandlerRegistry::new()),
             curse_priority: None,
             curse_pass_output: None,
+            heavy_stun_terms: None,
             ailment_terms: Vec::new(),
             crossbow_reload: None,
             ehp_terms: None,

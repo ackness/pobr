@@ -292,6 +292,8 @@ pub struct OutputTable {
     pub chill_effect: f64,
     /// Freeze buildup (% per hit; 0 = not accumulating).
     pub freeze_buildup_pct: f64,
+    /// Average enemy Heavy Stun buildup (% of poise per successful hit).
+    pub heavy_stun_buildup_avg: f64,
     /// Shock buildup (% per hit; 0 = not accumulating).
     pub electrocute_buildup_pct: f64,
     /// Bleed/poison/ignite multi-stack DPS and active stack count (0 = no
@@ -744,6 +746,7 @@ impl Default for OutputTable {
             // Lane B: ailment extensions default to 0 (not applied without a matching hit/mod).
             chill_effect: 0.0,
             freeze_buildup_pct: 0.0,
+            heavy_stun_buildup_avg: 0.0,
             electrocute_buildup_pct: 0.0,
             bleed_stacked_dps: 0.0,
             bleed_active_stacks: 0.0,

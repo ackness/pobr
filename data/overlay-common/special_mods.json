@@ -5329,16 +5329,17 @@
       ]
     },
     {
-      "id": "stun_buildup_unmodelled",
-      "pattern": "(\\d+(?:\\.\\d+)?)% increased stun buildup",
-      "mods": [],
-      "verified": false,
-      "batch": "unmodelled",
-      "game_source": "base/stats.json: hit_damage_stun_multiplier_+%; base/passive_tree.json: Stun Buildup (10047)",
-      "source_note": "Enemy heavy-stun buildup is not modelled. Existing StunThreshold, StunDuration and SelfStunChance outputs describe stuns received by the player, not buildup inflicted on an enemy.",
-      "examples": [
-        "15% increased Stun Buildup"
-      ]
+      "id": "mauling_stuns_buildup",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased stun buildup against enemies within (\\d+(?:\\.\\d+)?) metres",
+      "handler_id": "special:mauling_stuns",
+      "handler_args": [
+        "$1",
+        "$2"
+      ],
+      "verified": true,
+      "batch": "S2",
+      "game_source": "base/passive_tree.json: Mauling Stuns (11886); 40% increased Stun Buildup against enemies within 2 metres",
+      "source_note": "EnemyHeavyStunBuildup INC gated by enemyDistance <= radius in metres times 10; shares Focused Thrust's distance handler and ledger gate."
     },
     {
       "id": "daze_duration_unmodelled",

@@ -170,3 +170,102 @@ fn fully_broken_armour_scales_physical_hits_and_leaves_bleed_unchanged() {
     assert!(partial.average_damage < 100.0);
     assert_eq!(base.average_damage, 100.0);
 }
+
+#[test]
+fn heavy_stun_uses_eligible_crit_weighted_hits_and_shared_poise_scaling() {
+    let run = |distance, cannot_stun: Option<&str>| {
+        let mut session = session(&[
+            "50% increased Stun Buildup",
+            "20% increased Immobilisation Buildup",
+            "40% increased Stun Buildup against enemies within 2 metres",
+            "Adds 100 to 100 Fire Damage",
+            "Adds 100 to 100 Cold Damage",
+            "Adds 100 to 100 Lightning Damage",
+            "Adds 100 to 100 Chaos Damage",
+        ])
+        .with_config(
+            CalcConfig::spell()
+                .with_flags(ModFlags::SPELL | ModFlags::MELEE)
+                .with_multiplier("enemyDistance", distance)
+                .with_mode_effective(true),
+        );
+        session.setup_enemy(10, pobr_data::monster::EnemyTier::None);
+        session.add_modifiers([
+            Modifier::number("SkillBaseCritChance", ModType::Base, 50.0),
+            Modifier::number("EnemyHeavyStunBuildup", ModType::More, 20.0),
+        ]);
+        session.add_enemy_modifiers([
+            Modifier::number("PoiseThreshold", ModType::More, 100.0),
+            Modifier::number("EnemyStunThreshold", ModType::Inc, -20.0),
+            Modifier::number("HeavyStunBuildup", ModType::Inc, 30.0),
+            Modifier::number("StunBuildup", ModType::More, 10.0),
+            Modifier::number("FireResist", ModType::Base, 75.0),
+        ]);
+        if let Some(flag) = cannot_stun {
+            session.add_modifiers([Modifier::flag(flag)]);
+        }
+        session.perform_minimal().unwrap();
+        session
+    };
+    for (distance, inc) in [(19.9, 110.0), (20.0, 110.0), (20.1, 70.0)] {
+        let session = run(distance, None);
+        // Each type: 100 noncrit, 200 crit, 50% crit => 150 average.
+        // Cold contributes zero; physical gets 1.5; melee gets another 1.5:
+        // (150*1.5 + 3*150)*1.5 = 1012.5. Level 10 poise = 142;
+        // floor(142*.8*2) = 227. INC = 50+20(+40 within 2m), MORE=1.2.
+        // Enemy buildup = 1.3*1.1 = 1.43. Fire resistance does not change it.
+        let per_damage = (0.58 / 227.0 * (1.0 + inc / 100.0) * 1.2 * 100.0 * 1e9_f64).round() / 1e9;
+        let expected = 1012.5 * per_damage * 1.43;
+        let actual = display_value(session.output(), "HeavyStunBuildupAvg");
+        assert!(
+            (actual - expected).abs() < 1e-6,
+            "{distance}: {actual} vs {expected}"
+        );
+        let detail = session.derived_detail("HeavyStunBuildupAvg").unwrap();
+        let get = |id: &str| detail.inputs.iter().find(|(name, _)| name == id).unwrap().1;
+        let pct = (get("HeavyStunDamageScale") / get("EnemyPoiseThreshold")
+            * (1.0 + get("StunBuildupIncreased") / 100.0)
+            * get("StunBuildupMore")
+            * 100.0
+            * 1e9)
+            .round()
+            / 1e9;
+        let reconstructed = (get("PhysicalHitAverage") * get("PhysicalStunMultiplier")
+            + get("OtherStunHitAverage"))
+            * get("MeleeStunMultiplier")
+            * pct
+            * get("EnemyStunBuildupMultiplier");
+        assert!((actual - reconstructed).abs() < 1e-9);
+    }
+    for flag in ["CannotStun", "CannotHeavyStun"] {
+        let session = run(20.0, Some(flag));
+        assert_eq!(session.output().heavy_stun_buildup_avg, 0.0);
+        assert_eq!(
+            session
+                .derived_detail("HeavyStunBuildupAvg")
+                .unwrap()
+                .inputs[0]
+                .1,
+            0.0
+        );
+    }
+    let mut non_hit = session(&["Adds 100 to 100 Fire Damage"])
+        .with_config(CalcConfig::spell().with_skill_name(Some("Non-hit skill".into())));
+    non_hit.perform_minimal().unwrap();
+    assert_eq!(non_hit.output().heavy_stun_buildup_avg, 0.0);
+    for damage_type in [DamageType::Physical, DamageType::Cold] {
+        let mut session = super::support::session(MinimalInput {
+            base_hit_min: 0.0,
+            base_hit_max: 0.0,
+            ..Default::default()
+        })
+        .with_config(CalcConfig::spell());
+        if damage_type == DamageType::Cold {
+            session
+                .add_modifier_texts(&["Adds 100 to 100 Cold Damage"])
+                .unwrap();
+        }
+        session.perform_minimal().unwrap();
+        assert_eq!(session.output().heavy_stun_buildup_avg, 0.0);
+    }
+}

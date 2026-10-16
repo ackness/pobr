@@ -513,3 +513,5 @@ FullyBrokenArmourEffect = "Fully Broken Armour Physical Hit Damage Taken"
 
 ArchonDuration = "Archon Buff Duration (s)"
 ArchonRecoveryPeriod = "Archon Recovery Period (s)"
+
+HeavyStunBuildupAvg = "Heavy Stun Buildup per Hit"
