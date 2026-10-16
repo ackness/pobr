@@ -1,0 +1,13 @@
+.item-crafter { padding: 1rem; margin-block: 1rem; min-width: 0; }
+.item-crafter-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: .75rem; margin-block: 1rem; }
+.item-crafter-fields label { display: grid; gap: .4rem; min-width: 0; }
+.item-crafter-fields input { min-width: 0; width: 100%; }
+.item-crafter-base { border-left: 2px solid var(--border); padding-left: 1rem; margin-block: 1rem; }
+.item-crafter-base p { margin: .35rem 0; }
+.item-draft-workbench { margin-top: 1rem; min-width: 0; }
+.item-draft-workbench > .replacement-affix-editor { margin-bottom: 1rem; }
+.unique-selection { border: 0; padding: 0; margin: 0; min-width: 0; }
+.unique-rolls { margin-block: 1rem; }
+.unique-roll { display: grid; grid-template-columns: minmax(0, 1fr) minmax(80px, 180px) 3rem; align-items: center; gap: .75rem; padding-block: .6rem; border-bottom: 1px solid var(--border); }
+.unique-roll input { width: 100%; min-width: 0; }
+@media (max-width: 640px) { .unique-roll { grid-template-columns: minmax(0, 1fr) 3rem; } .unique-roll > span { grid-column: 1 / -1; } }

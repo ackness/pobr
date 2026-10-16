@@ -97,3 +97,37 @@ fn identical_passive_text_keeps_node_specific_radius_grants() {
         "in-radius grant must distinguish identical node text"
     );
 }
+
+#[test]
+fn explicit_probes_are_bounded_and_preserve_single_node_values() {
+    pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
+    let request = json!({"character":{"class_name":"Witch","level":80},"allocated_nodes":[7960]});
+    let probe = |nodes: Value| {
+        pobr_wasm::node_power_json(
+            &json!({"request":request, "power_stat":"Mana", "max_depth":0, "nodes":nodes})
+                .to_string(),
+        )
+    };
+    let out: Value =
+        serde_json::from_str(&probe(json!([9884, 23091, 9884, 7960])).unwrap()).unwrap();
+    assert_eq!(out["entries"].as_array().unwrap().len(), 2);
+    assert!(
+        out["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|e| e["distance"] == 0)
+    );
+    for entry in out["entries"].as_array().unwrap() {
+        let response: Value = serde_json::from_str(&pobr_wasm::optimize_variants_json(&json!({
+            "request":request,"stats":["Mana"],"variants":[{"allocate_nodes":[entry["skill"]]}]
+        }).to_string()).unwrap()).unwrap();
+        let expected = response["variants"][0]["stats"]["Mana"].as_f64().unwrap()
+            - response["baseline"]["Mana"].as_f64().unwrap();
+        assert!((entry["delta"].as_f64().unwrap() - expected).abs() < 1e-8);
+    }
+    let empty: Value = serde_json::from_str(&probe(json!([])).unwrap()).unwrap();
+    assert_eq!(empty["entries"], json!([]));
+    let error: Value = serde_json::from_str(&probe(json!(vec![1; 17])).unwrap_err()).unwrap();
+    assert_eq!(error["code"], "bad_request");
+}

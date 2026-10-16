@@ -45,9 +45,21 @@
 //!   Critical Hit Recently" holds whenever it gains any: the condition is
 //!   set for the Energy gained, whatever the build's configuration says.
 //!
-//! The spell's own rate of use is replaced with the rate of triggers. Without
-//! a skill that can fill the gem the spell keeps its own rate, as if it were
-//! cast by hand.
+//! Cast on Elemental Ailment uses ignite/shock/freeze events (not chill).
+//! Ignite Energy scales by the ignite's total damage / ailment threshold;
+//! shock gives 1 and freeze 10 Energy per Power. Cast on Block gives 25 per
+//! block; Cast on Minion Death gives 50 per Power of the killed minion.
+//! Spellslinger gains 0.2 Energy per 10 ms base cast time of self-cast spells.
+//! Its and Elemental Invocation's 500-Energy capacity is separate from the
+//! socketed spells' cost: manual activations can spend several cycles.
+//!
+//! These rates are estimates: mixed ailment events use their mean Energy;
+//! freeze repeats after whole hits fill buildup, without a refractory period.
+//! Invocations assume immediate spending unless a manual-use rate is supplied,
+//! with unspent Energy retained and a cooldown/storage cap on throughput.
+//! Missing event sources retain the spell's own rate, with an explicit fallback
+//! explanation. Configured zero event rates still stop triggers. Killed-minion
+//! Power defaults to one.
 
 use pobr_data::prelude::*;
 
@@ -61,8 +73,113 @@ pub const ENERGY_PER_POWER_ON_CRIT: &str = "EnergyPerPowerOnCrit";
 pub const ENERGY_GENERATED: &str = "EnergyGenerated";
 /// Chance, in percent, that a trigger refunds half of the Energy it spent.
 pub const REFUND_HALF_CHANCE: &str = "EnergyRefundHalfChance";
+/// Energy event rules resolved from the meta gem's game stats.
+pub const ENERGY_PER_BLOCK: &str = "EnergyPerBlock";
+pub const ENERGY_PER_MINION_POWER: &str = "EnergyPerMinionPower";
+pub const ENERGY_PER_CAST_MS: &str = "EnergyPerCastMillisecond";
+pub const ENERGY_PER_IGNITE_POWER: &str = "EnergyPerIgnitePower";
+pub const ENERGY_PER_SHOCK_POWER: &str = "EnergyPerShockPower";
+pub const ENERGY_PER_FREEZE_POWER: &str = "EnergyPerFreezePower";
+pub const ENERGY_COST: &str = "EnergyTriggerCost";
+pub const INVOCATION_COOLDOWN: &str = "EnergyInvocationCooldown";
+pub const SOURCE_CAST_TIME: &str = "CastTimeMs";
+pub const SOURCE_IGNITE_CHANCE: &str = "IgniteChance";
+pub const SOURCE_IGNITE_DAMAGE: &str = "IgniteDamage";
+pub const SOURCE_SHOCK_CHANCE: &str = "ShockChance";
+pub const SOURCE_FREEZE_CHANCE: &str = "FreezeChance";
+
+/// Per successful hit, independent of the triggered spell's ailments.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct AilmentSourceStats {
+    pub ignite_chance: f64,
+    /// Total damage of one ignite before enemy mitigation, without uptime.
+    pub ignite_damage: f64,
+    pub shock_chance: f64,
+    /// Mean freezes per hit, estimated from whole hits to fill buildup.
+    pub freeze_chance: f64,
+}
+
+/// Resolved terms shared by JSON output and the trigger-rate explanation.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+pub struct EnergyTriggerTerms {
+    pub maximum_energy: f64,
+    pub energy_per_trigger: f64,
+    pub source: Option<String>,
+    /// No event source is available, so the payload retains its own use rate.
+    pub at_own_rate: bool,
+    /// Stable explanation id identifying the missing input or mechanic.
+    pub missing_source: Option<&'static str>,
+    pub events_per_second: f64,
+    pub energy_per_event: f64,
+    pub refund_half_chance: f64,
+    pub events_per_trigger: f64,
+    pub energy_limited_rate: f64,
+    pub trigger_rate_cap: f64,
+    pub triggers_per_second: f64,
+    pub invocation: bool,
+    pub rate_multiplier: f64,
+}
+
+/// The existing ailment pipeline supplies the application probabilities.
+/// Freeze buildup is a percentage per damage point, not a chance to freeze.
+pub(crate) fn source_ailments(env: &Env) -> AilmentSourceStats {
+    use super::ailment::{self, AilmentSource};
+    let out = &env.player.output;
+    let player = &env.player.mod_db;
+    let cfg = &env.cfg;
+    let mut result = AilmentSourceStats::default();
+    if let Some((_, terms)) = env
+        .ailment_terms
+        .iter()
+        .find(|(kind, _)| *kind == AilmentType::Ignite)
+    {
+        let count = terms.passes.len() as f64;
+        for (_, t) in &terms.passes {
+            result.ignite_chance += t.apply_chance / count;
+            result.ignite_damage += t.application_source_damage * t.per_second_pct / 100.0
+                * (1.0 + t.magnitude_inc / 100.0)
+                * t.magnitude_more
+                * t.effect
+                * t.rate
+                * t.duration
+                / count;
+        }
+    }
+    let lightning =
+        ailment::cross_type_source_hit(AilmentType::Shock, &out.damage_components, player, cfg);
+    if lightning > 0.0 {
+        let source = AilmentSource::new(
+            lightning,
+            out.crit_multiplier,
+            out.crit_chance,
+            player.flag(cfg, "AilmentsAreNeverFromCrit"),
+        );
+        let threshold = super::perform::enemy_ailment_threshold_effective(
+            &env.enemy.mod_db,
+            cfg,
+            env.enemy.level,
+        );
+        result.shock_chance = ailment::shock_traced(
+            &source,
+            player,
+            &env.enemy.mod_db,
+            cfg,
+            threshold,
+            &mut crate::TraceGraph::new(),
+        )
+        .0;
+    }
+    let cold =
+        ailment::cross_type_source_hit(AilmentType::Chill, &out.damage_components, player, cfg);
+    let buildup = cold * out.freeze_buildup_pct;
+    if buildup > 0.0 {
+        result.freeze_chance = 1.0 / (100.0 / buildup - 1e-9).ceil().max(1.0);
+    }
+    result
+}
+
 /// One of the character's skills that can fill the gem: a list entry whose
-/// nested modifiers are the four values below, named by its source.
+/// nested modifiers describe the event rate and gain, named by its source.
 pub const ENERGY_SOURCE: &str = "EnergySource";
 /// Hits per second of a source skill.
 pub const SOURCE_RATE: &str = "Rate";
@@ -96,6 +213,38 @@ pub fn maximum_energy(spells: &[SocketedSpell], ms_per_energy: f64) -> f64 {
         .iter()
         .map(|spell| (spell.cast_time_ms + 2.0 * spell.added_total_cast_time_ms) / ms_per_energy)
         .sum()
+}
+
+/// The empty-to-full channel duration uses continuous Energy gain, without
+/// assuming a refund from an earlier trigger or changing the spell's DPS.
+pub(crate) fn channel_trigger_terms(db: &crate::ModDb, cfg: &crate::CalcConfig) -> (f64, f64) {
+    let maximum = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("ChannelTriggerMaximumEnergy")],
+    );
+    let gain = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("ChannelTriggerEnergyPerSecond")],
+    );
+    let names = [
+        ModName::from(ENERGY_GENERATED),
+        ModName::from("ChannelTriggerEnergyGenerated"),
+    ];
+    (
+        maximum,
+        gain * (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names),
+    )
+}
+
+pub(crate) fn channel_time_to_trigger(db: &crate::ModDb, cfg: &crate::CalcConfig) -> f64 {
+    let (maximum, gain) = channel_trigger_terms(db, cfg);
+    if maximum > 0.0 && gain > 0.0 {
+        round(maximum / gain)
+    } else {
+        0.0
+    }
 }
 
 /// Energy one critical hit gives: `energy_per_power` for each Power of the
@@ -136,17 +285,7 @@ pub fn triggers_per_second(
     events_per_second / events_to_fill
 }
 
-/// The source that fills the gem most often.
-#[derive(Debug, Clone, PartialEq)]
-struct BestSource {
-    skill: String,
-    energy_per_hit: f64,
-    triggers_per_second: f64,
-}
-
-/// Replaces the main skill's rate of use with the rate at which its meta gem
-/// triggers it. Does nothing for a skill outside an Energy meta gem, or when
-/// none of the character's skills can fill the gem.
+/// Replaces the socketed spell's rate after resolving its Energy sources.
 pub fn apply_energy_trigger(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
@@ -155,79 +294,198 @@ pub fn apply_energy_trigger(env: &mut Env) {
     if maximum <= 0.0 {
         return;
     }
-    let own_rate = env.player.output.effective_action_rate;
-    let energy_per_power = sum(ENERGY_PER_POWER_ON_CRIT);
-    // The Energy comes with a critical hit: one has been dealt Recently.
-    let gain_cfg = cfg.clone().with_condition("CritRecently", true);
-    let gain_names = [ModName::from(ENERGY_GENERATED)];
-    let gain_multiplier = (1.0 + db.sum(ModType::Inc, &gain_cfg, &gain_names) / 100.0)
-        * db.more(&gain_cfg, &gain_names);
-    let enemy_power = match sum("Multiplier:EnemyPower") {
+    let cost = sum(ENERGY_COST).max(0.0);
+    let cost = if cost > 0.0 { cost } else { maximum };
+    let invocation_cd = sum(INVOCATION_COOLDOWN);
+    let invocation = invocation_cd > 0.0;
+    let crit = sum(ENERGY_PER_POWER_ON_CRIT);
+    let gain_cfg = if crit > 0.0 {
+        cfg.clone().with_condition("CritRecently", true)
+    } else {
+        cfg.clone()
+    };
+    let names = [ModName::from(ENERGY_GENERATED)];
+    let gain = ((1.0 + db.sum(ModType::Inc, &gain_cfg, &names) / 100.0)
+        * db.more(&gain_cfg, &names))
+    .max(0.0);
+    let power = match sum("Multiplier:EnemyPower") {
         power if power > 0.0 => power,
         _ => ORDINARY_ENEMY_POWER,
     };
-    let ailment_threshold =
+    let threshold =
         super::perform::enemy_ailment_threshold_effective(&env.enemy.mod_db, cfg, env.enemy.level);
-    let half_refund_chance = sum(REFUND_HALF_CHANCE) / 100.0;
-
-    let mut best: Option<BestSource> = None;
-    for source in db
-        .named(ENERGY_SOURCE)
-        .filter(|modifier| modifier.mod_type == ModType::List && modifier.matches(cfg))
-    {
-        let Some(values) = source.value.as_nested_mods() else {
-            continue;
-        };
-        let value = |name: &str| {
-            values
-                .iter()
-                .find(|inner| inner.name.as_str() == name)
-                .and_then(|inner| inner.value.as_number())
-                .unwrap_or(0.0)
-        };
-        let energy_per_hit = energy_per_critical_hit(
-            energy_per_power,
-            enemy_power,
-            value(SOURCE_CRIT_DAMAGE),
-            ailment_threshold,
-            gain_multiplier,
+    let refund = (sum(REFUND_HALF_CHANCE) / 100.0).clamp(0.0, 1.0);
+    let mut best = EnergyTriggerTerms {
+        maximum_energy: round(maximum),
+        energy_per_trigger: round(cost),
+        source: None,
+        at_own_rate: false,
+        missing_source: None,
+        events_per_second: 0.0,
+        energy_per_event: 0.0,
+        refund_half_chance: refund,
+        events_per_trigger: 0.0,
+        energy_limited_rate: 0.0,
+        trigger_rate_cap: 0.0,
+        triggers_per_second: 0.0,
+        invocation,
+        rate_multiplier: 1.0,
+    };
+    let invocation_cap = if invocation {
+        let cooldown_cap = super::trigger::trigger_rate_cap(
+            invocation_cd,
+            super::trigger::server_tick_rate(cfg.constants.game().server_tick_seconds),
         );
-        let critical_hits_per_second =
-            value(SOURCE_RATE) * value(SOURCE_HIT_CHANCE) * value(SOURCE_CRIT_CHANCE);
-        let rate = triggers_per_second(
-            critical_hits_per_second,
-            energy_per_hit,
-            maximum,
-            half_refund_chance,
-        );
-        if rate > best.as_ref().map_or(0.0, |best| best.triggers_per_second) {
-            best = Some(BestSource {
-                skill: source.source.clone().unwrap_or_default(),
-                energy_per_hit,
-                triggers_per_second: rate,
-            });
+        let uses = cfg
+            .multiplier_if_set("EnergyInvocationUsesPerSecond")
+            .unwrap_or(cooldown_cap)
+            .clamp(0.0, cooldown_cap);
+        (maximum / cost).floor() * uses
+    } else {
+        0.0
+    };
+    let mut consider = |source: String, rate: f64, energy: f64| {
+        let energy = (energy * gain).max(0.0);
+        let rate = rate.max(0.0);
+        let (limited, events) = if invocation {
+            // Invocations retain unspent Energy and can spend several cycles at once.
+            let spent = cost * (1.0 - refund / 2.0);
+            let events = if energy > 0.0 {
+                spent / energy.min(maximum)
+            } else {
+                0.0
+            };
+            (if events > 0.0 { rate / events } else { 0.0 }, events)
+        } else {
+            let limited = triggers_per_second(rate, energy, cost, refund);
+            (limited, if limited > 0.0 { rate / limited } else { 0.0 })
+        };
+        let cap = if invocation { invocation_cap } else { rate };
+        let triggers = limited.min(cap);
+        if best.source.is_none() || triggers > best.triggers_per_second {
+            best.source = Some(source);
+            best.events_per_second = rate;
+            best.energy_per_event = energy;
+            best.events_per_trigger = events;
+            best.energy_limited_rate = limited;
+            best.trigger_rate_cap = cap;
+            best.triggers_per_second = triggers;
+        }
+    };
+    let missing_source;
+    if sum(ENERGY_PER_BLOCK) > 0.0 {
+        missing_source = if cfg.multiplier_if_set("EnergyIncomingHitRate").is_some() {
+            "EnergyNeedsBlockChance"
+        } else {
+            "EnergyNeedsIncomingHits"
+        };
+        if let Some(incoming) = cfg.multiplier_if_set("EnergyIncomingHitRate")
+            && (incoming == 0.0 || env.player.output.effective_block_chance > 0.0)
+        {
+            consider(
+                "Block".into(),
+                incoming * env.player.output.effective_block_chance / 100.0,
+                sum(ENERGY_PER_BLOCK),
+            );
+        }
+    } else if sum(ENERGY_PER_MINION_POWER) > 0.0 {
+        missing_source = "EnergyNeedsMinionDeaths";
+        // The configured average Power describes the minions that actually die.
+        let minion_power = cfg
+            .multiplier_if_set("EnergyMinionPower")
+            .unwrap_or(1.0)
+            .max(0.0);
+        if let Some(deaths) = cfg.multiplier_if_set("EnergyMinionDeathsPerSecond") {
+            consider(
+                "MinionDeath".into(),
+                deaths,
+                sum(ENERGY_PER_MINION_POWER) * minion_power,
+            );
+        }
+    } else {
+        missing_source = if crit > 0.0 {
+            "EnergyNeedsCriticalHits"
+        } else if sum(ENERGY_PER_CAST_MS) > 0.0 {
+            "EnergyNeedsSpellCasts"
+        } else {
+            "EnergyNeedsAilments"
+        };
+        for source in db
+            .named(ENERGY_SOURCE)
+            .filter(|m| m.mod_type == ModType::List && m.matches(cfg))
+        {
+            let Some(values) = source.value.as_nested_mods() else {
+                continue;
+            };
+            let value = |name: &str| {
+                values
+                    .iter()
+                    .find(|m| m.name.as_str() == name)
+                    .and_then(|m| m.value.as_number())
+                    .unwrap_or(0.0)
+            };
+            let (rate, energy) = if crit > 0.0 {
+                (
+                    value(SOURCE_RATE) * value(SOURCE_HIT_CHANCE) * value(SOURCE_CRIT_CHANCE),
+                    energy_per_critical_hit(crit, power, value(SOURCE_CRIT_DAMAGE), threshold, 1.0),
+                )
+            } else if sum(ENERGY_PER_CAST_MS) > 0.0 {
+                (
+                    value(SOURCE_RATE),
+                    value(SOURCE_CAST_TIME) * sum(ENERGY_PER_CAST_MS),
+                )
+            } else {
+                let ignite = value(SOURCE_IGNITE_CHANCE);
+                let shock = value(SOURCE_SHOCK_CHANCE);
+                let freeze = value(SOURCE_FREEZE_CHANCE);
+                let chances = ignite + shock + freeze;
+                let energy = if chances > 0.0 {
+                    power
+                        * (ignite * sum(ENERGY_PER_IGNITE_POWER) * value(SOURCE_IGNITE_DAMAGE)
+                            / threshold
+                            + shock * sum(ENERGY_PER_SHOCK_POWER)
+                            + freeze * sum(ENERGY_PER_FREEZE_POWER))
+                        / chances
+                } else {
+                    0.0
+                };
+                (
+                    value(SOURCE_RATE) * value(SOURCE_HIT_CHANCE) * chances,
+                    energy,
+                )
+            };
+            if rate > 0.0 && energy > 0.0 {
+                consider(source.source.clone().unwrap_or_default(), rate, energy);
+            }
         }
     }
-
     let out = &mut env.player.output;
     out.energy_trigger_maximum = round(maximum);
-    let Some(best) = best else {
-        return;
-    };
-    out.energy_per_trigger_event = round(best.energy_per_hit);
-    out.energy_trigger_source = Some(best.skill);
-    out.skill_trigger_rate = round(best.triggers_per_second);
-    if own_rate <= 0.0 {
+    // A missing source is unknown, not a configured zero. Explicitly disabling
+    // manual activations still stops an Invocation even without a source skill.
+    let stopped = invocation && cfg.multiplier_if_set("EnergyInvocationUsesPerSecond") == Some(0.0);
+    if best.source.is_none() && !stopped {
+        best.at_own_rate = true;
+        best.missing_source = Some(missing_source);
+        out.energy_trigger = Some(best);
         return;
     }
-    // The spell's damage per use stands; it is used at the rate of triggers.
-    let factor = best.triggers_per_second / own_rate;
-    out.dps = round(out.dps * factor);
-    out.action_rate = round(out.action_rate * factor);
-    out.effective_action_rate = round(best.triggers_per_second);
+    out.energy_per_trigger_event = round(best.energy_per_event);
+    out.energy_trigger_source = best.source.clone();
+    out.skill_trigger_rate = round(best.triggers_per_second);
+    out.trigger_rate_cap = round(best.trigger_rate_cap);
+    let own_rate = out.effective_action_rate;
+    if own_rate > 0.0 {
+        let factor = best.triggers_per_second / own_rate;
+        best.rate_multiplier = factor;
+        out.dps = round(out.dps * factor);
+        out.action_rate = round(out.action_rate * factor);
+    }
+    out.effective_action_rate = out.skill_trigger_rate;
     if let Some(use_time) = &mut out.skill_use_time {
         use_time.effective_rate = out.effective_action_rate;
     }
+    out.energy_trigger = Some(best);
 }
 
 #[cfg(test)]

@@ -13,41 +13,33 @@ use crate::build_data::BuildData;
 use pobr_core::ModTag;
 use pobr_core::skill_env::parse_local_block_chance;
 
-/// Injects every armour piece's **per-item** defence base value (armour/evasion/ES) as
-/// an Item-attributed BASE mod, for `scaled_defence_stat` to layer global (tree/aura)
-/// `increased Armour/Evasion/EnergyShield` and global `+to Armour` BASE on top.
-///
-/// PoB2 semantics (`CalcDefence.lua` per-slot + `Item.lua`'s
-/// `BuildModListForSlotNum`):
-/// - The item's exported text `Armour:`/`Evasion:`/`Energy Shield:` lines
-///   (`item.armourData`) **already include** that item's base roll + local
-///   `increased X` + quality — i.e. PoB has already computed the per-item base value at
-///   load time. So here the rolled value is **used directly as the per-item base**,
-///   without re-applying local increased / quality / flat (those are already stripped,
-///   see `calculate_with_data`'s armour-item drop-local step).
-/// - An item missing a rolled line (a bare item / test fixture) falls back to the base
-///   item's default value, with local `increased X` × quality × local flat layered on
-///   top (the legacy formula, as a fallback).
-///
-/// Every per-item base value is summed and injected as a single global BASE: because the
-/// global multiplier zone (tree/aura increased + more) is **the same for every item**,
-/// "multiply each item by the global zone then sum" and "sum then multiply by the
-/// global zone" are numerically equivalent (as long as there's no slot-scoped global boost).
-///
-/// **Known gap (slot-scoped defence)**: `N% increased/more <Defence> from Equipped
-/// <Slot>` (e.g. the Titan ascendancy's `80% increased Armour from Equipped Body
-/// Armour`) is **not implemented** yet — this kind of slot-level `increased` shares the
-/// same additive bucket as global `increased` (PoB2's `calcLib.mod({slotName=slot})`
-/// adds them together), which can't be expressed precisely in the current "sum then
-/// multiply by a single global zone" structure (a separate multiplier zone would
-/// multiply out an extra `g×s` cross term and over-count — confirmed in practice to
-/// regress evasion/ES builds). An exact implementation needs global inc/more applied
-/// per-slot instead (a ModDb SlotName tag), which is a structural change, left for later.
+/// Injects each item's local defence values as slot-tagged BASE modifiers.
+/// Known bases are recomputed from the game's base value, local flat/increased
+/// modifiers and quality; imported display values are a fallback for unknown bases.
+/// `calc::defence` applies global and matching slot increases additively to each
+/// item, then global and slot more multipliers. Focus/shield bonuses therefore
+/// scale only the appropriate off-hand's defence, outside its local increases.
 pub(crate) fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
     let mut mods = Vec::new();
     let level = build.character.level;
     for (slot, item) in &build.items {
         let slot_id = slot.id();
+        // ArmourTypes.dat supplies the inherent movement penalty separately
+        // from the item's explicit movement modifiers.
+        if let Some(penalty) = data
+            .base_items
+            .get(&item.base.to_string())
+            .and_then(|base| base.armour.as_ref())
+            .and_then(|armour| armour.movement_penalty)
+        {
+            mods.push(
+                Modifier::number("ArmourMovementPenalty", ModType::Base, penalty).with_origin(
+                    ModifierSource::new(SourceId::new(SourceKind::Item, "base.movement_penalty"))
+                        .with_raw_text(format!("{} inherent movement penalty", item.base)),
+                ),
+            );
+        }
+
         let Some(values) = item_rolled_defence(item, data, level) else {
             continue;
         };

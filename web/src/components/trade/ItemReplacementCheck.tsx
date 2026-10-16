@@ -1,3 +1,4 @@
+import { craftT } from '../../lib/itemCraftingText';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CalculateBuildRequest } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
@@ -27,12 +28,14 @@ interface ComparisonSnapshot {
 }
 
 /** One visible clipboard flow; choosing a destination never mutates the build. */
-export function ItemReplacementCheck({ session, lang, active, objective, catalog, jewelSockets, goalLabel, onEditGoal, initialItemText }: {
+export function ItemReplacementCheck({ session, lang, active, objective, catalog, jewelSockets, goalLabel, onEditGoal, initialItemText, candidate }: {
   session: BuildSession; lang: Lang; active: boolean; objective: Objective; catalog: TradeCatalog | null; jewelSockets: number[];
   goalLabel: string; onEditGoal: () => void;
   initialItemText?: string;
+  candidate?: { kind: 'item' | 'jewel' };
 }) {
   const ut = (key: Parameters<typeof upgradeT>[1]) => upgradeT(lang, key);
+  const [saved, setSaved] = useState(false);
   const [text, setText] = useState(initialItemText ?? '');
   const [snapshot, setSnapshot] = useState<ComparisonSnapshot | null>(null);
   const [chosenSlot, setChosenSlot] = useState<string | null>(null);
@@ -76,6 +79,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
   const deltaText = (value: number) => `${value > 0 ? '+' : ''}${format(value)}`;
   const positionLabel = (slot: string) => slot.startsWith('Jewel@') ? `${ut('jewelPosition')} ${slot.slice(6)}` : slotLabel(lang, slot);
   const errorText = useCallback((message: string) => ({
+    'unknown-required-level': craftT(lang, 'unknownRequirement'),
     'invalid-item': upgradeT(lang, 'invalidItem'), 'unknown-base': upgradeT(lang, 'unknownBase'),
     'wrong-slot': upgradeT(lang, 'wrongSlot'), 'weapon-type': upgradeT(lang, 'weaponType'),
     'item-level': upgradeT(lang, 'itemLevel'), 'unidentified-item': upgradeT(lang, 'unidentified'),
@@ -103,7 +107,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
     if (!active || !latest.current.active || session.busy || !request || !catalog
       || latest.current.contextKey !== context || latest.current.catalog !== catalog) return;
     stop();
-    setApplied(null);
+    setApplied(null); setSaved(false);
     const abort = new AbortController(); controller.current = abort;
     const nextKey = JSON.stringify([context, input, plans]);
     const current = () => !abort.signal.aborted && controller.current === abort && latest.current.active
@@ -112,7 +116,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
     if (!keepSlot) { setSnapshot(null); setChosenSlot(null); setAffixDirty(false); }
     else setChosenSlot(keepSlot);
     try {
-      const next = await compareReplacementPositions(request, input, abort.signal, { catalog, jewelSocketNodes: jewelSockets, augmentPlans: plans });
+      const next = await compareReplacementPositions(request, input, abort.signal, { catalog, jewelSocketNodes: jewelSockets, augmentPlans: plans, includeEmptySlots: !!candidate });
       if (current()) setSnapshot({ report: next, key: nextKey, request, input, objective, catalog,
         dataVersion: session.dataVersion, treeVersion: session.treeVersion, augmentPlans: plans });
     } catch (error) {
@@ -121,7 +125,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
       if (controller.current === abort) { setBusy(false); controller.current = null; }
     }
   }, [active, session.currentRequest, session.activeWeaponSet, session.dataVersion, session.treeVersion,
-    session.busy, objective, catalog, jewelSockets, errorText, stop]);
+    session.busy, objective, catalog, jewelSockets, errorText, stop, candidate?.kind]);
   // Only an explicit paste owns a debounce; returning to this page never restarts work.
   useEffect(() => {
     if (!active || pendingPaste === null || session.busy || !catalog) return;
@@ -167,22 +171,28 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
       label: nameLine || translated[0] || report.base.name, slot: selectedItem.slot, text: selectedItem.text };
     setEquipmentCandidates(current => [...current, candidate]);
   };
+  const candidateText = selected?.variant.set_items?.find(item => item.slot === selected.slot)?.text
+    ?? selected?.variant.flasks?.find(item => item.slot === selected.slot)?.text
+    ?? selected?.variant.jewels?.find(jewel => `Jewel@${jewel.socket_node}` === selected.slot)?.text ?? applied?.text ?? text;
   return <section className="upgrade-item-check ui-card" aria-labelledby="replacement-heading">
-    <header className="replacement-heading"><div><span className="trade-section-label">{ut('pasteEyebrow')}</span>
+    {candidate ? <header><h3 id="replacement-heading">{craftT(lang, 'preview')}</h3><p>{craftT(lang, 'previewHint')}</p></header> : <header className="replacement-heading"><div><span className="trade-section-label">{ut('pasteEyebrow')}</span>
       <h3 id="replacement-heading">{ut('check')}</h3><p>{ut('checkHint')}</p></div><div className="replacement-context"><span className="ui-badge">{ut('localComparison')}</span>
-      <button className="replacement-goal" aria-label={`${ut('comparisonGoal')}: ${goalLabel}`} onClick={onEditGoal}>{goalLabel} <span aria-hidden>↗</span></button></div></header>
+      <button className="replacement-goal" aria-label={`${ut('comparisonGoal')}: ${goalLabel}`} onClick={onEditGoal}>{goalLabel} <span aria-hidden>↗</span></button></div></header>}
     <div className="replacement-input"><label htmlFor="replacement-text">{ut('itemText')}</label>
-      <textarea ref={inputRef} id="replacement-text" rows={report ? 3 : 5} value={text} placeholder={ut('pastePlaceholder')}
-        onChange={event => { if (!latest.current.active) return; stop(); setApplied(null); setSnapshot(null); setChosenSlot(null); setAffixDirty(false); setAugmentPlans({}); setText(event.target.value); }}
-        onPaste={event => { if (!latest.current.active) return; const copied = event.clipboardData.getData('text/plain'); if (!copied) return;
+      <textarea readOnly={!!candidate} ref={inputRef} id="replacement-text" rows={report ? 3 : 5} value={text} placeholder={ut('pastePlaceholder')}
+        onChange={event => { if (candidate || !latest.current.active) return; stop(); setApplied(null); setSnapshot(null); setChosenSlot(null); setAffixDirty(false); setAugmentPlans({}); setText(event.target.value); }}
+        onPaste={event => { if (candidate || !latest.current.active) return; const copied = event.clipboardData.getData('text/plain'); if (!copied) return;
           event.preventDefault(); stop(); setApplied(null); setSnapshot(null); setAugmentPlans({}); setChosenSlot(null); setAffixDirty(false); setText(copied); setPendingPaste({ input: copied }); }} />
       <div className="replacement-actions"><button className="trade-primary" disabled={!active || busy || affixDirty || session.busy || !catalog || !text.trim()} onClick={() => void run(text, augmentPlans, chosenSlot ?? undefined)}>
         {busy ? ut('comparingPositions') : ut('compare')}</button>
         {busy && <button onClick={stop}>{ut('cancelCompare')}</button>}
-        <span>{ut('autoPositions')}</span></div>
-      <p className="replacement-copy-links"><a href="/userscripts/pobr-market-copy.user.js" target="_blank" rel="noreferrer">{ut('copyScript')}</a>
-        <a href="/userscripts/index.html" target="_blank" rel="noreferrer">{ut('copyScriptHelp')}</a></p>
+        {!candidate && <span>{ut('autoPositions')}</span>}</div>
+      {!candidate && <p className="replacement-copy-links"><a href="/userscripts/pobr-market-copy.user.js" target="_blank" rel="noreferrer">{ut('copyScript')}</a>
+        <a href="/userscripts/index.html" target="_blank" rel="noreferrer">{ut('copyScriptHelp')}</a></p>}
     </div>
+    {candidate && <div className="replacement-actions"><button disabled={busy || session.busy || affixDirty || saved || !active} onClick={() => {
+      session.saveLibraryItem(candidate.kind, candidateText, selected?.slot.startsWith('Jewel@') ? undefined : selected?.slot); setSaved(true);
+    }}>{craftT(lang, saved ? 'saved' : 'save')}</button></div>}
     {error && <p role="alert" className="trade-error">{error}</p>}
     {active && applied && !session.busy && applied.weaponSet === session.activeWeaponSet && appliedText === applied.text && <p role="status" className="trade-notice replacement-applied">
       {ut('applied')} · {applied.name} · {positionLabel(applied.slot)}
@@ -200,7 +210,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
         {report.lines.some(line => line.kind === 'class_req') && <p className="trade-notice">{report.lines.filter(line => line.kind === 'class_req').map(line => line.text).join('\n')}</p>}
         <p className="replacement-requirement-note">{ut('requirementsNote')}</p>
       </aside>
-      {catalog && <ReplacementAffixEditor key={report.text} report={report} catalog={catalog} characterLevel={session.currentRequest()?.character?.level ?? 1} lang={lang}
+      {!candidate && catalog && <ReplacementAffixEditor key={report.text} report={report} catalog={catalog} characterLevel={session.currentRequest()?.character?.level ?? 1} lang={lang}
         disabled={!active || busy || session.busy} onDirtyChange={setAffixDirty} onCompare={input => {
           if (!latest.current.active) return;
           setAffixDirty(false); setText(input); void run(input, augmentPlans, selected.slot);
@@ -210,7 +220,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
       </div>
       <div className="upgrade-replacement-result" aria-live="polite">
         <div className="replacement-destinations" role="group" aria-label={ut('chooseReplacement')}>
-          {positions.map(row => <button key={row.slot} disabled={busy} className="replacement-position" aria-pressed={selected.slot === row.slot} onClick={() => setChosenSlot(row.slot)}>
+          {positions.map(row => <button key={row.slot} disabled={busy} className="replacement-position" aria-pressed={selected.slot === row.slot} onClick={() => { setChosenSlot(row.slot); setSaved(false); }}>
             <strong>{positionLabel(row.slot)}</strong>{recommended === row.slot && <span className="replacement-recommended">{ut('recommendedPosition')}</span>}
             <span className={(row.stats.TotalDPS ?? 0) < (report.baseline.TotalDPS ?? 0) ? 'delta-neg' : ''}>DPS {deltaText((row.stats.TotalDPS ?? 0) - (report.baseline.TotalDPS ?? 0))}</span>
             <span className={(row.stats.TotalEHP ?? 0) < (report.baseline.TotalEHP ?? 0) ? 'delta-neg' : ''}>EHP {deltaText((row.stats.TotalEHP ?? 0) - (report.baseline.TotalEHP ?? 0))}</span>
@@ -236,12 +246,12 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
         {!!selected.unsupported.length && <details className="trade-notice replacement-unsupported"><summary>{ut('incomplete')} ({selected.unsupported.length})</summary><ul>{selected.unsupported.map((line, index) => <li key={index}>{line}</li>)}</ul></details>}
         {!!report.rejected.length && <p className="trade-notice">{report.rejected.map(row => `${positionLabel(row.slot)}: ${errorText(row.reason)}`).join('\n')}</p>}
         <div className="replacement-apply"><button className="trade-primary" disabled={!active || busy || affixDirty || session.busy} onClick={apply}>{busy ? ut('comparingPositions') : `${ut('apply')} · ${positionLabel(selected.slot)}`}</button><span>{affixDirty ? affixT(lang, 'dirty') : ut('applyHint')}</span></div>
-        {selectedItem && <div className="replacement-actions"><button disabled={!active || busy || affixDirty || session.busy || alreadyAdded || equipmentCandidates.length >= EQUIPMENT_CANDIDATE_LIMIT}
+        {!candidate && selectedItem && <div className="replacement-actions"><button disabled={!active || busy || affixDirty || session.busy || alreadyAdded || equipmentCandidates.length >= EQUIPMENT_CANDIDATE_LIMIT}
           onClick={addCandidate}>{ut(alreadyAdded ? 'jointAdded' : 'jointAdd')}</button>
           <span>{equipmentCandidates.length} / {EQUIPMENT_CANDIDATE_LIMIT}</span></div>}
       </div>
     </div>}
-    <EquipmentPlanner session={session} lang={lang} active={active} objective={objective} catalog={catalog} candidates={equipmentCandidates}
-      onRemove={id => setEquipmentCandidates(current => current.filter(candidate => candidate.id !== id))} />
+    {!candidate && <EquipmentPlanner session={session} lang={lang} active={active} objective={objective} catalog={catalog} candidates={equipmentCandidates}
+      onRemove={id => setEquipmentCandidates(current => current.filter(candidate => candidate.id !== id))} />}
   </section>;
 }

@@ -3,7 +3,7 @@
     "connections": [
       44359
     ],
-    "group": 881,
+    "group": 920,
     "id": "energy_shield34_",
     "kind": "notable",
     "name": "Insightfulness",
@@ -23,7 +23,7 @@
       39037,
       61027
     ],
-    "group": 816,
+    "group": 855,
     "id": "energy_shield11",
     "kind": "normal",
     "name": "Stun and Ailment Threshold from Energy Shield",
@@ -41,7 +41,7 @@
     "connections": [
       34621
     ],
-    "group": 1170,
+    "group": 1212,
     "id": "criticals45",
     "kind": "normal",
     "name": "Critical Damage",
@@ -58,7 +58,7 @@
     "connections": [
       13419
     ],
-    "group": 1057,
+    "group": 1097,
     "id": "criticals42",
     "kind": "normal",
     "name": "Critical Damage",
@@ -75,7 +75,7 @@
     "connections": [
       39037
     ],
-    "group": 874,
+    "group": 913,
     "id": "intelligence18",
     "kind": "normal",
     "name": "Attribute",
@@ -94,7 +94,7 @@
       43736,
       60685
     ],
-    "group": 821,
+    "group": 860,
     "id": "witch_sorceress_notable2",
     "kind": "notable",
     "name": "Pure Energy",
@@ -113,7 +113,7 @@
       47168,
       59425
     ],
-    "group": 609,
+    "group": 639,
     "id": "life_recoup5",
     "kind": "normal",
     "name": "Life Recoup",
@@ -128,9 +128,10 @@
   },
   {
     "connections": [
-      21984
+      21984,
+      33292
     ],
-    "group": 1129,
+    "group": 1169,
     "id": "attributes1",
     "kind": "normal",
     "name": "Attribute",
@@ -149,7 +150,7 @@
       26885,
       28021
     ],
-    "group": 1211,
+    "group": 1258,
     "id": "attributes76",
     "kind": "normal",
     "name": "Attribute",
@@ -167,12 +168,12 @@
       3251,
       64474
     ],
-    "group": 1153,
+    "group": 1134,
     "id": "energy_shield_recovery26",
     "kind": "normal",
     "name": "Energy Shield Delay",
     "orbit": 2,
-    "orbit_index": 19,
+    "orbit_index": 5,
     "skill": 3628,
     "stats": [
       "6% [FasterESRechargeStart|faster start of Energy Shield Recharge]"
@@ -186,7 +187,7 @@
       57273,
       59093
     ],
-    "group": 224,
+    "group": 234,
     "id": "attributes3",
     "kind": "normal",
     "name": "Attribute",
@@ -203,7 +204,7 @@
     "connections": [
       49220
     ],
-    "group": 977,
+    "group": 1016,
     "id": "criticals11",
     "kind": "normal",
     "name": "Critical Chance",
@@ -221,7 +222,7 @@
       21208,
       44628
     ],
-    "group": 1210,
+    "group": 1257,
     "id": "intelligence64",
     "kind": "normal",
     "name": "Attribute",
@@ -238,7 +239,7 @@
     "connections": [
       45885
     ],
-    "group": 701,
+    "group": 732,
     "id": "archon19",
     "kind": "normal",
     "name": "Minion Damage and Command Speed",
@@ -257,7 +258,7 @@
       4519,
       20677
     ],
-    "group": 1131,
+    "group": 1171,
     "id": "criticals13",
     "kind": "normal",
     "name": "Critical Chance",
@@ -275,7 +276,7 @@
       4776,
       57710
     ],
-    "group": 730,
+    "group": 761,
     "id": "intelligence88",
     "kind": "normal",
     "name": "Attribute",
@@ -292,7 +293,7 @@
     "connections": [
       2254
     ],
-    "group": 819,
+    "group": 858,
     "id": "energy_shield_recovery24",
     "kind": "normal",
     "name": "Energy Shield Delay",
@@ -319,7 +320,7 @@
     "connections": [
       32278
     ],
-    "group": 512,
+    "group": 542,
     "id": "physical34",
     "kind": "notable",
     "name": "Shredding Force",
@@ -338,7 +339,7 @@
     "connections": [
       29009
     ],
-    "group": 774,
+    "group": 812,
     "id": "intelligence57",
     "kind": "normal",
     "name": "Attribute",
@@ -355,7 +356,7 @@
     "connections": [
       51820
     ],
-    "group": 292,
+    "group": 305,
     "id": "totems31",
     "kind": "normal",
     "name": "Totem Cast Speed",
@@ -372,7 +373,7 @@
     "connections": [
       48821
     ],
-    "group": 778,
+    "group": 816,
     "id": "spell_criticals14",
     "kind": "notable",
     "name": "Critical Overload",
@@ -391,7 +392,7 @@
       32309,
       50104
     ],
-    "group": 550,
+    "group": 580,
     "id": "archon2_",
     "kind": "normal",
     "name": "Archon Duration",
@@ -409,7 +410,7 @@
       16705,
       51416
     ],
-    "group": 1231,
+    "group": 1280,
     "id": "spells16",
     "kind": "normal",
     "name": "Spell Damage",
@@ -426,7 +427,7 @@
     "connections": [
       65248
     ],
-    "group": 739,
+    "group": 770,
     "id": "elemental53",
     "kind": "normal",
     "name": "Elemental Damage",
@@ -443,7 +444,7 @@
     "connections": [
       38105
     ],
-    "group": 609,
+    "group": 639,
     "id": "energy_shield9",
     "kind": "normal",
     "name": "Energy Shield",
@@ -460,7 +461,7 @@
     "connections": [
       2254
     ],
-    "group": 811,
+    "group": 850,
     "id": "mastery_energyshield105",
     "kind": "mastery",
     "name": "Energy Shield Mastery",
@@ -475,7 +476,7 @@
       14110,
       38124
     ],
-    "group": 292,
+    "group": 305,
     "id": "totems36",
     "kind": "normal",
     "name": "Totem Damage",
@@ -493,7 +494,7 @@
       116,
       41372
     ],
-    "group": 881,
+    "group": 920,
     "id": "energy_shield13",
     "kind": "normal",
     "name": "Energy Shield and Mana Regeneration",
@@ -513,7 +514,7 @@
       21142,
       47009
     ],
-    "group": 1144,
+    "group": 1185,
     "id": "area_attacks44",
     "kind": "normal",
     "name": "Attack Area Damage and Area",
@@ -528,7 +529,7 @@
     "y": -3362.95
   },
   {
-    "group": 374,
+    "group": 395,
     "id": "jewel_slot1969",
     "kind": "jewel_socket",
     "name": "[Jewel] Socket",
@@ -542,7 +543,7 @@
     "connections": [
       45230
     ],
-    "group": 960,
+    "group": 999,
     "id": "curses8",
     "kind": "normal",
     "name": "Curse Area",
@@ -562,7 +563,7 @@
       47177,
       55507
     ],
-    "group": 948,
+    "group": 987,
     "id": "intelligence79",
     "kind": "normal",
     "name": "Attribute",
@@ -581,7 +582,7 @@
       43576,
       57710
     ],
-    "group": 776,
+    "group": 814,
     "id": "intelligence6",
     "kind": "normal",
     "name": "Attribute",
@@ -598,7 +599,7 @@
     "connections": [
       61196
     ],
-    "group": 1004,
+    "group": 1043,
     "id": "intelligence9",
     "kind": "normal",
     "name": "Attribute",
@@ -615,7 +616,7 @@
     "connections": [
       42245
     ],
-    "group": 1172,
+    "group": 1214,
     "id": "triggers25_",
     "kind": "normal",
     "name": "Triggered Spell Damage",
@@ -633,7 +634,7 @@
       517,
       14666
     ],
-    "group": 819,
+    "group": 858,
     "id": "energy_shield37",
     "kind": "notable",
     "name": "Dampening Shield",
@@ -652,7 +653,7 @@
     "connections": [
       20677
     ],
-    "group": 1169,
+    "group": 1211,
     "id": "criticals44",
     "kind": "normal",
     "name": "Critical Damage",
@@ -675,7 +676,7 @@
       27686,
       44357
     ],
-    "group": 1505,
+    "group": 1554,
     "id": "AscendancyMonk2Start",
     "kind": "ascendancy_start",
     "name": "Master of the Elements",
@@ -689,7 +690,7 @@
     "connections": [
       5314
     ],
-    "group": 815,
+    "group": 854,
     "id": "energy_shield_recovery9_",
     "kind": "normal",
     "name": "Mana Regeneration",
@@ -709,7 +710,7 @@
       44669,
       55947
     ],
-    "group": 1067,
+    "group": 1107,
     "id": "intelligence60",
     "kind": "normal",
     "name": "Attribute",
@@ -728,7 +729,7 @@
       44683,
       55342
     ],
-    "group": 916,
+    "group": 955,
     "id": "attack_speed25",
     "kind": "normal",
     "name": "Skill Speed",
@@ -746,7 +747,7 @@
       21984,
       33979
     ],
-    "group": 1160,
+    "group": 1202,
     "id": "attributes24",
     "kind": "normal",
     "name": "Attribute",
@@ -765,7 +766,7 @@
       31697,
       50104
     ],
-    "group": 442,
+    "group": 470,
     "id": "infusion10",
     "kind": "normal",
     "name": "Infusion Duration",
@@ -783,7 +784,7 @@
       23427,
       44455
     ],
-    "group": 783,
+    "group": 821,
     "id": "chill_and_freeze10",
     "kind": "normal",
     "name": "Chill Magnitude",
@@ -802,7 +803,7 @@
       29408,
       52765
     ],
-    "group": 1127,
+    "group": 1167,
     "id": "attributes28",
     "kind": "normal",
     "name": "Attribute",
@@ -820,7 +821,7 @@
       47177,
       48030
     ],
-    "group": 890,
+    "group": 929,
     "id": "intelligence84",
     "kind": "normal",
     "name": "Attribute",
@@ -837,7 +838,7 @@
     "connections": [
       62677
     ],
-    "group": 871,
+    "group": 909,
     "id": "lightning17",
     "kind": "normal",
     "name": "Lightning Damage",
@@ -855,7 +856,7 @@
       50150,
       62677
     ],
-    "group": 840,
+    "group": 878,
     "id": "lightning51",
     "kind": "normal",
     "name": "Elemental Damage and Mana Regeneration",
@@ -871,7 +872,7 @@
   },
   {
     "ascendancy_id": "Monk2",
-    "group": 1505,
+    "group": 1554,
     "id": "AscendancyMonk2Notable8",
     "kind": "notable",
     "name": "Faith is a Choice",
@@ -888,7 +889,7 @@
     "connections": [
       61196
     ],
-    "group": 979,
+    "group": 1018,
     "id": "lightning43",
     "kind": "normal",
     "name": "Shock Chance",
@@ -906,7 +907,7 @@
     "connections": [
       63236
     ],
-    "group": 1505,
+    "group": 1554,
     "id": "AscendancyMonk2Small10_",
     "kind": "normal",
     "name": "Triggered Spell Damage",
@@ -923,7 +924,7 @@
     "connections": [
       14958
     ],
-    "group": 1057,
+    "group": 1097,
     "id": "criticals43_",
     "kind": "normal",
     "name": "Critical Damage",
@@ -940,7 +941,7 @@
     "connections": [
       49455
     ],
-    "group": 609,
+    "group": 639,
     "id": "energy_shield24",
     "kind": "normal",
     "name": "Energy Shield",
@@ -957,7 +958,7 @@
     "connections": [
       2254
     ],
-    "group": 779,
+    "group": 817,
     "id": "mana_regeneration21",
     "kind": "normal",
     "name": "Mana Regeneration",
@@ -975,7 +976,7 @@
       32054,
       63861
     ],
-    "group": 1064,
+    "group": 1104,
     "id": "spell_criticals15",
     "kind": "notable",
     "name": "Controlling Magic",
@@ -984,7 +985,7 @@
     "skill": 13823,
     "stats": [
       "25% increased [Critical|Critical Hit Chance] for [Spell|Spells]",
-      "[HitDamage|Hits] have 25% reduced [Critical|Critical Hit] Chance against you"
+      "[Hit|Hits] have 25% reduced [Critical|Critical Hit] Chance against you"
     ],
     "x": 3602.74562,
     "y": -9633.704848
@@ -994,7 +995,7 @@
       22484,
       35974
     ],
-    "group": 292,
+    "group": 305,
     "id": "totems37",
     "kind": "normal",
     "name": "Totem Damage",
@@ -1014,7 +1015,7 @@
       58022,
       61403
     ],
-    "group": 1285,
+    "group": 1334,
     "id": "intelligence68",
     "kind": "normal",
     "name": "Attribute",
@@ -1028,7 +1029,7 @@
     "y": -7914.57
   },
   {
-    "group": 819,
+    "group": 858,
     "id": "energy_shield10_",
     "kind": "normal",
     "name": "Stun and Ailment Threshold from Energy Shield",
@@ -1047,7 +1048,7 @@
       34233,
       49220
     ],
-    "group": 983,
+    "group": 1022,
     "id": "attack_speed46",
     "kind": "normal",
     "name": "Skill Speed",
@@ -1064,7 +1065,7 @@
     "connections": [
       17548
     ],
-    "group": 1057,
+    "group": 1097,
     "id": "criticals41",
     "kind": "normal",
     "name": "Critical Chance",
@@ -1082,7 +1083,7 @@
       2254,
       6338
     ],
-    "group": 811,
+    "group": 850,
     "id": "energy_shield27",
     "kind": "normal",
     "name": "Energy Shield",
@@ -1099,7 +1100,7 @@
     "connections": [
       57710
     ],
-    "group": 778,
+    "group": 816,
     "id": "spell_criticals4",
     "kind": "normal",
     "name": "Spell Critical Damage",
@@ -1117,7 +1118,7 @@
       7947,
       46554
     ],
-    "group": 910,
+    "group": 949,
     "id": "cold23",
     "kind": "normal",
     "name": "Energy Shield as Freeze Threshold",
@@ -1134,7 +1135,7 @@
     "connections": [
       48198
     ],
-    "group": 1003,
+    "group": 1042,
     "id": "evasion_and_energy_shield27",
     "kind": "normal",
     "name": "Evasion and Energy Shield",
@@ -1154,7 +1155,7 @@
       34621,
       61834
     ],
-    "group": 1231,
+    "group": 1280,
     "id": "intelligence66",
     "kind": "normal",
     "name": "Attribute",
@@ -1171,7 +1172,7 @@
     "connections": [
       51416
     ],
-    "group": 1231,
+    "group": 1280,
     "id": "intelligence7",
     "kind": "normal",
     "name": "Attribute",
@@ -1191,7 +1192,7 @@
       41972,
       47270
     ],
-    "group": 783,
+    "group": 821,
     "id": "mastery_cold58",
     "kind": "mastery",
     "name": "Cold Mastery",
@@ -1207,7 +1208,7 @@
       28774,
       52106
     ],
-    "group": 270,
+    "group": 281,
     "id": "cast_speed2",
     "kind": "normal",
     "name": "Cast Speed",
@@ -1225,7 +1226,7 @@
       630,
       31039
     ],
-    "group": 1057,
+    "group": 1097,
     "id": "criticals38_",
     "kind": "notable",
     "name": "Moment of Truth",
@@ -1240,7 +1241,7 @@
     "y": -3198.652376
   },
   {
-    "group": 783,
+    "group": 821,
     "id": "cold38",
     "kind": "notable",
     "name": "Endless Blizzard",
@@ -1257,7 +1258,7 @@
     "connections": [
       44223
     ],
-    "group": 916,
+    "group": 955,
     "id": "criticals14",
     "kind": "normal",
     "name": "Critical Damage",
@@ -1275,7 +1276,7 @@
       535,
       9586
     ],
-    "group": 1161,
+    "group": 1203,
     "id": "criticals29",
     "kind": "notable",
     "name": "For the Jugular",
@@ -1290,7 +1291,7 @@
     "y": -4971.48
   },
   {
-    "group": 518,
+    "group": 548,
     "id": "physical15",
     "kind": "normal",
     "name": "Spell Critical Chance",
@@ -1307,7 +1308,7 @@
     "connections": [
       62984
     ],
-    "group": 1003,
+    "group": 1042,
     "id": "evasion_and_energy_shield26",
     "kind": "normal",
     "name": "Evasion and Energy Shield",
@@ -1323,10 +1324,28 @@
   },
   {
     "connections": [
+      44405,
+      46819
+    ],
+    "group": 800,
+    "id": "lightning62",
+    "kind": "normal",
+    "name": "Lightning Damage",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 21560,
+    "stats": [
+      "12% increased [Lightning] Damage"
+    ],
+    "x": -204.43,
+    "y": -7142.42
+  },
+  {
+    "connections": [
       11604,
       50588
     ],
-    "group": 1154,
+    "group": 1194,
     "id": "accuracy12",
     "kind": "normal",
     "name": "Accuracy",
@@ -1343,7 +1362,7 @@
     "connections": [
       57204
     ],
-    "group": 925,
+    "group": 964,
     "id": "criticals20",
     "kind": "normal",
     "name": "Critical Damage",
@@ -1360,7 +1379,7 @@
     "connections": [
       61403
     ],
-    "group": 1190,
+    "group": 1234,
     "id": "jewel_slot1979",
     "kind": "jewel_socket",
     "name": "[Jewel] Socket",
@@ -1375,7 +1394,7 @@
       51797,
       54521
     ],
-    "group": 609,
+    "group": 639,
     "id": "life_recoup8",
     "kind": "normal",
     "name": "Life Recoup",
@@ -1393,7 +1412,7 @@
       36302,
       48821
     ],
-    "group": 778,
+    "group": 816,
     "id": "spell_criticals10",
     "kind": "normal",
     "name": "Spell Critical Chance",
@@ -1410,7 +1429,7 @@
     "connections": [
       5936
     ],
-    "group": 739,
+    "group": 770,
     "id": "elemental21",
     "kind": "normal",
     "name": "Elemental Damage",
@@ -1427,7 +1446,7 @@
     "connections": [
       64659
     ],
-    "group": 608,
+    "group": 638,
     "id": "slowed_enemies17",
     "kind": "normal",
     "name": "Slow Effect on You",
@@ -1445,7 +1464,7 @@
       39037,
       61027
     ],
-    "group": 830,
+    "group": 867,
     "id": "energy_shield_recovery29",
     "kind": "normal",
     "name": "Energy Shield Delay",
@@ -1473,7 +1492,7 @@
       39515,
       45885
     ],
-    "group": 718,
+    "group": 748,
     "id": "fire13",
     "kind": "normal",
     "name": "Fire Damage",
@@ -1491,11 +1510,11 @@
       7960,
       8982,
       9065,
-      26863,
+      9884,
       54297,
       59093
     ],
-    "group": 324,
+    "group": 344,
     "id": "intelligence41__",
     "kind": "normal",
     "name": "Attribute",
@@ -1512,7 +1531,7 @@
     "connections": [
       62914
     ],
-    "group": 783,
+    "group": 821,
     "id": "chill_and_freeze14",
     "kind": "notable",
     "name": "Chilled to the Bone",
@@ -1532,7 +1551,7 @@
       25434,
       29133
     ],
-    "group": 1505,
+    "group": 1554,
     "id": "AscendancyMonk2Notable4",
     "kind": "notable",
     "name": "I am the Blizzard...",
@@ -1553,7 +1572,7 @@
       8908,
       25557
     ],
-    "group": 1189,
+    "group": 1233,
     "id": "attributes56",
     "kind": "normal",
     "name": "Attribute",
@@ -1568,7 +1587,7 @@
   },
   {
     "ascendancy_id": "Monk2",
-    "group": 1505,
+    "group": 1554,
     "id": "AscendancyMonk2Small4",
     "kind": "normal",
     "name": "Chill Effect",
@@ -1583,27 +1602,9 @@
   },
   {
     "connections": [
-      46819,
-      56640
-    ],
-    "group": 734,
-    "id": "spell_criticals8",
-    "kind": "normal",
-    "name": "Spell Critical Damage",
-    "orbit": 7,
-    "orbit_index": 6,
-    "skill": 26682,
-    "stats": [
-      "15% increased [CriticalDamageBonus|Critical Spell Damage Bonus]"
-    ],
-    "x": 472.14,
-    "y": -7336.21
-  },
-  {
-    "connections": [
       48198
     ],
-    "group": 1003,
+    "group": 1042,
     "id": "life_on_kill2",
     "kind": "normal",
     "name": "Life on Kill",
@@ -1621,7 +1622,7 @@
     "connections": [
       12876
     ],
-    "group": 1505,
+    "group": 1554,
     "id": "AscendancyMonk2Small9",
     "kind": "normal",
     "name": "Energy Shield Recharge Rate",
@@ -1638,7 +1639,7 @@
     "connections": [
       9782
     ],
-    "group": 1181,
+    "group": 1225,
     "id": "criticals9",
     "kind": "normal",
     "name": "Critical Damage",
@@ -1655,7 +1656,7 @@
     "connections": [
       59362
     ],
-    "group": 773,
+    "group": 811,
     "id": "intelligence56",
     "kind": "normal",
     "name": "Attribute",
@@ -1673,7 +1674,7 @@
       11337,
       41669
     ],
-    "group": 783,
+    "group": 821,
     "id": "chill_and_freeze11",
     "kind": "normal",
     "name": "Chill Magnitude",
@@ -1694,7 +1695,7 @@
       50715,
       61354
     ],
-    "group": 753,
+    "group": 785,
     "id": "infusion19_",
     "kind": "normal",
     "name": "Infused Spell Damage",
@@ -1702,7 +1703,7 @@
     "orbit_index": 6,
     "skill": 29391,
     "stats": [
-      "12% increased [Spell] Damage if you have consumed an [ElementalInfusion|Elemental Infusion] [Recently]"
+      "15% increased [Spell] Damage if you have consumed an [ElementalInfusion|Elemental Infusion] [Recently]"
     ],
     "x": -267.99,
     "y": -9489.3
@@ -1711,7 +1712,7 @@
     "connections": [
       46197
     ],
-    "group": 1311,
+    "group": 1360,
     "id": "criticals83",
     "kind": "normal",
     "name": "Critical Chance",
@@ -1731,7 +1732,7 @@
       21080,
       58329
     ],
-    "group": 948,
+    "group": 987,
     "id": "intelligence78",
     "kind": "normal",
     "name": "Attribute",
@@ -1748,7 +1749,7 @@
     "connections": [
       62153
     ],
-    "group": 1064,
+    "group": 1104,
     "id": "spell_criticals18",
     "kind": "normal",
     "name": "Spell Critical Damage",
@@ -1767,7 +1768,7 @@
       15618,
       22290
     ],
-    "group": 778,
+    "group": 816,
     "id": "spell_criticals9",
     "kind": "normal",
     "name": "Spell Critical Chance",
@@ -1784,7 +1785,7 @@
     "connections": [
       61196
     ],
-    "group": 983,
+    "group": 1022,
     "id": "attack_speed47",
     "kind": "normal",
     "name": "Skill Speed",
@@ -1802,7 +1803,7 @@
       50104,
       61179
     ],
-    "group": 488,
+    "group": 518,
     "id": "physical14",
     "kind": "normal",
     "name": "Physical Damage",
@@ -1820,7 +1821,7 @@
       39280,
       41522
     ],
-    "group": 1071,
+    "group": 1111,
     "id": "duration6",
     "kind": "notable",
     "name": "Preservation",
@@ -1838,7 +1839,7 @@
       10131,
       61923
     ],
-    "group": 1002,
+    "group": 1041,
     "id": "mana_regeneration32",
     "kind": "normal",
     "name": "Mana Regeneration",
@@ -1855,7 +1856,7 @@
     "connections": [
       49220
     ],
-    "group": 916,
+    "group": 955,
     "id": "attack_damage3",
     "kind": "normal",
     "name": "Attack Damage",
@@ -1873,7 +1874,7 @@
       16123,
       32545
     ],
-    "group": 983,
+    "group": 1022,
     "id": "attack_speed37",
     "kind": "notable",
     "name": "Flow State",
@@ -1891,7 +1892,7 @@
     "connections": [
       38541
     ],
-    "group": 1182,
+    "group": 1226,
     "id": "criticals10",
     "kind": "normal",
     "name": "Critical Damage",
@@ -1906,10 +1907,28 @@
   },
   {
     "connections": [
+      6554,
+      49512
+    ],
+    "group": 769,
+    "id": "cold60__",
+    "kind": "normal",
+    "name": "Cold Damage",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 35387,
+    "stats": [
+      "12% increased [Cold] Damage"
+    ],
+    "x": -612.84,
+    "y": -7781.69
+  },
+  {
+    "connections": [
       23382,
       24767
     ],
-    "group": 331,
+    "group": 354,
     "id": "focus1",
     "kind": "normal",
     "name": "Focus Energy Shield",
@@ -1927,7 +1946,7 @@
       32009,
       62677
     ],
-    "group": 856,
+    "group": 894,
     "id": "curses15",
     "kind": "normal",
     "name": "Curse Duration",
@@ -1944,7 +1963,7 @@
     "connections": [
       62230
     ],
-    "group": 1001,
+    "group": 1040,
     "id": "energy_shield46_",
     "kind": "normal",
     "name": "Energy Shield",
@@ -1958,7 +1977,7 @@
     "y": -10909.159957
   },
   {
-    "group": 609,
+    "group": 639,
     "id": "energy_shield22",
     "kind": "normal",
     "name": "Energy Shield",
@@ -1975,7 +1994,7 @@
     "connections": [
       51820
     ],
-    "group": 292,
+    "group": 305,
     "id": "totems35",
     "kind": "normal",
     "name": "Totem Damage",
@@ -1992,7 +2011,7 @@
     "connections": [
       61601
     ],
-    "group": 1193,
+    "group": 1237,
     "id": "criticals17",
     "kind": "normal",
     "name": "Critical Chance",
@@ -2010,7 +2029,7 @@
       27910,
       56045
     ],
-    "group": 1075,
+    "group": 1115,
     "id": "attack41__",
     "kind": "normal",
     "name": "Attack Damage",
@@ -2027,7 +2046,7 @@
     "connections": [
       11672
     ],
-    "group": 820,
+    "group": 859,
     "id": "intelligence17",
     "kind": "normal",
     "name": "Attribute",
@@ -2044,7 +2063,7 @@
     "connections": [
       44669
     ],
-    "group": 1071,
+    "group": 1111,
     "id": "duration10",
     "kind": "normal",
     "name": "Increased Duration",
@@ -2062,7 +2081,7 @@
       5936,
       38068
     ],
-    "group": 739,
+    "group": 770,
     "id": "elemental50",
     "kind": "normal",
     "name": "Elemental Ailment Duration",
@@ -2079,7 +2098,7 @@
     "connections": [
       48198
     ],
-    "group": 923,
+    "group": 962,
     "id": "mana11",
     "kind": "normal",
     "name": "Mana Regeneration",
@@ -2097,7 +2116,7 @@
       18913,
       47177
     ],
-    "group": 950,
+    "group": 989,
     "id": "chaos1",
     "kind": "normal",
     "name": "Chaos Damage and Duration",
@@ -2116,7 +2135,7 @@
       32745,
       60241
     ],
-    "group": 490,
+    "group": 520,
     "id": "physical19",
     "kind": "normal",
     "name": "Bleed Chance",
@@ -2124,7 +2143,7 @@
     "orbit_index": 0,
     "skill": 40276,
     "stats": [
-      "5% chance to inflict [Bleeding|Bleeding] on [HitDamage|Hit]"
+      "5% chance to inflict [Bleeding|Bleeding] on [Hit]"
     ],
     "x": -4113.12,
     "y": -9545.42
@@ -2135,7 +2154,7 @@
       56844,
       58363
     ],
-    "group": 1102,
+    "group": 1147,
     "id": "archon8",
     "kind": "normal",
     "name": "Archon Effect and Duration",
@@ -2155,7 +2174,7 @@
       21779,
       47177
     ],
-    "group": 925,
+    "group": 964,
     "id": "criticals22",
     "kind": "normal",
     "name": "Critical Chance",
@@ -2177,7 +2196,7 @@
       24035,
       63009
     ],
-    "group": 850,
+    "group": 890,
     "id": "intelligence86",
     "kind": "normal",
     "name": "Attribute",
@@ -2194,7 +2213,7 @@
     "connections": [
       48030
     ],
-    "group": 881,
+    "group": 920,
     "id": "energy_shield7",
     "kind": "normal",
     "name": "Energy Shield and Mana Regeneration",
@@ -2209,7 +2228,7 @@
     "y": -4361.113802
   },
   {
-    "group": 783,
+    "group": 821,
     "id": "cold7",
     "kind": "normal",
     "name": "Cold Damage",
@@ -2227,7 +2246,7 @@
       56649,
       60515
     ],
-    "group": 783,
+    "group": 821,
     "id": "cold_penetration26",
     "kind": "notable",
     "name": "Glaciation",
@@ -2246,7 +2265,7 @@
       16024,
       18167
     ],
-    "group": 1172,
+    "group": 1214,
     "id": "triggers26",
     "kind": "notable",
     "name": "Efficient Inscriptions",
@@ -2266,7 +2285,7 @@
       16705,
       25520
     ],
-    "group": 1212,
+    "group": 1259,
     "id": "attributes25",
     "kind": "normal",
     "name": "Attribute",
@@ -2284,7 +2303,7 @@
       9050,
       17088
     ],
-    "group": 1231,
+    "group": 1280,
     "id": "attack22",
     "kind": "normal",
     "name": "Attack Damage",
@@ -2302,7 +2321,7 @@
       7576,
       20024
     ],
-    "group": 916,
+    "group": 955,
     "id": "attack_speed27",
     "kind": "normal",
     "name": "Skill Speed",
@@ -2316,7 +2335,7 @@
     "y": -1077.44
   },
   {
-    "group": 916,
+    "group": 955,
     "id": "criticals15",
     "kind": "normal",
     "name": "Critical Damage",
@@ -2335,7 +2354,7 @@
       38105,
       49455
     ],
-    "group": 609,
+    "group": 639,
     "id": "energy_shield36",
     "kind": "notable",
     "name": "Enhanced Barrier",
@@ -2354,7 +2373,7 @@
     "connections": [
       63713
     ],
-    "group": 1505,
+    "group": 1554,
     "id": "AscendancyMonk2Small8",
     "kind": "normal",
     "name": "Critical Chance",
@@ -2371,7 +2390,7 @@
     "connections": [
       28021
     ],
-    "group": 1192,
+    "group": 1236,
     "id": "criticals16",
     "kind": "normal",
     "name": "Critical Chance",
@@ -2389,7 +2408,7 @@
       41669,
       60515
     ],
-    "group": 783,
+    "group": 821,
     "id": "cold13",
     "kind": "normal",
     "name": "Cold Damage",
@@ -2403,7 +2422,7 @@
     "y": -11452.46
   },
   {
-    "group": 1071,
+    "group": 1111,
     "id": "duration12",
     "kind": "normal",
     "name": "Increased Duration",
@@ -2426,7 +2445,7 @@
       50198,
       52980
     ],
-    "group": 872,
+    "group": 911,
     "id": "six704",
     "kind": "normal",
     "name": "SIX",
@@ -2440,7 +2459,7 @@
     "connections": [
       14446
     ],
-    "group": 1267,
+    "group": 1316,
     "id": "curses13",
     "kind": "normal",
     "name": "Curse Duration",
@@ -2457,7 +2476,7 @@
     "connections": [
       59093
     ],
-    "group": 259,
+    "group": 269,
     "id": "passive_keystone_ancestral_bond",
     "kind": "keystone",
     "name": "Ancestral Bond",
@@ -2476,7 +2495,7 @@
       26135,
       55041
     ],
-    "group": 1191,
+    "group": 1235,
     "id": "projectile_spells1",
     "kind": "normal",
     "name": "Spell Damage",
@@ -2494,7 +2513,7 @@
       29009,
       43713
     ],
-    "group": 817,
+    "group": 856,
     "id": "corpses13",
     "kind": "normal",
     "name": "Offering Area",
@@ -2512,7 +2531,7 @@
       31692,
       61333
     ],
-    "group": 1311,
+    "group": 1360,
     "id": "criticals86",
     "kind": "normal",
     "name": "Critical Chance",
@@ -2532,7 +2551,7 @@
       54521,
       59362
     ],
-    "group": 726,
+    "group": 756,
     "id": "intelligence54",
     "kind": "normal",
     "name": "Attribute",
@@ -2549,7 +2568,7 @@
     "connections": [
       13823
     ],
-    "group": 1064,
+    "group": 1104,
     "id": "spell_criticals16",
     "kind": "normal",
     "name": "Spell Critical Chance",
@@ -2566,7 +2585,7 @@
     "connections": [
       39237
     ],
-    "group": 1311,
+    "group": 1360,
     "id": "criticals84",
     "kind": "notable",
     "name": "Careful Assassin",
@@ -2587,7 +2606,7 @@
       42999,
       62677
     ],
-    "group": 933,
+    "group": 972,
     "id": "intelligence59",
     "kind": "normal",
     "name": "Attribute",
@@ -2602,10 +2621,11 @@
   },
   {
     "connections": [
+      3472,
       8616,
       13909
     ],
-    "group": 771,
+    "group": 809,
     "id": "attributes21",
     "kind": "normal",
     "name": "Attribute",
@@ -2625,7 +2645,7 @@
       54521,
       55412
     ],
-    "group": 569,
+    "group": 599,
     "id": "intelligence52",
     "kind": "normal",
     "name": "Attribute",
@@ -2639,7 +2659,7 @@
     "y": -10395.75
   },
   {
-    "group": 935,
+    "group": 974,
     "id": "intelligence85",
     "kind": "normal",
     "name": "Attribute",
@@ -2656,7 +2676,7 @@
     "connections": [
       2254
     ],
-    "group": 779,
+    "group": 817,
     "id": "cast_speed15_",
     "kind": "normal",
     "name": "Cast Speed",
@@ -2673,7 +2693,7 @@
     "connections": [
       62677
     ],
-    "group": 882,
+    "group": 921,
     "id": "passive_keystone_whispers_of_doom",
     "kind": "keystone",
     "name": "Whispers of Doom",
@@ -2691,7 +2711,7 @@
       14446,
       37876
     ],
-    "group": 1328,
+    "group": 1377,
     "id": "attributes12",
     "kind": "normal",
     "name": "Attribute",
@@ -2708,7 +2728,7 @@
     "connections": [
       62436
     ],
-    "group": 881,
+    "group": 920,
     "id": "energy_shield12",
     "kind": "normal",
     "name": "Energy Shield",
@@ -2729,7 +2749,7 @@
       40068,
       65437
     ],
-    "group": 923,
+    "group": 962,
     "id": "shadow_monk_notable2",
     "kind": "notable",
     "name": "Step Like Mist",
@@ -2750,7 +2770,7 @@
       23825,
       43036
     ],
-    "group": 432,
+    "group": 462,
     "id": "attributes13",
     "kind": "normal",
     "name": "Attribute",
@@ -2768,7 +2788,7 @@
       4271,
       46554
     ],
-    "group": 934,
+    "group": 973,
     "id": "minion_defence28",
     "kind": "normal",
     "name": "Minion Resistances",
@@ -2785,7 +2805,7 @@
     "connections": [
       15618
     ],
-    "group": 778,
+    "group": 816,
     "id": "spell_criticals3",
     "kind": "normal",
     "name": "Spell Critical Damage",
@@ -2802,7 +2822,7 @@
     "connections": [
       51820
     ],
-    "group": 292,
+    "group": 305,
     "id": "totems52_",
     "kind": "normal",
     "name": "Totem Life",
@@ -2819,7 +2839,7 @@
     "connections": [
       8569
     ],
-    "group": 942,
+    "group": 981,
     "id": "attributes38",
     "kind": "normal",
     "name": "Attribute",
@@ -2840,7 +2860,7 @@
       44223,
       53960
     ],
-    "group": 916,
+    "group": 955,
     "id": "shadow_monk_notable1",
     "kind": "notable",
     "name": "Flow Like Water",
@@ -2855,7 +2875,7 @@
     "y": -1449.44
   },
   {
-    "group": 609,
+    "group": 639,
     "id": "energy_shield23",
     "kind": "normal",
     "name": "Energy Shield",
@@ -2874,7 +2894,7 @@
       15885,
       61419
     ],
-    "group": 738,
+    "group": 768,
     "id": "intelligence46",
     "kind": "normal",
     "name": "Attribute",
@@ -2891,10 +2911,11 @@
     "connections": [
       7960,
       37594,
+      44191,
       46742,
       47168
     ],
-    "group": 482,
+    "group": 512,
     "id": "intelligence51",
     "kind": "normal",
     "name": "Attribute",
@@ -2913,7 +2934,7 @@
       19355,
       39567
     ],
-    "group": 1002,
+    "group": 1041,
     "id": "intelligence103",
     "kind": "normal",
     "name": "Intelligence",
@@ -2932,7 +2953,7 @@
       39567,
       46554
     ],
-    "group": 1002,
+    "group": 1041,
     "id": "intelligence102",
     "kind": "normal",
     "name": "Intelligence",
@@ -2951,7 +2972,7 @@
       24060,
       49512
     ],
-    "group": 740,
+    "group": 762,
     "id": "infusion11",
     "kind": "normal",
     "name": "Infusion Duration",
@@ -2972,7 +2993,7 @@
       57821,
       61834
     ],
-    "group": 1231,
+    "group": 1280,
     "id": "intelligence25",
     "kind": "normal",
     "name": "Attribute",
@@ -2989,7 +3010,7 @@
     "connections": [
       21127
     ],
-    "group": 292,
+    "group": 305,
     "id": "totems33_",
     "kind": "notable",
     "name": "Ancestral Conduits",
@@ -3008,7 +3029,7 @@
       44455,
       47270
     ],
-    "group": 783,
+    "group": 821,
     "id": "cold10",
     "kind": "normal",
     "name": "Freeze Buildup",
@@ -3027,7 +3048,7 @@
       22185,
       58789
     ],
-    "group": 652,
+    "group": 682,
     "id": "intelligence53_",
     "kind": "normal",
     "name": "Attribute",
@@ -3044,7 +3065,7 @@
     "connections": [
       5314
     ],
-    "group": 843,
+    "group": 882,
     "id": "Puppetmaster11",
     "kind": "normal",
     "name": "Puppet Master chance",
@@ -3061,7 +3082,7 @@
     "connections": [
       61196
     ],
-    "group": 977,
+    "group": 1016,
     "id": "criticals12",
     "kind": "normal",
     "name": "Critical Chance",
@@ -3079,7 +3100,7 @@
       41669,
       56649
     ],
-    "group": 783,
+    "group": 821,
     "id": "cold_penetration10",
     "kind": "normal",
     "name": "Cold Penetration",
@@ -3097,7 +3118,7 @@
       17796,
       22538
     ],
-    "group": 608,
+    "group": 638,
     "id": "slowed_enemies16",
     "kind": "normal",
     "name": "Slow Effect on You",
@@ -3114,7 +3135,7 @@
     "connections": [
       46088
     ],
-    "group": 1064,
+    "group": 1104,
     "id": "spell_criticals12_",
     "kind": "normal",
     "name": "Spell Critical Chance",
@@ -3132,7 +3153,7 @@
       11604,
       24647
     ],
-    "group": 1076,
+    "group": 1116,
     "id": "dexterity6",
     "kind": "normal",
     "name": "Attribute",
@@ -3146,7 +3167,7 @@
     "y": -2226.59
   },
   {
-    "group": 1240,
+    "group": 1289,
     "id": "passive_keystone_chaos_inoculation",
     "kind": "keystone",
     "name": "Chaos Inoculation",
@@ -3163,7 +3184,7 @@
     "connections": [
       44455
     ],
-    "group": 783,
+    "group": 821,
     "id": "cold_penetration12__",
     "kind": "normal",
     "name": "Cold Penetration",
@@ -3181,7 +3202,7 @@
       34058,
       57710
     ],
-    "group": 748,
+    "group": 778,
     "id": "intelligence15",
     "kind": "normal",
     "name": "Attribute",
@@ -3199,7 +3220,7 @@
       5284,
       21245
     ],
-    "group": 519,
+    "group": 549,
     "id": "physical17",
     "kind": "normal",
     "name": "Spell Critical Chance and Critical Ailment Effect",
@@ -3217,7 +3238,7 @@
     "connections": [
       47833
     ],
-    "group": 925,
+    "group": 964,
     "id": "criticals30",
     "kind": "notable",
     "name": "Critical Exploit",
@@ -3237,7 +3258,7 @@
       53975,
       58090
     ],
-    "group": 777,
+    "group": 815,
     "id": "intelligence16",
     "kind": "normal",
     "name": "Attribute",
@@ -3255,7 +3276,7 @@
       11672,
       52241
     ],
-    "group": 907,
+    "group": 946,
     "id": "mana_regeneration48",
     "kind": "normal",
     "name": "Mana on Kill",
@@ -3272,7 +3293,7 @@
     "connections": [
       49220
     ],
-    "group": 1003,
+    "group": 1042,
     "id": "life_on_kill1",
     "kind": "normal",
     "name": "Life on Kill",
@@ -3291,7 +3312,7 @@
       32278,
       60241
     ],
-    "group": 501,
+    "group": 531,
     "id": "physical35",
     "kind": "notable",
     "name": "Blood Tearing",
@@ -3311,7 +3332,7 @@
       56638,
       61196
     ],
-    "group": 948,
+    "group": 987,
     "id": "intelligence77",
     "kind": "normal",
     "name": "Attribute",
@@ -3329,9 +3350,10 @@
       4621,
       5088,
       14110,
+      25890,
       53444
     ],
-    "group": 276,
+    "group": 287,
     "id": "intelligence71",
     "kind": "normal",
     "name": "Attribute",
@@ -3350,7 +3372,7 @@
       50720,
       62677
     ],
-    "group": 772,
+    "group": 810,
     "id": "intelligence45",
     "kind": "normal",
     "name": "Attribute",
@@ -3367,7 +3389,7 @@
     "connections": [
       57204
     ],
-    "group": 925,
+    "group": 964,
     "id": "criticals24",
     "kind": "normal",
     "name": "Critical Chance",
@@ -3384,7 +3406,7 @@
     "connections": [
       57178
     ],
-    "group": 491,
+    "group": 521,
     "id": "physical16",
     "kind": "normal",
     "name": "Bleed Chance",
@@ -3392,7 +3414,7 @@
     "orbit_index": 0,
     "skill": 60241,
     "stats": [
-      "5% chance to inflict [Bleeding|Bleeding] on [HitDamage|Hit]"
+      "5% chance to inflict [Bleeding|Bleeding] on [Hit]"
     ],
     "x": -4113.12,
     "y": -9254.29
@@ -3401,7 +3423,7 @@
     "connections": [
       19955
     ],
-    "group": 783,
+    "group": 821,
     "id": "cold12",
     "kind": "normal",
     "name": "Cold Damage",
@@ -3415,7 +3437,7 @@
     "y": -11619.96
   },
   {
-    "group": 819,
+    "group": 858,
     "id": "mana18",
     "kind": "notable",
     "name": "Mana Blessing",
@@ -3433,7 +3455,7 @@
     "connections": [
       21245
     ],
-    "group": 506,
+    "group": 536,
     "id": "physical18",
     "kind": "normal",
     "name": "Spell Critical Chance",
@@ -3451,7 +3473,7 @@
       13419,
       56045
     ],
-    "group": 1093,
+    "group": 1132,
     "id": "intelligence10",
     "kind": "normal",
     "name": "Attribute",
@@ -3468,7 +3490,7 @@
     "connections": [
       46197
     ],
-    "group": 1311,
+    "group": 1360,
     "id": "criticals85",
     "kind": "normal",
     "name": "Critical Chance",
@@ -3486,9 +3508,10 @@
       14231,
       17602,
       24150,
+      45377,
       56349
     ],
-    "group": 1239,
+    "group": 1288,
     "id": "intelligence69",
     "kind": "normal",
     "name": "Attribute",
@@ -3507,7 +3530,7 @@
       5314,
       46819
     ],
-    "group": 775,
+    "group": 813,
     "id": "jewel_slot1972",
     "kind": "jewel_socket",
     "name": "[Jewel] Socket",
@@ -3522,7 +3545,7 @@
       9586,
       44420
     ],
-    "group": 1199,
+    "group": 1246,
     "id": "criticals28",
     "kind": "notable",
     "name": "True Strike",
@@ -3541,7 +3564,7 @@
       17088,
       24958
     ],
-    "group": 1231,
+    "group": 1280,
     "id": "jewel_slot1961",
     "kind": "jewel_socket",
     "name": "[Jewel] Socket",
@@ -3557,7 +3580,7 @@
       8938,
       12778
     ],
-    "group": 1132,
+    "group": 1172,
     "id": "physical_witch5_",
     "kind": "normal",
     "name": "Bleed Chance",
@@ -3565,7 +3588,7 @@
     "orbit_index": 12,
     "skill": 61905,
     "stats": [
-      "5% chance to inflict [Bleeding|Bleeding] on [HitDamage|Hit]"
+      "5% chance to inflict [Bleeding|Bleeding] on [Hit]"
     ],
     "x": 4748.75,
     "y": -10390.21
@@ -3574,7 +3597,7 @@
     "connections": [
       55947
     ],
-    "group": 1064,
+    "group": 1104,
     "id": "spell_criticals17_",
     "kind": "normal",
     "name": "Spell Critical Damage",
@@ -3591,7 +3614,7 @@
     "connections": [
       19355
     ],
-    "group": 1001,
+    "group": 1040,
     "id": "energy_shield33_",
     "kind": "notable",
     "name": "Patient Barrier",
@@ -3606,7 +3629,7 @@
     "y": -10960.18
   },
   {
-    "group": 869,
+    "group": 907,
     "id": "intelligence58",
     "kind": "normal",
     "name": "Attribute",
@@ -3625,7 +3648,7 @@
       53941,
       56045
     ],
-    "group": 1109,
+    "group": 1149,
     "id": "evasion_and_energy_shield17",
     "kind": "normal",
     "name": "Evasion and Energy Shield",
@@ -3644,7 +3667,7 @@
       44455,
       47270
     ],
-    "group": 783,
+    "group": 821,
     "id": "cold5",
     "kind": "normal",
     "name": "Cold Damage",
@@ -3661,7 +3684,7 @@
     "connections": [
       15975
     ],
-    "group": 1003,
+    "group": 1042,
     "id": "evasion_and_energy_shield35_",
     "kind": "notable",
     "name": "Mindful Awareness",
@@ -3677,7 +3700,7 @@
   },
   {
     "ascendancy_id": "Monk2",
-    "group": 1505,
+    "group": 1554,
     "id": "AscendancyMonk2Notable9",
     "kind": "notable",
     "name": "The Soul Springs Eternal",
@@ -3696,7 +3719,7 @@
       4328,
       9069
     ],
-    "group": 1172,
+    "group": 1214,
     "id": "triggers24_",
     "kind": "normal",
     "name": "Triggered Spell Damage",
@@ -3714,7 +3737,7 @@
     "connections": [
       57181
     ],
-    "group": 1505,
+    "group": 1554,
     "id": "AscendancyMonk2Notable6",
     "kind": "notable",
     "name": "Sunder my Enemies...",
@@ -3731,7 +3754,7 @@
     "connections": [
       3355
     ],
-    "group": 608,
+    "group": 638,
     "id": "slowed_enemies18",
     "kind": "notable",
     "name": "Lasting Boons",
@@ -3750,7 +3773,7 @@
       2732,
       11672
     ],
-    "group": 907,
+    "group": 946,
     "id": "mana_regeneration46",
     "kind": "normal",
     "name": "Mana Cost Efficiency",

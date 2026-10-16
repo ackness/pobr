@@ -51,8 +51,26 @@ impl GameData {
         &self,
         path: std::path::PathBuf,
     ) -> Result<Option<SpecialModsDef>, LoadError> {
-        match self.load_json_at::<SpecialModsDef>(path) {
-            Ok(def) => Ok(Some(def)),
+        match self.load_json_at::<SpecialModsDef>(path.clone()) {
+            Ok(def) => {
+                for entry in &def.entries {
+                    if !entry.exporter.is_same()
+                        && entry
+                            .game_source
+                            .as_deref()
+                            .is_none_or(|source| source.trim().is_empty())
+                    {
+                        return Err(LoadError::Overlay {
+                            path,
+                            message: format!(
+                                "{}: exporter absent/differs requires game_source",
+                                entry.id
+                            ),
+                        });
+                    }
+                }
+                Ok(Some(def))
+            }
             Err(LoadError::Io { ref source, .. })
                 if source.kind() == std::io::ErrorKind::NotFound =>
             {

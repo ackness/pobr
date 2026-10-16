@@ -175,8 +175,10 @@ impl MinimalOutput {
 
 /// A single resistance's resolution result: the capped final value / max resistance / over-cap.
 pub(crate) struct ResistanceResolution {
+    pub(crate) total: f64,
+    pub(crate) uncapped_max: f64,
     pub(crate) final_value: f64,
-    max: f64,
+    pub(crate) max: f64,
     pub(crate) over_cap: f64,
     /// The terms the total was built from, kept for [`Self::formula`].
     base: f64,
@@ -194,6 +196,9 @@ impl ResistanceResolution {
         match self.override_total {
             Some(value) => steps.set(FormulaOp::Override, value, value),
             None => steps.scaled(self.base, self.flat, self.inc, self.more),
+        }
+        if steps.current() != self.total {
+            steps.set(FormulaOp::Round, 0.0, self.total);
         }
         steps.at_most(FormulaOp::Cap, self.max);
         steps.at_least(self.floor);
@@ -244,11 +249,15 @@ pub(crate) fn resolve_resistance(
     let override_total = db
         .override_(cfg, long.as_str())
         .or_else(|| db.override_(cfg, short.as_str()));
-    let total = override_total.unwrap_or_else(|| {
-        let summed = base + flat;
-        let factor = ((1.0 + inc / 100.0) * more).max(0.0);
-        summed * factor
-    });
+    // Resistance is an integer stat. Keep fractions through summing and
+    // scaling (including shared Fire modifiers), then truncate toward zero.
+    let total = override_total
+        .unwrap_or_else(|| {
+            let summed = base + flat;
+            let factor = ((1.0 + inc / 100.0) * more).max(0.0);
+            summed * factor
+        })
+        .trunc();
     let max = db
         .override_(cfg, max_long.as_str())
         .or_else(|| db.override_(cfg, max_short.as_str()))
@@ -258,9 +267,12 @@ pub(crate) fn resolve_resistance(
                 + db.sum(ModType::Base, cfg, &max_names)
                 + shared.max)
                 .min(cfg.constants.game().resist_hard_cap)
-        });
+        })
+        .trunc();
     let floor = cfg.constants.game().resist_floor;
     ResistanceResolution {
+        total,
+        uncapped_max: max,
         final_value: round(total.min(max).max(floor)),
         max: round(max),
         over_cap: round((total - max).max(0.0)),
@@ -301,6 +313,22 @@ fn shared_fire_resistance(db: &ModDb, cfg: &CalcConfig, element: &str) -> Shared
             .filter(|row| {
                 row.modifier.origin.as_ref().is_none_or(|origin| {
                     origin.source_id.id != crate::ingest::campaign::RESISTANCE_PENALTY_SOURCE
+                })
+            })
+            .filter(|row| {
+                // The parser expands all-elemental lines into three names.
+                // They already grant Cold/Lightning and must not be shared
+                // again. Keep their original scope when selecting Fire mods.
+                let text = row.modifier.source.as_deref().or_else(|| {
+                    row.modifier
+                        .origin
+                        .as_ref()
+                        .and_then(|origin| origin.raw_text.as_deref())
+                });
+                text.is_none_or(|text| {
+                    let text =
+                        crate::mod_parser::engine::strip_display_markup(text).to_ascii_lowercase();
+                    !text.contains("all elemental resistances") && !text.contains("all resistances")
                 })
             })
             .filter_map(|row| row.value)
@@ -424,6 +452,9 @@ impl ActionRateTerms {
 /// second: a skill triggered by what another skill creates (`SkillUseRate`).
 /// The character's cast, attack and action speed do not change it.
 fn fixed_use_rate(db: &ModDb, cfg: &CalcConfig) -> Option<f64> {
+    if db.flag(cfg, super::trigger::EVENT_RATE_UNMODELLED) {
+        return Some(0.0);
+    }
     let rate = db.sum(ModType::Base, cfg, &[ModName::from("SkillUseRate")]);
     (rate > 0.0).then_some(rate)
 }
@@ -467,11 +498,9 @@ fn use_rate_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> ActionR
         };
     }
     let speed_names = super::skill_use_time::speed_names_for(cfg);
-    let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
     let inc_speed = db.sum(ModType::Inc, cfg, &speed_names);
     let more_speed = db.more(cfg, &speed_names);
-    let action_speed_mod = (1.0 + db.sum(ModType::Inc, cfg, &action_speed_names) / 100.0)
-        * db.more(cfg, &action_speed_names);
+    let action_speed_mod = super::skill_use_time::action_speed_factor(db, cfg);
     let inc_more_rate = input.base_action_rate * (1.0 + inc_speed / 100.0) * more_speed;
     let scaled_rate = apply_total_time(db, cfg, inc_more_rate);
     let uncapped_action_rate = scaled_rate * action_speed_mod;
@@ -512,11 +541,11 @@ fn use_rate_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> ActionR
 /// or the OVERRIDE value when one applies.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct AccuracyTerms {
-    base: f64,
-    flat: f64,
-    inc: f64,
-    more: f64,
-    override_value: Option<f64>,
+    pub(crate) base: f64,
+    pub(crate) flat: f64,
+    pub(crate) inc: f64,
+    pub(crate) more: f64,
+    pub(crate) override_value: Option<f64>,
     pub(crate) value: f64,
 }
 
@@ -1435,7 +1464,6 @@ fn total_dps_traced(
         (action_rate, node)
     } else {
         let speed_names = super::skill_use_time::speed_names_for(cfg);
-        let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
         let base_rate_node = trace.add_source_node(
             "base action rate",
             input.base_action_rate,
@@ -1449,8 +1477,7 @@ fn total_dps_traced(
             "Speed INC modifier sum (Attack/Cast/Skill)",
         );
         let more_speed = more_factor_traced(db, cfg, &speed_names, "Speed MORE factor", trace);
-        let action_speed_mod = (1.0 + db.sum(ModType::Inc, cfg, &action_speed_names) / 100.0)
-            * db.more(cfg, &action_speed_names);
+        let action_speed_mod = super::skill_use_time::action_speed_factor(db, cfg);
         let scaled_rate = apply_total_time(
             db,
             cfg,

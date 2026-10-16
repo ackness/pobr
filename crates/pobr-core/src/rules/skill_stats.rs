@@ -11,6 +11,37 @@ use pobr_data::prelude::*;
 
 use crate::{ModTag, ModValue, Modifier};
 
+/// Coverage of PoBR-owned stat rules. Unlisted game stats retain `same`.
+/// The stat id itself is the game source; use the same metadata for every channel.
+fn exporter_rule(stat: &str) -> Option<std::sync::Arc<pobr_data::source::ExporterRule>> {
+    static RULES: std::sync::LazyLock<Vec<std::sync::Arc<pobr_data::source::ExporterRule>>> =
+        std::sync::LazyLock::new(|| {
+            [(
+                "base_spell_mana_cost_efficiency_+%",
+                pobr_data::source::ExporterCoverage::Absent,
+            )]
+            .into_iter()
+            .map(|(stat, exporter)| {
+                std::sync::Arc::new(pobr_data::source::ExporterRule {
+                    id: stat.to_string(),
+                    exporter,
+                    game_source: stat.to_string(),
+                })
+            })
+            .collect()
+        });
+    RULES.iter().find(|rule| rule.id == stat).cloned()
+}
+
+fn with_exporter_rule(stat: &str, mut mods: Vec<Modifier>) -> Vec<Modifier> {
+    if let Some(rule) = exporter_rule(stat) {
+        for modifier in &mut mods {
+            modifier.set_exporter_rule(&rule);
+        }
+    }
+    mods
+}
+
 /// The ailment each element builds up on its own.
 const ELEMENTAL_AILMENTS: [(&str, &str); 3] = [
     ("Fire", "Ignite"),
@@ -116,9 +147,11 @@ pub fn corpse_explosion_damage(stat: &str, value: f64) -> Option<(DamageType, f6
 
 /// The stats that say how many minions a summoning skill creates, of each
 /// kind of minion it summons.
-const SUMMONED_MINION_COUNTS: [&str; 1] = [
+const SUMMONED_MINION_COUNTS: [&str; 2] = [
     // Cackling Companions: "Summons {0} Hyenas".
     "skill_hyena_cackle_size",
+    // Wolf Pack: pack size grows from 3 at gem level 1 to 6 at level 20.
+    "skill_wolf_pack_size",
 ];
 
 /// Whether the stat `stat` of a summoning skill is the number of minions it
@@ -144,6 +177,14 @@ pub struct SummonedMinions {
 /// applies to it, grants that skill's minions at `value`, when this table
 /// defines the stat. The skill itself gets nothing from it.
 pub fn minion_modifiers(stat: &str, value: f64, minions: SummonedMinions) -> Option<Vec<Modifier>> {
+    minion_modifiers_impl(stat, value, minions).map(|mods| with_exporter_rule(stat, mods))
+}
+
+fn minion_modifiers_impl(
+    stat: &str,
+    value: f64,
+    minions: SummonedMinions,
+) -> Option<Vec<Modifier>> {
     let modifier = match stat {
         // "Minions deal {0}% more damage", of the summoning skill itself.
         "active_skill_minion_damage_+%_final"
@@ -159,6 +200,17 @@ pub fn minion_modifiers(stat: &str, value: f64, minions: SummonedMinions) -> Opt
         }
         // "Supported Skills have {0}% increased Minion Attack Speed".
         "minion_attack_speed_+%" => Modifier::number("AttackSpeed", ModType::Inc, value),
+        // Elemental Army and resistance stats on summoning skills affect
+        // the summoned ally, not the summoner.
+        "minion_elemental_resistance_%" => Modifier::number("ElementalResist", ModType::Base, value),
+        "minion_fire_damage_resistance_%" => Modifier::number("FireResist", ModType::Base, value),
+        "minion_cold_damage_resistance_%" => Modifier::number("ColdResist", ModType::Base, value),
+        "minion_lightning_damage_resistance_%" => Modifier::number("LightningResist", ModType::Base, value),
+        "minion_chaos_resistance_%" => Modifier::number("ChaosResist", ModType::Base, value),
+        "minion_base_maximum_fire_damage_resistance_%" => Modifier::number("FireResistMax", ModType::Base, value),
+        "minion_base_maximum_cold_damage_resistance_%" => Modifier::number("ColdResistMax", ModType::Base, value),
+        "minion_base_maximum_lightning_damage_resistance_%" => Modifier::number("LightningResistMax", ModType::Base, value),
+        "minion_maximum_all_elemental_resistances_%" => Modifier::number("ElementalResistMax", ModType::Base, value),
         // "Minions from this skill have 1% increased Damage per {0} of your Strength".
         "minion_1%_damage_+%_per_X_player_strength" => Modifier::number(
             "Damage", ModType::Inc,
@@ -259,7 +311,80 @@ pub fn crushes_on_hit(stat: &str) -> bool {
 /// it, grants that skill at `value`, when this table defines the stat. `None`
 /// leaves the stat to the extracted stat map.
 pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
+    skill_modifiers_impl(stat, value).map(|mods| with_exporter_rule(stat, mods))
+}
+
+fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
     match stat {
+        // "{0}% increased amount of Life/Mana Leeched" and "Leech ...
+        // {0}% faster" are distinct: speed changes duration, not amount.
+        "base_life_leech_amount_+%" => Some(vec![Modifier::number(
+            "LifeLeechAmount",
+            ModType::Inc,
+            value,
+        )]),
+        "base_mana_leech_amount_+%" => Some(vec![Modifier::number(
+            "ManaLeechAmount",
+            ModType::Inc,
+            value,
+        )]),
+        "base_life_leech_rate_+%" => {
+            Some(vec![Modifier::number("LifeLeechRate", ModType::Inc, value)])
+        }
+        "base_mana_leech_rate_+%" => {
+            Some(vec![Modifier::number("ManaLeechRate", ModType::Inc, value)])
+        }
+        "base_energy_shield_leech_rate_+%" => Some(vec![Modifier::number(
+            "EnergyShieldLeechRate",
+            ModType::Inc,
+            value,
+        )]),
+        // Life Thief / Soul Thief: "Leech {0}% of Physical Attack Damage
+        // as Life/Mana". The game stores the percentage in hundredths.
+        "base_life_leech_from_physical_attack_damage_permyriad"
+        | "base_mana_leech_from_physical_attack_damage_permyriad" => {
+            let name = if stat == "base_life_leech_from_physical_attack_damage_permyriad" {
+                "PhysicalDamageLifeLeech"
+            } else {
+                "PhysicalDamageManaLeech"
+            };
+            Some(vec![
+                Modifier::number(name, ModType::Base, value / 100.0).with_flags(ModFlags::ATTACK),
+            ])
+        }
+        "skill_disabled_unless_cloned" => Some(vec![Modifier::flag("MirageSkill")]),
+        // The action's own movement penalty, with Mobility/Deliberation
+        // modifying the penalty rather than the character's movement speed.
+        "movement_speed_+%_final_while_performing_action" => Some(vec![Modifier::number(
+            "SkillMovementSpeed",
+            ModType::More,
+            value,
+        )]),
+        "movement_speed_penalty_+%_while_performing_action" => Some(vec![Modifier::number(
+            "MovementSpeedPenalty",
+            ModType::Inc,
+            value,
+        )]),
+        "support_mobility_movement_speed_penalty_+%_final_while_performing_action"
+        | "support_deliberation_movement_speed_penalty_+%_final_while_performing_action" => {
+            Some(vec![Modifier::number(
+                "MovementSpeedPenalty",
+                ModType::More,
+                value,
+            )])
+        }
+        "can_perform_skill_while_moving" => Some(vec![Modifier::flag("UsableWhileMoving")]),
+        "aura_effect_+%" => Some(vec![Modifier::number(
+            "SelectedMagnitude",
+            ModType::Inc,
+            value,
+        )]),
+        "curse_effect_+%" => Some(vec![Modifier::number(
+            "SelectedCurseEffect",
+            ModType::Inc,
+            value,
+        )]),
+
         // The selected effect deals no damage; secondary explosions have
         // their own stat sets without this stat.
         "base_deal_no_damage" => Some(vec![Modifier::flag("DealNoDamage")]),
@@ -435,6 +560,11 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         "support_inspiration_cost_+%_final" => {
             Some(vec![Modifier::number("Cost", ModType::More, value)])
         }
+        // "{0}% increased Mana Cost Efficiency of Spells".
+        "base_spell_mana_cost_efficiency_+%" => Some(vec![
+            Modifier::number("ManaCostEfficiency", ModType::Inc, value)
+                .with_tag(ModTag::SkillTypes(SkillTypes::SPELL)),
+        ]),
         // "Supported Skills have {0}% increased Mana Cost Efficiency".
         "base_mana_cost_efficiency_+%" => Some(vec![Modifier::number(
             "ManaCostEfficiency",
@@ -462,6 +592,15 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
             Modifier::number("AttackSpeed", ModType::Inc, value)
                 .with_keyword_flags(KeywordFlags::TOTEM),
         ]),
+        // Chayula's Will attacks every 200 ms while its tornado exists;
+        // the character's attack speed does not change that interval.
+        "archon_of_chayula_tornado_attack_interval_ms" if value > 0.0 => {
+            Some(vec![Modifier::number(
+                "SkillUseRate",
+                ModType::Base,
+                1000.0 / value,
+            )])
+        }
         // Rain of Arrows: "One arrow lands every {0} seconds", with
         // "Modifiers to Projectile speed apply to arrow landing frequency"
         // (`calc::rain`).
@@ -494,6 +633,11 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         "support_spell_echo_number_of_echo_cascades" => {
             Some(vec![Modifier::number("RepeatCount", ModType::Base, value)])
         }
+        "echoed_spell_area_of_effect_+%" => Some(vec![Modifier::number(
+            "RepeatAreaOfEffect",
+            ModType::Inc,
+            value,
+        )]),
         // Rigwald's Ferocity: increased Attack Speed and more Damage for
         // Supported Skills, each only while using one of the two weapon sets.
         "support_rigwald_attack_speed_+%_in_weapon_set_one" => Some(vec![
@@ -524,8 +668,25 @@ fn while_using_weapon_set(set: u8) -> ModTag {
 /// active skill that the same gem grants. `stats` is every stat of the
 /// support. Empty when this table has nothing to say about the stat.
 pub fn granted_skill_modifiers(stat: &str, value: f64, stats: &[SkillDamageStat]) -> Vec<Modifier> {
+    with_exporter_rule(stat, granted_skill_modifiers_impl(stat, value, stats))
+}
+
+fn granted_skill_modifiers_impl(
+    stat: &str,
+    value: f64,
+    stats: &[SkillDamageStat],
+) -> Vec<Modifier> {
     let sibling = |id: &str| stats.iter().find(|ds| ds.stat == id).map(|ds| ds.value);
     match stat {
+        // Walking Calamity and The Stars Answer repeatedly trigger their
+        // granted meteor at this interval while the parent skill is active.
+        // This is the arrival rate for the selected meteor damage form,
+        // assuming a single target, rather than the character's attack rate.
+        "walking_calamity_spawn_meteor_every_ms" if value > 0.0 => vec![Modifier::number(
+            "SkillUseRate",
+            ModType::Base,
+            1000.0 / value,
+        )],
         // Doedre's Undoing: "Each Cursed Ground area from Supported Skills
         // spawns a Witchtoad every {0} seconds", with "Limit {0} areas of
         // Cursed Ground". The skill the gem grants, Dark Consequences, "is
@@ -559,6 +720,10 @@ const OIL_EXPOSURE: &str = "skill_base_oil_exposure_-_to_total_elemental_resista
 /// skill's debuff (`skill_env::buff_specs::buff_skill_specs`). `None` leaves
 /// the stat to the extracted stat map.
 pub fn debuff_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
+    debuff_modifiers_impl(stat, value).map(|mods| with_exporter_rule(stat, mods))
+}
+
+fn debuff_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
     match stat {
         // The enemy is taken to stand in the Oil. Exposure of each element
         // is reduced with the others (`calc::setup_env::reduce_enemy_exposure`).
@@ -580,6 +745,14 @@ const PREDATORS_MARK_MAXIMUM: &str = "skill_wolf_mark_damage_taken_+%_cap";
 /// Enemy payloads from a monster's own curse stat set. Player curses keep
 /// their skill-specific mappings (including their target and value transforms).
 pub fn minion_curse_modifiers(
+    stat: &str,
+    value: f64,
+    stats: &[SkillDamageStat],
+) -> Option<Vec<Modifier>> {
+    minion_curse_modifiers_impl(stat, value, stats).map(|mods| with_exporter_rule(stat, mods))
+}
+
+fn minion_curse_modifiers_impl(
     stat: &str,
     value: f64,
     stats: &[SkillDamageStat],
@@ -625,6 +798,14 @@ pub fn minion_curse_modifiers(
 /// skill, each with its quality added. `None` leaves the stat to the
 /// extracted stat map.
 pub fn curse_modifiers(stat: &str, value: f64, stats: &[SkillDamageStat]) -> Option<Vec<Modifier>> {
+    curse_modifiers_impl(stat, value, stats).map(|mods| with_exporter_rule(stat, mods))
+}
+
+fn curse_modifiers_impl(
+    stat: &str,
+    value: f64,
+    stats: &[SkillDamageStat],
+) -> Option<Vec<Modifier>> {
     let sibling = |id: &str| stats.iter().find(|ds| ds.stat == id).map(|ds| ds.value);
     match stat {
         // Predator's Mark: the enemies of the marked target near it are the
@@ -664,6 +845,10 @@ pub const ELEMENTAL_EXPOSURE_PER_1000_ARMOUR: &str = "BannerElementalExposurePer
 /// when this table defines the stat. `None` leaves the stat to the extracted
 /// stat map.
 pub fn player_buff_modifiers(stat: &str, value: f64, skill: BuffSkill) -> Option<Vec<Modifier>> {
+    player_buff_modifiers_impl(stat, value, skill).map(|mods| with_exporter_rule(stat, mods))
+}
+
+fn player_buff_modifiers_impl(stat: &str, value: f64, skill: BuffSkill) -> Option<Vec<Modifier>> {
     match stat {
         // Refraction III: the banner applies Elemental Exposure to the
         // enemies in its area, this much per 1000 of the character's Armour,

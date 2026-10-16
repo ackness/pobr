@@ -103,16 +103,18 @@ fn s0_crit_override_entry() {
     assert_eq!(m.value, TemplateValueDef::Capture("$1".to_string()));
 }
 
-/// An S0 recognition-only entry (both mods and handler absent = known
-/// unsupported, pobr's current Unsupported state).
+/// A recognition-only entry for a mechanic PoBR does not model (batch
+/// `unmodelled`): both mods and handler absent. The line stays a gap, it is
+/// not a no-effect (`S0`) line.
 #[test]
-fn s0_recognition_only_entries() {
+fn unmodelled_recognition_only_entries() {
     let def = load();
     for id in [
         "immune_to_chaos_damage",
-        "immune_to_chaos_damage_and_bleeding",
+        "charm_energy_shield_recharge_starts_when_used",
     ] {
         let e = def.entries.iter().find(|e| e.id == id).unwrap();
+        assert_eq!(e.batch, "unmodelled", "{id}");
         assert!(
             e.mods.is_empty() && e.handler_id.is_none(),
             "{id}: recognition-only shape"
@@ -157,6 +159,22 @@ fn value_expr_negate_entry() {
 fn non_s0_has_traceable_provenance() {
     let def = load();
     for e in def.entries.iter().filter(|e| e.batch != "S0") {
+        if e.batch == "unmodelled" {
+            // Recognised, not implemented: no output, and the note says why.
+            assert!(
+                e.mods.is_empty() && e.handler_id.is_none(),
+                "{}: an unmodelled entry must not produce mods",
+                e.id
+            );
+            assert!(
+                e.source_note
+                    .as_deref()
+                    .is_some_and(|n| !n.trim().is_empty()),
+                "{}: an unmodelled entry must say what is not modelled",
+                e.id
+            );
+            continue;
+        }
         if let Some(pattern) = &e.vendor_pattern {
             assert!(!pattern.trim().is_empty(), "{}: empty vendor_pattern", e.id);
         }
@@ -295,4 +313,119 @@ fn common_only_when_version_absent() {
 fn both_layers_absent_yields_none() {
     let (_root, ver_dir) = temp_data_root("none");
     assert!(GameData::new(&ver_dir).special_mods().unwrap().is_none());
+}
+
+#[test]
+fn exporter_coverage_requires_a_game_source() {
+    use pobr_data::source::ExporterCoverage;
+    let (root, version) = temp_data_root("exporter");
+    let path = version.join("overlay/special_mods.json");
+    for coverage in ["absent", "differs"] {
+        for source in [
+            None,
+            Some(""),
+            Some("  "),
+            Some("base_spell_mana_cost_efficiency_+%"),
+        ] {
+            let body = serde_json::json!({"entries": [{
+                "id": "coverage_test", "pattern": "test", "batch": "S2",
+                "exporter": coverage, "game_source": source
+            }]});
+            std::fs::write(&path, body.to_string()).unwrap();
+            let result = GameData::new(&version).special_mods();
+            assert_eq!(
+                result.is_ok(),
+                source.is_some_and(|value| !value.trim().is_empty()),
+                "{body}"
+            );
+        }
+    }
+    write_special(&path, &[("vnd_test", "test")]);
+    assert_eq!(
+        GameData::new(&version)
+            .special_mods()
+            .unwrap()
+            .unwrap()
+            .entries[0]
+            .exporter,
+        ExporterCoverage::Same
+    );
+    std::fs::write(
+        &path,
+        r#"{"entries":[{"id":"bad","pattern":"test","batch":"S2","exporter":"typo"}]}"#,
+    )
+    .unwrap();
+    assert!(GameData::new(&version).special_mods().is_err());
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn remnant_and_armour_break_limits_keep_their_game_sources() {
+    let def = load();
+    for (id, stat, reason) in [
+        (
+            "additional_remnant_chance",
+            "chance_%_to_create_additional_remnant",
+            "remnant count not modelled",
+        ),
+        (
+            "break_increased_armour",
+            "armour_break_amount_+%",
+            "per hit is not modelled",
+        ),
+        (
+            "hits_break_increased_armour_on_ailmented_targets",
+            "armour_break_amount_+%_vs_enemies_affected_by_ailments",
+            "per hit is not modelled",
+        ),
+    ] {
+        let entry = def.entries.iter().find(|entry| entry.id == id).unwrap();
+        assert_eq!(entry.batch, "unmodelled");
+        assert!(entry.mods.is_empty() && entry.handler_id.is_none());
+        assert!(entry.game_source.as_deref().unwrap().contains(stat));
+        assert!(entry.source_note.as_deref().unwrap().contains(reason));
+        if id == "additional_remnant_chance" {
+            assert_eq!(entry.exporter, pobr_data::source::ExporterCoverage::Absent);
+        }
+    }
+}
+
+#[test]
+fn conditional_offence_limits_keep_game_provenance_and_model_reasons() {
+    let def = load();
+    for (id, stat, reason, absent) in [
+        (
+            "physical_spell_critical_pin_unmodelled",
+            "physical_spell_damage_can_pin_on_critical_hit",
+            "Pin buildup",
+            false,
+        ),
+        (
+            "stun_buildup_unmodelled",
+            "hit_damage_stun_multiplier_+%",
+            "heavy-stun buildup",
+            false,
+        ),
+        (
+            "daze_duration_unmodelled",
+            "daze_duration_+%",
+            "Daze duration",
+            true,
+        ),
+        (
+            "attack_maim_chance_unmodelled",
+            "maim_on_hit_%",
+            "enemy movement",
+            true,
+        ),
+    ] {
+        let entry = def.entries.iter().find(|entry| entry.id == id).unwrap();
+        assert_eq!(entry.batch, "unmodelled");
+        assert!(entry.mods.is_empty() && entry.handler_id.is_none());
+        assert!(entry.game_source.as_deref().unwrap().contains(stat));
+        assert!(entry.source_note.as_deref().unwrap().contains(reason));
+        if absent {
+            assert_eq!(entry.exporter, pobr_data::source::ExporterCoverage::Absent);
+        }
+    }
 }

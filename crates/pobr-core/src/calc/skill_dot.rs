@@ -34,13 +34,12 @@
 //!   dotIsBurningGround/CausticGround/CorruptingBlood branches (`:5947-5967`)
 //!   depend on ground-dot flag data and are not modeled -- they fall through
 //!   to the else branch's `TotalDot = TotalDotInstance` (`:5971-5972`).
-//! - The end-of-pipeline merge family (`:6093-6234`): `WithDotDPS = baseDPS +
-//!   TotalDot` (only when skillFlags.dot); `TotalDotDPS = Σ(TotalDot + poison
-//!   + caustic + ignite + burning + bleed + corrupting + decay)` clamped to
-//!   `DotDpsCap` (pobr's current value = the three ailment-side
-//!   bleed/poison/ignite terms; caustic/burning ground and decay aren't
-//!   modeled and are always 0); `CombinedDPS = baseDPS + TotalDotDPS` (the
-//!   culling / reservation multipliers aren't modeled, taken as 1.0 -- vendor `:6238-6241`).
+//! - The end-of-pipeline merge adds the skill's own DoT, bleed, poison and
+//!   ignite to hit DPS. Ground and Profane Decay display fields are views of
+//!   those existing channels, not additional damage to add again. Effective
+//!   CombinedDPS also accounts for Culling Strike and the strongest minimum
+//!   enemy Life reservation (Blood Price's
+//!   `unique_blood_price_enemies_in_presence_have_at_least_%_life_reserved`).
 //!
 //! Field naming contract:
 //! `skill_dot_instance` / `skill_total_dot` / `total_dot_dps` /
@@ -97,6 +96,8 @@ pub struct SkillDotPart {
 /// parts of the skill's own damage over time and the sums of the merge family.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct SkillDotTerms {
+    pub dot_active: bool,
+    pub stack_factors: Option<[f64; 4]>,
     pub parts: Vec<SkillDotPart>,
     /// The parts' totals added up, limited to the cap.
     pub instance: f64,
@@ -111,6 +112,7 @@ pub struct SkillDotTerms {
     pub with_dot_dps: f64,
     /// How much sooner Culling Strike kills ([`cull_multiplier`]).
     pub cull_multiplier: f64,
+    pub reservation_multiplier: f64,
     pub combined_dps: f64,
 }
 
@@ -145,6 +147,8 @@ impl SkillDotTerms {
             steps.set(FormulaOp::HitDps, self.base_dps, self.base_dps);
         }
         steps.add(FormulaOp::DotDps, self.total_dot_dps);
+        steps.more(self.cull_multiplier);
+        steps.more(self.reservation_multiplier);
         steps.finish(round(self.combined_dps))
     }
 }
@@ -430,6 +434,7 @@ pub fn skill_dot_terms(
     // TotalDot (`:5931-5973`): under DotCanStack, instance × speed × duration
     // × dpsMultiplier × quantityMultiplier; the three ground-dot flags are
     // not modeled; otherwise = instance.
+    let mut stack_factors = None;
     let total_dot = if db.flag(cfg, "DotCanStack") && inputs.duration > 0.0 {
         // Rate branch (`:5934-5940`): switches to
         // MineLayingSpeed/TrapThrowingSpeed when keywordFlags has Mine/Trap
@@ -437,6 +442,12 @@ pub fn skill_dot_terms(
         // this always uses Speed.
         let speed = inputs.speed;
         let end = dps_end_factors(db, cfg, None);
+        stack_factors = Some([
+            speed,
+            inputs.duration,
+            end.dps_multiplier,
+            end.quantity_multiplier,
+        ]);
         (instance * speed * inputs.duration * end.dps_multiplier * end.quantity_multiplier).min(cap)
     } else {
         instance
@@ -453,9 +464,26 @@ pub fn skill_dot_terms(
         0.0
     };
     let cull = cull_multiplier(db, enemy, cfg);
-    let combined_dps = (inputs.base_dps + total_dot_dps) * cull;
+    // Blood Price: enemies have *at least* this reserved fraction. Several
+    // sources do not add their minima. Reservation reduces life to remove,
+    // without changing the damage of an individual hit or ailment.
+    let reserved = if cfg.mode_effective {
+        enemy
+            .max_of(
+                ModType::Base,
+                cfg,
+                &[ModName::from("LifeReservationPercent")],
+            )
+            .clamp(0.0, 99.0)
+    } else {
+        0.0
+    };
+    let reservation = 100.0 / (100.0 - reserved);
+    let combined_dps = (inputs.base_dps + total_dot_dps) * cull * reservation;
 
     SkillDotTerms {
+        dot_active,
+        stack_factors,
         parts,
         instance,
         total_dot,
@@ -467,6 +495,7 @@ pub fn skill_dot_terms(
         total_dot_dps,
         with_dot_dps,
         cull_multiplier: cull,
+        reservation_multiplier: reservation,
         combined_dps,
     }
 }

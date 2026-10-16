@@ -2,7 +2,7 @@
 //! an input here. Resource drains ("Lose … per second") bypass mitigation;
 //! damage the build deals to itself uses resistance and damage-taken modifiers.
 
-use super::{Env, LeechResource, calc_leech, calc_regen};
+use super::{Env, LeechResource, calc_regen};
 use crate::{CalcConfig, HandTag, ModDb};
 use pobr_data::prelude::*;
 
@@ -129,7 +129,7 @@ struct Gain {
     on_hit: f64,
 }
 
-fn proxy(cfg: &CalcConfig) -> bool {
+pub(super) fn proxy(cfg: &CalcConfig) -> bool {
     use pobr_data::skill::SkillTypes;
     cfg.skill_types.intersects(
         SkillTypes::TRAPPED
@@ -212,22 +212,32 @@ fn gain_for_hit(
     // Reuse the engine's single-instance leech limits. A sustained rate also
     // needs sufficient hits to replace each expired instance; hit frequency
     // never stacks the recovery rates of overlapping instances.
-    let instance = calc_leech(pool, amount, 100.0, resource);
     let instant_fraction = if db.flag(cfg, &format!("Instant{name}Leech")) {
         1.0
     } else {
         (base(db, cfg, &format!("Instant{name}Leech")) / 100.0).clamp(0.0, 1.0)
     };
     let recovery = factor(db, cfg, &format!("{name}RecoveryRate"));
+    let amount = amount * factor(db, cfg, &format!("{name}LeechAmount"));
+    let instance = super::survivability::leech_instance(
+        pool,
+        amount,
+        resource,
+        factor(db, cfg, &format!("{name}LeechRate")),
+        factor(db, cfg, &format!("Max{name}LeechRate")),
+    );
     let normal = instance.instance_total * (1.0 - instant_fraction);
+    let normal_instance = super::survivability::leech_instance(
+        pool,
+        normal,
+        resource,
+        factor(db, cfg, &format!("{name}LeechRate")),
+        factor(db, cfg, &format!("Max{name}LeechRate")),
+    );
     Gain {
         per_hit: normal * recovery,
         instant: instance.instance_total * instant_fraction,
-        peak: (instance.display_rate_per_second
-            * (1.0 - instant_fraction)
-            * factor(db, cfg, &format!("{name}LeechRate")))
-        .min(instance.rate_cap_per_second * factor(db, cfg, &format!("Max{name}LeechRate")))
-            * recovery,
+        peak: normal_instance.display_rate_per_second * recovery,
         on_hit,
     }
 }
@@ -240,8 +250,10 @@ fn fill_leech_gain(env: &mut Env, hit: &[(DamageType, f64)], crit: &[(DamageType
         LeechResource::Mana,
         LeechResource::EnergyShield,
     ];
+    let mut details = [[[0.0; 3]; 3]; 2];
     let mut per_hit = [0.0; 3];
     let mut rate = [0.0; 3];
+    let mut instances: [Vec<(f64, f64)>; 3] = Default::default();
     let mut accumulate = |cfg: &CalcConfig,
                           normal: &[(DamageType, f64)],
                           critical: &[(DamageType, f64)],
@@ -261,9 +273,20 @@ fn fill_leech_gain(env: &mut Env, hit: &[(DamageType, f64)], crit: &[(DamageType
             for (i, resource) in resources.iter().enumerate() {
                 let gain = gain_for_hit(env, &pass_cfg, damage, *resource, pools[i]);
                 let hit_rate = out.effective_action_rate * hit_chance * share;
+                for (channel, value) in [gain.per_hit, gain.instant, gain.on_hit]
+                    .into_iter()
+                    .enumerate()
+                {
+                    details[0][i][channel] += value * portion * share;
+                }
+                if gain.peak > 0.0 {
+                    let duration = gain.per_hit / gain.peak;
+                    instances[i].push((gain.peak, (duration * hit_rate * portion).min(1.0)));
+                }
+                details[1][i][1] += gain.instant * hit_rate * portion;
+                details[1][i][2] += gain.on_hit * hit_rate * portion;
                 per_hit[i] += (gain.per_hit + gain.instant + gain.on_hit) * portion * share;
-                rate[i] += (gain.per_hit * hit_rate).min(gain.peak * share) * portion
-                    + (gain.instant + gain.on_hit) * hit_rate * portion;
+                rate[i] += (gain.instant + gain.on_hit) * hit_rate * portion;
             }
         }
     };
@@ -297,7 +320,24 @@ fn fill_leech_gain(env: &mut Env, hit: &[(DamageType, f64)], crit: &[(DamageType
             );
         }
     }
+    // "Only a single Leech instance per resource (Life, Mana, or Energy
+    // Shield) can apply at a time."
+    // https://www.pathofexile.com/forum/view-thread/3932540
+    // Allocate the available time to the highest rates first; lower rates
+    // can only fill time left after those instances expire. This is a
+    // sustained, evenly-spaced-hit estimate, not a simulation of crit timing.
+    for (i, candidates) in instances.iter_mut().enumerate() {
+        candidates.sort_by(|a, b| b.0.total_cmp(&a.0));
+        let mut remaining: f64 = 1.0;
+        for &(peak, uptime) in candidates.iter() {
+            let active = uptime.min(remaining);
+            details[1][i][0] += peak * active;
+            remaining -= active;
+        }
+        rate[i] += details[1][i][0];
+    }
     let out = &mut env.player.output;
+    env.leech_gain_terms = details;
     [
         out.life_leech_gain_rate,
         out.mana_leech_gain_rate,
@@ -310,10 +350,18 @@ fn fill_leech_gain(env: &mut Env, hit: &[(DamageType, f64)], crit: &[(DamageType
     ] = per_hit;
 }
 
-fn fill_net_recovery(env: &mut Env) {
+pub(super) struct NetRecoveryTerms {
+    pub costs: [f64; 5],
+    pub loss: [f64; 3],
+    pub direct_drain: f64,
+    pub use_loss: [f64; 3],
+    pub typed_loss: f64,
+}
+
+pub(super) fn net_recovery_terms(env: &Env) -> NetRecoveryTerms {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
-    let out = &mut env.player.output;
+    let out = &env.player.output;
     let pools = [out.life, out.mana, out.energy_shield];
     // Spending already follows casts, channels, reloads, triggers or placements.
     // Percent costs remain separate display channels; convert them to resources.
@@ -324,7 +372,31 @@ fn fill_net_recovery(env: &mut Env) {
         out.ward_per_second_cost + out.ward * out.ward_percent_per_second_cost / 100.0,
         out.rage_per_second_cost,
     ];
-    let mut loss = [costs[0], costs[1], costs[2]];
+    // Event Horizon is resource loss on use, not a skill cost or Chaos
+    // damage: cost efficiency, resistance and immunity do not reduce it.
+    // Only the selected player-used Chaos skill contributes; triggered and
+    // proxy actions are not player uses. Repeats share the original use.
+    let percent = base(db, cfg, "ChaosSkillLifeAndEnergyShieldLossPercent").max(0.0);
+    let applies = cfg
+        .skill_types
+        .contains(pobr_data::skill::SkillTypes::from_pob2_name("Chaos").unwrap_or_default())
+        && !cfg
+            .skill_types
+            .contains(pobr_data::skill::SkillTypes::TRIGGERED)
+        && !db.flag(cfg, "SkillIsTriggered")
+        && out.skill_trigger_rate <= 0.0
+        && !proxy(cfg);
+    let use_rate = if percent > 0.0 && applies {
+        super::perform::resource_cost_use_rate(env)
+    } else {
+        0.0
+    };
+    let use_loss = [
+        out.life * percent / 100.0 * use_rate,
+        0.0,
+        out.energy_shield * percent / 100.0 * use_rate,
+    ];
+    let mut loss = std::array::from_fn(|i| costs[i] + use_loss[i]);
     let direct_drain: f64 = RESOURCES[..3]
         .iter()
         .enumerate()
@@ -406,15 +478,32 @@ fn fill_net_recovery(env: &mut Env) {
             loss[1] += amount * mom;
         }
     }
-    out.total_build_degen = direct_drain + typed_loss + costs.iter().sum::<f64>();
+    NetRecoveryTerms {
+        costs,
+        loss,
+        direct_drain,
+        use_loss,
+        typed_loss,
+    }
+}
+
+fn fill_net_recovery(env: &mut Env) {
+    let NetRecoveryTerms {
+        costs,
+        loss,
+        direct_drain,
+        use_loss,
+        typed_loss,
+    } = net_recovery_terms(env);
+    let out = &mut env.player.output;
+    out.total_build_degen =
+        direct_drain + use_loss.iter().sum::<f64>() + typed_loss + costs.iter().sum::<f64>();
     out.net_life_regen = out.life_regen_recovery - loss[0];
     out.net_mana_regen = out.mana_regen_recovery - loss[1];
     out.net_energy_shield_regen = out.energy_shield_regen_recovery - loss[2];
     // This panel total combines Life, Mana, ES and Ward. Rage recovery remains
     // its own channel; its spending still contributes to TotalBuildDegen.
-    out.total_net_regen = out.net_life_regen
-        + out.net_mana_regen
-        + out.net_energy_shield_regen
-        + out.ward_regen_recovery
-        - costs[3];
+    out.net_ward_regen = out.ward_regen_recovery - costs[3];
+    out.total_net_regen =
+        out.net_life_regen + out.net_mana_regen + out.net_energy_shield_regen + out.net_ward_regen;
 }

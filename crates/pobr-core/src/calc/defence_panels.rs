@@ -269,7 +269,7 @@ pub struct DeflectionResult {
 /// `chanceToNotDeflect = acc/(acc + deflection×0.12) × 150 − 50`,
 /// `chance = clamp(100 − round(notDeflect), 0, DeflectionChanceCap)`;
 /// `deflection < 1` → 0.
-fn deflect_chance_pct(deflection: f64, accuracy: f64, cap: f64) -> f64 {
+pub(crate) fn deflect_chance_pct(deflection: f64, accuracy: f64, cap: f64) -> f64 {
     if deflection < 1.0 {
         return 0.0;
     }
@@ -286,13 +286,12 @@ fn deflect_chance_pct(deflection: f64, accuracy: f64, cap: f64) -> f64 {
 /// source at :1490). `DeflectChance = deflectChance(rating, enemyAccuracy)`;
 /// `DeflectIsLucky` → `(1−(1−p)²)` (:1518-1521); `DeflectEffect = clamp(base
 /// 40 + ΣBASE, 0, 100)` (:1522, constant `cfg.constants.game().deflect_effect`).
-pub fn calc_deflection(
+pub(crate) fn deflection_rating_terms(
     db: &ModDb,
     cfg: &CalcConfig,
     armour: f64,
     evasion: f64,
-    enemy_accuracy: f64,
-) -> DeflectionResult {
+) -> (f64, f64, f64, f64) {
     let rating_names = [ModName::from("DeflectionRating")];
     let gain_from_evasion = evasion
         * db.sum(
@@ -308,8 +307,24 @@ pub fn calc_deflection(
             &[ModName::from("ArmourGainAsDeflection")],
         )
         / 100.0;
-    let rating = db.sum(ModType::Base, cfg, &rating_names)
-        + (gain_from_evasion + gain_from_armour) * scaling_mod(db, cfg, &rating_names);
+    (
+        db.sum(ModType::Base, cfg, &rating_names),
+        gain_from_evasion,
+        gain_from_armour,
+        scaling_mod(db, cfg, &rating_names),
+    )
+}
+
+pub fn calc_deflection(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    armour: f64,
+    evasion: f64,
+    enemy_accuracy: f64,
+) -> DeflectionResult {
+    let (base, from_evasion, from_armour, scaling) =
+        deflection_rating_terms(db, cfg, armour, evasion);
+    let rating = base + (from_evasion + from_armour) * scaling;
 
     let mut chance = deflect_chance_pct(
         rating,

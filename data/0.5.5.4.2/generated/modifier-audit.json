@@ -27,12 +27,28 @@
     "scope": "Special-rule schemas, handlers, captures, operations and scopes; generic parser schema/compile. StatId is open; recognition is not calculation support. Overlap audit covers sampled source text only.",
     "input_sha256": {
       "0.5.5.4.2/generated/special_derived.json": "d18157d99c7620f096aa485d1f93d33166a578d45a9e4a064817d629e023a105",
-      "0.5.5.4.2/generated/special_vendor.json": "c202035c54924c23ce48559538a8d2068b444d9571a2f986fe43105276e37426",
+      "0.5.5.4.2/generated/special_vendor.json": "12d91522257bfb57b5cdfc63073bd3a5df8c7a87d2b1c13c3ba3f959c936d4a5",
       "0.5.5.4.2/overlay/mod_parser_rules.json": "c719c7c3eeed65048067f264fd0a62f81cc20d89b917f05e2aa53753166242af",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
-      "overlay-common/special_mods.json": "6e68b2c64b591feb07c0eaa958dafc4e8137a6205e74a2103f69b9393913eb6d"
+      "overlay-common/special_mods.json": "1b249791018b0461e9fa898a222c340c1ab9fae45936b8ca23308ba6b81312d8"
     },
     "effective_rules": [
+      {
+        "id": "reduced_slowing_potency_on_self",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "increased_slowing_potency_on_self",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
       {
         "id": "all_damage_is_taken_from_mana_before_life",
         "files": [
@@ -688,39 +704,7 @@
         "non_effective_fields": []
       },
       {
-        "id": "ailment_threshold_from_es_8",
-        "files": [
-          "overlay-common/special_mods.json"
-        ],
-        "replaced_files": [],
-        "non_effective_fields": []
-      },
-      {
-        "id": "ailment_threshold_from_es_12",
-        "files": [
-          "overlay-common/special_mods.json"
-        ],
-        "replaced_files": [],
-        "non_effective_fields": []
-      },
-      {
-        "id": "ailment_threshold_from_es_15",
-        "files": [
-          "overlay-common/special_mods.json"
-        ],
-        "replaced_files": [],
-        "non_effective_fields": []
-      },
-      {
-        "id": "ailment_threshold_from_es_20",
-        "files": [
-          "overlay-common/special_mods.json"
-        ],
-        "replaced_files": [],
-        "non_effective_fields": []
-      },
-      {
-        "id": "ailment_threshold_from_es_30",
+        "id": "ailment_threshold_from_es_percent",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -1296,6 +1280,14 @@
         "non_effective_fields": []
       },
       {
+        "id": "gold_quantity_from_slain_enemies",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
         "id": "item_can_roll_modifiers",
         "files": [
           "overlay-common/special_mods.json"
@@ -1608,6 +1600,22 @@
         "non_effective_fields": []
       },
       {
+        "id": "blood_price_enemy_life_reservation",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "double_presence_radius",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
         "id": "body_armour_grants_spirit_increased",
         "files": [
           "overlay-common/special_mods.json"
@@ -1737,6 +1745,318 @@
       },
       {
         "id": "life_regeneration_not_applied",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "spell_mana_cost_efficiency",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "grants_onslaught_during_effect",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "energy_shield_recovery_on_kill_maximum",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "archon_grants_movement_speed",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "archon_grants_elemental_resistance",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "archon_effect_increased",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "archon_duration_increased",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "archon_effect_reduced",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "archon_duration_reduced",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "archon_recovery_faster",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "archon_recovery_slower",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "archon_no_recovery",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "archon_energy_shield_recharge_start",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "archon_undeath_on_command",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "utility_use_triggers",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "charm_mana_on_use",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "flask_mana_overflow",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "flask_constant_effect",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "utility_charge_on_kill",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "charm_spirit_bear",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "charm_spirit_boar",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "charm_spirit_cat",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "charm_spirit_owl",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "charm_spirit_ox",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "charm_spirit_primate",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "charm_spirit_serpent",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "charm_spirit_stag",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "charm_spirit_wolf",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "thaumaturgical_dynamism",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "resonance_power_instead_of_frenzy",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "resonance_endurance_instead_of_power",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "resonance_frenzy_instead_of_endurance",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "event_horizon_resource_loss",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "scarred_faith_no_es_regeneration",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "immune_to_chill_if_majority_blue_supports_socketed",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "immune_to_ignite_if_majority_red_supports_socketed",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "immune_to_shock_if_majority_green_supports_socketed",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "hits_break_increased_armour_on_ailmented_targets",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "additional_remnant_chance",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -7753,14 +8073,6 @@
       },
       {
         "id": "vnd_enemies_in_your_presence_gain_critical_w_dc01f7c6",
-        "files": [
-          "0.5.5.4.2/generated/special_vendor.json"
-        ],
-        "replaced_files": [],
-        "non_effective_fields": []
-      },
-      {
-        "id": "vnd_enemies_in_your_presence_have_at_least_d_828d7ffd",
         "files": [
           "0.5.5.4.2/generated/special_vendor.json"
         ],
@@ -18859,12 +19171,12 @@
     "unsampled_translations": 170
   },
   "summary": {
-    "no_effect": 86,
-    "parsed": 16117,
-    "pobr_gap": 1649,
-    "recognized_empty": 187,
+    "no_effect": 118,
+    "parsed": 16189,
+    "pobr_gap": 1636,
+    "recognized_empty": 214,
     "text_channel": 788,
-    "upstream_gap": 23782
+    "upstream_gap": 23667
   },
   "entries": {
     "% of spent Runic Ward granted as Guard@100%": {
@@ -36588,11 +36900,16 @@
     },
     "+17% chance to create an additional Remnant": {
       "sources": [
+        "rule:additional_remnant_chance",
         "translation:有 {0:+d}% 的几率产生一个额外残片"
       ],
-      "status": "partial",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "additional_remnant_chance",
+      "matching_special_rules": [
+        "additional_remnant_chance"
+      ]
     },
     "+17% chance to fire 2 additional Projectiles": {
       "sources": [
@@ -48773,9 +49090,13 @@
       "sources": [
         "stat:stat_descriptions:local_%_chance_to_gain_flask_charge_on_kill"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_charge_on_kill",
+      "matching_special_rules": [
+        "utility_charge_on_kill"
+      ]
     },
     "1% Chance to gain a Power Charge on Critical Hit with Ice Spear": {
       "sources": [
@@ -52886,9 +53207,13 @@
       "sources": [
         "stat:stat_descriptions:chance_%_to_create_additional_remnant"
       ],
-      "status": "partial",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "additional_remnant_chance",
+      "matching_special_rules": [
+        "additional_remnant_chance"
+      ]
     },
     "1% chance to deal Double Damage": {
       "sources": [
@@ -54067,9 +54392,15 @@
       "sources": [
         "stat:stat_descriptions:chance_%_to_gain_archon_of_undeath_on_using_command_skill"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArchonOfUndeathOnCommandChance"
+      ],
+      "special_rule_id": "archon_undeath_on_command",
+      "matching_special_rules": [
+        "archon_undeath_on_command"
+      ]
     },
     "1% chance to gain Elemental Archon when you Ignite an Enemy": {
       "sources": [
@@ -55805,10 +56136,14 @@
       "sources": [
         "stat:stat_descriptions:energy_shield_delay_-%_while_affected_by_archon"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
         "EnergyShieldRechargeFaster"
+      ],
+      "special_rule_id": "archon_energy_shield_recharge_start",
+      "matching_special_rules": [
+        "archon_energy_shield_recharge_start"
       ]
     },
     "1% faster start of inherent Rage loss": {
@@ -56303,10 +56638,14 @@
       "sources": [
         "stat:stat_descriptions:archon_duration_+%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "ArchonDuration"
+      ],
+      "special_rule_id": "archon_duration_increased",
+      "matching_special_rules": [
+        "archon_duration_increased"
       ]
     },
     "1% increased Arctic Armour Buff Effect": {
@@ -70544,10 +70883,14 @@
       "sources": [
         "stat:stat_descriptions:base_spell_mana_cost_efficiency_+%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
         "ManaCostEfficiency"
+      ],
+      "special_rule_id": "spell_mana_cost_efficiency",
+      "matching_special_rules": [
+        "spell_mana_cost_efficiency"
       ]
     },
     "1% increased Mana Cost Efficiency per 10 Tribute": {
@@ -73575,9 +73918,13 @@
       "sources": [
         "stat:stat_descriptions:gold_+%_from_enemies"
       ],
-      "status": "partial",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "gold_quantity_from_slain_enemies",
+      "matching_special_rules": [
+        "gold_quantity_from_slain_enemies"
+      ]
     },
     "1% increased Quantity of Items Dropped by Slain Enemies": {
       "sources": [
@@ -75146,9 +75493,15 @@
       "sources": [
         "stat:stat_descriptions:base_slow_potency_+%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "SlowEffectOnSelf"
+      ],
+      "special_rule_id": "increased_slowing_potency_on_self",
+      "matching_special_rules": [
+        "increased_slowing_potency_on_self"
+      ]
     },
     "1% increased Slowing Potency of Debuffs on You if you've used a Charm Recently": {
       "sources": [
@@ -77215,7 +77568,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "1% increased amount of Life Leeched if you've consumed a Frenzy Charge Recently": {
@@ -77225,7 +77578,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "1% increased amount of Life Leeched while Shapeshifted": {
@@ -77235,7 +77588,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "1% increased amount of Magic Chests": {
@@ -77253,7 +77606,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxManaLeechRate"
+        "ManaLeechAmount"
       ]
     },
     "1% increased amount of Mana Leeched if you've dealt a Critical Hit Recently": {
@@ -77263,7 +77616,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxManaLeechRate"
+        "ManaLeechAmount"
       ]
     },
     "1% increased amount of Rare Chests": {
@@ -77709,10 +78062,14 @@
       "sources": [
         "stat:stat_descriptions:archon_effect_on_you_+%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "LocalEffect"
+        "ArchonEffect"
+      ],
+      "special_rule_id": "archon_effect_increased",
+      "matching_special_rules": [
+        "archon_effect_increased"
       ]
     },
     "1% increased effect of Buffs on you": {
@@ -82559,11 +82916,16 @@
     },
     "10% chance to create an additional Remnant": {
       "sources": [
-        "passive:1506"
+        "passive:1506",
+        "rule:additional_remnant_chance"
       ],
-      "status": "partial",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "additional_remnant_chance",
+      "matching_special_rules": [
+        "additional_remnant_chance"
+      ]
     },
     "10% chance to gain Volatility on Kill": {
       "sources": [
@@ -82760,10 +83122,14 @@
         "passive:26300",
         "passive:29197"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "ArchonDuration"
+      ],
+      "special_rule_id": "archon_duration_increased",
+      "matching_special_rules": [
+        "archon_duration_increased"
       ]
     },
     "10% increased Area Damage": {
@@ -84843,9 +85209,13 @@
         "search_mods:corrupted:CorruptionGoldFoundIncrease1",
         "unique:Perandus Seal"
       ],
-      "status": "partial",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "gold_quantity_from_slain_enemies",
+      "matching_special_rules": [
+        "gold_quantity_from_slain_enemies"
+      ]
     },
     "10% increased Rarity of Items found": {
       "sources": [
@@ -85175,7 +85545,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "10% increased amount of Life Leeched while Shapeshifted": {
@@ -85186,7 +85556,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "10% increased amount of Mana Leeched": {
@@ -85205,7 +85575,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxManaLeechRate"
+        "ManaLeechAmount"
       ]
     },
     "10% increased chance to Shock": {
@@ -85260,10 +85630,14 @@
         "passive:55938",
         "passive:58363"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "LocalEffect"
+        "ArchonEffect"
+      ],
+      "special_rule_id": "archon_effect_increased",
+      "matching_special_rules": [
+        "archon_effect_increased"
       ]
     },
     "10% increased effect of Fully Broken Armour": {
@@ -85917,9 +86291,15 @@
         "passive:35581",
         "passive:51606"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "SlowEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_slowing_potency_on_self",
+      "matching_special_rules": [
+        "reduced_slowing_potency_on_self"
+      ]
     },
     "10% reduced Spell Area Damage": {
       "sources": [
@@ -86656,7 +87036,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "100% increased chance for Abysses in your Maps to lead to a Boss": {
@@ -87194,7 +87574,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "11% increased amount of Mana Leeched": {
@@ -87204,7 +87584,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxManaLeechRate"
+        "ManaLeechAmount"
       ]
     },
     "11% less damage taken while on Low Life": {
@@ -88331,10 +88711,14 @@
         "mods:equipment:SpellCostEfficiency2",
         "search_mods:breach:SpellCostEfficiency2"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
         "ManaCostEfficiency"
+      ],
+      "special_rule_id": "spell_mana_cost_efficiency",
+      "matching_special_rules": [
+        "spell_mana_cost_efficiency"
       ]
     },
     "12% increased Mana Regeneration Rate": {
@@ -88669,7 +89053,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "12% increased chance to Shock": {
@@ -88793,9 +89177,15 @@
       "sources": [
         "passive:31724"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "SlowEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_slowing_potency_on_self",
+      "matching_special_rules": [
+        "reduced_slowing_potency_on_self"
+      ]
     },
     "120% increased Armour": {
       "sources": [
@@ -89874,9 +90264,15 @@
       "sources": [
         "passive:26926"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArchonOfUndeathOnCommandChance"
+      ],
+      "special_rule_id": "archon_undeath_on_command",
+      "matching_special_rules": [
+        "archon_undeath_on_command"
+      ]
     },
     "15% chance to inflict Bleeding on Critical Hit": {
       "sources": [
@@ -89957,10 +90353,14 @@
         "passive:56844",
         "passive:5695"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "ArchonDuration"
+      ],
+      "special_rule_id": "archon_duration_increased",
+      "matching_special_rules": [
+        "archon_duration_increased"
       ]
     },
     "15% increased Area of Effect": {
@@ -91354,10 +91754,14 @@
         "mods:equipment:SpellCostEfficiency3",
         "search_mods:breach:SpellCostEfficiency3"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
         "ManaCostEfficiency"
+      ],
+      "special_rule_id": "spell_mana_cost_efficiency",
+      "matching_special_rules": [
+        "spell_mana_cost_efficiency"
       ]
     },
     "15% increased Mana Cost of Skills": {
@@ -91610,12 +92014,17 @@
     "15% increased Quantity of Gold Dropped by Slain Enemies": {
       "sources": [
         "mods:equipment:EssenceGoldDropped1",
+        "rule:gold_quantity_from_slain_enemies",
         "search_mods:essence:EssenceGoldDropped1",
         "unique:Perandus Seal"
       ],
-      "status": "partial",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "gold_quantity_from_slain_enemies",
+      "matching_special_rules": [
+        "gold_quantity_from_slain_enemies"
+      ]
     },
     "15% increased Rarity of Items found": {
       "sources": [
@@ -91888,7 +92297,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "15% increased amount of Life Leeched while Shapeshifted": {
@@ -91898,7 +92307,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "15% increased amount of Mana Leeched": {
@@ -91908,7 +92317,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxManaLeechRate"
+        "ManaLeechAmount"
       ]
     },
     "15% increased chance to Poison": {
@@ -91983,10 +92392,14 @@
         "passive:50535",
         "passive:51234"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "LocalEffect"
+        "ArchonEffect"
+      ],
+      "special_rule_id": "archon_effect_increased",
+      "matching_special_rules": [
+        "archon_effect_increased"
       ]
     },
     "15% increased effect of Fully Broken Armour": {
@@ -92400,9 +92813,15 @@
         "passive:59938",
         "search_mods:influence:TimeInfluenceMovementSpeed1"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "SlowEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_slowing_potency_on_self",
+      "matching_special_rules": [
+        "reduced_slowing_potency_on_self"
+      ]
     },
     "15% reduced Spell Damage": {
       "sources": [
@@ -95846,9 +96265,13 @@
       "sources": [
         "translation:击败敌人时有 {0}% 的几率获得一个能量球"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_charge_on_kill",
+      "matching_special_rules": [
+        "utility_charge_on_kill"
+      ]
     },
     "17% Chance to gain a Power Charge on Critical Hit with Ice Spear": {
       "sources": [
@@ -102057,9 +102480,13 @@
       "sources": [
         "translation:有 {0}% 的几率产生一个额外残片"
       ],
-      "status": "partial",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "additional_remnant_chance",
+      "matching_special_rules": [
+        "additional_remnant_chance"
+      ]
     },
     "17% chance to create the wrong Bladestorm": {
       "sources": [
@@ -103316,9 +103743,15 @@
       "sources": [
         "translation:使用号令技能时，有 {0}% 的几率获得亡灵执政官"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArchonOfUndeathOnCommandChance"
+      ],
+      "special_rule_id": "archon_undeath_on_command",
+      "matching_special_rules": [
+        "archon_undeath_on_command"
+      ]
     },
     "17% chance to gain Elemental Archon when you Ignite an Enemy": {
       "sources": [
@@ -105799,10 +106232,14 @@
       "sources": [
         "translation:受到执政官增益状态影响时，能量护盾充能开始速度加快 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
         "EnergyShieldRechargeFaster"
+      ],
+      "special_rule_id": "archon_energy_shield_recharge_start",
+      "matching_special_rules": [
+        "archon_energy_shield_recharge_start"
       ]
     },
     "17% faster start of inherent Rage loss": {
@@ -106374,10 +106811,14 @@
       "sources": [
         "translation:执政官增益状态持续时间提高 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "ArchonDuration"
+      ],
+      "special_rule_id": "archon_duration_increased",
+      "matching_special_rules": [
+        "archon_duration_increased"
       ]
     },
     "17% increased Arctic Armour Buff Effect": {
@@ -122279,10 +122720,14 @@
       "sources": [
         "translation:法术的魔力消耗效能提高 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
         "ManaCostEfficiency"
+      ],
+      "special_rule_id": "spell_mana_cost_efficiency",
+      "matching_special_rules": [
+        "spell_mana_cost_efficiency"
       ]
     },
     "17% increased Mana Cost Efficiency per 10 Tribute": {
@@ -125697,9 +126142,13 @@
       "sources": [
         "translation:被击败的敌人掉落的金币数量提高 {0}%"
       ],
-      "status": "partial",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "gold_quantity_from_slain_enemies",
+      "matching_special_rules": [
+        "gold_quantity_from_slain_enemies"
+      ]
     },
     "17% increased Quantity of Hiveblood found": {
       "sources": [
@@ -128175,9 +128624,15 @@
       "sources": [
         "translation:你受到的异常状态的减速强度提高 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "SlowEffectOnSelf"
+      ],
+      "special_rule_id": "increased_slowing_potency_on_self",
+      "matching_special_rules": [
+        "increased_slowing_potency_on_self"
+      ]
     },
     "17% increased Slowing Potency of Debuffs on You if you've used a Charm Recently": {
       "sources": [
@@ -130588,7 +131043,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "17% increased amount of Life Leeched if you've consumed a Frenzy Charge Recently": {
@@ -130598,7 +131053,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "17% increased amount of Life Leeched while Shapeshifted": {
@@ -130608,7 +131063,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "17% increased amount of Magic Chests": {
@@ -130627,7 +131082,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxManaLeechRate"
+        "ManaLeechAmount"
       ]
     },
     "17% increased amount of Mana Leeched if you've dealt a Critical Hit Recently": {
@@ -130637,7 +131092,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxManaLeechRate"
+        "ManaLeechAmount"
       ]
     },
     "17% increased amount of Rare Chests": {
@@ -131988,10 +132443,14 @@
       "sources": [
         "translation:你身上的执政官增益效果提高 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "LocalEffect"
+        "ArchonEffect"
+      ],
+      "special_rule_id": "archon_effect_increased",
+      "matching_special_rules": [
+        "archon_effect_increased"
       ]
     },
     "17% increased effect of Buffs from supported Herald Skills on you": {
@@ -142442,10 +142901,14 @@
       "sources": [
         "translation:执政官增益状态持续时间降低 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "ArchonDuration"
+      ],
+      "special_rule_id": "archon_duration_reduced",
+      "matching_special_rules": [
+        "archon_duration_reduced"
       ]
     },
     "17% reduced Arctic Armour Buff Effect": {
@@ -159871,9 +160334,13 @@
       "sources": [
         "translation:被击败的敌人掉落的金币数量降低 {0}%"
       ],
-      "status": "partial",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "gold_quantity_from_slain_enemies",
+      "matching_special_rules": [
+        "gold_quantity_from_slain_enemies"
+      ]
     },
     "17% reduced Quantity of Hiveblood found": {
       "sources": [
@@ -161928,9 +162395,15 @@
       "sources": [
         "translation:你受到的异常状态的减速强度降低 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "SlowEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_slowing_potency_on_self",
+      "matching_special_rules": [
+        "reduced_slowing_potency_on_self"
+      ]
     },
     "17% reduced Slowing Potency of Debuffs on You if you've used a Charm Recently": {
       "sources": [
@@ -164171,7 +164644,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "17% reduced amount of Life Leeched if you've consumed a Frenzy Charge Recently": {
@@ -164181,7 +164654,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "17% reduced amount of Life Leeched while Shapeshifted": {
@@ -164191,7 +164664,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "17% reduced amount of Magic Chests": {
@@ -164210,7 +164683,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxManaLeechRate"
+        "ManaLeechAmount"
       ]
     },
     "17% reduced amount of Mana Leeched if you've dealt a Critical Hit Recently": {
@@ -164220,7 +164693,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxManaLeechRate"
+        "ManaLeechAmount"
       ]
     },
     "17% reduced amount of Rare Chests": {
@@ -165358,10 +165831,14 @@
       "sources": [
         "translation:你身上的执政官增益效果降低 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "LocalEffect"
+        "ArchonEffect"
+      ],
+      "special_rule_id": "archon_effect_reduced",
+      "matching_special_rules": [
+        "archon_effect_reduced"
       ]
     },
     "17% reduced effect of Buffs from supported Herald Skills on you": {
@@ -166605,10 +167082,14 @@
         "mods:equipment:SpellCostEfficiency4",
         "search_mods:breach:SpellCostEfficiency4"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
         "ManaCostEfficiency"
+      ],
+      "special_rule_id": "spell_mana_cost_efficiency",
+      "matching_special_rules": [
+        "spell_mana_cost_efficiency"
       ]
     },
     "18% increased Mana Regeneration Rate": {
@@ -167715,9 +168196,13 @@
         "unique:Beira's Anguish",
         "unique:Nascent Hope"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_charge_on_kill",
+      "matching_special_rules": [
+        "utility_charge_on_kill"
+      ]
     },
     "20% additional Physical Damage Reduction while affected by a Non-Vaal Guard Skill": {
       "sources": [
@@ -168032,10 +168517,14 @@
       "sources": [
         "passive:43633"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
         "EnergyShieldRechargeFaster"
+      ],
+      "special_rule_id": "archon_energy_shield_recharge_start",
+      "matching_special_rules": [
+        "archon_energy_shield_recharge_start"
       ]
     },
     "20% increased Accuracy Rating": {
@@ -170085,9 +170574,13 @@
       "sources": [
         "mods:equipment:HandWrapsItemFoundRarityIncrease1"
       ],
-      "status": "partial",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "gold_quantity_from_slain_enemies",
+      "matching_special_rules": [
+        "gold_quantity_from_slain_enemies"
+      ]
     },
     "20% increased Rarity of Items Dropped by Enemies killed with a Critical Hit": {
       "sources": [
@@ -170446,7 +170939,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "20% increased amount of Mana Leeched": {
@@ -170456,7 +170949,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxManaLeechRate"
+        "ManaLeechAmount"
       ]
     },
     "20% increased bonuses gained from Equipped Quiver": {
@@ -171228,9 +171721,15 @@
         "search_mods:desecrated:AbyssModBootsAmanamuSuffixReducedPotencyOfSlows",
         "search_mods:influence:TimeInfluenceMovementSpeed2"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "SlowEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_slowing_potency_on_self",
+      "matching_special_rules": [
+        "reduced_slowing_potency_on_self"
+      ]
     },
     "20% reduced Spirit Reservation Efficiency of Skills": {
       "sources": [
@@ -171513,7 +172012,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "200% increased effect of Socketed Runes": {
@@ -171909,10 +172408,14 @@
         "mods:equipment:SpellCostEfficiency5",
         "search_mods:breach:SpellCostEfficiency5"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
         "ManaCostEfficiency"
+      ],
+      "special_rule_id": "spell_mana_cost_efficiency",
+      "matching_special_rules": [
+        "spell_mana_cost_efficiency"
       ]
     },
     "22% increased Mana Regeneration Rate": {
@@ -172534,9 +173037,15 @@
       "sources": [
         "passive:51394"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "SlowEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_slowing_potency_on_self",
+      "matching_special_rules": [
+        "reduced_slowing_potency_on_self"
+      ]
     },
     "240% increased Armour and Energy Shield": {
       "sources": [
@@ -172636,9 +173145,13 @@
         "unique:Beira's Anguish",
         "unique:Nascent Hope"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_charge_on_kill",
+      "matching_special_rules": [
+        "utility_charge_on_kill"
+      ]
     },
     "25% Chance to revive a random Permanent Minion whenever you use a Command Skill": {
       "sources": [
@@ -174186,9 +174699,13 @@
       "sources": [
         "mods:equipment:HandWrapsItemFoundRarityIncrease2"
       ],
-      "status": "partial",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "gold_quantity_from_slain_enemies",
+      "matching_special_rules": [
+        "gold_quantity_from_slain_enemies"
+      ]
     },
     "25% increased Rarity of Items found": {
       "sources": [
@@ -174455,7 +174972,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxManaLeechRate"
+        "ManaLeechAmount"
       ]
     },
     "25% increased bonuses gained from Equipped Rings and Amulets": {
@@ -174929,9 +175446,15 @@
         "mods:equipment:TimeInfluenceMovementSpeed3",
         "search_mods:influence:TimeInfluenceMovementSpeed3"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "SlowEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_slowing_potency_on_self",
+      "matching_special_rules": [
+        "reduced_slowing_potency_on_self"
+      ]
     },
     "25% reduced Slowing Potency of Debuffs on You if you've used a Charm Recently": {
       "sources": [
@@ -175258,10 +175781,14 @@
         "mods:equipment:SpellCostEfficiency6",
         "search_mods:breach:SpellCostEfficiency6"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
         "ManaCostEfficiency"
+      ],
+      "special_rule_id": "spell_mana_cost_efficiency",
+      "matching_special_rules": [
+        "spell_mana_cost_efficiency"
       ]
     },
     "26% increased Movement Speed": {
@@ -176700,9 +177227,13 @@
         "mods:charm:FlaskChanceRechargeOnKill2",
         "mods:flask:FlaskChanceRechargeOnKill2"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_charge_on_kill",
+      "matching_special_rules": [
+        "utility_charge_on_kill"
+      ]
     },
     "30% chance for Lightning Damage with Hits to be Lucky": {
       "sources": [
@@ -176988,10 +177519,14 @@
         "passive:43633",
         "passive:59070"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "ArchonDuration"
+      ],
+      "special_rule_id": "archon_duration_increased",
+      "matching_special_rules": [
+        "archon_duration_increased"
       ]
     },
     "30% increased Area of Effect for Attacks": {
@@ -178467,9 +179002,13 @@
       "sources": [
         "mods:equipment:HandWrapsItemFoundRarityIncrease3"
       ],
-      "status": "partial",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "gold_quantity_from_slain_enemies",
+      "matching_special_rules": [
+        "gold_quantity_from_slain_enemies"
+      ]
     },
     "30% increased Rarity of Items Dropped by Enemies killed with a Critical Hit": {
       "sources": [
@@ -178552,6 +179091,20 @@
         "SkillSpeed",
         "TotemPlacementSpeed",
         "WarcrySpeed"
+      ]
+    },
+    "30% increased Slowing Potency of Debuffs on You": {
+      "sources": [
+        "rule:increased_slowing_potency_on_self"
+      ],
+      "status": "parsed",
+      "vendor_status": "unsupported",
+      "mod_names": [
+        "SlowEffectOnSelf"
+      ],
+      "special_rule_id": "increased_slowing_potency_on_self",
+      "matching_special_rules": [
+        "increased_slowing_potency_on_self"
       ]
     },
     "30% increased Spell Damage": {
@@ -178777,7 +179330,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxManaLeechRate"
+        "ManaLeechAmount"
       ]
     },
     "30% increased bonuses gained from left Equipped Ring": {
@@ -179380,12 +179933,19 @@
         "bases:Runeforged Swiftstalker Coat",
         "bases:Swiftstalker Coat",
         "mods:equipment:AlloyReducedSlowPotency1",
+        "rule:reduced_slowing_potency_on_self",
         "search_mods:alloy:AlloyReducedSlowPotency1",
         "search_mods:corrupted:CorruptionSlowPotency1"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "SlowEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_slowing_potency_on_self",
+      "matching_special_rules": [
+        "reduced_slowing_potency_on_self"
+      ]
     },
     "30% reduced Totem Life": {
       "sources": [
@@ -180311,11 +180871,16 @@
     "35% Chance to gain a Charge when you kill an enemy": {
       "sources": [
         "mods:charm:FlaskChanceRechargeOnKill3",
-        "mods:flask:FlaskChanceRechargeOnKill3"
+        "mods:flask:FlaskChanceRechargeOnKill3",
+        "rule:utility_charge_on_kill"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_charge_on_kill",
+      "matching_special_rules": [
+        "utility_charge_on_kill"
+      ]
     },
     "35% Surpassing Chance to gain a Puppet Master stack whenever you use a Command Skill": {
       "sources": [
@@ -180402,10 +180967,14 @@
       "sources": [
         "search_mods:desecrated:AbyssModStaffAmanamuSuffixArchonDuration"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "ArchonDuration"
+      ],
+      "special_rule_id": "archon_duration_increased",
+      "matching_special_rules": [
+        "archon_duration_increased"
       ]
     },
     "35% increased Attack Damage": {
@@ -180767,7 +181336,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "35% less Evasion Rating": {
@@ -181275,6 +181844,20 @@
         "LocalEffect"
       ]
     },
+    "39% increased Mana Cost Efficiency of Spells": {
+      "sources": [
+        "rule:spell_mana_cost_efficiency"
+      ],
+      "status": "parsed",
+      "vendor_status": "partial",
+      "mod_names": [
+        "ManaCostEfficiency"
+      ],
+      "special_rule_id": "spell_mana_cost_efficiency",
+      "matching_special_rules": [
+        "spell_mana_cost_efficiency"
+      ]
+    },
     "39% increased Mana Regeneration Rate": {
       "sources": [
         "mods:equipment:ManaRegeneration3",
@@ -181334,10 +181917,14 @@
         "mods:equipment:GenesisTreeBeltArchonEffectCrafted",
         "search_mods:breach:GenesisTreeBeltArchonEffectCrafted"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "LocalEffect"
+        "ArchonEffect"
+      ],
+      "special_rule_id": "archon_effect_increased",
+      "matching_special_rules": [
+        "archon_effect_increased"
       ]
     },
     "39% increased effect of Fully Broken Armour": {
@@ -182049,9 +182636,15 @@
         "passive:32564",
         "passive:3355"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "SlowEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_slowing_potency_on_self",
+      "matching_special_rules": [
+        "reduced_slowing_potency_on_self"
+      ]
     },
     "40 Life gained when you Block": {
       "sources": [
@@ -183385,7 +183978,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "40% increased bonuses gained from Equipped Quiver": {
@@ -183852,10 +184445,14 @@
         "mods:equipment:AlloyArchonDuration1",
         "search_mods:alloy:AlloyArchonDuration1"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "ArchonDuration"
+      ],
+      "special_rule_id": "archon_duration_increased",
+      "matching_special_rules": [
+        "archon_duration_increased"
       ]
     },
     "42% increased Armour": {
@@ -184753,9 +185350,13 @@
         "passive:42339",
         "passive:60974"
       ],
-      "status": "partial",
+      "status": "recognized_empty",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "additional_remnant_chance",
+      "matching_special_rules": [
+        "additional_remnant_chance"
+      ]
     },
     "5% chance to gain Volatility on Kill": {
       "sources": [
@@ -185550,10 +186151,14 @@
       "sources": [
         "passive:40313"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "LocalEffect"
+        "ArchonEffect"
+      ],
+      "special_rule_id": "archon_effect_increased",
+      "matching_special_rules": [
+        "archon_effect_increased"
       ]
     },
     "5% increased total Power counted by Warcries": {
@@ -185909,9 +186514,15 @@
         "passive:63579",
         "passive:675"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "SlowEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_slowing_potency_on_self",
+      "matching_special_rules": [
+        "reduced_slowing_potency_on_self"
+      ]
     },
     "5% reduced effect of Curses on you": {
       "sources": [
@@ -186138,10 +186749,14 @@
         "mods:equipment:GenesisTreeBeltArchonDurationCrafted",
         "search_mods:breach:GenesisTreeBeltArchonDurationCrafted"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "ArchonDuration"
+      ],
+      "special_rule_id": "archon_duration_increased",
+      "matching_special_rules": [
+        "archon_duration_increased"
       ]
     },
     "50% increased Armour": {
@@ -187192,7 +187807,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxManaLeechRate"
+        "ManaLeechAmount"
       ]
     },
     "50% increased chance to Shock": {
@@ -187458,7 +188073,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "50% more damage against enemies with an Open Weakness": {
@@ -187838,9 +188453,15 @@
       "sources": [
         "unique:Edyrn's Tusks"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "SlowEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_slowing_potency_on_self",
+      "matching_special_rules": [
+        "reduced_slowing_potency_on_self"
+      ]
     },
     "50% reduced bonuses gained from Equipped Focus": {
       "sources": [
@@ -187860,10 +188481,14 @@
       "sources": [
         "passive:26214"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "LocalEffect"
+        "ArchonEffect"
+      ],
+      "special_rule_id": "archon_effect_reduced",
+      "matching_special_rules": [
+        "archon_effect_reduced"
       ]
     },
     "50% reduced effect of Curses on you": {
@@ -189283,7 +189908,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "6% increased bonuses gained from Equipped Quiver": {
@@ -191634,10 +192259,14 @@
       "sources": [
         "passive:40313"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "ArchonDuration"
+      ],
+      "special_rule_id": "archon_duration_increased",
+      "matching_special_rules": [
+        "archon_duration_increased"
       ]
     },
     "8% increased Area of Effect": {
@@ -192675,7 +193304,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "8% increased chance to Shock": {
@@ -192862,9 +193491,15 @@
         "passive:65207",
         "passive:65212"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "SlowEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_slowing_potency_on_self",
+      "matching_special_rules": [
+        "reduced_slowing_potency_on_self"
+      ]
     },
     "80% chance to Summon an additional Skeleton with Summon Skeletons": {
       "sources": [
@@ -193654,10 +194289,14 @@
         "mods:equipment:SpellCostEfficiency1",
         "search_mods:breach:SpellCostEfficiency1"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
         "ManaCostEfficiency"
+      ],
+      "special_rule_id": "spell_mana_cost_efficiency",
+      "matching_special_rules": [
+        "spell_mana_cost_efficiency"
       ]
     },
     "9% increased Presence Area of Effect": {
@@ -219263,25 +219902,43 @@
       "sources": [
         "stat:stat_descriptions:archon_grants_all_elemental_resistance_+%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArchonElementalResistance"
+      ],
+      "special_rule_id": "archon_grants_elemental_resistance",
+      "matching_special_rules": [
+        "archon_grants_elemental_resistance"
+      ]
     },
     "Archon Buffs also grant +17% to all Elemental Resistances": {
       "sources": [
         "translation:执政官增益状态使所有元素抗性 {0:+d}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArchonElementalResistance"
+      ],
+      "special_rule_id": "archon_grants_elemental_resistance",
+      "matching_special_rules": [
+        "archon_grants_elemental_resistance"
+      ]
     },
     "Archon Buffs also grant +20% to all Elemental Resistances": {
       "sources": [
         "passive:41394"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArchonElementalResistance"
+      ],
+      "special_rule_id": "archon_grants_elemental_resistance",
+      "matching_special_rules": [
+        "archon_grants_elemental_resistance"
+      ]
     },
     "Archon Buffs also grant 1% increased Critical Damage Bonus": {
       "sources": [
@@ -219303,17 +219960,29 @@
       "sources": [
         "stat:stat_descriptions:archon_grants_movement_speed_+%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArchonMovementSpeed"
+      ],
+      "special_rule_id": "archon_grants_movement_speed",
+      "matching_special_rules": [
+        "archon_grants_movement_speed"
+      ]
     },
     "Archon Buffs also grant 10% increased Movement Speed": {
       "sources": [
         "passive:41394"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArchonMovementSpeed"
+      ],
+      "special_rule_id": "archon_grants_movement_speed",
+      "matching_special_rules": [
+        "archon_grants_movement_speed"
+      ]
     },
     "Archon Buffs also grant 17% increased Critical Damage Bonus": {
       "sources": [
@@ -219335,9 +220004,15 @@
       "sources": [
         "translation:执政官增益状态使移动速度提高 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArchonMovementSpeed"
+      ],
+      "special_rule_id": "archon_grants_movement_speed",
+      "matching_special_rules": [
+        "archon_grants_movement_speed"
+      ]
     },
     "Archon Buffs also grant 30% increased Critical Hit Chance": {
       "sources": [
@@ -219361,17 +220036,29 @@
         "stat:stat_descriptions:archon_no_recovery_period",
         "translation:执政官增益在失去后没有回复期"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArchonNoRecovery"
+      ],
+      "special_rule_id": "archon_no_recovery",
+      "matching_special_rules": [
+        "archon_no_recovery"
+      ]
     },
     "Archon recovery period expires 1% faster": {
       "sources": [
         "stat:stat_descriptions:archon_delay_expires_x%_faster"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArchonRecoveryRate"
+      ],
+      "special_rule_id": "archon_recovery_faster",
+      "matching_special_rules": [
+        "archon_recovery_faster"
+      ]
     },
     "Archon recovery period expires 10% faster": {
       "sources": [
@@ -219379,49 +220066,85 @@
         "passive:17061",
         "passive:28092"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArchonRecoveryRate"
+      ],
+      "special_rule_id": "archon_recovery_faster",
+      "matching_special_rules": [
+        "archon_recovery_faster"
+      ]
     },
     "Archon recovery period expires 17% faster": {
       "sources": [
         "translation:执政官间隔期的消减速度加快 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArchonRecoveryRate"
+      ],
+      "special_rule_id": "archon_recovery_faster",
+      "matching_special_rules": [
+        "archon_recovery_faster"
+      ]
     },
     "Archon recovery period expires 17% slower": {
       "sources": [
         "translation:执政官间隔期的消减速度减慢 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArchonRecoveryRate"
+      ],
+      "special_rule_id": "archon_recovery_slower",
+      "matching_special_rules": [
+        "archon_recovery_slower"
+      ]
     },
     "Archon recovery period expires 25% faster": {
       "sources": [
         "passive:31773"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArchonRecoveryRate"
+      ],
+      "special_rule_id": "archon_recovery_faster",
+      "matching_special_rules": [
+        "archon_recovery_faster"
+      ]
     },
     "Archon recovery period expires 30% slower": {
       "sources": [
         "passive:11428"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArchonRecoveryRate"
+      ],
+      "special_rule_id": "archon_recovery_slower",
+      "matching_special_rules": [
+        "archon_recovery_slower"
+      ]
     },
     "Archon recovery period expires 35% faster": {
       "sources": [
         "search_mods:desecrated:AbyssModStaffKurgalSuffixArchonCooldownRecovery"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArchonRecoveryRate"
+      ],
+      "special_rule_id": "archon_recovery_faster",
+      "matching_special_rules": [
+        "archon_recovery_faster"
+      ]
     },
     "Arctic Armour has 1% increased Mana Reservation Efficiency": {
       "sources": [
@@ -235713,7 +236436,7 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "Bonded: 17% increased effect of Archon Buffs on you": {
@@ -238217,11 +238940,9 @@
       "sources": [
         "stat:stat_descriptions:armour_break_amount_+%"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -238259,11 +238980,9 @@
         "passive:42410",
         "passive:7294"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -238276,11 +238995,9 @@
         "passive:38066",
         "search_mods:corrupted:CorruptionArmourBreak1"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -238290,11 +239007,9 @@
       "sources": [
         "translation:粉碎的护甲提高 {0}%"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -238346,11 +239061,9 @@
         "passive:62785",
         "passive:65498"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -238362,11 +239075,9 @@
         "passive:49380",
         "passive:59767"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -238376,11 +239087,9 @@
       "sources": [
         "search_mods:desecrated:AbyssModWandUlamanSuffixArmourBreakAmount"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -238391,11 +239100,9 @@
         "jewel_node:kalguur_notable7",
         "passive:42981"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -238421,11 +239128,9 @@
       "sources": [
         "passive:21453"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -238435,11 +239140,9 @@
       "sources": [
         "search_mods:desecrated:AbyssModJewelPrefixGlobalPhysicalDamageArmourBreak"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -269669,9 +270372,9 @@
       "mod_names": [
         "EnemyModifier"
       ],
-      "special_rule_id": "vnd_enemies_in_your_presence_have_at_least_d_828d7ffd",
+      "special_rule_id": "blood_price_enemy_life_reservation",
       "matching_special_rules": [
-        "vnd_enemies_in_your_presence_have_at_least_d_828d7ffd"
+        "blood_price_enemy_life_reservation"
       ]
     },
     "Enemies in your Presence have at least 10% of Life Reserved": {
@@ -269683,9 +270386,9 @@
       "mod_names": [
         "EnemyModifier"
       ],
-      "special_rule_id": "vnd_enemies_in_your_presence_have_at_least_d_828d7ffd",
+      "special_rule_id": "blood_price_enemy_life_reservation",
       "matching_special_rules": [
-        "vnd_enemies_in_your_presence_have_at_least_d_828d7ffd"
+        "blood_price_enemy_life_reservation"
       ]
     },
     "Enemies in your Presence have at least 17% of Life Reserved": {
@@ -269697,9 +270400,9 @@
       "mod_names": [
         "EnemyModifier"
       ],
-      "special_rule_id": "vnd_enemies_in_your_presence_have_at_least_d_828d7ffd",
+      "special_rule_id": "blood_price_enemy_life_reservation",
       "matching_special_rules": [
-        "vnd_enemies_in_your_presence_have_at_least_d_828d7ffd"
+        "blood_price_enemy_life_reservation"
       ]
     },
     "Enemies in your Presence have no Elemental Resistances": {
@@ -290761,9 +291464,15 @@
         "stat:passive_skill_stat_descriptions:keystone_charge_cycle",
         "translation:获得狂怒球时改为获得暴击球\n获得耐力球时改为获得狂怒球\n获得暴击球时改为获得耐力球"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "GainEnduranceChargesInsteadOfPower"
+      ],
+      "special_rule_id": "resonance_endurance_instead_of_power",
+      "matching_special_rules": [
+        "resonance_endurance_instead_of_power"
+      ]
     },
     "Gain Exposed to Corruption stacks twice as frequently": {
       "sources": [
@@ -290835,9 +291544,15 @@
         "stat:passive_skill_stat_descriptions:keystone_charge_cycle",
         "translation:获得狂怒球时改为获得暴击球\n获得耐力球时改为获得狂怒球\n获得暴击球时改为获得耐力球"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "GainFrenzyChargesInsteadOfEndurance"
+      ],
+      "special_rule_id": "resonance_frenzy_instead_of_endurance",
+      "matching_special_rules": [
+        "resonance_frenzy_instead_of_endurance"
+      ]
     },
     "Gain Guard equal to 1% of maximum Life for 4 seconds on taking Savage Hit": {
       "sources": [
@@ -291464,9 +292179,15 @@
         "translation:每个暴击球使法术伤害总增3%\n获得暴击球来替代狂怒球",
         "translation:获得狂怒球时改为获得暴击球\n获得耐力球时改为获得狂怒球\n获得暴击球时改为获得耐力球"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "GainPowerChargesInsteadOfFrenzy"
+      ],
+      "special_rule_id": "resonance_power_instead_of_frenzy",
+      "matching_special_rules": [
+        "resonance_power_instead_of_frenzy"
+      ]
     },
     "Gain Rage benefits without spending it": {
       "sources": [
@@ -292508,9 +293229,15 @@
       "sources": [
         "stat:stat_descriptions:ailment_threshold_+_from_%_maximum_energy_shield"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "AilmentThreshold"
+      ],
+      "special_rule_id": "ailment_threshold_from_es_percent",
+      "matching_special_rules": [
+        "ailment_threshold_from_es_percent"
+      ]
     },
     "Gain additional Ailment Threshold equal to 12% of maximum Energy Shield": {
       "sources": [
@@ -292522,9 +293249,9 @@
       "mod_names": [
         "AilmentThreshold"
       ],
-      "special_rule_id": "ailment_threshold_from_es_12",
+      "special_rule_id": "ailment_threshold_from_es_percent",
       "matching_special_rules": [
-        "ailment_threshold_from_es_12"
+        "ailment_threshold_from_es_percent"
       ]
     },
     "Gain additional Ailment Threshold equal to 15% of maximum Energy Shield": {
@@ -292537,18 +293264,24 @@
       "mod_names": [
         "AilmentThreshold"
       ],
-      "special_rule_id": "ailment_threshold_from_es_15",
+      "special_rule_id": "ailment_threshold_from_es_percent",
       "matching_special_rules": [
-        "ailment_threshold_from_es_15"
+        "ailment_threshold_from_es_percent"
       ]
     },
     "Gain additional Ailment Threshold equal to 17% of maximum Energy Shield": {
       "sources": [
         "translation:获得额外异常状态阈值，相当于能量护盾上限的 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "AilmentThreshold"
+      ],
+      "special_rule_id": "ailment_threshold_from_es_percent",
+      "matching_special_rules": [
+        "ailment_threshold_from_es_percent"
+      ]
     },
     "Gain additional Ailment Threshold equal to 20% of maximum Energy Shield": {
       "sources": [
@@ -292559,9 +293292,9 @@
       "mod_names": [
         "AilmentThreshold"
       ],
-      "special_rule_id": "ailment_threshold_from_es_20",
+      "special_rule_id": "ailment_threshold_from_es_percent",
       "matching_special_rules": [
-        "ailment_threshold_from_es_20"
+        "ailment_threshold_from_es_percent"
       ]
     },
     "Gain additional Ailment Threshold equal to 30% of maximum Energy Shield": {
@@ -292573,9 +293306,9 @@
       "mod_names": [
         "AilmentThreshold"
       ],
-      "special_rule_id": "ailment_threshold_from_es_30",
+      "special_rule_id": "ailment_threshold_from_es_percent",
       "matching_special_rules": [
-        "ailment_threshold_from_es_30"
+        "ailment_threshold_from_es_percent"
       ]
     },
     "Gain additional Ailment Threshold equal to 8% of maximum Energy Shield": {
@@ -292595,9 +293328,9 @@
       "mod_names": [
         "AilmentThreshold"
       ],
-      "special_rule_id": "ailment_threshold_from_es_8",
+      "special_rule_id": "ailment_threshold_from_es_percent",
       "matching_special_rules": [
-        "ailment_threshold_from_es_8"
+        "ailment_threshold_from_es_percent"
       ]
     },
     "Gain additional Critical Hit Chance equal to 1% of excess chance to Hit with Attacks": {
@@ -297890,13 +298623,34 @@
     },
     "Grants Onslaught during effect": {
       "sources": [
+        "rule:grants_onslaught_during_effect",
         "stat:stat_descriptions:charm_gain_onslaught_during_effect",
         "translation:效果期间获得猛攻",
         "unique:The Fall of the Axe"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "Condition:Onslaught"
+      ],
+      "special_rule_id": "grants_onslaught_during_effect",
+      "matching_special_rules": [
+        "grants_onslaught_during_effect"
+      ]
+    },
+    "Grants Onslaught during flask effect": {
+      "sources": [
+        "rule:grants_onslaught_during_effect"
+      ],
+      "status": "parsed",
+      "vendor_status": "unsupported",
+      "mod_names": [
+        "Condition:Onslaught"
+      ],
+      "special_rule_id": "grants_onslaught_during_effect",
+      "matching_special_rules": [
+        "grants_onslaught_during_effect"
+      ]
     },
     "Grants Phasing": {
       "sources": [
@@ -301772,9 +302526,15 @@
         "stat:passive_skill_stat_descriptions:ascendancy_gemling_charge_generator_buff_display",
         "translation:赋予奇术活力"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ThaumaturgicalDynamismChargeInterval"
+      ],
+      "special_rule_id": "thaumaturgical_dynamism",
+      "matching_special_rules": [
+        "thaumaturgical_dynamism"
+      ]
     },
     "Grants Unravelling": {
       "sources": [
@@ -307070,9 +307830,13 @@
       "sources": [
         "stat:stat_descriptions:armour_break_amount_+%_vs_enemies_affected_by_ailments"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "hits_break_increased_armour_on_ailmented_targets",
+      "matching_special_rules": [
+        "hits_break_increased_armour_on_ailmented_targets"
+      ]
     },
     "Hits Break 17 Armour": {
       "sources": [
@@ -307086,9 +307850,13 @@
       "sources": [
         "translation:击中对受到异常状态影响的目标粉碎的护甲提高 {0}%"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "hits_break_increased_armour_on_ailmented_targets",
+      "matching_special_rules": [
+        "hits_break_increased_armour_on_ailmented_targets"
+      ]
     },
     "Hits Break 17% reduced Armour on targets with Ailments": {
       "sources": [
@@ -307109,11 +307877,16 @@
     "Hits Break 30% increased Armour on targets with Ailments": {
       "sources": [
         "passive:43383",
-        "passive:60138"
+        "passive:60138",
+        "rule:hits_break_increased_armour_on_ailmented_targets"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "hits_break_increased_armour_on_ailmented_targets",
+      "matching_special_rules": [
+        "hits_break_increased_armour_on_ailmented_targets"
+      ]
     },
     "Hits Break 50 Armour": {
       "sources": [
@@ -307127,9 +307900,13 @@
       "sources": [
         "passive:7449"
       ],
-      "status": "unsupported",
+      "status": "recognized_empty",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "hits_break_increased_armour_on_ailmented_targets",
+      "matching_special_rules": [
+        "hits_break_increased_armour_on_ailmented_targets"
+      ]
     },
     "Hits Enemies every 17 Seconds": {
       "sources": [
@@ -311245,9 +312022,11 @@
         "stat:passive_skill_stat_descriptions:keystone_chaos_inoculation",
         "translation:生命上限变成 1\n免疫混沌伤害和流血"
       ],
-      "status": "no_effect",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": [],
+      "mod_names": [
+        "BleedImmune"
+      ],
       "special_rule_id": "immune_to_chaos_damage_and_bleeding",
       "matching_special_rules": [
         "immune_to_chaos_damage_and_bleeding"
@@ -311271,12 +312050,19 @@
     "Immune to Chill if a majority of your Socketed Support Gems are Blue": {
       "sources": [
         "passive:5332",
+        "rule:immune_to_chill_if_majority_blue_supports_socketed",
         "stat:stat_descriptions:immune_to_chill_if_majority_blue_supports_socketed",
         "translation:若你镶嵌的辅助宝石大多数为蓝色，则免疫冰缓"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "ChillImmune"
+      ],
+      "special_rule_id": "immune_to_chill_if_majority_blue_supports_socketed",
+      "matching_special_rules": [
+        "immune_to_chill_if_majority_blue_supports_socketed"
+      ]
     },
     "Immune to Cold Ailments": {
       "sources": [
@@ -311573,12 +312359,19 @@
     "Immune to Ignite if a majority of your Socketed Support Gems are Red": {
       "sources": [
         "passive:5332",
+        "rule:immune_to_ignite_if_majority_red_supports_socketed",
         "stat:stat_descriptions:immune_to_ignite_if_majority_red_supports_socketed",
         "translation:若你镶嵌的辅助宝石大多数为红色，则免疫点燃"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "IgniteImmune"
+      ],
+      "special_rule_id": "immune_to_ignite_if_majority_red_supports_socketed",
+      "matching_special_rules": [
+        "immune_to_ignite_if_majority_red_supports_socketed"
+      ]
     },
     "Immune to Ignite while affected by Purity of Fire": {
       "sources": [
@@ -311691,12 +312484,19 @@
     "Immune to Shock if a majority of your Socketed Support Gems are Green": {
       "sources": [
         "passive:5332",
+        "rule:immune_to_shock_if_majority_green_supports_socketed",
         "stat:stat_descriptions:immune_to_shock_if_majority_green_supports_socketed",
         "translation:若你镶嵌的辅助宝石大多数为绿色，则免疫感电"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "ShockImmune"
+      ],
+      "special_rule_id": "immune_to_shock_if_majority_green_supports_socketed",
+      "matching_special_rules": [
+        "immune_to_shock_if_majority_green_supports_socketed"
+      ]
     },
     "Immune to Shock while affected by Purity of Lightning": {
       "sources": [
@@ -323372,10 +324172,14 @@
       "sources": [
         "stat:stat_descriptions:lose_%_of_life_and_energy_shield_when_you_use_a_chaos_skill"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "MaximumLife"
+        "ChaosSkillLifeAndEnergyShieldLossPercent"
+      ],
+      "special_rule_id": "event_horizon_resource_loss",
+      "matching_special_rules": [
+        "event_horizon_resource_loss"
       ]
     },
     "Lose 1% of maximum Life on Kill": {
@@ -323963,10 +324767,14 @@
       "sources": [
         "translation:生命和能量护盾在你使用混沌技能时失去 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "MaximumLife"
+        "ChaosSkillLifeAndEnergyShieldLossPercent"
+      ],
+      "special_rule_id": "event_horizon_resource_loss",
+      "matching_special_rules": [
+        "event_horizon_resource_loss"
       ]
     },
     "Lose 17% of maximum Life on Kill": {
@@ -324194,10 +325002,14 @@
       "sources": [
         "passive:52191"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "MaximumLife"
+        "ChaosSkillLifeAndEnergyShieldLossPercent"
+      ],
+      "special_rule_id": "event_horizon_resource_loss",
+      "matching_special_rules": [
+        "event_horizon_resource_loss"
       ]
     },
     "Lose 5 Affinity per second of each Element you are not gaining": {
@@ -325712,17 +326524,17 @@
     },
     "Mana Recovery from Flasks can Overflow maximum Mana during Effect": {
       "sources": [
+        "rule:flask_mana_overflow",
         "stat:stat_descriptions:local_unique_flask_mana_flask_recovery_can_overcap_mana_during_flask_effect",
         "translation:效果期间来自药剂的魔力回复可溢出魔力上限",
         "unique:Uhtred's Chalice"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": [
-        "FlaskManaRecoveryOverflow"
-      ],
-      "special_rule_id": "flask_mana_recovery_overflow",
+      "mod_names": [],
+      "special_rule_id": "flask_mana_overflow",
       "matching_special_rules": [
+        "flask_mana_overflow",
         "flask_mana_recovery_overflow"
       ]
     },
@@ -348026,10 +348838,16 @@
       "sources": [
         "translation:范围内的核心天赋同时提供 你受到的异常状态的减速强度提高 {0:d}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "radius_grant": "17% increased Slowing Potency of Debuffs on You",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "SlowEffectOnSelf"
+      ],
+      "special_rule_id": "increased_slowing_potency_on_self",
+      "matching_special_rules": [
+        "increased_slowing_potency_on_self"
+      ]
     },
     "Notable Passive Skills in Radius also grant 17% increased Strength": {
       "sources": [
@@ -348657,10 +349475,16 @@
       "sources": [
         "mods:jewel:JewelRadiusSlowEffectOnSelf"
       ],
-      "status": "partial",
+      "status": "parsed",
       "radius_grant": "5% reduced Slowing Potency of Debuffs on You",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "SlowEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_slowing_potency_on_self",
+      "matching_special_rules": [
+        "reduced_slowing_potency_on_self"
+      ]
     },
     "Notable Passive Skills in Radius also grant 6% increased Area of Effect of Curses": {
       "sources": [
@@ -356920,10 +357744,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Bear"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_bear",
       "matching_special_rules": [
+        "charm_spirit_bear",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -356934,10 +357759,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Bear"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_bear",
       "matching_special_rules": [
+        "charm_spirit_bear",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -356948,24 +357774,27 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Bear"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_bear",
       "matching_special_rules": [
+        "charm_spirit_bear",
         "possessed_by_spirit_on_use"
       ]
     },
     "Possessed by Spirit Of The Bear for 20 seconds on use": {
       "sources": [
+        "rule:charm_spirit_bear",
         "unique:Rite of Passage"
       ],
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Bear"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_bear",
       "matching_special_rules": [
+        "charm_spirit_bear",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -356976,10 +357805,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Boar"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_boar",
       "matching_special_rules": [
+        "charm_spirit_boar",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -356990,10 +357820,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Boar"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_boar",
       "matching_special_rules": [
+        "charm_spirit_boar",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357004,24 +357835,27 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Boar"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_boar",
       "matching_special_rules": [
+        "charm_spirit_boar",
         "possessed_by_spirit_on_use"
       ]
     },
     "Possessed by Spirit Of The Boar for 20 seconds on use": {
       "sources": [
+        "rule:charm_spirit_boar",
         "unique:Rite of Passage"
       ],
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Boar"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_boar",
       "matching_special_rules": [
+        "charm_spirit_boar",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357032,10 +357866,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Cat"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_cat",
       "matching_special_rules": [
+        "charm_spirit_cat",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357046,10 +357881,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Cat"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_cat",
       "matching_special_rules": [
+        "charm_spirit_cat",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357060,24 +357896,27 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Cat"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_cat",
       "matching_special_rules": [
+        "charm_spirit_cat",
         "possessed_by_spirit_on_use"
       ]
     },
     "Possessed by Spirit Of The Cat for 20 seconds on use": {
       "sources": [
+        "rule:charm_spirit_cat",
         "unique:Rite of Passage"
       ],
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Cat"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_cat",
       "matching_special_rules": [
+        "charm_spirit_cat",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357088,10 +357927,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Owl"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_owl",
       "matching_special_rules": [
+        "charm_spirit_owl",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357102,10 +357942,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Owl"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_owl",
       "matching_special_rules": [
+        "charm_spirit_owl",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357116,24 +357957,27 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Owl"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_owl",
       "matching_special_rules": [
+        "charm_spirit_owl",
         "possessed_by_spirit_on_use"
       ]
     },
     "Possessed by Spirit Of The Owl for 20 seconds on use": {
       "sources": [
+        "rule:charm_spirit_owl",
         "unique:Rite of Passage"
       ],
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Owl"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_owl",
       "matching_special_rules": [
+        "charm_spirit_owl",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357144,10 +357988,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Ox"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_ox",
       "matching_special_rules": [
+        "charm_spirit_ox",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357158,10 +358003,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Ox"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_ox",
       "matching_special_rules": [
+        "charm_spirit_ox",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357172,24 +358018,27 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Ox"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_ox",
       "matching_special_rules": [
+        "charm_spirit_ox",
         "possessed_by_spirit_on_use"
       ]
     },
     "Possessed by Spirit Of The Ox for 20 seconds on use": {
       "sources": [
+        "rule:charm_spirit_ox",
         "unique:Rite of Passage"
       ],
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Ox"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_ox",
       "matching_special_rules": [
+        "charm_spirit_ox",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357200,10 +358049,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Primate"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_primate",
       "matching_special_rules": [
+        "charm_spirit_primate",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357214,10 +358064,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Primate"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_primate",
       "matching_special_rules": [
+        "charm_spirit_primate",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357228,24 +358079,27 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Primate"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_primate",
       "matching_special_rules": [
+        "charm_spirit_primate",
         "possessed_by_spirit_on_use"
       ]
     },
     "Possessed by Spirit Of The Primate for 20 seconds on use": {
       "sources": [
+        "rule:charm_spirit_primate",
         "unique:Rite of Passage"
       ],
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Primate"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_primate",
       "matching_special_rules": [
+        "charm_spirit_primate",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357256,10 +358110,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Serpent"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_serpent",
       "matching_special_rules": [
+        "charm_spirit_serpent",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357270,10 +358125,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Serpent"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_serpent",
       "matching_special_rules": [
+        "charm_spirit_serpent",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357284,24 +358140,27 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Serpent"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_serpent",
       "matching_special_rules": [
+        "charm_spirit_serpent",
         "possessed_by_spirit_on_use"
       ]
     },
     "Possessed by Spirit Of The Serpent for 20 seconds on use": {
       "sources": [
+        "rule:charm_spirit_serpent",
         "unique:Rite of Passage"
       ],
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Serpent"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_serpent",
       "matching_special_rules": [
+        "charm_spirit_serpent",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357312,10 +358171,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Stag"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_stag",
       "matching_special_rules": [
+        "charm_spirit_stag",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357326,10 +358186,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Stag"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_stag",
       "matching_special_rules": [
+        "charm_spirit_stag",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357340,24 +358201,27 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Stag"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_stag",
       "matching_special_rules": [
+        "charm_spirit_stag",
         "possessed_by_spirit_on_use"
       ]
     },
     "Possessed by Spirit Of The Stag for 20 seconds on use": {
       "sources": [
+        "rule:charm_spirit_stag",
         "unique:Rite of Passage"
       ],
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Stag"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_stag",
       "matching_special_rules": [
+        "charm_spirit_stag",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357368,10 +358232,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Wolf"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_wolf",
       "matching_special_rules": [
+        "charm_spirit_wolf",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357382,10 +358247,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Wolf"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_wolf",
       "matching_special_rules": [
+        "charm_spirit_wolf",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357396,24 +358262,27 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Wolf"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_wolf",
       "matching_special_rules": [
+        "charm_spirit_wolf",
         "possessed_by_spirit_on_use"
       ]
     },
     "Possessed by Spirit Of The Wolf for 20 seconds on use": {
       "sources": [
+        "rule:charm_spirit_wolf",
         "unique:Rite of Passage"
       ],
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "SpiritPossessionOnUse"
+        "SpiritPossession:Wolf"
       ],
-      "special_rule_id": "possessed_by_spirit_on_use",
+      "special_rule_id": "charm_spirit_wolf",
       "matching_special_rules": [
+        "charm_spirit_wolf",
         "possessed_by_spirit_on_use"
       ]
     },
@@ -357762,6 +358631,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "PresenceRadius"
+      ],
+      "special_rule_id": "double_presence_radius",
+      "matching_special_rules": [
+        "double_presence_radius"
       ]
     },
     "Prevent +1% of Damage from Deflected Critical Hits": {
@@ -364722,10 +365595,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "ManaOnFlaskUse"
+        "UtilityManaOnUse"
       ],
-      "special_rule_id": "recover_mana_when_used",
+      "special_rule_id": "charm_mana_on_use",
       "matching_special_rules": [
+        "charm_mana_on_use",
         "recover_mana_when_used"
       ]
     },
@@ -364795,9 +365669,15 @@
       "sources": [
         "stat:stat_descriptions:recover_energy_shield_%_on_kill"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnergyShieldOnKill"
+      ],
+      "special_rule_id": "energy_shield_recovery_on_kill_maximum",
+      "matching_special_rules": [
+        "energy_shield_recovery_on_kill_maximum"
+      ]
     },
     "Recover 1% of maximum Energy Shield on Kill for each different type of Mastery you have Allocated": {
       "sources": [
@@ -365364,10 +366244,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "ManaOnFlaskUse"
+        "UtilityManaOnUse"
       ],
-      "special_rule_id": "recover_mana_when_used",
+      "special_rule_id": "charm_mana_on_use",
       "matching_special_rules": [
+        "charm_mana_on_use",
         "recover_mana_when_used"
       ]
     },
@@ -365402,10 +366283,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "ManaOnFlaskUse"
+        "UtilityManaOnUse"
       ],
-      "special_rule_id": "recover_mana_when_used",
+      "special_rule_id": "charm_mana_on_use",
       "matching_special_rules": [
+        "charm_mana_on_use",
         "recover_mana_when_used"
       ]
     },
@@ -365501,10 +366383,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "ManaOnFlaskUse"
+        "UtilityManaOnUse"
       ],
-      "special_rule_id": "recover_mana_when_used",
+      "special_rule_id": "charm_mana_on_use",
       "matching_special_rules": [
+        "charm_mana_on_use",
         "recover_mana_when_used"
       ]
     },
@@ -365574,9 +366457,15 @@
       "sources": [
         "translation:能量护盾在击败敌人时恢复 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnergyShieldOnKill"
+      ],
+      "special_rule_id": "energy_shield_recovery_on_kill_maximum",
+      "matching_special_rules": [
+        "energy_shield_recovery_on_kill_maximum"
+      ]
     },
     "Recover 17% of maximum Energy Shield on Kill for each different type of Mastery you have Allocated": {
       "sources": [
@@ -366223,10 +367112,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "ManaOnFlaskUse"
+        "UtilityManaOnUse"
       ],
-      "special_rule_id": "recover_mana_when_used",
+      "special_rule_id": "charm_mana_on_use",
       "matching_special_rules": [
+        "charm_mana_on_use",
         "recover_mana_when_used"
       ]
     },
@@ -366350,10 +367240,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "ManaOnFlaskUse"
+        "UtilityManaOnUse"
       ],
-      "special_rule_id": "recover_mana_when_used",
+      "special_rule_id": "charm_mana_on_use",
       "matching_special_rules": [
+        "charm_mana_on_use",
         "recover_mana_when_used"
       ]
     },
@@ -366372,10 +367263,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "ManaOnFlaskUse"
+        "UtilityManaOnUse"
       ],
-      "special_rule_id": "recover_mana_when_used",
+      "special_rule_id": "charm_mana_on_use",
       "matching_special_rules": [
+        "charm_mana_on_use",
         "recover_mana_when_used"
       ]
     },
@@ -366477,15 +367369,17 @@
     },
     "Recover 300 Mana when Used": {
       "sources": [
-        "mods:charm:CharmGainManaOnUse8"
+        "mods:charm:CharmGainManaOnUse8",
+        "rule:charm_mana_on_use"
       ],
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "ManaOnFlaskUse"
+        "UtilityManaOnUse"
       ],
-      "special_rule_id": "recover_mana_when_used",
+      "special_rule_id": "charm_mana_on_use",
       "matching_special_rules": [
+        "charm_mana_on_use",
         "recover_mana_when_used"
       ]
     },
@@ -366596,10 +367490,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "ManaOnFlaskUse"
+        "UtilityManaOnUse"
       ],
-      "special_rule_id": "recover_mana_when_used",
+      "special_rule_id": "charm_mana_on_use",
       "matching_special_rules": [
+        "charm_mana_on_use",
         "recover_mana_when_used"
       ]
     },
@@ -366642,10 +367537,11 @@
       "status": "parsed",
       "vendor_status": "unsupported",
       "mod_names": [
-        "ManaOnFlaskUse"
+        "UtilityManaOnUse"
       ],
-      "special_rule_id": "recover_mana_when_used",
+      "special_rule_id": "charm_mana_on_use",
       "matching_special_rules": [
+        "charm_mana_on_use",
         "recover_mana_when_used"
       ]
     },
@@ -381107,7 +382003,7 @@
       "radius_grant": "17% increased amount of Life Leeched",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "Small Passive Skills in Radius also grant 17% increased amount of Mana Leeched": {
@@ -381118,7 +382014,7 @@
       "radius_grant": "17% increased amount of Mana Leeched",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxManaLeechRate"
+        "ManaLeechAmount"
       ]
     },
     "Small Passive Skills in Radius also grant 17% increased chance to Shock": {
@@ -381547,7 +382443,7 @@
       "radius_grant": "2% increased amount of Mana Leeched",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxManaLeechRate"
+        "ManaLeechAmount"
       ]
     },
     "Small Passive Skills in Radius also grant 3% increased Armour": {
@@ -381852,7 +382748,7 @@
       "radius_grant": "3% increased amount of Life Leeched",
       "vendor_status": "parsed",
       "mod_names": [
-        "MaxLifeLeechRate"
+        "LifeLeechAmount"
       ]
     },
     "Small Passive Skills in Radius also grant 3% increased chance to Shock": {
@@ -381993,12 +382889,10 @@
       "sources": [
         "translation:范围内的小型天赋同时提供 粉碎的护甲提高 {0:d}%"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "radius_grant": "Break 17% increased Armour",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -382008,12 +382902,10 @@
       "sources": [
         "mods:jewel:JewelRadiusArmourBreak"
       ],
-      "status": "parsed",
+      "status": "recognized_empty",
       "radius_grant": "Break 2% increased Armour",
       "vendor_status": "parsed",
-      "mod_names": [
-        "ArmourBreakPerHit"
-      ],
+      "mod_names": [],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -382178,19 +383070,31 @@
       "sources": [
         "translation:范围内的小型天赋同时提供 获得额外异常状态阈值，相当于能量护盾上限的 {0:d}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "radius_grant": "Gain additional Ailment Threshold equal to 17% of maximum Energy Shield",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "AilmentThreshold"
+      ],
+      "special_rule_id": "ailment_threshold_from_es_percent",
+      "matching_special_rules": [
+        "ailment_threshold_from_es_percent"
+      ]
     },
     "Small Passive Skills in Radius also grant Gain additional Ailment Threshold equal to 2% of maximum Energy Shield": {
       "sources": [
         "mods:jewel:JewelRadiusAilmentThresholdfromEnergyShield"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "radius_grant": "Gain additional Ailment Threshold equal to 2% of maximum Energy Shield",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "AilmentThreshold"
+      ],
+      "special_rule_id": "ailment_threshold_from_es_percent",
+      "matching_special_rules": [
+        "ailment_threshold_from_es_percent"
+      ]
     },
     "Small Passive Skills in Radius also grant Gain additional Stun Threshold equal to 17% of maximum Energy Shield": {
       "sources": [
@@ -407217,13 +408121,20 @@
     },
     "This Flask cannot be Used but applies its Effect constantly": {
       "sources": [
+        "rule:flask_constant_effect",
         "stat:stat_descriptions:local_flask_always_drinking",
         "translation:此药剂无法使用，但效果持续生效",
         "unique:Lavianga's Spirits"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "UtilityCannotBeUsed"
+      ],
+      "special_rule_id": "flask_constant_effect",
+      "matching_special_rules": [
+        "flask_constant_effect"
+      ]
     },
     "This Gem can only Support Skill Gems requiring Level 1 or lower": {
       "sources": [
@@ -414447,245 +415358,365 @@
     },
     "Used when Charges reach full": {
       "sources": [
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_full_charges",
         "translation:充能全满时自动使用"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when an adjacent Flask is used": {
       "sources": [
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_adjacent_flask_use",
         "translation:跟接邻的药剂一起自动使用"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you Block": {
       "sources": [
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_damage_blocked",
         "translation:你格挡时自动使用"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you Hit a Rare or Unique Enemy, if not already in effect": {
       "sources": [
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_hitting_rare_unique_enemy_while_inactive",
         "translation:若你没有任何药剂效果时击中稀有或传奇敌人，便自动使用"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you Use a Guard Skill": {
       "sources": [
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_guard_skill_used",
         "translation:你使用防卫技能时自动使用"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you Use a Travel Skill": {
       "sources": [
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_travel_skill_used",
         "translation:你使用位移技能时自动使用"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you are affected by a Slow": {
       "sources": [
         "bases:Silver Charm",
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_affected_by_slow",
         "translation:当你受到减速影响时使用",
         "unique:The Fall of the Axe"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you become Chilled": {
       "sources": [
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_affected_by_chill",
         "translation:陷入冰缓时自动使用"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you become Cursed": {
       "sources": [
         "bases:Cleansing Charm",
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_charm_trigger_when_cursed",
         "translation:被诅咒时自动使用"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you become Frozen": {
       "sources": [
         "bases:Thawing Charm",
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_affected_by_freeze",
         "translation:陷入冻结时自动使用",
         "unique:Nascent Hope"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you become Ignited": {
       "sources": [
         "bases:Dousing Charm",
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_affected_by_ignite",
         "translation:被点燃时自动使用",
         "unique:Beira's Anguish"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you become Poisoned": {
       "sources": [
         "bases:Antidote Charm",
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_affected_by_poison",
         "translation:陷入中毒时自动使用",
         "unique:Arakaali's Gift"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you become Shocked": {
       "sources": [
         "bases:Grounding Charm",
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_affected_by_shock",
         "translation:陷入感电时自动使用",
         "unique:The Black Cat"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you become Stunned": {
       "sources": [
         "bases:Stone Charm",
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_stunned",
         "translation:当你被晕眩时使用",
         "unique:For Utopia"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you kill a Rare or Unique enemy": {
       "sources": [
         "bases:Golden Charm",
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_killing_rare_or_unique_enemy",
         "translation:当你击败稀有或传奇敌人时使用",
         "unique:Rite of Passage"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you lose a Guard Skill Buff": {
       "sources": [
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_guard_skill_expired",
         "translation:你失去防卫技能增益效果时自动使用"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you release a skill with Perfect Timing": {
       "sources": [
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_perfect_timing",
         "translation:在你于完美时机释放技能时使用",
         "unique:Opportunity"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you start Bleeding": {
       "sources": [
         "bases:Staunching Charm",
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_affected_by_bleed",
         "translation:你开始流血时自动使用",
         "unique:Sanguis Heroum"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you take Chaos damage from a Hit": {
       "sources": [
         "bases:Amethyst Charm",
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_chaos_damage_taken",
         "translation:当你受到击中混沌伤害时使用",
         "unique:Forsaken Bangle"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you take Cold damage from a Hit": {
       "sources": [
         "bases:Sapphire Charm",
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_cold_damage_taken",
         "translation:当你受到击中冰霜伤害时使用",
         "unique:Breath of the Mountains"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you take Fire damage from a Hit": {
       "sources": [
         "bases:Ruby Charm",
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_fire_damage_taken",
         "translation:当你受到击中火焰伤害时使用",
         "unique:Ngamahu's Chosen"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you take Lightning damage from a Hit": {
       "sources": [
         "bases:Topaz Charm",
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_lightning_damage_taken",
         "translation:当你受到击中闪电伤害时使用",
         "unique:Valako's Roar"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you take a Savage Hit": {
       "sources": [
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_taking_savage_hit",
         "translation:你承受残暴打击时自动使用"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Used when you use a Life Flask": {
       "sources": [
+        "rule:utility_use_triggers",
         "stat:stat_descriptions:local_flask_use_on_using_a_life_flask",
         "translation:你使用生命药剂时自动使用"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "utility_use_triggers",
+      "matching_special_rules": [
+        "utility_use_triggers"
+      ]
     },
     "Uses both hand slots": {
       "sources": [
@@ -423047,9 +424078,15 @@
         "stat:passive_skill_stat_descriptions:keystone_alternate_es_recovery",
         "translation:每点敌人威力值使被阻挡的物理伤害的 5% 吸纳为能量护盾\n能量护盾不会充能\n能量护盾不能通过再生回复\n回复的能量护盾不能高于护甲值"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "NoEnergyShieldRegen"
+      ],
+      "special_rule_id": "scarred_faith_no_es_regeneration",
+      "matching_special_rules": [
+        "scarred_faith_no_es_regeneration"
+      ]
     },
     "You cannot Recover Energy Shield to above Armour": {
       "sources": [

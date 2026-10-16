@@ -47,7 +47,13 @@ pub fn is_off_hand_weapon_base_stat(stat: &str) -> bool {
     matches!(
         stat,
         "off_hand_weapon_minimum_physical_damage" | "off_hand_weapon_maximum_physical_damage"
-    )
+    ) || ["fire", "cold", "lightning", "chaos"].iter().any(|kind| {
+        ["minimum", "maximum"].iter().any(|bound| {
+            stat == format!("off_hand_weapon_{bound}_{kind}_damage")
+                || stat.starts_with(&format!("off_hand_{bound}_added_{kind}_damage_per_"))
+                    && stat.contains("_shield_")
+        })
+    })
 }
 
 /// Resolves the enemy level for calculations (matching vendor `CalcSetup.lua:529`'s
@@ -594,6 +600,9 @@ pub struct GemInput {
     pub skill_id: String,
     /// The gem's level.
     pub gem_level: u32,
+    /// Global levels resolved in this gem's weapon set, if different from the
+    /// calculation's current set. Kept separate from the base gem level.
+    pub global_level_bonus: Option<u32>,
     /// The gem's quality.
     pub quality: u32,
     /// The gem's selected statSet index (0-based; `None` = default).
@@ -699,13 +708,31 @@ pub fn crossbow_reload_modifiers(
                     .effect(eid)
                     .is_some_and(|e| e.skill_types.iter().any(|t| t == "CrossbowAmmoSkill"))
             })
-            .map(|eid| (eid.to_string(), g.gem_level))
+            .map(|eid| (eid.to_string(), g.gem_level, g.quality))
     });
-    if let Some((ammo_id, gem_level)) = ammo {
-        let bolts: f64 = stat_sets
-            .effect_stats(&ammo_id, gem_level, 0, None)
-            .base
-            .iter()
+    if let Some((ammo_id, gem_level, quality)) = ammo {
+        let stats = stat_sets.effect_stats(&ammo_id, gem_level, quality, None);
+        // The reload action owns both the magazine and its reload-speed stats;
+        // selecting the shot must retain these parts of the ammunition cycle.
+        let reload_stat = "active_skill_reload_speed_+%_final";
+        let reload_speed: f64 = stats
+            .all()
+            .filter(|s| s.stat == reload_stat)
+            .map(|s| s.value)
+            .sum();
+        if reload_speed != 0.0 {
+            mods.push(
+                Modifier::number("ReloadSpeed", ModType::More, reload_speed).with_origin(
+                    ModifierSource::new(SourceId::new(
+                        SourceKind::SkillGem,
+                        format!("skill.{ammo_id}.{reload_stat}"),
+                    ))
+                    .with_raw_text(reload_stat),
+                ),
+            );
+        }
+        let bolts: f64 = stats
+            .all()
             .filter(|ds| ds.stat == "base_number_of_crossbow_bolts")
             .map(|ds| ds.value)
             .sum();
@@ -716,6 +743,23 @@ pub fn crossbow_reload_modifiers(
                 format!("ammo skill {ammo_id} bolt count"),
             ));
         }
+    }
+    // Requiem explicitly fires freely without ammunition. Neither a one-bolt
+    // fallback magazine nor a reload belongs in its active firing cadence.
+    if stat_sets
+        .effect_stats(skill_id, 1, 0, None)
+        .all()
+        .any(|s| s.stat == "crossbow_skill_has_no_ammo" && s.value != 0.0)
+    {
+        mods.push(
+            Modifier::flag("CrossbowHasNoAmmo").with_origin(
+                ModifierSource::new(SourceId::new(
+                    SourceKind::SkillGem,
+                    format!("skill.{skill_id}.crossbow_skill_has_no_ammo"),
+                ))
+                .with_raw_text("crossbow_skill_has_no_ammo"),
+            ),
+        );
     }
     mods
 }

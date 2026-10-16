@@ -701,7 +701,7 @@ fn calculate_build_reports_the_minion_of_the_main_skill() {
     let report = calculate_build_detailed(
         &request,
         &BuildDetail {
-            breakdown: vec!["Minion:Life".into()],
+            breakdown: vec!["Minion:Life".into(), "Minion:FireResist".into()],
             ..BuildDetail::default()
         },
     )
@@ -714,6 +714,25 @@ fn calculate_build_reports_the_minion_of_the_main_skill() {
         .find(|minion| minion.minion_id == beast)
         .expect("the main skill's beast");
     assert_eq!(minion.summoned_by, "SummonBeastPlayer");
+    for id in pobr_core::calc::minion::MINION_RESISTANCE_STATS {
+        assert!(
+            minion.stats.contains_key(id),
+            "missing CLI minion stat {id}"
+        );
+    }
+    let resistance = &report.breakdowns[1];
+    assert_eq!(resistance.value, Some(minion.stats["FireResist"]));
+    assert_eq!(
+        resistance
+            .breakdown
+            .as_ref()
+            .unwrap()
+            .formula
+            .as_ref()
+            .unwrap()
+            .value,
+        minion.stats["FireResist"]
+    );
 
     let entry = &report.breakdowns[0];
     assert_eq!(entry.stat, "Minion:Life");
@@ -825,4 +844,60 @@ fn full_dps_is_opt_in_and_the_json_contributions_sum_to_it() {
         )
     );
     assert_eq!(report.breakdowns[0].value, report.output.full_dps);
+}
+
+#[test]
+fn calculate_build_exports_crossbow_firing_and_reload_rates() {
+    let xml = r#"<PathOfBuilding2><Build className="Witch" level="90" mainSocketGroup="1"/>
+<Skills><Skill mainActiveSkill="1"><Gem skillId="FragmentationRoundsAmmoPlayer" level="20"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Makeshift Crossbow
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items></PathOfBuilding2>"#;
+    let report = calculate_build(&CalculateBuildRequest {
+        code: encode_code(xml).unwrap(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    })
+    .unwrap();
+    assert!((report.output.firing_rate - 1.6).abs() < 1e-9);
+    assert!((report.output.reload_time - 0.8).abs() < 1e-9);
+    let json = serde_json::to_value(report).unwrap();
+    assert!(json["output"]["firing_rate"].as_f64().unwrap() > 0.0);
+    assert!(json["output"]["reload_time"].as_f64().unwrap() > 0.0);
+}
+
+#[test]
+fn exporter_absent_rules_are_reported_without_changing_reference_agreement() {
+    let request = CalculateBuildRequest {
+        code: GEMLING_COMET_CODE.trim().to_string(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    };
+    let report = calculate_build_detailed(
+        &request,
+        &BuildDetail {
+            usage: true,
+            reference_basis: true,
+            ..BuildDetail::default()
+        },
+    )
+    .unwrap();
+    let reference = report.reference.unwrap();
+    assert!(reference.exporter_absent_rules_omitted);
+    assert!(reference.differing.iter().all(|row| row.stat != "ManaCost"));
+    assert!(
+        report
+            .beyond_pob2
+            .iter()
+            .any(|rule| rule.rule_id == "spell_mana_cost_efficiency" && rule.changed_rows > 0)
+    );
+    let usage = serde_json::to_string(&report.usage.unwrap()).unwrap();
+    assert!(
+        usage.contains("ManaCostEfficiency"),
+        "game-mode usage keeps the absent rule"
+    );
 }

@@ -118,6 +118,8 @@ export function subsetCount(n: number, cap: number): number {
 }
 
 export interface EvaluateOptions {
+  /** Explicit display stats for reports; ordinary planners retain their shared set. */
+  stats?: string[];
   request: CalculateBuildRequest;
   variants: VariantInput[];
   onProgress?: (done: number, total: number) => void;
@@ -148,7 +150,7 @@ export async function evaluateVariants(opts: EvaluateOptions): Promise<EvaluateR
     const batch = variants.slice(start, start + BATCH_SIZE);
     const resp = await backend.optimizeVariants({
       request,
-      stats: COLLECT_STATS,
+      stats: opts.stats ?? COLLECT_STATS,
       variants: batch,
       include_baseline: start === 0,
     });

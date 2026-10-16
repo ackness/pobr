@@ -8,6 +8,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 pobr-core.workspace = true
+pobr-tree.workspace = true
 pobr-build.workspace = true
 pobr-item.workspace = true
 pobr-data.workspace = true

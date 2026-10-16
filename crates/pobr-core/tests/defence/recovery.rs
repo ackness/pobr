@@ -7,8 +7,8 @@ use pobr_core::{
     CalcConfig, ModDb, Modifier,
     calc::{
         AllChargeStates, ChargeKind, ChargeState, DEFAULT_CHARGE_DURATION_SECONDS,
-        DEFAULT_MAX_CHARGES, LEECH_EFFECTIVE_MAX_HIT_DAMAGE, LEECH_MAX_ES_RATE_PCT,
-        LEECH_MAX_INSTANCE_PCT, LEECH_MAX_LIFE_RATE_PCT, LEECH_MAX_MANA_RATE_PCT, LeechResource,
+        DEFAULT_MAX_CHARGES, LEECH_DURATION_SECONDS, LEECH_EFFECTIVE_MAX_HIT_DAMAGE,
+        LEECH_MAX_ES_RATE_PCT, LEECH_MAX_LIFE_RATE_PCT, LEECH_MAX_MANA_RATE_PCT, LeechResource,
         RECOUP_DURATION_4S, RECOUP_DURATION_DEFAULT, RecoupResource, calc_leech,
         calc_leech_from_db, calc_recoup, calc_recoup_from_db, calc_regen, charge_maximum,
         charge_minimum, regen, regen_with_rate, resolve_all_charges, resolve_charge_state,
@@ -402,8 +402,8 @@ fn leech_constants_match_pob2_data_misc() {
     assert_eq!(LEECH_MAX_LIFE_RATE_PCT, 20.0);
     assert_eq!(LEECH_MAX_MANA_RATE_PCT, 20.0);
     assert_eq!(LEECH_MAX_ES_RATE_PCT, 10.0);
-    // MaxLeechInstance=10%, EffectiveMaxDamageForLeech=40000
-    assert_eq!(LEECH_MAX_INSTANCE_PCT, 10.0);
+    // Game keywords: one-second recovery; patch 0.5: 40,000 damage limit.
+    assert_eq!(LEECH_DURATION_SECONDS, 1.0);
     assert_eq!(LEECH_EFFECTIVE_MAX_HIT_DAMAGE, 40000.0);
 }
 
@@ -427,28 +427,27 @@ fn calc_leech_zero_when_pool_zero() {
 
 #[test]
 fn calc_leech_single_instance_basic_life() {
-    // pool=1000, leech_pct=2% hit_damage=5000 → raw_total = 100; inst_cap = 100 → inst_total=100
-    // rate_cap = 200/s; display_rate = min(200, 100*2) = 200
+    // 2% of 5000 = 100 recovered over one second, below the 200/s cap.
     let r = calc_leech(1000.0, 2.0, 5000.0, LeechResource::Life);
     assert_eq!(r.instance_total, 100.0);
     assert_eq!(r.rate_cap_per_second, 200.0);
-    assert_eq!(r.display_rate_per_second, 200.0);
+    assert_eq!(r.display_rate_per_second, 100.0);
 }
 
 #[test]
-fn calc_leech_instance_cap_applied_when_hit_very_large() {
+fn calc_leech_amount_is_not_capped_at_ten_percent_of_pool() {
     // hit_damage = 40000 (max), leech_pct = 2%, pool=1000
-    // raw_total = 800; inst_cap = 100; inst_total = 100
+    // 2% of 40,000 = 800, not limited to 10% of the pool.
     let r = calc_leech(1000.0, 2.0, 40000.0, LeechResource::Life);
-    assert_eq!(r.instance_total, 100.0); // inst_cap = 1000 × 10%
+    assert_eq!(r.instance_total, 800.0); // 2% of 40,000; no pool-based amount cap
 }
 
 #[test]
 fn calc_leech_hit_capped_at_effective_max() {
     // hit = 100000 → effective_hit = 40000 → raw_total = 2%*40000 = 800
-    // inst_cap = 1000 × 10% = 100 → inst_total = 100
+    // The patch-note damage cap applies before the leech percentage.
     let r = calc_leech(1000.0, 2.0, 100_000.0, LeechResource::Life);
-    assert_eq!(r.instance_total, 100.0);
+    assert_eq!(r.instance_total, 800.0);
 }
 
 #[test]
@@ -460,11 +459,10 @@ fn calc_leech_es_has_lower_rate_cap() {
 
 #[test]
 fn calc_leech_small_instance_limits_display_rate() {
-    // pool=1000, leech_pct=0.1%, hit=1000 → raw_total=1.0; inst_cap=100
-    // rate_cap=200; ratio=20/10=2; display = min(200, 1.0×2) = 2
+    // 0.1% of 1000 = 1 recovered over one second.
     let r = calc_leech(1000.0, 0.1, 1000.0, LeechResource::Life);
     assert_eq!(r.instance_total, 1.0);
-    assert_eq!(r.display_rate_per_second, 2.0);
+    assert_eq!(r.display_rate_per_second, 1.0);
 }
 
 // calc_leech_from_db
@@ -476,7 +474,7 @@ fn calc_leech_from_db_with_life_leech_mod() {
     // LifeLeech = 2% (BASE)
     db.add_mod(make_modifier("LifeLeech", ModType::Base, 2.0));
     let r = calc_leech_from_db(&db, &cfg, 1000.0, 5000.0, LeechResource::Life);
-    assert_eq!(r.instance_total, 100.0); // 5000 × 2% = 100 = inst_cap
+    assert_eq!(r.instance_total, 100.0); // 5000 × 2% = 100
 }
 
 #[test]

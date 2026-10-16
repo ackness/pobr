@@ -7,6 +7,9 @@
 
 use pobr_gamedata::repo_data_root;
 
+#[path = "support/utility.rs"]
+mod utility_fixture;
+
 fn demo_code() -> String {
     let path =
         repo_data_root().join("../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt");
@@ -15,6 +18,69 @@ fn demo_code() -> String {
 
 fn fixtures_dir() -> std::path::PathBuf {
     repo_data_root().join("../web/src/fixtures")
+}
+
+#[test]
+#[ignore = "manual Calcs fixture regeneration"]
+fn generate_stat_detail_fixtures() {
+    pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
+    let descriptors = pobr_build::breakdown::detail::detail_descriptors();
+    let ids: Vec<_> = descriptors.keys().collect();
+    let request = serde_json::json!({"pob_code": demo_code(), "breakdowns": ids, "full_dps": true});
+    let response: serde_json::Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap();
+    let mut inputs: std::collections::BTreeSet<String> = descriptors
+        .keys()
+        .flat_map(|id| pobr_core::calc::session::detail::source_names(id))
+        .collect();
+    let fixtures = repo_data_root().join("../examples/demo-bd-test/builds");
+    let mut responses = vec![
+        response.clone(),
+        serde_json::from_str(
+            &pobr_wasm::calculate_build_json(
+                &serde_json::json!({"pob_code": utility_fixture::code(), "breakdowns": ids})
+                    .to_string(),
+            )
+            .unwrap(),
+        )
+        .unwrap(),
+    ];
+    for entry in std::fs::read_dir(fixtures).unwrap() {
+        let code = entry.unwrap().path().join("code.txt");
+        if !code.is_file() {
+            continue;
+        }
+        let request = serde_json::json!({"pob_code": std::fs::read_to_string(code).unwrap(), "breakdowns": ids, "full_dps": true});
+        responses.push(
+            serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+                .unwrap(),
+        );
+    }
+    for response in &responses {
+        for detail in response["breakdowns"].as_object().unwrap().values() {
+            for key in ["inputs", "context"] {
+                for input in detail["derived"][key].as_array().into_iter().flatten() {
+                    inputs.insert(input["id"].as_str().unwrap().into());
+                }
+            }
+        }
+    }
+    let out = fixtures_dir();
+    std::fs::write(
+        out.join("stat_details.json"),
+        serde_json::to_string_pretty(&response["breakdowns"]).unwrap() + "\n",
+    )
+    .unwrap();
+    std::fs::write(
+        out.join("detail_inputs.json"),
+        serde_json::to_string_pretty(&inputs).unwrap() + "\n",
+    )
+    .unwrap();
+    let calculate =
+        pobr_wasm::calculate_build_json(&serde_json::json!({"pob_code": demo_code()}).to_string())
+            .unwrap();
+    std::fs::write(out.join("calculate.json"), pretty(&calculate)).unwrap();
 }
 
 #[test]
@@ -32,9 +98,10 @@ fn generate_web_fixtures() {
     let calc_req = serde_json::json!({ "pob_code": code }).to_string();
     let calculate = pobr_wasm::calculate_build_json(&calc_req).expect("calculate");
     std::fs::write(out.join("calculate.json"), pretty(&calculate)).unwrap();
+    generate_stat_detail_fixtures();
 
     let attr_req = serde_json::json!({
-        "pob_code": code,
+        "request": { "pob_code": code },
         "fields": ["TotalDPS", "Life", "EnergyShield", "TotalEHP"],
     })
     .to_string();
@@ -73,6 +140,8 @@ fn generate_web_fixtures() {
     // The gem catalog (used by the manual skill-editing picker).
     let catalog = pobr_wasm::gem_catalog_json().expect("gem catalog");
     std::fs::write(out.join("gem_catalog.json"), pretty(&catalog)).unwrap();
+    let minions = pobr_wasm::minion_catalog_json().expect("minion catalog");
+    std::fs::write(out.join("minion_catalog.json"), pretty(&minions)).unwrap();
 
     // The built-in config catalog (Config page): mock only needs a subset —
     // take the first 5 entries per section.

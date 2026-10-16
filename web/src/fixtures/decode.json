@@ -1,4 +1,5 @@
 {
+  "active_loadout": 0,
   "character": {
     "ascendancy_name": "Invoker",
     "class_name": "Monk",
@@ -16,7 +17,6 @@
     "conditionEnemyFireExposure": true,
     "conditionEnemyIgnited": true,
     "conditionEnemyLightningExposure": true,
-    "misc_buffMode": "EFFECTIVE",
     "multiplierNearbyEnemies": 1.0,
     "multiplierNearbyRareOrUniqueEnemies": 1.0,
     "questAct 2Valley of the TitansMedallion": "30% increased Charm Effect Duration\n\t+1 Charm Slot",
@@ -26,9 +26,9 @@
     "questAct 4Halls Of The DeadNgamahu's Test": "+5 to Strength",
     "questAct 4Halls Of The DeadTasalio's Test": "+5 to Intelligence",
     "questAct 4Halls Of The DeadTawhoa's Test": "+5 to Dexterity",
-    "questInterlude 2QimahSeven Pillars": "3% increased Movement Speed",
-    "skill_number": 5.0
+    "questInterlude 2QimahSeven Pillars": "3% increased Movement Speed"
   },
+  "custom_modifier_blocks": [],
   "items": {
     "equipped": [
       {
@@ -99,9 +99,36 @@
       "\n\t\t\tRarity: RARE\nPandemonium Glisten\nSapphire\nUnique ID: 85399de2681c8ecbd382da4e26381a588ee856a7949fc6d09856628e7d148a77\nItem Level: 80\nLevelReq: 0\nImplicits: 0\n{desecrated}Gain additional Stun Threshold equal to 14% of maximum Energy Shield\n7% increased Cold Damage\n20% increased Critical Spell Damage Bonus\n{crafted}15% increased maximum Energy Shield\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t",
       "\n\t\t\tRarity: RARE\nPhoenix Spark\nSapphire\nUnique ID: eee3a9c6de8fd887bb41ae0a0f5228f3418ce871e1abd2bcc2b2e04ea5559af5\nItem Level: 76\nLevelReq: 0\nImplicits: 0\n8% increased Chaos Damage\n14% increased Critical Hit Chance for Spells\n11% increased Critical Spell Damage Bonus\n{crafted}15% increased maximum Energy Shield\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t",
       "\n\t\t\tRarity: RARE\nViper Ornament\nSapphire\nUnique ID: b232d531a9ab5c8669c0c338674a1fde0166979db2bf607d03273235088e58c5\nItem Level: 82\nLevelReq: 0\nImplicits: 0\n{desecrated}10% increased maximum Energy Shield\n{desecrated}6% increased Thorns damage\n9% increased Spell Damage\n13% increased Critical Hit Chance for Spells\n13% increased Critical Spell Damage Bonus\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+    ],
+    "limbs": [],
+    "socket_jewels": [
+      {
+        "socket_node": 7960,
+        "text": "\n\t\t\tRarity: RARE\nViper Ornament\nSapphire\nUnique ID: b232d531a9ab5c8669c0c338674a1fde0166979db2bf607d03273235088e58c5\nItem Level: 82\nLevelReq: 0\nImplicits: 0\n{desecrated}10% increased maximum Energy Shield\n{desecrated}6% increased Thorns damage\n9% increased Spell Damage\n13% increased Critical Hit Chance for Spells\n13% increased Critical Spell Damage Bonus\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+      },
+      {
+        "socket_node": 21984,
+        "text": "\n\t\t\tRarity: RARE\nRapture Spark\nSapphire\nUnique ID: c5bafa81349c5f688aec3c5795083297a37acb88d5af1c9791e31aac92a00f8d\nItem Level: 79\nLevelReq: 0\nImplicits: 0\n17% increased maximum Energy Shield\n13% increased Critical Hit Chance for Spells\n15% increased Elemental Damage\n3% increased Skill Speed while Shapeshifted\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+      },
+      {
+        "socket_node": 61419,
+        "text": "\n\t\t\tRarity: RARE\nPhoenix Spark\nSapphire\nUnique ID: eee3a9c6de8fd887bb41ae0a0f5228f3418ce871e1abd2bcc2b2e04ea5559af5\nItem Level: 76\nLevelReq: 0\nImplicits: 0\n8% increased Chaos Damage\n14% increased Critical Hit Chance for Spells\n11% increased Critical Spell Damage Bonus\n{crafted}15% increased maximum Energy Shield\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+      },
+      {
+        "socket_node": 61834,
+        "text": "\n\t\t\tRarity: RARE\nPandemonium Glisten\nSapphire\nUnique ID: 85399de2681c8ecbd382da4e26381a588ee856a7949fc6d09856628e7d148a77\nItem Level: 80\nLevelReq: 0\nImplicits: 0\n{desecrated}Gain additional Stun Threshold equal to 14% of maximum Energy Shield\n7% increased Cold Damage\n20% increased Critical Spell Damage Bonus\n{crafted}15% increased maximum Energy Shield\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+      }
     ]
   },
-  "main_socket_group": 5,
+  "loadouts": [
+    {
+      "item": null,
+      "name": "Default",
+      "skill": null,
+      "tree": 1
+    }
+  ],
+  "main_socket_group": 4,
   "notes": null,
   "socket_groups": [
     {
@@ -109,316 +136,510 @@
       "enabled": true,
       "gems": [
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 18,
           "quality": 20,
           "skill_id": "BlasphemyPlayer"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 19,
           "quality": 20,
           "skill_id": "TemporalChainsPlayer"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportCurseEffectPlayer"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportMagnifiedAreaPlayerTwo"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportMysticismPlayerTwo"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportSlowPotencyPlayer"
         }
       ],
-      "slot": null
+      "group_count": null,
+      "include_in_full_dps": false,
+      "main_active_skill": 1,
+      "slot": null,
+      "source": null,
+      "weapon_set": null
     },
     {
       "active_skill_id": "SummonMetaTotemSpellTotemPlayer",
       "enabled": true,
       "gems": [
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 19,
           "quality": 20,
           "skill_id": "SummonMetaTotemSpellTotemPlayer"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 21,
           "quality": 20,
           "skill_id": "GrimPillarsPlayer"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportMagnifiedAreaPlayerTwo"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportRapidCastingPlayerTwo"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportUrgentTotemsPlayerThree"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportZenithPlayerTwo"
         }
       ],
-      "slot": null
+      "group_count": null,
+      "include_in_full_dps": false,
+      "main_active_skill": 1,
+      "slot": null,
+      "source": null,
+      "weapon_set": null
     },
     {
       "active_skill_id": "ElementalWeaknessPlayer",
       "enabled": true,
       "gems": [
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 19,
           "quality": 20,
           "skill_id": "ElementalWeaknessPlayer"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportEfficiencyPlayerTwo"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportCurseEffectPlayer"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportMagnifiedAreaPlayerTwo"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportRapidCastingPlayerTwo"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportHexBloomPlayer"
         }
       ],
-      "slot": null
+      "group_count": null,
+      "include_in_full_dps": false,
+      "main_active_skill": 1,
+      "slot": null,
+      "source": null,
+      "weapon_set": null
     },
     {
       "active_skill_id": "EntanglePlayer",
       "enabled": true,
       "gems": [
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 2,
           "quality": 20,
           "skill_id": "EntanglePlayer"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportBranchingFissuresPlayer"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportBitingFrostPlayerTwo"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportMagnifiedAreaPlayerTwo"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportRapidCastingPlayerTwo"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportArcaneSurgePlayer"
         }
       ],
-      "slot": null
+      "group_count": null,
+      "include_in_full_dps": false,
+      "main_active_skill": 1,
+      "slot": null,
+      "source": null,
+      "weapon_set": null
     },
     {
       "active_skill_id": "FrostBombPlayer",
       "enabled": true,
       "gems": [
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 19,
           "quality": 20,
           "skill_id": "FrostBombPlayer"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportPotentExposurePlayer"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "ProlongedDurationSupportPlayerTwo"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportMagnifiedAreaPlayer"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportEfficiencyPlayerTwo"
         }
       ],
-      "slot": null
+      "group_count": null,
+      "include_in_full_dps": false,
+      "main_active_skill": 1,
+      "slot": null,
+      "source": null,
+      "weapon_set": null
     },
     {
       "active_skill_id": "ArchmagePlayer",
       "enabled": true,
       "gems": [
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 17,
           "quality": 20,
           "skill_id": "ArchmagePlayer"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportCoolheadedPlayer"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportDiallasDesirePlayer"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportClarityPlayerTwo"
         }
       ],
-      "slot": null
+      "group_count": null,
+      "include_in_full_dps": false,
+      "main_active_skill": 1,
+      "slot": null,
+      "source": null,
+      "weapon_set": null
     },
     {
       "active_skill_id": "MeditatePlayer",
       "enabled": true,
       "gems": [
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 20,
           "quality": 0,
           "skill_id": "MeditatePlayer"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportCooldownRecoveryPlayerTwo"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportSteadfastPlayerTwo"
         }
       ],
-      "slot": null
+      "group_count": null,
+      "include_in_full_dps": false,
+      "main_active_skill": 1,
+      "slot": null,
+      "source": null,
+      "weapon_set": null
     },
     {
       "active_skill_id": "PoweredByVerisiumPlayer",
       "enabled": true,
       "gems": [
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 10,
           "quality": 0,
           "skill_id": "PoweredByVerisiumPlayer"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportEfficiencyPlayerTwo"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "SupportRapidCastingPlayerTwo"
         }
       ],
-      "slot": null
+      "group_count": null,
+      "include_in_full_dps": false,
+      "main_active_skill": 1,
+      "slot": null,
+      "source": null,
+      "weapon_set": null
     },
     {
       "active_skill_id": "MalicePlayer",
       "enabled": true,
       "gems": [
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 19,
           "quality": 0,
           "skill_id": "MalicePlayer"
         },
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 1,
           "quality": 0,
           "skill_id": "ProlongedDurationSupportPlayerTwo"
         }
       ],
-      "slot": null
+      "group_count": null,
+      "include_in_full_dps": false,
+      "main_active_skill": 1,
+      "slot": null,
+      "source": null,
+      "weapon_set": null
     },
     {
       "active_skill_id": "ManaDrainPlayer",
       "enabled": true,
       "gems": [
         {
+          "count": 1.0,
+          "enable_global_1": true,
+          "enable_global_2": true,
           "level": 18,
           "quality": 0,
           "skill_id": "ManaDrainPlayer"
         }
       ],
-      "slot": null
+      "group_count": null,
+      "include_in_full_dps": false,
+      "main_active_skill": 1,
+      "slot": null,
+      "source": null,
+      "weapon_set": null
     },
     {
       "active_skill_id": "MeditatePlayer",
       "enabled": true,
       "gems": [
         {
+          "enable_global_1": true,
+          "enable_global_2": false,
           "level": 1,
           "quality": 0,
           "skill_id": "MeditatePlayer"
         }
       ],
-      "slot": null
+      "group_count": null,
+      "include_in_full_dps": false,
+      "slot": null,
+      "source": "Tree:12876",
+      "weapon_set": null
     },
     {
       "active_skill_id": "ManaDrainPlayer",
       "enabled": true,
       "gems": [
         {
+          "enable_global_1": true,
+          "enable_global_2": false,
           "level": 18,
           "quality": 0,
           "skill_id": "ManaDrainPlayer"
         }
       ],
-      "slot": "Weapon 1"
+      "group_count": null,
+      "include_in_full_dps": false,
+      "slot": "Weapon 1",
+      "source": "Item:9:Storm Bite, Attuned Wand",
+      "weapon_set": 1
     },
     {
       "active_skill_id": "MalicePlayer",
       "enabled": true,
       "gems": [
         {
+          "enable_global_1": true,
+          "enable_global_2": false,
           "level": 19,
           "quality": 0,
           "skill_id": "MalicePlayer"
         }
       ],
-      "slot": "Weapon 2"
+      "group_count": null,
+      "include_in_full_dps": false,
+      "slot": "Weapon 2",
+      "source": "Item:10:Horror Call, Omen Sceptre",
+      "weapon_set": 1
     }
   ],
   "tree": {
@@ -555,15 +776,97 @@
       49512,
       5284
     ],
+    "attribute_choices": {
+      "10131": "dex",
+      "11604": "dex",
+      "11672": "int",
+      "14446": "int",
+      "16705": "str",
+      "17088": "str",
+      "23382": "int",
+      "29009": "int",
+      "31950": "int",
+      "3251": "int",
+      "3463": "int",
+      "39037": "int",
+      "40783": "dex",
+      "42379": "str",
+      "4328": "str",
+      "45885": "int",
+      "46554": "str",
+      "46819": "int",
+      "47168": "int",
+      "47177": "int",
+      "49512": "int",
+      "50104": "int",
+      "5314": "int",
+      "54521": "int",
+      "56045": "str",
+      "57710": "int",
+      "58329": "str",
+      "59093": "int",
+      "59362": "int",
+      "61196": "str",
+      "61403": "int",
+      "62677": "str",
+      "8569": "int",
+      "8616": "int"
+    },
     "tree_version": "0_5"
   },
-  "loadouts": [
-    {
-      "name": "Default",
-      "tree": 1,
-      "item": null,
-      "skill": null
-    }
-  ],
-  "active_loadout": 0
+  "weapon_swap": {
+    "active": 1,
+    "alternate_items": [],
+    "exclusive_nodes": [
+      [
+        32054,
+        11337,
+        21245,
+        34621,
+        535,
+        9782,
+        57178,
+        20677,
+        28021,
+        15618,
+        23427,
+        32745,
+        41972,
+        62153,
+        5501,
+        44420,
+        19955,
+        61601,
+        61179,
+        60515,
+        48821,
+        13823,
+        5284
+      ],
+      [
+        21208,
+        36639,
+        31888,
+        28229,
+        25101,
+        29408,
+        22439,
+        54725,
+        16499,
+        24035,
+        44498,
+        56336,
+        52199,
+        50485,
+        45230,
+        36814,
+        34300,
+        33922,
+        32009,
+        21748,
+        6950,
+        49804
+      ]
+    ]
+  }
 }

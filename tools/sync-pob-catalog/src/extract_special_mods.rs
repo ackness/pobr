@@ -246,6 +246,8 @@ pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
         }
         let is_empty = mods.is_empty();
         let entry = SpecialTemplateDef {
+            exporter: Default::default(),
+            game_source: None,
             examples: Vec::new(),
             id,
             pattern: regex,
@@ -785,6 +787,8 @@ fn build_enum_entry(
         return Err("dedup_id".into());
     }
     let entry = SpecialTemplateDef {
+        exporter: Default::default(),
+        game_source: None,
         examples: Vec::new(),
         id,
         pattern: regex,
@@ -863,6 +867,8 @@ fn build_singleton_entries(
             continue;
         }
         let entry = SpecialTemplateDef {
+            exporter: Default::default(),
+            game_source: None,
             examples: Vec::new(),
             id,
             pattern: regex,

@@ -89,7 +89,27 @@ pub(crate) fn dot_flag_modifiers(
         .filter(|effect| effect.skill_id == skill_id)
         .and_then(|effect| effect.stat_set_index);
     let flags = data.selected_set_dot_flags(skill_id, set_index);
-    pobr_core::skill_env::dot_flag_modifiers(flags, skill_id)
+    let mut mods = pobr_core::skill_env::dot_flag_modifiers(flags, skill_id);
+    if skill_id == "TriggeredDecayingHexPlayer" {
+        mods.push(Modifier::flag("ProfaneDecay"));
+    }
+    if let Some(set) = data.select_stat_set(skill_id, set_index) {
+        // The game gives Ignited Ground its own fire-damage stat set. The
+        // resulting ailment is already calculated; this only identifies its view.
+        if matches!(
+            set.set_id.as_str(),
+            "BallLightningIgnitedGround"
+                | "IncinerateGroundPlayer"
+                | "OilGrenadeOilGroundPlayer"
+                | "SpearOfSolarisGroundPlayer"
+        ) {
+            mods.push(Modifier::flag("IgnitedGround"));
+        }
+        if set.set_id == "CGEMonsterModAbyssVolatileRockBurningGroundPlayer" {
+            mods.push(Modifier::flag("BurningGround"));
+        }
+    }
+    mods
 }
 
 /// Corpse explosion base damage: the skill deals a share of the corpse's
@@ -478,7 +498,7 @@ pub(crate) fn skill_timing_modifiers(
     } else {
         None
     };
-    [
+    let mut modifiers: Vec<_> = [
         ("SkillTotemPlacementTimeBase", placement),
         (
             "SkillWarcryCastTimeBase",
@@ -504,5 +524,36 @@ pub(crate) fn skill_timing_modifiers(
             )
         })
     })
-    .collect()
+    .collect();
+    // A granted meteor's cadence belongs to its originating gem. Retain
+    // the parent's level and quality when its active effect is selected.
+    if let Some(selected) = super::resolve::selected_group_effect(data, group)
+        && selected.skill_id == skill_id
+    {
+        let gems = group.gem_inputs();
+        if let Some(parent) = gems.get(selected.gem_index)
+            && parent.skill_id != skill_id
+        {
+            let stats = data.effect_stats(&parent.skill_id, parent.gem_level, parent.quality, None);
+            let all: Vec<_> = stats.all().cloned().collect();
+            for stat in all
+                .iter()
+                .filter(|s| s.stat == "walking_calamity_spawn_meteor_every_ms")
+            {
+                let origin = ModifierSource::new(SourceId::new(
+                    SourceKind::SkillGem,
+                    format!("skill.{}.{}", parent.skill_id, stat.stat),
+                ))
+                .with_raw_text(stat.stat.clone());
+                modifiers.extend(
+                    pobr_core::rules::skill_stats::granted_skill_modifiers(
+                        &stat.stat, stat.value, &all,
+                    )
+                    .into_iter()
+                    .map(|modifier| modifier.with_origin(origin.clone())),
+                );
+            }
+        }
+    }
+    modifiers
 }

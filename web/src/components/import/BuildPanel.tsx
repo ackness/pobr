@@ -56,6 +56,20 @@ export function BuildPanel({ session, lang, onImported }: Props) {
     URL.revokeObjectURL(url);
   };
 
+  const [plannerResult, setPlannerResult] = useState<{ value: import('../../api/types').BuildPlannerExport; source: BuildSession['exportBuildFiles'] } | null>(null);
+  const plannerFiles = plannerResult?.source === session.exportBuildFiles ? plannerResult.value : null;
+  const exportPlanner = async (all: boolean) => {
+    setGenerating(true);
+    setShareError(null);
+    setPlannerResult(null);
+    try {
+      const result = await session.exportBuildFiles(activeBuild?.name || text.initialBuild, all);
+      setPlannerResult({ value: result, source: session.exportBuildFiles });
+      if (!all && result.files.length === 1) exportFile(result.files[0].content, result.files[0].filename);
+    } catch (err) { setShareError(formatApiError(err)); }
+    finally { setGenerating(false); }
+  };
+
   const confirmReplacement = () => destination !== 'currentStage' || window.confirm(text.replaceConfirm);
 
   const importFile = async (file: File) => {
@@ -114,10 +128,12 @@ export function BuildPanel({ session, lang, onImported }: Props) {
                 value={character.class_name}
                 disabled={session.busy}
                 onChange={(e) => {
+                  if (!character.class_name) { session.setCharacter({ class_name: e.target.value, ascendancy_name: '' }); return; }
                   if (session.hasBuildContent && !window.confirm(tt('build.confirmClassChange'))) return;
                   session.newBuild(e.target.value, '');
                 }}
               >
+                {!character.class_name && <option value="">{tt('build.none')}</option>}
                 {classes.map((c) => (
                   <option key={c.name} value={c.name}>
                     {zhName(session.classNames.classes, c.name)}
@@ -283,6 +299,16 @@ export function BuildPanel({ session, lang, onImported }: Props) {
             />
           )}
 
+          <h4 className="build-export-heading">{tt('plannerFile.title')}</h4>
+          <p className="build-card-hint">{tt('plannerFile.hint')}</p>
+          <div className="build-card-actions">
+            <button disabled={session.busy || generating} onClick={() => exportPlanner(false)}>{tt('plannerFile.current')}</button>
+            <button disabled={session.busy || generating} onClick={() => exportPlanner(true)}>{tt('plannerFile.all')}</button>
+          </div>
+          {plannerFiles && <div aria-live="polite">
+            {plannerFiles.files.map(file => <button key={file.filename} onClick={() => exportFile(file.content, file.filename)}>{file.filename}</button>)}
+            {plannerFiles.warnings.map(warning => <p className="build-card-hint" key={warning}>{warning}</p>)}
+          </div>}
           <h4 className="build-export-heading">{text.backup}</h4>
           <p className="build-card-hint">{text.backupHint}</p>
           <div className="build-card-actions">

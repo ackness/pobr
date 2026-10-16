@@ -110,6 +110,29 @@ fn flat_only_reservation() {
     assert_eq!(calc(&build, &data), 60.0);
 }
 
+/// The game rows give Eternal Rage 100 Spirit and Blasphemy 60 per curse;
+/// Blasphemy's 20 quality grants 10% efficiency, rounding 60 / 1.1 to 55.
+/// PoBR reports all 155 requested Spirit even with only 100 available, keeping
+/// the deficit visible instead of disabling skills or capping the total.
+#[test]
+fn over_reservation_reports_the_skill_total_and_negative_remainder() {
+    let data = repo_data();
+    let build = build_with_group(SocketGroup::new().with_gem_skill("EternalRagePlayer", 20))
+        .add_socket_group(
+            SocketGroup::new()
+                .with_gem_skill_quality("BlasphemyPlayer", 20, 20)
+                .with_gem_skill("TemporalChainsPlayer", 20),
+        );
+    let opts = DataOrchestratorOptions {
+        extra_modifier_texts: vec!["+100 to Spirit".into()],
+        ..Default::default()
+    };
+    let output = calculate_with_data(&build, &data, &opts).expect("calc");
+    assert_eq!(output.spirit, 100.0);
+    assert_eq!(output.spirit_reserved, 155.0);
+    assert_eq!(output.spirit_unreserved, -55.0);
+}
+
 /// Own negative reservation multiplier (e.g. -50): 60 × 0.5 = 30.
 #[test]
 fn own_negative_reservation_multiplier_halves() {
@@ -183,6 +206,31 @@ fn dedupes_across_groups_and_skips_disabled() {
         })
         .add_socket_group(disabled);
     assert_eq!(calc(&build, &data), 0.0, "a disabled group doesn't reserve");
+}
+
+/// Cast on Block has no base reservation; Direstrike II adds 40 and Herbalism
+/// II adds 30 with its shield's weapon set. Blink's 60 Spirit persists in both
+/// sets (`display_skill_reserves_in_all_weapon_sets`).
+#[test]
+fn reservation_follows_the_skills_weapon_set_unless_the_game_says_all_sets() {
+    let data = repo_data();
+    let mut block = SocketGroup::new()
+        .with_gem_skill("MetaCastOnBlockPlayer", 18)
+        .with_gem_skill("SupportDirestrikePlayerTwo", 1)
+        .with_gem_skill("SupportHerbalismPlayerTwo", 1);
+    block.weapon_set = Some(2);
+    let mut blink = SocketGroup::new().with_gem_skill("BlinkReservationPlayer", 20);
+    blink.weapon_set = Some(2);
+    let mut build = build_with_group(block.clone()).add_socket_group(blink);
+    assert_eq!(calc(&build, &data), 60.0, "only Blink reserves in set 1");
+    build.weapon_set = pobr_build::WeaponSet::Second;
+    assert_eq!(calc(&build, &data), 130.0, "both skills reserve in set 2");
+
+    // An earlier inactive copy must not consume the effect's deduplication key.
+    build.weapon_set = pobr_build::WeaponSet::First;
+    block.weapon_set = Some(1);
+    build = build.add_socket_group(block);
+    assert_eq!(calc(&build, &data), 130.0);
 }
 
 /// Blasphemy per-curse reservation (vendor CalcDefence.lua:229-239): the

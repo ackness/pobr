@@ -1,5 +1,4 @@
-//! Loadout — a **grouped switch** across passive tree / items / skills (PoB2
-//! `Build.lua:617 SyncLoadouts`).
+//! Loadout — a grouped switch across passive tree, items, skills and configuration.
 //!
 //! PoB2 doesn't store loadouts separately: it **derives** them from each set's `title`
 //! following a naming convention, so this feature needs zero format extension and is
@@ -20,10 +19,6 @@
 //!
 //! # Known differences from vendor
 //!
-//! - **ConfigSet doesn't participate**: pobr doesn't yet parse multiple `<Config>` sets,
-//!   which is equivalent to vendor's `oneConfig` always being true. If a build actually
-//!   has multiple ConfigSets, PoB2 would additionally require config to match too, so
-//!   this would over-derive groups. Fix once multi-config support lands.
 //! - **Tree version prefix doesn't participate in matching**: vendor prefixes the
 //!   display name with `[0.4] Mapping` when `treeVersion` isn't the latest, before
 //!   matching against item/skill's plain title (`Build.lua:695`), which means exact-name
@@ -34,7 +29,7 @@
 /// semantics of `activeSpec` / `activeItemSet` / `activeSkillSet`) plus its display name.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SetRef {
-    /// 1-based document order.
+    /// 1-based document order; configuration and skill sets use their stable XML id.
     pub id: usize,
     /// Raw `title` attribute; defaults to `"Default"` (matching vendor's `spec.title or "Default"`).
     pub title: String,
@@ -46,6 +41,7 @@ pub struct BuildSets {
     pub trees: Vec<SetRef>,
     pub items: Vec<SetRef>,
     pub skills: Vec<SetRef>,
+    pub configs: Vec<SetRef>,
 }
 
 /// A derived loadout: group name + the selected set document order for each category.
@@ -59,6 +55,7 @@ pub struct Loadout {
     pub tree: usize,
     pub item: Option<usize>,
     pub skill: Option<usize>,
+    pub config: Option<usize>,
 }
 
 /// Splits the `{a,b}` identifier out of a `title` and the name with the identifier stripped.
@@ -125,9 +122,11 @@ pub fn derive_loadouts(sets: &BuildSets) -> Vec<Loadout> {
     // Single-set exemption: a category with only one set (or none) doesn't participate in matching.
     let one_item = sets.items.len() <= 1;
     let one_skill = sets.skills.len() <= 1;
+    let one_config = sets.configs.len() <= 1;
 
     let (item_links, item_plain) = index_links(&sets.items);
     let (skill_links, skill_plain) = index_links(&sets.skills);
+    let (config_links, config_plain) = index_links(&sets.configs);
 
     let mut out = Vec::new();
 
@@ -140,14 +139,21 @@ pub fn derive_loadouts(sets: &BuildSets) -> Vec<Loadout> {
         }
         let item = sets.items.iter().find(|s| s.title == spec.title);
         let skill = sets.skills.iter().find(|s| s.title == spec.title);
+        let config = sets.configs.iter().find(|s| s.title == spec.title);
         if (one_item || item_plain.contains(&spec.title))
             && (one_skill || skill_plain.contains(&spec.title))
+            && (one_config || config_plain.contains(&spec.title))
         {
             out.push(Loadout {
                 name: spec.title.clone(),
                 tree: spec.id,
                 item: if one_item { None } else { item.map(|s| s.id) },
                 skill: if one_skill { None } else { skill.map(|s| s.id) },
+                config: if one_config {
+                    None
+                } else {
+                    config.map(|s| s.id)
+                },
             });
         }
     }
@@ -158,8 +164,17 @@ pub fn derive_loadouts(sets: &BuildSets) -> Vec<Loadout> {
         for link_id in ids {
             let item = item_links.get(&link_id);
             let skill = skill_links.get(&link_id);
-            if (one_item || item.is_some()) && (one_skill || skill.is_some()) {
+            let config = config_links.get(&link_id);
+            if (one_item || item.is_some())
+                && (one_skill || skill.is_some())
+                && (one_config || config.is_some())
+            {
                 out.push(Loadout {
+                    config: if one_config {
+                        None
+                    } else {
+                        config.map(|t| t.set_id)
+                    },
                     name: format!("{name} {{{link_id}}}"),
                     tree: spec.id,
                     item: if one_item {
@@ -186,6 +201,7 @@ pub struct SetSelection {
     pub tree: Option<usize>,
     pub item: Option<usize>,
     pub skill: Option<usize>,
+    pub config: Option<usize>,
 }
 
 impl From<&Loadout> for SetSelection {
@@ -194,27 +210,32 @@ impl From<&Loadout> for SetSelection {
             tree: Some(l.tree),
             item: l.item,
             skill: l.skill,
+            config: l.config,
         }
     }
 }
 
-/// Rewrites the three active attributes in the build XML and returns the new XML —
+/// Rewrites the selected active attributes in the build XML and returns the new XML —
 /// **this is how switching a loadout is implemented**.
 ///
 /// Why edit the XML instead of adding a parameter to the parse functions: `parse_build`
 /// has six sub-parsers each reading an active attribute, and threading a parameter
 /// through all of them would cut across the whole parse chain (which is where parity is
-/// hardest fought). Instead this only replaces a single number on the three
+/// hardest fought). Instead this only replaces a single number on the requested
 /// **structural tags** `<Tree activeSpec>` / `<Items activeItemSet>` /
-/// `<Skills activeSkillSet>`, leaving every other byte untouched — item text / Notes /
+/// `<Skills activeSkillSet>` / `<Config activeConfigSet>`, leaving every other byte untouched — item text / Notes /
 /// escaping are never touched, and `parse_build`'s behavior is byte-for-byte unchanged
 /// when no selection is passed.
 pub fn select_sets(xml: &str, sel: &SetSelection) -> String {
-    let mut out = xml.to_string();
+    let mut out = sel.skill.map_or_else(
+        || xml.to_string(),
+        |id| crate::xml_merge::select_skill_main(xml, id),
+    );
     for (elem, attr, value) in [
         ("<Tree", "activeSpec", sel.tree),
         ("<Items", "activeItemSet", sel.item),
         ("<Skills", "activeSkillSet", sel.skill),
+        ("<Config", "activeConfigSet", sel.config),
     ] {
         let Some(n) = value else { continue };
         out = set_tag_attr(&out, elem, attr, n);
@@ -222,18 +243,20 @@ pub fn select_sets(xml: &str, sel: &SetSelection) -> String {
     out
 }
 
-/// Reads the XML's current active triple (`None` when an attribute is missing; the
+/// Reads the XML's current active selection (`None` when an attribute is missing; the
 /// caller falls back to 1). Used to look up "which loadout is currently active" after switching.
 pub fn active_selection(xml: &str) -> SetSelection {
     SetSelection {
         tree: read_tag_attr(xml, "<Tree", "activeSpec"),
         item: read_tag_attr(xml, "<Items", "activeItemSet"),
-        skill: read_tag_attr(xml, "<Skills", "activeSkillSet"),
+        skill: read_tag_attr(xml, "<Skills", "activeSkillSet")
+            .or_else(|| read_tag_attr(xml, "<SkillSet", "id")),
+        config: read_tag_attr(xml, "<Config", "activeConfigSet"),
     }
 }
 
 /// Reads a numeric attribute on `elem`'s start tag.
-fn read_tag_attr(xml: &str, elem: &str, attr: &str) -> Option<usize> {
+pub(crate) fn read_tag_attr(xml: &str, elem: &str, attr: &str) -> Option<usize> {
     let start = xml.match_indices(elem).find_map(|(i, _)| {
         let rest = &xml[i + elem.len()..];
         rest.starts_with([' ', '\t', '\r', '\n', '>', '/'])
@@ -248,7 +271,7 @@ fn read_tag_attr(xml: &str, elem: &str, attr: &str) -> Option<usize> {
 
 /// Sets `attr` to `n` inside `elem`'s start tag (inserts it if missing). Returns the
 /// input unchanged if the tag isn't found.
-fn set_tag_attr(xml: &str, elem: &str, attr: &str, n: usize) -> String {
+pub(crate) fn set_tag_attr(xml: &str, elem: &str, attr: &str, n: usize) -> String {
     // Locate the start tag: `<Tree` must be immediately followed by whitespace or `>`,
     // to avoid matching `<TreeView`.
     let Some(start) = xml.match_indices(elem).find_map(|(i, _)| {
@@ -340,6 +363,7 @@ mod tests {
                 tree: Some(2),
                 item: Some(3),
                 skill: Some(4),
+                config: None,
             },
         );
 
@@ -409,6 +433,7 @@ mod tests {
     fn matches_loadout_by_identical_titles_across_all_three() {
         // Arrange
         let sets = BuildSets {
+            configs: vec![],
             trees: vec![set(1, "Leveling"), set(2, "Mapping")],
             items: vec![set(1, "Leveling"), set(2, "Mapping")],
             skills: vec![set(1, "Leveling"), set(2, "Mapping")],
@@ -433,6 +458,7 @@ mod tests {
     #[test]
     fn matches_loadout_by_identifier_even_when_display_names_differ() {
         let sets = BuildSets {
+            configs: vec![],
             trees: vec![set(1, "升级期 {lvl30}"), set(2, "大后期 {end}")],
             items: vec![set(1, "便宜装 {lvl30}"), set(2, "毕业装 {end}")],
             skills: vec![set(1, "起手技能 {lvl30}"), set(2, "主流派 {end}")],
@@ -453,6 +479,7 @@ mod tests {
     #[test]
     fn one_set_can_belong_to_several_loadouts_via_comma_list() {
         let sets = BuildSets {
+            configs: vec![],
             trees: vec![set(1, "早期 {a}"), set(2, "中期 {b}")],
             items: vec![set(1, "过渡装 {a,b}"), set(2, "别的 {z}")],
             skills: vec![set(1, "技能一 {a}"), set(2, "技能二 {b}")],
@@ -470,6 +497,7 @@ mod tests {
     fn exempts_a_category_that_has_only_one_set() {
         // Only one skill set → skill is exempt from matching, but tree+item can still form a group.
         let sets = BuildSets {
+            configs: vec![],
             trees: vec![set(1, "Leveling"), set(2, "Mapping")],
             items: vec![set(1, "Leveling"), set(2, "Mapping")],
             skills: vec![set(1, "Default")],
@@ -489,6 +517,7 @@ mod tests {
     fn skips_a_tree_whose_counterparts_are_missing() {
         // The Mapping tree has no matching item set → no group forms (vendor "only exact match").
         let sets = BuildSets {
+            configs: vec![],
             trees: vec![set(1, "Leveling"), set(2, "Mapping")],
             items: vec![set(1, "Leveling"), set(2, "别的名字")],
             skills: vec![set(1, "Leveling"), set(2, "Mapping")],
@@ -504,6 +533,7 @@ mod tests {
     fn single_set_build_yields_one_loadout_with_everything_exempt() {
         // The most common real build: every category has exactly one set → a single Default group, everything exempt.
         let sets = BuildSets {
+            configs: vec![],
             trees: vec![set(1, "Default")],
             items: vec![set(1, "Default")],
             skills: vec![set(1, "Default")],
@@ -515,6 +545,7 @@ mod tests {
         assert_eq!(
             loadouts[0],
             Loadout {
+                config: None,
                 name: "Default".to_string(),
                 tree: 1,
                 item: None,

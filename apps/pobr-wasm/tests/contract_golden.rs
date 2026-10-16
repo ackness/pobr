@@ -55,9 +55,14 @@ fn decode_build_json_shape() {
             "main_socket_group",
             "config_inputs",
             "custom_modifier_blocks",
+            "party",
             "notes",
             "loadouts",
             "active_loadout",
+            "config_sets",
+            "active_config_set",
+            "skill_sets",
+            "active_skill_set",
             "weapon_swap",
         ],
         "BuildJson",
@@ -147,7 +152,10 @@ fn calculate_build_json_shape() {
             "stats",
             "unsupported_modifiers",
             "breakdowns",
+            "breakdown_descriptors",
             "main_skill",
+            "minions",
+            "main_minion_index",
             "item_errors",
             "tree_effects",
         ],
@@ -282,6 +290,8 @@ fn calculate_build_json_shape() {
     assert_keys(
         es_bd,
         &[
+            "kind",
+            "actor",
             "base_total",
             "inc_total",
             "more_total",
@@ -336,6 +346,83 @@ fn calculate_build_json_shape() {
             "{name}: more_total"
         );
     }
+}
+
+#[test]
+fn config_visibility_context_tracks_skills_and_reads_without_enabling_conditions() {
+    ensure_data();
+    let request = serde_json::json!({
+        "config_context": true,
+        "main_socket_group": 0,
+        "character": { "level": 30, "class_name": "Witch" },
+        "socket_groups": [{ "gems": [{ "skill_id": "FireballPlayer", "level": 5 }] }],
+        "extra_modifiers": ["20% increased Damage while on Low Life"],
+        "config_inputs": { "conditionLowLife": false, "ActiveBrands": 0 }
+    });
+    let result: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap();
+    // The response cache must distinguish opt-in from both false and omission.
+    let mut ordinary = request.clone();
+    ordinary["config_context"] = serde_json::json!(false);
+    let untracked: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&ordinary.to_string()).unwrap())
+            .unwrap();
+    assert!(untracked.get("config_context").is_none());
+    ordinary.as_object_mut().unwrap().remove("config_context");
+    let default: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&ordinary.to_string()).unwrap())
+            .unwrap();
+    assert_eq!(default, untracked);
+    let mut without_context = result.clone();
+    without_context
+        .as_object_mut()
+        .unwrap()
+        .remove("config_context");
+    assert_eq!(
+        without_context, untracked,
+        "tracking must not change calculation outputs"
+    );
+    assert_eq!(
+        serde_json::from_str::<Value>(
+            &pobr_wasm::calculate_build_json(&request.to_string()).unwrap()
+        )
+        .unwrap(),
+        result,
+        "the cached opt-in response keeps its context"
+    );
+    let context = &result["config_context"];
+    assert_keys(
+        context,
+        &["main_skill", "skill_types", "predicates"],
+        "ConfigContext",
+    );
+    assert_eq!(context["main_skill"], "fireball");
+    assert!(
+        context["skill_types"]
+            .as_array()
+            .unwrap()
+            .contains(&serde_json::json!("Spell"))
+    );
+    assert_eq!(context["predicates"]["if_skill"]["Armageddon Brand"], false);
+    assert_eq!(context["predicates"]["if_skill_type"]["Bear"], false);
+    assert_eq!(
+        context["predicates"]["if_cond"]["LowLife"], true,
+        "reads remain relevant while false"
+    );
+    assert!(
+        context["predicates"]["if_skill_data"]["explodeCorpse"].is_null(),
+        "unknown is not false"
+    );
+    let mut changed = request;
+    changed["socket_groups"][0]["gems"][0]["skill_id"] = serde_json::json!("FlameWallPlayer");
+    let result: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&changed.to_string()).unwrap())
+            .unwrap();
+    assert_eq!(
+        result["config_context"]["predicates"]["if_skill"]["Flame Wall"],
+        true
+    );
 }
 
 fn close(a: f64, b: f64) -> bool {
@@ -415,6 +502,12 @@ fn check_formula(
         .unwrap()
         .iter()
         .any(|step| step["op"] == "reload");
+    let energy_factor = formula["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|step| step["op"] == "energy_trigger")
+        .map_or(1.0, |step| step["operand"].as_f64().unwrap());
     let mut stronger_share = 1.0;
     // The value before the `increased` step and that step's operand.
     let mut player_increase = None;
@@ -482,7 +575,10 @@ fn check_formula(
                 } else {
                     operand
                 };
-                assert!(matches_shown("ActionRate", rate), "{at}: rate");
+                assert!(
+                    matches_shown("ActionRate", rate * energy_factor),
+                    "{at}: rate"
+                );
                 previous * operand
             }
             "chance_to_hit" => {
@@ -580,6 +676,7 @@ fn check_formula(
                 assert!(close(operand, least), "{at}: weaker hand {least}");
                 previous + operand * (1.0 - stronger_share)
             }
+            "energy_trigger" => previous * operand,
             "reload" => {
                 assert!(close(operand, reload_factor()), "{at}: reload factor");
                 previous * operand
@@ -1661,6 +1758,7 @@ fn manual_skills_and_items_without_code() {
         &[
             "skill_id",
             "active_effect_ids",
+            "effect_forms",
             "name",
             "name_zh_tw",
             "name_zh_cn",
@@ -3156,7 +3254,11 @@ fn real_build_exposes_a_single_default_loadout() {
 
     let loadouts = json["loadouts"].as_array().expect("loadouts array");
     assert_eq!(loadouts.len(), 1);
-    assert_keys(&loadouts[0], &["name", "tree", "item", "skill"], "loadout");
+    assert_keys(
+        &loadouts[0],
+        &["name", "tree", "item", "skill", "config"],
+        "loadout",
+    );
     assert_eq!(loadouts[0]["tree"], 1);
     assert!(loadouts[0]["item"].is_null(), "single-set exemption");
     assert_eq!(json["active_loadout"], 0);
@@ -4279,4 +4381,191 @@ fn full_dps_cache_survives_switching_the_inspected_effect() {
         first["main_skill"]["skill_id"],
         second["main_skill"]["skill_id"]
     );
+}
+
+#[test]
+fn minion_selection_catalog_output_and_actor_breakdowns_round_trip() {
+    ensure_data();
+    let monster = "Metadata/Monsters/Quadrilla/Quadrilla";
+    let catalog: Value = serde_json::from_str(&pobr_wasm::minion_catalog_json().unwrap()).unwrap();
+    let quadrilla = catalog["monsters"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["id"] == monster)
+        .unwrap();
+    assert_eq!(quadrilla["name"], "Quadrilla");
+    assert_eq!(quadrilla["beast"], true);
+    assert!(quadrilla["skills"].as_array().unwrap().len() >= 3);
+    assert_eq!(quadrilla["skills"][2]["index"], 3);
+    let gem = |level| {
+        serde_json::json!({ "skill_id": "SummonBeastPlayer", "level": level, "quality": 0,
+        "minion": monster, "minion_skill": 3 })
+    };
+    let mut disabled_gem = gem(1);
+    disabled_gem["enabled"] = serde_json::json!(false);
+    let request = serde_json::json!({ "character": { "level": 90, "class_name": "Huntress" }, "main_socket_group": 2,
+        "socket_groups": [ { "enabled": false, "gems": [{ "skill_id": "FireballPlayer", "level": 20 }] },
+            { "enabled": true, "gems": [gem(1)] }, { "enabled": true, "gems": [disabled_gem, gem(20)] } ] });
+    let code = pobr_wasm::encode_build_json(&request.to_string()).unwrap();
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).unwrap()).unwrap();
+    assert_eq!(decoded["socket_groups"][2]["gems"][0]["enabled"], false);
+    assert_eq!(decoded["socket_groups"][2]["gems"][1]["minion"], monster);
+    assert_eq!(decoded["socket_groups"][2]["gems"][1]["minion_skill"], 3);
+    let calc = |req: Value| -> Value {
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&req.to_string()).unwrap()).unwrap()
+    };
+    let direct = calc(request.clone());
+    let mut disabled_main = request;
+    disabled_main["main_socket_group"] = serde_json::json!(1);
+    disabled_main["socket_groups"][1]["enabled"] = serde_json::json!(false);
+    assert!(calc(disabled_main)["main_minion_index"].is_null());
+    assert_eq!(direct["main_minion_index"], 1);
+    let minions = direct["minions"].as_array().unwrap();
+    assert_eq!(minions.len(), 2);
+    let main = &minions[1];
+    assert_eq!(main["minion_id"], monster);
+    assert_eq!(main["name"], "Quadrilla");
+    assert_eq!(main["summoned_by"], "SummonBeastPlayer");
+    assert_eq!(main["skill_id"], quadrilla["skills"][2]["skill_id"]);
+    assert!(main["life"].as_f64().unwrap() > minions[0]["life"].as_f64().unwrap());
+    assert!(main["dps"].as_f64().unwrap() > 0.0);
+    assert_eq!(
+        main["breakdowns"]["TotalDPS"]["formula"]["value"],
+        main["dps"]
+    );
+    assert_eq!(
+        main["breakdowns"]["Life"]["actor"],
+        serde_json::json!({ "kind": "minion", "index": 1 })
+    );
+    assert_eq!(
+        direct["breakdowns"]["Life"]["actor"],
+        serde_json::json!({ "kind": "player" })
+    );
+    assert!(
+        (main["breakdowns"]["Life"]["formula"]["value"]
+            .as_f64()
+            .unwrap()
+            - main["life"].as_f64().unwrap())
+        .abs()
+            < 1e-6
+    );
+    for id in pobr_core::calc::minion::MINION_RESISTANCE_STATS {
+        assert!(
+            main["stats"][id].is_number(),
+            "missing minion resistance {id}"
+        );
+        assert!(main["breakdown_descriptors"].get(id).is_some());
+    }
+    assert_eq!(main["stats"]["FireResistMax"], 75.0);
+    assert_eq!(main["stats"]["ChaosResistMax"], 75.0);
+    for id in ["FireResist", "ColdResist", "LightningResist", "ChaosResist"] {
+        assert_eq!(
+            main["breakdowns"][id]["formula"]["value"],
+            main["stats"][id]
+        );
+        assert_eq!(
+            main["breakdowns"][id]["actor"],
+            serde_json::json!({"kind": "minion", "index": 1})
+        );
+    }
+    assert_eq!(
+        direct["minions"],
+        calc(serde_json::json!({"pob_code": code}))["minions"]
+    );
+}
+
+#[test]
+fn skill_forms_enabled_counts_and_stages_round_trip() {
+    ensure_data();
+    let request = serde_json::json!({
+        "character": { "level": 90, "class_name": "Witch" }, "full_dps": true,
+        "config_inputs": { "skillFlameblastStages": 4 },
+        "socket_groups": [{ "enabled": true, "include_in_full_dps": true, "group_count": 3.5,
+            "gems": [{ "skill_id": "IceNovaPlayer", "level": 20, "quality": 0, "stat_set_index": 2, "count": 1.5 },
+                { "skill_id": "SupportControlledDestructionPlayer", "level": 1, "quality": 0, "enabled": false }] }]
+    });
+    let code = pobr_wasm::encode_build_json(&request.to_string()).unwrap();
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).unwrap()).unwrap();
+    let group = &decoded["socket_groups"][0];
+    assert_eq!(group["gems"][0]["stat_set_index"], 2);
+    assert_eq!(group["gems"][0]["count"], 1.5);
+    assert_eq!(group["gems"][1]["enabled"], false);
+    assert_eq!(group["group_count"], 3.5);
+    assert_eq!(group["include_in_full_dps"], true);
+    assert_eq!(
+        decoded["config_inputs"]["skillFlameblastStages"].as_f64(),
+        Some(4.0)
+    );
+    let calc = |req: Value| -> Value {
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&req.to_string()).unwrap()).unwrap()
+    };
+    assert_eq!(
+        calc(request)["full_dps"],
+        calc(serde_json::json!({"pob_code": code, "full_dps": true}))["full_dps"]
+    );
+    let catalog: Value = serde_json::from_str(&pobr_wasm::gem_catalog_json().unwrap()).unwrap();
+    let ice = catalog
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["skill_id"] == "IceNovaPlayer")
+        .unwrap();
+    let forms = ice["effect_forms"][0]["stat_sets"].as_array().unwrap();
+    assert!(
+        forms
+            .iter()
+            .any(|form| form["index"] == 2 && form["label"] == "Cold-Infused")
+    );
+    let flame = catalog
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["skill_id"] == "FlameblastPlayer")
+        .unwrap();
+    assert_eq!(
+        flame["effect_forms"][0]["stat_sets"][0]["stage"]["config_input"],
+        "skillFlameblastStages"
+    );
+    let req = serde_json::json!({ "character": { "level": 90, "class_name": "Witch" },
+        "socket_groups": [{ "enabled": true, "gems": [{ "skill_id": "FlameblastPlayer", "level": 20 }] }] });
+    let baseline = calc(req.clone());
+    let mut stages = req;
+    stages["config_inputs"] = serde_json::json!({"skillFlameblastStages": 4});
+    assert_ne!(calc(stages)["stats"], baseline["stats"]);
+}
+
+#[test]
+fn party_import_edit_export_and_calculation() {
+    ensure_data();
+    let code = pobr_build::encode_pob_code(r#"<PathOfBuilding2><Build level="80" className="Witch"/><Skills><Skill enabled="true"><Gem skillId="DisciplinePlayer" level="20" enabled="true"/></Skill></Skills></PathOfBuilding2>"#).unwrap();
+    let member: Value =
+        serde_json::from_str(&pobr_wasm::import_party_member_json(&code).unwrap()).unwrap();
+    let request = serde_json::json!({ "character": { "level": 80, "class_name": "Witch" }, "party": { "members": [member], "exports": {} } });
+    let encoded = pobr_wasm::encode_build_json(&request.to_string()).unwrap();
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&encoded).unwrap()).unwrap();
+    assert_eq!(
+        decoded["party"]["members"][0]["blocks"],
+        request["party"]["members"][0]["blocks"]
+    );
+    let calculated: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap();
+    assert!(
+        calculated["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|s| s["id"] == "EnergyShield" && s["value"].as_f64().unwrap() > 0.0)
+    );
+    let mut clear = request;
+    clear["party"]["members"] = serde_json::json!([]);
+    clear["base_code"] = Value::String(encoded);
+    let encoded = pobr_wasm::encode_build_json(&clear.to_string()).unwrap();
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&encoded).unwrap()).unwrap();
+    assert_eq!(decoded["party"]["members"], serde_json::json!([]));
 }

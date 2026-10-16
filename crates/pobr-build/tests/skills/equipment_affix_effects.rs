@@ -746,7 +746,7 @@ fn real_equipment_unknown_affix_remains_visible() {
             .any(|text| text == line)
     );
     assert!(result.output().dps > 0.0);
-    let jewel_line = "Gain additional Ailment Threshold equal to 7% of maximum Energy Shield";
+    let jewel_line = "Gain additional Ailment Threshold equal to 7% of your Enemy's Energy Shield";
     let jewel = run(
         &build("SparkPlayer").with_jewels(vec![item("Sapphire", &[jewel_line])]),
         &data,
@@ -1098,6 +1098,48 @@ fn augments_in_equipment_are_counted_by_kind() {
     close(socketed_fire - fire, -8.0);
 }
 
+#[test]
+fn ancient_idol_with_rune_base_tag_does_not_penalize_resistance() {
+    let data = data();
+    assert_eq!(data.base_items["Carved Majesty"].tags, ["rune"]);
+    let mut gloves = item(
+        "Secured Wraps",
+        &[
+            "+10 to maximum Life per Idol in your Equipment",
+            "-4% to all Elemental Resistances per non-Idol Augment in your Equipment",
+        ],
+    );
+    let baseline = run(
+        &build("FireballPlayer").set_item(EquipmentSlot::Gloves, gloves.clone()),
+        &data,
+    );
+    gloves.socketed = [
+        "Carved Majesty",
+        "Perfect Iron Rune",
+        "Legacy of Wanderlust",
+    ]
+    .map(String::from)
+    .into();
+    let socketed = run(
+        &build("FireballPlayer").set_item(EquipmentSlot::Gloves, gloves),
+        &data,
+    );
+    // One ancient Idol grants 10 Life; two non-Idol augments cost 2 × 4%.
+    close(socketed.output().life - baseline.output().life, 10.0);
+    close(
+        socketed.output().fire_resistance - baseline.output().fire_resistance,
+        -8.0,
+    );
+    close(
+        socketed.output().cold_resistance - baseline.output().cold_resistance,
+        -8.0,
+    );
+    close(
+        socketed.output().lightning_resistance - baseline.output().lightning_resistance,
+        -8.0,
+    );
+}
+
 /// A keystone an item grants ("Giant's Blood" on a jewel) applies before
 /// the attributes are derived: its "Inherent Life granted by Strength is
 /// halved" makes 100 Strength grant 100 Life instead of 200.
@@ -1278,4 +1320,264 @@ fn an_item_granting_unholy_might_gains_chaos_damage() {
     let mighty = fireball(&["You have Unholy Might"]);
     let plain = fireball(&[]);
     assert!(mighty > plain * 1.2, "{mighty} against {plain}");
+}
+
+#[test]
+fn virtuous_barrier_counts_purity_of_fires_attribute_requirement() {
+    let data = data();
+    let imported = pobr_build::import_build_from_code(include_str!(
+        "../../../../examples/reference-builds/tuned/builds/ninja-2026-10-13-mercenary-gemling-legionnaire-twister-682f26ed1957/code.txt"
+    ))
+    .unwrap();
+    let result = calculate_with_data_session(
+        &imported.build,
+        &data,
+        &DataOrchestratorOptions::reference_conditions(),
+    )
+    .unwrap();
+    // The skill text counts skills requiring Intelligence, including the
+    // sceptre's Purity of Fire: base 3 + Purity + Herald of Ice + Ghost Dance
+    // + Trinity = 7 motes. Base 5% + floor(19 quality * 0.125) = 7% per mote.
+    // The ring adds another 23% regeneration rate: 49 + 23 = 72% total.
+    close(
+        result.config().multipliers["IntelligenceMoteSkillCount"],
+        7.0,
+    );
+    close(result.stat_totals("LifeRegen").1, 72.0);
+    assert!((result.output().life_regen_recovery - 110.3391).abs() < 0.0001);
+}
+
+#[test]
+fn spell_echo_area_uses_the_selected_repeat_view() {
+    use pobr_core::rules::config_interpreter::ConfigInputValue;
+
+    let data = data();
+    let mut base = build("FrostBombPlayer");
+    base.socket_groups[0] = SocketGroup::new()
+        .with_gem_skill("FrostBombPlayer", 20)
+        .with_gem_skill("SupportSpellEchoPlayer", 1)
+        .with_gem_skill("SupportSpellCascadePlayer", 1);
+    // Frost Bomb: 24 base + 7 at level 20 = 31 units. Spell Cascade:
+    // 20% less area. Spell Echo: one echo with 40% increased area.
+    for (mode, area, radius) in [
+        ("NONE", 0.8, 27.0),
+        ("AVERAGE", 0.96, 30.0),
+        ("FINAL", 1.12, 32.0),
+        ("FINAL_DPS", 1.12, 32.0),
+    ] {
+        let mut build = base.clone();
+        build
+            .config
+            .raw_inputs
+            .values
+            .insert("repeatMode".into(), ConfigInputValue::Text(mode.into()));
+        let result = run(&build, &data);
+        assert!(
+            (result.output().aoe_area_mod - area).abs() < 1e-7,
+            "{mode}: {} != {area}",
+            result.output().aoe_area_mod,
+        );
+        close(result.output().aoe_radius, radius);
+    }
+}
+
+#[test]
+fn chaos_max_hit_uses_the_imported_tacati_resistance() {
+    let data = data();
+    let imported = pobr_build::import_build_from_code(include_str!(
+        "../../../../examples/reference-builds/tuned/builds/ninja-2026-10-14-warrior-smith-of-kitava-shield-wall-fb03d7dce08e/code.txt"
+    ))
+    .unwrap();
+    let result = calculate_with_data_session(
+        &imported.build,
+        &data,
+        &DataOrchestratorOptions::reference_conditions(),
+    )
+    .unwrap();
+    // The boots say +11% Chaos Resistance from Tacati and +53% on the
+    // item, not the socketable catalog's current +13%. A 386 Chaos hit
+    // therefore deals 386 * (1 - 0.64) = 138.96, rather than 131.24.
+    close(result.output().chaos_resistance, 64.0);
+    close(result.ehp_terms().unwrap().taken_hit[4], 138.96);
+    // The Brass Dome's 991 local Ward, with its base, sockets and quality,
+    // contributes to 2162 Ward, which must remain in the max-hit pool.
+    close(result.output().ward, 2162.0);
+    close(result.output().chaos_max_hit, 8001.0);
+}
+
+#[test]
+fn exporter_absent_item_rules_apply_only_on_the_game_basis() {
+    let data = data();
+    let build = build("FireballPlayer").set_item(
+        EquipmentSlot::Ring1,
+        item(
+            "Sapphire Ring",
+            &["39% increased Mana Cost Efficiency of Spells"],
+        ),
+    );
+    let game = calculate_with_data_session(
+        &build,
+        &data,
+        &DataOrchestratorOptions::against_reference_enemy(),
+    )
+    .unwrap();
+    let reference = calculate_with_data_session(
+        &build,
+        &data,
+        &DataOrchestratorOptions::reference_conditions(),
+    )
+    .unwrap();
+    close(game.stat_totals("ManaCostEfficiency").1, 39.0);
+    close(reference.stat_totals("ManaCostEfficiency").1, 0.0);
+    let modifier = game.mod_db().named("ManaCostEfficiency").next().unwrap();
+    assert_eq!(
+        modifier.exporter_rule.as_ref().unwrap().id,
+        "spell_mana_cost_efficiency"
+    );
+    assert!(
+        modifier.origin.is_some(),
+        "item provenance survives rule provenance"
+    );
+    let report = pobr_build::ImportReport {
+        reference_stats: [("ManaCost".into(), 139.0), ("Life".into(), 100.0)].into(),
+        ..Default::default()
+    };
+    let impacts = pobr_build::exporter_impact::exporter_rule_impacts(
+        &build,
+        &data,
+        &DataOrchestratorOptions::reference_conditions(),
+        &report,
+        &reference,
+    )
+    .unwrap();
+    assert_eq!(impacts.len(), 1);
+    assert_eq!(
+        impacts[0].changed_rows, 1,
+        "efficiency changes ManaCost, not Life"
+    );
+}
+
+fn defence_with_lines(build: &Build, data: &BuildData, lines: &[&str]) -> CalculationSession {
+    calculate_with_data_session(
+        build,
+        data,
+        &DataOrchestratorOptions {
+            inject_character_base: false,
+            enemy_tier: EnemyTier::None,
+            extra_modifier_texts: lines.iter().map(|line| (*line).into()).collect(),
+            ..Default::default()
+        },
+    )
+    .unwrap()
+}
+
+#[test]
+fn focus_energy_shield_increase_shares_global_bucket_and_requires_a_focus() {
+    let data = data();
+    // Game base_items: Woven Focus has 15 ES, Grand Regalia has 50 ES.
+    // Local 100% and 20% quality make the Focus 15 * 2 * 1.2 = 36 ES.
+    // Dreamcatcher's 75% applies to those 36 alongside global 50%, not locally.
+    let mut focus = item("Woven Focus", &["100% increased Energy Shield"]);
+    focus.quality = 20;
+    let mut build = build("FireballPlayer");
+    build
+        .items
+        .insert(EquipmentSlot::BodyArmour, item("Grand Regalia", &[]));
+    build.items.insert(EquipmentSlot::Weapon2, focus);
+    let global = "50% increased maximum Energy Shield";
+    let focus_bonus = "75% increased Energy Shield from Equipped Focus";
+    close(
+        defence_with_lines(&build, &data, &[global])
+            .output()
+            .energy_shield,
+        129.0,
+    );
+    close(
+        defence_with_lines(&build, &data, &[global, focus_bonus])
+            .output()
+            .energy_shield,
+        156.0,
+    );
+    // A shield can have its own flat ES; sharing weapon2 does not make it a Focus.
+    build.items.insert(
+        EquipmentSlot::Weapon2,
+        item("Splintered Tower Shield", &["+50 to maximum Energy Shield"]),
+    );
+    close(
+        defence_with_lines(&build, &data, &[global, focus_bonus])
+            .output()
+            .energy_shield,
+        150.0,
+    );
+    build.items.remove(&EquipmentSlot::Weapon2);
+    close(
+        defence_with_lines(&build, &data, &[global, focus_bonus])
+            .output()
+            .energy_shield,
+        75.0,
+    );
+}
+
+#[test]
+fn shield_defences_increase_only_the_shield_alongside_global_increases() {
+    let data = data();
+    // Game bases: Grand Regalia = 182 armour / 165 evasion / 50 ES;
+    // Splintered Tower Shield = 18 armour, with local flat 20 evasion / 50 ES.
+    // Fortified Aegis gives 100% shield defences; global increases are 50%.
+    let mut build = build("FireballPlayer");
+    build
+        .items
+        .insert(EquipmentSlot::BodyArmour, item("Grand Regalia", &[]));
+    build.items.insert(
+        EquipmentSlot::Weapon2,
+        item(
+            "Splintered Tower Shield",
+            &["+20 to Evasion Rating", "+50 to maximum Energy Shield"],
+        ),
+    );
+    let global = "50% increased Armour, Evasion and Energy Shield";
+    let shield_bonus = "100% increased Armour, Evasion and Energy Shield from Equipped Shield";
+    let base = defence_with_lines(&build, &data, &[global]);
+    close(base.output().armour, 300.0);
+    close(base.output().evasion, 278.0);
+    close(base.output().energy_shield, 150.0);
+    let boosted = defence_with_lines(&build, &data, &[global, shield_bonus]);
+    close(boosted.output().armour, 318.0);
+    close(boosted.output().evasion, 298.0);
+    close(boosted.output().energy_shield, 200.0);
+    build
+        .items
+        .insert(EquipmentSlot::Weapon2, item("Woven Focus", &[]));
+    close(
+        defence_with_lines(&build, &data, &[global, shield_bonus])
+            .output()
+            .energy_shield,
+        98.0,
+    );
+}
+
+#[test]
+fn recharge_rate_and_archon_start_bonuses_reach_build_outputs() {
+    let data = data();
+    let mut build = build("FireballPlayer");
+    build
+        .items
+        .insert(EquipmentSlot::BodyArmour, item("Grand Regalia", &[]));
+    // Grand Regalia's game base is 50 ES. Recharge recovers 12.5%/s;
+    // JewelEnergyShieldRecharge's maximum roll is 20%, so 6.25 -> 7.5 ES/s.
+    let base = defence_with_lines(&build, &data, &[]);
+    close(base.output().es_recharge_per_second, 6.25);
+    let recharge = "20% increased Energy Shield Recharge Rate";
+    let archon = "20% faster start of Energy Shield Recharge while affected by an Archon Buff";
+    let inactive = defence_with_lines(&build, &data, &[recharge, archon]);
+    close(inactive.output().es_recharge_rate, 0.15);
+    close(inactive.output().es_recharge_per_second, 7.5);
+    close(inactive.output().es_recharge_delay, 4.0);
+    build
+        .config
+        .conditions
+        .insert("AffectedByArchon".into(), true);
+    let active = defence_with_lines(&build, &data, &[recharge, archon]);
+    // The conditional recharge bonus is not an Archon-granted buff to scale.
+    assert!((active.output().es_recharge_delay - 4.0 / 1.2).abs() < 1e-7);
 }

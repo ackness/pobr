@@ -9,7 +9,7 @@
  * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
  * 任何破坏性形状变更两侧同时 +1；boot 时握手校验（见 wasmBackend.ts）。
  */
-export const EXPECTED_SCHEMA_VERSION = 8;
+export const EXPECTED_SCHEMA_VERSION = 15;
 
 // ---------------------------------------------------------------------------
 // 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）
@@ -99,6 +99,8 @@ export interface ItemsJson {
 }
 
 export interface GemJson {
+  /** Omitted means enabled. */
+  enabled?: boolean;
   count?: number | null;
   enable_global_1?: boolean | null;
   enable_global_2?: boolean | null;
@@ -144,8 +146,19 @@ export interface CustomModifierBlock {
   text: string;
 }
 
+export interface BuildPlannerExport { files: { filename: string; content: string }[]; warnings: string[] }
+
+export interface NamedSetJson { id: number; title: string }
+export interface SetSelection { tree?: number | null; item?: number | null; skill?: number | null; config?: number | null }
+
 export interface BuildJson {
+  planner_source?: string;
+  config_sets?: NamedSetJson[];
+  active_config_set?: number;
+  skill_sets?: NamedSetJson[];
+  active_skill_set?: number;
   custom_modifier_blocks?: CustomModifierBlock[];
+  party?: Party;
   weapon_swap?: WeaponSwap | null;
   character: CharacterJson;
   tree: TreeJson;
@@ -175,6 +188,7 @@ export interface SelectedLoadoutJson extends BuildJson {
  * 一套属多组）。某类只有一套时该类不参与绑定，对应字段为 null。
  */
 export interface LoadoutJson {
+  config?: number | null;
   name: string;
   /** 1-based 文档序，回传 `switchLoadout` 用。 */
   tree: number;
@@ -197,6 +211,8 @@ export interface CharacterOverride {
 
 /** 手动技能组宝石条目（gem id 由后端按 skill_id 反查）。 */
 export interface GemInput {
+  /** Omitted means enabled. Disabled gems stay editable. */
+  enabled?: boolean;
   count?: number | null;
   enable_global_1?: boolean | null;
   enable_global_2?: boolean | null;
@@ -242,8 +258,41 @@ export interface JewelInput {
   text: string;
 }
 
+export interface MinionCatalog {
+  monsters: Array<{ id: string; name: string; beast: boolean; spectre: boolean;
+    skills: Array<{ index: number; skill_id: string; name: string | null }> }>;
+  summoners: Array<{ skill_id: string; choice: 'beast' | 'spectre' | null; minion_ids: string[] }>;
+}
+
+export type BreakdownActor = { kind: 'player' } | { kind: 'minion'; index: number };
+export interface MinionOutput {
+  index: number;
+  minion_id: string;
+  name: string;
+  summoned_by: string;
+  skill_id: string;
+  level: number;
+  dps: number;
+  life: number;
+  armour: number;
+  evasion: number;
+  energy_shield: number;
+  stats: Record<string, number>;
+  breakdowns: Record<string, Breakdown>;
+  breakdown_descriptors?: Record<string, DetailKind>;
+}
+
 /** 宝石目录条目（gem_catalog_json）。 */
+export interface SkillForm {
+  index: number;
+  id: string;
+  label: string | null;
+  stage: { config_input: string; min: number; max: number; default: number } | null;
+}
+
 export interface GemCatalogEntry {
+  effect_forms?: Array<{ skill_id: string; stat_sets: SkillForm[] }>;
+
   skill_id: string;
   /** Secondary effects supplied by this gem; display aliases, not picker entries. */
   additional_skill_ids?: string[];
@@ -273,7 +322,7 @@ export interface NodePowerEntry {
   skill: number;
   /** 单点试加后目标属性的增量（可为负）。 */
   delta: number;
-  /** 距已加点前沿的 BFS 步数（1 = 相邻）。 */
+  /** 距已加点前沿的 BFS 步数（1 = 相邻；显式单点探测为 0，路线成本由 planner 提供）。 */
   distance: number;
 }
 
@@ -379,6 +428,11 @@ export interface ItemAugmentInfo {
 
 /** `pob_code` 与 `character` 至少给一个（无 code = PoB2 新建 build 语义）。 */
 export interface CalculateBuildRequest {
+  /** Omitted: legacy defaults; []: no details; otherwise only the opened ids. */
+  breakdowns?: string[];
+  breakdown_actor?: BreakdownActor;
+  /** Collect configuration visibility facts; omitted keeps read tracking off. */
+  config_context?: boolean;
   /** Evaluate included effects; omitted keeps the single-skill calculation. */
   full_dps?: boolean;
   tree_version?: string | null;
@@ -408,6 +462,7 @@ export interface CalculateBuildRequest {
   enemy_tier?: EnemyTier;
   extra_modifiers?: string[];
   custom_modifier_blocks?: CustomModifierBlock[];
+  party?: Party;
   config_inputs?: Record<string, ConfigInputValue>;
 }
 
@@ -510,6 +565,7 @@ export type FormulaOp =
   | 'off_hand_either'
   | 'off_hand_alternating'
   | 'reload'
+  | 'energy_trigger'
   | 'hit_interval'
   | 'stronger_hand'
   | 'stronger_share'
@@ -529,7 +585,21 @@ export interface BreakdownFormula {
   value: number;
 }
 
+export type DetailKind = 'steps' | 'sources' | 'derived' | 'none';
+export interface DetailInput { id: string; value: number | null }
+export interface SourceDetail {
+  name: string;
+  more_precision: number | null;
+  base_total: number;
+  inc_total: number;
+  more_total: number;
+  mods: BreakdownMod[];
+}
 export interface Breakdown {
+  kind?: DetailKind;
+  sources?: SourceDetail[];
+  derived?: { formula: string; inputs: DetailInput[]; context: DetailInput[] };
+  actor?: BreakdownActor;
   /** Totals cover active lines only. */
   base_total: number;
   inc_total: number;
@@ -767,8 +837,30 @@ export interface FullDpsSkill {
   error: string | null;
 }
 
+export interface EnergyTriggerTerms {
+  maximum_energy: number;
+  energy_per_trigger: number;
+  source: string | null;
+  at_own_rate: boolean;
+  missing_source: string | null;
+  events_per_second: number;
+  energy_per_event: number;
+  refund_half_chance: number;
+  events_per_trigger: number;
+  energy_limited_rate: number;
+  trigger_rate_cap: number;
+  triggers_per_second: number;
+  invocation: boolean;
+  rate_multiplier: number;
+}
+
 export interface CalculateBuildResponse {
+  /** Present only when config_context was requested. */
+  config_context?: ConfigContext;
+  minions?: MinionOutput[];
+  main_minion_index?: number | null;
   full_dps?: { dps: number; dot_dps: number; skills: FullDpsSkill[] };
+  energy_trigger?: EnergyTriggerTerms;
   stats: DisplayStatValue[];
   /**
    * Lines the calculation could not apply, so their effect is missing from the
@@ -779,6 +871,8 @@ export interface CalculateBuildResponse {
   unsupported_modifiers: string[];
   /** 键 = 聚合 ModName（Life / EnergyShield / FireResist / ...）。 */
   breakdowns: Record<string, Breakdown>;
+  /** Optional for older saved/mock responses. */
+  breakdown_descriptors?: Record<string, DetailKind>;
   /** 主技能分解（null = 无可解析的伤害主技能）。 */
   main_skill: MainSkillInfo | null;
   /** 单件装备/药剂/珠宝文本解析失败的降级记录（据 slot 标红；空 = 全部成功）。 */
@@ -834,7 +928,7 @@ export interface AttributionResponse {
 
 /**
  * 一行的去向。有 modifier 入库时按它们：全部生效 `applied`、部分 `partial`、
- * 被读取但未计入 `inactive`、从未被读取 `unread`。没有 modifier 时：
+ * 被读取但未计入或未到达已登记读取状态 `inactive`、从未被读取 `unread`。没有 modifier 时：
  * 入库前被拿走并由 `reason` 所写的读取方使用 `outside`（物品自身防御/伤害、宝石等级、珠宝半径），
  * 登记为不影响任何输出 `no_effect`，有规则识别但没有实现 `unmodelled`，
  * 没有规则能解析 `unparsed`，解析出了 modifier 却没有入库 `no_modifier`；
@@ -863,6 +957,8 @@ export interface LineUsageModifier {
   /** 生效数值在主技能上下文中的值（已应用缩放 tag）；否则 null。 */
   applied: number | null;
   status: LineUsageModifierStatus;
+  /** 已验证的读取方只在这个状态下运行；未到达时才返回。 */
+  read_gate?: { state: string; config_option: string | null };
   /** inactive：未满足的条件；outside：消费者。 */
   reason: string | null;
   /** 列出它（生效且非 0）的分解 stat id。 */
@@ -967,6 +1063,10 @@ export interface LineUsage {
   unparsed: LineUsageUnparsed[];
   gem_stats: LineUsageGemStat[];
   conditions: LineUsageCondition[];
+  /** 被引用条件的配置入口，包含已设置或由计算阶段推导的条件。 */
+  condition_configs?: Record<string, string>;
+  /** Referenced conditions set by the build or a calc pass, even when unmet. */
+  condition_states?: string[];
   multipliers: LineUsageMultiplier[];
   /** 启用组里的每个主动效果，以及它实际使用的等级（含加成）与品质。 */
   skills: LineUsageSkill[];
@@ -1080,9 +1180,31 @@ export interface ConfigOption {
   /** PoB2 Config 页分区名（如 "When In Combat"）。 */
   section?: string;
   label?: string;
+  tooltip?: string;
+  visibility?: ConfigVisibility;
   /** list 型的选项；default 的 {index} 是 1-based。 */
   list_options?: ConfigListOption[];
   default?: { index?: number; state_bool?: boolean; state_number?: number; placeholder_number?: number } | number | boolean | string;
+}
+
+/** Catalog predicate families are extensible; unknown families stay visible. */
+export interface ConfigVisibility {
+  [family: string]: string[] | undefined;
+  if_skill?: string[];
+  if_skill_type?: string[];
+  if_cond?: string[];
+  if_enemy_cond?: string[];
+  if_minion_cond?: string[];
+  if_stat?: string[];
+  if_flag?: string[];
+  if_option?: string[];
+}
+
+export interface ConfigContext {
+  main_skill: string | null;
+  skill_types: string[];
+  /** Null or absent means the engine cannot evaluate this visibility rule. */
+  predicates: Record<string, Record<string, boolean | null>>;
 }
 
 export interface ConfigCatalogFile {
@@ -1118,3 +1240,51 @@ export interface SkillMetricsResponse {
   skills: SkillMetricsEntry[];
   item_errors: SlotIssue[];
 }
+
+export type TreeAllocationMode = 0 | 1 | 2;
+export type TreeEditAction = 'allocate' | 'refund' | 'promote';
+export interface TreeAllocation { shared: number[]; exclusive: [number[], number[]] }
+export interface TreeEditResult {
+  allocation: TreeAllocation;
+  added: number[];
+  removed: number[];
+  promoted: number[];
+  path: number[];
+  points_used: number;
+  points_max: number;
+  weapon_points_used: [number, number];
+  weapon_points_max: number;
+}
+export interface TreeEditResponse { valid: boolean; reason: string | null; result: TreeEditResult | null }
+
+/** Conversion is a detached preview; the caller must explicitly apply its code. */
+export interface TreeConversionNode {
+  id: number;
+  name: string;
+  stats: string[];
+  reason: 'missing' | 'changed_identity' | 'socket_missing_or_changed' | 'disconnected' | null;
+  jewel_item_id: number | null;
+}
+export interface TreeConversionResponse {
+  code: string;
+  specs: {
+    index: number;
+    title: string;
+    from_version: string;
+    to_version: string;
+    kept: number[];
+    dropped: TreeConversionNode[];
+    disconnected: TreeConversionNode[];
+    disconnected_by_set: [number[], number[], number[]];
+    allocation: TreeAllocation;
+  }[];
+}
+
+export interface PartyMember {
+  id: string;
+  name: string;
+  enabled: boolean;
+  blocks: Record<string, string>;
+  warnings: string[];
+}
+export interface Party { members: PartyMember[]; exports: Record<string, string> }

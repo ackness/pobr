@@ -122,6 +122,8 @@ impl pobr_core::skill_env::TriggerSubCalc for OrchestratorSubCalc<'_> {
             hit_chance: out.hit_chance,
             crit_chance: out.crit_chance,
             crit_hit_damage: out.crit_hit_avg,
+            ailments: session.energy_source_ailments(),
+            hit_rate: out.action_rate,
         };
         if let Some(memo) = &self.context.trigger_memo {
             memo.borrow_mut().insert(sub_build, stats);

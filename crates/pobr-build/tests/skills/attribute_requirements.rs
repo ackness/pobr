@@ -63,6 +63,56 @@ fn item_local_and_global_requirement_modifiers_stay_separate() {
     .unwrap();
     assert_eq!(converted.req_str, 48.0);
     assert_eq!(converted.req_dex, 96.0);
+
+    let diagnosis =
+        pobr_build::diagnose(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+    let usage = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+    for text in [
+        "40% reduced Attribute Requirements",
+        "Convert 50% of Requirements to Dexterity",
+    ] {
+        let line = usage
+            .lines
+            .iter()
+            .find(|line| line.text.as_deref() == Some(text))
+            .unwrap();
+        assert!(
+            line.modifiers
+                .iter()
+                .all(|modifier| { modifier.status == pobr_build::usage::ModifierStatus::Outside })
+        );
+    }
+}
+
+#[test]
+fn local_flat_requirement_is_added_after_base_requirement_conversion() {
+    let data = BuildData::load(&GameData::new(current_data_dir())).unwrap();
+    let build = pobr_build::parse_build(
+        r#"<PathOfBuilding2><Build level="90" className="Huntress"/>
+        <Items><Item id="1">Rarity: UNIQUE
+Chober Chaber
+Runeforged Leaden Greathammer
+Implicits: 2
+{enchant}Convert 20% of Requirements to Dexterity
++81 Intelligence Requirement
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+        </PathOfBuilding2>"#,
+    )
+    .unwrap();
+    let result = calculate_with_data(
+        &build,
+        &data,
+        &DataOrchestratorOptions {
+            extra_modifier_texts: vec!["Triple Attribute requirements of Martial Weapons".into()],
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    // The base needs 60 Str and 50 Int. Convert 20% of those, then add
+    // 81 Int: 48 Str, 22 Dex, 121 Int. Triple weapon requirements last.
+    assert_eq!(result.req_str, 144.0);
+    assert_eq!(result.req_dex, 66.0);
+    assert_eq!(result.req_int, 363.0);
 }
 
 #[test]

@@ -20,13 +20,17 @@ pub mod state;
 mod xml_write;
 pub mod zh;
 
-pub use build_api::support_groups_compatible_json;
 pub use build_api::{
     attribution_json, calculate_build_json, classify_item_lines_json, decode_build_file_json,
-    decode_build_json, decode_build_loadout_json, encode_build_json, gem_catalog_json,
-    import_trade_items_json, item_augment_info_json, line_usage_json, manage_loadout_json,
-    node_power_json, optimize_variants_json, reforge_runes_json, rune_catalog_json,
-    skill_metrics_json, translate_lines_to_zh_cn_json,
+    decode_build_json, decode_build_loadout_json, encode_build_file_json, encode_build_json,
+    gem_catalog_json, import_party_member_json, import_trade_items_json, item_augment_info_json,
+    item_crafting_catalog_json, line_usage_json, manage_loadout_json, minion_catalog_json,
+    node_power_json, normalize_item_draft_json, optimize_variants_json, reforge_runes_json,
+    rune_catalog_json, skill_metrics_json, translate_lines_to_zh_cn_json, unique_catalog_json,
+    unique_item_draft_json,
+};
+pub use build_api::{
+    preview_tree_conversion_json, preview_tree_edit_json, support_groups_compatible_json,
 };
 pub use i18n::translate;
 pub use session::calculate_json;
@@ -38,7 +42,7 @@ pub use state::{init_data_from_dir, init_staged_data, is_data_ready, stage_data_
 /// compares them at boot (see [`wasm::schema_version`]); a mismatch prompts
 /// a hard refresh — closing the door on "stale frontend cache + new wasm
 /// assets" silently breaking.
-pub const SCHEMA_VERSION: u32 = 8;
+pub const SCHEMA_VERSION: u32 = 15;
 
 /// wasm-bindgen bindings: compiled only under the `wasm` feature, exposing
 /// functions with the same names as the host API to JS.
@@ -102,6 +106,11 @@ pub mod wasm {
     }
 
     /// JS entry point: `skillMetricsJson(requestJson) -> string` (independent active-effect metrics).
+    #[wasm_bindgen(js_name = importPartyMemberJson)]
+    pub fn import_party_member_json(code: &str) -> Result<String, JsError> {
+        crate::build_api::import_party_member_json(code).map_err(|err| JsError::new(&err))
+    }
+
     #[wasm_bindgen(js_name = skillMetricsJson)]
     pub fn skill_metrics_json(request_json: &str) -> Result<String, JsError> {
         crate::build_api::skill_metrics_json(request_json).map_err(|err| JsError::new(&err))
@@ -132,6 +141,11 @@ pub mod wasm {
         crate::build_api::gem_catalog_json().map_err(|err| JsError::new(&err))
     }
 
+    #[wasm_bindgen(js_name = minionCatalogJson)]
+    pub fn minion_catalog_json() -> Result<String, JsError> {
+        crate::build_api::minion_catalog_json().map_err(|err| JsError::new(&err))
+    }
+
     /// JS entry point: `decodeBuildLoadoutJson(requestJson) -> string` —
     /// switches to a specified loadout and re-decodes (`{code, tree, item, skill}`,
     /// with indices taken from the response's `loadouts[]`).
@@ -148,7 +162,12 @@ pub mod wasm {
         crate::build_api::manage_loadout_json(request_json).map_err(|err| JsError::new(&err))
     }
 
-    /// JS entry point: `decodeBuildFileJson(content) -> string` (a China-server `.build` file -> a structured build).
+    #[wasm_bindgen(js_name = encodeBuildFileJson)]
+    pub fn encode_build_file_json(request: &str) -> Result<String, JsError> {
+        crate::build_api::encode_build_file_json(request).map_err(|err| JsError::new(&err))
+    }
+
+    /// JS entry point: `decodeBuildFileJson(content) -> string` (a game planner or legacy `.build` file -> a structured build).
     #[wasm_bindgen(js_name = decodeBuildFileJson)]
     pub fn decode_build_file_json(content: &str) -> Result<String, JsError> {
         crate::build_api::decode_build_file_json(content).map_err(|err| JsError::new(&err))
@@ -187,9 +206,42 @@ pub mod wasm {
     }
 
     /// JS entry point: `reforgeRunesJson(requestJson) -> string` (re-socket runes -> rewritten item text).
+    #[wasm_bindgen(js_name = uniqueCatalogJson)]
+    pub fn unique_catalog_json() -> Result<String, JsError> {
+        crate::build_api::unique_catalog_json().map_err(|err| JsError::new(&err))
+    }
+
+    #[wasm_bindgen(js_name = uniqueItemDraftJson)]
+    pub fn unique_item_draft_json(request: &str) -> Result<String, JsError> {
+        crate::build_api::unique_item_draft_json(request).map_err(|err| JsError::new(&err))
+    }
+
+    #[wasm_bindgen(js_name = itemCraftingCatalogJson)]
+    pub fn item_crafting_catalog_json() -> Result<String, JsError> {
+        crate::build_api::item_crafting_catalog_json().map_err(|err| JsError::new(&err))
+    }
+
+    #[wasm_bindgen(js_name = normalizeItemDraftJson)]
+    pub fn normalize_item_draft_json(text: &str) -> Result<String, JsError> {
+        crate::build_api::normalize_item_draft_json(text).map_err(|err| JsError::new(&err))
+    }
+
     #[wasm_bindgen(js_name = reforgeRunesJson)]
     pub fn reforge_runes_json(request_json: &str) -> Result<String, JsError> {
         crate::build_api::reforge_runes_json(request_json).map_err(|err| JsError::new(&err))
+    }
+
+    /// Preview and validate one connected shared/weapon-set passive edit.
+    #[wasm_bindgen(js_name = previewTreeEditJson)]
+    pub fn preview_tree_edit_json(request_json: &str) -> Result<String, JsError> {
+        crate::build_api::preview_tree_edit_json(request_json).map_err(|err| JsError::new(&err))
+    }
+
+    /// Preview conversion of the active passive spec or every spec to current data.
+    #[wasm_bindgen(js_name = previewTreeConversionJson)]
+    pub fn preview_tree_conversion_json(request_json: &str) -> Result<String, JsError> {
+        crate::build_api::preview_tree_conversion_json(request_json)
+            .map_err(|err| JsError::new(&err))
     }
 
     /// JS entry point: `nodePowerJson(requestJson) -> string` (the tree node power heatmap).

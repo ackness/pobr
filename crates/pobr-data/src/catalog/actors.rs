@@ -91,6 +91,10 @@ pub struct MinionEntryDef {
     /// path, e.g.
     /// `Metadata/Monsters/LeagueAbyss/Lightless/Cocoon3Spectre`).
     pub id: String,
+    /// Game `MonsterVarieties.Id`, linked by the PoB2 minion export template.
+    /// Spectres already use this as their `id`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub monster_variety_id: Option<String>,
     /// English canonical name (`name`).
     pub name: String,
     /// Monster tags (`monsterTags`).

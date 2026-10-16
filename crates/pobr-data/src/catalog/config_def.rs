@@ -42,6 +42,9 @@ pub struct ConfigOptionDef {
     /// UI label (absent for entries whose label is a function).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
+    /// Static help text; dynamic UI callbacks are not serialized.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tooltip: Option<String>,
     /// Default-value family (defaultState / defaultIndex /
     /// defaultPlaceholderState).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -49,7 +52,7 @@ pub struct ConfigOptionDef {
     /// list-type options (`{val, label}`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub list_options: Vec<ListOption>,
-    /// Visibility condition (stored but not consumed — for UI use).
+    /// Display visibility; never gates calculation effect interpretation.
     #[serde(default, skip_serializing_if = "ConfigVisibility::is_empty")]
     pub visibility: ConfigVisibility,
     /// Expanded implyCond + implyCondList (condition names implied to be
@@ -136,6 +139,33 @@ pub struct ListOption {
 /// is normalized into a one-element array).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ConfigVisibility {
+    /// Additional catalog visibility predicate `if_stat`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub if_stat: Vec<String>,
+    /// Additional catalog visibility predicate `if_enemy_stat`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub if_enemy_stat: Vec<String>,
+    /// Additional catalog visibility predicate `if_player_flag`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub if_player_flag: Vec<String>,
+    /// Additional catalog visibility predicate `if_minion_flag`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub if_minion_flag: Vec<String>,
+    /// Additional catalog visibility predicate `if_skill_type`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub if_skill_type: Vec<String>,
+    /// Additional catalog visibility predicate `if_skill_flag`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub if_skill_flag: Vec<String>,
+    /// Additional catalog visibility predicate `if_option`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub if_option: Vec<String>,
+    /// Additional catalog visibility predicate `if_node`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub if_node: Vec<String>,
+    /// Additional catalog visibility predicate `if_gem_family`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub if_gem_family: Vec<String>,
     /// `ifCond`: visible when the player condition is used by the calc.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub if_cond: Vec<String>,
@@ -171,7 +201,16 @@ pub struct ConfigVisibility {
 impl ConfigVisibility {
     /// Whether every field is empty (used by the serialization skip predicate).
     pub fn is_empty(&self) -> bool {
-        self.if_cond.is_empty()
+        self.if_stat.is_empty()
+            && self.if_enemy_stat.is_empty()
+            && self.if_player_flag.is_empty()
+            && self.if_minion_flag.is_empty()
+            && self.if_skill_type.is_empty()
+            && self.if_skill_flag.is_empty()
+            && self.if_option.is_empty()
+            && self.if_node.is_empty()
+            && self.if_gem_family.is_empty()
+            && self.if_cond.is_empty()
             && self.if_minion_cond.is_empty()
             && self.if_enemy_cond.is_empty()
             && self.if_flag.is_empty()
@@ -313,11 +352,14 @@ mod tests {
             var: "conditionStationary".to_string(),
             input_type: ConfigInputType::Count,
             section: "General".to_string(),
+            tooltip: Some("Applies stationary modifiers.".to_string()),
             label: Some("Time spent stationary".to_string()),
             default: None,
             list_options: Vec::new(),
             visibility: ConfigVisibility {
                 if_cond: vec!["Stationary".to_string()],
+                if_stat: vec!["Chain".to_string()],
+                if_skill_type: vec!["Bear".to_string()],
                 ..Default::default()
             },
             imply_conditions: Vec::new(),
@@ -422,6 +464,7 @@ mod tests {
             input_type: ConfigInputType::List,
             section: "Combat".to_string(),
             label: None,
+            tooltip: None,
             default: Some(ConfigDefault {
                 state_bool: None,
                 state_number: None,

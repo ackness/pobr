@@ -186,10 +186,7 @@ fn warcry_cast_time(db: &ModDb, spec: &WarcrySpec, cfg: &CalcConfig, tick_s: f64
     // summing a single name here doesn't double-count.
     let speed_mod = (1.0 + scoped_sum(db, spec, cfg, ModType::Inc, "WarcrySpeed") / 100.0)
         * scoped_more(db, spec, cfg, "WarcrySpeed");
-    // vendor calcs.actionSpeedMod(actor): the same ActionSpeed factor used in the offence main chain.
-    let action_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
-    let action_speed =
-        (1.0 + db.sum(ModType::Inc, cfg, &action_names) / 100.0) * db.more(cfg, &action_names);
+    let action_speed = super::skill_use_time::action_speed_factor(db, cfg);
     let rate = ((1.0 / base) * speed_mod * action_speed).min(1.0 / tick_s);
     1.0 / rate
 }

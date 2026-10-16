@@ -12,6 +12,51 @@
   },
   "entries": [
     {
+      "id": "reduced_slowing_potency_on_self",
+      "exporter": "absent",
+      "game_source": "base_slow_potency_+%",
+      "pattern": "(\\d+(?:\\.\\d+)?)% reduced slowing potency of debuffs on you",
+      "mods": [
+        {
+          "name": "SlowEffectOnSelf",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "source_note": "Game stat base_slow_potency_+%; scales each modeled ActionSpeed slow. The Slow keyword defines separate slows as multiplicative: https://poe2db.tw/us/Keywords",
+      "examples": [
+        "30% reduced Slowing Potency of Debuffs on You"
+      ]
+    },
+    {
+      "id": "increased_slowing_potency_on_self",
+      "exporter": "absent",
+      "game_source": "base_slow_potency_+%",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased slowing potency of debuffs on you",
+      "mods": [
+        {
+          "name": "SlowEffectOnSelf",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "source_note": "Game stat base_slow_potency_+%; scales each modeled ActionSpeed slow. The Slow keyword defines separate slows as multiplicative: https://poe2db.tw/us/Keywords",
+      "examples": [
+        "30% increased Slowing Potency of Debuffs on You"
+      ]
+    },
+    {
       "id": "all_damage_is_taken_from_mana_before_life",
       "pattern": "all damage is taken from mana before life",
       "vendor_pattern": "all damage is taken from mana before life",
@@ -81,16 +126,11 @@
       "id": "break_increased_armour",
       "pattern": "break (\\d+)% increased armour",
       "vendor_pattern": "break (%d+)%% increased armour",
-      "mods": [
-        {
-          "name": "ArmourBreakPerHit",
-          "type": "INC",
-          "value": "$1"
-        }
-      ],
+      "mods": [],
       "verified": false,
-      "batch": "S2",
-      "source_note": "ModParser.lua:4258（探针求值自动转写；样本：Break 10% increased Armour）"
+      "batch": "unmodelled",
+      "source_note": "Armour broken per hit is not modelled. The configured ArmourBreakAmount is the total already removed from the enemy, not a base per-hit amount; increased break must not scale it. A per-hit model needs flat skill break, damage-based break, event conditions and monster rarity multipliers.",
+      "game_source": "base/stats.json: armour_break_amount_+%; https://poe2db.tw/us/Keywords"
     },
     {
       "id": "buffs_on_you_expire_slower",
@@ -98,20 +138,23 @@
       "vendor_pattern": "buffs on you expire (%d+)%% slower",
       "mods": [
         {
-          "name": "Duration",
+          "name": "BuffExpiryRate",
           "type": "INC",
-          "value": "$1",
-          "tags": [
-            {
-              "type": "SkillType",
-              "skillType": "SkillType:Buff"
-            }
-          ]
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
         }
       ],
       "verified": false,
       "batch": "S2",
-      "source_note": "ModParser.lua:4532（探针求值自动转写；样本：Buffs on you expire 10% slower）"
+      "source_note": "Game buff_time_passed_+%_only_buff_category changes elapsed buff time, not increased duration: 10% slower multiplies duration by 1/0.9. Applies to selected buff skill duration and the reported Archon buff duration. Regression: engine::sidebar_outputs.",
+      "game_source": "buff_time_passed_+%_only_buff_category; base/passive_tree.json: Prolonged Assault, Flow of Time, Buff Expiry Rate",
+      "exporter": "differs"
     },
     {
       "id": "cannot_be_blinded_while_on_full_life",
@@ -479,16 +522,14 @@
       "id": "double_activation_delay_of_curses",
       "pattern": "double activation delay of curses",
       "vendor_pattern": "double activation delay of curses",
-      "mods": [
-        {
-          "name": "CurseDelay",
-          "type": "MORE",
-          "value": 100
-        }
-      ],
+      "mods": [],
       "verified": false,
-      "batch": "S2",
-      "source_note": "ModParser.lua:4278（探针求值自动转写；样本：Double Activation Delay of Curses）"
+      "batch": "unmodelled",
+      "source_note": "Curse activation delay is not modelled; curse effects assume an already applied curse.",
+      "game_source": "keystone_hex_master",
+      "examples": [
+        "Double Activation Delay of Curses"
+      ]
     },
     {
       "id": "empowered_attacks_deal_increased_damage",
@@ -565,9 +606,9 @@
           "value": true
         }
       ],
-      "verified": false,
+      "verified": true,
       "batch": "S2",
-      "source_note": "ModParser.lua:5030（探针求值自动转写；样本：Energy Shield does not Recharge）"
+      "source_note": "Game passive_keystone_alternate_es_recovery (Scarred Faith): Energy Shield does not Recharge. Regression: engine::keystones."
     },
     {
       "id": "equipment_and_skill_gems_have_reduced_attribute_requirements",
@@ -719,7 +760,8 @@
       ],
       "verified": false,
       "batch": "S1",
-      "source_note": "ModParser.lua:2727（探针求值自动转写；样本：Grants 1 Passive Skill Point）"
+      "source_note": "Game PassiveSkills text (nodes 11335, 47190, 12183, 36676): shared allocated nodes grant ordinary points to pobr_tree::allocation::AllocationTree::edit. Regression: allocation::granted_passive_points.",
+      "game_source": "base/passive_tree.json: AscendancyDruid1Small1, AscendancyDruid1Small2, AscendancyRanger3Small8, AscendancyRanger3Small9"
     },
     {
       "id": "grenade_skills_fire_an_additional_projectile",
@@ -902,17 +944,23 @@
       "vendor_pattern": "immune to chaos damage",
       "mods": [],
       "verified": false,
-      "batch": "S0",
-      "source_note": "纯识别条目（pobr 现状 = Unsupported 不产 mod，mod_parser.rs:539-548）；vendor :2358 产 ChaosInoculation flag + ChaosDamageTaken MORE -100——B-3 行为升级时改 mods 并对拍"
+      "batch": "unmodelled",
+      "source_note": "Recognised, not modelled: a standalone chaos immunity outside Chaos Inoculation has no engine flag (EHP's chaos immunity is tied to the ChaosInoculation keystone flag)."
     },
     {
       "id": "immune_to_chaos_damage_and_bleeding",
       "pattern": "immune to chaos damage and bleeding",
       "vendor_pattern": "immune to chaos damage and bleeding",
-      "mods": [],
-      "verified": false,
-      "batch": "S0",
-      "source_note": "纯识别条目（pobr 现状 = Unsupported，mod_parser.rs:539-548）；vendor :2362 另含 BleedImmune flag"
+      "mods": [
+        {
+          "name": "BleedImmune",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "source_note": "Chaos Inoculation keystone (passive 56349, keystone_chaos_inoculation): \"Maximum Life becomes 1 / Immune to Chaos Damage and Bleeding\". The chaos immunity comes from the ChaosInoculation flag that the same keystone's \"Maximum Life is 1\" line sets (ci_maximum_life_is_1; EHP treats chaos as immune). This line adds the bleed immunity."
     },
     {
       "id": "immune_to_poison",
@@ -1537,9 +1585,8 @@
       "source_note": "pobr 准源 mod_parser.rs:490-506；vendor 无数值形同 key（仅 lucky 系 :3730-3732）"
     },
     {
-      "id": "ailment_threshold_from_es_8",
-      "pattern": "gain additional ailment threshold equal to 8% of maximum energy shield",
-      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
+      "id": "ailment_threshold_from_es_percent",
+      "pattern": "gain additional ailment threshold equal to (\\d+(?:\\.\\d+)?)% of maximum energy shield",
       "mods": [
         {
           "name": "AilmentThreshold",
@@ -1549,102 +1596,15 @@
             {
               "type": "PercentStat",
               "stat": "EnergyShield",
-              "percent": 8
+              "percent": "$1"
             }
           ]
         }
       ],
-      "verified": false,
-      "batch": "a2-real-gaps",
-      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
-    },
-    {
-      "id": "ailment_threshold_from_es_12",
-      "pattern": "gain additional ailment threshold equal to 12% of maximum energy shield",
-      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
-      "mods": [
-        {
-          "name": "AilmentThreshold",
-          "type": "BASE",
-          "value": 1,
-          "tags": [
-            {
-              "type": "PercentStat",
-              "stat": "EnergyShield",
-              "percent": 12
-            }
-          ]
-        }
-      ],
-      "verified": false,
-      "batch": "a2-real-gaps",
-      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
-    },
-    {
-      "id": "ailment_threshold_from_es_15",
-      "pattern": "gain additional ailment threshold equal to 15% of maximum energy shield",
-      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
-      "mods": [
-        {
-          "name": "AilmentThreshold",
-          "type": "BASE",
-          "value": 1,
-          "tags": [
-            {
-              "type": "PercentStat",
-              "stat": "EnergyShield",
-              "percent": 15
-            }
-          ]
-        }
-      ],
-      "verified": false,
-      "batch": "a2-real-gaps",
-      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
-    },
-    {
-      "id": "ailment_threshold_from_es_20",
-      "pattern": "gain additional ailment threshold equal to 20% of maximum energy shield",
-      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
-      "mods": [
-        {
-          "name": "AilmentThreshold",
-          "type": "BASE",
-          "value": 1,
-          "tags": [
-            {
-              "type": "PercentStat",
-              "stat": "EnergyShield",
-              "percent": 20
-            }
-          ]
-        }
-      ],
-      "verified": false,
-      "batch": "a2-real-gaps",
-      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
-    },
-    {
-      "id": "ailment_threshold_from_es_30",
-      "pattern": "gain additional ailment threshold equal to 30% of maximum energy shield",
-      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
-      "mods": [
-        {
-          "name": "AilmentThreshold",
-          "type": "BASE",
-          "value": 1,
-          "tags": [
-            {
-              "type": "PercentStat",
-              "stat": "EnergyShield",
-              "percent": 30
-            }
-          ]
-        }
-      ],
-      "verified": false,
-      "batch": "a2-real-gaps",
-      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
+      "verified": true,
+      "batch": "affix-coverage",
+      "game_source": "ailment_threshold_+_from_%_maximum_energy_shield: Gain additional Ailment Threshold equal to #% of maximum Energy Shield",
+      "source_note": "The game jewel stat rolls 5–15%; preserve arbitrary rolls as a percentage of final maximum Energy Shield."
     },
     {
       "id": "mana_regen_from_life_6",
@@ -3267,6 +3227,17 @@
       "source_note": "Game text of the stat experience_gain_+%, which an item, a rune and a quest reward carry. How fast a character gains experience is part of nothing a calculation reports, so the line is recognised and adds no modifier: it is not an input the calculation dropped."
     },
     {
+      "id": "gold_quantity_from_slain_enemies",
+      "pattern": "(?:\\d+(?:\\.\\d+)?)% (?:increased|reduced) quantity of gold dropped by slain enemies",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "examples": [
+        "15% increased Quantity of Gold Dropped by Slain Enemies"
+      ],
+      "source_note": "Game text of the stat gold_+%_from_enemies, which essence rolls, corruption modifiers and the Perandus Seal (Gold Ring) carry. How much gold enemies drop changes loot, not a stat a calculation reports, so the line is recognised and adds no modifier: it is not an input the calculation dropped."
+    },
+    {
       "id": "item_can_roll_modifiers",
       "pattern": "can (?:also )?roll [a-z ]+ modifiers",
       "mods": [],
@@ -4050,6 +4021,48 @@
       "source_note": "Game stat additive_spell_damage_modifiers_apply_to_attack_damage (Crown of Eyes): increases and reductions, not more/less or added damage."
     },
     {
+      "id": "blood_price_enemy_life_reservation",
+      "pattern": "enemies in your presence have at least (\\d+)% of life reserved",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LifeReservationPercent",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "EnemyInPresence"
+            }
+          ]
+        }
+      ],
+      "verified": true,
+      "batch": "sidebar-3",
+      "source_note": "Game stat unique_blood_price_enemies_in_presence_have_at_least_%_life_reserved: Enemies in your Presence have at least {0}% of Life Reserved."
+    },
+    {
+      "id": "double_presence_radius",
+      "pattern": "presence radius is doubled",
+      "mods": [
+        {
+          "name": "PresenceRadius",
+          "type": "MORE",
+          "value": 100
+        }
+      ],
+      "verified": true,
+      "batch": "sidebar-3",
+      "source_note": "Game stat unique_double_presence_radius: Presence Radius is doubled."
+    },
+    {
       "id": "body_armour_grants_spirit_increased",
       "pattern": "body armour grants (\\d+)% increased spirit",
       "mods": [
@@ -4436,6 +4449,1187 @@
       "source_note": "Game stat life_recovery_from_regeneration_is_not_applied. Output regressions: skills::unique_lines_3.",
       "examples": [
         "Life Recovery from Regeneration is not applied"
+      ]
+    },
+    {
+      "id": "spell_mana_cost_efficiency",
+      "exporter": "absent",
+      "game_source": "base_spell_mana_cost_efficiency_+%",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased mana cost efficiency of spells",
+      "mods": [
+        {
+          "name": "ManaCostEfficiency",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "SkillType:Spell"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat base_spell_mana_cost_efficiency_+%: increases Mana Cost Efficiency only for Spell skills. Calculation regression: sources::env_finalize_flasks::spell_mana_efficiency_only_reduces_spell_mana_cost.",
+      "examples": [
+        "39% increased Mana Cost Efficiency of Spells"
+      ]
+    },
+    {
+      "id": "grants_onslaught_during_effect",
+      "pattern": "grants onslaught(?: during (?:flask )?effect)?",
+      "mods": [
+        {
+          "name": "Condition:Onslaught",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingFlask"
+            }
+          ]
+        },
+        {
+          "name": "Condition:Onslaught",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stats charm_gain_onslaught_during_effect and gain_onslaught_during_flask_effect: Onslaught is granted while this utility item is active. The suffix-free spelling is used by flask/charm ingest; its payload only merges for an active item. Calculation regression: sources::env_finalize_flasks::onslaught_only_applies_during_the_source_items_effect.",
+      "examples": [
+        "Grants Onslaught during effect",
+        "Grants Onslaught during flask effect"
+      ],
+      "exporter": "absent",
+      "game_source": "charm_gain_onslaught_during_effect; gain_onslaught_during_flask_effect; https://poe2db.tw/us/Onslaught"
+    },
+    {
+      "id": "energy_shield_recovery_on_kill_maximum",
+      "pattern": "recover (\\d+(?:\\.\\d+)?)% of maximum energy shield on kill",
+      "mods": [
+        {
+          "name": "EnergyShieldOnKill",
+          "type": "BASE",
+          "value": 1,
+          "tags": [
+            {
+              "type": "PercentStat",
+              "stat": "EnergyShield",
+              "percent": "$1"
+            }
+          ]
+        }
+      ],
+      "verified": true,
+      "batch": "affix-coverage",
+      "game_source": "recover_energy_shield_%_on_kill: Recover #% of maximum Energy Shield on Kill",
+      "source_note": "Recovery per kill is a percentage of maximum Energy Shield; no kill rate is assumed."
+    },
+    {
+      "id": "archon_grants_movement_speed",
+      "pattern": "archon buffs also grant (\\d+(?:\\.\\d+)?)% increased movement speed",
+      "mods": [
+        {
+          "name": "ArchonMovementSpeed",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "archon_grants_movement_speed_+%",
+      "source_note": "Game stat archon_grants_movement_speed_+%. Archon regression: engine::archon."
+    },
+    {
+      "id": "archon_grants_elemental_resistance",
+      "pattern": "archon buffs also grant \\+?(\\d+(?:\\.\\d+)?)% to all elemental resistances",
+      "mods": [
+        {
+          "name": "ArchonElementalResistance",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "archon_grants_all_elemental_resistance_+%",
+      "source_note": "Game stat archon_grants_all_elemental_resistance_+%. Archon regression: engine::archon."
+    },
+    {
+      "id": "archon_effect_increased",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased effect of archon buffs on you",
+      "mods": [
+        {
+          "name": "ArchonEffect",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "archon_effect_on_you_+%",
+      "source_note": "Game stat archon_effect_on_you_+%. Archon regression: engine::archon."
+    },
+    {
+      "id": "archon_duration_increased",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased archon buff duration",
+      "mods": [
+        {
+          "name": "ArchonDuration",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "archon_duration_+%",
+      "source_note": "Game stat archon_duration_+%. Archon regression: engine::archon."
+    },
+    {
+      "id": "archon_effect_reduced",
+      "pattern": "(\\d+(?:\\.\\d+)?)% reduced effect of archon buffs on you",
+      "mods": [
+        {
+          "name": "ArchonEffect",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "archon_effect_on_you_+%",
+      "source_note": "Game stat archon_effect_on_you_+%. Archon regression: engine::archon."
+    },
+    {
+      "id": "archon_duration_reduced",
+      "pattern": "(\\d+(?:\\.\\d+)?)% reduced archon buff duration",
+      "mods": [
+        {
+          "name": "ArchonDuration",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "archon_duration_+%",
+      "source_note": "Game stat archon_duration_+%. Archon regression: engine::archon."
+    },
+    {
+      "id": "archon_recovery_faster",
+      "pattern": "archon recovery period expires (\\d+(?:\\.\\d+)?)% faster",
+      "mods": [
+        {
+          "name": "ArchonRecoveryRate",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "archon_delay_expires_x%_faster",
+      "source_note": "Game stat archon_delay_expires_x%_faster. Archon regression: engine::archon."
+    },
+    {
+      "id": "archon_recovery_slower",
+      "pattern": "archon recovery period expires (\\d+(?:\\.\\d+)?)% slower",
+      "mods": [
+        {
+          "name": "ArchonRecoveryRate",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "archon_delay_expires_x%_faster",
+      "source_note": "Game stat archon_delay_expires_x%_faster. Archon regression: engine::archon."
+    },
+    {
+      "id": "archon_no_recovery",
+      "pattern": "archon buffs have no recovery period after you lose one",
+      "mods": [
+        {
+          "name": "ArchonNoRecovery",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "archon_no_recovery_period",
+      "source_note": "Game stat archon_no_recovery_period. Archon regression: engine::archon."
+    },
+    {
+      "id": "archon_energy_shield_recharge_start",
+      "pattern": "(\\d+(?:\\.\\d+)?)% faster start of energy shield recharge while affected by an archon buff",
+      "mods": [
+        {
+          "name": "EnergyShieldRechargeFaster",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "AffectedByArchon"
+            }
+          ]
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "energy_shield_delay_-%_while_affected_by_archon",
+      "source_note": "Game stat energy_shield_delay_-%_while_affected_by_archon. Archon regression: engine::archon."
+    },
+    {
+      "id": "archon_undeath_on_command",
+      "pattern": "(\\d+(?:\\.\\d+)?)% chance to gain archon of undeath when you use a command skill",
+      "mods": [
+        {
+          "name": "ArchonOfUndeathOnCommandChance",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "chance_%_to_gain_archon_of_undeath_on_using_command_skill",
+      "source_note": "Game stat chance_%_to_gain_archon_of_undeath_on_using_command_skill. Archon regression: engine::archon."
+    },
+    {
+      "id": "utility_use_triggers",
+      "pattern": "used when (?:charges reach full|an adjacent flask is used|you block|you hit a rare or unique enemy, if not already in effect|you use a guard skill|you use a travel skill|you are affected by a slow|you become chilled|you become cursed|you become frozen|you become ignited|you become poisoned|you become shocked|you become stunned|you kill a rare or unique enemy|you lose a guard skill buff|you release a skill with perfect timing|you start bleeding|you take chaos damage from a hit|you take cold damage from a hit|you take fire damage from a hit|you take lightning damage from a hit|you take a savage hit|you use a life flask)",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "exporter": "absent",
+      "game_source": "base/stats.json: local_flask_use_on_*; local_charm_trigger_when_cursed",
+      "source_note": "The enabled-charm/flask convention already counts the item as in effect. Trigger conditions do not change a per-use amount or model uptime.",
+      "examples": [
+        "Used when Charges reach full",
+        "Used when an adjacent Flask is used",
+        "Used when you Block",
+        "Used when you Hit a Rare or Unique Enemy, if not already in effect",
+        "Used when you Use a Guard Skill",
+        "Used when you Use a Travel Skill",
+        "Used when you are affected by a Slow",
+        "Used when you become Chilled",
+        "Used when you become Cursed",
+        "Used when you become Frozen",
+        "Used when you become Ignited",
+        "Used when you become Poisoned",
+        "Used when you become Shocked",
+        "Used when you become Stunned",
+        "Used when you kill a Rare or Unique enemy",
+        "Used when you lose a Guard Skill Buff",
+        "Used when you release a skill with Perfect Timing",
+        "Used when you start Bleeding",
+        "Used when you take Chaos damage from a Hit",
+        "Used when you take Cold damage from a Hit",
+        "Used when you take Fire damage from a Hit",
+        "Used when you take Lightning damage from a Hit",
+        "Used when you take a Savage Hit",
+        "Used when you use a Life Flask"
+      ]
+    },
+    {
+      "id": "charm_mana_on_use",
+      "pattern": "recover (\\d+) mana when used",
+      "mods": [
+        {
+          "name": "UtilityManaOnUse",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_recover_X_mana_when_used; base/mods.json: CharmGainManaOnUse1..8",
+      "source_note": "Game local on-use recovery amount; reported per charm, never as mana regeneration.",
+      "examples": [
+        "Recover 300 Mana when Used"
+      ]
+    },
+    {
+      "id": "flask_mana_overflow",
+      "pattern": "mana recovery from flasks can overflow maximum mana(?: during (?:flask )?effect)?",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "exporter": "absent",
+      "game_source": "local_unique_flask_mana_flask_recovery_can_overcap_mana_during_flask_effect",
+      "source_note": "Recovery outputs are uncapped per-use amounts; the current-mana pool and overflow duration are not modelled.",
+      "examples": [
+        "Mana Recovery from Flasks can Overflow maximum Mana during Effect"
+      ]
+    },
+    {
+      "id": "flask_constant_effect",
+      "pattern": "this flask cannot be used but applies its effect constantly",
+      "mods": [
+        {
+          "name": "UtilityCannotBeUsed",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "local_flask_always_drinking; base/mods.json: UniqueAlwaysDrinkingFlask1",
+      "source_note": "The enabled-flask convention already applies its effect; this local flag reports zero available uses because the flask cannot be used.",
+      "examples": [
+        "This Flask cannot be Used but applies its Effect constantly"
+      ]
+    },
+    {
+      "id": "utility_charge_on_kill",
+      "pattern": "(?:\\d+(?:\\.\\d+)?)% chance to gain a charge when you kill an enemy",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "exporter": "absent",
+      "game_source": "local_%_chance_to_gain_flask_charge_on_kill; base/mods.json: FlaskChanceRechargeOnKill1..3",
+      "source_note": "kill rate not modelled; passive charge generation per second is unchanged.",
+      "examples": [
+        "35% Chance to gain a Charge when you kill an enemy"
+      ]
+    },
+    {
+      "id": "charm_spirit_bear",
+      "pattern": "possessed by spirit of the bear for (\\d+) seconds on use",
+      "mods": [
+        {
+          "name": "SpiritPossession:Bear",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_possesed_by_bear_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheBearPossessedPlayer, SpiritPossessedStrPlayer; https://poe2db.tw/us/Spirit_Of_The_Bear",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold feeds the player threshold output; slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "examples": [
+        "Possessed by Spirit Of The Bear for 20 seconds on use"
+      ]
+    },
+    {
+      "id": "charm_spirit_boar",
+      "pattern": "possessed by spirit of the boar for (\\d+) seconds on use",
+      "mods": [
+        {
+          "name": "SpiritPossession:Boar",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_possesed_by_boar_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheBoarPossessedPlayer, SpiritPossessedStrPlayer; https://poe2db.tw/us/Spirit_Of_The_Boar",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold feeds the player threshold output; slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "examples": [
+        "Possessed by Spirit Of The Boar for 20 seconds on use"
+      ]
+    },
+    {
+      "id": "charm_spirit_cat",
+      "pattern": "possessed by spirit of the cat for (\\d+) seconds on use",
+      "mods": [
+        {
+          "name": "SpiritPossession:Cat",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_possesed_by_cat_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheCatPossessedPlayer, SpiritPossessedDexPlayer; https://poe2db.tw/us/Spirit_Of_The_Cat",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold feeds the player threshold output; slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "examples": [
+        "Possessed by Spirit Of The Cat for 20 seconds on use"
+      ]
+    },
+    {
+      "id": "charm_spirit_owl",
+      "pattern": "possessed by spirit of the owl for (\\d+) seconds on use",
+      "mods": [
+        {
+          "name": "SpiritPossession:Owl",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_possesed_by_owl_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheOwlPossessedPlayer, SpiritPossessedIntPlayer; https://poe2db.tw/us/Spirit_Of_The_Owl",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold feeds the player threshold output; slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "examples": [
+        "Possessed by Spirit Of The Owl for 20 seconds on use"
+      ]
+    },
+    {
+      "id": "charm_spirit_ox",
+      "pattern": "possessed by spirit of the ox for (\\d+) seconds on use",
+      "mods": [
+        {
+          "name": "SpiritPossession:Ox",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_possesed_by_ox_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheOxPossessedPlayer, SpiritPossessedStrPlayer; https://poe2db.tw/us/Spirit_Of_The_Ox",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold feeds the player threshold output; slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "examples": [
+        "Possessed by Spirit Of The Ox for 20 seconds on use"
+      ]
+    },
+    {
+      "id": "charm_spirit_primate",
+      "pattern": "possessed by spirit of the primate for (\\d+) seconds on use",
+      "mods": [
+        {
+          "name": "SpiritPossession:Primate",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_possesed_by_primate_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheMonkeyPossessedPlayer, SpiritPossessedIntPlayer; https://poe2db.tw/us/Spirit_Of_The_Primate",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold feeds the player threshold output; slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "examples": [
+        "Possessed by Spirit Of The Primate for 20 seconds on use"
+      ]
+    },
+    {
+      "id": "charm_spirit_serpent",
+      "pattern": "possessed by spirit of the serpent for (\\d+) seconds on use",
+      "mods": [
+        {
+          "name": "SpiritPossession:Serpent",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_possesed_by_serpent_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheSnakePossessedPlayer, SpiritPossessedIntPlayer; https://poe2db.tw/us/Spirit_Of_The_Serpent",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold feeds the player threshold output; slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "examples": [
+        "Possessed by Spirit Of The Serpent for 20 seconds on use"
+      ]
+    },
+    {
+      "id": "charm_spirit_stag",
+      "pattern": "possessed by spirit of the stag for (\\d+) seconds on use",
+      "mods": [
+        {
+          "name": "SpiritPossession:Stag",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_possesed_by_stag_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheStagPossessedPlayer, SpiritPossessedDexPlayer; https://poe2db.tw/us/Spirit_Of_The_Stag",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold feeds the player threshold output; slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "examples": [
+        "Possessed by Spirit Of The Stag for 20 seconds on use"
+      ]
+    },
+    {
+      "id": "charm_spirit_wolf",
+      "pattern": "possessed by spirit of the wolf for (\\d+) seconds on use",
+      "mods": [
+        {
+          "name": "SpiritPossession:Wolf",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_possesed_by_wolf_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheWolfPossessedPlayer, SpiritPossessedDexPlayer; https://poe2db.tw/us/Spirit_Of_The_Wolf",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold feeds the player threshold output; slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "examples": [
+        "Possessed by Spirit Of The Wolf for 20 seconds on use"
+      ]
+    },
+    {
+      "id": "thaumaturgical_dynamism",
+      "pattern": "grants thaumaturgical dynamism",
+      "mods": [
+        {
+          "name": "ThaumaturgicalDynamismChargeInterval",
+          "type": "BASE",
+          "value": 5
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "ascendancy_gemling_charge_generator_buff_display; BuffTemplates.AscendancyGemlingChargeGenerator: gain_random_charge_every_X_ms_from_total_socketed_gem_attribute_requirements = 5000; https://poe2db.tw/us/Thaumaturgical_Dynamism",
+      "source_note": "Game text and stats; regression: engine::keystones. See maintainer guide for snapshot and event-model limits."
+    },
+    {
+      "id": "resonance_power_instead_of_frenzy",
+      "pattern": "gain power charges instead of frenzy charges",
+      "mods": [
+        {
+          "name": "GainPowerChargesInsteadOfFrenzy",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "gain_power_charges_instead_of_frenzy",
+      "source_note": "Game text and stats; regression: engine::keystones. See maintainer guide for snapshot and event-model limits."
+    },
+    {
+      "id": "resonance_endurance_instead_of_power",
+      "pattern": "gain endurance charges instead of power charges",
+      "mods": [
+        {
+          "name": "GainEnduranceChargesInsteadOfPower",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "gain_endurance_charges_instead_of_power",
+      "source_note": "Game text and stats; regression: engine::keystones. See maintainer guide for snapshot and event-model limits."
+    },
+    {
+      "id": "resonance_frenzy_instead_of_endurance",
+      "pattern": "gain frenzy charges instead of endurance charges",
+      "mods": [
+        {
+          "name": "GainFrenzyChargesInsteadOfEndurance",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "gain_frenzy_charges_instead_of_endurance",
+      "source_note": "Game text and stats; regression: engine::keystones. See maintainer guide for snapshot and event-model limits."
+    },
+    {
+      "id": "event_horizon_resource_loss",
+      "pattern": "lose (\\d+(?:\\.\\d+)?)% of maximum life and energy shield when you use a chaos skill",
+      "mods": [
+        {
+          "name": "ChaosSkillLifeAndEnergyShieldLossPercent",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "lose_%_of_life_and_energy_shield_when_you_use_a_chaos_skill; passive chaos33_ (Event Horizon): 3%",
+      "source_note": "Game text and stats; regression: engine::keystones. See maintainer guide for snapshot and event-model limits."
+    },
+    {
+      "id": "scarred_faith_no_es_regeneration",
+      "pattern": "you cannot recover energy shield from regeneration",
+      "mods": [
+        {
+          "name": "NoEnergyShieldRegen",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "keystone_alternate_es_recovery; passive_keystone_alternate_es_recovery (Scarred Faith)",
+      "source_note": "Game text separately prohibits ES regeneration. Regression: engine::keystones."
+    },
+    {
+      "id": "immune_to_chill_if_majority_blue_supports_socketed",
+      "pattern": "immune to chill if a majority of your socketed support gems are blue",
+      "mods": [
+        {
+          "name": "ChillImmune",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "MajorityBlueSocketedSupports"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "socketed-support-majority",
+      "exporter": "differs",
+      "game_source": "base/stats.json: immune_to_chill_if_majority_blue_supports_socketed; base/passive_tree.json: Crystallised Immunities (5332)",
+      "source_note": "Game text requires a majority of socketed support gems. Count every support in enabled groups using SkillGems.GemColour and require strictly more than half. The exporter instead accepts a strict plurality.",
+      "examples": [
+        "Immune to Chill if a majority of your Socketed Support Gems are Blue"
+      ]
+    },
+    {
+      "id": "immune_to_ignite_if_majority_red_supports_socketed",
+      "pattern": "immune to ignite if a majority of your socketed support gems are red",
+      "mods": [
+        {
+          "name": "IgniteImmune",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "MajorityRedSocketedSupports"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "socketed-support-majority",
+      "exporter": "differs",
+      "game_source": "base/stats.json: immune_to_ignite_if_majority_red_supports_socketed; base/passive_tree.json: Crystallised Immunities (5332)",
+      "source_note": "Game text requires a majority of socketed support gems. Count every support in enabled groups using SkillGems.GemColour and require strictly more than half. The exporter instead accepts a strict plurality.",
+      "examples": [
+        "Immune to Ignite if a majority of your Socketed Support Gems are Red"
+      ]
+    },
+    {
+      "id": "immune_to_shock_if_majority_green_supports_socketed",
+      "pattern": "immune to shock if a majority of your socketed support gems are green",
+      "mods": [
+        {
+          "name": "ShockImmune",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "MajorityGreenSocketedSupports"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "socketed-support-majority",
+      "exporter": "differs",
+      "game_source": "base/stats.json: immune_to_shock_if_majority_green_supports_socketed; base/passive_tree.json: Crystallised Immunities (5332)",
+      "source_note": "Game text requires a majority of socketed support gems. Count every support in enabled groups using SkillGems.GemColour and require strictly more than half. The exporter instead accepts a strict plurality.",
+      "examples": [
+        "Immune to Shock if a majority of your Socketed Support Gems are Green"
+      ]
+    },
+    {
+      "id": "hits_break_increased_armour_on_ailmented_targets",
+      "pattern": "hits break (\\d+)% increased armour on targets with ailments",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: armour_break_amount_+%_vs_enemies_affected_by_ailments; base/passive_tree.json: Exposed Wounds (43383)",
+      "source_note": "Armour broken per hit is not modelled. This scales per-hit break only against targets with an ailment; it must not scale the configured total ArmourBreakAmount. See break_increased_armour.",
+      "examples": [
+        "Hits Break 30% increased Armour on targets with Ailments"
+      ]
+    },
+    {
+      "id": "additional_remnant_chance",
+      "pattern": "\\+?(\\d+)% chance to create an additional remnant",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "exporter": "absent",
+      "game_source": "base/stats.json: chance_%_to_create_additional_remnant; base/passive_tree.json: Remnant Attraction (1506)",
+      "source_note": "remnant count not modelled. Into the Breach uses configured collected Purple Flame stacks, not a generated-remnant or collection rate. Extra creation chance cannot scale that supplied count. Arcane Remnants, Empowering Remnants, Elemental Equilibrium and Storm's Recollection need a remnant model.",
+      "examples": [
+        "10% chance to create an additional Remnant",
+        "+17% chance to create an additional Remnant"
+      ]
+    },
+    {
+      "id": "physical_spell_critical_pin_unmodelled",
+      "pattern": "^physical spell critical hits build pin$",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: physical_spell_damage_can_pin_on_critical_hit; base/passive_tree.json: Bone Chains (26563)",
+      "source_note": "Pin buildup and application timing are not modelled. Capability to build Pin does not establish an already Pinned enemy; conditionEnemyPinned remains an explicit target-state input.",
+      "examples": [
+        "Physical Spell Critical Hits build Pin"
+      ]
+    },
+    {
+      "id": "stun_buildup_unmodelled",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased stun buildup",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: hit_damage_stun_multiplier_+%; base/passive_tree.json: Stun Buildup (10047)",
+      "source_note": "Enemy heavy-stun buildup is not modelled. Existing StunThreshold, StunDuration and SelfStunChance outputs describe stuns received by the player, not buildup inflicted on an enemy.",
+      "examples": [
+        "15% increased Stun Buildup"
+      ]
+    },
+    {
+      "id": "daze_duration_unmodelled",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased daze duration",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: daze_duration_+%; base/passive_tree.json: Seeing Stars (5009)",
+      "source_note": "Daze duration and uptime are not modelled. DazeChance reports application chance per hit, which duration does not change.",
+      "examples": [
+        "25% increased Daze Duration"
+      ],
+      "exporter": "absent"
+    },
+    {
+      "id": "attack_maim_chance_unmodelled",
+      "pattern": "attacks have (\\d+(?:\\.\\d+)?)% chance to maim on hit",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: maim_on_hit_%; base/passive_tree.json: Maiming Strike (41580), Impair (46696)",
+      "source_note": "Maim application and enemy movement are not modelled. A chance to Maim cannot establish an unconditional Maimed target or change player movement speed.",
+      "examples": [
+        "Attacks have 25% chance to Maim on Hit"
+      ],
+      "exporter": "absent"
+    },
+    {
+      "id": "curse_effect_on_you_unmodelled",
+      "pattern": "\\d+% (?:increased|reduced) effect of curses on you",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: curse_effect_on_self_+%",
+      "source_note": "Incoming curses on the player are not modelled. CurseEffectOnSelf currently scales only curses on the enemy; it must not scale outgoing curses.",
+      "examples": [
+        "30% reduced effect of Curses on you"
+      ]
+    },
+    {
+      "id": "bleeding_duration_on_you_unmodelled",
+      "pattern": "\\d+% (?:increased|reduced) duration of bleeding on you",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: self_bleed_duration_+%",
+      "source_note": "Incoming Bleeding duration and total damage are not modelled. Generic PhysicalDegen is a rate without a Bleeding identity or duration; duration reduction must not lower its DPS.",
+      "examples": [
+        "40% reduced Duration of Bleeding on You"
+      ]
+    },
+    {
+      "id": "ailment_duration_on_you_unmodelled",
+      "pattern": "\\d+% (?:increased|reduced) duration of ailments on you",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: base_all_ailment_duration_on_self_+%",
+      "source_note": "Incoming ailment durations and uptime are not modelled. Duration must not scale configured Shock or Chill magnitude or generic degeneration rates.",
+      "examples": [
+        "15% reduced Duration of Ailments on You"
+      ]
+    },
+    {
+      "id": "corrupted_blood_immunity_unmodelled",
+      "pattern": "immune to corrupted blood",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: immune_to_corrupted_blood",
+      "source_note": "Incoming Corrupted Blood stacks and degeneration are not modelled. Generic PhysicalDegen does not identify Corrupted Blood, and must not be removed by this immunity.",
+      "examples": [
+        "Immune to Corrupted Blood"
+      ]
+    },
+    {
+      "id": "maim_immunity_unmodelled",
+      "pattern": "immune to maim",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: immune_to_maim",
+      "source_note": "Maim on the player is not modelled: no player Maim state supplies movement or evasion penalties. Enemy Maim is a separate state.",
+      "examples": [
+        "Immune to Maim"
+      ]
+    },
+    {
+      "id": "hinder_immunity_unmodelled",
+      "pattern": "immune to hinder",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: immune_to_hinder",
+      "source_note": "Hinder on the player is not modelled: no player Hinder state supplies a movement penalty. Enemy Hinder is a separate state.",
+      "examples": [
+        "Immune to Hinder"
+      ]
+    },
+    {
+      "id": "reduced_shock_effect_on_you",
+      "pattern": "(\\d+)% reduced effect of shock on you",
+      "mods": [
+        {
+          "name": "SelfShockEffect",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "player-debuffs",
+      "game_source": "base/stats.json: shocked_effect_on_self_+%",
+      "source_note": "Scales the configured incoming Shock magnitude; does not change duration or outgoing ailments. Regression: engine::player_debuffs and skills::player_debuffs. The exporter injects fixed configured Shock damage taken without reading SelfShockEffect.",
+      "examples": [
+        "40% reduced Effect of Shock on you"
+      ],
+      "exporter": "absent"
+    },
+    {
+      "id": "reduced_chill_effect_on_you",
+      "pattern": "(\\d+)% reduced effect of chill on you",
+      "mods": [
+        {
+          "name": "SelfChillEffect",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "player-debuffs",
+      "game_source": "base/stats.json: chill_effectiveness_on_self_+%",
+      "source_note": "Scales the configured incoming Chill magnitude; does not change duration or outgoing ailments. Regression: engine::player_debuffs and skills::player_debuffs.",
+      "examples": [
+        "40% reduced Effect of Chill on you"
+      ]
+    },
+    {
+      "id": "charm_energy_shield_recharge_starts_when_used",
+      "pattern": "energy shield recharge starts on use",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "charm_energy_shield_recharge_starts_when_used",
+      "source_note": "Game stat charm_energy_shield_recharge_starts_when_used: Energy Shield Recharge starts on use (Thawing Charm). The one-off charm-use recharge event and its uptime are not modelled; it cannot change a steady-state recharge rate or delay."
+    },
+    {
+      "id": "energy_shield_from_equipped_focus",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased energy shield from equipped focus",
+      "mods": [
+        {
+          "name": "EnergyShield",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SlotName",
+              "slotName": "Weapon 2"
+            },
+            {
+              "type": "Condition",
+              "var": "UsingFocus"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "es-defence",
+      "exporter": "differs",
+      "game_source": "energy_shield_from_focus_+%",
+      "source_note": "Game stat energy_shield_from_focus_+% increases Energy Shield from the equipped Focus only, additively with global increases after local item defences. The exporter restricts the bonus to the off-hand slot without requiring a Focus, so it can also scale another off-hand item's Energy Shield. This special rule precedes the generic extracted phrase rule; UsingFocus is set from the equipped item's game class.",
+      "examples": [
+        "75% increased Energy Shield from Equipped Focus"
+      ]
+    },
+    {
+      "id": "light_radius_area_transfer",
+      "pattern": "increases and reductions to light radius also apply to area of effect at (2[5-9]|[34][0-9])% of their value",
+      "mods": [
+        {
+          "name": "LightRadiusAppliesToAreaPercent",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "source_note": "Game Mods UniqueMutatedVaalLightRadiusModifiersApplyToAreaOfEffect rolls 25-50%. The existing exporter rule covers 50%; the other game rolls are exporter-absent. Copy only INC modifiers, including reductions. Regression: engine::sidebar_outputs.",
+      "game_source": "light_radius_additive_modifiers_apply_to_area_%_value",
+      "exporter": "absent"
+    },
+    {
+      "id": "additional_skill_slots_no_output",
+      "pattern": "grants \\d+ additional skill slots?",
+      "mods": [],
+      "verified": true,
+      "batch": "S0",
+      "source_note": "Skill socket capacity is not a calculated output; enabled socket groups are supplied by the build.",
+      "game_source": "local_item_additional_skill_slots; num_additional_skill_slots",
+      "examples": [
+        "Grants 3 additional Skill Slots"
+      ]
+    },
+    {
+      "id": "knockback_distance_no_output",
+      "pattern": "\\d+(?:\\.\\d+)?% (?:increased|reduced) knockback distance",
+      "mods": [],
+      "verified": true,
+      "batch": "S0",
+      "source_note": "Knockback displacement is not a reported output and no damage or timing calculation reads enemy displacement.",
+      "game_source": "knockback_distance_+%",
+      "examples": [
+        "25% increased Knockback Distance"
+      ]
+    },
+    {
+      "id": "charge_duration_unmodelled",
+      "pattern": "\\d+(?:\\.\\d+)?% (?:increased|reduced) endurance, frenzy and power charge duration",
+      "mods": [],
+      "verified": true,
+      "batch": "unmodelled",
+      "source_note": "Charge duration and charge uptime are not modelled; configured charge counts are snapshots.",
+      "game_source": "charge_duration_+%",
+      "examples": [
+        "20% increased Endurance, Frenzy and Power Charge Duration"
+      ]
+    },
+    {
+      "id": "totem_life_unmodelled",
+      "pattern": "\\d+(?:\\.\\d+)?% (?:increased|reduced) totem life",
+      "mods": [],
+      "verified": true,
+      "batch": "unmodelled",
+      "source_note": "Totem Life is not modelled; there is no totem life output or base-life model.",
+      "game_source": "totem_life_+%",
+      "examples": [
+        "25% increased Totem Life"
+      ]
+    },
+    {
+      "id": "remembrancing_jewel_data",
+      "pattern": "remembrancing \\d+ songworthy deeds by the line of (?:vorana|medved|olroth)",
+      "mods": [
+        {
+          "name": "JewelData",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "source_note": "The seed/conqueror line is consumed by pobr-build jewel_tree::passive_jewel_state. Unresolved seeded nodes remain unsupported. Regression: skills::passive_jewels.",
+      "game_source": "local_unique_jewel_alternate_tree_seed; local_unique_jewel_alternate_tree_version"
+    },
+    {
+      "id": "charm_life_on_use",
+      "pattern": "recover (\\d+) life when used",
+      "mods": [
+        {
+          "name": "UtilityLifeOnUse",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_recover_X_life_when_used; base/mods.json: CharmGainLifeOnUse1..8",
+      "source_note": "Local per-use Life recovery; reported per charm, independent of regeneration and quality.",
+      "examples": [
+        "Recover 350 Life when Used"
+      ]
+    },
+    {
+      "id": "charm_guard",
+      "pattern": "also grants (\\d+) guard",
+      "mods": [
+        {
+          "name": "CharmGuard",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_gain_X_guard_for_duration; base/mods.json: CharmGuardWhileActive1..6; https://poe2db.tw/us/Guard",
+      "source_note": "Enabled charm grants Guard: strongest active grant absorbs hits before Life/ES, capped at 200% maximum Life. No trigger frequency is inferred.",
+      "examples": [
+        "Also grants 500 Guard"
+      ]
+    },
+    {
+      "id": "attack_blind_chance_unmodelled",
+      "pattern": "(\\d+)% chance to blind enemies on hit with attacks",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "attacks_chance_to_blind_on_hit_%; base/stats.json",
+      "source_note": "Chance-to-uptime model not implemented; Blind uses the configured enemy state, not on-hit chance (including 100%).",
+      "examples": [
+        "10% chance to Blind Enemies on Hit with Attacks"
+      ]
+    },
+    {
+      "id": "doubled_totem_limit_unmodelled",
+      "pattern": "your totem limit is doubled",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "exporter": "absent",
+      "game_source": "keystone_ancestral_bond; base/stats.json; Ancestral Bond game text",
+      "source_note": "Totem limit not modelled; the selected totem still reports one totem's damage.",
+      "examples": [
+        "Your Totem Limit is doubled"
+      ]
+    },
+    {
+      "id": "corruption_always_changes",
+      "pattern": "corrupting will always result in change",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "exporter": "absent",
+      "game_source": "soul_core_cannot_roll_no_outcome_with_corruption; base/stats.json",
+      "source_note": "Item crafting outcome text changes no calculation output.",
+      "examples": [
+        "Corrupting will always result in change"
       ]
     }
   ]

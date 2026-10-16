@@ -6,14 +6,17 @@
 //! [`CalculationSession`] through [`stat_breakdown`] and
 //! [`main_skill_breakdown`]; the field names and order are that contract.
 
+pub mod detail;
+
 use pobr_core::ModEvaluation;
 use pobr_core::calc::{CalculationSession, OutputTable, StatFormula};
 use serde::Serialize;
 
 use crate::{Build, BuildData};
 
-/// The displayed stats the breakdown covers (PoB2's always-present sidebar
-/// stats). Each stat is evaluated over the modifier names its calculation
+/// The legacy default selection when callers omit the requested detail ids.
+/// Available kinds and ids are declared by [`detail::detail_descriptors`].
+/// Each default stat is evaluated over the modifier names its calculation
 /// stage aggregates (`CalculationSession::stat_mod_names`). `TotalDPS` and
 /// `TotalHitAvg` have no single aggregation: they carry steps only, and the
 /// average hit a per-damage-type table (`damage`). `CombinedDPS` and
@@ -68,8 +71,17 @@ pub struct BreakdownMod {
     pub slot: Option<String>,
 }
 
+#[derive(Debug, Clone, serde::Deserialize, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum BreakdownActor {
+    Player,
+    Minion { index: usize },
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct StatBreakdown {
+    /// The actor whose modifiers and formula this breakdown describes.
+    pub actor: BreakdownActor,
     /// The active BASE mod-line total (no class/base injection).
     pub base_total: f64,
     /// The active INC mod-line total (in percentage points).
@@ -603,6 +615,7 @@ fn hand_breakdowns(session: &CalculationSession, stat: &str) -> Vec<HandBreakdow
             .map(|(pass, (hand, terms))| HandBreakdown {
                 hand: hand_label(*hand),
                 detail: StatBreakdown {
+                    actor: BreakdownActor::Player,
                     base_total: base_total + 0.0,
                     inc_total: inc_total + 0.0,
                     more_total,
@@ -635,6 +648,7 @@ fn hand_breakdowns(session: &CalculationSession, stat: &str) -> Vec<HandBreakdow
             HandBreakdown {
                 hand: hand_label(hand),
                 detail: StatBreakdown {
+                    actor: BreakdownActor::Player,
                     base_total: base_total + 0.0,
                     inc_total: inc_total + 0.0,
                     more_total,
@@ -658,24 +672,13 @@ fn hand_breakdowns(session: &CalculationSession, stat: &str) -> Vec<HandBreakdow
 }
 
 /// How the finished `session` arrives at `stat`: a display stat id (see
-/// [`BREAKDOWN_STATS`] for the ones the panel shows) or any modifier name,
+/// [`BREAKDOWN_STATS`] for the legacy default selection) or any modifier name,
 /// which is aggregated under its own name. `None` when the calculation has
 /// neither modifier lines nor steps for it, or the stat is a damaging
 /// ailment the skill does not apply.
 pub fn stat_breakdown(session: &CalculationSession, stat: &str) -> Option<StatBreakdown> {
-    // EHP and the maximum hits list the enemy inputs they use, which are
-    // other names than the stat. Their lines do not add up to a total of
-    // the stat, so these stats are not in `BREAKDOWN_STATS` (the panel shows
-    // a base total); a caller asks for them by name.
-    let rows = match stat {
-        "TotalEHP" => session.enemy_hit_mods(true),
-        "PhysicalMaximumHitTaken"
-        | "FireMaximumHitTaken"
-        | "ColdMaximumHitTaken"
-        | "LightningMaximumHitTaken"
-        | "ChaosMaximumHitTaken" => session.enemy_hit_mods(false),
-        _ => session.evaluated_stat_mods(stat),
-    };
+    // Enemy inputs are non-additive; the detail contract exposes them as derived.
+    let rows = session.evaluated_stat_mods(stat);
     let formula = session.stat_formula(stat).map(formula_steps);
     // A stat without modifier lines is still explained by its starting value
     // (a weapon's base crit chance, a skill's base rate).
@@ -762,6 +765,7 @@ pub fn stat_breakdown(session: &CalculationSession, stat: &str) -> Option<StatBr
     let entries = mod_entries(&rows);
     let (base_total, inc_total, more_total) = session.stat_totals(stat);
     Some(StatBreakdown {
+        actor: BreakdownActor::Player,
         // An empty float sum is `-0.0`; adding zero keeps it out of the JSON.
         base_total: base_total + 0.0,
         inc_total: inc_total + 0.0,
@@ -798,6 +802,7 @@ pub fn minion_stat_breakdown(
     }
     let (base_total, inc_total, more_total) = session.minion_stat_totals(index, stat);
     Some(StatBreakdown {
+        actor: BreakdownActor::Minion { index },
         base_total: base_total + 0.0,
         inc_total: inc_total + 0.0,
         more_total,

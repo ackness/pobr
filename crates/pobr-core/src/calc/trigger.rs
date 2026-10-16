@@ -33,6 +33,9 @@
 
 use super::round;
 
+/// A hit exists, but the external events required to trigger it have no rate model.
+pub const EVENT_RATE_UNMODELLED: &str = "EventTriggerRateUnmodelled";
+
 // §1  Server-tick utilities & cooldown-gated basics
 
 /// Server tick rate (actions/s), `1 / tick_seconds ≈ 30.3`.
@@ -596,6 +599,9 @@ pub struct TriggerSourceStats {
     /// mitigation (0 = unknown). What an Energy meta gem gains from the hit
     /// depends on it (`calc::energy`).
     pub crit_hit_damage: f64,
+    pub ailments: super::energy::AilmentSourceStats,
+    /// Hit cadence, which can differ from the cast cadence for periodic skills.
+    pub hit_rate: f64,
 }
 
 impl TriggerSourceStats {

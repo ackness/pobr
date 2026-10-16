@@ -4,9 +4,10 @@ import { useSkillCatalog } from '../../hooks/useSkillName';
 import { activeSkillEffects } from '../../lib/skillSelection';
 import { skillDisplayName } from '../../lib/skillNames';
 import { STAT_SECTIONS, formatStatValue, statMap, type Lang } from '../../lib/statDisplay';
-import { bindT, damageTypeLabel } from '../../lib/i18n';
+import { bindT, damageTypeLabel, statNameLabel } from '../../lib/i18n';
 import { AppSelect } from '../shared/AppSelect';
 import './sidebar.css';
+import { detailKind } from '../../lib/statDetails';
 
 interface Props {
   session: BuildSession;
@@ -49,7 +50,7 @@ function MainSkillSection({ session, lang, onStatClick }: Props) {
         <dd style={color ? { color } : undefined}>{formatStatValue(value, 'float2')}</dd>
       </>
     );
-    return onStatClick && session.calc?.breakdowns[id] ? (
+    return onStatClick && session.calc && detailKind(session.calc, id) !== 'none' ? (
       <button type="button" className="stat-row stat-row--link" key={id} onClick={() => onStatClick(id)}>
         {inner}
       </button>
@@ -132,6 +133,22 @@ function MainSkillSection({ session, lang, onStatClick }: Props) {
 }
 
 /** PoB2 式左侧常驻 stat 侧边栏：主技能选择/分解 + 分组展示 display_catalog 字段。 */
+function MainMinionSection({ session, lang, onStatClick }: Props) {
+  const tt = bindT(lang);
+  const minion = session.calcError ? undefined : session.calc?.minions?.find(row => row.index === session.calc?.main_minion_index);
+  if (!minion) return null;
+  const values: Array<[string, number]> = [['TotalDPS', minion.dps], ['Life', minion.life],
+    ['EnergyShield', minion.energy_shield], ['Armour', minion.armour], ['Evasion', minion.evasion]];
+  return <section className="stat-section minion-section"><h3>{tt('minion.title')}: {minion.name || tt('minion.unavailable')}</h3>
+    <p>{tt('skills.level')} {minion.level}</p><dl>
+      {values.map(([name, value]) => {
+        const content = <><dt>{name === 'TotalDPS' ? tt('sidebar.hitDps') : statNameLabel(lang, name)}</dt><dd>{formatStatValue(value, 'float2')}</dd></>;
+        return onStatClick && detailKind(minion, name) !== 'none' ? <button key={name} className="stat-row stat-row--link"
+          onClick={() => onStatClick(`Minion:${minion.index}:${name}`)}>{content}</button> : <div key={name} className="stat-row">{content}</div>;
+      })}
+    </dl></section>;
+}
+
 export function StatSidebar({ session, lang, onStatClick }: Props) {
   const calc = session.calc;
   const values = calc ? statMap(calc.stats) : null;
@@ -139,6 +156,7 @@ export function StatSidebar({ session, lang, onStatClick }: Props) {
   return (
     <aside id="character-stats" className="stat-sidebar" aria-label="Character stats">
       <MainSkillSection session={session} lang={lang} onStatClick={onStatClick} />
+      <MainMinionSection session={session} lang={lang} onStatClick={onStatClick} />
       {onStatClick && <button className="stat-row stat-row--link" onClick={() => onStatClick('skill-metrics')}>
         {bindT(lang)('calcs.skillMetrics')} →
       </button>}
@@ -156,12 +174,12 @@ export function StatSidebar({ session, lang, onStatClick }: Props) {
             <h3>{section.title[lang]}</h3>
             <dl>
               {rows.map((row) => {
-                const clickable = !!onStatClick && !!calc?.breakdowns[row.id];
+                const clickable = !!onStatClick && !!calc && detailKind(calc, row.id) !== 'none';
                 const inner = (
                   <>
                     <dt>{row.label[lang]}</dt>
                     <dd style={row.colorVar ? { color: `var(--${row.colorVar})` } : undefined}>
-                      {values ? formatStatValue(values.get(row.id) ?? null, row.format) : '—'}
+                      {values ? formatStatValue(values.get(row.id) ?? null, row.format, lang) : '—'}
                     </dd>
                   </>
                 );
@@ -175,7 +193,7 @@ export function StatSidebar({ session, lang, onStatClick }: Props) {
                     {inner}
                   </button>
                 ) : (
-                  <div className="stat-row" key={row.id}>
+                  <div className="stat-row" key={row.id} title={bindT(lang)('calcs.noBreakdown')} data-detail-kind="none">
                     {inner}
                   </div>
                 );

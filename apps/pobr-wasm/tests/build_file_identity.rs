@@ -39,7 +39,6 @@ fn unsupported_roots_and_saved_envelopes_are_decode_errors() {
         json!(["Character Lv.98", null, [], [], []]),
         json!({}),
         json!({"version": 1}),
-        json!({"name": "Character Lv.98", "ascendancy": "Sorceress3"}),
         json!({
             "version": 1,
             "state": {

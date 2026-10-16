@@ -3318,6 +3318,7 @@ fn weapon_base_item(name: &str, item_class: &str) -> pobr_data::catalog::BaseIte
         armour: None,
         spirit: None,
         charm_buff: Vec::new(),
+        utility: None,
     }
 }
 
@@ -3330,21 +3331,44 @@ fn weapon_type_conditions_match_vendor_type_info() {
         // GGG `Warstaff` (quarterstaff) → table key `Staff` (label=Quarterstaff).
         (
             "Warstaff",
-            &["UsingQuarterstaff", "UsingStaff", "UsingTwoHandedMelee"],
+            &[
+                "UsingQuarterstaff",
+                "UsingStaff",
+                "UsingMeleeWeapon",
+                "UsingTwoHandedMelee",
+            ],
         ),
-        ("One Hand Mace", &["UsingMace", "UsingOneHandedMelee"]),
-        ("Two Hand Mace", &["UsingMace", "UsingTwoHandedMelee"]),
+        (
+            "One Hand Mace",
+            &["UsingMace", "UsingMeleeWeapon", "UsingOneHandedMelee"],
+        ),
+        (
+            "Two Hand Mace",
+            &["UsingMace", "UsingMeleeWeapon", "UsingTwoHandedMelee"],
+        ),
         ("Bow", &["UsingBow"]),
         ("Crossbow", &["UsingCrossbow"]),
-        ("Spear", &["UsingSpear", "UsingOneHandedMelee"]),
-        ("Dagger", &["UsingDagger", "UsingOneHandedMelee"]),
-        ("Claw", &["UsingOneHandedMelee"]),
-        ("Flail", &["UsingOneHandedMelee"]),
-        ("One Hand Sword", &["UsingOneHandedMelee"]),
-        ("Two Hand Sword", &["UsingTwoHandedMelee"]),
-        ("Two Hand Axe", &["UsingTwoHandedMelee"]),
-        ("Talisman", &["UsingTwoHandedMelee"]),
-        ("FishingRod", &["UsingTwoHandedMelee"]),
+        (
+            "Spear",
+            &["UsingSpear", "UsingMeleeWeapon", "UsingOneHandedMelee"],
+        ),
+        (
+            "Dagger",
+            &["UsingDagger", "UsingMeleeWeapon", "UsingOneHandedMelee"],
+        ),
+        ("Claw", &["UsingMeleeWeapon", "UsingOneHandedMelee"]),
+        ("Flail", &["UsingMeleeWeapon", "UsingOneHandedMelee"]),
+        (
+            "One Hand Sword",
+            &["UsingMeleeWeapon", "UsingOneHandedMelee"],
+        ),
+        (
+            "Two Hand Sword",
+            &["UsingMeleeWeapon", "UsingTwoHandedMelee"],
+        ),
+        ("Two Hand Axe", &["UsingMeleeWeapon", "UsingTwoHandedMelee"]),
+        ("Talisman", &["UsingMeleeWeapon", "UsingTwoHandedMelee"]),
+        ("FishingRod", &["UsingMeleeWeapon", "UsingTwoHandedMelee"]),
         // GGG caster `Staff` has no matching vendor weapon type entry.
         ("Staff", &[]),
         ("Wand", &[]),

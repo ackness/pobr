@@ -7,6 +7,17 @@ pub(super) fn entry(
     registry: &HandlerRegistry,
 ) -> Result<(), SpecialCompileError> {
     let validate = || -> Result<(), (String, String)> {
+        if !def.exporter.is_same()
+            && def
+                .game_source
+                .as_deref()
+                .is_none_or(|source| source.trim().is_empty())
+        {
+            return Err((
+                "game_source".into(),
+                "required for exporter absent/differs".into(),
+            ));
+        }
         name(&def.id).map_err(|e| ("id".into(), e))?;
         if let Some(handler) = &def.handler_id {
             if registry.get(handler).is_none() {

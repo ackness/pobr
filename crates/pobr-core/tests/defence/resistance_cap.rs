@@ -143,3 +143,38 @@ fn fire_resistance_shares_with_cold_and_lightning() {
     assert_eq!(output.max_cold_resistance, 80.0);
     assert_eq!(output.max_lightning_resistance, 80.0);
 }
+
+#[test]
+fn fire_resistance_sharing_excludes_all_elemental_and_truncates_the_total() {
+    let mut db = ModDb::new();
+    for line in [
+        "Modifiers to Fire Resistance also grant Cold and Lightning Resistance at 50% of their value",
+        "+69% to Fire Resistance",
+        "+69% to Fire Resistance",
+        "+5% to Fire Resistance",
+        "+5% to all Elemental Resistances",
+        "-7% to all Elemental [Resistances]",
+        "+10% to Cold Resistance",
+    ] {
+        for modifier in parse_mod(line).unwrap().mods {
+            db.add_mod(modifier);
+        }
+    }
+    let output = calculate_minimal(&db, &CalcConfig::new(), &MinimalInput::default());
+    // Share (69 + 69 + 5) / 2 = 71.5, without rounding individual modifiers.
+    // Cold: trunc(71.5 + 5 - 7 + 10) = 79, hence 4 above the 75 cap.
+    // Lightning: trunc(71.5 + 5 - 7) = 69. All-elemental +/- is counted once.
+    assert_eq!(output.cold_resistance_over_cap, 4.0);
+    assert_eq!(output.lightning_resistance, 69.0);
+    for modifier in pobr_core::ingest::campaign::CampaignProgress::Endgame.modifiers() {
+        db.add_mod(modifier);
+    }
+    db.add_mod(Modifier::number(
+        "LightningResistance",
+        ModType::Base,
+        -20.0,
+    ));
+    let output = calculate_minimal(&db, &CalcConfig::new(), &MinimalInput::default());
+    // trunc(71.5 + 5 - 7 - 60 - 20) = -10, toward zero rather than floor.
+    assert_eq!(output.lightning_resistance, -10.0);
+}

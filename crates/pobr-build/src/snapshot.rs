@@ -123,6 +123,7 @@ pub(crate) fn same_build(a: &Build, b: &Build) -> bool {
         granted_socket_jewels,
         radius_jewels,
         utility_slots,
+        inactive_utility_slots,
         limbs,
         weapon_set,
         other_weapons,
@@ -130,13 +131,15 @@ pub(crate) fn same_build(a: &Build, b: &Build) -> bool {
         socket_groups,
         main_socket_group,
         config,
+        party,
     } = a;
     let pobr_data::passive_tree::PassiveTreeSpec {
         allocated_nodes,
         mastery_effects,
         attribute_overrides,
     } = tree;
-    character == &b.character
+    party == &b.party
+        && character == &b.character
         && view_mode == &b.view_mode
         && allocated_nodes == &b.tree.allocated_nodes
         && mastery_effects == &b.tree.mastery_effects
@@ -158,6 +161,11 @@ pub(crate) fn same_build(a: &Build, b: &Build) -> bool {
         && utility_slots
             .iter()
             .zip(&b.utility_slots)
+            .all(|(a, b)| a.0 == b.0 && same_item(&a.1, &b.1))
+        && inactive_utility_slots.len() == b.inactive_utility_slots.len()
+        && inactive_utility_slots
+            .iter()
+            .zip(&b.inactive_utility_slots)
             .all(|(a, b)| a.0 == b.0 && same_item(&a.1, &b.1))
         && limbs.len() == b.limbs.len()
         && limbs

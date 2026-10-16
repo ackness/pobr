@@ -29,6 +29,7 @@ macro_rules! wln {
 
 /// A gem's current values plus source display metadata for an unresolved slot.
 pub(crate) struct XmlGem {
+    pub enabled: bool,
     pub count: Option<f64>,
     pub enable_global_1: Option<bool>,
     pub enable_global_2: Option<bool>,
@@ -207,7 +208,11 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
 
     // Skills.
     wln!(w, r#"  <Skills activeSkillSet="1">"#);
-    wln!(w, r#"    <SkillSet id="1">"#);
+    wln!(
+        w,
+        r#"    <SkillSet id="1" mainSocketGroup="{}">"#,
+        input.main_socket_group.map_or(0, |main| main + 1)
+    );
     for group in &input.socket_groups {
         w!(
             w,
@@ -263,9 +268,10 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
             }
             wln!(
                 w,
-                r#" level="{}" quality="{}" enabled="true"/>"#,
+                r#" level="{}" quality="{}" enabled="{}"/>"#,
                 gem.level,
-                gem.quality
+                gem.quality,
+                gem.enabled
             );
         }
         wln!(w, "      </Skill>");

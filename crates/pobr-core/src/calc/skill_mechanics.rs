@@ -64,14 +64,31 @@ pub fn calc_radius(base_radius: f64, area_mod: f64) -> f64 {
 /// Aggregation formula: `areaMod = (1 + Σinc/100) × Πmore`.
 /// `base_radius + extra_base` is calcRadius's input.
 ///
-/// Source: PoB2 `CalcOffence.lua` L414-430 (`calcAreaOfEffect`),
-///       `agent-docs/skill-mechanics.md` §AoE.
+/// The skill's radius stats and area modifiers determine its circular area;
+/// echoes use the selected repeat view (`agent-docs/skill-mechanics.md` §AoE).
 pub fn calc_aoe(db: &ModDb, cfg: &CalcConfig, base_radius: f64, extra_base: f64) -> AoeResult {
     let aoe_names = [
         ModName::from("AreaOfEffect"),
         ModName::from("AreaOfEffectPrimary"),
     ];
-    let inc = db.sum(ModType::Inc, cfg, &aoe_names);
+    // Spell Echo's area bonus belongs to echoes only. The Average view
+    // weights it by echo count / all casts; Final shows the echo's area.
+    // Game stats: support_spell_echo_number_of_echo_cascades and
+    // echoed_spell_area_of_effect_+% (one echo, 40% increased area).
+    let repeats = db.sum(ModType::Base, cfg, &[ModName::from("RepeatCount")]);
+    let repeat_inc = if repeats > 0.0 && !db.flag(cfg, "CannotRepeat") {
+        let weight = if cfg.condition("averageRepeat") {
+            repeats / (1.0 + repeats)
+        } else if cfg.condition("alwaysFinalRepeat") {
+            1.0
+        } else {
+            0.0
+        };
+        db.sum(ModType::Inc, cfg, &[ModName::from("RepeatAreaOfEffect")]) * weight
+    } else {
+        0.0
+    };
+    let inc = db.sum(ModType::Inc, cfg, &aoe_names) + repeat_inc;
     let more = db.more(cfg, &aoe_names);
     let area_mod = round((1.0 + inc / 100.0) * more);
     let effective_base = base_radius + extra_base + db.sum(ModType::Base, cfg, &aoe_names);
@@ -992,48 +1009,83 @@ pub struct SkillDurations {
     pub reservation: f64,
 }
 
-pub fn skill_durations(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig) -> SkillDurations {
-    let resolve = |base_name: &str, scope: Option<&str>, debuff: &str| {
-        let mut names = vec![ModName::from("Duration")];
-        if let Some(scope) = scope {
-            names.push(ModName::from(scope));
-        }
-        let base = db.sum(ModType::Base, cfg, &[ModName::from(base_name)])
-            + if scope.is_some() {
-                db.sum(ModType::Base, cfg, &names)
-            } else {
-                0.0
-            };
-        if base <= 0.0 {
-            return 0.0;
-        }
-        let modifier =
-            ((1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)).max(0.0);
-        let expiration = if db.flag(cfg, debuff) {
-            super::ailment::debuff_duration_mult(enemy, cfg)
+/// The exact duration terms used by both calculation and the detail panel.
+#[derive(Debug, Clone, Copy)]
+pub struct DurationTerms {
+    pub base: f64,
+    pub modifier: f64,
+    pub expiration: f64,
+    pub tick: f64,
+}
+impl DurationTerms {
+    pub fn value(self) -> f64 {
+        if self.base <= 0.0 {
+            0.0
         } else {
-            1.0
-        };
-        let tick = cfg.constants.game().server_tick_seconds;
-        round((base * modifier * expiration / tick).ceil() * tick)
-    };
-    SkillDurations {
-        primary: resolve(
+            round((self.base * self.modifier * self.expiration / self.tick).ceil() * self.tick)
+        }
+    }
+}
+/// buff_time_passed_+%_only_buff_category: slower elapsed time extends buffs.
+pub fn buff_expiration_mult(db: &ModDb, cfg: &CalcConfig) -> f64 {
+    let rate = 1.0 + db.sum(ModType::Inc, cfg, &[ModName::from("BuffExpiryRate")]) / 100.0;
+    // A zero expiry rate has no finite duration; use the same finite 75% slow
+    // ceiling as other effect-expiry calculations.
+    1.0 / rate.max(cfg.constants.game().buff_expiration_slow_cap)
+}
+
+pub fn duration_terms(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig, stat: &str) -> DurationTerms {
+    let (base_name, scope, debuff) = match stat {
+        "Duration" => (
             "SkillDurationBase",
             Some("PrimaryDuration"),
             "SkillDurationIsDebuff",
         ),
-        secondary: resolve(
+        "DurationSecondary" => (
             "SkillDurationSecondaryBase",
             Some("SecondaryDuration"),
             "SkillDurationSecondaryIsDebuff",
         ),
-        aura: resolve("SkillAuraDurationBase", None, "SkillAuraDurationIsDebuff"),
-        reservation: resolve(
+        "AuraDuration" => ("SkillAuraDurationBase", None, "SkillAuraDurationIsDebuff"),
+        _ => (
             "SkillReserveDurationBase",
             None,
             "SkillReserveDurationIsDebuff",
         ),
+    };
+    let mut names = vec![ModName::from("Duration")];
+    if let Some(scope) = scope {
+        names.push(ModName::from(scope));
+    }
+    let base = db.sum(ModType::Base, cfg, &[ModName::from(base_name)])
+        + if scope.is_some() {
+            db.sum(ModType::Base, cfg, &names)
+        } else {
+            0.0
+        };
+    DurationTerms {
+        base,
+        modifier: ((1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names))
+            .max(0.0),
+        expiration: if db.flag(cfg, debuff) {
+            super::ailment::debuff_duration_mult(enemy, cfg)
+        } else if cfg
+            .skill_types
+            .intersects(SkillTypes::from_pob2_name("Buff").unwrap())
+        {
+            buff_expiration_mult(db, cfg)
+        } else {
+            1.0
+        },
+        tick: cfg.constants.game().server_tick_seconds,
+    }
+}
+pub fn skill_durations(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig) -> SkillDurations {
+    SkillDurations {
+        primary: duration_terms(db, enemy, cfg, "Duration").value(),
+        secondary: duration_terms(db, enemy, cfg, "DurationSecondary").value(),
+        aura: duration_terms(db, enemy, cfg, "AuraDuration").value(),
+        reservation: duration_terms(db, enemy, cfg, "ReserveDuration").value(),
     }
 }
 
@@ -1140,8 +1192,13 @@ pub fn projectile_behavior_counts(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig) -
 /// five of their attribute each across the build. Global gem modifiers do not
 /// change this cumulative support requirement.
 pub fn attribute_requirements(db: &ModDb, cfg: &CalcConfig) -> [f64; 3] {
+    attribute_requirement_terms(db, cfg).map(|values| values.into_iter().fold(0.0, f64::max))
+}
+
+/// Adjusted category requirements, after substitutions and ignored requirements.
+pub fn attribute_requirement_terms(db: &ModDb, cfg: &CalcConfig) -> [[f64; 6]; 3] {
     if db.flag(cfg, "IgnoreAttributeRequirements") {
-        return [0.0; 3];
+        return [[0.0; 6]; 3];
     }
     let mut global = cfg.clone();
     global.flags = ModFlags::NONE;
@@ -1157,8 +1214,12 @@ pub fn attribute_requirements(db: &ModDb, cfg: &CalcConfig) -> [f64; 3] {
     );
     let strength_satisfies = db.flag(&global, "StrengthSatisfiesMeleeWeaponsAndSkills");
     ["Str", "Dex", "Int"].map(|attr| {
-        let mut result: f64 = stat(&format!("SupportRequirement{attr}"));
-        for category in ["Item", "Weapon", "MeleeWeapon", "Gem", "MeleeGem"] {
+        let mut result = [0.0; 6];
+        result[0] = stat(&format!("SupportRequirement{attr}"));
+        for (index, category) in ["Item", "Weapon", "MeleeWeapon", "Gem", "MeleeGem"]
+            .into_iter()
+            .enumerate()
+        {
             let gem = category.ends_with("Gem");
             let mut names = vec![
                 ModName::from("GlobalAttributeRequirements"),
@@ -1183,7 +1244,7 @@ pub fn attribute_requirements(db: &ModDb, cfg: &CalcConfig) -> [f64; 3] {
             {
                 continue;
             }
-            result = result.max(requirement);
+            result[index + 1] = requirement;
         }
         result
     })
@@ -1281,7 +1342,7 @@ pub fn skill_timings(db: &ModDb, cfg: &CalcConfig, base_use_time: f64) -> SkillT
     let modifier = |names: &[ModName]| {
         ((1.0 + db.sum(ModType::Inc, cfg, names) / 100.0) * db.more(cfg, names)).max(0.0)
     };
-    let action = modifier(&[ModName::from("ActionSpeed")]);
+    let action = super::skill_use_time::action_speed_factor(db, cfg);
     let time = |base_name: &str, time_name: &str, speed_name: &str, time_mod: Option<&str>| {
         let base = sum(base_name) + sum(time_name);
         if base <= 0.0 || action <= 0.0 {

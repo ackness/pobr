@@ -1,3 +1,4 @@
+import { DETAIL_LABELS } from './detailLabels';
 /**
  * UI 文案三语字典（en-US / zh-TW / zh-CN）。
  *
@@ -15,6 +16,90 @@ export const LANGS: Lang[] = ['en-US', 'zh-TW', 'zh-CN'];
 type Entry = { 'en-US': string; 'zh-TW': string; 'zh-CN': string };
 
 const DICT = {
+  "namedSets.skill": { "en-US": "Skill set", "zh-TW": "技能組合", "zh-CN": "技能组合" },
+  "namedSets.config": {"en-US": "Config set", "zh-TW": "配置組", "zh-CN": "配置组"},
+  "namedSets.create": {"en-US": "New set", "zh-TW": "新增組合", "zh-CN": "新建组合"},
+  "namedSets.duplicate": {"en-US": "Copy set", "zh-TW": "複製組合", "zh-CN": "复制组合"},
+  "namedSets.rename": {"en-US": "Rename set", "zh-TW": "重新命名", "zh-CN": "重命名"},
+  "namedSets.remove": {"en-US": "Delete set", "zh-TW": "刪除組合", "zh-CN": "删除组合"},
+  "namedSets.name": {"en-US": "Set name", "zh-TW": "組名稱", "zh-CN": "组名称"},
+  "namedSets.save": {"en-US": "Save name", "zh-TW": "儲存名稱", "zh-CN": "保存名称"},
+  "namedSets.cancel": {"en-US": "Cancel", "zh-TW": "取消", "zh-CN": "取消"},
+  "namedSets.confirmDelete": {"en-US": "Delete this set? Its saved values will be removed.", "zh-TW": "刪除此組？其中已儲存的值也會刪除。", "zh-CN": "删除此组？其中已保存的值也会删除。"},
+
+  "tab.compare": {"en-US": "Compare", "zh-TW": "對比", "zh-CN": "对比"},
+  "compare.title": {"en-US": "Compare builds and stages", "zh-TW": "對比構築與階段", "zh-CN": "对比构筑与阶段"},
+  "compare.hint": {"en-US": "Choose A and B to inspect saved builds. Only Apply changes A; B stays untouched.", "zh-TW": "選擇 A 與 B 檢視已儲存構築。只有套用會修改 A，B 保持不變。", "zh-CN": "选择 A 与 B 查看已保存构筑。只有应用会修改 A，B 保持不变。"},
+  "compare.needStages": {"en-US": "Add a build or copy a stage on the Build page to compare two snapshots.", "zh-TW": "在構築頁新增構築或複製階段，即可對比兩份快照。", "zh-CN": "在构筑页新增构筑或复制阶段，即可对比两份快照。"},
+  "compare.a": {"en-US": "Build / stage A", "zh-TW": "構築 / 階段 A", "zh-CN": "构筑 / 阶段 A"},
+  "compare.b": {"en-US": "Build / stage B", "zh-TW": "構築 / 階段 B", "zh-CN": "构筑 / 阶段 B"},
+  "compare.basis": {"en-US": "Calculation config", "zh-TW": "計算配置", "zh-CN": "计算配置"},
+  "compare.own": {"en-US": "Each stage’s own config", "zh-TW": "各階段自己的配置", "zh-CN": "各阶段自己的配置"},
+  "compare.useA": {"en-US": "Use A’s config for both", "zh-TW": "兩者都使用 A 的配置", "zh-CN": "两者都使用 A 的配置"},
+  "compare.basisHint": {"en-US": "Both use the current data and effective calculation mode. Config includes enemy tier and custom modifiers; sharing it changes this preview only.", "zh-TW": "兩者使用目前資料及有效計算模式。配置包含敵人等級與自訂詞綴；共用僅影響此預覽。", "zh-CN": "两者使用当前数据及有效计算模式。配置包含敌人等级与自定义词缀；共用仅影响此预览。"},
+  "compare.changed": {"en-US": "Only changed stats", "zh-TW": "只顯示變動屬性", "zh-CN": "只显示变动属性"},
+  "compare.delta": {"en-US": "B − A", "zh-TW": "B − A", "zh-CN": "B − A"},
+  "compare.percent": {"en-US": "% of A", "zh-TW": "相對 A 的 %", "zh-CN": "相对 A 的 %"},
+  "compare.summary": {"en-US": "Stat summary", "zh-TW": "屬性總覽", "zh-CN": "属性总览"},
+  "compare.none": {"en-US": "No differences", "zh-TW": "沒有差異", "zh-CN": "没有差异"},
+  "compare.unavailable": {"en-US": "Unavailable / unbounded", "zh-TW": "無法取得 / 無上限", "zh-CN": "无法获取 / 无上限"},
+  "compare.percentHint": {"en-US": "— means a delta cannot be computed, or A is zero. Missing results are not zero.", "zh-TW": "— 表示無法計算差值，或 A 為零。缺少的結果不視為零。", "zh-CN": "— 表示无法计算差值，或 A 为零。缺少的结果不视为零。"},
+  "compare.notSet": {"en-US": "Not set", "zh-TW": "未設定", "zh-CN": "未设置"},
+  "compare.apply": {"en-US": "Apply B → A", "zh-TW": "套用 B → A", "zh-CN": "应用 B → A"},
+  "compare.append": {"en-US": "Append B’s group to A", "zh-TW": "將 B 的技能組加到 A", "zh-CN": "将 B 的技能组加到 A"},
+  "compare.applied": {"en-US": "Applied to A. Comparison refreshed.", "zh-TW": "已套用至 A，對比已更新。", "zh-CN": "已应用到 A，对比已更新。"},
+  "compare.stale": {"en-US": "The snapshots changed. Review the refreshed comparison before applying.", "zh-TW": "快照已變更，請檢視更新的對比後再套用。", "zh-CN": "快照已变更，请查看更新的对比后再应用。"},
+  "compare.drafts": {"en-US": "A has unapplied editor drafts. Save or discard them in its editor before copying.", "zh-TW": "A 有尚未套用的編輯草稿，複製前請在其編輯器儲存或捨棄。", "zh-CN": "A 有尚未应用的编辑草稿，复制前请在其编辑器保存或丢弃。"},
+  "compare.draftHint": {"en-US": "Comparison uses saved values, excluding editor drafts.", "zh-TW": "對比使用已儲存值，不包含編輯草稿。", "zh-CN": "对比使用已保存值，不包含编辑草稿。"},
+  "compare.group": {"en-US": "Skill group", "zh-TW": "技能組", "zh-CN": "技能组"},
+  "compare.support": {"en-US": "Support", "zh-TW": "輔助", "zh-CN": "辅助"},
+  "compare.active": {"en-US": "Active", "zh-TW": "主動", "zh-CN": "主动"},
+  "compare.level": {"en-US": "Level", "zh-TW": "等級", "zh-CN": "等级"},
+  "compare.quality": {"en-US": "Quality", "zh-TW": "品質", "zh-CN": "品质"},
+  "compare.enabled": {"en-US": "Enabled", "zh-TW": "啟用", "zh-CN": "启用"},
+  "compare.disabled": {"en-US": "Disabled", "zh-TW": "停用", "zh-CN": "停用"},
+  "compare.weaponSet": {"en-US": "Weapon set", "zh-TW": "武器組", "zh-CN": "武器组"},
+  "compare.form": {"en-US": "Form", "zh-TW": "形態", "zh-CN": "形态"},
+  "compare.rawGroup": {"en-US": "All group settings", "zh-TW": "全部技能組設定", "zh-CN": "全部技能组设置"},
+  "compare.granted": {"en-US": "Copy the granting item to change this skill group.", "zh-TW": "複製授予技能的裝備來變更此技能組。", "zh-CN": "复制授予技能的装备来更改此技能组。"},
+  "compare.config": {"en-US": "Saved config differences", "zh-TW": "已儲存配置差異", "zh-CN": "已保存配置差异"},
+  "compare.enemy": {"en-US": "Enemy tier", "zh-TW": "敵人等級", "zh-CN": "敌人等级"},
+  "compare.mods": {"en-US": "Custom modifiers", "zh-TW": "自訂詞綴", "zh-CN": "自定义词缀"},
+  "compare.treeOverlay": {"en-US": "Tree comparison", "zh-TW": "天賦樹比較", "zh-CN": "天赋树比较"},
+  "compare.treeLoading": {"en-US": "Loading both trees…", "zh-TW": "正在載入兩棵天賦樹…", "zh-CN": "正在加载两棵天赋树…"},
+  "compare.legend": {"en-US": "Allocation legend", "zh-TW": "配置圖例", "zh-CN": "配置图例"},
+  "compare.unplaced": {"en-US": "Allocated nodes without positions in this version", "zh-TW": "此版本沒有座標的已配置節點", "zh-CN": "此版本没有坐标的已配置节点"},
+  "compare.noCoordinates": {"en-US": "Neither tree has layout coordinates. Inspect allocations and jewels below.", "zh-TW": "兩棵樹都沒有佈局座標。可在下方查看配置與珠寶。", "zh-CN": "两棵树都没有布局坐标。可在下方查看配置与珠宝。"},
+  "compare.fitAllocations": {"en-US": "Fit allocations", "zh-TW": "顯示全部配置", "zh-CN": "显示全部配置"},
+  "compare.wholeTree": {"en-US": "Whole tree", "zh-TW": "整棵天賦樹", "zh-CN": "整棵天赋树"},
+  "compare.zoomIn": {"en-US": "Zoom in", "zh-TW": "放大", "zh-CN": "放大"},
+  "compare.zoomOut": {"en-US": "Zoom out", "zh-TW": "縮小", "zh-CN": "缩小"},
+  "compare.canvasHint": {"en-US": "Drag to pan; use + / − to zoom. Focus the canvas and use arrow keys to pan. Select a node to inspect both sides.", "zh-TW": "拖曳平移，以 + / − 縮放。聚焦畫布後可用方向鍵平移。選取節點可查看兩側詳情。", "zh-CN": "拖动平移，以 + / − 缩放。聚焦画布后可用方向键平移。选择节点可查看两侧详情。"},
+  "compare.inspectNode": {"en-US": "Inspect passive", "zh-TW": "查看天賦", "zh-CN": "查看天赋"},
+  "compare.treeTotals": {"en-US": "Points and attributes", "zh-TW": "點數與屬性", "zh-CN": "点数与属性"},
+  "compare.passivePoints": {"en-US": "Allocated passive points", "zh-TW": "已配置天賦點數", "zh-CN": "已配置天赋点数"},
+  "compare.ascendancyPoints": {"en-US": "Allocated ascendancy points", "zh-TW": "已配置昇華點數", "zh-CN": "已配置升华点数"},
+  "compare.unassigned": {"en-US": "Attribute nodes without a saved choice", "zh-TW": "未儲存屬性選擇的節點", "zh-CN": "未保存属性选择的节点"},
+  "compare.totalsHint": {"en-US": "Point counts exclude class and ascendancy starts and unknown nodes. They describe the saved active weapon set, not the remaining budget. Attributes are whole-build calculation totals; choice counts describe saved attribute-node choices.", "zh-TW": "點數不包含職業、昇華起點和未知節點，表示已儲存的目前武器組配置，不是剩餘點數。屬性為整個構築的計算總值；選擇數量表示已儲存的屬性節點選擇。", "zh-CN": "点数不包含职业、升华起点和未知节点，表示已保存的当前武器组配置，不是剩余点数。属性为整个构筑的计算总值；选择数量表示已保存的属性节点选择。"},
+  "compare.unknownNodes": {"en-US": "Unknown node IDs excluded from point totals", "zh-TW": "點數總計排除的未知節點 ID", "zh-CN": "点数总计排除的未知节点 ID"},
+  "compare.socketJewels": {"en-US": "Jewels per socket", "zh-TW": "各插槽的珠寶", "zh-CN": "各插槽的珠宝"},
+  "compare.noJewels": {"en-US": "Neither stage has socketed jewels.", "zh-TW": "兩個階段都沒有插入珠寶。", "zh-CN": "两个阶段都没有插入珠宝。"},
+  "compare.allocated": {"en-US": "Allocated", "zh-TW": "已配置", "zh-CN": "已配置"},
+  "compare.inactiveJewel": {"en-US": "Unallocated socket (inactive jewel)", "zh-TW": "未配置的插槽（珠寶未生效）", "zh-CN": "未配置的插槽（珠宝未生效）"},
+  "compare.unallocated": {"en-US": "Unallocated", "zh-TW": "未配置", "zh-CN": "未配置"},
+  "compare.jewelEffect": {"en-US": "Includes this build’s calculated jewel effects.", "zh-TW": "包含此構築計算出的珠寶效果。", "zh-CN": "包含此构筑计算出的珠宝效果。"},
+  "compare.passives": {"en-US": "Passive allocations", "zh-TW": "天賦配置", "zh-CN": "天赋配置"},
+  "compare.added": {"en-US": "Only B", "zh-TW": "僅 B", "zh-CN": "仅 B"},
+  "compare.removed": {"en-US": "Only A", "zh-TW": "僅 A", "zh-CN": "仅 A"},
+  "compare.both": {"en-US": "Both", "zh-TW": "兩者都有", "zh-CN": "两者都有"},
+  "compare.treeVersion": {"en-US": "Tree version", "zh-TW": "天賦樹版本", "zh-CN": "天赋树版本"},
+  "compare.treeMismatch": {"en-US": "Tree versions differ. Matching numeric IDs are not marked as shared; each side uses its own version’s positions and node text.", "zh-TW": "天賦樹版本不同，相同數字 ID 不會標記為共有節點；兩側各自使用其版本的座標和節點文字。", "zh-CN": "天赋树版本不同，相同数字 ID 不会标记为共有节点；两侧各自使用其版本的坐标和节点文字。"},
+  "compare.defaultVersion": {"en-US": "Current", "zh-TW": "目前", "zh-CN": "当前"},
+  "compare.build": {"en-US": "Build", "zh-TW": "構築", "zh-CN": "构筑"},
+  "compare.stage": {"en-US": "Initial stage", "zh-TW": "初始階段", "zh-CN": "初始阶段"},
+  "compare.diagnostics": {"en-US": "Calculation diagnostics", "zh-TW": "計算診斷", "zh-CN": "计算诊断"},
+  "compare.calculating": {"en-US": "Calculating A and B…", "zh-TW": "正在計算 A 與 B…", "zh-CN": "正在计算 A 与 B…"},
+
   'trade.jewelType': { 'en-US': 'Jewel type', 'zh-TW': '珠寶類型', 'zh-CN': '珠宝类型' },
   'trade.baseJewel': { 'en-US': 'Basic jewels', 'zh-TW': '普通珠寶', 'zh-CN': '普通珠宝' },
   'trade.radiusJewel': { 'en-US': 'Time-Lost jewel search', 'zh-TW': '時迭珠寶搜尋', 'zh-CN': '时迭珠宝搜索' },
@@ -22,6 +107,14 @@ const DICT = {
   'trade.goalHelp': { 'en-US': 'How this goal is evaluated', 'zh-TW': '目標如何評估', 'zh-CN': '目标如何评估' },
   'items.position': { 'en-US': 'Equipment position', 'zh-TW': '裝備位置', 'zh-CN': '装备位置' },
   'skills.editMain': { 'en-US': 'Edit inspected skill', 'zh-TW': '編輯檢視技能', 'zh-CN': '编辑查看技能' },
+  'config.view': { 'en-US': 'Configuration view', 'zh-TW': '配置顯示範圍', 'zh-CN': '配置显示范围' },
+  'config.applicable': { 'en-US': 'Applicable to this build', 'zh-TW': '適用於此構築', 'zh-CN': '适用于此构筑' },
+  'config.sourceDefault': { 'en-US': 'Default · no saved value', 'zh-TW': '預設 · 未儲存值', 'zh-CN': '默认 · 未保存值' },
+  'config.sourceSaved': { 'en-US': 'Saved value', 'zh-TW': '已儲存值', 'zh-CN': '已保存值' },
+  'config.notApplicable': { 'en-US': 'Not applicable to this build', 'zh-TW': '不適用於此構築', 'zh-CN': '不适用于此构筑' },
+  'config.applicabilityUnknown': { 'en-US': 'Applicability not determined', 'zh-TW': '尚無法判定適用性', 'zh-CN': '尚无法判定适用性' },
+  'config.savedRetained': { 'en-US': 'Saved value kept visible', 'zh-TW': '保留並顯示已儲存值', 'zh-CN': '保留并显示已保存值' },
+  'config.visibilityHint': { 'en-US': 'Saved values always remain visible. Options whose visibility rules cannot be evaluated stay visible; applicability does not guarantee calculation support. Catalog help uses the source language when no translation is available.', 'zh-TW': '已儲存值一律保留顯示。無法判定顯示規則的選項也會顯示；適用不代表計算已支援。沒有翻譯時，目錄說明保留來源語言。', 'zh-CN': '已保存值始终保留显示。无法判定显示规则的选项也会显示；适用不代表计算已支持。没有翻译时，目录说明保留源语言。' },
   'config.configuredOnly': { 'en-US': 'Configured only', 'zh-TW': '僅顯示已設定', 'zh-CN': '仅显示已配置' },
   'config.player': { 'en-US': 'Player', 'zh-TW': '角色', 'zh-CN': '角色' },
   'config.minions': { 'en-US': 'Minions', 'zh-TW': '召喚物', 'zh-CN': '召唤物' },
@@ -38,6 +131,10 @@ const DICT = {
   "editor.reviewJewels": {"en-US": "Review jewel drafts", "zh-TW": "查看珠寶草稿", "zh-CN": "查看珠宝草稿"},
   "lib.wrongSlot": {"en-US": "Select a compatible equipment position first", "zh-TW": "請先選擇相容的裝備位置", "zh-CN": "请先选择兼容的装备位置"},
   "build.code": {"en-US": "Build code", "zh-TW": "構築代碼", "zh-CN": "构筑代码"},
+  'plannerFile.title': { 'en-US': 'PoE2 Build Planner', 'zh-TW': 'PoE2 遊戲內構築規劃', 'zh-CN': 'PoE2 游戏内构筑规划' },
+  'plannerFile.hint': { 'en-US': 'Download .build files for the game’s BuildPlanner folder. Each file carries passives, gems and inventory hints. Equipment rolls, character level and calculation settings cannot be restored from this format. All loadouts produces one download per loadout; save each file below.', 'zh-TW': '下載 .build 檔案並放入遊戲的 BuildPlanner 資料夾。每個檔案包含天賦、寶石及裝備提示，無法還原完整裝備、角色等級或計算設定。全部配裝會產生多個檔案，請逐一下載。', 'zh-CN': '下载 .build 文件并放入游戏的 BuildPlanner 文件夹。每个文件包含天赋、宝石及装备提示，无法还原完整装备、角色等级或计算设置。全部配装会生成多个文件，请逐一下载。' },
+  'plannerFile.current': { 'en-US': 'Download current .build', 'zh-TW': '下載目前 .build', 'zh-CN': '下载当前 .build' },
+  'plannerFile.all': { 'en-US': 'Prepare all loadouts (.build)', 'zh-TW': '準備全部配裝（.build）', 'zh-CN': '准备全部配装（.build）' },
   "build.importHint": {"en-US": "Paste a PoB2 code, a supported share link, or .build JSON. Links: pobb.in, poe.ninja PoB shares, Pastebin, Rentry, poe2db, Maxroll and WeGame. The selected destination controls where the build is saved.", "zh-TW": "貼上 PoB2 代碼、支援的分享連結或 .build JSON。支援 pobb.in、poe.ninja PoB 分享、Pastebin、Rentry、poe2db、Maxroll 及 WeGame。構築會儲存至上方選擇的位置。", "zh-CN": "粘贴 PoB2 代码、支持的分享链接或 .build JSON。支持 pobb.in、poe.ninja PoB 分享、Pastebin、Rentry、poe2db、Maxroll 及 WeGame。构筑会保存到上方选择的位置。"},
   "build.linkInvalid": {"en-US": "This is not a supported HTTPS build-share URL. Copy the complete share link.", "zh-TW": "這不是支援的 HTTPS 構築分享網址。請複製完整的分享連結。", "zh-CN": "这不是支持的 HTTPS 构筑分享网址。请复制完整的分享链接。"},
   "build.linkHost": {"en-US": "This share host is not supported. Paste the PoB2 code instead.", "zh-TW": "尚不支援這個分享網站。請改貼 PoB2 代碼。", "zh-CN": "尚不支持这个分享网站。请改贴 PoB2 代码。"},
@@ -186,6 +283,30 @@ const DICT = {
   },
   'skills.main': { 'en-US': 'INSPECTED', 'zh-TW': '檢視中', 'zh-CN': '查看中' },
   'skills.setMain': { 'en-US': 'Inspect this skill', 'zh-TW': '檢視此技能', 'zh-CN': '查看此技能' },
+  'minion.title': { 'en-US': 'Minion', 'zh-TW': '召喚物', 'zh-CN': '召唤物' },
+  'minion.identity': { 'en-US': 'Minion type', 'zh-TW': '召喚物種類', 'zh-CN': '召唤物种类' },
+  'minion.search': { 'en-US': 'Search minions…', 'zh-TW': '搜尋召喚物…', 'zh-CN': '搜索召唤物…' },
+  'minion.skill': { 'en-US': 'Minion skill', 'zh-TW': '召喚物技能', 'zh-CN': '召唤物技能' },
+  'minion.choose': { 'en-US': 'Choose a minion', 'zh-TW': '選擇召喚物', 'zh-CN': '选择召唤物' },
+  'minion.unavailable': { 'en-US': 'Minion unavailable in this data', 'zh-TW': '此資料無法提供該召喚物', 'zh-CN': '此数据无法提供该召唤物' },
+  'minion.noSkills': { 'en-US': 'No modeled skill choices', 'zh-TW': '沒有已建模的技能選項', 'zh-CN': '没有已建模的技能选项' },
+  'minion.catalogError': { 'en-US': 'Unable to load minion choices', 'zh-TW': '無法載入召喚物選項', 'zh-CN': '无法加载召唤物选项' },
+  'minion.actor': { 'en-US': 'Actor', 'zh-TW': '計算對象', 'zh-CN': '计算对象' },
+  'minion.player': { 'en-US': 'Player', 'zh-TW': '角色', 'zh-CN': '角色' },
+  'minion.skillFallback': { 'en-US': 'Skill', 'zh-TW': '技能', 'zh-CN': '技能' },
+  'minion.noBreakdown': { 'en-US': 'No breakdown is available for this actor.', 'zh-TW': '此對象沒有可用的計算分解。', 'zh-CN': '此对象没有可用的计算分解。' },
+  "skills.effect": {"en-US": "Active effect", "zh-TW": "主動效果", "zh-CN": "主动效果"},
+  "skills.form": {"en-US": "Skill form", "zh-TW": "技能形態", "zh-CN": "技能形态"},
+  "skills.defaultForm": {"en-US": "Default form", "zh-TW": "預設形態", "zh-CN": "默认形态"},
+  "skills.stages": {"en-US": "Stages", "zh-TW": "層數", "zh-CN": "层数"},
+  "skills.stageDefault": {"en-US": "Use default stages", "zh-TW": "使用預設層數", "zh-CN": "使用默认层数"},
+  "skills.gemEnabled": {"en-US": "Gem enabled", "zh-TW": "啟用寶石", "zh-CN": "启用宝石"},
+  "skills.fullDps": {"en-US": "Include in Full DPS", "zh-TW": "納入完整 DPS", "zh-CN": "纳入完整 DPS"},
+  "skills.groupCount": {"en-US": "Group count override", "zh-TW": "組數量覆蓋", "zh-CN": "组数量覆盖"},
+  "skills.gemCount": {"en-US": "Gem count", "zh-TW": "寶石數量", "zh-CN": "宝石数量"},
+  "skills.fullDpsHint": {"en-US": "Counts describe simultaneous sources. A group count overrides its gem counts; an empty group count uses each gem’s count. This total does not simulate a rotation.", "zh-TW": "數量表示同時作用的來源。組數量優先於各寶石數量；留空則使用各寶石數量。合計不模擬技能輪轉。", "zh-CN": "数量表示同时作用的来源。组数量优先于各宝石数量；留空则使用各宝石数量。合计不模拟技能轮转。"},
+  "calcs.fullDpsContribution": {"en-US": "Full DPS contribution", "zh-TW": "完整 DPS 貢獻", "zh-CN": "完整 DPS 贡献"},
+  "skills.count": {"en-US": "Count", "zh-TW": "數量", "zh-CN": "数量"},
   'skills.enabled': { 'en-US': 'on', 'zh-TW': '啟用', 'zh-CN': '启用' },
   'skills.removeGroup': { 'en-US': 'Remove group', 'zh-TW': '刪除組', 'zh-CN': '删除组' },
   'skills.removeGem': { 'en-US': 'Remove gem', 'zh-TW': '移除寶石', 'zh-CN': '移除宝石' },
@@ -456,6 +577,15 @@ const DICT = {
   'calcs.baseTotal': { 'en-US': 'Base total', 'zh-TW': '基礎合計', 'zh-CN': '基础合计' },
   'calcs.incTotal': { 'en-US': 'Increased total', 'zh-TW': '增加合計', 'zh-CN': '增加合计' },
   'calcs.moreTotal': { 'en-US': 'More multiplier', 'zh-TW': '更多乘數', 'zh-CN': '更多乘数' },
+  "calcs.noBreakdown": {"en-US": "No breakdown available for this stat.", "zh-TW": "此數值尚無計算明細。", "zh-CN": "此数值尚无计算明细。"},
+  "calcs.inputs": {"en-US": "Formula inputs", "zh-TW": "公式輸入", "zh-CN": "公式输入"},
+  "calcs.context": {"en-US": "Resource pools used upstream", "zh-TW": "上游計算使用的資源池", "zh-CN": "上游计算使用的资源池"},
+  "calcs.sourcesNote": {"en-US": "Modifier totals are shown separately for each input. These are contributions, before further rounding, conversion or limits.", "zh-TW": "各項輸入分別列出詞綴合計；後續可能還有取整、轉換或上限。", "zh-CN": "各项输入分别列出词缀合计；后续可能还有取整、转换或上限。"},
+  "calcs.noSources": {"en-US": "No modifier sources apply to this input in the current build.", "zh-TW": "目前構築沒有作用於此輸入的詞綴來源。", "zh-CN": "当前构筑没有作用于此输入的词缀来源。"},
+  "calcs.loadingDetail": {"en-US": "Loading explanation…", "zh-TW": "載入計算明細…", "zh-CN": "加载计算明细…"},
+  "calcs.retry": {"en-US": "Retry", "zh-TW": "重試", "zh-CN": "重试"},
+  "calcs.moreRounded": {"en-US": "MORE product rounded to decimal places:", "zh-TW": "MORE 乘積四捨五入小數位：", "zh-CN": "MORE 乘积四舍五入小数位："},
+  "calcs.moreFloored": {"en-US": "MORE product rounded down to decimal places:", "zh-TW": "MORE 乘積無條件捨去小數位：", "zh-CN": "MORE 乘积向下取整小数位："},
   'calcs.totalsNote': { 'en-US': 'Totals of the lines below. The shown value can include further effects that are not listed as steps.', 'zh-TW': '以下詞條的合計。顯示的數值可能還包含未列為步驟的其他效果。', 'zh-CN': '以下词条的合计。显示的数值可能还包含未列为步骤的其他效果。' },
   'calcs.formula': { 'en-US': 'How this value is calculated', 'zh-TW': '此數值的計算過程', 'zh-CN': '此数值的计算过程' },
   'calcs.formulaResult': { 'en-US': 'Shown value', 'zh-TW': '顯示數值', 'zh-CN': '显示数值' },
@@ -516,6 +646,7 @@ const DICT = {
   'calcs.step.off_hand_added': { 'en-US': 'Off hand, added: the skill hits with both weapons at once', 'zh-TW': '副手，相加：技能同時以兩把武器擊中', 'zh-CN': '副手，相加：技能同时以两把武器击中' },
   'calcs.step.off_hand_either': { 'en-US': 'Off hand: both weapons hit at once and either can crit', 'zh-TW': '副手：兩把武器同時擊中，任一暴擊即算', 'zh-CN': '副手：两把武器同时击中，任一暴击即算' },
   'calcs.step.off_hand_alternating': { 'en-US': 'Off hand: alternating weapons of different speed', 'zh-TW': '副手：輪流使用速度不同的武器', 'zh-CN': '副手：轮流使用速度不同的武器' },
+  'calcs.step.energy_trigger': { 'en-US': 'Energy trigger rate / own use rate', 'zh-TW': '能量觸發頻率 / 自身使用頻率', 'zh-CN': '能量触发频率 / 自身使用频率' },
   'calcs.step.reload': { 'en-US': 'Time spent reloading (see the table below)', 'zh-TW': '裝填所佔的時間（見下表）', 'zh-CN': '装填所占的时间（见下表）' },
   'calcs.step.hit_interval': { 'en-US': 'Hit by the first arrow to land once it can be hit again', 'zh-TW': '能再次被命中後落下的第一支箭命中', 'zh-CN': '能再次被命中后落下的第一支箭命中' },
   'calcs.step.stronger_hand': { 'en-US': 'The stronger hand (see below)', 'zh-TW': '較強的一手（見下方）', 'zh-CN': '较强的一手（见下方）' },
@@ -674,6 +805,24 @@ const DICT = {
   'tree.applyAttribute': { 'en-US': 'Apply choice', 'zh-TW': '套用選擇', 'zh-CN': '应用选择' },
   'tree.currentStart': { 'en-US': 'Current class start; no allocation is needed.', 'zh-TW': '目前職業起點，無需加點。', 'zh-CN': '当前职业起点，无需加点。' },
   'tree.unallocatable': { 'en-US': 'No allocation path is available in the current tree context.', 'zh-TW': '目前天賦樹情境沒有可用的加點路徑。', 'zh-CN': '当前天赋树上下文没有可用的加点路径。' },
+  "tree.allocationMode": { "en-US": "Allocate to", "zh-TW": "加點至", "zh-CN": "加点至" },
+  "tree.shared": { "en-US": "Shared", "zh-TW": "共用", "zh-CN": "共用" },
+  "tree.set1": { "en-US": "Weapon set 1", "zh-TW": "武器組 1", "zh-CN": "武器组 1" },
+  "tree.set2": { "en-US": "Weapon set 2", "zh-TW": "武器組 2", "zh-CN": "武器组 2" },
+  "tree.weaponRules": { "en-US": "Blue: set 1 · Purple: set 2 · Green: allocate · Gold: make shared · Red: refund. Shared paths, keystones, sockets and ascendancies stay available in both sets. Planning includes all 24 campaign points; total cost is shared points plus the larger set.", "zh-TW": "藍色：組 1 · 紫色：組 2 · 綠色：加點 · 金色：轉為共用 · 紅色：退點。共用路徑、關鍵天賦、插槽與昇華在兩組中均可用。規劃包含全部 24 點劇情獎勵；總消耗為共用點加較多的一組。", "zh-CN": "蓝色：组 1 · 紫色：组 2 · 绿色：加点 · 金色：转为共用 · 红色：退点。共用路径、关键天赋、插槽与升华在两组中均可用。规划包含全部 24 点剧情奖励；总消耗为共用点加较多的一组。" },
+  "tree.points": { "en-US": "Passive points after edit", "zh-TW": "編輯後天賦點", "zh-CN": "编辑后天赋点" },
+  "tree.previewChanges": { "en-US": "Allocate / refund", "zh-TW": "加點 / 退點", "zh-CN": "加点 / 退点" },
+  "tree.promoted": { "en-US": "Made shared", "zh-TW": "轉為共用", "zh-CN": "转为共用" },
+  "tree.promote": { "en-US": "Make shared", "zh-TW": "轉為共用", "zh-CN": "转为共用" },
+  "tree.pointLimit": { "en-US": "This edit exceeds the passive point budget. Raise the character level or refund points first.", "zh-TW": "此編輯超出天賦點上限。請先提高角色等級或退點。", "zh-CN": "此编辑超出天赋点上限。请先提高角色等级或退点。" },
+  "tree.weaponLimit": { "en-US": "This edit exceeds a weapon set’s point limit. Refund exclusive points or make them shared first.", "zh-TW": "此編輯超出武器組點數上限。請先退還專屬點或轉為共用。", "zh-CN": "此编辑超出武器组点数上限。请先退还专属点或转为共用。" },
+  "tree.ascLimit": { "en-US": "This edit exceeds the eight ascendancy points.", "zh-TW": "此編輯超出八點昇華上限。", "zh-CN": "此编辑超出八点升华上限。" },
+  "tree.staleEdit": { "en-US": "The build changed during this preview. Try the edit again.", "zh-TW": "預覽期間角色已變更，請重試編輯。", "zh-CN": "预览期间角色已变更，请重试编辑。" },
+  "tree.editUnavailable": { "en-US": "Tree editing is unavailable. Reload the game data and try again.", "zh-TW": "天賦編輯暫不可用，請重新載入遊戲資料後再試。", "zh-CN": "天赋编辑暂不可用，请重新载入游戏数据后再试。" },
+  "tree.wrongSet": { "en-US": "Switch to this node’s weapon set or Shared mode to refund it.", "zh-TW": "請切換至此節點的武器組或共用模式再退點。", "zh-CN": "请切换至此节点的武器组或共用模式再退点。" },
+  "tree.invalidImport": { "en-US": "This allocation has disconnected, incompatible or unsupported nodes. Editing is unavailable; the imported allocation is preserved.", "zh-TW": "此配置有斷線、不相容或不支援的節點，暫不可編輯；匯入配置仍會保留。", "zh-CN": "此配置有断线、不兼容或不支持的节点，暂不可编辑；导入配置仍会保留。" },
+  "tree.noLegalPath": { "en-US": "No legal path in this allocation mode. Another set’s exclusive nodes cannot be used as travel points.", "zh-TW": "此加點模式沒有合法路徑，不能借用另一武器組的專屬節點。", "zh-CN": "此加点模式没有合法路径，不能借用另一武器组的专属节点。" },
+  'tree.unsupportedNode': { 'en-US': 'This node requires an effect selection that the tree editor does not support.', 'zh-TW': '此節點需要選擇效果，天賦編輯器暫不支援。', 'zh-CN': '此节点需要选择效果，天赋编辑器暂不支持。' },
   'tree.allocatePath': { 'en-US': 'Points allocated along the shortest path (travel Attributes remain unassigned):', 'zh-TW': '最短路徑加點數（途經的屬性小點保持未分配）：', 'zh-CN': '最短路径加点数（途经的属性小点保持未分配）：' },
   'tree.refundPath': { 'en-US': 'Points refunded, including disconnected nodes:', 'zh-TW': '退點數（包含斷開連線的節點）：', 'zh-CN': '退点数（包含断开连接的节点）：' },
   'tree.refundSocket': { 'en-US': 'Refund removes any socketed jewel and reconciles its dependent allocations.', 'zh-TW': '退點會移除插入的珠寶，並清理依賴它的加點。', 'zh-CN': '退点会移除插入的珠宝，并清理依赖它的加点。' },
@@ -720,7 +869,7 @@ const DICT = {
   'lib.filterSlot': { 'en-US': 'Current slot only', 'zh-TW': '只看當前槽位', 'zh-CN': '只看当前槽位' },
   'lib.noMatch': { 'en-US': 'No matching items', 'zh-TW': '無符合物品', 'zh-CN': '没有匹配的物品' },
   'lib.useJewel': { 'en-US': 'Use', 'zh-TW': '使用', 'zh-CN': '使用' },
-  'sets.title': { 'en-US': 'Skill sets', 'zh-TW': '技能組套裝', 'zh-CN': '技能组套装' },
+  'sets.title': { 'en-US': 'Reusable skill sets', 'zh-TW': '可重用技能組合', 'zh-CN': '可复用技能组合' },
   'sets.save': { 'en-US': 'Save current as set', 'zh-TW': '保存當前為套裝', 'zh-CN': '保存当前为套装' },
   'sets.namePlaceholder': { 'en-US': 'Set name…', 'zh-TW': '套裝名稱…', 'zh-CN': '套装名称…' },
   'sets.apply': { 'en-US': 'Apply', 'zh-TW': '套用', 'zh-CN': '套用' },
@@ -932,6 +1081,26 @@ export function enemyTierLabel(lang: Lang, tier: string): string {
 }
 
 const MOD_NAME_LABELS: Record<string, Entry> = {
+  CostUseRate: {"en-US": "Paid uses per second", "zh-TW": "每秒付費使用次數", "zh-CN": "每秒付费使用次数"},
+  ContinuousCost: {"en-US": "Continuous cost per second", "zh-TW": "持續每秒消耗", "zh-CN": "持续每秒消耗"},
+  Spending: {"en-US": "Resource spending per second", "zh-TW": "每秒資源支出", "zh-CN": "每秒资源支出"},
+  SelfDamage: {"en-US": "Self-damage per second after mitigation", "zh-TW": "減免後每秒自身傷害", "zh-CN": "减免后每秒自身伤害"},
+  ResourceDrain: {"en-US": "Resource loss per second", "zh-TW": "每秒資源流失", "zh-CN": "每秒资源流失"},
+  EnemyDamage: {"en-US": "Enemy damage per hit before modifiers", "zh-TW": "敵人每次擊中的原始傷害", "zh-CN": "敌人每次击中的原始伤害"},
+  NotHitChance: {"en-US": "Chance not to be hit (%)", "zh-TW": "不被擊中的機率（%）", "zh-CN": "不被击中的几率（%）"},
+  BaseDuration: {"en-US": "Base duration (seconds)", "zh-TW": "基礎持續時間（秒）", "zh-CN": "基础持续时间（秒）"},
+  DurationModifier: {"en-US": "Duration multiplier", "zh-TW": "持續時間倍率", "zh-CN": "持续时间倍率"},
+  DebuffExpiration: {"en-US": "Enemy debuff duration multiplier", "zh-TW": "敵人減益持續時間倍率", "zh-CN": "敌人减益持续时间倍率"},
+  ServerTick: {"en-US": "Server tick (seconds)", "zh-TW": "伺服器更新間隔（秒）", "zh-CN": "服务器更新间隔（秒）"},
+  UncappedResistance: {"en-US": "Resistance before limits (%)", "zh-TW": "上限前抗性（%）", "zh-CN": "上限前抗性（%）"},
+  MaximumResistance: {"en-US": "Maximum resistance (%)", "zh-TW": "抗性上限（%）", "zh-CN": "抗性上限（%）"},
+  SupportRequirement: {"en-US": "Support gems requirement after adjustments", "zh-TW": "輔助寶石調整後需求", "zh-CN": "辅助宝石调整后需求"},
+  ItemRequirement: {"en-US": "Equipment requirement after adjustments", "zh-TW": "裝備調整後需求", "zh-CN": "装备调整后需求"},
+  WeaponRequirement: {"en-US": "Weapons requirement after adjustments", "zh-TW": "武器調整後需求", "zh-CN": "武器调整后需求"},
+  MeleeWeaponRequirement: {"en-US": "Melee weapons requirement after adjustments", "zh-TW": "近戰武器調整後需求", "zh-CN": "近战武器调整后需求"},
+  GemRequirement: {"en-US": "Active gems requirement after adjustments", "zh-TW": "主動寶石調整後需求", "zh-CN": "主动宝石调整后需求"},
+  MeleeGemRequirement: {"en-US": "Melee gems requirement after adjustments", "zh-TW": "近戰寶石調整後需求", "zh-CN": "近战宝石调整后需求"},
+
   Life: { 'en-US': 'Life', 'zh-TW': '生命', 'zh-CN': '生命' },
   Mana: { 'en-US': 'Mana', 'zh-TW': '魔力', 'zh-CN': '魔力' },
   EnergyShield: { 'en-US': 'Energy Shield', 'zh-TW': '能量護盾', 'zh-CN': '能量护盾' },
@@ -1062,6 +1231,22 @@ const STAT_EXTRA_LABELS: Record<string, { 'zh-TW': string; 'zh-CN': string }> = 
 /** 聚合属性名（breakdown 键 / 归因字段 / diff 列表）→ 本地化。
  * 回退链：breakdown 名表 → 侧栏展示目录标签 → 补充译名表 → 原 id。 */
 export function statNameLabel(lang: Lang, id: string): string {
+  const utility = /^(Flask|Charm)([1-3])(.+)$/.exec(id);
+  if (utility) {
+    const [, kind, slot, field] = utility;
+    const label = DETAIL_LABELS[`UtilityField${field}`]?.[lang];
+    if (label) {
+      const name = lang === 'en-US' ? kind : kind === 'Flask' ? (lang === 'zh-TW' ? '藥劑' : '药剂') : (lang === 'zh-TW' ? '護符' : '护符');
+      return `${name} ${slot} · ${label}`;
+    }
+  }
+  const skillContribution = /^SkillGroup(\d+)Effect(\d+)DPS$/.exec(id);
+  if (skillContribution) {
+    const [, group, effect] = skillContribution;
+    if (lang === 'zh-TW') return `技能組 ${group} · 效果 ${effect} DPS`;
+    if (lang === 'zh-CN') return `技能组 ${group} · 效果 ${effect} DPS`;
+    return `Skill group ${group} · effect ${effect} DPS`;
+  }
   const fromMods = MOD_NAME_LABELS[id]?.[lang];
   if (fromMods) return fromMods;
   for (const section of STAT_SECTIONS) {
@@ -1072,7 +1257,7 @@ export function statNameLabel(lang: Lang, id: string): string {
     const extra = STAT_EXTRA_LABELS[id]?.[lang];
     if (extra) return extra;
   }
-  return id;
+  return DETAIL_LABELS[id]?.[lang] ?? id;
 }
 
 const DAMAGE_TYPE_LABELS: Record<string, Entry> = {

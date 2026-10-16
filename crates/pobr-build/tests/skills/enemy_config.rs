@@ -1,4 +1,5 @@
 //! Raw incoming-hit inputs must replace the preset and reach EHP/max-hit output.
+use pobr_build::breakdown::detail::{DetailKind, stat_detail};
 use pobr_build::breakdown::stat_breakdown;
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data_session, parse_build};
 use pobr_core::calc::{CalculationSession, MinimalInput};
@@ -60,28 +61,52 @@ fn each_damage_input_replaces_the_preset_and_zero_removes_the_type() {
         let terms = small.ehp_terms().unwrap();
         close(terms.enemy_damage[index], 100.0);
         close(terms.enemy_damage.iter().sum(), 100.0);
-        let breakdown = stat_breakdown(&small, "TotalEHP").unwrap();
+        let detail = stat_detail(&small, "TotalEHP").unwrap();
+        assert_eq!(detail.kind, DetailKind::Derived);
+        assert!(detail.breakdown.mods.is_empty());
+        assert_eq!(detail.breakdown.base_total, 0.0);
+        let inputs = &detail.derived.unwrap().inputs;
+        close(
+            inputs
+                .iter()
+                .find(|input| input.id == "EnemyDamage")
+                .unwrap()
+                .value,
+            100.0,
+        );
+        // Enemy provenance remains inspectable, separately from additive stat rows.
+        let rows = small.enemy_hit_mods(true);
         let id = format!("config.enemy{kind}Damage");
-        let entry = breakdown
-            .mods
+        let entry = rows
             .iter()
-            .find(|m| m.origin_id.as_deref() == Some(&id))
+            .find(|row| {
+                row.modifier
+                    .origin
+                    .as_ref()
+                    .is_some_and(|origin| origin.source_id.id == id)
+            })
             .unwrap();
         assert!(entry.active);
-        assert_eq!(entry.origin_kind.as_deref(), Some("EnemyConfig"));
+        assert_eq!(
+            format!(
+                "{:?}",
+                entry.modifier.origin.as_ref().unwrap().source_id.kind
+            ),
+            "EnemyConfig"
+        );
         assert_eq!(entry.value, Some(100.0));
         assert!(
             entry
-                .source_text
+                .modifier
+                .source
                 .as_ref()
                 .unwrap()
                 .contains(&format!("enemy{kind}Damage = 100"))
         );
         assert!(
-            breakdown
-                .mods
-                .iter()
-                .any(|m| m.mod_type == "BASE" && !m.active)
+            rows.iter().any(
+                |row| row.modifier.mod_type == pobr_data::prelude::ModType::Base && !row.active
+            )
         );
     }
 }
@@ -117,13 +142,14 @@ fn each_penetration_input_lowers_the_matching_maximum_hit() {
             2.0 * configured.output().number_of_damaging_hits,
         );
         let stat = format!("{kind}MaximumHitTaken");
-        assert!(
-            stat_breakdown(&configured, &stat)
-                .unwrap()
-                .mods
-                .iter()
-                .any(|m| m.origin_id.as_deref() == Some(&format!("config.enemy{kind}Pen")))
-        );
+        // A non-additive enemy query must never masquerade as this stat's sum.
+        assert!(stat_breakdown(&configured, &stat).is_none());
+        assert!(configured.enemy_hit_mods(false).iter().any(|row| {
+            row.modifier
+                .origin
+                .as_ref()
+                .is_some_and(|origin| origin.source_id.id == format!("config.enemy{kind}Pen"))
+        }));
     }
 }
 

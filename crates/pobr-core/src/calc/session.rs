@@ -1,3 +1,5 @@
+pub mod detail;
+mod detail_views;
 pub(super) mod preparation;
 
 use std::collections::BTreeMap;
@@ -73,6 +75,14 @@ pub struct BuffSpec {
     pub skill_types: pobr_data::skill::SkillTypes,
 }
 
+/// A party member's outgoing effect, with its caster strength already resolved.
+#[derive(Debug, Clone)]
+pub struct PartyBuffSpec {
+    pub member: usize,
+    pub curse_limit: f64,
+    pub spec: BuffSpec,
+}
+
 /// See [`CalculationSession::hit_damage_mods`].
 #[derive(Debug, Clone)]
 pub struct HitDamageMods<'a> {
@@ -129,6 +139,32 @@ impl CalculationSession {
             unsupported_modifier_texts: Vec::new(),
             parser_rules: None,
         }
+    }
+
+    /// Distinct non-same rules received by any actor, including skipped rules.
+    pub fn exporter_rules(&self) -> impl Iterator<Item = &pobr_data::source::ExporterRule> {
+        let mut rules = BTreeMap::new();
+        for db in std::iter::once(&self.env.player.mod_db)
+            .chain(std::iter::once(&self.env.enemy.mod_db))
+            .chain(self.env.minions.iter().map(|actor| &actor.mod_db))
+        {
+            for rule in db.exporter_rules() {
+                rules.insert(&rule.id, rule);
+            }
+        }
+        rules.into_values()
+    }
+
+    /// Set before sources are ingested, including nested utility/buff payloads.
+    pub fn set_exporter_rules(&mut self, include_absent: bool, overrides: BTreeMap<String, bool>) {
+        self.env
+            .player
+            .mod_db
+            .set_exporter_rules(include_absent, overrides.clone());
+        self.env
+            .enemy
+            .mod_db
+            .set_exporter_rules(include_absent, overrides);
     }
 
     /// Injects data-driven parser engine rules (the orchestration layer's
@@ -212,6 +248,11 @@ impl CalculationSession {
     /// `Condition:<X>` flag (e.g. a Bonded activation source) into a cfg condition.
     pub fn has_flag(&self, name: &str) -> bool {
         self.env.player.mod_db.flag(&self.env.cfg, name)
+    }
+
+    /// Queries an enemy FLAG modifier using the current calculation context.
+    pub fn enemy_has_flag(&self, name: &str) -> bool {
+        self.env.enemy.mod_db.flag(&self.env.cfg, name)
     }
 
     /// Automatic low-life condition bridge (vendor CalcDefence.lua:335-350:
@@ -355,6 +396,35 @@ impl CalculationSession {
         Ok(())
     }
 
+    /// Supplies the equipped utility item's game base for per-use calculations.
+    pub fn add_utility_base(
+        &mut self,
+        slot: &str,
+        item: &Item,
+        base: &pobr_data::catalog::UtilityBaseStats,
+    ) {
+        self.env
+            .utility_items
+            .push(super::utility::UtilityItemSpec {
+                slot: slot.into(),
+                base: base.clone(),
+                quality: item.quality as f64,
+                is_charm: crate::item::classify_utility_item(item)
+                    == crate::item::UtilityItemKind::Charm,
+            });
+    }
+
+    /// Stores only local properties for an equipped utility item with its effects disabled.
+    pub fn add_inactive_utility_properties(&mut self, slot_name: &str, item: &Item) {
+        let ingest = crate::item::ingest_flask_charm_with_ctx(slot_name, item, self.parse_ctx());
+        self.env.player.mod_db.add_list(
+            ingest
+                .modifiers
+                .into_iter()
+                .filter(|modifier| modifier.name.as_str().starts_with("LocalUtility:")),
+        );
+    }
+
     /// Wires in an **active-state** flask/charm: its mods are packed by
     /// [`crate::item::ingest_flask_charm`] into a `FlaskBuff`/`CharmBuff`
     /// payload List mod and injected (List mods don't participate in
@@ -413,6 +483,15 @@ impl CalculationSession {
     /// **Stored only, not consumed at this stage**: the spec goes into
     /// `Env::buff_skills`, and only participates in the calculation once T3's
     /// `buff_pass` (env_finalize stage 4) lands -- calling this API before then has no effect on output values.
+    pub fn add_party_buff_skill(&mut self, spec: PartyBuffSpec) {
+        self.env.party_buff_skills.push(spec);
+    }
+
+    /// The member's outgoing auras and curses, before recipient-side scaling.
+    pub fn party_buff_exports(&self) -> Vec<BuffSpec> {
+        super::buff_pass::party_exports(&self.env)
+    }
+
     pub fn add_buff_skill(&mut self, spec: BuffSpec) {
         self.env.buff_skills.push(spec);
     }
@@ -635,7 +714,8 @@ impl CalculationSession {
 
     /// Starts noting which stored modifier names the calculation reads
     /// ([`ModDb::track_reads`]). Call once every source is written and before
-    /// [`Self::perform_minimal`]; it is for diagnostics, not for normal runs.
+    /// [`Self::perform_minimal`]. Diagnostics and configuration visibility use
+    /// it; numerical-only callers leave tracking off.
     pub fn track_modifier_reads(&mut self) {
         self.env.player.mod_db.track_reads();
         self.env.enemy.mod_db.track_reads();
@@ -1144,6 +1224,19 @@ impl CalculationSession {
                 }
                 _ => formula,
             };
+            let formula = if matches!(stat, "ActionRate" | "TotalDPS")
+                && let Some(terms) = &output.energy_trigger
+            {
+                let scaled = formula.value * terms.rate_multiplier;
+                formula.then(
+                    super::FormulaOp::EnergyTrigger,
+                    terms.rate_multiplier,
+                    scaled,
+                    scaled,
+                )
+            } else {
+                formula
+            };
             return ((formula.value - displayed).abs() <= 1e-6).then_some(super::StatFormula {
                 value: displayed,
                 ..formula
@@ -1394,10 +1487,18 @@ impl CalculationSession {
         let db = &env.player.mod_db;
         let enemy = &env.enemy.mod_db;
         let hit = super::offence::hit_pass(db, enemy, cfg, input);
-        let dps = self
-            .pass_value("TotalDPS", pass)
-            .unwrap_or(env.player.output.dps);
-        ((hit.dps - dps).abs() <= 1e-6)
+        let (expected, dps) = if let Some(dps) = self.pass_value("TotalDPS", pass) {
+            (hit.dps, dps)
+        } else {
+            let factor = env
+                .player
+                .output
+                .energy_trigger
+                .as_ref()
+                .map_or(1.0, |terms| terms.rate_multiplier);
+            (hit.dps * factor, env.player.output.dps)
+        };
+        ((expected - dps).abs() <= 1e-6)
             .then(|| hit.mitigation_terms(db, enemy, cfg))
             .flatten()
     }
@@ -1486,6 +1587,11 @@ impl CalculationSession {
                 })
                 .collect(),
         }
+    }
+
+    /// Application probabilities and newly inflicted damage for Energy sources.
+    pub fn energy_source_ailments(&self) -> super::energy::AilmentSourceStats {
+        super::energy::source_ailments(&self.env)
     }
 
     /// What the ailment stage computed `stat` (`BleedDPS` / `IgniteDPS` /
@@ -1589,6 +1695,10 @@ impl CalculationSession {
     }
 
     /// How many minions the calculation created.
+    pub fn minion_output(&self, index: usize) -> Option<&OutputTable> {
+        self.env.minions.get(index).map(|actor| &actor.output)
+    }
+
     pub fn minion_count(&self) -> usize {
         self.env.minions.len()
     }
@@ -1614,8 +1724,8 @@ impl CalculationSession {
         }
     }
 
-    /// The steps of minion `index`'s offence `stat` (`ActionRate`,
-    /// `HitChance`, `TotalHitAvg`, `TotalDPS`, `CritChance`,
+    /// The steps of minion `index`'s final resistance or offence `stat`
+    /// (`ActionRate`, `HitChance`, `TotalHitAvg`, `TotalDPS`, `CritChance`,
     /// `CritMultiplier`), as its calculation took them. `None` for any other
     /// stat, or when the steps do not end at the minion's DPS.
     pub fn minion_stat_formula(&self, index: usize, stat: &str) -> Option<super::StatFormula> {
@@ -1623,7 +1733,20 @@ impl CalculationSession {
         let cfg = perform::minion_cfg(&self.env, minion);
         let mut input = super::MinimalInput::from(minion.base);
         input.enemy_evasion = super::setup_env::enemy_evasion(&self.env.enemy, &cfg);
-        let formula = self.actor_pass_formula(&minion.mod_db, stat, &cfg, &input)?;
+        let formula = match stat {
+            "FireResist" | "ColdResist" | "LightningResist" | "ChaosResist" => {
+                let element = stat.strip_suffix("Resist")?;
+                super::offence::resolve_resistance(
+                    &minion.mod_db,
+                    &cfg,
+                    0.0,
+                    element,
+                    element != "Chaos",
+                )
+                .formula()
+            }
+            _ => self.actor_pass_formula(&minion.mod_db, stat, &cfg, &input)?,
+        };
         let consistent = stat != "TotalDPS" || (formula.value - minion.output.dps).abs() <= 1e-6;
         consistent.then_some(formula)
     }
@@ -1700,7 +1823,7 @@ fn ailment_of(stat: &str) -> Option<AilmentType> {
 /// Conditions a pass of the calculation works out for itself, for the hit
 /// or hand it is computing or from what the character has in effect. Absent
 /// from the condition map, they do not hold; nothing is missing.
-const CONDITIONS_SET_BY_A_PASS: [&str; 26] = [
+pub const CONDITIONS_SET_BY_A_PASS: [&str; 26] = [
     // `calc::offence` and `calc::crit_pass`: the critical and the
     // non-critical half of a hit.
     "CriticalStrike",

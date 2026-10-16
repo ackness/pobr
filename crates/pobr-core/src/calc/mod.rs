@@ -7,6 +7,7 @@ pub mod blind;
 pub mod breakdown;
 pub mod buff_pass;
 pub mod channel;
+pub mod charm_spirits;
 mod configured_damage;
 pub mod crit;
 pub mod crit_pass;
@@ -28,6 +29,7 @@ pub mod offence;
 pub mod output;
 pub mod perform;
 pub mod periodic;
+mod player_debuffs;
 pub mod pool_damage;
 pub mod pool_setup;
 pub mod rage;
@@ -128,7 +130,7 @@ pub use stat_boundary::{StatBoundary, stat_boundary};
 pub use stun::{StunInputs, StunResult, calc_stun, calc_stun_threshold};
 pub use survivability::{
     AllChargeStates, ChargeKind, ChargeState, DEFAULT_CHARGE_DURATION_SECONDS, DEFAULT_MAX_CHARGES,
-    LEECH_EFFECTIVE_MAX_HIT_DAMAGE, LEECH_MAX_ES_RATE_PCT, LEECH_MAX_INSTANCE_PCT,
+    LEECH_DURATION_SECONDS, LEECH_EFFECTIVE_MAX_HIT_DAMAGE, LEECH_MAX_ES_RATE_PCT,
     LEECH_MAX_LIFE_RATE_PCT, LEECH_MAX_MANA_RATE_PCT, LeechResource, LeechResult,
     RECOUP_DURATION_4S, RECOUP_DURATION_DEFAULT, RecoupResource, RecoupResult, Reservation,
     block_chance, calc_leech, calc_leech_from_db, calc_recoup, calc_recoup_from_db, calc_regen,
@@ -151,3 +153,7 @@ pub use trigger::{
 pub(crate) fn round(value: f64) -> f64 {
     (value * 1_000_000_000.0).round() / 1_000_000_000.0
 }
+
+mod sidebar;
+
+pub mod utility;

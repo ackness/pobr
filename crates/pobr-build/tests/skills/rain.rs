@@ -96,7 +96,7 @@ fn hailstorm_lands_at_the_attack_cadence_and_keeps_reload_timing() {
     let data = data();
     let build = pobr_build::parse_build(
         r#"<PathOfBuilding2><Build level="90" className="Witch"/>
-<Skills><Skill><Gem skillId="HailstormRoundsPlayer" level="20"/>
+<Skills><Skill mainActiveSkill="1">
 <Gem skillId="HailstormRoundsAmmoPlayer" level="20"/></Skill></Skills>
 <Items activeItemSet="1"><Item id="1">Rarity: NORMAL
 Makeshift Crossbow

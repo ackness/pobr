@@ -677,6 +677,7 @@ mod tests {
             var: var.to_string(),
             input_type,
             section: "General".to_string(),
+            tooltip: None,
             label: None,
             default: None,
             list_options: Vec::new(),

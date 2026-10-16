@@ -24,21 +24,28 @@ mod analysis;
 mod augments;
 mod calculate;
 mod catalog;
+mod config_context;
+mod crafting;
 mod decode;
 mod encode;
 mod request;
 mod support;
+mod uniques;
 mod usage;
 pub use support::support_groups_compatible_json;
+pub use uniques::{unique_catalog_json, unique_item_draft_json};
 pub use usage::line_usage_json;
 
 pub use analysis::{AttributionRequest, attribution_json, node_power_json, optimize_variants_json};
 pub use augments::{item_augment_info_json, reforge_runes_json, rune_catalog_json};
 pub use calculate::{calculate_build_json, skill_metrics_json};
-pub use catalog::{classify_item_lines_json, gem_catalog_json, translate_lines_to_zh_cn_json};
+pub use catalog::{
+    classify_item_lines_json, gem_catalog_json, minion_catalog_json, translate_lines_to_zh_cn_json,
+};
+pub use crafting::{item_crafting_catalog_json, normalize_item_draft_json};
 pub use decode::{
-    decode_build_file_json, decode_build_json, decode_build_loadout_json, import_trade_items_json,
-    manage_loadout_json,
+    decode_build_file_json, decode_build_json, decode_build_loadout_json, encode_build_file_json,
+    import_trade_items_json, manage_loadout_json,
 };
 pub use encode::encode_build_json;
 pub use request::{
@@ -155,4 +162,18 @@ fn localize_input_text(text: &str) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+mod tree_edit;
+pub use tree_edit::preview_tree_edit_json;
+
+mod tree_convert;
+pub use tree_convert::preview_tree_conversion_json;
+
+/// Resolves a member's outgoing party blocks from their build code.
+pub fn import_party_member_json(code: &str) -> Result<String, String> {
+    let data = state::build_data().map_err(|e| ApiError::not_initialized(e).into_json())?;
+    let member = pobr_build::party::import_member(code, &data)
+        .map_err(|e| ApiError::decode_error(e.to_string()).into_json())?;
+    serde_json::to_string(&member).map_err(|e| e.to_string())
 }

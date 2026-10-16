@@ -894,6 +894,9 @@ pub struct BuildSummary {
 /// The key output fields from a `calculate-build` result.
 #[derive(Debug, Clone, Serialize)]
 pub struct CalculateBuildOutput {
+    pub archon_duration: f64,
+    pub archon_recovery_period: f64,
+    pub utility_stats: std::collections::BTreeMap<String, f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub full_dps: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -929,6 +932,10 @@ pub struct CalculateBuildOutput {
     pub poison_max_stacks: f64,
     /// The main skill's action rate (per second, derived from the gem's per-level cast/attack time).
     pub action_rate: f64,
+    /// Crossbow shots per second before reloading, or zero for other skills.
+    pub firing_rate: f64,
+    /// Seconds to reload the crossbow, or zero when the skill uses no ammunition.
+    pub reload_time: f64,
     /// The main skill's cooldown (seconds, derived from its per-level cooldown).
     pub cooldown: f64,
     /// The main skill's mana cost (derived from its per-level cost).
@@ -969,6 +976,8 @@ pub struct MinionOutput {
     pub armour: f64,
     pub evasion: f64,
     pub energy_shield: f64,
+    /// Resistance values, maximums and over-cap, using player display stat ids.
+    pub stats: std::collections::BTreeMap<String, f64>,
 }
 
 /// How a meta gem triggers the main skill.
@@ -976,11 +985,12 @@ pub struct MinionOutput {
 pub struct EnergyTriggerOutput {
     /// Energy the gem needs to trigger its spells.
     pub maximum_energy: f64,
-    /// The skill whose critical hits fill the gem most often; absent when no
-    /// skill of the build can, and the main skill keeps its own rate.
+    /// The source skill or external event that fills the gem most often.
     pub source_skill: Option<String>,
-    /// Energy one critical hit of that skill gives.
+    /// Legacy name for Energy per event. Prefer `terms.energy_per_event`.
     pub energy_per_critical_hit: f64,
+    /// Generic event terms; the critical-hit field above remains for JSON compatibility.
+    pub terms: Option<pobr_core::calc::energy::EnergyTriggerTerms>,
     pub triggers_per_second: f64,
 }
 
@@ -1081,6 +1091,8 @@ pub struct ReferenceCheck {
     /// `true` when the reference assumes continuous orb/storm exposure;
     /// `output` can instead be limited by duration and casting frequency.
     pub periodic_hits_assume_sustained: bool,
+    /// Absent parser/stat rules are omitted only from this reference block.
+    pub exporter_absent_rules_omitted: bool,
     pub compared: usize,
     pub agreeing: usize,
     pub differing: Vec<ReferenceDifference>,
@@ -1123,6 +1135,9 @@ pub struct CalculateBuildReport {
     /// which would otherwise be reported as unused.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub usage: Option<pobr_build::usage::LineUsage>,
+    /// With --usage: isolated per-rule differences on the reference model basis.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub beyond_pob2: Vec<pobr_build::exporter_impact::ExporterRuleImpact>,
 }
 
 fn is_false(value: &bool) -> bool {
@@ -1193,6 +1208,9 @@ pub fn calculate_build_detailed(
 
     let summary = build_summary(&build);
     let output = CalculateBuildOutput {
+        archon_duration: out.archon_duration,
+        archon_recovery_period: out.archon_recovery_period,
+        utility_stats: out.utility_stats.clone(),
         full_dps: out.full_dps.as_ref().map(|full| full.dps),
         full_dot_dps: out.full_dps.as_ref().map(|full| full.dot_dps),
         full_dps_skills: out
@@ -1224,12 +1242,15 @@ pub fn calculate_build_detailed(
         ignite_max_stacks: out.ignite_max_stacks,
         poison_max_stacks: out.poison_max_stacks,
         action_rate: out.action_rate,
+        firing_rate: out.firing_rate,
+        reload_time: out.reload_time,
         cooldown: out.cooldown,
         mana_cost: out.mana_cost,
         energy_trigger: (out.energy_trigger_maximum > 0.0).then(|| EnergyTriggerOutput {
             maximum_energy: out.energy_trigger_maximum,
             source_skill: out.energy_trigger_source.clone(),
             energy_per_critical_hit: out.energy_per_trigger_event,
+            terms: out.energy_trigger.clone(),
             triggers_per_second: out.skill_trigger_rate,
         }),
         rain: session.rain().map(|rain| RainOutput {
@@ -1271,6 +1292,7 @@ pub fn calculate_build_detailed(
                 armour: minion.armour,
                 evasion: minion.evasion,
                 energy_shield: minion.energy_shield,
+                stats: minion.stats.clone(),
             })
             .collect(),
     };
@@ -1284,11 +1306,22 @@ pub fn calculate_build_detailed(
     // are at the spell's own rate of use. It counts a rain's hits whenever
     // the enemy can be hit again. The comparison asks the same questions, so
     // it is made on that basis, not at the rates the output above reports.
-    let at_own_rate = compares && out.energy_trigger_source.is_some();
+    let at_own_rate = compares
+        && out
+            .energy_trigger
+            .as_ref()
+            .is_some_and(|terms| !terms.at_own_rate);
     let rain_hits_whenever_allowed = compares && output.rain.is_some();
     let periodic_hits_assume_sustained = compares && session.has_periodic_hits();
+    let exporter_absent_rules_omitted = compares
+        && session
+            .exporter_rules()
+            .any(|rule| rule.exporter == pobr_data::source::ExporterCoverage::Absent);
     let on_basis = (!detail.reference_basis
-        && (at_own_rate || rain_hits_whenever_allowed || periodic_hits_assume_sustained))
+        && (at_own_rate
+            || rain_hits_whenever_allowed
+            || periodic_hits_assume_sustained
+            || exporter_absent_rules_omitted))
         .then(|| {
             calculate_with_data_session(&build, &build_data, &opts.clone().on_reference_basis())
         })
@@ -1312,6 +1345,7 @@ pub fn calculate_build_detailed(
             at_own_rate_of_use: at_own_rate,
             rain_hits_whenever_allowed,
             periodic_hits_assume_sustained,
+            exporter_absent_rules_omitted,
             compared: rows.len(),
             agreeing: rows.len() - differing.len(),
             differing,
@@ -1335,6 +1369,17 @@ pub fn calculate_build_detailed(
         .then(|| pobr_build::breakdown::main_skill_breakdown(&build, &build_data, out))
         .flatten();
 
+    let beyond_pob2 = if detail.usage && compares {
+        pobr_build::exporter_impact::exporter_rule_impacts(
+            &build,
+            &build_data,
+            &opts,
+            &import,
+            on_basis.as_ref().unwrap_or(&session),
+        )?
+    } else {
+        Vec::new()
+    };
     Ok(CalculateBuildReport {
         data_version: game_data.manifest()?.poe_version,
         unsupported_modifiers: session.unsupported_modifier_texts().to_vec(),
@@ -1359,6 +1404,7 @@ pub fn calculate_build_detailed(
         breakdowns,
         main_skill,
         usage,
+        beyond_pob2,
     })
 }
 

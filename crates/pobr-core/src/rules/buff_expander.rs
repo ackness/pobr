@@ -264,6 +264,11 @@ pub fn expand_misc_buffs(
     character_cfg.flags = ModFlags::NONE;
     character_cfg.keyword_flags = KeywordFlags::NONE;
     character_cfg.skill_types = SkillTypes::NONE;
+    out.mods.extend(super::archon::expand(
+        state.db,
+        &character_cfg,
+        state.mode_combat,
+    ));
     for def in defs {
         // Mode gate (doActorMisc's whole block at :510 is gated on
         // `env.mode_combat`).
@@ -382,7 +387,17 @@ fn expand_one(
         // vendor's `Speed` + ModFlag.Attack/Cast → pobr's speed-bucket stat
         // name (the speed semantics get folded into the name, matching
         // mod_parser's naming convention).
-        let (mod_name, template_flags) = fold_vendor_speed(&template.name, &template.flags);
+        let (mut mod_name, template_flags) = fold_vendor_speed(&template.name, &template.flags);
+        // Sanguimantic Rituals: "Arcane Surge grants more Life Regeneration
+        // Rate instead of Mana Regeneration Rate". Keep the buff's magnitude
+        // and effect scaling, changing only the regeneration it grants.
+        if def.id == "ArcaneSurge"
+            && mod_name == "ManaRegen"
+            && mod_type == ModType::More
+            && state.db.flag(state.cfg, "ArcaneSurgeLifeRegen")
+        {
+            mod_name = "LifeRegen".into();
+        }
         let number = match &template.value {
             BuffModValue::Literal { value } => *value,
             BuffModValue::PerEffect { coeff } => coeff * effect,
@@ -586,6 +601,53 @@ mod tests {
             cfg,
             mode_combat,
             main_skill: None,
+        }
+    }
+
+    #[test]
+    fn sanguimantic_rituals_redirects_scaled_arcane_surge_regeneration() {
+        let defs: pobr_data::catalog::buffs::BuffDefinitionsDef =
+            serde_json::from_str(include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../data/overlay-common/buff_definitions.json"
+            )))
+            .unwrap();
+        let def = defs
+            .buffs
+            .into_iter()
+            .find(|def| def.id == "ArcaneSurge")
+            .unwrap();
+        let cfg = CalcConfig::new();
+        for redirect in [false, true] {
+            let mut db = ModDb::new();
+            db.add_mod(Modifier::flag("Condition:ArcaneSurge"));
+            db.add_mod(Modifier::number("ArcaneSurgeEffect", ModType::Inc, 29.0));
+            db.add_mod(Modifier::number("BuffEffectOnSelf", ModType::Inc, 10.0));
+            if redirect {
+                db.add_mod(Modifier::flag("ArcaneSurgeLifeRegen"));
+            }
+            let out = expand_misc_buffs(
+                &state(&db, &cfg, true),
+                std::slice::from_ref(&def),
+                &HandlerRegistry::new(),
+            );
+            assert!(
+                out.conditions_set
+                    .iter()
+                    .any(|name| name == "AffectedByArcaneSurge")
+            );
+            for modifier in out.mods {
+                db.add_mod(modifier);
+            }
+            // 20% more regeneration × (1 + 29% + 10%) = 27.8% more.
+            let life = db.sum(ModType::More, &cfg, &[StatId::new("LifeRegen")]);
+            let mana = db.sum(ModType::More, &cfg, &[StatId::new("ManaRegen")]);
+            assert!((life - if redirect { 27.8 } else { 0.0 }).abs() < 1e-10);
+            assert!((mana - if redirect { 0.0 } else { 27.8 }).abs() < 1e-10);
+            // The 15% cast-speed bonus retains the same effect scaling.
+            assert!(
+                (db.sum(ModType::Inc, &cfg, &[StatId::new("CastSpeed")]) - 20.85).abs() < 1e-10
+            );
         }
     }
 

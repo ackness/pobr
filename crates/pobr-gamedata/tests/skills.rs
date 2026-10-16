@@ -11,6 +11,8 @@ mod load_buff_definitions;
 mod load_enemy_presets;
 #[path = "skills/load_minions.rs"]
 mod load_minions;
+#[path = "skills/load_monster_resistances.rs"]
+mod load_monster_resistances;
 #[path = "skills/load_monster_scaling.rs"]
 mod load_monster_scaling;
 #[path = "skills/load_non_damaging_ailments.rs"]

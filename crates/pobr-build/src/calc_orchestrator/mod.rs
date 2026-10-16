@@ -72,9 +72,12 @@ mod context;
 use context::CalculationContext;
 mod diagnosis;
 pub(crate) use collect::engine_ctx;
-pub(crate) use diagnosis::read_outside_the_database;
 pub use diagnosis::{
-    Diagnosis, MainSkillSummary, ModifierRef, UnmappedStat, UnsetCondition, diagnose,
+    Diagnosis, MainSkillSummary, ModifierRef, READ_UNDER_A_STATE, ReadGate, UnmappedStat,
+    UnsetCondition, diagnose,
+};
+pub(crate) use diagnosis::{
+    condition_set_from_build, config_option_setting, read_outside_the_database, read_under_a_state,
 };
 mod sources;
 use sources::SourceWriter;
@@ -125,7 +128,7 @@ pub struct DataOrchestratorOptions {
     /// (already loaded alongside the data pack by `BuildData::load`); when neither is
     /// present, the data channel treats everything as a miss.
     pub stat_map_catalog: Option<std::sync::Arc<StatMapCatalog>>,
-    /// Whether a spell in a meta gem that fills with Energy (Cast on Critical)
+    /// Whether a spell in a meta gem that fills with Energy
     /// is used as often as the gem triggers it. Defaults to `true`, which is
     /// what happens in the game. `false` gives the spell its own rate of use:
     /// the basis of a build code's reference values, whose exporter has no
@@ -143,6 +146,10 @@ pub struct DataOrchestratorOptions {
     pub periodic_uptime: bool,
     /// Evaluate all groups marked includeInFullDPS. Defaults to false.
     pub full_dps: bool,
+    /// Include rules missing from the reference exporter (the game default).
+    pub exporter_absent_rules: bool,
+    /// Per-rule diagnostic overrides, used to measure isolated rule impact.
+    pub exporter_rule_overrides: std::collections::BTreeMap<String, bool>,
 }
 
 impl Default for DataOrchestratorOptions {
@@ -160,6 +167,8 @@ impl Default for DataOrchestratorOptions {
             rain_landings: true,
             periodic_uptime: true,
             full_dps: false,
+            exporter_absent_rules: true,
+            exporter_rule_overrides: Default::default(),
         }
     }
 }
@@ -189,6 +198,8 @@ impl DataOrchestratorOptions {
     /// A model added here is verified by its own tests, not by the reference.
     pub fn on_reference_basis(self) -> Self {
         Self {
+            exporter_absent_rules: false,
+            exporter_rule_overrides: Default::default(),
             energy_triggers: false,
             rain_landings: false,
             periodic_uptime: false,
@@ -435,6 +446,26 @@ pub fn calculate_with_data_session(
     calculate_with_data_report(build, data, options).map(|report| report.session)
 }
 
+/// Calculates once while recording the variables and modifier names read, for
+/// configuration visibility, together with the prepared build whose enabled
+/// and item-granted skills participated. Ordinary planners keep tracking off.
+pub fn calculate_with_data_session_tracked(
+    build: &Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+) -> Result<(CalculationSession, Build), BuildError> {
+    let mut context = CalculationContext::new(data, options);
+    context.track_reads = true;
+    let prepared = prepared_build_view(build, data, options);
+    let mut session = calculate_prepared_with_context(&prepared, data, options, &mut context)?;
+    if options.full_dps {
+        session.set_full_dps(full_dps::calculate_prepared(
+            build, &prepared, data, options,
+        )?);
+    }
+    Ok((session, prepared.into_owned()))
+}
+
 /// A completed calculation and its mapping diagnostics, including trigger sources.
 /// Each report owns its records; subsequent calculations cannot overwrite them.
 pub struct CalculationReport {
@@ -499,8 +530,16 @@ pub(crate) fn prepared_build_view<'a>(
     // A skill an item grants is used at the level the character meets the
     // requirements of, which depends on the attributes its items and passives
     // give it: settled from the view without its skills.
-    let view = match scale_granted_skills(&view, data, || {
-        attributes_without_skills(&view, data, options)
+    let view = match scale_granted_skills(&view, data, |other_set| {
+        if other_set {
+            attributes_without_skills(
+                &skill::resolve::other_weapon_set_view(&view, data),
+                data,
+                options,
+            )
+        } else {
+            attributes_without_skills(&view, data, options)
+        }
     }) {
         Some(scaled) => Cow::Owned(scaled),
         None => view,
@@ -769,6 +808,45 @@ struct StageCtx<'a> {
 fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
     let mut build = Cow::Borrowed(build);
 
+    // Keep disabled slots in the editable build; remove them from the prepared
+    // calculation view before any support, reservation, buff or grant is read.
+    if build
+        .socket_groups
+        .iter()
+        .any(|group| group.gem_skills.iter().any(|gem| !gem.enabled))
+    {
+        for group in &mut build.to_mut().socket_groups {
+            if group.gem_skills.iter().all(|gem| gem.enabled) {
+                continue;
+            }
+            group.gem_requirement_levels = group
+                .gem_requirement_levels
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| group.gem_skills.get(*i).is_some_and(|gem| gem.enabled))
+                .map(|(_, level)| *level)
+                .collect();
+            group.gem_skills.retain(|gem| gem.enabled);
+            group.gem_ids = group
+                .gem_skills
+                .iter()
+                .filter_map(|gem| {
+                    data.gem_effects
+                        .get(&gem.skill_id)
+                        .map(|link| link.gem_id.clone())
+                })
+                .collect();
+            let active = group.gem_skills.iter().find(|gem| {
+                data.granted_effects
+                    .get(&gem.skill_id)
+                    .is_some_and(|effect| !effect.is_support)
+            });
+            group.active_skill_id = active.map(|gem| gem.skill_id.clone());
+            group.active_gem_level = active.map(|gem| gem.gem_level);
+            group.active_gem_quality = active.map(|gem| gem.quality);
+        }
+    }
+
     // Ring 3 gate (PoB2 CalcSetup.lua:821): when "+1 Ring Slot" isn't allocated on the
     // tree (vendor's `AdditionalRingSlot` flag, ModParser.lua:3128; the Ritualist
     // ascendancy's "Unfurled Finger"), the Ring 3 item is ignored entirely — stripped
@@ -797,6 +875,10 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
         build = Cow::Owned(augmented);
     }
 
+    if let Some(resolved) = granted_skills::resolve_spear_throw_level(&build, data) {
+        build = Cow::Owned(resolved);
+    }
+
     // The groups of the skills the passive tree grants, at the level the
     // character's level allows; an ordinary group listing the same skill
     // stands for it.
@@ -809,6 +891,10 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
     // build's own: the next steps add quality to every gem.
     if let Some(marked) = mark_item_granted_skills(&build, data) {
         build = Cow::Owned(marked);
+    }
+
+    if let Some(bound) = skill::resolve::bind_required_weapon_sets(&build, data) {
+        build = Cow::Owned(bound);
     }
 
     // nameSpec-only gem references → skill_id backfilled (matching PoB2 SkillsTab
@@ -896,6 +982,10 @@ fn stage_create_session(ctx: &StageCtx<'_>, cfg: CalcConfig) -> SourceWriter {
     // into calc (must come after with_config — with_config replaces cfg wholesale). The
     // data is value-for-value equal to the Default fallback, zero behavior change.
     session.set_constants(data.constants.clone());
+    session.set_exporter_rules(
+        ctx.options.exporter_absent_rules,
+        ctx.options.exporter_rule_overrides.clone(),
+    );
     // CalcSetup supplies one base projectile; SkillStatMap count overrides
     // subtract that one. Only projectile skills expose this output.
     if ctx.main.skill_flags.intersects(ModFlags::PROJECTILE) {

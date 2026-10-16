@@ -29,6 +29,7 @@ export function normalizeCopiedItem(input: string): string {
 
 interface ComparisonDependencies {
   catalog?: TradeCatalog;
+  includeEmptySlots?: boolean;
   translate?: (lines: string[]) => Promise<string[]>;
   evaluate?: typeof evaluateVariants;
   classify?: (text: string) => Promise<ItemLineJson[]>;
@@ -61,6 +62,7 @@ async function replacementContext(request: CalculateBuildRequest, text: string,
   };
   const base = findBase(text);
   if (!base) throw new Error('unknown-base');
+  if (base.requirement_known === false) throw new Error('unknown-required-level');
   const requirements = [...text.matchAll(/(?:^|,|Requirements:)\s*(?:Requires\s+)?(?:Level|LevelReq):?\s*(\d+)/gmi)].map(match => Number(match[1]));
   const requiredLevel = Math.max(base.level, ...requirements);
   if (requiredLevel > (request.character?.level ?? 1)) throw new Error('item-level');
@@ -129,7 +131,9 @@ export async function compareReplacementPositions(request: CalculateBuildRequest
   signal?.throwIfAborted();
   const allocated = new Set(request.allocated_nodes ?? []);
   const sockets = new Set([...(dependencies.jewelSocketNodes ?? []), ...(request.jewels ?? []).map(jewel => jewel.socket_node)]);
-  const slots = [...new Set([...(request.items ?? []).map(item => item.slot), ...(request.flasks ?? []).map(item => item.slot),
+  const emptySlots = dependencies.includeEmptySlots ? ['weapon1', 'weapon2', 'helmet', 'bodyarmour', 'gloves', 'boots',
+    'amulet', 'ring1', 'ring2', 'belt', 'Flask 1', 'Flask 2', 'Charm 1', 'Charm 2', 'Charm 3'] : [];
+  const slots = [...new Set([...emptySlots, ...(request.items ?? []).map(item => item.slot), ...(request.flasks ?? []).map(item => item.slot),
     ...[...sockets].filter(node => allocated.has(node)).sort((a, b) => a - b).map(node => `Jewel@${node}`)])]
     .filter(slot => basesForSlot(catalog, slot).includes(context.base));
   const rejected: ReplacementReport['rejected'] = [];

@@ -17,6 +17,8 @@ pub struct Env {
     /// Derived modifiers are appended during perform, so an environment is single-use.
     pub(crate) performed: bool,
     pub player: Actor,
+    pub utility_items: Vec<super::utility::UtilityItemSpec>,
+    pub utility_details: BTreeMap<String, super::utility::UtilityTerms>,
     pub enemy: Actor,
     pub cfg: CalcConfig,
     /// Player minions (Lane4). Each minion is its own `Actor`, reusing the
@@ -27,6 +29,7 @@ pub struct Env {
     pub buff_skills: Vec<BuffSpec>,
     /// Buff skills owned by a minion (index in `minions`), not the summoner.
     pub minion_buff_skills: Vec<(usize, BuffSpec)>,
+    pub party_buff_skills: Vec<super::session::PartyBuffSpec>,
     /// The player's warcry skill specs (backlog item #9; written by
     /// `session::add_warcry_skill`, consumed by `perform` before the hand
     /// pass via [`super::warcry::apply_warcry_uptime`] — the uptime-scaled
@@ -75,6 +78,10 @@ pub struct Env {
     pub crossbow_reload: Option<super::CrossbowReload>,
     /// What the EHP stage computed with (`None` before it runs).
     pub ehp_terms: Option<super::EhpTerms>,
+    /// The earlier single-hit estimate, retained for its optional legacy view.
+    pub(crate) legacy_ehp_terms: Option<super::ehp::EhpResult>,
+    /// Normal leech, instant leech and on-hit recovery by resource, for optional details.
+    pub(crate) leech_gain_terms: [[[f64; 3]; 3]; 2],
     /// MH/OH hand pass input (contract 1; written by the orchestration
     /// layer's weapon section via `session::set_hand_sources`). Empty means a
     /// non-attack skill / legacy entry point, and `perform` takes the
@@ -105,12 +112,15 @@ impl Env {
     pub fn new(player: Actor) -> Self {
         Self {
             performed: false,
+            utility_items: Vec::new(),
+            utility_details: BTreeMap::new(),
             player,
             enemy: Actor::new(1, ActorBaseStats::default()),
             cfg: CalcConfig::attack().with_damage_type(DamageType::Physical),
             minions: Vec::new(),
             buff_skills: Vec::new(),
             minion_buff_skills: Vec::new(),
+            party_buff_skills: Vec::new(),
             warcry_skills: Vec::new(),
             warcry_gain_injected: false,
             keystone_mods: BTreeMap::new(),
@@ -121,6 +131,8 @@ impl Env {
             ailment_terms: Vec::new(),
             crossbow_reload: None,
             ehp_terms: None,
+            legacy_ehp_terms: None,
+            leech_gain_terms: [[[0.0; 3]; 3]; 2],
             hand_sources: Vec::new(),
             main_hand_weapon_damage: Vec::new(),
             double_hits_when_dual_wielding: false,
@@ -136,7 +148,9 @@ impl Env {
     /// injection result. Once this entry point is called during integration,
     /// `perform` runs the same offence/defence pipeline for every minion.
     pub fn add_minion(&mut self, ctx: super::MinionContext) -> &mut Self {
-        self.minions.push(minion_actor_from_context(&ctx));
+        let mut actor = minion_actor_from_context(&ctx);
+        actor.mod_db.inherit_exporter_rules(&self.player.mod_db);
+        self.minions.push(actor);
         self
     }
 
@@ -199,6 +213,7 @@ impl Env {
             );
         }
         let mut actor = minion_actor_from_context(&ctx);
+        actor.mod_db.inherit_exporter_rules(&self.player.mod_db);
         // A minion created while the calculation notes its reads is noted too.
         if self.player.mod_db.tracks_reads() {
             actor.mod_db.track_reads();
@@ -259,6 +274,14 @@ impl Env {
                 0.0
             };
         }
+        if !origin.summoned_by.is_empty() {
+            self.player.mod_db.add_mod(
+                crate::Modifier::number("SelectedMinionLimit", ModType::Base, f64::from(limit))
+                    .with_tag(crate::ModTag::SkillName {
+                        names: vec![crate::skill_env::skill_name_from_id(&origin.summoned_by)],
+                    }),
+            );
+        }
         actor.is_companion = origin.is_companion;
         actor.minion = Some(MinionIdentity {
             summoner: origin.summoner,
@@ -280,16 +303,15 @@ impl Env {
 /// the offence/defence pipeline.
 ///
 /// Mapping strategy (avoids double-counting / missed values):
-/// - **Life / resistances / virtual weapon damage**: written to
+/// - **Life / virtual weapon damage**: written to
 ///   [`ActorBaseStats`]'s scalar base fields — because the player pipeline's
-///   pool query uses `MaximumLife` and resistance query uses
-///   `FireResistance`, which differ from the minion `ModDb`'s intrinsic
-///   `Life`/`FireResist` BASE names, so they can't be read from the db and
+///   pool query uses `MaximumLife`, which differs from the minion `ModDb`'s intrinsic
+///   `Life` BASE name, so it can't be read from the db and
 ///   must be supplied via the scalar base instead.
-/// - **Armour / evasion / ES**: scalar base left at 0, driven instead by the
-///   minion `ModDb`'s intrinsic `Armour`/`Evasion`/`EnergyShield` BASE
-///   through the defence pipeline (these query names match the intrinsic
-///   names, avoiding double-counting).
+/// - **Armour / evasion / ES / resistances**: scalar base left at 0, driven instead by the
+///   minion `ModDb`'s intrinsic BASE modifiers. Resistance queries read both
+///   `FireResistance` and `FireResist` (and likewise for other types),
+///   avoiding double-counting the monster base.
 /// - `mod_db` carries the three-channel injection result as-is.
 fn minion_actor_from_context(ctx: &super::MinionContext) -> Actor {
     let base = ActorBaseStats {
@@ -301,9 +323,9 @@ fn minion_actor_from_context(ctx: &super::MinionContext) -> Actor {
         evasion: 0.0,
         energy_shield: 0.0,
         accuracy: 0.0,
-        fire_resistance: ctx.base.fire_resist,
-        cold_resistance: ctx.base.cold_resist,
-        lightning_resistance: ctx.base.lightning_resist,
+        fire_resistance: 0.0,
+        cold_resistance: 0.0,
+        lightning_resistance: 0.0,
         // An attacking minion's virtual weapon damage feeds the attack damage pipeline.
         hit_min: ctx.base.weapon.physical_min,
         hit_max: ctx.base.weapon.physical_max,

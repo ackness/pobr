@@ -402,9 +402,37 @@ pub fn charge_multipliers_panel_default(db: &ModDb, cfg: &CalcConfig) -> CalcCon
         if current != legacy {
             out = out.with_multiplier(key, current);
         }
-        // A skill that consumes charges takes every charge above the
-        // minimum; the minimum is always held.
-        let removable = (current - minimum).max(0.0);
+    }
+    // Resonance redirects gains once, simultaneously: Frenzy -> Power,
+    // Power -> Endurance, Endurance -> Frenzy. It does not convert maxima
+    // or always-held minima. With no gain-event model, configured removable
+    // counts are the incoming gains; destination capacity caps the result.
+    let kinds = [ChargeKind::Power, ChargeKind::Frenzy, ChargeKind::Endurance];
+    let redirects = [
+        ("GainEnduranceChargesInsteadOfPower", 2),
+        ("GainPowerChargesInsteadOfFrenzy", 0),
+        ("GainFrenzyChargesInsteadOfEndurance", 1),
+    ];
+    let redirected = redirects.map(|(flag, destination)| (db.flag(cfg, flag), destination));
+    if redirected.iter().any(|(active, _)| *active) {
+        let minima = kinds
+            .map(|kind| f64::from(charge_minimum(db, cfg, kind, charge_maximum(db, cfg, kind))));
+        let mut gains = [0.0; 3];
+        for (i, kind) in kinds.iter().enumerate() {
+            let destination = if redirected[i].0 { redirected[i].1 } else { i };
+            gains[destination] += (out.multiplier(kind.multiplier_key()) - minima[i]).max(0.0);
+        }
+        for (i, kind) in kinds.iter().enumerate() {
+            out.multipliers.insert(
+                kind.multiplier_key().into(),
+                (minima[i] + gains[i]).min(f64::from(charge_maximum(db, cfg, *kind))),
+            );
+        }
+    }
+    for kind in kinds {
+        let key = kind.multiplier_key();
+        let minimum = f64::from(charge_minimum(db, cfg, kind, charge_maximum(db, cfg, kind)));
+        let removable = (out.multiplier(key) - minimum).max(0.0);
         removable_total += removable;
         out.multipliers.insert(format!("Removable{key}"), removable);
     }
@@ -432,11 +460,9 @@ pub const LEECH_MAX_LIFE_RATE_PCT: f64 = 20.0;
 pub const LEECH_MAX_MANA_RATE_PCT: f64 = 20.0;
 pub const LEECH_MAX_ES_RATE_PCT: f64 = 10.0;
 
-/// Leech single-instance ceiling (10% of each resource pool).
-///
-/// Source: agent-docs/recovery-charges-buffs.md §2.2;
-///       PoB2 `src/Modules/CalcSetup.lua`: `MaxLifeLeechInstance=10`.
-pub const LEECH_MAX_INSTANCE_PCT: f64 = 10.0;
+/// Base leech duration: the game's Life/Mana/Energy Shield Leech keywords
+/// say recovery occurs over one second: https://poe2db.tw/us/Keywords.
+pub const LEECH_DURATION_SECONDS: f64 = 1.0;
 
 /// Effective single-hit damage ceiling used for leech calculation (anything above is truncated).
 ///
@@ -472,77 +498,55 @@ impl LeechResource {
     }
 }
 
-/// Leech calculation output (0.5.0's single-instance view).
-///
-/// 0.5.0's key change: each resource has **only one leech instance at a
-/// time**; pobr estimates the panel value by "taking the highest-rate instance".
+/// One leech instance, before frequency and competing instances are considered.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LeechResult {
-    /// Single-instance leech total (= `effective_hit × leech_pct%`, clamped by instance_cap).
     pub instance_total: f64,
-    /// Leech rate ceiling (per second; = `pool × max_rate_pct%`).
     pub rate_cap_per_second: f64,
-    /// Panel leech rate (per second; min(instance_total × 2%/s, rate_cap)).
-    ///
-    /// The PoE series' leech defaults to recovering 2% of the leeched amount
-    /// per second (PoB2's `CalcSetup.lua` has no such constant, but it's an
-    /// industry-consensus value, back-derived from leech total / duration;
-    /// under 0.5.0's single-instance model this rate is the panel value directly).
     pub display_rate_per_second: f64,
 }
 
-/// Calculates a resource's leech panel rate (0.5.0's single-instance model).
-///
-/// # Parameters
-/// - `pool` -- the corresponding resource pool's (life / mana / ES) final value.
-/// - `leech_pct` -- this hit's damage × leech%, i.e. the sum of leech mod
-///   percentages (e.g. `LifeLeech` BASE 0.5 means 0.5%).
-/// - `hit_damage` -- the hit damage used for leech (physical/elemental;
-///   truncated by `LEECH_EFFECTIVE_MAX_HIT_DAMAGE`).
-/// - `resource` -- the leech resource type (determines the rate ceiling).
-///
-/// # Notes
-/// - PoE2 defaults leech to "instance rate = leech total × 2%/s" (a PoE series convention);
-/// - 0.5.0's single instance: only takes the single instance with the
-///   highest rate (this function computes a single instance; the caller can take the max);
-/// - Single-instance total ceiling: `pool × LEECH_MAX_INSTANCE_PCT%`;
-/// - Rate ceiling: `pool × max_rate_pct%`;
-/// - The `CannotLeechXxx` flag is short-circuited by the caller before
-///   passing in (returns `LeechResult::zero(pool, resource)`).
-///
-/// Source: agent-docs/recovery-charges-buffs.md §2.2;
-///       PoB2 `src/Modules/CalcDefence.lua`'s leech section / `CalcSetup.lua`'s ceiling constants.
+/// The game's leech keywords recover the damage-derived amount over one
+/// second, not 10% of the pool over a duration inferred from a rate ceiling.
+/// https://poe2db.tw/us/Keywords
 pub fn calc_leech(
     pool: f64,
     leech_pct: f64,
     hit_damage: f64,
     resource: LeechResource,
 ) -> LeechResult {
-    if pool <= 0.0 || leech_pct <= 0.0 {
-        return LeechResult::zero(pool, resource);
-    }
-    // Effective single-hit damage ceiling (PoB2 Data/Misc.lua's EffectiveMaxDamageForLeech = 40000)
-    let effective_hit = hit_damage.clamp(0.0, LEECH_EFFECTIVE_MAX_HIT_DAMAGE);
-    // Single-instance leech total: subject to the single-instance ceiling (pool × 10%)
-    let instance_cap = pool * LEECH_MAX_INSTANCE_PCT / 100.0;
-    let instance_total = round((effective_hit * leech_pct / 100.0).min(instance_cap));
+    leech_instance(
+        pool,
+        hit_damage.clamp(0.0, LEECH_EFFECTIVE_MAX_HIT_DAMAGE) * leech_pct.max(0.0) / 100.0,
+        resource,
+        1.0,
+        1.0,
+    )
+}
 
-    // Rate ceiling: pool × max_rate_pct% /s (CalcSetup.lua's MaxLifeLeechRate=20, etc.).
-    // Panel display rate = min(rate_cap, instance_total × (rate_cap / instance_cap))
-    // = min(rate_cap, instance_total × max_rate_pct / max_instance_pct)
-    // = min(rate_cap, instance_total × 2)  when max_rate = 20%, max_inst = 10%
-    // Derivation: instance duration = instance_total / rate_cap; rate = instance_total / duration.
-    // Simplified: if instance_total == instance_cap → display_rate = rate_cap (max rate);
-    //        if instance_total < instance_cap → display_rate = instance_total × (rate_cap / instance_cap).
-    let rate_cap = pool * resource.max_rate_pct() / 100.0;
-    let ratio = resource.max_rate_pct() / LEECH_MAX_INSTANCE_PCT; // rate_cap / instance_cap (normalized)
-    let display_rate_per_second = round((instance_total * ratio).min(rate_cap));
-
+/// Apply speed to the instance, and increases to the maximum before capping.
+/// Speed changes the recovery time, never the amount recovered.
+pub(crate) fn leech_instance(
+    pool: f64,
+    amount: f64,
+    resource: LeechResource,
+    speed: f64,
+    maximum: f64,
+) -> LeechResult {
+    let amount = if pool > 0.0 { amount.max(0.0) } else { 0.0 };
+    let rate_cap = pool.max(0.0) * resource.max_rate_pct() / 100.0 * maximum.max(0.0);
     LeechResult {
-        instance_total,
+        instance_total: round(amount),
         rate_cap_per_second: round(rate_cap),
-        display_rate_per_second,
+        display_rate_per_second: round(
+            (amount / LEECH_DURATION_SECONDS * speed.max(0.0)).min(rate_cap),
+        ),
     }
+}
+
+pub(crate) fn leech_modifier_factor(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
+    let names = [ModName::from(name)];
+    ((1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)).max(0.0)
 }
 
 /// Calculates a resource's leech result from the ModDb.
@@ -593,7 +597,15 @@ pub fn calc_leech_from_db(
         cfg,
         &[resource.leech_mod_name(), ModName::from(physical_name)],
     );
-    calc_leech(pool, leech_pct, hit_damage, resource)
+    let name = resource.leech_mod_name().to_string();
+    leech_instance(
+        pool,
+        hit_damage.clamp(0.0, LEECH_EFFECTIVE_MAX_HIT_DAMAGE) * leech_pct.max(0.0) / 100.0
+            * leech_modifier_factor(db, cfg, &format!("{name}Amount")),
+        resource,
+        leech_modifier_factor(db, cfg, &format!("{name}Rate")),
+        leech_modifier_factor(db, cfg, &format!("Max{name}Rate")),
+    )
 }
 
 impl LeechResult {
@@ -706,12 +718,29 @@ pub fn calc_recoup(
 /// Source: agent-docs/recovery-charges-buffs.md §2.3;
 ///       PoB2 `src/Modules/CalcDefence.lua`'s Recoup section;
 ///       PoB2 `src/Modules/CalcPerform.lua`'s `4SecondRecoup` flag handling.
+pub(crate) struct RecoupTerms {
+    pub damage: f64,
+    pub percent: f64,
+    pub duration: f64,
+    pub recovery: f64,
+}
+
 pub fn calc_recoup_from_db(
     db: &ModDb,
     cfg: &CalcConfig,
     damage_taken: f64,
     resource: RecoupResource,
 ) -> RecoupResult {
+    let t = recoup_terms(db, cfg, damage_taken, resource);
+    calc_recoup(t.damage, t.percent, t.duration, t.recovery)
+}
+
+pub(crate) fn recoup_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    damage_taken: f64,
+    resource: RecoupResource,
+) -> RecoupTerms {
     let mut recoup_pct = db.sum(ModType::Base, cfg, &[resource.recoup_mod_name()]);
     // life_recoup_also_applies_to_energy_shield copies the percentage;
     // the recipient retains its own recovery rate and recoup duration.
@@ -721,9 +750,11 @@ pub fn calc_recoup_from_db(
         recoup_pct += db.sum(ModType::Base, cfg, &[ModName::from("LifeRecoup")]);
     }
     if recoup_pct <= 0.0 {
-        return RecoupResult {
-            rate_per_second: 0.0,
+        return RecoupTerms {
+            damage: damage_taken,
+            percent: recoup_pct,
             duration: RECOUP_DURATION_DEFAULT,
+            recovery: 1.0,
         };
     }
 
@@ -746,5 +777,10 @@ pub fn calc_recoup_from_db(
     let rate_more = db.more(cfg, &[recovery_rate_name]);
     let recovery_rate_mod = (1.0 + rate_inc / 100.0) * rate_more;
 
-    calc_recoup(damage_taken, recoup_pct, duration, recovery_rate_mod)
+    RecoupTerms {
+        damage: damage_taken,
+        percent: recoup_pct,
+        duration,
+        recovery: recovery_rate_mod,
+    }
 }

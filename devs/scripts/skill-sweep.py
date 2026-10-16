@@ -1,25 +1,30 @@
 #!/usr/bin/env python3
-"""Measure every primary player active effect, without tuning real builds.
+"""Measure player gems and their active granted effects, without tuning real builds.
 
     mise run skills:sweep --jobs 4 [--refresh] [--json FILE] [--text FILE]
     mise run skills:sweep --skill FireballPlayer --skill IceStrikePlayer
 
 Uses the active data version (POBR_DATA_ROOT / POBR_DATA_VERSION), builds the
 worktree's CLI once, and compares level-90, level-20/quality-0 single-gem builds.
-Non-support gems include gem_type 2 (meta gems); duplicate granted effect IDs
-are measured once. Additional effects/stat sets are listed but not separate
-cases. Pure movement, command-only and empty placeholder skills are skipped.
+Non-support gems include gem_type 2 (meta gems); duplicate primary effect IDs
+share one gem fixture. Every active granted effect is selected in the importer's
+display order, retaining its parent gem and primary row. Additional stat sets
+are only inventoried. Pure movement, command-only and empty effects are skipped.
 
 XML, build codes and oracle JSON live in .cache/skill-sweep; oracle keys include
 XML, vendor commit and wrapper contents. --refresh recalculates the oracle;
 PoBR always runs again. --no-build reuses target/debug/pobr. Output defaults to
-.cache/skill-sweep/report.json and report.txt. Standard library only.
+.cache/skill-sweep/report.json and report.txt for a full sweep; --skill writes
+report-selected.json and report-selected.txt so focused runs retain the last full
+inventory. Explicit --json/--text paths override these defaults. Standard library only.
 
-Classes compare DPS, rate and crit within 5% of the oracle; zero classes
+Classes compare DPS, rate, crit and crossbow firing/reload timing within 5% of the oracle; zero classes
 use damage only. Average hit is reported but excluded: PoBR exports it before
 enemy mitigation, PoB2 after. As in reference_check.rs, HitSpeed replaces Speed
-for rate comparisons when present. Main-minion DPS is also compared. both_zero is
-not evidence that buffs, triggers or minions work: this fixture supplies no
+for rate comparisons when present. Main-minion DPS is also compared. Known
+differences retain both sides and their reason, using selected game stats, the
+maintainer guide's model list, or recomputed integer damage bounds; they do not
+count toward unexplained family rankings. both_zero is not evidence that buffs, triggers or minions work: this fixture supplies no
 trigger payload, corpses, charges, targets, supports or other skill inputs.
 The report separates missing vendor effects from engine differences and gives
 both all-candidate and vendor-supported main-skill coverage, never silently
@@ -46,9 +51,53 @@ import zlib
 REPO = Path(__file__).resolve().parents[2]
 VENDOR = REPO / "vendor/PathOfBuilding-PoE2"
 CACHE = REPO / ".cache/skill-sweep"
-CLASSES = ("agree", "differs", "pobr_zero", "pob2_zero", "both_zero", "error", "pob2_other_skill")
-METRICS = ("TotalDPS", "CombinedDPS", "Speed", "AverageHit", "CritChance")
+CLASSES = ("agree", "known", "differs", "pobr_zero", "pob2_zero", "both_zero", "error", "pob2_other_skill")
+METRICS = ("TotalDPS", "CombinedDPS", "Speed", "AverageHit", "CritChance", "FiringRate", "ReloadTime")
 DIFFERENT = {"differs", "pobr_zero", "pob2_zero"}
+AVERAGE_DAMAGE_STAT = "base_skill_show_average_damage_instead_of_dps"
+# Game effect IDs, not sweep case IDs. Sources are the named bullets under
+# docs/maintainer-guide.md's intentional-differences list, except where noted. An optional
+# stat-set ID confines a model to the form documented there.
+KNOWN_MODELS = {
+    # Channelled-attacks bullet: exactly calc::channel::skill_modifiers' list.
+    **{skill: ("channel cycle", None) for skill in (
+        "DetonatingArrowPlayer", "SuperchargedSlamPlayer", "PerfectStrikePlayer",
+        "GatheringStormPlayer", "SnipePlayer", "ShieldChargePlayer")},
+    # "Bonestorm": one spike per cast, rather than the minimum channel time.
+    "BonestormPlayer": ("Bonestorm projectile rate", None),
+    # "Rain of Arrows": discrete landings, including Hailstorm's reload cycle.
+    "RainOfArrowsPlayer": ("rain hit interval", None),
+    "HailstormRoundsPlayer": ("rain hit interval", None),
+    # Periodic orbs/storms bullet: primary orb/storm forms only.
+    **{skill: ("periodic orb/storm hits", skill) for skill in (
+        "BallLightningPlayer", "SolarOrbPlayer", "FirestormPlayer",
+        "IcestormPlayer", "ThunderstormPlayer")},
+    # Engine architecture, crossbow/tornado/meteor timing paragraph: fixed intervals.
+    "WalkingCalamityMeteorPlayer": ("meteor interval", None),
+    "TheStarsAnswerCometPlayer": ("meteor interval", None),
+    "ArchonOfChayulaTornadoPlayer": ("Chayula's Will tornado interval", None),
+    # "Black Powder Blitz ... Requiem": cooldown / no-ammo cycles.
+    "BlackPowderBlitzPlayer": ("Black Powder Blitz cooldown", None),
+    "CrossbowRequiemPlayer": ("Requiem has no reload", None),
+    # Average-damage display bullet: Vivid Wisp assumption.
+    "VividStampedePlayer": ("Vivid Stampede trigger model", None),
+    # "Bursting Fen Toad ...": attacks check accuracy; only the explosion
+    # form of Conductive Runes and ordinary Primal Strikes have this difference.
+    "ExplodingPoisonToadPlayer": ("non-weapon attack hit checks", None),
+    "ConductiveRunesPlayer": ("non-weapon attack hit checks", "ConductiveRunesExplosionPlayer"),
+    "BloodhoundsMarkExplosionPlayer": ("non-weapon attack hit checks", None),
+    "CurseOfRepulsionShockwavePlayer": ("non-weapon attack hit checks", None),
+    "PrimalStrikesPlayer": ("Primal Strikes exposure", "PrimalStrikesPlayer"),
+    # Event-triggered hits: the average hit is computed, but the curse-hit,
+    # empowered-hit or dodge/hazard event rate is not modelled, so the rate is 0
+    # (skill_env::triggers, `EventTriggerRateUnmodelled`).
+    **{skill: ("event trigger rate unmodelled", None) for skill in (
+        "FortifyingCryShockwavePlayer", "TemperWeaponCombustionPlayer",
+        "TriggeredTrailOfCaltropsPlayer")},
+    # Pounce bullet: selecting the summon effect creates its wolves, which then
+    # count toward Predator's Mark (6% for two wolves); PoB2 does not count them.
+    "WolfPounceSummonWolfPlayer": ("Pounce wolves counted for Predator's Mark", None),
+}
 FAMILY_TYPES = {
     "warcries": {"Warcry"}, "totems": {"SummonsTotem", "SummonsAttackTotem"},
     "traps": {"Trap"}, "mines": {"Mine"}, "channelling": {"Channel"},
@@ -74,26 +123,16 @@ def vendor_metadata(vendor):
     generated table's displayed requirement text fills that gap; no calculation
     formulas are borrowed. Game skill types and base items still drive cases.
     """
-    effects, hidden = set(), set()
+    effects = set()
     for path in sorted((vendor / "src/Data/Skills").glob("*.lua")):
         source = path.read_text(encoding="utf-8")
         for match in re.finditer(r'^skills\["([^"\n]+)"\] = \{\n(.*?)(?=^skills\[|\Z)', source, re.M | re.S):
             effects.add(match[1])
-            if re.search(r'^\t(?:support|hideFromSideBar) = true,', match[2], re.M):
-                hidden.add(match[1])
     source = (vendor / "src/Data/Gems.lua").read_text(encoding="utf-8")
     gems = defaultdict(list)
     for match in re.finditer(r'^\t\["[^"\n]+"\] = \{\n(.*?)^\t\},', source, re.M | re.S):
         fields = dict(re.findall(r'^\t\t(\w+) = "([^"\n]*)",', match[1], re.M))
         if fields.get("grantedEffectId"):
-            effect_list = [fields["grantedEffectId"]]
-            effect_list += [fields[key] for key in sorted(fields) if key.startswith("additionalGrantedEffectId")]
-            order = re.search(r'^\t\tgrantedEffectDisplayOrder = \{ ([\d, ]+) \}', match[1], re.M)
-            indices = [int(i) for i in re.findall(r'\d+', order[1])] if order else []
-            indices = list(dict.fromkeys([*indices, *range(len(effect_list))]))
-            active = [effect_list[i] for i in indices if i < len(effect_list) and effect_list[i] not in hidden]
-            primary = fields["grantedEffectId"]
-            fields["primary_active_index"] = active.index(primary) + 1 if primary in active else None
             gems[fields["grantedEffectId"]].append(fields)
     if not gems:
         raise ValueError("cannot read the vendor's generated gem metadata")
@@ -106,7 +145,7 @@ def skip_reason(effect, gem, stat_sets):
     if not types and not stat_sets:
         return "placeholder with no skill types or stat sets (no damage or buff)"
     if "CommandsMinions" in types and not types & {"Attack", "Damage", "Buff", "Minion"}:
-        return "command-only skill needs its parent minion; no independent damage or buff"
+        return "command-only effect; no independent damage or buff in the selected player effect"
     implicit = {s for row in stat_sets for s in row.get("implicit_stats", [])}
     if ("Travel" in types and "base_deal_no_damage" in implicit
             and not types & {"Buff", "Minion", "AppliesCurse"} and "buff" not in tags):
@@ -114,40 +153,86 @@ def skip_reason(effect, gem, stat_sets):
     return None
 
 
+def active_effects(link, effects):
+    """Mirror skill_env::mods::group_active_effects for one originating gem.
+
+    Display-order indices refer to primary + additional before supports are
+    filtered. Unknown effects remain visible and unlisted indices are appended.
+    """
+    ids = [link["granted_effect_id"], *link.get("additional_granted_effect_ids", [])]
+    order = list(dict.fromkeys([*link.get("granted_effect_display_order", []), *range(len(ids))]))
+    active = [ids[i] for i in order if 0 <= i < len(ids) and ids[i]
+              and not effects.get(ids[i], {}).get("is_support", False)]
+    return list(enumerate(active, 1))
+
+
+def case_label(case):
+    return case.get("case_id", case["skill_id"])
+
+
+def selected_stat_set(stat_sets, level=20):
+    """The fixture selects the first set at level 20, never a sibling's flags."""
+    if not stat_sets:
+        return {"id": None, "stats": {}}
+    selected = stat_sets[0]
+    stats = dict.fromkeys(selected.get("implicit_stats", []), 1)
+    stats.update((s["stat"], s["value"]) for s in selected.get("constant_stats", []))
+    levels = [row for row in selected.get("levels", []) if row["gem_level"] <= level]
+    if levels:
+        stats.update((s["stat"], s["value"]) for s in max(levels, key=lambda r: r["gem_level"]).get("stats", []))
+    return {"id": selected["set_id"], "stats": stats}
+
+
 def skill_cases(directory, vendor_gems, vendor_effects):
     base = directory / "base"
     gems = read_json(base / "skill_gems.json")
     effects = {row["id"]: row for row in read_json(base / "granted_effects.json")}
     sets = {row["effect_id"]: row["sets"] for row in read_json(base / "granted_effect_stat_sets.json")}
+    # BuildData seeds links from the first game gem for each primary, then lets
+    # the compatibility overlay replace that link (including its display order).
+    links = {}
+    for gem in sorted(gems, key=lambda row: row["id"]):
+        links.setdefault(gem["granted_effect_id"], gem)
+    overlay = directory / "overlay/gem_effects.json"
+    if overlay.is_file():
+        for link in read_json(overlay)["gems"]:
+            links[link["granted_effect_id"]] = link
     grouped = defaultdict(list)
     for gem in gems:
         if not gem["is_support"]:
             grouped[gem["granted_effect_id"]].append(gem)
     cases, skipped = [], []
-    for effect_id, variants in sorted(grouped.items()):
+    for primary_id, variants in sorted(grouped.items()):
         gem = min(variants, key=lambda row: row["id"])
-        effect = effects[effect_id]
-        oracle_gems = vendor_gems.get(effect_id, [])
+        primary_name = effects[primary_id].get("displayed_name") or primary_id
+        oracle_gems = vendor_gems.get(primary_id, [])
         oracle_gem = next((row for row in oracle_gems if row.get("gameId") == gem["id"]),
                           oracle_gems[0] if oracle_gems else {})
-        types = effect.get("skill_types", [])
-        families = sorted(name for name, flags in FAMILY_TYPES.items() if flags.intersection(types))
-        if any(row.get("gem_type") == 2 for row in variants):
-            families.append("meta")
-        case = {"skill_id": effect_id, "name": effect.get("displayed_name") or effect_id,
-                "skill_types": types, "families": families or ["utility"], "gem": gem,
-                "gem_ids": sorted(row["id"] for row in variants), "oracle_gem": oracle_gem,
-                "vendor_has_effect": effect_id in vendor_effects,
-                "additional_effects": sorted({i for row in variants
-                    for i in row.get("additional_granted_effect_ids", []) if not effects.get(i, {}).get("is_support", False)}),
-                "additional_stat_sets": effect.get("additional_stat_set_ids", [])}
-        reason = skip_reason(effect, gem, sets.get(effect_id, []))
-        if reason:
-            skipped.append({**case, "reason": reason})
-        else:
-            cases.append(case)
+        ordered = active_effects(links[primary_id], effects)
+        for ordinal, effect_id in ordered:
+            effect = effects.get(effect_id, {})
+            types = effect.get("skill_types", [])
+            families = sorted(name for name, flags in FAMILY_TYPES.items() if flags.intersection(types))
+            if any(row.get("gem_type") == 2 for row in variants):
+                families.append("meta")
+            case = {"case_id": f"{primary_id}/{effect_id}@{ordinal}",
+                    "skill_id": effect_id, "primary_skill_id": primary_id,
+                    "active_skill_index": ordinal, "is_primary": effect_id == primary_id,
+                    "name": effect.get("displayed_name") or effect_id, "gem_name": primary_name,
+                    "skill_types": types, "families": families or ["utility"], "gem": gem,
+                    "gem_ids": sorted(row["id"] for row in variants), "oracle_gem": oracle_gem,
+                    "vendor_has_effect": effect_id in vendor_effects, "vendor_has_gem": bool(oracle_gem),
+                    "additional_effects": [i for _, i in ordered if i != primary_id],
+                    "selected_stat_set": selected_stat_set(sets.get(effect_id, [])),
+                    "additional_stat_sets": effect.get("additional_stat_set_ids", [])}
+            reason = skip_reason(effect, gem, sets.get(effect_id, [])) if effect else None
+            if reason:
+                skipped.append({**case, "reason": reason})
+            else:
+                cases.append(case)
     return cases, skipped, {"gem_records": len(gems), "non_support_gems": sum(not g["is_support"] for g in gems),
-                            "primary_active_effects": len(grouped)}
+                            "primary_active_effects": len(grouped),
+                            "additional_active_effects": sum(not c["is_primary"] for c in cases + skipped)}
 
 
 def equipment_classes(case):
@@ -218,11 +303,11 @@ def synthetic_xml(case, bases):
                                "ascendClassId": "0", "nodes": ""})
     skills = ET.SubElement(root, "Skills", {"activeSkillSet": "1", "defaultGemLevel": "normalMaximum"})
     skill_set = ET.SubElement(skills, "SkillSet", {"id": "1"})
-    active_index = str(case["oracle_gem"].get("primary_active_index") or 1)
+    active_index = str(case["active_skill_index"])
     skill = ET.SubElement(skill_set, "Skill", {"enabled": "true", "mainActiveSkill": active_index,
                                              "mainActiveSkillCalcs": active_index})
     gem = case["gem"]
-    attrs = {"nameSpec": case["name"], "skillId": case["skill_id"], "level": "20", "quality": "0",
+    attrs = {"nameSpec": case["gem_name"], "skillId": case["primary_skill_id"], "level": "20", "quality": "0",
              "enabled": "true", "enableGlobal1": "true", "enableGlobal2": "true", "count": "1", "corruptLevel": "0"}
     oracle_gem = case["oracle_gem"]
     if oracle_gem:
@@ -283,9 +368,16 @@ def engine_result(report, expected):
     output = report["output"]
     main = report.get("main_skill") or {}
     metrics = dict(zip(METRICS, map(number, (output["dps"], main.get("combined_dps"),
-        output["action_rate"], output["total_hit_avg"], output["crit_chance"] * 100))))
+        output["action_rate"], output["total_hit_avg"], output["crit_chance"] * 100,
+        output["firing_rate"], output["reload_time"]))))
     minion = next((m for m in output.get("minions", []) if m["summoned_by"] == expected), None)
+    details = {row["stat"]: row.get("breakdown") or {} for row in report.get("breakdowns", [])}
+    damage = details.get("TotalHitAvg", {}).get("damage") or {}
     return {"main_skill": main.get("skill_id"), "metrics": metrics,
+            "rounding_inputs": {"damage": damage.get("rows", []),
+                "damage_effect": damage.get("damage_effect"),
+                "mitigation": details.get("TotalDPS", {}).get("mitigation", []),
+                "hit_chance": output.get("hit_chance"), "crit_multiplier": output.get("crit_multiplier")},
             "minion": {"skill_id": minion["skill_id"], "TotalDPS": number(minion["dps"])} if minion else None}
 
 
@@ -303,7 +395,40 @@ def oracle_result(report):
                        "TotalDPS": number(minion.get("TotalDPS"))} if minion else None}
 
 
-def classify(expected, pobr, pob2):
+def rounded_damage_ratio(pobr):
+    """Recompute the guide's integer-bound / percent-hit-chance convention.
+
+    Use PoBR's game-derived damage bounds after conversion, weighting each type
+    by its mitigation. Be conservative: ordinary rolls/crit, one hand, no
+    double/triple damage, and physical mitigation at the fixed 75% cap only.
+    A changing armour reduction or a separate critical model needs its own
+    calculation, so cannot be explained by this ratio.
+    """
+    inputs = pobr.get("rounding_inputs") or {}
+    rows = inputs.get("damage", [])
+    mitigation = {r["damage_type"]: r for r in inputs.get("mitigation", [])}
+    hit, crit_mult = inputs.get("hit_chance"), inputs.get("crit_multiplier")
+    if not rows or inputs.get("damage_effect") != 1 or not hit or not crit_mult or pobr["minion"]:
+        return None
+    original, rounded = 0.0, 0.0
+    for row in rows:
+        m = mitigation.get(row["damage_type"])
+        if (not m or (row["damage_type"] == "Physical" and m["reduction"] != 75)
+                or not math.isclose(row["avg"], (row["min"] + row["max"]) / 2)
+                or not math.isclose(row["crit_avg"], row["avg"] * crit_mult)):
+            return None
+        original += row["avg"] * m["multiplier"]
+        rounded += (math.floor(row["min"] + 0.5) + math.floor(row["max"] + 0.5)) / 2 * m["multiplier"]
+    if original <= 0 or math.isclose(original, rounded):
+        return None
+    rounded_hit = math.floor(hit * 100 + 0.5) / 100
+    crit = pobr["metrics"]["CritChance"] / 100
+    crit_effect = 1 + crit * (crit_mult - 1)
+    rounded_crit_effect = 1 + crit * rounded_hit / hit * (crit_mult - 1)
+    return rounded / original * rounded_hit / hit * rounded_crit_effect / crit_effect
+
+
+def classify(expected, pobr, pob2, case=None):
     if pob2["main_skill"] != expected:
         return "pob2_other_skill", [], f'PoB2 selected {pob2["main_skill"]!r}, expected {expected}'
     if pobr["main_skill"] != expected:
@@ -321,6 +446,31 @@ def classify(expected, pobr, pob2):
     zero_right = all(right.get(k, 0) == 0 for k in damage_keys)
     if zero_left and zero_right:
         return "both_zero", differences, "no damage in this isolated fixture; buff/trigger behavior is not validated"
+    selected = (case or {}).get("selected_stat_set", {})
+    stats = selected.get("stats", {})
+    if zero_left and stats.get("base_deal_no_damage"):
+        return "known", differences, "known: no-damage stat set"
+    average_display = bool(stats.get(AVERAGE_DAMAGE_STAT))
+    unexplained = [k for k in differences if not (average_display and k == "CombinedDPS")]
+    if differences and not unexplained:
+        return "known", differences, "known: average-damage display"
+    if differences and expected in KNOWN_MODELS:
+        reason, stat_set = KNOWN_MODELS[expected]
+        if stat_set is None or stat_set == selected.get("id"):
+            return "known", differences, "known: " + reason
+    if unexplained and set(unexplained) <= {"TotalDPS", "CombinedDPS"}:
+        ratio = rounded_damage_ratio(pobr)
+        if ratio is not None:
+            adjusted = {"TotalDPS": left["TotalDPS"] * ratio,
+                        "CombinedDPS": left["CombinedDPS"] + left["TotalDPS"] * (ratio - 1)}
+            # Much tighter than the sweep's 5% agreement band: rounding must
+            # explain the ratio, not merely move an unrelated error inside it.
+            checked = ["TotalDPS"] if average_display else ["TotalDPS", "CombinedDPS"]
+            if all(math.isclose(adjusted[k], right[k], rel_tol=0.001, abs_tol=1e-9) for k in checked):
+                reason = f"known: rounding (recomputed DPS factor {ratio:.6g})"
+                if average_display:
+                    reason += "; average-damage display"
+                return "known", differences, reason
     if zero_left:
         return "pobr_zero", differences, "PoBR has no player or main-minion damage"
     if zero_right:
@@ -344,7 +494,7 @@ def measure(case, bases, binary, commit, wrapper, refresh):
         # Run each side independently: a failure must not hide the other's result.
         try:
             report = json.loads(run([str(binary), "calculate-build", "--file", str(code_path),
-                "--reference-basis", "--json", "--breakdown", "TotalDPS"]))
+                "--reference-basis", "--json", "--breakdown", "TotalDPS,TotalHitAvg"]))
             row["pobr"] = engine_result(report, case["skill_id"])
         except (ValueError, OSError, KeyError, TypeError, subprocess.TimeoutExpired) as error:
             row["reasons"].append(f"PoBR: {error}")
@@ -366,10 +516,12 @@ def measure(case, bases, binary, commit, wrapper, refresh):
         except (ValueError, OSError, KeyError, TypeError, subprocess.TimeoutExpired) as error:
             row["reasons"].append(f"PoB2: {error}")
         if row["pobr"] and row["pob2"]:
-            cls, differences, reason = classify(case["skill_id"], row["pobr"], row["pob2"])
+            cls, differences, reason = classify(case["skill_id"], row["pobr"], row["pob2"], case)
             row.update(classification=cls, differing_metrics=differences)
             if reason:
                 row["reasons"].append(reason)
+        if not case.get("vendor_has_gem", True):
+            row["reasons"].append("originating gem is absent from the pinned vendor\'s gem catalog")
         if not case["vendor_has_effect"]:
             row["reasons"].append("granted effect is absent from the pinned vendor's skill catalog")
     except (ValueError, OSError, KeyError, TypeError, subprocess.TimeoutExpired) as error:
@@ -388,11 +540,15 @@ def summarize(rows):
         differing = [r for r in members if r["classification"] in DIFFERENT]
         groups.append({"family": name, "total": len(members), "different": len(differing),
                        "classes": dict(Counter(r["classification"] for r in members)),
-                       "examples": [r["skill_id"] for r in differing[:5]]})
+                       "examples": [case_label(r) for r in differing[:5]]})
     matched = sum(bool(r["pob2"] and r["pob2"]["main_skill"] == r["skill_id"]) for r in rows)
-    available = [r for r in rows if r["vendor_has_effect"]]
+    available = [r for r in rows if r["vendor_has_effect"]
+                 and (r.get("is_primary", True) or r.get("vendor_has_gem", True))]
     matched_available = sum(bool(r["pob2"] and r["pob2"]["main_skill"] == r["skill_id"]) for r in available)
-    return {"counts": counts, "measured": len(rows), "oracle_main_skill_matches": matched,
+    return {"counts": counts, "measured": len(rows),
+            "primary_counts": dict(Counter(r["classification"] for r in rows if r.get("is_primary", True))),
+            "additional_counts": dict(Counter(r["classification"] for r in rows if not r.get("is_primary", True))),
+            "oracle_main_skill_matches": matched,
             "oracle_main_skill_coverage": matched / len(rows) if rows else 0,
             "vendor_supported": len(available), "vendor_supported_matches": matched_available,
             "vendor_supported_coverage": matched_available / len(available) if available else 0,
@@ -403,18 +559,21 @@ def text_report(report):
     summary = report["summary"]
     lines = [f'Skill sweep: {report["data_version"]}, vendor {report["vendor_commit"]}',
              f'{report["inventory"]["primary_active_effects"]} primary active effects; '
+             f'{report["inventory"]["additional_active_effects"]} additional active effects; '
              f'{summary["measured"]} measured; {len(report["skipped"])} skipped; {report["elapsed_seconds"]:.1f}s',
              "Classes: " + ", ".join(f"{k}={v}" for k, v in summary["counts"].items()),
+             "Primary classes: " + ", ".join(f"{k}={summary['primary_counts'].get(k, 0)}" for k in CLASSES),
+             "Additional classes: " + ", ".join(f"{k}={summary['additional_counts'].get(k, 0)}" for k in CLASSES),
              f'PoB2 intended main skill: {summary["oracle_main_skill_matches"]}/{summary["measured"]} '
              f'({summary["oracle_main_skill_coverage"]:.1%}); vendor-supported: '
              f'{summary["vendor_supported_matches"]}/{summary["vendor_supported"]} ({summary["vendor_supported_coverage"]:.1%})',
-             "Families overlap; ranked by differing nonzero/one-sided-zero results:"]
+             "Families overlap; ranked by unexplained nonzero/one-sided-zero differences (known excluded):"]
     for family in summary["families"]:
         lines.append(f'  {family["family"]}: {family["different"]}/{family["total"]} differ; '
                      + ", ".join(family["examples"]))
-    lines += ["", "Per-skill metrics: TotalDPS / CombinedDPS / Speed / AverageHit / CritChance (%)"]
+    lines += ["", "Per-skill metrics: " + " / ".join(METRICS)]
     for row in report["skills"]:
-        lines.append(f'{row["skill_id"]}: {row["classification"]}')
+        lines.append(f'{case_label(row)}: {row["classification"]}')
         for side in ("pobr", "pob2"):
             result = row[side]
             if result:
@@ -423,7 +582,7 @@ def text_report(report):
                 if result["minion"]:
                     lines.append(f'    minion {result["minion"]["skill_id"]}: TotalDPS={result["minion"]["TotalDPS"]:.6g}')
         lines.extend("  " + reason for reason in row["reasons"])
-    lines += ["", "Skipped:"] + [f'  {r["skill_id"]}: {r["reason"]}' for r in report["skipped"]]
+    lines += ["", "Skipped:"] + [f'  {case_label(r)}: {r["reason"]}' for r in report["skipped"]]
     lines += ["", "Limits: " + " ".join(report["limitations"])]
     return "\n".join(lines) + "\n"
 
@@ -431,12 +590,15 @@ def text_report(report):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--jobs", type=int, default=4)
-    parser.add_argument("--skill", action="append", default=[], help="exact granted effect ID; repeat to select several")
+    parser.add_argument("--skill", action="append", default=[], help="granted effect ID or parent/effect@ordinal case ID; repeat to select several")
     parser.add_argument("--refresh", action="store_true")
     parser.add_argument("--no-build", action="store_true")
-    parser.add_argument("--json", type=Path, default=CACHE / "report.json")
-    parser.add_argument("--text", type=Path, default=CACHE / "report.txt")
+    parser.add_argument("--json", type=Path, help="JSON destination (default: report[-selected].json in the cache)")
+    parser.add_argument("--text", type=Path, help="text destination (default: report[-selected].txt in the cache)")
     args = parser.parse_args(argv)
+    report_name = "report-selected" if args.skill else "report"
+    args.json = args.json or CACHE / f"{report_name}.json"
+    args.text = args.text or CACHE / f"{report_name}.txt"
     if args.jobs < 1:
         parser.error("--jobs must be positive")
     root = Path(os.environ.get("POBR_DATA_ROOT") or REPO / "data").resolve()
@@ -451,11 +613,12 @@ def main(argv=None):
     vendor_gems, vendor_effects = vendor_metadata(VENDOR)
     cases, skipped, inventory = skill_cases(directory, vendor_gems, vendor_effects)
     if args.skill:
-        unknown = set(args.skill) - {r["skill_id"] for r in cases + skipped}
+        known = {key for r in cases + skipped for key in (r["skill_id"], case_label(r))}
+        unknown = set(args.skill) - known
         if unknown:
             parser.error("unknown active effect IDs: " + ", ".join(sorted(unknown)))
-        cases = [c for c in cases if c["skill_id"] in args.skill]
-        skipped = [c for c in skipped if c["skill_id"] in args.skill]
+        cases = [c for c in cases if c["skill_id"] in args.skill or case_label(c) in args.skill]
+        skipped = [c for c in skipped if c["skill_id"] in args.skill or case_label(c) in args.skill]
     binary = REPO / "target/debug/pobr"
     if not args.no_build:
         env = {**os.environ, "CARGO_BUILD_JOBS": "2", "RUST_TEST_THREADS": "2", "CARGO_TARGET_DIR": str(REPO / "target")}
@@ -472,11 +635,11 @@ def main(argv=None):
             rows.append(future.result())
             if len(rows) % 25 == 0 or len(rows) == len(cases):
                 print(f"skill-sweep: {len(rows)}/{len(cases)} ({time.monotonic() - started:.1f}s)", file=sys.stderr)
-    rows.sort(key=lambda r: r["skill_id"])
-    report = {"schema": "skill-sweep/v1", "data_version": version, "vendor_commit": commit,
+    rows.sort(key=case_label)
+    report = {"schema": "skill-sweep/v2", "data_version": version, "vendor_commit": commit,
               "selection": args.skill or "all", "inventory": inventory, "skills": rows, "skipped": skipped,
               "elapsed_seconds": time.monotonic() - started, "summary": summarize(rows),
-              "limitations": ["Single primary effect/stat set per gem; secondary effects are only inventoried.",
+              "limitations": ["Every non-support granted effect keeps its parent gem and display ordinal; only the first stat set per effect is measured.",
                 "Average hit is reported on each engine's native basis and excluded from classification (PoBR before mitigation, PoB2 after). Rate comparisons use PoB2 HitSpeed when present.",
                 "No trigger payloads, corpses, charges, supports, target selections or combat configuration.",
                 "both_zero does not validate buffs or non-damage utility; minion DPS is one main minion, not a full army.",

@@ -181,6 +181,11 @@ cmd_lookup() {
   python3 devs/scripts/lookup.py "$@"
 }
 
+# Rank missing game-text support, or show one line's complete research card.
+cmd_gaps() {
+  python3 devs/scripts/gaps.py "$@"
+}
+
 # Builds against the reference values their codes carry: the totals of every
 # committed set, or one directory with each build's differences.
 cmd_accuracy() {
@@ -251,6 +256,8 @@ PoBR development commands (mise tasks; without mise run this script with the sam
   mise run triage [set or build dir ...]    Every worked build at once: whose differences, and their shared causes
   mise run skills:sweep [--jobs N]           Every primary player active skill against the pinned PoB2
   mise run lookup <id or name> [--level N]  Game data records of a skill, stat, base item, passive node or unique
+  mise run gaps [--kind unique] [--limit N] Ranked game-text gaps across the worked builds
+  mise run gap "<template or text>"        Stats, full sources, ledger fates and nearby rules for one line
   mise run accuracy [corpus dir]            Totals of every committed set, or one set's builds against their reference
   mise run builds:fetch <set dir> [--pick first|last]  One poe.ninja build per ascendancy into a reference set
   mise run build [-p <crate>]               Build application CLI by default
@@ -373,6 +380,7 @@ case "${1:-}" in
   triage)    shift; cmd_triage "$@" ;;
   skills:sweep) shift; cmd_skill_sweep "$@" ;;
   lookup)    shift; cmd_lookup "$@" ;;
+  gaps|gap)  cmd_gaps "$@" ;;
   accuracy)  shift; cmd_accuracy "$@" ;;
   targets)   cmd_targets ;;
   cache)     shift; cmd_cache "$@" ;;

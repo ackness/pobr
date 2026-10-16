@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { groupsForWeaponSet, skillWeaponSet, switchWeapons, validWeaponSwap, weaponSetRequest, type WeaponSetState } from './weaponSets';
+import { applyTreeAllocation, treeAllocationRequest, groupsForWeaponSet, skillWeaponSet, switchWeapons, validWeaponSwap, weaponSetRequest, type WeaponSetState } from './weaponSets';
 const state: WeaponSetState = {
   items: [{ slot: 'weapon1', text: 'Bow' }, { slot: 'weapon2', text: 'Quiver' }, { slot: 'ring1', text: 'Ring' }],
   allocatedNodes: [10, 11], socketGroups: [{ enabled: true, weapon_set: 2, gems: [] }],
@@ -49,4 +49,21 @@ test('Full DPS keeps the original enabled state of an included alternate-set gro
   ], 1);
   expect(groups.map(group => group.enabled)).toEqual([false, false]);
   expect(groups.map(group => group.full_dps_enabled)).toEqual([true, false]);
+});
+
+test('validated tree edits keep inactive allocations and alternate equipment through swaps', () => {
+  const edited = applyTreeAllocation(state, { shared: [10, 11], exclusive: [[12], [22, 23]] });
+  expect(edited.allocatedNodes).toEqual([10, 11, 12]);
+  expect(edited.weaponSwap?.alternate_items).toEqual(state.weaponSwap?.alternate_items);
+  const second = switchWeapons(edited, 2);
+  expect(second.allocatedNodes).toEqual([10, 11, 22, 23]);
+  expect(switchWeapons(second, 1).allocatedNodes).toEqual(edited.allocatedNodes);
+  expect(switchWeapons(second, 1).weaponSwap).toEqual(edited.weaponSwap);
+  const preview = treeAllocationRequest({ allocated_nodes: [10, 11], weapon_swap: state.weaponSwap!,
+    attribute_choices: { '11': 'str', '22': 'dex' }, jewels: [{ socket_node: 11, text: 'Jewel' }] },
+  { shared: [10], exclusive: [[], [22]] });
+  expect(preview.allocated_nodes).toEqual([10]);
+  expect(preview.attribute_choices).toEqual({ '22': 'dex' });
+  expect(preview.jewels).toEqual([]);
+  expect(preview.weapon_swap?.exclusive_nodes).toEqual([[], [22]]);
 });

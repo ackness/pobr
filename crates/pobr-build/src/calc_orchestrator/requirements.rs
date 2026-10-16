@@ -46,17 +46,6 @@ pub(super) fn requirement_snapshots(build: &Build, data: &BuildData) -> Vec<(Str
                 ))],
             ) / 100.0
         });
-        let raw = std::array::from_fn::<_, 3, _>(|i| {
-            raw[i]
-                + local.sum(
-                    ModType::Base,
-                    &cfg,
-                    &[ModName::from(format!(
-                        "{}Requirement",
-                        ["Str", "Dex", "Int"][i]
-                    ))],
-                )
-        });
         let total: f64 = raw.iter().sum();
         let converted: f64 = conversion.iter().sum();
         let requirements = std::array::from_fn(|i| {
@@ -67,7 +56,11 @@ pub(super) fn requirement_snapshots(build: &Build, data: &BuildData) -> Vec<(Str
                 "{}Requirement",
                 ["Str", "Dex", "Int"][i]
             ))];
-            let base = raw[i] * (1.0 - converted) + total * conversion[i];
+            // Requirement conversion changes the base item's requirements;
+            // a local flat requirement is added in its own attribute afterwards.
+            let base = raw[i] * (1.0 - converted)
+                + total * conversion[i]
+                + local.sum(ModType::Base, &cfg, &names);
             (base
                 * (1.0 + local.sum(ModType::Inc, &cfg, &names) / 100.0)
                 * local.more(&cfg, &names))

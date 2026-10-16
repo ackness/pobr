@@ -53,7 +53,8 @@ fn assert_stacking_buff(buff: &StackingBuff, cases: &[(u32, bool, bool, f64)]) {
 </PathOfBuilding2>"#
         );
         let build = parse_build(&xml).expect("parse synthetic build");
-        assert_eq!(build.socket_groups.len(), if gem_enabled { 2 } else { 1 });
+        assert_eq!(build.socket_groups.len(), 2);
+        assert_eq!(build.socket_groups[1].gem_skills[0].enabled, gem_enabled);
         let output = calculate_with_data(&build, &data, &options).expect("calculate");
         let actual = (buff.stat)(&output);
         assert!(
