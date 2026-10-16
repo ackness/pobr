@@ -187,6 +187,7 @@ pub fn spawn_minions(
                     vec![GemInput {
                         skill_id: id.to_string(),
                         gem_level: group.active_gem_level,
+                        global_level_bonus: None,
                         quality: 0,
                         stat_set_index: None,
                         corrupted: false,
@@ -203,6 +204,7 @@ pub fn spawn_minions(
             GemInput {
                 skill_id,
                 gem_level,
+                global_level_bonus,
                 quality,
                 stat_set_index,
                 corrupted,
@@ -289,12 +291,14 @@ pub fn spawn_minions(
                 .collect();
             let judgement = &judgements[0];
             let effective_gem_level = gem_level
-                .saturating_add(crate::skill_env::additional_gem_levels(
-                    gem_level_bonuses,
-                    data,
-                    &skill_id,
-                    corrupted,
-                ))
+                .saturating_add(global_level_bonus.unwrap_or_else(|| {
+                    crate::skill_env::additional_gem_levels(
+                        gem_level_bonuses,
+                        data,
+                        &skill_id,
+                        corrupted,
+                    )
+                }))
                 .saturating_add(support_granted_gem_levels(&judgements, group.gems, data));
             // A skill that says how many minions it summons ("Summons {0}
             // Hyenas") creates that many of each kind; any other creates as

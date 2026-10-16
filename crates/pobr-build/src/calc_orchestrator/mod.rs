@@ -530,8 +530,16 @@ pub(crate) fn prepared_build_view<'a>(
     // A skill an item grants is used at the level the character meets the
     // requirements of, which depends on the attributes its items and passives
     // give it: settled from the view without its skills.
-    let view = match scale_granted_skills(&view, data, || {
-        attributes_without_skills(&view, data, options)
+    let view = match scale_granted_skills(&view, data, |other_set| {
+        if other_set {
+            attributes_without_skills(
+                &skill::resolve::other_weapon_set_view(&view, data),
+                data,
+                options,
+            )
+        } else {
+            attributes_without_skills(&view, data, options)
+        }
     }) {
         Some(scaled) => Cow::Owned(scaled),
         None => view,
@@ -883,6 +891,10 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
     // build's own: the next steps add quality to every gem.
     if let Some(marked) = mark_item_granted_skills(&build, data) {
         build = Cow::Owned(marked);
+    }
+
+    if let Some(bound) = skill::resolve::bind_required_weapon_sets(&build, data) {
+        build = Cow::Owned(bound);
     }
 
     // nameSpec-only gem references → skill_id backfilled (matching PoB2 SkillsTab

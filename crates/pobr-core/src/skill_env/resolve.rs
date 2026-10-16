@@ -277,6 +277,15 @@ pub fn granted_passive_stats(texts: &[String], data: &dyn GrantedPassiveLookup) 
 pub trait GemPropertyLookup: EffectLookup + GemDefLookup {}
 impl<T: EffectLookup + GemDefLookup> GemPropertyLookup for T {}
 
+impl GemInput {
+    /// Global levels from the gem's prepared equipment context, or the
+    /// caller's current context when no alternate set was resolved.
+    pub fn global_levels(&self, bonuses: &[GemPropertyBonus], data: &dyn GemPropertyLookup) -> u32 {
+        self.global_level_bonus
+            .unwrap_or_else(|| additional_gem_levels(bonuses, data, &self.skill_id, self.corrupted))
+    }
+}
+
 pub fn gem_property_applies(
     bonus: &GemPropertyBonus,
     data: &dyn GemPropertyLookup,

@@ -180,3 +180,50 @@ fn spear_throw_uses_character_level_before_skill_bonuses() {
         assert_eq!(usage.skills[0].level, expected);
     }
 }
+
+/// The equipped bow gives +3 Attack levels, but Rend requires a Talisman,
+/// Crossbow Shot requires a Crossbow, and Spear Stab requires a Spear. Their
+/// other-set weapon gives +5, so each level-20 skill runs at 25, not 23.
+#[test]
+fn weapon_specific_skills_read_the_usable_weapon_sets_bonuses() {
+    use pobr_build::diagnose;
+    let data = data();
+    for (base, skill) in [
+        ("Changeling Talisman", "WyvernRendPlayer"),
+        ("Makeshift Crossbow", "MeleeCrossbowPlayer"),
+        ("Hardwood Spear", "MeleeSpearPlayer"),
+    ] {
+        let xml = format!(
+            r#"<PathOfBuilding2><Build level="100" className="Ranger"/>
+<Items activeItemSet="1"><Item id="1">Rarity: RARE
+Test Bow
+Crude Bow
+Implicits: 0
++3 to Level of all Attack Skills
+</Item><Item id="2">Rarity: RARE
+Test Weapon
+{base}
+Implicits: 0
++5 to Level of all Attack Skills
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/><Slot name="Weapon 1 Swap" itemId="2"/></ItemSet></Items>
+<Skills><Skill enabled="true"><Gem skillId="{skill}" level="20" quality="0" enabled="true"/></Skill></Skills>
+</PathOfBuilding2>"#
+        );
+        let build = parse_build(&xml).unwrap();
+        let diagnosis = diagnose(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+        let usage = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+        assert_eq!(usage.skills[0].level, 25, "{skill}");
+        // Removing a +10 weapon bonus from a level-3 gem used to clamp the
+        // intermediate base to 1, then incorrectly add those 10 levels back.
+        let low = xml
+            .replace("+3 to Level", "+10 to Level")
+            .replace("level=\"20\"", "level=\"3\"");
+        let build = parse_build(&low).unwrap();
+        let diagnosis = diagnose(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+        let usage = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+        assert_eq!(
+            usage.skills[0].level, 8,
+            "{skill}: 3 base + 5 from the other weapon"
+        );
+    }
+}

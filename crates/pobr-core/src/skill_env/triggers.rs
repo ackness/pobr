@@ -571,12 +571,7 @@ fn energy_stat(
 ) -> Option<f64> {
     let level = gem
         .gem_level
-        .saturating_add(crate::skill_env::additional_gem_levels(
-            gem_level_bonuses,
-            data.as_gem_property(),
-            &gem.skill_id,
-            gem.corrupted,
-        ));
+        .saturating_add(gem.global_levels(gem_level_bonuses, data.as_gem_property()));
     let set_index = (effect_id == gem.skill_id)
         .then_some(gem.stat_set_index)
         .flatten();
@@ -1000,17 +995,13 @@ fn resolve_source_level<S: TriggerSubCalc>(
 ) -> Option<ResolvedSkillLevel> {
     let judgements =
         crate::skill_env::buff_specs::gem_judgements(group, data.as_buff_env(), &gem.skill_id);
-    let bonus = crate::skill_env::additional_gem_levels(
-        gem_level_bonuses,
-        data.as_gem_property(),
-        &gem.skill_id,
-        gem.corrupted,
-    )
-    .saturating_add(crate::skill_env::support_granted_gem_levels(
-        &judgements,
-        group.gems,
-        data.as_buff_env(),
-    ));
+    let bonus = gem
+        .global_levels(gem_level_bonuses, data.as_gem_property())
+        .saturating_add(crate::skill_env::support_granted_gem_levels(
+            &judgements,
+            group.gems,
+            data.as_buff_env(),
+        ));
     let _ = ctx;
     resolve_skill_level(
         data.as_skill_level(),

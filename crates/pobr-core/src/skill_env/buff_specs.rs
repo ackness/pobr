@@ -18,8 +18,8 @@ use crate::skill_env::lookup::{EffectLookup, SocketGroupView, StatMapLookup, Sta
 use crate::skill_env::mods::GemPropertyBonus;
 use crate::skill_env::mods::skill_type_bits;
 use crate::skill_env::resolve::{
-    GemPropertyLookup, SkillLevelLookup, additional_gem_levels, resolve_skill_level,
-    support_granted_gem_levels, support_stat_set_index,
+    GemPropertyLookup, SkillLevelLookup, resolve_skill_level, support_granted_gem_levels,
+    support_stat_set_index,
 };
 use crate::skill_env::stat_map::{
     StatMapCtx, curse_stat_modifiers, debuff_stat_modifiers, mapped_stat_modifiers,
@@ -336,12 +336,7 @@ pub fn buff_skill_specs(
                 // the group's supports grant it ("+3 to level of Supported
                 // Skills if no other Supports are modifying them").
                 let level = level_gem.gem_level
-                    + additional_gem_levels(
-                        gem_level_bonuses,
-                        data,
-                        &level_gem.skill_id,
-                        level_gem.corrupted,
-                    )
+                    + level_gem.global_levels(gem_level_bonuses, data)
                     + support_granted_gem_levels(
                         &gem_judgements(&group, data, &level_gem.skill_id),
                         group.gems,
@@ -953,7 +948,7 @@ pub fn warcry_skill_specs(
             // `supported_fire_skill_gem_level_+` → Infernal Cry 21→22 level, gain
             // 51+q11=62, matching oracle exactly).
             let level = gem.gem_level
-                + additional_gem_levels(gem_level_bonuses, data, &gem.skill_id, gem.corrupted)
+                + gem.global_levels(gem_level_bonuses, data)
                 + support_granted_gem_levels(
                     &gem_judgements(&group, data, &gem.skill_id),
                     group.gems,

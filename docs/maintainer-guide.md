@@ -720,6 +720,42 @@ PoB2 对照值与逻辑回归都使用活动数据版本，没有单独钉住的
 
 辅助宝石辅助一颗宝石的任一效果时，它给的等级和品质作用于整颗宝石：Physical Mastery（要求 Physical）辅助 Iron Ward 的物理新星，Iron Ward 的 buff 也高一级。等级计算接收宝石每个效果的辅助判定（`skill_env::buff_specs::gem_judgements`，主效果在前），同一个辅助只算一次；Uhtred 系列“没有其他辅助时”的“其他辅助”也按整颗宝石计。
 
+The usage ledger reports the selected `GrantedEffectsPerLevel` row, rather than
+the requested gem level before row selection: Armour Explosion and Raise Shield
+have only level 1, Pinnacle of Power only level 20, and ordinary player skills
+end at level 40 in the current game tables. Their former higher ledger levels
+did not mean the calculation extrapolated beyond those rows. Support-granted
+effects inherit the first compatible host gem's level, checking all that gem's
+effects ([Living Lightning's game text](https://poe2db.tw/us/Living_Lightning)
+explicitly says it copies its socketing gem's level): Living Lightning can
+support Repulsion Wave, and Shock Siphon can support Pounce's mark. Buff assembly
+uses the same host. Named skill bonuses
+also apply to the whole gem: “+3 to Level of all Galvanic Shards Skills” raises
+both the attack and Load Galvanic Shards (`GemEffects` links the two effects).
+
+Spear Throw's imported level-1 entries are default-attack placeholders. Its
+base level follows the character (`ItemExperiencePerLevel`: level 19 at character
+84, level 20 at 90), then receives global skill bonuses, per the game's
+[Default Attack keyword](https://poe2db.tw/us/Keywords). Unbound crossbow, spear
+and shapeshift groups use the other weapon set when only that set has the
+required weapon class ([Rend requires Talismans](https://poe2db.tw/us/Rend)).
+Granted-skill attribute checks likewise use the granting weapon set's equipment;
+its Bonded modifiers are settled before attributes and level bonuses are read.
+The prepared global level bonus stays separate from the base gem level, so a
+level-3 Pounce plus five non-weapon levels stays level 8 after swapping away
+from a +5 melee weapon; an intermediate base level must not clamp to 1.
+The alternate set's passive allocation is not retained in the `Build` view, so
+these checks still share the imported passive tree. Global quality applies to
+[granted skills](https://www.poe2wiki.net/wiki/Granted_skill), including Raise
+Shield even though it has no quality effect; the exporter's synthetic Thorns and
+Enemy Explode entries have no game skill definition and receive no bonus quality.
+The ledger lists all enabled imported groups. PoB2 consolidates some item grants
+with their supported ordinary group and adds some default attacks automatically;
+therefore extra lower Mirror of Refraction / The Stars Answer entries, another
+weapon set's Spear Throw, or an extra PoB2 Spear Stab can remain inventory
+differences even when the supported skill's effective level agrees. They do not
+justify changing the imported gem or the game's level bonuses.
+
 配置行指任务奖励与自定义词条。其中解析不了的行以 `Config: <行>` 记入未支持清单，其余行照常生效；任务奖励选项的 “None”（未领取）不是词条行。对任何计算输出都没有影响的词条在 `overlay-common/special_mods.json` 里登记为只识别、不产生 modifier 的条目（`"mods": []`、`"batch": "S0"`，例如游戏 stat `experience_gain_+%` 的 “5% increased Experience Gain”；除 `unmodelled` 外的其他批次必须产生 modifier 或挂 handler，`pobr-gamedata` 的 `non_s0_has_traceable_provenance` 检查），它不是丢失的输入；尚未实现的机制不能用这种条目消掉，必须留在未支持清单里。规则能识别、但机制尚未建模的行登记为 `"batch": "unmodelled"`（同样 `"mods": []`，`source_note` 写明缺的模型，例如 “per-hit Armour Break is not modelled”、“remnant count not modelled”、“kill rate not modelled”）：台账报 `unmodelled`，审计报 `recognized_empty`，缺口队列照常列出它，不会当作无效果隐藏。
 
 `examples/demo-bd-test/builds/` 是回归门禁语料，构筑抓取于 2026-06（上一赛季开服第一周），不包含之后的物品和机制；门禁全绿只说明这批构筑没有回退。当前赛季的构筑分三组，都用构筑码自带的参考值衡量：`examples/wasm-benchmark/builds/`（8 个）和 `examples/reference-builds/tuned/`（每个升华三个：2026-10-13 抓的一批和之后的两批 holdout，都在 2026-10-15 并入）用来找差异、修引擎；`examples/reference-builds/holdout/`（每个升华另一个，2026-10-15 第二次抓取）只测量，不对它运行 `diagnose` 或 `compare`，也不按它的差异挑选要修的内容，它的总数回答“没人调过的构筑上有多准”。`mise run accuracy` 不带参数打印三组的总数。`reference_agreement_does_not_regress` 断言每组的吻合数（伤害吻合的构筑数——主技能召唤召唤物的构筑看召唤物的 `TotalDPS`——和吻合的行数）不低于 `reference_report.rs` 里记录的基线。改动提升了吻合数就上调基线，不为通过而下调；数据版本变化使数字移动时按 `ninja_parity` 的做法重录。导出工具未实现的词条规则标为 `exporter: "absent"`，由参考口径自动排除，游戏实现与参考基线分别验证；其他参考值被游戏数据证明有误时，在基线旁记录具体依据与影响。这个门禁防的是退步，不证明正确：参考值可能本身有误，构筑也可能因为错误的原因吻合。新增的展示字段让构筑码里更多 `<PlayerStat>` 行进入比较，行数随之变化不代表原有计算更准。需要新一轮目标或新赛季开始时，用 `mise run builds:fetch` 重新抓取（见 [reference-builds](../examples/reference-builds/README.md)）：原来的 holdout 并入 tuned，新抓的一批作 holdout。

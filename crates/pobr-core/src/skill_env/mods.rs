@@ -600,6 +600,9 @@ pub struct GemInput {
     pub skill_id: String,
     /// The gem's level.
     pub gem_level: u32,
+    /// Global levels resolved in this gem's weapon set, if different from the
+    /// calculation's current set. Kept separate from the base gem level.
+    pub global_level_bonus: Option<u32>,
     /// The gem's quality.
     pub quality: u32,
     /// The gem's selected statSet index (0-based; `None` = default).

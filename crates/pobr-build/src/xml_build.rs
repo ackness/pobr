@@ -1857,6 +1857,7 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                                         .map(|v| v == "true"),
                                     skill_id: skill_id.unwrap_or_default(),
                                     gem_level: level,
+                                    global_level_bonus: None,
                                     quality,
                                     stat_set_index,
                                     name_spec: if name_spec_pending { name_spec } else { None },

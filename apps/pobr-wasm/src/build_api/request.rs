@@ -297,6 +297,7 @@ pub(super) fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData
             enable_global_2: gem.enable_global_2,
             skill_id: gem.skill_id.clone(),
             gem_level: gem.level,
+            global_level_bonus: None,
             quality: gem.quality,
             stat_set_index: gem.stat_set_index,
             name_spec: None,
