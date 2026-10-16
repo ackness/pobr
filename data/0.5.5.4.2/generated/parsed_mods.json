@@ -6725,15 +6725,7 @@
     },
     {
       "text": "10% chance to [Blind] Enemies on [Hit] with [Attack|Attacks]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "BlindChance",
-          "type": "Base",
-          "value": 10.0,
-          "flags": 1
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "10% chance to [Daze] on [Hit]",
@@ -11318,15 +11310,7 @@
     },
     {
       "text": "15% chance to [Blind] Enemies on [Hit] with [Attack|Attacks]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "BlindChance",
-          "type": "Base",
-          "value": 15.0,
-          "flags": 1
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "15% chance to [Hinder] Enemies on Hit with [Spell|Spells]",
@@ -25517,15 +25501,7 @@
     },
     {
       "text": "5% chance to [Blind] Enemies on [Hit] with [Attack|Attacks]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "BlindChance",
-          "type": "Base",
-          "value": 5.0,
-          "flags": 1
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "5% chance to [Daze] on [Hit]",
@@ -29237,15 +29213,7 @@
     },
     {
       "text": "8% chance to [Blind] Enemies on [Hit] with [Attack|Attacks]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "BlindChance",
-          "type": "Base",
-          "value": 8.0,
-          "flags": 1
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "8% chance to [Poison|Poison] on [Hit]",
@@ -33482,19 +33450,59 @@
     },
     {
       "text": "Also grants 180 Guard",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CharmGuard",
+          "type": "Base",
+          "value": 180.0,
+          "tags": [
+            "Condition { var: \"UsingCharm\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Also grants 265 Guard",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CharmGuard",
+          "type": "Base",
+          "value": 265.0,
+          "tags": [
+            "Condition { var: \"UsingCharm\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Also grants 435 Guard",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CharmGuard",
+          "type": "Base",
+          "value": 435.0,
+          "tags": [
+            "Condition { var: \"UsingCharm\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Also grants 491 Guard",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CharmGuard",
+          "type": "Base",
+          "value": 491.0,
+          "tags": [
+            "Condition { var: \"UsingCharm\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Amber Amulet",
@@ -40392,7 +40400,14 @@
     },
     {
       "text": "Recover 84 Life when Used",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "UtilityLifeOnUse",
+          "type": "Base",
+          "value": 84.0
+        }
+      ]
     },
     {
       "text": "Recover 87 Mana when Used",

@@ -5549,6 +5549,88 @@
       "batch": "S2",
       "source_note": "The seed/conqueror line is consumed by pobr-build jewel_tree::passive_jewel_state. Unresolved seeded nodes remain unsupported. Regression: skills::passive_jewels.",
       "game_source": "local_unique_jewel_alternate_tree_seed; local_unique_jewel_alternate_tree_version"
+    },
+    {
+      "id": "charm_life_on_use",
+      "pattern": "recover (\\d+) life when used",
+      "mods": [
+        {
+          "name": "UtilityLifeOnUse",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_recover_X_life_when_used; base/mods.json: CharmGainLifeOnUse1..8",
+      "source_note": "Local per-use Life recovery; reported per charm, independent of regeneration and quality.",
+      "examples": [
+        "Recover 350 Life when Used"
+      ]
+    },
+    {
+      "id": "charm_guard",
+      "pattern": "also grants (\\d+) guard",
+      "mods": [
+        {
+          "name": "CharmGuard",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_gain_X_guard_for_duration; base/mods.json: CharmGuardWhileActive1..6; https://poe2db.tw/us/Guard",
+      "source_note": "Enabled charm grants Guard: strongest active grant absorbs hits before Life/ES, capped at 200% maximum Life. No trigger frequency is inferred.",
+      "examples": [
+        "Also grants 500 Guard"
+      ]
+    },
+    {
+      "id": "attack_blind_chance_unmodelled",
+      "pattern": "(\\d+)% chance to blind enemies on hit with attacks",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "attacks_chance_to_blind_on_hit_%; base/stats.json",
+      "source_note": "Chance-to-uptime model not implemented; Blind uses the configured enemy state, not on-hit chance (including 100%).",
+      "examples": [
+        "10% chance to Blind Enemies on Hit with Attacks"
+      ]
+    },
+    {
+      "id": "doubled_totem_limit_unmodelled",
+      "pattern": "your totem limit is doubled",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "exporter": "absent",
+      "game_source": "keystone_ancestral_bond; base/stats.json; Ancestral Bond game text",
+      "source_note": "Totem limit not modelled; the selected totem still reports one totem's damage.",
+      "examples": [
+        "Your Totem Limit is doubled"
+      ]
+    },
+    {
+      "id": "corruption_always_changes",
+      "pattern": "corrupting will always result in change",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "exporter": "absent",
+      "game_source": "soul_core_cannot_roll_no_outcome_with_corruption; base/stats.json",
+      "source_note": "Item crafting outcome text changes no calculation output.",
+      "examples": [
+        "Corrupting will always result in change"
+      ]
     }
   ]
 }

@@ -299,6 +299,9 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
     let data = data();
     for &(name, gate) in READ_UNDER_A_STATE {
         let text = match name {
+            "BleedFaster" | "IgniteFaster" | "PoisonFaster" => {
+                "Damaging Ailments deal damage 20% faster"
+            }
             "LightRadius" => "20% increased Light Radius",
             "FireDamage" => "40% increased Fire Damage",
             "LightningDamage" => "40% increased Lightning Damage",
@@ -318,8 +321,15 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
             _ => panic!("new registered reader {name} needs an off/on fixture"),
         };
         for active in [false, true] {
-            let damage_reader =
-                matches!(name, "FireDamage" | "LightningDamage" | "AilmentMagnitude");
+            let damage_reader = matches!(
+                name,
+                "FireDamage"
+                    | "LightningDamage"
+                    | "AilmentMagnitude"
+                    | "BleedFaster"
+                    | "IgniteFaster"
+                    | "PoisonFaster"
+            );
             let skill = if damage_reader && !active {
                 "ManaRemnantsPlayer"
             } else if name == "LightningDamage" {
@@ -362,6 +372,13 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
                 options
                     .extra_modifier_texts
                     .push("+100 to maximum Energy Shield".into());
+            }
+            if active && matches!(name, "BleedFaster" | "PoisonFaster") {
+                options.extra_modifier_texts.extend([
+                    "Adds 100 to 100 Physical Damage to Spells".into(),
+                    "100% chance to Bleed on Hit".into(),
+                    "100% chance to Poison on Hit".into(),
+                ]);
             }
             if active && name == "LightRadius" {
                 options.extra_modifier_texts.push("Increases and Reductions to Light Radius also apply to Area of Effect at 50% of their value".into());
@@ -680,4 +697,36 @@ fn consumed_power_charge_bonus_has_existing_config_controls() {
     let off = run(false, 0);
     assert!((run(true, 0) - (1.0 + (off - 1.0) * 1.2)).abs() < 1e-9);
     assert_eq!(run(true, 1), off);
+}
+
+#[test]
+fn utility_followups_keep_missing_models_visible_and_crafting_no_effect() {
+    let data = data();
+    let ledger = ledger(
+        &data,
+        &[],
+        &[
+            "Your Totem Limit is doubled",
+            "10% chance to Blind Enemies on Hit with Attacks",
+            "Corrupting will always result in change",
+        ],
+    );
+    for text in [
+        "Your Totem Limit is doubled",
+        "10% chance to Blind Enemies on Hit with Attacks",
+    ] {
+        assert_eq!(
+            line(&ledger, "item.amulet.explicit", text).status,
+            LineStatus::Unmodelled
+        );
+    }
+    assert_eq!(
+        line(
+            &ledger,
+            "item.amulet.explicit",
+            "Corrupting will always result in change"
+        )
+        .status,
+        LineStatus::NoEffect
+    );
 }

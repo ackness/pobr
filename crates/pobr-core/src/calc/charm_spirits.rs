@@ -54,7 +54,7 @@ pub const SPIRIT_DEFINITIONS: &[SpiritDefinition] = &[
         1,
         &[
             ("Evasion", ModType::Inc, 60.0),
-            ("CritChance", ModType::Inc, 100.0),
+            ("CriticalStrikeChance", ModType::Inc, 100.0),
         ],
         &[],
     ),

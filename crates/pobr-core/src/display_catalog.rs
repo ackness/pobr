@@ -1012,7 +1012,10 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
                     crate::calc::utility::FLASK_STATS
                 })
             {
-                if kind == "Charm" && field.contains("Recovery") && *field != "ManaRecoveryOnUse" {
+                if kind == "Charm"
+                    && field.contains("Recovery")
+                    && !crate::calc::utility::CHARM_STATS.contains(field)
+                {
                     continue;
                 }
                 let id = format!("{kind}{slot}{field}");

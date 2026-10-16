@@ -1926,3 +1926,43 @@ fn focus_special_rule_precedes_the_generic_offhand_phrase() {
         assert_eq!(rule.game_source, "energy_shield_from_focus_+%");
     }
 }
+
+#[test]
+fn utility_followup_rules_preserve_game_amounts_and_distinguish_missing_models() {
+    for (text, name, value, stat) in [
+        (
+            "Recover 350 Life when Used",
+            "UtilityLifeOnUse",
+            350.0,
+            "charm_recover_X_life_when_used",
+        ),
+        (
+            "Also grants 500 Guard",
+            "CharmGuard",
+            500.0,
+            "charm_gain_X_guard_for_duration",
+        ),
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed);
+        assert_eq!(parsed.mods.len(), 1);
+        let modifier = &parsed.mods[0];
+        assert_eq!(modifier.name.as_str(), name);
+        assert_eq!(modifier.mod_type, ModType::Base);
+        assert_eq!(modifier.value, ModValue::Number(value));
+        let rule = modifier.exporter_rule.as_ref().unwrap();
+        assert_eq!(rule.exporter, pobr_data::source::ExporterCoverage::Absent);
+        assert!(rule.game_source.contains(stat));
+    }
+    for (text, no_effect) in [
+        ("Your Totem Limit is doubled", false),
+        ("10% chance to Blind Enemies on Hit with Attacks", false),
+        ("100% chance to Blind Enemies on Hit with Attacks", false),
+        ("Corrupting will always result in change", true),
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed, "{text}");
+        assert!(parsed.mods.is_empty(), "{text}");
+        assert_eq!(parsed.special_meta.unwrap().no_effect, no_effect, "{text}");
+    }
+}

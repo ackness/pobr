@@ -559,12 +559,33 @@ shared family bonuses apply once. Game Mods values take priority over the
 [Wolf tooltip](https://poe2db.tw/us/Spirit_Of_The_Wolf#SpiritOfTheWolfPossessedPlayerRef),
 which still says 10% skill speed / 5% movement speed. All new rules declare
 `exporter: "absent"` and a game source. Periodic spirit attacks, Wolf's
-maim/on-hit armour break, slow potency and heavy-stun buildup remain outside
-reported calculations; their modifiers remain visible in diagnostics. Ox's
-threshold bonus feeds `AilmentThreshold`. “Energy Shield Recharge starts on use”,
+maim/on-hit armour break and heavy-stun buildup remain outside reported
+calculations; heavy-stun buildup stays visible as unread. Ox's slow potency is
+read when a slow applies, and its threshold bonus feeds `AilmentThreshold`. “Energy Shield Recharge starts on use”,
 “Creates Ignited Ground … when used”, “Creates Consecrated Ground on Use”,
 and “Gain Guard equal to Current Runic Ward … when Effect ends” remain
 unsupported pending an event model.
+
+Cat possession's game `critical_strike_chance_+% = 100` is an INC modifier to
+`CriticalStrikeChance` (5% base becomes 10%); all possession names have reader
+coverage, with Bear's `hit_damage_stun_multiplier_+% = 60` explicitly left
+unmodelled as enemy heavy-stun buildup. Charm “Recover # Life when Used”
+(`charm_recover_X_life_when_used`, `CharmGainLifeOnUse1..8`) reports local
+`Charm<N>LifeRecoveryOnUse`, independent of quality and regeneration, matching
+the Mana sibling. “Also grants # Guard” (`charm_gain_X_guard_for_duration`,
+`CharmGuardWhileActive1..6`) uses the existing hit-absorption pool for enabled,
+in-budget charms: charm effect scales the grant; the strongest grant wins,
+absorbs 100% of hit damage before Life/ES, and is capped at 200% maximum Life
+([game Guard definition](https://poe2db.tw/us/Guard)); no reuse or duration
+uptime is inferred. Both charm rules are exporter-absent. `BleedFaster`,
+`IgniteFaster` and `PoisonFaster` retain their existing DPS/duration calculation
+and the ledger identifies the selected skill's ability to inflict that ailment
+as their read gate. Attack Blind chance (`attacks_chance_to_blind_on_hit_%`) is
+explicitly unmodelled: Blind uses the configured enemy state, with no
+chance-to-uptime conversion even at 100%. “Your Totem Limit is doubled”
+(`keystone_ancestral_bond`) remains unmodelled without a totem-limit model;
+“Corrupting will always result in change”
+(`soul_core_cannot_roll_no_outcome_with_corruption`) is crafting-only `S0`.
 
 `crates/pobr-build/tests/` 下的 `codec.rs`、`skills.rs`、`parity.rs`、`dualrun.rs` 是 Cargo 集成测试目标，其子目录文件是用例模块；`--test` 使用汇总目标名。`pobr-core` 同样按 aggregation / parser / sources / engine / offence / defence / ailments / golden 汇总。
 

@@ -54,7 +54,7 @@ pub const FLASK_STATS: &[&str] = &[
     "EnergyShieldRecoveryPerSecond",
 ];
 
-pub const CHARM_STATS: &[&str] = &["ManaRecoveryOnUse"];
+pub const CHARM_STATS: &[&str] = &["LifeRecoveryOnUse", "ManaRecoveryOnUse"];
 
 pub fn item_stat(id: &str) -> Option<(&str, &str)> {
     let split = id.find(|c: char| c.is_ascii_digit())? + 1;
@@ -77,7 +77,10 @@ pub fn local_name(slot: &str, name: &str) -> String {
 /// local_flask_duration_+%, local_max_charges_+% and local_charges_used_+%. Explicit Flask/Charm
 /// text retains its global meaning, including when it appears on a utility item.
 pub fn is_local_property(name: &str, text: &str) -> bool {
-    if matches!(name, "UtilityManaOnUse" | "UtilityCannotBeUsed") {
+    if matches!(
+        name,
+        "UtilityLifeOnUse" | "UtilityManaOnUse" | "UtilityCannotBeUsed"
+    ) {
         return true;
     }
     let text = text.to_ascii_lowercase();
@@ -289,13 +292,13 @@ pub fn calculate(env: &mut Env) {
             ],
         );
         if item.is_charm {
-            let mana = sum(db, cfg, ModType::Base, &local("UtilityManaOnUse")).max(0.0);
-            write(
-                "ManaRecoveryOnUse",
-                mana,
-                "UtilityManaOnUse",
-                &[("UtilityManaOnUse", mana)],
-            );
+            for (field, name) in [
+                ("LifeRecoveryOnUse", "UtilityLifeOnUse"),
+                ("ManaRecoveryOnUse", "UtilityManaOnUse"),
+            ] {
+                let recovered = sum(db, cfg, ModType::Base, &local(name)).max(0.0);
+                write(field, recovered, name, &[(name, recovered)]);
+            }
             continue;
         }
         let base_recovery = item.base.life + item.base.mana;
