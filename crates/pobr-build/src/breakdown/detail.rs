@@ -26,6 +26,18 @@ pub fn detail_kind(stat: &str) -> DetailKind {
         return DetailKind::Derived;
     }
     match stat {
+        // Enemy assembly and ES bypass retain resolved values, not their
+        // contributing modifier/override trace. Do not invent additive sources.
+        "PhysicalEnemyDamage"
+        | "FireEnemyDamage"
+        | "ColdEnemyDamage"
+        | "LightningEnemyDamage"
+        | "ChaosEnemyDamage"
+        | "PhysicalEnergyShieldBypass"
+        | "FireEnergyShieldBypass"
+        | "ColdEnergyShieldBypass"
+        | "LightningEnergyShieldBypass"
+        | "ChaosEnergyShieldBypass" => DetailKind::None,
         "SkillTriggerRate"
         | "TriggerRateCap"
         | "LifeUnreservedPercent"

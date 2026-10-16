@@ -27,6 +27,8 @@ pub struct FullDpsOutput {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutputTable {
+    /// Inputs and resolved terms retained by the EHP stage for display and details.
+    pub ehp_terms: Option<super::EhpTerms>,
     /// Player debuff modifier views; durations are percentages of base duration.
     pub exposure_effect_on_self: f64,
     pub wither_effect_on_self: f64,
@@ -574,6 +576,7 @@ pub struct MinionOutput {
 impl Default for OutputTable {
     fn default() -> Self {
         Self {
+            ehp_terms: None,
             exposure_effect_on_self: 100.0,
             wither_effect_on_self: 100.0,
             self_bleed_effect: 100.0,

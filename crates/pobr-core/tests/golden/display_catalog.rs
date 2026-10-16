@@ -142,10 +142,14 @@ fn catalog_entry_counts_locked() {
         // CurseEffectOnSelf, Self{Bleed,Poison,Ignite,Chill,Freeze,Shock}Duration,
         // CorruptedBloodImmunity, MaimImmunity and HinderImmunity (+10).
         // PowerChargesDuration, FrenzyChargesDuration and EnduranceChargesDuration (+3).
+        // {Physical,Fire,Cold,Lightning,Chaos}{EnemyDamage,TakenDamage,TakenHit,
+        // TakenHitMult,EnergyShieldBypass}, {Fire,Cold,Lightning}DamageReduction,
+        // total{EnemyDamage,TakenDamage,TakenHit}, ConfiguredDamageChance,
+        // ConfiguredNotHitChance and DamageTakenOnBlock (+34).
         // ExposureEffectOnSelf, WitherEffectOnSelf, SelfBleedEffect,
         // SelfIgniteEffect and DebuffExpirationModifier (+5).
         // Damaging-ailment chance/duration/multipliers/roll/stacks/source ranges and ShockChance (+34).
-        330,
+        364,
         "a change in Computed entry count needs explicit review"
     );
 }
@@ -706,4 +710,56 @@ fn full_dps_is_absent_until_requested_and_exposes_both_totals() {
             .iter()
             .any(|row| row.id.as_str() == "FullDPS")
     );
+}
+
+#[test]
+fn ehp_catalog_fields_have_neutral_defaults_and_preserve_units() {
+    let catalog = display_catalog();
+    let mut ids = Vec::new();
+    for kind in ["Physical", "Fire", "Cold", "Lightning", "Chaos"] {
+        for suffix in [
+            "EnemyDamage",
+            "TakenDamage",
+            "TakenHit",
+            "TakenHitMult",
+            "EnergyShieldBypass",
+        ] {
+            ids.push((
+                format!("{kind}{suffix}"),
+                if suffix == "EnergyShieldBypass" {
+                    StatValueType::Percent
+                } else {
+                    StatValueType::Number
+                },
+            ));
+        }
+        for missing in ["TotalPool", "DotEHP", "TakenDotMult"] {
+            assert!(
+                !catalog
+                    .iter()
+                    .any(|d| d.id.as_str() == format!("{kind}{missing}"))
+            );
+        }
+    }
+    for id in [
+        "FireDamageReduction",
+        "ColdDamageReduction",
+        "LightningDamageReduction",
+        "ConfiguredDamageChance",
+        "ConfiguredNotHitChance",
+        "DamageTakenOnBlock",
+    ] {
+        ids.push((id.into(), StatValueType::Percent));
+    }
+    for id in ["totalEnemyDamage", "totalTakenDamage", "totalTakenHit"] {
+        ids.push((id.into(), StatValueType::Number));
+    }
+    assert!(!catalog.iter().any(|d| d.id.as_str() == "EHPSurvivalTime"));
+    for (id, unit) in ids {
+        let def = catalog.iter().find(|d| d.id.as_str() == id).unwrap();
+        assert_eq!(def.pob_key.as_deref(), Some(id.as_str()));
+        assert_eq!(def.value_type, unit);
+        assert_eq!(def.category, DisplayStatCategory::Mitigation);
+        assert_eq!(display_value(&OutputTable::default(), &id), 0.0);
+    }
 }

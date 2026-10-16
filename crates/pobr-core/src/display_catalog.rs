@@ -1158,6 +1158,201 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "NumberOfMitigatedDamagingHits",
         ),
+        // Retained EHP hit terms; totals and ratios are views of the same snapshot.
+        computed(
+            "PhysicalEnemyDamage",
+            Cat::Mitigation,
+            Vt::Number,
+            "PhysicalEnemyDamage",
+        ),
+        computed(
+            "FireEnemyDamage",
+            Cat::Mitigation,
+            Vt::Number,
+            "FireEnemyDamage",
+        ),
+        computed(
+            "ColdEnemyDamage",
+            Cat::Mitigation,
+            Vt::Number,
+            "ColdEnemyDamage",
+        ),
+        computed(
+            "LightningEnemyDamage",
+            Cat::Mitigation,
+            Vt::Number,
+            "LightningEnemyDamage",
+        ),
+        computed(
+            "ChaosEnemyDamage",
+            Cat::Mitigation,
+            Vt::Number,
+            "ChaosEnemyDamage",
+        ),
+        computed(
+            "PhysicalTakenDamage",
+            Cat::Mitigation,
+            Vt::Number,
+            "PhysicalTakenDamage",
+        ),
+        computed(
+            "FireTakenDamage",
+            Cat::Mitigation,
+            Vt::Number,
+            "FireTakenDamage",
+        ),
+        computed(
+            "ColdTakenDamage",
+            Cat::Mitigation,
+            Vt::Number,
+            "ColdTakenDamage",
+        ),
+        computed(
+            "LightningTakenDamage",
+            Cat::Mitigation,
+            Vt::Number,
+            "LightningTakenDamage",
+        ),
+        computed(
+            "ChaosTakenDamage",
+            Cat::Mitigation,
+            Vt::Number,
+            "ChaosTakenDamage",
+        ),
+        computed(
+            "PhysicalTakenHit",
+            Cat::Mitigation,
+            Vt::Number,
+            "PhysicalTakenHit",
+        ),
+        computed("FireTakenHit", Cat::Mitigation, Vt::Number, "FireTakenHit"),
+        computed("ColdTakenHit", Cat::Mitigation, Vt::Number, "ColdTakenHit"),
+        computed(
+            "LightningTakenHit",
+            Cat::Mitigation,
+            Vt::Number,
+            "LightningTakenHit",
+        ),
+        computed(
+            "ChaosTakenHit",
+            Cat::Mitigation,
+            Vt::Number,
+            "ChaosTakenHit",
+        ),
+        computed(
+            "PhysicalTakenHitMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "PhysicalTakenHitMult",
+        ),
+        computed(
+            "FireTakenHitMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "FireTakenHitMult",
+        ),
+        computed(
+            "ColdTakenHitMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "ColdTakenHitMult",
+        ),
+        computed(
+            "LightningTakenHitMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "LightningTakenHitMult",
+        ),
+        computed(
+            "ChaosTakenHitMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "ChaosTakenHitMult",
+        ),
+        computed(
+            "PhysicalEnergyShieldBypass",
+            Cat::Mitigation,
+            Vt::Percent,
+            "PhysicalEnergyShieldBypass",
+        ),
+        computed(
+            "FireEnergyShieldBypass",
+            Cat::Mitigation,
+            Vt::Percent,
+            "FireEnergyShieldBypass",
+        ),
+        computed(
+            "ColdEnergyShieldBypass",
+            Cat::Mitigation,
+            Vt::Percent,
+            "ColdEnergyShieldBypass",
+        ),
+        computed(
+            "LightningEnergyShieldBypass",
+            Cat::Mitigation,
+            Vt::Percent,
+            "LightningEnergyShieldBypass",
+        ),
+        computed(
+            "ChaosEnergyShieldBypass",
+            Cat::Mitigation,
+            Vt::Percent,
+            "ChaosEnergyShieldBypass",
+        ),
+        computed(
+            "FireDamageReduction",
+            Cat::Mitigation,
+            Vt::Percent,
+            "FireDamageReduction",
+        ),
+        computed(
+            "ColdDamageReduction",
+            Cat::Mitigation,
+            Vt::Percent,
+            "ColdDamageReduction",
+        ),
+        computed(
+            "LightningDamageReduction",
+            Cat::Mitigation,
+            Vt::Percent,
+            "LightningDamageReduction",
+        ),
+        computed(
+            "totalEnemyDamage",
+            Cat::Mitigation,
+            Vt::Number,
+            "totalEnemyDamage",
+        ),
+        computed(
+            "totalTakenDamage",
+            Cat::Mitigation,
+            Vt::Number,
+            "totalTakenDamage",
+        ),
+        computed(
+            "totalTakenHit",
+            Cat::Mitigation,
+            Vt::Number,
+            "totalTakenHit",
+        ),
+        computed(
+            "ConfiguredDamageChance",
+            Cat::Mitigation,
+            Vt::Percent,
+            "ConfiguredDamageChance",
+        ),
+        computed(
+            "ConfiguredNotHitChance",
+            Cat::Mitigation,
+            Vt::Percent,
+            "ConfiguredNotHitChance",
+        ),
+        computed(
+            "DamageTakenOnBlock",
+            Cat::Mitigation,
+            Vt::Percent,
+            "DamageTakenOnBlock",
+        ),
         // The old lowest-max-hit semantics are kept as a supplementary metric
         // (still comparable after F switches total_ehp's semantics).
         computed(
@@ -1589,6 +1784,85 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "PhysicalDamageReduction" => output.physical_damage_reduction,
         "NumberOfDamagingHits" => output.number_of_damaging_hits,
         "NumberOfMitigatedHits" => output.number_of_mitigated_hits,
+        "PhysicalEnemyDamage" => output.ehp_terms.as_ref().map_or(0.0, |t| t.enemy_damage[0]),
+        "PhysicalTakenDamage" => output.ehp_terms.as_ref().map_or(0.0, |t| t.taken_damage[0]),
+        "PhysicalTakenHit" => output.ehp_terms.as_ref().map_or(0.0, |t| t.taken_hit[0]),
+        "PhysicalEnergyShieldBypass" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.energy_shield_bypass[0]),
+        "PhysicalTakenHitMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.taken_hit_multiplier(0)),
+        "FireEnemyDamage" => output.ehp_terms.as_ref().map_or(0.0, |t| t.enemy_damage[1]),
+        "FireTakenDamage" => output.ehp_terms.as_ref().map_or(0.0, |t| t.taken_damage[1]),
+        "FireTakenHit" => output.ehp_terms.as_ref().map_or(0.0, |t| t.taken_hit[1]),
+        "FireEnergyShieldBypass" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.energy_shield_bypass[1]),
+        "FireTakenHitMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.taken_hit_multiplier(1)),
+        "FireDamageReduction" => output.ehp_terms.as_ref().map_or(0.0, |t| {
+            100.0 - t.damage_reduction[1].taken_multiplier() * 100.0
+        }),
+        "ColdEnemyDamage" => output.ehp_terms.as_ref().map_or(0.0, |t| t.enemy_damage[2]),
+        "ColdTakenDamage" => output.ehp_terms.as_ref().map_or(0.0, |t| t.taken_damage[2]),
+        "ColdTakenHit" => output.ehp_terms.as_ref().map_or(0.0, |t| t.taken_hit[2]),
+        "ColdEnergyShieldBypass" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.energy_shield_bypass[2]),
+        "ColdTakenHitMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.taken_hit_multiplier(2)),
+        "ColdDamageReduction" => output.ehp_terms.as_ref().map_or(0.0, |t| {
+            100.0 - t.damage_reduction[2].taken_multiplier() * 100.0
+        }),
+        "LightningEnemyDamage" => output.ehp_terms.as_ref().map_or(0.0, |t| t.enemy_damage[3]),
+        "LightningTakenDamage" => output.ehp_terms.as_ref().map_or(0.0, |t| t.taken_damage[3]),
+        "LightningTakenHit" => output.ehp_terms.as_ref().map_or(0.0, |t| t.taken_hit[3]),
+        "LightningEnergyShieldBypass" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.energy_shield_bypass[3]),
+        "LightningTakenHitMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.taken_hit_multiplier(3)),
+        "LightningDamageReduction" => output.ehp_terms.as_ref().map_or(0.0, |t| {
+            100.0 - t.damage_reduction[3].taken_multiplier() * 100.0
+        }),
+        "ChaosEnemyDamage" => output.ehp_terms.as_ref().map_or(0.0, |t| t.enemy_damage[4]),
+        "ChaosTakenDamage" => output.ehp_terms.as_ref().map_or(0.0, |t| t.taken_damage[4]),
+        "ChaosTakenHit" => output.ehp_terms.as_ref().map_or(0.0, |t| t.taken_hit[4]),
+        "ChaosEnergyShieldBypass" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.energy_shield_bypass[4]),
+        "ChaosTakenHitMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.taken_hit_multiplier(4)),
+        "totalEnemyDamage" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.enemy_damage.iter().sum()),
+        "totalTakenDamage" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.taken_damage.iter().sum()),
+        "totalTakenHit" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.taken_hit.iter().sum()),
+        "ConfiguredDamageChance" => output.ehp_terms.as_ref().map_or(0.0, |t| t.damage_chance),
+        "ConfiguredNotHitChance" => output.ehp_terms.as_ref().map_or(0.0, |t| t.not_hit_chance),
+        "DamageTakenOnBlock" => output.block_effect,
         "TotalEHPLowestMaxHit" => output.total_ehp_lowest_max_hit,
 
         _ => 0.0,

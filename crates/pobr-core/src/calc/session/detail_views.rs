@@ -3,6 +3,30 @@ use super::{CalculationSession, detail::DerivedDetail};
 use crate::calc::{perform, survivability::ChargeKind};
 
 pub const DERIVED_STATS: &[&str] = &[
+    "PhysicalTakenDamage",
+    "FireTakenDamage",
+    "ColdTakenDamage",
+    "LightningTakenDamage",
+    "ChaosTakenDamage",
+    "PhysicalTakenHit",
+    "FireTakenHit",
+    "ColdTakenHit",
+    "LightningTakenHit",
+    "ChaosTakenHit",
+    "PhysicalTakenHitMult",
+    "FireTakenHitMult",
+    "ColdTakenHitMult",
+    "LightningTakenHitMult",
+    "ChaosTakenHitMult",
+    "FireDamageReduction",
+    "ColdDamageReduction",
+    "LightningDamageReduction",
+    "totalEnemyDamage",
+    "totalTakenDamage",
+    "totalTakenHit",
+    "ConfiguredDamageChance",
+    "ConfiguredNotHitChance",
+    "DamageTakenOnBlock",
     "IgniteChancePerHit",
     "IgniteDuration",
     "IgniteEffMult",
@@ -117,6 +141,101 @@ impl CalculationSession {
         let mut context = Vec::new();
         let one = |id: &str, value| (id.to_string(), vec![(id.to_string(), value)]);
         let (formula, inputs) = match stat {
+            "totalEnemyDamage" | "totalTakenDamage" | "totalTakenHit" => {
+                let t = self.ehp_terms()?;
+                let (suffix, values) = match stat {
+                    "totalEnemyDamage" => ("EnemyDamage", t.enemy_damage),
+                    "totalTakenDamage" => ("TakenDamage", t.taken_damage),
+                    _ => ("TakenHit", t.taken_hit),
+                };
+                let rows: Vec<_> = ["Physical", "Fire", "Cold", "Lightning", "Chaos"]
+                    .into_iter()
+                    .zip(values)
+                    .map(|(kind, value)| (format!("{kind}{suffix}"), value))
+                    .collect();
+                (
+                    rows.iter()
+                        .map(|(id, _)| id.as_str())
+                        .collect::<Vec<_>>()
+                        .join(" + "),
+                    rows,
+                )
+            }
+            "ConfiguredDamageChance" => {
+                let t = self.ehp_terms()?;
+                ("100 * BlockEffectMultiplier * DeflectMultiplier * (1 - AverageAvoidChance / 100)".into(), vec![
+                    ("BlockEffectMultiplier".into(), t.block_effect_multiplier),
+                    ("DeflectMultiplier".into(), t.deflect_multiplier),
+                    ("AverageAvoidChance".into(), t.average_avoid_chance),
+                ])
+            }
+            "ConfiguredNotHitChance" => {
+                let t = self.ehp_terms()?;
+                (
+                    "100 * pow(clamp(NotHitBeforeUnlucky / 100, 0, 1), UnluckyWorstOf)".into(),
+                    vec![
+                        ("NotHitBeforeUnlucky".into(), t.not_hit_before_unlucky),
+                        ("UnluckyWorstOf".into(), t.unlucky_worst_of),
+                    ],
+                )
+            }
+            "DamageTakenOnBlock" => (
+                "100 - BlockEffect".into(),
+                vec![("BlockEffect".into(), 100.0 - out.block_effect)],
+            ),
+            "PhysicalTakenDamage"
+            | "FireTakenDamage"
+            | "ColdTakenDamage"
+            | "LightningTakenDamage"
+            | "ChaosTakenDamage"
+            | "PhysicalTakenHit"
+            | "FireTakenHit"
+            | "ColdTakenHit"
+            | "LightningTakenHit"
+            | "ChaosTakenHit"
+            | "PhysicalTakenHitMult"
+            | "FireTakenHitMult"
+            | "ColdTakenHitMult"
+            | "LightningTakenHitMult"
+            | "ChaosTakenHitMult" => {
+                let t = self.ehp_terms()?;
+                let (i, kind) = ["Physical", "Fire", "Cold", "Lightning", "Chaos"]
+                    .into_iter()
+                    .enumerate()
+                    .find(|(_, kind)| stat.starts_with(kind))?;
+                match &stat[kind.len()..] {
+                    "TakenDamage" => {
+                        let mut rows = Vec::new();
+                        let mut products = Vec::new();
+                        for (src, source) in ["Physical", "Fire", "Cold", "Lightning", "Chaos"].into_iter().enumerate() {
+                            rows.push((format!("{source}EnemyDamage"), t.enemy_damage[src]));
+                            rows.push((format!("{source}TakenAsFraction"), t.damage_shift[src][i]));
+                            products.push(format!("max({source}EnemyDamage, 0) * {source}TakenAsFraction"));
+                        }
+                        (products.join(" + "), rows)
+                    }
+                    "TakenHit" => (
+                        "max(ConvertedIncomingDamage * ResistTakenMultiplier * ReductionTakenMultiplier + FlatDamageTaken, 0) * AfterReductionMultiplier".into(),
+                        vec![
+                            ("ConvertedIncomingDamage".into(), t.taken_damage[i]),
+                            ("ResistTakenMultiplier".into(), t.resist_taken_multi[i]),
+                            ("ReductionTakenMultiplier".into(), t.damage_reduction[i].taken_multiplier()),
+                            ("FlatDamageTaken".into(), t.taken_flat[i]),
+                            ("AfterReductionMultiplier".into(), t.after_reduction_multi[i]),
+                        ],
+                    ),
+                    "TakenHitMult" => (
+                        if t.taken_damage[i] > 0.0 { "MitigatedHit / ConvertedIncomingDamage" }
+                        else { "0 * ConvertedIncomingDamage" }.into(),
+                        vec![
+                            ("MitigatedHit".into(), t.taken_hit[i]),
+                            ("ConvertedIncomingDamage".into(), t.taken_damage[i]),
+                        ],
+                    ),
+                    _ => unreachable!(),
+                }
+            }
+
             "ArchonDuration" | "ArchonRecoveryPeriod" => {
                 let timing = crate::rules::archon::timing(db, cfg);
                 if stat == "ArchonDuration" {
@@ -510,8 +629,19 @@ impl CalculationSession {
                     )
                 }
             }
-            "PhysicalDamageReduction" => {
-                let t = self.ehp_terms()?.physical_reduction;
+            "PhysicalDamageReduction"
+            | "FireDamageReduction"
+            | "ColdDamageReduction"
+            | "LightningDamageReduction" => {
+                let i = [
+                    "PhysicalDamageReduction",
+                    "FireDamageReduction",
+                    "ColdDamageReduction",
+                    "LightningDamageReduction",
+                ]
+                .iter()
+                .position(|id| *id == stat)?;
+                let t = self.ehp_terms()?.damage_reduction[i];
                 ("clamp(min(ReductionCap, ArmourReduction + FlatReduction) - EnemyOverwhelm, 0, ReductionCap)".into(), vec![
                     ("ReductionCap".into(), t.cap), ("ArmourReduction".into(), t.armour),
                     ("FlatReduction".into(), t.flat), ("EnemyOverwhelm".into(), t.overwhelm),
