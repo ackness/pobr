@@ -574,3 +574,84 @@ fn shavronnes_satchel_copies_life_flask_recovery_to_energy_shield_only() {
         );
     }
 }
+
+/// Game stats `local_flask_amount_to_recover_+%_when_on_low_mana` and `_on_low_life`
+/// ("88% more Recovery if used while on Low Mana / Low Life") are a MORE on the flask's own
+/// recovery that applies only while the matching Low pool condition holds. The generic path
+/// read both as `FlaskLifeRecoveryLowLife`, a name nothing reads.
+#[test]
+fn flask_more_recovery_if_used_on_low_pool_applies_only_under_its_condition() {
+    // Game Gargantuan Mana Flask: 185 mana over 2 s; Gargantuan Life Flask: 710 life over 5 s.
+    let mana = Item {
+        base: pobr_data::item::ItemBaseId::from("Gargantuan Mana Flask"),
+        quality: 0,
+        implicit_texts: vec![],
+        modifier_texts: vec![
+            "50% increased Amount Recovered".into(),
+            "88% more Recovery if used while on Low Mana".into(),
+        ],
+        rarity: ItemRarity::Magic,
+        ..charm(&[])
+    };
+    let life = Item {
+        base: pobr_data::item::ItemBaseId::from("Gargantuan Life Flask"),
+        modifier_texts: vec![
+            "50% increased Amount Recovered".into(),
+            "88% more Recovery if used while on Low Life".into(),
+        ],
+        ..mana.clone()
+    };
+    let mana_base = UtilityBaseStats {
+        life: 0.0,
+        mana: 185.0,
+        duration: 2.0,
+        charges_max: 75.0,
+        charges_used: 10.0,
+    };
+    let life_base = UtilityBaseStats {
+        life: 710.0,
+        mana: 0.0,
+        duration: 5.0,
+        charges_max: 75.0,
+        charges_used: 10.0,
+    };
+    let recoveries = |condition: Option<&str>| {
+        let mut session = super::support::session(MinimalInput::default());
+        session.add_utility_base("Flask 1", &mana, &mana_base);
+        session.add_flask_charm("Flask 1", &mana);
+        session.add_utility_base("Flask 2", &life, &life_base);
+        session.add_flask_charm("Flask 2", &life);
+        if let Some(condition) = condition {
+            session.set_condition(condition, true);
+        }
+        session.perform_minimal().unwrap();
+        assert!(
+            session.unsupported_modifier_texts().is_empty(),
+            "{:?}",
+            session.unsupported_modifier_texts()
+        );
+        let out = &session.output().utility_stats;
+        (
+            out["Flask1Recovery"],
+            out["Flask1RecoveryPerSecond"],
+            out["Flask2Recovery"],
+        )
+    };
+    let near = |actual: f64, expected: f64| {
+        assert!((actual - expected).abs() < 1e-9, "{actual} != {expected}");
+    };
+    // Neither Low pool: 185 * 1.5 = 277.5 mana (138.75 per second over 2 s) and 710 * 1.5 = 1065 life.
+    let (mana_amount, mana_rate, life_amount) = recoveries(None);
+    near(mana_amount, 277.5);
+    near(mana_rate, 138.75);
+    near(life_amount, 1065.0);
+    // Low Mana: the Mana flask recovers 277.5 * 1.88 = 521.7 (260.85 per second); Life flask unchanged.
+    let (mana_amount, mana_rate, life_amount) = recoveries(Some("LowMana"));
+    near(mana_amount, 521.7);
+    near(mana_rate, 260.85);
+    near(life_amount, 1065.0);
+    // Low Life: the Life flask recovers 1065 * 1.88 = 2002.2; Mana flask unchanged.
+    let (mana_amount, _, life_amount) = recoveries(Some("LowLife"));
+    near(mana_amount, 277.5);
+    near(life_amount, 2002.2);
+}

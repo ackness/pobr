@@ -589,6 +589,79 @@ fn flask_damage_taken_recouped_as_life_is_life_recoup() {
     assert_eq!(o.mods[0].value, ModValue::Number(29.0));
 }
 
+/// Game stats `local_flask_amount_to_recover_+%_when_on_low_mana` / `_on_low_life`: "1% more
+/// Recovery if used while on Low Mana". The extracted phrase table read it as a MORE on
+/// `FlaskLifeRecoveryLowLife` with "if used" left over, so nothing consumed it.
+#[test]
+fn flask_more_recovery_if_used_on_low_pool_is_a_conditional_more() {
+    for (text, condition) in [
+        ("88% more Recovery if used while on Low Mana", "LowMana"),
+        ("88% more Recovery if used while on Low Life", "LowLife"),
+    ] {
+        let o = parse_mod(text).unwrap();
+        assert_eq!(o.status, ParseStatus::Parsed, "{text}");
+        assert!(o.unparsed.is_none(), "{text}: {:?}", o.unparsed);
+        assert_eq!(o.mods.len(), 1, "{text}: {:?}", o.mods);
+        let m = &o.mods[0];
+        assert_eq!(m.name, ModName::from("FlaskRecovery"), "{text}");
+        assert_eq!(m.mod_type, ModType::More, "{text}");
+        assert_eq!(m.value, ModValue::Number(88.0), "{text}");
+        assert!(
+            m.tags.contains(&ModTag::condition(condition, false)),
+            "{text}: missing {condition} condition"
+        );
+        assert!(m.exporter_rule.is_some(), "{text}: exporter-absent rule");
+    }
+}
+
+/// Game stats `local_flask_removes_%_of_life_recovery_from_mana_on_use` /
+/// `..._mana_recovery_from_life_on_use`: the flask keeps its recovery and the other resource
+/// pays a share of it per use. The extracted phrase table read the line as -15 `FlaskRecovery`
+/// (the flask's own recovery) with "% of  from Mana when used" left over. The per-use removal
+/// is not modelled, so the line is recognised, stores nothing and stays reported as a gap.
+#[test]
+fn flask_removes_recovery_from_the_other_resource_is_recognised_but_unmodelled() {
+    for text in [
+        "Removes 15% of Life Recovered from Mana when used",
+        "Removes 15% of Mana Recovered from Life when used",
+    ] {
+        let o = parse_mod(text).unwrap();
+        assert_eq!(o.status, ParseStatus::Parsed, "{text}");
+        assert!(o.unparsed.is_none(), "{text}: {:?}", o.unparsed);
+        assert!(o.mods.is_empty(), "{text}: {:?}", o.mods);
+        let meta = o.special_meta.unwrap();
+        assert_eq!(
+            meta.entry_id, "flask_removes_recovery_from_other_resource_on_use",
+            "{text}"
+        );
+        assert!(!meta.no_effect, "{text} must remain a model gap");
+    }
+}
+
+/// Charm stat `charm_x%_of_chaos_damage_from_hits_prevented_recouped_as_life_and_mana_during_
+/// effect` (Forsaken Bangle). The extracted phrase table read it as +50 `ChaosDamage` with
+/// "you prevent when Hit Recouped as Life and Mana" left over. Prevented-damage recoup covers
+/// only Physical damage recouped as Life, so the line is recognised and stays a model gap; the
+/// charm and flask path strips " during effect" before parsing, so both spellings must match.
+#[test]
+fn charm_chaos_damage_prevented_recouped_as_life_and_mana_is_recognised_but_unmodelled() {
+    for text in [
+        "50% of Chaos damage you prevent when Hit Recouped as Life and Mana during effect",
+        "50% of Chaos damage you prevent when Hit Recouped as Life and Mana",
+    ] {
+        let o = parse_mod(text).unwrap();
+        assert_eq!(o.status, ParseStatus::Parsed, "{text}");
+        assert!(o.unparsed.is_none(), "{text}: {:?}", o.unparsed);
+        assert!(o.mods.is_empty(), "{text}: {:?}", o.mods);
+        let meta = o.special_meta.unwrap();
+        assert_eq!(
+            meta.entry_id, "charm_chaos_damage_prevented_recouped_as_life_and_mana",
+            "{text}"
+        );
+        assert!(!meta.no_effect, "{text} must remain a model gap");
+    }
+}
+
 /// Random element damage taken (vendor ModParser.lua:5661-5665): AVERAGE splits the
 /// value three ways (num/3). Real-world corpus text (`5% of Physical Damage from Hits
 /// taken as Damage of a Random Element`) regressed to `PhysicalDamageFromHitsTaken
