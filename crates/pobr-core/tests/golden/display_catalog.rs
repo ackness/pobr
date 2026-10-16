@@ -164,7 +164,10 @@ fn catalog_entry_counts_locked() {
         // PinBuildupAvg (+1).
         // ManaRecoupRate (+1), the Chaos prevented-damage recoup as Mana, and
         // Flask{1,2}{Mana,Life}RemovedOnUse (+4), the other pool's per-use removal.
-        510,
+        // TotemLife, TotemDurationMod, Totem{Fire,Cold,Lightning,Chaos}Resist,
+        // Totem{Fire,Cold,Lightning,Chaos}ResistTotal and
+        // MissingTotem{Fire,Cold,Lightning,Chaos}Resist (+14), the totem defences.
+        524,
         "a change in Computed entry count needs explicit review"
     );
 }

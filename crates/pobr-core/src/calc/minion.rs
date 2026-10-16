@@ -116,7 +116,9 @@ pub fn stats_at_user_level(
 pub const MINION_DEFAULT_WEAPON_CRIT_CHANCE: f64 = 5.0;
 
 /// The minion level table (gem level → monster level): `minionLevelTable = {2,4,…,80}`.
-/// Index 0 corresponds to gem level 1. Source: PoB2 Misc.lua `data.minionLevelTable`.
+/// Index 0 corresponds to gem level 1. Source: the game table
+/// `MinionGemLevelScaling` (`GemLevel` → `MinionLevel`, 0.5.5.4.2 export
+/// recorded in `overlay-common/totem_varieties.json`), also used for totems.
 pub const MINION_LEVEL_TABLE: [u32; 40] = [
     2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50,
     52, 54, 56, 58, 60, 62, 64, 66, 68, 70, 72, 74, 76, 78, 80,

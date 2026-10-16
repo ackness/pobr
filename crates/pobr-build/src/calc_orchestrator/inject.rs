@@ -626,6 +626,13 @@ pub(super) fn inject_main_skill_mods(
             skill_id,
             &ctx.main.main_skill_types,
         ));
+        session.add_modifiers(super::skill::mods::totem_base_modifiers(
+            build,
+            data,
+            group,
+            skill_id,
+            &ctx.main.main_skill_types,
+        ));
         // 1b-i-q. Main skill gem's quality stats (T1.7): the quality segment is
         //         mapped via stat-map and injected with SourceKind::GemQuality
         //         attribution (id prefix gem.<effect id>.q<Q>).

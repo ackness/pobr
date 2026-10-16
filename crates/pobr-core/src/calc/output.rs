@@ -58,6 +58,15 @@ pub struct OutputTable {
     pub self_ignite_effect: f64,
     pub debuff_expiration_modifier: f64,
     pub curse_effect_on_self: f64,
+    /// Totem defences of the selected skill ([`super::totem`]), Fire, Cold,
+    /// Lightning, Chaos: capped resistance, uncapped total, and missing to max.
+    pub totem_resist: [f64; 4],
+    pub totem_resist_total: [f64; 4],
+    pub missing_totem_resist: [f64; 4],
+    /// Totem duration multiplier (neutral 1).
+    pub totem_duration_mod: f64,
+    /// Maximum Life of a totem the selected skill places; 0 without one.
+    pub totem_life: f64,
     pub self_bleed_duration: f64,
     pub self_poison_duration: f64,
     pub self_ignite_duration: f64,
@@ -628,6 +637,11 @@ impl Default for OutputTable {
             self_ignite_effect: 100.0,
             debuff_expiration_modifier: 100.0,
             curse_effect_on_self: 100.0,
+            totem_resist: [0.0; 4],
+            totem_resist_total: [0.0; 4],
+            missing_totem_resist: [0.0; 4],
+            totem_duration_mod: 1.0,
+            totem_life: 0.0,
             self_bleed_duration: 100.0,
             self_poison_duration: 100.0,
             self_ignite_duration: 100.0,

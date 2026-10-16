@@ -840,6 +840,89 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::TimeSeconds,
             "TotemPlacementTime",
         ),
+        computed("TotemLife", Cat::SkillMechanics, Vt::Number, "TotemLife"),
+        computed(
+            "TotemDurationMod",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "TotemDurationMod",
+        ),
+        computed(
+            "TotemFireResist",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "TotemFireResist",
+        ),
+        computed(
+            "TotemColdResist",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "TotemColdResist",
+        ),
+        computed(
+            "TotemLightningResist",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "TotemLightningResist",
+        ),
+        computed(
+            "TotemChaosResist",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "TotemChaosResist",
+        ),
+        computed(
+            "TotemFireResistTotal",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "TotemFireResistTotal",
+        ),
+        computed(
+            "TotemColdResistTotal",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "TotemColdResistTotal",
+        ),
+        computed(
+            "TotemLightningResistTotal",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "TotemLightningResistTotal",
+        ),
+        computed(
+            "TotemChaosResistTotal",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "TotemChaosResistTotal",
+        ),
+        computed(
+            "MissingTotemFireResist",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "MissingTotemFireResist",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "MissingTotemColdResist",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "MissingTotemColdResist",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "MissingTotemLightningResist",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "MissingTotemLightningResist",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "MissingTotemChaosResist",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "MissingTotemChaosResist",
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "TrapThrowingTime",
             Cat::SkillMechanics,
@@ -2232,7 +2315,16 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
     if let Some(value) = crate::calc::limit_display::display_value(output, id) {
         return value;
     }
+    if let Some((i, view)) = crate::calc::totem::resist_stat(id) {
+        return match view {
+            "final" => output.totem_resist[i],
+            "total" => output.totem_resist_total[i],
+            _ => output.missing_totem_resist[i],
+        };
+    }
     match id {
+        "TotemLife" => output.totem_life,
+        "TotemDurationMod" => output.totem_duration_mod,
         "DecayDPS" => output.decay_dps,
         "MirageBurningGroundDPS" => output.mirage_burning_ground_dps,
 
