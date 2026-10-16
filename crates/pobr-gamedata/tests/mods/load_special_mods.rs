@@ -109,7 +109,10 @@ fn s0_crit_override_entry() {
 #[test]
 fn unmodelled_recognition_only_entries() {
     let def = load();
-    for id in ["immune_to_chaos_damage"] {
+    for id in [
+        "immune_to_chaos_damage",
+        "charm_energy_shield_recharge_starts_when_used",
+    ] {
         let e = def.entries.iter().find(|e| e.id == id).unwrap();
         assert_eq!(e.batch, "unmodelled", "{id}");
         assert!(

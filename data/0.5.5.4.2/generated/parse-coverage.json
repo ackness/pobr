@@ -6,16 +6,16 @@
   },
   "summary": {
     "total": 4277,
-    "parsed": 3512,
-    "unsupported": 765,
+    "parsed": 3513,
+    "unsupported": 764,
     "err": 0,
-    "coverage_ratio": 0.821136
+    "coverage_ratio": 0.82137
   },
   "by_source": [
     {
       "source": "C1_build",
-      "parsed": 1214,
-      "unsupported": 489,
+      "parsed": 1215,
+      "unsupported": 488,
       "err": 0
     },
     {

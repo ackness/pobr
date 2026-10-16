@@ -340,7 +340,8 @@ Equipped Focus/Shield defence increases (`energy_shield_from_focus_+%`,
 matching off-hand item's locally computed defences. Recharge rate stats
 (`energy_shield_recharge_rate_+%`, `virtual_energy_shield_recharge_rate_+%`)
 read `EnergyShieldRecharge`, faster start (`energy_shield_delay_-%_while_affected_by_archon`)
-reads `EnergyShieldRechargeFaster`.
+reads `EnergyShieldRechargeFaster`. `charm_energy_shield_recharge_starts_when_used`
+remains an unmodelled charm-use event without an uptime model.
 
 Scarred Faith's “Energy Shield does not Recharge” (`keystone_alternate_es_recovery`,
 [game text](https://poe2db.tw/us/Scarred_Faith)) sets recharge rate, amount and

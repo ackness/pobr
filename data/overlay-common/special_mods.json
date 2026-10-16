@@ -5430,6 +5430,15 @@
       "examples": [
         "40% reduced Effect of Chill on you"
       ]
+    },
+    {
+      "id": "charm_energy_shield_recharge_starts_when_used",
+      "pattern": "energy shield recharge starts on use",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "charm_energy_shield_recharge_starts_when_used",
+      "source_note": "Game stat charm_energy_shield_recharge_starts_when_used: Energy Shield Recharge starts on use (Thawing Charm). The one-off charm-use recharge event and its uptime are not modelled; it cannot change a steady-state recharge rate or delay."
     }
   ]
 }

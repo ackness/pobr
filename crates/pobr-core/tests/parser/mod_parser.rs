@@ -1858,3 +1858,16 @@ fn equipped_defence_and_recharge_text_keep_their_scope_and_reader_names() {
         assert_eq!(parsed.mods[0].value.as_number(), Some(value));
     }
 }
+
+#[test]
+fn charm_recharge_on_use_is_unmodelled_not_no_effect() {
+    let parsed = parse_mod("Energy Shield Recharge starts on use").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed);
+    assert!(parsed.mods.is_empty());
+    let meta = parsed.special_meta.unwrap();
+    assert_eq!(
+        meta.entry_id,
+        "charm_energy_shield_recharge_starts_when_used"
+    );
+    assert!(!meta.no_effect);
+}

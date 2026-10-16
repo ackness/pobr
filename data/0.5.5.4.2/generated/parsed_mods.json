@@ -36292,7 +36292,7 @@
     },
     {
       "text": "Energy Shield Recharge starts on use",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Equipment and Skill Gems have 4% reduced [Attributes|Attribute] Requirements",

@@ -516,3 +516,33 @@ Implicits: 0
         assert!(ledger.condition_states.contains(condition));
     }
 }
+
+#[test]
+fn charm_recharge_event_stays_visible_as_unmodelled() {
+    let data = data();
+    let text = "Energy Shield Recharge starts on use";
+    let build = parse_build(&format!(
+        r#"<PathOfBuilding2>
+<Build level="80" className="Witch"/>
+<Items activeItemSet="1"><Item id="1">Rarity: UNIQUE
+Nascent Hope
+Thawing Charm
+Implicits: 1
+Used when you become Frozen
+{text}
+</Item><ItemSet id="1"><Slot name="Charm 1" itemId="1" active="true"/></ItemSet></Items>
+</PathOfBuilding2>"#
+    ))
+    .unwrap();
+    let diagnosis = diagnose(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+    let ledger = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+    let row = line(&ledger, "flask.charm1", text);
+    assert_eq!(row.status, LineStatus::Unmodelled, "{row:?}");
+    assert!(row.modifiers.is_empty());
+    assert!(
+        row.reason
+            .as_deref()
+            .unwrap()
+            .contains("charm_energy_shield_recharge_starts_when_used")
+    );
+}
