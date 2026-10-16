@@ -241,12 +241,12 @@
     },
     {
       "build": "huntress-ritualist-purity-of-fire",
-      "stats": ["TotalEHP"],
+      "stats": ["TotalEHP", "ChaosEnemyDamage", "ChaosTakenDamage", "totalEnemyDamage", "totalTakenDamage"],
       "reason": "enemies in Presence gain Chaos damage from all of their damage (Evergrasping Ring), PoB2 only from their physical damage (docs/maintainer-guide.md, Evergrasping)"
     },
     {
       "build": "sorceress-stormweaver-frost-bomb",
-      "stats": ["TotalEHP"],
+      "stats": ["TotalEHP", "ChaosEnemyDamage", "ChaosTakenDamage", "totalEnemyDamage", "totalTakenDamage"],
       "reason": "enemies in Presence gain Chaos damage from all of their damage (Evergrasping Ring), PoB2 only from their physical damage (docs/maintainer-guide.md, Evergrasping)"
     },
     {
@@ -527,6 +527,26 @@
         "HeavyStunBuildupAvg"
       ],
       "reason": "Official 0.5.5.4.2 MonsterVarieties.PoiseThreshold for Xesht (row 1946) is 1700 (17x); pinned PoB2 uses 838% MORE (9.38x). PoBR follows the game, yielding 3.627930% vs 6.578395% on the worked Spark build; oracle/engine is 17/9.38 within 0.05% from hit/rounding differences. Source rows/export SHA are in data/overlay-common/boss_poise_thresholds.json; see docs/maintainer-guide.md, known intentional differences."
+    },
+    {
+      "build": "sorceress-chronomancer-mana-remnants-859e60e18169",
+      "stats": [
+        "ChaosEnemyDamage",
+        "ChaosTakenDamage",
+        "totalEnemyDamage",
+        "totalTakenDamage"
+      ],
+      "reason": "enemies in Presence gain Chaos damage from all of their damage (Evergrasping Ring), PoB2 only from their physical damage (docs/maintainer-guide.md, Evergrasping)"
+    },
+    {
+      "build": "sorceress-chronomancer-essence-drain",
+      "stats": [
+        "ChaosEnemyDamage",
+        "ChaosTakenDamage",
+        "totalEnemyDamage",
+        "totalTakenDamage"
+      ],
+      "reason": "enemies in Presence gain Chaos damage from all of their damage (Evergrasping Ring), PoB2 only from their physical damage (docs/maintainer-guide.md, Evergrasping)"
     }
   ]
 }

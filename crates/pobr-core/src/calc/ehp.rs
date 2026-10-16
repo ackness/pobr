@@ -460,6 +460,22 @@ pub struct EhpTerms {
     pub enemy_damage: [f64; 5],
     /// The damage of each type taken from that hit (`<X>TakenHit`).
     pub taken_hit: [f64; 5],
+    /// Incoming damage after taken-as conversion, before mitigation.
+    pub taken_damage: [f64; 5],
+    /// Resolved taken-as fractions, indexed by source and destination type.
+    pub damage_shift: [[f64; 5]; 5],
+    pub damage_reduction: [DamageReductionTerms; 5],
+    pub resist_taken_multi: [f64; 5],
+    pub taken_flat: [f64; 5],
+    pub after_reduction_multi: [f64; 5],
+    /// Resolved ES bypass percentages used by the pool calculation.
+    pub energy_shield_bypass: [f64; 5],
+    /// Factors used by the configured hit probability layer.
+    pub block_effect_multiplier: f64,
+    pub deflect_multiplier: f64,
+    pub average_avoid_chance: f64,
+    pub not_hit_before_unlucky: f64,
+    pub unlucky_worst_of: f64,
     /// The pool each type depletes (`<X>TotalHitPool`).
     pub total_hit_pool: [f64; 5],
     /// Hits like that to die (`NumberOfDamagingHits`).
@@ -469,7 +485,7 @@ pub struct EhpTerms {
     pub damage_chance: f64,
     /// Hits to die with that percentage (`NumberOfMitigatedDamagingHits`).
     pub mitigated_hits: f64,
-    /// The chance not to be hit at all (`AverageNotHitChance`).
+    /// The configured chance not to be hit, after unlucky rolls (`ConfiguredNotHitChance`).
     pub not_hit_chance: f64,
     /// The enemy's damage before modifiers, which EHP is in units of
     /// (`totalEnemyDamageIn`).
@@ -485,6 +501,18 @@ pub struct EhpTerms {
     /// order), feeding per-type recoup (elemental Energy Shield recoup) and
     /// the EsRecoupRate derived detail.
     pub recoupable_by_type: [f64; 5],
+}
+
+impl EhpTerms {
+    /// Ratio view of the mitigated hit to its converted incoming damage.
+    /// An absent incoming type has a zero multiplier, even with flat damage.
+    pub(crate) fn taken_hit_multiplier(&self, i: usize) -> f64 {
+        if self.taken_damage[i] > 0.0 {
+            self.taken_hit[i] / self.taken_damage[i]
+        } else {
+            0.0
+        }
+    }
 }
 
 /// Enemy incoming-damage assembly result (vendor CalcDefence.lua:2040-2168's enemy-damage section).
@@ -651,20 +679,30 @@ pub fn enemy_crit_effect_ehp(
     1.0 + chance / 100.0 * (crit_damage / 100.0) * (1.0 - crit_extra_reduction_pct / 100.0)
 }
 
-/// Per-type damage taken (vendor's "panel path": taken-as shift aggregation
-/// `:2214-2227` + per-type mitigation `:2326-2444`). Returns `(per-type TakenHit, per-type panel DR%)`.
-///
-/// Difference from [`taken_hit_from_damage`] (a single-source raw entry
-/// point, `:422-455`): this function first shift-aggregates incoming damage
-/// across **every source type**, then applies per-destination mitigation
-/// (takenFlat is added only once, and armour DR is evaluated against the
-/// aggregated damage) -- matching vendor's `<X>TakenDamage → <X>TakenHit`
-/// chain; `:2442` isn't rounded (round in takenHitFromDamage is a separate entry point).
+/// Aggregate every incoming damage type through taken-as conversion before
+/// applying mitigation once per destination. Flat damage is added once and
+/// armour reduction uses the combined incoming damage of that destination.
+/// Returns the mitigated hit and the per-type damage reduction percentages.
 pub fn taken_hit_per_type(
     enemy_damage: &TypedDamage,
     mit: &MitigationCtx,
 ) -> (TypedDamage, [f64; 5]) {
-    // 1. taken-as shift aggregation (:2214-2227): taken[dst] = Σ_src enemyDamage[src] × shift[src][dst].
+    let terms = taken_hit_terms(enemy_damage, mit);
+    (
+        terms.hit,
+        terms
+            .reduction
+            .map(|r| 100.0 - r.taken_multiplier() * 100.0),
+    )
+}
+
+struct TakenHitTerms {
+    damage: [f64; 5],
+    hit: TypedDamage,
+    reduction: [DamageReductionTerms; 5],
+}
+
+fn taken_hit_terms(enemy_damage: &TypedDamage, mit: &MitigationCtx) -> TakenHitTerms {
     let mut taken = [0.0_f64; 5];
     for src in DAMAGE_TYPE_BY_INDEX {
         let s = src as usize;
@@ -676,32 +714,25 @@ pub fn taken_hit_per_type(
             *taken_slot += raw * mit.shift[s][d];
         }
     }
-    // 2. Per-type mitigation (:2371-2383 + :2442).
     let mut hits = [0.0_f64; 5];
-    let mut dr_pct = [0.0_f64; 5];
+    let mut reduction = [DamageReductionTerms::default(); 5];
     for i in 0..5 {
         let damage = taken[i];
-        // :2402 armourReduct = min(drMax, armourReduction(effArmour, damage)) --
-        // note this is the **rounded** variant (Common.lua's round=floor(x+0.5);
-        // armourReductionF is the fractional variant, only used by
-        // takenHitFromDamage/`:437`). That's why golden's PhysicalDamageReduction is always an integer.
-        let reduction = damage_reduction_terms(damage, mit, i);
-        let reduct_mult = reduction.taken_multiplier();
-        dr_pct[i] = 100.0 - reduct_mult * 100.0;
-        // :2442 TakenHit = max(damage × resMult × reductMult + takenFlat, 0) × afterReductionMulti.
-        let base_mult = mit.resist_taken_multi[i] * reduct_mult;
+        reduction[i] = damage_reduction_terms(damage, mit, i);
+        let base_mult = mit.resist_taken_multi[i] * reduction[i].taken_multiplier();
         hits[i] = (damage * base_mult + mit.taken_flat[i]).max(0.0) * mit.after_reduction_multi[i];
     }
-    (
-        TypedDamage {
+    TakenHitTerms {
+        damage: taken,
+        hit: TypedDamage {
             physical: hits[0],
             fire: hits[1],
             cold: hits[2],
             lightning: hits[3],
             chaos: hits[4],
         },
-        dr_pct,
-    )
+        reduction,
+    }
 }
 
 /// EHP loop parameters (vendor Data.lua:235-239 + `:3094`'s LimitEHPSpeedup tightening).
@@ -977,7 +1008,7 @@ pub struct DamageReductionTerms {
     pub cap: f64,
 }
 impl DamageReductionTerms {
-    fn taken_multiplier(self) -> f64 {
+    pub(crate) fn taken_multiplier(self) -> f64 {
         1.0 - ((self.armour + self.flat).min(self.cap) - self.overwhelm).clamp(0.0, self.cap)
             / 100.0
     }
@@ -1312,10 +1343,11 @@ pub fn fill_ehp_pob2(
         let nh = not_hit_suite(out);
         let worst_of = enemy_db.override_(cfg, "EHPUnluckyWorstOf").unwrap_or(1.0);
         let unlucky = |percent: f64| 100.0 * (percent / 100.0).clamp(0.0, 1.0).powf(worst_of);
-        let not_hit = unlucky(category.select(
+        let not_hit_before_unlucky = category.select(
             [nh.melee, nh.projectile, nh.spell, nh.spell_projectile],
             out.avoid_all_damage_from_hits,
-        ));
+        );
+        let not_hit = unlucky(not_hit_before_unlucky);
         let evade = unlucky(if category == super::taken::HitCategory::Average {
             nh.average_evade
         } else {
@@ -1335,13 +1367,11 @@ pub fn fill_ehp_pob2(
             enemy_crit_effect_ehp(db, enemy_db, cfg, evade, out.crit_extra_damage_reduction);
         let enemy_in = assemble_enemy_damage(enemy_db, cfg, crit_effect);
 
-        // Per-type TakenHit + panel DR (:2171-2444)
-        let (taken_hit, dr_pct) = taken_hit_per_type(&enemy_in.damage, &mit);
-        let physical_before_reduction = DAMAGE_TYPE_BY_INDEX
-            .into_iter()
-            .map(|kind| enemy_in.damage.get(kind).max(0.0) * mit.shift[kind as usize][0])
-            .sum::<f64>();
-        let physical_reduction = damage_reduction_terms(physical_before_reduction, &mit, 0);
+        // Retain the same conversion and mitigation terms used by the EHP loop.
+        let hit = taken_hit_terms(&enemy_in.damage, &mit);
+        let taken_hit = hit.hit;
+        let physical_before_reduction = hit.damage[0];
+        let physical_reduction = hit.reduction[0];
 
         // avoid_stun / Stun real-value wiring
         // vendor totalTakenHit = Σ <X>TakenHit (:2444); the ES halving condition
@@ -1557,7 +1587,7 @@ pub fn fill_ehp_pob2(
         Computed {
             life_recoverable,
             es_recovery_cap,
-            physical_dr: dr_pct[DamageType::Physical as usize],
+            physical_dr: 100.0 - physical_reduction.taken_multiplier() * 100.0,
             n_hits,
             n_mitigated,
             total_in: enemy_in.total_in,
@@ -1571,6 +1601,18 @@ pub fn fill_ehp_pob2(
             terms: EhpTerms {
                 enemy_damage: by_type(&enemy_in.damage),
                 taken_hit: by_type(&taken_hit),
+                taken_damage: hit.damage,
+                damage_shift: mit.shift,
+                damage_reduction: hit.reduction,
+                resist_taken_multi: mit.resist_taken_multi,
+                taken_flat: mit.taken_flat,
+                after_reduction_multi: mit.after_reduction_multi,
+                energy_shield_bypass: ctx.es_bypass_by_type,
+                block_effect_multiplier: block_effect_mult,
+                deflect_multiplier: deflect_mult,
+                average_avoid_chance,
+                not_hit_before_unlucky,
+                unlucky_worst_of: worst_of,
                 total_hit_pool: pool_by_type,
                 damaging_hits: n_hits,
                 damage_chance: configured_damage_chance,
@@ -1586,9 +1628,8 @@ pub fn fill_ehp_pob2(
             },
         }
     };
-    env.ehp_terms = Some(computed.terms);
-
     let out = &mut env.player.output;
+    out.ehp_terms = Some(computed.terms);
     out.life_recoverable = computed.life_recoverable;
     out.energy_shield_recovery_cap = computed.es_recovery_cap;
     out.physical_damage_reduction = computed.physical_dr;

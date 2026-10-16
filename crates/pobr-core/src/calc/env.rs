@@ -74,8 +74,6 @@ pub struct Env {
     /// The crossbow reload cycle `perform` scaled the rate and DPS by
     /// (`None` when the stage changed nothing).
     pub crossbow_reload: Option<super::CrossbowReload>,
-    /// What the EHP stage computed with (`None` before it runs).
-    pub ehp_terms: Option<super::EhpTerms>,
     /// The earlier single-hit estimate, retained for its optional legacy view.
     pub(crate) legacy_ehp_terms: Option<super::ehp::EhpResult>,
     /// Normal leech, instant leech and on-hit recovery by resource, for optional details.
@@ -128,7 +126,6 @@ impl Env {
             curse_pass_output: None,
             heavy_stun_terms: None,
             crossbow_reload: None,
-            ehp_terms: None,
             legacy_ehp_terms: None,
             leech_gain_terms: [[[0.0; 3]; 3]; 2],
             hand_sources: Vec::new(),

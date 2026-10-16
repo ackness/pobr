@@ -910,7 +910,9 @@ fn fill_mechanics(env: &mut Env) {
                 db,
                 cfg,
                 recoupable_total,
-                env.ehp_terms
+                env.player
+                    .output
+                    .ehp_terms
                     .as_ref()
                     .map_or(0.0, |terms| terms.physical_prevented),
             )

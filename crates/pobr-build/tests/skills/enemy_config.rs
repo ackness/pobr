@@ -269,3 +269,172 @@ fn unlucky_rolls_reduce_evasion_and_ehp_without_changing_the_hit() {
         four.output().number_of_damaging_hits,
     );
 }
+
+#[test]
+fn ehp_calcs_fields_share_stage_terms_and_details_reconstruct() {
+    use pobr_build::breakdown::detail::detail_kind;
+    use pobr_core::{Modifier, display_value};
+    use pobr_data::prelude::ModType;
+
+    let kinds = ["Physical", "Fire", "Cold", "Lightning", "Chaos"];
+    let mut session = CalculationSession::new(MinimalInput {
+        base_life: 10_000.0,
+        ..Default::default()
+    });
+    for (kind, damage) in kinds.into_iter().zip([1000.0, 200.0, 300.0, 400.0, 500.0]) {
+        session.add_enemy_modifiers([Modifier::number(
+            format!("Enemy{kind}Damage"),
+            ModType::Base,
+            damage,
+        )]);
+    }
+    session.add_enemy_modifiers([
+        Modifier::flag("NeverCrit"),
+        Modifier::number("Damage", ModType::Inc, 20.0),
+        Modifier::number("EHPUnluckyWorstOf", ModType::Override, 2.0),
+    ]);
+    for (name, value) in [
+        ("PhysicalDamageTakenAsFire", 25.0),
+        ("PhysicalDamageReduction", 10.0),
+        ("FireDamageReduction", 20.0),
+        ("ColdDamageReduction", 30.0),
+        ("LightningDamageReduction", 40.0),
+        ("PhysicalDamageTaken", 10.0),
+        ("FireResist", 50.0),
+        ("ColdResist", 25.0),
+        ("LightningResist", 75.0),
+        ("ShieldBlockChance", 40.0),
+        ("SpellBlockChance", 40.0),
+        ("BlockEffect", 20.0),
+        ("AvoidAllDamageFromHitsChance", 20.0),
+    ] {
+        session.add_modifiers([Modifier::number(name, ModType::Base, value)]);
+    }
+    session.add_modifiers([Modifier::number("DamageTaken", ModType::More, -10.0)]);
+    for (kind, bypass) in kinds.into_iter().zip([0.0, 25.0, 50.0, 75.0, 100.0]) {
+        session.add_modifiers([Modifier::number(
+            format!("{kind}EnergyShieldBypass"),
+            ModType::Base,
+            bypass,
+        )]);
+    }
+    session.perform_minimal().unwrap();
+    let t = session.ehp_terms().unwrap();
+    let out = session.output();
+    // 20% enemy increase, then 25% physical taken as fire. Resistances and
+    // per-type reduction apply before +10 physical and the 0.9 taken multiplier.
+    let expected_enemy = [1200.0, 240.0, 360.0, 480.0, 600.0];
+    let expected_converted = [900.0, 540.0, 360.0, 480.0, 600.0];
+    let expected_hit = [738.0, 194.4, 170.1, 64.8, 540.0];
+    for (i, kind) in kinds.into_iter().enumerate() {
+        for (suffix, expected) in [
+            ("EnemyDamage", expected_enemy[i]),
+            ("TakenDamage", expected_converted[i]),
+            ("TakenHit", expected_hit[i]),
+            ("TakenHitMult", expected_hit[i] / expected_converted[i]),
+            ("EnergyShieldBypass", i as f64 * 25.0),
+        ] {
+            let stat = format!("{kind}{suffix}");
+            close(display_value(out, &stat), expected);
+            if matches!(suffix, "EnemyDamage" | "EnergyShieldBypass") {
+                assert_eq!(detail_kind(&stat), DetailKind::None);
+                assert!(stat_detail(&session, &stat).is_none());
+                continue;
+            }
+            let detail = stat_detail(&session, &stat).unwrap();
+            assert_eq!(detail.kind, DetailKind::Derived);
+            let d = detail.derived.unwrap();
+            let input = |id: &str| d.inputs.iter().find(|row| row.id == id).unwrap().value;
+            let reconstructed = match suffix {
+                "TakenDamage" => kinds
+                    .into_iter()
+                    .map(|src| {
+                        input(&format!("{src}EnemyDamage")).max(0.0)
+                            * input(&format!("{src}TakenAsFraction"))
+                    })
+                    .sum(),
+                "TakenHit" => {
+                    (input("ConvertedIncomingDamage")
+                        * input("ResistTakenMultiplier")
+                        * input("ReductionTakenMultiplier")
+                        + input("FlatDamageTaken"))
+                    .max(0.0)
+                        * input("AfterReductionMultiplier")
+                }
+                "TakenHitMult" => input("MitigatedHit") / input("ConvertedIncomingDamage"),
+                _ => unreachable!(),
+            };
+            close(reconstructed, expected);
+        }
+        close(t.enemy_damage[i], expected_enemy[i]);
+        close(t.taken_damage[i], expected_converted[i]);
+        close(t.taken_hit[i], expected_hit[i]);
+    }
+    for (stat, expected) in [
+        ("totalEnemyDamage", 2880.0),
+        ("totalTakenDamage", 2880.0),
+        ("totalTakenHit", 1707.3),
+        ("FireDamageReduction", 20.0),
+        ("ColdDamageReduction", 30.0),
+        ("LightningDamageReduction", 40.0),
+        // Worst of two makes 40% block 16%, and 20% not-hit 4%.
+        ("ConfiguredDamageChance", 87.2),
+        ("ConfiguredNotHitChance", 4.0),
+        ("DamageTakenOnBlock", 20.0),
+    ] {
+        close(display_value(out, stat), expected);
+        let detail = stat_detail(&session, stat).unwrap();
+        assert_eq!(detail.kind, DetailKind::Derived);
+        let d = detail.derived.unwrap();
+        let input = |id: &str| d.inputs.iter().find(|row| row.id == id).unwrap().value;
+        let reconstructed = match stat {
+            "ConfiguredDamageChance" => {
+                100.0
+                    * input("BlockEffectMultiplier")
+                    * input("DeflectMultiplier")
+                    * (1.0 - input("AverageAvoidChance") / 100.0)
+            }
+            "ConfiguredNotHitChance" => {
+                100.0
+                    * (input("NotHitBeforeUnlucky") / 100.0)
+                        .clamp(0.0, 1.0)
+                        .powf(input("UnluckyWorstOf"))
+            }
+            "DamageTakenOnBlock" => 100.0 - input("BlockEffect"),
+            _ if stat.ends_with("DamageReduction") => {
+                ((input("ArmourReduction") + input("FlatReduction")).min(input("ReductionCap"))
+                    - input("EnemyOverwhelm"))
+                .clamp(0.0, input("ReductionCap"))
+            }
+            _ => d.inputs.iter().map(|row| row.value).sum(),
+        };
+        close(reconstructed, expected);
+    }
+    // The existing EHP calculation still uses pre-modifier enemy damage.
+    close(out.total_enemy_damage_in, 2400.0);
+    close(
+        display_value(out, "TotalEHP"),
+        t.mitigated_hits / (1.0 - 4.0 / 100.0) * 2400.0,
+    );
+}
+
+#[test]
+fn ehp_zero_incoming_multiplier_is_zero_even_with_flat_damage() {
+    use pobr_core::{Modifier, display_value};
+    use pobr_data::prelude::ModType;
+    let mut session = CalculationSession::new(MinimalInput::default());
+    session.add_modifiers([Modifier::number("FireDamageTaken", ModType::Base, 10.0)]);
+    session.perform_minimal().unwrap();
+    close(display_value(session.output(), "FireTakenHit"), 10.0);
+    close(display_value(session.output(), "FireTakenDamage"), 0.0);
+    close(display_value(session.output(), "FireTakenHitMult"), 0.0);
+    let detail = session.derived_detail("FireTakenHitMult").unwrap();
+    assert_eq!(detail.formula, "0 * ConvertedIncomingDamage");
+    let input = detail
+        .inputs
+        .iter()
+        .find(|(id, _)| id == "ConvertedIncomingDamage")
+        .unwrap()
+        .1;
+    close(0.0 * input, 0.0);
+}

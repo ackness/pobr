@@ -1004,7 +1004,7 @@ impl CalculationSession {
     /// What the EHP stage computed `TotalEHP` and the hits to die with: the
     /// enemy's hit, the damage taken and the pools, per damage type.
     pub fn ehp_terms(&self) -> Option<&super::EhpTerms> {
-        self.env.ehp_terms.as_ref()
+        self.env.player.output.ehp_terms.as_ref()
     }
 
     /// Whether the main skill uses an orb/storm interval and duration model.
