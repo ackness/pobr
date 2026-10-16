@@ -107,3 +107,43 @@ fn quality_does_not_turn_exporter_damage_entries_into_gems() {
         [0, 0, 5]
     );
 }
+
+/// Repulsion's damaging secondary effect accepts Living Lightning; Pounce's
+/// mark accepts Shock Siphon. The support applies to the whole originating
+/// gem for level inheritance, even though its primary effect is incompatible.
+#[test]
+fn secondary_effect_supports_inherit_the_host_gem_level() {
+    use pobr_build::{Build, SocketGroup, diagnose};
+    let data = data();
+    for (host, support, granted) in [
+        (
+            "CurseOfRepulsionPlayer",
+            "SupportLivingLightningPlayerTwo",
+            "TriggeredLivingLightningPlayerTwo",
+        ),
+        (
+            "WolfPouncePlayer",
+            "SupportChargedMarkPlayer",
+            "TriggeredChargedMarkPlayer",
+        ),
+        (
+            "HeraldOfIcePlayer",
+            "SupportMorrigansInsight",
+            "TriggeredMorrigansInsightPlayer",
+        ),
+    ] {
+        let build = Build::new().add_socket_group(
+            SocketGroup::new()
+                .with_gem_skill(host, 19)
+                .with_gem_skill(support, 1),
+        );
+        let diagnosis = diagnose(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+        let effect = diagnosis
+            .skills
+            .iter()
+            .find(|s| s.skill_id == granted)
+            .unwrap();
+        assert_eq!(effect.gem_id, host);
+        assert_eq!(effect.gem_level, 19);
+    }
+}

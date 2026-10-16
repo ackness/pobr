@@ -102,6 +102,27 @@ pub fn gem_judgements<'a>(
         .collect()
 }
 
+/// The first skill gem that accepts this support on any of its active
+/// effects. An effect granted by a support inherits this gem's level.
+pub fn supported_gem_index(
+    group: &EnabledGroup<'_>,
+    data: &dyn BuffEnv,
+    support_index: usize,
+) -> Option<usize> {
+    group.gems.iter().position(|gem| {
+        data.effect(&gem.skill_id)
+            .is_some_and(|effect| !effect.is_support)
+            && gem_judgements(group, data, &gem.skill_id)
+                .iter()
+                .any(|judgement| {
+                    judgement
+                        .compatible
+                        .iter()
+                        .any(|support| support.gem_index == support_index)
+                })
+    })
+}
+
 /// Injects the **compatible** support gems' modifiers for `active_skill_id` in `group`
 /// (the support-side half of the skill-group → modifier translation).
 ///
@@ -283,6 +304,12 @@ pub fn buff_skill_specs(
     };
     groups.for_each_enabled_group(&mut |group| {
         for (idx, gem) in group.gems.iter().enumerate() {
+            let level_gem = data
+                .effect(&gem.skill_id)
+                .filter(|effect| effect.is_support)
+                .and_then(|_| supported_gem_index(&group, data, idx))
+                .and_then(|index| group.gems.get(index))
+                .unwrap_or(gem);
             // Primary granted effect + additional granted effects (the
             // overlay/gem_effects.json foreign key; vendor builds an independent
             // activeSkill for each gem's additionalGrantedEffectId1..N — e.g. a
@@ -308,10 +335,15 @@ pub fn buff_skill_specs(
                 // applicable "+N to Level of all <X> Skills" and the levels
                 // the group's supports grant it ("+3 to level of Supported
                 // Skills if no other Supports are modifying them").
-                let level = gem.gem_level
-                    + additional_gem_levels(gem_level_bonuses, data, skill_id, gem.corrupted)
+                let level = level_gem.gem_level
+                    + additional_gem_levels(
+                        gem_level_bonuses,
+                        data,
+                        &level_gem.skill_id,
+                        level_gem.corrupted,
+                    )
                     + support_granted_gem_levels(
-                        &gem_judgements(&group, data, &gem.skill_id),
+                        &gem_judgements(&group, data, &level_gem.skill_id),
                         group.gems,
                         data,
                     );

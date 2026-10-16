@@ -168,15 +168,13 @@ fn supported_skill<'a>(
     data: &BuildData,
     support_index: usize,
 ) -> Option<&'a crate::build::GemSkillRef> {
-    group.gem_skills.iter().find(|gem| {
-        data.granted_effects
-            .get(&gem.skill_id)
-            .is_some_and(|effect| !effect.is_support)
-            && crate::support::judge_group_supports(group, data, &gem.skill_id, group.from_gem())
-                .compatible
-                .iter()
-                .any(|support| support.gem_index == support_index)
-    })
+    let gems = group.gem_inputs();
+    let index = pobr_core::skill_env::supported_gem_index(
+        &group.enabled_group(&gems),
+        data,
+        support_index,
+    )?;
+    group.gem_skills.get(index)
 }
 
 /// What a calculation is of: the selected effect and the level it runs at.
