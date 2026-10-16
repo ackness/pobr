@@ -271,7 +271,11 @@ const BASELINES: [Baseline; 3] = [
         dps_builds: 5,
         // Sanguimantic Rituals redirects Arcane Surge regeneration to Life (+2 rows).
         // Exporter-absent Spell Mana Cost Efficiency is excluded on reference basis.
-        agreeing_rows: 661,
+        // Flask "N% of Damage taken during effect Recouped as Life" is Life recoup, not flat
+        // Damage Taken: Martial Artist Ice Shot 71a879f43f2f TotalEHP (-1 row) only agreed
+        // through the former +21 on every damage type; it is now 87997 against the pinned
+        // PoB2's 88825, while the code's 81145 is from another exporter version.
+        agreeing_rows: 660,
     },
     // Was 22 builds and 1024 rows. A code whose main skill summons a minion
     // also carries `<MinionStat>` values for that minion, which were not
@@ -443,7 +447,9 @@ const BASELINES: [Baseline; 3] = [
         // Non-spell casts include Cast Speed (+1 Wildwood's Gifts ActionRate row).
         // Spell Echo's average repeated area fixes Frost Bomb's radius (+1 row).
         // Exporter-absent Spell Mana Cost Efficiency is excluded on reference basis.
-        agreeing_rows: 5787,
+        // Flask "N% of Damage taken during effect Recouped as Life" no longer adds flat Damage
+        // Taken (+1 row, Abyssal Lich Twister 4028d0b52984 TotalEHP).
+        agreeing_rows: 5788,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
