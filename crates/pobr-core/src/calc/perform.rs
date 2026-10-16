@@ -281,6 +281,19 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     freeze.enabled &= !no_trigger_events(env);
     env.player.output.freeze_buildup_avg = freeze.value();
     env.freeze_buildup_terms = Some(freeze);
+    // The duration of a Freeze this hit builds: reported only when the hit
+    // builds Freeze at all.
+    if freeze.value() > 0.0
+        && let Some(terms) = super::ailment::non_damaging_ailment_terms(
+            AilmentType::Freeze,
+            &env.player.mod_db,
+            &env.enemy.mod_db,
+            &env.cfg,
+        )
+    {
+        env.player.output.freeze_duration = terms.duration();
+        env.non_damaging_terms.push((AilmentType::Freeze, terms));
+    }
     let mut pin = super::ailment::pin_terms(env, stun_damage, &output.crit_avg);
     pin.enabled &= !no_trigger_events(env);
     env.player.output.pin_buildup_avg = pin.value();

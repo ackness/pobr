@@ -320,6 +320,7 @@ export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
   ShockApplicationChance: { 'en-US': 'Shock application chance (fraction)', 'zh-TW': '感電施加機率（比例）', 'zh-CN': '感电施加几率（比例）' },
   ShockDuration: { 'en-US': 'Shock duration', 'zh-TW': '感電持續時間', 'zh-CN': '感电持续时间' },
   ChillDuration: { 'en-US': 'Chill duration', 'zh-TW': '冰緩持續時間', 'zh-CN': '冰缓持续时间' },
+  FreezeDuration: { 'en-US': 'Freeze duration', 'zh-TW': '冰凍持續時間', 'zh-CN': '冰冻持续时间' },
   ChillEffectMod: { 'en-US': 'Chill magnitude multiplier', 'zh-TW': '冰緩幅度倍率', 'zh-CN': '冰缓幅度倍率' },
   FreezeBuildupAvg: { 'en-US': 'Freeze buildup per hit', 'zh-TW': '每次擊中凍結積累', 'zh-CN': '每次击中冻结积累' },
   AilmentDurationIncreased: { 'en-US': 'Increased ailment duration (%)', 'zh-TW': '異常狀態持續時間增加（%）', 'zh-CN': '异常状态持续时间提高（%）' },

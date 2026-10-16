@@ -1064,3 +1064,64 @@ fn total_number_of_hits_exposes_ehp_survival_after_avoidance() {
             < 1e-8
     );
 }
+
+/// Freeze lasts 4 seconds by default (game Freeze keyword: "lasts 4 seconds
+/// by default"). `freeze_duration_+%` / `chill_and_freeze_duration_+%`
+/// (`EnemyFreezeDuration` INC), the elemental-ailment duration increase and
+/// the target's own `SelfFreezeDuration` add; `active_skill_freeze_duration_+%_final`
+/// multiplies; the enemy's debuff expiration divides. The derived detail
+/// rebuilds the value from its retained inputs.
+#[test]
+fn freeze_duration_uses_the_keyword_base_and_inflicted_duration_modifiers() {
+    let cold_session = |mods: Vec<Modifier>, enemy: Vec<Modifier>| {
+        let mut session = super::support::session(MinimalInput {
+            base_hit_min: 100.0,
+            base_hit_max: 200.0,
+            base_action_rate: 2.0,
+            ..Default::default()
+        })
+        .with_config(
+            CalcConfig::spell()
+                .with_damage_type(DamageType::Cold)
+                .with_mode_effective(true),
+        );
+        session.add_modifiers([Modifier::number(
+            "PhysicalDamageConvertToCold",
+            ModType::Base,
+            100.0,
+        )]);
+        session.add_modifiers(mods);
+        session.add_enemy_modifiers(enemy);
+        session.perform_minimal().unwrap();
+        session
+    };
+    let plain = cold_session(vec![], vec![]);
+    assert!(plain.output().freeze_buildup_avg > 0.0);
+    assert_eq!(display_value(plain.output(), "FreezeDuration"), 4.0);
+
+    let session = cold_session(
+        vec![
+            Modifier::number("EnemyFreezeDuration", ModType::Inc, 25.0),
+            Modifier::number("EnemyElementalAilmentDuration", ModType::Inc, 10.0),
+            Modifier::number("EnemyFreezeDuration", ModType::More, 50.0),
+        ],
+        vec![
+            Modifier::number("SelfFreezeDuration", ModType::Inc, -15.0),
+            Modifier::number("BuffExpireFaster", ModType::More, -20.0),
+        ],
+    );
+    // 4 * (1 + (25 + 10 - 15) / 100) * 1.5 / 0.8 = 9.
+    let value = display_value(session.output(), "FreezeDuration");
+    assert!((value - 9.0).abs() < 1e-9, "{value}");
+    let detail = session.derived_detail("FreezeDuration").unwrap();
+    let input = |id: &str| detail.inputs.iter().find(|(name, _)| name == id).unwrap().1;
+    let rebuilt = input("BaseAilmentDuration")
+        * (1.0 + input("AilmentDurationIncreased") / 100.0)
+        * input("AilmentDurationMore")
+        * input("EnemyDebuffDuration");
+    assert!((rebuilt - value).abs() < 1e-9);
+
+    // A hit that cannot build Freeze reports no Freeze duration.
+    let cannot = cold_session(vec![Modifier::flag("CannotFreeze")], vec![]);
+    assert_eq!(display_value(cannot.output(), "FreezeDuration"), 0.0);
+}

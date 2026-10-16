@@ -283,6 +283,7 @@ pub fn ailment_base_duration(ailment: AilmentType, cfg: &CalcConfig) -> Option<f
         AilmentType::Poison => Some(gc.poison_base_duration),
         AilmentType::Shock => Some(gc.shock_base_duration),
         AilmentType::Chill => Some(gc.chill_base_duration),
+        AilmentType::Freeze => Some(gc.freeze_base_duration),
         _ => None,
     }
 }
@@ -300,9 +301,11 @@ fn is_elemental_ailment(ailment: AilmentType) -> bool {
 pub(crate) fn duration_mod_names(ailment: AilmentType) -> Vec<ModName> {
     let own = ailment_mod_name(ailment);
     let mut names = match ailment {
-        // "increased Shock / Chill Duration" (`shock_duration_+%`,
-        // `chill_duration_+%`) reads as the inflicted `Enemy<Ailment>Duration`.
-        AilmentType::Shock | AilmentType::Chill => {
+        // "increased Shock / Chill / Freeze Duration" (`shock_duration_+%`,
+        // `chill_duration_+%`, `freeze_duration_+%`, and both of
+        // `chill_and_freeze_duration_+%`) reads as the inflicted
+        // `Enemy<Ailment>Duration`.
+        AilmentType::Shock | AilmentType::Chill | AilmentType::Freeze => {
             vec![ModName::from(format!("Enemy{own}Duration"))]
         }
         _ => vec![
@@ -1176,9 +1179,10 @@ fn record_effmult_trace(
 
 // Chill effect calculation
 
-/// The duration and magnitude-modifier inputs of a Shock or Chill the
-/// selected skill inflicts, retained for `ShockDuration`, `ChillDuration`
-/// and `ChillEffectMod` and their derived views.
+/// The duration and magnitude-modifier inputs of a Shock, Chill or Freeze
+/// the selected skill inflicts, retained for `ShockDuration`,
+/// `ChillDuration`, `FreezeDuration` and `ChillEffectMod` and their derived
+/// views.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct NonDamagingAilmentTerms {
     pub duration: AilmentDurationTerms,
@@ -1198,14 +1202,18 @@ impl NonDamagingAilmentTerms {
     }
 }
 
-/// [`NonDamagingAilmentTerms`] for Shock or Chill (`None` for other ailments).
+/// [`NonDamagingAilmentTerms`] for Shock, Chill or Freeze (`None` for other
+/// ailments).
 pub fn non_damaging_ailment_terms(
     ailment: AilmentType,
     player: &ModDb,
     enemy: &ModDb,
     cfg: &CalcConfig,
 ) -> Option<NonDamagingAilmentTerms> {
-    if !matches!(ailment, AilmentType::Shock | AilmentType::Chill) {
+    if !matches!(
+        ailment,
+        AilmentType::Shock | AilmentType::Chill | AilmentType::Freeze
+    ) {
         return None;
     }
     let (attacker_effect, defender_effect) = effect_mod_factors(ailment, player, enemy, cfg);

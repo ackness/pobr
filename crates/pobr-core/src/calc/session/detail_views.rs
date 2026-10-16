@@ -196,6 +196,7 @@ pub const DERIVED_STATS: &[&str] = &[
     "ShockChance",
     "ShockDuration",
     "ChillDuration",
+    "FreezeDuration",
     "ChillEffectMod",
     "FreezeBuildupAvg",
     "AverageBurstDamage",

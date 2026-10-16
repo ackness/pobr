@@ -391,6 +391,9 @@ pub struct OutputTable {
     /// 0 when it cannot inflict that ailment.
     pub shock_duration: f64,
     pub chill_duration: f64,
+    /// Seconds a Freeze the selected hit builds lasts on the enemy (0 when
+    /// the hit builds no Freeze).
+    pub freeze_duration: f64,
     /// Chill magnitude modifier: attacker factor times the target's factor
     /// (neutral 1; 0 when the selected hit cannot Chill).
     pub chill_effect_mod: f64,
@@ -925,6 +928,7 @@ impl Default for OutputTable {
             chill_effect: 0.0,
             shock_duration: 0.0,
             chill_duration: 0.0,
+            freeze_duration: 0.0,
             chill_effect_mod: 0.0,
             freeze_buildup_avg: 0.0,
             freeze_buildup_pct: 0.0,
