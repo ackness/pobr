@@ -462,3 +462,67 @@ fn charm_guard_uses_strongest_active_grant_life_cap_and_existing_hit_pool() {
         }
     }
 }
+
+#[test]
+fn shavronnes_satchel_copies_life_flask_recovery_to_energy_shield_only() {
+    use pobr_core::{Modifier, display_value};
+    for enabled in [false, true] {
+        let mut session = super::support::session(MinimalInput::default());
+        let item = Item {
+            base: pobr_data::item::ItemBaseId::from("Ultimate Life Flask"),
+            quality: 0,
+            implicit_texts: vec![],
+            modifier_texts: vec![],
+            ..charm(&[])
+        };
+        // Game Ultimate Life Flask: 920 over 3 seconds; 20% instant is 184.
+        for (slot, life, mana) in [("Flask 1", 920.0, 0.0), ("Flask 2", 0.0, 920.0)] {
+            session.add_utility_base(
+                slot,
+                &item,
+                &UtilityBaseStats {
+                    life,
+                    mana,
+                    duration: 3.0,
+                    charges_max: 75.0,
+                    charges_used: 10.0,
+                },
+            );
+        }
+        session
+            .add_modifier_texts(&["20% of Flask Recovery applied Instantly"])
+            .unwrap();
+        if enabled {
+            session
+                .add_modifier_texts(&["Life Recovery from Flasks also applies to Energy Shield"])
+                .unwrap();
+        }
+        session.add_modifiers(vec![
+            Modifier::number("LifeRecoveryRate", ModType::Inc, 50.0),
+            Modifier::number("EnergyShieldRecoveryRate", ModType::Inc, 25.0),
+        ]);
+        session.perform_minimal().unwrap();
+        let out = session.output();
+        assert_eq!(out.utility_stats["Flask1Recovery"], 1288.0); // 184 + 736 * 1.5.
+        assert_eq!(
+            display_value(out, "Flask1EnergyShieldRecovery"),
+            if enabled { 1104.0 } else { 0.0 }
+        );
+        assert_eq!(
+            display_value(out, "Flask1EnergyShieldInstantRecovery"),
+            if enabled { 184.0 } else { 0.0 }
+        );
+        assert!(
+            (display_value(out, "Flask1EnergyShieldRecoveryPerSecond")
+                - if enabled { 920.0 / 3.0 } else { 0.0 })
+            .abs()
+                < 1e-9
+        );
+        assert_eq!(display_value(out, "Flask2EnergyShieldRecovery"), 0.0);
+        assert!(
+            session
+                .derived_detail("Flask1EnergyShieldRecovery")
+                .is_some()
+        );
+    }
+}

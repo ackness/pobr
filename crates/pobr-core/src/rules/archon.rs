@@ -20,7 +20,8 @@ pub fn timing(db: &ModDb, cfg: &CalcConfig) -> Timing {
     let duration_names = [StatId::new("ArchonDuration")];
     let duration_factor = ((1.0 + db.sum(ModType::Inc, cfg, &duration_names) / 100.0)
         * db.more(cfg, &duration_names))
-    .max(0.0);
+    .max(0.0)
+        * crate::calc::skill_mechanics::buff_expiration_mult(db, cfg);
     let recovery_rate =
         1.0 + db.sum(ModType::Inc, cfg, &[StatId::new("ArchonRecoveryRate")]) / 100.0;
     let no_recovery = db.flag(cfg, "ArchonNoRecovery");

@@ -711,3 +711,65 @@ fn net_ward_regeneration_subtracts_flat_and_percent_spending() {
             - out.ward * out.ward_percent_per_second_cost / 100.0
     );
 }
+
+#[test]
+fn light_radius_transfers_only_increases_and_reductions_at_the_games_rolled_share() {
+    let run = |transfer: &str| {
+        let mut session = super::support::session(MinimalInput::default());
+        session
+            .add_modifier_texts(&[
+                "30% increased Light Radius",
+                "10% reduced Light Radius",
+                transfer,
+            ])
+            .unwrap();
+        session.add_modifiers(vec![
+            Modifier::number("LightRadius", ModType::More, 100.0),
+            Modifier::number("SkillAreaRadiusBase", ModType::Base, 20.0),
+        ]);
+        session.perform_minimal().unwrap();
+        display_value(session.output(), "AoeAreaMod")
+    };
+    // Mods UniqueMutatedVaalLightRadiusModifiersApplyToAreaOfEffect rolls 25-50.
+    assert!((run("Increases and Reductions to Light Radius also apply to Area of Effect at 25% of their value") - 1.05).abs() < 1e-9);
+    assert!((run("Increases and Reductions to Light Radius also apply to Area of Effect at 50% of their value") - 1.10).abs() < 1e-9);
+    let mut plain = super::support::session(MinimalInput::default());
+    plain
+        .add_modifier_texts(&["30% increased Light Radius"])
+        .unwrap();
+    plain.add_modifiers(vec![Modifier::number(
+        "SkillAreaRadiusBase",
+        ModType::Base,
+        20.0,
+    )]);
+    plain.perform_minimal().unwrap();
+    assert_eq!(display_value(plain.output(), "AoeAreaMod"), 1.0);
+}
+
+#[test]
+fn slower_buff_expiry_divides_elapsed_time_and_does_not_change_non_buff_duration() {
+    for buff in [false, true] {
+        let mut cfg = CalcConfig::new();
+        if buff {
+            cfg.skill_types = SkillTypes::from_pob2_name("Buff").unwrap();
+        }
+        let mut session = super::support::session(MinimalInput::default()).with_config(cfg);
+        // Prolonged Assault: buff_time_passed_+%_only_buff_category = -10.
+        session
+            .add_modifier_texts(&[
+                "Buffs on you expire 10% slower",
+                "20% increased Skill Effect Duration",
+            ])
+            .unwrap();
+        session.add_modifiers(vec![Modifier::number(
+            "SkillDurationBase",
+            ModType::Base,
+            9.0,
+        )]);
+        session.perform_minimal().unwrap();
+        // 9 * 1.2 / .9 = 12 seconds; rounded upward to 33 ms server ticks.
+        assert!((session.output().duration - if buff { 12.012 } else { 10.824 }).abs() < 1e-9);
+        // Archon is a buff even when the selected skill is not.
+        assert!((display_value(session.output(), "ArchonDuration") - 10.0 / 0.9).abs() < 1e-9);
+    }
+}

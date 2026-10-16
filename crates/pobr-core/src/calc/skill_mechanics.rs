@@ -1026,6 +1026,14 @@ impl DurationTerms {
         }
     }
 }
+/// buff_time_passed_+%_only_buff_category: slower elapsed time extends buffs.
+pub fn buff_expiration_mult(db: &ModDb, cfg: &CalcConfig) -> f64 {
+    let rate = 1.0 + db.sum(ModType::Inc, cfg, &[ModName::from("BuffExpiryRate")]) / 100.0;
+    // A zero expiry rate has no finite duration; use the same finite 75% slow
+    // ceiling as other effect-expiry calculations.
+    1.0 / rate.max(cfg.constants.game().buff_expiration_slow_cap)
+}
+
 pub fn duration_terms(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig, stat: &str) -> DurationTerms {
     let (base_name, scope, debuff) = match stat {
         "Duration" => (
@@ -1061,6 +1069,11 @@ pub fn duration_terms(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig, stat: &str) -
             .max(0.0),
         expiration: if db.flag(cfg, debuff) {
             super::ailment::debuff_duration_mult(enemy, cfg)
+        } else if cfg
+            .skill_types
+            .intersects(SkillTypes::from_pob2_name("Buff").unwrap())
+        {
+            buff_expiration_mult(db, cfg)
         } else {
             1.0
         },

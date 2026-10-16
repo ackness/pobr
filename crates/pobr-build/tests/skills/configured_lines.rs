@@ -446,14 +446,9 @@ fn a_configured_line_no_rule_parses_is_reported_and_the_rest_still_count() {
     );
 }
 
-/// A line can parse and still do nothing, waiting for something nothing in
-/// the calculation sets. "while wielding a Melee Weapon" waits for
-/// `UsingMeleeWeapon`, which no pass of the engine and no config option sets;
-/// "while moving" waits for `Moving`, which a config option sets and this
-/// build leaves off. "per non-Idol Augment in your Equipment" counts on the
-/// player's side, where the build sets the count, and "while holding a
-/// Shield" waits for what the orchestration sets from the off hand: neither
-/// is missing anything.
+/// Parsed lines can be inactive because a config option is off or the build
+/// lacks the relevant equipment. Melee-weapon and shield conditions come from
+/// equipment; Moving has a config option. Augment counts come from the build.
 #[test]
 fn modifiers_waiting_for_what_nothing_sets_are_reported() {
     let data = data();
@@ -482,14 +477,7 @@ fn modifiers_waiting_for_what_nothing_sets_are_reported() {
             .iter()
             .any(|modifier| modifier.source.contains(words))
     };
-    let melee = unset("UsingMeleeWeapon").expect("UsingMeleeWeapon is reported");
-    assert_eq!(melee.config_option, None);
-    assert!(!melee.flagged);
-    assert!(
-        from_line(melee, "while wielding a Melee Weapon"),
-        "{:?}",
-        melee.modifiers
-    );
+    assert!(unset("UsingMeleeWeapon").is_none());
     let moving = unset("Moving").expect("Moving is reported");
     assert_eq!(moving.config_option.as_deref(), Some("conditionMoving"));
     assert!(from_line(moving, "while moving"), "{:?}", moving.modifiers);

@@ -154,6 +154,10 @@ pub(crate) const READ_OUTSIDE_THE_DATABASE: &[(&str, &str)] = &[
         "GrantedPassive",
         "anointed notables become allocated nodes (append_granted_passives)",
     ),
+    (
+        "ExtraPoints",
+        "granted passive points (pobr_tree::allocation::AllocationTree::edit)",
+    ),
     ("JewelData", "radius, conquest and socket data (jewel_tree)"),
     (
         "MinionModifier",
@@ -209,6 +213,14 @@ pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
         "PoisonFaster",
         ReadGate {
             state: "the selected skill inflicts Poison",
+            config_option: None,
+        },
+    ),
+    // calc::shared_modifiers::apply_shared_increases copies Light Radius INCs.
+    (
+        "LightRadius",
+        ReadGate {
+            state: "Light Radius modifiers also apply to Accuracy, Damage or Area of Effect",
             config_option: None,
         },
     ),
@@ -362,6 +374,7 @@ const SET_BY_THE_ORCHESTRATION: &[&str] = &[
     "UsingBow",
     "UsingSpear",
     "UsingDagger",
+    "UsingMeleeWeapon",
     "UsingOneHandedMelee",
     "UsingTwoHandedMelee",
     "DualWielding",

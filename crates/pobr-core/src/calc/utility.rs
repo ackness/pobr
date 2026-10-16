@@ -48,6 +48,12 @@ pub const ITEM_STATS: &[&str] = &[
     "RecoveryPerSecond",
 ];
 
+pub const FLASK_STATS: &[&str] = &[
+    "EnergyShieldRecovery",
+    "EnergyShieldInstantRecovery",
+    "EnergyShieldRecoveryPerSecond",
+];
+
 pub const CHARM_STATS: &[&str] = &["LifeRecoveryOnUse", "ManaRecoveryOnUse"];
 
 pub fn item_stat(id: &str) -> Option<(&str, &str)> {
@@ -57,7 +63,8 @@ pub fn item_stat(id: &str) -> Option<(&str, &str)> {
         || (1..=3).any(|i| slot == format!("Charm{i}"));
     (valid_slot
         && (ITEM_STATS.contains(&field)
-            || (slot.starts_with("Charm") && CHARM_STATS.contains(&field))))
+            || (slot.starts_with("Charm") && CHARM_STATS.contains(&field))
+            || (slot.starts_with("Flask") && FLASK_STATS.contains(&field))))
     .then_some((slot, field))
 }
 
@@ -348,6 +355,51 @@ pub fn calculate(env: &mut Env) {
             },
             &[
                 ("UtilityGradualRecovery", gradual),
+                ("UtilityDuration", duration),
+            ],
+        );
+        // life_recovery_from_flasks_also_recovers_energy_shield copies the
+        // flask's recovery. The destination has its own recovery-rate modifier;
+        // LifeRecoveryRate must not be applied a second time to Energy Shield.
+        let applies = item.base.life > 0.0
+            && db.flag(cfg, "LifeFlaskAppliesToEnergyShield")
+            && !db.flag(cfg, "CannotGainEnergyShield");
+        let es_rate = if applies {
+            factor(db, cfg, &global("EnergyShieldRecoveryRate"))
+        } else {
+            0.0
+        };
+        let es_instant = if applies { instant } else { 0.0 };
+        let es_gradual = recovery * (1.0 - instant_fraction) * duration_global * es_rate;
+        write(
+            "EnergyShieldRecovery",
+            es_instant + es_gradual,
+            "UtilityEnergyShieldInstant + UtilityEnergyShieldGradual",
+            &[
+                ("UtilityEnergyShieldInstant", es_instant),
+                ("UtilityEnergyShieldGradual", es_gradual),
+            ],
+        );
+        write(
+            "EnergyShieldInstantRecovery",
+            es_instant,
+            "UtilityEnergyShieldInstant",
+            &[("UtilityEnergyShieldInstant", es_instant)],
+        );
+        write(
+            "EnergyShieldRecoveryPerSecond",
+            if duration > 0.0 {
+                es_gradual / duration
+            } else {
+                0.0
+            },
+            if duration > 0.0 {
+                "UtilityEnergyShieldGradual / UtilityDuration"
+            } else {
+                "0 * UtilityDuration"
+            },
+            &[
+                ("UtilityEnergyShieldGradual", es_gradual),
                 ("UtilityDuration", duration),
             ],
         );
