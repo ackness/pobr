@@ -418,6 +418,69 @@ fn config_setters_include_conditions_already_known_to_the_engine() {
 }
 
 #[test]
+fn hit_requirements_report_the_unmet_enemy_condition() {
+    let data = data();
+    // Thin Ice: damage_+%_vs_frozen_enemies gives 50% increased hit damage.
+    // Both the spell and the crossbow hit; Frozen is the missing requirement.
+    let text = "50% increased Damage with Hits against Frozen Enemies";
+    for skill in ["FrostboltPlayer", "MeleeCrossbowPlayer"] {
+        let mut unfrozen_hit = 0.0;
+        for frozen in [false, true] {
+            let build = parse_build(&format!(
+                r#"<PathOfBuilding2>
+<Build level="80" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="{skill}" level="20" enabled="true"/></Skill></Skills>
+<Items><Item id="1">Rarity: NORMAL
+Makeshift Crossbow
+Implicits: 0
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+<Config><Input name="conditionEnemyFrozen" boolean="{frozen}"/></Config>
+</PathOfBuilding2>"#
+            ))
+            .unwrap();
+            let diagnosis = diagnose(
+                &build,
+                &data,
+                &DataOrchestratorOptions {
+                    mode_effective: true,
+                    extra_modifier_texts: vec![text.to_string()],
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            let hit = diagnosis.session.output().total_hit_avg;
+            assert!(hit > 0.0, "{skill} produces hits");
+            let ledger = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+            let row = ledger
+                .lines
+                .iter()
+                .find(|row| row.text.as_deref() == Some(text))
+                .unwrap();
+            let modifier = &row.modifiers[0];
+            if frozen {
+                assert_eq!(modifier.status, ModifierStatus::Applied, "{row:?}");
+                assert!(modifier.reason.is_none());
+                assert!((hit - unfrozen_hit * 1.5).abs() < 1e-6);
+            } else {
+                unfrozen_hit = hit;
+                assert_eq!(modifier.status, ModifierStatus::Inactive, "{row:?}");
+                assert_eq!(
+                    modifier.reason.as_deref(),
+                    Some("Condition EnemyFrozen not met")
+                );
+                assert_eq!(
+                    ledger
+                        .condition_configs
+                        .get("EnemyFrozen")
+                        .map(String::as_str),
+                    Some("conditionEnemyFrozen")
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn build_and_calc_pass_conditions_are_declared_even_when_not_met() {
     let data = data();
     // Crystallised Immunities grants 100% avoidance for the majority colour;
@@ -428,14 +491,18 @@ fn build_and_calc_pass_conditions_are_declared_even_when_not_met() {
         "Immune to Chill if a majority of your Socketed Support Gems are Blue",
         "10% increased Damage while wielding a Bow",
         "Critical Hits deal 10% increased Damage",
+        "40% increased Fire Damage while affected by Herald of Ash",
+        "40% increased Lightning Damage while affected by Herald of Thunder",
     ];
-    let ledger = ledger(&data, &[], &lines);
+    let ledger = ledger(&data, &["Adds 1 to 1 Lightning Damage to Spells"], &lines);
     for (text, condition) in lines.iter().zip([
         "MajorityRedSocketedSupports",
         "MajorityGreenSocketedSupports",
         "MajorityBlueSocketedSupports",
         "UsingBow",
         "CriticalStrike",
+        "AffectedByHeraldofAsh",
+        "AffectedByHeraldofThunder",
     ]) {
         let row = line(&ledger, "item.amulet.explicit", text);
         assert!(

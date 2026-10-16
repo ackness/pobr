@@ -1253,7 +1253,7 @@ class GapsTests(unittest.TestCase):
         builds = [a, b]
         rows = self.gaps.ranked_queue(audit, builds)
         self.assertEqual({row["template"] for row in rows}, {
-            "Mixed", "Unknown state", "Wrong flags", "Alternatives", "Unmodelled", "Unparsed", "No modifier", "Left out"})
+            "Mixed", "Unknown state", "Alternatives", "Unmodelled", "Unparsed", "No modifier", "Left out"})
         complete = self.gaps.ranked_queue(audit, builds, include_all=True)
         buckets = {row["template"]: row["builds"][0]["buckets"] for row in complete}
         self.assertEqual(buckets["Onslaught"], ["unused"])
@@ -1262,8 +1262,9 @@ class GapsTests(unittest.TestCase):
         self.assertEqual(buckets["Conditional"], ["config-gated"])
         self.assertEqual(buckets["Enemy condition"], ["config-gated"])
         self.assertEqual(buckets["Mixed"], ["dropped", "config-gated"])
+        self.assertEqual(buckets["Wrong flags"], ["skill-mismatch"])
         self.assertEqual(self.gaps.bucket_counts(complete), {
-            "dropped": 8, "config-gated": 4, "state-gated": 1, "unused": 1, "handled": 1})
+            "dropped": 7, "config-gated": 4, "state-gated": 1, "skill-mismatch": 1, "unused": 1, "handled": 1})
         # The other build need not carry this template to prove its reader exists.
         self.assertEqual(builds, [a, b])
         self.assertNotIn("buckets", lines[0])
@@ -1283,6 +1284,64 @@ class GapsTests(unittest.TestCase):
         self.assertEqual(self.gaps.ranked_queue(audit, [build]), [])
         rows = self.gaps.ranked_queue(audit, [build], include_all=True)
         self.assertTrue(all(row["builds"][0]["buckets"] == ["config-gated"] for row in rows))
+
+    def test_thin_ice_hit_reports_the_config_gate(self):
+        text = "50% increased Damage with Hits against [Frozen] Enemies"
+        line = {"text": text, "status": "inactive", "modifiers": [
+            {"name": "Damage", "status": "inactive", "reason": "Condition EnemyFrozen not met"}]}
+        build = self.build("frostbolt", line)
+        build["usage"]["condition_configs"] = {"EnemyFrozen": "conditionEnemyFrozen"}
+        audit = {"entries": {text: self.entry(["passive:Thin Ice"], "parsed", "parsed")}}
+        self.assertEqual(self.gaps.ranked_queue(audit, [build]), [])
+        rows = self.gaps.ranked_queue(audit, [build], include_all=True)
+        self.assertEqual(rows[0]["builds"][0]["buckets"], ["config-gated"])
+        self.assertEqual(self.gaps.bucket_counts(rows)["dropped"], 0)
+
+    def test_affected_by_family_uses_build_state_metadata(self):
+        lines = []
+        states = ["AffectedByHeraldofAsh", "AffectedByHeraldofThunder", "AffectedByOtherBuff"]
+        for name, state in zip(["FireDamage", "LightningDamage", "Damage"], states):
+            lines.append({"text": state, "status": "inactive", "modifiers": [
+                {"name": name, "status": "inactive", "reason": f"Condition {state} not met"}]})
+        build = self.build("self-cast", *lines)
+        build["usage"]["condition_states"] = states
+        # Build state takes precedence even if a configuration entry also exists.
+        build["usage"]["condition_configs"] = {states[0]: "condition" + states[0]}
+        audit = {"entries": {line["text"]: self.entry(["passive:Coming Calamity"], "parsed", "parsed")
+                             for line in lines}}
+        self.assertEqual(self.gaps.ranked_queue(audit, [build]), [])
+        rows = self.gaps.ranked_queue(audit, [build], include_all=True)
+        for row in rows:
+            line = row["builds"][0]["lines"][0]
+            self.assertEqual(line["buckets"], ["state-gated"])
+            self.assertEqual(line["bucket_reasons"], [f"condition set from the build: {line['text']}"])
+
+    def test_skill_mismatches_are_visible_without_hiding_conditions_or_gaps(self):
+        mismatches = ["needs Attack", "needs Spell", "needs Melee", "needs Attack, Melee",
+                      "SkillType Triggered", "SkillType Attack or Spell", "not SkillType Triggered",
+                      "needs a keyword of Bleed", "needs every keyword of Hit, Cold"]
+        gaps = ["Condition NothingSetsThis not met", "Condition Attack not met",
+                "Multiplier Bleed is 0, needs at least 1", "Stat Strength is 0, needs at least 50",
+                "its distance ramp needs a configured enemy distance",
+                "DamageType Cold (the query is Fire)", "SkillName Fireball (the skill is Frostbolt)"]
+        lines = [{"text": reason, "status": "inactive", "modifiers": [
+            {"name": "Damage", "status": "inactive", "reason": reason}]} for reason in mismatches + gaps]
+        lines.append({"text": "Mixed skill and missing model", "status": "partial", "modifiers": [
+            {"name": "Damage", "status": "inactive", "reason": "needs Attack"},
+            {"name": "Missing", "status": "unread"}]})
+        build = self.build("spell", *lines)
+        audit = {"entries": {line["text"]: self.entry(["unique:Example"], "parsed", "parsed")
+                             for line in lines}}
+        rows = self.gaps.ranked_queue(audit, [build])
+        self.assertEqual({row["template"] for row in rows},
+                         {self.gaps.template(reason) for reason in gaps} | {"Mixed skill and missing model"})
+        complete = self.gaps.ranked_queue(audit, [build], include_all=True)
+        for row in complete:
+            if row["template"] in mismatches:
+                self.assertEqual(row["builds"][0]["buckets"], ["skill-mismatch"])
+            elif row["template"] == "Mixed skill and missing model":
+                self.assertEqual(row["builds"][0]["buckets"], ["dropped", "skill-mismatch"])
+        self.assertEqual(self.gaps.bucket_counts(complete)["skill-mismatch"], len(mismatches) + 1)
 
     def test_build_and_pass_conditions_are_state_gated_without_hiding_unknowns(self):
         states = ["MajorityRedSocketedSupports", "MajorityGreenSocketedSupports",
@@ -1305,7 +1364,7 @@ class GapsTests(unittest.TestCase):
         build["usage"]["condition_configs"] = {"EnemyFrozen": "conditionEnemyFrozen", "CriticalStrike": "criticalStrikeOption"}
         audit = {"entries": {row["text"]: self.entry(["passive:1"], "parsed", "parsed") for row in lines}}
         rows = self.gaps.ranked_queue(audit, [build])
-        self.assertEqual({row["template"] for row in rows}, {"Unknown", "Mixed unknown", "Wrong flags", "Unread"})
+        self.assertEqual({row["template"] for row in rows}, {"Unknown", "Mixed unknown", "Unread"})
         complete = {row["template"]: row for row in self.gaps.ranked_queue(audit, [build], include_all=True)}
         for state in states:
             row = complete[self.gaps.template(state)]
