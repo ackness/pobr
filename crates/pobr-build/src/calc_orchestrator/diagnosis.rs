@@ -190,6 +190,21 @@ impl ReadGate {
 /// Gated readers, alongside the consumers outside the database. Keep the
 /// actual consumer here so a registry entry can be checked against its code.
 pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
+    // `calc::defence::calc_es_recharge`, after the resource/recharge gates.
+    (
+        "EnergyShieldRecharge",
+        ReadGate {
+            state: "you have Energy Shield and recharge is enabled (no Zealot's Oath or recharge prohibition)",
+            config_option: None,
+        },
+    ),
+    (
+        "EnergyShieldRechargeFaster",
+        ReadGate {
+            state: "you have Energy Shield and recharge is enabled (no Zealot's Oath or recharge prohibition)",
+            config_option: None,
+        },
+    ),
     // `calc::damage::aggregate_inc_more` and `calc::skill_dot`: only the
     // damage types supplied by the selected skill reach these queries.
     (

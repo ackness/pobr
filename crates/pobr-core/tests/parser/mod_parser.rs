@@ -1834,4 +1834,27 @@ fn equipped_defence_and_recharge_text_keep_their_scope_and_reader_names() {
             assert!(modifier.tags.contains(&ModTag::condition(condition, false)));
         }
     }
+    for (text, name, value) in [
+        (
+            "20% increased Energy Shield Recharge Rate",
+            "EnergyShieldRecharge",
+            20.0,
+        ),
+        (
+            "20% reduced Energy Shield Recharge Rate",
+            "EnergyShieldRecharge",
+            -20.0,
+        ),
+        (
+            "12% faster start of Energy Shield Recharge",
+            "EnergyShieldRechargeFaster",
+            12.0,
+        ),
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed);
+        assert_eq!(parsed.mods.len(), 1);
+        assert_eq!(parsed.mods[0].name.as_str(), name);
+        assert_eq!(parsed.mods[0].value.as_number(), Some(value));
+    }
 }

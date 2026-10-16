@@ -699,7 +699,7 @@ const ES_RECHARGE_DELAY_BASE: f64 = 4.0;
 ///
 /// # Basis
 /// - Default rate: 750%/min (PoB2 `Misc.lua`) → 12.5%/s;
-///   the `EnergyShieldRechargeRate` INC/MORE mods scale this rate.
+///   the `EnergyShieldRecharge` INC/MORE mods scale this rate.
 /// - Delay: base 4 seconds; `EnergyShieldRechargeDelay` BASE (converted from 4s×(1-faster/100)
 ///   etc — PoB2 actually treats it as "a BASE in seconds, then a faster/100 more that shortens
 ///   the delay"). Here `EnergyShieldRechargeFaster` INC is used instead (>0 shortens the delay:
@@ -731,13 +731,9 @@ pub fn calc_es_recharge(
         };
     }
 
-    // Recharge rate: base 750%/min, scaled by EnergyShieldRechargeRate INC/MORE.
-    let rate_inc = db.sum(
-        ModType::Inc,
-        cfg,
-        &[ModName::from("EnergyShieldRechargeRate")],
-    );
-    let rate_more = db.more(cfg, &[ModName::from("EnergyShieldRechargeRate")]);
+    // Recharge rate: base 750%/min, scaled by EnergyShieldRecharge INC/MORE.
+    let rate_inc = db.sum(ModType::Inc, cfg, &[ModName::from("EnergyShieldRecharge")]);
+    let rate_more = db.more(cfg, &[ModName::from("EnergyShieldRecharge")]);
     let rate_per_min = ES_RECHARGE_RATE_PER_MINUTE_BASE * (1.0 + rate_inc / 100.0) * rate_more;
     // Convert to a per-second fraction (750%/min = 12.5%/s; divide by 100 to get a fraction).
     let rate_fraction = rate_per_min / 60.0 / 100.0;

@@ -401,7 +401,7 @@ pub fn source_names(stat: &str) -> Vec<String> {
         "TrapThrowCount" => &["TrapThrowCount"],
         "MineThrowCount" => &["MineThrowCount"],
         "EsRechargeRate" => &[
-            "EnergyShieldRechargeRate",
+            "EnergyShieldRecharge",
             "ZealotsOath",
             "NoEnergyShieldRecharge",
         ],

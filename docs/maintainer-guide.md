@@ -337,7 +337,10 @@ apply Light Radius modifiers to skill area (`calc::skill_mechanics::calc_aoe`).
 
 Equipped Focus/Shield defence increases (`energy_shield_from_focus_+%`,
 `shield_armour_evasion_energy_shield_+%`) add to global increases only for the
-matching off-hand item's locally computed defences.
+matching off-hand item's locally computed defences. Recharge rate stats
+(`energy_shield_recharge_rate_+%`, `virtual_energy_shield_recharge_rate_+%`)
+read `EnergyShieldRecharge`, faster start (`energy_shield_delay_-%_while_affected_by_archon`)
+reads `EnergyShieldRechargeFaster`.
 
 Scarred Faith's “Energy Shield does not Recharge” (`keystone_alternate_es_recovery`,
 [game text](https://poe2db.tw/us/Scarred_Faith)) sets recharge rate, amount and

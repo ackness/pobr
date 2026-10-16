@@ -302,6 +302,8 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
             "FireDamage" => "40% increased Fire Damage",
             "LightningDamage" => "40% increased Lightning Damage",
             "AilmentMagnitude" => "40% increased Magnitude of Ailments you inflict",
+            "EnergyShieldRecharge" => "50% increased Energy Shield Recharge Rate",
+            "EnergyShieldRechargeFaster" => "20% faster start of Energy Shield Recharge",
             "SelfShockEffect" => "40% reduced effect of Shock on you",
             "SelfChillEffect" => "40% reduced Effect of Chill on you",
             "SelfChillEffectIsReversed" => "The Effect of Chill on you is reversed",
@@ -354,6 +356,11 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
                 options
                     .extra_modifier_texts
                     .push("50% reduced Action Speed".to_string());
+            }
+            if active && matches!(name, "EnergyShieldRecharge" | "EnergyShieldRechargeFaster") {
+                options
+                    .extra_modifier_texts
+                    .push("+100 to maximum Energy Shield".into());
             }
             let diagnosis = diagnose(&build, &data, &options).unwrap();
             let ledger = pobr_build::usage::line_usage(&diagnosis, &build, &data);

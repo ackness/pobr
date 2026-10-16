@@ -1555,3 +1555,29 @@ fn shield_defences_increase_only_the_shield_alongside_global_increases() {
         98.0,
     );
 }
+
+#[test]
+fn recharge_rate_and_archon_start_bonuses_reach_build_outputs() {
+    let data = data();
+    let mut build = build("FireballPlayer");
+    build
+        .items
+        .insert(EquipmentSlot::BodyArmour, item("Grand Regalia", &[]));
+    // Grand Regalia's game base is 50 ES. Recharge recovers 12.5%/s;
+    // JewelEnergyShieldRecharge's maximum roll is 20%, so 6.25 -> 7.5 ES/s.
+    let base = defence_with_lines(&build, &data, &[]);
+    close(base.output().es_recharge_per_second, 6.25);
+    let recharge = "20% increased Energy Shield Recharge Rate";
+    let archon = "20% faster start of Energy Shield Recharge while affected by an Archon Buff";
+    let inactive = defence_with_lines(&build, &data, &[recharge, archon]);
+    close(inactive.output().es_recharge_rate, 0.15);
+    close(inactive.output().es_recharge_per_second, 7.5);
+    close(inactive.output().es_recharge_delay, 4.0);
+    build
+        .config
+        .conditions
+        .insert("AffectedByArchon".into(), true);
+    let active = defence_with_lines(&build, &data, &[recharge, archon]);
+    // The conditional recharge bonus is not an Archon-granted buff to scale.
+    assert!((active.output().es_recharge_delay - 4.0 / 1.2).abs() < 1e-7);
+}
