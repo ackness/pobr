@@ -56,8 +56,21 @@ pub struct OutputTable {
     pub wither_effect_on_self: f64,
     pub self_bleed_effect: f64,
     pub self_ignite_effect: f64,
+    pub self_chill_effect: f64,
+    pub self_freeze_effect: f64,
+    pub self_poison_effect: f64,
+    pub self_blind_duration: f64,
     pub debuff_expiration_modifier: f64,
     pub curse_effect_on_self: f64,
+    /// Totem defences of the selected skill ([`super::totem`]), Fire, Cold,
+    /// Lightning, Chaos: capped resistance, uncapped total, and missing to max.
+    pub totem_resist: [f64; 4],
+    pub totem_resist_total: [f64; 4],
+    pub missing_totem_resist: [f64; 4],
+    /// Totem duration multiplier (neutral 1).
+    pub totem_duration_mod: f64,
+    /// Maximum Life of a totem the selected skill places; 0 without one.
+    pub totem_life: f64,
     pub self_bleed_duration: f64,
     pub self_poison_duration: f64,
     pub self_ignite_duration: f64,
@@ -90,6 +103,12 @@ pub struct OutputTable {
 
     /// Selected skill and character sidebar views. Movement values are multipliers.
     pub effective_movement_speed_mod: f64,
+    /// Rarity of Items found as a multiplier: `(1 + increased / 100) * more`
+    /// over `LootRarity`.
+    pub effective_loot_rarity_mod: f64,
+    /// The level the selected skill's gem runs at: its own level plus the
+    /// levels items, passives and supports add. Zero without a skill.
+    pub gem_level: f64,
     pub movement_speed_while_using_skill: f64,
     pub presence_radius_metres: f64,
     /// Limits, speed, recovery and requirement multipliers, and ailment maximums.
@@ -140,13 +159,20 @@ pub struct OutputTable {
     /// bifurcate / inevitable, but after the cap. Used to show overflow in breakdowns.
     pub pre_effective_crit_chance: f64,
     pub crit_multiplier: f64,
+    /// The crit damage multiplier before bifurcate and the enemy's crit
+    /// weakness (`PreEffectiveCritMultiplier`).
+    pub pre_effective_crit_multiplier: f64,
     /// Non-crit hit components split by damage type; summing gives total non-crit hit damage.
     pub damage_components: Vec<DamageComponent>,
     pub total_hit_avg: f64,
     /// Damage views include enemy mitigation; TotalHitAvg keeps its player-side meaning.
     pub average_damage: f64,
+    /// Chance to pass the accuracy check, before enemy block (percent).
+    pub accuracy_hit_chance: f64,
     pub accuracy_hit_chance_uncapped: f64,
     pub average_burst_damage: f64,
+    /// Hits in one burst of repeated or consumed-charge attacks.
+    pub average_burst_hits: f64,
     pub combined_avg: f64,
     pub hit_speed: f64,
     pub ignite_damage: f64,
@@ -304,6 +330,10 @@ pub struct OutputTable {
     pub crit_extra_damage_reduction: f64,
     /// Enemy crit effect multiplier (weighted average damage multiplier, ≥ 1.0).
     pub enemy_crit_effect: f64,
+    /// The enemy's chance to crit the player (%), from the EHP stage.
+    pub enemy_crit_chance: f64,
+    /// The second smallest of the five typed maximum hits taken.
+    pub second_minimal_maximum_hit_taken: f64,
 
     // Minion snapshots (Lane4: each minion's own offence/defence output; written by perform's multi-Actor pass)
     /// Key output snapshot for each minion (empty when there are no minions).
@@ -344,6 +374,11 @@ pub struct OutputTable {
     pub life_leech_rate: f64,
     pub mana_leech_rate: f64,
     pub es_leech_rate: f64,
+    /// The leech rate ceilings: recovery per second, and Life's as a percentage of the pool.
+    pub max_life_leech_rate: f64,
+    pub max_mana_leech_rate: f64,
+    pub max_energy_shield_leech_rate: f64,
+    pub max_life_leech_rate_percent: f64,
     /// Recoup return rate (per second; depends on the damage_taken estimate baseline).
     pub life_recoup_rate: f64,
     pub mana_recoup_rate: f64,
@@ -352,6 +387,15 @@ pub struct OutputTable {
     // Ailment extensions (Lane B: chill / freeze·shock buildup / bleed·poison stacks; written by perform's fill_ailments)
     /// Chill's action speed reduction (%, e.g. 30.0 = 30%; 0 = not applied).
     pub chill_effect: f64,
+    /// Duration (seconds) of the Shock / Chill the selected hit inflicts;
+    /// 0 when it cannot inflict that ailment.
+    pub shock_duration: f64,
+    pub chill_duration: f64,
+    /// Chill magnitude modifier: attacker factor times the target's factor
+    /// (neutral 1; 0 when the selected hit cannot Chill).
+    pub chill_effect_mod: f64,
+    /// Average Freeze buildup of one hit (% of the Freeze threshold).
+    pub freeze_buildup_avg: f64,
     /// Freeze buildup (% per damage point; 0 = not accumulating).
     pub freeze_buildup_pct: f64,
     /// Average enemy Heavy Stun buildup (% of poise per successful hit).
@@ -430,6 +474,8 @@ pub struct OutputTable {
     /// Deflection chance (%; PoB2 `DeflectChance` = deflectChance(rating,
     /// enemyAccuracy), CalcDefence.lua:48-54, :1491).
     pub deflect_chance: f64,
+    /// Deflection mitigation magnitude (%; the prevented share of a deflected hit).
+    pub deflect_effect: f64,
     /// Overall evade chance (%; PoB2 `EvadeChance`, CalcDefence.lua:1396-1466).
     pub evade_chance: f64,
     /// Melee evade chance (%; PoB2 `MeleeEvadeChance`, an independent inc factor per variant).
@@ -510,6 +556,12 @@ pub struct OutputTable {
     pub combined_dps: f64,
     /// Equivalent damage per second contributed by Culling Strike.
     pub culling_dps: f64,
+    /// The Ailment Threshold of the enemy at the configured level.
+    pub enemy_ailment_threshold: f64,
+    /// How much sooner Culling Strike kills (1 without it).
+    pub cull_multiplier: f64,
+    /// How much sooner an enemy with reserved Life dies (1 without it).
+    pub reservation_dps_multiplier: f64,
     // Per-hand sub-tables (decision D4: strongly-typed sub-tables, with the
     // flat PoB key `MainHand.X` resolved through display_catalog's pob_key).
     // The existing top-level fields' semantics = after combineStat (a
@@ -564,6 +616,8 @@ pub struct HandOutput {
     pub pre_effective_crit_chance: f64,
     /// This hand's crit damage multiplier (vendor `CritMultiplier`, the AVERAGE input).
     pub crit_multiplier: f64,
+    /// This hand's crit damage multiplier before bifurcate and the enemy's crit weakness.
+    pub pre_effective_crit_multiplier: f64,
     /// This hand's attack speed (vendor `Speed`, the HARMONICMEAN input).
     pub speed: f64,
     /// This hand's per-type hit components (before merging).
@@ -632,8 +686,17 @@ impl Default for OutputTable {
             wither_effect_on_self: 100.0,
             self_bleed_effect: 100.0,
             self_ignite_effect: 100.0,
+            self_chill_effect: 100.0,
+            self_freeze_effect: 100.0,
+            self_poison_effect: 100.0,
+            self_blind_duration: 100.0,
             debuff_expiration_modifier: 100.0,
             curse_effect_on_self: 100.0,
+            totem_resist: [0.0; 4],
+            totem_resist_total: [0.0; 4],
+            missing_totem_resist: [0.0; 4],
+            totem_duration_mod: 1.0,
+            totem_life: 0.0,
             self_bleed_duration: 100.0,
             self_poison_duration: 100.0,
             self_ignite_duration: 100.0,
@@ -662,6 +725,8 @@ impl Default for OutputTable {
             burning_ground_dps: 0.0,
 
             effective_movement_speed_mod: 0.0,
+            effective_loot_rarity_mod: 1.0,
+            gem_level: 0.0,
             movement_speed_while_using_skill: 0.0,
             presence_radius_metres: 0.0,
             limit_views: Default::default(),
@@ -704,11 +769,14 @@ impl Default for OutputTable {
             crit_chance: 0.0,
             pre_effective_crit_chance: 0.0,
             crit_multiplier: 0.0,
+            pre_effective_crit_multiplier: 0.0,
             damage_components: Vec::new(),
             total_hit_avg: 0.0,
             average_damage: 0.0,
+            accuracy_hit_chance: 0.0,
             accuracy_hit_chance_uncapped: 0.0,
             average_burst_damage: 0.0,
+            average_burst_hits: 0.0,
             combined_avg: 0.0,
             hit_speed: 0.0,
             ignite_damage: 0.0,
@@ -827,6 +895,8 @@ impl Default for OutputTable {
             taken_multi_chaos: 1.0,
             crit_extra_damage_reduction: 0.0,
             enemy_crit_effect: 1.0,
+            enemy_crit_chance: 0.0,
+            second_minimal_maximum_hit_taken: 0.0,
             minions: Vec::new(),
             trigger_rate_cap: 0.0,
             skill_trigger_rate: 0.0,
@@ -847,11 +917,19 @@ impl Default for OutputTable {
             life_leech_rate: 0.0,
             mana_leech_rate: 0.0,
             es_leech_rate: 0.0,
+            max_life_leech_rate: 0.0,
+            max_mana_leech_rate: 0.0,
+            max_energy_shield_leech_rate: 0.0,
+            max_life_leech_rate_percent: 0.0,
             life_recoup_rate: 0.0,
             mana_recoup_rate: 0.0,
             es_recoup_rate: 0.0,
             // Lane B: ailment extensions default to 0 (not applied without a matching hit/mod).
             chill_effect: 0.0,
+            shock_duration: 0.0,
+            chill_duration: 0.0,
+            chill_effect_mod: 0.0,
+            freeze_buildup_avg: 0.0,
             freeze_buildup_pct: 0.0,
             heavy_stun_buildup_avg: 0.0,
             pin_buildup_avg: 0.0,
@@ -889,6 +967,7 @@ impl Default for OutputTable {
             block_effect: 0.0,
             deflection_rating: 0.0,
             deflect_chance: 0.0,
+            deflect_effect: 0.0,
             evade_chance: 0.0,
             melee_evade_chance: 0.0,
             projectile_evade_chance: 0.0,
@@ -922,6 +1001,9 @@ impl Default for OutputTable {
             with_dot_dps: 0.0,
             combined_dps: 0.0,
             culling_dps: 0.0,
+            enemy_ailment_threshold: 0.0,
+            cull_multiplier: 1.0,
+            reservation_dps_multiplier: 1.0,
             //  Per-hand sub-tables default to None (always None in the fallback state; consumers skip on None).
             main_hand: None,
             off_hand: None,
@@ -950,10 +1032,12 @@ impl From<&MinimalOutput> for OutputTable {
             crit_chance: value.crit_chance,
             pre_effective_crit_chance: value.pre_effective_crit_chance,
             crit_multiplier: value.crit_multiplier,
+            pre_effective_crit_multiplier: value.pre_effective_crit_multiplier,
             damage_components: value.damage_components.clone(),
             total_hit_avg: value.total_hit_avg,
             average_damage: value.average_damage,
             accuracy: value.accuracy,
+            accuracy_hit_chance: value.accuracy_hit_chance,
             accuracy_hit_chance_uncapped: value.accuracy_hit_chance_uncapped,
             hit_chance: value.hit_chance,
             action_rate: value.action_rate,

@@ -146,6 +146,8 @@ mod minion_counts;
 
 #[path = "skills/cost_rate.rs"]
 mod cost_rate;
+#[path = "skills/limits_reservation.rs"]
+mod limits_reservation;
 #[path = "skills/party.rs"]
 mod party;
 #[path = "skills/sidebar_remaining.rs"]

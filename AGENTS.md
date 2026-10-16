@@ -23,18 +23,55 @@ disagreements with historical design notes.
 Run from the repository root, using the configured toolchains:
 
 ```bash
-cargo build -p pobr-cli
+mise run test core parser mod_parser::   # one suite, one filter
 mise run verify build skills support_gating::
+mise run regen                           # after any special_mods / parser rule edit
 mise run targets
-mise run cache
-pnpm --dir web dev
 pnpm --dir web test src/lib/skillSelection.test.ts
 ```
 
-These build the CLI, run selected support tests with formatting and Clippy,
-list test suites, report cache usage, start Vite, and run a selected Vitest file. See [Web setup](web/README.md)
-for initial WASM/data preparation and [development workflow](docs/development-workflow.md)
-for cache policy. Reuse one target per worktree and run Cargo commands sequentially.
+For the common small changes (one game line, one Calcs field, one mechanic),
+follow [the change recipes](docs/recipes.md): they name the files to edit and
+the single check to run, so no codebase exploration is needed. See
+[Web setup](web/README.md) for WASM/data preparation and
+[development workflow](docs/development-workflow.md) for cache policy. Reuse one
+target per worktree and run Cargo commands sequentially.
+
+## Validation Budget
+
+Compilation dominates the cost of a small change. Each test target, the CLI and
+the parity binary are separate builds, and a new worktree starts with no build
+cache at all.
+
+- **Per change: one focused check.** Run the test of what you touched
+  (`cargo test -q -p <crate> --test <suite> <filter>`), `mise run regen` after a
+  rule edit, then Clippy for the changed crate (`--lib --tests`) and
+  `cargo fmt --check`. That is all a commit needs.
+- **Do not run per change:** the whole `cargo test -p pobr-core`, `--test parity`,
+  the WASM/CLI suites, `mise run accuracy`, `triage`, `diagnose`, `compare`,
+  `skills:sweep` or the coverage scripts. They compile the parity binary or the
+  CLI and recompute every build.
+- **Per batch: one gate.** Whoever merges several changes runs `mise run gate`
+  once on a warm checkout. It runs every step and lists the failures;
+  `mise run gate --only <steps>` reruns just those after the fix.
+- **New worktree:** `mise run warm <warm checkout>` clones its build cache
+  copy-on-write. `POBR_BIN=<warm checkout>/target/debug/pobr` and
+  `POBR_CACHE_DIR=<warm checkout>/.cache` make the analysis tools reuse its CLI,
+  ledgers and PoB2 results instead of building and recomputing them.
+- **Many similar items go to one branch,** done one after another with only each
+  item's check, then one regen and one commit series. Do not open a worktree,
+  agent or full validation per line.
+
+## Parallel Agents
+
+- One worktree and one branch per agent. Never `git stash`: all worktrees share it.
+- Agents commit locally and never push. Before the last commit, merge the working
+  branch, keep both sides of append-only conflicts (catalog entries, labels,
+  rule lists), recompute the locked catalog count, and rerun `mise run regen` when
+  rules changed. Generated files are regenerated, never merged by hand.
+- Keep concurrent agents' files disjoint where possible. Two agents adding the same
+  display id or rule produce a semantic conflict that goes back to the later one.
+- An agent finishes with what it ran and what it left for the gate.
 
 ## Coding Style & Naming Conventions
 
@@ -47,9 +84,9 @@ imported item text and JSON compatibility.
 ## Testing Guidelines
 
 Use Rust tests, Vitest `*.test.ts` files, and Playwright `*.spec.ts` files.
-Add regression assertions for changed behavior; calculation changes also need
-relevant parity coverage. Specify `--test` or `--lib` to limit compilation.
-Local commits require relevant checks. Pull requests run lightweight checks
+Add regression assertions for changed behavior; calculation changes are measured
+against parity by the batch gate. Specify `--test` or `--lib` to limit
+compilation. Local commits require the focused check above. Pull requests run lightweight checks
 automatically (`.github/workflows/pr.yml`); full merge/release gates run in CI on
 tags, manual dispatch, release PRs (a changed workspace version) and nightly
 on master, so do not
@@ -78,11 +115,10 @@ Improve calculation accuracy in batches, not one build at a time:
    gaps by worked builds and sources, then `mise run gap "<template or text>"`
    for stat IDs, full source text, ledger fates and nearby engine rules.
    Implement from game data and item text; PoB2 is a cross-check.
-   Parallel agents may write independent fixes without compiling; the main
-   session merges and tests.
-3. Validate once per batch: rerun `mise run triage` (PoB2's side is cached),
-   `mise run accuracy`, the affected suites, the parity `reference_report`
-   gate and lint. Raise improved baselines, add a round to
+   Parallel agents write independent fixes with only focused checks; the main
+   session merges and runs the gate.
+3. Validate once per batch: `mise run gate` (includes accuracy and parity), then
+   rerun `mise run triage` (PoB2's side is cached). Raise improved baselines, add a round to
    `examples/reference-builds/README.md`, and commit each cause separately.
 4. Open one build (`mise run diagnose`, `mise run compare <build> [Stat ...]`,
    `calculate-build --breakdown <stats> --usage`) only for a row the triage

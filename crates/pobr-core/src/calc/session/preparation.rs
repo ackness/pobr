@@ -178,8 +178,23 @@ impl CalculationSession {
                 self.set_condition(condition, true);
             }
         }
+        self.bridge_ancestral_boost();
         self.bridge_low_pool_conditions();
         self.bridge_surrounded();
+    }
+
+    /// Ancestrally Boosted: a skill whose gem stats set `Condition:AncestrallyBoosted`
+    /// (Ancestral Call, Fist of War) has one boost effect, and each
+    /// `double_ancestral_boost_effect` (`Multiplier:AncestralBoostEffect`) adds
+    /// another. The modifiers that wait for the boost scale by this count
+    /// (`AdditionalStrikeTarget`, +2 per effect). How often the boost is up
+    /// (the call or slam interval) is not modelled: the state is "boosted".
+    fn bridge_ancestral_boost(&mut self) {
+        if self.has_flag("Condition:AncestrallyBoosted") {
+            self.set_condition("AncestrallyBoosted", true);
+            let effects = 1.0 + self.base_sum("Multiplier:AncestralBoostEffect");
+            self.set_multiplier("AncestralBoostEffect", effects);
+        }
     }
 
     /// Surrounded: as many enemies near the character as the game requires,

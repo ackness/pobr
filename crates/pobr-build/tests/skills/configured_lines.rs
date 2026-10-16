@@ -105,6 +105,31 @@ fn a_level_bonus_in_the_custom_modifiers_raises_the_gems_it_names() {
     assert_eq!(levels, 2);
 }
 
+/// `GemLevel` is the level the selected skill runs at: its gem's level plus the
+/// levels the character adds. A level 20 Fireball with "+3 to Level of all
+/// Spell Skills" runs at 23; a Cold bonus does not reach it.
+#[test]
+fn the_gem_level_output_adds_the_bonus_levels_to_the_gems_level() {
+    let data = data();
+    let options = DataOrchestratorOptions::default();
+    let gem_level = |lines: &str| {
+        let output = calculate_with_data(&with_custom_modifiers(LEVEL_20, lines), &data, &options)
+            .expect("calculate");
+        assert_eq!(
+            pobr_core::display_value(&output, "GemLevel"),
+            output.gem_level
+        );
+        output.gem_level
+    };
+    assert_eq!(gem_level(""), 20.0);
+    assert_eq!(gem_level("+3 to Level of all Spell Skills"), 23.0);
+    assert_eq!(gem_level("+3 to Level of all Cold Skills"), 20.0);
+    assert_eq!(
+        gem_level("+1 to Level of all Spell Skills\n+2 to Level of all Fire Skills"),
+        23.0
+    );
+}
+
 /// The game words the kind of a bonus two ways: "all Cold Skills" and "all
 /// Nova Skill Gems". Grim Pillars is a Cold Nova spell.
 #[test]

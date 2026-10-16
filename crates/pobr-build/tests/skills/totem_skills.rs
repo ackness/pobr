@@ -190,3 +190,93 @@ fn placement_reads_the_summoning_gems_cast_time() {
     let own = calculate_with_data(&build(false, ""), &data, &options).unwrap();
     assert_eq!(own.total_totem_placement_time, 0.0);
 }
+
+/// The Spell Totem's defences: game `MinionGemLevelScaling` gives a level-20
+/// gem a level-40 totem, `DefaultMonsterStats.AllyLife` at 40 is 2490, and
+/// the `SpellTotem` monster's `MonsterVarieties.LifeMultiplier` is 100 (×1).
+/// The gem's level-20 stats give `totem_elemental_resistance_%` 75 and
+/// `totem_chaos_resistance_%` 35 on a 0% monster base, against the monster
+/// maximum of 75.
+#[test]
+fn a_spell_totem_has_the_life_and_resistances_of_its_gem_level() {
+    let data = data();
+    let options = DataOrchestratorOptions {
+        extra_modifier_texts: vec![
+            "30% increased Totem Life".into(),
+            "30% increased Totem Duration".into(),
+        ],
+        ..DataOrchestratorOptions::default()
+    };
+    let output = calculate_with_data(&build(true, ""), &data, &options).expect("calculate");
+    assert_eq!(output.totem_life, (2490.0_f64 * 1.3).round());
+    assert!((output.totem_duration_mod - 1.3).abs() < 1e-12);
+    assert_eq!(output.totem_resist, [75.0, 75.0, 75.0, 35.0]);
+    assert_eq!(output.totem_resist_total, [75.0, 75.0, 75.0, 35.0]);
+    assert_eq!(output.missing_totem_resist, [0.0, 0.0, 0.0, 40.0]);
+
+    let plain = calculate_with_data(&build(true, ""), &data, &DataOrchestratorOptions::default())
+        .expect("calculate");
+    assert_eq!(plain.totem_life, 2490.0);
+    assert_eq!(plain.totem_duration_mod, 1.0);
+
+    // The character's own Grim Pillars places no totem.
+    let own = calculate_with_data(
+        &build(false, ""),
+        &data,
+        &DataOrchestratorOptions::default(),
+    )
+    .expect("calculate");
+    assert_eq!(own.totem_life, 0.0);
+}
+
+/// Each totem field's derived detail rebuilds the displayed value from its
+/// inputs, and the totem's Life line reaches the totem's Life.
+#[test]
+fn totem_details_reconstruct_their_values() {
+    let data = data();
+    let options = DataOrchestratorOptions {
+        extra_modifier_texts: vec![
+            "30% increased Totem Life".into(),
+            "10% reduced Totem Duration".into(),
+        ],
+        ..DataOrchestratorOptions::default()
+    };
+    let result = diagnose(&build(true, ""), &data, &options).expect("diagnose");
+    let session = &result.session;
+    let output = session.output();
+    for (i, element) in ["Fire", "Cold", "Lightning", "Chaos"].iter().enumerate() {
+        let total = session
+            .derived_detail(&format!("Totem{element}ResistTotal"))
+            .expect("total detail");
+        let input = |detail: &pobr_core::calc::session::detail::DerivedDetail, id: &str| {
+            detail.inputs.iter().find(|(name, _)| name == id).unwrap().1
+        };
+        let rebuilt = (input(&total, "TotemResistanceFlat")
+            * ((1.0 + input(&total, "TotemResistanceInc") / 100.0)
+                * input(&total, "TotemResistanceMore"))
+            .max(0.0))
+        .floor();
+        assert_eq!(rebuilt, output.totem_resist_total[i]);
+        let missing = session
+            .derived_detail(&format!("MissingTotem{element}Resist"))
+            .expect("missing detail");
+        let rebuilt = (input(&missing, "MaximumTotemResistance")
+            - input(&missing, "TotemResistance"))
+        .max(0.0);
+        assert_eq!(rebuilt, output.missing_totem_resist[i]);
+    }
+    let life = session.derived_detail("TotemLife").expect("life detail");
+    let input = |id: &str| life.inputs.iter().find(|(name, _)| name == id).unwrap().1;
+    assert_eq!(input("TotemLifeBase"), 2490.0);
+    assert_eq!(input("TotemLifeInc"), 30.0);
+    assert_eq!(
+        (input("TotemLifeBase") * (1.0 + input("TotemLifeInc") / 100.0) * input("TotemLifeMore"))
+            .round(),
+        output.totem_life
+    );
+    let duration = session
+        .derived_detail("TotemDurationMod")
+        .expect("duration detail");
+    assert_eq!(duration.inputs[0], ("TotemDurationInc".to_string(), -10.0));
+    assert!((output.totem_duration_mod - 0.9).abs() < 1e-12);
+}

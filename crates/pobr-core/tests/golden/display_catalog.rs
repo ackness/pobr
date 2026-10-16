@@ -167,11 +167,22 @@ fn catalog_entry_counts_locked() {
         // and EHPSurvivalTime (+20).
         // ManaRecoupRate (+1), the Chaos prevented-damage recoup as Mana, and
         // Flask{1,2}{Mana,Life}RemovedOnUse (+4), the other pool's per-use removal.
+        // ShockDuration, ChillDuration, ChillEffectMod, FreezeBuildupAvg,
+        // SelfFreezeEffect, SelfPoisonEffect and SelfBlindDuration (+7).
+        // {Life,Mana}CancellableReservation, FullLifePercentage, DurationMod and
+        // StrikeTargets (+5).
+        // AccuracyHitChance, CullMultiplier, ReservationDpsMultiplier, AverageBurstHits,
+        // EnemyAilmentThreshold, Max{Life,Mana,EnergyShield}LeechRate, MaxLifeLeechRatePercent,
+        // PreEffectiveCritMultiplier, DeflectEffect, SelfChillEffect, EnemyCritChance,
+        // SecondMinimalMaximumHitTaken, EffectiveLootRarityMod and GemLevel (+16).
+        // TotemLife, TotemDurationMod, Totem{Fire,Cold,Lightning,Chaos}Resist,
+        // Totem{Fire,Cold,Lightning,Chaos}ResistTotal and
+        // MissingTotem{Fire,Cold,Lightning,Chaos}Resist (+14), the totem defences.
         // On-hit effect and limit views (`calc::effect_views`): ArmourBreakPerHit,
         // HitsToFullyBreakArmour, TimeToFullyBreakArmour, {Daze,Maim,Blind}Uptime,
         // Maximum{Fire,Cold,Lightning}Infusions, SurroundedRadiusMetres,
         // CurseActivationDelay and RemnantsPerUse (+12).
-        542,
+        584,
         "a change in Computed entry count needs explicit review"
     );
 }
@@ -909,5 +920,110 @@ fn further_ehp_catalog_fields_have_units_and_neutral_defaults() {
         assert_eq!(def.value_type, unit, "{id}");
         assert_eq!(def.category, category, "{id}");
         assert_eq!(display_value(&OutputTable::default(), &id), 0.0, "{id}");
+    }
+}
+
+#[test]
+fn remaining_calcs_fields_have_units_and_neutral_defaults() {
+    let catalog = display_catalog();
+    // (id, unit, category, default shown for an empty OutputTable)
+    for (id, unit, category, default) in [
+        (
+            "AccuracyHitChance",
+            StatValueType::Percent,
+            DisplayStatCategory::Offence,
+            0.0,
+        ),
+        (
+            "CullMultiplier",
+            StatValueType::Number,
+            DisplayStatCategory::Offence,
+            1.0,
+        ),
+        (
+            "ReservationDpsMultiplier",
+            StatValueType::Number,
+            DisplayStatCategory::Offence,
+            1.0,
+        ),
+        (
+            "AverageBurstHits",
+            StatValueType::Number,
+            DisplayStatCategory::Offence,
+            0.0,
+        ),
+        (
+            "PreEffectiveCritMultiplier",
+            StatValueType::Number,
+            DisplayStatCategory::Offence,
+            0.0,
+        ),
+        (
+            "EnemyAilmentThreshold",
+            StatValueType::Number,
+            DisplayStatCategory::Offence,
+            0.0,
+        ),
+        (
+            "EnemyCritChance",
+            StatValueType::Percent,
+            DisplayStatCategory::Mitigation,
+            0.0,
+        ),
+        (
+            "SecondMinimalMaximumHitTaken",
+            StatValueType::Number,
+            DisplayStatCategory::Mitigation,
+            0.0,
+        ),
+        (
+            "DeflectEffect",
+            StatValueType::Percent,
+            DisplayStatCategory::Avoidance,
+            0.0,
+        ),
+        (
+            "MaxLifeLeechRatePercent",
+            StatValueType::Percent,
+            DisplayStatCategory::Recovery,
+            0.0,
+        ),
+        (
+            "SelfChillEffect",
+            StatValueType::Percent,
+            DisplayStatCategory::Defence,
+            100.0,
+        ),
+        (
+            "EffectiveLootRarityMod",
+            StatValueType::Number,
+            DisplayStatCategory::Misc,
+            1.0,
+        ),
+        (
+            "GemLevel",
+            StatValueType::Number,
+            DisplayStatCategory::Misc,
+            0.0,
+        ),
+    ] {
+        let def = catalog
+            .iter()
+            .find(|d| d.id.as_str() == id)
+            .unwrap_or_else(|| panic!("{id} is in the catalog"));
+        assert_eq!(def.pob_key.as_deref(), Some(id));
+        assert_eq!(def.value_type, unit, "{id}");
+        assert_eq!(def.category, category, "{id}");
+        assert_eq!(display_value(&OutputTable::default(), id), default, "{id}");
+    }
+    for id in [
+        "MaxLifeLeechRate",
+        "MaxManaLeechRate",
+        "MaxEnergyShieldLeechRate",
+    ] {
+        let def = catalog.iter().find(|d| d.id.as_str() == id).unwrap();
+        assert_eq!(def.value_type, StatValueType::Number, "{id}");
+        assert_eq!(def.category, DisplayStatCategory::Recovery, "{id}");
+        assert_eq!(display_value(&OutputTable::default(), id), 0.0, "{id}");
     }
 }

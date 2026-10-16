@@ -376,16 +376,12 @@ Older committed versions are not regenerated to absorb unrelated parser changes.
 regression artifact, not a runtime cache loader. `ModCache` is an in-memory memo
 whose lifetime must stay within one immutable rule snapshot.
 
-**Step 3 — run the relevant tests:**
-
-```bash
-cargo nextest run -p precompile-mods                       # --check + corpus determinism
-cargo nextest run -p pobr-core --test parser               # parser + special_mods gate
-cargo test    -p pobr-build --test parity -- --nocapture   # PoB2 parity dashboard
-```
-
-`parity_no_regression` (inside the parity suite) is the regression gate: your
-change must not drop the aggregate hit rate below the recorded baseline.
+**Step 3 — run the relevant tests.** `mise run regen` (steps 1–2 plus
+`cargo test -p precompile-mods`) already checks every rule against its
+`examples`. Add an engine test only when the modifier name needed a new reader
+(see [the change recipes](recipes.md#add-one-game-line-item-passive-jewel-flaskcharm-text)).
+The parity suite (`parity_no_regression`, `reference_report`) is measured once
+per batch by `mise run gate`, not per rule.
 
 **Step 4 — open the PR.** Include: what modifier you added/fixed, the
 `source_note` provenance (unique/keystone name or `ModParser.lua:NNNN`), whether

@@ -1223,6 +1223,16 @@ pub(crate) fn translated_mod_name_parts<'a>(
         | "DamagingAilmentDuration"
         | "MineDuration"
         | "EnemyElementalAilmentDuration"
+        // Inflicted Shock / Chill duration (`shock_duration_+%`,
+        // `chill_duration_+%`), read by `calc::ailment::duration_mod_names`.
+        | "EnemyShockDuration"
+        | "EnemyChillDuration"
+        // Freeze buildup ("more Freeze Buildup",
+        // `active_skill_hit_damage_freeze_multiplier_+%_final`; Freezing
+        // Mark's curse `freezing_mark_hit_damage_freeze_multiplier_+%_final`
+        // on the enemy), read by the Freeze poise-buildup terms.
+        | "EnemyFreezeBuildup"
+        | "FreezeBuildup"
         // Vendor `SkillStatMap.lua:554-557` (skill_speed_+% shares the entry
         // with three mods) and `:2400-2401` (summon_totem_cast_speed_+%):
         // separate names for warcry/totem speed. PoBR has no consumer yet
@@ -1232,6 +1242,15 @@ pub(crate) fn translated_mod_name_parts<'a>(
         // mismapping).
         | "WarcrySpeed"
         | "TotemPlacementSpeed"
+        // Totem defences (game `totem_elemental_resistance_%`,
+        // `totem_chaos_resistance_%`, `totem_maximum_all_elemental_resistances_%`,
+        // `totem_life_+%`, `totem_life_+%_final`, `support_totem_life_+%_final`,
+        // `totem_duration_+%`). Consumer = `calc::totem`.
+        | "TotemElementalResist"
+        | "TotemChaosResist"
+        | "TotemElementalResistMax"
+        | "TotemLife"
+        | "TotemDuration"
         //  Cooldown recovery rate pass-through (vendor
         // `base_cooldown_speed_+%`/quality section/
         // `support_cooldown_reduction_cooldown_recovery_+%` -> CooldownRecovery).

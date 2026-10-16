@@ -77,6 +77,10 @@ pub struct Env {
     pub(crate) pin_terms: Option<super::ailment::PinTerms>,
     /// The enemy's Armour before the configured Armour Break, for the per-hit view.
     pub(crate) unbroken_enemy_armour: Option<f64>,
+    /// Shock / Chill duration and magnitude-modifier inputs of the selected
+    /// hit, retained for their derived views.
+    pub(crate) non_damaging_terms: Vec<(AilmentType, super::ailment::NonDamagingAilmentTerms)>,
+    pub(crate) freeze_buildup_terms: Option<super::ailment::FreezeBuildupTerms>,
     /// The crossbow reload cycle `perform` scaled the rate and DPS by
     /// (`None` when the stage changed nothing).
     pub crossbow_reload: Option<super::CrossbowReload>,
@@ -94,6 +98,10 @@ pub struct Env {
     /// its own modifiers, whatever skill is calculated: what a minion that
     /// gains added damage equal to a share of it adds.
     pub main_hand_weapon_damage: Vec<(DamageType, f64, f64)>,
+    /// The selected skill's gem level as `(the gem's own level, levels items,
+    /// passives and supports add)`, written by the orchestration layer;
+    /// `None` when no skill is selected. The effect runs at their sum.
+    pub main_skill_level: Option<(u32, u32)>,
     /// Skill data's `doubleHitsWhenDualWielding` (flips the combineStat
     /// DPS/CRIT mode, vendor CalcOffence.lua:2459-2545). The data channel is
     /// the skill_overrides extraction; always false until the orchestration
@@ -134,11 +142,14 @@ impl Env {
             applied_ailments: super::ailment_apply::AppliedAilments::default(),
             pin_terms: None,
             unbroken_enemy_armour: None,
+            non_damaging_terms: Vec::new(),
+            freeze_buildup_terms: None,
             crossbow_reload: None,
             legacy_ehp_terms: None,
             leech_gain_terms: [[[0.0; 3]; 3]; 2],
             hand_sources: Vec::new(),
             main_hand_weapon_damage: Vec::new(),
+            main_skill_level: None,
             double_hits_when_dual_wielding: false,
             high_precision: HighPrecisionRules::default(),
         }

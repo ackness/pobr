@@ -308,6 +308,18 @@ pub struct GameMechanicsConstantsDef {
     /// 4x).
     #[serde(default = "default_buff_expiration_slow_cap")]
     pub buff_expiration_slow_cap: f64,
+
+    //  non-damaging ailment base durations (game keyword text).
+    /// Shock's base duration on non-player targets (seconds). The game's
+    /// Shock keyword: "lasts 4 seconds on players or 8 seconds on
+    /// non-players by default" (https://poe2db.tw/us/Keywords).
+    #[serde(default = "default_shock_base_duration")]
+    pub shock_base_duration: f64,
+    /// Chill's base duration on non-player targets (seconds). The game's
+    /// Chill keyword: "lasts 2 seconds on players or 8 seconds on
+    /// non-players by default" (https://poe2db.tw/us/Keywords).
+    #[serde(default = "default_chill_base_duration")]
+    pub chill_base_duration: f64,
 }
 
 // serde default functions (same source as the `Default` impl's values, a
@@ -326,6 +338,12 @@ fn default_charm_limit_cap() -> f64 {
 }
 fn default_buff_expiration_slow_cap() -> f64 {
     0.25
+}
+fn default_shock_base_duration() -> f64 {
+    8.0
+}
+fn default_chill_base_duration() -> f64 {
+    8.0
 }
 fn default_ehp_calc_max_iterations() -> f64 {
     50.0
@@ -454,6 +472,8 @@ impl Default for GameMechanicsConstantsDef {
             //  charm limit cap (CalcPerform.lua:1589).
             charm_limit_cap: default_charm_limit_cap(),
             buff_expiration_slow_cap: default_buff_expiration_slow_cap(),
+            shock_base_duration: default_shock_base_duration(),
+            chill_base_duration: default_chill_base_duration(),
         }
     }
 }

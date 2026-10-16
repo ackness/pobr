@@ -10,6 +10,9 @@
 #   test <args> Forward targeted cargo test arguments (package, suite, filter).
 #   lint <args> Format check plus Clippy for explicitly selected Cargo targets.
 #   full       fmt + clippy + all workspace tests + i18n lint
+#   gate       batch gate after merging several changes; reports every failing step
+#   regen      precompile-mods --report, then its tests
+#   warm       copy-on-write clone of another worktree's target/debug
 #   drill      version-bump-drill：数据可再生性 + 编译 + parity 可运行
 #   smoke      Quick representative aggregation, parser and codec checks.
 #   data       数据现状自检 + 再生管线说明（含云端约束）
@@ -263,6 +266,9 @@ PoBR development commands (mise tasks; without mise run this script with the sam
   mise run build [-p <crate>]               Build application CLI by default
   mise run smoke                            Representative environment checks
   mise run full                             Explicit full local Rust gate
+  mise run gate [--only step,...]           Batch gate after merging: every step, then a summary
+  mise run regen                            Regenerate parser artifacts and test precompile-mods
+  mise run warm [source worktree]           Copy-on-write clone of another worktree's target/debug
   mise run ci <pushed-branch-or-tag> [--e2e] Request full cloud CI via gh (E2E only with --e2e)
   mise run ci-status [--branch <branch>]     List cloud CI results via gh
 
@@ -289,6 +295,98 @@ cmd_full() {
     cargo clippy --workspace --all-targets -- -D warnings &&
     cmd_workspace_tests &&
     cargo run -p lint-i18n
+}
+
+# Regenerate the parser artifacts after a rule change, then test the generator.
+cmd_regen() {
+  if [[ $# -gt 0 ]]; then echo "usage: mise run regen" >&2; return 2; fi
+  say "precompile-mods --report (data/$DATA_VER)"
+  cargo run -q -p precompile-mods -- --data "$DATA_ROOT/$DATA_VER" --report &&
+    cargo test -q -p precompile-mods
+}
+
+# A new worktree starts with an empty target and rebuilds every dependency.
+# Clone another worktree's debug cache copy-on-write (APFS clonefile, or a Linux
+# reflink); Cargo then rebuilds only the workspace crates whose paths differ.
+cmd_warm() {
+  if [[ $# -gt 1 || "${1:-}" == -* ]]; then
+    echo "usage: mise run warm [source worktree; default: the repository's main worktree]" >&2
+    return 2
+  fi
+  local source="${1:-}"
+  if [[ -z "$source" ]]; then
+    source="$(git worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p')"
+  fi
+  [[ -n "$source" && -d "$source/target/debug" ]] \
+    || { echo "ERROR: no target/debug under source worktree '${source}'" >&2; return 1; }
+  if [[ "$(cd "$source" && pwd -P)" == "$(pwd -P)" ]]; then
+    echo "ERROR: source is this worktree" >&2; return 1
+  fi
+  if [[ -e target/debug ]]; then
+    echo "target/debug already exists; leaving it unchanged"; return 0
+  fi
+  mkdir -p target || return 1
+  say "Copy-on-write clone of $source/target/debug"
+  if cp -cR "$source/target/debug" target/ 2>/dev/null ||
+     cp -R --reflink=always "$source/target/debug" target/ 2>/dev/null; then
+    echo "OK: target/debug cloned; Cargo reuses unchanged dependencies"
+  else
+    rm -rf target/debug
+    echo "ERROR: this filesystem has no copy-on-write clone; build normally" >&2
+    return 1
+  fi
+}
+
+# The batch gate a coordinator runs once after merging several changes: every
+# step runs even after a failure, so one pass shows all failures, and
+# `--only <step,...>` reruns just the failed ones.
+GATE_STEPS=(fmt regen clippy core build parity apps i18n web accuracy)
+
+gate_step() {
+  case "$1" in
+    fmt)      cargo fmt --all --check ;;
+    regen)    cmd_regen && git diff --exit-code --stat -- "$DATA_ROOT/$DATA_VER/generated" ;;
+    clippy)   cargo clippy --workspace --lib --tests -- -D warnings ;;
+    core)     cargo test -q -p pobr-core ;;
+    build)    cargo test -q -p pobr-build --lib --test skills --test codec --test dualrun --test tree_convert ;;
+    parity)   cargo test -q -p pobr-build --test parity ;;
+    apps)     cargo test -q -p pobr-data -p pobr-gamedata -p pobr-i18n -p pobr-tree -p pobr-item \
+                -p pobr-wasm -p pobr-cli ;;
+    i18n)     cargo run -q -p lint-i18n ;;
+    web)      pnpm --dir web typecheck && pnpm --dir web test ;;
+    accuracy) cmd_accuracy ;;
+  esac
+}
+
+cmd_gate() {
+  local steps=("${GATE_STEPS[@]}")
+  if [[ "${1:-}" == --only && -n "${2:-}" && $# -eq 2 ]]; then
+    IFS=, read -r -a steps <<<"$2"
+  elif [[ $# -gt 0 ]]; then
+    echo "usage: mise run gate [--only step,...]   steps: ${GATE_STEPS[*]}" >&2
+    return 2
+  fi
+  local step known
+  for step in "${steps[@]}"; do
+    known=0
+    for name in "${GATE_STEPS[@]}"; do [[ "$step" == "$name" ]] && known=1; done
+    (( known )) || { echo "unknown gate step '$step'; steps: ${GATE_STEPS[*]}" >&2; return 2; }
+  done
+  # A comma list, not an array: bash 3.2 (macOS) rejects an empty array under `set -u`.
+  local failed="" status
+  for step in "${steps[@]}"; do
+    say "gate: $step"
+    gate_step "$step"; status=$?
+    (( status == 0 )) || failed="${failed:+$failed,}$step"
+  done
+  say "gate summary"
+  for step in "${steps[@]}"; do
+    if [[ ",$failed," == *",$step,"* ]]; then echo "  FAIL $step"; else echo "  ok   $step"; fi
+  done
+  if [[ -n "$failed" ]]; then
+    echo "Rerun the failures after fixing: mise run gate --only $failed"
+    return 1
+  fi
 }
 
 cmd_drill() { say "version-bump-drill（数据可再生 + 编译 + parity 可运行）"; bash devs/scripts/version-bump-drill.sh; }
@@ -388,6 +486,9 @@ case "${1:-}" in
   ci-status) shift; gh run list --workflow ci.yml "$@" ;;
   help|--help|-h) cmd_help ;;
   full)      cmd_full ;;
+  gate)      shift; cmd_gate "$@" ;;
+  regen)     shift; cmd_regen "$@" ;;
+  warm)      shift; cmd_warm "$@" ;;
   drill)     cmd_drill ;;
   smoke)     cmd_smoke ;;
   data)      cmd_data ;;

@@ -294,7 +294,8 @@ impl CalculationSession {
         let divisor = ((1.0 + eff_inc / 100.0) * db.more(cfg, &eff_names)).max(1e-12);
         let factor = mult / divisor;
         let flat = db.sum(ModType::Base, cfg, &[ModName::from("LifeReserved")]) * factor;
-        let percent = db.sum(ModType::Inc, cfg, &[ModName::from("LifeReservedPercent")]) * factor;
+        let percent = db.sum(ModType::Inc, cfg, &[ModName::from("LifeReservedPercent")]) * factor
+            + super::survivability::permanent_reserved_percent(db, cfg, "Life");
         let reserved = super::survivability::reservation(life, flat, percent).reserved;
         if (life - reserved) / life
             <= self
@@ -612,6 +613,12 @@ impl CalculationSession {
     /// Notes all damage types on the main-hand weapon for allies that share it.
     pub fn set_main_hand_weapon_damage_components(&mut self, damage: Vec<(DamageType, f64, f64)>) {
         self.env.main_hand_weapon_damage = damage;
+    }
+
+    /// Notes the selected skill's gem level as the gem's own level and the
+    /// levels added to it (see [`Env::main_skill_level`](super::Env)).
+    pub fn set_main_skill_level(&mut self, gem_level: u32, bonus_levels: u32) {
+        self.env.main_skill_level = Some((gem_level, bonus_levels));
     }
 
     pub fn set_hand_sources(

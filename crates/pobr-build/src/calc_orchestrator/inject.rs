@@ -614,6 +614,11 @@ pub(super) fn inject_main_skill_mods(
         // Use the resolved instance's set: repeated effect ids can select different
         // forms, and additional effects need not have their own gem_skills entry.
         let main_set_key = data.selected_set_key(skill_id, ctx.main.main_stat_set_index);
+        if let Some((gem_level, bonus_levels)) =
+            super::skill::resolve::selected_effect_levels(build, data, group)
+        {
+            session.set_main_skill_level(gem_level, bonus_levels);
+        }
         session.add_modifiers(skill_base_modifiers(
             context,
             skill,
@@ -621,6 +626,13 @@ pub(super) fn inject_main_skill_mods(
             main_set_key.as_deref(),
         ));
         session.add_modifiers(super::skill::mods::skill_timing_modifiers(
+            data,
+            group,
+            skill_id,
+            &ctx.main.main_skill_types,
+        ));
+        session.add_modifiers(super::skill::mods::totem_base_modifiers(
+            build,
             data,
             group,
             skill_id,
@@ -705,6 +717,38 @@ pub(super) fn inject_main_skill_mods(
     }
 }
 
+/// The game's Ancestral Boost rule for Strikes: "An Ancestrally Boosted Strike
+/// will target 2 additional Enemies" ([Keywords](https://poe2db.tw/us/Keywords);
+/// the Ancestral Cry stat `ancestral_cry_empowered_attacks_strike_X_additional_enemies`
+/// is the same 2). A skill that is Ancestrally Boosted (`Condition:AncestrallyBoosted`,
+/// set by the gem stats of Ancestral Call and Fist of War) has one boost effect,
+/// doubled by `double_ancestral_boost_effect`; each effect adds two targets to a
+/// Strike skill (`MeleeSingleTarget`). Slam attacks are not Strikes, so they get
+/// no targets. The targets are shown as `StrikeTargets` and multiply nothing.
+/// The boost-effect count is written by `CalculationSession::bridge_player_conditions`
+/// together with the condition.
+fn ancestral_boost_modifiers() -> Vec<Modifier> {
+    let origin = ModifierSource::new(SourceId::new(
+        SourceKind::CharacterBase,
+        "base.AncestralBoost",
+    ))
+    .with_raw_text("Ancestrally Boosted Strikes target 2 additional Enemies");
+    vec![
+        Modifier::number("AdditionalStrikeTarget", ModType::Base, 2.0)
+            .with_tag(pobr_core::ModTag::multiplier(
+                "AncestralBoostEffect",
+                1.0,
+                None,
+            ))
+            .with_tag(pobr_core::ModTag::SkillTypes(
+                pobr_data::skill::SkillTypes::from_pob2_name("MeleeSingleTarget")
+                    .expect("MeleeSingleTarget is a game skill type"),
+            ))
+            .with_tag(pobr_core::ModTag::condition("AncestrallyBoosted", false))
+            .with_origin(origin),
+    ]
+}
+
 /// Stage 1: character base (level + class-derived attributes → BASE) + elemental resistance penalty (campaign progress tier).
 pub(super) fn inject_character_base(
     session: &mut SourceWriter,
@@ -739,6 +783,7 @@ pub(super) fn inject_character_base(
                 .with_raw_text("character inherent Mana regeneration"),
             ),
         ]);
+        session.add_modifiers(ancestral_boost_modifiers());
         // Elemental resistance penalty (fire/cold/lightning; chaos has no penalty): the
         // XML Config's explicit `resistancePenalty` tier takes priority; when omitted,
         // falls back to PoB2 CalcSetup.lua's `configInput.resistancePenalty or -60`

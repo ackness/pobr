@@ -1,0 +1,40 @@
+{
+  "_meta": {
+    "schema": "totem_varieties/v1",
+    "generator": "manual",
+    "source": "按游戏数据手工整理: official GGG CDN table export (pathofexile-dat 15.2.0, dat-schema v7), not vendor totemLifeMult.",
+    "patch": "0.5.5.4.2",
+    "tables": {
+      "ActiveSkills": {
+        "columns": ["Id", "SkillTotemId"],
+        "export_sha256": "310b4f8a6161266f373fed00b1d932917058824655e979d0366f227f820fed02"
+      },
+      "SkillTotemVariations": {
+        "columns": ["SkillTotemsKey", "TotemSkinId", "MonsterVarietiesKey"],
+        "export_sha256": "c7ea75a7c7dde9b68f50d0e9aa125b4c8d2a6cadaf84af6ebfb7d0eff202658f"
+      },
+      "MonsterVarieties": {
+        "columns": ["Id", "LifeMultiplier"],
+        "export_sha256": "11922862d29ba76a86301cd39b88a4c1dc70aa30d3517210a1227f804a5fd53c"
+      },
+      "MinionGemLevelScaling": {
+        "columns": ["GemLevel", "MinionLevel"],
+        "export_sha256": "5ce2cae296ab703a2dc22efbb65186b4bb4a7a1e5f336741cfc80cfc0745f74b",
+        "note": "GemLevel 1..40 -> MinionLevel 2..80 (2 x gem level); equal to pobr-core calc::minion::MINION_LEVEL_TABLE."
+      }
+    },
+    "selection": "One row per totem-summoning granted effect: ActiveSkills.SkillTotemId -> SkillTotemVariations row with TotemSkinId 0 -> MonsterVarieties. Skins (Vampiric, Verisium, ...) share the skin-0 LifeMultiplier in this export. SkillTotemId 27 is the default for non-totem skills and has no variation. summon_meta_totem_axes (SkillTotemId 20) has no variation row and no player granted effect.",
+    "units": "life_multiplier is MonsterVarieties.LifeMultiplier in percent (100 = 1x). Base resistances come from base/monster_resistances.json for monster_variety (all totem varieties are 0 in this patch).",
+    "notes": "Once the adapter exports these columns, it should generate this file. Re-audit on patch updates."
+  },
+  "totems": [
+    { "granted_effect": "ShockwaveTotemPlayer", "active_skill": "shockwave_totem", "skill_totem_id": 5, "monster_variety": "Metadata/Monsters/Totems/ShockwaveTotem", "life_multiplier": 100 },
+    { "granted_effect": "SummonMetaTotemBallistaPlayer", "active_skill": "summon_meta_totem_ballista", "skill_totem_id": 12, "monster_variety": "Metadata/Monsters/Totems/SnipeTotem", "life_multiplier": 100 },
+    { "granted_effect": "AncestralWarriorTotemPlayer", "active_skill": "ancestral_warrior_totem", "skill_totem_id": 15, "monster_variety": "Metadata/Monsters/Totems/SlamTotem", "life_multiplier": 120 },
+    { "granted_effect": "SiegeBallistaPlayer", "active_skill": "siege_ballista", "skill_totem_id": 19, "monster_variety": "Metadata/Monsters/Totems/UpwardBallista", "life_multiplier": 100 },
+    { "granted_effect": "ArtilleryBallistaPlayer", "active_skill": "artillery_ballista", "skill_totem_id": 22, "monster_variety": "Metadata/Monsters/Totems/UpwardBallista", "life_multiplier": 100 },
+    { "granted_effect": "DarkEffigyPlayer", "active_skill": "dark_effigy", "skill_totem_id": 24, "monster_variety": "Metadata/Monsters/Totems/DarkEffigyTotem_", "life_multiplier": 100 },
+    { "granted_effect": "SummonMetaTotemSpellTotemPlayer", "active_skill": "summon_meta_totem_spell", "skill_totem_id": 25, "monster_variety": "Metadata/Monsters/Totems/SpellTotem", "life_multiplier": 100 },
+    { "granted_effect": "MetaMortarCannonPlayer", "active_skill": "mortar_cannon", "skill_totem_id": 26, "monster_variety": "Metadata/Monsters/Totems/GrenadeTotem", "life_multiplier": 100 }
+  ]
+}

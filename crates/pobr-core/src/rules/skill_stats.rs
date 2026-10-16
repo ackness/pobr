@@ -578,6 +578,12 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         "replace_off_hand_unarmed_attack_stats_with_shield_type" => Some(Vec::new()),
         // "Your Hits can't be Evaded" (including the implicit stat on palms).
         "global_always_hit" => Some(vec![Modifier::flag("CannotBeEvaded")]),
+        // Ancestral Call: the supported Strike is Ancestrally Boosted (every
+        // `ancestral_call_spirit_strike_interval_ms`). The boosted state is the
+        // one `StrikeTargets` shows; how often it applies is not modelled.
+        "support_ancestral_call_strike_is_ancestral_boosted" => {
+            Some(vec![Modifier::flag("Condition:AncestrallyBoosted")])
+        }
         // Mace Strike hits once with each weapon. Keep each hit's damage and
         // critical chance, but count both hits when dual wielding.
         "skill_double_hits_when_dual_wielding" => Some(vec![

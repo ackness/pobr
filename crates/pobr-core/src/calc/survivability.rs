@@ -88,6 +88,27 @@ pub fn reservation_with_efficiency(
     }
 }
 
+/// The share of a pool the character itself reserves, as a percentage of the
+/// pool: the `Extra<Pool>Reserved` modifiers (Beidat's Hand, Gaze and Will,
+/// "Reserves 25% of Life"; Midnight Bargain's game stat
+/// `life_reserved_by_stat_only_for_midnight_bargain_and_infernalist_%`).
+/// Unlike a skill's reservation, it is not scaled by `ReservationMultiplier`
+/// or Reservation Efficiency, and no skill can release it, so it is also the
+/// part of the reservation that is not cancellable.
+pub fn permanent_reserved_percent(db: &ModDb, cfg: &CalcConfig, pool: &str) -> f64 {
+    db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from(format!("Extra{pool}Reserved").as_str())],
+    )
+}
+
+/// The percentage of a pool's reservation that can be cancelled by turning a
+/// skill off: everything but the permanent share (`100 - permanent`, at least 0).
+pub fn cancellable_reservation_percent(permanent: f64) -> f64 {
+    (100.0 - permanent).max(0.0)
+}
+
 // Regeneration
 
 /// Calculates per-second regen.
@@ -514,10 +535,13 @@ pub fn charge_multipliers_panel_default(db: &ModDb, cfg: &CalcConfig) -> CalcCon
 
 // Leech -- reworked in 0.5.0
 
-/// Leech rate ceiling (Life/Mana: 20% of the pool; ES: 10% of the pool).
+/// Default leech rate ceiling (Life/Mana: 20% of the pool per second; ES: 10%).
 ///
-/// Source: agent-docs/recovery-charges-buffs.md §2.2;
-///       PoB2 `src/Modules/CalcSetup.lua`: `MaxLifeLeechRate=20, MaxManaLeechRate=20, MaxEnergyShieldLeechRate=10`.
+/// No game stat or game constant defines these ceilings (the game data only has
+/// `leech_rate_base` and `effective_max_damage_for_leech`); they are a project
+/// compatibility convention, and no single-instance share of the pool is capped
+/// separately. `Max<Resource>LeechRate` increases and more/less modifiers scale
+/// the ceiling. See agent-docs/recovery-charges-buffs.md §2.2.
 pub const LEECH_MAX_LIFE_RATE_PCT: f64 = 20.0;
 pub const LEECH_MAX_MANA_RATE_PCT: f64 = 20.0;
 pub const LEECH_MAX_ES_RATE_PCT: f64 = 10.0;
@@ -526,10 +550,8 @@ pub const LEECH_MAX_ES_RATE_PCT: f64 = 10.0;
 /// say recovery occurs over one second: https://poe2db.tw/us/Keywords.
 pub const LEECH_DURATION_SECONDS: f64 = 1.0;
 
-/// Effective single-hit damage ceiling used for leech calculation (anything above is truncated).
-///
-/// Source: agent-docs/recovery-charges-buffs.md §2.2;
-///       PoB2 `src/Data/Misc.lua`: `EffectiveMaxDamageForLeech = 40000`.
+/// Effective single-hit damage ceiling used for leech calculation (anything above is truncated):
+/// the game constant `effective_max_damage_for_leech`.
 pub const LEECH_EFFECTIVE_MAX_HIT_DAMAGE: f64 = 40000.0;
 
 /// Resource type being leeched.
@@ -578,25 +600,67 @@ pub fn calc_leech(
     resource: LeechResource,
 ) -> LeechResult {
     leech_instance(
-        pool,
         hit_damage.clamp(0.0, LEECH_EFFECTIVE_MAX_HIT_DAMAGE) * leech_pct.max(0.0) / 100.0,
-        resource,
         1.0,
-        1.0,
+        LeechCapTerms {
+            pool,
+            default_percent: resource.max_rate_pct(),
+            increased: 0.0,
+            more: 1.0,
+        },
     )
+}
+
+/// The factors of a resource's leech rate ceiling: the default percentage of
+/// the pool per second, then the increases and more/less of
+/// `Max<Resource>LeechRate`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LeechCapTerms {
+    pub pool: f64,
+    pub default_percent: f64,
+    pub increased: f64,
+    pub more: f64,
+}
+
+impl LeechCapTerms {
+    /// The modifier factor applied to the default ceiling.
+    pub fn maximum(self) -> f64 {
+        ((1.0 + self.increased / 100.0) * self.more).max(0.0)
+    }
+
+    /// The ceiling as a percentage of the pool per second.
+    pub fn percent(self) -> f64 {
+        self.default_percent * self.maximum()
+    }
+
+    /// The ceiling in recovery per second.
+    pub fn rate(self) -> f64 {
+        self.pool.max(0.0) * self.percent() / 100.0
+    }
+}
+
+pub(crate) fn leech_cap_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    pool: f64,
+    resource: LeechResource,
+) -> LeechCapTerms {
+    let name = format!("Max{}Rate", resource.leech_mod_name());
+    let names = [ModName::from(name.as_str())];
+    LeechCapTerms {
+        pool,
+        default_percent: resource.max_rate_pct(),
+        increased: db.sum(ModType::Inc, cfg, &names),
+        more: db.more(cfg, &names),
+    }
 }
 
 /// Apply speed to the instance, and increases to the maximum before capping.
 /// Speed changes the recovery time, never the amount recovered.
-pub(crate) fn leech_instance(
-    pool: f64,
-    amount: f64,
-    resource: LeechResource,
-    speed: f64,
-    maximum: f64,
-) -> LeechResult {
+pub(crate) fn leech_instance(amount: f64, speed: f64, cap: LeechCapTerms) -> LeechResult {
+    let pool = cap.pool;
     let amount = if pool > 0.0 { amount.max(0.0) } else { 0.0 };
-    let rate_cap = pool.max(0.0) * resource.max_rate_pct() / 100.0 * maximum.max(0.0);
+    let rate_cap = cap.rate();
     LeechResult {
         instance_total: round(amount),
         rate_cap_per_second: round(rate_cap),
@@ -661,12 +725,10 @@ pub fn calc_leech_from_db(
     );
     let name = resource.leech_mod_name().to_string();
     leech_instance(
-        pool,
         hit_damage.clamp(0.0, LEECH_EFFECTIVE_MAX_HIT_DAMAGE) * leech_pct.max(0.0) / 100.0
             * leech_modifier_factor(db, cfg, &format!("{name}Amount")),
-        resource,
         leech_modifier_factor(db, cfg, &format!("{name}Rate")),
-        leech_modifier_factor(db, cfg, &format!("Max{name}Rate")),
+        leech_cap_terms(db, cfg, pool, resource),
     )
 }
 

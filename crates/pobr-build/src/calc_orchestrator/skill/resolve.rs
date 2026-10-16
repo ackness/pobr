@@ -225,6 +225,18 @@ pub(crate) fn main_skill_summary(prepared: &Build, data: &BuildData) -> Option<M
     })
 }
 
+/// The selected effect of `group` as its gem's own level and the levels
+/// added to it, which the effect runs at the sum of (`GemLevel`).
+pub(crate) fn selected_effect_levels(
+    build: &Build,
+    data: &BuildData,
+    group: &SocketGroup,
+) -> Option<(u32, u32)> {
+    let effect = selected_group_effect(data, group)?;
+    let (_, gem_level, bonus_levels) = level_source(build, data, group, &effect);
+    Some((gem_level, bonus_levels))
+}
+
 /// Every active effect of the enabled groups, each at the level and quality
 /// it runs at, as [`main_skill_summary`] resolves the main one (on the same
 /// prepared build view).

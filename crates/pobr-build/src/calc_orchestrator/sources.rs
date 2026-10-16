@@ -224,6 +224,10 @@ impl SourceWriter {
         self.session.set_condition(name, value)
     }
 
+    pub fn set_main_skill_level(&mut self, gem_level: u32, bonus_levels: u32) {
+        self.session.set_main_skill_level(gem_level, bonus_levels)
+    }
+
     pub fn set_keystone_mods(&mut self, map: std::collections::BTreeMap<String, Vec<Modifier>>) {
         self.session.set_keystone_mods(map)
     }

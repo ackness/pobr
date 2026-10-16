@@ -199,6 +199,44 @@ pub struct BuildData {
     /// [`CompiledParserRules::compile_with_special`]: pobr_core::mod_parser::CompiledParserRules::compile_with_special
     /// [`CalculationSession::set_parser_rules`]: pobr_core::calc::CalculationSession::set_parser_rules
     pub parser_rules: Option<Arc<pobr_core::mod_parser::CompiledParserRules>>,
+    /// The monster each totem-summoning skill places, keyed by its
+    /// `GrantedEffects.Id` (`overlay-common/totem_varieties.json`, curated from
+    /// the game's `ActiveSkills` / `SkillTotemVariations` / `MonsterVarieties`),
+    /// with its base resistances from `base/monster_resistances.json`.
+    pub totems: HashMap<String, TotemDef>,
+}
+
+/// A totem monster's game base stats ([`BuildData::totems`]).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct TotemDef {
+    /// `MonsterVarieties.LifeMultiplier` as a factor (1.2 for the Ancestral Warrior's Slam Totem).
+    pub life_multiplier: f64,
+    /// Base Fire, Cold, Lightning and Chaos resistances of the variety's monster type.
+    pub resistances: [f64; 4],
+}
+
+fn totem_defs(
+    def: pobr_data::catalog::totem_varieties::TotemVarietiesDef,
+    resistances: &pobr_data::catalog::MonsterResistancesDef,
+) -> HashMap<String, TotemDef> {
+    def.totems
+        .into_iter()
+        .map(|row| {
+            let res = resistances
+                .monsters
+                .get(&row.monster_variety)
+                .map_or([0.0; 4], |b| {
+                    [b.fire, b.cold, b.lightning, b.chaos].map(f64::from)
+                });
+            (
+                row.granted_effect,
+                TotemDef {
+                    life_multiplier: f64::from(row.life_multiplier) / 100.0,
+                    resistances: res,
+                },
+            )
+        })
+        .collect()
 }
 
 /// One `stats` entry per text line. The tree export packs a node's lines into
@@ -454,6 +492,20 @@ impl BuildData {
         // load/parse error still propagates as normal.
         let mut minions: HashMap<String, MinionDef> = HashMap::new();
         let resistances = data.monster_resistances()?;
+        // Curated game rows until the adapter exports the totem tables; a data
+        // pack without the file keeps the same rows (`TotemVarietiesDef::default`).
+        let totems = totem_defs(
+            match data.totem_varieties() {
+                Ok(def) => def,
+                Err(LoadError::Io { ref source, .. })
+                    if source.kind() == std::io::ErrorKind::NotFound =>
+                {
+                    Default::default()
+                }
+                Err(e) => return Err(e),
+            },
+            &resistances,
+        );
         let minion_def = |entry: &pobr_data::catalog::actors::MinionEntryDef| {
             let mut def = MinionDef::from_entry(entry);
             let variety = entry.monster_variety_id.as_deref().unwrap_or(&entry.id);
@@ -535,6 +587,7 @@ impl BuildData {
             minions,
             augments,
             parser_rules,
+            totems,
         })
     }
 
@@ -570,6 +623,7 @@ impl BuildData {
             minions: HashMap::new(),
             augments: HashMap::new(),
             parser_rules: None,
+            totems: HashMap::new(),
         }
     }
 }
