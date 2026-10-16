@@ -148,9 +148,9 @@ fn catalog_entry_counts_locked() {
         // ConfiguredNotHitChance and DamageTakenOnBlock (+34).
         // ExposureEffectOnSelf, WitherEffectOnSelf, SelfBleedEffect,
         // SelfIgniteEffect and DebuffExpirationModifier (+5).
-        // HeavyStunBuildupAvg (+1).
+        // HeavyStunBuildupAvg and PinBuildupAvg (+2).
         // Damaging-ailment chance/duration/multipliers/roll/stacks/source ranges and ShockChance (+34).
-        365,
+        366,
         "a change in Computed entry count needs explicit review"
     );
 }

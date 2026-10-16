@@ -5317,15 +5317,87 @@
       ]
     },
     {
-      "id": "physical_spell_critical_pin_unmodelled",
+      "id": "physical_spell_critical_pin",
       "pattern": "^physical spell critical hits build pin$",
+      "mods": [
+        {
+          "name": "PhysicalCanPin",
+          "type": "FLAG",
+          "value": true,
+          "flags": [
+            "Spell"
+          ],
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "CriticalStrike"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "differs",
+      "game_source": "base/stats.json: physical_spell_damage_can_pin_on_critical_hit; base/passive_tree.json: Bone Chains (26563)",
+      "source_note": "The Physical portion of a spell's critical-hit damage builds Pin (PinBuildupAvg); the non-critical portion does not. The condition is evaluated per hit leg. The exporter evaluates it once for the whole skill, so it differs. Capability to build Pin does not establish an already Pinned enemy; conditionEnemyPinned remains an explicit target-state input.",
+      "examples": [
+        "Physical Spell Critical Hits build Pin"
+      ]
+    },
+    {
+      "id": "physical_damage_is_pinning",
+      "pattern": "^physical damage is pinning$",
+      "mods": [
+        {
+          "name": "PhysicalCanPin",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "game_source": "base/stats.json: base_physical_damage_can_pin; Bushwhack boots, Fenumus' Rune of Spinning",
+      "source_note": "Opt-in Pin source for Physical damage (PinBuildupAvg); other types do not build Pin unless another source enables them. KeywordPopups Pinned: certain skills and effects allow damage to build up Pinned.",
+      "examples": [
+        "Physical Damage is Pinning"
+      ]
+    },
+    {
+      "id": "weapon_all_damage_contributes_to_pin",
+      "pattern": "^all damage from hits with this weapon contributes to pin buildup$",
+      "mods": [
+        {
+          "name": "CanPin",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "{Hand}Attack"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "game_source": "base/stats.json: local_all_damage_can_pin; Chainsting",
+      "source_note": "All damage of attacks with this weapon builds Pin (PinBuildupAvg). The {Hand}Attack placeholder becomes MainHandAttack or OffHandAttack from the weapon slot, so only that hand's damage counts.",
+      "examples": [
+        "All Damage from Hits with this Weapon Contributes to Pin Buildup"
+      ]
+    },
+    {
+      "id": "primed_pin_unmodelled",
+      "pattern": "^(?:supported skills )?pin enemies which are primed for pinning$",
       "mods": [],
       "verified": false,
       "batch": "unmodelled",
-      "game_source": "base/stats.json: physical_spell_damage_can_pin_on_critical_hit; base/passive_tree.json: Bone Chains (26563)",
-      "source_note": "Pin buildup and application timing are not modelled. Capability to build Pin does not establish an already Pinned enemy; conditionEnemyPinned remains an explicit target-state input.",
+      "exporter": "absent",
+      "game_source": "base/stats.json: pin_almost_pinned_enemies; KeywordPopups PrimedPin (40% / 50% / 60% / 70% Pin buildup for Normal / Magic / Rare / Unique)",
+      "source_note": "Primed-pin thresholds and the pin-on-hit-while-primed rule are not modelled; PinBuildupAvg is the buildup per hit, not a Pin application chance.",
       "examples": [
-        "Physical Spell Critical Hits build Pin"
+        "Pin Enemies which are Primed for Pinning",
+        "Supported Skills Pin Enemies which are Primed for Pinning"
       ]
     },
     {

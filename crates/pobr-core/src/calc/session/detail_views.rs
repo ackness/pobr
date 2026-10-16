@@ -4,6 +4,7 @@ use crate::calc::{perform, survivability::ChargeKind};
 
 pub const DERIVED_STATS: &[&str] = &[
     "HeavyStunBuildupAvg",
+    "PinBuildupAvg",
     "PhysicalTakenDamage",
     "FireTakenDamage",
     "ColdTakenDamage",
@@ -163,6 +164,38 @@ impl CalculationSession {
                             ("StunBuildupMore".into(), t.more),
                             ("EnemyStunBuildupMultiplier".into(), t.enemy_multiplier),
                         ],
+                    )
+                }
+            }
+            "PinBuildupAvg" => {
+                let t = env.pin_terms.as_ref()?;
+                let rows: Vec<_> = crate::calc::ailment::PIN_DAMAGE_TYPES
+                    .iter()
+                    .zip(t.damage)
+                    .filter(|(_, damage)| *damage != 0.0)
+                    .map(|(kind, damage)| (format!("{kind:?}PinningHitAverage"), damage))
+                    .collect();
+                if !t.enabled || t.threshold <= 0.0 || rows.is_empty() {
+                    ("0 * CanPin".into(), vec![("CanPin".into(), 0.0)])
+                } else {
+                    let damage = rows
+                        .iter()
+                        .map(|(id, _)| id.as_str())
+                        .collect::<Vec<_>>()
+                        .join(" + ");
+                    let mut inputs = rows;
+                    inputs.extend([
+                        ("PinDamageScale".into(), t.damage_scale),
+                        ("EnemyPoiseThreshold".into(), t.threshold),
+                        ("PinBuildupIncreased".into(), t.increased),
+                        ("PinBuildupMore".into(), t.more),
+                        ("EnemyPinBuildupMultiplier".into(), t.enemy_multiplier),
+                    ]);
+                    (
+                        format!(
+                            "({damage}) * round(PinDamageScale / EnemyPoiseThreshold * (1 + PinBuildupIncreased / 100) * PinBuildupMore * 100, 9) * EnemyPinBuildupMultiplier"
+                        ),
+                        inputs,
                     )
                 }
             }

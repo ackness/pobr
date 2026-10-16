@@ -280,15 +280,16 @@ in `calc_orchestrator::inject`, and the selected triggered payload receives
 `Triggered` in `prepare::stage_resolve_main_skill`. Possessing a freeze or Pin
 source does not establish the target state. Coming Calamity's 40% elemental
 bonuses require their matching Herald; added attack damage (including
-Asphyxia's Wrath) applies only to attacks. Pin buildup, Daze duration and Maim
-application remain `unmodelled` entries with explicit
+Asphyxia's Wrath) applies only to attacks. Daze duration, Maim application and
+primed-Pin thresholds remain `unmodelled` entries with explicit
 reasons: player stun defences and per-hit `DazeChance` do not measure those
 mechanics. Sources: game `base/stats.json` (`damage_+%_vs_frozen_enemies`,
 `bleeding_magnitude_+%_against_pinned_enemies`, `triggered_spell_spell_damage_+%`,
-`physical_spell_damage_can_pin_on_critical_hit`, `hit_damage_stun_multiplier_+%`,
-`daze_duration_+%`, `maim_on_hit_%`) and `base/passive_tree.json` (Coming
-Calamity, Bone Chains, Seeing Stars, Maiming Strike). The Daze-duration and
-attack-Maim rules are exporter-absent; recognizing them does not implement them.
+`hit_damage_stun_multiplier_+%`, `daze_duration_+%`, `maim_on_hit_%`,
+`pin_almost_pinned_enemies`) and `base/passive_tree.json` (Coming
+Calamity, Seeing Stars, Maiming Strike, Constricting Command). The Daze-duration
+and attack-Maim rules are exporter-absent; recognizing them does not implement
+them.
 `FireDamage`, `LightningDamage` and `AilmentMagnitude` have readers gated by
 the selected skill's source damage; the usage ledger reports that gate when a
 non-damaging skill such as Mana Remnants does not reach those readers.
@@ -323,9 +324,50 @@ Map Boss/Xesht Poise entries in `base/enemy_presets.json` remain unused.
 `CannotStun` / `CannotHeavyStun` suppress buildup. The derived detail reuses the
 retained calculation terms. Mauling Stuns uses `enemyDistance <= metres * 10`,
 sharing Focused Thrust's handler and ledger gate; unset distance retains the
-zero-distance convention. Pin remains unmodelled in this implementation;
-inspection found `GameConstants.PinDamageScale = 420 / 100` (4.2), so its
-remaining work is calculation/reader wiring rather than a missing scale.
+zero-distance convention.
+
+`PinBuildupAvg` reports the selected successful hit's average enemy Pin buildup
+as a percentage of the Pin threshold. The game's `KeywordPopups[60]` says that
+"Certain skills and effects allow damage to build up Pinned", so buildup is
+opt-in per damage type: a hit builds Pin only from the types that an applying
+source enables. The sources are the selected skill's
+`base_physical_damage_can_pin` (Physical) and `base_all_damage_can_pin`, a
+weapon's `local_all_damage_can_pin` (that hand's hits only),
+`all_projectile_damage_can_pin` (projectile hits only),
+`physical_spell_damage_can_pin_on_critical_hit` (Bone Chains: the Physical part
+of a critical spell hit only; the non-critical leg and other types add nothing)
+and the Pin support's `support_pin_physical_damage_can_pin`. `cannot_pin` and
+"Cannot Immobilise" force 0. They are the `CanPin` / `<Type>CanPin` flags;
+critical-only sources reuse Heavy Stun's separate critical and non-critical
+mitigated legs (`calc::ailment::pin_terms`). The scale is
+`GameConstants[45].PinDamageScale = 420 / 100` (4.2) over the same poise
+threshold as Heavy Stun (`PinThresholdModifier` [48] and
+`HeavyStunThresholdModifier` [29] are both 500, so the boss poise rows above
+apply unchanged). Player `EnemyPinBuildup` / `EnemyImmobilisationBuildup` (Pin
+support, "increased Pin Buildup", `active_skill_pins_as_though_dealt_damage_+%_final`)
+and the enemy's `PinBuildup` / `ImmobilisationBuildup` scale it. Heavy Stun's
+50% physical and melee multipliers are not applied: the game text gives them
+only for Light Stun chance and Heavy Stun buildup (`KeywordPopups[55]` / [57]).
+That is a convention, **no in-game test**. A skill with
+`support_pin_buildup_pin_instead_of_stun` (the Pin support) builds no Heavy Stun
+(`HeavyStunBuildupAvg` is 0) and its damage counts toward Pin; the support's
+buildup modifiers are the Pin ones, and PoBR does not copy the skill's Heavy
+Stun modifiers to Pin as PoB2 does. Primed-Pin thresholds (`KeywordPopups[400]`:
+40% / 50% / 60% / 70% by rarity, `pin_almost_pinned_enemies`) and the 3-second
+Pin duration are not modelled: `primed_pin_unmodelled` is exporter-absent and
+`conditionEnemyPinned` stays a configured state. PoB2 pins from unmitigated hit
+averages and evaluates `Physical Spell Critical Hits build Pin` once against the
+skill, so a physical spell pins with every damage type; that rule declares
+`exporter: "differs"`. Worked comparisons against the pinned oracle: Chronomancer
+Reap `3875ffe5d15e` 12.976 vs 55.896 (0.232 = 0.552 from the Xesht 17 / 9.38
+poise factor, as for Heavy Stun, times 0.42 because PoBR pins only the Physical
+critical portion while PoB2 adds Cold, Fire and Lightning); Tactician Oil Barrage
+`02b94461578f` 6.615 vs 17.082 (0.387) and Crossbow Shot `406c76f8e89a` 6.747 vs
+12.506 (0.539) follow their `HeavyStunBuildupAvg` ratios (0.396 and 0.541), so the
+remaining gap there is the shared poise and mitigated-versus-unmitigated source
+damage, not Pin; Blood Mage Impending Doom `add19135df93` is 0.364 vs 0, because
+the 3260 Physical part of the Dark Consequences frog explosion (a Spell by game
+skill type) pins in PoBR while the oracle reports empty `skillFlags` for it.
 
 伤害型异常（流血、点燃、毒）的同时层数 = 命中率 × 施加几率 × 持续时间 × 每秒命中数，持续时间是基础时间乘持续时间加成（含 “increased duration of Ailments you inflict”，`EnemyAilmentDuration`）与敌人身上效果的过期速度，再除以 “Damaging Ailments deal damage #% faster”：伤害总量不变、造成得更快，每份结束得更早（`calc/perform.rs`，分解里写作 “faster /N”）。
 

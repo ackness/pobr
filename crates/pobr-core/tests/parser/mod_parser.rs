@@ -1764,12 +1764,12 @@ fn additional_remnant_chance_reports_the_missing_count_model() {
 
 #[test]
 fn conditional_offence_limits_stay_visible_as_unmodelled() {
-    // Bone Chains, Seeing Stars (25% duration),
-    // and Maiming Strike (25% chance) from the game's passive table.
+    // Seeing Stars (25% duration) and Maiming Strike (25% chance) from the
+    // game's passive table; Primed Pin thresholds (Constricting Command).
     for (text, id) in [
         (
-            "Physical Spell Critical Hits build Pin",
-            "physical_spell_critical_pin_unmodelled",
+            "Pin Enemies which are Primed for Pinning",
+            "primed_pin_unmodelled",
         ),
         ("25% increased Daze Duration", "daze_duration_unmodelled"),
         (
@@ -1784,6 +1784,42 @@ fn conditional_offence_limits_stay_visible_as_unmodelled() {
         assert!(!meta.no_effect, "{text} must remain a model gap");
         assert_eq!(meta.entry_id, id);
     }
+}
+
+#[test]
+fn pin_sources_opt_damage_types_into_pin_buildup() {
+    // Bone Chains: the critical Physical portion of spell hits only.
+    let parsed = parse_mod("Physical Spell Critical Hits build Pin").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed, "{parsed:?}");
+    assert_eq!(parsed.mods.len(), 1, "{parsed:?}");
+    let spell = &parsed.mods[0];
+    assert_eq!(spell.name.as_str(), "PhysicalCanPin");
+    assert!(spell.flags.intersects(ModFlags::SPELL));
+    assert!(spell.tags.iter().any(|tag| matches!(
+        tag,
+        ModTag::Condition { var, negated: false, .. } if var == "CriticalStrike"
+    )));
+    // Bushwhack boots / Fenumus' Rune of Spinning: base_physical_damage_can_pin.
+    let parsed = parse_mod("Physical Damage is Pinning").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed, "{parsed:?}");
+    assert_eq!(parsed.mods.len(), 1, "{parsed:?}");
+    assert_eq!(parsed.mods[0].name.as_str(), "PhysicalCanPin");
+    assert!(parsed.mods[0].tags.is_empty());
+    // Chainsting: local_all_damage_can_pin names the weapon's hand.
+    let parsed =
+        parse_mod("All Damage from Hits with this Weapon Contributes to Pin Buildup").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed, "{parsed:?}");
+    assert_eq!(parsed.mods.len(), 1, "{parsed:?}");
+    assert_eq!(parsed.mods[0].name.as_str(), "CanPin");
+    assert!(parsed.mods[0].tags.iter().any(|tag| matches!(
+        tag,
+        ModTag::Condition { var, .. } if var == "{Hand}Attack"
+    )));
+    // Mercenary: projectile hits (extracted from the exporter's table).
+    let parsed = parse_mod("Projectile Damage builds Pin").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed, "{parsed:?}");
+    assert_eq!(parsed.mods[0].name.as_str(), "CanPin");
+    assert!(parsed.mods[0].flags.intersects(ModFlags::PROJECTILE));
 }
 
 #[test]
