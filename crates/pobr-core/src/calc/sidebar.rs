@@ -99,6 +99,7 @@ pub(super) fn fill_sidebar(env: &mut Env) {
             db,
             &env.enemy.mod_db,
             cfg,
+            super::ailment::ailment_crit_share(db, cfg, out.crit_chance),
         );
         attacker * defender
     } else {
