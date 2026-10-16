@@ -71,6 +71,143 @@ fn config_coverage_reports_reads_even_without_a_configured_value() {
 }
 
 #[test]
+fn focused_thrust_requires_spear_projectile_hits_and_configured_distance() {
+    let data = data();
+    // Focused Thrust (9227): 40% increased Projectile Damage with Spears
+    // while no enemies are within 3 m. enemyDistance uses 10 units per metre:
+    // unset/20/29.9 is inactive, 30 and 40 are active. The other 75% melee
+    // line is separate and must not leak this projectile bonus into melee.
+    let run = |skill: &str, weapon: &str, distance: Option<f64>, line: &str, reference: bool| {
+        let config = distance.map_or_else(String::new, |distance| {
+            format!(r#"<Input name="enemyDistance" number="{distance}"/>"#)
+        });
+        let build = parse_build(&format!(
+            r#"<PathOfBuilding2>
+<Build level="80" className="Huntress" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="{skill}" level="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+{weapon}
+Implicits: 0
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+<Config>{config}</Config></PathOfBuilding2>"#
+        ))
+        .unwrap();
+        let mut options = DataOrchestratorOptions {
+            mode_effective: true,
+            extra_modifier_texts: [line]
+                .into_iter()
+                .filter(|line| !line.is_empty())
+                .map(str::to_string)
+                .collect(),
+            ..Default::default()
+        };
+        if reference {
+            options = options.on_reference_basis();
+        }
+        let diagnosis = diagnose(&build, &data, &options).unwrap();
+        let usage = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+        (diagnosis.session, usage)
+    };
+    for (amount, metres, distance) in [
+        (40, 3.0, None),
+        (40, 3.0, Some(20.0)),
+        (40, 3.0, Some(29.9)),
+        (40, 3.0, Some(30.0)),
+        (40, 3.0, Some(40.0)),
+        (60, 4.5, Some(40.0)),
+        (60, 4.5, Some(45.0)),
+    ] {
+        let line = format!(
+            "{amount}% increased Projectile Damage with Spears while there are no Enemies within {metres}m"
+        );
+        let (plain, _) = run("TwisterPlayer", "Hardwood Spear", distance, "", false);
+        let (bonus, usage) = run("TwisterPlayer", "Hardwood Spear", distance, &line, false);
+        let (reference, _) = run("TwisterPlayer", "Hardwood Spear", distance, &line, true);
+        let active = distance.is_some_and(|d| d >= metres * 10.0);
+        let expected_hit = if active {
+            run(
+                "TwisterPlayer",
+                "Hardwood Spear",
+                distance,
+                &format!("{amount}% increased Projectile Damage with Hits"),
+                false,
+            )
+            .0
+            .output()
+            .total_hit_avg
+        } else {
+            plain.output().total_hit_avg
+        };
+        assert!(plain.output().total_hit_avg > 0.0);
+        assert!((bonus.output().total_hit_avg - expected_hit).abs() < 1e-6);
+        assert_eq!(
+            reference.output().total_hit_avg,
+            plain.output().total_hit_avg
+        );
+        let damage = bonus
+            .mod_db()
+            .named("Damage")
+            .find(|modifier| {
+                modifier.tags.iter().any(|tag| {
+                    matches!(
+                        tag,
+                        pobr_core::ModTag::MultiplierThreshold { var, .. } if var == "enemyDistance"
+                    )
+                })
+            })
+            .unwrap();
+        assert!(!damage.matches(bonus.config()));
+        let hit_cfg = bonus.config().clone().with_keyword_flags(
+            bonus.config().keyword_flags | pobr_data::modifier::KeywordFlags::HIT,
+        );
+        assert_eq!(damage.matches(&hit_cfg), active);
+        let row = usage
+            .lines
+            .iter()
+            .find(|row| row.text.as_deref() == Some(&line))
+            .unwrap();
+        assert_eq!(row.modifiers.len(), 1, "{row:?}");
+        let modifier = &row.modifiers[0];
+        assert_eq!(modifier.name, "Damage");
+        if active {
+            assert!(bonus.output().total_hit_avg > plain.output().total_hit_avg);
+            assert_eq!(modifier.status, ModifierStatus::Applied, "{row:?}");
+            assert!(modifier.read_gate.is_none());
+        } else {
+            assert_eq!(modifier.status, ModifierStatus::Inactive, "{row:?}");
+            assert_eq!(
+                modifier
+                    .read_gate
+                    .as_ref()
+                    .unwrap()
+                    .config_option
+                    .as_deref(),
+                Some("enemyDistance")
+            );
+        }
+    }
+    let line = "40% increased Projectile Damage with Spears while there are no Enemies within 3m";
+    for (skill, weapon) in [
+        ("MeleePlayer", "Hardwood Spear"),
+        ("IceShotPlayer", "Heavy Bow"),
+        ("FireballPlayer", "Hardwood Spear"),
+    ] {
+        for distance in [20.0, 40.0] {
+            let (plain, _) = run(skill, weapon, Some(distance), "", false);
+            let (bonus, usage) = run(skill, weapon, Some(distance), line, false);
+            assert_eq!(bonus.output().total_hit_avg, plain.output().total_hit_avg);
+            let row = usage
+                .lines
+                .iter()
+                .find(|row| row.text.as_deref() == Some(line))
+                .unwrap();
+            assert_eq!(row.modifiers[0].status, ModifierStatus::Inactive, "{row:?}");
+            assert!(row.modifiers[0].read_gate.is_none(), "{row:?}");
+        }
+    }
+}
+
+#[test]
 fn conditional_offence_limits_report_the_missing_models() {
     let data = data();
     let cases = [

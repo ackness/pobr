@@ -24,6 +24,7 @@
 use crate::rules::{DuplicateHandlerError, HandlerRegistry};
 
 mod explode;
+mod focused_thrust;
 mod granted_passive;
 mod mageblood;
 
@@ -36,6 +37,7 @@ pub fn register_special_handlers(
     registry: &mut HandlerRegistry,
 ) -> Result<(), DuplicateHandlerError> {
     explode::register(registry)?;
+    focused_thrust::register(registry)?;
     granted_passive::register(registry)?;
     mageblood::register(registry)?;
     Ok(())

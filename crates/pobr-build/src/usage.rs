@@ -417,7 +417,8 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
                     .flatten(),
                     read_gate: (status == ModifierStatus::Inactive)
                         .then(|| {
-                            missing_slot_base_gate(modifier, &slot_bases)
+                            enemy_distance_gate(modifier, context.cfg)
+                                .or_else(|| missing_slot_base_gate(modifier, &slot_bases))
                                 .or_else(|| {
                                     diagnosis
                                         .reads
@@ -745,6 +746,22 @@ fn slot_defence_bases(session: &CalculationSession) -> BTreeSet<(String, String)
             ))
         })
         .collect()
+}
+
+/// Distance thresholds use a configured multiplier, not an unknown condition.
+/// Only attach this gate when the distance is the missing requirement; a
+/// different weapon or skill must keep its own mismatch classification.
+fn enemy_distance_gate(modifier: &Modifier, cfg: &pobr_core::CalcConfig) -> Option<ReadGate> {
+    let distance_tag = |tag: &pobr_core::ModTag| matches!(tag, pobr_core::ModTag::MultiplierThreshold { var, .. } if var == "enemyDistance");
+    if !modifier.tags.iter().any(distance_tag) || modifier.matches(cfg) {
+        return None;
+    }
+    let mut without_distance = modifier.clone();
+    without_distance.tags.retain(|tag| !distance_tag(tag));
+    without_distance.matches(cfg).then_some(ReadGate {
+        state: Cow::Borrowed("enemy distance satisfies the modifier's threshold"),
+        config_option: Some(Cow::Borrowed("enemyDistance")),
+    })
 }
 
 /// A slot-scoped defence increase with no base to scale: the shield-local

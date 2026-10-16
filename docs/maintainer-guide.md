@@ -670,6 +670,8 @@ gate and no kill rate is assumed. The rule is exporter-absent. Lavianga's “Thi
 applies its Effect constantly” (`local_flask_always_drinking`) reports zero
 available uses while keeping its recovery rate.
 
+Focused Thrust (`projectile_damage_+%_with_spears_while_there_no_enemies_surrounding_you`, passive 9227) grants 40% increased Damage to Projectile hits with Spears when `enemyDistance` is at least 30 (3 m; ten units per metre), remains inactive with an `enemyDistance` config gate when unset, and assumes the configured target is the only enemy; this single-target convention has no in-game test, and the rule is `exporter: "absent"`.
+
 “#% increased Damage per Curse on you” (`damage_+%_per_active_curse_on_self`)
 scales by the PoBR config input `multiplierCursesOnSelf`
 (`Multiplier:CurseOnSelf`); with no count the line is inactive with that config

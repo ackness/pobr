@@ -24199,10 +24199,14 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "SpearDamage",
+          "name": "Damage",
           "type": "Inc",
           "value": 40.0,
-          "flags": 1024
+          "flags": 268436480,
+          "kw": 262144,
+          "tags": [
+            "MultiplierThreshold { var: \"enemyDistance\", threshold: 30.0, upper: false }"
+          ]
         }
       ]
     },
