@@ -464,21 +464,7 @@ pub fn skill_dot_terms(
         0.0
     };
     let cull = cull_multiplier(db, enemy, cfg);
-    // Blood Price: enemies have *at least* this reserved fraction. Several
-    // sources do not add their minima. Reservation reduces life to remove,
-    // without changing the damage of an individual hit or ailment.
-    let reserved = if cfg.mode_effective {
-        enemy
-            .max_of(
-                ModType::Base,
-                cfg,
-                &[ModName::from("LifeReservationPercent")],
-            )
-            .clamp(0.0, 99.0)
-    } else {
-        0.0
-    };
-    let reservation = 100.0 / (100.0 - reserved);
+    let reservation = reservation_multiplier(enemy, cfg);
     let combined_dps = (inputs.base_dps + total_dot_dps) * cull * reservation;
 
     SkillDotTerms {
@@ -506,8 +492,15 @@ pub fn skill_dot_terms(
 /// and the damage per second it takes is `100 / (100 − threshold)` times
 /// greater. "increased Culling Strike Threshold" raises the threshold.
 pub(crate) fn cull_multiplier(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig) -> f64 {
+    cull_threshold_percent(db, enemy, cfg).map_or(1.0, |percent| 100.0 / (100.0 - percent))
+}
+
+/// The Life percentage at or below which the player's Culling Strike kills the
+/// enemy, or `None` when the hit cannot cull (or the threshold is not a
+/// percentage below 100).
+pub(crate) fn cull_threshold_percent(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig) -> Option<f64> {
     if !db.flag(cfg, "CanCull") {
-        return 1.0;
+        return None;
     }
     let game = cfg.constants.game();
     let threshold = if enemy.flag(cfg, "Condition:Unique") {
@@ -519,10 +512,32 @@ pub(crate) fn cull_multiplier(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig) -> f6
     };
     let percent =
         threshold * (1.0 + db.sum(ModType::Inc, cfg, &[ModName::from("CullPercent")]) / 100.0);
-    if !(0.0..100.0).contains(&percent) {
-        return 1.0;
+    (0.0..100.0).contains(&percent).then_some(percent)
+}
+
+/// Blood Price: enemies have *at least* this percentage of their Life
+/// reserved. Several sources do not add their minima. Only the effective view
+/// counts it, and it is held below 100% so the Life left to remove stays
+/// positive.
+pub(crate) fn reserved_life_percent(enemy: &ModDb, cfg: &CalcConfig) -> f64 {
+    if cfg.mode_effective {
+        enemy
+            .max_of(
+                ModType::Base,
+                cfg,
+                &[ModName::from("LifeReservationPercent")],
+            )
+            .clamp(0.0, 99.0)
+    } else {
+        0.0
     }
-    100.0 / (100.0 - percent)
+}
+
+/// Reservation reduces the Life to remove, without changing the damage of an
+/// individual hit or ailment: the damage per second the enemy takes is
+/// `100 / (100 − reserved)` times greater.
+pub(crate) fn reservation_multiplier(enemy: &ModDb, cfg: &CalcConfig) -> f64 {
+    100.0 / (100.0 - reserved_life_percent(enemy, cfg))
 }
 
 /// Writes the skill DoT result into [`OutputTable`]'s contract fields (pure field transfer, no computation).

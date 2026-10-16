@@ -126,7 +126,8 @@ pub const COMBINE_TABLE: &[(&str, CombineMode)] = &[
     ("HitTime", CombineMode::Or),                     // :3028
     ("PreEffectiveCritChance", CombineMode::Average), // :4554
     ("CritChance", CombineMode::Crit { double_hits: false }), // :4555 (doubleHits flipped by skill data)
-    ("CritMultiplier", CombineMode::Average),                 // :4557
+    ("PreEffectiveCritMultiplier", CombineMode::Average),
+    ("CritMultiplier", CombineMode::Average), // :4557
     ("AverageDamage", CombineMode::Dps { double_hits: false }), // :4559
     ("DpsMultiplier", CombineMode::Dps { double_hits: false }),
     ("TotalDPS", CombineMode::Dps { double_hits: false }), // :4561
@@ -327,6 +328,11 @@ fn combine_legs(mh: &MinimalOutput, oh: &MinimalOutput, double_hits: bool) -> Mi
         mh.crit_multiplier,
         oh.crit_multiplier,
     ));
+    let pre_effective_crit_multiplier = round(combine(
+        "PreEffectiveCritMultiplier",
+        mh.pre_effective_crit_multiplier,
+        oh.pre_effective_crit_multiplier,
+    ));
     let total_hit_avg = round(combine("AverageDamage", mh.total_hit_avg, oh.total_hit_avg));
     let hit_chance = round(combine("HitChance", mh.hit_chance, oh.hit_chance));
     let action_rate = round(combine("Speed", mh.action_rate, oh.action_rate));
@@ -358,6 +364,7 @@ fn combine_legs(mh: &MinimalOutput, oh: &MinimalOutput, double_hits: bool) -> Mi
         crit_chance,
         pre_effective_crit_chance,
         crit_multiplier,
+        pre_effective_crit_multiplier,
         // Top-level component vector: currently takes the MH leg when dual
         // wielding (per-hand components live in HandOutput; migrating
         // ailment magnitude consumption to the Stored family is a wiring
@@ -371,6 +378,7 @@ fn combine_legs(mh: &MinimalOutput, oh: &MinimalOutput, double_hits: bool) -> Mi
             oh.average_damage,
         )),
         accuracy: mh.accuracy,
+        accuracy_hit_chance: (mh.accuracy_hit_chance + oh.accuracy_hit_chance) / 2.0,
         accuracy_hit_chance_uncapped: (mh.accuracy_hit_chance_uncapped
             + oh.accuracy_hit_chance_uncapped)
             / 2.0,
@@ -470,6 +478,7 @@ impl HandOutput {
             crit_chance: leg.crit_chance,
             pre_effective_crit_chance: leg.pre_effective_crit_chance,
             crit_multiplier: leg.crit_multiplier,
+            pre_effective_crit_multiplier: leg.pre_effective_crit_multiplier,
             speed: leg.action_rate,
             damage_components: leg.damage_components.clone(),
             average_hit: leg.total_hit_avg,

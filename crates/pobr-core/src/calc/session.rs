@@ -614,6 +614,12 @@ impl CalculationSession {
         self.env.main_hand_weapon_damage = damage;
     }
 
+    /// Notes the selected skill's gem level as the gem's own level and the
+    /// levels added to it (see [`Env::main_skill_level`](super::Env)).
+    pub fn set_main_skill_level(&mut self, gem_level: u32, bonus_levels: u32) {
+        self.env.main_skill_level = Some((gem_level, bonus_levels));
+    }
+
     pub fn set_hand_sources(
         &mut self,
         sources: Vec<super::hand_pass::HandSource>,

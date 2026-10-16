@@ -315,6 +315,28 @@ pub(crate) fn deflection_rating_terms(
     )
 }
 
+/// The magnitude of a deflected hit's mitigation: the game constant
+/// `deflect_effect` (40%) plus the BASE `DeflectEffect` modifiers.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct DeflectEffectTerms {
+    pub game_base: f64,
+    pub added: f64,
+}
+
+impl DeflectEffectTerms {
+    /// The prevented share of a deflected hit (%), held between 0 and 100.
+    pub(crate) fn percent(self) -> f64 {
+        (self.game_base + self.added).clamp(0.0, 100.0)
+    }
+}
+
+pub(crate) fn deflect_effect_terms(db: &ModDb, cfg: &CalcConfig) -> DeflectEffectTerms {
+    DeflectEffectTerms {
+        game_base: cfg.constants.game().deflect_effect,
+        added: db.sum(ModType::Base, cfg, &[ModName::from("DeflectEffect")]),
+    }
+}
+
 pub fn calc_deflection(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -335,9 +357,7 @@ pub fn calc_deflection(
     if db.flag(cfg, "DeflectIsLucky") {
         chance = luck_transform(chance, true, false);
     }
-    let effect_pct = (cfg.constants.game().deflect_effect
-        + db.sum(ModType::Base, cfg, &[ModName::from("DeflectEffect")]))
-    .clamp(0.0, 100.0);
+    let effect_pct = deflect_effect_terms(db, cfg).percent();
 
     DeflectionResult {
         rating: round(rating),
@@ -541,6 +561,7 @@ pub fn fill_defence_panels(env: &mut Env, keystones: &crate::rules::DefenceKeyst
     );
     env.player.output.deflection_rating = deflect.rating;
     env.player.output.deflect_chance = deflect.chance;
+    env.player.output.deflect_effect = deflect.effect_pct;
 }
 
 #[cfg(test)]

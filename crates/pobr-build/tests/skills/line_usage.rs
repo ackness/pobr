@@ -313,15 +313,15 @@ fn every_line_says_what_became_of_it() {
         assert_eq!(modifier.reason.as_deref(), Some("needs Attack"));
     }
 
-    // Stored, and no query asks for it; it changes drops, not a stat a
-    // calculation reports, so the line is registered as having no effect.
+    // Item rarity is a reported multiplier (`EffectiveLootRarityMod`), so the
+    // line is read; quantity is the one that changes only drops.
     let rarity = line(
         &ledger,
         "item.amulet.explicit",
         "16% increased Rarity of Items found",
     );
-    assert_eq!(rarity.status, LineStatus::NoEffect);
-    assert_eq!(rarity.modifiers[0].status, ModifierStatus::Unread);
+    assert_eq!(rarity.status, LineStatus::Applied, "{rarity:#?}");
+    assert_eq!(rarity.modifiers[0].status, ModifierStatus::Applied);
 
     // Recognised: registered as changing nothing a calculation reports, or
     // recognised by a rule that stores nothing, which is not modelled.
@@ -377,16 +377,19 @@ fn every_line_says_what_became_of_it() {
     }
 }
 
-/// A loot line changes no number the calculation reports: "15% increased
-/// Rarity of Items found" (a Gold Ring implicit in the game) parses to
-/// `LootRarity`, which no query reads, and the ledger calls the line
-/// `no_effect` rather than `unread`, so the gap queue leaves it alone.
+/// "Rarity of Items found" feeds the `EffectiveLootRarityMod` view, so the line
+/// is applied; "Quantity of Items found" (`LootQuantity`) still changes no
+/// number the calculation reports, and the ledger calls that line `no_effect`
+/// rather than `unread`, so the gap queue leaves it alone.
 #[test]
-fn a_loot_line_is_reported_as_having_no_calculated_effect() {
+fn a_rarity_line_is_applied_and_a_quantity_line_has_no_calculated_effect() {
     let data = data();
     let ledger = ledger(
         &data,
-        &["15% increased Rarity of Items found"],
+        &[
+            "15% increased Rarity of Items found",
+            "10% increased Quantity of Items found",
+        ],
         &["+10 to maximum Life"],
     );
     let rarity = line(
@@ -394,13 +397,24 @@ fn a_loot_line_is_reported_as_having_no_calculated_effect() {
         "item.bodyarmour.explicit",
         "15% increased Rarity of Items found",
     );
-    assert_eq!(rarity.status, LineStatus::NoEffect, "{rarity:#?}");
-    assert_eq!(rarity.modifiers.len(), 1, "{rarity:#?}");
+    assert_eq!(rarity.status, LineStatus::Applied, "{rarity:#?}");
     assert_eq!(rarity.modifiers[0].name, "LootRarity");
-    assert_eq!(rarity.modifiers[0].status, ModifierStatus::Unread);
-    let reason = rarity.reason.as_deref().unwrap();
+    assert_eq!(
+        pobr_build::breakdown::detail::detail_kind("EffectiveLootRarityMod"),
+        pobr_build::breakdown::detail::DetailKind::Sources
+    );
+    let quantity = line(
+        &ledger,
+        "item.bodyarmour.explicit",
+        "10% increased Quantity of Items found",
+    );
+    assert_eq!(quantity.status, LineStatus::NoEffect, "{quantity:#?}");
+    assert_eq!(quantity.modifiers.len(), 1, "{quantity:#?}");
+    assert_eq!(quantity.modifiers[0].name, "LootQuantity");
+    assert_eq!(quantity.modifiers[0].status, ModifierStatus::Unread);
+    let reason = quantity.reason.as_deref().unwrap();
     assert!(
-        reason.contains("item rarity changes drops, not a calculated stat"),
+        reason.contains("item quantity changes drops, not a calculated stat"),
         "{reason}"
     );
 }
@@ -461,7 +475,6 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
             "EnergyShieldRecharge" => "50% increased Energy Shield Recharge Rate",
             "EnergyShieldRechargeFaster" => "20% faster start of Energy Shield Recharge",
             "SelfShockEffect" => "40% reduced effect of Shock on you",
-            "SelfChillEffect" => "40% reduced Effect of Chill on you",
             "SelfChillEffectIsReversed" => "The Effect of Chill on you is reversed",
             "UnaffectedBySlows" => "Your speed is unaffected by Slows",
             "SlowEffectOnSelf" => "30% reduced Slowing Potency of Debuffs on You",

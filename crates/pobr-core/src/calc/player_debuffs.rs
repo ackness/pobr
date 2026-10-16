@@ -18,8 +18,12 @@ pub(super) fn view_names(stat: &str) -> &'static [&'static str] {
         "WitherEffectOnSelf" => &["WitherEffectOnSelf"],
         "SelfBleedEffect" => &["SelfBleedEffect"],
         "SelfIgniteEffect" => &["SelfIgniteEffect"],
+        "SelfChillEffect" => &["SelfChillEffect"],
         "DebuffExpirationModifier" => &["SelfDebuffExpirationRate"],
         "CurseEffectOnSelf" => &["CurseEffectOnSelf"],
+        // Blind on the player is a debuff, not an ailment: only the debuff
+        // expiration rate changes how long it lasts.
+        "SelfBlindDuration" => &["SelfBlindDuration"],
         "SelfBleedDuration" => &["SelfBleedDuration", "SelfAilmentDuration"],
         "SelfPoisonDuration" => &["SelfPoisonDuration", "SelfAilmentDuration"],
         "SelfIgniteDuration" => &[
@@ -50,7 +54,7 @@ pub(super) fn view_names(stat: &str) -> &'static [&'static str] {
 }
 
 pub(super) fn is_duration_view(stat: &str) -> bool {
-    view_names(stat).contains(&"SelfAilmentDuration")
+    stat.starts_with("Self") && stat.ends_with("Duration") && !view_names(stat).is_empty()
 }
 
 /// These are modifier views, even without a configured incoming debuff.
@@ -81,6 +85,8 @@ pub(super) fn calculate_views(env: &mut Env) {
     out.wither_effect_on_self = percent("WitherEffectOnSelf");
     out.self_bleed_effect = percent("SelfBleedEffect");
     out.self_ignite_effect = percent("SelfIgniteEffect");
+    out.self_chill_effect = percent("SelfChillEffect");
+    out.self_blind_duration = percent("SelfBlindDuration");
     out.debuff_expiration_modifier = 100.0 * expiration;
     out.curse_effect_on_self = percent("CurseEffectOnSelf");
     out.self_bleed_duration = percent("SelfBleedDuration");

@@ -981,16 +981,10 @@ fn is_unasked_variable(modifier: &UsageModifier) -> bool {
 /// Stored modifiers that change nothing a calculation reports, with the
 /// reason their line is registered under: drop-side effects, which change the
 /// loot the game gives, not a stat the calculation reports.
-const NO_OUTPUT_NAMES: &[(&str, &str)] = &[
-    (
-        "LootRarity",
-        "item rarity changes drops, not a calculated stat",
-    ),
-    (
-        "LootQuantity",
-        "item quantity changes drops, not a calculated stat",
-    ),
-];
+const NO_OUTPUT_NAMES: &[(&str, &str)] = &[(
+    "LootQuantity",
+    "item quantity changes drops, not a calculated stat",
+)];
 
 /// The reason a line whose every modifier is [`NO_OUTPUT_NAMES`] shows when no
 /// query read any of them ([`LineStatus::NoEffect`]); `None` when the line

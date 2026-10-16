@@ -219,21 +219,11 @@ fn gain_for_hit(
     };
     let recovery = factor(db, cfg, &format!("{name}RecoveryRate"));
     let amount = amount * factor(db, cfg, &format!("{name}LeechAmount"));
-    let instance = super::survivability::leech_instance(
-        pool,
-        amount,
-        resource,
-        factor(db, cfg, &format!("{name}LeechRate")),
-        factor(db, cfg, &format!("Max{name}LeechRate")),
-    );
+    let speed = factor(db, cfg, &format!("{name}LeechRate"));
+    let cap = super::survivability::leech_cap_terms(db, cfg, pool, resource);
+    let instance = super::survivability::leech_instance(amount, speed, cap);
     let normal = instance.instance_total * (1.0 - instant_fraction);
-    let normal_instance = super::survivability::leech_instance(
-        pool,
-        normal,
-        resource,
-        factor(db, cfg, &format!("{name}LeechRate")),
-        factor(db, cfg, &format!("Max{name}LeechRate")),
-    );
+    let normal_instance = super::survivability::leech_instance(normal, speed, cap);
     Gain {
         per_hit: normal * recovery,
         instant: instance.instance_total * instant_fraction,
