@@ -24,6 +24,98 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         DisplayStatDefinition::computed(id, cat, vt).with_pob_key(pob)
     };
     let mut catalog = vec![
+        computed(
+            "ExposureEffectOnSelf",
+            Cat::Defence,
+            Vt::Percent,
+            "ExposureEffectOnSelf",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "WitherEffectOnSelf",
+            Cat::Defence,
+            Vt::Percent,
+            "WitherEffectOnSelf",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "SelfBleedEffect",
+            Cat::Defence,
+            Vt::Percent,
+            "SelfBleedEffect",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "SelfIgniteEffect",
+            Cat::Defence,
+            Vt::Percent,
+            "SelfIgniteEffect",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "DebuffExpirationModifier",
+            Cat::Defence,
+            Vt::Percent,
+            "DebuffExpirationModifier",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "CurseEffectOnSelf",
+            Cat::Defence,
+            Vt::Percent,
+            "CurseEffectOnSelf",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "SelfBleedDuration",
+            Cat::Defence,
+            Vt::Percent,
+            "SelfBleedDuration",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "SelfPoisonDuration",
+            Cat::Defence,
+            Vt::Percent,
+            "SelfPoisonDuration",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "SelfIgniteDuration",
+            Cat::Defence,
+            Vt::Percent,
+            "SelfIgniteDuration",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "SelfChillDuration",
+            Cat::Defence,
+            Vt::Percent,
+            "SelfChillDuration",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "SelfFreezeDuration",
+            Cat::Defence,
+            Vt::Percent,
+            "SelfFreezeDuration",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "SelfShockDuration",
+            Cat::Defence,
+            Vt::Percent,
+            "SelfShockDuration",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "CorruptedBloodImmunity",
+            Cat::Defence,
+            Vt::Bool,
+            "CorruptedBloodImmunity",
+        ),
+        computed("MaimImmunity", Cat::Defence, Vt::Bool, "MaimImmunity"),
+        computed("HinderImmunity", Cat::Defence, Vt::Bool, "HinderImmunity"),
         computed("DecayDPS", Cat::DotDamage, Vt::Number, "DecayDPS"),
         computed(
             "MirageBurningGroundDPS",
@@ -1337,6 +1429,21 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "ProjectileEvadeChance" => output.projectile_evade_chance,
         "SpellEvadeChance" => output.spell_evade_chance,
         "SpellProjectileEvadeChance" => output.spell_projectile_evade_chance,
+        "ExposureEffectOnSelf" => output.exposure_effect_on_self,
+        "WitherEffectOnSelf" => output.wither_effect_on_self,
+        "SelfBleedEffect" => output.self_bleed_effect,
+        "SelfIgniteEffect" => output.self_ignite_effect,
+        "DebuffExpirationModifier" => output.debuff_expiration_modifier,
+        "CurseEffectOnSelf" => output.curse_effect_on_self,
+        "SelfBleedDuration" => output.self_bleed_duration,
+        "SelfPoisonDuration" => output.self_poison_duration,
+        "SelfIgniteDuration" => output.self_ignite_duration,
+        "SelfChillDuration" => output.self_chill_duration,
+        "SelfFreezeDuration" => output.self_freeze_duration,
+        "SelfShockDuration" => output.self_shock_duration,
+        "CorruptedBloodImmunity" => f64::from(output.corrupted_blood_immunity),
+        "MaimImmunity" => f64::from(output.maim_immunity),
+        "HinderImmunity" => f64::from(output.hinder_immunity),
         "StunThreshold" => output.stun_threshold,
         "SelfStunChance" => output.self_stun_chance,
         "StunDuration" => output.stun_duration,

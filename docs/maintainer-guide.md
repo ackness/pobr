@@ -689,13 +689,28 @@ contribution (the existing imported config supplies 15%, so 40% reduction gives
 player's Chilled state and an explicit `conditionChilledEffect` / `ChillVal`:
 50% Chill with 40% reduced effect is a 30% action-speed slow, then subject to
 slowing potency. No incoming hit or default Chill magnitude is inferred.
-Effect reductions cannot make a debuff beneficial. Incoming curses, ailment
-durations, Corrupted Blood, Maim and Hinder have no player models; these six
-text families use `batch: "unmodelled"` with the missing model named,
-not `S0`. Their game sources are `curse_effect_on_self_+%`,
-`self_bleed_duration_+%`, `base_all_ailment_duration_on_self_+%` and the three
-`immune_to_*` stats. Generic `PhysicalDegen` has neither ailment identity nor
-duration, so these duration and immunity lines cannot alter it.
+Effect reductions cannot make a debuff beneficial. `CurseEffectOnSelf`, the six
+`Self<Ailment>Duration` fields, and `CorruptedBloodImmunity`, `MaimImmunity` and
+`HinderImmunity` display player-side modifier views. Curse effect and durations
+are percentages of base: `(100 + INC) * MORE` (curse effect is floored at zero).
+Durations combine the ailment-specific and all-ailment modifiers, plus
+elemental-ailment modifiers for Ignite, Chill, Freeze and Shock. Cool Headed,
+Warm Blooded and Strong Hearted supply their game-data 50% less duration through
+the same views.
+Immunity views reuse the existing `*Immune` modifiers, including “cannot be
+inflicted” text. `DebuffExpirationModifier` is `10000 / (100 + expiration rate)`
+percent (game `debuff_time_passed_+%`); each duration view is multiplied by
+`DebuffExpirationModifier / 100`. `ExposureEffectOnSelf`, `WitherEffectOnSelf`,
+`SelfBleedEffect` and `SelfIgniteEffect` likewise expose nonnegative
+`(100 + INC) * MORE` views from
+`exposure_effect_on_you_+%`, `withered_effect_on_self_+%`,
+`base_bleeding_magnitude_+%_on_self` and `ignite_effect_on_self_+%`. The other
+views use `curse_effect_on_self_+%`, `self_bleed_duration_+%`,
+`base_all_ailment_duration_on_self_+%` and the three
+`immune_to_*` stats. Incoming curses, ailments, Corrupted Blood, Maim and Hinder
+remain unmodelled, so these views change no other output. Enemy curses read the
+enemy database separately. Generic `PhysicalDegen` has neither ailment identity
+nor duration, so duration and immunity lines cannot alter it.
 
 Spell Mana Cost Efficiency（`base_spell_mana_cost_efficiency_+%`）只降低法术魔力消耗，效率 INC 与通用效率相加后，以 `1 + 效率 / 100` 除消耗；它标为 absent。The Fall of the Axe 的 “Grants Onslaught during effect”（`charm_gain_onslaught_during_effect`）同样标为 absent；按 [游戏 Onslaught 定义](https://poe2db.tw/us/Onslaught) 增加 20% Skill Speed 与 10% Movement Speed。沿用 flask/charm 约定：构筑中启用且可生效的护符视为效果激活；“Used when you are affected by a Slow” 不建模为 uptime，另一件生效的物品不会激活被关闭或超出槽位的护符。
 

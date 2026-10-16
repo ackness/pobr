@@ -9016,7 +9016,14 @@
     },
     {
       "text": "10% reduced Duration of [Ailments|Ailments] on You",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SelfAilmentDuration",
+          "type": "Inc",
+          "value": -10.0
+        }
+      ]
     },
     {
       "text": "10% reduced Effect of [Chill|Chill] on you",
@@ -9045,7 +9052,14 @@
     },
     {
       "text": "10% reduced [BuffEffect|effect] of [Curse|Curses] on you",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CurseEffectOnSelf",
+          "type": "Inc",
+          "value": -10.0
+        }
+      ]
     },
     {
       "text": "10% reduced [BuffEffect|effect] of [Shock|Shock] on you",
@@ -13210,7 +13224,14 @@
     },
     {
       "text": "15% reduced Duration of [Ailments|Ailments] on You",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SelfAilmentDuration",
+          "type": "Inc",
+          "value": -15.0
+        }
+      ]
     },
     {
       "text": "15% reduced Effect of [Chill|Chill] on you",
@@ -13251,7 +13272,14 @@
     },
     {
       "text": "15% reduced [BuffEffect|effect] of [Curse|Curses] on you",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CurseEffectOnSelf",
+          "type": "Inc",
+          "value": -15.0
+        }
+      ]
     },
     {
       "text": "15% reduced [BuffEffect|effect] of [Shock|Shock] on you",
@@ -19833,7 +19861,14 @@
     },
     {
       "text": "25% reduced [BuffEffect|effect] of [Curse|Curses] on you",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CurseEffectOnSelf",
+          "type": "Inc",
+          "value": -25.0
+        }
+      ]
     },
     {
       "text": "25% reduced [Curse] Duration",
@@ -22743,7 +22778,14 @@
     },
     {
       "text": "30% reduced [BuffEffect|effect] of [Curse|Curses] on you",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CurseEffectOnSelf",
+          "type": "Inc",
+          "value": -30.0
+        }
+      ]
     },
     {
       "text": "30% reduced [BuffEffect|effect] of [Shock|Shock] on you",
@@ -25114,7 +25156,14 @@
     },
     {
       "text": "40% reduced Duration of [Bleeding] on You",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SelfBleedDuration",
+          "type": "Inc",
+          "value": -40.0
+        }
+      ]
     },
     {
       "text": "40% reduced Effect of [Chill|Chill] on you",
@@ -26476,7 +26525,14 @@
     },
     {
       "text": "5% reduced [BuffEffect|effect] of [Curse|Curses] on you",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CurseEffectOnSelf",
+          "type": "Inc",
+          "value": -5.0
+        }
+      ]
     },
     {
       "text": "5% reduced [Flask|Flask] Charges used",
@@ -27306,7 +27362,14 @@
     },
     {
       "text": "50% reduced [BuffEffect|effect] of [Curse|Curses] on you",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CurseEffectOnSelf",
+          "type": "Inc",
+          "value": -50.0
+        }
+      ]
     },
     {
       "text": "50% reduced [BuffEffect|effect] of [Shock|Shock] on you",
@@ -27365,7 +27428,14 @@
     },
     {
       "text": "50% reduced effect of Curses on you",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CurseEffectOnSelf",
+          "type": "Inc",
+          "value": -50.0
+        }
+      ]
     },
     {
       "text": "50% reduced effect of [Archon] [Buff|Buffs] on you",
@@ -38856,7 +38926,14 @@
     },
     {
       "text": "Immune to [CorruptedBlood|Corrupted Blood]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CorruptedBloodImmune",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Immune to [Exposure]",
@@ -38875,7 +38952,14 @@
     },
     {
       "text": "Immune to [Hinder]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "HinderImmune",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Immune to [Ignite] if a majority of your Socketed [SupportGem|Support Gems] are Red",
@@ -38893,7 +38977,14 @@
     },
     {
       "text": "Immune to [Maim]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MaimImmune",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Immune to [Maim] while [Shapeshift|Shapeshifted]",
