@@ -930,14 +930,24 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             "TotemPlacementTime",
         ),
         computed("TotemLife", Cat::SkillMechanics, Vt::Number, "TotemLife"),
-        computed("TotemArmour", Cat::SkillMechanics, Vt::Number, "TotemArmour"),
+        computed(
+            "TotemArmour",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "TotemArmour",
+        ),
         computed(
             "ActiveTotemLimit",
             Cat::SkillMechanics,
             Vt::Number,
             "ActiveTotemLimit",
         ),
-        computed("TotemEvasion", Cat::SkillMechanics, Vt::Number, "TotemEvasion"),
+        computed(
+            "TotemEvasion",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "TotemEvasion",
+        ),
         computed(
             "TotemEnergyShield",
             Cat::SkillMechanics,

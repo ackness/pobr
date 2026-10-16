@@ -311,8 +311,8 @@ const PURITY_OF_FIRE: &str = r#"<Gem gemId="Metadata/Items/Gems/SkillGemPurityOf
 fn the_characters_auras_reach_its_totem() {
     let data = data();
     let options = DataOrchestratorOptions::default();
-    let with = calculate_with_data(&build_with_aura(PURITY_OF_FIRE), &data, &options)
-        .expect("calculate");
+    let with =
+        calculate_with_data(&build_with_aura(PURITY_OF_FIRE), &data, &options).expect("calculate");
     let without = calculate_with_data(&build_with_aura(""), &data, &options).expect("calculate");
     assert_eq!(without.totem_resist_total, [75.0, 75.0, 75.0, 35.0]);
     assert_eq!(with.totem_resist_total, [116.0, 75.0, 75.0, 35.0]);
@@ -412,9 +412,8 @@ fn the_totem_limit_comes_from_the_totem_gem_and_its_modifiers() {
     assert_eq!(input("TotemLimitBase"), 2.0);
     assert_eq!(
         input("HasTotem")
-            * ((input("TotemLimitBase") + input("AdditionalTotemLimit"))
-                * input("TotemLimitMore"))
-            .floor(),
+            * ((input("TotemLimitBase") + input("AdditionalTotemLimit")) * input("TotemLimitMore"))
+                .floor(),
         4.0
     );
 }

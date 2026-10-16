@@ -533,7 +533,11 @@ fn full_mana_percentage_defaults_to_the_whole_pool_and_takes_the_override() {
         .unwrap()
         .1;
     close(overridden, 1.0, "overridden");
-    close(value(&session, "FullLifePercentage"), 100.0, "Life untouched");
+    close(
+        value(&session, "FullLifePercentage"),
+        100.0,
+        "Life untouched",
+    );
 }
 
 fn strike_session(skill_types: SkillTypes, mods: Vec<Modifier>) -> CalculationSession {
