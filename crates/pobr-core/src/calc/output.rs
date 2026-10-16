@@ -2,6 +2,23 @@ use pobr_data::prelude::DamageType;
 
 use super::{DamageComponent, MinimalOutput, SkillUseTime};
 
+/// Non-critical enemy mitigation resolved while calculating hit DPS.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HitEffectiveTerms {
+    pub multiplier: f64,
+    pub damage_type: DamageType,
+    pub reduction: f64,
+    pub taken: f64,
+}
+
+/// Calcs inputs retained from one hit pass, without another damage calculation.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct HitCalcs {
+    pub effective: Vec<HitEffectiveTerms>,
+    pub crit_effect: f64,
+    pub dps: super::scaled_damage::DpsEndFactors,
+}
+
 /// One included effect. `hit_dps` is per instance; `dot_dps` is its allocated
 /// share after stacking limits. `dps` includes count, DoT and culling, and the
 /// rows sum to FullDPS. Failures remain visible instead of disappearing.
@@ -29,6 +46,11 @@ pub struct FullDpsOutput {
 pub struct OutputTable {
     /// Inputs and resolved terms retained by the EHP stage for display and details.
     pub ehp_terms: Option<super::EhpTerms>,
+    /// Retained inputs from the selected hit pass; hand tables retain their own.
+    pub hit_calcs: HitCalcs,
+    pub repeats: f64,
+    /// Expected incoming hits until death, including avoidance.
+    pub total_number_of_hits: f64,
     /// Player debuff modifier views; durations are percentages of base duration.
     pub exposure_effect_on_self: f64,
     pub wither_effect_on_self: f64,
@@ -512,6 +534,7 @@ pub struct StoredDamageRange {
 ///  `stored_ranges` was appended per the C6c convention -- the min/max input surface for ailment magnitude).
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct HandOutput {
+    pub hit_calcs: HitCalcs,
     /// Accuracy Rating evaluated in this hand's modifier scope.
     pub accuracy: f64,
     /// This hand's hit chance (fraction; vendor `HitChance`, the AVERAGE input).
@@ -577,6 +600,9 @@ impl Default for OutputTable {
     fn default() -> Self {
         Self {
             ehp_terms: None,
+            hit_calcs: HitCalcs::default(),
+            repeats: 0.0,
+            total_number_of_hits: 0.0,
             exposure_effect_on_self: 100.0,
             wither_effect_on_self: 100.0,
             self_bleed_effect: 100.0,
@@ -871,6 +897,7 @@ impl Default for OutputTable {
 impl From<&MinimalOutput> for OutputTable {
     fn from(value: &MinimalOutput) -> Self {
         Self {
+            hit_calcs: value.hit_calcs.clone(),
             life: value.life,
             mana: value.mana,
             fire_resistance: value.fire_resistance,

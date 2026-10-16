@@ -901,3 +901,166 @@ fn ailment_calcs_expose_retained_chance_duration_roll_and_source_ranges() {
         assert!(empty.derived_detail(id).is_some(), "{id}");
     }
 }
+
+#[test]
+fn hit_calcs_keep_fractional_bounds_and_reuse_noncritical_mitigation() {
+    // 7.5–12.5 base, 20% increased and 50% more = 13.5–22.5.
+    // 25% enemy reduction and 20% increased taken = 0.9, hence 12.15–20.25.
+    for name in ["Physical", "Fire", "Cold", "Lightning", "Chaos"] {
+        let mut session = super::support::session(MinimalInput {
+            base_hit_min: 7.5,
+            base_hit_max: 12.5,
+            ..Default::default()
+        })
+        .with_config(CalcConfig::spell().with_mode_effective(true));
+        session.add_modifiers([
+            Modifier::number("Damage", ModType::Inc, 20.0),
+            Modifier::number("Damage", ModType::More, 50.0),
+            Modifier::number("CriticalStrikeChance", ModType::Base, 25.0),
+            Modifier::number("DPS", ModType::Inc, 20.0),
+            Modifier::number("DPS", ModType::More, 50.0),
+            Modifier::number("GrenadeActivateTwice", ModType::Base, 50.0),
+            Modifier::number("RepeatCount", ModType::Base, 2.0),
+            Modifier::number("QuantityMultiplier", ModType::Base, 3.0),
+        ]);
+        if name != "Physical" {
+            session.add_modifiers([Modifier::number(
+                format!("PhysicalDamageConvertTo{name}"),
+                ModType::Base,
+                100.0,
+            )]);
+        }
+        session.add_enemy_modifiers([
+            Modifier::number(
+                if name == "Physical" {
+                    "PhysicalDamageReduction".into()
+                } else {
+                    format!("{name}Resist")
+                },
+                ModType::Base,
+                25.0,
+            ),
+            Modifier::number("DamageTaken", ModType::Inc, 20.0),
+        ]);
+        session.perform_minimal().unwrap();
+        let out = session.output();
+        for (id, expected) in [
+            (format!("{name}Min"), 12.15),
+            (format!("{name}Max"), 20.25),
+            (format!("{name}EffMult"), 0.9),
+            ("TotalMin".into(), 12.15),
+            ("TotalMax".into(), 20.25),
+            ("CritEffect".into(), 1.25),
+            ("DpsMultiplier".into(), 2.7),
+            ("Repeats".into(), 3.0),
+        ] {
+            assert!(
+                (display_value(out, &id) - expected).abs() < 1e-9,
+                "{name} {id}: {}",
+                display_value(out, &id)
+            );
+            let d = session.derived_detail(&id).unwrap();
+            let get = |key: &str| d.inputs.iter().find(|(k, _)| k == key).unwrap().1;
+            let rebuilt = if id.ends_with("EffMult") {
+                get("HitTypePresent")
+                    * get("EnemyTakenFactor")
+                    * (1.0 - get("HitReduction") / 100.0)
+            } else if id.starts_with("Total") {
+                d.inputs.iter().map(|(_, v)| v).sum()
+            } else if id.ends_with("Min") || id.ends_with("Max") {
+                get("PreMitigationBound") * get("HitEnemyMultiplier")
+            } else if id == "CritEffect" {
+                1.0 - get("HitCritChance") + get("HitCritChance") * get("HitCritMultiplier")
+            } else if id == "Repeats" {
+                1.0 + get("AdditionalRepeats").max(0.0)
+            } else {
+                get("SkillDpsFactor")
+                    * (1.0 + get("IncreasedDps") / 100.0)
+                    * get("MoreDps")
+                    * get("GrenadeDpsFactor")
+                    * get("BarrageDpsFactor")
+            };
+            assert!((rebuilt - expected).abs() < 1e-9, "{id} detail");
+        }
+    }
+}
+
+#[test]
+fn hit_calcs_keep_each_hands_range_and_combine_only_dps_multiplier() {
+    for double_hits in [false, true] {
+        let mut session = super::support::session(MinimalInput::default())
+            .with_config(CalcConfig::attack().with_mode_effective(true));
+        session.set_hand_sources(
+            vec![
+                HandSource::main_hand(WeaponBase {
+                    hit_min: 7.5,
+                    hit_max: 12.5,
+                    ..Default::default()
+                }),
+                HandSource::off_hand(WeaponBase {
+                    hit_min: 30.0,
+                    hit_max: 40.0,
+                    ..Default::default()
+                }),
+            ],
+            double_hits,
+        );
+        session.add_enemy_modifiers([Modifier::number(
+            "PhysicalDamageReduction",
+            ModType::Base,
+            50.0,
+        )]);
+        session.add_modifiers([
+            Modifier::number("DPS", ModType::More, 100.0)
+                .with_tag(ModTag::condition("MainHandAttack", false)),
+            Modifier::number("DPS", ModType::More, 200.0)
+                .with_tag(ModTag::condition("OffHandAttack", false)),
+        ]);
+        session.perform_minimal().unwrap();
+        let out = session.output();
+        for (id, expected) in [
+            ("MainHandPhysicalMin", 3.75),
+            ("MainHandTotalMax", 6.25),
+            ("OffHandPhysicalMin", 15.0),
+            ("OffHandTotalMax", 20.0),
+            ("MainHandPhysicalEffMult", 0.5),
+            ("OffHandPhysicalEffMult", 0.5),
+            ("MainHandDpsMultiplier", 2.0),
+            ("OffHandDpsMultiplier", 3.0),
+            ("TotalMin", 0.0),
+            ("PhysicalMax", 0.0),
+            ("CritEffect", 0.0),
+            ("DpsMultiplier", if double_hits { 5.0 } else { 2.5 }),
+        ] {
+            assert_eq!(display_value(out, id), expected, "{id}");
+            assert!(session.derived_detail(id).is_some(), "{id}");
+        }
+        let d = session.derived_detail("DpsMultiplier").unwrap();
+        let values: Vec<_> = d.inputs.iter().map(|(_, v)| *v).collect();
+        assert_eq!(
+            (values[0] + values[1]) / values[2],
+            display_value(out, "DpsMultiplier")
+        );
+    }
+}
+
+#[test]
+fn total_number_of_hits_exposes_ehp_survival_after_avoidance() {
+    let mut session = super::support::session(MinimalInput {
+        base_life: 2000.0,
+        ..Default::default()
+    });
+    session.setup_enemy(82, pobr_data::prelude::EnemyTier::Pinnacle);
+    session.perform_minimal().unwrap();
+    let d = session.derived_detail("TotalNumberOfHits").unwrap();
+    let get = |key: &str| d.inputs.iter().find(|(k, _)| k == key).unwrap().1;
+    let expected = get("MitigatedSurvivalHits") / (1.0 - get("AvoidedHitChance") / 100.0);
+    assert_eq!(
+        display_value(session.output(), "TotalNumberOfHits"),
+        expected
+    );
+    assert!(
+        (expected * session.output().total_enemy_damage_in - session.output().total_ehp).abs()
+            < 1e-8
+    );
+}

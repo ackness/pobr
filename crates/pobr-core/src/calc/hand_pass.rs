@@ -128,7 +128,8 @@ pub const COMBINE_TABLE: &[(&str, CombineMode)] = &[
     ("CritChance", CombineMode::Crit { double_hits: false }), // :4555 (doubleHits flipped by skill data)
     ("CritMultiplier", CombineMode::Average),                 // :4557
     ("AverageDamage", CombineMode::Dps { double_hits: false }), // :4559
-    ("TotalDPS", CombineMode::Dps { double_hits: false }),    // :4561
+    ("DpsMultiplier", CombineMode::Dps { double_hits: false }),
+    ("TotalDPS", CombineMode::Dps { double_hits: false }), // :4561
     ("StoredCombinedAvg", CombineMode::Dps { double_hits: false }), // :4588 (per damage type)
 ];
 
@@ -331,7 +332,14 @@ fn combine_legs(mh: &MinimalOutput, oh: &MinimalOutput, double_hits: bool) -> Mi
     let action_rate = round(combine("Speed", mh.action_rate, oh.action_rate));
     let dps = round(combine("TotalDPS", mh.dps, oh.dps));
 
+    let mut hit_calcs = mh.hit_calcs.clone();
+    hit_calcs.dps.dps_multiplier = combine(
+        "DpsMultiplier",
+        mh.hit_calcs.dps.dps_multiplier,
+        oh.hit_calcs.dps.dps_multiplier,
+    );
     MinimalOutput {
+        hit_calcs,
         // Defence/resource family: pass-independent, takes the MH leg.
         life: mh.life,
         mana: mh.mana,
@@ -451,6 +459,7 @@ impl HandOutput {
     /// Extracts combineStat's input surface from one leg's `MinimalOutput`.
     pub fn from_minimal(leg: &MinimalOutput) -> Self {
         Self {
+            hit_calcs: leg.hit_calcs.clone(),
             accuracy: leg.accuracy,
             hit_chance: leg.hit_chance,
             crit_chance: leg.crit_chance,

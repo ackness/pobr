@@ -149,7 +149,9 @@ fn catalog_entry_counts_locked() {
         // ExposureEffectOnSelf, WitherEffectOnSelf, SelfBleedEffect,
         // SelfIgniteEffect and DebuffExpirationModifier (+5).
         // Damaging-ailment chance/duration/multipliers/roll/stacks/source ranges and ShockChance (+34).
-        364,
+        // Hit Calcs: five types × Min/Max/EffMult, TotalMin/TotalMax/CritEffect/
+        // DpsMultiplier, each with MainHand/OffHand; Repeats and TotalNumberOfHits (+59).
+        423,
         "a change in Computed entry count needs explicit review"
     );
 }

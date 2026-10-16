@@ -24,6 +24,270 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         DisplayStatDefinition::computed(id, cat, vt).with_pob_key(pob)
     };
     let mut catalog = vec![
+        computed("PhysicalMin", Cat::Offence, Vt::Number, "PhysicalMin"),
+        computed("PhysicalMax", Cat::Offence, Vt::Number, "PhysicalMax"),
+        computed(
+            "PhysicalEffMult",
+            Cat::Offence,
+            Vt::Number,
+            "PhysicalEffMult",
+        ),
+        computed("FireMin", Cat::Offence, Vt::Number, "FireMin"),
+        computed("FireMax", Cat::Offence, Vt::Number, "FireMax"),
+        computed("FireEffMult", Cat::Offence, Vt::Number, "FireEffMult"),
+        computed("ColdMin", Cat::Offence, Vt::Number, "ColdMin"),
+        computed("ColdMax", Cat::Offence, Vt::Number, "ColdMax"),
+        computed("ColdEffMult", Cat::Offence, Vt::Number, "ColdEffMult"),
+        computed("LightningMin", Cat::Offence, Vt::Number, "LightningMin"),
+        computed("LightningMax", Cat::Offence, Vt::Number, "LightningMax"),
+        computed(
+            "LightningEffMult",
+            Cat::Offence,
+            Vt::Number,
+            "LightningEffMult",
+        ),
+        computed("ChaosMin", Cat::Offence, Vt::Number, "ChaosMin"),
+        computed("ChaosMax", Cat::Offence, Vt::Number, "ChaosMax"),
+        computed("ChaosEffMult", Cat::Offence, Vt::Number, "ChaosEffMult"),
+        computed("TotalMin", Cat::Offence, Vt::Number, "TotalMin"),
+        computed("TotalMax", Cat::Offence, Vt::Number, "TotalMax"),
+        computed("CritEffect", Cat::Offence, Vt::Number, "CritEffect"),
+        computed("DpsMultiplier", Cat::Offence, Vt::Number, "DpsMultiplier"),
+        computed(
+            "MainHandPhysicalMin",
+            Cat::Offence,
+            Vt::Number,
+            "MainHand.PhysicalMin",
+        ),
+        computed(
+            "MainHandPhysicalMax",
+            Cat::Offence,
+            Vt::Number,
+            "MainHand.PhysicalMax",
+        ),
+        computed(
+            "MainHandPhysicalEffMult",
+            Cat::Offence,
+            Vt::Number,
+            "MainHand.PhysicalEffMult",
+        ),
+        computed(
+            "MainHandFireMin",
+            Cat::Offence,
+            Vt::Number,
+            "MainHand.FireMin",
+        ),
+        computed(
+            "MainHandFireMax",
+            Cat::Offence,
+            Vt::Number,
+            "MainHand.FireMax",
+        ),
+        computed(
+            "MainHandFireEffMult",
+            Cat::Offence,
+            Vt::Number,
+            "MainHand.FireEffMult",
+        ),
+        computed(
+            "MainHandColdMin",
+            Cat::Offence,
+            Vt::Number,
+            "MainHand.ColdMin",
+        ),
+        computed(
+            "MainHandColdMax",
+            Cat::Offence,
+            Vt::Number,
+            "MainHand.ColdMax",
+        ),
+        computed(
+            "MainHandColdEffMult",
+            Cat::Offence,
+            Vt::Number,
+            "MainHand.ColdEffMult",
+        ),
+        computed(
+            "MainHandLightningMin",
+            Cat::Offence,
+            Vt::Number,
+            "MainHand.LightningMin",
+        ),
+        computed(
+            "MainHandLightningMax",
+            Cat::Offence,
+            Vt::Number,
+            "MainHand.LightningMax",
+        ),
+        computed(
+            "MainHandLightningEffMult",
+            Cat::Offence,
+            Vt::Number,
+            "MainHand.LightningEffMult",
+        ),
+        computed(
+            "MainHandChaosMin",
+            Cat::Offence,
+            Vt::Number,
+            "MainHand.ChaosMin",
+        ),
+        computed(
+            "MainHandChaosMax",
+            Cat::Offence,
+            Vt::Number,
+            "MainHand.ChaosMax",
+        ),
+        computed(
+            "MainHandChaosEffMult",
+            Cat::Offence,
+            Vt::Number,
+            "MainHand.ChaosEffMult",
+        ),
+        computed(
+            "MainHandTotalMin",
+            Cat::Offence,
+            Vt::Number,
+            "MainHand.TotalMin",
+        ),
+        computed(
+            "MainHandTotalMax",
+            Cat::Offence,
+            Vt::Number,
+            "MainHand.TotalMax",
+        ),
+        computed(
+            "MainHandCritEffect",
+            Cat::Offence,
+            Vt::Number,
+            "MainHand.CritEffect",
+        ),
+        computed(
+            "MainHandDpsMultiplier",
+            Cat::Offence,
+            Vt::Number,
+            "MainHand.DpsMultiplier",
+        ),
+        computed(
+            "OffHandPhysicalMin",
+            Cat::Offence,
+            Vt::Number,
+            "OffHand.PhysicalMin",
+        ),
+        computed(
+            "OffHandPhysicalMax",
+            Cat::Offence,
+            Vt::Number,
+            "OffHand.PhysicalMax",
+        ),
+        computed(
+            "OffHandPhysicalEffMult",
+            Cat::Offence,
+            Vt::Number,
+            "OffHand.PhysicalEffMult",
+        ),
+        computed(
+            "OffHandFireMin",
+            Cat::Offence,
+            Vt::Number,
+            "OffHand.FireMin",
+        ),
+        computed(
+            "OffHandFireMax",
+            Cat::Offence,
+            Vt::Number,
+            "OffHand.FireMax",
+        ),
+        computed(
+            "OffHandFireEffMult",
+            Cat::Offence,
+            Vt::Number,
+            "OffHand.FireEffMult",
+        ),
+        computed(
+            "OffHandColdMin",
+            Cat::Offence,
+            Vt::Number,
+            "OffHand.ColdMin",
+        ),
+        computed(
+            "OffHandColdMax",
+            Cat::Offence,
+            Vt::Number,
+            "OffHand.ColdMax",
+        ),
+        computed(
+            "OffHandColdEffMult",
+            Cat::Offence,
+            Vt::Number,
+            "OffHand.ColdEffMult",
+        ),
+        computed(
+            "OffHandLightningMin",
+            Cat::Offence,
+            Vt::Number,
+            "OffHand.LightningMin",
+        ),
+        computed(
+            "OffHandLightningMax",
+            Cat::Offence,
+            Vt::Number,
+            "OffHand.LightningMax",
+        ),
+        computed(
+            "OffHandLightningEffMult",
+            Cat::Offence,
+            Vt::Number,
+            "OffHand.LightningEffMult",
+        ),
+        computed(
+            "OffHandChaosMin",
+            Cat::Offence,
+            Vt::Number,
+            "OffHand.ChaosMin",
+        ),
+        computed(
+            "OffHandChaosMax",
+            Cat::Offence,
+            Vt::Number,
+            "OffHand.ChaosMax",
+        ),
+        computed(
+            "OffHandChaosEffMult",
+            Cat::Offence,
+            Vt::Number,
+            "OffHand.ChaosEffMult",
+        ),
+        computed(
+            "OffHandTotalMin",
+            Cat::Offence,
+            Vt::Number,
+            "OffHand.TotalMin",
+        ),
+        computed(
+            "OffHandTotalMax",
+            Cat::Offence,
+            Vt::Number,
+            "OffHand.TotalMax",
+        ),
+        computed(
+            "OffHandCritEffect",
+            Cat::Offence,
+            Vt::Number,
+            "OffHand.CritEffect",
+        ),
+        computed(
+            "OffHandDpsMultiplier",
+            Cat::Offence,
+            Vt::Number,
+            "OffHand.DpsMultiplier",
+        ),
+        computed("Repeats", Cat::Offence, Vt::Number, "Repeats"),
+        computed(
+            "TotalNumberOfHits",
+            Cat::Defence,
+            Vt::Number,
+            "TotalNumberOfHits",
+        ),
         computed(
             "ExposureEffectOnSelf",
             Cat::Defence,
@@ -1512,6 +1776,9 @@ pub fn extract_display_values(output: &OutputTable) -> Vec<DisplayStatValue> {
 pub fn display_value(output: &OutputTable, id: &str) -> f64 {
     if let Some(value) = output.utility_stats.get(id) {
         return *value;
+    }
+    if let Some(value) = crate::calc::hit_display::display_value(output, id) {
+        return value;
     }
     if let Some(value) = crate::calc::ailment_display::display_value(output, id) {
         return value;

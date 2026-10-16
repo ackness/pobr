@@ -1085,9 +1085,7 @@ pub(super) struct DamageViewTerms {
 pub(super) fn damage_view_terms(env: &Env) -> DamageViewTerms {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
-    let repeats = 1.0
-        + db.sum(ModType::Base, cfg, &[ModName::from("RepeatCount")])
-            .max(0.0);
+    let repeats = super::offence::repeats(db, cfg);
     let flickers = db.sum(
         ModType::Base,
         cfg,
@@ -1139,6 +1137,7 @@ fn fill_damage_views(env: &mut Env) {
     let out = &mut env.player.output;
     out.average_burst_damage = round(out.average_damage * burst_hits);
     out.hit_speed = out.effective_action_rate;
+    out.repeats = super::offence::repeats(db, cfg);
     out.quantity_multiplier =
         super::scaled_damage::dps_end_factors(db, cfg, None).quantity_multiplier;
     out.combined_avg = if show_average {

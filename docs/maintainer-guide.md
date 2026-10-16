@@ -874,3 +874,5 @@ justify changing the imported gem or the game's level bonuses.
 暂时隐藏的流派参考面板也记录在该文档末尾。
 功能覆盖按三层记录：引擎能计算、JSON / CLI 能输出、玩家能在 Web 中完成操作。已有输出字段不代表 Calcs 有分解，
 已有配置控件或 handler 不代表对应机制已生效，handler 的数量不是界面控件的覆盖率。
+
+Calcs 的命中区间 `Physical/Fire/Cold/Lightning/Chaos` + `Min/Max` 和 `TotalMin/TotalMax` 是非暴击命中经过敌人减伤后的上下界：直接把现有命中分量乘 DPS 阶段保留的该类型 `EffMult`，明细给出减伤前界限与倍率，不再运行减伤计算。保留小数，沿用上文的精度约定；PoB2 的整数上下界可能造成小额命中的明显相对误差。攻击的区间、`EffMult`、`CritEffect` 只在 `MainHand…` / `OffHand…` 字段展示，与 PoB2 的手别表对应，顶层同名字段留 0；法术等无手别计算使用顶层。`DpsMultiplier` 保留技能、INC、MORE、手榴弹重复引爆与弹幕因子，双持按交替攻击取平均、同时命中取和；不包含 `QuantityMultiplier`。`Repeats` 沿用现有重复次数，`TotalNumberOfHits` 是 EHP 阶段算出的死亡前承受攻击总次数（已计避免被击中），不是技能命中次数。`StrikeTargets` 尚无目标数量计算，目录不提供该值。这些字段只展示已有计算，不改变伤害或 EHP。
