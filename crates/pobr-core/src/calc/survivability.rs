@@ -805,6 +805,50 @@ pub(crate) fn recoup_terms(
     }
 }
 
+/// Life recoup from damage taken and Physical damage prevented by reduction.
+/// Both contributions share Life's duration and recovery rate. The prevented
+/// base follows the convention documented in the maintainer guide (not tested
+/// in game), and is separate from ordinary damage-taken recoup.
+pub(crate) struct LifeRecoupTerms {
+    pub damage: f64,
+    pub percent: f64,
+    pub physical_prevented: f64,
+    pub prevented_percent: f64,
+    pub duration: f64,
+    pub recovery: f64,
+    pub rate_per_second: f64,
+}
+
+pub(crate) fn life_recoup_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    damage_taken: f64,
+    physical_prevented: f64,
+) -> LifeRecoupTerms {
+    let damage = damage_taken.max(0.0);
+    let percent = recoup_base_percent(db, cfg, RecoupResource::Life).max(0.0);
+    let physical_prevented = physical_prevented.max(0.0);
+    let prevented_percent = db
+        .sum(
+            ModType::Base,
+            cfg,
+            &[ModName::from("PhysicalDamagePreventedLifeRecoup")],
+        )
+        .max(0.0);
+    let duration = recoup_duration(db, cfg, RecoupResource::Life);
+    let recovery = recoup_recovery_rate(db, cfg, RecoupResource::Life).max(0.0);
+    let total = (damage * percent + physical_prevented * prevented_percent) / 100.0;
+    LifeRecoupTerms {
+        damage,
+        percent,
+        physical_prevented,
+        prevented_percent,
+        duration,
+        recovery,
+        rate_per_second: round(total / duration * recovery),
+    }
+}
+
 /// Energy Shield recoup with per-damage-type percentages, shared by the panel
 /// rate and the EsRecoupRate derived detail so the detail's inputs reconstruct it.
 ///
