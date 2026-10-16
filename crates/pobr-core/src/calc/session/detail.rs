@@ -124,6 +124,7 @@ pub fn source_names(stat: &str) -> Vec<String> {
         ],
         "ManaOnKill" => &["ManaOnKill", "CannotGainMana"],
         "EnergyShieldOnKill" => &["EnergyShieldOnKill", "CannotGainEnergyShield"],
+        "DazeChance" => &["DazeChance"],
         "FreezeBuildupPct" => &[
             "FreezeBuildup",
             "EnemyFreezeBuildup",
@@ -488,6 +489,10 @@ impl CalculationSession {
         } else {
             self.env.cfg.clone()
         };
+        if stat == "DazeChance" {
+            cfg.flags |= pobr_data::prelude::ModFlags::HIT;
+            cfg.keyword_flags = cfg.keyword_flags | pobr_data::prelude::KeywordFlags::HIT;
+        }
         if stat.starts_with("ManaRegen") && db.flag(&cfg, "Condition:NoInherentManaRegen") {
             cfg.conditions.insert("NoInherentManaRegen".into(), true);
         }

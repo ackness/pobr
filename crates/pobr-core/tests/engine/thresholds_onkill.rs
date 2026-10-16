@@ -131,3 +131,13 @@ fn freeze_buildup_reads_the_game_text_modifier() {
     // 2.1 / 1000 * (1 + .5 + .2) * 1.2 * 100 = .4284% per cold damage.
     assert!((buildup - 0.4284).abs() < 1e-9);
 }
+
+#[test]
+fn daze_chance_is_a_capped_hit_chance() {
+    for (extra, expected) in [(15.0, 25.0), (150.0, 100.0)] {
+        let mut session = session(&["10% chance to Daze on Hit"]);
+        session.add_modifiers([Modifier::number("DazeChance", ModType::Base, extra)]);
+        session.perform_minimal().unwrap();
+        assert_eq!(display_value(session.output(), "DazeChance"), expected);
+    }
+}

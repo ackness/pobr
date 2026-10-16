@@ -203,6 +203,13 @@ fn fill_threshold_and_kill_views(env: &mut Env) {
                 * factor(db, cfg, &["AilmentThreshold"])
         })
         .max(0.0);
+    let hit_cfg = cfg
+        .clone()
+        .with_flags(cfg.flags | ModFlags::HIT)
+        .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT);
+    out.daze_chance = db
+        .sum(ModType::Base, &hit_cfg, &[ModName::from("DazeChance")])
+        .clamp(0.0, 100.0);
     for (resource, value) in [
         ("Life", &mut out.life_on_kill),
         ("Mana", &mut out.mana_on_kill),
