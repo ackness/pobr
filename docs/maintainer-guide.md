@@ -331,7 +331,46 @@ Final and Final DPS use the full bonus, and None uses the original cast's area.
 For level-20 Frost Bomb (24 + 7 radius units), Spell Echo (one echo, 40% increased
 area) and Spell Cascade (20% less area) give Average area ×0.96 and radius 3.0 m;
 the original cast is 2.7 m and the echo is 3.2 m. This display convention does not
-apply Light Radius modifiers to skill area (`calc::skill_mechanics::calc_aoe`).
+apply Light Radius modifiers to skill area by itself (`calc::skill_mechanics::calc_aoe`).
+Light Radius (`light_radius_+%`) transfers only its increases/reductions when an
+explicit transfer is equipped: `light_radius_additive_modifiers_apply_to_area_%_value`
+uses the rolled percentage (game Mods: 25–50); the accuracy and damage transfers
+use `light_radius_increases_apply_to_accuracy` and
+`light_radius_additive_modifiers_apply_to_damage`. Copies retain source and
+conditions. Without a transfer the ledger reports the missing state.
+
+`buff_time_passed_+%_only_buff_category` changes elapsed buff time: “Buffs on you
+expire 10% slower” divides the selected Buff skill's duration and the nominal
+`ArchonDuration` by 0.9, after duration modifiers. Non-buff skill durations,
+enemy debuffs, and the Archon recovery period do not use it. The existing effect
+expiry slow ceiling is retained; event-driven uptime is not modelled. The rule
+is exporter `differs` because the exporter treats this as increased duration.
+
+`life_recovery_from_flasks_also_recovers_energy_shield` (Shavronne's Satchel)
+adds `Flask{1,2}EnergyShieldRecovery`, `EnergyShieldInstantRecovery`, and
+`EnergyShieldRecoveryPerSecond`. Life flask amounts, quality, flask recovery,
+and the instant fraction are reused; gradual recovery uses the destination's
+Energy Shield recovery rate, not Life recovery rate. Mana flasks do not copy,
+and `CannotGainEnergyShield` blocks the copied recovery.
+
+PassiveSkills nodes 11335 / 47190 / 12183 / 36676 grant ordinary passive points
+through their “Grants 1 Passive Skill Point” text. `AllocationTree::edit` includes
+shared allocated grants in the candidate budget and rejects refunds that remove
+spent grants; `ExtraPoints` is consumed outside ModDb. Heroic Tragedy's
+`local_unique_jewel_alternate_tree_seed` / `_version` Remembrancing line is
+`JewelData`, read by `jewel_tree`; missing seeded node data remains unsupported.
+`spell_damage_+%_while_wielding_melee_weapon` uses `UsingMeleeWeapon` from the
+currently equipped weapon classes. The existing
+`critical_hit_damage_bonus_+%_if_consumed_power_charge_recently` convention uses
+at least one removable Power Charge, controlled by `usePowerCharges` and
+`overridePowerCharges`; minimum charges cannot activate it. This is a charge
+snapshot convention, not a simulated recent-consumption event.
+
+Additional skill slots (`local_item_additional_skill_slots` /
+`num_additional_skill_slots`) and knockback distance (`knockback_distance_+%`)
+change no reported output. Charge duration (`charge_duration_+%`), Whispers of
+Doom's curse delay (`keystone_hex_master`), and Totem Life (`totem_life_+%`)
+remain `unmodelled`, with the missing duration/activation/life models named.
 
 恢复（`pobr-core/src/calc/recovery.rs`）分三层：原始再生；经过再生限制与直接恢复后的恢复（`LifeRegenRecovery` 等，含 Runic Ward 与怒气，来自 `base_ward_regeneration_per_minute` “Regenerate 1 Runic Ward per second”、`base_rage_regeneration_per_minute` 等游戏 stat）；扣掉构筑自身损耗后的净恢复（`NetLifeRegen`、`NetManaRegen`、`NetEnergyShieldRegen`、`NetWardRegen`、`TotalNetRegen`）。角色固有的魔力再生是 `character_inherent_mana_regeneration_rate_per_minute_%` = 240（每秒 4% 最大魔力），“No inherent Mana Regeneration” 只去掉这一份（`calc_orchestrator::inject::inject_character_base`）。自身损耗是资源流失（“Lose … per second”，不经减免）、自己受到的类型化持续伤害（经抗性与承伤修正）和主技能的每秒消耗（百分比消耗按资源池换算）：生命、魔力、能量护盾各扣自己的消耗，`NetWardRegen` 是 Runic Ward 的恢复减去它的每秒消耗，`TotalNetRegen` 是这四种净恢复之和，怒气消耗只进入 `TotalBuildDegen`；敌人的持续伤害不计入。Berserk 的 `skill_base_life_loss_%_per_minute_per_rage_while_not_losing_rage_to_apply` = 6 是每点怒气每秒流失 0.1% 最大生命。偷取与命中获得（`LifeLeechGainRate`、`LifeLeechGainPerHit` 等）按[游戏关键词](https://poe2db.tw/us/Keywords)使用一秒基础持续时间，不再把每次偷取量限制为资源池的 10%。[0.5 补丁说明](https://www.pathofexile.com/forum/view-thread/3932540)中的单次命中 40,000 伤害上限已实现：命中总伤害超过上限时，各伤害类型按相同比例缩小，再按各自的偷取比例计算，不能用额外元素伤害补足物理偷取。`base_life_leech_amount_+%` / `base_mana_leech_amount_+%` 的“increased amount of Life Leeched” / “increased amount of Mana Leeched”增加偷取量；`base_life_leech_rate_+%` 等“Leech Life 1% faster”加快速率，不增加总量。最大偷取速率先应用增加/减少与更多/更少修正，再限制实例速率；生命和魔力每秒 20%、能量护盾每秒 10% 的默认上限仍是项目保留的兼容约定，并非 0.5 补丁说明确认的游戏常量。按主技能平均命中频率估计实例覆盖时间，优先计算恢复速率最高的实例，较慢实例只填补其过期后留下的时间，不模拟随机暴击的时间序列；命中获得与瞬间偷取仍按每次命中相加。PoB2 在没有自身类型化持续伤害时不给出净恢复字段，PoBR 照常计算。
 

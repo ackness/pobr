@@ -154,6 +154,10 @@ pub(crate) const READ_OUTSIDE_THE_DATABASE: &[(&str, &str)] = &[
         "GrantedPassive",
         "anointed notables become allocated nodes (append_granted_passives)",
     ),
+    (
+        "ExtraPoints",
+        "granted passive points (pobr_tree::allocation::AllocationTree::edit)",
+    ),
     ("JewelData", "radius, conquest and socket data (jewel_tree)"),
     (
         "MinionModifier",
@@ -190,6 +194,14 @@ impl ReadGate {
 /// Gated readers, alongside the consumers outside the database. Keep the
 /// actual consumer here so a registry entry can be checked against its code.
 pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
+    // calc::shared_modifiers::apply_shared_increases copies Light Radius INCs.
+    (
+        "LightRadius",
+        ReadGate {
+            state: "Light Radius modifiers also apply to Accuracy, Damage or Area of Effect",
+            config_option: None,
+        },
+    ),
     // `calc::defence::calc_es_recharge`, after the resource/recharge gates.
     (
         "EnergyShieldRecharge",
@@ -340,6 +352,7 @@ const SET_BY_THE_ORCHESTRATION: &[&str] = &[
     "UsingBow",
     "UsingSpear",
     "UsingDagger",
+    "UsingMeleeWeapon",
     "UsingOneHandedMelee",
     "UsingTwoHandedMelee",
     "DualWielding",

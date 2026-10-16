@@ -7919,24 +7919,7 @@
     },
     {
       "text": "10% increased [Charges|Endurance, Frenzy and Power Charge] Duration",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "PowerChargesDuration",
-          "type": "Inc",
-          "value": 10.0
-        },
-        {
-          "name": "FrenzyChargesDuration",
-          "type": "Inc",
-          "value": 10.0
-        },
-        {
-          "name": "EnduranceChargesDuration",
-          "type": "Inc",
-          "value": 10.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "10% increased [Charges|Power Charge] Duration",
@@ -8401,14 +8384,7 @@
     },
     {
       "text": "10% increased [Knockback] Distance",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "EnemyKnockbackDistance",
-          "type": "Inc",
-          "value": 10.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "10% increased [LightRadius|Light Radius]",
@@ -12378,24 +12354,7 @@
     },
     {
       "text": "15% increased [Charges|Endurance, Frenzy and Power Charge] Duration",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "PowerChargesDuration",
-          "type": "Inc",
-          "value": 15.0
-        },
-        {
-          "name": "FrenzyChargesDuration",
-          "type": "Inc",
-          "value": 15.0
-        },
-        {
-          "name": "EnduranceChargesDuration",
-          "type": "Inc",
-          "value": 15.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "15% increased [Charm] Charges gained",
@@ -13874,14 +13833,7 @@
     },
     {
       "text": "16% increased [Totem] Life",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "TotemLife",
-          "type": "Inc",
-          "value": 16.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "16% increased [Warcry|Warcry] Speed",
@@ -16438,14 +16390,7 @@
     },
     {
       "text": "20% increased [Knockback] Distance",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "EnemyKnockbackDistance",
-          "type": "Inc",
-          "value": 20.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "20% increased [LightRadius|Light Radius]",
@@ -16792,14 +16737,7 @@
     },
     {
       "text": "20% increased [Totem] Life",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "TotemLife",
-          "type": "Inc",
-          "value": 20.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "20% increased [Totem|Totem] Damage",
@@ -22479,14 +22417,7 @@
     },
     {
       "text": "30% increased [Totem] Life",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "TotemLife",
-          "type": "Inc",
-          "value": 30.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "30% increased [Totem|Totem] Placement speed",
@@ -24413,24 +24344,7 @@
     },
     {
       "text": "40% increased [Charges|Endurance, Frenzy and Power Charge] Duration",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "PowerChargesDuration",
-          "type": "Inc",
-          "value": 40.0
-        },
-        {
-          "name": "FrenzyChargesDuration",
-          "type": "Inc",
-          "value": 40.0
-        },
-        {
-          "name": "EnduranceChargesDuration",
-          "type": "Inc",
-          "value": 40.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "40% increased [Charm] Charges gained",
@@ -30109,14 +30023,7 @@
     },
     {
       "text": "8% increased [Knockback] Distance",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "EnemyKnockbackDistance",
-          "type": "Inc",
-          "value": 8.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "8% increased [Lightning] Damage",
@@ -38123,14 +38030,7 @@
     },
     {
       "text": "Grants 2 additional Skill Slots",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "SkillSlots",
-          "type": "Base",
-          "value": 2.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "Grants 4 Life per Enemy Hit",
@@ -43191,12 +43091,9 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Duration",
+          "name": "BuffExpiryRate",
           "type": "Inc",
-          "value": 10.0,
-          "tags": [
-            "SkillTypes(SkillTypes(16))"
-          ]
+          "value": -10.0
         }
       ]
     },

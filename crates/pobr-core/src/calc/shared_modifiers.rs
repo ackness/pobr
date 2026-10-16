@@ -111,6 +111,53 @@ pub fn apply_shared_increases(env: &mut Env) {
             copies.push(copy);
         }
     }
+    // Game light_radius_* transfer stats apply increases and reductions only.
+    // The area share is rolled (25-50 in Mods), not a hard-coded half.
+    let area_share = db.sum(
+        ModType::Base,
+        &env.cfg,
+        &[ModName::from("LightRadiusAppliesToAreaPercent")],
+    ) / 100.0
+        + if db.flag(&env.cfg, "LightRadiusAppliesToAreaOfEffect") {
+            0.5
+        } else {
+            0.0
+        };
+    for (name, share) in [
+        (
+            "Accuracy",
+            if db.flag(&env.cfg, "LightRadiusAppliesToAccuracy") {
+                1.0
+            } else {
+                0.0
+            },
+        ),
+        (
+            "Damage",
+            if db.flag(&env.cfg, "LightRadiusAppliesToDamage") {
+                1.0
+            } else {
+                0.0
+            },
+        ),
+        ("AreaOfEffect", area_share),
+    ] {
+        if share == 0.0 {
+            continue;
+        }
+        for modifier in db.named("LightRadius") {
+            if modifier.mod_type != ModType::Inc {
+                continue;
+            }
+            let mut copy = modifier.clone();
+            copy.name = ModName::from(name);
+            let Some(value) = copy.value.as_number() else {
+                continue;
+            };
+            copy.value = crate::ModValue::Number(value * share);
+            copies.push(copy);
+        }
+    }
     env.player.mod_db.add_list(copies);
 }
 
