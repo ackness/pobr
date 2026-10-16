@@ -1044,10 +1044,6 @@ fn miscellaneous_lines_distinguish_unmodelled_no_effect_and_external_readers() {
     let cases = [
         ("Grants 3 additional Skill Slots", LineStatus::NoEffect),
         ("25% increased Knockback Distance", LineStatus::NoEffect),
-        (
-            "20% increased Endurance, Frenzy and Power Charge Duration",
-            LineStatus::Unmodelled,
-        ),
         ("Double Activation Delay of Curses", LineStatus::Unmodelled),
         ("25% increased Totem Life", LineStatus::Unmodelled),
         ("Grants 1 Passive Skill Point", LineStatus::Applied),

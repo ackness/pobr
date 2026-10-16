@@ -2,6 +2,13 @@ import type { Lang } from './i18n';
 
 /** Modifier input names for optional Calcs details; no calculation logic. */
 export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
+  ChargeDuration: { 'en-US': 'Charge duration', 'zh-TW': '充能持續時間', 'zh-CN': '充能持续时间' },
+  PowerChargesDuration: { 'en-US': 'Power Charge Duration', 'zh-TW': '魔力充能持續時間', 'zh-CN': '暴击球持续时间' },
+  FrenzyChargesDuration: { 'en-US': 'Frenzy Charge Duration', 'zh-TW': '狂怒充能持續時間', 'zh-CN': '狂怒球持续时间' },
+  EnduranceChargesDuration: { 'en-US': 'Endurance Charge Duration', 'zh-TW': '耐力充能持續時間', 'zh-CN': '耐力球持续时间' },
+  BaseChargeDuration: { 'en-US': 'Base charge duration (seconds)', 'zh-TW': '基礎充能持續時間（秒）', 'zh-CN': '基础充能持续时间（秒）' },
+  ChargeDurationIncreased: { 'en-US': 'Increased charge duration (%)', 'zh-TW': '充能持續時間增加（%）', 'zh-CN': '充能持续时间提高（%）' },
+  ChargeDurationMore: { 'en-US': 'Charge duration more/less multiplier', 'zh-TW': '充能持續時間更多／更少倍率', 'zh-CN': '充能持续时间总增／总降倍率' },
   AilmentThreshold: { 'en-US': 'Elemental Ailment Threshold', 'zh-TW': '元素異常狀態門檻', 'zh-CN': '元素异常状态门槛' },
   LifeOnKill: { 'en-US': 'Life Recovery on Kill', 'zh-TW': '擊殺恢復生命', 'zh-CN': '击杀恢复生命' },
   ManaOnKill: { 'en-US': 'Mana Recovery on Kill', 'zh-TW': '擊殺恢復魔力', 'zh-CN': '击杀恢复魔力' },
