@@ -524,8 +524,24 @@ def analyse(name: str, corpus: str, report: dict, oracle: dict, xml: str, known:
 # Running
 
 
+def cache_root() -> Path:
+    """`.cache/` of this checkout, or `POBR_CACHE_DIR` to share another worktree's caches."""
+    given = os.environ.get("POBR_CACHE_DIR")
+    return Path(given).resolve() if given else REPO / ".cache"
+
+
 def engine_binary() -> Path:
-    """Builds the CLI once; every build then runs the binary directly."""
+    """Builds the CLI once; every build then runs the binary directly.
+
+    `POBR_BIN` names an already built CLI instead (for example the main
+    checkout's `target/debug/pobr`), so a new worktree does not compile one.
+    """
+    given = os.environ.get("POBR_BIN")
+    if given:
+        path = Path(given).resolve()
+        if not path.is_file():
+            raise SystemExit(f"triage: POBR_BIN={given} is not a file")
+        return path
     result = subprocess.run(["cargo", "build", "-q", "-p", "pobr-cli"], cwd=REPO)
     if result.returncode != 0:
         raise SystemExit(f"triage: building the CLI failed ({result.returncode})")
@@ -581,7 +597,7 @@ def usage_token(binary: Path) -> str:
 
 def usage_cache_path(folder: Path, token: str) -> Path:
     code_hash = hashlib.sha256((folder / "code.txt").read_bytes()).hexdigest()
-    return REPO / ".cache/build-usage" / f"{code_hash}-{token}.json"
+    return cache_root() / "build-usage" / f"{code_hash}-{token}.json"
 
 
 def cache_usage(folder: Path, report: dict, token: str):

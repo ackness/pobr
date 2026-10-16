@@ -13,6 +13,7 @@ Keep these in step with the code. Update the relevant one when behavior changes.
 |----------|--------|
 | [maintainer-guide.md](maintainer-guide.md) | Build environment, validation scope, architecture, parity system and conventions |
 | [development-workflow.md](development-workflow.md) | Commands, caches, PR checks, CI, releases, handling external PRs |
+| [recipes.md](recipes.md) | Exact files and the single check for adding a game line, a Calcs field or a mechanic; the validation budget and batch gate |
 | [contributing-mods.md](contributing-mods.md) | Adding or fixing modifiers through the overlay data channel |
 | [web-contracts.md](web-contracts.md) | Upgrade guidance, build workspace, weapon sets and skill selection |
 | [trade-special-affixes.md](trade-special-affixes.md) | Special affix sources and scoring in market searches |

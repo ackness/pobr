@@ -18,13 +18,16 @@ Detailed repository guidance for contributors and coding agents: build environme
 | 改动 | 最小相关验证 |
 |------|------|
 | Rust 局部逻辑 | `driver.sh test -p <crate> --test <suite> [filter]`；收尾跑 `driver.sh lint -p <crate> --lib --test <suite>` |
-| 计算 / Modifier / parser | 对应集成套件；改变完整 build 数值时再跑 `cargo test -p pobr-build --test parity no_regression` |
+| 一条词条规则（`special_mods.json` / `skill_stats.rs`） | 规则写 `examples`，`mise run regen` 校验规则与示例并重生成产物；名字没有读取方时补一条引擎测试。步骤见[改动配方](recipes.md) |
+| 计算 / Modifier / parser | 对应集成套件的定向用例；完整 build 数值（parity、accuracy）由合并后的批次门禁 `mise run gate` 统一测量 |
 | 跨 crate API / 数据结构 | 相关 crate 测试 + 直接使用者的契约或集成测试；边界无法明确时扩大到 workspace |
 | Web TS / React | `pnpm --dir web test <test-file>` + `pnpm --dir web typecheck`；交互改动补相关 Playwright spec |
 | Rust → WASM / Web 契约 | Rust 契约测试 + 重建 WASM + 相关真实 WASM / E2E 测试 |
 | Worker | `pnpm --dir web test:worker` |
 | 仅文档 | 审查 diff；不运行 Cargo / Web 构建 |
 | 验证脚本 | `bash -n <script>` + `python3 devs/scripts/test_workflows.py`；不为改脚本重跑整个 workspace |
+
+**批次门禁。** 多个改动（并行代理的分支或同一分支的多条词条）合并后，由合并者在已编译的 checkout 上运行一次 `mise run gate`：fmt、规则产物漂移、Clippy、各 crate 套件、parity、i18n、Web、accuracy，每一步都运行，最后列出失败项；修复后 `mise run gate --only <步骤>` 只重跑失败项。单个改动不重复运行这些步骤：它们分别编译 parity 测试程序、CLI 和全部测试目标，并重算全部构筑。新 worktree 用 `mise run warm <已编译的 checkout>` 写时复制克隆其构建缓存；分析工具设 `POBR_BIN` / `POBR_CACHE_DIR` 复用已有 CLI、台账和 PoB2 结果，不再各自编译、重算（见[改动配方](recipes.md#working-in-a-new-worktree)）。
 
 表中 `driver.sh` 指 `bash devs/scripts/driver.sh`。测试目标先查对应 `Cargo.toml` 或 `tests/*.rs`；用 `--test <suite>` / `--lib` 限定编译目标，只有名称 filter 仍可能编译整个 crate 的测试。计算修复必须有能复现错误的断言，不降低 parity 基线来换取通过（对照值本身有误时的做法见“Parity 体系”）。
 

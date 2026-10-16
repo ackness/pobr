@@ -50,7 +50,7 @@ import zlib
 
 REPO = Path(__file__).resolve().parents[2]
 VENDOR = REPO / "vendor/PathOfBuilding-PoE2"
-CACHE = REPO / ".cache/skill-sweep"
+CACHE = Path(os.environ.get("POBR_CACHE_DIR") or REPO / ".cache").resolve() / "skill-sweep"
 CLASSES = ("agree", "known", "differs", "pobr_zero", "pob2_zero", "both_zero", "error", "pob2_other_skill")
 METRICS = ("TotalDPS", "CombinedDPS", "Speed", "AverageHit", "CritChance", "FiringRate", "ReloadTime")
 DIFFERENT = {"differs", "pobr_zero", "pob2_zero"}
@@ -619,8 +619,8 @@ def main(argv=None):
             parser.error("unknown active effect IDs: " + ", ".join(sorted(unknown)))
         cases = [c for c in cases if c["skill_id"] in args.skill or case_label(c) in args.skill]
         skipped = [c for c in skipped if c["skill_id"] in args.skill or case_label(c) in args.skill]
-    binary = REPO / "target/debug/pobr"
-    if not args.no_build:
+    binary = Path(os.environ["POBR_BIN"]).resolve() if os.environ.get("POBR_BIN") else REPO / "target/debug/pobr"
+    if not args.no_build and not os.environ.get("POBR_BIN"):
         env = {**os.environ, "CARGO_BUILD_JOBS": "2", "RUST_TEST_THREADS": "2", "CARGO_TARGET_DIR": str(REPO / "target")}
         subprocess.run(["cargo", "build", "-q", "-p", "pobr-cli"], cwd=REPO, env=env, check=True)
     if not binary.is_file():

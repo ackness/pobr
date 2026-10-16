@@ -137,6 +137,18 @@ run = "bash devs/scripts/driver.sh smoke"
 description = "Explicit full local Rust gate: fmt, Clippy, workspace tests, doctests, i18n"
 run = "bash devs/scripts/driver.sh full"
 
+[tasks.gate]
+description = "Batch gate after merging several changes: fmt, regen drift, Clippy, crate suites, parity, i18n, Web, accuracy; every step runs, then a summary (`--only step,...` reruns failures)"
+run = "bash devs/scripts/driver.sh gate"
+
+[tasks.regen]
+description = "Regenerate parser artifacts (precompile-mods --report) and test the generator"
+run = "bash devs/scripts/driver.sh regen"
+
+[tasks.warm]
+description = "Copy-on-write clone of another worktree's target/debug into this new worktree: `mise run warm [source worktree]`"
+run = "bash devs/scripts/driver.sh warm"
+
 [tasks.cache]
 description = "Read-only report of cache sizes and file counts"
 run = "bash devs/scripts/driver.sh cache"
