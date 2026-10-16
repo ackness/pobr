@@ -971,8 +971,15 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
     }
     for (kind, count) in [("Flask", 2), ("Charm", 3)] {
         for slot in 1..=count {
-            for field in crate::calc::utility::ITEM_STATS {
-                if kind == "Charm" && field.contains("Recovery") {
+            for field in crate::calc::utility::ITEM_STATS
+                .iter()
+                .chain(if kind == "Charm" {
+                    crate::calc::utility::CHARM_STATS
+                } else {
+                    &[]
+                })
+            {
+                if kind == "Charm" && field.contains("Recovery") && *field != "ManaRecoveryOnUse" {
                     continue;
                 }
                 let id = format!("{kind}{slot}{field}");

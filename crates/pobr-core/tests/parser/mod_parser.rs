@@ -1622,3 +1622,65 @@ fn grants_onslaught_requires_an_active_utility_effect() {
         }
     }
 }
+
+#[test]
+fn utility_triggers_are_recognized_no_effect() {
+    // local_flask_use_on_*, local_charm_trigger_when_cursed,
+    // local_%_chance_to_gain_flask_charge_on_kill and the mana-overflow stat.
+    for text in [
+        "Used when you kill a Rare or Unique enemy",
+        "Used when you become Frozen",
+        "Used when you become Ignited",
+        "Used when you become Stunned",
+        "Used when you are affected by a Slow",
+        "Used when you start Bleeding",
+        "Used when you become Cursed",
+        "Used when you take Chaos damage from a Hit",
+        "Used when Charges reach full",
+        "Used when you Hit a Rare or Unique Enemy, if not already in effect",
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed, "{text}: {parsed:?}");
+        assert!(parsed.mods.is_empty(), "{text}: {parsed:?}");
+        assert!(parsed.special_meta.unwrap().no_effect, "{text}");
+    }
+    // Unknown triggers stay visible instead of accepting any arbitrary suffix.
+    assert_ne!(
+        parse_mod("Used when you invent a mechanic").unwrap().status,
+        ParseStatus::Parsed
+    );
+}
+
+#[test]
+fn charm_mana_on_use_is_an_amount_with_game_provenance() {
+    // CharmGainManaOnUse8 rolls 230..300 of charm_recover_X_mana_when_used.
+    let parsed = parse_mod("Recover 300 Mana when Used").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed);
+    assert_eq!(parsed.mods.len(), 1);
+    let modifier = &parsed.mods[0];
+    assert_eq!(modifier.name.as_str(), "UtilityManaOnUse");
+    assert_eq!(modifier.mod_type, ModType::Base);
+    assert_eq!(modifier.value, ModValue::Number(300.0));
+    let rule = modifier.exporter_rule.as_ref().unwrap();
+    assert_eq!(rule.exporter, pobr_data::source::ExporterCoverage::Absent);
+    assert!(rule.game_source.contains("charm_recover_X_mana_when_used"));
+}
+
+#[test]
+fn flask_overflow_does_not_change_uncapped_per_use_recovery() {
+    // local_unique_flask_mana_flask_recovery_can_overcap_mana_during_flask_effect.
+    let parsed =
+        parse_mod("Mana Recovery from Flasks can Overflow maximum Mana during Effect").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed);
+    assert!(parsed.mods.is_empty());
+    assert!(parsed.special_meta.unwrap().no_effect);
+}
+
+#[test]
+fn kill_charge_chance_does_not_invent_a_kill_rate() {
+    // FlaskChanceRechargeOnKill3: 31..35% chance, not 35 charges per second.
+    let parsed = parse_mod("35% Chance to gain a Charge when you kill an enemy").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed);
+    assert!(parsed.mods.is_empty());
+    assert!(parsed.special_meta.unwrap().no_effect);
+}

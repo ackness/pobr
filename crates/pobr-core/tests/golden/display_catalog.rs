@@ -52,7 +52,8 @@ fn catalog_entry_counts_locked() {
         // UtilityFlaskChargeGen, plus Flask{1,2} and Charm{1,2,3} Duration,
         // ChargesMax, ChargesUsed, Uses, ChargeGen and ChargesGained; flasks
         // also expose Recovery, InstantRecovery and RecoveryPerSecond (+41).
-        258,
+        // Charm{1,2,3}ManaRecoveryOnUse (+3), game charm_recover_X_mana_when_used.
+        261,
         "a change in Computed entry count needs explicit review"
     );
 }

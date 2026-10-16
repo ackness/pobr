@@ -4552,6 +4552,331 @@
       ],
       "exporter": "absent",
       "game_source": "charm_gain_onslaught_during_effect; gain_onslaught_during_flask_effect; https://poe2db.tw/us/Onslaught"
+    },
+    {
+      "id": "utility_use_triggers",
+      "pattern": "used when (?:charges reach full|an adjacent flask is used|you block|you hit a rare or unique enemy, if not already in effect|you use a guard skill|you use a travel skill|you are affected by a slow|you become chilled|you become cursed|you become frozen|you become ignited|you become poisoned|you become shocked|you become stunned|you kill a rare or unique enemy|you lose a guard skill buff|you release a skill with perfect timing|you start bleeding|you take chaos damage from a hit|you take cold damage from a hit|you take fire damage from a hit|you take lightning damage from a hit|you take a savage hit|you use a life flask)",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "exporter": "absent",
+      "game_source": "base/stats.json: local_flask_use_on_*; local_charm_trigger_when_cursed",
+      "source_note": "The enabled-charm/flask convention already counts the item as in effect. Trigger conditions do not change a per-use amount or model uptime.",
+      "examples": [
+        "Used when Charges reach full",
+        "Used when an adjacent Flask is used",
+        "Used when you Block",
+        "Used when you Hit a Rare or Unique Enemy, if not already in effect",
+        "Used when you Use a Guard Skill",
+        "Used when you Use a Travel Skill",
+        "Used when you are affected by a Slow",
+        "Used when you become Chilled",
+        "Used when you become Cursed",
+        "Used when you become Frozen",
+        "Used when you become Ignited",
+        "Used when you become Poisoned",
+        "Used when you become Shocked",
+        "Used when you become Stunned",
+        "Used when you kill a Rare or Unique enemy",
+        "Used when you lose a Guard Skill Buff",
+        "Used when you release a skill with Perfect Timing",
+        "Used when you start Bleeding",
+        "Used when you take Chaos damage from a Hit",
+        "Used when you take Cold damage from a Hit",
+        "Used when you take Fire damage from a Hit",
+        "Used when you take Lightning damage from a Hit",
+        "Used when you take a Savage Hit",
+        "Used when you use a Life Flask"
+      ]
+    },
+    {
+      "id": "charm_mana_on_use",
+      "pattern": "recover (\\d+) mana when used",
+      "mods": [
+        {
+          "name": "UtilityManaOnUse",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_recover_X_mana_when_used; base/mods.json: CharmGainManaOnUse1..8",
+      "source_note": "Game local on-use recovery amount; reported per charm, never as mana regeneration.",
+      "examples": [
+        "Recover 300 Mana when Used"
+      ]
+    },
+    {
+      "id": "flask_mana_overflow",
+      "pattern": "mana recovery from flasks can overflow maximum mana(?: during (?:flask )?effect)?",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "exporter": "absent",
+      "game_source": "local_unique_flask_mana_flask_recovery_can_overcap_mana_during_flask_effect",
+      "source_note": "Recovery outputs are uncapped per-use amounts; the current-mana pool and overflow duration are not modelled.",
+      "examples": [
+        "Mana Recovery from Flasks can Overflow maximum Mana during Effect"
+      ]
+    },
+    {
+      "id": "flask_constant_effect",
+      "pattern": "this flask cannot be used but applies its effect constantly",
+      "mods": [
+        {
+          "name": "UtilityCannotBeUsed",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "local_flask_always_drinking; base/mods.json: UniqueAlwaysDrinkingFlask1",
+      "source_note": "The enabled-flask convention already applies its effect; this local flag reports zero available uses because the flask cannot be used.",
+      "examples": [
+        "This Flask cannot be Used but applies its Effect constantly"
+      ]
+    },
+    {
+      "id": "utility_charge_on_kill",
+      "pattern": "(?:\\d+(?:\\.\\d+)?)% chance to gain a charge when you kill an enemy",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "exporter": "absent",
+      "game_source": "local_%_chance_to_gain_flask_charge_on_kill; base/mods.json: FlaskChanceRechargeOnKill1..3",
+      "source_note": "kill rate not modelled; passive charge generation per second is unchanged.",
+      "examples": [
+        "35% Chance to gain a Charge when you kill an enemy"
+      ]
+    },
+    {
+      "id": "charm_spirit_bear",
+      "pattern": "possessed by spirit of the bear for (\\d+) seconds on use",
+      "mods": [
+        {
+          "name": "SpiritPossession:Bear",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_possesed_by_bear_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheBearPossessedPlayer, SpiritPossessedStrPlayer; https://poe2db.tw/us/Spirit_Of_The_Bear",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold, slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "examples": [
+        "Possessed by Spirit Of The Bear for 20 seconds on use"
+      ]
+    },
+    {
+      "id": "charm_spirit_boar",
+      "pattern": "possessed by spirit of the boar for (\\d+) seconds on use",
+      "mods": [
+        {
+          "name": "SpiritPossession:Boar",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_possesed_by_boar_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheBoarPossessedPlayer, SpiritPossessedStrPlayer; https://poe2db.tw/us/Spirit_Of_The_Boar",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold, slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "examples": [
+        "Possessed by Spirit Of The Boar for 20 seconds on use"
+      ]
+    },
+    {
+      "id": "charm_spirit_cat",
+      "pattern": "possessed by spirit of the cat for (\\d+) seconds on use",
+      "mods": [
+        {
+          "name": "SpiritPossession:Cat",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_possesed_by_cat_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheCatPossessedPlayer, SpiritPossessedDexPlayer; https://poe2db.tw/us/Spirit_Of_The_Cat",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold, slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "examples": [
+        "Possessed by Spirit Of The Cat for 20 seconds on use"
+      ]
+    },
+    {
+      "id": "charm_spirit_owl",
+      "pattern": "possessed by spirit of the owl for (\\d+) seconds on use",
+      "mods": [
+        {
+          "name": "SpiritPossession:Owl",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_possesed_by_owl_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheOwlPossessedPlayer, SpiritPossessedIntPlayer; https://poe2db.tw/us/Spirit_Of_The_Owl",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold, slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "examples": [
+        "Possessed by Spirit Of The Owl for 20 seconds on use"
+      ]
+    },
+    {
+      "id": "charm_spirit_ox",
+      "pattern": "possessed by spirit of the ox for (\\d+) seconds on use",
+      "mods": [
+        {
+          "name": "SpiritPossession:Ox",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_possesed_by_ox_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheOxPossessedPlayer, SpiritPossessedStrPlayer; https://poe2db.tw/us/Spirit_Of_The_Ox",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold, slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "examples": [
+        "Possessed by Spirit Of The Ox for 20 seconds on use"
+      ]
+    },
+    {
+      "id": "charm_spirit_primate",
+      "pattern": "possessed by spirit of the primate for (\\d+) seconds on use",
+      "mods": [
+        {
+          "name": "SpiritPossession:Primate",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_possesed_by_primate_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheMonkeyPossessedPlayer, SpiritPossessedIntPlayer; https://poe2db.tw/us/Spirit_Of_The_Primate",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold, slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "examples": [
+        "Possessed by Spirit Of The Primate for 20 seconds on use"
+      ]
+    },
+    {
+      "id": "charm_spirit_serpent",
+      "pattern": "possessed by spirit of the serpent for (\\d+) seconds on use",
+      "mods": [
+        {
+          "name": "SpiritPossession:Serpent",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_possesed_by_serpent_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheSnakePossessedPlayer, SpiritPossessedIntPlayer; https://poe2db.tw/us/Spirit_Of_The_Serpent",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold, slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "examples": [
+        "Possessed by Spirit Of The Serpent for 20 seconds on use"
+      ]
+    },
+    {
+      "id": "charm_spirit_stag",
+      "pattern": "possessed by spirit of the stag for (\\d+) seconds on use",
+      "mods": [
+        {
+          "name": "SpiritPossession:Stag",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_possesed_by_stag_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheStagPossessedPlayer, SpiritPossessedDexPlayer; https://poe2db.tw/us/Spirit_Of_The_Stag",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold, slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "examples": [
+        "Possessed by Spirit Of The Stag for 20 seconds on use"
+      ]
+    },
+    {
+      "id": "charm_spirit_wolf",
+      "pattern": "possessed by spirit of the wolf for (\\d+) seconds on use",
+      "mods": [
+        {
+          "name": "SpiritPossession:Wolf",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingCharm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_possesed_by_wolf_spirit_for_x_seconds_when_used; base/mods.json: SpiritOfTheWolfPossessedPlayer, SpiritPossessedDexPlayer; https://poe2db.tw/us/Spirit_Of_The_Wolf",
+      "source_note": "Grants the player possession buff while the enabled charm is in effect. Player buff numbers are defined by the game Mods table; periodic summoned attacks and on-hit armour break/maim need an event model. See calc::charm_spirits. Ailment threshold, slow potency and heavy-stun buildup retain existing modifier names for diagnostics.",
+      "examples": [
+        "Possessed by Spirit Of The Wolf for 20 seconds on use"
+      ]
     }
   ]
 }

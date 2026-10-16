@@ -398,9 +398,6 @@ pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'
         .chain(&item.modifier_texts)
         .chain(&item.enchant_texts)
     {
-        if is_trigger_line(text) {
-            continue;
-        }
         if let Some(value) = parse_local_effect_inc(text) {
             nested.push(
                 Modifier::number(LOCAL_UTILITY_EFFECT_NAME, ModType::Inc, value)
@@ -461,13 +458,6 @@ pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'
         .with_origin(ModifierSource::new(source_id).with_slot(slot_key)),
     );
     ingest
-}
-
-/// A flask/charm's trigger condition is inherent base text, silently skipped rather than reported as unsupported.
-/// Effect lines (e.g. `Also grants N Guard` and `Possessed by ...`) still go
-/// through parsing, and stay in the unsupported report while unmodeled.
-fn is_trigger_line(text: &str) -> bool {
-    text.trim().to_lowercase().starts_with("used when ")
 }
 
 fn is_local_utility_duration(text: &str) -> bool {

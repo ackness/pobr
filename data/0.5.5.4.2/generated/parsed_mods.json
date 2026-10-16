@@ -14763,7 +14763,7 @@
     },
     {
       "text": "20% Chance to gain a Charge when you kill an enemy",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "20% [FasterESRechargeStart|faster start of Energy Shield Recharge]",
@@ -17497,7 +17497,7 @@
     },
     {
       "text": "21% Chance to gain a Charge when you kill an enemy",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "21% increased Cast Speed",
@@ -17711,7 +17711,7 @@
     },
     {
       "text": "22% Chance to gain a Charge when you kill an enemy",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "22% chance to Avoid Chaos Damage from Hits",
@@ -17852,7 +17852,7 @@
     },
     {
       "text": "23% Chance to gain a Charge when you kill an enemy",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "23% chance to gain Onslaught on Killing Hits with this Weapon",
@@ -17986,7 +17986,7 @@
     },
     {
       "text": "24% Chance to gain a Charge when you kill an enemy",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "24% increased Cast Speed",
@@ -18169,7 +18169,7 @@
     },
     {
       "text": "25% Chance to gain a Charge when you kill an enemy",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "25% Chance to revive a random Permanent [Minion] whenever you use a [Command|Command] Skill",
@@ -20118,7 +20118,7 @@
     },
     {
       "text": "28% Chance to gain a Charge when you kill an enemy",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "28% increased Armour, Evasion and Energy Shield",
@@ -40045,9 +40045,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "SpiritPossessionOnUse",
+          "name": "SpiritPossession:Bear",
           "type": "Flag",
-          "value": true
+          "value": true,
+          "tags": [
+            "Condition { var: \"UsingCharm\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -40056,9 +40059,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "SpiritPossessionOnUse",
+          "name": "SpiritPossession:Boar",
           "type": "Flag",
-          "value": true
+          "value": true,
+          "tags": [
+            "Condition { var: \"UsingCharm\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -40067,9 +40073,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "SpiritPossessionOnUse",
+          "name": "SpiritPossession:Cat",
           "type": "Flag",
-          "value": true
+          "value": true,
+          "tags": [
+            "Condition { var: \"UsingCharm\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -40078,9 +40087,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "SpiritPossessionOnUse",
+          "name": "SpiritPossession:Cat",
           "type": "Flag",
-          "value": true
+          "value": true,
+          "tags": [
+            "Condition { var: \"UsingCharm\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -40089,9 +40101,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "SpiritPossessionOnUse",
+          "name": "SpiritPossession:Owl",
           "type": "Flag",
-          "value": true
+          "value": true,
+          "tags": [
+            "Condition { var: \"UsingCharm\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -40100,9 +40115,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "SpiritPossessionOnUse",
+          "name": "SpiritPossession:Ox",
           "type": "Flag",
-          "value": true
+          "value": true,
+          "tags": [
+            "Condition { var: \"UsingCharm\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -40111,9 +40129,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "SpiritPossessionOnUse",
+          "name": "SpiritPossession:Stag",
           "type": "Flag",
-          "value": true
+          "value": true,
+          "tags": [
+            "Condition { var: \"UsingCharm\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -40122,9 +40143,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "SpiritPossessionOnUse",
+          "name": "SpiritPossession:Stag",
           "type": "Flag",
-          "value": true
+          "value": true,
+          "tags": [
+            "Condition { var: \"UsingCharm\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -40133,9 +40157,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "SpiritPossessionOnUse",
+          "name": "SpiritPossession:Stag",
           "type": "Flag",
-          "value": true
+          "value": true,
+          "tags": [
+            "Condition { var: \"UsingCharm\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -40395,7 +40422,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "ManaOnFlaskUse",
+          "name": "UtilityManaOnUse",
           "type": "Base",
           "value": 202.0
         }
@@ -40406,7 +40433,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "ManaOnFlaskUse",
+          "name": "UtilityManaOnUse",
           "type": "Base",
           "value": 295.0
         }
@@ -40451,7 +40478,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "ManaOnFlaskUse",
+          "name": "UtilityManaOnUse",
           "type": "Base",
           "value": 48.0
         }
@@ -40485,7 +40512,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "ManaOnFlaskUse",
+          "name": "UtilityManaOnUse",
           "type": "Base",
           "value": 61.0
         }
@@ -40496,7 +40523,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "ManaOnFlaskUse",
+          "name": "UtilityManaOnUse",
           "type": "Base",
           "value": 67.0
         }
@@ -40511,7 +40538,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "ManaOnFlaskUse",
+          "name": "UtilityManaOnUse",
           "type": "Base",
           "value": 87.0
         }
@@ -41654,7 +41681,14 @@
     },
     {
       "text": "This Flask cannot be Used but applies its Effect constantly",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "UtilityCannotBeUsed",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "This item gains bonuses from Socketed Items as though it was Gloves",
@@ -41801,39 +41835,39 @@
     },
     {
       "text": "Used when you are affected by a Slow",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Used when you become Frozen",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Used when you become Ignited",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Used when you become Shocked",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Used when you become Stunned",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Used when you kill a Rare or Unique enemy",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Used when you release a skill with Perfect Timing",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Used when you start Bleeding",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Used when you take Fire damage from a Hit",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Utility Belt",

@@ -7,6 +7,7 @@ pub mod blind;
 pub mod breakdown;
 pub mod buff_pass;
 pub mod channel;
+mod charm_spirits;
 mod configured_damage;
 pub mod crit;
 pub mod crit_pass;

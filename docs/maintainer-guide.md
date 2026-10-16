@@ -173,7 +173,7 @@ CLI 完整构筑与 marginal 结果包含数据版本、树版本和未支持词
 
 WASM 的 `calculate_build_json`（JS 名 `calculateBuildJson`）响应另有 `minions` 与 `main_minion_index`。`minions` 是计算创建的每个召唤物：`index`、怪物 `minion_id` 与名字、召唤它的技能 `summoned_by`、它所用的技能 `skill_id`、等级、DPS、生命、护甲、闪避、能量护盾，以及已支持的 `stats`、`breakdowns` 与 `breakdown_descriptors`；每项是一个召唤物的快照，不乘召唤数量，`stats` 包含火、冰、电、混沌抗性及其最大值、超上限值（与角色相同的 `*Resist` / `*ResistMax` / `*ResistOverCap` id）；四种最终抗性有逐步分解。未建模的值不出现，也不补 0。`main_minion_index` 是主技能召唤的那一个，按提供该效果的宝石与召唤来源定位（`reference_check::main_skill_minion`），同名召唤宝石各有自己的结果，主技能组禁用时为空。请求的 `breakdowns` 选择要生成的明细：省略时是 `BREAKDOWN_STATS` 加每个召唤物的全部明细，`[]` 不生成任何明细，列表只生成所列 id（先去重，不认识的 id 是参数错误）；`breakdown_actor`（`{kind: "player"}` / `{kind: "minion", index}`，索引属于本次响应，越界是参数错误）选择计算对象，每份明细带 `actor`。数值与 `actor` 不随所请求的明细变化，逐技能总览与 Full DPS 的缓存忽略这两个字段。`breakdown_descriptors` 给每个可展示字段一种明细（`pobr_build::breakdown::detail::detail_kind`）：`steps`（逐步计算）、`sources`（每组是引擎的一次 ModDb 查询，`pobr_core::calc::session::detail::source_names`）、`derived`（公式与实际输入，`CalculationSession::derived_detail`）或 `none`。新增明细先声明种类，不为凑齐明细把上游输入包成可相加的词条行：来源组直接用计算阶段同一份 ModDb 查询、配置与 MORE 精度；派生项重用实际的计算项并给出公式输入，测试验证这些输入能重建结果；WASM 测试还要验证空选择与未请求的 id 不运行明细生成。`config_context`（Config 页按它筛选配置项）只在请求带 `config_context: true` 时计算并返回：它走读取跟踪的入口 `calculate_with_data_session_tracked`，在分解查询之前取快照；读取跟踪在 benchmark 构筑上最多慢 17.5%（Blood Mage），所以普通重算不跟踪、不返回该字段。这些字段在界面上的行为见 [Web 功能契约](web-contracts.md)。
 
-装备的两瓶药剂和三个护符（含未勾选启用的物品）按槽位输出 `Flask<N>*` / `Charm<N>*`：恢复总量、立即恢复量、每秒持续恢复、持续时间、充能上限、每次消耗、满充能使用次数及每秒充能；`*ChargesGained` 是充能获取倍率。基底数字来自官方游戏表 `Flasks`（药剂与护符的 `LifePerUse`、`ManaPerUse`、`RecoveryTime`，后者为十分之一秒）及 `ComponentCharges`（`MaxCharges`、`PerCharge`），适配到 `base/base_items.json` 的 `utility`；护符持续时间也来自 `Flasks.RecoveryTime`，品质提升药剂恢复量或护符持续时间；`local_*` 对应的裸恢复、时间、充能词条只查询该物品，不能进入全域效果池。全域 `FlaskEffect`、`*FlaskChargeGen` 沿用 PoB key 并提供来源查询，逐槽位数字提供保留实际输入的派生公式；CLI 的 `utility_stats` 与 WASM 的展示字段使用同一结果。这里只计算单次使用与充能，不推算触发、覆盖率或药剂使用期间的额外效果。
+装备的两瓶药剂和三个护符（含未勾选启用的物品）按槽位输出 `Flask<N>*` / `Charm<N>*`：恢复总量、立即恢复量、每秒持续恢复、持续时间、充能上限、每次消耗、满充能使用次数及每秒充能；`*ChargesGained` 是充能获取倍率。基底数字来自官方游戏表 `Flasks`（药剂与护符的 `LifePerUse`、`ManaPerUse`、`RecoveryTime`，后者为十分之一秒）及 `ComponentCharges`（`MaxCharges`、`PerCharge`），适配到 `base/base_items.json` 的 `utility`；护符持续时间也来自 `Flasks.RecoveryTime`，品质提升药剂恢复量或护符持续时间；`local_*` 对应的裸恢复、时间、充能词条只查询该物品，不能进入全域效果池。全域 `FlaskEffect`、`*FlaskChargeGen` 沿用 PoB key 并提供来源查询，逐槽位数字提供保留实际输入的派生公式；CLI 的 `utility_stats` 与 WASM 的展示字段使用同一结果。单次使用与充能不推算触发或覆盖率；启用时的额外效果沿用下文的生效约定。
 
 明细覆盖分组侧栏的全部字段；仅目录中的 `NumberOfDamagingHits` 与 `NumberOfMitigatedHits` 为 `none`，两者来自资源耗尽模拟，尚未保留可展示的迭代轨迹。最大承伤明细复用已求解的值、敌人倍率和资源池上下文，不另跑求解器；来源组的 BASE / INC / MORE 只描述实际查询贡献，不承诺等于含角色基础值等其他输入的最终结果。`ChannelTimeToTrigger` 是所选 Cast While Channelling 组从空 Energy 到首次触发的秒数：被支持法术的总容量除以持续 Energy 获取速率，含宝石及全局增益；不改变 DPS、持续触发频率或返还模型（`calc::energy::channel_trigger_terms`）。目录不提供 `CausticGroundDPS`、`MirageCausticGroundDPS`、`SustainableTrauma` 或 `TrapCooldown` 标量；`SkillDPS` 的逐技能信息由技能总览和 Full DPS 贡献行承载。
 
@@ -380,6 +380,38 @@ PoBR 自有词条规则声明 `exporter: "absent"`（导出工具未实现）或
 `mise run accuracy` 与 triage 的 “beyond PoB2” 按规则列出出现的构筑数、改变的构筑数与行数：固定其余参考模型，每次只恢复一条 absent 规则，按数值变化计数（不是 5% 吻合阈值）；多规则影响同一行时不能相加。differs 在两种口径都开启，列出但模式变化为零。holdout 只输出计数，不输出构筑与行的身份。这些数值用于观察实现影响，正确性仍由游戏数据的回归测试保证。
 
 Spell Mana Cost Efficiency（`base_spell_mana_cost_efficiency_+%`）只降低法术魔力消耗，效率 INC 与通用效率相加后，以 `1 + 效率 / 100` 除消耗；它标为 absent。The Fall of the Axe 的 “Grants Onslaught during effect”（`charm_gain_onslaught_during_effect`）同样标为 absent；按 [游戏 Onslaught 定义](https://poe2db.tw/us/Onslaught) 增加 20% Skill Speed 与 10% Movement Speed。沿用 flask/charm 约定：构筑中启用且可生效的护符视为效果激活；“Used when you are affected by a Slow” 不建模为 uptime，另一件生效的物品不会激活被关闭或超出槽位的护符。
+
+Charm/flask “Used when …” triggers (game `local_flask_use_on_*` and
+`local_charm_trigger_when_cursed`) are recognized with no numeric effect under
+the enabled-item convention. “Recover # Mana when Used”
+(`charm_recover_X_mana_when_used`, game `Mods.CharmGainManaOnUse1..8`) is the
+local per-use `Charm<N>ManaRecoveryOnUse`, independent of regeneration and
+quality. “Mana Recovery from Flasks can Overflow maximum Mana during Effect”
+(`local_unique_flask_mana_flask_recovery_can_overcap_mana_during_flask_effect`)
+changes no output: recovery amounts are uncapped and current mana is not
+simulated. “#% Chance to gain a Charge when you kill an enemy”
+(`local_%_chance_to_gain_flask_charge_on_kill`) adds no passive generation
+because kill rate is not modelled. Lavianga's “This Flask cannot be Used but
+applies its Effect constantly” (`local_flask_always_drinking`) reports zero
+available uses while keeping its recovery rate.
+
+Rite of Passage's “Possessed by Spirit Of The Bear / Boar / Cat / Owl / Ox /
+Primate / Serpent / Stag / Wolf for # seconds on use” uses game
+`base/mods.json`: `SpiritOfThe*PossessedPlayer` (Monkey for Primate, Snake for
+Serpent) and `SpiritPossessedStr/Dex/IntPlayer`. Separate fixed buffs grant
+20% reduced damage taken (Strength), 30% skill speed / 15% movement speed
+(Dexterity), or 80% damage (Intelligence), plus the spirit's own stats
+(`calc::charm_spirits`). These buffs do not scale with charm effect/quality;
+shared family bonuses apply once. Game Mods values take priority over the
+[Wolf tooltip](https://poe2db.tw/us/Spirit_Of_The_Wolf#SpiritOfTheWolfPossessedPlayerRef),
+which still says 10% skill speed / 5% movement speed. All new rules declare
+`exporter: "absent"` and a game source. Periodic spirit attacks, Wolf's
+maim/on-hit armour break, player ailment threshold/slow potency and heavy-stun
+buildup remain outside reported calculations; existing modifier names retain
+the latter inputs in diagnostics. “Energy Shield Recharge starts on use”,
+“Creates Ignited Ground … when used”, “Creates Consecrated Ground on Use”,
+and “Gain Guard equal to Current Runic Ward … when Effect ends” remain
+unsupported pending an event model.
 
 `crates/pobr-build/tests/` 下的 `codec.rs`、`skills.rs`、`parity.rs`、`dualrun.rs` 是 Cargo 集成测试目标，其子目录文件是用例模块；`--test` 使用汇总目标名。`pobr-core` 同样按 aggregation / parser / sources / engine / offence / defence / ailments / golden 汇总。
 

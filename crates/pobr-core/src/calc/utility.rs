@@ -48,12 +48,17 @@ pub const ITEM_STATS: &[&str] = &[
     "RecoveryPerSecond",
 ];
 
+pub const CHARM_STATS: &[&str] = &["ManaRecoveryOnUse"];
+
 pub fn item_stat(id: &str) -> Option<(&str, &str)> {
     let split = id.find(|c: char| c.is_ascii_digit())? + 1;
     let (slot, field) = id.split_at(split);
     let valid_slot = (1..=2).any(|i| slot == format!("Flask{i}"))
         || (1..=3).any(|i| slot == format!("Charm{i}"));
-    (valid_slot && ITEM_STATS.contains(&field)).then_some((slot, field))
+    (valid_slot
+        && (ITEM_STATS.contains(&field)
+            || (slot.starts_with("Charm") && CHARM_STATS.contains(&field))))
+    .then_some((slot, field))
 }
 
 pub fn local_name(slot: &str, name: &str) -> String {
@@ -65,6 +70,9 @@ pub fn local_name(slot: &str, name: &str) -> String {
 /// local_flask_duration_+%, local_max_charges_+% and local_charges_used_+%. Explicit Flask/Charm
 /// text retains its global meaning, including when it appears on a utility item.
 pub fn is_local_property(name: &str, text: &str) -> bool {
+    if matches!(name, "UtilityManaOnUse" | "UtilityCannotBeUsed") {
+        return true;
+    }
     let text = text.to_ascii_lowercase();
     !text.contains("flask")
         && !text.contains("charm")
@@ -225,7 +233,8 @@ pub fn calculate(env: &mut Env) {
                 ("UtilityChargesUsedMod", used_mod),
             ],
         );
-        let uses = if charges_used > 0.0 {
+        let can_use = !db.flag(cfg, &local_name(&slot, "UtilityCannotBeUsed"));
+        let uses = if can_use && charges_used > 0.0 {
             (charges_max / charges_used).floor()
         } else {
             0.0
@@ -234,13 +243,14 @@ pub fn calculate(env: &mut Env) {
             "Uses",
             uses,
             if charges_used > 0.0 {
-                "floor(UtilityChargesMax / UtilityChargesUsed)"
+                "UtilityCanBeUsed * floor(UtilityChargesMax / UtilityChargesUsed)"
             } else {
                 "0 * UtilityChargesUsed"
             },
             &[
                 ("UtilityChargesMax", charges_max),
                 ("UtilityChargesUsed", charges_used),
+                ("UtilityCanBeUsed", if can_use { 1.0 } else { 0.0 }),
             ],
         );
         let mut gain_names = typed_names("ChargesGained");
@@ -272,6 +282,13 @@ pub fn calculate(env: &mut Env) {
             ],
         );
         if item.is_charm {
+            let mana = sum(db, cfg, ModType::Base, &local("UtilityManaOnUse")).max(0.0);
+            write(
+                "ManaRecoveryOnUse",
+                mana,
+                "UtilityManaOnUse",
+                &[("UtilityManaOnUse", mana)],
+            );
             continue;
         }
         let base_recovery = item.base.life + item.base.mana;

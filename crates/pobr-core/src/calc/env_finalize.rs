@@ -44,6 +44,7 @@ pub fn env_finalize(env: &mut Env) {
     super::mageblood::apply_mageblood_legacies(env);
     // Stage 3 (T4): merges flask/charm mods per the active configuration (gated by mode_combat).
     merge_flasks_charms(env);
+    super::charm_spirits::apply(env);
     // Stage 4 (T3): the nine-way buff dispatch (aura factor / curse priority+limit / debuff→enemy).
     buff_pass(env);
     // Stage 5 (T5): a second keystone merge pass (for keystones granted by buffs/flasks).

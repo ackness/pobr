@@ -6,16 +6,16 @@
   },
   "summary": {
     "total": 4277,
-    "parsed": 3485,
-    "unsupported": 792,
+    "parsed": 3502,
+    "unsupported": 775,
     "err": 0,
-    "coverage_ratio": 0.814823
+    "coverage_ratio": 0.818798
   },
   "by_source": [
     {
       "source": "C1_build",
-      "parsed": 1197,
-      "unsupported": 506,
+      "parsed": 1214,
+      "unsupported": 489,
       "err": 0
     },
     {
@@ -41,41 +41,6 @@
       "text": "15% chance to gain [UndeadArchon|Archon of Undeath] when you use a [Command|Command] skill",
       "status": "unsupported",
       "source": "C2_tree"
-    },
-    {
-      "text": "20% Chance to gain a Charge when you kill an enemy",
-      "status": "unsupported",
-      "source": "C1_build"
-    },
-    {
-      "text": "21% Chance to gain a Charge when you kill an enemy",
-      "status": "unsupported",
-      "source": "C1_build"
-    },
-    {
-      "text": "22% Chance to gain a Charge when you kill an enemy",
-      "status": "unsupported",
-      "source": "C1_build"
-    },
-    {
-      "text": "23% Chance to gain a Charge when you kill an enemy",
-      "status": "unsupported",
-      "source": "C1_build"
-    },
-    {
-      "text": "24% Chance to gain a Charge when you kill an enemy",
-      "status": "unsupported",
-      "source": "C1_build"
-    },
-    {
-      "text": "25% Chance to gain a Charge when you kill an enemy",
-      "status": "unsupported",
-      "source": "C1_build"
-    },
-    {
-      "text": "28% Chance to gain a Charge when you kill an enemy",
-      "status": "unsupported",
-      "source": "C1_build"
     },
     {
       "text": "3% chance to gain [Volatility] on Kill",
@@ -231,6 +196,41 @@
       "text": "Apocalypse Vessel",
       "status": "unsupported",
       "source": "C1_build"
+    },
+    {
+      "text": "Apply [Debilitate] to Enemies 30 Metres in front of you while your [Shield] is raised",
+      "status": "unsupported",
+      "source": "C2_tree"
+    },
+    {
+      "text": "Armageddon Caress",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Armoured Cap",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Arrows gain [Critical|Critical Hit] Chance as they travel farther, up to\n40% increased [Critical|Critical Hit] Chance after 7 metres",
+      "status": "unsupported",
+      "source": "C2_tree"
+    },
+    {
+      "text": "Attacks consume an Endurance Charge to Critically Hit",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Attacks gain increased [Accuracy|Accuracy Rating] equal to their [Critical|Critical Hit Chance]",
+      "status": "unsupported",
+      "source": "C2_tree"
+    },
+    {
+      "text": "Attribute Passive Skills can instead grant 5% increased Damage\nAttribute Passive Skills can instead grant 5% increased [Armour], [Evasion] and [EnergyShield|Energy Shield]\nAttribute Passive Skills can instead grant 5% increased Cost [Efficiency]",
+      "status": "unsupported",
+      "source": "C2_tree"
     }
   ]
 }
