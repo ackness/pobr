@@ -5307,6 +5307,129 @@
         "Attacks have 25% chance to Maim on Hit"
       ],
       "exporter": "absent"
+    },
+    {
+      "id": "curse_effect_on_you_unmodelled",
+      "pattern": "\\d+% (?:increased|reduced) effect of curses on you",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: curse_effect_on_self_+%",
+      "source_note": "Incoming curses on the player are not modelled. CurseEffectOnSelf currently scales only curses on the enemy; it must not scale outgoing curses.",
+      "examples": [
+        "30% reduced effect of Curses on you"
+      ]
+    },
+    {
+      "id": "bleeding_duration_on_you_unmodelled",
+      "pattern": "\\d+% (?:increased|reduced) duration of bleeding on you",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: self_bleed_duration_+%",
+      "source_note": "Incoming Bleeding duration and total damage are not modelled. Generic PhysicalDegen is a rate without a Bleeding identity or duration; duration reduction must not lower its DPS.",
+      "examples": [
+        "40% reduced Duration of Bleeding on You"
+      ]
+    },
+    {
+      "id": "ailment_duration_on_you_unmodelled",
+      "pattern": "\\d+% (?:increased|reduced) duration of ailments on you",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: base_all_ailment_duration_on_self_+%",
+      "source_note": "Incoming ailment durations and uptime are not modelled. Duration must not scale configured Shock or Chill magnitude or generic degeneration rates.",
+      "examples": [
+        "15% reduced Duration of Ailments on You"
+      ]
+    },
+    {
+      "id": "corrupted_blood_immunity_unmodelled",
+      "pattern": "immune to corrupted blood",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: immune_to_corrupted_blood",
+      "source_note": "Incoming Corrupted Blood stacks and degeneration are not modelled. Generic PhysicalDegen does not identify Corrupted Blood, and must not be removed by this immunity.",
+      "examples": [
+        "Immune to Corrupted Blood"
+      ]
+    },
+    {
+      "id": "maim_immunity_unmodelled",
+      "pattern": "immune to maim",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: immune_to_maim",
+      "source_note": "Maim on the player is not modelled: no player Maim state supplies movement or evasion penalties. Enemy Maim is a separate state.",
+      "examples": [
+        "Immune to Maim"
+      ]
+    },
+    {
+      "id": "hinder_immunity_unmodelled",
+      "pattern": "immune to hinder",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "game_source": "base/stats.json: immune_to_hinder",
+      "source_note": "Hinder on the player is not modelled: no player Hinder state supplies a movement penalty. Enemy Hinder is a separate state.",
+      "examples": [
+        "Immune to Hinder"
+      ]
+    },
+    {
+      "id": "reduced_shock_effect_on_you",
+      "pattern": "(\\d+)% reduced effect of shock on you",
+      "mods": [
+        {
+          "name": "SelfShockEffect",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "player-debuffs",
+      "game_source": "base/stats.json: shocked_effect_on_self_+%",
+      "source_note": "Scales the configured incoming Shock magnitude; does not change duration or outgoing ailments. Regression: engine::player_debuffs and skills::player_debuffs. The exporter injects fixed configured Shock damage taken without reading SelfShockEffect.",
+      "examples": [
+        "40% reduced Effect of Shock on you"
+      ],
+      "exporter": "absent"
+    },
+    {
+      "id": "reduced_chill_effect_on_you",
+      "pattern": "(\\d+)% reduced effect of chill on you",
+      "mods": [
+        {
+          "name": "SelfChillEffect",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "player-debuffs",
+      "game_source": "base/stats.json: chill_effectiveness_on_self_+%",
+      "source_note": "Scales the configured incoming Chill magnitude; does not change duration or outgoing ailments. Regression: engine::player_debuffs and skills::player_debuffs.",
+      "examples": [
+        "40% reduced Effect of Chill on you"
+      ]
     }
   ]
 }
