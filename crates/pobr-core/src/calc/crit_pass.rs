@@ -122,10 +122,10 @@ pub fn run_crit_passes<F>(
     crit: &CritOutcome,
     scaled: &ScaledDamage,
     mode_effective: bool,
-    mitigation: F,
+    mut mitigation: F,
 ) -> CritPassOutput
 where
-    F: Fn(&CalcConfig, DamageType, f64) -> f64,
+    F: FnMut(&CalcConfig, DamageType, f64) -> f64,
 {
     // vendor `:3979`: both passes set the condition explicitly (an absolute
     // assignment, not a toggle).
@@ -208,7 +208,7 @@ where
             // each leg separately first; when mitigation has no dependency
             // on raw (a pure resistance/damage-taken chain), this degenerates
             // mathematically to the old formula with every value unchanged.
-            let hit_parts = leg_mitigated(&non_crit, &cfg_hit, &mitigation);
+            let hit_parts = leg_mitigated(&non_crit, &cfg_hit, &mut mitigation);
             let hit_leg: f64 = hit_parts.iter().sum();
             let crit_parts: Vec<f64> = non_crit
                 .avgs
@@ -230,8 +230,8 @@ where
         let blend = |hit: f64, crit_v: f64| hit * (1.0 - c) + crit_v * c;
         let player_side = blend(leg_total(&non_crit), leg_total(&crit_leg));
         let mitigated = if mode_effective {
-            let hit_parts = leg_mitigated(&non_crit, &cfg_hit, &mitigation);
-            let crit_parts = leg_mitigated(&crit_leg, &cfg_crit, &mitigation);
+            let hit_parts = leg_mitigated(&non_crit, &cfg_hit, &mut mitigation);
+            let crit_parts = leg_mitigated(&crit_leg, &cfg_crit, &mut mitigation);
             let blended = blend(hit_parts.iter().sum(), crit_parts.iter().sum());
             mitigated_legs = Some((hit_parts, crit_parts));
             blended
@@ -337,9 +337,9 @@ fn leg_total(leg: &Leg) -> f64 {
 }
 
 /// Each component's average after the enemy's mitigation, in leg order.
-fn leg_mitigated<F>(leg: &Leg, pass_cfg: &CalcConfig, mitigation: &F) -> Vec<f64>
+fn leg_mitigated<F>(leg: &Leg, pass_cfg: &CalcConfig, mitigation: &mut F) -> Vec<f64>
 where
-    F: Fn(&CalcConfig, DamageType, f64) -> f64,
+    F: FnMut(&CalcConfig, DamageType, f64) -> f64,
 {
     leg.avgs
         .iter()

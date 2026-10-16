@@ -23,6 +23,7 @@ pub mod error;
 pub mod flameblast;
 pub mod formula;
 pub mod hand_pass;
+pub(crate) mod hit_display;
 pub mod keystone_merge;
 pub mod mageblood;
 pub mod minion;

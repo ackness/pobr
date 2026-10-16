@@ -778,7 +778,17 @@ factor. The kill rate is the PoBR config input `enemyKillsPerSecond`
 `append_energy_options`); left empty, the line is inactive with that config
 gate and no kill rate is assumed. The rule is exporter-absent. Lavianga's “This Flask cannot be Used but
 applies its Effect constantly” (`local_flask_always_drinking`) reports zero
-available uses while keeping its recovery rate.
+available uses while keeping its recovery rate. The flask line “N% of Damage taken
+during effect Recouped as Life” (`local_flask_damage_taken_goes_to_life_over_4_seconds_%_during_effect`,
+for example Blood of the Warrior) is `LifeRecoup` under `UsingFlask`, so it follows
+the enabled-flask convention and shares the Life recoup duration (8 seconds by
+default; the stat id's `over_4_seconds` is legacy naming, and the line states no
+duration). It is not flat Damage Taken: the generic `N% of` rule used to read it
+that way, adding 29 (Abyssal Lich Twister `4028d0b52984`) or 21 (Martial Artist Ice
+Shot `71a879f43f2f`) to every damage type, and the pinned PoB2 drops the line
+because its mid-line form leaves an unparsed remainder. The rule is
+`exporter: "absent"`. A parse that leaves an `unparsed` remainder still returns
+`Parsed` and is applied by ingest; that general behaviour is unchanged here.
 
 Focused Thrust (`projectile_damage_+%_with_spears_while_there_no_enemies_surrounding_you`, passive 9227) grants 40% increased Damage to Projectile hits with Spears when `enemyDistance` is at least 30 (3 m; ten units per metre), remains inactive with an `enemyDistance` config gate when unset, and assumes the configured target is the only enemy; this single-target convention has no in-game test, and the rule is `exporter: "absent"`.
 
@@ -951,3 +961,5 @@ justify changing the imported gem or the game's level bonuses.
 暂时隐藏的流派参考面板也记录在该文档末尾。
 功能覆盖按三层记录：引擎能计算、JSON / CLI 能输出、玩家能在 Web 中完成操作。已有输出字段不代表 Calcs 有分解，
 已有配置控件或 handler 不代表对应机制已生效，handler 的数量不是界面控件的覆盖率。
+
+Calcs 的命中区间 `Physical/Fire/Cold/Lightning/Chaos` + `Min/Max` 和 `TotalMin/TotalMax` 是非暴击命中经过敌人减伤后的上下界：直接把现有命中分量乘 DPS 阶段保留的该类型 `EffMult`，明细给出减伤前界限与倍率，不再运行减伤计算。保留小数，沿用上文的精度约定；PoB2 的整数上下界可能造成小额命中的明显相对误差。攻击的区间、`EffMult`、`CritEffect` 只在 `MainHand…` / `OffHand…` 字段展示，与 PoB2 的手别表对应，顶层同名字段留 0；法术等无手别计算使用顶层。`DpsMultiplier` 保留技能、INC、MORE、手榴弹重复引爆与弹幕因子，双持按交替攻击取平均、同时命中取和；不包含 `QuantityMultiplier`。`Repeats` 沿用现有重复次数，`TotalNumberOfHits` 是 EHP 阶段算出的死亡前承受攻击总次数（已计避免被击中），不是技能命中次数。`StrikeTargets` 尚无目标数量计算，目录不提供该值。这些字段只展示已有计算，不改变伤害或 EHP。

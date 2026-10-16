@@ -150,7 +150,9 @@ fn catalog_entry_counts_locked() {
         // SelfIgniteEffect and DebuffExpirationModifier (+5).
         // HeavyStunBuildupAvg and PinBuildupAvg (+2).
         // Damaging-ailment chance/duration/multipliers/roll/stacks/source ranges and ShockChance (+34).
-        366,
+        // Hit Calcs: five types × Min/Max/EffMult, TotalMin/TotalMax/CritEffect/
+        // DpsMultiplier, each with MainHand/OffHand; Repeats and TotalNumberOfHits (+59).
+        425,
         "a change in Computed entry count needs explicit review"
     );
 }

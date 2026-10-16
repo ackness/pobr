@@ -506,3 +506,61 @@ fn exporter_differs_rule_stays_in_reference_mode() {
     );
     assert_eq!(db.exporter_rules().count(), 1);
 }
+
+/// Game stat `local_flask_damage_taken_goes_to_life_over_4_seconds_%_during_effect`
+/// ("29% of Damage taken during effect Recouped as Life"). The line is Life recoup
+/// while the flask is active. It used to parse as a flat `DamageTaken` BASE 29 with
+/// "Recouped as Life" left over, which raised the damage taken of every type.
+#[test]
+fn flask_recoup_line_adds_life_recoup_not_damage_taken() {
+    const LINE: &str = "29% of Damage taken during effect Recouped as Life";
+    let sum = |env: &Env, name: &str| {
+        env.player
+            .mod_db
+            .sum(ModType::Base, &env.cfg, &[ModName::from(name)])
+    };
+
+    // Merge level: only an active flask contributes, and only recoup.
+    let carriers = carrier_for("Flask 1", "Gargantuan Life Flask", &[LINE]);
+    let mut env = env_with_carriers(true, carriers.clone());
+    merge_flasks_charms(&mut env);
+    assert_eq!(sum(&env, "LifeRecoup"), 29.0);
+    assert_eq!(sum(&env, "DamageTaken"), 0.0);
+    let mut env = env_with_carriers(true, carriers.clone());
+    env.player
+        .mod_db
+        .add_mod(Modifier::flag("FlasksDoNotApplyToPlayer"));
+    merge_flasks_charms(&mut env);
+    assert_eq!(
+        sum(&env, "LifeRecoup"),
+        0.0,
+        "an inactive flask recoups nothing"
+    );
+
+    // Calculation level: 6000 Life and 600 Physical hits. Ten hits deplete the pool,
+    // so 29% of 6000 = 1740 is recouped over the shared 8 second Life recoup
+    // duration: 217.5 Life/s. The Physical hit taken stays 600; the old flat +29
+    // damage taken made it 600 * 1.29 = 774.
+    let run = |with_flask: bool| {
+        let mut session = crate::support::session(MinimalInput {
+            base_life: 6000.0,
+            ..Default::default()
+        })
+        .with_config(CalcConfig::attack().with_mode_combat(true));
+        if with_flask {
+            session.add_modifiers(carriers.clone());
+        }
+        session.add_enemy_modifiers([
+            Modifier::number("EnemyPhysicalDamage", ModType::Base, 600.0),
+            Modifier::flag("NeverCrit"),
+        ]);
+        session.perform_minimal().unwrap();
+        session
+    };
+    let without = run(false);
+    assert_eq!(without.output().life_recoup_rate, 0.0);
+    assert_eq!(without.ehp_terms().unwrap().taken_hit[0], 600.0);
+    let with = run(true);
+    assert_eq!(with.output().life_recoup_rate, 217.5);
+    assert_eq!(with.ehp_terms().unwrap().taken_hit[0], 600.0);
+}
