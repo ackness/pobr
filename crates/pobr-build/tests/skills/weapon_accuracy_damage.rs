@@ -67,3 +67,37 @@ fn a_quarter_of_the_accuracy_rating_on_the_weapon_is_added_as_physical_damage() 
     let elsewhere = average_hit(&data, &[], &[PENETRATE, "+400 to Accuracy Rating"]);
     assert!((elsewhere - average_hit(&data, &[], &[])).abs() < 1e-6);
 }
+
+#[test]
+fn melee_weapon_spell_damage_uses_the_equipped_weapon_class() {
+    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap();
+    for (base, melee) in [
+        ("Crude Bow", false),
+        ("Ashen Staff", false),
+        ("Wrapped Quarterstaff", true),
+        ("Wooden Club", true),
+    ] {
+        assert!(
+            data.base_items.contains_key(base),
+            "missing game base {base}"
+        );
+        let build = Build::new()
+            .add_socket_group(SocketGroup::new().with_active_skill("FireballPlayer", 20))
+            .set_item(EquipmentSlot::Weapon1, item(base, &[]));
+        let plain =
+            calculate_with_data(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+        let opts = DataOrchestratorOptions {
+            extra_modifier_texts: vec![
+                "40% increased Spell Damage while wielding a Melee Weapon".into(),
+            ],
+            ..Default::default()
+        };
+        let boosted = calculate_with_data(&build, &data, &opts).unwrap();
+        // spell_damage_+%_while_wielding_melee_weapon applies only while wielded.
+        assert!(
+            (boosted.total_hit_avg / plain.total_hit_avg - if melee { 1.4 } else { 1.0 }).abs()
+                < 1e-9,
+            "{base}"
+        );
+    }
+}

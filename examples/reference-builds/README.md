@@ -120,5 +120,7 @@ mise run builds:fetch examples/reference-builds/holdout --pick last
 | 2026-10-16（同一批改动，仅测量总数，未查看其中任何构筑） | `holdout/` | 23 | 18（78%） | 1912/2030（94.2%） |
 | 2026-10-16（第四十三轮：Crystallised Immunities 按启用组中超过半数的辅助宝石颜色给予异常免疫；额外残骸与每次命中破甲量登记为尚无模型的 no-effect。AvoidChill / AvoidIgnite / AvoidShock 不在这批构筑码的参考行中，现有吻合总数不变） | `tuned/` | 69 | 58（84%） | 5787/6113（94.7%） |
 | 2026-10-16（同一批改动，仅测量总数，未查看其中任何构筑） | `holdout/` | 23 | 18（78%） | 1912/2030（94.2%） |
+| 2026-10-16 (round 44: Light Radius transfers, granted passive-point budgets, buff expiry rate, flask recovery copied to ES, melee-weapon conditions, and explicit unmodelled/no-effect fates; reference agreement unchanged) | `tuned/` | 69 | 58 (84%) | 5787/6113 (94.7%) |
+| 2026-10-16 (same changes; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1912/2030 (94.2%) |
 
 吻合行里有按游戏规则有意不同于参考值的行（例如护身符授予的技能不保留精魄，见 `reference_report.rs` 基线旁的说明），所以上限不是 100%。

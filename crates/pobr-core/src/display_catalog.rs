@@ -1009,7 +1009,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
                 .chain(if kind == "Charm" {
                     crate::calc::utility::CHARM_STATS
                 } else {
-                    &[]
+                    crate::calc::utility::FLASK_STATS
                 })
             {
                 if kind == "Charm" && field.contains("Recovery") && *field != "ManaRecoveryOnUse" {

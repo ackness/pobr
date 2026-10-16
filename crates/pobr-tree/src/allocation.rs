@@ -292,6 +292,21 @@ impl<'a> AllocationTree<'a> {
         let sets = a.exclusive.each_ref().map(|s| s.len() as u32);
         (regular + sets[0].max(sets[1]), sets, weapon_max, ascendancy)
     }
+    fn granted_points(&self, a: &Allocation) -> u32 {
+        // PassiveSkills grants ordinary points on the shared ascendancy tree.
+        a.shared
+            .iter()
+            .flat_map(|id| &self.nodes[id].stats)
+            .filter_map(|line| {
+                line.strip_prefix("Grants ")
+                    .and_then(|text| {
+                        text.strip_suffix(" Passive Skill Point")
+                            .or_else(|| text.strip_suffix(" Passive Skill Points"))
+                    })
+                    .and_then(|value| value.parse::<u32>().ok())
+            })
+            .sum()
+    }
     pub fn edit(
         &self,
         before: &Allocation,
@@ -414,7 +429,9 @@ impl<'a> AllocationTree<'a> {
         let (used, sets, max, asc) = self.spend(&next);
         let (old_used, old_sets, old_max, old_asc) = self.spend(before);
         // An over-budget import can be reduced, but an edit may not worsen it.
-        if used > self.points_max && used > old_used {
+        let points_max = self.points_max.saturating_add(self.granted_points(&next));
+        let old_points_max = self.points_max.saturating_add(self.granted_points(before));
+        if used > points_max && (used > old_used || points_max < old_points_max) {
             return Err("passive_point_budget".into());
         }
         if asc > 8 && asc > old_asc {
@@ -437,7 +454,7 @@ impl<'a> AllocationTree<'a> {
             allocation: next,
             path,
             points_used: used,
-            points_max: self.points_max,
+            points_max,
             weapon_points_used: sets,
             weapon_points_max: max,
         })

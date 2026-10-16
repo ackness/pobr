@@ -299,6 +299,7 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
     let data = data();
     for &(name, gate) in READ_UNDER_A_STATE {
         let text = match name {
+            "LightRadius" => "20% increased Light Radius",
             "FireDamage" => "40% increased Fire Damage",
             "LightningDamage" => "40% increased Lightning Damage",
             "AilmentMagnitude" => "40% increased Magnitude of Ailments you inflict",
@@ -361,6 +362,9 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
                 options
                     .extra_modifier_texts
                     .push("+100 to maximum Energy Shield".into());
+            }
+            if active && name == "LightRadius" {
+                options.extra_modifier_texts.push("Increases and Reductions to Light Radius also apply to Area of Effect at 50% of their value".into());
             }
             let diagnosis = diagnose(&build, &data, &options).unwrap();
             let ledger = pobr_build::usage::line_usage(&diagnosis, &build, &data);
@@ -612,4 +616,68 @@ Used when you become Frozen
             .unwrap()
             .contains("charm_energy_shield_recharge_starts_when_used")
     );
+}
+
+#[test]
+fn miscellaneous_lines_distinguish_unmodelled_no_effect_and_external_readers() {
+    let data = data();
+    let cases = [
+        ("Grants 3 additional Skill Slots", LineStatus::NoEffect),
+        ("25% increased Knockback Distance", LineStatus::NoEffect),
+        (
+            "20% increased Endurance, Frenzy and Power Charge Duration",
+            LineStatus::Unmodelled,
+        ),
+        ("Double Activation Delay of Curses", LineStatus::Unmodelled),
+        ("25% increased Totem Life", LineStatus::Unmodelled),
+        ("Grants 1 Passive Skill Point", LineStatus::Applied),
+        (
+            "Remembrancing 1234 songworthy deeds by the line of Vorana",
+            LineStatus::Applied,
+        ),
+    ];
+    let texts: Vec<_> = cases.iter().map(|(text, _)| *text).collect();
+    let usage = ledger(&data, &[], &texts);
+    for (text, expected) in cases {
+        let row = line(&usage, "item.amulet.explicit", text);
+        assert_eq!(row.status, expected, "{row:?}");
+        if expected == LineStatus::Applied {
+            assert!(
+                row.modifiers
+                    .iter()
+                    .all(|modifier| modifier.status == ModifierStatus::Outside),
+                "{row:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn consumed_power_charge_bonus_has_existing_config_controls() {
+    use pobr_build::calculate_with_data;
+    let data = data();
+    let run = |enabled: bool, minimum: u32| {
+        let build = parse_build(&format!(r#"<PathOfBuilding2>
+<Build level="80" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
+<Config><Input name="usePowerCharges" boolean="{enabled}"/><Input name="overridePowerCharges" number="1"/></Config>
+</PathOfBuilding2>"#)).unwrap();
+        let options = DataOrchestratorOptions {
+            extra_modifier_texts: vec![
+                "20% increased Critical Damage Bonus if you've consumed a Power Charge Recently"
+                    .into(),
+                format!("+{minimum} to Minimum Power Charges"),
+            ],
+            ..Default::default()
+        };
+        calculate_with_data(&build, &data, &options)
+            .unwrap()
+            .crit_multiplier
+    };
+    // critical_hit_damage_bonus_+%_if_consumed_power_charge_recently = 20.
+    // Existing snapshot convention: one removable charge enables the bonus;
+    // minimum charges cannot be consumed, and the bonus does not scale by count.
+    let off = run(false, 0);
+    assert!((run(true, 0) - (1.0 + (off - 1.0) * 1.2)).abs() < 1e-9);
+    assert_eq!(run(true, 1), off);
 }

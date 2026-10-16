@@ -256,6 +256,12 @@ fn kalguur_keystones_replace_old_stats_and_remove_inherent_attribute_bonuses() {
             "{conqueror}: {:?}",
             calc.unsupported_modifier_texts()
         );
+        assert!(
+            !calc
+                .unsupported_modifier_texts()
+                .iter()
+                .any(|line| line.contains("Remembrancing"))
+        );
         let removed_life = 100.0
             + if conqueror == "Vorana" {
                 (f64::from(attrs.strength) + 100.0)

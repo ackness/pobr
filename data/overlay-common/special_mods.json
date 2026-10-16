@@ -138,20 +138,23 @@
       "vendor_pattern": "buffs on you expire (%d+)%% slower",
       "mods": [
         {
-          "name": "Duration",
+          "name": "BuffExpiryRate",
           "type": "INC",
-          "value": "$1",
-          "tags": [
-            {
-              "type": "SkillType",
-              "skillType": "SkillType:Buff"
-            }
-          ]
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
         }
       ],
       "verified": false,
       "batch": "S2",
-      "source_note": "ModParser.lua:4532（探针求值自动转写；样本：Buffs on you expire 10% slower）"
+      "source_note": "Game buff_time_passed_+%_only_buff_category changes elapsed buff time, not increased duration: 10% slower multiplies duration by 1/0.9. Applies to selected buff skill duration and the reported Archon buff duration. Regression: engine::sidebar_outputs.",
+      "game_source": "buff_time_passed_+%_only_buff_category; base/passive_tree.json: Prolonged Assault, Flow of Time, Buff Expiry Rate",
+      "exporter": "differs"
     },
     {
       "id": "cannot_be_blinded_while_on_full_life",
@@ -519,16 +522,14 @@
       "id": "double_activation_delay_of_curses",
       "pattern": "double activation delay of curses",
       "vendor_pattern": "double activation delay of curses",
-      "mods": [
-        {
-          "name": "CurseDelay",
-          "type": "MORE",
-          "value": 100
-        }
-      ],
+      "mods": [],
       "verified": false,
-      "batch": "S2",
-      "source_note": "ModParser.lua:4278（探针求值自动转写；样本：Double Activation Delay of Curses）"
+      "batch": "unmodelled",
+      "source_note": "Curse activation delay is not modelled; curse effects assume an already applied curse.",
+      "game_source": "keystone_hex_master",
+      "examples": [
+        "Double Activation Delay of Curses"
+      ]
     },
     {
       "id": "empowered_attacks_deal_increased_damage",
@@ -759,7 +760,8 @@
       ],
       "verified": false,
       "batch": "S1",
-      "source_note": "ModParser.lua:2727（探针求值自动转写；样本：Grants 1 Passive Skill Point）"
+      "source_note": "Game PassiveSkills text (nodes 11335, 47190, 12183, 36676): shared allocated nodes grant ordinary points to pobr_tree::allocation::AllocationTree::edit. Regression: allocation::granted_passive_points.",
+      "game_source": "base/passive_tree.json: AscendancyDruid1Small1, AscendancyDruid1Small2, AscendancyRanger3Small8, AscendancyRanger3Small9"
     },
     {
       "id": "grenade_skills_fire_an_additional_projectile",
@@ -5468,6 +5470,85 @@
       "examples": [
         "75% increased Energy Shield from Equipped Focus"
       ]
+    },
+    {
+      "id": "light_radius_area_transfer",
+      "pattern": "increases and reductions to light radius also apply to area of effect at (2[5-9]|[34][0-9])% of their value",
+      "mods": [
+        {
+          "name": "LightRadiusAppliesToAreaPercent",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "source_note": "Game Mods UniqueMutatedVaalLightRadiusModifiersApplyToAreaOfEffect rolls 25-50%. The existing exporter rule covers 50%; the other game rolls are exporter-absent. Copy only INC modifiers, including reductions. Regression: engine::sidebar_outputs.",
+      "game_source": "light_radius_additive_modifiers_apply_to_area_%_value",
+      "exporter": "absent"
+    },
+    {
+      "id": "additional_skill_slots_no_output",
+      "pattern": "grants \\d+ additional skill slots?",
+      "mods": [],
+      "verified": true,
+      "batch": "S0",
+      "source_note": "Skill socket capacity is not a calculated output; enabled socket groups are supplied by the build.",
+      "game_source": "local_item_additional_skill_slots; num_additional_skill_slots",
+      "examples": [
+        "Grants 3 additional Skill Slots"
+      ]
+    },
+    {
+      "id": "knockback_distance_no_output",
+      "pattern": "\\d+(?:\\.\\d+)?% (?:increased|reduced) knockback distance",
+      "mods": [],
+      "verified": true,
+      "batch": "S0",
+      "source_note": "Knockback displacement is not a reported output and no damage or timing calculation reads enemy displacement.",
+      "game_source": "knockback_distance_+%",
+      "examples": [
+        "25% increased Knockback Distance"
+      ]
+    },
+    {
+      "id": "charge_duration_unmodelled",
+      "pattern": "\\d+(?:\\.\\d+)?% (?:increased|reduced) endurance, frenzy and power charge duration",
+      "mods": [],
+      "verified": true,
+      "batch": "unmodelled",
+      "source_note": "Charge duration and charge uptime are not modelled; configured charge counts are snapshots.",
+      "game_source": "charge_duration_+%",
+      "examples": [
+        "20% increased Endurance, Frenzy and Power Charge Duration"
+      ]
+    },
+    {
+      "id": "totem_life_unmodelled",
+      "pattern": "\\d+(?:\\.\\d+)?% (?:increased|reduced) totem life",
+      "mods": [],
+      "verified": true,
+      "batch": "unmodelled",
+      "source_note": "Totem Life is not modelled; there is no totem life output or base-life model.",
+      "game_source": "totem_life_+%",
+      "examples": [
+        "25% increased Totem Life"
+      ]
+    },
+    {
+      "id": "remembrancing_jewel_data",
+      "pattern": "remembrancing \\d+ songworthy deeds by the line of (?:vorana|medved|olroth)",
+      "mods": [
+        {
+          "name": "JewelData",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "source_note": "The seed/conqueror line is consumed by pobr-build jewel_tree::passive_jewel_state. Unresolved seeded nodes remain unsupported. Regression: skills::passive_jewels.",
+      "game_source": "local_unique_jewel_alternate_tree_seed; local_unique_jewel_alternate_tree_version"
     }
   ]
 }
