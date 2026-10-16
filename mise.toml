@@ -109,6 +109,10 @@ run = "bash devs/scripts/driver.sh gaps"
 description = "Research one game line: `mise run gap \"<template or text>\"` (stats, full sources, build ledger, nearby engine rules)"
 run = "bash devs/scripts/driver.sh gap"
 
+[tasks."config:coverage"]
+description = "Config readers across benchmark + tuned builds, registered handlers and remaining gaps: `mise run config:coverage [--json FILE]`"
+run = "python3 devs/scripts/config-coverage.py"
+
 [tasks."skills:sweep"]
 description = "Every primary player active skill in a synthetic build against the pinned PoB2: `mise run skills:sweep [--jobs 4] [--refresh]`"
 run = "bash devs/scripts/driver.sh skills:sweep"
