@@ -6234,6 +6234,25 @@
       ]
     },
     {
+      "id": "full_mana_threshold_override",
+      "exporter": "absent",
+      "game_source": "base/stats.json: full_mana_threshold_%_override (stat description: You count as on Full Mana while at {0}% of maximum Mana or above; Mods.UniqueFullManaThreshold1 = 90, Idle Hands)",
+      "pattern": "you count as on full mana while at (\\d+(?:\\.\\d+)?)% of maximum mana or above",
+      "mods": [
+        {
+          "name": "FullManaPercentage",
+          "type": "OVERRIDE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "The threshold the FullManaPercentage view reports (calc::limit_display); the default is 100 because the game exports no constant for it and there is no in-game test. The Full Mana condition itself stays the explicit config state: possessing the line does not establish that the character is at the threshold, so the line changes no other output.",
+      "examples": [
+        "You count as on Full Mana while at 90% of maximum Mana or above"
+      ]
+    },
+    {
       "id": "strike_skills_target_additional_enemies",
       "pattern": "non-vaal strike skills target (\\d+) additional nearby enem(?:y|ies)",
       "mods": [

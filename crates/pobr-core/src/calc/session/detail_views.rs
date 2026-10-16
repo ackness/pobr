@@ -68,6 +68,7 @@ pub const DERIVED_STATS: &[&str] = &[
     "LifeCancellableReservation",
     "ManaCancellableReservation",
     "FullLifePercentage",
+    "FullManaPercentage",
     "DurationMod",
     "StrikeTargets",
     "LowestAttribute",

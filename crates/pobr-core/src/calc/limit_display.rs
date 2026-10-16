@@ -47,6 +47,9 @@ pub struct LimitViews {
     /// character counts as on Full Life, and the override that set it.
     pub full_life_percentage: f64,
     pub full_life_override: Option<f64>,
+    /// `FullManaPercentage`: the same threshold for Full Mana (Idle Hands).
+    pub full_mana_percentage: f64,
+    pub full_mana_override: Option<f64>,
     /// The generic skill duration modifier, from the same terms the skill
     /// duration uses (`skill_mechanics::duration_modifier_terms`).
     pub duration_mod: f64,
@@ -74,6 +77,7 @@ pub(crate) fn has_derived_detail(stat: &str) -> bool {
             | "LifeCancellableReservation"
             | "ManaCancellableReservation"
             | "FullLifePercentage"
+            | "FullManaPercentage"
             | "DurationMod"
             | "StrikeTargets"
             | "LowestAttribute"
@@ -115,6 +119,10 @@ pub(super) fn fill(env: &mut Env) {
     views.full_life_percentage = views
         .full_life_override
         .unwrap_or(DEFAULT_FULL_LIFE_PERCENTAGE);
+    views.full_mana_override = db.override_(cfg, "FullManaPercentage");
+    views.full_mana_percentage = views
+        .full_mana_override
+        .unwrap_or(DEFAULT_FULL_LIFE_PERCENTAGE);
     let duration =
         super::skill_mechanics::duration_modifier_terms(db, cfg, Some("PrimaryDuration"));
     views.duration_increased = duration.increased;
@@ -142,7 +150,8 @@ pub(super) fn fill(env: &mut Env) {
 
 /// Full Life means no Life is missing: the character is at 100% of maximum
 /// Life unless a `full_life_threshold_%_override` lowers the bar. The game
-/// exports no constant for it and there is no in-game measurement.
+/// exports no constant for it and there is no in-game measurement. Full Mana
+/// uses the same default (`full_mana_threshold_%_override` lowers it).
 const DEFAULT_FULL_LIFE_PERCENTAGE: f64 = 100.0;
 
 /// The game's `LowPoolThreshold` as a percentage, the same constant that
@@ -171,6 +180,7 @@ pub(crate) fn display_value(out: &OutputTable, stat: &str) -> Option<f64> {
         "LifeCancellableReservation" => v.life_cancellable_reservation,
         "ManaCancellableReservation" => v.mana_cancellable_reservation,
         "FullLifePercentage" => v.full_life_percentage,
+        "FullManaPercentage" => v.full_mana_percentage,
         "DurationMod" => v.duration_mod,
         "StrikeTargets" => v.strike_targets,
         "LowestAttribute" => v.lowest_attribute,
@@ -183,6 +193,25 @@ pub(crate) fn display_value(out: &OutputTable, stat: &str) -> Option<f64> {
         "CurrentShock" => v.applied.shock.current,
         _ => return None,
     })
+}
+
+/// The override replaces the default threshold outright, so the formula is
+/// the chosen threshold; the context says which it was.
+fn full_pool_detail(pool: &str, value: f64, overridden: Option<f64>) -> DerivedDetail {
+    DerivedDetail {
+        formula: format!("Full{pool}Threshold"),
+        inputs: vec![(format!("Full{pool}Threshold"), value)],
+        context: vec![
+            (
+                format!("DefaultFull{pool}Threshold"),
+                DEFAULT_FULL_LIFE_PERCENTAGE,
+            ),
+            (
+                format!("Full{pool}ThresholdOverridden"),
+                f64::from(u8::from(overridden.is_some())),
+            ),
+        ],
+    }
 }
 
 fn maximum_detail(name: &str, applied: &AppliedAilment) -> DerivedDetail {
@@ -253,23 +282,20 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<DerivedDetail> {
             )],
         ),
         "FullLifePercentage" => {
-            // The override replaces the default threshold outright, so the
-            // formula is the chosen threshold; the context says which it was.
             let views = &out.limit_views;
-            return Some(DerivedDetail {
-                formula: "FullLifeThreshold".into(),
-                inputs: vec![("FullLifeThreshold".into(), views.full_life_percentage)],
-                context: vec![
-                    (
-                        "DefaultFullLifeThreshold".into(),
-                        DEFAULT_FULL_LIFE_PERCENTAGE,
-                    ),
-                    (
-                        "FullLifeThresholdOverridden".into(),
-                        f64::from(u8::from(views.full_life_override.is_some())),
-                    ),
-                ],
-            });
+            return Some(full_pool_detail(
+                "Life",
+                views.full_life_percentage,
+                views.full_life_override,
+            ));
+        }
+        "FullManaPercentage" => {
+            let views = &out.limit_views;
+            return Some(full_pool_detail(
+                "Mana",
+                views.full_mana_percentage,
+                views.full_mana_override,
+            ));
         }
         "DurationMod" => (
             "max((1 + DurationIncreased / 100) * DurationMore, 0)",

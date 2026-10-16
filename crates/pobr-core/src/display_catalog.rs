@@ -661,6 +661,12 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             "FullLifePercentage",
         ),
         computed(
+            "FullManaPercentage",
+            Cat::Resource,
+            Vt::Percent,
+            "FullManaPercentage",
+        ),
+        computed(
             "DurationMod",
             Cat::SkillMechanics,
             Vt::Number,
