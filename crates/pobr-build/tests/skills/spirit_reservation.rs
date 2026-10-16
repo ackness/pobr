@@ -110,6 +110,29 @@ fn flat_only_reservation() {
     assert_eq!(calc(&build, &data), 60.0);
 }
 
+/// The game rows give Eternal Rage 100 Spirit and Blasphemy 60 per curse;
+/// Blasphemy's 20 quality grants 10% efficiency, rounding 60 / 1.1 to 55.
+/// PoBR reports all 155 requested Spirit even with only 100 available, keeping
+/// the deficit visible instead of disabling skills or capping the total.
+#[test]
+fn over_reservation_reports_the_skill_total_and_negative_remainder() {
+    let data = repo_data();
+    let build = build_with_group(SocketGroup::new().with_gem_skill("EternalRagePlayer", 20))
+        .add_socket_group(
+            SocketGroup::new()
+                .with_gem_skill_quality("BlasphemyPlayer", 20, 20)
+                .with_gem_skill("TemporalChainsPlayer", 20),
+        );
+    let opts = DataOrchestratorOptions {
+        extra_modifier_texts: vec!["+100 to Spirit".into()],
+        ..Default::default()
+    };
+    let output = calculate_with_data(&build, &data, &opts).expect("calc");
+    assert_eq!(output.spirit, 100.0);
+    assert_eq!(output.spirit_reserved, 155.0);
+    assert_eq!(output.spirit_unreserved, -55.0);
+}
+
 /// Own negative reservation multiplier (e.g. -50): 60 × 0.5 = 30.
 #[test]
 fn own_negative_reservation_multiplier_halves() {
