@@ -513,3 +513,7 @@ FullyBrokenArmourEffect = "Fully Broken Armour Physical Hit Damage Taken"
 
 ArchonDuration = "Archon Buff Duration (s)"
 ArchonRecoveryPeriod = "Archon Recovery Period (s)"
+
+PowerChargesDuration = "Power Charge Duration (s)"
+FrenzyChargesDuration = "Frenzy Charge Duration (s)"
+EnduranceChargesDuration = "Endurance Charge Duration (s)"

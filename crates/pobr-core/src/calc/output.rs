@@ -275,10 +275,16 @@ pub struct OutputTable {
     /// Charge current/max stacks (Power / Frenzy / Endurance).
     pub charge_power_current: f64,
     pub charge_power_maximum: u32,
+    /// Charge duration in seconds; does not simulate charge uptime or expiry.
+    pub charge_power_duration: f64,
     pub charge_frenzy_current: f64,
     pub charge_frenzy_maximum: u32,
+    /// Charge duration in seconds; does not simulate charge uptime or expiry.
+    pub charge_frenzy_duration: f64,
     pub charge_endurance_current: f64,
     pub charge_endurance_maximum: u32,
+    /// Charge duration in seconds; does not simulate charge uptime or expiry.
+    pub charge_endurance_duration: f64,
     /// Leech panel rate (per second; 0 = no leech).
     pub life_leech_rate: f64,
     pub mana_leech_rate: f64,
@@ -732,10 +738,13 @@ impl Default for OutputTable {
             // Lane A: charges / leech / Recoup default to neutral 0 (no effect on the panel without a source mod).
             charge_power_current: 0.0,
             charge_power_maximum: 0,
+            charge_power_duration: 0.0,
             charge_frenzy_current: 0.0,
             charge_frenzy_maximum: 0,
+            charge_frenzy_duration: 0.0,
             charge_endurance_current: 0.0,
             charge_endurance_maximum: 0,
+            charge_endurance_duration: 0.0,
             life_leech_rate: 0.0,
             mana_leech_rate: 0.0,
             es_leech_rate: 0.0,
