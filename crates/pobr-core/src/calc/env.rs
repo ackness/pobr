@@ -299,16 +299,15 @@ impl Env {
 /// the offence/defence pipeline.
 ///
 /// Mapping strategy (avoids double-counting / missed values):
-/// - **Life / resistances / virtual weapon damage**: written to
+/// - **Life / virtual weapon damage**: written to
 ///   [`ActorBaseStats`]'s scalar base fields — because the player pipeline's
-///   pool query uses `MaximumLife` and resistance query uses
-///   `FireResistance`, which differ from the minion `ModDb`'s intrinsic
-///   `Life`/`FireResist` BASE names, so they can't be read from the db and
+///   pool query uses `MaximumLife`, which differs from the minion `ModDb`'s intrinsic
+///   `Life` BASE name, so it can't be read from the db and
 ///   must be supplied via the scalar base instead.
-/// - **Armour / evasion / ES**: scalar base left at 0, driven instead by the
-///   minion `ModDb`'s intrinsic `Armour`/`Evasion`/`EnergyShield` BASE
-///   through the defence pipeline (these query names match the intrinsic
-///   names, avoiding double-counting).
+/// - **Armour / evasion / ES / resistances**: scalar base left at 0, driven instead by the
+///   minion `ModDb`'s intrinsic BASE modifiers. Resistance queries read both
+///   `FireResistance` and `FireResist` (and likewise for other types),
+///   avoiding double-counting the monster base.
 /// - `mod_db` carries the three-channel injection result as-is.
 fn minion_actor_from_context(ctx: &super::MinionContext) -> Actor {
     let base = ActorBaseStats {
@@ -320,9 +319,9 @@ fn minion_actor_from_context(ctx: &super::MinionContext) -> Actor {
         evasion: 0.0,
         energy_shield: 0.0,
         accuracy: 0.0,
-        fire_resistance: ctx.base.fire_resist,
-        cold_resistance: ctx.base.cold_resist,
-        lightning_resistance: ctx.base.lightning_resist,
+        fire_resistance: 0.0,
+        cold_resistance: 0.0,
+        lightning_resistance: 0.0,
         // An attacking minion's virtual weapon damage feeds the attack damage pipeline.
         hit_min: ctx.base.weapon.physical_min,
         hit_max: ctx.base.weapon.physical_max,

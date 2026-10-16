@@ -200,6 +200,17 @@ fn minion_modifiers_impl(
         }
         // "Supported Skills have {0}% increased Minion Attack Speed".
         "minion_attack_speed_+%" => Modifier::number("AttackSpeed", ModType::Inc, value),
+        // Elemental Army and resistance stats on summoning skills affect
+        // the summoned ally, not the summoner.
+        "minion_elemental_resistance_%" => Modifier::number("ElementalResist", ModType::Base, value),
+        "minion_fire_damage_resistance_%" => Modifier::number("FireResist", ModType::Base, value),
+        "minion_cold_damage_resistance_%" => Modifier::number("ColdResist", ModType::Base, value),
+        "minion_lightning_damage_resistance_%" => Modifier::number("LightningResist", ModType::Base, value),
+        "minion_chaos_resistance_%" => Modifier::number("ChaosResist", ModType::Base, value),
+        "minion_base_maximum_fire_damage_resistance_%" => Modifier::number("FireResistMax", ModType::Base, value),
+        "minion_base_maximum_cold_damage_resistance_%" => Modifier::number("ColdResistMax", ModType::Base, value),
+        "minion_base_maximum_lightning_damage_resistance_%" => Modifier::number("LightningResistMax", ModType::Base, value),
+        "minion_maximum_all_elemental_resistances_%" => Modifier::number("ElementalResistMax", ModType::Base, value),
         // "Minions from this skill have 1% increased Damage per {0} of your Strength".
         "minion_1%_damage_+%_per_X_player_strength" => Modifier::number(
             "Damage", ModType::Inc,

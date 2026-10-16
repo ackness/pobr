@@ -67,6 +67,7 @@ pub struct OutputTable {
     pub max_fire_resistance: f64,
     pub max_cold_resistance: f64,
     pub max_lightning_resistance: f64,
+    pub max_chaos_resistance: f64,
     pub fire_resistance_over_cap: f64,
     pub cold_resistance_over_cap: f64,
     pub lightning_resistance_over_cap: f64,
@@ -524,6 +525,8 @@ pub struct MinionOutput {
     pub evasion: f64,
     /// Energy shield.
     pub energy_shield: f64,
+    /// Supported resistance outputs, using the player's display stat ids.
+    pub stats: std::collections::BTreeMap<String, f64>,
 }
 
 impl Default for OutputTable {
@@ -562,6 +565,7 @@ impl Default for OutputTable {
             cold_resistance: 0.0,
             lightning_resistance: 0.0,
             chaos_resistance: 0.0,
+            max_chaos_resistance: 0.0,
             accuracy: 0.0,
             max_fire_resistance: 0.0,
             max_cold_resistance: 0.0,

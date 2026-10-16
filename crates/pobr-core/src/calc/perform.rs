@@ -318,6 +318,13 @@ fn inject_companion_life(env: &mut Env) {
 /// the created population twice and discard the independent Presence override.
 pub(crate) fn minion_cfg(env: &Env, minion: &super::Actor) -> CalcConfig {
     let mut cfg = env.cfg.clone();
+    // The shared resistance pass reads the actor's inherent maximum.
+    // A minion uses the monster default (75%), independent of the player.
+    cfg.constants
+        .game_constants
+        .character
+        .base_maximum_all_resistances_pct =
+        cfg.constants.monster().base_maximum_all_resistances_pct;
     if let Some(skill) = minion
         .minion
         .as_ref()
@@ -479,6 +486,11 @@ fn perform_minions(env: &mut Env) {
         let output =
             calculate_minimal_vs_enemy(&minion.mod_db, &env.enemy.mod_db, &minion_cfg, &input);
         minion.output = OutputTable::from(&output);
+        let chaos =
+            super::offence::resolve_resistance(&minion.mod_db, &minion_cfg, 0.0, "Chaos", false);
+        minion.output.chaos_resistance = chaos.final_value;
+        minion.output.max_chaos_resistance = chaos.max;
+        minion.output.chaos_resistance_over_cap = chaos.over_cap;
         minion.breakdown = BreakdownTable::from_steps(output.breakdown);
         let enemy_accuracy = super::setup_env::enemy_accuracy(&env.enemy, &minion_cfg);
         calc_defence(minion, &minion_cfg, enemy_accuracy);
@@ -500,6 +512,15 @@ fn perform_minions(env: &mut Env) {
             armour: minion.output.armour,
             evasion: minion.output.evasion,
             energy_shield: minion.output.energy_shield,
+            stats: super::minion::MINION_RESISTANCE_STATS
+                .into_iter()
+                .map(|id| {
+                    (
+                        id.into(),
+                        crate::display_catalog::display_value(&minion.output, id),
+                    )
+                })
+                .collect(),
         });
     }
     env.minions = minions;
@@ -620,6 +641,7 @@ fn fill_mechanics(env: &mut Env) {
     // resistTypeList includes Chaos, and isElemental=false doesn't merge in the shared name).
     let chaos_resistance = super::offence::resolve_resistance(db, cfg, 0.0, "Chaos", false);
     env.player.output.chaos_resistance = chaos_resistance.final_value;
+    env.player.output.max_chaos_resistance = chaos_resistance.max;
     env.player.output.chaos_resistance_over_cap = chaos_resistance.over_cap;
     // Accuracy rating as the main-hand pass reads it (the hit chance input).
     env.player.output.accuracy = {

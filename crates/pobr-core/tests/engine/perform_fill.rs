@@ -1347,6 +1347,52 @@ fn perform_minion_from_def_with_limit() {
     assert_eq!(env.player.output.life, 1000.0);
 }
 
+#[test]
+fn minion_resistances_count_intrinsics_once_and_use_full_resolution() {
+    let mut def = pobr_data::minion::minion_def_skeletal_storm_mage();
+    // Game monster base Lightning resistance is 50; keep an unbuffed
+    // channel to catch counting the same intrinsic again as scalar base.
+    def.fire_resist = 50.0;
+    let mut env = player_with(
+        ActorBaseStats::default(),
+        vec![Modifier::number("ElementalResist", ModType::Base, -60.0)],
+    );
+    // Distinguish the actor defaults: the minion still reads the monster
+    // maximum of 75 even if a data pack gives the player a different one.
+    env.cfg
+        .constants
+        .game_constants
+        .character
+        .base_maximum_all_resistances_pct = 65.0;
+    let inner = |name, kind, value| MinionModifierEntry {
+        inner: Modifier::number(name, kind, value),
+        minion_type: None,
+    };
+    env.add_minion_from_def(
+        &def,
+        20,
+        1,
+        vec![
+            inner("FireResist", ModType::Base, 40.9),
+            inner("FireResistMax", ModType::Base, 5.9),
+            inner("ChaosResist", ModType::Base, -250.0),
+        ],
+        vec![],
+        AttributeInfusion::default(),
+        MinionOrigin::default(),
+    );
+    perform(&mut env).unwrap();
+    let stats = &env.player.output.minions[0].stats;
+    assert_eq!(stats["LightningResist"], 50.0);
+    assert_eq!(stats["ColdResist"], 0.0);
+    assert_eq!(stats["FireResist"], 80.0);
+    assert_eq!(stats["FireResistMax"], 80.0);
+    assert_eq!(stats["FireResistOverCap"], 10.0);
+    assert_eq!(stats["ChaosResist"], -200.0);
+    assert_eq!(stats["ChaosResistMax"], 75.0);
+    assert_eq!(env.player.output.fire_resistance, -60.0);
+}
+
 /// Population-limit multiplier wiring into cfg: minion "per Summoned Minion" mods can reference the count.
 #[test]
 fn perform_minion_damage_per_summoned_minion_uses_limit() {

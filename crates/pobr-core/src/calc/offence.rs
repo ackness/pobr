@@ -178,7 +178,7 @@ pub(crate) struct ResistanceResolution {
     pub(crate) total: f64,
     pub(crate) uncapped_max: f64,
     pub(crate) final_value: f64,
-    max: f64,
+    pub(crate) max: f64,
     pub(crate) over_cap: f64,
     /// The terms the total was built from, kept for [`Self::formula`].
     base: f64,

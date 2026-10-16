@@ -1690,8 +1690,8 @@ impl CalculationSession {
         }
     }
 
-    /// The steps of minion `index`'s offence `stat` (`ActionRate`,
-    /// `HitChance`, `TotalHitAvg`, `TotalDPS`, `CritChance`,
+    /// The steps of minion `index`'s final resistance or offence `stat`
+    /// (`ActionRate`, `HitChance`, `TotalHitAvg`, `TotalDPS`, `CritChance`,
     /// `CritMultiplier`), as its calculation took them. `None` for any other
     /// stat, or when the steps do not end at the minion's DPS.
     pub fn minion_stat_formula(&self, index: usize, stat: &str) -> Option<super::StatFormula> {
@@ -1699,7 +1699,20 @@ impl CalculationSession {
         let cfg = perform::minion_cfg(&self.env, minion);
         let mut input = super::MinimalInput::from(minion.base);
         input.enemy_evasion = super::setup_env::enemy_evasion(&self.env.enemy, &cfg);
-        let formula = self.actor_pass_formula(&minion.mod_db, stat, &cfg, &input)?;
+        let formula = match stat {
+            "FireResist" | "ColdResist" | "LightningResist" | "ChaosResist" => {
+                let element = stat.strip_suffix("Resist")?;
+                super::offence::resolve_resistance(
+                    &minion.mod_db,
+                    &cfg,
+                    0.0,
+                    element,
+                    element != "Chaos",
+                )
+                .formula()
+            }
+            _ => self.actor_pass_formula(&minion.mod_db, stat, &cfg, &input)?,
+        };
         let consistent = stat != "TotalDPS" || (formula.value - minion.output.dps).abs() <= 1e-6;
         consistent.then_some(formula)
     }

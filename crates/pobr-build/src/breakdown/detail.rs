@@ -207,6 +207,20 @@ pub fn minion_detail_descriptors() -> BTreeMap<String, DetailKind> {
             },
         )
     })
+    .chain(
+        pobr_core::calc::minion::MINION_RESISTANCE_STATS
+            .into_iter()
+            .map(|id| {
+                (
+                    id.into(),
+                    if id.ends_with("Resist") {
+                        DetailKind::Steps
+                    } else {
+                        DetailKind::None
+                    },
+                )
+            }),
+    )
     .collect()
 }
 
@@ -216,6 +230,9 @@ pub fn minion_stat_detail(
     stat: &str,
 ) -> Option<StatDetail> {
     let kind = *minion_detail_descriptors().get(stat)?;
+    if kind == DetailKind::None {
+        return None;
+    }
     let breakdown = super::minion_stat_breakdown(session, index, stat)?;
     Some(StatDetail {
         kind,

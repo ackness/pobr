@@ -701,7 +701,7 @@ fn calculate_build_reports_the_minion_of_the_main_skill() {
     let report = calculate_build_detailed(
         &request,
         &BuildDetail {
-            breakdown: vec!["Minion:Life".into()],
+            breakdown: vec!["Minion:Life".into(), "Minion:FireResist".into()],
             ..BuildDetail::default()
         },
     )
@@ -714,6 +714,25 @@ fn calculate_build_reports_the_minion_of_the_main_skill() {
         .find(|minion| minion.minion_id == beast)
         .expect("the main skill's beast");
     assert_eq!(minion.summoned_by, "SummonBeastPlayer");
+    for id in pobr_core::calc::minion::MINION_RESISTANCE_STATS {
+        assert!(
+            minion.stats.contains_key(id),
+            "missing CLI minion stat {id}"
+        );
+    }
+    let resistance = &report.breakdowns[1];
+    assert_eq!(resistance.value, Some(minion.stats["FireResist"]));
+    assert_eq!(
+        resistance
+            .breakdown
+            .as_ref()
+            .unwrap()
+            .formula
+            .as_ref()
+            .unwrap()
+            .value,
+        minion.stats["FireResist"]
+    );
 
     let entry = &report.breakdowns[0];
     assert_eq!(entry.stat, "Minion:Life");

@@ -6,8 +6,14 @@ use crate::{GameData, LoadError};
 
 impl GameData {
     /// Loads `base/monster_resistances.json`. Older snapshots without this
-    /// domain report a missing file; existing calculations do not require it.
+    /// domain return an empty table, retaining their overlay resistances.
     pub fn monster_resistances(&self) -> Result<MonsterResistancesDef, LoadError> {
-        self.load_domain("monster_resistances.json")
+        match self.load_domain("monster_resistances.json") {
+            Ok(table) => Ok(table),
+            Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
+                Ok(MonsterResistancesDef::default())
+            }
+            Err(error) => Err(error),
+        }
     }
 }

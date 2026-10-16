@@ -973,6 +973,8 @@ pub struct MinionOutput {
     pub armour: f64,
     pub evasion: f64,
     pub energy_shield: f64,
+    /// Resistance values, maximums and over-cap, using player display stat ids.
+    pub stats: std::collections::BTreeMap<String, f64>,
 }
 
 /// How a meta gem triggers the main skill.
@@ -1284,6 +1286,7 @@ pub fn calculate_build_detailed(
                 armour: minion.armour,
                 evasion: minion.evasion,
                 energy_shield: minion.energy_shield,
+                stats: minion.stats.clone(),
             })
             .collect(),
     };

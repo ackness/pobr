@@ -143,6 +143,80 @@ fn non_summon_build_has_empty_minions() {
     );
 }
 
+/// Game MonsterResistances: Skeletal Arsonist has 50 Fire, 0 Cold,
+/// Lightning and Chaos. The player's campaign penalty never transfers.
+#[test]
+fn minion_resistances_use_monster_base_modifiers_and_caps() {
+    let data = load_data();
+    // MonsterTypes can link several resistance records. The official
+    // table preserves a vulnerability which the old overlay dropped.
+    let golem = data
+        .minion_def("Metadata/Monsters/MudGolem/MudGolem")
+        .unwrap();
+    assert_eq!(
+        (golem.fire_resist, golem.cold_resist, golem.lightning_resist),
+        (30.0, 30.0, -30.0)
+    );
+    assert_eq!(
+        data.minion_def("RaisedSkeletonArsonist")
+            .unwrap()
+            .fire_resist,
+        50.0
+    );
+    let build = Build::new()
+        .with_character(CharacterIdentity {
+            level: 90,
+            class_name: "Witch".into(),
+            ascendancy_name: String::new(),
+        })
+        .add_socket_group(
+            SocketGroup::new().with_active_skill("SummonSkeletalArsonistsPlayer", 20),
+        );
+    let mut options = default_opts();
+    options.extra_modifier_texts = vec![
+        "Minions have +40% to all Elemental Resistances".into(),
+        "Minions have +18% to Chaos Resistance".into(),
+    ];
+    let session = pobr_build::calculate_with_data_session(&build, &data, &options).unwrap();
+    let minion = &session.output().minions[0];
+    // 50 + 40 = 90, capped at 75, with 15 over-cap; other elements get 40.
+    for (id, expected) in [
+        ("FireResist", 75.0),
+        ("FireResistMax", 75.0),
+        ("FireResistOverCap", 15.0),
+        ("ColdResist", 40.0),
+        ("LightningResist", 40.0),
+        ("ChaosResist", 18.0),
+        ("ChaosResistMax", 75.0),
+    ] {
+        assert_eq!(minion.stats[id], expected, "{id}");
+    }
+    let detail = pobr_build::breakdown::minion_stat_breakdown(&session, 0, "FireResist").unwrap();
+    assert_eq!(detail.formula.unwrap().value, 75.0);
+    options
+        .extra_modifier_texts
+        .push("Minions have +5% to all maximum Elemental Resistances".into());
+    let raised = calculate_with_data(&build, &data, &options).unwrap();
+    assert_eq!(raised.minions[0].stats["FireResist"], 80.0);
+    assert_eq!(raised.minions[0].stats["FireResistMax"], 80.0);
+    assert_eq!(raised.minions[0].stats["FireResistOverCap"], 10.0);
+
+    // Elemental Army's game stat grants the supported minion +30% to
+    // elemental resistances; an ally aura adds another 12%.
+    let supported = Build::new().add_socket_group(
+        SocketGroup::new()
+            .with_gem_skill("SummonSkeletalArsonistsPlayer", 20)
+            .with_gem_skill("SupportElementalArmyPlayer", 1),
+    );
+    let mut aura = default_opts();
+    aura.extra_modifier_texts
+        .push("Allies in your Presence have +12% to all Elemental Resistances".into());
+    let output = calculate_with_data(&supported, &data, &aura).unwrap();
+    assert_eq!(output.minions[0].stats["ColdResist"], 42.0);
+    assert_eq!(output.minions[0].stats["FireResist"], 75.0);
+    assert_eq!(output.minions[0].stats["FireResistOverCap"], 17.0);
+}
+
 /// Minion life = monster-ally life table(level) × the life normalization
 /// multiplier (0.7) — matches core's `build_minion_context_from_def`
 /// derivation (the B2 wiring introduces no extra scaling).

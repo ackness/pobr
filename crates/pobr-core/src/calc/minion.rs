@@ -31,6 +31,22 @@ use super::round;
 // Re-export MinionDef types so callers can use them via pobr_core::calc::minion.
 pub use pobr_data::minion::{MinionCategory, MinionDef, MinionLimitId};
 
+/// Resistance outputs supported by each minion, in the player's display units.
+pub const MINION_RESISTANCE_STATS: [&str; 12] = [
+    "FireResist",
+    "ColdResist",
+    "LightningResist",
+    "ChaosResist",
+    "FireResistMax",
+    "ColdResistMax",
+    "LightningResistMax",
+    "ChaosResistMax",
+    "FireResistOverCap",
+    "ColdResistOverCap",
+    "LightningResistOverCap",
+    "ChaosResistOverCap",
+];
+
 /// A minion's intrinsic crit damage bonus (`playerMinionIntrinsicStats.base_critical_hit_damage_bonus`).
 /// A minion's final crit damage base = the monster base
 /// (`MONSTER_BASE_CRIT_DAMAGE_BONUS`=30) + this intrinsic (70) = 100.
