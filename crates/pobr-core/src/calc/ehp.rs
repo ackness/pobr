@@ -497,6 +497,9 @@ pub struct EhpTerms {
     /// Physical damage prevented by Armour plus additional physical reduction,
     /// accumulated alongside damage-taken recoup in the mitigated hit loop.
     pub physical_prevented: f64,
+    /// Chaos damage prevented by Chaos resistance plus Chaos damage reduction,
+    /// accumulated in the same loop (Forsaken Bangle's prevented-damage recoup).
+    pub chaos_prevented: f64,
     /// The recoupable damage of each type (Physical/Fire/Cold/Lightning/Chaos
     /// order), feeding per-type recoup (elemental Energy Shield recoup) and
     /// the EsRecoupRate derived detail.
@@ -765,6 +768,30 @@ fn taken_hit_terms(enemy_damage: &TypedDamage, mit: &MitigationCtx) -> TakenHitT
     }
 }
 
+impl EhpTerms {
+    /// The Physical and Chaos damage the mitigated hit loop saw prevented,
+    /// which the prevented-damage recoup returns.
+    pub fn prevented(&self) -> super::survivability::PreventedDamage {
+        super::survivability::PreventedDamage {
+            physical: self.physical_prevented,
+            chaos: self.chaos_prevented,
+        }
+    }
+}
+
+/// Chaos damage a hit loses to the Chaos mitigation stage: the Chaos damage
+/// entering it (after taken-as shifts) minus what leaves it, `damage ×
+/// (1 - resist_taken_multi × reduction_taken_multiplier)`. Negative Chaos
+/// resistance enlarges the hit and prevents nothing; flat damage taken and
+/// later damage-taken multipliers are not part of the stage.
+pub(crate) fn chaos_prevented_by_mitigation(
+    damage: f64,
+    resist_taken_multi: f64,
+    reduction: DamageReductionTerms,
+) -> f64 {
+    (damage * (1.0 - resist_taken_multi * reduction.taken_multiplier())).max(0.0)
+}
+
 /// EHP loop parameters (vendor Data.lua:235-239 + `:3094`'s LimitEHPSpeedup tightening).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EhpLoopParams {
@@ -857,15 +884,22 @@ pub fn number_of_hits_to_die_tracked(
     ctx: &PoolCtx,
     params: &EhpLoopParams,
 ) -> (f64, [f64; 5]) {
-    let (hits, recoup) = hits_to_die_with_recoup(damage_in, pools_full, ctx, params, 0.0);
+    let (hits, recoup) = hits_to_die_with_recoup(damage_in, pools_full, ctx, params, [0.0; 5]);
     (hits, recoup.by_type)
 }
 
+/// Index of Physical and Chaos in the per-type arrays below.
+const PHYSICAL: usize = 0;
+const CHAOS: usize = 4;
+
+/// Damage-taken recoup and prevented-damage accumulation of the top-level hits.
+/// `prevented_per_hit` is the damage each landed hit has prevented, per type
+/// (only Physical and Chaos have a prevented-damage recoup source).
 #[derive(Default)]
 struct RecoupAccumulation {
     by_type: [f64; 5],
-    physical_prevented: f64,
-    physical_prevented_per_hit: f64,
+    prevented: [f64; 5],
+    prevented_per_hit: [f64; 5],
 }
 
 fn hits_to_die_with_recoup(
@@ -873,11 +907,11 @@ fn hits_to_die_with_recoup(
     pools_full: &PoolState,
     ctx: &PoolCtx,
     params: &EhpLoopParams,
-    physical_prevented_per_hit: f64,
+    prevented_per_hit: [f64; 5],
 ) -> (f64, RecoupAccumulation) {
     let mut iterations = 0.0;
     let mut recoup = RecoupAccumulation {
-        physical_prevented_per_hit,
+        prevented_per_hit,
         ..Default::default()
     };
     let hits = hits_to_die_inner(
@@ -942,7 +976,9 @@ fn hits_to_die_inner(
             for (acc, v) in recoup.by_type.iter_mut().zip(after.recoupable_by_type) {
                 *acc += v;
             }
-            recoup.physical_prevented += recoup.physical_prevented_per_hit * iteration_multiplier;
+            for (total, per_hit) in recoup.prevented.iter_mut().zip(recoup.prevented_per_hit) {
+                *total += per_hit * iteration_multiplier;
+            }
         }
         pool = after.pools;
         // :3084 still alive and the single-hit damage already exceeds the ceiling → treated as surviving unlimited hits.
@@ -1521,6 +1557,8 @@ pub fn fill_ehp_pob2(
         let any_recoup = [
             "LifeRecoup",
             "PhysicalDamagePreventedLifeRecoup",
+            "ChaosDamagePreventedLifeRecoup",
+            "ChaosDamagePreventedManaRecoup",
             "ManaRecoup",
             "EnergyShieldRecoup",
             "FireEnergyShieldRecoup",
@@ -1554,16 +1592,29 @@ pub fn fill_ehp_pob2(
                 ward: on_block("WardOnBlock") * avg_block_frac,
             }
         };
-        // Convention (no in-game test): only the Physical reduction stage
-        // counts, after taken-as shifts and before damage-taken multipliers.
-        // Blocked/deflected hits contribute nothing even when they deal damage.
-        // Evasion is already outside this loop of landed hits; it changes the
-        // number of attacks needed, not the accumulated damage before death.
+        // Convention (no in-game test): the Physical reduction stage (Armour and
+        // additional reduction) and the Chaos mitigation stage (resistance and
+        // reduction) count, after taken-as shifts and before flat damage and
+        // damage-taken multipliers. Blocked/deflected hits contribute nothing
+        // even when they deal damage. Evasion is already outside this loop of
+        // landed hits; it changes the number of attacks needed, not the
+        // accumulated damage before death.
+        let landed = |i: usize| {
+            (1.0 - avg_block_frac)
+                * (1.0 - unlucky(out.deflect_chance) / 100.0)
+                * (1.0 - avoid[i] / 100.0)
+        };
         let physical_prevented_per_hit = physical_before_reduction
             * (1.0 - physical_reduction.taken_multiplier())
-            * (1.0 - avg_block_frac)
-            * (1.0 - unlucky(out.deflect_chance) / 100.0)
-            * (1.0 - avoid[0] / 100.0);
+            * landed(PHYSICAL);
+        let chaos_prevented_per_hit = chaos_prevented_by_mitigation(
+            hit.damage[CHAOS],
+            mit.resist_taken_multi[CHAOS],
+            hit.reduction[CHAOS],
+        ) * landed(CHAOS);
+        let mut prevented_per_hit = [0.0_f64; 5];
+        prevented_per_hit[PHYSICAL] = physical_prevented_per_hit;
+        prevented_per_hit[CHAOS] = chaos_prevented_per_hit;
         let (n_mitigated, recoup) = if (configured_damage_chance - 100.0).abs() > f64::EPSILON
             || any_recoup
             || prevented_total
@@ -1590,13 +1641,7 @@ pub fn fill_ehp_pob2(
                     any_recoup || prevented_total || gain.any(),
                 )
             };
-            hits_to_die_with_recoup(
-                &mitigated_in,
-                &pools,
-                &ctx,
-                &m_params,
-                physical_prevented_per_hit,
-            )
+            hits_to_die_with_recoup(&mitigated_in, &pools, &ctx, &m_params, prevented_per_hit)
         } else {
             (n_hits, RecoupAccumulation::default())
         };
@@ -1681,7 +1726,8 @@ pub fn fill_ehp_pob2(
                 not_hit_chance: not_hit,
                 enemy_damage_in: enemy_in.total_in,
                 physical_reduction,
-                physical_prevented: recoup.physical_prevented,
+                physical_prevented: recoup.prevented[PHYSICAL],
+                chaos_prevented: recoup.prevented[CHAOS],
                 recoupable_total,
                 recoupable_by_type,
                 max_hit_solutions,

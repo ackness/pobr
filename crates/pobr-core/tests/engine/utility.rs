@@ -655,3 +655,90 @@ fn flask_more_recovery_if_used_on_low_pool_applies_only_under_its_condition() {
     near(mana_amount, 277.5);
     near(life_amount, 2002.2);
 }
+
+/// Game stats `local_flask_removes_%_of_life_recovery_from_mana_on_use` and
+/// `local_flask_removes_%_of_mana_recovery_from_life_on_use`: the flask keeps its whole
+/// recovery and the other pool pays that percentage of it on each use. The per-slot
+/// `ManaRemovedOnUse` / `LifeRemovedOnUse` equal the percentage times the slot's total
+/// `Recovery`; the other direction stays 0, and the line does not touch `Recovery`.
+#[test]
+fn flask_removal_is_a_share_of_the_flasks_own_recovery_per_use() {
+    // Game Gargantuan Life Flask: 710 life over 5 s; Gargantuan Mana Flask: 185 mana over 2 s.
+    let life = Item {
+        base: pobr_data::item::ItemBaseId::from("Gargantuan Life Flask"),
+        quality: 0,
+        implicit_texts: vec![],
+        modifier_texts: vec![
+            "50% increased Amount Recovered".into(),
+            "Removes 15% of Life Recovered from Mana when used".into(),
+            "88% more Recovery if used while on Low Life".into(),
+        ],
+        rarity: ItemRarity::Magic,
+        ..charm(&[])
+    };
+    let mana = Item {
+        base: pobr_data::item::ItemBaseId::from("Gargantuan Mana Flask"),
+        modifier_texts: vec![
+            "50% increased Amount Recovered".into(),
+            "Removes 25% of Mana Recovered from Life when used".into(),
+        ],
+        ..life.clone()
+    };
+    let life_base = UtilityBaseStats {
+        life: 710.0,
+        mana: 0.0,
+        duration: 5.0,
+        charges_max: 75.0,
+        charges_used: 10.0,
+    };
+    let mana_base = UtilityBaseStats {
+        life: 0.0,
+        mana: 185.0,
+        duration: 2.0,
+        charges_max: 75.0,
+        charges_used: 10.0,
+    };
+    let run = |low_life: bool| {
+        let mut session = super::support::session(MinimalInput::default());
+        session.add_utility_base("Flask 1", &life, &life_base);
+        session.add_flask_charm("Flask 1", &life);
+        session.add_utility_base("Flask 2", &mana, &mana_base);
+        session.add_flask_charm("Flask 2", &mana);
+        session.set_condition("LowLife", low_life);
+        session.perform_minimal().unwrap();
+        assert!(
+            session.unsupported_modifier_texts().is_empty(),
+            "{:?}",
+            session.unsupported_modifier_texts()
+        );
+        session
+    };
+    let near = |actual: f64, expected: f64| {
+        assert!((actual - expected).abs() < 1e-9, "{actual} != {expected}");
+    };
+    let session = run(false);
+    let out = &session.output().utility_stats;
+    // The Life flask recovers 710 * 1.5 = 1065; 15% of it is taken from Mana: 159.75.
+    near(out["Flask1Recovery"], 1065.0);
+    near(out["Flask1ManaRemovedOnUse"], 159.75);
+    near(out["Flask1LifeRemovedOnUse"], 0.0);
+    // The Mana flask recovers 185 * 1.5 = 277.5; 25% of it is taken from Life: 69.375.
+    near(out["Flask2Recovery"], 277.5);
+    near(out["Flask2LifeRemovedOnUse"], 69.375);
+    near(out["Flask2ManaRemovedOnUse"], 0.0);
+    let detail = session.derived_detail("Flask1ManaRemovedOnUse").unwrap();
+    let input = |id: &str| detail.inputs.iter().find(|(key, _)| key == id).unwrap().1;
+    near(input("UtilityRemovedPercent"), 15.0);
+    near(
+        input("UtilityRecovery") * input("UtilityRemovedPercent") / 100.0,
+        out["Flask1ManaRemovedOnUse"],
+    );
+
+    // Low Life makes the Life flask recover 1065 * 1.88 = 2002.2, so 15% of it is 300.33; the
+    // removal follows the flask's final recovery rather than its base.
+    let session = run(true);
+    let out = &session.output().utility_stats;
+    near(out["Flask1Recovery"], 2002.2);
+    near(out["Flask1ManaRemovedOnUse"], 300.33);
+    near(out["Flask2LifeRemovedOnUse"], 69.375);
+}
