@@ -833,7 +833,13 @@ fn boss_identity_and_poise_are_effective_only_for_every_tier() {
         assert_eq!(db.more(&panel, &poise), 1.0, "{tier:?}: panel Poise");
         assert_eq!(
             db.more(&effective, &poise),
-            if tier.is_boss() { 6.0 } else { 1.0 }
+            match tier {
+                EnemyTier::None => 1.0,
+                // MonsterUnique2 = 500 MORE; MonsterVarieties raw percentages
+                // are 313 for the MAP boss mode and 1700 for Xesht.
+                EnemyTier::Boss => 18.78,
+                EnemyTier::Pinnacle | EnemyTier::Uber => 102.0,
+            }
         );
         // The gate must not erase the defence-side tier inputs.
         assert_eq!(

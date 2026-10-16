@@ -292,33 +292,37 @@ the selected skill's source damage; the usage ledger reports that gate when a
 non-damaging skill such as Mana Remnants does not reach those readers.
 
 `HeavyStunBuildupAvg` reports the selected successful hit's average enemy Heavy
-Stun buildup as a percentage of poise. It reuses the poise formula with
-`game.heavy_stun_damage_scale = 0.58` from `base/game_constants.json`, the
-level's floored poise threshold, player `EnemyHeavyStunBuildup` /
-`EnemyImmobilisationBuildup`, and enemy buildup/threshold modifiers. Stored
-pre-mitigation hit averages include critical-hit weighting; alternating hands
-are averaged per hit. The game's [Keywords](https://poe2db.tw/us/Keywords)
-(Stun, Heavy Stun, Cold Damage) give player physical damage and melee hits
-separate multiplicative 50% bonuses and exclude cold damage. The stored monster
-100% physical / 33% melee constants apply to damage dealt by monsters, not
-player hits. `CannotStun` / `CannotHeavyStun` suppress buildup. The derived detail
-uses the retained calculation terms. Mauling Stuns uses `enemyDistance <=
-metres * 10`, sharing Focused Thrust's handler and ledger gate; unset distance
-retains the existing zero-distance convention. Pin stays unmodelled because the
-current game-constants snapshot contains no Pin damage scale.
+Stun buildup as a percentage of poise. The game's `KeywordPopups` entries
+Stun / HeavyStun (55 / 57) base buildup on damage dealt; Premitigation (422)
+distinguishes damage before enemy mitigation. The calculation reuses the
+hit-DPS pass's per-type mitigated damage, with armour applied separately to
+non-critical and critical hits before crit weighting. It does not multiply
+by hit chance; alternating hands are averaged per successful hit. Player
+physical damage and melee hits each give 50% more buildup, multiplicatively;
+cold contributes zero (`KeywordPopups[3] Cold`). The monster 100% physical /
+33% melee bonuses describe damage dealt by monsters. Dazed enemies receive
+50% more Stun Buildup (`KeywordPopups[252]`); `conditionEnemyDazed` is
+Effective-gated, as are the other enemy configuration debuffs.
 
-The shared enemy setup currently injects the common unique-monster poise
-bonus only (`Mods.MonsterUnique2`: `poise_threshold_+%_final_from_rarity = 500`).
-It omits boss-specific poise bonuses, so Heavy Stun buildup on boss targets is
-incomplete. `base/enemy_presets.json` stores additional Map Boss / Xesht
-multipliers, but its schema documents those entries as PoB-derived; the current
-game export has only `MonsterVarieties.Id` / `MonsterType`, not the needed
-monster-specific poise values (`monster_base_relative_poise_threshold_+%_final`).
-The 95-build cached oracle check agrees only on 19 zero outputs; no nonzero
-sample is validated. Other differences include the requested pre-mitigation
-hit convention versus PoB2's effective damage. These are unresolved engine/data
-limits, not evidence that the oracle is wrong, and are not registered as known
-intentional differences.
+The shared poise formula uses `GameConstants.HeavyStunDamageScale = 58 / 100`
+(0.58), the level's `DefaultMonsterStats.PoiseThreshold`, player
+`EnemyHeavyStunBuildup` / `EnemyImmobilisationBuildup`, and enemy buildup and
+threshold modifiers. Boss poise combines the unique-rarity 500% MORE
+(`Mods.MonsterUnique2`) with `MonsterVarieties.PoiseThreshold / 100`, both
+behind `Condition:Effective`. The 0.5.5.4.2 game rows are manually curated in
+`data/overlay-common/boss_poise_thresholds.json`, including row IDs and export
+SHA256: 313 for Boss (the mode among MAP rows with BossHealthBar), 1700 for
+Pinnacle/Uber (Xesht, row 1946; no distinct Uber variety). These are representative
+tier defaults, not a claim that all bosses share a threshold. The adapter should
+generate this domain when that column joins the regular export. The vendor
+Map Boss/Xesht Poise entries in `base/enemy_presets.json` remain unused.
+
+`CannotStun` / `CannotHeavyStun` suppress buildup. The derived detail reuses the
+retained calculation terms. Mauling Stuns uses `enemyDistance <= metres * 10`,
+sharing Focused Thrust's handler and ledger gate; unset distance retains the
+zero-distance convention. Pin remains unmodelled in this implementation;
+inspection found `GameConstants.PinDamageScale = 420 / 100` (4.2), so its
+remaining work is calculation/reader wiring rather than a missing scale.
 
 伤害型异常（流血、点燃、毒）的同时层数 = 命中率 × 施加几率 × 持续时间 × 每秒命中数，持续时间是基础时间乘持续时间加成（含 “increased duration of Ailments you inflict”，`EnemyAilmentDuration`）与敌人身上效果的过期速度，再除以 “Damaging Ailments deal damage #% faster”：伤害总量不变、造成得更快，每份结束得更早（`calc/perform.rs`，分解里写作 “faster /N”）。
 
@@ -575,6 +579,7 @@ more damage, while the displayed `ArchonNature` template uses
 - 技能 stat 的含义写进 `pobr-core/src/rules/skill_stats.rs`：以游戏 stat id 为键，用引擎自己的 modifier 表达，出处是该 stat 的游戏描述文本。这张表先于抽取来的 `skill_stat_map.json` 查询，表里有的 stat 不再读抽取数据；抽取映射拒绝或缺失的 stat（`mise run diagnose` 第 4 节）优先在这里补，而不是去扩充按 PoB2 名称写的白名单。
 - 不再新增“因为 vendor `X.lua:行号` 这样写”式的注释；行号随 vendor 升级失效，也说明不了游戏规则。改到旧代码时顺手把这类注释换成规则本身的描述。
 - PoBR 与 PoB2 结果不同时，先判断谁符合游戏的词条文本和数据，不默认 PoB2 正确。已知的有意差异：
+  - Boss poise uses the current game table rather than vendor presets. In patch 0.5.5.4.2, `MonsterVarieties` row 1946 (Xesht) has `PoiseThreshold = 1700` (17×), while the pinned PoB2 Xesht preset uses 838% MORE (9.38×). The curated game-source rows and export hash are in `data/overlay-common/boss_poise_thresholds.json`; map-boss mode 313 agrees with the older 213% MORE preset. On worked Shaman Spark `5dcf9ecdd375`, `HeavyStunBuildupAvg` is 3.627930% versus the oracle's 6.578395%; the dominant oracle/engine factor is 17/9.38 = 1.812367 (remaining hit/rounding difference about 0.05%). Pinnacle and Uber use Xesht as the representative monster; no distinct Uber Xesht variety exists in this export. This threshold also affects Freeze/Electrocute poise buildup; it is separate from unique rarity's 6×.
   - 偷取每种资源只取恢复速率最高的有效实例（[0.5 补丁说明](https://www.pathofexile.com/forum/view-thread/3932540)：“Only a single Leech instance per resource (Life, Mana, or Energy Shield) can apply at a time.”）；[游戏关键词](https://poe2db.tw/us/Keywords)给出一秒基础恢复时间，偷取量和偷取速度分别修正。钉定的 PoB2 仍叠加实例，保留按资源池计算的单实例偷取量上限，并把“increased amount … Leeched”当作最大速率加成。tuned 组的 Deadeye（Twister，`bed1edc6d8b2`）`ManaLeechGainRate` 为 PoBR 80.72 对参考值 166.17；Pathfinder（Ice Shot，`728cbde29279`）同一字段为 162.96 对 190.12；Blood Mage（Arc，`5bc8be0fa967`）`LifeLeechGainRate` 为 513.68 对 575.23。去掉单实例偷取量上限后，原来吻合的三行 `LifeLeechGainRate` 也出现有意差异：Warbringer（Shield Wall，`1e4e329e5e5c`）为 582.978 对 552.40416，Blood Mage（Comet，`bc750d615159`）为 641.43144 对 207.01274，Gemling Legionnaire（Frostbolt，`42f790c0f9ba`）为 0.2 对 0.0635；这些行已登记在 `devs/scripts/known-differences.json`。前述默认速率上限仍是兼容约定，平均命中频率也只是覆盖时间估计；这些数值不是游戏内实测结果。
   - PoB2 用自己的符文表覆盖物品原文；PoBR 以物品原文为准。同一物品上同一 stat 的符文在原文里合成一行：tuned 组的 Infernalist（Comet）武器上是一行 “45% less maximum Life”，PoBR 按 0.55 计，PoB2 按两块符文的 15% 与 30% 分别连乘（0.595），所以它的生命比参考值低。
   - 同一个诅咒由两个技能组施加时，敌人身上只有最强的那一份（“Debuffs of the same type do not stack, and only the copy with the strongest effect applies”，[Curse](https://www.poe2wiki.net/wiki/Curse)），比较的是各份自身与其辅助宝石的诅咒效果（`skill_env::buff_specs::curse_strength`）。PoB2 按自己的优先级表挑，光环来源优先：tuned 组的 Acolyte of Chayula（Decompose）有 Doedre's Undoing 组和 Blasphemy 组两份 Despair，PoB2 用后者（敌人混沌抗性 −31），PoBR 用更强的前者（−58）。

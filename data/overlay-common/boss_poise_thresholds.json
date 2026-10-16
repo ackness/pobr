@@ -1,0 +1,39 @@
+{
+  "_meta": {
+    "schema": "boss_poise_thresholds/v1",
+    "generator": "manual",
+    "source": "按游戏数据手工整理: official GGG CDN table export, not vendor enemy presets.",
+    "patch": "0.5.5.4.2",
+    "table": "MonsterVarieties",
+    "column": "PoiseThreshold",
+    "export_sha256": "3132ea5d9950ded2869103b6bfae60d5d6d7cee762669b1abc5ec681c5ec2dde",
+    "rows": [
+      {
+        "_index": 275,
+        "Id": "Metadata/Monsters/RustKing/TheRustKingBossMAP",
+        "raw_value": 313
+      },
+      {
+        "_index": 437,
+        "Id": "Metadata/Monsters/Balbala/BalbalaMAP",
+        "raw_value": 313
+      },
+      {
+        "_index": 687,
+        "Id": "Metadata/Monsters/SaltGolem/SaltGolemBossMAP",
+        "raw_value": 313
+      },
+      {
+        "_index": 1946,
+        "Id": "Metadata/Monsters/Breach/BreachOverseerBoss/ItThatReturned",
+        "raw_value": 1700
+      }
+    ],
+    "selection": "Boss: 313 is the unique mode (10 of 47 rows with MAP in Id and BossHealthBar=true). Pinnacle and Uber: Xesht, row 1946; no distinct Uber Xesht variety exists in the export.",
+    "units": "Raw percent; divide by 100 for a multiplier or subtract 100 for MORE. Unique rarity is a separate modifier.",
+    "notes": "Once MonsterVarieties.PoiseThreshold is exported by the regular pipeline, the adapter should generate this file. Re-audit representative rows and the MAP boss mode on patch updates."
+  },
+  "boss": 313,
+  "pinnacle": 1700,
+  "uber": 1700
+}

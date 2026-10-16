@@ -193,6 +193,7 @@ fn heavy_stun_uses_eligible_crit_weighted_hits_and_shared_poise_scaling() {
         session.add_modifiers([
             Modifier::number("SkillBaseCritChance", ModType::Base, 50.0),
             Modifier::number("EnemyHeavyStunBuildup", ModType::More, 20.0),
+            Modifier::number("FirePenetration", ModType::Base, 25.0),
         ]);
         session.add_enemy_modifiers([
             Modifier::number("PoiseThreshold", ModType::More, 100.0),
@@ -200,6 +201,8 @@ fn heavy_stun_uses_eligible_crit_weighted_hits_and_shared_poise_scaling() {
             Modifier::number("HeavyStunBuildup", ModType::Inc, 30.0),
             Modifier::number("StunBuildup", ModType::More, 10.0),
             Modifier::number("FireResist", ModType::Base, 75.0),
+            Modifier::number("Armour", ModType::Override, 0.0),
+            Modifier::number("DamageTaken", ModType::Inc, 20.0),
         ]);
         if let Some(flag) = cannot_stun {
             session.add_modifiers([Modifier::flag(flag)]);
@@ -210,12 +213,14 @@ fn heavy_stun_uses_eligible_crit_weighted_hits_and_shared_poise_scaling() {
     for (distance, inc) in [(19.9, 110.0), (20.0, 110.0), (20.1, 70.0)] {
         let session = run(distance, None);
         // Each type: 100 noncrit, 200 crit, 50% crit => 150 average.
-        // Cold contributes zero; physical gets 1.5; melee gets another 1.5:
-        // (150*1.5 + 3*150)*1.5 = 1012.5. Level 10 poise = 142;
+        // Fire: (75 resist - 25 penetration) leaves 75; others remain 150.
+        // All take 20% increased damage. Cold contributes zero; physical and melee
+        // each get 1.5: (150*1.5 + 75 + 150 + 150)*1.2*1.5 = 1080.
+        // Level 10 poise = 142;
         // floor(142*.8*2) = 227. INC = 50+20(+40 within 2m), MORE=1.2.
-        // Enemy buildup = 1.3*1.1 = 1.43. Fire resistance does not change it.
+        // Enemy buildup = 1.3*1.1 = 1.43.
         let per_damage = (0.58 / 227.0 * (1.0 + inc / 100.0) * 1.2 * 100.0 * 1e9_f64).round() / 1e9;
-        let expected = 1012.5 * per_damage * 1.43;
+        let expected = 1080.0 * per_damage * 1.43;
         let actual = display_value(session.output(), "HeavyStunBuildupAvg");
         assert!(
             (actual - expected).abs() < 1e-6,
@@ -268,4 +273,46 @@ fn heavy_stun_uses_eligible_crit_weighted_hits_and_shared_poise_scaling() {
         session.perform_minimal().unwrap();
         assert_eq!(session.output().heavy_stun_buildup_avg, 0.0);
     }
+}
+
+#[test]
+fn heavy_stun_reuses_separate_hit_and_crit_armour_mitigation() {
+    let mut session = session(&[]);
+    session.setup_enemy(10, pobr_data::monster::EnemyTier::None);
+    session.add_modifiers([Modifier::number("SkillBaseCritChance", ModType::Base, 50.0)]);
+    session.add_enemy_modifiers([Modifier::number("Armour", ModType::Override, 1000.0)]);
+    session.perform_minimal().unwrap();
+    // Armour ratio 10: noncrit 100 loses 50%; crit 200 loses 1/3.
+    // Blending after mitigation gives (50 + 200*2/3)/2 = 275/3.
+    // Physical's 50% more and GameConstants.HeavyStunDamageScale = .58 apply.
+    let per_damage = (0.58 / 142.0 * 100.0 * 1e9_f64).round() / 1e9;
+    let expected = (275.0 / 3.0) * 1.5 * per_damage;
+    assert!((session.output().heavy_stun_buildup_avg - expected).abs() < 1e-6);
+    let detail = session.derived_detail("HeavyStunBuildupAvg").unwrap();
+    let physical = detail
+        .inputs
+        .iter()
+        .find(|(k, _)| k == "PhysicalHitAverage")
+        .unwrap()
+        .1;
+    assert!((physical - 275.0 / 3.0).abs() < 1e-6);
+}
+
+#[test]
+fn heavy_stun_daze_bonus_follows_the_effective_enemy_condition() {
+    let run = |effective, dazed| {
+        let mut s = session(&[]).with_config(CalcConfig::spell().with_mode_effective(effective));
+        s.setup_enemy(10, pobr_data::monster::EnemyTier::None);
+        s.add_enemy_modifiers([Modifier::number("Armour", ModType::Override, 0.0)]);
+        if dazed {
+            // Same flag and Effective gate as config conditionEnemyDazed.
+            s.add_enemy_modifiers([Modifier::flag("Condition:Dazed")
+                .with_tag(pobr_core::ModTag::condition("Effective", false))]);
+        }
+        s.perform_minimal().unwrap();
+        s.output().heavy_stun_buildup_avg
+    };
+    // KeywordPopups[252]: Dazed enemies take 50% more Stun Buildup.
+    assert!((run(true, true) - run(true, false) * 1.5).abs() < 1e-9);
+    assert_eq!(run(false, true), run(false, false));
 }

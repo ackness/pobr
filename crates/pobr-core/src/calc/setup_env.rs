@@ -189,7 +189,7 @@ pub fn setup_enemy(env: &mut Env, config_level: u32, tier: EnemyTier) {
     env.enemy.base.fire_resistance = defaults.elemental_resist;
     env.enemy.base.cold_resistance = defaults.elemental_resist;
     env.enemy.base.lightning_resistance = defaults.elemental_resist;
-    inject_enemy_mods(&mut env.enemy.mod_db, &defaults, tier);
+    inject_enemy_mods(&mut env.enemy.mod_db, &defaults, tier, constants);
     inject_ehp_damage_placeholder(&mut env.enemy.mod_db, constants, defaults.level, tier);
 
     // The tier preset's **player-side** mod group (data-driven:
@@ -242,14 +242,15 @@ pub fn setup_enemy(env: &mut Env, config_level: u32, tier: EnemyTier) {
 
 /// Writes [`EnemyTierDefaults`] + tier bonuses into the enemy modDB (doesn't touch the base scalars).
 ///
-/// Note: the Boss common mod group (Curse/Exposure/Slow `-50`,
-/// `PoiseThreshold 500`, condition states) is still hardcoded here as pobr
-/// currently stands -- `enemy_presets.json`'s `tiers[].enemy_mods` additionally
-/// contains Knockback/MinimumMovementSpeed/extra Poise entries that this
-/// function does not yet inject. Boss conditions and the common Poise bonus
-/// are Effective-gated, matching ConfigOptions.lua's enemyIsBoss presets;
-/// this also corrects legacy tables that recorded Poise's gate as false.
-fn inject_enemy_mods(db: &mut ModDb, defaults: &EnemyTierDefaults, tier: EnemyTier) {
+/// Boss poise combines unique rarity with the representative game monster's
+/// variety percentage. Both are Effective-gated. The vendor preset's extra
+/// poise entries remain unused; `boss_poise_thresholds` supplies the game rows.
+fn inject_enemy_mods(
+    db: &mut ModDb,
+    defaults: &EnemyTierDefaults,
+    tier: EnemyTier,
+    constants: &RuntimeConstants,
+) {
     // Monster scaling: accuracy / evasion / armour (tier multiplier already applied within defaults).
     push_enemy_number(
         db,
@@ -339,12 +340,27 @@ fn inject_enemy_mods(db: &mut ModDb, defaults: &EnemyTierDefaults, tier: EnemyTi
             500.0,
             "boss_poise_threshold",
         );
+        push_enemy_effective_number(
+            db,
+            "PoiseThreshold",
+            ModType::More,
+            f64::from(constants.boss_poise_thresholds.for_tier(tier)) - 100.0,
+            "boss_variety_poise_threshold",
+        );
         push_enemy_condition(db, "Unique", "boss_unique");
         push_enemy_condition(db, "RareOrUnique", "boss_rare_or_unique");
     }
     if tier.is_pinnacle_or_uber() {
         push_enemy_condition(db, "PinnacleBoss", "pinnacle_boss");
     }
+
+    // Game KeywordPopups[252] Daze: a Dazed enemy receives 50% more Stun Buildup.
+    db.add_mod(
+        Modifier::number("StunBuildup", ModType::More, 50.0)
+            .with_source("enemy dazed_base")
+            .with_origin(enemy_source("dazed_base"))
+            .with_tag(ModTag::condition("EnemyDazed", false)),
+    );
 
     // Enemy actor's base condition state mods (vendor CalcSetup.lua:73-77
     // initModDB -- the Intimidated condition pair every actor's modDB

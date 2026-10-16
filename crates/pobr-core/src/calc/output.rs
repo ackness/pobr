@@ -520,6 +520,9 @@ pub struct HandOutput {
     /// The `Stored<Type>CombinedAvg` family (both legs accumulated weighted
     /// by crit chance; merged with the DPS mode at the outer level, :4588).
     pub stored_combined_avg: Vec<(DamageType, f64)>,
+    /// Per-type effective hit averages, including crit weighting but not hit chance.
+    /// Reused from the effective-DPS pass; empty in panel mode.
+    pub mitigated_avg: Vec<(DamageType, f64)>,
     /// The `Stored<Type>{Hit,Crit}{Min,Max}` family (appended; the damaging
     /// ailment source damage input, resolved by vendor `:4050-4056` / consumed at `:4833-4857`).
     pub stored_ranges: Vec<StoredDamageRange>,

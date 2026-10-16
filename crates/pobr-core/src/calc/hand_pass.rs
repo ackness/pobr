@@ -380,6 +380,7 @@ fn combine_legs(mh: &MinimalOutput, oh: &MinimalOutput, double_hits: bool) -> Mi
             &oh.stored_combined_avg,
             double_hits,
         ),
+        mitigated_avg: combine_stored_by_type(&mh.mitigated_avg, &oh.mitigated_avg, double_hits),
         breakdown: combined_breakdown(
             mh,
             crit_chance,
@@ -465,6 +466,7 @@ impl HandOutput {
             stored_crit_avg: leg.stored_crit_avg.clone(),
             stored_hit_avg: leg.stored_hit_avg.clone(),
             stored_combined_avg: leg.stored_combined_avg.clone(),
+            mitigated_avg: leg.mitigated_avg.clone(),
             stored_ranges: leg.stored_ranges.clone(),
         }
     }

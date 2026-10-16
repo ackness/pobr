@@ -262,7 +262,12 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // the component approximation. Kept as its own block to avoid conflicting with the immutable
     // borrow of player.mod_db inside fill_mechanics.
     fill_ailments(env, &ailment_fallback_ranges);
-    let mut stun = super::ailment::heavy_stun_terms(env, &output.stored_combined_avg);
+    let stun_damage = if output.mitigated_avg.is_empty() {
+        &output.stored_combined_avg
+    } else {
+        &output.mitigated_avg
+    };
+    let mut stun = super::ailment::heavy_stun_terms(env, stun_damage);
     stun.enabled &= !no_trigger_events(env);
     env.player.output.heavy_stun_buildup_avg = stun.value();
     env.heavy_stun_terms = Some(stun);

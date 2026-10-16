@@ -1282,3 +1282,39 @@ Implicits: 0
         }
     }
 }
+
+#[test]
+fn heavy_stun_uses_loaded_boss_poise_and_the_dazed_configuration() {
+    let data = data();
+    assert_eq!(data.constants.boss_poise_thresholds.pinnacle, 1700);
+    let run = |dazed| {
+        let build = parse_build(&format!(r#"<PathOfBuilding2>
+<Build level="83" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
+<Config><Input name="conditionEnemyDazed" boolean="{dazed}"/></Config>
+</PathOfBuilding2>"#)).unwrap();
+        let options = DataOrchestratorOptions {
+            mode_effective: true,
+            enemy_tier: pobr_data::monster::EnemyTier::Pinnacle,
+            enemy_level: 83,
+            ..Default::default()
+        };
+        let diagnosis = diagnose(&build, &data, &options).unwrap();
+        let detail = diagnosis
+            .session
+            .derived_detail("HeavyStunBuildupAvg")
+            .unwrap();
+        let threshold = detail
+            .inputs
+            .iter()
+            .find(|(k, _)| k == "EnemyPoiseThreshold")
+            .unwrap()
+            .1;
+        // Official level 83 poise 248540, unique rarity 6x, Xesht 17x.
+        assert_eq!(threshold, 25_351_080.0);
+        diagnosis.session.output().heavy_stun_buildup_avg
+    };
+    let ordinary = run(false);
+    assert!(ordinary > 0.0);
+    assert!((run(true) - ordinary * 1.5).abs() < 1e-9);
+}

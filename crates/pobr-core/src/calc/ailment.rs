@@ -1262,9 +1262,10 @@ pub(crate) fn heavy_stun_terms(env: &super::Env, combined: &[(DamageType, f64)])
             && !player.flag(&cfg, "CannotStun"),
         ..Default::default()
     };
-    // A successful selected hit, before enemy mitigation. Stored averages
-    // already include lucky rolls, the crit leg, and its probability.
-    // Alternating weapons contribute equally to the average per hit.
+    // KeywordPopups[55]/[57]: buildup depends on damage dealt. Reuse the
+    // effective-DPS pass's per-type damage, which already mitigates each crit
+    // leg separately (including armour) before weighting. Panel mode omits
+    // enemy mitigation. Alternating weapons contribute equally per hit.
     let hands: Vec<_> = env
         .player
         .output
@@ -1277,7 +1278,13 @@ pub(crate) fn heavy_stun_terms(env: &super::Env, combined: &[(DamageType, f64)])
     } else {
         hands
             .iter()
-            .map(|hand| hand.stored_combined_avg.as_slice())
+            .map(|hand| {
+                if hand.mitigated_avg.is_empty() {
+                    hand.stored_combined_avg.as_slice()
+                } else {
+                    hand.mitigated_avg.as_slice()
+                }
+            })
             .collect()
     };
     for part in &parts {
