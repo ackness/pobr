@@ -1684,3 +1684,26 @@ fn kill_charge_chance_does_not_invent_a_kill_rate() {
     assert!(parsed.mods.is_empty());
     assert!(parsed.special_meta.unwrap().no_effect);
 }
+
+#[test]
+fn slowing_potency_uses_the_game_stat_and_marks_exporter_absence() {
+    for (text, value) in [
+        ("30% reduced Slowing Potency of Debuffs on You", -30.0),
+        (
+            "8% reduced [Slow|Slowing] Potency of [Debuff|Debuffs] on You",
+            -8.0,
+        ),
+        ("10% increased Slowing Potency of Debuffs on You", 10.0),
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed, "{parsed:?}");
+        assert_eq!(parsed.mods.len(), 1);
+        let modifier = &parsed.mods[0];
+        assert_eq!(modifier.name.as_str(), "SlowEffectOnSelf");
+        assert_eq!(modifier.mod_type, ModType::Inc);
+        assert_eq!(modifier.value, ModValue::Number(value));
+        let rule = modifier.exporter_rule.as_ref().unwrap();
+        assert_eq!(rule.exporter, pobr_data::source::ExporterCoverage::Absent);
+        assert_eq!(rule.game_source, "base_slow_potency_+%");
+    }
+}

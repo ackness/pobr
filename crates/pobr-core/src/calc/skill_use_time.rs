@@ -28,12 +28,59 @@ pub struct SkillUseTime {
 /// The additive Inc / multiplicative More speed bucket: AttackSpeed / CastSpeed
 /// / SkillSpeed all share one speed factor (PoB CalcOffence: `inc`/`more`
 /// sums/multiplies all three together). ActionSpeed is not part of it — it is
-/// a separate factor, multiplied in on its own (see [`action_speed_name`]).
+/// a separate factor, multiplied in on its own (see [`action_speed_factor`]).
 pub const SPEED_BUCKET: [&str; 3] = ["AttackSpeed", "CastSpeed", "SkillSpeed"];
 
 /// Stat name for the independent ActionSpeed factor (kept apart from the
 /// speed bucket, multiplied into the final rate separately).
 pub const ACTION_SPEED: &str = "ActionSpeed";
+
+/// Action-speed bonuses and the generic slows represented by negative
+/// ActionSpeed modifiers. The game's Slow keyword says that separate slows
+/// multiply (https://poe2db.tw/us/Keywords). Slowing potency scales each
+/// penalty; it never scales positive speed bonuses or equipment penalties.
+/// `base_slow_potency_+%` is the potency of debuffs on this actor, and
+/// `slows_have_no_potency_on_you` makes their slowing component zero.
+pub fn action_speed_factor(db: &ModDb, cfg: &CalcConfig) -> f64 {
+    let names = [ModName::from(ACTION_SPEED)];
+    let increases = db.contributions(ModType::Inc, cfg, &names);
+    let multipliers = db.contributions(ModType::More, cfg, &names);
+    let has_slow = increases
+        .iter()
+        .chain(&multipliers)
+        .any(|row| row.value < 0.0);
+    if !has_slow {
+        return ((1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)).max(0.0);
+    }
+    let potency = if db.flag(cfg, "UnaffectedBySlows") {
+        0.0
+    } else {
+        let effect = [ModName::from("SlowEffectOnSelf")];
+        ((1.0 + db.sum(ModType::Inc, cfg, &effect) / 100.0) * db.more(cfg, &effect)).max(0.0)
+    };
+    let mut increase = 0.0;
+    let mut more = 1.0;
+    let mut slows = 1.0;
+    for row in increases.into_iter().chain(multipliers) {
+        let value = row.value;
+        if value < 0.0 {
+            slows *= (1.0 + value * potency / 100.0).max(0.0);
+        } else if row.mod_type == ModType::Inc {
+            increase += value;
+        } else {
+            more *= 1.0 + value / 100.0;
+        }
+    }
+    // Preserve the ordinary MORE bucket's precision, without rounding the
+    // independent slowing factors into that bucket.
+    more = if let Some(precision) = db.more_precision_for(ACTION_SPEED) {
+        let scale = 10f64.powi(precision as i32);
+        (more * scale).floor() / scale
+    } else {
+        (more * 100.0).round() / 100.0
+    };
+    (1.0 + increase / 100.0) * more * slows
+}
 
 /// The speed bucket as a [`ModName`] array (for [`ModDb::sum`]/[`ModDb::more`]
 /// aggregation). Contains every family; use [`speed_names_for`] when
@@ -84,7 +131,8 @@ pub fn calc_skill_use_time(
     is_channelling: bool,
 ) -> SkillUseTime {
     let total_skill_speed = db.sum(ModType::Inc, cfg, &speed_names_for(cfg));
-    let total_action_speed = db.sum(ModType::Inc, cfg, &[ModName::from(ACTION_SPEED)]);
+    let action_factor = action_speed_factor(db, cfg);
+    let total_action_speed = (action_factor - 1.0) * 100.0;
 
     let tooltip_use_time = if base_use_time > 0.0 {
         base_use_time / (1.0 + total_skill_speed / 100.0) + use_time_penalty
@@ -97,7 +145,6 @@ pub fn calc_skill_use_time(
         0.0
     };
 
-    let action_factor = 1.0 + total_action_speed / 100.0;
     let uncapped_rate = tooltip_rate * action_factor;
 
     //  Server tick time now reads from the injected constants pack (fallback == old const, value unchanged).

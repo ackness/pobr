@@ -1329,7 +1329,7 @@ pub fn skill_timings(db: &ModDb, cfg: &CalcConfig, base_use_time: f64) -> SkillT
     let modifier = |names: &[ModName]| {
         ((1.0 + db.sum(ModType::Inc, cfg, names) / 100.0) * db.more(cfg, names)).max(0.0)
     };
-    let action = modifier(&[ModName::from("ActionSpeed")]);
+    let action = super::skill_use_time::action_speed_factor(db, cfg);
     let time = |base_name: &str, time_name: &str, speed_name: &str, time_mod: Option<&str>| {
         let base = sum(base_name) + sum(time_name);
         if base <= 0.0 || action <= 0.0 {

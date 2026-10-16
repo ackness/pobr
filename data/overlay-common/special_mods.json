@@ -12,6 +12,51 @@
   },
   "entries": [
     {
+      "id": "reduced_slowing_potency_on_self",
+      "exporter": "absent",
+      "game_source": "base_slow_potency_+%",
+      "pattern": "(\\d+(?:\\.\\d+)?)% reduced slowing potency of debuffs on you",
+      "mods": [
+        {
+          "name": "SlowEffectOnSelf",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "source_note": "Game stat base_slow_potency_+%; scales each modeled ActionSpeed slow. The Slow keyword defines separate slows as multiplicative: https://poe2db.tw/us/Keywords",
+      "examples": [
+        "30% reduced Slowing Potency of Debuffs on You"
+      ]
+    },
+    {
+      "id": "increased_slowing_potency_on_self",
+      "exporter": "absent",
+      "game_source": "base_slow_potency_+%",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased slowing potency of debuffs on you",
+      "mods": [
+        {
+          "name": "SlowEffectOnSelf",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "source_note": "Game stat base_slow_potency_+%; scales each modeled ActionSpeed slow. The Slow keyword defines separate slows as multiplicative: https://poe2db.tw/us/Keywords",
+      "examples": [
+        "30% increased Slowing Potency of Debuffs on You"
+      ]
+    },
+    {
       "id": "all_damage_is_taken_from_mana_before_life",
       "pattern": "all damage is taken from mana before life",
       "vendor_pattern": "all damage is taken from mana before life",

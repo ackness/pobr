@@ -42,3 +42,6 @@ mod utility;
 
 #[path = "engine/thresholds_onkill.rs"]
 mod thresholds_onkill;
+
+#[path = "engine/player_slows.rs"]
+mod player_slows;

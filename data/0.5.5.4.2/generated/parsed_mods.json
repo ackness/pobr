@@ -9167,7 +9167,14 @@
     },
     {
       "text": "10% reduced [Slow|Slowing] Potency of [Debuff|Debuffs] on You",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SlowEffectOnSelf",
+          "type": "Inc",
+          "value": -10.0
+        }
+      ]
     },
     {
       "text": "10% reduced [Spell] Area Damage",
@@ -10871,7 +10878,14 @@
     },
     {
       "text": "12% reduced [Slow|Slowing] Potency of [Debuff|Debuffs] on You",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SlowEffectOnSelf",
+          "type": "Inc",
+          "value": -12.0
+        }
+      ]
     },
     {
       "text": "120% increased Damage with [Hit|Hits] against Enemies that are on [LowLife|Low Life]",
@@ -13332,7 +13346,14 @@
     },
     {
       "text": "15% reduced [Slow|Slowing] Potency of [Debuff|Debuffs] on You",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SlowEffectOnSelf",
+          "type": "Inc",
+          "value": -15.0
+        }
+      ]
     },
     {
       "text": "15% reduced [Spell] Damage",
@@ -17390,7 +17411,14 @@
     },
     {
       "text": "20% reduced [Slow|Slowing] Potency of [Debuff|Debuffs] on You",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SlowEffectOnSelf",
+          "type": "Inc",
+          "value": -20.0
+        }
+      ]
     },
     {
       "text": "20% reduced [Spirit] [Reservation] [Efficiency] of Skills",
@@ -18154,7 +18182,14 @@
     },
     {
       "text": "24% reduced [Slow|Slowing] Potency of [Debuff|Debuffs] on You",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SlowEffectOnSelf",
+          "type": "Inc",
+          "value": -24.0
+        }
+      ]
     },
     {
       "text": "24% reduced maximum Life",
@@ -23984,7 +24019,14 @@
     },
     {
       "text": "4% reduced [Slow|Slowing] Potency of [Debuff|Debuffs] on You",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SlowEffectOnSelf",
+          "type": "Inc",
+          "value": -4.0
+        }
+      ]
     },
     {
       "text": "40% [FasterESRechargeStart|faster start of Energy Shield Recharge] if you've been [Stun|Stunned] [Recently]",
@@ -26541,7 +26583,14 @@
     },
     {
       "text": "5% reduced [Slow|Slowing] Potency of [Debuff|Debuffs] on You",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SlowEffectOnSelf",
+          "type": "Inc",
+          "value": -5.0
+        }
+      ]
     },
     {
       "text": "5% reduced maximum Life",
@@ -30528,7 +30577,14 @@
     },
     {
       "text": "8% reduced [Slow|Slowing] Potency of [Debuff|Debuffs] on You",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SlowEffectOnSelf",
+          "type": "Inc",
+          "value": -8.0
+        }
+      ]
     },
     {
       "text": "80% increased Damage with [Hit|Hits] against Enemies that are on Full Life",

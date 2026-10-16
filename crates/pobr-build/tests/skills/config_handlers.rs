@@ -263,3 +263,43 @@ fn unchecking_armour_break_clears_the_imported_condition() {
     let session = calculate_with_data_session(&build, &data, &Default::default()).unwrap();
     assert!(!session.config().condition("EnemyArmourBroken"));
 }
+
+#[test]
+fn configured_action_speed_slow_reads_potency_and_preserves_reference_basis() {
+    let data = data();
+    // Config custom modifiers are an existing input for a generic slow.
+    // 50% is the game keyword's default maximum Chill magnitude; this
+    // test supplies the slow directly, without assuming a Chill application.
+    let config = r#"<Input name="customMods" string="50% reduced Action Speed"/>"#;
+    let plain = calculate(&data, "", true, &[]);
+    let slowed = calculate(&data, config, true, &[]);
+    let reduced = calculate(
+        &data,
+        config,
+        true,
+        &["30% reduced Slowing Potency of Debuffs on You"],
+    );
+    let unaffected = calculate(&data, config, true, &["Your speed is unaffected by Slows"]);
+    assert!((slowed.action_rate / plain.action_rate - 0.5).abs() < 1e-6);
+    assert!((reduced.action_rate / plain.action_rate - 0.65).abs() < 1e-6);
+    assert_eq!(unaffected.action_rate, plain.action_rate);
+    assert_eq!(slowed.effective_movement_speed_mod, 0.5);
+    assert_eq!(reduced.effective_movement_speed_mod, 0.65);
+    assert_eq!(unaffected.effective_movement_speed_mod, 1.0);
+
+    let build = parse_build(&format!(
+        r#"<PathOfBuilding2><Build level="80" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
+<Config>{config}</Config></PathOfBuilding2>"#
+    ))
+    .unwrap();
+    let mut options = DataOrchestratorOptions::reference_conditions();
+    let reference = calculate_with_data(&build, &data, &options).unwrap();
+    options.extra_modifier_texts = vec!["30% reduced Slowing Potency of Debuffs on You".into()];
+    let omitted = calculate_with_data(&build, &data, &options).unwrap();
+    assert_eq!(omitted.action_rate, reference.action_rate);
+    assert_eq!(
+        omitted.effective_movement_speed_mod,
+        reference.effective_movement_speed_mod
+    );
+}

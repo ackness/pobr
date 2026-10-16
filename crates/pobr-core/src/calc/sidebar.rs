@@ -113,7 +113,8 @@ pub(super) fn fill_sidebar(env: &mut Env) {
         movement = movement.max(1.0);
     }
     out.effective_movement_speed_mod =
-        (movement * factor(db, &global, &["ActionSpeed"]) * 1000.0).round() / 1000.0;
+        (movement * super::skill_use_time::action_speed_factor(db, &global) * 1000.0).round()
+            / 1000.0;
     if cfg
         .skill_types
         .intersects(SkillTypes::from_pob2_name("UsableWhileMoving").unwrap())

@@ -495,11 +495,9 @@ fn use_rate_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> ActionR
         };
     }
     let speed_names = super::skill_use_time::speed_names_for(cfg);
-    let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
     let inc_speed = db.sum(ModType::Inc, cfg, &speed_names);
     let more_speed = db.more(cfg, &speed_names);
-    let action_speed_mod = (1.0 + db.sum(ModType::Inc, cfg, &action_speed_names) / 100.0)
-        * db.more(cfg, &action_speed_names);
+    let action_speed_mod = super::skill_use_time::action_speed_factor(db, cfg);
     let inc_more_rate = input.base_action_rate * (1.0 + inc_speed / 100.0) * more_speed;
     let scaled_rate = apply_total_time(db, cfg, inc_more_rate);
     let uncapped_action_rate = scaled_rate * action_speed_mod;
@@ -1463,7 +1461,6 @@ fn total_dps_traced(
         (action_rate, node)
     } else {
         let speed_names = super::skill_use_time::speed_names_for(cfg);
-        let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
         let base_rate_node = trace.add_source_node(
             "base action rate",
             input.base_action_rate,
@@ -1477,8 +1474,7 @@ fn total_dps_traced(
             "Speed INC modifier sum (Attack/Cast/Skill)",
         );
         let more_speed = more_factor_traced(db, cfg, &speed_names, "Speed MORE factor", trace);
-        let action_speed_mod = (1.0 + db.sum(ModType::Inc, cfg, &action_speed_names) / 100.0)
-            * db.more(cfg, &action_speed_names);
+        let action_speed_mod = super::skill_use_time::action_speed_factor(db, cfg);
         let scaled_rate = apply_total_time(
             db,
             cfg,
