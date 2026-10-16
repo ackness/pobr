@@ -1761,3 +1761,23 @@ fn chaos_inoculation_line_grants_bleed_immunity() {
     assert_eq!(parsed.mods.len(), 1);
     assert_eq!(parsed.mods[0].name.as_str(), "BleedImmune");
 }
+
+#[test]
+fn incoming_debuffs_without_player_models_remain_visible_gaps() {
+    // Game stats: curse_effect_on_self_+%, self_bleed_duration_+%,
+    // base_all_ailment_duration_on_self_+%, immune_to_corrupted_blood,
+    // immune_to_maim and immune_to_hinder. None has an incoming model.
+    for text in [
+        "30% reduced effect of Curses on you",
+        "40% reduced Duration of Bleeding on You",
+        "15% reduced Duration of Ailments on You",
+        "Immune to [CorruptedBlood|Corrupted Blood]",
+        "Immune to [Maim]",
+        "Immune to [Hinder]",
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.status, ParseStatus::Parsed, "{text}: {parsed:?}");
+        assert!(parsed.mods.is_empty(), "{text}: {parsed:?}");
+        assert!(!parsed.special_meta.unwrap().no_effect, "{text}");
+    }
+}

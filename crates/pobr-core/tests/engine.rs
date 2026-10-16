@@ -49,5 +49,8 @@ mod thresholds_onkill;
 #[path = "engine/player_slows.rs"]
 mod player_slows;
 
+#[path = "engine/player_debuffs.rs"]
+mod player_debuffs;
+
 #[path = "engine/keystones.rs"]
 mod keystones;

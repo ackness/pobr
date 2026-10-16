@@ -443,7 +443,25 @@ PoBR 自有词条规则声明 `exporter: "absent"`（导出工具未实现）或
 
 `mise run accuracy` 与 triage 的 “beyond PoB2” 按规则列出出现的构筑数、改变的构筑数与行数：固定其余参考模型，每次只恢复一条 absent 规则，按数值变化计数（不是 5% 吻合阈值）；多规则影响同一行时不能相加。differs 在两种口径都开启，列出但模式变化为零。holdout 只输出计数，不输出构筑与行的身份。这些数值用于观察实现影响，正确性仍由游戏数据的回归测试保证。
 
-Generic player slows already represented by negative `ActionSpeed` modifiers now use one calculation for skill rates, warcry timing, proxy placement, channel timing and movement (`calc::skill_use_time::action_speed_factor`). The [game Slow keyword](https://poe2db.tw/us/Keywords) defines separate slows as multiplicative; each penalty is scaled by `SlowEffectOnSelf` (`base_slow_potency_+%`, for example Mail Coat’s 30% reduction), and `UnaffectedBySlows` (`slows_have_no_potency_on_you`, Wanderlust / Relentless Pursuit) removes those penalties while preserving positive speed bonuses. A 50% slow with 30% reduced potency is a 35% slow. The potency text rules are `exporter: "absent"`; reference mode omits them. Existing custom modifiers can supply an explicit action-speed slow; this does not implement incoming Chill (`ChillVal`), self Temporal Chains or movement-only debuffs, and ordinary equipment / skill movement penalties are unchanged. `SkillSpeed`, `WarcrySpeed` and `TotemPlacementSpeed` already have separate consumers: a partial ledger row on a build without a warcry or totem is expected, not a missing speed bonus. Every negative `ActionSpeed` modifier counts as a slow. That holds because the only player sources today are debuffs: self Chill, Temporal Chains and Maddening Presence. The game defines Slows as "modifiers from Debuffs" and keeps non-debuff reductions under separate stats (`action_speed_-%`, `overencumbered_action_speed_+%_final`). A new non-debuff source of reduced Action Speed must therefore use a separate name, or slowing potency would scale it.
+Generic player slows already represented by negative `ActionSpeed` modifiers now use one calculation for skill rates, warcry timing, proxy placement, channel timing and movement (`calc::skill_use_time::action_speed_factor`). The [game Slow keyword](https://poe2db.tw/us/Keywords) defines separate slows as multiplicative; each penalty is scaled by `SlowEffectOnSelf` (`base_slow_potency_+%`, for example Mail Coat’s 30% reduction), and `UnaffectedBySlows` (`slows_have_no_potency_on_you`, Wanderlust / Relentless Pursuit) removes those penalties while preserving positive speed bonuses. A 50% slow with 30% reduced potency is a 35% slow. The potency text rules are `exporter: "absent"`; reference mode omits them. Existing custom modifiers can supply an explicit action-speed slow; self Temporal Chains and movement-only debuffs remain unmodelled, and ordinary equipment / skill movement penalties are unchanged. `SkillSpeed`, `WarcrySpeed` and `TotemPlacementSpeed` already have separate consumers: a partial ledger row on a build without a warcry or totem is expected, not a missing speed bonus. Every negative `ActionSpeed` modifier counts as a slow. That holds because the only player sources today are debuffs: self Chill, Temporal Chains and Maddening Presence. The game defines Slows as "modifiers from Debuffs" and keeps non-debuff reductions under separate stats (`action_speed_-%`, `overencumbered_action_speed_+%_final`). A new non-debuff source of reduced Action Speed must therefore use a separate name, or slowing potency would scale it.
+
+Player Shock and explicitly configured Chill magnitudes are scaled by
+`SelfShockEffect` / `SelfChillEffect` (`calc::player_debuffs`), using game stats
+`shocked_effect_on_self_+%` and `chill_effectiveness_on_self_+%` from
+`base/stats.json`; the passive tree includes Stormwalker's 40% Shock reduction
+and 40% Chill reduction nodes. Shock scales only the configured damage-taken
+contribution (the existing imported config supplies 15%, so 40% reduction gives
+9%); the new Shock reduction rule is exporter-absent. Chill requires both the
+player's Chilled state and an explicit `conditionChilledEffect` / `ChillVal`:
+50% Chill with 40% reduced effect is a 30% action-speed slow, then subject to
+slowing potency. No incoming hit or default Chill magnitude is inferred.
+Effect reductions cannot make a debuff beneficial. Incoming curses, ailment
+durations, Corrupted Blood, Maim and Hinder have no player models; these six
+text families use `batch: "unmodelled"` with the missing model named,
+not `S0`. Their game sources are `curse_effect_on_self_+%`,
+`self_bleed_duration_+%`, `base_all_ailment_duration_on_self_+%` and the three
+`immune_to_*` stats. Generic `PhysicalDegen` has neither ailment identity nor
+duration, so these duration and immunity lines cannot alter it.
 
 Spell Mana Cost Efficiency（`base_spell_mana_cost_efficiency_+%`）只降低法术魔力消耗，效率 INC 与通用效率相加后，以 `1 + 效率 / 100` 除消耗；它标为 absent。The Fall of the Axe 的 “Grants Onslaught during effect”（`charm_gain_onslaught_during_effect`）同样标为 absent；按 [游戏 Onslaught 定义](https://poe2db.tw/us/Onslaught) 增加 20% Skill Speed 与 10% Movement Speed。沿用 flask/charm 约定：构筑中启用且可生效的护符视为效果激活；“Used when you are affected by a Slow” 不建模为 uptime，另一件生效的物品不会激活被关闭或超出槽位的护符。
 

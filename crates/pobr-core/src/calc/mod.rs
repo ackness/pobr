@@ -29,6 +29,7 @@ pub mod offence;
 pub mod output;
 pub mod perform;
 pub mod periodic;
+mod player_debuffs;
 pub mod pool_damage;
 pub mod pool_setup;
 pub mod rage;
