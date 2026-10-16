@@ -141,7 +141,8 @@ fn catalog_entry_counts_locked() {
         // Flask{1,2}EnergyShieldRecovery / InstantRecovery / RecoveryPerSecond (+6).
         // CurseEffectOnSelf, Self{Bleed,Poison,Ignite,Chill,Freeze,Shock}Duration,
         // CorruptedBloodImmunity, MaimImmunity and HinderImmunity (+10).
-        288,
+        // PowerChargesDuration, FrenzyChargesDuration and EnduranceChargesDuration (+3).
+        291,
         "a change in Computed entry count needs explicit review"
     );
 }

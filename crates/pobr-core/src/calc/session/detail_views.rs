@@ -23,6 +23,9 @@ pub const DERIVED_STATS: &[&str] = &[
     "TotalDot",
     "LifeRecoverable",
     "EnergyShieldRecoveryCap",
+    "PowerChargesDuration",
+    "FrenzyChargesDuration",
+    "EnduranceChargesDuration",
     "ChargePowerCurrent",
     "ChargeFrenzyCurrent",
     "ChargeEnduranceCurrent",
@@ -840,6 +843,22 @@ impl CalculationSession {
                 (
                     formula,
                     rows.into_iter().flat_map(|(_, inputs)| inputs).collect(),
+                )
+            }
+            "PowerChargesDuration" | "FrenzyChargesDuration" | "EnduranceChargesDuration" => {
+                let kind = match stat {
+                    "PowerChargesDuration" => ChargeKind::Power,
+                    "FrenzyChargesDuration" => ChargeKind::Frenzy,
+                    _ => ChargeKind::Endurance,
+                };
+                let t = crate::calc::survivability::charge_duration_terms(db, cfg, kind);
+                (
+                    "max(0, BaseChargeDuration * (1 + ChargeDurationIncreased / 100) * ChargeDurationMore)".into(),
+                    vec![
+                        ("BaseChargeDuration".into(), t.base),
+                        ("ChargeDurationIncreased".into(), t.increased),
+                        ("ChargeDurationMore".into(), t.more),
+                    ],
                 )
             }
             "ChargePowerCurrent" | "ChargeFrenzyCurrent" | "ChargeEnduranceCurrent" => {

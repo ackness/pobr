@@ -511,6 +511,15 @@
         "CombinedDPS"
       ],
       "reason": "ActiveSkills.Description lays caltrops during dodges and deals damage when an enemy triggers them. The game provides 3 placements at 5%/20% dodge timing, not dodge/enemy-trigger frequency. PoBR keeps average_damage and zero DPS with an unmodelled event rate; PoB2 puts average damage into CombinedDPS (docs/maintainer-guide.md, event-triggered hits)."
+    },
+    {
+      "build": "witch-infernalist-convalescence-6e6130dfbff5",
+      "stats": [
+        "PowerChargesDuration",
+        "FrenzyChargesDuration",
+        "EnduranceChargesDuration"
+      ],
+      "reason": "The game Charges keyword gives a 15-second base without specifying whole-second rounding. PoBR retains fractional seconds: 3% reduced charge duration gives 14.55s; PoB2 floors each duration to 14s. The in-game tick rounding boundary has not been measured (docs/maintainer-guide.md, charge durations; https://poe2db.tw/us/Charges)."
     }
   ]
 }

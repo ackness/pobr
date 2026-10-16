@@ -7911,7 +7911,24 @@
     },
     {
       "text": "10% increased [Charges|Endurance, Frenzy and Power Charge] Duration",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "PowerChargesDuration",
+          "type": "Inc",
+          "value": 10.0
+        },
+        {
+          "name": "FrenzyChargesDuration",
+          "type": "Inc",
+          "value": 10.0
+        },
+        {
+          "name": "EnduranceChargesDuration",
+          "type": "Inc",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "10% increased [Charges|Power Charge] Duration",
@@ -12352,7 +12369,24 @@
     },
     {
       "text": "15% increased [Charges|Endurance, Frenzy and Power Charge] Duration",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "PowerChargesDuration",
+          "type": "Inc",
+          "value": 15.0
+        },
+        {
+          "name": "FrenzyChargesDuration",
+          "type": "Inc",
+          "value": 15.0
+        },
+        {
+          "name": "EnduranceChargesDuration",
+          "type": "Inc",
+          "value": 15.0
+        }
+      ]
     },
     {
       "text": "15% increased [Charm] Charges gained",
@@ -24241,10 +24275,14 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "SpearDamage",
+          "name": "Damage",
           "type": "Inc",
           "value": 40.0,
-          "flags": 1024
+          "flags": 268436480,
+          "kw": 262144,
+          "tags": [
+            "MultiplierThreshold { var: \"enemyDistance\", threshold: 30.0, upper: false }"
+          ]
         }
       ]
     },
@@ -24419,7 +24457,24 @@
     },
     {
       "text": "40% increased [Charges|Endurance, Frenzy and Power Charge] Duration",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "PowerChargesDuration",
+          "type": "Inc",
+          "value": 40.0
+        },
+        {
+          "name": "FrenzyChargesDuration",
+          "type": "Inc",
+          "value": 40.0
+        },
+        {
+          "name": "EnduranceChargesDuration",
+          "type": "Inc",
+          "value": 40.0
+        }
+      ]
     },
     {
       "text": "40% increased [Charm] Charges gained",

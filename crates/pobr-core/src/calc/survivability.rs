@@ -203,10 +203,8 @@ pub fn block_chance(percent_sum: f64, cap: f64) -> f64 {
 ///       PoB2 `src/Data/Misc.lua`: `max_power_charges = max_frenzy_charges = max_endurance_charges = 3`.
 pub const DEFAULT_MAX_CHARGES: u32 = 3;
 
-/// Default charge duration (seconds; changed from 20s to 15s in 0.5.0).
-///
-/// Source: agent-docs/recovery-charges-buffs.md §1.3;
-///       PoB2 `src/Modules/CalcSetup.lua`: `NewMod("ChargeDuration","BASE",15,"Base")`.
+/// Default charge duration in seconds, from the game's Charges keyword tooltip:
+/// <https://poe2db.tw/us/Charges>. Applies to Power, Frenzy and Endurance Charges.
 pub const DEFAULT_CHARGE_DURATION_SECONDS: f64 = 15.0;
 
 /// Charge kind.
@@ -224,6 +222,15 @@ impl ChargeKind {
             ChargeKind::Power => ModName::from("PowerChargesMax"),
             ChargeKind::Frenzy => ModName::from("FrenzyChargesMax"),
             ChargeKind::Endurance => ModName::from("EnduranceChargesMax"),
+        }
+    }
+
+    /// The kind-specific duration modifier and display id.
+    pub fn duration_mod_name(self) -> &'static str {
+        match self {
+            ChargeKind::Power => "PowerChargesDuration",
+            ChargeKind::Frenzy => "FrenzyChargesDuration",
+            ChargeKind::Endurance => "EnduranceChargesDuration",
         }
     }
 
@@ -247,6 +254,37 @@ impl ChargeKind {
             ChargeKind::Frenzy => "FrenzyCharge",
             ChargeKind::Endurance => "EnduranceCharge",
         }
+    }
+}
+
+/// Shared duration terms for the displayed value and its reconstructable detail.
+pub(crate) struct ChargeDurationTerms {
+    pub base: f64,
+    pub increased: f64,
+    pub more: f64,
+}
+
+impl ChargeDurationTerms {
+    pub fn seconds(&self) -> f64 {
+        // The game describes a duration, not a count of whole seconds. Preserve
+        // fractional seconds; reductions cannot produce a negative duration.
+        (self.base * (1.0 + self.increased / 100.0) * self.more).max(0.0)
+    }
+}
+
+pub(crate) fn charge_duration_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    kind: ChargeKind,
+) -> ChargeDurationTerms {
+    let names = [
+        ModName::from("ChargeDuration"),
+        ModName::from(kind.duration_mod_name()),
+    ];
+    ChargeDurationTerms {
+        base: DEFAULT_CHARGE_DURATION_SECONDS,
+        increased: db.sum(ModType::Inc, cfg, &names),
+        more: db.more(cfg, &names),
     }
 }
 
