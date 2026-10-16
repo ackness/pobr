@@ -221,6 +221,7 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     let ailment_fallback_ranges = output.stored_ranges.clone();
     env.player.output = OutputTable::from(&output);
     super::utility::calculate(env);
+    super::player_debuffs::calculate_views(env);
     env.player.output.crit_hit_avg = output.stored_crit_avg.iter().map(|(_, avg)| avg).sum();
     env.player.output.main_hand = hand_pass.main_hand;
     env.player.output.off_hand = hand_pass.off_hand;

@@ -190,6 +190,11 @@ fn translate_player_buff_entry(
 ///   `UnknownModName`/`UnsupportedKind` (skip rather than miscompute).
 fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, UnsupportedReason> {
     match name {
+        // Cool Headed, Warm Blooded and Strong Hearted grant self-duration
+        // modifiers. calc::player_debuffs exposes these as modifier views.
+        "SelfIgniteDuration" => Ok(vec!["SelfIgniteDuration"]),
+        "SelfFreezeDuration" => Ok(vec!["SelfFreezeDuration"]),
+        "SelfShockDuration" => Ok(vec!["SelfShockDuration"]),
         "Accuracy" => Ok(vec!["Accuracy"]),
         "MovementSpeed" => Ok(vec!["MovementSpeed"]),
         "ManaRegen" => Ok(vec!["ManaRegen"]),
