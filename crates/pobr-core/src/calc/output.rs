@@ -170,6 +170,9 @@ pub struct OutputTable {
     pub poison_dps: f64,
     /// Shock's damage bonus magnitude (fraction, e.g. 0.20).
     pub shock_effect: f64,
+    /// Shock magnitude modifier (1 is unchanged, 0 when no shock is inflicted),
+    /// displayed as ShockEffectMod.
+    pub shock_effect_mod: f64,
     /// Maximum single hit each damage type can take (starting semantics =
     /// PoB2's view: TotalHitPool's pool-expansion layer + taken-as,
     /// CalcDefence.lua:3540-3697; `*_max_hit_pob2` is an alias with the same value).
@@ -306,7 +309,7 @@ pub struct OutputTable {
     pub ignite_max_stacks: f64,
 
     // Skill functionality (Lane C: AoE / projectiles / cooldown / cost;
-    // written by perform fill, 0 with no base)
+    // written by perform fill; unknown radius is 0, neutral area modifier is 1)
     /// Final AoE radius (internal coordinate units) and the area multiplier.
     pub aoe_radius: f64,
     pub aoe_area_mod: f64,
@@ -348,7 +351,8 @@ pub struct OutputTable {
     /// `EffectiveSpellProjectileBlockChance`, vendor :1013 takes the max with ProjectileBlock).
     pub effective_spell_projectile_block_chance: f64,
     /// Block damage-taken share (%; the fraction of damage still taken from
-    /// a blocked hit, PoB2 `BlockEffect`, ModParser.lua:2479; 0 = fully blocked).
+    /// a blocked hit; 0 = fully blocked). The catalog's BlockEffect displays
+    /// the complementary prevented share; EHP keeps using this taken share.
     pub block_effect: f64,
     /// Deflection rating (PoB2 `DeflectionRating` = BASE + Evasion/Armour
     /// GainAsDeflection, CalcDefence.lua:1487-1490).
@@ -664,6 +668,7 @@ impl Default for OutputTable {
             ignite_dps: 0.0,
             poison_dps: 0.0,
             shock_effect: 0.0,
+            shock_effect_mod: 0.0,
             physical_max_hit: 0.0,
             fire_max_hit: 0.0,
             cold_max_hit: 0.0,
@@ -749,9 +754,9 @@ impl Default for OutputTable {
             bleed_max_stacks: 0.0,
             poison_max_stacks: 0.0,
             ignite_max_stacks: 0.0,
-            // Lane C: skill functionality defaults to 0 (not written without a base configuration).
+            // Unknown skill mechanics default to 0; an area multiplier is neutral at 1.
             aoe_radius: 0.0,
-            aoe_area_mod: 0.0,
+            aoe_area_mod: 1.0,
             projectile_count: 0.0,
             projectile_speed_mod: 0.0,
             cooldown: 0.0,

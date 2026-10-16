@@ -1456,13 +1456,14 @@ fn fill_skill_mechanics(env: &mut Env) {
     env.player.output.aura_duration = durations.aura;
     env.player.output.reserve_duration = durations.reservation;
 
-    // AoE: needs the skill's base radius (SkillAreaRadiusBase BASE). Skipped if absent (stays 0).
+    // Area scaling is defined even when the skill has no known base radius.
+    // Only the radius itself remains zero without SkillAreaRadiusBase.
     let base_radius = db.sum(ModType::Base, cfg, &[ModName::from("SkillAreaRadiusBase")]);
+    let extra = db.sum(ModType::Base, cfg, &[ModName::from("SkillAreaRadiusExtra")]);
+    let aoe = calc_aoe(db, cfg, base_radius, extra);
+    env.player.output.aoe_area_mod = aoe.area_mod;
     if base_radius > 0.0 {
-        let extra = db.sum(ModType::Base, cfg, &[ModName::from("SkillAreaRadiusExtra")]);
-        let aoe = calc_aoe(db, cfg, base_radius, extra);
         env.player.output.aoe_radius = aoe.radius;
-        env.player.output.aoe_area_mod = aoe.area_mod;
     }
 
     // Cooldown: needs the skill's base cooldown (SkillCooldownBase BASE, seconds). Skipped if absent.

@@ -2,6 +2,41 @@
   "_doc": "Reference rows `mise run triage` files as known: differences the repository already explains, so a triage lists only what is left to look at. `build` is a fragment of the build folder's name, `stats` the rows it explains, `reason` where the explanation is. Add an entry when a difference is documented as deliberate; remove it when the engine changes.",
   "differences": [
     {
+      "build": "3bfac6cd6482",
+      "stats": ["AilmentThreshold"],
+      "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/maintainer-guide.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
+    },
+    {
+      "build": "4651a9629c46",
+      "stats": ["AilmentThreshold"],
+      "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/maintainer-guide.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
+    },
+    {
+      "build": "2983379c06aa",
+      "stats": ["AilmentThreshold"],
+      "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/maintainer-guide.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
+    },
+    {
+      "build": "druid-oracle-ember-fusillade",
+      "stats": ["AilmentThreshold"],
+      "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/maintainer-guide.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
+    },
+    {
+      "build": "dd7f512456b6",
+      "stats": ["TotalHitAvg"],
+      "reason": "TotalHitAvg intentionally retains the game's Pre-mitigation Damage view; PoB2 AverageHit includes enemy mitigation. Comet's cold/lightning effective multipliers are 0.5, explaining the approximately 2x ratio. This display pair is already excluded from reference agreement (docs/maintainer-guide.md, sidebar damage views; https://poe2db.tw/us/Keywords)."
+    },
+    {
+      "build": "9a0fb35e890a",
+      "stats": ["TotalHitAvg"],
+      "reason": "TotalHitAvg intentionally retains the game's Pre-mitigation Damage view; PoB2 AverageHit includes enemy mitigation. Living Bomb's fire/cold effective multipliers are 0.5, explaining the approximately 2x ratio. This display pair is already excluded from reference agreement (docs/maintainer-guide.md, sidebar damage views; https://poe2db.tw/us/Keywords)."
+    },
+    {
+      "build": "3e588bde3126",
+      "stats": ["TotalHitAvg"],
+      "reason": "TotalHitAvg intentionally retains the game's Pre-mitigation Damage view; PoB2 AverageHit includes enemy mitigation. Seismic Cry's physical/cold effective multipliers are 0.25/0.5, explaining the approximately 3.3x ratio. This display pair is already excluded from reference agreement (docs/maintainer-guide.md, sidebar damage views; https://poe2db.tw/us/Keywords)."
+    },
+    {
       "build": "warrior-smith-of-kitava-shield-wall-fb03d7dce08e",
       "stats": ["ChaosMaxHit", "TotalEHP"],
       "reason": "The imported boots explicitly grant +11% Chaos Resistance from Soul Core of Tacati, plus +53% on the item: 64%, so 386 Chaos damage becomes 138.96. The current socketable catalog and pinned PoB2 substitute +13%, giving 66% resistance and 131.24 taken. Preserve the imported item's text. Its 2162 Runic Ward, including The Brass Dome's local +991 Ward, gives ChaosMaxHit 8001 and TotalEHP 35908.717951478; the older exporter references are 2468 and 11096.445514375 (docs/maintainer-guide.md, runes and Runic Ward; the build's code.txt item 16 and item 18; base/stats.json local_ward and overlay/runes.json Soul Core of Tacati)."

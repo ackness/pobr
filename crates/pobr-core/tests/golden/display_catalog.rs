@@ -3,6 +3,87 @@ use pobr_core::{display_catalog, display_value, extract_display_values};
 use pobr_data::prelude::*;
 
 #[test]
+fn block_effect_displays_damage_prevented_without_changing_the_taken_share() {
+    // Blocking prevents the entire hit by default. Taking 40% of blocked
+    // damage leaves 60% prevented; the EHP input must still be 40% taken.
+    for (taken, prevented) in [(0.0, 100.0), (40.0, 60.0), (100.0, 0.0)] {
+        let output = OutputTable {
+            block_effect: taken,
+            ..Default::default()
+        };
+        assert_eq!(display_value(&output, "BlockEffect"), prevented);
+        assert_eq!(output.block_effect, taken);
+    }
+}
+
+#[test]
+fn shock_effect_displays_the_magnitude_modifier_and_its_enemy_sources() {
+    use pobr_core::calc::MinimalInput;
+    use pobr_core::{CalcConfig, Modifier};
+
+    let mut session =
+        super::support::session(MinimalInput::default()).with_config(CalcConfig::spell());
+    session.setup_enemy(80, pobr_data::monster::EnemyTier::None);
+    session
+        .add_modifier_texts(&["Adds 1 to 1 Lightning Damage to Spells"])
+        .unwrap();
+    session.add_modifiers([Modifier::number("EnemyShockMagnitude", ModType::Inc, 30.0)]);
+    session.add_enemy_modifiers([Modifier::number("SelfShockMagnitude", ModType::Inc, 20.0)]);
+    session.perform_minimal().unwrap();
+    // 30% increased magnitude inflicted and 20% increased magnitude received
+    // scale shock by 1.3 * 1.2 = 1.56, independent of damage/threshold.
+    assert!((display_value(session.output(), "ShockEffect") - 1.56).abs() < 1e-9);
+    assert_eq!(
+        session.output().shock_effect,
+        0.2,
+        "existing magnitude is unchanged"
+    );
+    assert_eq!(
+        display_value(&OutputTable::default(), "ShockEffect"),
+        0.0,
+        "no shock source"
+    );
+    let sources = session.detail_sources("ShockEffect");
+    let enemy = sources
+        .iter()
+        .find(|s| s.name == "EnemySelfShockMagnitude")
+        .unwrap();
+    assert_eq!(enemy.totals.1, 20.0);
+    assert_eq!(enemy.rows.len(), 1);
+}
+
+#[test]
+fn area_modifier_is_defined_without_a_known_skill_radius() {
+    use pobr_core::calc::MinimalInput;
+
+    for (lines, expected) in [
+        (vec![], 1.0),
+        (vec!["11% less Area of Effect"], 0.89),
+        (vec!["40% increased Area of Effect"], 1.4),
+    ] {
+        let mut session = super::support::session(MinimalInput::default());
+        session.add_modifier_texts(&lines).unwrap();
+        session.perform_minimal().unwrap();
+        assert_eq!(display_value(session.output(), "AoeAreaMod"), expected);
+        assert_eq!(session.output().aoe_radius, 0.0);
+    }
+}
+
+#[test]
+fn ailment_threshold_preserves_half_life_for_ci_without_rounding_up() {
+    use pobr_core::calc::MinimalInput;
+
+    let mut session = super::support::session(MinimalInput {
+        base_life: 1.0,
+        ..Default::default()
+    });
+    session.perform_minimal().unwrap();
+    // The game keyword defines half of Life: 1 * 0.5 = 0.5. It does not
+    // specify the oracle's integer ceiling for percentage contributions.
+    assert_eq!(display_value(session.output(), "AilmentThreshold"), 0.5);
+}
+
+#[test]
 fn catalog_defines_core_display_stats() {
     let catalog = display_catalog();
     let ids: Vec<&str> = catalog.iter().map(|def| def.id.as_str()).collect();
@@ -174,8 +255,8 @@ fn catalog_defines_m2_defence_extension_stats_computed() {
         Some("NumberOfMitigatedDamagingHits")
     );
     assert_eq!(entry("Spirit").pob_key.as_deref(), Some("Spirit"));
-    // Damage-taken / stun-taken stats: lower is better.
-    assert_eq!(entry("BlockEffect").higher_is_better, Some(false));
+    // BlockEffect is damage prevented; stun-taken stats are lower-is-better.
+    assert_eq!(entry("BlockEffect").higher_is_better, Some(true));
     assert_eq!(entry("SelfStunChance").higher_is_better, Some(false));
     assert_eq!(entry("StunDuration").higher_is_better, Some(false));
 }

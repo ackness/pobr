@@ -235,9 +235,20 @@ with lookup implementations organized under `build_data/{skills,equipment,passiv
 Player `AilmentThreshold` starts at half maximum Life, adds flat threshold and
 percentages of final maximum Energy Shield, then applies threshold increases
 and multipliers ([game keyword text](https://poe2db.tw/us/Keywords)).
+The display retains fractional threshold: Chaos Inoculation's 1 Life gives
+0.5, rather than PoB2's 1 from rounding percentage contributions upward.
+The keyword specifies half Life and no integer ceiling; this is an intentional
+precision convention, without an in-game measurement of the rounding boundary.
 `LifeOnKill`, `ManaOnKill` and `EnergyShieldOnKill` report flat recovery plus
 percentages of their final maximum pool per kill, respecting recovery blocks;
-they do not assume a kill frequency. `DazeChance` reports the selected hit's
+the selected skill's hit kills must belong to the player. Totems, traps, mines
+and other proxies report zero player recovery, consistent with the keyword's
+separate entity using the skill. They do not assume a kill frequency or model
+damage-over-time kill attribution. Cannibalism support's
+`support_cannibalism_recover_%_maximum_life_on_kill` remains an unmapped buff
+stat (Cannibalism II gives 3 in `base/granted_effect_stat_sets.json`); the
+Amazon Twister `5355205a1743` missing 81 is a mechanic gap, not a different
+unit or default. `DazeChance` reports the selected hit's
 chance, capped at 100%. Freeze buildup reads `FreezeBuildup` alongside the
 existing enemy/immobilisation modifiers. Fully Broken Armour removes Armour
 and makes non-player targets take 20% increased Physical damage from Hits;
@@ -310,7 +321,29 @@ Crystallised Immunities uses the game stats `immune_to_chill_if_majority_blue_su
 
 敌人受击配置（`calc_orchestrator::enemy_config::modifiers`）以 OVERRIDE 覆盖等级与敌人类别的预设：五种伤害（`enemyPhysicalDamage` 等）、三种元素穿透、暴击率、暴击伤害和物理压制（`enemyPhysicalOverwhelm`）；显式的 0 同样覆盖，负数按 0，非有限值忽略；来源标为 `EnemyConfig`、id `config.<输入名>`，被覆盖的预设行在 TotalEHP 与最大承伤的敌人输入（`CalculationSession::enemy_hit_mods`）里保留但不计入。`enemyDamageType` 选择命中类别（平均、无类型、近战、投射物、法术、法术投射物；持续伤害不是命中），决定闪避、格挡与承伤的上下文（`calc::taken::HitCategory`）；`EHPUnluckyWorstOf` 按 1 / 2 / 4 次中最差的结果估计防御概率。`enemySpeed` 只在 Energy 格挡事件缺少来袭频率时提供回退，不是 EHP 的通用伤害倍率；`enemyDamageRollRange` 和持续伤害的防御视图还没有读取方。敌人等级只解析一次（`calc_orchestrator::skill::mods::resolved_enemy_level`），尸体生命与敌人的减伤共用：调用方显式给的等级优先，其次构筑码 `enemyLevel` 的 Input、Placeholder；都没有时普通怪物和普通首领跟随角色等级，Pinnacle / Uber 取该档的默认等级（82），最后限制在该档的最低等级与敌人最高等级（85）之间。尸体爆炸按这一等级取怪物生命表（82 级 32956，85 级 36012），例如 Detonate Dead 的 `corpse_explosion_monster_life_permillage_physical` = 107 是 10.7%。
 
-侧栏的伤害视图以稳定 ID 区分：`TotalHitAvg` 是角色一侧的平均命中；`AverageDamage` 计入敌人减伤与命中概率，`AverageBurstDamage` 再计一次使用中的重复攻击；`CombinedAvg` 与 `WithIgniteDPS` / `WithBleedDPS` / `WithPoisonDPS` 按技能的平均伤害或 DPS 口径组合；`IgniteDamage` 等异常总伤害是该异常的 DPS 乘有效持续时间，不是叠层 DPS 再乘时间；`MainHandAccuracy` / `OffHandAccuracy` 各读自己那只手的作用域。技能数据的四个持续时间通道进入 `Duration`、`DurationSecondary`、`AuraDuration`、`ReserveDuration`，通用的技能持续时间加成只应用一次。范围半径按内部距离单位计算，`AreaOfEffectRadiusMetres` 除以 10 显示米；`PierceCount`、`ForkCount`、`ChainMax`、`SplitCount` 与投射物行为解析共用禁止与转换规则，几率产生的次数可以是小数，无限穿透沿用 100。弩的 `FiringRate` 是装填前的射击速率，`ReloadTime` 是立即装填几率折算前的装填时间。可展示字段的 id 与 PoB key 相同，只有 `TotalTotemPlacementTime`（PoB key `TotemPlacementTime`）例外。
+侧栏的伤害视图以稳定 ID 区分：`TotalHitAvg` 是角色一侧的平均命中；`AverageDamage` 计入敌人减伤与命中概率，`AverageBurstDamage` 再计一次使用中的重复攻击；`CombinedAvg` 与 `WithIgniteDPS` / `WithBleedDPS` / `WithPoisonDPS` 按技能的平均伤害或 DPS 口径组合；`IgniteDamage` 等异常总伤害是该异常的 DPS 乘有效持续时间，不是叠层 DPS 再乘时间；`MainHandAccuracy` / `OffHandAccuracy` 各读自己那只手的作用域。技能数据的四个持续时间通道进入 `Duration`、`DurationSecondary`、`AuraDuration`、`ReserveDuration`，通用的技能持续时间加成只应用一次。范围半径按内部距离单位计算，`AreaOfEffectRadiusMetres` 除以 10 显示米；`PierceCount`、`ForkCount`、`ChainMax`、`SplitCount` 与投射物行为解析共用禁止与转换规则，几率产生的次数可以是小数，无限穿透沿用 100。弩的 `FiringRate` 是装填前的射击速率，`ReloadTime` 是立即装填几率折算前的装填时间。可展示字段的 id 保留 JSON 兼容性，与 PoB 对照用 `display_catalog.pob_key`；既有别名包括 `TotalHitAvg` → `AverageHit`、`ShockEffect` → `ShockEffectMod`、`AoeAreaMod` → `AreaOfEffectMod` 和 `TotalTotemPlacementTime` → `TotemPlacementTime`。除明确记录的有意差异外，单位与默认值须与对应 key 一致。
+
+`TotalHitAvg` deliberately retains the game's [Pre-mitigation Damage](https://poe2db.tw/us/Keywords)
+view, including critical-hit averaging. PoB2's `AverageHit` includes enemy
+mitigation but not hit chance; `AverageDamage` additionally includes hit chance.
+These are different views, so `TotalHitAvg` remains excluded from reference
+agreement. Comet `dd7f512456b6` and Living Bomb `9a0fb35e890a` face a 0.5
+elemental damage multiplier, explaining their approximately twofold difference;
+Seismic Cry `3e588bde3126` has physical and cold multipliers of 0.25 and 0.5.
+Do not change the underlying hit or DPS to reconcile these display definitions.
+
+`BlockEffect` is the percentage of hit damage prevented by a block: 100 by
+default, as the [Blocking keyword](https://poe2db.tw/us/Keywords) prevents the
+whole hit. The internal `block_effect` remains the damage-taken share used by
+EHP; only its catalog view is complemented. `ShockEffect` (`ShockEffectMod`)
+is the magnitude modifier, `(1 + increased / 100) * more` on the player times
+the corresponding modifier on the enemy, with neutral value 1 (zero if the
+selected skill cannot inflict shock); it is not shock's base 20% increased
+damage taken or the hit/threshold-derived magnitude.
+The existing `shock_effect` calculation is retained separately.
+`AoeAreaMod` (`AreaOfEffectMod`) is likewise a multiplier (neutral 1), even
+without a known base radius; unknown radius remains zero. Both multiplier
+fields use numeric catalog units, not percentage points.
 
 侧栏其余的机制视图由 `calc/sidebar.rs` 在已算出的结果上取值：
 
