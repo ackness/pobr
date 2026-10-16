@@ -263,3 +263,145 @@ fn thresholds_recovery_and_hit_debuff_lines_reach_display_outputs() {
         );
     }
 }
+
+/// The named registry is exhaustively exercised with game text. The slow is
+/// 50% (the game's default maximum Chill); Mail Coat reduces potency by 30%.
+/// Archon passives grant 10% movement, 20% resistance and 50% reduced effect.
+#[test]
+fn every_registered_state_reader_is_inactive_off_and_applied_on() {
+    use pobr_build::calc_orchestrator::READ_UNDER_A_STATE;
+    let data = data();
+    for &(name, gate) in READ_UNDER_A_STATE {
+        let text = match name {
+            "UnaffectedBySlows" => "Your speed is unaffected by Slows",
+            "SlowEffectOnSelf" => "30% reduced Slowing Potency of Debuffs on You",
+            "ArchonMovementSpeed" => "Archon Buffs also grant 10% increased Movement Speed",
+            "ArchonElementalResistance" => {
+                "Archon Buffs also grant +20% to all Elemental Resistances"
+            }
+            "ArchonEffect" => "50% reduced effect of Archon Buffs on you",
+            _ => panic!("new registered reader {name} needs an off/on fixture"),
+        };
+        for active in [false, true] {
+            let config = gate
+                .config_option
+                .map(|option| {
+                    format!(r#"<Config><Input name="{option}" boolean="{active}"/></Config>"#)
+                })
+                .unwrap_or_default();
+            let build = parse_build(&format!(r#"<PathOfBuilding2>
+<Build level="80" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
+{config}</PathOfBuilding2>"#)).unwrap();
+            let mut options = DataOrchestratorOptions {
+                extra_modifier_texts: vec![text.to_string()],
+                ..Default::default()
+            };
+            if active && gate.config_option.is_none() {
+                options
+                    .extra_modifier_texts
+                    .push("50% reduced Action Speed".to_string());
+            }
+            let diagnosis = diagnose(&build, &data, &options).unwrap();
+            let ledger = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+            let modifier = ledger
+                .lines
+                .iter()
+                .flat_map(|line| &line.modifiers)
+                .find(|modifier| modifier.name == name)
+                .unwrap();
+            assert_eq!(
+                modifier.status,
+                if active {
+                    ModifierStatus::Applied
+                } else {
+                    ModifierStatus::Inactive
+                },
+                "{name} active={active}: {modifier:?}"
+            );
+            assert_eq!(modifier.read_gate.is_some(), !active, "{name}");
+            if active {
+                assert!(
+                    ledger.reads.contains_key(name),
+                    "{name}: reader must actually run"
+                );
+            } else {
+                assert!(
+                    !diagnosis
+                        .unread_modifiers
+                        .iter()
+                        .any(|modifier| modifier.name == name)
+                );
+                assert!(modifier.reason.as_deref().unwrap().contains(gate.state));
+            }
+        }
+    }
+}
+
+#[test]
+fn config_setters_include_conditions_already_known_to_the_engine() {
+    let data = data();
+    let text = "20% faster start of Energy Shield Recharge while affected by an Archon Buff";
+    let ledger = ledger(&data, &["+200 to maximum Energy Shield"], &[text]);
+    let row = line(&ledger, "item.amulet.explicit", text);
+    assert_eq!(row.status, LineStatus::Inactive, "{row:?}");
+    assert_eq!(
+        row.modifiers[0].reason.as_deref(),
+        Some("Condition AffectedByArchon not met")
+    );
+    assert_eq!(
+        ledger
+            .condition_configs
+            .get("AffectedByArchon")
+            .map(String::as_str),
+        Some("conditionAffectedByArchon")
+    );
+    assert!(
+        !ledger
+            .conditions
+            .iter()
+            .any(|entry| entry.condition == "AffectedByArchon")
+    );
+}
+
+#[test]
+fn build_and_calc_pass_conditions_are_declared_even_when_not_met() {
+    let data = data();
+    // Crystallised Immunities grants 100% avoidance for the majority colour;
+    // this Fireball build has no supports, so none of its three states holds.
+    let lines = [
+        "Immune to Ignite if a majority of your Socketed Support Gems are Red",
+        "Immune to Shock if a majority of your Socketed Support Gems are Green",
+        "Immune to Chill if a majority of your Socketed Support Gems are Blue",
+        "10% increased Damage while wielding a Bow",
+        "Critical Hits deal 10% increased Damage",
+    ];
+    let ledger = ledger(&data, &[], &lines);
+    for (text, condition) in lines.iter().zip([
+        "MajorityRedSocketedSupports",
+        "MajorityGreenSocketedSupports",
+        "MajorityBlueSocketedSupports",
+        "UsingBow",
+        "CriticalStrike",
+    ]) {
+        let row = line(&ledger, "item.amulet.explicit", text);
+        assert!(
+            ledger.condition_states.contains(condition),
+            "{condition}: {row:?}"
+        );
+        assert!(
+            !ledger
+                .conditions
+                .iter()
+                .any(|entry| entry.condition == condition)
+        );
+        if condition != "CriticalStrike" {
+            assert_eq!(row.status, LineStatus::Inactive, "{row:?}");
+            assert_eq!(
+                row.modifiers[0].reason,
+                Some(format!("Condition {condition} not met"))
+            );
+        }
+    }
+    assert!(!ledger.condition_states.contains("NothingSetsThis"));
+}

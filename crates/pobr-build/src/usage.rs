@@ -5,7 +5,8 @@
 //! jewels, allocated nodes and config, and every other stored player
 //! modifier, is listed with what became of it. A stored modifier says whether
 //! the calculation counted it (`applied`), read its name and left it out
-//! (`inactive`, with the requirement it did not meet), never asked for its
+//! (`inactive`, with the requirement it did not meet), did not reach a
+//! registered state-dependent reader (`inactive`, with `read_gate`), never asked for its
 //! name (`unread`), or consumes it outside the modifier database (`outside`);
 //! an applied one names the breakdown stats whose lines list it. A line that
 //! left no modifier says why: taken before any modifier is stored and read
@@ -34,7 +35,10 @@ use pobr_data::source::SourceKind;
 use serde::Serialize;
 
 use crate::breakdown::BREAKDOWN_STATS;
-use crate::calc_orchestrator::{engine_ctx, read_outside_the_database};
+use crate::calc_orchestrator::{
+    ReadGate, condition_set_from_build, config_option_setting, engine_ctx,
+    read_outside_the_database, read_under_a_state,
+};
 use crate::{Build, BuildData, Diagnosis, LineFate, ModifierRef};
 
 /// One build's input lines and what the calculation did with each. See the
@@ -60,6 +64,14 @@ pub struct LineUsage {
     /// Conditions modifiers wait for that the calculation never set: those
     /// nothing sets first, then those a config option the build leaves off sets.
     pub conditions: Vec<ConditionUsage>,
+    /// Config setters for referenced conditions, including states already set
+    /// (even to false) or normally derived by a pass, absent from `conditions`.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub condition_configs: BTreeMap<String, String>,
+    /// Referenced conditions set from the build or derived by a calc pass,
+    /// including ones this build does not meet.
+    #[serde(skip_serializing_if = "BTreeSet::is_empty")]
+    pub condition_states: BTreeSet<String>,
     /// Multipliers modifiers scale by, or are gated on, that nothing provided.
     pub multipliers: Vec<MultiplierUsage>,
     /// Every active effect of the enabled groups, at the level and quality
@@ -111,7 +123,8 @@ pub struct UsageSummary {
 
 /// What became of a line. With modifiers stored, from theirs: `applied` when
 /// every one is applied or used outside the database, `partial` when some
-/// are, `inactive` when none is and some name was read, `unread` when no name
+/// are, `inactive` when none is and some name was read or has a registered
+/// reader gated by state, `unread` when no name
 /// was. Without: one of the others, or `inactive` with the reason it was left
 /// out of this calculation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -146,7 +159,8 @@ pub enum ModifierStatus {
     /// inspects the modifiers itself (`NAMED`) or lists them (`EVAL`), and it
     /// would count in the main skill's context.
     Applied,
-    /// Its name was read and no query counted it; `reason` says what it lacks.
+    /// Its name was read and no query counted it, or its registered reader
+    /// needs another state; `reason` says what it lacks.
     Inactive,
     /// No query asked for its name.
     Unread,
@@ -196,6 +210,9 @@ pub struct UsageModifier {
     /// `inactive`: the requirement it did not meet; `outside`: what consumes
     /// it. `null` otherwise.
     pub reason: Option<String>,
+    /// A registered reader whose state this calculation did not reach.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub read_gate: Option<ReadGate>,
     /// The breakdown stats ([`BREAKDOWN_STATS`]) whose lines list it as
     /// applied, active and not 0.
     pub used_in: Vec<&'static str>,
@@ -305,6 +322,21 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
         referenced: session.referenced_variables(),
         asked: &diagnosis.variables,
     };
+    let condition_states = variables
+        .referenced
+        .iter()
+        .flat_map(|name| [name.to_string(), format!("Enemy{name}")])
+        .filter(|name| condition_set_from_build(name))
+        .collect();
+    let condition_configs = variables
+        .referenced
+        .iter()
+        .flat_map(|name| [name.to_string(), format!("Enemy{name}")])
+        .filter_map(|name| {
+            let option = config_option_setting(data.config_catalog.as_deref()?, &name)?;
+            Some((name, option))
+        })
+        .collect();
     let minions = MinionReads {
         created: session.minion_count(),
         read: session.minion_read_names(),
@@ -353,6 +385,10 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
                         && matches!(modifier.value, ModValue::Number(_))
                         && modifier.matches(main.cfg))
                     .then(|| modifier.effective_number(main))
+                    .flatten(),
+                    read_gate: (status == ModifierStatus::Inactive
+                        && !diagnosis.reads.sites.contains_key(modifier.name.as_str()))
+                    .then(|| read_under_a_state(modifier.name.as_str()))
                     .flatten(),
                     status,
                     reason,
@@ -492,6 +528,8 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
         unparsed,
         gem_stats,
         conditions,
+        condition_configs,
+        condition_states,
         multipliers,
         skills: diagnosis
             .skills
@@ -649,6 +687,9 @@ fn judge(
         return judged;
     }
     let Some(sites) = reads.sites.get(name) else {
+        if let Some(gate) = read_under_a_state(name) {
+            return (ModifierStatus::Inactive, Some(gate.reason()));
+        }
         return (ModifierStatus::Unread, None);
     };
     if let Some(reason) = modifier.unmet_requirement(main) {
@@ -1297,6 +1338,7 @@ mod tests {
             applied: None,
             status,
             reason: None,
+            read_gate: None,
             used_in: Vec::new(),
         };
         let status = |statuses: &[ModifierStatus]| {

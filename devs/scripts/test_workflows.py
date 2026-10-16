@@ -1220,6 +1220,107 @@ class GapsTests(unittest.TestCase):
         self.assertTrue(all("unique" in row["source_kinds"] for row in uniques))
         self.assertEqual([r["rank"] for r in uniques], list(range(1, len(uniques) + 1)))
 
+    def test_gaps_use_reader_union_and_keep_all_reasons_on_mixed_lines(self):
+        def mod(name, status, **extra):
+            return {"name": name, "status": status, **extra}
+        def line(text, *mods):
+            return {"text": text, "status": "partial", "modifiers": list(mods)}
+        gate = {"state": "slow applies", "config_option": None}
+        archon = {"state": "Archon active", "config_option": "conditionAffectedByArchon"}
+        lines = [
+            line("Onslaught", mod("CastSpeed", "applied"), mod("AttackSpeed", "unread")),
+            line("Slows", mod("UnaffectedBySlows", "inactive", read_gate=gate)),
+            line("Archon", mod("ArchonEffect", "inactive", read_gate=archon)),
+            line("Conditional", mod("Damage", "inactive", reason="Condition EnemyFrozen not met")),
+            line("Mixed", mod("CastSpeed", "applied"), mod("Missing", "unread"),
+                 mod("ArchonEffect", "inactive", read_gate=archon)),
+            line("Unknown state", mod("Damage", "inactive", reason="Condition Missing not met")),
+            # A config condition elsewhere must not excuse a different unmet requirement.
+            line("Wrong flags", mod("Damage", "inactive", reason="needs Attack")),
+            line("Enemy condition", mod("Damage", "inactive", reason="Condition enemy.Frozen not met")),
+            line("Alternatives", mod("Damage", "inactive", reason="none of Conditions EnemyFrozen, Missing met")),
+            {"text": "No effect", "status": "no_effect", "modifiers": [mod("LootRarity", "unread")]},
+            {"text": "Unmodelled", "status": "unmodelled"},
+            {"text": "Unparsed", "status": "unparsed"},
+            {"text": "No modifier", "status": "no_modifier"},
+            {"text": "Left out", "status": "inactive", "reason": "no recorded consumer"},
+        ]
+        a = self.build("spell", *lines)
+        a["usage"]["conditions"] = [{"condition": "EnemyFrozen", "config_option": "conditionEnemyFrozen"}]
+        b = self.build("attack")
+        b["usage"]["reads"] = {"AttackSpeed": ["INC AttackSpeed"]}
+        audit = {"entries": {row["text"]: self.entry(["unique:Example"]) for row in lines}}
+        builds = [a, b]
+        rows = self.gaps.ranked_queue(audit, builds)
+        self.assertEqual({row["template"] for row in rows}, {
+            "Mixed", "Unknown state", "Wrong flags", "Alternatives", "Unmodelled", "Unparsed", "No modifier", "Left out"})
+        complete = self.gaps.ranked_queue(audit, builds, include_all=True)
+        buckets = {row["template"]: row["builds"][0]["buckets"] for row in complete}
+        self.assertEqual(buckets["Onslaught"], ["unused"])
+        self.assertEqual(buckets["Slows"], ["state-gated"])
+        self.assertEqual(buckets["Archon"], ["config-gated"])
+        self.assertEqual(buckets["Conditional"], ["config-gated"])
+        self.assertEqual(buckets["Enemy condition"], ["config-gated"])
+        self.assertEqual(buckets["Mixed"], ["dropped", "config-gated"])
+        self.assertEqual(self.gaps.bucket_counts(complete), {
+            "dropped": 8, "config-gated": 4, "state-gated": 1, "unused": 1, "handled": 1})
+        # The other build need not carry this template to prove its reader exists.
+        self.assertEqual(builds, [a, b])
+        self.assertNotIn("buckets", lines[0])
+
+    def test_config_gates_include_known_false_and_negated_conditions(self):
+        lines = [{"text": text, "status": "inactive", "modifiers": [
+            {"name": "EnergyShieldRechargeFaster", "status": "inactive", "reason": reason}]
+        } for text, reason in [
+            ("Known state", "Condition AffectedByArchon not met"),
+            ("Negated state", "Condition AffectedByArchon holds (applies only without it)"),
+            ("Player state", "Condition player.AffectedByArchon not met"),
+        ]]
+        build = self.build("a", *lines)
+        # Derived and explicitly false conditions do not appear in unset conditions.
+        build["usage"]["condition_configs"] = {"AffectedByArchon": "conditionAffectedByArchon"}
+        audit = {"entries": {line["text"]: self.entry(["passive:1"]) for line in lines}}
+        self.assertEqual(self.gaps.ranked_queue(audit, [build]), [])
+        rows = self.gaps.ranked_queue(audit, [build], include_all=True)
+        self.assertTrue(all(row["builds"][0]["buckets"] == ["config-gated"] for row in rows))
+
+    def test_build_and_pass_conditions_are_state_gated_without_hiding_unknowns(self):
+        states = ["MajorityRedSocketedSupports", "MajorityGreenSocketedSupports",
+                  "MajorityBlueSocketedSupports", "UsingBow", "CriticalStrike", "WeaponSet2"]
+        def line(text, reason, status="inactive"):
+            return {"text": text, "status": status, "modifiers": [
+                {"name": "Damage", "status": status, "reason": reason}]}
+        lines = [line(state, f"Condition {state} not met") for state in states]
+        lines += [line("Unknown", "Condition NothingSetsThis not met"),
+                  line("Mixed unknown", "none of Conditions UsingBow, NothingSetsThis met"),
+                  line("Wrong flags", "needs Attack"),
+                  line("Unread", None, "unread"),
+                  line("Already applied", None, "applied"),
+                  line("Negated", "Condition UsingBow holds (applies only without it)"),
+                  line("Player state", "Condition player.UsingBow not met"),
+                  line("Config and state", "none of Conditions UsingBow, EnemyFrozen met"),
+                  line("Derived state takes precedence", "Condition CriticalStrike not met")]
+        build = self.build("spell", *lines)
+        build["usage"]["condition_states"] = states
+        build["usage"]["condition_configs"] = {"EnemyFrozen": "conditionEnemyFrozen", "CriticalStrike": "criticalStrikeOption"}
+        audit = {"entries": {row["text"]: self.entry(["passive:1"], "parsed", "parsed") for row in lines}}
+        rows = self.gaps.ranked_queue(audit, [build])
+        self.assertEqual({row["template"] for row in rows}, {"Unknown", "Mixed unknown", "Wrong flags", "Unread"})
+        complete = {row["template"]: row for row in self.gaps.ranked_queue(audit, [build], include_all=True)}
+        for state in states:
+            row = complete[self.gaps.template(state)]
+            self.assertEqual(row["builds"][0]["buckets"], ["state-gated"])
+            self.assertEqual(row["builds"][0]["lines"][0]["bucket_reasons"],
+                             [f"condition set from the build: {state}"])
+        self.assertEqual(complete["Config and state"]["builds"][0]["buckets"], ["config-gated", "state-gated"])
+        self.assertEqual(complete["Derived state takes precedence"]["builds"][0]["buckets"], ["state-gated"])
+        self.assertEqual(complete["Already applied"]["builds"][0]["buckets"], ["handled"])
+        self.assertEqual(complete["Negated"]["builds"][0]["buckets"], ["state-gated"])
+        self.assertEqual(complete["Player state"]["builds"][0]["buckets"], ["state-gated"])
+        card = dict(complete["UsingBow"], stat_matches=[], source_details=[], candidate_names=[], nearby_rules=[])
+        self.assertIn("condition set from the build: UsingBow", self.gaps.render_card(card))
+        self.assertNotIn("bucket_reasons", lines[0])
+
     def test_reverse_stat_match_checks_all_compound_members_in_base(self):
         self.data.files = {
             "base/stats.json": [{"id": "life"}, {"id": "min_fire"}],

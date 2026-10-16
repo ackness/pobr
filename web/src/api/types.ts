@@ -928,7 +928,7 @@ export interface AttributionResponse {
 
 /**
  * 一行的去向。有 modifier 入库时按它们：全部生效 `applied`、部分 `partial`、
- * 被读取但未计入 `inactive`、从未被读取 `unread`。没有 modifier 时：
+ * 被读取但未计入或未到达已登记读取状态 `inactive`、从未被读取 `unread`。没有 modifier 时：
  * 入库前被拿走并由 `reason` 所写的读取方使用 `outside`（物品自身防御/伤害、宝石等级、珠宝半径），
  * 登记为不影响任何输出 `no_effect`，有规则识别但没有实现 `unmodelled`，
  * 没有规则能解析 `unparsed`，解析出了 modifier 却没有入库 `no_modifier`；
@@ -957,6 +957,8 @@ export interface LineUsageModifier {
   /** 生效数值在主技能上下文中的值（已应用缩放 tag）；否则 null。 */
   applied: number | null;
   status: LineUsageModifierStatus;
+  /** 已验证的读取方只在这个状态下运行；未到达时才返回。 */
+  read_gate?: { state: string; config_option: string | null };
   /** inactive：未满足的条件；outside：消费者。 */
   reason: string | null;
   /** 列出它（生效且非 0）的分解 stat id。 */
@@ -1061,6 +1063,10 @@ export interface LineUsage {
   unparsed: LineUsageUnparsed[];
   gem_stats: LineUsageGemStat[];
   conditions: LineUsageCondition[];
+  /** 被引用条件的配置入口，包含已设置或由计算阶段推导的条件。 */
+  condition_configs?: Record<string, string>;
+  /** Referenced conditions set by the build or a calc pass, even when unmet. */
+  condition_states?: string[];
   multipliers: LineUsageMultiplier[];
   /** 启用组里的每个主动效果，以及它实际使用的等级（含加成）与品质。 */
   skills: LineUsageSkill[];

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rank game-text gaps, or research one line, without consulting holdout or PoB2.
 
-    mise run gaps [--json FILE] [--limit N] [--kind unique|passive|mods|...]
+    mise run gaps [--json FILE] [--limit N] [--kind unique|passive|mods|...] [--all]
     mise run gap "<template or text>"
 
 Uses lookup's data access and descriptions, triage's templates and usage cache,
@@ -23,7 +23,8 @@ triage = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(triage)
 lookup = triage.lookup
 SOURCE_KINDS = ("unique", "passive", "mods", "compound", "jewel_node", "bases")
-FATES = {"unparsed", "unmodelled", "unread", "no_modifier"}
+FATES = {"unparsed", "unmodelled", "no_modifier"}
+BUCKETS = ("dropped", "config-gated", "state-gated", "unused", "handled")
 CLASSES = ("pobr_gap", "upstream_gap", "recognized_empty", "no_effect")
 STOPWORDS = set("a an the to of in on for from with and or you your have has is are "
                 "increased reduced more less maximum minimum per when while gain grants "
@@ -73,9 +74,61 @@ def collect_usage(binary, refresh=False, jobs=3):
     return sorted(results, key=lambda row: (row["set"], row["build"])), failures
 
 
-def ranked_queue(audit, builds, kind=None, include_handled=False):
+def line_buckets(line, reads, conditions, states):
+    """Keep every unmet modifier's bucket; one working part cannot hide a gap.
+
+    Only explicit registry metadata or the *reported* unmet config/build condition
+    exempts an inactive modifier. Merely sharing its name with one does not.
+    """
+    if line.get("status") == "no_effect":
+        return ["handled"], []
+    if line.get("status") in FATES:
+        return ["dropped"], []
+    buckets, reasons = set(), set()
+    for modifier in line.get("modifiers") or []:
+        status = modifier.get("status")
+        if status in FATES:
+            buckets.add("dropped")
+        elif status == "unread":
+            buckets.add("unused" if modifier.get("name") in reads else "dropped")
+        elif status == "inactive":
+            gate = modifier.get("read_gate")
+            if gate:
+                buckets.add("config-gated" if gate.get("config_option") else "state-gated")
+            else:
+                reason = modifier.get("reason") or ""
+                condition = re.fullmatch(r"Condition (.+) (?:not met|holds \(applies only without it\))", reason)
+                names = (condition.group(1).split(", ") if condition else
+                         reason[len("none of Conditions "):-len(" met")].split(", ")
+                         if reason.startswith("none of Conditions ") and reason.endswith(" met") else [])
+                # Actor conditions use enemy.X in reasons, EnemyX in the ledger.
+                names = ["Enemy" + name[6:] if name.startswith("enemy.") else
+                         name[7:] if name.startswith("player.") else name for name in names]
+                if names and all(conditions.get(name) or name in states for name in names):
+                    for name in names:
+                        if name in states:
+                            buckets.add("state-gated")
+                            reasons.add(f"condition set from the build: {name}")
+                        else:
+                            buckets.add("config-gated")
+                else:
+                    buckets.add("dropped")
+    if not buckets and line.get("status") in ("unread", "inactive", "partial"):
+        # A received line without modifiers has no proven reader/gate.
+        if not line.get("modifiers"):
+            buckets.add("dropped")
+    return ([bucket for bucket in BUCKETS if bucket in buckets] or ["handled"], sorted(reasons))
+
+
+def bucket_counts(queue):
+    """Template/build pairs, once per bucket (mixed rows can have several)."""
+    return {bucket: sum(row["bucket_builds"][bucket] for row in queue) for bucket in BUCKETS}
+
+
+def ranked_queue(audit, builds, kind=None, include_handled=False, include_all=False):
     """Group all variants before filtering; count affected builds once per path."""
     grouped = {}
+    reads = triage.reader_union(build.get("usage") or {} for build in builds)
 
     def group(text):
         return grouped.setdefault(key(text), {"template": template(text), "variants": [],
@@ -87,7 +140,12 @@ def ranked_queue(audit, builds, kind=None, include_handled=False):
         row["variants"].append({"text": text, **entry})
         row["sources"].update(sources)
     for build in builds:
-        lines = (build.get("usage") or {}).get("lines") or []
+        usage = build.get("usage") or {}
+        lines = usage.get("lines") or []
+        conditions = {entry["condition"]: entry.get("config_option")
+                      for entry in usage.get("conditions") or []}
+        conditions.update(usage.get("condition_configs") or {})
+        states = set(usage.get("condition_states") or [])
         for line in lines:
             text = line.get("text") or ""
             if not text:
@@ -106,26 +164,32 @@ def ranked_queue(audit, builds, kind=None, include_handled=False):
             if carrier is None:
                 carrier = {"build": build["build"], "path": identity, "lines": []}
                 row["builds"].append(carrier)
-            carrier["lines"].append(line)
+            buckets, reasons = line_buckets(line, reads, conditions, states)
+            carrier["lines"].append({**line, "buckets": buckets,
+                                     **({"bucket_reasons": reasons} if reasons else {})})
     queue = []
     for row in grouped.values():
         if not include_handled and row["sources"] and all(
                 source.startswith("translation:") for source in row["sources"]):
             continue
-        affected = [b for b in row["builds"] if any(
-            line.get("status") != "no_effect" and (line.get("status") in FATES or any(
-                m.get("status") == "unread" for m in line.get("modifiers") or []))
-            for line in b["lines"])]
         for build in row["builds"]:
-            build["affected"] = build in affected
+            build["buckets"] = [bucket for bucket in BUCKETS if any(
+                bucket in line["buckets"] for line in build["lines"])]
+            build["affected"] = "dropped" in build["buckets"]
+        affected = [build for build in row["builds"] if build["affected"]]
+        row["bucket_builds"] = {bucket: sum(bucket in build["buckets"] for build in row["builds"])
+                                for bucket in BUCKETS}
+        if row["builds"] and not affected and not (include_handled or include_all):
+            continue
         classes = {classify(v.get("status"), v.get("vendor_status"), bool(affected))
                    for v in row["variants"]}
         classes.discard(None)
         if not row["variants"] and affected:
             classes.add("ledger_gap")  # Build-only text has no audited vendor status.
-        if not classes and include_handled:
+        if not classes and (include_handled or include_all):
             classes.add("parsed")
-        if not classes:
+        if not classes or (classes == {"no_effect"} and not affected
+                           and not (include_handled or include_all)):
             continue
         row["classes"] = sorted(classes, key=lambda c: (*CLASSES, "ledger_gap", "parsed").index(c))
         row["class"] = row["classes"][0]
@@ -302,13 +366,15 @@ def render_card(card):
             rows.append("    " + source["poe2db_guess"])
     rows.append(f"worked builds: {len(card['builds'])} carrying, {card['affected_builds']} with dropped input")
     for build in card["builds"]:
-        rows.append(f"  {build['path']}")
+        rows.append(f"  {build['path']} [{', '.join(build['buckets'])}]")
         for line in build["lines"]:
-            rows.append(f"    {line.get('status')} · {triage.line_source(line)} · {line.get('text')}")
+            rows.append(f"    {line.get('status')} [{', '.join(line['buckets'])}] · {triage.line_source(line)} · {line.get('text')}")
             if line.get("reason"):
                 rows.append(f"      {line['reason']}")
+            rows += [f"      {reason}" for reason in line.get("bucket_reasons") or []]
             for mod in line.get("modifiers") or []:
-                rows.append(f"      {mod.get('name')}: {mod.get('status')}")
+                rows.append(f"      {mod.get('name')}: {mod.get('status')}"
+                            + (f" · {mod['reason']}" if mod.get("reason") else ""))
     rows.append("candidate engine names (keyword matches):")
     rows += [f"  {entry['name']} · {entry['locations'][0]}" for entry in card["candidate_names"]]
     rows.append("nearby rules (keyword matches):")
@@ -325,6 +391,7 @@ def main(argv=None):
     parser.add_argument("--limit", type=int, default=30)
     parser.add_argument("--kind", help="source kind, e.g. unique, passive, mods, compound, jewel_node")
     parser.add_argument("--binary", type=Path, help="use an already built pobr executable (default: build CLI once)")
+    parser.add_argument("--all", action="store_true", help="also show gated, unused and handled rows")
     parser.add_argument("--refresh", action="store_true", help="recalculate worked usage ledgers")
     args = parser.parse_args(argv)
     if args.command == "gap" and not args.query:
@@ -340,18 +407,24 @@ def main(argv=None):
     binary = args.binary.resolve() if args.binary else triage.engine_binary()
     builds, failures = collect_usage(binary, args.refresh)
     if args.command == "gaps":
-        queue = ranked_queue(audit, builds, args.kind)
+        complete = ranked_queue(audit, builds, args.kind, include_all=True)
+        counts = bucket_counts(complete)
+        queue = complete if args.all else ranked_queue(audit, builds, args.kind)
         sources = Sources(data)
         for row in queue:
             examples = [s for kind in SOURCE_KINDS for s in row["sources"]
                         if s.partition(":")[0] == kind]
             row["example_source"] = sources.name(examples[0]) if examples else next(iter(row["sources"]), "ledger")
         payload = {"data_version": data.directory.name, "builds_scanned": len(builds),
-                   "failures": failures, "queue": queue}
+                   "failures": failures, "bucket_counts": counts, "queue": queue}
         print(f"data {data.directory.name} · {len(queue)} templates · {len(builds)} worked builds")
+        print("template/build buckets (mixed rows count in each): " + " · ".join(
+            f"{bucket}={counts[bucket]}" for bucket in BUCKETS))
         for row in queue[:args.limit]:
             print(f"{row['rank']:>3} {row['class']:<17} builds={row['affected_builds']:<3} "
-                  f"{','.join(row['source_kinds']) or 'ledger'} | {row['example_source']} | {row['template']}")
+                  f"{','.join(row['source_kinds']) or 'ledger'} | {row['example_source']} | {row['template']}"
+                  + (" | " + ", ".join(f"{bucket}={count}" for bucket, count in row["bucket_builds"].items()
+                                       if count) if args.all else ""))
     else:
         card = research_card(data, audit, builds, args.query)
         if card is None:

@@ -72,9 +72,12 @@ mod context;
 use context::CalculationContext;
 mod diagnosis;
 pub(crate) use collect::engine_ctx;
-pub(crate) use diagnosis::read_outside_the_database;
 pub use diagnosis::{
-    Diagnosis, MainSkillSummary, ModifierRef, UnmappedStat, UnsetCondition, diagnose,
+    Diagnosis, MainSkillSummary, ModifierRef, READ_UNDER_A_STATE, ReadGate, UnmappedStat,
+    UnsetCondition, diagnose,
+};
+pub(crate) use diagnosis::{
+    condition_set_from_build, config_option_setting, read_outside_the_database, read_under_a_state,
 };
 mod sources;
 use sources::SourceWriter;
