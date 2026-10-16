@@ -429,9 +429,15 @@ pub fn charge_multipliers_panel_default(db: &ModDb, cfg: &CalcConfig) -> CalcCon
             );
         }
     }
+    // Conduit sends incoming gains to allies. As with Resonance, only counts
+    // above the always-held minima represent gains in this snapshot model.
+    let gains_go_to_allies = db.flag(cfg, "ChargesGainedByAllies");
     for kind in kinds {
         let key = kind.multiplier_key();
         let minimum = f64::from(charge_minimum(db, cfg, kind, charge_maximum(db, cfg, kind)));
+        if gains_go_to_allies {
+            out.multipliers.insert(key.into(), minimum);
+        }
         let removable = (out.multiplier(key) - minimum).max(0.0);
         removable_total += removable;
         out.multipliers.insert(format!("Removable{key}"), removable);

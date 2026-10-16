@@ -446,7 +446,19 @@ redirects Power → Endurance → Frenzy → Power once. With no charge-gain eve
 model, configured counts above their minima stand in for incoming gains;
 minima and maxima stay with their original type, incoming gains merge and
 are capped by the destination maximum. On-gain proc effects, duration and
-consumption timing are not simulated. Event Horizon
+consumption timing are not simulated.
+
+Conduit (`keystone_conduit`, passive 33979: “If you would gain a Charge,
+Allies in your Presence gain that Charge instead”) uses the same snapshot
+convention: configured counts above their minima represent incoming gains,
+so the player's Power, Frenzy and Endurance counts stay at their minima,
+including with Resonance. Minimum charges are treated as always held, not
+gained, and remain with the player; this convention has no in-game test.
+Allies receiving the charges and their effects remain unmodelled: there is
+no ally/minion charge-gain model. The rule declares `exporter: "absent"`,
+so reference-basis calculations omit it.
+
+Event Horizon
 (`lose_%_of_life_and_energy_shield_when_you_use_a_chaos_skill`, passive
 `chaos33_`: 3%, [game text](https://poe2db.tw/us/Event_Horizon)) subtracts
 3% of each final maximum pool per selected player-used Chaos skill use from

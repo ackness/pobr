@@ -38679,7 +38679,14 @@
     },
     {
       "text": "If you would gain a [Charges|Charge], [Allies] in your [Presence] gain that [Charges|Charge] instead",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ChargesGainedByAllies",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Ignore [Attributes|Attribute] Requirements to equip Gloves",
