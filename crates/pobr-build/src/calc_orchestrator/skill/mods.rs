@@ -592,10 +592,26 @@ pub(crate) fn totem_base_modifiers(
             )),
         );
     }
+    // The totem gem's `base_number_of_totems_allowed` (a constant or a level
+    // stat: 1 for Shockwave Totem, 2 for a level-20 Spell Totem) is the base
+    // of the totem limit, whichever skill the totem uses.
+    let stats = data.effect_stats(&gem.skill_id, level, gem.quality, None);
+    let limit: f64 = stats
+        .all()
+        .filter(|stat| stat.stat == "base_number_of_totems_allowed")
+        .map(|stat| stat.value)
+        .sum();
+    if limit != 0.0 {
+        modifiers.push(
+            Modifier::number("TotemLimitBase", ModType::Base, limit).with_origin(origin(
+                "base_number_of_totems_allowed",
+                format!("{} base_number_of_totems_allowed ({limit})", gem.skill_id),
+            )),
+        );
+    }
     // A skill a meta totem uses (Spell Totem) reads the totem gem's own
     // level stats; the main skill's stats are already mapped.
     if gem.skill_id != skill_id {
-        let stats = data.effect_stats(&gem.skill_id, level, gem.quality, None);
         for stat in stats.all() {
             let name = match stat.stat.as_str() {
                 "totem_elemental_resistance_%" => "TotemElementalResist",

@@ -363,3 +363,58 @@ fn a_spell_totem_has_the_armour_of_its_monster_type() {
         418.0
     );
 }
+
+/// The totem limit: the level-20 Spell Totem gem's `base_number_of_totems_allowed`
+/// is 2, "+1 to maximum number of Summoned Totems"
+/// (`number_of_additional_totems_allowed`) adds one, and Ancestral Bond's
+/// "Your Totem Limit is doubled" (`keystone_ancestral_bond`) doubles the sum.
+/// The damage still counts one totem.
+#[test]
+fn the_totem_limit_comes_from_the_totem_gem_and_its_modifiers() {
+    let data = data();
+    let limit = |lines: &[&str]| {
+        let options = DataOrchestratorOptions {
+            extra_modifier_texts: lines.iter().map(|line| line.to_string()).collect(),
+            ..DataOrchestratorOptions::default()
+        };
+        calculate_with_data(&build(true, ""), &data, &options).expect("calculate")
+    };
+    let plain = limit(&[]);
+    assert_eq!(plain.active_totem_limit, 2.0);
+    let more = limit(&["+1 to maximum number of Summoned Totems"]);
+    assert_eq!(more.active_totem_limit, 3.0);
+    let doubled = limit(&[
+        "+1 to maximum number of Summoned Totems",
+        "Your Totem Limit is doubled",
+    ]);
+    assert_eq!(doubled.active_totem_limit, 6.0);
+    assert_eq!(doubled.total_hit_avg, plain.total_hit_avg);
+    assert_eq!(doubled.action_rate, plain.action_rate);
+
+    let own = calculate_with_data(
+        &build(false, ""),
+        &data,
+        &DataOrchestratorOptions::default(),
+    )
+    .expect("calculate");
+    assert_eq!(own.active_totem_limit, 0.0);
+
+    let options = DataOrchestratorOptions {
+        extra_modifier_texts: vec!["Your Totem Limit is doubled".into()],
+        ..DataOrchestratorOptions::default()
+    };
+    let result = diagnose(&build(true, ""), &data, &options).expect("diagnose");
+    let detail = result
+        .session
+        .derived_detail("ActiveTotemLimit")
+        .expect("detail");
+    let input = |id: &str| detail.inputs.iter().find(|(n, _)| n == id).unwrap().1;
+    assert_eq!(input("TotemLimitBase"), 2.0);
+    assert_eq!(
+        input("HasTotem")
+            * ((input("TotemLimitBase") + input("AdditionalTotemLimit"))
+                * input("TotemLimitMore"))
+            .floor(),
+        4.0
+    );
+}

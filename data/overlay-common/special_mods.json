@@ -5918,14 +5918,20 @@
       ]
     },
     {
-      "id": "doubled_totem_limit_unmodelled",
+      "id": "doubled_totem_limit",
       "pattern": "your totem limit is doubled",
-      "mods": [],
+      "mods": [
+        {
+          "name": "ActiveTotemLimit",
+          "type": "MORE",
+          "value": 100
+        }
+      ],
       "verified": false,
-      "batch": "unmodelled",
+      "batch": "S2",
       "exporter": "absent",
       "game_source": "keystone_ancestral_bond; base/stats.json; Ancestral Bond game text",
-      "source_note": "Totem limit not modelled; the selected totem still reports one totem's damage.",
+      "source_note": "Doubles the ActiveTotemLimit view (calc::totem::limit_terms). DPS still counts one totem.",
       "examples": [
         "Your Totem Limit is doubled"
       ]

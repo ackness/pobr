@@ -353,6 +353,13 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
             ])
         }
         "skill_disabled_unless_cloned" => Some(vec![Modifier::flag("MirageSkill")]),
+        // Conductive Runes: "Rune limit" of the placed Hazard runes (game
+        // constant 20); read by the ActiveHazardLimit view only.
+        "rune_hazard_base_number_of_runes_allowed" => Some(vec![Modifier::number(
+            "HazardRuneLimit",
+            ModType::Base,
+            value,
+        )]),
         // The action's own movement penalty, with Mobility/Deliberation
         // modifying the penalty rather than the character's movement speed.
         "movement_speed_+%_final_while_performing_action" => Some(vec![Modifier::number(

@@ -75,6 +75,8 @@ pub struct OutputTable {
     pub totem_armour: f64,
     pub totem_evasion: f64,
     pub totem_energy_shield: f64,
+    /// How many totems the selected skill's totem gem allows (0 without one).
+    pub active_totem_limit: f64,
     pub self_bleed_duration: f64,
     pub self_poison_duration: f64,
     pub self_ignite_duration: f64,
@@ -701,6 +703,7 @@ impl Default for OutputTable {
             totem_armour: 0.0,
             totem_evasion: 0.0,
             totem_energy_shield: 0.0,
+            active_totem_limit: 0.0,
             self_bleed_duration: 100.0,
             self_poison_duration: 100.0,
             self_ignite_duration: 100.0,

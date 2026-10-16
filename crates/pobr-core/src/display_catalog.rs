@@ -597,6 +597,12 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "EnemyMarkLimit",
         ),
+        computed(
+            "ActiveHazardLimit",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "ActiveHazardLimit",
+        ),
         computed("ActionSpeedMod", Cat::Defence, Vt::Number, "ActionSpeedMod"),
         computed(
             "MovementSpeedMod",
@@ -919,6 +925,12 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         ),
         computed("TotemLife", Cat::SkillMechanics, Vt::Number, "TotemLife"),
         computed("TotemArmour", Cat::SkillMechanics, Vt::Number, "TotemArmour"),
+        computed(
+            "ActiveTotemLimit",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "ActiveTotemLimit",
+        ),
         computed("TotemEvasion", Cat::SkillMechanics, Vt::Number, "TotemEvasion"),
         computed(
             "TotemEnergyShield",
@@ -2586,6 +2598,7 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
     match id {
         "TotemLife" => output.totem_life,
         "TotemArmour" => output.totem_armour,
+        "ActiveTotemLimit" => output.active_totem_limit,
         "TotemEvasion" => output.totem_evasion,
         "TotemEnergyShield" => output.totem_energy_shield,
         "TotemDurationMod" => output.totem_duration_mod,

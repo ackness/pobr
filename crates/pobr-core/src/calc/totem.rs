@@ -28,6 +28,13 @@
 //!   on a minion with no effect-on-self modifiers of its own. Assumes the totem
 //!   stands in the Presence; no in-game test.
 //!
+//! - Limit: `TotemLimitBase` is the totem gem's `base_number_of_totems_allowed`;
+//!   `ActiveTotemLimit` BASE adds "+# to maximum number of Summoned Totems"
+//!   (`number_of_additional_totems_allowed`, and the attack / spell / melee /
+//!   ballista variants through their skill tags), MORE doubles it ("Your Totem
+//!   Limit is doubled", `keystone_ancestral_bond`) and OVERRIDE fixes it
+//!   (`non_modifiable_totem_limit`). Only reported: DPS still counts one totem.
+//!
 //! Nothing here changes DPS or the number of totems.
 
 use pobr_data::prelude::*;
@@ -111,6 +118,38 @@ pub(crate) fn defence_terms(
         from_life,
         inc,
         more,
+        value,
+    }
+}
+
+/// The terms of `ActiveTotemLimit`: `override` or
+/// `max(floor((TotemLimitBase + additional) × MORE), 0)`; 0 without a totem.
+pub(crate) struct TotemLimitTerms {
+    pub(crate) base: f64,
+    pub(crate) additional: f64,
+    pub(crate) more: f64,
+    pub(crate) override_value: Option<f64>,
+    pub(crate) value: f64,
+}
+
+pub(crate) fn limit_terms(db: &ModDb, cfg: &CalcConfig) -> TotemLimitTerms {
+    let names = [ModName::from("ActiveTotemLimit")];
+    let base = db.sum(ModType::Base, cfg, &[ModName::from("TotemLimitBase")]);
+    let additional = db.sum(ModType::Base, cfg, &names);
+    let more = db.more(cfg, &names);
+    let override_value = db.override_(cfg, "ActiveTotemLimit");
+    let value = if has_totem(db, cfg) {
+        override_value
+            .unwrap_or_else(|| ((base + additional) * more).floor())
+            .max(0.0)
+    } else {
+        0.0
+    };
+    TotemLimitTerms {
+        base,
+        additional,
+        more,
+        override_value,
         value,
     }
 }
@@ -209,7 +248,9 @@ pub(super) fn calculate(env: &mut Env) {
         TotemDefence::EnergyShield,
     ]
     .map(|defence| defence_terms(db, cfg, defence, life).value);
+    let limit = limit_terms(db, cfg).value;
     let out = &mut env.player.output;
+    out.active_totem_limit = limit;
     out.totem_armour = armour;
     out.totem_evasion = evasion;
     out.totem_energy_shield = energy_shield;
@@ -260,6 +301,25 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<super::session::detail::De
                     .map(|(id, value)| (id.to_string(), *value))
                     .collect(),
             });
+        }
+        "ActiveTotemLimit" => {
+            let t = limit_terms(db, cfg);
+            match t.override_value {
+                Some(value) if has_totem(db, cfg) => (
+                    "max(TotemLimitOverride, 0)".into(),
+                    vec![("TotemLimitOverride", value)],
+                ),
+                _ => (
+                    "HasTotem * max(floor((TotemLimitBase + AdditionalTotemLimit) * TotemLimitMore), 0)"
+                        .into(),
+                    vec![
+                        ("HasTotem", f64::from(u8::from(has_totem(db, cfg)))),
+                        ("TotemLimitBase", t.base),
+                        ("AdditionalTotemLimit", t.additional),
+                        ("TotemLimitMore", t.more),
+                    ],
+                ),
+            }
         }
         "TotemDurationMod" => {
             let (inc, more, _) = duration_mod_terms(db, cfg);

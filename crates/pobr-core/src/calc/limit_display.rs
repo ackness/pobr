@@ -23,6 +23,10 @@ pub struct LimitViews {
     /// is the largest limit among all curse casters, so it can be higher.
     pub enemy_curse_limit: f64,
     pub enemy_mark_limit: f64,
+    /// How many runes the selected Hazard skill can have placed at once
+    /// (`rune_hazard_base_number_of_runes_allowed`, Conductive Runes: 20); 0
+    /// for any other skill.
+    pub hazard_rune_limit: f64,
     pub action_speed_mod: f64,
     /// Movement speed before action speed is applied.
     pub movement_speed_mod: f64,
@@ -89,6 +93,9 @@ pub(super) fn fill(env: &mut Env) {
     views.charm_limit = super::env_finalize::charm_slots(db, cfg);
     views.enemy_curse_limit = super::buff_pass::player_curse_limit(db, cfg);
     views.enemy_mark_limit = super::buff_pass::player_mark_limit(db, cfg);
+    views.hazard_rune_limit = db
+        .sum(ModType::Base, cfg, &[ModName::from("HazardRuneLimit")])
+        .max(0.0);
     views.life_recovery_rate_mod =
         super::survivability::recoup_recovery_rate(db, cfg, RecoupResource::Life);
     views.mana_recovery_rate_mod =
@@ -150,6 +157,7 @@ pub(crate) fn display_value(out: &OutputTable, stat: &str) -> Option<f64> {
         "CharmLimit" => v.charm_limit,
         "EnemyCurseLimit" => v.enemy_curse_limit,
         "EnemyMarkLimit" => v.enemy_mark_limit,
+        "ActiveHazardLimit" => v.hazard_rune_limit,
         "ActionSpeedMod" => v.action_speed_mod,
         "MovementSpeedMod" => v.movement_speed_mod,
         "LightRadiusMod" => v.light_radius_mod,

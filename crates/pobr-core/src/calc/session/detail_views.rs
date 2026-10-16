@@ -281,6 +281,7 @@ pub const DERIVED_STATS: &[&str] = &[
     "TotalEHPLowestMaxHit",
     "TotemLife",
     "TotemArmour",
+    "ActiveTotemLimit",
     "TotemEvasion",
     "TotemEnergyShield",
     "TotemDurationMod",
