@@ -350,3 +350,64 @@ fn abyss_small_passives_replace_stats_preserve_attribute_choice_and_expose_missi
     let empty_original = calculate_with_data_session(&build, &data, &options).unwrap();
     assert_eq!(empty_original.base_sum("Tribute"), 8.0);
 }
+
+/// Hulking Form scales allocated small passives: a Normal "+10 to Strength"
+/// becomes +15 with "50% increased effect of Small Passive Skills", while a
+/// Notable "+10 to Strength" stays +10 (game: Hulking Form, Titan Warrior1).
+#[test]
+fn hulking_form_scales_small_passives_but_not_notables() {
+    let mut data = data();
+    data.passive_nodes = [
+        node(11, "small", "Small", "normal", 0.0, &["+10 to Strength"]),
+        node(
+            12,
+            "notable",
+            "Notable",
+            "notable",
+            0.0,
+            &["+10 to Strength"],
+        ),
+        node(
+            30115,
+            "hulking",
+            "Hulking Form",
+            "notable",
+            0.0,
+            &["50% increased effect of Small Passive Skills"],
+        ),
+    ]
+    .into_iter()
+    .map(|n| (n.skill, n))
+    .collect();
+    let options = DataOrchestratorOptions {
+        inject_character_base: true,
+        ..Default::default()
+    };
+    let plain = Build::new()
+        .with_character(CharacterIdentity {
+            level: 90,
+            class_name: "Warrior".into(),
+            ascendancy_name: "Titan".into(),
+        })
+        .with_tree(PassiveTreeSpec {
+            allocated_nodes: vec![NodeId(11), NodeId(12)].into_iter().collect(),
+            ..Default::default()
+        });
+    let base = calculate_with_data_session(&plain, &data, &options).unwrap();
+    assert_eq!(base.base_sum("Strength"), 20.0);
+    let build = Build::new()
+        .with_character(CharacterIdentity {
+            level: 90,
+            class_name: "Warrior".into(),
+            ascendancy_name: "Titan".into(),
+        })
+        .with_tree(PassiveTreeSpec {
+            allocated_nodes: vec![NodeId(11), NodeId(12), NodeId(30115)]
+                .into_iter()
+                .collect(),
+            ..Default::default()
+        });
+    let calc = calculate_with_data_session(&build, &data, &options).unwrap();
+    // 10 * 1.5 (small, scaled) + 10 (notable, unscaled).
+    assert_eq!(calc.base_sum("Strength"), 25.0);
+}
