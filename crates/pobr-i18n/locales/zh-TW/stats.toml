@@ -460,3 +460,6 @@ ProjectileBlockChanceIsLucky = "投射物格擋為幸運"
 ProjectileBlockChanceIsUnlucky = "投射物格擋為不幸"
 SpellProjectileBlockChanceIsLucky = "法術投射物格擋為幸運"
 SpellProjectileBlockChanceIsUnlucky = "法術投射物格擋為不幸"
+
+# Threshold and per-kill/debuff outputs
+AilmentThreshold = "元素異常狀態門檻"

@@ -502,3 +502,6 @@ ProjectileBlockChanceIsLucky = "Projectile block is lucky"
 ProjectileBlockChanceIsUnlucky = "Projectile block is unlucky"
 SpellProjectileBlockChanceIsLucky = "Spell projectile block is lucky"
 SpellProjectileBlockChanceIsUnlucky = "Spell projectile block is unlucky"
+
+# Threshold and per-kill/debuff outputs
+AilmentThreshold = "Elemental Ailment Threshold"

@@ -2,6 +2,7 @@ import type { Lang } from './i18n';
 
 /** Modifier input names for optional Calcs details; no calculation logic. */
 export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
+  AilmentThreshold: { 'en-US': 'Elemental Ailment Threshold', 'zh-TW': '元素異常狀態門檻', 'zh-CN': '元素异常状态门槛' },
   FreezeBuildup: { 'en-US': 'Freeze buildup', 'zh-TW': '凍結積累', 'zh-CN': '冻结积累' },
   ElectrocuteBuildup: { 'en-US': 'Electrocute buildup', 'zh-TW': '感電麻痺積累', 'zh-CN': '感电麻痹积累' },
   ColdResistMax: { 'en-US': "Maximum cold resistance", 'zh-TW': "最大冰冷抗性", 'zh-CN': "最大冰冷抗性" },

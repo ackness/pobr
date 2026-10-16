@@ -1,5 +1,5 @@
 use pobr_core::calc::{CalculationSession, MinimalInput};
-use pobr_core::{CalcConfig, Modifier};
+use pobr_core::{CalcConfig, Modifier, display_value};
 use pobr_data::prelude::*;
 
 fn session(lines: &[&str]) -> CalculationSession {
@@ -14,6 +14,22 @@ fn session(lines: &[&str]) -> CalculationSession {
     .with_config(CalcConfig::spell().with_mode_effective(true));
     session.add_modifier_texts(lines).unwrap();
     session
+}
+
+#[test]
+fn ailment_threshold_adds_arbitrary_es_rolls_before_increases() {
+    let mut session = session(&[
+        "+2000 to maximum Energy Shield",
+        "Gain additional Ailment Threshold equal to 17% of maximum Energy Shield",
+        "40% increased Elemental Ailment Threshold",
+    ]);
+    session.perform_minimal().unwrap();
+    // Game keyword: half Life, plus 17% ES, then 40% increased threshold.
+    // (1000 * 0.5 + 2000 * 0.17) * 1.4 = 1176.
+    assert_eq!(session.output().energy_shield, 2000.0);
+    assert!((display_value(session.output(), "AilmentThreshold") - 1176.0).abs() < 1e-9);
+    assert!(session.unsupported_modifier_texts().is_empty());
+    assert_eq!(session.detail_sources("AilmentThreshold")[0].rows.len(), 2);
 }
 
 #[test]

@@ -27,6 +27,8 @@ pub struct FullDpsOutput {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutputTable {
+    /// Threshold, recovery per kill, and selected-hit debuff views.
+    pub ailment_threshold: f64,
     pub utility_stats: std::collections::BTreeMap<String, f64>,
     pub decay_dps: f64,
     pub mirage_burning_ground_dps: f64,
@@ -533,6 +535,7 @@ pub struct MinionOutput {
 impl Default for OutputTable {
     fn default() -> Self {
         Self {
+            ailment_threshold: 0.0,
             utility_stats: Default::default(),
             decay_dps: 0.0,
             mirage_burning_ground_dps: 0.0,

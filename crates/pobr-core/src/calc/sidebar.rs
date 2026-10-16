@@ -80,6 +80,7 @@ fn critical_roll_view(env: &Env) -> f64 {
 }
 
 pub(super) fn fill_sidebar(env: &mut Env) {
+    fill_threshold_and_kill_views(env);
     let bifurcates = critical_roll_view(env);
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
@@ -185,4 +186,21 @@ pub(super) fn fill_sidebar(env: &mut Env) {
     if db.flag(cfg, "ProfaneDecay") {
         out.decay_dps = out.skill_total_dot;
     }
+}
+
+/// Game keywords: a player's base Elemental Ailment Threshold is half Life.
+/// PercentStat modifiers use the final pools already snapshotted in cfg.
+fn fill_threshold_and_kill_views(env: &mut Env) {
+    let db = &env.player.mod_db;
+    let cfg = &env.cfg;
+    let out = &mut env.player.output;
+    let names = [ModName::from("AilmentThreshold")];
+    out.ailment_threshold = db
+        .override_(cfg, "AilmentThreshold")
+        .unwrap_or_else(|| {
+            (super::ailment::player_ailment_threshold(out.life)
+                + db.sum(ModType::Base, cfg, &names))
+                * factor(db, cfg, &["AilmentThreshold"])
+        })
+        .max(0.0);
 }
