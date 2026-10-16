@@ -44,6 +44,10 @@ pub struct OutputTable {
     pub maim_immunity: bool,
     pub hinder_immunity: bool,
 
+    /// Inputs retained by the damaging-ailment stage, shared by Calcs and DPS details.
+    pub ailment_terms: Vec<(pobr_data::prelude::AilmentType, super::AilmentStageTerms)>,
+    /// Chance to shock on a landed hit (fraction), from the non-damaging stage.
+    pub shock_chance: f64,
     /// Threshold, recovery per kill, and selected-hit debuff views.
     pub ailment_threshold: f64,
     pub life_on_kill: f64,
@@ -313,7 +317,7 @@ pub struct OutputTable {
     // Ailment extensions (Lane B: chill / freeze·shock buildup / bleed·poison stacks; written by perform's fill_ailments)
     /// Chill's action speed reduction (%, e.g. 30.0 = 30%; 0 = not applied).
     pub chill_effect: f64,
-    /// Freeze buildup (% per hit; 0 = not accumulating).
+    /// Freeze buildup (% per damage point; 0 = not accumulating).
     pub freeze_buildup_pct: f64,
     /// Shock buildup (% per hit; 0 = not accumulating).
     pub electrocute_buildup_pct: f64,
@@ -586,6 +590,8 @@ impl Default for OutputTable {
             maim_immunity: false,
             hinder_immunity: false,
 
+            ailment_terms: Vec::new(),
+            shock_chance: 0.0,
             ailment_threshold: 0.0,
             life_on_kill: 0.0,
             mana_on_kill: 0.0,

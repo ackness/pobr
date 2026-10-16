@@ -128,7 +128,7 @@ pub(crate) fn source_ailments(env: &Env) -> AilmentSourceStats {
     let player = &env.player.mod_db;
     let cfg = &env.cfg;
     let mut result = AilmentSourceStats::default();
-    if let Some((_, terms)) = env
+    if let Some((_, terms)) = out
         .ailment_terms
         .iter()
         .find(|(kind, _)| *kind == AilmentType::Ignite)

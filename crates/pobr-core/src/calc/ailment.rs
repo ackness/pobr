@@ -486,8 +486,18 @@ pub fn effmult_for_ailment(
     damage_type: DamageType,
     mode_effective: bool,
 ) -> f64 {
+    let (resist, taken_inc, taken_more) = effmult_terms(enemy, cfg, damage_type, mode_effective);
+    round((1.0 - resist / 100.0) * (1.0 + taken_inc / 100.0) * taken_more)
+}
+
+pub(crate) fn effmult_terms(
+    enemy: &ModDb,
+    cfg: &CalcConfig,
+    damage_type: DamageType,
+    mode_effective: bool,
+) -> (f64, f64, f64) {
     if !mode_effective {
-        return 1.0;
+        return (0.0, 0.0, 1.0);
     }
     let type_cfg = cfg.clone().with_damage_type(damage_type);
     let taken_names = taken_mod_names(damage_type);
@@ -495,7 +505,7 @@ pub fn effmult_for_ailment(
     let taken_more = enemy.more(&type_cfg, &taken_names);
 
     let resist = ailment_resist(enemy, &type_cfg, damage_type);
-    round((1.0 - resist / 100.0) * (1.0 + taken_inc / 100.0) * taken_more)
+    (resist, taken_inc, taken_more)
 }
 
 /// The enemy's resistance for an ailment's corresponding type (physical has no resistance-based
@@ -611,6 +621,10 @@ pub struct AilmentTerms {
     /// `hit_chance × apply_chance × duration × hits_per_second`.
     pub hit_chance: f64,
     pub duration: f64,
+    /// Player-scaled duration before enemy expiration and faster/slower damage.
+    pub duration_before_rate: f64,
+    /// Stack potential used for the roll and crit bias (fraction).
+    pub stack_potential: f64,
     pub hits_per_second: f64,
     /// `duration` before modifiers, and the multiplier from how fast effects
     /// expire on the enemy. `duration` is also divided by `rate`: dealing
@@ -1777,6 +1791,9 @@ fn stored_source_ranges(
 /// One damage type's share of the hit that applies an ailment.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct AilmentSourcePart {
+    /// Non-critical source range, after this damage type's buildup multiplier.
+    pub hit_min: f64,
+    pub hit_max: f64,
     pub damage_type: DamageType,
     /// The non-critical and the critical hit of this type at the damage roll.
     pub hit: f64,
@@ -1795,6 +1812,8 @@ pub fn stored_source_parts_at_roll(
     stored_source_ranges(ailment, ranges, player, cfg)
         .iter()
         .map(|range| AilmentSourcePart {
+            hit_min: range.hit_min,
+            hit_max: range.hit_max,
             damage_type: range.damage_type,
             hit: range.hit_min + (range.hit_max - range.hit_min) * roll,
             crit: range.crit_min + (range.crit_max - range.crit_min) * roll,
@@ -1864,6 +1883,8 @@ impl HandAilmentMerge {
 /// when two passes do, how their DPS was merged.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AilmentStageTerms {
+    /// Includes hands that cannot apply the ailment when averaging chance.
+    pub pass_count: usize,
     pub stacked_merge: Option<HandAilmentMerge>,
     pub passes: Vec<(crate::HandTag, AilmentTerms)>,
     /// Per pass, the source hit by damage type: the parts add up to that
