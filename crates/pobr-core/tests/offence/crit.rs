@@ -469,3 +469,90 @@ fn calculate_minimal_traced_dps_unchanged() {
     approx(traced.output.crit_multiplier, plain.crit_multiplier);
     approx(traced.output.total_hit_avg, plain.total_hit_avg);
 }
+
+// PreEffectiveCritMultiplier
+
+/// The pre-effective multiplier is `1 + (100 + 50) / 100 x (1 + 40 / 100) x 1.2`
+/// = 1 + 2.52 = 3.52. The enemy's crit weakness (+50 / 100) arrives only in the
+/// final multiplier: 3.52 + 0.5 = 4.02.
+#[test]
+fn pre_effective_multiplier_stops_before_the_enemy_weakness() {
+    let mut db = player_with_base_crit(50.0);
+    db.add_mod(Modifier::number(
+        "CriticalStrikeMultiplier",
+        ModType::Base,
+        50.0,
+    ));
+    db.add_mod(Modifier::number(
+        "CriticalStrikeMultiplier",
+        ModType::Inc,
+        40.0,
+    ));
+    db.add_mod(Modifier::number(
+        "CriticalStrikeMultiplier",
+        ModType::More,
+        20.0,
+    ));
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("SelfCritMultiplier", ModType::Base, 50.0));
+    let cfg = CalcConfig::spell().with_mode_effective(true);
+
+    let crit = resolve_crit(&db, &enemy, &cfg, 1.0, 0.0, true);
+    approx(crit.pre_effective_multiplier, 3.52);
+    approx(crit.multiplier, 4.02);
+
+    // Without the effective view neither the weakness nor the pre-effective
+    // value changes: both read the player's bonus.
+    let panel = resolve_crit(&db, &enemy, &CalcConfig::spell(), 1.0, 0.0, false);
+    approx(panel.pre_effective_multiplier, 3.52);
+    approx(panel.multiplier, 3.52);
+}
+
+/// An OVERRIDE of the bonus ("Your Critical Damage Bonus is 250%") is the
+/// bonus itself: 1 + 250 / 100 = 3.5; NoCritMultiplier leaves the bare hit (1)
+/// and NeverCrit has no multiplier at all (0).
+#[test]
+fn pre_effective_multiplier_follows_override_disable_and_never_crit() {
+    let enemy = ModDb::new();
+    let cfg = CalcConfig::attack();
+
+    let mut overridden = player_with_base_crit(50.0);
+    overridden.add_mod(Modifier::number(
+        "CriticalStrikeMultiplier",
+        ModType::Override,
+        250.0,
+    ));
+    let crit = resolve_crit(&overridden, &enemy, &cfg, 1.0, 0.0, false);
+    approx(crit.pre_effective_multiplier, 3.5);
+
+    let mut disabled = player_with_base_crit(50.0);
+    disabled.add_mod(Modifier::number(
+        "CriticalStrikeMultiplier",
+        ModType::Base,
+        80.0,
+    ));
+    disabled.add_mod(Modifier::flag("NoCritMultiplier"));
+    let crit = resolve_crit(&disabled, &enemy, &cfg, 1.0, 0.0, false);
+    approx(crit.pre_effective_multiplier, 1.0);
+
+    let mut never = player_with_base_crit(50.0);
+    never.add_mod(Modifier::flag("NeverCrit"));
+    let crit = resolve_crit(&never, &enemy, &cfg, 1.0, 0.0, false);
+    approx(crit.pre_effective_multiplier, 0.0);
+    assert!(crit.multiplier_terms.is_none());
+}
+
+/// Inevitable crits fold their less-damage term into the MORE factor before
+/// this point: at 50% crit chance the term is -27, so 1 + 100 / 100 x 0.73 =
+/// 1.73 in both views.
+#[test]
+fn pre_effective_multiplier_includes_the_inevitable_penalty() {
+    let mut db = player_with_base_crit(50.0);
+    db.add_mod(Modifier::flag("InevitableCriticalHits"));
+    let enemy = ModDb::new();
+    let cfg = CalcConfig::spell().with_mode_effective(true);
+
+    let crit = resolve_crit(&db, &enemy, &cfg, 1.0, 0.0, true);
+    assert!((crit.pre_effective_multiplier - 1.73).abs() < 1e-3);
+    approx(crit.pre_effective_multiplier, crit.multiplier);
+}

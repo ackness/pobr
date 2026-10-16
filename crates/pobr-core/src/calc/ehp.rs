@@ -450,6 +450,11 @@ pub fn enemy_damage_placeholder(
     }
 }
 
+/// The configured enemy attack / cast time in milliseconds (an explicit
+/// `enemySpeed` input; never the exporter's placeholder), set by the build's
+/// config resolution. Only `EHPSurvivalTime` reads it.
+pub const ENEMY_ACTION_TIME: &str = "EnemyActionTime";
+
 /// What the EHP stage computed with, per damage type in the order Physical,
 /// Fire, Cold, Lightning, Chaos: the enemy's hit, the part of it taken, and
 /// the pool that type of damage has to deplete.
@@ -476,6 +481,8 @@ pub struct EhpTerms {
     pub average_avoid_chance: f64,
     pub not_hit_before_unlucky: f64,
     pub unlucky_worst_of: f64,
+    /// The factors of the enemy's chance to crit (`EnemyCritChance`).
+    pub enemy_crit_chance: EnemyCritChanceTerms,
     /// The pool each type depletes (`<X>TotalHitPool`).
     pub total_hit_pool: [f64; 5],
     /// Hits like that to die (`NumberOfDamagingHits`).
@@ -517,6 +524,45 @@ pub struct EhpTerms {
     /// The Mind over Matter pool with Energy Shield folded in, before the
     /// Runic Ward/Aegis/Guard/ally layers of `total_hit_pool`.
     pub base_hit_pool: [f64; 5],
+    /// Damage over time of each type: resistance, reduction and taken
+    /// modifiers (`<X>TakenDotMult`, [`super::defence::dot_taken_terms`]).
+    pub dot_taken: [super::defence::DotTakenTerms; 5],
+    /// The pool damage that is not a hit depletes (`<X>TotalPool`): recoverable
+    /// Life and Mind over Matter Mana without hit-only Life loss prevention,
+    /// Energy Shield, then Runic Ward; no Aegis, Guard or ally layers.
+    pub total_pool: [f64; 5],
+    /// `total_pool` before Runic Ward.
+    pub pool_before_ward: [f64; 5],
+    /// The configured enemy attack / cast time in milliseconds (0 when the
+    /// build gives none) and the enemy's action speed multiplier, for
+    /// `EHPSurvivalTime`.
+    pub enemy_action_time_ms: f64,
+    pub enemy_action_speed: f64,
+}
+
+impl EhpTerms {
+    /// `<X>DotEHP`: the non-hit pool over the damage-over-time multiplier
+    /// (infinite when that damage is not taken at all).
+    pub(crate) fn dot_ehp(&self, i: usize) -> f64 {
+        let mult = self.dot_taken[i].multiplier();
+        if mult > 0.0 {
+            self.total_pool[i] / mult
+        } else {
+            f64::INFINITY
+        }
+    }
+
+    /// `EHPSurvivalTime`: hits to die, at one enemy hit per its configured
+    /// attack / cast time after its action speed; 0 without a configured time.
+    pub(crate) fn survival_time(&self, total_hits: f64) -> f64 {
+        if self.enemy_action_time_ms <= 0.0 {
+            return 0.0;
+        }
+        if self.enemy_action_speed <= 0.0 {
+            return f64::INFINITY;
+        }
+        total_hits * self.enemy_action_time_ms / 1000.0 / self.enemy_action_speed
+    }
 }
 
 /// Inputs of the life hit pool: recoverable Life with loss prevention.
@@ -666,17 +712,103 @@ fn type_prefix(dtype: DamageType) -> &'static str {
     }
 }
 
-/// Enemy crit effect (the EHP view, vendor CalcDefence.lua:2065-2071):
+/// The second smallest of the five typed maximum hits; equal values count
+/// separately, so two equal minima give that value.
+pub fn second_minimal_maximum_hit(max_hits: [f64; 5]) -> f64 {
+    let mut sorted = max_hits;
+    sorted.sort_by(f64::total_cmp);
+    sorted[1]
+}
+
+/// How the enemy's chance to deal a critical hit is decided.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum EnemyCritMode {
+    /// The rolled chance from the base, increases and evasion.
+    #[default]
+    Rolled,
+    /// `NeverCrit`: the enemy never crits.
+    Never,
+    /// `AlwaysCrit`: every hit is a critical hit.
+    Always,
+}
+
+/// The factors of the enemy's chance to crit the player:
 ///
 /// ```text
-/// chance = clamp(placeholder(5) × (1 + (player's EnemyCritChance INC + enemy's CritChance INC)/100)
-///                × (1 − ConfiguredEvadeChance/100), 0, 100)   (NeverCrit→0 / AlwaysCrit→100)
+/// chance = clamp(base × (1 + increased/100) × (1 − ConfiguredEvadeChance/100), 0, 100)
+/// ```
+///
+/// `base` is the configured value or the preset `default_enemy_crit_chance`
+/// (5), `increased` adds the player's `EnemyCritChance` and the enemy's
+/// `CritChance` increases. `NeverCrit` gives 0 and `AlwaysCrit` 100;
+/// `EnemyUnluckyCrit` takes the worse of two rolls, `chance² / 100`.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct EnemyCritChanceTerms {
+    pub mode: EnemyCritMode,
+    pub base: f64,
+    pub increased: f64,
+    pub evade: f64,
+    pub unlucky: bool,
+}
+
+impl EnemyCritChanceTerms {
+    /// The chance before the unlucky roll (%).
+    pub fn rolled(self) -> f64 {
+        match self.mode {
+            EnemyCritMode::Never => 0.0,
+            EnemyCritMode::Always => 100.0,
+            EnemyCritMode::Rolled => {
+                (self.base * (1.0 + self.increased / 100.0) * (1.0 - self.evade / 100.0))
+                    .clamp(0.0, 100.0)
+            }
+        }
+    }
+
+    /// The chance a hit is critical (%, `EnemyCritChance`).
+    pub fn chance(self) -> f64 {
+        let chance = self.rolled();
+        if self.unlucky {
+            chance / 100.0 * chance
+        } else {
+            chance
+        }
+    }
+}
+
+pub(crate) fn enemy_crit_chance_terms(
+    player_db: &ModDb,
+    enemy_db: &ModDb,
+    cfg: &CalcConfig,
+    configured_evade_pct: f64,
+) -> EnemyCritChanceTerms {
+    let presets = &cfg.constants.enemy_presets;
+    EnemyCritChanceTerms {
+        mode: if enemy_db.flag(cfg, "NeverCrit") {
+            EnemyCritMode::Never
+        } else if enemy_db.flag(cfg, "AlwaysCrit") {
+            EnemyCritMode::Always
+        } else {
+            EnemyCritMode::Rolled
+        },
+        base: enemy_db
+            .override_(cfg, "EnemyCritChance")
+            .unwrap_or(presets.default_enemy_crit_chance),
+        increased: player_db.sum(ModType::Inc, cfg, &[ModName::from("EnemyCritChance")])
+            + enemy_db.sum(ModType::Inc, cfg, &[ModName::from("CritChance")]),
+        evade: configured_evade_pct,
+        unlucky: player_db.flag(cfg, "EnemyUnluckyCrit"),
+    }
+}
+
+/// Enemy crit effect (the EHP view):
+///
+/// ```text
 /// damage = max((placeholder(30) + enemy's CritMultiplier BASE) × (1 + enemy's CritMultiplier INC/100), 0)
 /// effect = 1 + chance/100 × damage/100 × (1 − CritExtraDamageReduction/100)
 /// ```
 ///
-/// The placeholder comes from `enemy_presets.json` (`default_enemy_crit_chance` /
-/// `default_enemy_crit_damage_bonus`), unless explicitly configured.
+/// The placeholder comes from `enemy_presets.json` (`default_enemy_crit_damage_bonus`),
+/// unless explicitly configured; the chance is [`EnemyCritChanceTerms::chance`].
 pub fn enemy_crit_effect_ehp(
     player_db: &ModDb,
     enemy_db: &ModDb,
@@ -684,25 +816,18 @@ pub fn enemy_crit_effect_ehp(
     configured_evade_pct: f64,
     crit_extra_reduction_pct: f64,
 ) -> f64 {
+    let terms = enemy_crit_chance_terms(player_db, enemy_db, cfg, configured_evade_pct);
+    enemy_crit_effect_with(terms, enemy_db, cfg, crit_extra_reduction_pct)
+}
+
+fn enemy_crit_effect_with(
+    terms: EnemyCritChanceTerms,
+    enemy_db: &ModDb,
+    cfg: &CalcConfig,
+    crit_extra_reduction_pct: f64,
+) -> f64 {
     let presets = &cfg.constants.enemy_presets;
-    let mut chance = if enemy_db.flag(cfg, "NeverCrit") {
-        0.0
-    } else if enemy_db.flag(cfg, "AlwaysCrit") {
-        100.0
-    } else {
-        (enemy_db
-            .override_(cfg, "EnemyCritChance")
-            .unwrap_or(presets.default_enemy_crit_chance)
-            * (1.0
-                + player_db.sum(ModType::Inc, cfg, &[ModName::from("EnemyCritChance")]) / 100.0
-                + enemy_db.sum(ModType::Inc, cfg, &[ModName::from("CritChance")]) / 100.0)
-            * (1.0 - configured_evade_pct / 100.0))
-            .clamp(0.0, 100.0)
-    };
-    // :2066 EnemyUnluckyCrit → the worst-of-two power.
-    if player_db.flag(cfg, "EnemyUnluckyCrit") {
-        chance = chance / 100.0 * chance;
-    }
+    let chance = terms.chance();
     let crit_damage = ((enemy_db
         .override_(cfg, "EnemyCritDamage")
         .unwrap_or(presets.default_enemy_crit_damage_bonus)
@@ -1400,9 +1525,7 @@ pub fn fill_ehp_pob2(
                 resist
             }
         };
-        let deflect_effect_pct = (cfg.constants.game().deflect_effect
-            + db.sum(ModType::Base, cfg, &[ModName::from("DeflectEffect")]))
-        .clamp(0.0, 100.0);
+        let deflect_effect_pct = super::defence_panels::deflect_effect_terms(db, cfg).percent();
         let category = super::taken::HitCategory::from_enemy(enemy_db, cfg);
         let mut mit = build_mitigation_ctx_for_category(
             db,
@@ -1458,8 +1581,9 @@ pub fn fill_ehp_pob2(
         });
 
         // Enemy incoming damage (:2040-2137; the placeholder is injected into the enemy modDB by setup_enemy)
+        let crit_terms = enemy_crit_chance_terms(db, enemy_db, cfg, evade);
         let crit_effect =
-            enemy_crit_effect_ehp(db, enemy_db, cfg, evade, out.crit_extra_damage_reduction);
+            enemy_crit_effect_with(crit_terms, enemy_db, cfg, out.crit_extra_damage_reduction);
         let enemy_in = assemble_enemy_damage(enemy_db, cfg, crit_effect);
 
         // Retain the same conversion and mitigation terms used by the EHP loop.
@@ -1665,6 +1789,30 @@ pub fn fill_ehp_pob2(
         // New-view max hit (:3540-3697)
         let (base_hit_pool, pool_by_type) =
             total_hit_pool_stages(&mom, es_recovery_cap, &pools, &ctx);
+        // Damage that is not a hit: the same Life, Mind over Matter and
+        // Energy Shield layers without hit-only Life loss prevention, then
+        // Runic Ward, which takes damage once Life is depleted.
+        let pool_before_ward = DAMAGE_TYPE_BY_INDEX.map(|dtype| {
+            total_hit_pool_base(
+                dtype,
+                mom.effective_life_by_type[dtype as usize],
+                es_recovery_cap,
+                &ctx,
+            )
+        });
+        let ward_in_pool = if ctx.ward_bypass == 0.0 {
+            pools.ward
+        } else {
+            0.0
+        };
+        let total_pool = pool_before_ward.map(|pool| pool + ward_in_pool);
+        let dot_taken =
+            DAMAGE_TYPE_BY_INDEX.map(|dtype| super::recovery::dot_taken(db, cfg, out, dtype));
+        let enemy_action_time_ms = cfg
+            .multiplier_if_set(ENEMY_ACTION_TIME)
+            .filter(|ms| ms.is_finite() && *ms > 0.0)
+            .unwrap_or(0.0);
+        let enemy_action_speed = super::skill_use_time::action_speed_factor(enemy_db, cfg);
         // Diagnostics: dumps the pool breakdown when POBR_DBG_EHPPOOL=1 (for
         // comparison against the oracle's <Type>TotalHitPool / MoMHitPool / Ward).
         if dbg_env!("POBR_DBG_EHPPOOL").is_some() {
@@ -1719,6 +1867,7 @@ pub fn fill_ehp_pob2(
                 average_avoid_chance,
                 not_hit_before_unlucky,
                 unlucky_worst_of: worst_of,
+                enemy_crit_chance: crit_terms,
                 total_hit_pool: pool_by_type,
                 damaging_hits: n_hits,
                 damage_chance: configured_damage_chance,
@@ -1743,10 +1892,17 @@ pub fn fill_ehp_pob2(
                     below_half_loss_prevented: ctx.life_loss_below_half_prevented,
                 },
                 base_hit_pool,
+                dot_taken,
+                total_pool,
+                pool_before_ward,
+                enemy_action_time_ms,
+                enemy_action_speed,
             },
         }
     };
     let out = &mut env.player.output;
+    out.enemy_crit_chance = computed.terms.enemy_crit_chance.chance();
+    out.second_minimal_maximum_hit_taken = second_minimal_maximum_hit(computed.max_hits);
     out.ehp_terms = Some(computed.terms);
     out.life_recoverable = computed.life_recoverable;
     out.energy_shield_recovery_cap = computed.es_recovery_cap;

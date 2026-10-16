@@ -317,6 +317,34 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         )
         .with_higher_is_better(Some(false)),
         computed(
+            "SelfChillEffect",
+            Cat::Defence,
+            Vt::Percent,
+            "SelfChillEffect",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "SelfFreezeEffect",
+            Cat::Defence,
+            Vt::Percent,
+            "SelfFreezeEffect",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "SelfPoisonEffect",
+            Cat::Defence,
+            Vt::Percent,
+            "SelfPoisonEffect",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "SelfBlindDuration",
+            Cat::Defence,
+            Vt::Percent,
+            "SelfBlindDuration",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
             "DebuffExpirationModifier",
             Cat::Defence,
             Vt::Percent,
@@ -577,6 +605,13 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             "MovementSpeedMod",
         ),
         computed("LightRadiusMod", Cat::Misc, Vt::Number, "LightRadiusMod"),
+        computed("GemLevel", Cat::Misc, Vt::Number, "GemLevel"),
+        computed(
+            "EffectiveLootRarityMod",
+            Cat::Misc,
+            Vt::Number,
+            "EffectiveLootRarityMod",
+        ),
         computed(
             "LifeRecoveryRateMod",
             Cat::Recovery,
@@ -600,6 +635,36 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Cat::Resource,
             Vt::Percent,
             "LowLifePercentage",
+        ),
+        computed(
+            "LifeCancellableReservation",
+            Cat::Resource,
+            Vt::Percent,
+            "LifeCancellableReservation",
+        ),
+        computed(
+            "ManaCancellableReservation",
+            Cat::Resource,
+            Vt::Percent,
+            "ManaCancellableReservation",
+        ),
+        computed(
+            "FullLifePercentage",
+            Cat::Resource,
+            Vt::Percent,
+            "FullLifePercentage",
+        ),
+        computed(
+            "DurationMod",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "DurationMod",
+        ),
+        computed(
+            "StrikeTargets",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "StrikeTargets",
         ),
         computed(
             "LowestAttribute",
@@ -663,6 +728,12 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "AverageBurstDamage",
         ),
+        computed(
+            "AverageBurstHits",
+            Cat::Offence,
+            Vt::Number,
+            "AverageBurstHits",
+        ),
         computed("CombinedAvg", Cat::Offence, Vt::Number, "CombinedAvg"),
         computed("HitSpeed", Cat::SkillMechanics, Vt::Number, "HitSpeed"),
         computed("IgniteDamage", Cat::DotDamage, Vt::Number, "IgniteDamage"),
@@ -682,6 +753,12 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Cat::Offence,
             Vt::Number,
             "OffHand.Accuracy",
+        ),
+        computed(
+            "AccuracyHitChance",
+            Cat::Offence,
+            Vt::Percent,
+            "AccuracyHitChance",
         ),
         computed(
             "AccuracyHitChanceUncapped",
@@ -1279,6 +1356,19 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             "EnemyCritEffect",
         )
         .with_higher_is_better(Some(false)),
+        computed(
+            "EnemyCritChance",
+            Cat::Mitigation,
+            Vt::Percent,
+            "EnemyCritChance",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "SecondMinimalMaximumHitTaken",
+            Cat::Mitigation,
+            Vt::Number,
+            "SecondMinimalMaximumHitTaken",
+        ),
         // Charges (Wave 2 / Lane A)
         computed(
             "ChargePowerCurrent",
@@ -1344,6 +1434,30 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             "EnergyShieldLeechRate",
         ),
         computed(
+            "MaxLifeLeechRate",
+            Cat::Recovery,
+            Vt::Number,
+            "MaxLifeLeechRate",
+        ),
+        computed(
+            "MaxManaLeechRate",
+            Cat::Recovery,
+            Vt::Number,
+            "MaxManaLeechRate",
+        ),
+        computed(
+            "MaxEnergyShieldLeechRate",
+            Cat::Recovery,
+            Vt::Number,
+            "MaxEnergyShieldLeechRate",
+        ),
+        computed(
+            "MaxLifeLeechRatePercent",
+            Cat::Recovery,
+            Vt::Percent,
+            "MaxLifeLeechRatePercent",
+        ),
+        computed(
             "LifeRecoupRate",
             Cat::Recovery,
             Vt::Number,
@@ -1391,6 +1505,25 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         ),
         // Ailment extensions (Wave 2 / Lane B)
         computed("ChillEffect", Cat::Ailment, Vt::Percent, "ChillEffect"),
+        computed("ChillEffectMod", Cat::Ailment, Vt::Number, "ChillEffectMod"),
+        computed(
+            "ChillDuration",
+            Cat::Ailment,
+            Vt::TimeSeconds,
+            "ChillDuration",
+        ),
+        computed(
+            "ShockDuration",
+            Cat::Ailment,
+            Vt::TimeSeconds,
+            "ShockDuration",
+        ),
+        computed(
+            "FreezeBuildupAvg",
+            Cat::Ailment,
+            Vt::Percent,
+            "FreezeBuildupAvg",
+        ),
         computed(
             "FreezeBuildupPct",
             Cat::Ailment,
@@ -1516,6 +1649,12 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Cat::Avoidance,
             Vt::Percent,
             "DeflectChance",
+        ),
+        computed(
+            "DeflectEffect",
+            Cat::Avoidance,
+            Vt::Percent,
+            "DeflectEffect",
         ),
         // The four Evade subtypes + the combined figure (Track E; CalcDefence.lua:1396-1466).
         computed("EvadeChance", Cat::Avoidance, Vt::Percent, "EvadeChance"),
@@ -2141,6 +2280,101 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Percent,
             "ChaosResistTotal",
         ),
+        computed(
+            "FireResistOverTime",
+            Cat::Resistance,
+            Vt::Percent,
+            "FireResistOverTime",
+        ),
+        computed(
+            "ColdResistOverTime",
+            Cat::Resistance,
+            Vt::Percent,
+            "ColdResistOverTime",
+        ),
+        computed(
+            "LightningResistOverTime",
+            Cat::Resistance,
+            Vt::Percent,
+            "LightningResistOverTime",
+        ),
+        computed(
+            "ChaosResistOverTime",
+            Cat::Resistance,
+            Vt::Percent,
+            "ChaosResistOverTime",
+        ),
+        computed(
+            "PhysicalTakenDotMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "PhysicalTakenDotMult",
+        ),
+        computed(
+            "FireTakenDotMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "FireTakenDotMult",
+        ),
+        computed(
+            "ColdTakenDotMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "ColdTakenDotMult",
+        ),
+        computed(
+            "LightningTakenDotMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "LightningTakenDotMult",
+        ),
+        computed(
+            "ChaosTakenDotMult",
+            Cat::Mitigation,
+            Vt::Number,
+            "ChaosTakenDotMult",
+        ),
+        computed(
+            "PhysicalTotalPool",
+            Cat::Resource,
+            Vt::Number,
+            "PhysicalTotalPool",
+        ),
+        computed("FireTotalPool", Cat::Resource, Vt::Number, "FireTotalPool"),
+        computed("ColdTotalPool", Cat::Resource, Vt::Number, "ColdTotalPool"),
+        computed(
+            "LightningTotalPool",
+            Cat::Resource,
+            Vt::Number,
+            "LightningTotalPool",
+        ),
+        computed(
+            "ChaosTotalPool",
+            Cat::Resource,
+            Vt::Number,
+            "ChaosTotalPool",
+        ),
+        computed(
+            "PhysicalDotEHP",
+            Cat::Mitigation,
+            Vt::Number,
+            "PhysicalDotEHP",
+        ),
+        computed("FireDotEHP", Cat::Mitigation, Vt::Number, "FireDotEHP"),
+        computed("ColdDotEHP", Cat::Mitigation, Vt::Number, "ColdDotEHP"),
+        computed(
+            "LightningDotEHP",
+            Cat::Mitigation,
+            Vt::Number,
+            "LightningDotEHP",
+        ),
+        computed("ChaosDotEHP", Cat::Mitigation, Vt::Number, "ChaosDotEHP"),
+        computed(
+            "EHPSurvivalTime",
+            Cat::Mitigation,
+            Vt::TimeSeconds,
+            "EHPSurvivalTime",
+        ),
         // The old lowest-max-hit semantics are kept as a supplementary metric
         // (still comparable after F switches total_ehp's semantics).
         computed(
@@ -2202,6 +2436,12 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Percent,
             "PreEffectiveCritChance",
         ),
+        computed(
+            "PreEffectiveCritMultiplier",
+            Cat::Offence,
+            Vt::Number,
+            "PreEffectiveCritMultiplier",
+        ),
         computed("StoredUses", Cat::SkillMechanics, Vt::Number, "StoredUses"),
         computed("TotalDot", Cat::DotDamage, Vt::Number, "TotalDot"),
         computed("WithDotDPS", Cat::Offence, Vt::Number, "WithDotDPS"),
@@ -2214,6 +2454,19 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         )
         .with_higher_is_better(Some(false)),
         computed("CullingDPS", Cat::Offence, Vt::Number, "CullingDPS"),
+        computed("CullMultiplier", Cat::Offence, Vt::Number, "CullMultiplier"),
+        computed(
+            "EnemyAilmentThreshold",
+            Cat::Offence,
+            Vt::Number,
+            "EnemyAilmentThreshold",
+        ),
+        computed(
+            "ReservationDpsMultiplier",
+            Cat::Offence,
+            Vt::Number,
+            "ReservationDpsMultiplier",
+        ),
         computed(
             "ProjectileSpeedMod",
             Cat::SkillMechanics,
@@ -2334,6 +2587,8 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "BurningGroundDPS" => output.burning_ground_dps,
 
         "EffectiveMovementSpeedMod" => output.effective_movement_speed_mod,
+        "EffectiveLootRarityMod" => output.effective_loot_rarity_mod,
+        "GemLevel" => output.gem_level,
         "MovementSpeedWhileUsingSkill" => output.movement_speed_while_using_skill,
         "PresenceRadiusMetres" => output.presence_radius_metres,
         "AuraEffectMod" => output.aura_effect_mod,
@@ -2384,6 +2639,7 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "ReserveDuration" => output.reserve_duration,
         "AverageDamage" => output.average_damage,
         "AverageBurstDamage" => output.average_burst_damage,
+        "AverageBurstHits" => output.average_burst_hits,
         "CombinedAvg" => output.combined_avg,
         "HitSpeed" => output.hit_speed,
         "IgniteDamage" => output.ignite_damage,
@@ -2394,6 +2650,7 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "WithPoisonDPS" => output.with_poison_dps,
         "MainHandAccuracy" => output.main_hand.as_ref().map_or(0.0, |hand| hand.accuracy),
         "OffHandAccuracy" => output.off_hand.as_ref().map_or(0.0, |hand| hand.accuracy),
+        "AccuracyHitChance" => output.accuracy_hit_chance,
         "AccuracyHitChanceUncapped" => output.accuracy_hit_chance_uncapped,
         "QuantityMultiplier" => output.quantity_multiplier,
         "Str" => output.strength,
@@ -2408,12 +2665,16 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "ManaUnreservedPercent" => unreserved_percent(output.mana_unreserved, output.mana),
         "SpiritUnreservedPercent" => unreserved_percent(output.spirit_unreserved, output.spirit),
         "PreEffectiveCritChance" => output.pre_effective_crit_chance * 100.0,
+        "PreEffectiveCritMultiplier" => output.pre_effective_crit_multiplier,
         "StoredUses" => f64::from(output.cooldown_stored_uses),
         "TotalDot" => output.skill_total_dot,
         "WithDotDPS" => output.with_dot_dps,
         "FiringRate" => output.firing_rate,
         "ReloadTime" => output.reload_time,
         "CullingDPS" => output.culling_dps,
+        "CullMultiplier" => output.cull_multiplier,
+        "EnemyAilmentThreshold" => output.enemy_ailment_threshold,
+        "ReservationDpsMultiplier" => output.reservation_dps_multiplier,
         "ProjectileSpeedMod" => output.projectile_speed_mod,
         "TotalDPS" => output.dps,
         "TotalHitAvg" => output.total_hit_avg,
@@ -2503,6 +2764,8 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "TakenMultiChaos" => output.taken_multi_chaos,
         "CritExtraDamageReduction" => output.crit_extra_damage_reduction,
         "EnemyCritEffect" => output.enemy_crit_effect,
+        "EnemyCritChance" => output.enemy_crit_chance,
+        "SecondMinimalMaximumHitTaken" => output.second_minimal_maximum_hit_taken,
 
         // Charges
         "ChargePowerCurrent" => output.charge_power_current,
@@ -2520,12 +2783,20 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "LifeLeechRate" => output.life_leech_rate,
         "ManaLeechRate" => output.mana_leech_rate,
         "EsLeechRate" => output.es_leech_rate,
+        "MaxLifeLeechRate" => output.max_life_leech_rate,
+        "MaxManaLeechRate" => output.max_mana_leech_rate,
+        "MaxEnergyShieldLeechRate" => output.max_energy_shield_leech_rate,
+        "MaxLifeLeechRatePercent" => output.max_life_leech_rate_percent,
         "LifeRecoupRate" => output.life_recoup_rate,
         "ManaRecoupRate" => output.mana_recoup_rate,
         "EsRecoupRate" => output.es_recoup_rate,
 
         // Ailment extensions
         "ChillEffect" => output.chill_effect,
+        "ChillEffectMod" => output.chill_effect_mod,
+        "ChillDuration" => output.chill_duration,
+        "ShockDuration" => output.shock_duration,
+        "FreezeBuildupAvg" => output.freeze_buildup_avg,
         "AilmentThreshold" => output.ailment_threshold,
         "LifeOnKill" => output.life_on_kill,
         "ManaOnKill" => output.mana_on_kill,
@@ -2565,6 +2836,7 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "BlockEffect" => 100.0 - output.block_effect,
         "DeflectionRating" => output.deflection_rating,
         "DeflectChance" => output.deflect_chance,
+        "DeflectEffect" => output.deflect_effect,
         "EvadeChance" => output.evade_chance,
         "MeleeEvadeChance" => output.melee_evade_chance,
         "ProjectileEvadeChance" => output.projectile_evade_chance,
@@ -2574,6 +2846,10 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "WitherEffectOnSelf" => output.wither_effect_on_self,
         "SelfBleedEffect" => output.self_bleed_effect,
         "SelfIgniteEffect" => output.self_ignite_effect,
+        "SelfChillEffect" => output.self_chill_effect,
+        "SelfFreezeEffect" => output.self_freeze_effect,
+        "SelfPoisonEffect" => output.self_poison_effect,
+        "SelfBlindDuration" => output.self_blind_duration,
         "DebuffExpirationModifier" => output.debuff_expiration_modifier,
         "CurseEffectOnSelf" => output.curse_effect_on_self,
         "SelfBleedDuration" => output.self_bleed_duration,
@@ -2892,6 +3168,44 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "ColdResistTotal" => output.cold_resistance_total,
         "LightningResistTotal" => output.lightning_resistance_total,
         "ChaosResistTotal" => output.chaos_resistance_total,
+        "FireResistOverTime" => output.resistance_over_time[0],
+        "ColdResistOverTime" => output.resistance_over_time[1],
+        "LightningResistOverTime" => output.resistance_over_time[2],
+        "ChaosResistOverTime" => output.resistance_over_time[3],
+        "PhysicalTakenDotMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.dot_taken[0].multiplier()),
+        "FireTakenDotMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.dot_taken[1].multiplier()),
+        "ColdTakenDotMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.dot_taken[2].multiplier()),
+        "LightningTakenDotMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.dot_taken[3].multiplier()),
+        "ChaosTakenDotMult" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.dot_taken[4].multiplier()),
+        "PhysicalTotalPool" => output.ehp_terms.as_ref().map_or(0.0, |t| t.total_pool[0]),
+        "FireTotalPool" => output.ehp_terms.as_ref().map_or(0.0, |t| t.total_pool[1]),
+        "ColdTotalPool" => output.ehp_terms.as_ref().map_or(0.0, |t| t.total_pool[2]),
+        "LightningTotalPool" => output.ehp_terms.as_ref().map_or(0.0, |t| t.total_pool[3]),
+        "ChaosTotalPool" => output.ehp_terms.as_ref().map_or(0.0, |t| t.total_pool[4]),
+        "PhysicalDotEHP" => output.ehp_terms.as_ref().map_or(0.0, |t| t.dot_ehp(0)),
+        "FireDotEHP" => output.ehp_terms.as_ref().map_or(0.0, |t| t.dot_ehp(1)),
+        "ColdDotEHP" => output.ehp_terms.as_ref().map_or(0.0, |t| t.dot_ehp(2)),
+        "LightningDotEHP" => output.ehp_terms.as_ref().map_or(0.0, |t| t.dot_ehp(3)),
+        "ChaosDotEHP" => output.ehp_terms.as_ref().map_or(0.0, |t| t.dot_ehp(4)),
+        "EHPSurvivalTime" => output
+            .ehp_terms
+            .as_ref()
+            .map_or(0.0, |t| t.survival_time(output.total_number_of_hits)),
 
         _ => 0.0,
     }

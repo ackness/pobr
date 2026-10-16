@@ -267,19 +267,13 @@ pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
             config_option: None,
         },
     ),
-    // `calc::player_debuffs::apply`; Chill additionally needs ChillVal.
+    // `calc::player_debuffs::apply`; Chill additionally needs ChillVal. The
+    // `SelfChillEffect` view is read unconditionally, so it is not listed.
     (
         "SelfShockEffect",
         ReadGate {
             state: Cow::Borrowed("Shocked in combat"),
             config_option: Some(Cow::Borrowed("conditionShocked")),
-        },
-    ),
-    (
-        "SelfChillEffect",
-        ReadGate {
-            state: Cow::Borrowed("Chilled in combat with an explicit Chill magnitude"),
-            config_option: Some(Cow::Borrowed("conditionChilled")),
         },
     ),
     (

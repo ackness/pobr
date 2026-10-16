@@ -10,6 +10,7 @@ import argparse
 import importlib.util
 import json
 import math
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -157,7 +158,7 @@ def measure(binary, code_file, catalog, cache_dirs, commit, refresh):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("paths", nargs="*", help="worked set/build directory or code.txt")
-    parser.add_argument("--binary", type=Path, default=REPO / "target/debug/pobr")
+    parser.add_argument("--binary", type=Path, default=Path(os.environ.get("POBR_BIN") or REPO / "target/debug/pobr"))
     parser.add_argument("--oracle-cache", action="append", type=Path, default=[])
     parser.add_argument("--refresh-missing", action="store_true")
     parser.add_argument("--json", type=Path)
@@ -166,7 +167,7 @@ def main():
     catalog = catalog_stats((REPO / "crates/pobr-core/src/display_catalog.rs").read_text())
     sidebar = sidebar_stats((compare.VENDOR / "src/Modules/BuildDisplayStats.lua").read_text())
     files = build_files(args.paths or [REPO / path for path in DEFAULT_SETS])
-    caches = [REPO / ".cache/pob2-oracle", *[p.resolve() for p in args.oracle_cache]]
+    caches = [Path(os.environ.get("POBR_CACHE_DIR") or REPO / ".cache").resolve() / "pob2-oracle", *[p.resolve() for p in args.oracle_cache]]
     commit = compare.vendor_commit()
     builds, failures = [], []
     for index, code in enumerate(files, 1):

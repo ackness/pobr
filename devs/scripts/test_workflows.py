@@ -67,7 +67,7 @@ if "pobr-data-adapter" in args:
         quality = dest.parent / "overlay/gem_quality_stats.json"
         quality.parent.mkdir(parents=True, exist_ok=True)
         quality.write_text("{}", encoding="utf-8")
-if "precompile-mods" in args:
+if "precompile-mods" in args and "--data" in args:
     dest = pathlib.Path(args[args.index("--data") + 1])
     assert dest != pathlib.Path(os.environ["SOURCE_DATA"])
     assert (dest / "generated/special_vendor.json").is_file()
@@ -334,6 +334,45 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
                 self.assertEqual(calls[-1][0], command)
                 self.assertEqual(sum(call[0] == command and "--version" not in call
                                      for call in calls), 1)
+
+    def test_gate_runs_every_selected_step_and_names_the_failures(self):
+        self.env["FAIL_COMMAND"] = "fmt"
+        result = self.run_script("devs/scripts/driver.sh", "gate", "--only", "fmt,clippy,core")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual(self.calls(), [
+            ["fmt", "--all", "--check"],
+            ["clippy", "--workspace", "--lib", "--tests", "--", "-D", "warnings"],
+            ["test", "-q", "-p", "pobr-core"],
+        ])
+        self.assertIn("FAIL fmt", result.stdout)
+        self.assertIn("ok   clippy", result.stdout)
+        self.assertIn("mise run gate --only fmt", result.stdout)
+
+    def test_gate_rejects_unknown_steps_before_running_anything(self):
+        result = self.run_script("devs/scripts/driver.sh", "gate", "--only", "fmt,nightly")
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertFalse((self.root / "calls.jsonl").exists())
+
+    def test_regen_regenerates_the_active_version_then_tests_the_generator(self):
+        self.env["SOURCE_DATA"] = str(self.root / "elsewhere")
+        result = self.run_script("devs/scripts/driver.sh", "regen")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.calls(), [
+            ["run", "-q", "-p", "precompile-mods", "--", "--data",
+             str(self.root / "data/test"), "--report"],
+            ["test", "-q", "-p", "precompile-mods"],
+        ])
+
+    def test_warm_needs_a_source_cache_and_keeps_an_existing_target(self):
+        source = self.root / "source tree"
+        source.mkdir()
+        result = self.run_script("devs/scripts/driver.sh", "warm", str(source))
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        (source / "target/debug").mkdir(parents=True)
+        self.write("target/debug/keep", "own build")
+        result = self.run_script("devs/scripts/driver.sh", "warm", str(source))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.root / "target/debug/keep").read_text(), "own build")
 
 
 class ModifierWorkflowTests(unittest.TestCase):

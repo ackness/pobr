@@ -219,21 +219,11 @@ fn gain_for_hit(
     };
     let recovery = factor(db, cfg, &format!("{name}RecoveryRate"));
     let amount = amount * factor(db, cfg, &format!("{name}LeechAmount"));
-    let instance = super::survivability::leech_instance(
-        pool,
-        amount,
-        resource,
-        factor(db, cfg, &format!("{name}LeechRate")),
-        factor(db, cfg, &format!("Max{name}LeechRate")),
-    );
+    let speed = factor(db, cfg, &format!("{name}LeechRate"));
+    let cap = super::survivability::leech_cap_terms(db, cfg, pool, resource);
+    let instance = super::survivability::leech_instance(amount, speed, cap);
     let normal = instance.instance_total * (1.0 - instant_fraction);
-    let normal_instance = super::survivability::leech_instance(
-        pool,
-        normal,
-        resource,
-        factor(db, cfg, &format!("{name}LeechRate")),
-        factor(db, cfg, &format!("Max{name}LeechRate")),
-    );
+    let normal_instance = super::survivability::leech_instance(normal, speed, cap);
     Gain {
         per_hit: normal * recovery,
         instant: instance.instance_total * instant_fraction,
@@ -350,6 +340,24 @@ fn fill_leech_gain(env: &mut Env, hit: &[(DamageType, f64)], crit: &[(DamageType
     ] = per_hit;
 }
 
+/// The player's damage-over-time taken terms of one type, with the resolved
+/// resistance against damage over time (`defence::dot_taken_terms`).
+pub(crate) fn dot_taken(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    out: &super::OutputTable,
+    ty: DamageType,
+) -> super::defence::DotTakenTerms {
+    let resistance = match ty {
+        DamageType::Physical => 0.0,
+        DamageType::Fire => out.resistance_over_time[0],
+        DamageType::Cold => out.resistance_over_time[1],
+        DamageType::Lightning => out.resistance_over_time[2],
+        DamageType::Chaos => out.resistance_over_time[3],
+    };
+    super::defence::dot_taken_terms(db, cfg, ty, resistance)
+}
+
 pub(super) struct NetRecoveryTerms {
     pub costs: [f64; 5],
     pub loss: [f64; 3],
@@ -429,23 +437,9 @@ pub(super) fn net_recovery_terms(env: &Env) -> NetRecoveryTerms {
         }
         damage[src] += amount * remaining.max(0.0);
     }
-    let resistance = [
-        base(db, cfg, "PhysicalDamageReduction").clamp(
-            0.0,
-            cfg.constants
-                .character()
-                .maximum_physical_damage_reduction_pct,
-        ),
-        out.fire_resistance,
-        out.cold_resistance,
-        out.lightning_resistance,
-        out.chaos_resistance,
-    ];
     let mut typed_loss = 0.0;
     for (i, ty) in TYPES.iter().enumerate() {
-        let amount = damage[i]
-            * (1.0 - resistance[i] / 100.0).max(0.0)
-            * super::defence::taken_mult_over_time(db, cfg, *ty);
+        let amount = damage[i] * dot_taken(db, cfg, out, *ty).multiplier();
         typed_loss += amount;
         let mom = ((base(db, cfg, "DamageTakenFromManaBeforeLife")
             + base(

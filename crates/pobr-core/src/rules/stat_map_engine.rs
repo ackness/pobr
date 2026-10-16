@@ -1223,6 +1223,16 @@ pub(crate) fn translated_mod_name_parts<'a>(
         | "DamagingAilmentDuration"
         | "MineDuration"
         | "EnemyElementalAilmentDuration"
+        // Inflicted Shock / Chill duration (`shock_duration_+%`,
+        // `chill_duration_+%`), read by `calc::ailment::duration_mod_names`.
+        | "EnemyShockDuration"
+        | "EnemyChillDuration"
+        // Freeze buildup ("more Freeze Buildup",
+        // `active_skill_hit_damage_freeze_multiplier_+%_final`; Freezing
+        // Mark's curse `freezing_mark_hit_damage_freeze_multiplier_+%_final`
+        // on the enemy), read by the Freeze poise-buildup terms.
+        | "EnemyFreezeBuildup"
+        | "FreezeBuildup"
         // Vendor `SkillStatMap.lua:554-557` (skill_speed_+% shares the entry
         // with three mods) and `:2400-2401` (summon_totem_cast_speed_+%):
         // separate names for warcry/totem speed. PoBR has no consumer yet

@@ -35,7 +35,14 @@ mise run test item lib                        # Library unit tests
 mise run lint build skills                    # fmt and selected Clippy target
 mise run build                                # Application CLI only
 mise run cache                                # Read-only storage and file counts
+mise run regen                                # After a rule edit: regenerate parser artifacts, test the generator
+mise run gate                                 # Once per batch of merged changes: every step, then the failures
+mise run gate --only core,parity              # Rerun only the failed steps
+mise run warm <warm checkout>                 # New worktree: copy-on-write clone of its target/debug
 ```
+
+小改动的文件与检查步骤见[改动配方](recipes.md)。单个改动只跑定向测试；`gate` 由合并多个改动的人运行一次，
+不在每个改动上重复（规则见 [AGENTS.md](../AGENTS.md#validation-budget)）。
 
 短参数 `build` 对应 `pobr-build`，`core` 对应 `pobr-core`；完整包名也可用。
 `lib` 选择单元测试，其他名字选择 `--test <suite>`。不传目标会显示用法并退出，
@@ -63,6 +70,14 @@ Web 纯 TS/CSS 修改复用 WASM，运行相关 Vitest 与 typecheck；`pnpm --d
 每个 worktree 复用一个默认 `target/`。同一 worktree 的会话共用它、串行运行 Cargo，
 不按会话、测试或门禁创建 `target-gate` 等副本；不同 worktree 不共享可写 target。
 看到 `Blocking waiting for file lock` 时检查已有进程，不再叠加 Cargo。
+
+新 worktree 的 `target/` 为空，第一次测试会重新编译全部依赖。`mise run warm <已编译的 checkout>`
+用写时复制（APFS clonefile 或 Linux reflink）克隆那份 `target/debug`，不额外占用空间，也不共享可写目录；
+之后只有路径不同的 workspace crate 重新编译。已有 `target/debug` 时不覆盖。
+分析工具（`gap`、`gaps`、`triage`、`compare`、`config:coverage`、`skills:sweep`、`output-coverage.py`）
+默认各自编译 CLI，并把台账与 PoB2 结果缓存在本 checkout 的 `.cache/`。设 `POBR_BIN=<checkout>/target/debug/pobr`
+使用已编译的 CLI，设 `POBR_CACHE_DIR=<checkout>/.cache` 共用已有缓存（台账按程序内容、PoB2 结果按构筑码与 vendor 失效）。
+`POBR_BIN` 运行的是那份 checkout 的引擎，用于读取游戏数据、台账和 PoB2 结果，不用于测量本 worktree 的改动。
 
 根 `Cargo.toml` 的 dev/test 对第三方依赖使用 `opt-level = 3`，workspace crate 保持未优化。
 多数集成测试每个用例加载一次游戏数据快照（JSON 解析加 SHA-256 校验）；依赖未优化时一次加载约 3.4 s，

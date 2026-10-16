@@ -81,12 +81,17 @@ pub struct MinimalOutput {
     /// bifurcate / inevitable, but after the cap. Used to show overflow in breakdowns.
     pub pre_effective_crit_chance: f64,
     pub crit_multiplier: f64,
+    /// The crit damage multiplier before bifurcate and the enemy's crit
+    /// weakness (`PreEffectiveCritMultiplier`).
+    pub pre_effective_crit_multiplier: f64,
     /// Non-crit hit components split by damage type; summing gives total non-crit hit damage.
     pub damage_components: Vec<DamageComponent>,
     pub total_hit_avg: f64,
     /// Expected damage per hit, including enemy mitigation and chance to hit.
     pub average_damage: f64,
     pub accuracy: f64,
+    /// Chance to pass the accuracy check, before enemy block (percent).
+    pub accuracy_hit_chance: f64,
     /// Chance to pass the accuracy check before the 100% ceiling (percent).
     pub accuracy_hit_chance_uncapped: f64,
     pub hit_chance: f64,
@@ -151,10 +156,12 @@ impl MinimalOutput {
             crit_chance: output.crit_chance,
             pre_effective_crit_chance: output.pre_effective_crit_chance,
             crit_multiplier: output.crit_multiplier,
+            pre_effective_crit_multiplier: output.pre_effective_crit_multiplier,
             damage_components: output.damage_components.clone(),
             total_hit_avg: output.total_hit_avg,
             average_damage: output.average_damage,
             accuracy: output.accuracy,
+            accuracy_hit_chance: output.accuracy_hit_chance,
             accuracy_hit_chance_uncapped: output.accuracy_hit_chance_uncapped,
             hit_chance: output.hit_chance,
             action_rate: output.action_rate,
@@ -210,7 +217,7 @@ pub(crate) struct ResistanceResolution {
     pub(crate) inc: f64,
     pub(crate) more: f64,
     pub(crate) override_total: Option<f64>,
-    floor: f64,
+    pub(crate) floor: f64,
 }
 
 impl ResistanceResolution {
@@ -376,6 +383,24 @@ fn resolve_resistance_named(
         override_total,
         floor,
     }
+}
+
+/// The resistance that applies to damage over time (`<X>ResistOverTime`):
+/// [`resolve_resistance`] in a damage-over-time context, so resistance
+/// modifiers restricted to damage over time also count, for example the game
+/// stat `additional_chaos_resistance_against_damage_over_time_%` ("+#% Chaos
+/// Resistance against Damage Over Time", parsed with the `Dot` flag). The
+/// same maximum and floor apply.
+pub(crate) fn resolve_resistance_over_time(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    base: f64,
+    element: &str,
+    is_elemental: bool,
+) -> ResistanceResolution {
+    let mut dot_cfg = cfg.clone();
+    dot_cfg.flags |= ModFlags::DOT;
+    resolve_resistance(db, &dot_cfg, base, element, is_elemental)
 }
 
 /// What Cold or Lightning Resistance gains from the modifiers to Fire
@@ -1153,10 +1178,12 @@ pub fn calculate_minimal_vs_enemy(
         crit_chance,
         pre_effective_crit_chance: crit.pre_effective_chance,
         crit_multiplier,
+        pre_effective_crit_multiplier: crit.pre_effective_multiplier,
         damage_components,
         total_hit_avg,
         average_damage: round(crit_pass.total_hit_avg_mitigated * hit_chance),
         accuracy: hit_terms.accuracy,
+        accuracy_hit_chance: round(hit_terms.accuracy_chance * 100.0),
         accuracy_hit_chance_uncapped: round(hit_terms.accuracy_chance * 100.0 + hit_terms.excess),
         hit_chance,
         action_rate,

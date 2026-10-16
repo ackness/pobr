@@ -3,6 +3,8 @@
 //! read from the helper the calculation itself uses (or, for a value only
 //! computed inside another stage, retained by that stage); nothing here
 //! evaluates a mechanic a second time.
+use pobr_data::prelude::{ModName, ModType, SkillTypes};
+
 use super::{
     Env, OutputTable,
     ailment_apply::{AppliedAilment, AppliedAilments},
@@ -30,6 +32,27 @@ pub struct LimitViews {
     pub energy_shield_recovery_rate_mod: f64,
     /// `LowPoolThreshold` as a percentage.
     pub low_life_percentage: f64,
+    /// The share of maximum Life and Mana that is not permanently reserved
+    /// (`survivability::cancellable_reservation_percent`), and the permanent
+    /// percentage it is derived from.
+    pub life_cancellable_reservation: f64,
+    pub mana_cancellable_reservation: f64,
+    pub life_permanent_reserved: f64,
+    pub mana_permanent_reserved: f64,
+    /// `FullLifePercentage`: the share of maximum Life at or above which the
+    /// character counts as on Full Life, and the override that set it.
+    pub full_life_percentage: f64,
+    pub full_life_override: Option<f64>,
+    /// The generic skill duration modifier, from the same terms the skill
+    /// duration uses (`skill_mechanics::duration_modifier_terms`).
+    pub duration_mod: f64,
+    pub duration_increased: f64,
+    pub duration_more: f64,
+    /// How many enemies the selected Strike skill targets (0 for any other
+    /// skill) and the additional targets it was granted.
+    pub strike_targets: f64,
+    pub strike_skill: bool,
+    pub additional_strike_targets: f64,
     pub lowest_attribute: f64,
     pub global_gem_attribute_requirements: f64,
     pub global_item_attribute_requirements: f64,
@@ -44,6 +67,11 @@ pub(crate) fn has_derived_detail(stat: &str) -> bool {
     matches!(
         stat,
         "LowLifePercentage"
+            | "LifeCancellableReservation"
+            | "ManaCancellableReservation"
+            | "FullLifePercentage"
+            | "DurationMod"
+            | "StrikeTargets"
             | "LowestAttribute"
             | "MaximumChill"
             | "MaximumShock"
@@ -68,12 +96,47 @@ pub(super) fn fill(env: &mut Env) {
     views.energy_shield_recovery_rate_mod =
         super::survivability::recoup_recovery_rate(db, cfg, RecoupResource::EnergyShield);
     views.low_life_percentage = low_pool_percentage(cfg);
+    views.life_permanent_reserved =
+        super::survivability::permanent_reserved_percent(db, cfg, "Life");
+    views.mana_permanent_reserved =
+        super::survivability::permanent_reserved_percent(db, cfg, "Mana");
+    views.life_cancellable_reservation =
+        super::survivability::cancellable_reservation_percent(views.life_permanent_reserved);
+    views.mana_cancellable_reservation =
+        super::survivability::cancellable_reservation_percent(views.mana_permanent_reserved);
+    views.full_life_override = db.override_(cfg, "FullLifePercentage");
+    views.full_life_percentage = views
+        .full_life_override
+        .unwrap_or(DEFAULT_FULL_LIFE_PERCENTAGE);
+    let duration =
+        super::skill_mechanics::duration_modifier_terms(db, cfg, Some("PrimaryDuration"));
+    views.duration_increased = duration.increased;
+    views.duration_more = duration.more;
+    views.duration_mod = duration.value();
+    views.strike_skill = cfg
+        .skill_types
+        .intersects(SkillTypes::from_pob2_name("MeleeSingleTarget").unwrap());
+    views.additional_strike_targets = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("AdditionalStrikeTarget")],
+    );
+    views.strike_targets = if views.strike_skill {
+        1.0 + views.additional_strike_targets
+    } else {
+        0.0
+    };
     views.lowest_attribute = cfg.stat("LowestAttribute");
     views.global_gem_attribute_requirements = gem;
     views.global_item_attribute_requirements = item;
     views.global_weapon_attribute_requirements = weapon;
     views.applied = env.applied_ailments;
 }
+
+/// Full Life means no Life is missing: the character is at 100% of maximum
+/// Life unless a `full_life_threshold_%_override` lowers the bar. The game
+/// exports no constant for it and there is no in-game measurement.
+const DEFAULT_FULL_LIFE_PERCENTAGE: f64 = 100.0;
 
 /// The game's `LowPoolThreshold` as a percentage, the same constant that
 /// decides the automatic Low Life condition.
@@ -97,6 +160,11 @@ pub(crate) fn display_value(out: &OutputTable, stat: &str) -> Option<f64> {
         // same floored value in metres.
         "PresenceRadius" => (out.presence_radius_metres * 10.0).round(),
         "LowLifePercentage" => v.low_life_percentage,
+        "LifeCancellableReservation" => v.life_cancellable_reservation,
+        "ManaCancellableReservation" => v.mana_cancellable_reservation,
+        "FullLifePercentage" => v.full_life_percentage,
+        "DurationMod" => v.duration_mod,
+        "StrikeTargets" => v.strike_targets,
         "LowestAttribute" => v.lowest_attribute,
         "GlobalGemAttributeRequirements" => v.global_gem_attribute_requirements,
         "GlobalItemAttributeRequirements" => v.global_item_attribute_requirements,
@@ -161,6 +229,62 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<DerivedDetail> {
                 "LowPoolThreshold".into(),
                 env.cfg.constants.game().low_pool_threshold,
             )],
+        ),
+        "LifeCancellableReservation" => (
+            "max(100 - ExtraLifeReserved, 0)",
+            vec![(
+                "ExtraLifeReserved".into(),
+                out.limit_views.life_permanent_reserved,
+            )],
+        ),
+        "ManaCancellableReservation" => (
+            "max(100 - ExtraManaReserved, 0)",
+            vec![(
+                "ExtraManaReserved".into(),
+                out.limit_views.mana_permanent_reserved,
+            )],
+        ),
+        "FullLifePercentage" => {
+            // The override replaces the default threshold outright, so the
+            // formula is the chosen threshold; the context says which it was.
+            let views = &out.limit_views;
+            return Some(DerivedDetail {
+                formula: "FullLifeThreshold".into(),
+                inputs: vec![("FullLifeThreshold".into(), views.full_life_percentage)],
+                context: vec![
+                    (
+                        "DefaultFullLifeThreshold".into(),
+                        DEFAULT_FULL_LIFE_PERCENTAGE,
+                    ),
+                    (
+                        "FullLifeThresholdOverridden".into(),
+                        f64::from(u8::from(views.full_life_override.is_some())),
+                    ),
+                ],
+            });
+        }
+        "DurationMod" => (
+            "max((1 + DurationIncreased / 100) * DurationMore, 0)",
+            vec![
+                (
+                    "DurationIncreased".into(),
+                    out.limit_views.duration_increased,
+                ),
+                ("DurationMore".into(), out.limit_views.duration_more),
+            ],
+        ),
+        "StrikeTargets" => (
+            "StrikeSkill * (1 + AdditionalStrikeTarget)",
+            vec![
+                (
+                    "StrikeSkill".into(),
+                    f64::from(u8::from(out.limit_views.strike_skill)),
+                ),
+                (
+                    "AdditionalStrikeTarget".into(),
+                    out.limit_views.additional_strike_targets,
+                ),
+            ],
         ),
         "LowestAttribute" => (
             "min(Strength, Dexterity, Intelligence)",

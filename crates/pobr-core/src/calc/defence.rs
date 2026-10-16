@@ -1418,6 +1418,57 @@ pub fn taken_mult_over_time(db: &ModDb, cfg: &CalcConfig, damage_type: DamageTyp
     round(mult.max(0.0))
 }
 
+/// What a damage-over-time of one type passes through on the player: the
+/// resistance that applies to damage over time, the additional damage
+/// reduction of that type (not Armour, which only mitigates hits), and the
+/// over-time damage-taken modifiers. Evasion, block and other hit-only layers
+/// do not apply ([`dot_taken_terms`]).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct DotTakenTerms {
+    /// Resistance in percent (`<X>ResistOverTime`; 0 for Physical).
+    pub resistance: f64,
+    /// Additional damage reduction in percent (`Base<X>DamageReduction`).
+    pub reduction: f64,
+    /// Over-time damage-taken multiplier ([`taken_mult_over_time`]).
+    pub taken: f64,
+    /// "Immune to Chaos Damage" (Chaos Inoculation) for the Chaos type.
+    pub immune: bool,
+}
+
+impl DotTakenTerms {
+    /// `<X>TakenDotMult`: the share of a damage over time of this type taken.
+    pub fn multiplier(&self) -> f64 {
+        if self.immune {
+            return 0.0;
+        }
+        ((1.0 - self.resistance / 100.0) * (1.0 - self.reduction / 100.0) * self.taken).max(0.0)
+    }
+}
+
+/// The one damage-over-time taken rule, shared by the net recovery of
+/// self-inflicted typed damage over time and the defensive DoT views
+/// (`<X>TakenDotMult`, `<X>DotEHP`). `resistance` is the type's resistance
+/// against damage over time (Physical has none and passes 0). Chaos
+/// Inoculation's "Immune to Chaos Damage" makes Chaos damage over time zero.
+pub fn dot_taken_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    damage_type: DamageType,
+    resistance: f64,
+) -> DotTakenTerms {
+    use super::taken::{
+        base_damage_reduction, global_damage_reduction_max, type_damage_reduction_max,
+    };
+    let (_, global_cap) = global_damage_reduction_max(db, cfg);
+    let (_, cap) = type_damage_reduction_max(db, cfg, damage_type, global_cap);
+    DotTakenTerms {
+        resistance,
+        reduction: base_damage_reduction(db, cfg, damage_type, cap),
+        taken: taken_mult_over_time(db, cfg, damage_type),
+        immune: damage_type == DamageType::Chaos && db.flag(cfg, "ChaosInoculation"),
+    }
+}
+
 /// Computes the full taken-multiplier suite (WhenHit for every damage type + all OverTime).
 pub fn calc_taken_multi_suite(db: &ModDb, cfg: &CalcConfig) -> TakenMultiSuite {
     TakenMultiSuite {

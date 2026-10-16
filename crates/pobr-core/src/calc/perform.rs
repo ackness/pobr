@@ -273,6 +273,14 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     stun.enabled &= !no_trigger_events(env);
     env.player.output.heavy_stun_buildup_avg = stun.value();
     env.heavy_stun_terms = Some(stun);
+    let mut freeze = super::ailment::freeze_buildup_terms(
+        env,
+        stun_damage,
+        env.player.output.freeze_buildup_pct,
+    );
+    freeze.enabled &= !no_trigger_events(env);
+    env.player.output.freeze_buildup_avg = freeze.value();
+    env.freeze_buildup_terms = Some(freeze);
     let mut pin = super::ailment::pin_terms(env, stun_damage, &output.crit_avg);
     pin.enabled &= !no_trigger_events(env);
     env.player.output.pin_buildup_avg = pin.value();
@@ -548,11 +556,12 @@ fn perform_minions(env: &mut Env) {
 /// change existing fields.
 /// What the character's reservations take from its Life and Mana pools.
 ///
-/// (13-G11): ReservationMultiplier more and Reservation Efficiency division semantics
-/// (CalcDefence.lua:197/:240-241/:249-258) — mult = floor(More(ReservationMultiplier), 4);
-/// efficiency inc/more acts as a **divisor**; the divisor is floored at a tiny positive
-/// number: when efficiency is −100%, the raw value diverges, and reservation's [0, pool]
-/// clamp resolves it to "the pool is fully reserved", matching vendor's semantics.
+/// Skill reservations are scaled by `floor(More(ReservationMultiplier), 4)` and
+/// divided by Reservation Efficiency (increases and more/less as a divisor; the
+/// divisor is floored at a tiny positive number, so at -100% efficiency the raw
+/// value diverges and the `[0, pool]` clamp resolves it to "the pool is fully
+/// reserved"). The character's own permanent share (`Extra<Pool>Reserved`, e.g.
+/// "Reserves 25% of Life") is added afterwards, unscaled.
 fn pool_reservations(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -578,12 +587,14 @@ fn pool_reservations(
         reservation(
             life,
             db.sum(ModType::Base, cfg, &[ModName::from("LifeReserved")]) * life_factor,
-            db.sum(ModType::Inc, cfg, &[ModName::from("LifeReservedPercent")]) * life_factor,
+            db.sum(ModType::Inc, cfg, &[ModName::from("LifeReservedPercent")]) * life_factor
+                + super::survivability::permanent_reserved_percent(db, cfg, "Life"),
         ),
         reservation(
             mana,
             db.sum(ModType::Base, cfg, &[ModName::from("ManaReserved")]) * mana_factor,
-            db.sum(ModType::Inc, cfg, &[ModName::from("ManaReservedPercent")]) * mana_factor,
+            db.sum(ModType::Inc, cfg, &[ModName::from("ManaReservedPercent")]) * mana_factor
+                + super::survivability::permanent_reserved_percent(db, cfg, "Mana"),
         ),
     )
 }
@@ -660,6 +671,19 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.max_chaos_resistance = chaos_resistance.max;
     env.player.output.chaos_resistance_over_cap = chaos_resistance.over_cap;
     env.player.output.chaos_resistance_total = chaos_resistance.total;
+    env.player.output.resistance_over_time = {
+        let input = player_input(env);
+        [
+            ("Fire", input.base_fire_resistance, true),
+            ("Cold", input.base_cold_resistance, true),
+            ("Lightning", input.base_lightning_resistance, true),
+            ("Chaos", 0.0, false),
+        ]
+        .map(|(element, base, elemental)| {
+            super::offence::resolve_resistance_over_time(db, cfg, base, element, elemental)
+                .final_value
+        })
+    };
     // Accuracy rating as the main-hand pass reads it (the hit chance input).
     env.player.output.accuracy = {
         let input = player_input(env);
@@ -883,6 +907,11 @@ fn fill_mechanics(env: &mut Env) {
         env.player.output.mana_leech_rate,
         env.player.output.es_leech_rate,
     ] = leech_rates;
+    let [life_cap, mana_cap, es_cap] = leech_cap_terms_for(env);
+    env.player.output.max_life_leech_rate = life_cap.rate();
+    env.player.output.max_mana_leech_rate = mana_cap.rate();
+    env.player.output.max_energy_shield_leech_rate = es_cap.rate();
+    env.player.output.max_life_leech_rate_percent = life_cap.percent();
 
     // Skill mechanics (Lane C: AoE / projectiles / cooldown / cost)
     fill_skill_mechanics(env);
@@ -928,6 +957,19 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.life_recoup_rate = life_recoup_rate;
     env.player.output.mana_recoup_rate = mana_recoup_rate;
     env.player.output.es_recoup_rate = es_recoup_rate;
+}
+
+/// The leech rate ceilings of Life, Mana and Energy Shield over the final pools.
+pub(crate) fn leech_cap_terms_for(env: &Env) -> [super::survivability::LeechCapTerms; 3] {
+    let out = &env.player.output;
+    [
+        (LeechResource::Life, out.life),
+        (LeechResource::Mana, out.mana),
+        (LeechResource::EnergyShield, out.energy_shield),
+    ]
+    .map(|(resource, pool)| {
+        super::survivability::leech_cap_terms(&env.player.mod_db, &env.cfg, pool, resource)
+    })
 }
 
 pub(super) fn leech_panel_terms(env: &Env) -> Vec<[super::survivability::LeechResult; 3]> {
@@ -1075,6 +1117,10 @@ fn fill_crossbow_reload(env: &mut Env) {
 /// present) is preferred, otherwise the single-stack expected DPS. With no skill DoT and no
 /// ailment DoT, the output is all zero and the contract fields stay at their neutral Default.
 fn fill_skill_dot_stage(env: &mut Env) {
+    env.player.output.cull_multiplier =
+        super::skill_dot::cull_multiplier(&env.player.mod_db, &env.enemy.mod_db, &env.cfg);
+    env.player.output.reservation_dps_multiplier =
+        super::skill_dot::reservation_multiplier(&env.enemy.mod_db, &env.cfg);
     if no_trigger_events(env) {
         return;
     }
@@ -1092,9 +1138,34 @@ fn fill_skill_dot_stage(env: &mut Env) {
 /// Views of the already-resolved hit and ailment stages. Repeats affect a
 /// burst's damage; quantity affects throughput, not damage per hit.
 pub(super) struct DamageViewTerms {
-    pub burst_hits: f64,
+    pub burst: BurstTerms,
     pub show_average: bool,
     pub base: f64,
+}
+
+/// How many hits one use deals as a burst: the extra flickers from consumed
+/// Power Charges, or else the repeats.
+#[derive(Clone, Copy)]
+pub(super) enum BurstTerms {
+    Repeats(f64),
+    Flickers {
+        per_charge: f64,
+        charges: f64,
+        doubled_percent: f64,
+    },
+}
+
+impl BurstTerms {
+    pub(super) fn hits(self) -> f64 {
+        match self {
+            Self::Repeats(repeats) => repeats,
+            Self::Flickers {
+                per_charge,
+                charges,
+                doubled_percent,
+            } => 1.0 + per_charge * charges * (1.0 + doubled_percent / 100.0),
+        }
+    }
 }
 
 pub(super) fn damage_view_terms(env: &Env) -> DamageViewTerms {
@@ -1107,7 +1178,7 @@ pub(super) fn damage_view_terms(env: &Env) -> DamageViewTerms {
         &[ModName::from("AdditionalFlickersPerPowerCharge")],
     );
     let removable = cfg.multiplier("RemovablePowerCharge");
-    let burst_hits = if flickers > 0.0 && removable > 0.0 {
+    let burst = if flickers > 0.0 && removable > 0.0 {
         let extra = db.sum(
             ModType::Base,
             cfg,
@@ -1120,9 +1191,13 @@ pub(super) fn damage_view_terms(env: &Env) -> DamageViewTerms {
                 &[ModName::from("ConsumedChargeBenefitDoubleChance")],
             )
             .clamp(0.0, 100.0);
-        1.0 + flickers * (removable + extra).max(0.0) * (1.0 + doubled / 100.0)
+        BurstTerms::Flickers {
+            per_charge: flickers,
+            charges: (removable + extra).max(0.0),
+            doubled_percent: doubled,
+        }
     } else {
-        repeats
+        BurstTerms::Repeats(repeats)
     };
     let out = &env.player.output;
     let show_average = db.flag(cfg, "ShowAverageDamage")
@@ -1135,7 +1210,7 @@ pub(super) fn damage_view_terms(env: &Env) -> DamageViewTerms {
         out.dps
     };
     DamageViewTerms {
-        burst_hits,
+        burst,
         show_average,
         base,
     }
@@ -1143,14 +1218,16 @@ pub(super) fn damage_view_terms(env: &Env) -> DamageViewTerms {
 
 fn fill_damage_views(env: &mut Env) {
     let DamageViewTerms {
-        burst_hits,
+        burst,
         show_average,
         base,
     } = damage_view_terms(env);
+    let burst_hits = burst.hits();
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
     let out = &mut env.player.output;
     out.average_burst_damage = round(out.average_damage * burst_hits);
+    out.average_burst_hits = burst_hits;
     out.hit_speed = out.effective_action_rate;
     out.repeats = super::offence::repeats(db, cfg);
     out.quantity_multiplier =
@@ -1899,6 +1976,8 @@ fn no_trigger_events(env: &Env) -> bool {
 }
 
 fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
+    env.player.output.enemy_ailment_threshold =
+        enemy_ailment_threshold_effective(&env.enemy.mod_db, &env.cfg, env.enemy.level);
     if no_trigger_events(env) {
         return;
     }
@@ -2068,10 +2147,20 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
     let cold_hit = cross_type_source_hit(AilmentType::Chill, components, player, cfg);
     let lightning_hit = cross_type_source_hit(AilmentType::Shock, components, player, cfg);
 
+    let mut non_damaging_terms = Vec::new();
     if cold_hit > 0.0 {
         // Lane B: chill's action-speed reduction (%). 0 (doesn't apply) when the magnitude is below the minimum threshold.
-        let (chill, _) = chill_traced(cold_hit, threshold, player, cfg, &mut trace);
+        let (chill, _) = chill_traced(cold_hit, threshold, player, enemy, cfg, &mut trace);
         env.player.output.chill_effect = chill;
+        // The duration and magnitude modifier of a Chill this hit can inflict.
+        if !player.flag(cfg, "CannotChill")
+            && let Some(terms) =
+                super::ailment::non_damaging_ailment_terms(AilmentType::Chill, player, enemy, cfg)
+        {
+            env.player.output.chill_duration = terms.duration();
+            env.player.output.chill_effect_mod = terms.effect_mod();
+            non_damaging_terms.push((AilmentType::Chill, terms));
+        }
         // Lane B: freeze poise buildup (% per hit).
         let (freeze_buildup, _) = freeze_poise_buildup_traced(poise_thr, player, cfg, &mut trace);
         env.player.output.freeze_buildup_pct = freeze_buildup;
@@ -2085,12 +2174,20 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
             shock_traced(&source, player, enemy, cfg, threshold, &mut trace);
         env.player.output.shock_chance = chance;
         env.player.output.shock_effect = magnitude;
+        if chance > 0.0
+            && let Some(terms) =
+                super::ailment::non_damaging_ailment_terms(AilmentType::Shock, player, enemy, cfg)
+        {
+            env.player.output.shock_duration = terms.duration();
+            non_damaging_terms.push((AilmentType::Shock, terms));
+        }
         // Lane B: electrocute poise buildup (% per hit).
         let (electrocute_buildup, _) =
             electrocute_poise_buildup_traced(poise_thr, player, cfg, &mut trace);
         env.player.output.electrocute_buildup_pct = electrocute_buildup;
     }
     env.player.output.ailment_terms = ailment_terms;
+    env.non_damaging_terms = non_damaging_terms;
 }
 
 /// Lane C: applies `AilmentEffect` (MORE) × `rateMod` (Faster/Slower) to a damaging ailment's
@@ -2198,10 +2295,35 @@ fn enemy_poise_threshold_effective(enemy: &ModDb, cfg: &CalcConfig, level: u8) -
 /// Degenerates to the bare table value with no enemy mod_db (compatible with old entry points
 /// that construct Env directly).
 pub(super) fn enemy_ailment_threshold_effective(enemy: &ModDb, cfg: &CalcConfig, level: u8) -> f64 {
-    let base = enemy_ailment_threshold(level as u32) as f64;
-    let inc = enemy.sum(ModType::Inc, cfg, &[ModName::from("EnemyAilmentThreshold")]);
-    let more = enemy.more(cfg, &[ModName::from("EnemyAilmentThreshold")]);
-    base * (1.0 + inc / 100.0) * more
+    enemy_ailment_threshold_terms(enemy, cfg, level).value()
+}
+
+/// The three factors of the enemy ailment threshold: the monster-level table
+/// value, the increases and the more/less multiplier.
+#[derive(Clone, Copy)]
+pub(crate) struct EnemyAilmentThresholdTerms {
+    pub table: f64,
+    pub increased: f64,
+    pub more: f64,
+}
+
+impl EnemyAilmentThresholdTerms {
+    pub(crate) fn value(self) -> f64 {
+        self.table * (1.0 + self.increased / 100.0) * self.more
+    }
+}
+
+pub(crate) fn enemy_ailment_threshold_terms(
+    enemy: &ModDb,
+    cfg: &CalcConfig,
+    level: u8,
+) -> EnemyAilmentThresholdTerms {
+    let names = [ModName::from("EnemyAilmentThreshold")];
+    EnemyAilmentThresholdTerms {
+        table: enemy_ailment_threshold(level as u32) as f64,
+        increased: enemy.sum(ModType::Inc, cfg, &names),
+        more: enemy.more(cfg, &names),
+    }
 }
 
 /// Gets a damage type's component average hit value (returns 0 if that component is absent).

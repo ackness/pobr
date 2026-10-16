@@ -38,7 +38,7 @@ import zlib
 from xml.etree import ElementTree
 
 REPO = Path(__file__).resolve().parents[2]
-CACHE = REPO / ".cache/pob2-oracle"
+CACHE = Path(os.environ.get("POBR_CACHE_DIR") or REPO / ".cache").resolve() / "pob2-oracle"
 ORACLE = REPO / "tools/pob2-oracle"
 VENDOR = REPO / "vendor/PathOfBuilding-PoE2"
 # The committed builds a name fragment is looked up in, as for `mise run

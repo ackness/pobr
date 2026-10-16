@@ -1,6 +1,6 @@
 //! Optional views of terms already resolved by the calculation stages.
 use super::{CalculationSession, detail::DerivedDetail};
-use crate::calc::{perform, survivability::ChargeKind};
+use crate::calc::{perform, skill_dot, survivability::ChargeKind};
 
 pub const DERIVED_STATS: &[&str] = &[
     "PhysicalResistTakenHitMulti",
@@ -44,7 +44,32 @@ pub const DERIVED_STATS: &[&str] = &[
     "ColdResistTotal",
     "LightningResistTotal",
     "ChaosResistTotal",
+    "FireResistOverTime",
+    "ColdResistOverTime",
+    "LightningResistOverTime",
+    "ChaosResistOverTime",
+    "PhysicalTakenDotMult",
+    "FireTakenDotMult",
+    "ColdTakenDotMult",
+    "LightningTakenDotMult",
+    "ChaosTakenDotMult",
+    "PhysicalTotalPool",
+    "FireTotalPool",
+    "ColdTotalPool",
+    "LightningTotalPool",
+    "ChaosTotalPool",
+    "PhysicalDotEHP",
+    "FireDotEHP",
+    "ColdDotEHP",
+    "LightningDotEHP",
+    "ChaosDotEHP",
+    "EHPSurvivalTime",
     "LowLifePercentage",
+    "LifeCancellableReservation",
+    "ManaCancellableReservation",
+    "FullLifePercentage",
+    "DurationMod",
+    "StrikeTargets",
     "LowestAttribute",
     "MaximumChill",
     "MaximumShock",
@@ -169,7 +194,19 @@ pub const DERIVED_STATS: &[&str] = &[
     "PoisonChaosMin",
     "PoisonChaosMax",
     "ShockChance",
+    "ShockDuration",
+    "ChillDuration",
+    "ChillEffectMod",
+    "FreezeBuildupAvg",
     "AverageBurstDamage",
+    "AverageBurstHits",
+    "MaxLifeLeechRate",
+    "MaxManaLeechRate",
+    "MaxEnergyShieldLeechRate",
+    "MaxLifeLeechRatePercent",
+    "CullMultiplier",
+    "ReservationDpsMultiplier",
+    "EnemyAilmentThreshold",
     "CombinedAvg",
     "CombinedAvgToMonsterLife",
     "HitSpeed",
@@ -202,11 +239,16 @@ pub const DERIVED_STATS: &[&str] = &[
     "ChaosMaxHit",
     "StunThreshold",
     "EnemyCritEffect",
+    "EnemyCritChance",
+    "SecondMinimalMaximumHitTaken",
+    "GemLevel",
     "MainHandAccuracy",
     "OffHandAccuracy",
     "AverageDamage",
+    "AccuracyHitChance",
     "AccuracyHitChanceUncapped",
     "PreEffectiveCritChance",
+    "PreEffectiveCritMultiplier",
     "FullDPS",
     "FullDotDPS",
     "PhysicalDamageReduction",
@@ -215,6 +257,7 @@ pub const DERIVED_STATS: &[&str] = &[
     "StunDuration",
     "DeflectionRating",
     "DeflectChance",
+    "DeflectEffect",
     "LifeLeechRate",
     "ManaLeechRate",
     "EsLeechRate",
@@ -586,6 +629,120 @@ impl CalculationSession {
                     _ => unreachable!(),
                 }
             }
+            "FireResistOverTime"
+            | "ColdResistOverTime"
+            | "LightningResistOverTime"
+            | "ChaosResistOverTime" => {
+                let input = perform::player_input(env);
+                let (element, base) = match stat {
+                    "FireResistOverTime" => ("Fire", input.base_fire_resistance),
+                    "ColdResistOverTime" => ("Cold", input.base_cold_resistance),
+                    "LightningResistOverTime" => ("Lightning", input.base_lightning_resistance),
+                    _ => ("Chaos", 0.0),
+                };
+                let r = crate::calc::offence::resolve_resistance_over_time(
+                    db,
+                    cfg,
+                    base,
+                    element,
+                    element != "Chaos",
+                );
+                let raw = r.override_total.unwrap_or_else(|| {
+                    (r.base + r.flat) * ((1.0 + r.inc / 100.0) * r.more).max(0.0)
+                });
+                // Resistance truncates toward zero: floor when positive, ceil when negative.
+                let toward_zero = if raw >= 0.0 { "floor" } else { "ceil" };
+                let mut inputs = vec![
+                    ("MaximumResistance".to_string(), r.max),
+                    ("ResistFloor".to_string(), r.floor),
+                ];
+                let total = match r.override_total {
+                    Some(value) => {
+                        inputs.push(("OverrideResistance".into(), value));
+                        format!("{toward_zero}(OverrideResistance)")
+                    }
+                    None => {
+                        inputs.extend([
+                            ("BaseResistance".into(), r.base),
+                            ("FlatResistance".into(), r.flat),
+                            ("IncreasedResistance".into(), r.inc),
+                            ("MoreResistance".into(), r.more),
+                        ]);
+                        format!(
+                            "{toward_zero}((BaseResistance + FlatResistance) * max((1 + IncreasedResistance / 100) * MoreResistance, 0))"
+                        )
+                    }
+                };
+                (
+                    format!("max(min({total}, MaximumResistance), ResistFloor)"),
+                    inputs,
+                )
+            }
+            "PhysicalTakenDotMult"
+            | "FireTakenDotMult"
+            | "ColdTakenDotMult"
+            | "LightningTakenDotMult"
+            | "ChaosTakenDotMult"
+            | "PhysicalTotalPool"
+            | "FireTotalPool"
+            | "ColdTotalPool"
+            | "LightningTotalPool"
+            | "ChaosTotalPool"
+            | "PhysicalDotEHP"
+            | "FireDotEHP"
+            | "ColdDotEHP"
+            | "LightningDotEHP"
+            | "ChaosDotEHP" => {
+                let t = self.ehp_terms()?;
+                let (i, kind) = ["Physical", "Fire", "Cold", "Lightning", "Chaos"]
+                    .into_iter()
+                    .enumerate()
+                    .find(|(_, kind)| stat.starts_with(kind))?;
+                let dot = t.dot_taken[i];
+                match &stat[kind.len()..] {
+                    "TakenDotMult" if dot.immune => one("ImmuneToChaosDamage", 0.0),
+                    "TakenDotMult" => (
+                        "max((1 - Resistance / 100) * (1 - DamageReduction / 100) * OverTimeDamageTaken, 0)".into(),
+                        vec![
+                            ("Resistance".into(), dot.resistance),
+                            ("DamageReduction".into(), dot.reduction),
+                            ("OverTimeDamageTaken".into(), dot.taken),
+                        ],
+                    ),
+                    "TotalPool" => (
+                        "ManaEffectiveLife + EnergyShieldInPool + RunicWardInPool".into(),
+                        vec![
+                            ("ManaEffectiveLife".into(), t.mom.effective_life_by_type[i]),
+                            ("EnergyShieldInPool".into(), t.pool_before_ward[i] - t.mom.effective_life_by_type[i]),
+                            ("RunicWardInPool".into(), t.total_pool[i] - t.pool_before_ward[i]),
+                        ],
+                    ),
+                    "DotEHP" => (
+                        "TotalPool / TakenDotMult".into(),
+                        vec![
+                            ("TotalPool".into(), t.total_pool[i]),
+                            ("TakenDotMult".into(), dot.multiplier()),
+                        ],
+                    ),
+                    _ => unreachable!(),
+                }
+            }
+            "EHPSurvivalTime" => {
+                let t = self.ehp_terms()?;
+                if t.enemy_action_time_ms <= 0.0 {
+                    // No configured enemy attack / cast time: no survival time.
+                    one("EnemyActionTime", 0.0)
+                } else {
+                    (
+                        "TotalNumberOfHits * EnemyActionTime / 1000 / EnemyActionSpeed".into(),
+                        vec![
+                            ("TotalNumberOfHits".into(), out.total_number_of_hits),
+                            ("EnemyActionTime".into(), t.enemy_action_time_ms),
+                            ("EnemyActionSpeed".into(), t.enemy_action_speed),
+                        ],
+                    )
+                }
+            }
             "ArchonDuration" | "ArchonRecoveryPeriod" => {
                 let timing = crate::rules::archon::timing(db, cfg);
                 if stat == "ArchonDuration" {
@@ -849,6 +1006,32 @@ impl CalculationSession {
                 }
                 (format!("max({})", expressions.join(", ")), rows)
             }
+            "MaxLifeLeechRate" | "MaxManaLeechRate" | "MaxEnergyShieldLeechRate" => {
+                let i = match stat {
+                    "MaxLifeLeechRate" => 0,
+                    "MaxManaLeechRate" => 1,
+                    _ => 2,
+                };
+                let t = perform::leech_cap_terms_for(env)[i];
+                (
+                    "Pool * MaxRatePercent / 100".into(),
+                    vec![
+                        ("Pool".into(), t.pool.max(0.0)),
+                        ("MaxRatePercent".into(), t.percent()),
+                    ],
+                )
+            }
+            "MaxLifeLeechRatePercent" => {
+                let t = perform::leech_cap_terms_for(env)[0];
+                (
+                    "DefaultPercent * (1 + IncreasedMaximum / 100) * MoreMaximum".into(),
+                    vec![
+                        ("DefaultPercent".into(), t.default_percent),
+                        ("IncreasedMaximum".into(), t.increased),
+                        ("MoreMaximum".into(), t.more),
+                    ],
+                )
+            }
             "LifeRecoupRate" => {
                 use crate::calc::survivability::life_recoup_terms;
                 let terms = self.ehp_terms()?;
@@ -928,6 +1111,16 @@ impl CalculationSession {
                         vec![("DeflectBeforeLuck".into(), chance)],
                     )
                 }
+            }
+            "DeflectEffect" => {
+                let t = crate::calc::defence_panels::deflect_effect_terms(db, cfg);
+                (
+                    "round(clamp(GameBase + AddedDeflectEffect, 0, 100), 9)".into(),
+                    vec![
+                        ("GameBase".into(), t.game_base),
+                        ("AddedDeflectEffect".into(), t.added),
+                    ],
+                )
             }
             "StunDuration" => {
                 let (base, increase, recovery, tick) =
@@ -1035,9 +1228,69 @@ impl CalculationSession {
                     ("AverageDamage".into(), out.average_damage),
                     (
                         "BurstHits".into(),
-                        perform::damage_view_terms(env).burst_hits,
+                        perform::damage_view_terms(env).burst.hits(),
                     ),
                 ],
+            ),
+            "AverageBurstHits" => match perform::damage_view_terms(env).burst {
+                perform::BurstTerms::Repeats(repeats) => {
+                    ("Repeats".into(), vec![("Repeats".into(), repeats)])
+                }
+                perform::BurstTerms::Flickers {
+                    per_charge,
+                    charges,
+                    doubled_percent,
+                } => (
+                    "1 + FlickersPerCharge * ConsumedCharges * (1 + DoubledChance / 100)".into(),
+                    vec![
+                        ("FlickersPerCharge".into(), per_charge),
+                        ("ConsumedCharges".into(), charges),
+                        ("DoubledChance".into(), doubled_percent),
+                    ],
+                ),
+            },
+            "EnemyAilmentThreshold" => {
+                let t =
+                    perform::enemy_ailment_threshold_terms(&env.enemy.mod_db, cfg, env.enemy.level);
+                (
+                    "ThresholdAtEnemyLevel * (1 + IncreasedThreshold / 100) * MoreThreshold".into(),
+                    vec![
+                        ("ThresholdAtEnemyLevel".into(), t.table),
+                        ("IncreasedThreshold".into(), t.increased),
+                        ("MoreThreshold".into(), t.more),
+                    ],
+                )
+            }
+            "GemLevel" => {
+                // Without a selected skill both inputs are zero.
+                let (level, bonus) = env.main_skill_level.unwrap_or((0, 0));
+                (
+                    "GemBaseLevel + GemBonusLevels".into(),
+                    vec![
+                        ("GemBaseLevel".into(), f64::from(level)),
+                        ("GemBonusLevels".into(), f64::from(bonus)),
+                    ],
+                )
+            }
+            "CullMultiplier" => {
+                let enemy = &env.enemy.mod_db;
+                match skill_dot::cull_threshold_percent(db, enemy, cfg) {
+                    Some(percent) => (
+                        "100 / (100 - CullThreshold)".into(),
+                        vec![("CullThreshold".into(), percent)],
+                    ),
+                    None => (
+                        "1 + 0 * CullThreshold".into(),
+                        vec![("CullThreshold".into(), 0.0)],
+                    ),
+                }
+            }
+            "ReservationDpsMultiplier" => (
+                "100 / (100 - LifeReservedPercent)".into(),
+                vec![(
+                    "LifeReservedPercent".into(),
+                    skill_dot::reserved_life_percent(&env.enemy.mod_db, cfg),
+                )],
             ),
             "CombinedAvg" | "WithIgniteDPS" | "WithBleedDPS" | "WithPoisonDPS" => {
                 let t = perform::damage_view_terms(env);
@@ -1270,6 +1523,56 @@ impl CalculationSession {
                     ("ThresholdIncrease".into(), t.inc), ("ThresholdMore".into(), t.more),
                 ])
             }
+            "SecondMinimalMaximumHitTaken" => {
+                // The second smallest of five values is the smallest of the
+                // larger value of every pair.
+                let ids = [
+                    "PhysicalMaxHit",
+                    "FireMaxHit",
+                    "ColdMaxHit",
+                    "LightningMaxHit",
+                    "ChaosMaxHit",
+                ];
+                let values = [
+                    out.physical_max_hit,
+                    out.fire_max_hit,
+                    out.cold_max_hit,
+                    out.lightning_max_hit,
+                    out.chaos_max_hit,
+                ];
+                let mut pairs = Vec::new();
+                for (i, a) in ids.iter().enumerate() {
+                    for b in &ids[i + 1..] {
+                        pairs.push(format!("max({a}, {b})"));
+                    }
+                }
+                (
+                    format!("min({})", pairs.join(", ")),
+                    ids.iter()
+                        .zip(values)
+                        .map(|(id, v)| ((*id).to_string(), v))
+                        .collect(),
+                )
+            }
+            "EnemyCritChance" => {
+                use crate::calc::ehp::EnemyCritMode;
+                let t = self.ehp_terms()?.enemy_crit_chance;
+                let rolled = "clamp(BaseChance * (1 + IncreasedChance / 100) * (1 - ConfiguredEvadeChance / 100), 0, 100)";
+                let formula = match (t.mode, t.unlucky) {
+                    (EnemyCritMode::Never, _) => "0 * BaseChance".to_string(),
+                    (EnemyCritMode::Always, _) => "100 + 0 * BaseChance".to_string(),
+                    (EnemyCritMode::Rolled, false) => format!("round({rolled}, 9)"),
+                    (EnemyCritMode::Rolled, true) => format!("round(pow({rolled}, 2) / 100, 9)"),
+                };
+                (
+                    formula,
+                    vec![
+                        ("BaseChance".into(), t.base),
+                        ("IncreasedChance".into(), t.increased),
+                        ("ConfiguredEvadeChance".into(), t.evade),
+                    ],
+                )
+            }
             "EnemyCritEffect" => {
                 use pobr_data::prelude::{ModName, ModType};
                 let sum = |name: &str| {
@@ -1313,7 +1616,11 @@ impl CalculationSession {
                             ("AccuracyIncrease".into(), t.inc), ("AccuracyMore".into(), t.more)])
                 }
             }
-            "AverageDamage" | "AccuracyHitChanceUncapped" | "PreEffectiveCritChance" => {
+            "AverageDamage"
+            | "AccuracyHitChance"
+            | "AccuracyHitChanceUncapped"
+            | "PreEffectiveCritChance"
+            | "PreEffectiveCritMultiplier" => {
                 let scopes = perform::pass_scopes(env);
                 let mut rows = Vec::new();
                 for (i, (_, scope, input)) in scopes.iter().enumerate() {
@@ -1330,6 +1637,10 @@ impl CalculationSession {
                                 (format!("{prefix}HitChance"), hit.hit.value),
                             ],
                         ),
+                        "AccuracyHitChance" => (
+                            format!("round({prefix}AccuracyChance * 100, 9)"),
+                            vec![(format!("{prefix}AccuracyChance"), hit.hit.accuracy_chance)],
+                        ),
                         "AccuracyHitChanceUncapped" => (
                             format!(
                                 "round({prefix}AccuracyChance * 100 + {prefix}ExcessChance, 9)"
@@ -1339,6 +1650,13 @@ impl CalculationSession {
                                 (format!("{prefix}ExcessChance"), hit.hit.excess),
                             ],
                         ),
+                        "PreEffectiveCritMultiplier" => match hit.crit.multiplier_terms {
+                            Some(terms) => terms.pre_effective_detail(prefix),
+                            None => (
+                                format!("0 * {prefix}NeverCrit"),
+                                vec![(format!("{prefix}NeverCrit"), 1.0)],
+                            ),
+                        },
                         _ => (
                             format!("{prefix}CriticalChance * 100"),
                             vec![(
@@ -1361,7 +1679,7 @@ impl CalculationSession {
                 };
                 let formula = if rows.len() == 1 {
                     rows[0].0.clone()
-                } else if stat == "AccuracyHitChanceUncapped" {
+                } else if matches!(stat, "AccuracyHitChance" | "AccuracyHitChanceUncapped") {
                     format!("({summed}) / {divisor}")
                 } else {
                     format!("round(({summed}) / {divisor}, 9)")
