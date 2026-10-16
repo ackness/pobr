@@ -96,6 +96,10 @@ pub struct Env {
     /// its own modifiers, whatever skill is calculated: what a minion that
     /// gains added damage equal to a share of it adds.
     pub main_hand_weapon_damage: Vec<(DamageType, f64, f64)>,
+    /// The selected skill's gem level as `(the gem's own level, levels items,
+    /// passives and supports add)`, written by the orchestration layer;
+    /// `None` when no skill is selected. The effect runs at their sum.
+    pub main_skill_level: Option<(u32, u32)>,
     /// Skill data's `doubleHitsWhenDualWielding` (flips the combineStat
     /// DPS/CRIT mode, vendor CalcOffence.lua:2459-2545). The data channel is
     /// the skill_overrides extraction; always false until the orchestration
@@ -142,6 +146,7 @@ impl Env {
             leech_gain_terms: [[[0.0; 3]; 3]; 2],
             hand_sources: Vec::new(),
             main_hand_weapon_damage: Vec::new(),
+            main_skill_level: None,
             double_hits_when_dual_wielding: false,
             high_precision: HighPrecisionRules::default(),
         }

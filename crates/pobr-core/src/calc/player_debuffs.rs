@@ -18,6 +18,7 @@ pub(super) fn view_names(stat: &str) -> &'static [&'static str] {
         "WitherEffectOnSelf" => &["WitherEffectOnSelf"],
         "SelfBleedEffect" => &["SelfBleedEffect"],
         "SelfIgniteEffect" => &["SelfIgniteEffect"],
+        "SelfChillEffect" => &["SelfChillEffect"],
         "SelfFreezeEffect" => &["SelfFreezeEffect"],
         "SelfPoisonEffect" => &["SelfPoisonEffect"],
         // Blind is a debuff, not an ailment: no game stat changes its
@@ -86,6 +87,7 @@ pub(super) fn calculate_views(env: &mut Env) {
     out.wither_effect_on_self = percent("WitherEffectOnSelf");
     out.self_bleed_effect = percent("SelfBleedEffect");
     out.self_ignite_effect = percent("SelfIgniteEffect");
+    out.self_chill_effect = percent("SelfChillEffect");
     out.self_freeze_effect = percent("SelfFreezeEffect");
     out.self_poison_effect = percent("SelfPoisonEffect");
     out.self_blind_duration = percent("SelfBlindDuration");

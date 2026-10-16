@@ -252,6 +252,7 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "AuraCannotAffectSelf",
         ],
         "CurseEffectMod" => &["CurseEffect", "SelectedCurseEffect"],
+        "EffectiveLootRarityMod" => &["LootRarity"],
         "ActiveMinionLimit" => &["SelectedMinionLimit"],
         "ExplodeChance" => &["EnemyExplodeChance"],
         "QuantityMultiplier" => &["QuantityMultiplier"],
@@ -672,6 +673,7 @@ impl CalculationSession {
                         | "MovementSpeedMod"
                         | "ActionSpeedMod"
                         | "LightRadiusMod"
+                        | "EffectiveLootRarityMod"
                 ) || stat == "MovementSpeedWhileUsingSkill"
                     && !matches!(
                         name.as_str(),

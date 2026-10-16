@@ -197,3 +197,19 @@ fn extra_self_debuff_views_use_game_magnitudes_and_expiration_rate() {
         );
     }
 }
+
+/// Chill's effect on the player is a percentage of the base:
+/// `(100 + increased) x more`. "40% reduced Effect of Chill on you"
+/// (`chill_effectiveness_on_self_+%`) leaves 60.
+#[test]
+fn self_chill_effect_is_a_modifier_view() {
+    use pobr_core::{calc::MinimalInput, display_value};
+    let mut session = crate::support::session(MinimalInput::default());
+    session
+        .add_modifier_texts(&["40% reduced Effect of Chill on you"])
+        .unwrap();
+    session.perform_minimal().unwrap();
+    assert_eq!(display_value(session.output(), "SelfChillEffect"), 60.0);
+    let groups = session.detail_sources("SelfChillEffect");
+    assert_eq!(groups.len(), 1);
+}

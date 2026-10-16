@@ -614,6 +614,11 @@ pub(super) fn inject_main_skill_mods(
         // Use the resolved instance's set: repeated effect ids can select different
         // forms, and additional effects need not have their own gem_skills entry.
         let main_set_key = data.selected_set_key(skill_id, ctx.main.main_stat_set_index);
+        if let Some((gem_level, bonus_levels)) =
+            super::skill::resolve::selected_effect_levels(build, data, group)
+        {
+            session.set_main_skill_level(gem_level, bonus_levels);
+        }
         session.add_modifiers(skill_base_modifiers(
             context,
             skill,
