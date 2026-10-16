@@ -119,7 +119,13 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "SlowEffectOnSelf",
             "UnaffectedBySlows",
         ],
-        "ShockEffect" => &["EnemyShockMagnitude", "AilmentMagnitude", "CannotShock"],
+        "ShockEffect" => &[
+            "EnemyShockMagnitude",
+            "AilmentMagnitude",
+            "EnemySelfShockMagnitude",
+            "EnemyAilmentMagnitude",
+            "CannotShock",
+        ],
         "AilmentThreshold" => &["AilmentThreshold"],
         "LifeOnKill" => &[
             "LifeOnKill",
@@ -570,6 +576,8 @@ impl CalculationSession {
                 let (db, query_name) = match name.as_str() {
                     "EnemySelfSplitCount" => (&self.env.enemy.mod_db, "SelfSplitCount"),
                     "EnemyAlwaysPierceSelf" => (&self.env.enemy.mod_db, "AlwaysPierceSelf"),
+                    "EnemySelfShockMagnitude" => (&self.env.enemy.mod_db, "SelfShockMagnitude"),
+                    "EnemyAilmentMagnitude" => (&self.env.enemy.mod_db, "AilmentMagnitude"),
                     _ => (db, name.as_str()),
                 };
                 let cfg = &query_cfg;

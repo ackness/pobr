@@ -91,6 +91,18 @@ pub(super) fn fill_sidebar(env: &mut Env) {
     global.skill_name = None;
     let archon = crate::rules::archon::timing(db, &global);
     let out = &mut env.player.output;
+    // ShockEffectMod describes magnitude scaling, independently of the
+    // hit-dependent shock magnitude retained in shock_effect.
+    out.shock_effect_mod = if out.shock_effect > 0.0 {
+        factor(db, cfg, &["EnemyShockMagnitude", "AilmentMagnitude"])
+            * factor(
+                &env.enemy.mod_db,
+                cfg,
+                &["SelfShockMagnitude", "AilmentMagnitude"],
+            )
+    } else {
+        0.0
+    };
     out.archon_duration = archon.duration;
     out.archon_recovery_period = archon.recovery_period;
     let armour_penalty = if db.flag(&global, "Condition:IgnoreMovementPenalties")
@@ -220,14 +232,17 @@ fn fill_threshold_and_kill_views(env: &mut Env) {
         ("Mana", &mut out.mana_on_kill),
         ("EnergyShield", &mut out.energy_shield_on_kill),
     ] {
-        // Flat and PercentStat-tagged gains share this query. It describes
-        // one kill, independently of the build's damage or kill frequency.
+        // Flat and PercentStat-tagged gains share this query. A remote
+        // skill's hit kills belong to its proxy, not to the player. This
+        // view does not estimate kills or damage-over-time kill attribution.
         let gain = db.sum(
             ModType::Base,
             cfg,
             &[ModName::from(format!("{resource}OnKill"))],
         );
-        *value = if db.flag(cfg, &format!("CannotGain{resource}"))
+        *value = if super::recovery::proxy(cfg)
+            || cfg.skill_types.contains(SkillTypes::SUMMONS_TOTEM)
+            || db.flag(cfg, &format!("CannotGain{resource}"))
             || resource == "Life" && db.flag(cfg, "CannotRecoverLifeOutsideLeech")
         {
             0.0

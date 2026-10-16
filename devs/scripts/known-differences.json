@@ -97,7 +97,40 @@
       "stats": [
         "SpiritReserved"
       ],
-      "reason": "SpiritReserved reports the enabled skills' full requested reservation (223); PoB2 caps this displayed field at the Spirit pool (146), while both report -77 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (223); PoB2 caps this displayed field at the Spirit pool (146), while both report -77 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved).",
+      "build": "3bfac6cd6482",
+      "stats": ["AilmentThreshold"],
+      "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/maintainer-guide.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
+    },
+    {
+      "build": "4651a9629c46",
+      "stats": ["AilmentThreshold"],
+      "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/maintainer-guide.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
+    },
+    {
+      "build": "2983379c06aa",
+      "stats": ["AilmentThreshold"],
+      "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/maintainer-guide.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
+    },
+    {
+      "build": "druid-oracle-ember-fusillade",
+      "stats": ["AilmentThreshold"],
+      "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/maintainer-guide.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
+    },
+    {
+      "build": "dd7f512456b6",
+      "stats": ["TotalHitAvg"],
+      "reason": "TotalHitAvg intentionally retains the game's Pre-mitigation Damage view; PoB2 AverageHit includes enemy mitigation. Comet's cold/lightning effective multipliers are 0.5, explaining the approximately 2x ratio. This display pair is already excluded from reference agreement (docs/maintainer-guide.md, sidebar damage views; https://poe2db.tw/us/Keywords)."
+    },
+    {
+      "build": "9a0fb35e890a",
+      "stats": ["TotalHitAvg"],
+      "reason": "TotalHitAvg intentionally retains the game's Pre-mitigation Damage view; PoB2 AverageHit includes enemy mitigation. Living Bomb's fire/cold effective multipliers are 0.5, explaining the approximately 2x ratio. This display pair is already excluded from reference agreement (docs/maintainer-guide.md, sidebar damage views; https://poe2db.tw/us/Keywords)."
+    },
+    {
+      "build": "3e588bde3126",
+      "stats": ["TotalHitAvg"],
+      "reason": "TotalHitAvg intentionally retains the game's Pre-mitigation Damage view; PoB2 AverageHit includes enemy mitigation. Seismic Cry's physical/cold effective multipliers are 0.25/0.5, explaining the approximately 3.3x ratio. This display pair is already excluded from reference agreement (docs/maintainer-guide.md, sidebar damage views; https://poe2db.tw/us/Keywords)."
     },
     {
       "build": "warrior-smith-of-kitava-shield-wall-fb03d7dce08e",
