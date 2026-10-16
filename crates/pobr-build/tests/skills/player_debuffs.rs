@@ -59,3 +59,38 @@ fn configured_chill_reaches_action_speed_only_when_active_and_supplied() {
     );
     assert_eq!(unspecified.action_rate, plain.action_rate);
 }
+
+#[test]
+fn self_duration_support_buffs_reach_the_display_views() {
+    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap();
+    let xml = r#"<PathOfBuilding2>
+<Build level="80" className="Witch" ascendClassName="None" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" quality="0" enabled="true"/></Skill>
+<Skill enabled="true"><Gem skillId="ArcticArmourPlayer" level="20" quality="0" enabled="true"/>
+<Gem skillId="SupportCoolheadedPlayer" level="1" quality="0" enabled="true"/>
+<Gem skillId="SupportWarmbloodedPlayer" level="1" quality="0" enabled="true"/>
+<Gem skillId="SupportStrongHeartedPlayer" level="1" quality="0" enabled="true"/>
+</Skill></Skills></PathOfBuilding2>"#;
+    let build = parse_build(xml).unwrap();
+    let options = DataOrchestratorOptions {
+        extra_modifier_texts: vec!["20% reduced Duration of Ailments on You".into()],
+        ..Default::default()
+    };
+    let out = calculate_with_data(&build, &data, &options).unwrap();
+    // Game granted_effect_stat_sets: each support_*_protection_spirit_cost_*
+    // duration_on_self_+%_final is -50: (100 - 20) * 0.5 = 40% of base.
+    for id in [
+        "SelfIgniteDuration",
+        "SelfFreezeDuration",
+        "SelfShockDuration",
+    ] {
+        assert_eq!(pobr_core::display_value(&out, id), 40.0, "{id}");
+    }
+    for id in [
+        "SelfBleedDuration",
+        "SelfPoisonDuration",
+        "SelfChillDuration",
+    ] {
+        assert_eq!(pobr_core::display_value(&out, id), 80.0, "{id}");
+    }
+}

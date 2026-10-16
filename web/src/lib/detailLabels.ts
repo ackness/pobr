@@ -2,6 +2,29 @@ import type { Lang } from './i18n';
 
 /** Modifier input names for optional Calcs details; no calculation logic. */
 export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
+  ExposureEffectOnSelf: { 'en-US': 'Exposure Effect on You', 'zh-TW': '自身受到的曝露效果', 'zh-CN': '自身受到的曝露效果' },
+  WitherEffectOnSelf: { 'en-US': 'Withered Effect on You', 'zh-TW': '自身受到的凋零效果', 'zh-CN': '自身受到的凋零效果' },
+  SelfBleedEffect: { 'en-US': 'Bleeding Magnitude on You', 'zh-TW': '自身受到的流血幅度', 'zh-CN': '自身受到的流血幅度' },
+  SelfIgniteEffect: { 'en-US': 'Ignite Magnitude on You', 'zh-TW': '自身受到的點燃幅度', 'zh-CN': '自身受到的点燃幅度' },
+  DebuffExpirationModifier: { 'en-US': 'Debuff Duration Multiplier on You', 'zh-TW': '自身減益持續時間倍率', 'zh-CN': '自身减益持续时间倍率' },
+  SelfDebuffExpirationRate: { 'en-US': 'Debuff Expiration Rate on You', 'zh-TW': '自身減益消退速度', 'zh-CN': '自身减益消退速度' },
+
+  CurseEffectOnSelf: { 'en-US': 'Curse Effect on You', 'zh-TW': '自身受到的詛咒效果', 'zh-CN': '自身受到的诅咒效果' },
+  SelfAilmentDuration: { 'en-US': 'Ailment Duration on You', 'zh-TW': '自身異常狀態持續時間', 'zh-CN': '自身异常状态持续时间' },
+  SelfElementalAilmentDuration: { 'en-US': 'Elemental Ailment Duration on You', 'zh-TW': '自身元素異常狀態持續時間', 'zh-CN': '自身元素异常状态持续时间' },
+  SelfBleedDuration: { 'en-US': 'Bleeding Duration on You', 'zh-TW': '自身流血持續時間', 'zh-CN': '自身流血持续时间' },
+  SelfPoisonDuration: { 'en-US': 'Poison Duration on You', 'zh-TW': '自身中毒持續時間', 'zh-CN': '自身中毒持续时间' },
+  SelfIgniteDuration: { 'en-US': 'Ignite Duration on You', 'zh-TW': '自身點燃持續時間', 'zh-CN': '自身点燃持续时间' },
+  SelfChillDuration: { 'en-US': 'Chill Duration on You', 'zh-TW': '自身冰緩持續時間', 'zh-CN': '自身冰缓持续时间' },
+  SelfFreezeDuration: { 'en-US': 'Freeze Duration on You', 'zh-TW': '自身凍結持續時間', 'zh-CN': '自身冻结持续时间' },
+  SelfShockDuration: { 'en-US': 'Shock Duration on You', 'zh-TW': '自身感電持續時間', 'zh-CN': '自身感电持续时间' },
+  CorruptedBloodImmunity: { 'en-US': 'Corrupted Blood Immunity', 'zh-TW': '免疫腐化之血', 'zh-CN': '免疫腐化之血' },
+  CorruptedBloodImmune: { 'en-US': 'Corrupted Blood Immunity', 'zh-TW': '免疫腐化之血', 'zh-CN': '免疫腐化之血' },
+  MaimImmunity: { 'en-US': 'Maim Immunity', 'zh-TW': '免疫癱瘓', 'zh-CN': '免疫瘫痪' },
+  MaimImmune: { 'en-US': 'Maim Immunity', 'zh-TW': '免疫癱瘓', 'zh-CN': '免疫瘫痪' },
+  HinderImmunity: { 'en-US': 'Hinder Immunity', 'zh-TW': '免疫阻礙', 'zh-CN': '免疫阻碍' },
+  HinderImmune: { 'en-US': 'Hinder Immunity', 'zh-TW': '免疫阻礙', 'zh-CN': '免疫阻碍' },
+
   ChargeDuration: { 'en-US': 'Charge duration', 'zh-TW': '充能持續時間', 'zh-CN': '充能持续时间' },
   PowerChargesDuration: { 'en-US': 'Power Charge Duration', 'zh-TW': '魔力充能持續時間', 'zh-CN': '暴击球持续时间' },
   FrenzyChargesDuration: { 'en-US': 'Frenzy Charge Duration', 'zh-TW': '狂怒充能持續時間', 'zh-CN': '狂怒球持续时间' },

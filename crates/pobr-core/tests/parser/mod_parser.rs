@@ -1798,22 +1798,84 @@ fn chaos_inoculation_line_grants_bleed_immunity() {
 }
 
 #[test]
-fn incoming_debuffs_without_player_models_remain_visible_gaps() {
-    // Game stats: curse_effect_on_self_+%, self_bleed_duration_+%,
-    // base_all_ailment_duration_on_self_+%, immune_to_corrupted_blood,
-    // immune_to_maim and immune_to_hinder. None has an incoming model.
-    for text in [
-        "30% reduced effect of Curses on you",
-        "40% reduced Duration of Bleeding on You",
-        "15% reduced Duration of Ailments on You",
-        "Immune to [CorruptedBlood|Corrupted Blood]",
-        "Immune to [Maim]",
-        "Immune to [Hinder]",
+fn incoming_debuff_lines_produce_player_modifier_views() {
+    for (text, name, value) in [
+        (
+            "30% reduced effect of Curses on you",
+            "CurseEffectOnSelf",
+            -30.0,
+        ),
+        (
+            "30% increased effect of Curses on you",
+            "CurseEffectOnSelf",
+            30.0,
+        ),
+        (
+            "50% reduced Duration of Bleeding on You",
+            "SelfBleedDuration",
+            -50.0,
+        ),
+        (
+            "20% reduced Duration of Ailments on You",
+            "SelfAilmentDuration",
+            -20.0,
+        ),
+        (
+            "20% reduced Poison Duration on you",
+            "SelfPoisonDuration",
+            -20.0,
+        ),
+        (
+            "20% reduced Ignite Duration on you",
+            "SelfIgniteDuration",
+            -20.0,
+        ),
+        (
+            "20% reduced Chill Duration on you",
+            "SelfChillDuration",
+            -20.0,
+        ),
+        (
+            "20% reduced Freeze Duration on you",
+            "SelfFreezeDuration",
+            -20.0,
+        ),
+        (
+            "20% reduced Shock Duration on you",
+            "SelfShockDuration",
+            -20.0,
+        ),
+        (
+            "20% reduced Elemental Ailment Duration on you",
+            "SelfElementalAilmentDuration",
+            -20.0,
+        ),
     ] {
         let parsed = parse_mod(text).unwrap();
         assert_eq!(parsed.status, ParseStatus::Parsed, "{text}: {parsed:?}");
-        assert!(parsed.mods.is_empty(), "{text}: {parsed:?}");
-        assert!(!parsed.special_meta.unwrap().no_effect, "{text}");
+        assert_eq!(parsed.mods.len(), 1, "{text}: {parsed:?}");
+        assert_eq!(parsed.mods[0].name.as_str(), name);
+        assert_eq!(parsed.mods[0].mod_type, ModType::Inc);
+        assert_eq!(parsed.mods[0].value, ModValue::Number(value));
+    }
+    for (text, name) in [
+        (
+            "Immune to [CorruptedBlood|Corrupted Blood]",
+            "CorruptedBloodImmune",
+        ),
+        (
+            "Corrupted Blood cannot be inflicted on you",
+            "CorruptedBloodImmune",
+        ),
+        ("You cannot be Hindered", "HinderImmune"),
+        ("Immune to [Maim]", "MaimImmune"),
+        ("Immune to [Hinder]", "HinderImmune"),
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert_eq!(parsed.mods.len(), 1, "{text}: {parsed:?}");
+        assert_eq!(parsed.mods[0].name.as_str(), name);
+        assert_eq!(parsed.mods[0].mod_type, ModType::Flag);
+        assert_eq!(parsed.mods[0].value, ModValue::Bool(true));
     }
 }
 
