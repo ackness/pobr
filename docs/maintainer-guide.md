@@ -261,6 +261,9 @@ mechanics. Sources: game `base/stats.json` (`damage_+%_vs_frozen_enemies`,
 `daze_duration_+%`, `maim_on_hit_%`) and `base/passive_tree.json` (Coming
 Calamity, Bone Chains, Seeing Stars, Maiming Strike). The Daze-duration and
 attack-Maim rules are exporter-absent; recognizing them does not implement them.
+`FireDamage`, `LightningDamage` and `AilmentMagnitude` have readers gated by
+the selected skill's source damage; the usage ledger reports that gate when a
+non-damaging skill such as Mana Remnants does not reach those readers.
 
 伤害型异常（流血、点燃、毒）的同时层数 = 命中率 × 施加几率 × 持续时间 × 每秒命中数，持续时间是基础时间乘持续时间加成（含 “increased duration of Ailments you inflict”，`EnemyAilmentDuration`）与敌人身上效果的过期速度，再除以 “Damaging Ailments deal damage #% faster”：伤害总量不变、造成得更快，每份结束得更早（`calc/perform.rs`，分解里写作 “faster /N”）。
 

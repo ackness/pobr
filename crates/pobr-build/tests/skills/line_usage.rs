@@ -292,12 +292,16 @@ fn thresholds_recovery_and_hit_debuff_lines_reach_display_outputs() {
 /// The named registry is exhaustively exercised with game text. The slow is
 /// 50% (the game's default maximum Chill); Mail Coat reduces potency by 30%.
 /// Archon passives grant 10% movement, 20% resistance and 50% reduced effect.
+/// Damage and ailment readers require a damaging skill, unlike Mana Remnants.
 #[test]
 fn every_registered_state_reader_is_inactive_off_and_applied_on() {
     use pobr_build::calc_orchestrator::READ_UNDER_A_STATE;
     let data = data();
     for &(name, gate) in READ_UNDER_A_STATE {
         let text = match name {
+            "FireDamage" => "40% increased Fire Damage",
+            "LightningDamage" => "40% increased Lightning Damage",
+            "AilmentMagnitude" => "40% increased Magnitude of Ailments you inflict",
             "UnaffectedBySlows" => "Your speed is unaffected by Slows",
             "SlowEffectOnSelf" => "30% reduced Slowing Potency of Debuffs on You",
             "ArchonMovementSpeed" => "Archon Buffs also grant 10% increased Movement Speed",
@@ -308,21 +312,33 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
             _ => panic!("new registered reader {name} needs an off/on fixture"),
         };
         for active in [false, true] {
+            let damage_reader =
+                matches!(name, "FireDamage" | "LightningDamage" | "AilmentMagnitude");
+            let skill = if damage_reader && !active {
+                "ManaRemnantsPlayer"
+            } else if name == "LightningDamage" {
+                "ArcPlayer"
+            } else {
+                "FireballPlayer"
+            };
             let config = gate
                 .config_option
                 .map(|option| {
                     format!(r#"<Config><Input name="{option}" boolean="{active}"/></Config>"#)
                 })
                 .unwrap_or_default();
-            let build = parse_build(&format!(r#"<PathOfBuilding2>
+            let build = parse_build(&format!(
+                r#"<PathOfBuilding2>
 <Build level="80" className="Witch" mainSocketGroup="1"/>
-<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
-{config}</PathOfBuilding2>"#)).unwrap();
+<Skills><Skill enabled="true"><Gem skillId="{skill}" level="20" enabled="true"/></Skill></Skills>
+{config}</PathOfBuilding2>"#
+            ))
+            .unwrap();
             let mut options = DataOrchestratorOptions {
                 extra_modifier_texts: vec![text.to_string()],
                 ..Default::default()
             };
-            if active && gate.config_option.is_none() {
+            if active && matches!(name, "UnaffectedBySlows" | "SlowEffectOnSelf") {
                 options
                     .extra_modifier_texts
                     .push("50% reduced Action Speed".to_string());

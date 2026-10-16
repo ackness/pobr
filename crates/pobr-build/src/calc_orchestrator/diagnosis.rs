@@ -190,6 +190,31 @@ impl ReadGate {
 /// Gated readers, alongside the consumers outside the database. Keep the
 /// actual consumer here so a registry entry can be checked against its code.
 pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
+    // `calc::damage::aggregate_inc_more` and `calc::skill_dot`: only the
+    // damage types supplied by the selected skill reach these queries.
+    (
+        "FireDamage",
+        ReadGate {
+            state: "the selected skill deals Fire damage",
+            config_option: None,
+        },
+    ),
+    (
+        "LightningDamage",
+        ReadGate {
+            state: "the selected skill deals Lightning damage",
+            config_option: None,
+        },
+    ),
+    // `calc::perform::fill_ailment_stage` calls the magnitude readers in
+    // `calc::ailment` only when the skill supplies source damage.
+    (
+        "AilmentMagnitude",
+        ReadGate {
+            state: "the selected skill supplies damage for an ailment",
+            config_option: None,
+        },
+    ),
     // `calc::skill_use_time::action_speed_factor`.
     (
         "UnaffectedBySlows",
