@@ -368,8 +368,9 @@ pub(crate) fn granted_passive_defs<'d>(
 /// tree.lua's sd array / the cataloged JSON's `\n`, flattened by
 /// `pobr_tree::split_lines`) — e.g. the Demolitionist ascendancy's "Gain 4% of Damage as
 /// Extra Fire Damage for / every different Grenade fired in the past 8 seconds" is
-/// **one** mod split across two lines. Only the tree path needs this merge (equipment
-/// mods are already cataloged line by line).
+/// **one** mod split across two lines. Equipment reuses the same merge
+/// ([`filter_item_parseable`]: Berek's rings' "Wind Skills ... count / as being
+/// boosted by ... Ground" wraps the same way in the item text).
 pub(crate) fn combine_wrapped_then_filter(texts: Vec<String>, ctx: ParseCtx<'_>) -> Vec<String> {
     combine_wrapped(texts, ctx).0
 }
@@ -789,6 +790,12 @@ pub(crate) fn gate_parses(ctx: ParseCtx<'_>, t: &str) -> bool {
 /// replacement comparisons or be applied as a partially understood modifier. Each
 /// rejected line is noted with its source (`holder`'s) and what reads it:
 /// `dedicated_reader` for `dedicated_texts`.
+///
+/// Game text can wrap across two lines of the item text (Berek's rings' "Wind
+/// Skills ... count / as being boosted by ... Ground"): two adjacent lines that
+/// parse as one when joined are merged first, reusing the tree's
+/// [`combine_wrapped`]. The pair is recorded once as its joined line, not as
+/// two unparsed lines.
 pub(crate) fn filter_item_parseable(
     item: &Item,
     ctx: ParseCtx<'_>,
@@ -812,19 +819,63 @@ pub(crate) fn filter_item_parseable(
                     && pobr_core::skill_env::CorruptedJewelEffect::parse_line(&joined).is_some())
         })
         .collect();
+    // The dedicated reader of one original line (a dedicated consumer's text,
+    // a gem property bonus, or half of a dedicated wrapped pair).
+    let reader_of = |text: &String| -> Option<&'static str> {
+        if dedicated_texts.contains(text) {
+            Some(dedicated_reader)
+        } else if parse_gem_property_bonus(text).is_some() {
+            Some(GEM_PROPERTY_READER)
+        } else if wrapped_pairs.iter().any(|pair| pair.contains(text)) {
+            Some(WRAPPED_LINE_READER)
+        } else {
+            None
+        }
+    };
+    // Whether a wrap-merged join belongs to a dedicated consumer (its halves
+    // were already exempted above): it is read whole by that consumer, never
+    // parsed as an ordinary modifier.
+    let dedicated_join = |text: &String| -> Option<&'static str> {
+        if dedicated_texts.contains(text) {
+            Some(dedicated_reader)
+        } else if item.rarity == pobr_data::item::ItemRarity::Unique
+            && pobr_core::skill_env::CorruptedJewelEffect::parse_line(text).is_some()
+        {
+            Some(WRAPPED_LINE_READER)
+        } else {
+            None
+        }
+    };
     let mut filtered = item.clone();
     for (section, texts) in item_sections_mut(&mut filtered) {
         let source = holder.source(section);
-        texts.retain(|text| {
-            let reader = if dedicated_texts.contains(text) {
-                Some(dedicated_reader)
-            } else if parse_gem_property_bonus(text).is_some() {
-                Some(GEM_PROPERTY_READER)
-            } else if wrapped_pairs.iter().any(|pair| pair.contains(text)) {
-                Some(WRAPPED_LINE_READER)
-            } else {
-                None
+        let originals: std::collections::HashSet<String> = texts.iter().cloned().collect();
+        let (merged, dropped) = combine_wrapped(texts.clone(), ctx);
+        *texts = merged;
+        // Lines the merge dropped never reach the parser: ledger them here so
+        // nothing silently vanishes.
+        for text in &dropped {
+            let fate = match reader_of(text) {
+                Some(reader) => LineFate::ReadBy(reader),
+                None => {
+                    session.record_unsupported_modifier_text(text.clone());
+                    LineFate::Unparsed
+                }
             };
+            session.note_line(&source, text, fate);
+        }
+        texts.retain(|text| {
+            // A join the merge formed for a dedicated consumer stays with
+            // that consumer: recorded once as the joined line, not as two
+            // halves and not as an ordinary modifier. (Original single lines
+            // keep the reader_of path below, as before.)
+            if !originals.contains(text.as_str())
+                && let Some(reader) = dedicated_join(text)
+            {
+                session.note_line(&source, text, LineFate::ReadBy(reader));
+                return false;
+            }
+            let reader = reader_of(text);
             if gate_parses(ctx, text) {
                 // A rule that recognises a line with a reader of its own
                 // stores nothing for it, or what nothing reads: the line's
