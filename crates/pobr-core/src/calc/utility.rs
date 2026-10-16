@@ -96,6 +96,7 @@ pub fn is_local_property(name: &str, text: &str) -> bool {
                 | "FlaskChargesGenerated"
                 | "FlaskChargesGained"
                 | "FlaskChargeRecovery"
+                | "FlaskChargeOnKillChance"
                 | "LocalUtilityDuration"
         )
 }
@@ -282,12 +283,28 @@ pub fn calculate(env: &mut Env) {
         let mut gen_names = typed_names("ChargesGenerated");
         gen_names.extend(local("FlaskChargesGenerated"));
         let generated = sum(db, cfg, ModType::Base, &gen_names).max(0.0);
+        // On-kill charges: each kill grants 1 charge to this flask/charm
+        // (game stat local_%_chance_to_gain_flask_charge_on_kill), so kills/s
+        // x chance/100 charges/s, scaled by the slot's charges-gained factor.
+        // The chance is read only when a kill rate is configured, so the
+        // ledger reports the line as gated rather than unread without input.
+        let kills_opt = cfg.multiplier_if_set("EnemyKillsPerSecond");
+        let (kills_rate, on_kill_chance) = match kills_opt {
+            Some(kills) => (
+                kills.max(0.0),
+                sum(db, cfg, ModType::Base, &local("FlaskChargeOnKillChance")).max(0.0),
+            ),
+            None => (0.0, 0.0),
+        };
+        let on_kill_base = kills_rate * on_kill_chance / 100.0;
         write(
             "ChargeGen",
-            generated * gain_mod,
-            "UtilityBaseChargeGen * UtilityChargeGainMod",
+            (generated + on_kill_base) * gain_mod,
+            "(UtilityBaseChargeGen + EnemyKillsPerSecond * UtilityOnKillChance / 100) * UtilityChargeGainMod",
             &[
                 ("UtilityBaseChargeGen", generated),
+                ("EnemyKillsPerSecond", kills_rate),
+                ("UtilityOnKillChance", on_kill_chance),
                 ("UtilityChargeGainMod", gain_mod),
             ],
         );

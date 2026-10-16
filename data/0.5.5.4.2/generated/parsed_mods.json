@@ -14671,7 +14671,14 @@
     },
     {
       "text": "20% Chance to gain a Charge when you kill an enemy",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "FlaskChargeOnKillChance",
+          "type": "Base",
+          "value": 20.0
+        }
+      ]
     },
     {
       "text": "20% [FasterESRechargeStart|faster start of Energy Shield Recharge]",
@@ -17394,7 +17401,14 @@
     },
     {
       "text": "21% Chance to gain a Charge when you kill an enemy",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "FlaskChargeOnKillChance",
+          "type": "Base",
+          "value": 21.0
+        }
+      ]
     },
     {
       "text": "21% increased Cast Speed",
@@ -17608,7 +17622,14 @@
     },
     {
       "text": "22% Chance to gain a Charge when you kill an enemy",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "FlaskChargeOnKillChance",
+          "type": "Base",
+          "value": 22.0
+        }
+      ]
     },
     {
       "text": "22% chance to Avoid Chaos Damage from Hits",
@@ -17749,7 +17770,14 @@
     },
     {
       "text": "23% Chance to gain a Charge when you kill an enemy",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "FlaskChargeOnKillChance",
+          "type": "Base",
+          "value": 23.0
+        }
+      ]
     },
     {
       "text": "23% chance to gain Onslaught on Killing Hits with this Weapon",
@@ -17883,7 +17911,14 @@
     },
     {
       "text": "24% Chance to gain a Charge when you kill an enemy",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "FlaskChargeOnKillChance",
+          "type": "Base",
+          "value": 24.0
+        }
+      ]
     },
     {
       "text": "24% increased Cast Speed",
@@ -18073,7 +18108,14 @@
     },
     {
       "text": "25% Chance to gain a Charge when you kill an enemy",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "FlaskChargeOnKillChance",
+          "type": "Base",
+          "value": 25.0
+        }
+      ]
     },
     {
       "text": "25% Chance to revive a random Permanent [Minion] whenever you use a [Command|Command] Skill",
@@ -20008,7 +20050,14 @@
     },
     {
       "text": "28% Chance to gain a Charge when you kill an enemy",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "FlaskChargeOnKillChance",
+          "type": "Base",
+          "value": 28.0
+        }
+      ]
     },
     {
       "text": "28% increased Armour, Evasion and Energy Shield",

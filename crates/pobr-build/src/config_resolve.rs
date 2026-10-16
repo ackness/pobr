@@ -124,6 +124,7 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
             "energyInvocationUsesPerSecond",
             "EnergyInvocationUsesPerSecond",
         ),
+        ("enemyKillsPerSecond", "EnemyKillsPerSecond"),
         ("skillFlameblastStages", "FlameblastStage"),
         ("skillChannelStages", "ChannelStages"),
         ("skillIncinerateStages", "IncinerateStage"),
