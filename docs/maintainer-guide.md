@@ -183,6 +183,21 @@ WASM 的 `calculate_build_json`（JS 名 `calculateBuildJson`）响应另有 `mi
 
 精魄保留按当前计算的武器组计：绑定到另一组的技能（包括它的辅助宝石追加的保留量）不保留，游戏 stat `display_skill_reserves_in_all_weapon_sets` 明确要求在所有武器组保留的技能除外，例如 Blink、Convalescence 和 Eternal Rage。Svalinn 授予的 Cast on Block 本身没有基础保留量，Direstrike II 与 Herbalism II 的 40 和 30 精魄只在拿着该盾的武器组计入，再应用保留效率。tuned Titan His Scattering Calamity 的主技能在第一组，其他常驻技能绑定到平时持有的第二组，因此计算第一组时保留为 0；构筑码参考值按另一组保留，与当前钉定 PoB2 不同。这里只改变保留量：绑定到另一组的常驻技能的 buff、光环仍按生效计算，与 PoB2 和构筑码参考值一致；游戏里切换武器组后这类 buff 是否保持，没有找到说明，也没有游戏内实测。
 
+`SpiritReserved` reports the total reservation requested by the enabled skills,
+even when it exceeds the Spirit pool; `SpiritUnreserved = Spirit - SpiritReserved`
+can be negative, and the calculator does not disable skills to fit the pool.
+This is an output convention for an overcommitted build, not a claim that the game
+allows over-reservation. PoB2 caps its displayed `SpiritReserved` at `Spirit` but
+keeps the negative `SpiritUnreserved` and the uncapped per-skill breakdown. Thus
+tuned Bonestorm `be0d16c86268` reserves 100 + 54 + 60 + 30 = 244 in both skill
+breakdowns, yet PoB2 displays 137 reserved; both report −107 unreserved. Blood
+Mage Comet `bc750d615159` similarly requests 355 with a pool of 200 and −155
+unreserved. `output-coverage.py` retains the direct field comparison and shows
+`oracle_before_pool_cap` on capped Spirit reservation pairs; compare that total
+and the per-skill rows before investigating efficiency or support costs. Free
+amulet grants and deduplicated item skills remain separate differences described
+below; undoing the display cap does not undo those differences.
+
 JSON/WASM 握手版本为 15（`pobr_wasm::SCHEMA_VERSION`，与 Web 的 `EXPECTED_SCHEMA_VERSION` 配对）。解码返回 `config_sets` / `skill_sets` 及各自的活动 id；配置和技能集按 XML 稳定 id 选择，不把稀疏 id 当作文档序号。`xml_merge::manage_named_set` 支持新建、复制、重命名、删除，拒绝不存在的 id 和删除最后一组；旧平铺 Config / Skills 管理时包装为 Default，导出平铺 Skills 同样包装。合并只替换活动片段，保留其他组、未知配置标量、原值拼写、扩展属性和子节点；技能／宝石扩展属性只在来源身份可识别时保留，删除重复组造成歧义时不猜归属。`SkillSet.mainSocketGroup` 记忆各集主技能组（从 1 起，0 为未指定），当前值同时写入 `Build.mainSocketGroup`；未记忆的非活动集首次选择第一组，PoB2 再保存可能丢弃扩展记忆。`loadout::derive_loadouts` 按同名或花括号标识同时关联配置与技能集，只有一组的类别豁免匹配。
 
 游戏 Build Planner v1 `.build` 由 `build_api::decode_build_file_json` 识别，旧国服 `items` 与 WeGame 导入仍可用；`build_api::encode_build_file_json({ code, name, all_loadouts, source })` 返回 `files`（文件名与 JSON 内容）和去重的 `warnings`，可按来源 loadout 分别导出，不切换会话。格式使用游戏的天赋／宝石 id 和武器组，装备栏内容只是提示，不生成装备、药剂或珠宝；角色等级默认为 1，宝石等级／品质默认为 1/0，只识别精确的 `Level N, Q% Quality` 等级提示。`planner_source` 保存作者、链接、说明、等级区间和文本，供存档与再导出使用；区间不参与计算。未知 id 会诊断，导出跳过 meta 宝石及无游戏映射的条目，珠宝与肢体无装备栏映射；历史树须先转换。兼容性由格式契约和合成 fixture 验证，尚无游戏内导入验证。

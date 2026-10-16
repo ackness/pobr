@@ -87,8 +87,18 @@ def summarize(stat, pob_key, builds, worst=3):
         theirs = oracle_value(build["oracle"], pob_key)
         if ours is not None and theirs is not None:
             error = relative_error(ours, theirs)
-            pairs.append({"build": build["build"], "engine": ours, "oracle": theirs,
-                          "relative_error": error})
+            pair = {"build": build["build"], "engine": ours, "oracle": theirs,
+                    "relative_error": error}
+            # PoBR reports the requested reservation even when it exceeds the
+            # pool. PoB2 caps the displayed reserved amount, but retains the
+            # negative remainder. Show that convention without changing the
+            # agreement counts or hiding differences in the skills themselves.
+            if stat == "SpiritReserved":
+                pool = oracle_value(build["oracle"], "Spirit")
+                remaining = oracle_value(build["oracle"], "SpiritUnreserved")
+                if pool is not None and remaining is not None and remaining < 0 and theirs == pool:
+                    pair["oracle_before_pool_cap"] = pool - remaining
+            pairs.append(pair)
     disagreements = [p for p in pairs if p["relative_error"] is None or p["relative_error"] > 0.05]
     disagreements.sort(key=lambda p: (p["relative_error"] is None, p["relative_error"] or 0), reverse=True)
     return {
@@ -183,6 +193,8 @@ def main():
         for pair in row["worst"]:
             error = pair["relative_error"]
             delta = f"{error:.1%}" if error is not None else "oracle zero"
+            if "oracle_before_pool_cap" in pair:
+                delta += f"; oracle before Spirit pool cap: {pair['oracle_before_pool_cap']:.6g}"
             print(f"  {pair['build']}: {pair['engine']:.6g} / {pair['oracle']:.6g} ({delta})")
     print("Missing sidebar stats: " + ", ".join(summary["missing_sidebar"]))
     if args.json:

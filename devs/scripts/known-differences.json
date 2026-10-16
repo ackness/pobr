@@ -2,6 +2,104 @@
   "_doc": "Reference rows `mise run triage` files as known: differences the repository already explains, so a triage lists only what is left to look at. `build` is a fragment of the build folder's name (or a synthetic skill-sweep case id), `stats` the rows it explains, `reason` where the explanation is. Synthetic case entries document sweep findings; skill-sweep does not yet consume this registry. Add an entry when a difference is documented as deliberate; remove it when the engine changes.",
   "differences": [
     {
+      "build": "druid-oracle-ember-fusillade",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (229); PoB2 caps this displayed field at the Spirit pool (179), while both report -50 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "mercenary-gemling-legionnaire-explosive-grenade",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (268); PoB2 caps this displayed field at the Spirit pool (250), while both report -18 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "huntress-ritualist-twister-882c4b7d4c91",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (285); PoB2 caps this displayed field at the Spirit pool (268), while both report -17 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "monk-acolyte-of-chayula-convalescence-8743aac6ec75",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (398); PoB2 caps this displayed field at the Spirit pool (312), while both report -86 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "monk-invoker-grim-pillars-19a4efbb971d",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (266); PoB2 caps this displayed field at the Spirit pool (236), while both report -30 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "warrior-smith-of-kitava-maul-f3d9b042531d",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (225); PoB2 caps this displayed field at the Spirit pool (189), while both report -36 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "warrior-warbringer-infernal-cry-e2a8fe48cefb",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (160); PoB2 caps this displayed field at the Spirit pool (100), while both report -60 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "witch-blood-mage-comet-bc750d615159",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (355); PoB2 caps this displayed field at the Spirit pool (200), while both report -155 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "witch-infernalist-convalescence-6e6130dfbff5",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (361); PoB2 caps this displayed field at the Spirit pool (296), while both report -65 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "witch-lich-blasphemy-c72f0f283724",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (318); PoB2 caps this displayed field at the Spirit pool (281), while both report -37 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "mercenary-tactician-oil-barrage-02b94461578f",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (273); PoB2 caps this displayed field at the Spirit pool (232), while both report -41 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "witch-abyssal-lich-bonestorm-be0d16c86268",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (244); PoB2 caps this displayed field at the Spirit pool (137), while both report -107 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "witch-blood-mage-impending-doom-c0dcbc68022c",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (220); PoB2 caps this displayed field at the Spirit pool (143), while both report -77 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
+      "build": "ranger-deadeye-ice-shot-b6ce7b3a4329",
+      "stats": [
+        "SpiritReserved"
+      ],
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (223); PoB2 caps this displayed field at the Spirit pool (146), while both report -77 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
       "build": "warrior-smith-of-kitava-shield-wall-fb03d7dce08e",
       "stats": ["ChaosMaxHit", "TotalEHP"],
       "reason": "The imported boots explicitly grant +11% Chaos Resistance from Soul Core of Tacati, plus +53% on the item: 64%, so 386 Chaos damage becomes 138.96. The current socketable catalog and pinned PoB2 substitute +13%, giving 66% resistance and 131.24 taken. Preserve the imported item's text. Its 2162 Runic Ward, including The Brass Dome's local +991 Ward, gives ChaosMaxHit 8001 and TotalEHP 35908.717951478; the older exporter references are 2468 and 11096.445514375 (docs/maintainer-guide.md, runes and Runic Ward; the build's code.txt item 16 and item 18; base/stats.json local_ward and overlay/runes.json Soul Core of Tacati)."

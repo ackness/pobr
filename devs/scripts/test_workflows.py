@@ -1863,6 +1863,34 @@ class OutputCoverageTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "holdout"):
                 self.coverage.build_files([Path(root)])
 
+    def test_spirit_pool_cap_is_explained_without_changing_agreement(self):
+        # Bonestorm's skills reserve 100 + 54 + 60 + 30 = 244, in a pool of
+        # 137. Both engines retain -107 unreserved; PoB2 displays 137 reserved.
+        builds = [{"build": "bonestorm", "values": {"SpiritReserved": 244},
+                   "oracle": {"calcsOutput": {
+                       "Spirit": 137, "SpiritReserved": 137, "SpiritUnreserved": -107}}}]
+        row = self.coverage.summarize("SpiritReserved", "SpiritReserved", builds)
+        self.assertEqual(row["within_5pct"], 0)
+        self.assertEqual(row["disagreements"][0]["oracle"], 137)
+        self.assertEqual(row["disagreements"][0]["oracle_before_pool_cap"], 244)
+
+        # A free amulet skill still creates a real per-skill difference: the
+        # Witchhunter reserves 300, versus 445 before the oracle's pool cap.
+        builds[0] = {"build": "witchhunter", "values": {"SpiritReserved": 300},
+                     "oracle": {"calcsOutput": {
+                         "Spirit": 155, "SpiritReserved": 155, "SpiritUnreserved": -290}}}
+        row = self.coverage.summarize("SpiritReserved", "SpiritReserved", builds)
+        self.assertEqual(row["within_5pct"], 0)
+        self.assertEqual(row["disagreements"][0]["oracle_before_pool_cap"], 445)
+
+        # Missing inputs and an uncapped reservation are not guessed to be caps.
+        for output in ({"Spirit": 137, "SpiritReserved": 137},
+                       {"Spirit": 137, "SpiritReserved": 130, "SpiritUnreserved": 7},
+                       {"Spirit": 137, "SpiritReserved": 244, "SpiritUnreserved": -107}):
+            builds[0]["oracle"]["calcsOutput"] = output
+            row = self.coverage.summarize("SpiritReserved", "SpiritReserved", builds)
+            self.assertNotIn("oracle_before_pool_cap", row["disagreements"][0])
+
 
 if __name__ == "__main__":
     unittest.main()
