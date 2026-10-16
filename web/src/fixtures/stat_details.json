@@ -3835,7 +3835,7 @@
     "base_total": 0.0,
     "derived": {
       "context": [],
-      "formula": "0 * RecoupableDamage",
+      "formula": "0 * RecoupablePhysical",
       "inputs": [
         {
           "id": "RecoupablePhysical",

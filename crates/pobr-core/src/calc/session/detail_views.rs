@@ -371,7 +371,7 @@ impl CalculationSession {
                     ("RecoupDuration".into(), t.duration),
                     ("RecoupRecovery".into(), t.recovery),
                 ];
-                (if t.rate_per_second <= 0.0 { "0 * RecoupableDamage" }
+                (if t.rate_per_second <= 0.0 { "0 * RecoupablePhysical" }
                     else { "round((RecoupablePhysical * RecoupPctPhysical + RecoupableFire * RecoupPctFire + RecoupableCold * RecoupPctCold + RecoupableLightning * RecoupPctLightning + RecoupableChaos * RecoupPctChaos) / 100 / RecoupDuration * max(0, RecoupRecovery), 9)" }.into(), inputs)
             }
             "DeflectionRating" | "DeflectChance" => {
