@@ -320,15 +320,36 @@
     },
     {
       "text": "+1 to maximum [ElementalInfusion|Cold Infusions]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MaximumColdInfusions",
+          "type": "Base",
+          "value": 1.0
+        }
+      ]
     },
     {
       "text": "+1 to maximum [ElementalInfusion|Fire Infusions]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MaximumFireInfusions",
+          "type": "Base",
+          "value": 1.0
+        }
+      ]
     },
     {
       "text": "+1 to maximum [ElementalInfusion|Lightning Infusions]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MaximumLightningInfusions",
+          "type": "Base",
+          "value": 1.0
+        }
+      ]
     },
     {
       "text": "+1 to maximum number of Summoned [Totem|Totems]",
@@ -343,7 +364,14 @@
     },
     {
       "text": "+1 to maximum number of [ElementalInfusion|Elemental Infusions]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MaximumElementalInfusions",
+          "type": "Base",
+          "value": 1.0
+        }
+      ]
     },
     {
       "text": "+1 to maximum number of placed [Banner|Banners]",
@@ -6725,7 +6753,15 @@
     },
     {
       "text": "10% chance to [Blind] Enemies on [Hit] with [Attack|Attacks]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "BlindChance",
+          "type": "Base",
+          "value": 10.0,
+          "flags": 1
+        }
+      ]
     },
     {
       "text": "10% chance to [Daze] on [Hit]",
@@ -6756,7 +6792,14 @@
     },
     {
       "text": "10% chance to create an additional [Remnant]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AdditionalRemnantChance",
+          "type": "Base",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "10% chance to gain [Volatility] on Kill",
@@ -11355,7 +11398,15 @@
     },
     {
       "text": "15% chance to [Blind] Enemies on [Hit] with [Attack|Attacks]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "BlindChance",
+          "type": "Base",
+          "value": 15.0,
+          "flags": 1
+        }
+      ]
     },
     {
       "text": "15% chance to [Hinder] Enemies on Hit with [Spell|Spells]",
@@ -18969,7 +19020,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Duration",
+          "name": "BlindDuration",
           "type": "Inc",
           "value": 25.0
         }
@@ -19224,7 +19275,14 @@
     },
     {
       "text": "25% increased [Daze] Duration",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "DazeDuration",
+          "type": "Inc",
+          "value": 25.0
+        }
+      ]
     },
     {
       "text": "25% increased [Electrocute|Electrocute Buildup]",
@@ -25703,7 +25761,15 @@
     },
     {
       "text": "5% chance to [Blind] Enemies on [Hit] with [Attack|Attacks]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "BlindChance",
+          "type": "Base",
+          "value": 5.0,
+          "flags": 1
+        }
+      ]
     },
     {
       "text": "5% chance to [Daze] on [Hit]",
@@ -25719,7 +25785,14 @@
     },
     {
       "text": "5% chance to create an additional [Remnant]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AdditionalRemnantChance",
+          "type": "Base",
+          "value": 5.0
+        }
+      ]
     },
     {
       "text": "5% chance to gain [Volatility] on Kill",
@@ -27128,7 +27201,14 @@
     },
     {
       "text": "50% increased [Surrounded] Area of Effect",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SurroundedArea",
+          "type": "Inc",
+          "value": 50.0
+        }
+      ]
     },
     {
       "text": "50% increased [Totem|Totem] Placement range",
@@ -29426,7 +29506,15 @@
     },
     {
       "text": "8% chance to [Blind] Enemies on [Hit] with [Attack|Attacks]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "BlindChance",
+          "type": "Base",
+          "value": 8.0,
+          "flags": 1
+        }
+      ]
     },
     {
       "text": "8% chance to [Poison|Poison] on [Hit]",
@@ -36420,7 +36508,17 @@
     },
     {
       "text": "Energy Shield Recharge starts on use",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyShieldRechargeBase",
+          "type": "Override",
+          "value": 0.0,
+          "tags": [
+            "Condition { var: \"UsingCharm\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Equipment and Skill Gems have 4% reduced [Attributes|Attribute] Requirements",
@@ -42742,27 +42840,69 @@
     },
     {
       "text": "[ArmourBreak|Break Armour] equal to 10% of [Hit|Hit Damage] dealt",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "HitDamageAsArmourBreak",
+          "type": "Base",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "[ArmourBreak|Break] 10% increased [Armour|Armour]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArmourBreakPerHit",
+          "type": "Inc",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "[ArmourBreak|Break] 15% increased [Armour|Armour]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArmourBreakPerHit",
+          "type": "Inc",
+          "value": 15.0
+        }
+      ]
     },
     {
       "text": "[ArmourBreak|Break] 20% increased [Armour|Armour]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArmourBreakPerHit",
+          "type": "Inc",
+          "value": 20.0
+        }
+      ]
     },
     {
       "text": "[ArmourBreak|Break] 25% increased [Armour|Armour]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArmourBreakPerHit",
+          "type": "Inc",
+          "value": 25.0
+        }
+      ]
     },
     {
       "text": "[ArmourBreak|Break] 40% increased [Armour|Armour]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArmourBreakPerHit",
+          "type": "Inc",
+          "value": 40.0
+        }
+      ]
     },
     {
       "text": "[ArmourBreak|Break] 50% of [Armour] on [HeavyStun|Heavy Stunning] an Enemy",
@@ -42774,7 +42914,14 @@
     },
     {
       "text": "[ArmourBreak|Break] 60% increased [Armour|Armour]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArmourBreakPerHit",
+          "type": "Inc",
+          "value": 60.0
+        }
+      ]
     },
     {
       "text": "[ArmourBreak|Break] [Armour] on [Critical|Critical Hit] with [Spell|Spells] equal to 10% of [Physical|Physical] Damage dealt",
@@ -42907,11 +43054,27 @@
     },
     {
       "text": "[Attack|Attacks] have 10% chance to [Maim|Maim] on [Hit]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MaimChance",
+          "type": "Base",
+          "value": 10.0,
+          "flags": 1
+        }
+      ]
     },
     {
       "text": "[Attack|Attacks] have 25% chance to [Maim|Maim] on [Hit]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MaimChance",
+          "type": "Base",
+          "value": 25.0,
+          "flags": 1
+        }
+      ]
     },
     {
       "text": "[Attack|Attacks] used by Totems have 2% increased [Attack] Speed",
@@ -45176,11 +45339,31 @@
     },
     {
       "text": "[Hit|Hits] [ArmourBreak|Break] 30% increased [Armour|Armour] on targets with [Ailments]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArmourBreakPerHit",
+          "type": "Inc",
+          "value": 30.0,
+          "tags": [
+            "ConditionAnyOf { vars: [\"EnemyFrozen\", \"EnemyChilled\", \"EnemyShocked\", \"EnemyIgnited\", \"EnemyElectrocuted\", \"EnemyPoisoned\", \"EnemyBleeding\"], negated: false }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Hit|Hits] [ArmourBreak|Break] 50% increased [Armour|Armour] on targets with [Ailments]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArmourBreakPerHit",
+          "type": "Inc",
+          "value": 50.0,
+          "tags": [
+            "ConditionAnyOf { vars: [\"EnemyFrozen\", \"EnemyChilled\", \"EnemyShocked\", \"EnemyIgnited\", \"EnemyElectrocuted\", \"EnemyPoisoned\", \"EnemyBleeding\"], negated: false }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Hit|Hits] against you have 12% reduced [CriticalDamageBonus|Critical Damage Bonus]",
