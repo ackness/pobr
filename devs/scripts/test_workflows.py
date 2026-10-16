@@ -1622,6 +1622,116 @@ class SkillSweepTests(unittest.TestCase):
         right["minion"] = {"TotalDPS": 100, "skill_id": "minion_attack"}
         self.assertEqual(self.sweep.classify("FireballPlayer", left, right)[0], "pobr_zero")
 
+    def test_selected_stat_evidence_uses_only_the_selected_set_and_level(self):
+        selected = self.sweep.selected_stat_set([
+            {"set_id": "first", "implicit_stats": ["implicit"],
+             "constant_stats": [{"stat": "constant", "value": 1}],
+             "levels": [{"gem_level": 20, "stats": [{"stat": "level", "value": 2}]},
+                        {"gem_level": 21, "stats": [{"stat": "future", "value": 3}]}]},
+            {"set_id": "sibling", "implicit_stats": [self.sweep.AVERAGE_DAMAGE_STAT]}])
+        self.assertEqual(selected, {"id": "first", "stats": {"implicit": 1, "constant": 1, "level": 2}})
+        # Conductive Runes' placement and explosion must not share flags/models.
+        case = self.case("ConductiveRunesPlayer")
+        self.assertEqual(case["selected_stat_set"]["id"], "ConductiveRunesPlayer")
+        self.assertTrue(case["selected_stat_set"]["stats"]["base_deal_no_damage"])
+
+    def test_average_display_is_known_only_when_other_metrics_agree(self):
+        case = {"selected_stat_set": {"stats": {self.sweep.AVERAGE_DAMAGE_STAT: 1}}}
+        left, right = self.result(100), self.result(100)
+        right["metrics"]["CombinedDPS"] = 50
+        self.assertEqual(self.sweep.classify("FireballPlayer", left, right)[0], "differs")
+        cls, differences, reason = self.sweep.classify("FireballPlayer", left, right, case)
+        self.assertEqual((cls, differences, reason),
+                         ("known", ["CombinedDPS"], "known: average-damage display"))
+        for metric in ("TotalDPS", "Speed", "CritChance", "FiringRate", "ReloadTime"):
+            with self.subTest(metric=metric):
+                right["metrics"][metric] = 120
+                self.assertEqual(self.sweep.classify("FireballPlayer", left, right, case)[0], "differs")
+                right["metrics"][metric] = 100
+        # A displayed average can be nonzero even when both DPS/rate values are zero.
+        left, right = self.result(0), self.result(0)
+        right["metrics"]["CombinedDPS"] = 50
+        self.assertEqual(self.sweep.classify("FireballPlayer", left, right, case)[0], "known")
+
+    def test_average_display_examples_really_have_the_game_stat(self):
+        for skill in ("GrimPillarsPlayer", "IncineratePlayer", "LightningWarpPlayer", "LivingBombPlayer",
+                      "VolcanoPlayer", "VileDisruptionPlayer", "ParryPlayer", "RakePlayer",
+                      "HandOfChayulaPlayer", "StampedePlayer", "SkyfallPlayer", "AmazonTriggerElementalSurgePlayer",
+                      "ChaosSpearTriggerChaosSurgePlayer", "GeminiSurgePlayer", "ShatteringPalmExplosionPlayer",
+                      "StaggeringPalmProjectilePlayer", "LeapSlamPlayer", "ThunderousLeapPlayer", "SunderPlayer",
+                      "WhirlingAssaultPlayer", "EscapeShotPlayer", "BearRampagePlayer", "ShieldBlockPlayer",
+                      "TheStarsAnswerCometPlayer"):
+            with self.subTest(skill=skill):
+                self.assertTrue(self.case(skill)["selected_stat_set"]["stats"][self.sweep.AVERAGE_DAMAGE_STAT])
+
+    def test_no_damage_stat_requires_zero_engine_damage_and_matching_identity(self):
+        for skill in ("ConductiveRunesPlayer", "RollingSlamPlayer", "SpearfieldPlayer", "TempestBellPlayer"):
+            with self.subTest(skill=skill):
+                case = self.case(skill)
+                left, right = self.result(0, skill), self.result(100, skill)
+                cls, _, reason = self.sweep.classify(skill, left, right, case)
+                self.assertEqual((cls, reason), ("known", "known: no-damage stat set"))
+                left["metrics"]["TotalDPS"] = 10
+                self.assertEqual(self.sweep.classify(skill, left, right, case)[0], "differs")
+                right["main_skill"] = "other"
+                self.assertEqual(self.sweep.classify(skill, left, right, case)[0], "pob2_other_skill")
+
+    def test_documented_models_are_keyed_by_effect_and_scoped_stat_set(self):
+        for skill, (reason, selected_set) in self.sweep.KNOWN_MODELS.items():
+            with self.subTest(skill=skill):
+                case = {"case_id": "any-parent/any-case@9", "selected_stat_set": {"id": selected_set, "stats": {}}}
+                left, right = self.result(100, skill), self.result(200, skill)
+                self.assertEqual(self.sweep.classify(skill, left, right, case),
+                                 ("known", [k for k in self.sweep.METRICS if k != "AverageHit"], "known: " + reason))
+                self.assertEqual(self.sweep.classify(skill, left, left, case)[0], "agree")
+                if selected_set:
+                    case["selected_stat_set"]["id"] = "different-form"
+                    self.assertEqual(self.sweep.classify(skill, left, right, case)[0], "differs")
+
+    def test_rounding_recomputes_bounds_and_must_explain_the_damage_ratio(self):
+        # Guide game numbers: Wooden Club 6-10 * Earthquake 1.25 = 7.5-12.5;
+        # integer bounds 8-13, 75% physical reduction, 5% crit and 2x crit damage.
+        left, right = self.result(0), self.result(0)
+        hit = 0.775345425
+        left["metrics"].update(TotalDPS=10 * .25 * hit * (1 + .05 * hit),
+                               CombinedDPS=10 * .25 * hit * (1 + .05 * hit),
+                               Speed=1, CritChance=5 * hit)
+        right["metrics"].update(TotalDPS=10.5 * .25 * .78 * 1.039,
+                                CombinedDPS=10.5 * .25 * .78 * 1.039, Speed=1, CritChance=3.9)
+        left["rounding_inputs"] = {"damage": [{"damage_type": "Physical", "min": 7.5, "max": 12.5,
+                                               "avg": 10, "crit_avg": 20}],
+                                   "mitigation": [{"damage_type": "Physical", "reduction": 75, "multiplier": .25}],
+                                   "damage_effect": 1, "hit_chance": hit, "crit_multiplier": 2}
+        self.assertEqual(self.sweep.classify("FireballPlayer", left, right)[0], "known")
+        self.assertIn("known: rounding", self.sweep.classify("FireballPlayer", left, right)[2])
+        case = {"selected_stat_set": {"stats": {self.sweep.AVERAGE_DAMAGE_STAT: 1}}}
+        right["metrics"]["CombinedDPS"] = 30
+        self.assertEqual(self.sweep.classify("FireballPlayer", left, right)[0], "differs")
+        self.assertIn("average-damage display", self.sweep.classify("FireballPlayer", left, right, case)[2])
+        right["metrics"]["TotalDPS"] *= 1.02
+        # Within 5% after rounding is insufficient evidence; the ratio must match.
+        self.assertEqual(self.sweep.classify("FireballPlayer", left, right, case)[0], "differs")
+        right["metrics"]["TotalDPS"] /= 1.02
+        left["rounding_inputs"]["mitigation"][0]["reduction"] = 70
+        self.assertEqual(self.sweep.classify("FireballPlayer", left, right, case)[0], "differs")
+
+    def test_known_rows_remain_visible_but_do_not_rank_as_unexplained(self):
+        case = self.case("GrimPillarsPlayer")
+        left, right = self.result(100, case["skill_id"]), self.result(100, case["skill_id"])
+        right["metrics"]["CombinedDPS"] = 50
+        cls, differences, reason = self.sweep.classify(case["skill_id"], left, right, case)
+        row = {**case, "classification": cls, "differing_metrics": differences,
+               "reasons": [reason], "pobr": left, "pob2": right}
+        summary = self.sweep.summarize([row])
+        self.assertEqual(summary["counts"]["known"], 1)
+        self.assertTrue(all(f["different"] == 0 and not f["examples"] for f in summary["families"]))
+        text = self.sweep.text_report({"summary": summary, "data_version": "test", "vendor_commit": "test",
+                                      "inventory": self.inventory, "skipped": [], "skills": [row],
+                                      "elapsed_seconds": 0, "limitations": []})
+        for expected in ("known=1", "known: average-damage display", "pobr [GrimPillarsPlayer]",
+                         "pob2 [GrimPillarsPlayer]"):
+            self.assertIn(expected, text)
+
     def test_cache_reuses_oracle_and_engine_failure_keeps_oracle_result(self):
         case = self.case("FireballPlayer")
         oracle = {"mainOutput": {"TotalDPS": 100}, "skillInfo": {"grantedEffectId": "FireballPlayer"}}

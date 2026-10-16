@@ -21,8 +21,10 @@ inventory. Explicit --json/--text paths override these defaults. Standard librar
 Classes compare DPS, rate, crit and crossbow firing/reload timing within 5% of the oracle; zero classes
 use damage only. Average hit is reported but excluded: PoBR exports it before
 enemy mitigation, PoB2 after. As in reference_check.rs, HitSpeed replaces Speed
-for rate comparisons when present. Main-minion DPS is also compared. both_zero is
-not evidence that buffs, triggers or minions work: this fixture supplies no
+for rate comparisons when present. Main-minion DPS is also compared. Known
+differences retain both sides and their reason, using selected game stats, the
+maintainer guide's model list, or recomputed integer damage bounds; they do not
+count toward unexplained family rankings. both_zero is not evidence that buffs, triggers or minions work: this fixture supplies no
 trigger payload, corpses, charges, targets, supports or other skill inputs.
 The report separates missing vendor effects from engine differences and gives
 both all-candidate and vendor-supported main-skill coverage, never silently
@@ -49,9 +51,44 @@ import zlib
 REPO = Path(__file__).resolve().parents[2]
 VENDOR = REPO / "vendor/PathOfBuilding-PoE2"
 CACHE = REPO / ".cache/skill-sweep"
-CLASSES = ("agree", "differs", "pobr_zero", "pob2_zero", "both_zero", "error", "pob2_other_skill")
+CLASSES = ("agree", "known", "differs", "pobr_zero", "pob2_zero", "both_zero", "error", "pob2_other_skill")
 METRICS = ("TotalDPS", "CombinedDPS", "Speed", "AverageHit", "CritChance", "FiringRate", "ReloadTime")
 DIFFERENT = {"differs", "pobr_zero", "pob2_zero"}
+AVERAGE_DAMAGE_STAT = "base_skill_show_average_damage_instead_of_dps"
+# Game effect IDs, not sweep case IDs. Sources are the named bullets under
+# docs/maintainer-guide.md's intentional-differences list, except where noted. An optional
+# stat-set ID confines a model to the form documented there.
+KNOWN_MODELS = {
+    # Channelled-attacks bullet: exactly calc::channel::skill_modifiers' list.
+    **{skill: ("channel cycle", None) for skill in (
+        "DetonatingArrowPlayer", "SuperchargedSlamPlayer", "PerfectStrikePlayer",
+        "GatheringStormPlayer", "SnipePlayer", "ShieldChargePlayer")},
+    # "Bonestorm": one spike per cast, rather than the minimum channel time.
+    "BonestormPlayer": ("Bonestorm projectile rate", None),
+    # "Rain of Arrows": discrete landings, including Hailstorm's reload cycle.
+    "RainOfArrowsPlayer": ("rain hit interval", None),
+    "HailstormRoundsPlayer": ("rain hit interval", None),
+    # Periodic orbs/storms bullet: primary orb/storm forms only.
+    **{skill: ("periodic orb/storm hits", skill) for skill in (
+        "BallLightningPlayer", "SolarOrbPlayer", "FirestormPlayer",
+        "IcestormPlayer", "ThunderstormPlayer")},
+    # Engine architecture, crossbow/tornado/meteor timing paragraph: fixed intervals.
+    "WalkingCalamityMeteorPlayer": ("meteor interval", None),
+    "TheStarsAnswerCometPlayer": ("meteor interval", None),
+    "ArchonOfChayulaTornadoPlayer": ("Chayula's Will tornado interval", None),
+    # "Black Powder Blitz ... Requiem": cooldown / no-ammo cycles.
+    "BlackPowderBlitzPlayer": ("Black Powder Blitz cooldown", None),
+    "CrossbowRequiemPlayer": ("Requiem has no reload", None),
+    # Average-damage display bullet: Vivid Wisp assumption.
+    "VividStampedePlayer": ("Vivid Stampede trigger model", None),
+    # "Bursting Fen Toad ...": attacks check accuracy; only the explosion
+    # form of Conductive Runes and ordinary Primal Strikes have this difference.
+    "ExplodingPoisonToadPlayer": ("non-weapon attack hit checks", None),
+    "ConductiveRunesPlayer": ("non-weapon attack hit checks", "ConductiveRunesExplosionPlayer"),
+    "BloodhoundsMarkExplosionPlayer": ("non-weapon attack hit checks", None),
+    "CurseOfRepulsionShockwavePlayer": ("non-weapon attack hit checks", None),
+    "PrimalStrikesPlayer": ("Primal Strikes exposure", "PrimalStrikesPlayer"),
+}
 FAMILY_TYPES = {
     "warcries": {"Warcry"}, "totems": {"SummonsTotem", "SummonsAttackTotem"},
     "traps": {"Trap"}, "mines": {"Mine"}, "channelling": {"Channel"},
@@ -124,6 +161,19 @@ def case_label(case):
     return case.get("case_id", case["skill_id"])
 
 
+def selected_stat_set(stat_sets, level=20):
+    """The fixture selects the first set at level 20, never a sibling's flags."""
+    if not stat_sets:
+        return {"id": None, "stats": {}}
+    selected = stat_sets[0]
+    stats = dict.fromkeys(selected.get("implicit_stats", []), 1)
+    stats.update((s["stat"], s["value"]) for s in selected.get("constant_stats", []))
+    levels = [row for row in selected.get("levels", []) if row["gem_level"] <= level]
+    if levels:
+        stats.update((s["stat"], s["value"]) for s in max(levels, key=lambda r: r["gem_level"]).get("stats", []))
+    return {"id": selected["set_id"], "stats": stats}
+
+
 def skill_cases(directory, vendor_gems, vendor_effects):
     base = directory / "base"
     gems = read_json(base / "skill_gems.json")
@@ -164,6 +214,7 @@ def skill_cases(directory, vendor_gems, vendor_effects):
                     "gem_ids": sorted(row["id"] for row in variants), "oracle_gem": oracle_gem,
                     "vendor_has_effect": effect_id in vendor_effects, "vendor_has_gem": bool(oracle_gem),
                     "additional_effects": [i for _, i in ordered if i != primary_id],
+                    "selected_stat_set": selected_stat_set(sets.get(effect_id, [])),
                     "additional_stat_sets": effect.get("additional_stat_set_ids", [])}
             reason = skip_reason(effect, gem, sets.get(effect_id, [])) if effect else None
             if reason:
@@ -311,7 +362,13 @@ def engine_result(report, expected):
         output["action_rate"], output["total_hit_avg"], output["crit_chance"] * 100,
         output["firing_rate"], output["reload_time"]))))
     minion = next((m for m in output.get("minions", []) if m["summoned_by"] == expected), None)
+    details = {row["stat"]: row.get("breakdown") or {} for row in report.get("breakdowns", [])}
+    damage = details.get("TotalHitAvg", {}).get("damage") or {}
     return {"main_skill": main.get("skill_id"), "metrics": metrics,
+            "rounding_inputs": {"damage": damage.get("rows", []),
+                "damage_effect": damage.get("damage_effect"),
+                "mitigation": details.get("TotalDPS", {}).get("mitigation", []),
+                "hit_chance": output.get("hit_chance"), "crit_multiplier": output.get("crit_multiplier")},
             "minion": {"skill_id": minion["skill_id"], "TotalDPS": number(minion["dps"])} if minion else None}
 
 
@@ -329,7 +386,40 @@ def oracle_result(report):
                        "TotalDPS": number(minion.get("TotalDPS"))} if minion else None}
 
 
-def classify(expected, pobr, pob2):
+def rounded_damage_ratio(pobr):
+    """Recompute the guide's integer-bound / percent-hit-chance convention.
+
+    Use PoBR's game-derived damage bounds after conversion, weighting each type
+    by its mitigation. Be conservative: ordinary rolls/crit, one hand, no
+    double/triple damage, and physical mitigation at the fixed 75% cap only.
+    A changing armour reduction or a separate critical model needs its own
+    calculation, so cannot be explained by this ratio.
+    """
+    inputs = pobr.get("rounding_inputs") or {}
+    rows = inputs.get("damage", [])
+    mitigation = {r["damage_type"]: r for r in inputs.get("mitigation", [])}
+    hit, crit_mult = inputs.get("hit_chance"), inputs.get("crit_multiplier")
+    if not rows or inputs.get("damage_effect") != 1 or not hit or not crit_mult or pobr["minion"]:
+        return None
+    original, rounded = 0.0, 0.0
+    for row in rows:
+        m = mitigation.get(row["damage_type"])
+        if (not m or (row["damage_type"] == "Physical" and m["reduction"] != 75)
+                or not math.isclose(row["avg"], (row["min"] + row["max"]) / 2)
+                or not math.isclose(row["crit_avg"], row["avg"] * crit_mult)):
+            return None
+        original += row["avg"] * m["multiplier"]
+        rounded += (math.floor(row["min"] + 0.5) + math.floor(row["max"] + 0.5)) / 2 * m["multiplier"]
+    if original <= 0 or math.isclose(original, rounded):
+        return None
+    rounded_hit = math.floor(hit * 100 + 0.5) / 100
+    crit = pobr["metrics"]["CritChance"] / 100
+    crit_effect = 1 + crit * (crit_mult - 1)
+    rounded_crit_effect = 1 + crit * rounded_hit / hit * (crit_mult - 1)
+    return rounded / original * rounded_hit / hit * rounded_crit_effect / crit_effect
+
+
+def classify(expected, pobr, pob2, case=None):
     if pob2["main_skill"] != expected:
         return "pob2_other_skill", [], f'PoB2 selected {pob2["main_skill"]!r}, expected {expected}'
     if pobr["main_skill"] != expected:
@@ -347,6 +437,31 @@ def classify(expected, pobr, pob2):
     zero_right = all(right.get(k, 0) == 0 for k in damage_keys)
     if zero_left and zero_right:
         return "both_zero", differences, "no damage in this isolated fixture; buff/trigger behavior is not validated"
+    selected = (case or {}).get("selected_stat_set", {})
+    stats = selected.get("stats", {})
+    if zero_left and stats.get("base_deal_no_damage"):
+        return "known", differences, "known: no-damage stat set"
+    average_display = bool(stats.get(AVERAGE_DAMAGE_STAT))
+    unexplained = [k for k in differences if not (average_display and k == "CombinedDPS")]
+    if differences and not unexplained:
+        return "known", differences, "known: average-damage display"
+    if differences and expected in KNOWN_MODELS:
+        reason, stat_set = KNOWN_MODELS[expected]
+        if stat_set is None or stat_set == selected.get("id"):
+            return "known", differences, "known: " + reason
+    if unexplained and set(unexplained) <= {"TotalDPS", "CombinedDPS"}:
+        ratio = rounded_damage_ratio(pobr)
+        if ratio is not None:
+            adjusted = {"TotalDPS": left["TotalDPS"] * ratio,
+                        "CombinedDPS": left["CombinedDPS"] + left["TotalDPS"] * (ratio - 1)}
+            # Much tighter than the sweep's 5% agreement band: rounding must
+            # explain the ratio, not merely move an unrelated error inside it.
+            checked = ["TotalDPS"] if average_display else ["TotalDPS", "CombinedDPS"]
+            if all(math.isclose(adjusted[k], right[k], rel_tol=0.001, abs_tol=1e-9) for k in checked):
+                reason = f"known: rounding (recomputed DPS factor {ratio:.6g})"
+                if average_display:
+                    reason += "; average-damage display"
+                return "known", differences, reason
     if zero_left:
         return "pobr_zero", differences, "PoBR has no player or main-minion damage"
     if zero_right:
@@ -370,7 +485,7 @@ def measure(case, bases, binary, commit, wrapper, refresh):
         # Run each side independently: a failure must not hide the other's result.
         try:
             report = json.loads(run([str(binary), "calculate-build", "--file", str(code_path),
-                "--reference-basis", "--json", "--breakdown", "TotalDPS"]))
+                "--reference-basis", "--json", "--breakdown", "TotalDPS,TotalHitAvg"]))
             row["pobr"] = engine_result(report, case["skill_id"])
         except (ValueError, OSError, KeyError, TypeError, subprocess.TimeoutExpired) as error:
             row["reasons"].append(f"PoBR: {error}")
@@ -392,7 +507,7 @@ def measure(case, bases, binary, commit, wrapper, refresh):
         except (ValueError, OSError, KeyError, TypeError, subprocess.TimeoutExpired) as error:
             row["reasons"].append(f"PoB2: {error}")
         if row["pobr"] and row["pob2"]:
-            cls, differences, reason = classify(case["skill_id"], row["pobr"], row["pob2"])
+            cls, differences, reason = classify(case["skill_id"], row["pobr"], row["pob2"], case)
             row.update(classification=cls, differing_metrics=differences)
             if reason:
                 row["reasons"].append(reason)
@@ -443,7 +558,7 @@ def text_report(report):
              f'PoB2 intended main skill: {summary["oracle_main_skill_matches"]}/{summary["measured"]} '
              f'({summary["oracle_main_skill_coverage"]:.1%}); vendor-supported: '
              f'{summary["vendor_supported_matches"]}/{summary["vendor_supported"]} ({summary["vendor_supported_coverage"]:.1%})',
-             "Families overlap; ranked by differing nonzero/one-sided-zero results:"]
+             "Families overlap; ranked by unexplained nonzero/one-sided-zero differences (known excluded):"]
     for family in summary["families"]:
         lines.append(f'  {family["family"]}: {family["different"]}/{family["total"]} differ; '
                      + ", ".join(family["examples"]))
