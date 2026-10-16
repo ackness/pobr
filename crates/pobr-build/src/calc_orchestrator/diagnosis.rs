@@ -190,6 +190,28 @@ impl ReadGate {
 /// Gated readers, alongside the consumers outside the database. Keep the
 /// actual consumer here so a registry entry can be checked against its code.
 pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
+    // `calc::player_debuffs::apply`; Chill additionally needs ChillVal.
+    (
+        "SelfShockEffect",
+        ReadGate {
+            state: "Shocked in combat",
+            config_option: Some("conditionShocked"),
+        },
+    ),
+    (
+        "SelfChillEffect",
+        ReadGate {
+            state: "Chilled in combat with an explicit Chill magnitude",
+            config_option: Some("conditionChilled"),
+        },
+    ),
+    (
+        "SelfChillEffectIsReversed",
+        ReadGate {
+            state: "Chilled in combat with an explicit Chill magnitude",
+            config_option: Some("conditionChilled"),
+        },
+    ),
     // `calc::skill_use_time::action_speed_factor`.
     (
         "UnaffectedBySlows",

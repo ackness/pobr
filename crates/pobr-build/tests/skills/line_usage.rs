@@ -273,6 +273,9 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
     let data = data();
     for &(name, gate) in READ_UNDER_A_STATE {
         let text = match name {
+            "SelfShockEffect" => "40% reduced effect of Shock on you",
+            "SelfChillEffect" => "40% reduced Effect of Chill on you",
+            "SelfChillEffectIsReversed" => "The Effect of Chill on you is reversed",
             "UnaffectedBySlows" => "Your speed is unaffected by Slows",
             "SlowEffectOnSelf" => "30% reduced Slowing Potency of Debuffs on You",
             "ArchonMovementSpeed" => "Archon Buffs also grant 10% increased Movement Speed",
@@ -286,7 +289,16 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
             let config = gate
                 .config_option
                 .map(|option| {
-                    format!(r#"<Config><Input name="{option}" boolean="{active}"/></Config>"#)
+                    // An explicit 50% Chill with 40% reduced effect slows
+                    // actions by 30%; the state alone supplies no magnitude.
+                    let magnitude = if option == "conditionChilled" {
+                        r#"<Input name="conditionChilledEffect" number="50"/>"#
+                    } else {
+                        ""
+                    };
+                    format!(
+                        r#"<Config><Input name="{option}" boolean="{active}"/>{magnitude}</Config>"#
+                    )
                 })
                 .unwrap_or_default();
             let build = parse_build(&format!(r#"<PathOfBuilding2>
