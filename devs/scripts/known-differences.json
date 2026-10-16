@@ -1,5 +1,5 @@
 {
-  "_doc": "Reference rows `mise run triage` files as known: differences the repository already explains, so a triage lists only what is left to look at. `build` is a fragment of the build folder's name, `stats` the rows it explains, `reason` where the explanation is. Add an entry when a difference is documented as deliberate; remove it when the engine changes.",
+  "_doc": "Reference rows `mise run triage` files as known: differences the repository already explains, so a triage lists only what is left to look at. `build` is a fragment of the build folder's name (or a synthetic skill-sweep case id), `stats` the rows it explains, `reason` where the explanation is. Synthetic case entries document sweep findings; skill-sweep does not yet consume this registry. Add an entry when a difference is documented as deliberate; remove it when the engine changes.",
   "differences": [
     {
       "build": "warrior-smith-of-kitava-shield-wall-fb03d7dce08e",
@@ -342,6 +342,44 @@
       "build": "witch-blood-mage-impending-doom-add19135df93",
       "stats": ["ReqDex"],
       "reason": "The Vertex's Equipment has no Attribute Requirements (game stat global_equipment_no_attribute_requirements) removes equipment requirements, including weapons; PoB2 leaves this line out (docs/maintainer-guide.md, The Vertex)"
+    },
+    {
+      "build": "BloodhoundsMarkPlayer/BloodhoundsMarkExplosionPlayer@2",
+      "stats": [
+        "TotalDPS",
+        "CombinedDPS",
+        "CritChance"
+      ],
+      "reason": "ActiveSkills.Description defines Physical Attack damage independent of weapons; game types Attack/NonWeaponAttack and no global_always_hit require accuracy. Level 20 base damage is 196–294 × 4.08, crit 5%; pinned PoB2 skips the accuracy and critical confirmation checks (docs/maintainer-guide.md, event-triggered hits). The existing 1/s presentation is not a model of blood loss, heavy stun or death events."
+    },
+    {
+      "build": "CurseOfRepulsionPlayer/CurseOfRepulsionShockwavePlayer@2",
+      "stats": [
+        "CombinedDPS",
+        "CritChance"
+      ],
+      "reason": "The hit is already calculated (level 20: 128–192 physical × 2.04); ActiveSkills.Description requires hitting a cursed enemy. Event rate is unmodelled: PoBR reports average_damage and zero DPS; PoB2 puts average hit into CombinedDPS and skips the attack accuracy check (docs/maintainer-guide.md, event-triggered hits)."
+    },
+    {
+      "build": "FortifyingCryPlayer/FortifyingCryShockwavePlayer@2",
+      "stats": [
+        "CombinedDPS"
+      ],
+      "reason": "The hit is already calculated (level 20: 85–128 plus 5–7 per complete 15 shield Armour, all × 2.04); ActiveSkills.Description triggers it when subsequent shield attacks deal damage. Event rate is unmodelled: PoBR reports average_damage and zero DPS; PoB2 puts average damage into CombinedDPS (docs/maintainer-guide.md, event-triggered hits)."
+    },
+    {
+      "build": "TemperWeaponPlayer/TemperWeaponCombustionPlayer@2",
+      "stats": [
+        "CombinedDPS"
+      ],
+      "reason": "ActiveSkills.Description requires an empowered weapon attack to hit; the 100% imbue_weapon_combust_trigger_chance_% does not supply empowered attack frequency. PoBR keeps average_damage and zero DPS with an unmodelled event rate; PoB2 puts average damage into CombinedDPS (docs/maintainer-guide.md, event-triggered hits)."
+    },
+    {
+      "build": "TrailOfCaltropsPlayer/TriggeredTrailOfCaltropsPlayer@2",
+      "stats": [
+        "CombinedDPS"
+      ],
+      "reason": "ActiveSkills.Description lays caltrops during dodges and deals damage when an enemy triggers them. The game provides 3 placements at 5%/20% dodge timing, not dodge/enemy-trigger frequency. PoBR keeps average_damage and zero DPS with an unmodelled event rate; PoB2 puts average damage into CombinedDPS (docs/maintainer-guide.md, event-triggered hits)."
     }
   ]
 }

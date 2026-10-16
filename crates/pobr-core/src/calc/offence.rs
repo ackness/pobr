@@ -452,6 +452,9 @@ impl ActionRateTerms {
 /// second: a skill triggered by what another skill creates (`SkillUseRate`).
 /// The character's cast, attack and action speed do not change it.
 fn fixed_use_rate(db: &ModDb, cfg: &CalcConfig) -> Option<f64> {
+    if db.flag(cfg, super::trigger::EVENT_RATE_UNMODELLED) {
+        return Some(0.0);
+    }
     let rate = db.sum(ModType::Base, cfg, &[ModName::from("SkillUseRate")]);
     (rate > 0.0).then_some(rate)
 }

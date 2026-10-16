@@ -33,6 +33,9 @@
 
 use super::round;
 
+/// A hit exists, but the external events required to trigger it have no rate model.
+pub const EVENT_RATE_UNMODELLED: &str = "EventTriggerRateUnmodelled";
+
 // §1  Server-tick utilities & cooldown-gated basics
 
 /// Server tick rate (actions/s), `1 / tick_seconds ≈ 30.3`.
