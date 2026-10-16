@@ -417,9 +417,19 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
                     read_gate: (status == ModifierStatus::Inactive)
                         .then(|| {
                             missing_slot_base_gate(modifier, &slot_bases).or_else(|| {
-                                (!diagnosis.reads.sites.contains_key(modifier.name.as_str()))
-                                    .then(|| read_under_a_state(modifier.name.as_str()))
-                                    .flatten()
+                                diagnosis
+                                    .reads
+                                    .sites
+                                    .get(modifier.name.as_str())
+                                    .and_then(|sites| outranked_gate(modifier, sites))
+                                    .or_else(|| {
+                                        (!diagnosis
+                                            .reads
+                                            .sites
+                                            .contains_key(modifier.name.as_str()))
+                                        .then(|| read_under_a_state(modifier.name.as_str()))
+                                        .flatten()
+                                    })
                             })
                         })
                         .flatten(),
@@ -770,6 +780,38 @@ fn missing_slot_base_gate(
     })
 }
 
+/// A modifier the calculation read and correctly discarded: a `MAX` query's
+/// loser or a beaten `OVERRIDE`. The stronger value won, so the ledger files
+/// it as state-gated rather than dropped. Mirrors two of [`uncounted_reason`]'s
+/// outcomes; any other reason keeps the existing classification. The states
+/// stay name-free (`&'static str`): the reason names the modifier already, and
+/// the ledger runs on every Web request, so no per-loser allocation.
+fn outranked_gate(modifier: &Modifier, sites: &[String]) -> Option<ReadGate> {
+    match modifier.value {
+        ModValue::Number(0.0) | ModValue::Bool(false) => return None,
+        _ => {}
+    }
+    let kind = modifier.mod_type.as_trace_label();
+    let mut kinds: Vec<&str> = sites.iter().filter_map(|site| query_kind(site)).collect();
+    kinds.sort_unstable();
+    kinds.dedup();
+    if !kinds.contains(&kind) {
+        return None;
+    }
+    // Static states: the reason names the modifier already.
+    let state: &'static str = if modifier.mod_type == ModType::Override {
+        "another OVERRIDE of the same name wins"
+    } else if sites.iter().any(|site| site.starts_with("MAX ")) {
+        "a stronger modifier of the same name applies"
+    } else {
+        return None;
+    };
+    Some(ReadGate {
+        state,
+        config_option: None,
+    })
+}
+
 /// What became of `modifier`, and why when it is not applied.
 fn judge(
     modifier: &Modifier,
@@ -811,6 +853,8 @@ fn judge(
     if sites.iter().all(|site| query_kind(site).is_none()) {
         return (ModifierStatus::Applied, None);
     }
+    // An outranked loser keeps its reason; only the attached `read_gate`
+    // (see above) files it as state-gated rather than dropped.
     (
         ModifierStatus::Inactive,
         Some(uncounted_reason(modifier, sites)),
