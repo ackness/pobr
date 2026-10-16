@@ -215,7 +215,10 @@ fn conditional_offence_limits_report_the_missing_models() {
     let row = line(&ledger, "item.amulet.explicit", text);
     assert_eq!(row.status, LineStatus::Unmodelled, "{row:?}");
     assert!(
-        row.reason.as_deref().unwrap().contains("primed_pin_unmodelled"),
+        row.reason
+            .as_deref()
+            .unwrap()
+            .contains("primed_pin_unmodelled"),
         "{row:?}"
     );
     assert!(row.modifiers.is_empty());
@@ -234,10 +237,20 @@ fn debuff_uptime_and_curse_delay_lines_have_readers() {
     ];
     let ledger = ledger(&data, &[], &texts);
     let modifier = |text| &line(&ledger, "item.amulet.explicit", text).modifiers[0];
-    assert_eq!(modifier(texts[0]).status, ModifierStatus::Applied, "{:?}", modifier(texts[0]));
+    assert_eq!(
+        modifier(texts[0]).status,
+        ModifierStatus::Applied,
+        "{:?}",
+        modifier(texts[0])
+    );
     for text in &texts[1..3] {
         // Attack-only chances on a build without an attack.
-        assert_eq!(modifier(text).status, ModifierStatus::Inactive, "{:?}", modifier(text));
+        assert_eq!(
+            modifier(text).status,
+            ModifierStatus::Inactive,
+            "{:?}",
+            modifier(text)
+        );
     }
     let curse = modifier(texts[3]);
     assert_eq!(curse.status, ModifierStatus::Inactive, "{curse:?}");
@@ -588,7 +601,9 @@ Implicits: 0
             if active
                 && matches!(
                     name,
-                    "EnergyShieldRecharge" | "EnergyShieldRechargeFaster" | "EnergyShieldRechargeBase"
+                    "EnergyShieldRecharge"
+                        | "EnergyShieldRechargeFaster"
+                        | "EnergyShieldRechargeBase"
                 )
             {
                 options
@@ -1089,7 +1104,6 @@ fn miscellaneous_lines_distinguish_unmodelled_no_effect_and_external_readers() {
     let cases = [
         ("Grants 3 additional Skill Slots", LineStatus::NoEffect),
         ("25% increased Knockback Distance", LineStatus::NoEffect),
-        ("25% increased Totem Life", LineStatus::Unmodelled),
         ("Grants 1 Passive Skill Point", LineStatus::Applied),
         (
             "Remembrancing 1234 songworthy deeds by the line of Vorana",

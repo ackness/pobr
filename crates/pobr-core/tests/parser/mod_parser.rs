@@ -1869,7 +1869,12 @@ fn armour_break_increases_scale_the_per_hit_break() {
     assert_eq!(ailments.mods.len(), 1, "{ailments:?}");
     assert_eq!(ailments.mods[0].value, ModValue::Number(30.0));
     match &ailments.mods[0].tags[..] {
-        [ModTag::ConditionAnyOf { vars, negated: false }] => {
+        [
+            ModTag::ConditionAnyOf {
+                vars,
+                negated: false,
+            },
+        ] => {
             assert!(vars.iter().any(|var| var == "EnemyIgnited"), "{vars:?}");
             assert!(vars.iter().any(|var| var == "EnemyBleeding"), "{vars:?}");
         }
@@ -1897,7 +1902,12 @@ fn effect_view_lines_parse_to_their_modifiers() {
             ModType::Base,
             17.0,
         ),
-        ("25% increased Daze Duration", "DazeDuration", ModType::Inc, 25.0),
+        (
+            "25% increased Daze Duration",
+            "DazeDuration",
+            ModType::Inc,
+            25.0,
+        ),
         (
             "Attacks have 25% chance to Maim on Hit",
             "MaimChance",
@@ -1910,9 +1920,24 @@ fn effect_view_lines_parse_to_their_modifiers() {
             ModType::Base,
             10.0,
         ),
-        ("50% increased Blind duration", "BlindDuration", ModType::Inc, 50.0),
-        ("Break 30% increased Armour", "ArmourBreakPerHit", ModType::Inc, 30.0),
-        ("Hits Break 50 Armour", "ArmourBreakPerHit", ModType::Base, 50.0),
+        (
+            "50% increased Blind duration",
+            "BlindDuration",
+            ModType::Inc,
+            50.0,
+        ),
+        (
+            "Break 30% increased Armour",
+            "ArmourBreakPerHit",
+            ModType::Inc,
+            30.0,
+        ),
+        (
+            "Hits Break 50 Armour",
+            "ArmourBreakPerHit",
+            ModType::Base,
+            50.0,
+        ),
         (
             "Break Armour equal to 10% of Physical Damage dealt",
             "PhysicalDamageAsArmourBreak",

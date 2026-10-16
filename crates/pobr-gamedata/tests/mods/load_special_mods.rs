@@ -378,8 +378,16 @@ fn modelled_effect_view_lines_keep_their_game_sources() {
             "armour_break_amount_+%_vs_enemies_affected_by_ailments",
             ExporterCoverage::Absent,
         ),
-        ("daze_duration_unmodelled", "daze_duration_+%", ExporterCoverage::Absent),
-        ("attack_maim_chance_unmodelled", "maim_on_hit_%", ExporterCoverage::Absent),
+        (
+            "daze_duration_unmodelled",
+            "daze_duration_+%",
+            ExporterCoverage::Absent,
+        ),
+        (
+            "attack_maim_chance_unmodelled",
+            "maim_on_hit_%",
+            ExporterCoverage::Absent,
+        ),
         (
             "attack_blind_chance_unmodelled",
             "attacks_chance_to_blind_on_hit_%",
@@ -395,7 +403,11 @@ fn modelled_effect_view_lines_keep_their_game_sources() {
             "charm_energy_shield_recharge_starts_when_used",
             ExporterCoverage::Absent,
         ),
-        ("immune_to_chaos_damage", "chaos_immunity", ExporterCoverage::Differs),
+        (
+            "immune_to_chaos_damage",
+            "chaos_immunity",
+            ExporterCoverage::Differs,
+        ),
     ] {
         let entry = def.entries.iter().find(|entry| entry.id == id).unwrap();
         assert_ne!(entry.batch, "unmodelled", "{id}");

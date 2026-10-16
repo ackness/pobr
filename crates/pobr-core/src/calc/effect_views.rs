@@ -179,9 +179,19 @@ pub struct EffectTerms {
     pub remnants: ScaledTerms,
 }
 
-/// Uptime views: (output id, chance modifier, duration modifier, base duration,
-/// flag that stops the skill inflicting it, enemy immunity flag).
-pub const DEBUFFS: [(&str, &str, Option<&str>, f64, &str, Option<&str>); 3] = [
+/// One uptime view: (output id, chance modifier, duration modifier, base
+/// duration, flag that stops the skill inflicting it, enemy immunity flag).
+pub type DebuffView = (
+    &'static str,
+    &'static str,
+    Option<&'static str>,
+    f64,
+    &'static str,
+    Option<&'static str>,
+);
+
+/// Uptime views for Daze, Maim and Blind.
+pub const DEBUFFS: [DebuffView; 3] = [
     (
         "DazeUptime",
         "DazeChance",
@@ -578,7 +588,8 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<super::session::detail::De
         "CurseActivationDelay" => {
             let t = &terms.curse_delay;
             (
-                "CanCurse * CurseBaseDelay * (1 + CurseDelayIncreased / 100) * CurseDelayMore".into(),
+                "CanCurse * CurseBaseDelay * (1 + CurseDelayIncreased / 100) * CurseDelayMore"
+                    .into(),
                 vec![
                     ("CanCurse".into(), if t.enabled { 1.0 } else { 0.0 }),
                     ("CurseBaseDelay".into(), t.base + t.added),

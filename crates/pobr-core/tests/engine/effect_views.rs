@@ -66,12 +66,18 @@ fn armour_break_per_hit_counts_flat_damage_increase_and_rarity() {
     // an ailmented enemy.
     let per_hit = (50.0 + dealt * 0.1) * 1.5 * 3.0;
     close(display_value(out, "ArmourBreakPerHit"), per_hit);
-    close(input(&normal, "ArmourBreakPerHit", "ArmourBreakRarityMultiplier"), 3.0);
+    close(
+        input(&normal, "ArmourBreakPerHit", "ArmourBreakRarityMultiplier"),
+        3.0,
+    );
     let hits = (1000.0 / per_hit).ceil();
     assert_eq!(display_value(out, "HitsToFullyBreakArmour"), hits);
     // One landed hit per second.
     close(display_value(out, "TimeToFullyBreakArmour"), hits);
-    close(input(&normal, "TimeToFullyBreakArmour", "EnemyArmour"), 1000.0);
+    close(
+        input(&normal, "TimeToFullyBreakArmour", "EnemyArmour"),
+        1000.0,
+    );
 
     // Ailmented target: 50% + 30% increased.
     let ignited = armour_session(
@@ -79,7 +85,11 @@ fn armour_break_per_hit_counts_flat_damage_increase_and_rarity() {
         CalcConfig::spell().with_condition("EnemyIgnited", true),
         &lines,
     );
-    let dealt = input(&ignited, "ArmourBreakPerHit", "HitDamageAsArmourBreakDamage");
+    let dealt = input(
+        &ignited,
+        "ArmourBreakPerHit",
+        "HitDamageAsArmourBreakDamage",
+    );
     close(
         display_value(ignited.output(), "ArmourBreakPerHit"),
         (50.0 + dealt * 0.1) * 1.8 * 3.0,
@@ -87,7 +97,10 @@ fn armour_break_per_hit_counts_flat_damage_increase_and_rarity() {
 
     // A boss counts as Rare or Unique: no multiplier.
     let boss = armour_session(EnemyTier::Boss, CalcConfig::spell(), &lines);
-    close(input(&boss, "ArmourBreakPerHit", "ArmourBreakRarityMultiplier"), 1.0);
+    close(
+        input(&boss, "ArmourBreakPerHit", "ArmourBreakRarityMultiplier"),
+        1.0,
+    );
 
     // Reported only: damage is unchanged by the per-hit lines.
     let plain = armour_session(EnemyTier::None, CalcConfig::spell(), &[]);
@@ -107,7 +120,11 @@ fn critical_spell_armour_break_uses_the_critical_share_of_physical_damage() {
     let c = out.crit_chance;
     let m = out.crit_multiplier;
     assert!(c > 0.0 && m > 1.0, "{c} {m}");
-    let crit_physical = input(&s, "ArmourBreakPerHit", "PhysicalCritDamageAsArmourBreakDamage");
+    let crit_physical = input(
+        &s,
+        "ArmourBreakPerHit",
+        "PhysicalCritDamageAsArmourBreakDamage",
+    );
     assert!(crit_physical > 0.0);
     // Boss (Rare/Unique): no rarity multiplier; 10% of the critical part.
     close(display_value(out, "ArmourBreakPerHit"), crit_physical * 0.1);
@@ -192,7 +209,10 @@ fn infusion_surrounded_curse_delay_and_remnant_views() {
         "10% slower Curse Activation",
         "17% chance to create an additional Remnant",
     ];
-    let mut s = session(CalcConfig::spell().with_skill_types(curse | remnants), &lines);
+    let mut s = session(
+        CalcConfig::spell().with_skill_types(curse | remnants),
+        &lines,
+    );
     // The curse's own `curse_delay_duration_ms` = 1000.
     s.add_modifiers([Modifier::number("CurseDelayBase", ModType::Base, 1.0)]);
     s.perform_minimal().unwrap();
@@ -243,7 +263,10 @@ fn standalone_chaos_immunity_and_charm_recharge_start() {
         "+100 to maximum Energy Shield",
         "Energy Shield Recharge starts on use",
     ];
-    let mut charm = session(CalcConfig::spell().with_condition("UsingCharm", true), &lines);
+    let mut charm = session(
+        CalcConfig::spell().with_condition("UsingCharm", true),
+        &lines,
+    );
     charm.perform_minimal().unwrap();
     assert_eq!(display_value(charm.output(), "EsRechargeDelay"), 0.0);
     let mut unused = session(CalcConfig::spell(), &lines);

@@ -386,25 +386,21 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
             };
             Some(vec![Modifier::number(name, ModType::Base, value)])
         }
-        "support_increased_armour_break_armour_break_amount_+%_final" => Some(vec![
-            Modifier::number("ArmourBreakPerHit", ModType::More, value),
-        ]),
+        "support_increased_armour_break_armour_break_amount_+%_final" => {
+            Some(vec![Modifier::number(
+                "ArmourBreakPerHit",
+                ModType::More,
+                value,
+            )])
+        }
         // On-hit debuff chances for the uptime views: "{0}% chance to Daze on
         // Hit", "Attacks have {0}% chance to Maim on Hit", "Maim on Hit",
         // "{0}% chance to Blind Enemies on Hit with Attacks".
-        "base_chance_to_daze_%" => Some(vec![Modifier::number(
-            "DazeChance",
-            ModType::Base,
-            value,
-        )]),
+        "base_chance_to_daze_%" => Some(vec![Modifier::number("DazeChance", ModType::Base, value)]),
         "maim_on_hit_%" => Some(vec![
             Modifier::number("MaimChance", ModType::Base, value).with_flags(ModFlags::ATTACK),
         ]),
-        "global_maim_on_hit" => Some(vec![Modifier::number(
-            "MaimChance",
-            ModType::Base,
-            100.0,
-        )]),
+        "global_maim_on_hit" => Some(vec![Modifier::number("MaimChance", ModType::Base, 100.0)]),
         "attacks_chance_to_blind_on_hit_%" => Some(vec![
             Modifier::number("BlindChance", ModType::Base, value).with_flags(ModFlags::ATTACK),
         ]),
@@ -1225,7 +1221,9 @@ mod tests {
             Some(1.0)
         );
         assert_eq!(
-            one("chance_%_to_create_additional_remnant", 156.0).name.as_str(),
+            one("chance_%_to_create_additional_remnant", 156.0)
+                .name
+                .as_str(),
             "AdditionalRemnantChance"
         );
         let mut db = ModDb::new();
@@ -1237,7 +1235,10 @@ mod tests {
         let spell = CalcConfig::new().with_flags(ModFlags::SPELL);
         assert_eq!(db.sum(ModType::Base, &attack, &["MaimChance".into()]), 25.0);
         assert_eq!(db.sum(ModType::Base, &spell, &["MaimChance".into()]), 0.0);
-        assert_eq!(db.sum(ModType::Base, &attack, &["BlindChance".into()]), 10.0);
+        assert_eq!(
+            db.sum(ModType::Base, &attack, &["BlindChance".into()]),
+            10.0
+        );
         assert_eq!(db.sum(ModType::Base, &spell, &["BlindChance".into()]), 0.0);
     }
 
