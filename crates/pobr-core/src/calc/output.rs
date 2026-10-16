@@ -347,6 +347,9 @@ pub struct OutputTable {
     pub freeze_buildup_pct: f64,
     /// Average enemy Heavy Stun buildup (% of poise per successful hit).
     pub heavy_stun_buildup_avg: f64,
+    /// Average enemy Pin buildup (% of the Pin threshold per successful hit);
+    /// only damage that a Pin source enables counts.
+    pub pin_buildup_avg: f64,
     /// Shock buildup (% per hit; 0 = not accumulating).
     pub electrocute_buildup_pct: f64,
     /// Bleed/poison/ignite multi-stack DPS and active stack count (0 = no
@@ -571,6 +574,9 @@ pub struct HandOutput {
     /// Per-type effective hit averages, including crit weighting but not hit chance.
     /// Reused from the effective-DPS pass; empty in panel mode.
     pub mitigated_avg: Vec<(DamageType, f64)>,
+    /// The crit leg's crit-weighted share of the per-type average above
+    /// (`mitigated_avg`, or `stored_combined_avg` in panel mode).
+    pub crit_avg: Vec<(DamageType, f64)>,
     /// The `Stored<Type>{Hit,Crit}{Min,Max}` family (appended; the damaging
     /// ailment source damage input, resolved by vendor `:4050-4056` / consumed at `:4833-4857`).
     pub stored_ranges: Vec<StoredDamageRange>,
@@ -830,6 +836,7 @@ impl Default for OutputTable {
             chill_effect: 0.0,
             freeze_buildup_pct: 0.0,
             heavy_stun_buildup_avg: 0.0,
+            pin_buildup_avg: 0.0,
             electrocute_buildup_pct: 0.0,
             bleed_stacked_dps: 0.0,
             bleed_active_stacks: 0.0,

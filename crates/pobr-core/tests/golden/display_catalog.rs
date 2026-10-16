@@ -148,7 +148,7 @@ fn catalog_entry_counts_locked() {
         // ConfiguredNotHitChance and DamageTakenOnBlock (+34).
         // ExposureEffectOnSelf, WitherEffectOnSelf, SelfBleedEffect,
         // SelfIgniteEffect and DebuffExpirationModifier (+5).
-        // HeavyStunBuildupAvg (+1).
+        // HeavyStunBuildupAvg and PinBuildupAvg (+2).
         // Damaging-ailment chance/duration/multipliers/roll/stacks/source ranges and ShockChance (+34).
         // Hit Calcs: five types × Min/Max/EffMult, TotalMin/TotalMax/CritEffect/
         // DpsMultiplier, each with MainHand/OffHand; Repeats and TotalNumberOfHits (+59).
@@ -157,7 +157,8 @@ fn catalog_entry_counts_locked() {
         // {Life,Mana,EnergyShield}RecoveryRateMod, LowLifePercentage, LowestAttribute,
         // Global{Gem,Item,Weapon}AttributeRequirements, MaximumChill, MaximumShock,
         // CurrentChill and CurrentShock (+19).
-        443,
+        // PinBuildupAvg (+1).
+        444,
         "a change in Computed entry count needs explicit review"
     );
 }
