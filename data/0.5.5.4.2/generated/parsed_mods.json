@@ -13900,7 +13900,14 @@
     },
     {
       "text": "16% increased [Totem] Life",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "TotemLife",
+          "type": "Inc",
+          "value": 16.0
+        }
+      ]
     },
     {
       "text": "16% increased [Warcry|Warcry] Speed",
@@ -16825,7 +16832,14 @@
     },
     {
       "text": "20% increased [Totem] Life",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "TotemLife",
+          "type": "Inc",
+          "value": 20.0
+        }
+      ]
     },
     {
       "text": "20% increased [Totem|Totem] Damage",
@@ -22561,7 +22575,14 @@
     },
     {
       "text": "30% increased [Totem] Life",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "TotemLife",
+          "type": "Inc",
+          "value": 30.0
+        }
+      ]
     },
     {
       "text": "30% increased [Totem|Totem] Placement speed",

@@ -1242,6 +1242,15 @@ pub(crate) fn translated_mod_name_parts<'a>(
         // mismapping).
         | "WarcrySpeed"
         | "TotemPlacementSpeed"
+        // Totem defences (game `totem_elemental_resistance_%`,
+        // `totem_chaos_resistance_%`, `totem_maximum_all_elemental_resistances_%`,
+        // `totem_life_+%`, `totem_life_+%_final`, `support_totem_life_+%_final`,
+        // `totem_duration_+%`). Consumer = `calc::totem`.
+        | "TotemElementalResist"
+        | "TotemChaosResist"
+        | "TotemElementalResistMax"
+        | "TotemLife"
+        | "TotemDuration"
         //  Cooldown recovery rate pass-through (vendor
         // `base_cooldown_speed_+%`/quality section/
         // `support_cooldown_reduction_cooldown_recovery_+%` -> CooldownRecovery).

@@ -279,6 +279,20 @@ pub const DERIVED_STATS: &[&str] = &[
     "ArchonDuration",
     "ArchonRecoveryPeriod",
     "TotalEHPLowestMaxHit",
+    "TotemLife",
+    "TotemDurationMod",
+    "TotemFireResist",
+    "TotemColdResist",
+    "TotemLightningResist",
+    "TotemChaosResist",
+    "TotemFireResistTotal",
+    "TotemColdResistTotal",
+    "TotemLightningResistTotal",
+    "TotemChaosResistTotal",
+    "MissingTotemFireResist",
+    "MissingTotemColdResist",
+    "MissingTotemLightningResist",
+    "MissingTotemChaosResist",
 ];
 
 impl CalculationSession {
@@ -291,6 +305,9 @@ impl CalculationSession {
         }
         if crate::calc::limit_display::has_derived_detail(stat) {
             return crate::calc::limit_display::detail(&self.env, stat);
+        }
+        if let Some(detail) = crate::calc::totem::detail(&self.env, stat) {
+            return Some(detail);
         }
         let env = &self.env;
         let out = &env.player.output;

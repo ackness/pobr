@@ -488,6 +488,110 @@ pub(crate) fn support_modifiers(
     mods
 }
 
+/// The base Life and resistances of the totem the selected skill uses: the
+/// group's totem-summoning gem (or the main skill itself) places the
+/// monster of [`BuildData::totems`]. Life is
+/// `floor(DefaultMonsterStats.AllyLife[level] × MonsterVarieties.LifeMultiplier)`,
+/// with the level from the game's `MinionGemLevelScaling` (2 × gem level)
+/// for that gem's effective level. The totem uses no other minion table:
+/// this is the same scaling minions use, without an in-game measurement.
+pub(crate) fn totem_base_modifiers(
+    build: &Build,
+    data: &BuildData,
+    group: &SocketGroup,
+    skill_id: &str,
+    final_types: &[String],
+) -> Vec<Modifier> {
+    if !final_types
+        .iter()
+        .any(|t| t == "SummonsTotem" || t == "UsedByTotem")
+    {
+        return Vec::new();
+    }
+    let gem = group
+        .gem_skills
+        .iter()
+        .filter(|gem| gem.enabled && data.totems.contains_key(&gem.skill_id))
+        .find(|gem| gem.skill_id == skill_id)
+        .or_else(|| {
+            group
+                .gem_skills
+                .iter()
+                .find(|gem| gem.enabled && data.totems.contains_key(&gem.skill_id))
+        });
+    let Some(gem) = gem else {
+        return Vec::new();
+    };
+    let totem = data.totems[&gem.skill_id];
+    let level = gem
+        .gem_level
+        .saturating_add(gem.global_level_bonus.unwrap_or_else(|| {
+            super::resolve::additional_gem_levels(build, data, &gem.skill_id, gem.corrupted)
+        }))
+        .saturating_add(super::resolve::support_granted_gem_levels(
+            group,
+            data,
+            &gem.skill_id,
+        ));
+    let monster_level = pobr_core::calc::minion_level_from_gem_level(level);
+    let life = (f64::from(pobr_data::monster::monster_ally_life(monster_level))
+        * totem.life_multiplier)
+        .floor();
+    let origin = |name: &str, text: String| {
+        ModifierSource::new(SourceId::new(
+            SourceKind::SkillGem,
+            format!("skill.{}.{name}", gem.skill_id),
+        ))
+        .with_raw_text(text)
+    };
+    let mut modifiers = vec![
+        Modifier::number("TotemLifeBase", ModType::Base, life).with_origin(origin(
+            "TotemLifeBase",
+            format!(
+                "level {monster_level} totem: AllyLife {} x LifeMultiplier {}",
+                pobr_data::monster::monster_ally_life(monster_level),
+                totem.life_multiplier
+            ),
+        )),
+    ];
+    // A skill a meta totem uses (Spell Totem) reads the totem gem's own
+    // level stats; the main skill's stats are already mapped.
+    if gem.skill_id != skill_id {
+        let stats = data.effect_stats(&gem.skill_id, level, gem.quality, None);
+        for stat in stats.all() {
+            let name = match stat.stat.as_str() {
+                "totem_elemental_resistance_%" => "TotemElementalResist",
+                "totem_chaos_resistance_%" => "TotemChaosResist",
+                "totem_maximum_all_elemental_resistances_%" => "TotemElementalResistMax",
+                _ => continue,
+            };
+            if stat.value != 0.0 {
+                modifiers.push(
+                    Modifier::number(name, ModType::Base, stat.value).with_origin(origin(
+                        &stat.stat,
+                        format!("{} {} ({})", gem.skill_id, stat.stat, stat.value),
+                    )),
+                );
+            }
+        }
+    }
+    for (element, value) in ["Fire", "Cold", "Lightning", "Chaos"]
+        .into_iter()
+        .zip(totem.resistances)
+    {
+        if value != 0.0 {
+            let name = format!("Totem{element}Resist");
+            modifiers.push(
+                Modifier::number(name.as_str(), ModType::Base, value).with_origin(origin(
+                    &name,
+                    format!("totem monster base {element} resistance"),
+                )),
+            );
+        }
+    }
+    modifiers
+}
+
 /// The action that places a proxy comes from its summoning skill, not from
 /// the attack or spell the proxy performs. CastTime is in milliseconds.
 pub(crate) fn skill_timing_modifiers(

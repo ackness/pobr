@@ -175,7 +175,10 @@ fn catalog_entry_counts_locked() {
         // EnemyAilmentThreshold, Max{Life,Mana,EnergyShield}LeechRate, MaxLifeLeechRatePercent,
         // PreEffectiveCritMultiplier, DeflectEffect, SelfChillEffect, EnemyCritChance,
         // SecondMinimalMaximumHitTaken, EffectiveLootRarityMod and GemLevel (+16).
-        558,
+        // TotemLife, TotemDurationMod, Totem{Fire,Cold,Lightning,Chaos}Resist,
+        // Totem{Fire,Cold,Lightning,Chaos}ResistTotal and
+        // MissingTotem{Fire,Cold,Lightning,Chaos}Resist (+14), the totem defences.
+        572,
         "a change in Computed entry count needs explicit review"
     );
 }

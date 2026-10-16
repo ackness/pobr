@@ -5804,15 +5804,46 @@
       ]
     },
     {
-      "id": "totem_life_unmodelled",
-      "pattern": "\\d+(?:\\.\\d+)?% (?:increased|reduced) totem life",
-      "mods": [],
+      "id": "increased_totem_life",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased totem life",
+      "mods": [
+        {
+          "name": "TotemLife",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
       "verified": true,
-      "batch": "unmodelled",
-      "source_note": "Totem Life is not modelled; there is no totem life output or base-life model.",
+      "batch": "S2",
+      "source_note": "Game stat totem_life_+%; read by calc::totem::life_terms for TotemLife (base AllyLife x MonsterVarieties.LifeMultiplier of the totem monster, overlay-common/totem_varieties.json).",
       "game_source": "totem_life_+%",
       "examples": [
         "25% increased Totem Life"
+      ]
+    },
+    {
+      "id": "reduced_totem_life",
+      "pattern": "(\\d+(?:\\.\\d+)?)% reduced totem life",
+      "mods": [
+        {
+          "name": "TotemLife",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "source_note": "Game stat totem_life_+% (negative); read by calc::totem::life_terms for TotemLife.",
+      "game_source": "totem_life_+%",
+      "examples": [
+        "10% reduced Totem Life"
       ]
     },
     {

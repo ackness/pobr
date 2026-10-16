@@ -539,8 +539,34 @@ snapshot convention, not a simulated recent-consumption event.
 Additional skill slots (`local_item_additional_skill_slots` /
 `num_additional_skill_slots`) and knockback distance (`knockback_distance_+%`)
 change no reported output. Whispers of Doom's curse delay (`keystone_hex_master`)
-and Totem Life (`totem_life_+%`) remain `unmodelled`, with the missing
-activation/life models named.
+remains `unmodelled`, with the missing activation model named.
+
+When the selected skill places or is used by a totem (types `SummonsTotem` /
+`UsedByTotem`), `calc::totem` reports the totem's defences: `TotemLife`,
+`TotemDurationMod`, `Totem<T>Resist`, `Totem<T>ResistTotal` and
+`MissingTotem<T>Resist` for Fire, Cold, Lightning and Chaos, each with a derived
+detail. The totem monster comes from game `ActiveSkills.SkillTotemId` →
+`SkillTotemVariations` → `MonsterVarieties` (`overlay-common/totem_varieties.json`,
+with its `LifeMultiplier`: 120 for Ancestral Warrior's SlamTotem, 100 for the
+others). Its level is game `MinionGemLevelScaling` (2 × the totem gem's effective
+level, 40 for a level-20 gem); `TotemLifeBase` is
+`floor(DefaultMonsterStats.AllyLife[level] × LifeMultiplier)`, scaled by
+`totem_life_+%` (INC) and `totem_life_+%_final` / `support_totem_life_+%_final`
+(MORE) and rounded (`calc_orchestrator::skill::mods::totem_base_modifiers`).
+Resistances start from the totem monsters' 0% (`base/monster_resistances.json`)
+and add the totem gem's own level stats `totem_elemental_resistance_%` /
+`totem_chaos_resistance_%` (0 below gem level 13, 75 / 35 from level 20) and
+supports such as Reinforced Totems; the maximum is the monster base 75% plus
+`totem_maximum_all_elemental_resistances_%`, truncated like the player's.
+`TotemDurationMod` is `(1 + totem_duration_+% / 100) × more`. PoB2 instead gives
+every totem 40% elemental and 20% chaos resistance, absent from the game tables,
+and ignores the gem's level stats: tuned Shockwave Totem `8468096e8b99` reports
+65 / 30 in PoBR against PoB2's 40 / 41, and Grim Pillars `19a4efbb971d` 75 / 35
+against 40 (Fire 75) / 20. `TotemLife` agrees with PoB2 on the three tuned totem
+builds checked (2285, 2490, 5019). Not modelled: the character's auras and
+buffs on totems (PoB2 adds Purity of Fire's resistance), totem Armour, Evasion,
+Energy Shield and block; the level mapping has no in-game measurement. These
+fields change no DPS or totem count.
 
 Charge durations (`PowerChargesDuration`, `FrenzyChargesDuration`,
 `EnduranceChargesDuration`) display seconds: the [game's Charges keyword

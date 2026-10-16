@@ -274,12 +274,83 @@ pub(crate) fn resolve_resistance(
     }
 
     let shared = shared_fire_resistance(db, cfg, element);
-    let flat = db.sum(ModType::Base, cfg, &res_names) + shared.flat;
-    let inc = db.sum(ModType::Inc, cfg, &res_names) + shared.inc;
-    let more = db.more(cfg, &res_names);
-    let override_total = db
-        .override_(cfg, long.as_str())
-        .or_else(|| db.override_(cfg, short.as_str()));
+    resolve_resistance_named(
+        db,
+        cfg,
+        base,
+        ResistanceNames {
+            res: &res_names,
+            max: &max_names,
+            overrides: [long.as_str(), short.as_str()],
+            max_overrides: [max_long.as_str(), max_short.as_str()],
+            base_max: cfg.constants.character().base_maximum_all_resistances_pct,
+        },
+        shared,
+    )
+}
+
+/// The modifier names one resistance reads ([`resolve_resistance_named`]).
+pub(crate) struct ResistanceNames<'a> {
+    pub(crate) res: &'a [ModName],
+    pub(crate) max: &'a [ModName],
+    pub(crate) overrides: [&'a str; 2],
+    pub(crate) max_overrides: [&'a str; 2],
+    /// The maximum before modifiers (75 for the player and for monsters).
+    pub(crate) base_max: f64,
+}
+
+/// A totem's resistance: the same truncation, maximum, hard cap and floor as
+/// the player's, over the totem's own names (`Totem<X>Resist`, elemental
+/// also `TotemElementalResist`; max `Totem<X>ResistMax` /
+/// `TotemElementalResistMax`), from the monster base maximum.
+pub(crate) fn resolve_totem_resistance(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    element: &str,
+    is_elemental: bool,
+) -> ResistanceResolution {
+    let short = format!("Totem{element}Resist");
+    let max_short = format!("Totem{element}ResistMax");
+    let mut res_names = vec![ModName::from(short.as_str())];
+    let mut max_names = vec![ModName::from(max_short.as_str())];
+    if is_elemental {
+        res_names.push(ModName::from("TotemElementalResist"));
+        max_names.push(ModName::from("TotemElementalResistMax"));
+    }
+    resolve_resistance_named(
+        db,
+        cfg,
+        0.0,
+        ResistanceNames {
+            res: &res_names,
+            max: &max_names,
+            overrides: [short.as_str(), short.as_str()],
+            max_overrides: [max_short.as_str(), max_short.as_str()],
+            base_max: cfg.constants.monster().base_maximum_all_resistances_pct,
+        },
+        SharedResistance {
+            flat: 0.0,
+            inc: 0.0,
+            max: 0.0,
+        },
+    )
+}
+
+fn resolve_resistance_named(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    base: f64,
+    names: ResistanceNames<'_>,
+    shared: SharedResistance,
+) -> ResistanceResolution {
+    let res_names = names.res;
+    let max_names = names.max;
+    let [long, short] = names.overrides;
+    let [max_long, max_short] = names.max_overrides;
+    let flat = db.sum(ModType::Base, cfg, res_names) + shared.flat;
+    let inc = db.sum(ModType::Inc, cfg, res_names) + shared.inc;
+    let more = db.more(cfg, res_names);
+    let override_total = db.override_(cfg, long).or_else(|| db.override_(cfg, short));
     // Resistance is an integer stat. Keep fractions through summing and
     // scaling (including shared Fire modifiers), then truncate toward zero.
     let total = override_total
@@ -290,13 +361,11 @@ pub(crate) fn resolve_resistance(
         })
         .trunc();
     let max = db
-        .override_(cfg, max_long.as_str())
-        .or_else(|| db.override_(cfg, max_short.as_str()))
+        .override_(cfg, max_long)
+        .or_else(|| db.override_(cfg, max_short))
         .unwrap_or_else(|| {
             //  The default max resistance / hard cap now reads from the injected constants pack (fallback == old const, value unchanged).
-            (cfg.constants.character().base_maximum_all_resistances_pct
-                + db.sum(ModType::Base, cfg, &max_names)
-                + shared.max)
+            (names.base_max + db.sum(ModType::Base, cfg, max_names) + shared.max)
                 .min(cfg.constants.game().resist_hard_cap)
         })
         .trunc();

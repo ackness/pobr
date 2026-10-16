@@ -21,3 +21,5 @@ mod load_local_mods;
 mod load_mods;
 #[path = "mods/load_special_mods.rs"]
 mod load_special_mods;
+#[path = "mods/load_totem_varieties.rs"]
+mod load_totem_varieties;
