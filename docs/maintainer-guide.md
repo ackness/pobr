@@ -795,12 +795,35 @@ Shot `71a879f43f2f`) to every damage type, and the pinned PoB2 drops the line
 because its mid-line form leaves an unparsed remainder. The rule is
 `exporter: "absent"`.
 
+Three flask/charm lines that the generic phrase table read in part now have rules
+(`special_mods.json`, all `exporter: "absent"`). “N% more Recovery if used while on Low
+Mana / Low Life” (game stats `local_flask_amount_to_recover_+%_when_on_low_mana` /
+`_on_low_life`, mods `FlaskIncreasedRecoveryOnLowMana` / `OnLowLife`) is a local
+`FlaskRecovery` MORE tagged with the existing `LowMana` / `LowLife` condition: the
+ledger reports it `inactive` until that condition holds (config `conditionLowMana` /
+`conditionLowLife`; `LowLife` is also derived from Life reservation), then the flask's
+recovery is multiplied by `1 + N / 100`. The generic rule had made it a
+`FlaskLifeRecoveryLowLife` bonus that nothing read, even for the Low Mana wording. No
+use timing or uptime of the Low pool is inferred, and there is no in-game test of the
+stacking with other flask recovery modifiers. “Removes N% of Life Recovered from Mana
+when used” and its Mana-from-Life twin (game stats
+`local_flask_removes_%_of_life_recovery_from_mana_on_use` /
+`..._mana_recovery_from_life_on_use`, mods `FlaskExtraLifeCostsMana` /
+`FlaskExtraManaCostsLife`) make the other resource pay a share of the recovery each
+use; the line is recognised as `unmodelled` because no flask-use net resource model
+exists and no use frequency is assumed (it used to be a −N `FlaskRecovery` on the flask's
+own recovery). The Forsaken Bangle charm line “N% of Chaos damage you prevent when Hit
+Recouped as Life and Mana during effect”
+(`charm_x%_of_chaos_damage_from_hits_prevented_recouped_as_life_and_mana_during_effect`)
+is also `unmodelled`: the prevented-damage recoup described above counts only Physical
+damage recouped as Life, and there is no Chaos “prevented” definition or Mana
+prevented-damage recoup (it used to be +N `ChaosDamage`).
+
 A line the parser reads only in part is not applied. A parse that returns `Parsed`
-with a non-empty `unparsed` remainder (for example “Removes 15% of Life Recovered
-from Mana when used”, which was a −15 `FlaskRecovery`, “88% more Recovery if used
-while on Low Mana”, which was a `FlaskLifeRecoveryLowLife` bonus, and “50% of Chaos
-damage you prevent when Hit Recouped as Life and Mana during effect”, which was +50
-`ChaosDamage`) used to be applied by ingest as a wrong modifier. Every ingest path now
+with a non-empty `unparsed` remainder (for example “2% more Mana Flask Recovery”,
+which is read as 2% more maximum Mana, “1% more Life Flask Recovery” as 1% more
+maximum Life, and “1% increased speed of Recoup Effects” as a `LocalEffect` increase)
+used to be applied by ingest as a wrong modifier. Every ingest path now
 goes through `ParseOutcome::into_applicable`: item sections, flasks and charms,
 passive nodes, gem and support-gem stat texts, free `extra_modifier_texts`, jewel
 texts and local requirement lines apply a line only when `ParseOutcome::is_complete`
