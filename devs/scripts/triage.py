@@ -44,6 +44,7 @@ compares at once. Standard library only.
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import hashlib
 import importlib.util
 import json
 import os
@@ -51,11 +52,15 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import tempfile
 
 REPO = Path(__file__).resolve().parents[2]
 _SPEC = importlib.util.spec_from_file_location("compare_build", REPO / "devs/scripts/compare-build.py")
 compare = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(compare)
+_SPEC = importlib.util.spec_from_file_location("lookup", REPO / "devs/scripts/lookup.py")
+lookup = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(lookup)
 
 DEFAULT_SETS = ("examples/wasm-benchmark/builds", "examples/reference-builds/tuned/builds")
 KNOWN_DIFFERENCES = REPO / "devs/scripts/known-differences.json"
@@ -546,18 +551,72 @@ def build_dirs(paths) -> list:
     return found
 
 
-def triage_build(binary: Path, corpus: str, folder: Path, commit: str, refresh: bool,
-                 known: list) -> dict:
-    code_file = folder / "code.txt"
-    code = code_file.read_text(encoding="utf-8")
-    xml = compare.decode_code(code)
+def engine_report(binary: Path, code_file: Path) -> dict:
+    """The same calculation and usage ledger for triage and the gaps tools."""
     command = [str(binary), "calculate-build", "--file", str(code_file), "--breakdown",
                f"all,{SKILL_RESERVATION}", "--json", "--reference-basis", "--usage"]
     result = subprocess.run(command, cwd=REPO, capture_output=True, text=True)
     if result.returncode != 0:
         tail = "\n".join(result.stderr.strip().splitlines()[-5:])
         raise RuntimeError(f"the engine failed ({result.returncode}): {tail}")
-    report = json.loads(result.stdout)
+    return json.loads(result.stdout)
+
+
+def usage_token(binary: Path) -> str:
+    """Invalidate ledgers when the executable, data snapshot or collector changes.
+
+    Snapshot file metadata avoids hashing the entire game data on every run.
+    Code contents are hashed separately for each build; oracle inputs play no part.
+    """
+    digest = hashlib.sha256(binary.read_bytes())
+    digest.update(Path(__file__).read_bytes())
+    directory = lookup.data_dir()
+    for root in (directory, directory.parent / "overlay-common"):
+        for path in sorted(root.rglob("*.json")):
+            stat = path.stat()
+            digest.update(f"{path.resolve()}:{stat.st_size}:{stat.st_mtime_ns}".encode())
+    return digest.hexdigest()
+
+
+def usage_cache_path(folder: Path, token: str) -> Path:
+    code_hash = hashlib.sha256((folder / "code.txt").read_bytes()).hexdigest()
+    return REPO / ".cache/build-usage" / f"{code_hash}-{token}.json"
+
+
+def cache_usage(folder: Path, report: dict, token: str):
+    path = usage_cache_path(folder, token)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {key: report.get(key) for key in ("usage", "unsupported_modifiers")}
+    if not isinstance(payload["usage"], dict):
+        raise ValueError("the engine returned no usage ledger; rebuild pobr-cli")
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                     suffix=".tmp", delete=False) as handle:
+        temporary = Path(handle.name)
+        try:
+            handle.write(json.dumps(payload))
+            handle.close()
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+
+def build_usage(binary: Path, folder: Path, token: str, refresh=False) -> dict:
+    """Read triage's ledger cache, calculating only a missing/stale build."""
+    path = usage_cache_path(folder, token)
+    if not refresh and path.is_file():
+        return json.loads(path.read_text(encoding="utf-8"))
+    report = engine_report(binary, folder / "code.txt")
+    cache_usage(folder, report, token)
+    return {key: report.get(key) for key in ("usage", "unsupported_modifiers")}
+
+
+def triage_build(binary: Path, corpus: str, folder: Path, commit: str, refresh: bool,
+                 known: list, token=None) -> dict:
+    code_file = folder / "code.txt"
+    code = code_file.read_text(encoding="utf-8")
+    xml = compare.decode_code(code)
+    report = engine_report(binary, code_file)
+    cache_usage(folder, report, token or usage_token(binary))
     entries = {entry.get("stat"): entry for entry in report.get("breakdowns") or []}
     differing = [row.get("stat") for row in (report.get("reference") or {}).get("differing") or []]
     # The names `mise run compare` asks for by default, so both share one cached run.
@@ -571,12 +630,13 @@ def triage_build(binary: Path, corpus: str, folder: Path, commit: str, refresh: 
 
 def run_all(found: list, jobs: int, refresh: bool) -> tuple:
     binary = engine_binary()
+    token = usage_token(binary)
     commit = compare.vendor_commit()
     known = load_known()
     results, failures = [], []
     print(f"triage: {len(found)} builds, {jobs} at a time", file=sys.stderr)
     with ThreadPoolExecutor(max_workers=jobs) as pool:
-        futures = {pool.submit(triage_build, binary, corpus, folder, commit, refresh, known):
+        futures = {pool.submit(triage_build, binary, corpus, folder, commit, refresh, known, token):
                    folder.name for corpus, folder in found}
         for done, future in enumerate(as_completed(futures), 1):
             name = futures[future]

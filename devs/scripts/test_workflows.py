@@ -1135,6 +1135,142 @@ class LookupTests(unittest.TestCase):
         self.assertEqual(self.lookup_output("Ruby Ring", "--version", "test")[0], 0)
 
 
+class GapsTests(unittest.TestCase):
+    """Small game-text fixtures exercise the queue and research joins without Cargo."""
+
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location("gaps", REPO / "devs/scripts/gaps.py")
+        self.gaps = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.gaps)
+        temp = tempfile.TemporaryDirectory(prefix="pobr gaps tests ")
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+        self.directory = self.root / "data/test"
+        self.directory.mkdir(parents=True)
+        self.data = self.gaps.lookup.Data(self.directory)
+
+    @staticmethod
+    def entry(sources, status="unsupported", vendor="unsupported"):
+        return {"sources": sources, "status": status, "vendor_status": vendor, "mod_names": []}
+
+    @staticmethod
+    def build(name, *lines):
+        return {"build": name, "set": "worked", "path": f"worked/{name}", "usage": {"lines": list(lines)}}
+
+    def test_templates_group_rolls_markup_and_placeholders(self):
+        template = self.gaps.template
+        expected = "#% increased Effect of Charms"
+        for text in ("10% increased Effect of [Charms]", "Tree:42: 20% increased Effect of Charms",
+                     "(10-20)% increased Effect of Charms", "{0}% increased Effect of Charms"):
+            self.assertEqual(template(text), expected)
+        self.assertEqual(template("+{0:+d} to [Life|maximum Life]"), "# to maximum Life")
+        self.assertEqual(template("+# to maximum Life"), "# to maximum Life")
+        self.assertEqual(self.gaps.words("CharmEffect") & self.gaps.words("Effect of Charms"), {"charm", "effect"})
+
+    def test_ranking_counts_builds_then_player_sources_then_source_count(self):
+        entry = self.entry
+        audit = {"entries": {
+            "10% increased Effect of Charms": entry(["unique:Charm", "translation:charm"]),
+            "20% increased Effect of Charms": entry(["unique:Other Charm"], vendor="parsed"),
+            "17% increased Effect of Charms": entry(["translation:other charm"]),
+            "Many sources": entry(["passive:1", "passive:2", "mods:equipment:x"]),
+            "One unique": entry(["unique:One"]),
+            "Two uniques": entry(["unique:Two", "unique:Three"]),
+            "Only translation": entry(["translation:ignore"]),
+            "Parsed": entry(["passive:3"], "parsed", "parsed"),
+            "Recognised": entry(["passive:4"], "recognized_empty", "parsed"),
+            "Cosmetic": entry(["unique:Cosmetic"], "no_effect"),
+        }}
+        line = lambda text, fate: {"text": text, "status": fate}
+        builds = [self.build("a", line("30% increased Effect of Charms", "unparsed"),
+                             line("30% increased Effect of Charms", "unparsed")),
+                  self.build("b", line("40% increased Effect of Charms", "unmodelled")),
+                  self.build("c", line("Parsed", "unread"), line("Imported only", "no_modifier"))]
+        rows = self.gaps.ranked_queue(audit, builds)
+        self.assertEqual(rows[0]["template"], "#% increased Effect of Charms")
+        self.assertEqual(rows[0]["affected_builds"], 2)
+        self.assertEqual(rows[0]["source_count"], 4)
+        self.assertEqual(rows[0]["class"], "pobr_gap")
+        self.assertEqual(len(rows[0]["variants"]), 3)
+        self.assertEqual(len(rows[0]["builds"][0]["lines"]), 2)
+        self.assertEqual(rows[0]["ledger_variants"], ["30% increased Effect of Charms", "40% increased Effect of Charms"])
+        self.assertNotIn("Only translation", [row["template"] for row in rows])
+        # Equal build counts: unique before passive; more sources break the tie.
+        zero_builds = [r["template"] for r in rows if r["affected_builds"] == 0]
+        self.assertLess(zero_builds.index("Two uniques"), zero_builds.index("One unique"))
+        self.assertLess(zero_builds.index("One unique"), zero_builds.index("Many sources"))
+        self.assertNotIn("Imported only", [row["template"] for row in rows])
+        self.assertEqual(next(r for r in rows if r["template"] == "Recognised")["class"], "recognized_empty")
+        uniques = self.gaps.ranked_queue(audit, builds, "unique")
+        self.assertTrue(all("unique" in row["source_kinds"] for row in uniques))
+        self.assertEqual([r["rank"] for r in uniques], list(range(1, len(uniques) + 1)))
+
+    def test_reverse_stat_match_checks_all_compound_members_in_base(self):
+        self.data.files = {
+            "base/stats.json": [{"id": "life"}, {"id": "min_fire"}],
+            "overlay/stat_descriptions.json": {"scopes": {"stat_descriptions": {
+                "single": {"life": ["+1 to maximum Life"], "mana": ["+1 to maximum Mana"]},
+                "compound": {"min_fire": {"member_stats": ["min_fire", "max_fire"],
+                                           "template": "Adds {0} to {1} Fire Damage"}},
+            }}},
+        }
+        matches = self.gaps.reverse_stats(self.data, ["+87 to maximum Life", "Adds 10 to 20 Fire Damage"])
+        self.assertEqual([s for m in matches for s in m["stats"]], [
+            {"id": "life", "base_exists": True}, {"id": "min_fire", "base_exists": True},
+            {"id": "max_fire", "base_exists": False}])
+        self.assertEqual(self.gaps.reverse_stats(self.data, ["+10 to maximum Energy Shield"]), [])
+
+    def test_generated_config_and_gem_labels_do_not_enter_the_game_text_queue(self):
+        audit = {"entries": {"Real game text": self.entry(["unique:Example"])}}
+        builds = [self.build("a", {"text": "Boss", "source_kind": "EnemyConfig", "status": "unread"},
+                             {"text": "Config", "source_kind": "Config", "status": "unread"},
+                             {"text": "skill stat (1)", "source_kind": "SkillGem", "status": "unread"},
+                             {"text": "Real game text", "source_kind": "Config", "status": "unread"})]
+        rows = self.gaps.ranked_queue(audit, builds)
+        self.assertEqual([row["template"] for row in rows], ["Real game text"])
+        self.assertEqual(rows[0]["affected_builds"], 1)
+
+    def test_research_retains_charm_implicit_node_name_and_all_ledger_fates(self):
+        text = "20% increased Effect of Charms"
+        self.data.files = {
+            "overlay/uniques.json": {"uniques": [{"name": "Test Charm", "base": "Ruby Charm",
+                "raw": "Test Charm\nRuby Charm\nUsed when you take Fire damage from a Hit\n" + text}]},
+            "base/passive_tree.json": [{"skill": 42, "name": "Charm Master", "stats": [text]}],
+        }
+        audit = {"entries": {text: self.entry(["unique:Test Charm", "passive:42"])}}
+        builds = [self.build("a", {"text": text, "status": "unparsed"}),
+                  self.build("b", {"text": text, "status": "applied"})]
+        with patch.object(self.gaps, "candidates", return_value=([], [])):
+            card = self.gaps.research_card(self.data, audit, builds, "#% increased Effect of Charms")
+        output = self.gaps.render_card(card)
+        self.assertIn("Used when you take Fire damage from a Hit", output)
+        self.assertIn("Charm Master", output)
+        self.assertIn("https://poe2db.tw/us/Test_Charm", output)
+        self.assertIn("https://poe2db.tw/us/Charm_Master", output)
+        self.assertIn("applied", output)
+        self.assertEqual(card["affected_builds"], 1)
+        self.assertEqual(len(card["builds"]), 2)
+
+    def test_usage_cache_is_shared_and_refreshable(self):
+        triage = self.gaps.triage
+        folder = self.root / "worked/build"
+        folder.mkdir(parents=True)
+        (folder / "code.txt").write_text("build code", encoding="utf-8")
+        report = {"usage": {"lines": [{"text": "Line", "status": "unparsed"}]}}
+        with patch.object(triage, "REPO", self.root), \
+                patch.object(triage, "engine_report", return_value=report) as engine:
+            triage.cache_usage(folder, report, "binary-and-data")
+            self.assertEqual(triage.build_usage(Path("binary"), folder, "binary-and-data")["usage"], report["usage"])
+            engine.assert_not_called()
+            triage.build_usage(Path("binary"), folder, "binary-and-data", refresh=True)
+            self.assertEqual(engine.call_count, 1)
+            triage.build_usage(Path("binary"), folder, "new-binary-or-data")
+            self.assertEqual(engine.call_count, 2)
+            (folder / "code.txt").write_text("changed build code", encoding="utf-8")
+            triage.build_usage(Path("binary"), folder, "new-binary-or-data")
+            self.assertEqual(engine.call_count, 3)
+
+
 class SkillSweepTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

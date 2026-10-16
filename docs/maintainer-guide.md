@@ -53,6 +53,10 @@ mise run test build parity parity_baseline_report -- --ignored --nocapture
 
 # 数值不对时的第一步：基准组与 tuned 组的全部构筑一次对照参考值和钉定 PoB2，差异分类并跨构筑汇总原因
 mise run triage [组目录 | 构筑目录 ...] [--jobs N] [--refresh] [--json <文件>]
+# 游戏词条缺口队列：按 benchmark + tuned 中丢掉该输入的构筑数、玩家来源与来源数排序
+mise run gaps [--json <文件>] [--limit N] [--kind unique|passive|mods|compound|jewel_node|bases]
+# 一行词条的研究卡：变体、游戏 stat、完整来源文本、逐构筑去向、引擎名字与近似规则
+mise run gap "<模板或词条文本>" [--json <文件>]
 # 一个构筑的导入损耗、与构筑码自带参考值的差异、计算中丢掉的全部输入
 mise run diagnose <构筑目录 | 构筑码文件 | 已入库构筑名片段>
 # 清单解释不了的差异：同一构筑与钉定 PoB2 逐个 stat 对照（需 vendor 与 luajit；PoB2 结果按构筑码缓存）
@@ -402,6 +406,10 @@ PoB2 对照值与逻辑回归都使用活动数据版本，没有单独钉住的
 5. 参考值不是真值。构筑码内的 `<PlayerStat>` 是导出工具当时的结果（版本未知，可能早于当前数据）；PoB2 自身也有假设和缺陷。两边不一致时，以游戏自己的词条文本和数据判断谁对，再决定改哪一边。确认为有意差异后写进上文“已知的有意差异”，并把构筑与行登记进 `devs/scripts/known-differences.json`，分诊就不再列出。
 
 同一类行反复需要逐个构筑人工排查时，说明分诊或诊断的输出缺了东西：扩充工具，让下一轮批量运行直接给出这类线索。
+
+找下一批机制缺口时用 `mise run gaps`：把当前数据的 `generated/modifier-audit.json` 与 benchmark、tuned 的 `--usage` 台账按数字替换为 `#` 的模板合并，先按丢掉输入的构筑数，再按 unique、passive、mods、compound、jewel_node、bases 的来源优先级及来源数排序。纯 translation 来源不入队；`pobr_gap` 是 PoB2 能解析而 PoBR 未完整处理的线，`upstream_gap` 是两边都不完整，`recognized_empty` 是识别却未产出 modifier，`no_effect` 是已登记不影响输出的条目（供审查，不代表待实现）；队列只收录有审计来源的游戏文本；研究卡也可查询只见于构筑台账的文本，此时标为 `ledger_gap`。读取不到的 modifier 也可能只是该构筑用不上，涉及构筑数是研究线索，不是错误断言。`--kind` 按来源过滤，`--limit` 只限制文本行数，`--json` 保存全部模板、变体、审计字段与构筑台账。命令默认构建一次 CLI，不运行 PoB2；可用 `--binary <pobr>` 显式复用已构建程序。台账与 `triage` 共用 `.cache/build-usage/`，按构筑码、程序内容、收集脚本及数据文件路径/大小/修改时间失效；`--refresh` 强制重算。两条命令只读 worked 组，不读 holdout。
+
+从队列选中一行后运行 `mise run gap "<模板或文本>"`，一次列出数字变体、从 `overlay/stat_descriptions.json` 反查的单 stat 或 compound 全部成员（逐项确认 `base/stats.json` 是否存在）、每个来源的完整词条文本（含暗金其他行与咒符触发隐式）、节点名、每个携带它的 worked 构筑及台账去向、引擎名字和 special/mod_parser 近似规则。引擎与规则候选仅按关键词匹配，不证明支持；暗金与节点的 poe2db 链接标为猜测，未经联网验证。确认游戏含义时可再把卡片上的稳定 id 交给 `mise run lookup <id>`。
 
 已入库构筑覆盖不到的技能用 `mise run skills:sweep`（`devs/scripts/skill-sweep.py`）：对活动数据里每颗非辅助宝石（含 meta）的所有非辅助主动效果，按 `GemEffects` 显示顺序枚举，保留来源宝石与主效果，以 `mainActiveSkill` / `mainActiveSkillCalcs` 选择效果；行标识为 `主效果/所选效果@序号`，主／附加效果分别计数，弹药装填不能代替射击覆盖。最小合成构筑使用 90 级 Witch、20 级零品质宝石、普通武器基底，同时计算 PoBR 与钉定 PoB2，按技能族汇总 `agree` / `differs` / `pobr_zero` / `pob2_zero` / `both_zero` / `error` / `pob2_other_skill`；纯指令与占位效果另列。扫描不读 holdout；两边实际效果均须核对，vendor 缺少效果或附加效果的来源宝石不算吻合。`both_zero` 不证明 buff、无载荷幻影、无事件触发或召唤物已实现；召唤物只看一个主召唤物，不代表整支召唤物队伍。平均命中因减伤口径不同只展示、不分类；速率优先对照 PoB2 的 `HitSpeed`，并对照 CLI JSON 的 `firing_rate` / `reload_time`（`FiringRate` / `ReloadTime`）。每效果只测第一个 stat set，不穷举辅助、触发载荷、尸体、充能、目标与战斗条件，不混合轮转或过热。完整扫描写 `.cache/skill-sweep/report.json` / `report.txt`，`--skill` 定向扫描默认写 `report-selected.json` / `report-selected.txt`，显式 `--json` / `--text` 优先；保留完整轮次再做定向扫描。结果缓存在 `.cache/skill-sweep/`，oracle 缓存键含 XML、vendor commit 与 wrapper 内容。
 

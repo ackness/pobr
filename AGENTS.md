@@ -74,7 +74,10 @@ Improve calculation accuracy in batches, not one build at a time:
    ledger of lines (`calculate-build --usage`) says the calculation drops
    whether or not a row differs: lines a rule recognises and nothing models,
    modifier names no build reads, conditions nothing sets, rejected gem
-   stats. Implement from game data and item text; PoB2 is a cross-check.
+   stats. Use `mise run gaps [--kind unique|passive|mods|...]` to rank game-text
+   gaps by worked builds and sources, then `mise run gap "<template or text>"`
+   for stat IDs, full source text, ledger fates and nearby engine rules.
+   Implement from game data and item text; PoB2 is a cross-check.
    Parallel agents may write independent fixes without compiling; the main
    session merges and tests.
 3. Validate once per batch: rerun `mise run triage` (PoB2's side is cached),
