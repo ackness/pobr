@@ -147,3 +147,18 @@ fn secondary_effect_supports_inherit_the_host_gem_level() {
         assert_eq!(effect.gem_level, 19);
     }
 }
+
+/// GemEffects links Load Galvanic Shards and Galvanic Shards to one gem.
+/// The item's +3 named levels raises both effects from 20 to 23.
+#[test]
+fn named_levels_on_a_secondary_effect_raise_the_whole_gem() {
+    use pobr_build::{Build, SocketGroup, diagnose};
+    let data = data();
+    let mut build = Build::new()
+        .add_socket_group(SocketGroup::new().with_gem_skill("GalvanicShardsAmmoPlayer", 20));
+    build.config.global_modifier_texts = vec!["+3 to Level of all Galvanic Shards Skills".into()];
+    let diagnosis = diagnose(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+    let usage = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+    assert_eq!(usage.skills.len(), 2);
+    assert!(usage.skills.iter().all(|skill| skill.level == 23));
+}

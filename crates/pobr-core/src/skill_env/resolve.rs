@@ -297,10 +297,16 @@ pub fn gem_property_applies(
         Some(gem) => gem_tags_match_category(&bonus.category, &gem.gem_tags, skill_id),
         None => gem_level_category_matches(&bonus.category, skill_types, skill_id),
     };
-    let named_skill = data
-        .effect(skill_id)
-        .and_then(|effect| effect.displayed_name.as_deref())
-        .is_some_and(|name| name.eq_ignore_ascii_case(&bonus.category));
+    // A named skill bonus belongs to the whole gem. Its primary effect may
+    // be the loader ("Load Galvanic Shards") while the item's text names the
+    // attack ("Galvanic Shards"), another effect of that same gem.
+    let named_skill = std::iter::once(skill_id)
+        .chain(data.additional_effects(skill_id).iter().map(String::as_str))
+        .any(|id| {
+            data.effect(id)
+                .and_then(|effect| effect.displayed_name.as_deref())
+                .is_some_and(|name| name.eq_ignore_ascii_case(&bonus.category))
+        });
     if !of_kind && !named_skill {
         return false;
     }
