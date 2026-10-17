@@ -549,10 +549,7 @@ fn ingest_flask_charm_emits_empty_payload_when_nothing_parses() {
     let charm = utility_item(
         "Thawing Charm",
         &["Used when you become Frozen"],
-        &[
-            "Energy Shield Recharge starts on use",
-            "Wibble the enemy's flask",
-        ],
+        &["5% increased Experience Gain", "Wibble the enemy's flask"],
     );
     let ingest = ingest_flask_charm("Charm 2", &charm);
     assert_eq!(ingest.modifiers.len(), 1);
@@ -562,8 +559,8 @@ fn ingest_flask_charm_emits_empty_payload_when_nothing_parses() {
             .as_nested_mods()
             .is_some_and(<[_]>::is_empty)
     );
-    // "Used when you become Frozen" is a trigger-description line and "Energy
-    // Shield Recharge starts on use" a recognised, unmodelled event: neither
+    // "Used when you become Frozen" is a trigger-description line and
+    // Experience Gain is a recognised no-effect line: neither
     // stores a modifier. Only the line no rule recognises is unsupported.
     assert_eq!(
         ingest.unsupported,
