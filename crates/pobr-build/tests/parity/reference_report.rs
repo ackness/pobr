@@ -449,7 +449,8 @@ const BASELINES: [Baseline; 3] = [
         // Exporter-absent Spell Mana Cost Efficiency is excluded on reference basis.
         // Flask "N% of Damage taken during effect Recouped as Life" no longer adds flat Damage
         // Taken (+1 row, Abyssal Lich Twister 4028d0b52984 TotalEHP).
-        agreeing_rows: 5788,
+        // Mechanic batches expose more reference fields: +2 agreeing rows, 6 new rows.
+        agreeing_rows: 5790,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
@@ -498,7 +499,8 @@ const BASELINES: [Baseline; 3] = [
         // Measured only: local flat requirements follow base conversion (+1 row).
         // Measured only: resistance truncation, Smith sharing and Idol categories (+5 rows).
         // Measured only: reference basis excludes exporter-absent rules.
-        agreeing_rows: 1912,
+        // Measured only after the mechanic batches: +1 agreeing row, 4 new rows.
+        agreeing_rows: 1913,
     },
 ];
 

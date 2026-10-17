@@ -525,7 +525,7 @@ fn armour_break_inputs(t: &ArmourBreakTerms) -> (String, Vec<(String, f64)>) {
     ]);
     (
         format!(
-            "(ArmourBreakFlat{damage}) * (1 + ArmourBreakIncreased / 100) * ArmourBreakMore * ArmourBreakRarityMultiplier"
+            "max((ArmourBreakFlat{damage}) * (1 + ArmourBreakIncreased / 100) * ArmourBreakMore * ArmourBreakRarityMultiplier, 0)"
         ),
         inputs,
     )
@@ -541,10 +541,16 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<super::session::detail::De
                 ("EnemyArmour".to_string(), t.enemy_armour),
                 ("ArmourBreakPerHit".to_string(), t.per_hit()),
             ];
-            let mut formula = "ceil(EnemyArmour / ArmourBreakPerHit)".to_string();
+            let mut formula = "ceil(round(EnemyArmour / ArmourBreakPerHit, 9))".to_string();
             if stat == "TimeToFullyBreakArmour" {
                 inputs.push(("LandedHitsPerSecond".into(), t.hit_rate));
                 formula = format!("{formula} / LandedHitsPerSecond");
+            }
+            if t.per_hit() <= 0.0
+                || t.enemy_armour <= 0.0
+                || (stat == "TimeToFullyBreakArmour" && t.hit_rate <= 0.0)
+            {
+                formula = "0 * ArmourBreakPerHit".into();
             }
             (formula, inputs)
         }
@@ -552,10 +558,11 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<super::session::detail::De
             let index = DEBUFFS.iter().position(|d| d.0 == stat)?;
             let t = &terms.uptime[index];
             (
-                "100 * (f * (1 - (1 - DebuffChance / 100)^(k + 1)) + (1 - f) * (1 - (1 - DebuffChance / 100)^k)), k = floor(HitsPerDuration), f = HitsPerDuration - k, HitsPerDuration = LandedHitsPerSecond * DebuffBaseDuration * (1 + DebuffDurationIncreased / 100) * EnemyDebuffDuration".into(),
+                "CanInflictDebuff * 100 * ((HitsPerDuration - floor(HitsPerDuration)) * (1 - pow(1 - DebuffChance / 100, floor(HitsPerDuration) + 1)) + (1 - HitsPerDuration + floor(HitsPerDuration)) * (1 - pow(1 - DebuffChance / 100, floor(HitsPerDuration))))".into(),
                 vec![
                     ("CanInflictDebuff".into(), if t.enabled { 1.0 } else { 0.0 }),
-                    ("DebuffChance".into(), t.chance),
+                    ("DebuffChance".into(), t.chance.clamp(0.0, 100.0)),
+                    ("HitsPerDuration".into(), t.hits_per_duration().max(0.0)),
                     ("LandedHitsPerSecond".into(), t.hit_rate),
                     ("DebuffBaseDuration".into(), t.base_duration),
                     ("DebuffDurationIncreased".into(), t.increased_duration),
@@ -567,7 +574,7 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<super::session::detail::De
             let index = INFUSIONS.iter().position(|d| d.0 == stat)?;
             let t = &terms.infusions[index];
             (
-                "BaseMaximumInfusions + AddedMaximumInfusions".into(),
+                "max(BaseMaximumInfusions + AddedMaximumInfusions, 0)".into(),
                 vec![
                     ("BaseMaximumInfusions".into(), t.base),
                     ("AddedMaximumInfusions".into(), t.added),
@@ -577,7 +584,7 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<super::session::detail::De
         "SurroundedRadiusMetres" => {
             let t = &terms.surrounded;
             (
-                "floor(SurroundedBaseRadius * floor(100 * sqrt((1 + SurroundedAreaIncreased / 100) * SurroundedAreaMore)) / 100) / 10".into(),
+                "floor(SurroundedBaseRadius * floor(100 * sqrt(max((1 + SurroundedAreaIncreased / 100) * SurroundedAreaMore, 0))) / 100) / 10".into(),
                 vec![
                     ("SurroundedBaseRadius".into(), t.base + t.added),
                     ("SurroundedAreaIncreased".into(), t.increased),
@@ -588,7 +595,7 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<super::session::detail::De
         "CurseActivationDelay" => {
             let t = &terms.curse_delay;
             (
-                "CanCurse * CurseBaseDelay * (1 + CurseDelayIncreased / 100) * CurseDelayMore"
+                "CanCurse * max(CurseBaseDelay * (1 + CurseDelayIncreased / 100) * CurseDelayMore, 0)"
                     .into(),
                 vec![
                     ("CanCurse".into(), if t.enabled { 1.0 } else { 0.0 }),
