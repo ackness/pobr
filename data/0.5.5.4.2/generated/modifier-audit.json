@@ -30,7 +30,7 @@
       "0.5.5.4.2/generated/special_vendor.json": "12d91522257bfb57b5cdfc63073bd3a5df8c7a87d2b1c13c3ba3f959c936d4a5",
       "0.5.5.4.2/overlay/mod_parser_rules.json": "c719c7c3eeed65048067f264fd0a62f81cc20d89b917f05e2aa53753166242af",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
-      "overlay-common/special_mods.json": "1b249791018b0461e9fa898a222c340c1ab9fae45936b8ca23308ba6b81312d8"
+      "overlay-common/special_mods.json": "a28b1df0b9104161fbf86befd97c90ddc2fea117413004236132595a4b1a5a76"
     },
     "effective_rules": [
       {
@@ -83,6 +83,38 @@
       },
       {
         "id": "break_increased_armour",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "global_blind_chance_on_hit",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "increased_blind_duration",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "hits_break_flat_armour",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "break_armour_equal_to_damage_dealt",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -1736,6 +1768,22 @@
         "non_effective_fields": []
       },
       {
+        "id": "physical_damage_prevented_recouped_as_life",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "flask_damage_taken_recouped_as_life_during_effect",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
         "id": "life_recoup_also_energy_shield",
         "files": [
           "overlay-common/special_mods.json"
@@ -1984,6 +2032,22 @@
         "non_effective_fields": []
       },
       {
+        "id": "focused_thrust_projectile_damage",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "conduit_charge_gains_to_allies",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
         "id": "resonance_power_instead_of_frenzy",
         "files": [
           "overlay-common/special_mods.json"
@@ -2057,6 +2121,422 @@
       },
       {
         "id": "additional_remnant_chance",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "physical_spell_critical_pin",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "physical_damage_is_pinning",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "weapon_all_damage_contributes_to_pin",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "pin_on_primed",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "increased_pin_duration",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "reduced_pin_duration",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "mauling_stuns_buildup",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "daze_duration_unmodelled",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "attack_maim_chance_unmodelled",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "self_debuff_expiration_rate",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "reduced_curse_effect_on_you",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "increased_curse_effect_on_you",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "reduced_bleeding_duration_on_you",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "increased_bleeding_duration_on_you",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "reduced_ailment_duration_on_you",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "increased_ailment_duration_on_you",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "corrupted_blood_immunity",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "maim_immunity",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "hinder_immunity",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "reduced_shock_effect_on_you",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "reduced_chill_effect_on_you",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "charm_energy_shield_recharge_starts_when_used",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "energy_shield_from_equipped_focus",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "light_radius_area_transfer",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "additional_skill_slots_no_output",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "knockback_distance_no_output",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "increased_totem_life",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "reduced_totem_life",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "remembrancing_jewel_data",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "charm_life_on_use",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "charm_guard",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "attack_blind_chance_unmodelled",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "doubled_totem_limit",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "corruption_always_changes",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "wind_ground_ignited",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "wind_ground_shocked",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "wind_ground_chilled",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "wind_ground_all_elements",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "wind_ground_multiple_surfaces",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "increased_totem_placement_range",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "increased_surrounded_area_of_effect",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "reduced_surrounded_area_of_effect",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "maximum_elemental_infusions",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "maximum_number_of_elemental_infusions",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "flask_more_recovery_if_used_on_low_mana",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "flask_more_recovery_if_used_on_low_life",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "flask_removes_life_recovery_from_mana_on_use",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "flask_removes_mana_recovery_from_life_on_use",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "charm_chaos_damage_prevented_recouped_as_life_and_mana",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "full_life_threshold_override",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "full_mana_threshold_override",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "strike_skills_target_additional_enemies",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -19171,12 +19651,12 @@
     "unsampled_translations": 170
   },
   "summary": {
-    "no_effect": 118,
-    "parsed": 16189,
-    "pobr_gap": 1636,
-    "recognized_empty": 214,
+    "no_effect": 140,
+    "parsed": 16336,
+    "pobr_gap": 1614,
+    "recognized_empty": 187,
     "text_channel": 788,
-    "upstream_gap": 23667
+    "upstream_gap": 23572
   },
   "entries": {
     "% of spent Runic Ward granted as Guard@100%": {
@@ -23049,11 +23529,18 @@
     "+1 to maximum Cold Infusions": {
       "sources": [
         "passive:50715",
+        "rule:maximum_elemental_infusions",
         "stat:stat_descriptions:maximum_cold_infusion_stacks"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "MaximumColdInfusions"
+      ],
+      "special_rule_id": "maximum_elemental_infusions",
+      "matching_special_rules": [
+        "maximum_elemental_infusions"
+      ]
     },
     "+1 to maximum Divine Charges": {
       "sources": [
@@ -23099,11 +23586,18 @@
     "+1 to maximum Fire Infusions": {
       "sources": [
         "passive:61354",
+        "rule:maximum_elemental_infusions",
         "stat:stat_descriptions:maximum_fire_infusion_stacks"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "MaximumFireInfusions"
+      ],
+      "special_rule_id": "maximum_elemental_infusions",
+      "matching_special_rules": [
+        "maximum_elemental_infusions"
+      ]
     },
     "+1 to maximum Fortification": {
       "sources": [
@@ -23189,11 +23683,18 @@
     "+1 to maximum Lightning Infusions": {
       "sources": [
         "passive:29800",
+        "rule:maximum_elemental_infusions",
         "stat:stat_descriptions:maximum_lightning_infusion_stacks"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "MaximumLightningInfusions"
+      ],
+      "special_rule_id": "maximum_elemental_infusions",
+      "matching_special_rules": [
+        "maximum_elemental_infusions"
+      ]
     },
     "+1 to maximum Mana": {
       "sources": [
@@ -23303,13 +23804,20 @@
         "mods:equipment:AlloyMaximumElementalInfusions1",
         "mods:equipment:GenesisTreeRingMaximumElementalInfusionCrafted",
         "passive:38965",
+        "rule:maximum_number_of_elemental_infusions",
         "search_mods:alloy:AlloyMaximumElementalInfusions1",
         "search_mods:breach:GenesisTreeRingMaximumElementalInfusionCrafted",
         "stat:stat_descriptions:additional_maximum_infusion_stacks"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "MaximumElementalInfusions"
+      ],
+      "special_rule_id": "maximum_number_of_elemental_infusions",
+      "matching_special_rules": [
+        "maximum_number_of_elemental_infusions"
+      ]
     },
     "+1 to maximum number of Raging Spirits": {
       "sources": [
@@ -35727,9 +36235,15 @@
       "sources": [
         "translation:冰霜灌注上限 +{0}"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "MaximumColdInfusions"
+      ],
+      "special_rule_id": "maximum_elemental_infusions",
+      "matching_special_rules": [
+        "maximum_elemental_infusions"
+      ]
     },
     "+17 to maximum Divine Charges": {
       "sources": [
@@ -35776,9 +36290,15 @@
       "sources": [
         "translation:火焰灌注上限 +{0}"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "MaximumFireInfusions"
+      ],
+      "special_rule_id": "maximum_elemental_infusions",
+      "matching_special_rules": [
+        "maximum_elemental_infusions"
+      ]
     },
     "+17 to maximum Fortification": {
       "sources": [
@@ -35872,9 +36392,15 @@
       "sources": [
         "translation:闪电灌注上限 +{0}"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "MaximumLightningInfusions"
+      ],
+      "special_rule_id": "maximum_elemental_infusions",
+      "matching_special_rules": [
+        "maximum_elemental_infusions"
+      ]
     },
     "+17 to maximum Mana": {
       "sources": [
@@ -36012,9 +36538,15 @@
       "sources": [
         "translation:元素灌注数量上限 {0:+d}"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "MaximumElementalInfusions"
+      ],
+      "special_rule_id": "maximum_number_of_elemental_infusions",
+      "matching_special_rules": [
+        "maximum_number_of_elemental_infusions"
+      ]
     },
     "+17 to maximum number of Raging Spirits": {
       "sources": [
@@ -36903,9 +37435,11 @@
         "rule:additional_remnant_chance",
         "translation:有 {0:+d}% 的几率产生一个额外残片"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": [],
+      "mod_names": [
+        "AdditionalRemnantChance"
+      ],
       "special_rule_id": "additional_remnant_chance",
       "matching_special_rules": [
         "additional_remnant_chance"
@@ -40104,9 +40638,15 @@
       "sources": [
         "search_mods:desecrated:AbyssModStaffKurgalPrefixMaximumInfusions"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "MaximumElementalInfusions"
+      ],
+      "special_rule_id": "maximum_number_of_elemental_infusions",
+      "matching_special_rules": [
+        "maximum_number_of_elemental_infusions"
+      ]
     },
     "+2 to maximum number of Summoned Ballista Totems": {
       "sources": [
@@ -49090,9 +49630,11 @@
       "sources": [
         "stat:stat_descriptions:local_%_chance_to_gain_flask_charge_on_kill"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": [],
+      "mod_names": [
+        "FlaskChargeOnKillChance"
+      ],
       "special_rule_id": "utility_charge_on_kill",
       "matching_special_rules": [
         "utility_charge_on_kill"
@@ -49158,10 +49700,14 @@
       "sources": [
         "stat:stat_descriptions:global_chance_to_blind_on_hit_%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
         "BlindChance"
+      ],
+      "special_rule_id": "global_blind_chance_on_hit",
+      "matching_special_rules": [
+        "global_blind_chance_on_hit"
       ]
     },
     "1% Life Recovery from Flasks also applies to Runic Ward": {
@@ -51147,6 +51693,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "BlindChance"
+      ],
+      "special_rule_id": "attack_blind_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_blind_chance_unmodelled"
       ]
     },
     "1% chance to Blind Enemies on hit": {
@@ -53207,9 +53757,11 @@
       "sources": [
         "stat:stat_descriptions:chance_%_to_create_additional_remnant"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": [],
+      "mod_names": [
+        "AdditionalRemnantChance"
+      ],
       "special_rule_id": "additional_remnant_chance",
       "matching_special_rules": [
         "additional_remnant_chance"
@@ -59698,10 +60250,14 @@
       "sources": [
         "stat:stat_descriptions:blind_duration_+%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "BlindDuration"
+      ],
+      "special_rule_id": "increased_blind_duration",
+      "matching_special_rules": [
+        "increased_blind_duration"
       ]
     },
     "1% increased Block Recovery": {
@@ -64786,10 +65342,14 @@
       "sources": [
         "stat:stat_descriptions:daze_duration_+%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "DazeDuration"
+      ],
+      "special_rule_id": "daze_duration_unmodelled",
+      "matching_special_rules": [
+        "daze_duration_unmodelled"
       ]
     },
     "1% increased Decoy Totem Area of Effect": {
@@ -65146,6 +65706,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfAilmentDuration"
+      ],
+      "special_rule_id": "increased_ailment_duration_on_you",
+      "matching_special_rules": [
+        "increased_ailment_duration_on_you"
       ]
     },
     "1% increased Duration of Ailments you inflict while Focused": {
@@ -65166,6 +65730,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfBleedDuration"
+      ],
+      "special_rule_id": "increased_bleeding_duration_on_you",
+      "matching_special_rules": [
+        "increased_bleeding_duration_on_you"
       ]
     },
     "1% increased Duration of Buffs and Debuffs you create from skills": {
@@ -66777,6 +67345,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "EnergyShield"
+      ],
+      "special_rule_id": "energy_shield_from_equipped_focus",
+      "matching_special_rules": [
+        "energy_shield_from_equipped_focus"
       ]
     },
     "1% increased Energy Shield from Equipped Helmet": {
@@ -69525,10 +70097,12 @@
       "sources": [
         "stat:stat_descriptions:knockback_distance_+%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "EnemyKnockbackDistance"
+      "mod_names": [],
+      "special_rule_id": "knockback_distance_no_output",
+      "matching_special_rules": [
+        "knockback_distance_no_output"
       ]
     },
     "1% increased Krillson Affection per Fish Gifted": {
@@ -73453,10 +74027,14 @@
       "sources": [
         "stat:stat_descriptions:pin_duration_+%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "EnemyPinDuration"
+      ],
+      "special_rule_id": "increased_pin_duration",
+      "matching_special_rules": [
+        "increased_pin_duration"
       ]
     },
     "1% increased Player and Monster Movement Speed": {
@@ -73730,10 +74308,14 @@
       "sources": [
         "stat:stat_descriptions:projectile_damage_+%_with_spears_while_there_no_enemies_surrounding_you"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "SpearDamage"
+        "Damage"
+      ],
+      "special_rule_id": "focused_thrust_projectile_damage",
+      "matching_special_rules": [
+        "focused_thrust_projectile_damage"
       ]
     },
     "1% increased Projectile Fork angle": {
@@ -76441,6 +77023,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "EnemyHeavyStunBuildup"
+      ],
+      "special_rule_id": "mauling_stuns_buildup",
+      "matching_special_rules": [
+        "mauling_stuns_buildup"
       ]
     },
     "1% increased Stun Buildup per 10 Tribute": {
@@ -76782,6 +77368,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SurroundedArea"
+      ],
+      "special_rule_id": "increased_surrounded_area_of_effect",
+      "matching_special_rules": [
+        "increased_surrounded_area_of_effect"
       ]
     },
     "1% increased Sweep Area of Effect": {
@@ -77036,6 +77626,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "TotemLife"
+      ],
+      "special_rule_id": "increased_totem_life",
+      "matching_special_rules": [
+        "increased_totem_life"
       ]
     },
     "1% increased Totem Life per 10 Strength Allocated in Radius": {
@@ -77062,9 +77656,13 @@
       "sources": [
         "stat:stat_descriptions:totem_placement_range_+%"
       ],
-      "status": "partial",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "increased_totem_placement_range",
+      "matching_special_rules": [
+        "increased_totem_placement_range"
+      ]
     },
     "1% increased Totem Placement speed": {
       "sources": [
@@ -78122,6 +78720,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "CurseEffectOnSelf"
+      ],
+      "special_rule_id": "increased_curse_effect_on_you",
+      "matching_special_rules": [
+        "increased_curse_effect_on_you"
       ]
     },
     "1% increased effect of Curses on you during Effect of any Mana Flask": {
@@ -80105,17 +80707,25 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "FlaskLifeRecoveryLowLife"
+        "FlaskRecovery"
+      ],
+      "special_rule_id": "flask_more_recovery_if_used_on_low_life",
+      "matching_special_rules": [
+        "flask_more_recovery_if_used_on_low_life"
       ]
     },
     "1% more Recovery if used while on Low Mana": {
       "sources": [
         "stat:stat_descriptions:local_flask_amount_to_recover_+%_when_on_low_mana"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "FlaskLifeRecoveryLowLife"
+        "FlaskRecovery"
+      ],
+      "special_rule_id": "flask_more_recovery_if_used_on_low_mana",
+      "matching_special_rules": [
+        "flask_more_recovery_if_used_on_low_mana"
       ]
     },
     "1% more Rogue's Marker value of primary Heist Target": {
@@ -80546,10 +81156,15 @@
       "sources": [
         "stat:stat_descriptions:charm_x%_of_chaos_damage_from_hits_prevented_recouped_as_life_and_mana_during_effect"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "ChaosDamage"
+        "ChaosDamagePreventedLifeRecoup",
+        "ChaosDamagePreventedManaRecoup"
+      ],
+      "special_rule_id": "charm_chaos_damage_prevented_recouped_as_life_and_mana",
+      "matching_special_rules": [
+        "charm_chaos_damage_prevented_recouped_as_life_and_mana"
       ]
     },
     "1% of Charges consumed by used Charms are granted to your Life Flasks": {
@@ -80883,10 +81498,14 @@
       "sources": [
         "stat:stat_descriptions:local_flask_damage_taken_goes_to_life_over_4_seconds_%_during_effect"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "DamageTaken"
+        "LifeRecoup"
+      ],
+      "special_rule_id": "flask_damage_taken_recouped_as_life_during_effect",
+      "matching_special_rules": [
+        "flask_damage_taken_recouped_as_life_during_effect"
       ]
     },
     "1% of Damage taken from Deflected Hits Recouped as Life": {
@@ -81920,10 +82539,14 @@
       "sources": [
         "stat:stat_descriptions:physical_damage_prevented_recouped_as_life_%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "PhysicalDamage"
+        "PhysicalDamagePreventedLifeRecoup"
+      ],
+      "special_rule_id": "physical_damage_prevented_recouped_as_life",
+      "matching_special_rules": [
+        "physical_damage_prevented_recouped_as_life"
       ]
     },
     "1% of Physical Damage prevented Recouped as Life if you have at least 100 Tribute": {
@@ -82701,6 +83324,20 @@
       "vendor_status": "unsupported",
       "mod_names": []
     },
+    "10% Global chance to Blind Enemies on Hit": {
+      "sources": [
+        "rule:global_blind_chance_on_hit"
+      ],
+      "status": "parsed",
+      "vendor_status": "partial",
+      "mod_names": [
+        "BlindChance"
+      ],
+      "special_rule_id": "global_blind_chance_on_hit",
+      "matching_special_rules": [
+        "global_blind_chance_on_hit"
+      ]
+    },
     "10% chance for Attack Hits to apply ten Incision": {
       "sources": [
         "passive:22817"
@@ -82809,12 +83446,17 @@
     },
     "10% chance to Blind Enemies on Hit with Attacks": {
       "sources": [
-        "passive:20916"
+        "passive:20916",
+        "rule:attack_blind_chance_unmodelled"
       ],
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "BlindChance"
+      ],
+      "special_rule_id": "attack_blind_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_blind_chance_unmodelled"
       ]
     },
     "10% chance to Blind Enemies on hit": {
@@ -82919,9 +83561,11 @@
         "passive:1506",
         "rule:additional_remnant_chance"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": [],
+      "mod_names": [
+        "AdditionalRemnantChance"
+      ],
       "special_rule_id": "additional_remnant_chance",
       "matching_special_rules": [
         "additional_remnant_chance"
@@ -84598,10 +85242,12 @@
         "passive:26726",
         "passive:5163"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "EnemyKnockbackDistance"
+      "mod_names": [],
+      "special_rule_id": "knockback_distance_no_output",
+      "matching_special_rules": [
+        "knockback_distance_no_output"
       ]
     },
     "10% increased Life Recovery from Flasks": {
@@ -85097,10 +85743,14 @@
         "passive:10927",
         "passive:9272"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "EnemyPinDuration"
+      ],
+      "special_rule_id": "increased_pin_duration",
+      "matching_special_rules": [
+        "increased_pin_duration"
       ]
     },
     "10% increased Poison Duration": {
@@ -86111,6 +86761,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfAilmentDuration"
+      ],
+      "special_rule_id": "reduced_ailment_duration_on_you",
+      "matching_special_rules": [
+        "reduced_ailment_duration_on_you"
       ]
     },
     "10% reduced Effect of Chill on you": {
@@ -86121,6 +86775,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfChillEffect"
+      ],
+      "special_rule_id": "reduced_chill_effect_on_you",
+      "matching_special_rules": [
+        "reduced_chill_effect_on_you"
       ]
     },
     "10% reduced Energy Shield Recharge Rate": {
@@ -86311,6 +86969,20 @@
         "SpellDamage"
       ]
     },
+    "10% reduced Totem Life": {
+      "sources": [
+        "rule:reduced_totem_life"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "TotemLife"
+      ],
+      "special_rule_id": "reduced_totem_life",
+      "matching_special_rules": [
+        "reduced_totem_life"
+      ]
+    },
     "10% reduced effect of Curses on you": {
       "sources": [
         "passive:5066",
@@ -86320,6 +86992,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "CurseEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_curse_effect_on_you",
+      "matching_special_rules": [
+        "reduced_curse_effect_on_you"
       ]
     },
     "10% reduced effect of Shock on you": {
@@ -86330,6 +87006,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfShockEffect"
+      ],
+      "special_rule_id": "reduced_shock_effect_on_you",
+      "matching_special_rules": [
+        "reduced_shock_effect_on_you"
       ]
     },
     "10% reduced maximum Mana": {
@@ -87120,17 +87800,25 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "FlaskLifeRecoveryLowLife"
+        "FlaskRecovery"
+      ],
+      "special_rule_id": "flask_more_recovery_if_used_on_low_life",
+      "matching_special_rules": [
+        "flask_more_recovery_if_used_on_low_life"
       ]
     },
     "100% more Recovery if used while on Low Mana": {
       "sources": [
         "mods:flask:FlaskIncreasedRecoveryOnLowMana5"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "FlaskLifeRecoveryLowLife"
+        "FlaskRecovery"
+      ],
+      "special_rule_id": "flask_more_recovery_if_used_on_low_mana",
+      "matching_special_rules": [
+        "flask_more_recovery_if_used_on_low_mana"
       ]
     },
     "100% of Cold Damage Converted to Lightning Damage": {
@@ -89728,6 +90416,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "BlindChance"
+      ],
+      "special_rule_id": "attack_blind_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_blind_chance_unmodelled"
       ]
     },
     "14% chance to Pierce an Enemy": {
@@ -90175,6 +90867,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "BlindChance"
+      ],
+      "special_rule_id": "attack_blind_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_blind_chance_unmodelled"
       ]
     },
     "15% chance to Gain Arcane Surge when you deal a Critical Hit": {
@@ -91080,6 +91776,20 @@
         "EnemyAilmentDuration"
       ]
     },
+    "15% increased Duration of Ailments on You": {
+      "sources": [
+        "rule:increased_ailment_duration_on_you"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "SelfAilmentDuration"
+      ],
+      "special_rule_id": "increased_ailment_duration_on_you",
+      "matching_special_rules": [
+        "increased_ailment_duration_on_you"
+      ]
+    },
     "15% increased Duration of Damaging Ailments on Enemies": {
       "sources": [
         "passive:46182",
@@ -91463,10 +92173,12 @@
       "sources": [
         "mods:jewel:JewelKnockback"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "EnemyKnockbackDistance"
+      "mod_names": [],
+      "special_rule_id": "knockback_distance_no_output",
+      "matching_special_rules": [
+        "knockback_distance_no_output"
       ]
     },
     "15% increased Life Cost of Skills": {
@@ -91945,10 +92657,14 @@
       "sources": [
         "passive:3234"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "EnemyPinDuration"
+      ],
+      "special_rule_id": "increased_pin_duration",
+      "matching_special_rules": [
+        "increased_pin_duration"
       ]
     },
     "15% increased Presence Area of Effect": {
@@ -92257,6 +92973,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "TotemLife"
+      ],
+      "special_rule_id": "increased_totem_life",
+      "matching_special_rules": [
+        "increased_totem_life"
       ]
     },
     "15% increased Volatility Explosion delay": {
@@ -92583,10 +93303,14 @@
       "sources": [
         "unique:Blood of the Warrior"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "DamageTaken"
+        "LifeRecoup"
+      ],
+      "special_rule_id": "flask_damage_taken_recouped_as_life_during_effect",
+      "matching_special_rules": [
+        "flask_damage_taken_recouped_as_life_during_effect"
       ]
     },
     "15% of Damage taken from Deflected Hits Recouped as Life": {
@@ -92733,12 +93457,17 @@
     },
     "15% reduced Duration of Ailments on You": {
       "sources": [
-        "passive:45370"
+        "passive:45370",
+        "rule:reduced_ailment_duration_on_you"
       ],
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "SelfAilmentDuration"
+      ],
+      "special_rule_id": "reduced_ailment_duration_on_you",
+      "matching_special_rules": [
+        "reduced_ailment_duration_on_you"
       ]
     },
     "15% reduced Effect of Chill on you": {
@@ -92749,6 +93478,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfChillEffect"
+      ],
+      "special_rule_id": "reduced_chill_effect_on_you",
+      "matching_special_rules": [
+        "reduced_chill_effect_on_you"
       ]
     },
     "15% reduced Elemental Ailment Duration on you": {
@@ -92853,6 +93586,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "CurseEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_curse_effect_on_you",
+      "matching_special_rules": [
+        "reduced_curse_effect_on_you"
       ]
     },
     "15% reduced effect of Shock on you": {
@@ -92863,6 +93600,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfShockEffect"
+      ],
+      "special_rule_id": "reduced_shock_effect_on_you",
+      "matching_special_rules": [
+        "reduced_shock_effect_on_you"
       ]
     },
     "15% reduced maximum Mana": {
@@ -93732,6 +94473,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "TotemLife"
+      ],
+      "special_rule_id": "increased_totem_life",
+      "matching_special_rules": [
+        "increased_totem_life"
       ]
     },
     "16% increased Trap Damage": {
@@ -96265,9 +97010,11 @@
       "sources": [
         "translation:击败敌人时有 {0}% 的几率获得一个能量球"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": [],
+      "mod_names": [
+        "FlaskChargeOnKillChance"
+      ],
       "special_rule_id": "utility_charge_on_kill",
       "matching_special_rules": [
         "utility_charge_on_kill"
@@ -96333,10 +97080,14 @@
       "sources": [
         "translation:击中有 {0}% 的全局几率致盲敌人"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
         "BlindChance"
+      ],
+      "special_rule_id": "global_blind_chance_on_hit",
+      "matching_special_rules": [
+        "global_blind_chance_on_hit"
       ]
     },
     "17% Increased Accuracy Rating while a Supported Skill is active": {
@@ -99655,6 +100406,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "BlindChance"
+      ],
+      "special_rule_id": "attack_blind_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_blind_chance_unmodelled"
       ]
     },
     "17% chance to Blind Enemies on Hit with Attacks while in Sand Stance": {
@@ -102480,9 +103235,11 @@
       "sources": [
         "translation:有 {0}% 的几率产生一个额外残片"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": [],
+      "mod_names": [
+        "AdditionalRemnantChance"
+      ],
       "special_rule_id": "additional_remnant_chance",
       "matching_special_rules": [
         "additional_remnant_chance"
@@ -110068,10 +110825,14 @@
       "sources": [
         "translation:致盲的持续时间提高 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "BlindDuration"
+      ],
+      "special_rule_id": "increased_blind_duration",
+      "matching_special_rules": [
+        "increased_blind_duration"
       ]
     },
     "17% increased Blinding duration": {
@@ -115404,10 +116165,14 @@
       "sources": [
         "translation:恍惚持续时间提高 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "DazeDuration"
+      ],
+      "special_rule_id": "daze_duration_unmodelled",
+      "matching_special_rules": [
+        "daze_duration_unmodelled"
       ]
     },
     "17% increased Debuff Duration per Curse applied": {
@@ -115819,6 +116584,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfAilmentDuration"
+      ],
+      "special_rule_id": "increased_ailment_duration_on_you",
+      "matching_special_rules": [
+        "increased_ailment_duration_on_you"
       ]
     },
     "17% increased Duration of Ailments you inflict while Focused": {
@@ -115839,6 +116608,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfBleedDuration"
+      ],
+      "special_rule_id": "increased_bleeding_duration_on_you",
+      "matching_special_rules": [
+        "increased_bleeding_duration_on_you"
       ]
     },
     "17% increased Duration of Buffs and Debuffs you create from skills": {
@@ -118022,6 +118795,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "EnergyShield"
+      ],
+      "special_rule_id": "energy_shield_from_equipped_focus",
+      "matching_special_rules": [
+        "energy_shield_from_equipped_focus"
       ]
     },
     "17% increased Energy Shield from Equipped Helmet": {
@@ -121121,10 +121898,12 @@
       "sources": [
         "translation:击退距离提高 {0}%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "EnemyKnockbackDistance"
+      "mod_names": [],
+      "special_rule_id": "knockback_distance_no_output",
+      "matching_special_rules": [
+        "knockback_distance_no_output"
       ]
     },
     "17% increased Krillson Affection per Fish Gifted": {
@@ -125591,10 +126370,14 @@
       "sources": [
         "translation:定身持续时间提高 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "EnemyPinDuration"
+      ],
+      "special_rule_id": "increased_pin_duration",
+      "matching_special_rules": [
+        "increased_pin_duration"
       ]
     },
     "17% increased Player and Monster Movement Speed": {
@@ -125857,10 +126640,14 @@
       "sources": [
         "translation:3 米内没有敌人时，战矛的投射物伤害提高 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "SpearDamage"
+        "Damage"
+      ],
+      "special_rule_id": "focused_thrust_projectile_damage",
+      "matching_special_rules": [
+        "focused_thrust_projectile_damage"
       ]
     },
     "17% increased Projectile Fork angle": {
@@ -129629,6 +130416,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "EnemyHeavyStunBuildup"
+      ],
+      "special_rule_id": "mauling_stuns_buildup",
+      "matching_special_rules": [
+        "mauling_stuns_buildup"
       ]
     },
     "17% increased Stun Buildup per 10 Tribute": {
@@ -130022,6 +130813,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SurroundedArea"
+      ],
+      "special_rule_id": "increased_surrounded_area_of_effect",
+      "matching_special_rules": [
+        "increased_surrounded_area_of_effect"
       ]
     },
     "17% increased Sweep Area of Effect": {
@@ -130292,6 +131087,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "TotemLife"
+      ],
+      "special_rule_id": "increased_totem_life",
+      "matching_special_rules": [
+        "increased_totem_life"
       ]
     },
     "17% increased Totem Life per 10 Strength Allocated in Radius": {
@@ -130318,9 +131117,13 @@
       "sources": [
         "translation:图腾放置范围提高 {0}%"
       ],
-      "status": "partial",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "increased_totem_placement_range",
+      "matching_special_rules": [
+        "increased_totem_placement_range"
+      ]
     },
     "17% increased Totem Placement speed": {
       "sources": [
@@ -132512,6 +133315,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "CurseEffectOnSelf"
+      ],
+      "special_rule_id": "increased_curse_effect_on_you",
+      "matching_special_rules": [
+        "increased_curse_effect_on_you"
       ]
     },
     "17% increased effect of Curses on you during Effect of any Mana Flask": {
@@ -133536,6 +134343,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "TotemLife"
+      ],
+      "special_rule_id": "increased_totem_life",
+      "matching_special_rules": [
+        "increased_totem_life"
       ]
     },
     "17% increased travel distance": {
@@ -139529,17 +140340,25 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "FlaskLifeRecoveryLowLife"
+        "FlaskRecovery"
+      ],
+      "special_rule_id": "flask_more_recovery_if_used_on_low_life",
+      "matching_special_rules": [
+        "flask_more_recovery_if_used_on_low_life"
       ]
     },
     "17% more Recovery if used while on Low Mana": {
       "sources": [
         "translation:回复效果在低魔下使用时总增 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "FlaskLifeRecoveryLowLife"
+        "FlaskRecovery"
+      ],
+      "special_rule_id": "flask_more_recovery_if_used_on_low_mana",
+      "matching_special_rules": [
+        "flask_more_recovery_if_used_on_low_mana"
       ]
     },
     "17% more Rogue's Marker value of primary Heist Target": {
@@ -140426,10 +141245,15 @@
       "sources": [
         "translation:效果期间，你被击中时阻挡的混沌伤害的 {0}% 吸纳为生命和魔力"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "ChaosDamage"
+        "ChaosDamagePreventedLifeRecoup",
+        "ChaosDamagePreventedManaRecoup"
+      ],
+      "special_rule_id": "charm_chaos_damage_prevented_recouped_as_life_and_mana",
+      "matching_special_rules": [
+        "charm_chaos_damage_prevented_recouped_as_life_and_mana"
       ]
     },
     "17% of Charges consumed by used Charms are granted to your Life Flasks": {
@@ -140834,10 +141658,14 @@
       "sources": [
         "translation:效果期间将所受伤害的 {0}% 吸纳为生命"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "DamageTaken"
+        "LifeRecoup"
+      ],
+      "special_rule_id": "flask_damage_taken_recouped_as_life_during_effect",
+      "matching_special_rules": [
+        "flask_damage_taken_recouped_as_life_during_effect"
       ]
     },
     "17% of Damage taken from Deflected Hits Recouped as Life": {
@@ -141946,10 +142774,14 @@
       "sources": [
         "translation:阻挡的物理伤害的 {0}% 吸纳为生命"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "PhysicalDamage"
+        "PhysicalDamagePreventedLifeRecoup"
+      ],
+      "special_rule_id": "physical_damage_prevented_recouped_as_life",
+      "matching_special_rules": [
+        "physical_damage_prevented_recouped_as_life"
       ]
     },
     "17% of Physical Damage prevented Recouped as Life if you have at least 100 Tribute": {
@@ -150860,6 +151692,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfAilmentDuration"
+      ],
+      "special_rule_id": "reduced_ailment_duration_on_you",
+      "matching_special_rules": [
+        "reduced_ailment_duration_on_you"
       ]
     },
     "17% reduced Duration of Ailments you inflict while Focused": {
@@ -150880,6 +151716,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfBleedDuration"
+      ],
+      "special_rule_id": "reduced_bleeding_duration_on_you",
+      "matching_special_rules": [
+        "reduced_bleeding_duration_on_you"
       ]
     },
     "17% reduced Duration of Buffs and Debuffs you create from skills": {
@@ -151231,6 +152071,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfChillEffect"
+      ],
+      "special_rule_id": "reduced_chill_effect_on_you",
+      "matching_special_rules": [
+        "reduced_chill_effect_on_you"
       ]
     },
     "17% reduced Effect of Chill on you during Effect": {
@@ -155779,10 +156623,12 @@
       "sources": [
         "translation:击退距离降低 {0}%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "EnemyKnockbackDistance"
+      "mod_names": [],
+      "special_rule_id": "knockback_distance_no_output",
+      "matching_special_rules": [
+        "knockback_distance_no_output"
       ]
     },
     "17% reduced Krillson Affection per Fish Gifted": {
@@ -159836,10 +160682,14 @@
       "sources": [
         "translation:定身持续时间降低 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "EnemyPinDuration"
+      ],
+      "special_rule_id": "reduced_pin_duration",
+      "matching_special_rules": [
+        "reduced_pin_duration"
       ]
     },
     "17% reduced Poison Duration": {
@@ -163650,6 +164500,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SurroundedArea"
+      ],
+      "special_rule_id": "reduced_surrounded_area_of_effect",
+      "matching_special_rules": [
+        "reduced_surrounded_area_of_effect"
       ]
     },
     "17% reduced Sweep Area of Effect": {
@@ -163912,6 +164766,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "TotemLife"
+      ],
+      "special_rule_id": "reduced_totem_life",
+      "matching_special_rules": [
+        "reduced_totem_life"
       ]
     },
     "17% reduced Totem Life per 10 Strength Allocated in Radius": {
@@ -163938,9 +164796,13 @@
       "sources": [
         "translation:图腾放置范围降低 {0}%"
       ],
-      "status": "partial",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "increased_totem_placement_range",
+      "matching_special_rules": [
+        "increased_totem_placement_range"
+      ]
     },
     "17% reduced Totem Placement speed": {
       "sources": [
@@ -165890,6 +166752,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "CurseEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_curse_effect_on_you",
+      "matching_special_rules": [
+        "reduced_curse_effect_on_you"
       ]
     },
     "17% reduced effect of Curses on you during Effect of any Mana Flask": {
@@ -166123,6 +166989,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfShockEffect"
+      ],
+      "special_rule_id": "reduced_shock_effect_on_you",
+      "matching_special_rules": [
+        "reduced_shock_effect_on_you"
       ]
     },
     "17% reduced effect of Shrine Buffs on you": {
@@ -166749,6 +167619,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "TotemLife"
+      ],
+      "special_rule_id": "reduced_totem_life",
+      "matching_special_rules": [
+        "reduced_totem_life"
       ]
     },
     "17% reduced wave frequency": {
@@ -168196,9 +169070,11 @@
         "unique:Beira's Anguish",
         "unique:Nascent Hope"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": [],
+      "mod_names": [
+        "FlaskChargeOnKillChance"
+      ],
       "special_rule_id": "utility_charge_on_kill",
       "matching_special_rules": [
         "utility_charge_on_kill"
@@ -168352,6 +169228,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "BlindChance"
+      ],
+      "special_rule_id": "attack_blind_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_blind_chance_unmodelled"
       ]
     },
     "20% chance to Daze on Hit": {
@@ -168870,6 +169750,20 @@
       "special_rule_id": "vnd_d_increased_blind_effect_238ce3d9",
       "matching_special_rules": [
         "vnd_d_increased_blind_effect_238ce3d9"
+      ]
+    },
+    "20% increased Blind duration": {
+      "sources": [
+        "rule:increased_blind_duration"
+      ],
+      "status": "parsed",
+      "vendor_status": "partial",
+      "mod_names": [
+        "BlindDuration"
+      ],
+      "special_rule_id": "increased_blind_duration",
+      "matching_special_rules": [
+        "increased_blind_duration"
       ]
     },
     "20% increased Block chance": {
@@ -169966,10 +170860,12 @@
         "passive:48103",
         "passive:57805"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "EnemyKnockbackDistance"
+      "mod_names": [],
+      "special_rule_id": "knockback_distance_no_output",
+      "matching_special_rules": [
+        "knockback_distance_no_output"
       ]
     },
     "20% increased Life Flask Charges gained": {
@@ -170455,10 +171351,14 @@
       "sources": [
         "passive:4447"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "EnemyPinDuration"
+      ],
+      "special_rule_id": "increased_pin_duration",
+      "matching_special_rules": [
+        "increased_pin_duration"
       ]
     },
     "20% increased Poison Duration": {
@@ -170870,15 +171770,23 @@
       "vendor_status": "parsed",
       "mod_names": [
         "TotemLife"
+      ],
+      "special_rule_id": "increased_totem_life",
+      "matching_special_rules": [
+        "increased_totem_life"
       ]
     },
     "20% increased Totem Placement range": {
       "sources": [
         "passive:26339"
       ],
-      "status": "partial",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "increased_totem_placement_range",
+      "matching_special_rules": [
+        "increased_totem_placement_range"
+      ]
     },
     "20% increased Totem Placement speed": {
       "sources": [
@@ -171755,6 +172663,20 @@
         "StunThreshold"
       ]
     },
+    "20% reduced Surrounded Area of Effect": {
+      "sources": [
+        "rule:reduced_surrounded_area_of_effect"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "SurroundedArea"
+      ],
+      "special_rule_id": "reduced_surrounded_area_of_effect",
+      "matching_special_rules": [
+        "reduced_surrounded_area_of_effect"
+      ]
+    },
     "20% reduced Totem Life": {
       "sources": [
         "unique:Soul Mantle"
@@ -171763,6 +172685,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "TotemLife"
+      ],
+      "special_rule_id": "reduced_totem_life",
+      "matching_special_rules": [
+        "reduced_totem_life"
       ]
     },
     "20% reduced maximum Divinity per Corrupted Item Equipped": {
@@ -171976,10 +172902,12 @@
       "sources": [
         "translation:击退距离提高 200%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "EnemyKnockbackDistance"
+      "mod_names": [],
+      "special_rule_id": "knockback_distance_no_output",
+      "matching_special_rules": [
+        "knockback_distance_no_output"
       ]
     },
     "200% increased Physical Damage": {
@@ -172271,6 +173199,20 @@
         "ManaRecoup"
       ]
     },
+    "21% of Damage taken during flask effect Recouped as Life": {
+      "sources": [
+        "rule:flask_damage_taken_recouped_as_life_during_effect"
+      ],
+      "status": "parsed",
+      "vendor_status": "partial",
+      "mod_names": [
+        "LifeRecoup"
+      ],
+      "special_rule_id": "flask_damage_taken_recouped_as_life_during_effect",
+      "matching_special_rules": [
+        "flask_damage_taken_recouped_as_life_during_effect"
+      ]
+    },
     "210% increased Evasion Rating": {
       "sources": [
         "unique:The Auspex"
@@ -172537,6 +173479,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "BlindChance"
+      ],
+      "special_rule_id": "attack_blind_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_blind_chance_unmodelled"
       ]
     },
     "23% chance to Pierce an Enemy": {
@@ -173145,9 +174091,11 @@
         "unique:Beira's Anguish",
         "unique:Nascent Hope"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": [],
+      "mod_names": [
+        "FlaskChargeOnKillChance"
+      ],
       "special_rule_id": "utility_charge_on_kill",
       "matching_special_rules": [
         "utility_charge_on_kill"
@@ -173688,10 +174636,14 @@
       "sources": [
         "passive:38459"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "BlindDuration"
+      ],
+      "special_rule_id": "increased_blind_duration",
+      "matching_special_rules": [
+        "increased_blind_duration"
       ]
     },
     "25% increased Block Recovery": {
@@ -174084,12 +175036,17 @@
     },
     "25% increased Daze Duration": {
       "sources": [
-        "passive:5009"
+        "passive:5009",
+        "rule:daze_duration_unmodelled"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "Duration"
+        "DazeDuration"
+      ],
+      "special_rule_id": "daze_duration_unmodelled",
+      "matching_special_rules": [
+        "daze_duration_unmodelled"
       ]
     },
     "25% increased Duration": {
@@ -174361,6 +175318,18 @@
       "vendor_status": "parsed",
       "mod_names": [
         "AilmentMagnitude"
+      ]
+    },
+    "25% increased Knockback Distance": {
+      "sources": [
+        "rule:knockback_distance_no_output"
+      ],
+      "status": "no_effect",
+      "vendor_status": "parsed",
+      "mod_names": [],
+      "special_rule_id": "knockback_distance_no_output",
+      "matching_special_rules": [
+        "knockback_distance_no_output"
       ]
     },
     "25% increased Life Recovery from Flasks used when on Low Life": {
@@ -174664,6 +175633,20 @@
         "PhysicalDamage"
       ]
     },
+    "25% increased Pin duration": {
+      "sources": [
+        "rule:increased_pin_duration"
+      ],
+      "status": "parsed",
+      "vendor_status": "partial",
+      "mod_names": [
+        "EnemyPinDuration"
+      ],
+      "special_rule_id": "increased_pin_duration",
+      "matching_special_rules": [
+        "increased_pin_duration"
+      ]
+    },
     "25% increased Presence Area of Effect": {
       "sources": [
         "mods:jewel:JewelPresenceRadius",
@@ -174905,6 +175888,20 @@
       "vendor_status": "parsed",
       "mod_names": [
         "EnemyHeavyStunBuildup"
+      ]
+    },
+    "25% increased Totem Life": {
+      "sources": [
+        "rule:increased_totem_life"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "TotemLife"
+      ],
+      "special_rule_id": "increased_totem_life",
+      "matching_special_rules": [
+        "increased_totem_life"
       ]
     },
     "25% increased Totem Placement speed": {
@@ -175287,6 +176284,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfChillEffect"
+      ],
+      "special_rule_id": "reduced_chill_effect_on_you",
+      "matching_special_rules": [
+        "reduced_chill_effect_on_you"
       ]
     },
     "25% reduced Endurance Charge Duration": {
@@ -175379,6 +176380,20 @@
       "vendor_status": "parsed",
       "mod_names": [
         "ManaRegen"
+      ]
+    },
+    "25% reduced Pin duration": {
+      "sources": [
+        "rule:reduced_pin_duration"
+      ],
+      "status": "parsed",
+      "vendor_status": "partial",
+      "mod_names": [
+        "EnemyPinDuration"
+      ],
+      "special_rule_id": "reduced_pin_duration",
+      "matching_special_rules": [
+        "reduced_pin_duration"
       ]
     },
     "25% reduced Poison Duration": {
@@ -175482,6 +176497,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "CurseEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_curse_effect_on_you",
+      "matching_special_rules": [
+        "reduced_curse_effect_on_you"
       ]
     },
     "25% reduced maximum Life": {
@@ -175615,6 +176634,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "BlindChance"
+      ],
+      "special_rule_id": "attack_blind_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_blind_chance_unmodelled"
       ]
     },
     "26% chance to Pierce an Enemy": {
@@ -176081,6 +177104,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "BlindChance"
+      ],
+      "special_rule_id": "attack_blind_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_blind_chance_unmodelled"
       ]
     },
     "29% chance to Trigger Socketed Spells when you Spend at least 17 Mana on an": {
@@ -176358,6 +177385,20 @@
       "vendor_status": "partial",
       "mod_names": [
         "MaximumLife"
+      ]
+    },
+    "29% of Damage taken during effect Recouped as Life": {
+      "sources": [
+        "rule:flask_damage_taken_recouped_as_life_during_effect"
+      ],
+      "status": "parsed",
+      "vendor_status": "partial",
+      "mod_names": [
+        "LifeRecoup"
+      ],
+      "special_rule_id": "flask_damage_taken_recouped_as_life_during_effect",
+      "matching_special_rules": [
+        "flask_damage_taken_recouped_as_life_during_effect"
       ]
     },
     "29% of Sacrificed Energy Shield": {
@@ -177227,9 +178268,11 @@
         "mods:charm:FlaskChanceRechargeOnKill2",
         "mods:flask:FlaskChanceRechargeOnKill2"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": [],
+      "mod_names": [
+        "FlaskChargeOnKillChance"
+      ],
       "special_rule_id": "utility_charge_on_kill",
       "matching_special_rules": [
         "utility_charge_on_kill"
@@ -179200,6 +180243,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "EnemyHeavyStunBuildup"
+      ],
+      "special_rule_id": "mauling_stuns_buildup",
+      "matching_special_rules": [
+        "mauling_stuns_buildup"
       ]
     },
     "30% increased Stun Buildup with Melee Damage": {
@@ -179299,6 +180346,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "TotemLife"
+      ],
+      "special_rule_id": "increased_totem_life",
+      "matching_special_rules": [
+        "increased_totem_life"
       ]
     },
     "30% increased Totem Placement speed": {
@@ -179421,6 +180472,20 @@
       "vendor_status": "parsed",
       "mod_names": [
         "ArcaneSurgeEffect"
+      ]
+    },
+    "30% increased effect of Curses on you": {
+      "sources": [
+        "rule:increased_curse_effect_on_you"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "CurseEffectOnSelf"
+      ],
+      "special_rule_id": "increased_curse_effect_on_you",
+      "matching_special_rules": [
+        "increased_curse_effect_on_you"
       ]
     },
     "30% increased effect of Fully Broken Armour": {
@@ -179625,10 +180690,14 @@
       "sources": [
         "unique:Blood of the Warrior"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "DamageTaken"
+        "LifeRecoup"
+      ],
+      "special_rule_id": "flask_damage_taken_recouped_as_life_during_effect",
+      "matching_special_rules": [
+        "flask_damage_taken_recouped_as_life_during_effect"
       ]
     },
     "30% of Fire Damage taken Recouped as Life": {
@@ -179728,6 +180797,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfBleedDuration"
+      ],
+      "special_rule_id": "reduced_bleeding_duration_on_you",
+      "matching_special_rules": [
+        "reduced_bleeding_duration_on_you"
       ]
     },
     "30% reduced Duration of Ignite, Shock and Chill on Enemies": {
@@ -179750,6 +180823,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfChillEffect"
+      ],
+      "special_rule_id": "reduced_chill_effect_on_you",
+      "matching_special_rules": [
+        "reduced_chill_effect_on_you"
       ]
     },
     "30% reduced Energy Shield Recharge Rate": {
@@ -179955,6 +181032,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "TotemLife"
+      ],
+      "special_rule_id": "reduced_totem_life",
+      "matching_special_rules": [
+        "reduced_totem_life"
       ]
     },
     "30% reduced effect of Curses on you": {
@@ -179962,12 +181043,17 @@
         "mods:equipment:HandWrapsUniqueMutatedVaalCurseEffectiveness",
         "passive:10499",
         "passive:31925",
-        "passive:58894"
+        "passive:58894",
+        "rule:reduced_curse_effect_on_you"
       ],
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "CurseEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_curse_effect_on_you",
+      "matching_special_rules": [
+        "reduced_curse_effect_on_you"
       ]
     },
     "30% reduced effect of Shock on you": {
@@ -179979,6 +181065,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfShockEffect"
+      ],
+      "special_rule_id": "reduced_shock_effect_on_you",
+      "matching_special_rules": [
+        "reduced_shock_effect_on_you"
       ]
     },
     "30% reduced maximum Life": {
@@ -180211,6 +181301,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "BlindChance"
+      ],
+      "special_rule_id": "attack_blind_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_blind_chance_unmodelled"
       ]
     },
     "32% increased Area of Effect for Attacks": {
@@ -180874,9 +181968,11 @@
         "mods:flask:FlaskChanceRechargeOnKill3",
         "rule:utility_charge_on_kill"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": [],
+      "mod_names": [
+        "FlaskChargeOnKillChance"
+      ],
       "special_rule_id": "utility_charge_on_kill",
       "matching_special_rules": [
         "utility_charge_on_kill"
@@ -180923,6 +182019,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "BlindChance"
+      ],
+      "special_rule_id": "attack_blind_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_blind_chance_unmodelled"
       ]
     },
     "35% chance to Chain an additional time": {
@@ -181399,6 +182499,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfChillEffect"
+      ],
+      "special_rule_id": "reduced_chill_effect_on_you",
+      "matching_special_rules": [
+        "reduced_chill_effect_on_you"
       ]
     },
     "35% reduced Effect of Non-Damaging Ailments on you": {
@@ -181431,6 +182535,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "CurseEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_curse_effect_on_you",
+      "matching_special_rules": [
+        "reduced_curse_effect_on_you"
       ]
     },
     "35% reduced effect of Shock on you": {
@@ -181441,6 +182549,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfShockEffect"
+      ],
+      "special_rule_id": "reduced_shock_effect_on_you",
+      "matching_special_rules": [
+        "reduced_shock_effect_on_you"
       ]
     },
     "350% increased Armour": {
@@ -181599,6 +182711,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "BlindChance"
+      ],
+      "special_rule_id": "attack_blind_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_blind_chance_unmodelled"
       ]
     },
     "38% increased Armour": {
@@ -183202,6 +184318,20 @@
         "Duration"
       ]
     },
+    "40% increased Duration of Bleeding on You": {
+      "sources": [
+        "rule:increased_bleeding_duration_on_you"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "SelfBleedDuration"
+      ],
+      "special_rule_id": "increased_bleeding_duration_on_you",
+      "matching_special_rules": [
+        "increased_bleeding_duration_on_you"
+      ]
+    },
     "40% increased Duration of Poisons you inflict against Slowed Enemies": {
       "sources": [
         "passive:261"
@@ -183300,6 +184430,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "EnergyShield"
+      ],
+      "special_rule_id": "energy_shield_from_equipped_focus",
+      "matching_special_rules": [
+        "energy_shield_from_equipped_focus"
       ]
     },
     "40% increased Evasion Rating": {
@@ -183743,10 +184877,14 @@
       "sources": [
         "passive:9227"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "SpearDamage"
+        "Damage"
+      ],
+      "special_rule_id": "focused_thrust_projectile_damage",
+      "matching_special_rules": [
+        "focused_thrust_projectile_damage"
       ]
     },
     "40% increased Projectile Speed": {
@@ -183913,6 +185051,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "EnemyHeavyStunBuildup"
+      ],
+      "special_rule_id": "mauling_stuns_buildup",
+      "matching_special_rules": [
+        "mauling_stuns_buildup"
       ]
     },
     "40% increased Stun Recovery": {
@@ -184185,6 +185327,7 @@
       "sources": [
         "mods:equipment:ReducedBleedDuration1",
         "passive:4810",
+        "rule:reduced_bleeding_duration_on_you",
         "unique:Apron of Emiran",
         "unique:Couture of Crimson",
         "unique:Yriel's Fostering"
@@ -184193,6 +185336,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfBleedDuration"
+      ],
+      "special_rule_id": "reduced_bleeding_duration_on_you",
+      "matching_special_rules": [
+        "reduced_bleeding_duration_on_you"
       ]
     },
     "40% reduced Duration of Ignite, Shock and Chill on Enemies": {
@@ -184209,12 +185356,31 @@
     },
     "40% reduced Effect of Chill on you": {
       "sources": [
-        "passive:48699"
+        "passive:48699",
+        "rule:reduced_chill_effect_on_you"
       ],
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "SelfChillEffect"
+      ],
+      "special_rule_id": "reduced_chill_effect_on_you",
+      "matching_special_rules": [
+        "reduced_chill_effect_on_you"
+      ]
+    },
+    "40% reduced Effect of Shock on you": {
+      "sources": [
+        "rule:reduced_shock_effect_on_you"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "SelfShockEffect"
+      ],
+      "special_rule_id": "reduced_shock_effect_on_you",
+      "matching_special_rules": [
+        "reduced_shock_effect_on_you"
       ]
     },
     "40% reduced Flask Effect Duration": {
@@ -184340,6 +185506,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfShockEffect"
+      ],
+      "special_rule_id": "reduced_shock_effect_on_you",
+      "matching_special_rules": [
+        "reduced_shock_effect_on_you"
       ]
     },
     "400% increased Armour": {
@@ -184855,6 +186025,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfBleedDuration"
+      ],
+      "special_rule_id": "reduced_bleeding_duration_on_you",
+      "matching_special_rules": [
+        "reduced_bleeding_duration_on_you"
       ]
     },
     "45% reduced Freeze Duration on you": {
@@ -185301,6 +186475,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "BlindChance"
+      ],
+      "special_rule_id": "attack_blind_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_blind_chance_unmodelled"
       ]
     },
     "5% chance to Daze on Hit": {
@@ -185350,9 +186528,11 @@
         "passive:42339",
         "passive:60974"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": [],
+      "mod_names": [
+        "AdditionalRemnantChance"
+      ],
       "special_rule_id": "additional_remnant_chance",
       "matching_special_rules": [
         "additional_remnant_chance"
@@ -186314,12 +187494,17 @@
     },
     "5% of Physical Damage prevented Recouped as Life": {
       "sources": [
-        "passive:44952"
+        "passive:44952",
+        "rule:physical_damage_prevented_recouped_as_life"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "PhysicalDamage"
+        "PhysicalDamagePreventedLifeRecoup"
+      ],
+      "special_rule_id": "physical_damage_prevented_recouped_as_life",
+      "matching_special_rules": [
+        "physical_damage_prevented_recouped_as_life"
       ]
     },
     "5% of Physical Damage taken as Cold Damage": {
@@ -186408,6 +187593,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfChillEffect"
+      ],
+      "special_rule_id": "reduced_chill_effect_on_you",
+      "matching_special_rules": [
+        "reduced_chill_effect_on_you"
       ]
     },
     "5% reduced Elemental Damage Taken while stationary": {
@@ -186532,6 +187721,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "CurseEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_curse_effect_on_you",
+      "matching_special_rules": [
+        "reduced_curse_effect_on_you"
       ]
     },
     "5% reduced maximum Life": {
@@ -187234,6 +188427,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "EnergyShield"
+      ],
+      "special_rule_id": "energy_shield_from_equipped_focus",
+      "matching_special_rules": [
+        "energy_shield_from_equipped_focus"
       ]
     },
     "50% increased Evasion Rating": {
@@ -187752,12 +188949,17 @@
     },
     "50% increased Surrounded Area of Effect": {
       "sources": [
-        "passive:24766"
+        "passive:24766",
+        "rule:increased_surrounded_area_of_effect"
       ],
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "SurroundedArea"
+      ],
+      "special_rule_id": "increased_surrounded_area_of_effect",
+      "matching_special_rules": [
+        "increased_surrounded_area_of_effect"
       ]
     },
     "50% increased Thorns damage": {
@@ -187772,11 +188974,16 @@
     },
     "50% increased Totem Placement range": {
       "sources": [
-        "passive:43396"
+        "passive:43396",
+        "rule:increased_totem_placement_range"
       ],
-      "status": "partial",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "increased_totem_placement_range",
+      "matching_special_rules": [
+        "increased_totem_placement_range"
+      ]
     },
     "50% increased Warcry Cooldown Recovery Rate": {
       "sources": [
@@ -188086,14 +189293,35 @@
         "Damage"
       ]
     },
-    "50% of Chaos damage you prevent when Hit Recouped as Life and Mana during effect": {
+    "50% of Chaos damage you prevent when Hit Recouped as Life and Mana": {
       "sources": [
-        "unique:Forsaken Bangle"
+        "rule:charm_chaos_damage_prevented_recouped_as_life_and_mana"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "ChaosDamage"
+        "ChaosDamagePreventedLifeRecoup",
+        "ChaosDamagePreventedManaRecoup"
+      ],
+      "special_rule_id": "charm_chaos_damage_prevented_recouped_as_life_and_mana",
+      "matching_special_rules": [
+        "charm_chaos_damage_prevented_recouped_as_life_and_mana"
+      ]
+    },
+    "50% of Chaos damage you prevent when Hit Recouped as Life and Mana during effect": {
+      "sources": [
+        "rule:charm_chaos_damage_prevented_recouped_as_life_and_mana",
+        "unique:Forsaken Bangle"
+      ],
+      "status": "parsed",
+      "vendor_status": "partial",
+      "mod_names": [
+        "ChaosDamagePreventedLifeRecoup",
+        "ChaosDamagePreventedManaRecoup"
+      ],
+      "special_rule_id": "charm_chaos_damage_prevented_recouped_as_life_and_mana",
+      "matching_special_rules": [
+        "charm_chaos_damage_prevented_recouped_as_life_and_mana"
       ]
     },
     "50% of Charges consumed by used Charms are granted to your Life Flasks": {
@@ -188187,12 +189415,17 @@
     },
     "50% of Physical Damage prevented Recouped as Life": {
       "sources": [
+        "rule:physical_damage_prevented_recouped_as_life",
         "unique:Wandering Reliquary"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "PhysicalDamage"
+        "PhysicalDamagePreventedLifeRecoup"
+      ],
+      "special_rule_id": "physical_damage_prevented_recouped_as_life",
+      "matching_special_rules": [
+        "physical_damage_prevented_recouped_as_life"
       ]
     },
     "50% of Physical Damage taken as Fire Damage": {
@@ -188308,6 +189541,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfAilmentDuration"
+      ],
+      "special_rule_id": "reduced_ailment_duration_on_you",
+      "matching_special_rules": [
+        "reduced_ailment_duration_on_you"
       ]
     },
     "50% reduced Duration of Bleeding on You": {
@@ -188319,6 +189556,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfBleedDuration"
+      ],
+      "special_rule_id": "reduced_bleeding_duration_on_you",
+      "matching_special_rules": [
+        "reduced_bleeding_duration_on_you"
       ]
     },
     "50% reduced Duration of Curses on you": {
@@ -188339,6 +189580,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfChillEffect"
+      ],
+      "special_rule_id": "reduced_chill_effect_on_you",
+      "matching_special_rules": [
+        "reduced_chill_effect_on_you"
       ]
     },
     "50% reduced Evasion Rating": {
@@ -188499,6 +189744,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "CurseEffectOnSelf"
+      ],
+      "special_rule_id": "reduced_curse_effect_on_you",
+      "matching_special_rules": [
+        "reduced_curse_effect_on_you"
       ]
     },
     "50% reduced effect of Shock on you": {
@@ -188511,6 +189760,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfShockEffect"
+      ],
+      "special_rule_id": "reduced_shock_effect_on_you",
+      "matching_special_rules": [
+        "reduced_shock_effect_on_you"
       ]
     },
     "50% reduced effect of Withered on you": {
@@ -188990,6 +190243,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfBleedDuration"
+      ],
+      "special_rule_id": "reduced_bleeding_duration_on_you",
+      "matching_special_rules": [
+        "reduced_bleeding_duration_on_you"
       ]
     },
     "55% reduced Freeze Duration on you": {
@@ -190378,6 +191635,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "EnergyShield"
+      ],
+      "special_rule_id": "energy_shield_from_equipped_focus",
+      "matching_special_rules": [
+        "energy_shield_from_equipped_focus"
       ]
     },
     "60% increased Evasion Rating": {
@@ -190696,17 +191957,25 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "FlaskLifeRecoveryLowLife"
+        "FlaskRecovery"
+      ],
+      "special_rule_id": "flask_more_recovery_if_used_on_low_life",
+      "matching_special_rules": [
+        "flask_more_recovery_if_used_on_low_life"
       ]
     },
     "60% more Recovery if used while on Low Mana": {
       "sources": [
         "mods:flask:FlaskIncreasedRecoveryOnLowMana1"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "FlaskLifeRecoveryLowLife"
+        "FlaskRecovery"
+      ],
+      "special_rule_id": "flask_more_recovery_if_used_on_low_mana",
+      "matching_special_rules": [
+        "flask_more_recovery_if_used_on_low_mana"
       ]
     },
     "60% of your current Energy Shield is added to your Armour for": {
@@ -190750,6 +192019,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "SelfBleedDuration"
+      ],
+      "special_rule_id": "reduced_bleeding_duration_on_you",
+      "matching_special_rules": [
+        "reduced_bleeding_duration_on_you"
       ]
     },
     "60% reduced Freeze Duration on you": {
@@ -191307,6 +192580,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "BlindChance"
+      ],
+      "special_rule_id": "attack_blind_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_blind_chance_unmodelled"
       ]
     },
     "7% chance to inflict Bleeding on Hit": {
@@ -191646,17 +192923,25 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "FlaskLifeRecoveryLowLife"
+        "FlaskRecovery"
+      ],
+      "special_rule_id": "flask_more_recovery_if_used_on_low_life",
+      "matching_special_rules": [
+        "flask_more_recovery_if_used_on_low_life"
       ]
     },
     "70% more Recovery if used while on Low Mana": {
       "sources": [
         "mods:flask:FlaskIncreasedRecoveryOnLowMana2"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "FlaskLifeRecoveryLowLife"
+        "FlaskRecovery"
+      ],
+      "special_rule_id": "flask_more_recovery_if_used_on_low_mana",
+      "matching_special_rules": [
+        "flask_more_recovery_if_used_on_low_mana"
       ]
     },
     "70% reduced Amount Recovered": {
@@ -191871,12 +193156,17 @@
     },
     "75% increased Energy Shield from Equipped Focus": {
       "sources": [
-        "passive:11838"
+        "passive:11838",
+        "rule:energy_shield_from_equipped_focus"
       ],
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "EnergyShield"
+      ],
+      "special_rule_id": "energy_shield_from_equipped_focus",
+      "matching_special_rules": [
+        "energy_shield_from_equipped_focus"
       ]
     },
     "75% increased Melee Damage with Spears while Surrounded": {
@@ -192167,6 +193457,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "BlindChance"
+      ],
+      "special_rule_id": "attack_blind_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_blind_chance_unmodelled"
       ]
     },
     "8% chance to Poison on Hit": {
@@ -192890,10 +194184,12 @@
         "passive:43444",
         "passive:7788"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "EnemyKnockbackDistance"
+      "mod_names": [],
+      "special_rule_id": "knockback_distance_no_output",
+      "matching_special_rules": [
+        "knockback_distance_no_output"
       ]
     },
     "8% increased Life Regeneration rate": {
@@ -193877,17 +195173,25 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "FlaskLifeRecoveryLowLife"
+        "FlaskRecovery"
+      ],
+      "special_rule_id": "flask_more_recovery_if_used_on_low_life",
+      "matching_special_rules": [
+        "flask_more_recovery_if_used_on_low_life"
       ]
     },
     "80% more Recovery if used while on Low Mana": {
       "sources": [
         "mods:flask:FlaskIncreasedRecoveryOnLowMana3"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "FlaskLifeRecoveryLowLife"
+        "FlaskRecovery"
+      ],
+      "special_rule_id": "flask_more_recovery_if_used_on_low_mana",
+      "matching_special_rules": [
+        "flask_more_recovery_if_used_on_low_mana"
       ]
     },
     "80% of Maximum Mana is Converted to twice that much Armour": {
@@ -194079,6 +195383,34 @@
       "vendor_status": "parsed",
       "mod_names": [
         "PhysicalDamage"
+      ]
+    },
+    "88% more Recovery if used while on Low Life": {
+      "sources": [
+        "rule:flask_more_recovery_if_used_on_low_life"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "FlaskRecovery"
+      ],
+      "special_rule_id": "flask_more_recovery_if_used_on_low_life",
+      "matching_special_rules": [
+        "flask_more_recovery_if_used_on_low_life"
+      ]
+    },
+    "88% more Recovery if used while on Low Mana": {
+      "sources": [
+        "rule:flask_more_recovery_if_used_on_low_mana"
+      ],
+      "status": "parsed",
+      "vendor_status": "partial",
+      "mod_names": [
+        "FlaskRecovery"
+      ],
+      "special_rule_id": "flask_more_recovery_if_used_on_low_mana",
+      "matching_special_rules": [
+        "flask_more_recovery_if_used_on_low_mana"
       ]
     },
     "89% increased Chaos Damage": {
@@ -194421,17 +195753,25 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "FlaskLifeRecoveryLowLife"
+        "FlaskRecovery"
+      ],
+      "special_rule_id": "flask_more_recovery_if_used_on_low_life",
+      "matching_special_rules": [
+        "flask_more_recovery_if_used_on_low_life"
       ]
     },
     "90% more Recovery if used while on Low Mana": {
       "sources": [
         "mods:flask:FlaskIncreasedRecoveryOnLowMana4"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "FlaskLifeRecoveryLowLife"
+        "FlaskRecovery"
+      ],
+      "special_rule_id": "flask_more_recovery_if_used_on_low_mana",
+      "matching_special_rules": [
+        "flask_more_recovery_if_used_on_low_mana"
       ]
     },
     "91% increased Armour": {
@@ -202156,13 +203496,20 @@
     },
     "All Damage from Hits with this Weapon Contributes to Pin Buildup": {
       "sources": [
+        "rule:weapon_all_damage_contributes_to_pin",
         "stat:stat_descriptions:local_all_damage_can_pin",
         "translation:此武器击中造成的所有伤害作用于定身积蓄",
         "unique:Chainsting"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "CanPin"
+      ],
+      "special_rule_id": "weapon_all_damage_contributes_to_pin",
+      "matching_special_rules": [
+        "weapon_all_damage_contributes_to_pin"
+      ]
     },
     "All Damage from Lightning Strike and Frost Blades Hits Contributes to Flammability and Ignite Magnitudes": {
       "sources": [
@@ -217972,65 +219319,114 @@
       "sources": [
         "stat:stat_descriptions:charm_gain_X_guard_for_duration"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "CharmGuard"
+      ],
+      "special_rule_id": "charm_guard",
+      "matching_special_rules": [
+        "charm_guard"
+      ]
     },
     "Also grants 128 Guard": {
       "sources": [
         "mods:charm:CharmGuardWhileActive2"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "CharmGuard"
+      ],
+      "special_rule_id": "charm_guard",
+      "matching_special_rules": [
+        "charm_guard"
+      ]
     },
     "Also grants 17 Guard": {
       "sources": [
         "translation:同时获得 {0} 防卫"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "CharmGuard"
+      ],
+      "special_rule_id": "charm_guard",
+      "matching_special_rules": [
+        "charm_guard"
+      ]
     },
     "Also grants 200 Guard": {
       "sources": [
         "mods:charm:CharmGuardWhileActive3"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "CharmGuard"
+      ],
+      "special_rule_id": "charm_guard",
+      "matching_special_rules": [
+        "charm_guard"
+      ]
     },
     "Also grants 260 Guard": {
       "sources": [
         "mods:charm:CharmGuardWhileActive4"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "CharmGuard"
+      ],
+      "special_rule_id": "charm_guard",
+      "matching_special_rules": [
+        "charm_guard"
+      ]
     },
     "Also grants 350 Guard": {
       "sources": [
         "mods:charm:CharmGuardWhileActive5"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "CharmGuard"
+      ],
+      "special_rule_id": "charm_guard",
+      "matching_special_rules": [
+        "charm_guard"
+      ]
     },
     "Also grants 500 Guard": {
       "sources": [
-        "mods:charm:CharmGuardWhileActive6"
+        "mods:charm:CharmGuardWhileActive6",
+        "rule:charm_guard"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "CharmGuard"
+      ],
+      "special_rule_id": "charm_guard",
+      "matching_special_rules": [
+        "charm_guard"
+      ]
     },
     "Also grants 66 Guard": {
       "sources": [
         "mods:charm:CharmGuardWhileActive1"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "CharmGuard"
+      ],
+      "special_rule_id": "charm_guard",
+      "matching_special_rules": [
+        "charm_guard"
+      ]
     },
     "Alter the difficulty and rewards of Rituals": {
       "sources": [
@@ -227111,9 +228507,15 @@
       "sources": [
         "stat:stat_descriptions:maim_on_hit_%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "MaimChance"
+      ],
+      "special_rule_id": "attack_maim_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_maim_chance_unmodelled"
+      ]
     },
     "Attacks have 1% chance to Maim on Hit against Blinded Enemies": {
       "sources": [
@@ -227135,9 +228537,15 @@
       "sources": [
         "passive:46696"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "MaimChance"
+      ],
+      "special_rule_id": "attack_maim_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_maim_chance_unmodelled"
+      ]
     },
     "Attacks have 17% chance to Blind with Hits against Bleeding enemies": {
       "sources": [
@@ -227151,9 +228559,15 @@
       "sources": [
         "translation:攻击击中时有 {0}% 的几率造成瘫痪"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "MaimChance"
+      ],
+      "special_rule_id": "attack_maim_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_maim_chance_unmodelled"
+      ]
     },
     "Attacks have 17% chance to Maim on Hit against Blinded Enemies": {
       "sources": [
@@ -227193,11 +228607,18 @@
     },
     "Attacks have 25% chance to Maim on Hit": {
       "sources": [
-        "passive:41580"
+        "passive:41580",
+        "rule:attack_maim_chance_unmodelled"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "MaimChance"
+      ],
+      "special_rule_id": "attack_maim_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_maim_chance_unmodelled"
+      ]
     },
     "Attacks have 25% chance to inflict Bleeding when Hitting Cursed Enemies": {
       "sources": [
@@ -238940,9 +240361,11 @@
       "sources": [
         "stat:stat_descriptions:armour_break_amount_+%"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": [],
+      "mod_names": [
+        "ArmourBreakPerHit"
+      ],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -238980,9 +240403,11 @@
         "passive:42410",
         "passive:7294"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": [],
+      "mod_names": [
+        "ArmourBreakPerHit"
+      ],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -238995,9 +240420,11 @@
         "passive:38066",
         "search_mods:corrupted:CorruptionArmourBreak1"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": [],
+      "mod_names": [
+        "ArmourBreakPerHit"
+      ],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -239007,9 +240434,11 @@
       "sources": [
         "translation:粉碎的护甲提高 {0}%"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": [],
+      "mod_names": [
+        "ArmourBreakPerHit"
+      ],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -239061,9 +240490,11 @@
         "passive:62785",
         "passive:65498"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": [],
+      "mod_names": [
+        "ArmourBreakPerHit"
+      ],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -239075,9 +240506,11 @@
         "passive:49380",
         "passive:59767"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": [],
+      "mod_names": [
+        "ArmourBreakPerHit"
+      ],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -239087,9 +240520,11 @@
       "sources": [
         "search_mods:desecrated:AbyssModWandUlamanSuffixArmourBreakAmount"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": [],
+      "mod_names": [
+        "ArmourBreakPerHit"
+      ],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -239100,9 +240535,11 @@
         "jewel_node:kalguur_notable7",
         "passive:42981"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": [],
+      "mod_names": [
+        "ArmourBreakPerHit"
+      ],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -239128,9 +240565,11 @@
       "sources": [
         "passive:21453"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": [],
+      "mod_names": [
+        "ArmourBreakPerHit"
+      ],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -239140,9 +240579,11 @@
       "sources": [
         "search_mods:desecrated:AbyssModJewelPrefixGlobalPhysicalDamageArmourBreak"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": [],
+      "mod_names": [
+        "ArmourBreakPerHit"
+      ],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -239152,33 +240593,71 @@
       "sources": [
         "stat:stat_descriptions:armour_break_fire_damage_%_dealt_as_armour_break"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "FireDamageAsArmourBreak"
+      ],
+      "special_rule_id": "break_armour_equal_to_damage_dealt",
+      "matching_special_rules": [
+        "break_armour_equal_to_damage_dealt"
+      ]
     },
     "Break Armour equal to 1% of Hit Damage dealt": {
       "sources": [
         "stat:stat_descriptions:armour_break_damage_%_dealt_as_armour_break"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "HitDamageAsArmourBreak"
+      ],
+      "special_rule_id": "break_armour_equal_to_damage_dealt",
+      "matching_special_rules": [
+        "break_armour_equal_to_damage_dealt"
+      ]
     },
     "Break Armour equal to 1% of Physical Damage dealt": {
       "sources": [
         "stat:stat_descriptions:armour_break_physical_damage_%_dealt_as_armour_break"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "PhysicalDamageAsArmourBreak"
+      ],
+      "special_rule_id": "break_armour_equal_to_damage_dealt",
+      "matching_special_rules": [
+        "break_armour_equal_to_damage_dealt"
+      ]
     },
     "Break Armour equal to 10% of Hit Damage dealt": {
       "sources": [
         "passive:58704"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "HitDamageAsArmourBreak"
+      ],
+      "special_rule_id": "break_armour_equal_to_damage_dealt",
+      "matching_special_rules": [
+        "break_armour_equal_to_damage_dealt"
+      ]
+    },
+    "Break Armour equal to 10% of Physical Damage dealt": {
+      "sources": [
+        "rule:break_armour_equal_to_damage_dealt"
+      ],
+      "status": "parsed",
+      "vendor_status": "unsupported",
+      "mod_names": [
+        "PhysicalDamageAsArmourBreak"
+      ],
+      "special_rule_id": "break_armour_equal_to_damage_dealt",
+      "matching_special_rules": [
+        "break_armour_equal_to_damage_dealt"
+      ]
     },
     "Break Armour equal to 17% of Chaos Damage dealt by Supported Skills": {
       "sources": [
@@ -239192,25 +240671,43 @@
       "sources": [
         "translation:粉碎护甲，相当于造成火焰伤害的 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "FireDamageAsArmourBreak"
+      ],
+      "special_rule_id": "break_armour_equal_to_damage_dealt",
+      "matching_special_rules": [
+        "break_armour_equal_to_damage_dealt"
+      ]
     },
     "Break Armour equal to 17% of Hit Damage dealt": {
       "sources": [
         "translation:粉碎护甲，相当于造成击中伤害的 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "HitDamageAsArmourBreak"
+      ],
+      "special_rule_id": "break_armour_equal_to_damage_dealt",
+      "matching_special_rules": [
+        "break_armour_equal_to_damage_dealt"
+      ]
     },
     "Break Armour equal to 17% of Physical Damage dealt": {
       "sources": [
         "translation:粉碎护甲，相当于造成物理伤害的 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "PhysicalDamageAsArmourBreak"
+      ],
+      "special_rule_id": "break_armour_equal_to_damage_dealt",
+      "matching_special_rules": [
+        "break_armour_equal_to_damage_dealt"
+      ]
     },
     "Break Armour equal to 17% of Physical Damage dealt by Supported Skill": {
       "sources": [
@@ -239224,9 +240721,15 @@
       "sources": [
         "translation:护甲破损等于造成的物理伤害的 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "PhysicalDamageAsArmourBreak"
+      ],
+      "special_rule_id": "break_armour_equal_to_damage_dealt",
+      "matching_special_rules": [
+        "break_armour_equal_to_damage_dealt"
+      ]
     },
     "Break Armour equal to 17% of Poison damage": {
       "sources": [
@@ -239240,17 +240743,43 @@
       "sources": [
         "search_mods:desecrated:AbyssMod1HMaceAmanamuSuffixBreakPercentArmourPhysicalDamage"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "PhysicalDamageAsArmourBreak"
+      ],
+      "special_rule_id": "break_armour_equal_to_damage_dealt",
+      "matching_special_rules": [
+        "break_armour_equal_to_damage_dealt"
+      ]
+    },
+    "Break Armour equal to 5% of Hit Damage dealt": {
+      "sources": [
+        "rule:break_armour_equal_to_damage_dealt"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "HitDamageAsArmourBreak"
+      ],
+      "special_rule_id": "break_armour_equal_to_damage_dealt",
+      "matching_special_rules": [
+        "break_armour_equal_to_damage_dealt"
+      ]
     },
     "Break Armour equal to 7% of Physical Damage dealt": {
       "sources": [
         "search_mods:desecrated:AbyssMod2HMaceAmanamuSuffixBreakPercentArmourPhysicalDamage"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "PhysicalDamageAsArmourBreak"
+      ],
+      "special_rule_id": "break_armour_equal_to_damage_dealt",
+      "matching_special_rules": [
+        "break_armour_equal_to_damage_dealt"
+      ]
     },
     "Break Armour from Physical damage@17%": {
       "sources": [
@@ -239267,7 +240796,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "Condition:CanArmourBreak"
+        "PhysicalCritDamageAsArmourBreak"
       ],
       "special_rule_id": "break_armour_on_crit_with_spells",
       "matching_special_rules": [
@@ -239281,7 +240810,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "Condition:CanArmourBreak"
+        "PhysicalCritDamageAsArmourBreak"
       ],
       "special_rule_id": "break_armour_on_crit_with_spells",
       "matching_special_rules": [
@@ -239295,7 +240824,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "Condition:CanArmourBreak"
+        "PhysicalCritDamageAsArmourBreak"
       ],
       "special_rule_id": "break_armour_on_crit_with_spells",
       "matching_special_rules": [
@@ -239309,7 +240838,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "Condition:CanArmourBreak"
+        "PhysicalCritDamageAsArmourBreak"
       ],
       "special_rule_id": "break_armour_on_crit_with_spells",
       "matching_special_rules": [
@@ -239324,7 +240853,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "Condition:CanArmourBreak"
+        "PhysicalCritDamageAsArmourBreak"
       ],
       "special_rule_id": "break_armour_on_crit_with_spells",
       "matching_special_rules": [
@@ -240656,7 +242185,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "Duration"
+        "BuffExpiryRate"
       ],
       "special_rule_id": "buffs_on_you_expire_slower",
       "matching_special_rules": [
@@ -240678,7 +242207,7 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "Duration"
+        "BuffExpiryRate"
       ],
       "special_rule_id": "buffs_on_you_expire_slower",
       "matching_special_rules": [
@@ -253762,12 +255291,17 @@
     },
     "Corrupting will always result in change": {
       "sources": [
+        "rule:corruption_always_changes",
         "stat:stat_descriptions:soul_core_cannot_roll_no_outcome_with_corruption",
         "translation:腐化必定会改变"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "corruption_always_changes",
+      "matching_special_rules": [
+        "corruption_always_changes"
+      ]
     },
     "Corruption Areas have 17% increased chance of Essences": {
       "sources": [
@@ -261494,8 +263028,9 @@
       "mod_names": [
         "SelfDebuffExpirationRate"
       ],
-      "special_rule_id": "vnd_debuffs_on_you_expire_d_faster_9477be0f",
+      "special_rule_id": "self_debuff_expiration_rate",
       "matching_special_rules": [
+        "self_debuff_expiration_rate",
         "vnd_debuffs_on_you_expire_d_faster_9477be0f"
       ]
     },
@@ -261522,8 +263057,9 @@
       "mod_names": [
         "SelfDebuffExpirationRate"
       ],
-      "special_rule_id": "vnd_debuffs_on_you_expire_d_faster_9477be0f",
+      "special_rule_id": "self_debuff_expiration_rate",
       "matching_special_rules": [
+        "self_debuff_expiration_rate",
         "vnd_debuffs_on_you_expire_d_faster_9477be0f"
       ]
     },
@@ -261536,8 +263072,9 @@
       "mod_names": [
         "SelfDebuffExpirationRate"
       ],
-      "special_rule_id": "vnd_debuffs_on_you_expire_d_faster_9477be0f",
+      "special_rule_id": "self_debuff_expiration_rate",
       "matching_special_rules": [
+        "self_debuff_expiration_rate",
         "vnd_debuffs_on_you_expire_d_faster_9477be0f"
       ]
     },
@@ -261574,22 +263111,25 @@
       "mod_names": [
         "SelfDebuffExpirationRate"
       ],
-      "special_rule_id": "vnd_debuffs_on_you_expire_d_faster_9477be0f",
+      "special_rule_id": "self_debuff_expiration_rate",
       "matching_special_rules": [
+        "self_debuff_expiration_rate",
         "vnd_debuffs_on_you_expire_d_faster_9477be0f"
       ]
     },
     "Debuffs on you expire 25% faster": {
       "sources": [
-        "passive:25211"
+        "passive:25211",
+        "rule:self_debuff_expiration_rate"
       ],
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
         "SelfDebuffExpirationRate"
       ],
-      "special_rule_id": "vnd_debuffs_on_you_expire_d_faster_9477be0f",
+      "special_rule_id": "self_debuff_expiration_rate",
       "matching_special_rules": [
+        "self_debuff_expiration_rate",
         "vnd_debuffs_on_you_expire_d_faster_9477be0f"
       ]
     },
@@ -261602,8 +263142,9 @@
       "mod_names": [
         "SelfDebuffExpirationRate"
       ],
-      "special_rule_id": "vnd_debuffs_on_you_expire_d_faster_9477be0f",
+      "special_rule_id": "self_debuff_expiration_rate",
       "matching_special_rules": [
+        "self_debuff_expiration_rate",
         "vnd_debuffs_on_you_expire_d_faster_9477be0f"
       ]
     },
@@ -261617,8 +263158,9 @@
       "mod_names": [
         "SelfDebuffExpirationRate"
       ],
-      "special_rule_id": "vnd_debuffs_on_you_expire_d_faster_9477be0f",
+      "special_rule_id": "self_debuff_expiration_rate",
       "matching_special_rules": [
+        "self_debuff_expiration_rate",
         "vnd_debuffs_on_you_expire_d_faster_9477be0f"
       ]
     },
@@ -261632,8 +263174,9 @@
       "mod_names": [
         "SelfDebuffExpirationRate"
       ],
-      "special_rule_id": "vnd_debuffs_on_you_expire_d_faster_9477be0f",
+      "special_rule_id": "self_debuff_expiration_rate",
       "matching_special_rules": [
+        "self_debuff_expiration_rate",
         "vnd_debuffs_on_you_expire_d_faster_9477be0f"
       ]
     },
@@ -264184,6 +265727,7 @@
     "Double Activation Delay of Curses": {
       "sources": [
         "passive:47759",
+        "rule:double_activation_delay_of_curses",
         "stat:passive_skill_stat_descriptions:keystone_hex_master",
         "translation:你可以额外施加一个诅咒\n诅咒的激活延迟翻倍"
       ],
@@ -272488,9 +274032,15 @@
         "translation:使用时开始能量护盾充能",
         "unique:Nascent Hope"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnergyShieldRechargeBase"
+      ],
+      "special_rule_id": "charm_energy_shield_recharge_starts_when_used",
+      "matching_special_rules": [
+        "charm_energy_shield_recharge_starts_when_used"
+      ]
     },
     "Energy Shield Recharge starts when you are Stunned": {
       "sources": [
@@ -296121,10 +297671,12 @@
         "translation:获得 1 个额外技能栏位",
         "unique:Bursting Decay"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SkillSlots"
+      "mod_names": [],
+      "special_rule_id": "additional_skill_slots_no_output",
+      "matching_special_rules": [
+        "additional_skill_slots_no_output"
       ]
     },
     "Grants 1% increased Accuracy per 2% Quality": {
@@ -296295,10 +297847,12 @@
       "sources": [
         "translation:获得 {0} 个额外技能栏位"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SkillSlots"
+      "mod_names": [],
+      "special_rule_id": "additional_skill_slots_no_output",
+      "matching_special_rules": [
+        "additional_skill_slots_no_output"
       ]
     },
     "Grants 17 to 29 Cold Thorns damage": {
@@ -296623,10 +298177,12 @@
       "sources": [
         "passive:17696"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "vendor_status": "parsed",
-      "mod_names": [
-        "SkillSlots"
+      "mod_names": [],
+      "special_rule_id": "additional_skill_slots_no_output",
+      "matching_special_rules": [
+        "additional_skill_slots_no_output"
       ]
     },
     "Grants 3 Life per Enemy Hit": {
@@ -296637,6 +298193,18 @@
       "vendor_status": "parsed",
       "mod_names": [
         "LifeOnHit"
+      ]
+    },
+    "Grants 3 additional Skill Slots": {
+      "sources": [
+        "rule:additional_skill_slots_no_output"
+      ],
+      "status": "no_effect",
+      "vendor_status": "parsed",
+      "mod_names": [],
+      "special_rule_id": "additional_skill_slots_no_output",
+      "matching_special_rules": [
+        "additional_skill_slots_no_output"
       ]
     },
     "Grants 4 Life per Enemy Hit": {
@@ -307822,17 +309390,25 @@
         "stat:stat_descriptions:apply_X_armour_break_on_hit",
         "stat:stat_descriptions:local_apply_X_armour_break_on_hit"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArmourBreakPerHit"
+      ],
+      "special_rule_id": "hits_break_flat_armour",
+      "matching_special_rules": [
+        "hits_break_flat_armour"
+      ]
     },
     "Hits Break 1% increased Armour on targets with Ailments": {
       "sources": [
         "stat:stat_descriptions:armour_break_amount_+%_vs_enemies_affected_by_ailments"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": [],
+      "mod_names": [
+        "ArmourBreakPerHit"
+      ],
       "special_rule_id": "hits_break_increased_armour_on_ailmented_targets",
       "matching_special_rules": [
         "hits_break_increased_armour_on_ailmented_targets"
@@ -307842,17 +309418,25 @@
       "sources": [
         "translation:击中粉碎 {0} 护甲"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArmourBreakPerHit"
+      ],
+      "special_rule_id": "hits_break_flat_armour",
+      "matching_special_rules": [
+        "hits_break_flat_armour"
+      ]
     },
     "Hits Break 17% increased Armour on targets with Ailments": {
       "sources": [
         "translation:击中对受到异常状态影响的目标粉碎的护甲提高 {0}%"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": [],
+      "mod_names": [
+        "ArmourBreakPerHit"
+      ],
       "special_rule_id": "hits_break_increased_armour_on_ailmented_targets",
       "matching_special_rules": [
         "hits_break_increased_armour_on_ailmented_targets"
@@ -307870,9 +309454,15 @@
       "sources": [
         "unique:Wylund's Stake"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArmourBreakPerHit"
+      ],
+      "special_rule_id": "hits_break_flat_armour",
+      "matching_special_rules": [
+        "hits_break_flat_armour"
+      ]
     },
     "Hits Break 30% increased Armour on targets with Ailments": {
       "sources": [
@@ -307880,9 +309470,11 @@
         "passive:60138",
         "rule:hits_break_increased_armour_on_ailmented_targets"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": [],
+      "mod_names": [
+        "ArmourBreakPerHit"
+      ],
       "special_rule_id": "hits_break_increased_armour_on_ailmented_targets",
       "matching_special_rules": [
         "hits_break_increased_armour_on_ailmented_targets"
@@ -307890,19 +309482,28 @@
     },
     "Hits Break 50 Armour": {
       "sources": [
+        "rule:hits_break_flat_armour",
         "unique:Wylund's Stake"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArmourBreakPerHit"
+      ],
+      "special_rule_id": "hits_break_flat_armour",
+      "matching_special_rules": [
+        "hits_break_flat_armour"
+      ]
     },
     "Hits Break 50% increased Armour on targets with Ailments": {
       "sources": [
         "passive:7449"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": [],
+      "mod_names": [
+        "ArmourBreakPerHit"
+      ],
       "special_rule_id": "hits_break_increased_armour_on_ailmented_targets",
       "matching_special_rules": [
         "hits_break_increased_armour_on_ailmented_targets"
@@ -310802,9 +312403,15 @@
         "stat:passive_skill_stat_descriptions:keystone_conduit",
         "translation:若你可以获得能量球，则在场的友军直接获得相应的能量球"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ChargesGainedByAllies"
+      ],
+      "special_rule_id": "conduit_charge_gains_to_allies",
+      "matching_special_rules": [
+        "conduit_charge_gains_to_allies"
+      ]
     },
     "If you would gain a Frenzy Charge, Allies in your Presence gain that Charge instead": {
       "sources": [
@@ -312089,6 +313696,7 @@
     "Immune to Corrupted Blood": {
       "sources": [
         "passive:4810",
+        "rule:corrupted_blood_immunity",
         "stat:stat_descriptions:immune_to_corrupted_blood",
         "translation:免疫腐化之血"
       ],
@@ -312096,6 +313704,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "CorruptedBloodImmune"
+      ],
+      "special_rule_id": "corrupted_blood_immunity",
+      "matching_special_rules": [
+        "corrupted_blood_immunity"
       ]
     },
     "Immune to Curses if Corrupted": {
@@ -312316,6 +313928,7 @@
     "Immune to Hinder": {
       "sources": [
         "passive:55131",
+        "rule:hinder_immunity",
         "stat:stat_descriptions:immune_to_hinder",
         "translation:免疫缓速"
       ],
@@ -312323,6 +313936,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "HinderImmune"
+      ],
+      "special_rule_id": "hinder_immunity",
+      "matching_special_rules": [
+        "hinder_immunity"
       ]
     },
     "Immune to Ignite": {
@@ -312405,6 +314022,7 @@
     "Immune to Maim": {
       "sources": [
         "passive:55131",
+        "rule:maim_immunity",
         "search_mods:corrupted:CorruptionJewelMaimImmunity1",
         "stat:stat_descriptions:immune_to_maim",
         "translation:免疫瘫痪"
@@ -312413,6 +314031,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "MaimImmune"
+      ],
+      "special_rule_id": "maim_immunity",
+      "matching_special_rules": [
+        "maim_immunity"
       ]
     },
     "Immune to Maim while Shapeshifted": {
@@ -347667,27 +349289,46 @@
     },
     "Non-Vaal Strike Skills target 1 additional nearby Enemy": {
       "sources": [
+        "rule:strike_skills_target_additional_enemies",
         "stat:stat_descriptions:melee_attack_number_of_spirit_strikes"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "AdditionalStrikeTarget"
+      ],
+      "special_rule_id": "strike_skills_target_additional_enemies",
+      "matching_special_rules": [
+        "strike_skills_target_additional_enemies"
+      ]
     },
     "Non-Vaal Strike Skills target 17 additional nearby Enemies": {
       "sources": [
         "translation:非瓦尔打击技能以周围额外 {0} 名敌人为目标"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "AdditionalStrikeTarget"
+      ],
+      "special_rule_id": "strike_skills_target_additional_enemies",
+      "matching_special_rules": [
+        "strike_skills_target_additional_enemies"
+      ]
     },
     "Non-Vaal Strike Skills target 17 additional nearby Enemy": {
       "sources": [
         "translation:非瓦尔打击技能以周围额外 {0} 名敌人为目标"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "AdditionalStrikeTarget"
+      ],
+      "special_rule_id": "strike_skills_target_additional_enemies",
+      "matching_special_rules": [
+        "strike_skills_target_additional_enemies"
+      ]
     },
     "Non-instant Recovery from Mana Flasks also applies to Life": {
       "sources": [
@@ -348547,6 +350188,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "EnergyShield"
+      ],
+      "special_rule_id": "energy_shield_from_equipped_focus",
+      "matching_special_rules": [
+        "energy_shield_from_equipped_focus"
       ]
     },
     "Notable Passive Skills in Radius also grant 17% increased Flask Charges gained": {
@@ -348630,11 +350275,13 @@
       "sources": [
         "translation:范围内的核心天赋同时提供 击退距离提高 {0:d}%"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "radius_grant": "17% increased Knockback Distance",
       "vendor_status": "parsed",
-      "mod_names": [
-        "EnemyKnockbackDistance"
+      "mod_names": [],
+      "special_rule_id": "knockback_distance_no_output",
+      "matching_special_rules": [
+        "knockback_distance_no_output"
       ]
     },
     "Notable Passive Skills in Radius also grant 17% increased Life Flask Charges gained": {
@@ -349260,6 +350907,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "EnergyShield"
+      ],
+      "special_rule_id": "energy_shield_from_equipped_focus",
+      "matching_special_rules": [
+        "energy_shield_from_equipped_focus"
       ]
     },
     "Notable Passive Skills in Radius also grant 3% increased Area of Effect": {
@@ -349611,11 +351262,13 @@
       "sources": [
         "mods:jewel:JewelRadiusKnockback"
       ],
-      "status": "parsed",
+      "status": "no_effect",
       "radius_grant": "7% increased Knockback Distance",
       "vendor_status": "parsed",
-      "mod_names": [
-        "EnemyKnockbackDistance"
+      "mod_names": [],
+      "special_rule_id": "knockback_distance_no_output",
+      "matching_special_rules": [
+        "knockback_distance_no_output"
       ]
     },
     "Notable Passive Skills in Radius also grant 7% increased Magnitude of Ailments you inflict": {
@@ -349795,8 +351448,9 @@
       "mod_names": [
         "SelfDebuffExpirationRate"
       ],
-      "special_rule_id": "vnd_debuffs_on_you_expire_d_faster_9477be0f",
+      "special_rule_id": "self_debuff_expiration_rate",
       "matching_special_rules": [
+        "self_debuff_expiration_rate",
         "vnd_debuffs_on_you_expire_d_faster_9477be0f"
       ]
     },
@@ -349810,8 +351464,9 @@
       "mod_names": [
         "SelfDebuffExpirationRate"
       ],
-      "special_rule_id": "vnd_debuffs_on_you_expire_d_faster_9477be0f",
+      "special_rule_id": "self_debuff_expiration_rate",
       "matching_special_rules": [
+        "self_debuff_expiration_rate",
         "vnd_debuffs_on_you_expire_d_faster_9477be0f"
       ]
     },
@@ -354383,14 +356038,21 @@
     },
     "Physical Damage is Pinning": {
       "sources": [
+        "rule:physical_damage_is_pinning",
         "stat:stat_descriptions:base_physical_damage_can_pin",
         "translation:物理伤害可以造成定身",
         "translation:物理伤害造成定身",
         "unique:Bushwhack"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "PhysicalCanPin"
+      ],
+      "special_rule_id": "physical_damage_is_pinning",
+      "matching_special_rules": [
+        "physical_damage_is_pinning"
+      ]
     },
     "Physical Damage is increased by 1% per 1 Intelligence from Allocated Passives in Radius": {
       "sources": [
@@ -354459,6 +356121,7 @@
     "Physical Spell Critical Hits build Pin": {
       "sources": [
         "passive:26563",
+        "rule:physical_spell_critical_pin",
         "stat:passive_skill_stat_descriptions:physical_spell_damage_can_pin_on_critical_hit",
         "stat:stat_descriptions:physical_spell_damage_can_pin_on_critical_hit",
         "translation:物理法术暴击击中造成定身积蓄"
@@ -354466,10 +356129,11 @@
       "status": "parsed",
       "vendor_status": "parsed",
       "mod_names": [
-        "CanPin"
+        "PhysicalCanPin"
       ],
-      "special_rule_id": "vnd_physical_spell_critical_hits_build_pin_67287472",
+      "special_rule_id": "physical_spell_critical_pin",
       "matching_special_rules": [
+        "physical_spell_critical_pin",
         "vnd_physical_spell_critical_hits_build_pin_67287472"
       ]
     },
@@ -354650,13 +356314,20 @@
     },
     "Pin Enemies which are Primed for Pinning": {
       "sources": [
+        "rule:pin_on_primed",
         "stat:stat_descriptions:pin_almost_pinned_enemies",
         "translation:定身可被定身的敌人",
         "unique:Constricting Command"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "PinOnPrimed"
+      ],
+      "special_rule_id": "pin_on_primed",
+      "matching_special_rules": [
+        "pin_on_primed"
+      ]
     },
     "Pin buildup modifier@17%": {
       "sources": [
@@ -365554,9 +367225,15 @@
       "sources": [
         "stat:stat_descriptions:charm_recover_X_life_when_used"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "UtilityLifeOnUse"
+      ],
+      "special_rule_id": "charm_life_on_use",
+      "matching_special_rules": [
+        "charm_life_on_use"
+      ]
     },
     "Recover 1 Life when you Block": {
       "sources": [
@@ -366256,9 +367933,15 @@
       "sources": [
         "mods:charm:CharmGainLifeOnUse1"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "UtilityLifeOnUse"
+      ],
+      "special_rule_id": "charm_life_on_use",
+      "matching_special_rules": [
+        "charm_life_on_use"
+      ]
     },
     "Recover 12% of Maximum Life when you expend at least 10 Combo": {
       "sources": [
@@ -366272,9 +367955,15 @@
       "sources": [
         "mods:charm:CharmGainLifeOnUse4"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "UtilityLifeOnUse"
+      ],
+      "special_rule_id": "charm_life_on_use",
+      "matching_special_rules": [
+        "charm_life_on_use"
+      ]
     },
     "Recover 145 Mana when Used": {
       "sources": [
@@ -366342,9 +368031,15 @@
       "sources": [
         "translation:使用时回复 {0} 生命"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "UtilityLifeOnUse"
+      ],
+      "special_rule_id": "charm_life_on_use",
+      "matching_special_rules": [
+        "charm_life_on_use"
+      ]
     },
     "Recover 17 Life when you Block": {
       "sources": [
@@ -367101,9 +368796,15 @@
       "sources": [
         "mods:charm:CharmGainLifeOnUse5"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "UtilityLifeOnUse"
+      ],
+      "special_rule_id": "charm_life_on_use",
+      "matching_special_rules": [
+        "charm_life_on_use"
+      ]
     },
     "Recover 180 Mana when Used": {
       "sources": [
@@ -367252,9 +368953,15 @@
       "sources": [
         "mods:charm:CharmGainLifeOnUse6"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "UtilityLifeOnUse"
+      ],
+      "special_rule_id": "charm_life_on_use",
+      "matching_special_rules": [
+        "charm_life_on_use"
+      ]
     },
     "Recover 24 Mana when Used": {
       "sources": [
@@ -367275,9 +368982,15 @@
       "sources": [
         "mods:charm:CharmGainLifeOnUse7"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "UtilityLifeOnUse"
+      ],
+      "special_rule_id": "charm_life_on_use",
+      "matching_special_rules": [
+        "charm_life_on_use"
+      ]
     },
     "Recover 29% of maximum Life when an Enemy Dies while affected by this Skill's Debuff": {
       "sources": [
@@ -367385,11 +369098,18 @@
     },
     "Recover 350 Life when Used": {
       "sources": [
-        "mods:charm:CharmGainLifeOnUse8"
+        "mods:charm:CharmGainLifeOnUse8",
+        "rule:charm_life_on_use"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "UtilityLifeOnUse"
+      ],
+      "special_rule_id": "charm_life_on_use",
+      "matching_special_rules": [
+        "charm_life_on_use"
+      ]
     },
     "Recover 4% of maximum Life when you Block": {
       "sources": [
@@ -367510,9 +369230,15 @@
       "sources": [
         "mods:charm:CharmGainLifeOnUse2"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "UtilityLifeOnUse"
+      ],
+      "special_rule_id": "charm_life_on_use",
+      "matching_special_rules": [
+        "charm_life_on_use"
+      ]
     },
     "Recover 6% of Maximum Mana when you expend at least 10 Combo": {
       "sources": [
@@ -367549,9 +369275,15 @@
       "sources": [
         "mods:charm:CharmGainLifeOnUse3"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "UtilityLifeOnUse"
+      ],
+      "special_rule_id": "charm_life_on_use",
+      "matching_special_rules": [
+        "charm_life_on_use"
+      ]
     },
     "Recover Energy Shield equal to 1% of Armour when you Block": {
       "sources": [
@@ -371016,33 +372748,57 @@
       "sources": [
         "unique:Heroic Tragedy"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "JewelData"
+      ],
+      "special_rule_id": "remembrancing_jewel_data",
+      "matching_special_rules": [
+        "remembrancing_jewel_data"
+      ]
     },
     "Remembrancing 100 songworthy deeds by the line of Olroth": {
       "sources": [
         "unique:Heroic Tragedy"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "JewelData"
+      ],
+      "special_rule_id": "remembrancing_jewel_data",
+      "matching_special_rules": [
+        "remembrancing_jewel_data"
+      ]
     },
     "Remembrancing 100 songworthy deeds by the line of Vorana": {
       "sources": [
         "unique:Heroic Tragedy"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "JewelData"
+      ],
+      "special_rule_id": "remembrancing_jewel_data",
+      "matching_special_rules": [
+        "remembrancing_jewel_data"
+      ]
     },
     "Remembrancing 29 songworthy deeds by the line of Medved": {
       "sources": [
         "translation:纪念 {1} 件梅德维德世系值得传唱的事迹\n范围内的天赋被卡古兰抑制"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "JewelData"
+      ],
+      "special_rule_id": "remembrancing_jewel_data",
+      "matching_special_rules": [
+        "remembrancing_jewel_data"
+      ]
     },
     "Remembrancing 29 songworthy deeds by the line of Medved(Vorana-Olroth)": {
       "sources": [
@@ -371056,9 +372812,15 @@
       "sources": [
         "translation:纪念 {1} 件欧罗什世系值得传唱的事迹\n范围内的天赋被卡古兰抑制"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "JewelData"
+      ],
+      "special_rule_id": "remembrancing_jewel_data",
+      "matching_special_rules": [
+        "remembrancing_jewel_data"
+      ]
     },
     "Remembrancing 29 songworthy deeds by the line of Olroth(Vorana-Olroth)": {
       "sources": [
@@ -371072,9 +372834,15 @@
       "sources": [
         "translation:纪念 {1} 件沃拉娜世系值得传唱的事迹\n范围内的天赋被卡古兰抑制"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "JewelData"
+      ],
+      "special_rule_id": "remembrancing_jewel_data",
+      "matching_special_rules": [
+        "remembrancing_jewel_data"
+      ]
     },
     "Remembrancing 29 songworthy deeds by the line of Vorana(Vorana-Olroth)": {
       "sources": [
@@ -371088,25 +372856,43 @@
       "sources": [
         "unique:Heroic Tragedy"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "JewelData"
+      ],
+      "special_rule_id": "remembrancing_jewel_data",
+      "matching_special_rules": [
+        "remembrancing_jewel_data"
+      ]
     },
     "Remembrancing 8000 songworthy deeds by the line of Olroth": {
       "sources": [
         "unique:Heroic Tragedy"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "JewelData"
+      ],
+      "special_rule_id": "remembrancing_jewel_data",
+      "matching_special_rules": [
+        "remembrancing_jewel_data"
+      ]
     },
     "Remembrancing 8000 songworthy deeds by the line of Vorana": {
       "sources": [
         "unique:Heroic Tragedy"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "JewelData"
+      ],
+      "special_rule_id": "remembrancing_jewel_data",
+      "matching_special_rules": [
+        "remembrancing_jewel_data"
+      ]
     },
     "Remnant": {
       "sources": [
@@ -371939,20 +373725,28 @@
       "sources": [
         "stat:stat_descriptions:local_flask_removes_%_of_life_recovery_from_mana_on_use"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "FlaskRecovery"
+        "UtilityLifeRecoveryRemovedFromMana"
+      ],
+      "special_rule_id": "flask_removes_life_recovery_from_mana_on_use",
+      "matching_special_rules": [
+        "flask_removes_life_recovery_from_mana_on_use"
       ]
     },
     "Removes 1% of Mana Recovered from Life when used": {
       "sources": [
         "stat:stat_descriptions:local_flask_removes_%_of_mana_recovery_from_life_on_use"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "FlaskRecovery"
+        "UtilityManaRecoveryRemovedFromLife"
+      ],
+      "special_rule_id": "flask_removes_mana_recovery_from_life_on_use",
+      "matching_special_rules": [
+        "flask_removes_mana_recovery_from_life_on_use"
       ]
     },
     "Removes 1% of your maximum Energy Shield on use": {
@@ -371971,12 +373765,17 @@
         "mods:flask:FlaskExtraLifeCostsMana2",
         "mods:flask:FlaskExtraLifeCostsMana3",
         "mods:flask:FlaskExtraLifeCostsMana4",
-        "mods:flask:FlaskExtraLifeCostsMana5_"
+        "mods:flask:FlaskExtraLifeCostsMana5_",
+        "rule:flask_removes_life_recovery_from_mana_on_use"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "FlaskRecovery"
+        "UtilityLifeRecoveryRemovedFromMana"
+      ],
+      "special_rule_id": "flask_removes_life_recovery_from_mana_on_use",
+      "matching_special_rules": [
+        "flask_removes_life_recovery_from_mana_on_use"
       ]
     },
     "Removes 15% of Mana Recovered from Life when used": {
@@ -371985,12 +373784,17 @@
         "mods:flask:FlaskExtraManaCostsLife2",
         "mods:flask:FlaskExtraManaCostsLife3_",
         "mods:flask:FlaskExtraManaCostsLife4",
-        "mods:flask:FlaskExtraManaCostsLife5_"
+        "mods:flask:FlaskExtraManaCostsLife5_",
+        "rule:flask_removes_mana_recovery_from_life_on_use"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "FlaskRecovery"
+        "UtilityManaRecoveryRemovedFromLife"
+      ],
+      "special_rule_id": "flask_removes_mana_recovery_from_life_on_use",
+      "matching_special_rules": [
+        "flask_removes_mana_recovery_from_life_on_use"
       ]
     },
     "Removes 17 of your Life and Mana per Enemy Hit": {
@@ -372037,20 +373841,28 @@
       "sources": [
         "translation:使用时会移除魔力，等同于生命回复值的 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "FlaskRecovery"
+        "UtilityLifeRecoveryRemovedFromMana"
+      ],
+      "special_rule_id": "flask_removes_life_recovery_from_mana_on_use",
+      "matching_special_rules": [
+        "flask_removes_life_recovery_from_mana_on_use"
       ]
     },
     "Removes 17% of Mana Recovered from Life when used": {
       "sources": [
         "translation:使用时会扣除生命，等同于魔力回复值的 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "FlaskRecovery"
+        "UtilityManaRecoveryRemovedFromLife"
+      ],
+      "special_rule_id": "flask_removes_mana_recovery_from_life_on_use",
+      "matching_special_rules": [
+        "flask_removes_mana_recovery_from_life_on_use"
       ]
     },
     "Removes 17% of your maximum Energy Shield on use": {
@@ -381349,6 +383161,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "BlindChance"
+      ],
+      "special_rule_id": "attack_blind_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_blind_chance_unmodelled"
       ]
     },
     "Small Passive Skills in Radius also grant 1% chance to Daze on Hit": {
@@ -381457,6 +383273,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "BlindChance"
+      ],
+      "special_rule_id": "attack_blind_chance_unmodelled",
+      "matching_special_rules": [
+        "attack_blind_chance_unmodelled"
       ]
     },
     "Small Passive Skills in Radius also grant 17% chance to Poison on Hit": {
@@ -381971,6 +383791,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "TotemLife"
+      ],
+      "special_rule_id": "increased_totem_life",
+      "matching_special_rules": [
+        "increased_totem_life"
       ]
     },
     "Small Passive Skills in Radius also grant 17% increased Totem Placement speed": {
@@ -382716,6 +384540,10 @@
       "vendor_status": "parsed",
       "mod_names": [
         "TotemLife"
+      ],
+      "special_rule_id": "increased_totem_life",
+      "matching_special_rules": [
+        "increased_totem_life"
       ]
     },
     "Small Passive Skills in Radius also grant 3% increased Totem Placement speed": {
@@ -382889,10 +384717,12 @@
       "sources": [
         "translation:范围内的小型天赋同时提供 粉碎的护甲提高 {0:d}%"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "radius_grant": "Break 17% increased Armour",
       "vendor_status": "parsed",
-      "mod_names": [],
+      "mod_names": [
+        "ArmourBreakPerHit"
+      ],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -382902,10 +384732,12 @@
       "sources": [
         "mods:jewel:JewelRadiusArmourBreak"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "radius_grant": "Break 2% increased Armour",
       "vendor_status": "parsed",
-      "mod_names": [],
+      "mod_names": [
+        "ArmourBreakPerHit"
+      ],
       "special_rule_id": "break_increased_armour",
       "matching_special_rules": [
         "break_increased_armour"
@@ -396781,11 +398613,18 @@
     },
     "Supported Skills Pin Enemies which are Primed for Pinning": {
       "sources": [
+        "rule:pin_on_primed",
         "translation:被辅助技能定身可被定身的敌人"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "PinOnPrimed"
+      ],
+      "special_rule_id": "pin_on_primed",
+      "matching_special_rules": [
+        "pin_on_primed"
+      ]
     },
     "Supported Skills Poison Enemies on Hit": {
       "sources": [
@@ -420084,13 +421923,18 @@
     },
     "Wind Skills which can be boosted by Elemental Ground Surfaces can be boosted by multiple Elemental Ground Surfaces": {
       "sources": [
+        "rule:wind_ground_multiple_surfaces",
         "stat:stat_descriptions:wind_skills_can_be_empowered_by_multiple_elements",
         "translation:可被元素地面效果加持的风系技能可被多种元素地面效果加持",
         "unique:The Taming"
       ],
-      "status": "unsupported",
+      "status": "no_effect",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [],
+      "special_rule_id": "wind_ground_multiple_surfaces",
+      "matching_special_rules": [
+        "wind_ground_multiple_surfaces"
+      ]
     },
     "Wind Skills which can be boosted by Elemental Ground Surfaces count": {
       "sources": [
@@ -420110,6 +421954,64 @@
       "status": "unsupported",
       "vendor_status": "unsupported",
       "mod_names": []
+    },
+    "Wind Skills which can be boosted by Elemental Ground Surfaces count as being boosted by Chilled Ground": {
+      "sources": [
+        "rule:wind_ground_chilled"
+      ],
+      "status": "parsed",
+      "vendor_status": "unsupported",
+      "mod_names": [
+        "Condition:TwisterCold"
+      ],
+      "special_rule_id": "wind_ground_chilled",
+      "matching_special_rules": [
+        "wind_ground_chilled"
+      ]
+    },
+    "Wind Skills which can be boosted by Elemental Ground Surfaces count as being boosted by Ignited Ground": {
+      "sources": [
+        "rule:wind_ground_ignited"
+      ],
+      "status": "parsed",
+      "vendor_status": "unsupported",
+      "mod_names": [
+        "Condition:TwisterFire"
+      ],
+      "special_rule_id": "wind_ground_ignited",
+      "matching_special_rules": [
+        "wind_ground_ignited"
+      ]
+    },
+    "Wind Skills which can be boosted by Elemental Ground Surfaces count as being boosted by Ignited, Shocked, and Chilled Ground": {
+      "sources": [
+        "rule:wind_ground_all_elements"
+      ],
+      "status": "parsed",
+      "vendor_status": "unsupported",
+      "mod_names": [
+        "Condition:TwisterCold",
+        "Condition:TwisterFire",
+        "Condition:TwisterLightning"
+      ],
+      "special_rule_id": "wind_ground_all_elements",
+      "matching_special_rules": [
+        "wind_ground_all_elements"
+      ]
+    },
+    "Wind Skills which can be boosted by Elemental Ground Surfaces count as being boosted by Shocked Ground": {
+      "sources": [
+        "rule:wind_ground_shocked"
+      ],
+      "status": "parsed",
+      "vendor_status": "unsupported",
+      "mod_names": [
+        "Condition:TwisterLightning"
+      ],
+      "special_rule_id": "wind_ground_shocked",
+      "matching_special_rules": [
+        "wind_ground_shocked"
+      ]
     },
     "Winged Scarabs instead grant 15% increased Pack Size": {
       "sources": [
@@ -424603,17 +426505,43 @@
       "sources": [
         "stat:stat_descriptions:full_life_threshold_%_override"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "FullLifePercentage"
+      ],
+      "special_rule_id": "full_life_threshold_override",
+      "matching_special_rules": [
+        "full_life_threshold_override"
+      ]
     },
     "You count as on Full Life while at 17% of maximum Life or above": {
       "sources": [
         "translation:达到或高于生命上限的 {0}% 时将你视作满血"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "FullLifePercentage"
+      ],
+      "special_rule_id": "full_life_threshold_override",
+      "matching_special_rules": [
+        "full_life_threshold_override"
+      ]
+    },
+    "You count as on Full Life while at 90% of maximum Life or above": {
+      "sources": [
+        "rule:full_life_threshold_override"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "FullLifePercentage"
+      ],
+      "special_rule_id": "full_life_threshold_override",
+      "matching_special_rules": [
+        "full_life_threshold_override"
+      ]
     },
     "You count as on Full Life while you are Cursed with Vulnerability": {
       "sources": [
@@ -424634,25 +426562,44 @@
       "sources": [
         "stat:stat_descriptions:full_mana_threshold_%_override"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "FullManaPercentage"
+      ],
+      "special_rule_id": "full_mana_threshold_override",
+      "matching_special_rules": [
+        "full_mana_threshold_override"
+      ]
     },
     "You count as on Full Mana while at 17% of maximum Mana or above": {
       "sources": [
         "translation:达到或高于魔力上限的 {0}% 时将你视作满魔"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "FullManaPercentage"
+      ],
+      "special_rule_id": "full_mana_threshold_override",
+      "matching_special_rules": [
+        "full_mana_threshold_override"
+      ]
     },
     "You count as on Full Mana while at 90% of maximum Mana or above": {
       "sources": [
+        "rule:full_mana_threshold_override",
         "unique:Idle Hands"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "FullManaPercentage"
+      ],
+      "special_rule_id": "full_mana_threshold_override",
+      "matching_special_rules": [
+        "full_mana_threshold_override"
+      ]
     },
     "You count as on Low Life while at 1% of maximum Mana or below": {
       "sources": [
@@ -431104,12 +433051,19 @@
     "Your Totem Limit is doubled": {
       "sources": [
         "passive:45202",
+        "rule:doubled_totem_limit",
         "stat:passive_skill_stat_descriptions:keystone_ancestral_bond",
         "translation:你的图腾上限翻倍\n放置图腾无需充能\n每个图腾保留 75 点 精魂"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ActiveTotemLimit"
+      ],
+      "special_rule_id": "doubled_totem_limit",
+      "matching_special_rules": [
+        "doubled_totem_limit"
+      ]
     },
     "Your Totems have +1 to Maximum Energy Shield": {
       "sources": [
