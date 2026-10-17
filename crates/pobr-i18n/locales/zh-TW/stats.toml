@@ -1,11 +1,16 @@
-# zh-TW stat display names (developer-supplied; no official zh-TW table).
+# zh-TW PoBR stat labels, using official game terms where available.
 # Keys MUST be a subset of en-US/stats.toml. Missing keys fall back to en-US.
+# Term sources: official 0.5.5.4.2 Traditional Chinese exports, verified against
+# pipeline/tables/export-source.json: ItemClasses, GemTags and ActiveSkills.
+# The shipped i18n/zh-TW/{skills,base_items,mods}.json catalogs contain names,
+# not corresponding complete PoBR stat labels. Composed labels are PoBR wording.
 
 [stat]
 life = "生命"
 mana = "魔力"
 energy_shield = "能量護盾"
-spirit = "靈氣"
+# Official resource term: ItemClasses.UncutReservationGemStackable (精魂寶石).
+spirit = "精魂"
 
 strength = "力量"
 dexterity = "敏捷"
@@ -13,6 +18,7 @@ intelligence = "智慧"
 
 armour = "護甲"
 evasion = "閃避值"
+block_chance = "格擋率"
 
 fire_resistance = "火焰抗性"
 cold_resistance = "冰冷抗性"
@@ -21,10 +27,22 @@ chaos_resistance = "混沌抗性"
 
 critical_strike_chance = "暴擊率"
 critical_strike_multiplier = "暴擊加成"
+# Official terms: ActiveSkills.war_banner_reservation (Accuracy), haste
+# (Attack/Cast/Movement Speed), magma_barrier (Block Chance), GemTags (damage types).
+accuracy = "命中"
+attack_speed = "攻擊速度"
+cast_speed = "施法速度"
+
+physical_damage = "物理傷害"
+fire_damage = "火焰傷害"
+cold_damage = "冰冷傷害"
+lightning_damage = "閃電傷害"
+chaos_damage = "混沌傷害"
 
 total_dps = "總 DPS"
+movement_speed = "移動速度"
 
-# Display-stat label keys (partial translation; missing keys fall back to en-US).
+# Display-stat label keys; newly added keys fall back to en-US until translated.
 # Keys MUST be a subset of en-US/stats.toml [display] section.
 [display]
 # --- Offence ---
@@ -33,6 +51,9 @@ TotalHitAvg = "平均命中"
 CombinedDPS = "綜合 DPS"
 Accuracy = "命中值"
 HitChance = "命中率"
+# PoBR use-rate labels, distinct from HitSpeed and the ActionSpeed modifier.
+ActionRate = "技能使用速率"
+EffectiveActionRate = "有效技能使用速率"
 CritChance = "暴擊率"
 CritMultiplier = "暴擊加成"
 # --- DoT / Ailment ---
@@ -42,8 +63,14 @@ IgniteDPS = "點燃 DPS"
 PoisonDPS = "中毒 DPS"
 ShockEffect = "感電效果"
 ChillEffect = "冰緩效果"
+# Official terms: ActiveSkills.icestorm (Freeze), shock_grenade (Electrocute buildup).
+# Per-hit and active-stack labels are PoBR wording.
+FreezeBuildupPct = "每次擊中冰凍累積"
+ElectrocuteBuildupPct = "每次擊中觸電累積"
 BleedStackedDPS = "流血疊層 DPS"
+BleedActiveStacks = "流血生效層數"
 PoisonStackedDPS = "中毒疊層 DPS"
+PoisonActiveStacks = "中毒生效層數"
 # --- Resource ---
 Life = "生命"
 Mana = "魔力"
@@ -52,12 +79,23 @@ LifeReserved = "生命預留"
 LifeUnreserved = "可用生命"
 ManaReserved = "魔力預留"
 ManaUnreserved = "可用魔力"
+SpiritReserved = "精魂保留"
 # --- Recovery ---
 LifeRegen = "每秒生命恢復"
 ManaRegen = "每秒魔力恢復"
 EnergyShieldRegen = "每秒能量護盾恢復"
 WardRegen = "每秒符文結界恢復"
+# Official ActiveSkills.djinn_force_recharge: 能量護盾充能率; mana_drain:
+# 偷取; djinn_oasis: 補償 (Recoup). Delay/per-second labels are PoBR wording.
+EsRechargeRate = "能量護盾充能率"
+EsRechargeDelay = "能量護盾充能延遲"
 EsRechargePerSecond = "每秒護盾充能量"
+LifeLeechRate = "每秒生命偷取量"
+ManaLeechRate = "每秒魔力偷取量"
+EsLeechRate = "每秒能量護盾偷取量"
+LifeRecoupRate = "每秒生命補償量"
+ManaRecoupRate = "每秒魔力補償量"
+EsRecoupRate = "每秒能量護盾補償量"
 # --- Defence / Mitigation ---
 Armour = "護甲"
 Evasion = "閃避值"
@@ -68,6 +106,9 @@ ChaosResist = "混沌抗性"
 BlockChance = "格擋率"
 SpellBlockChance = "法術格擋率"
 # --- Avoidance ---
+# PoBR probability labels; these are chances to avoid damage, not damage modifiers.
+AvoidAllDamageFromHits = "避免所有擊中傷害的機率"
+AvoidProjectileDamage = "避免投射物傷害的機率"
 AvoidIgnite = "規避點燃"
 AvoidShock = "規避感電"
 AvoidChill = "規避冰緩"
@@ -75,6 +116,14 @@ AvoidFreeze = "規避冰凍"
 AvoidPoison = "規避中毒"
 AvoidBleeding = "規避流血"
 AvoidStun = "規避暈眩"
+# --- Taken multipliers (PoBR wording, not avoidance chances) ---
+TakenMultiPhysical = "承受的物理傷害倍率"
+TakenMultiFire = "承受的火焰傷害倍率"
+TakenMultiCold = "承受的冰冷傷害倍率"
+TakenMultiLightning = "承受的閃電傷害倍率"
+TakenMultiChaos = "承受的混沌傷害倍率"
+CritExtraDamageReduction = "暴擊額外傷害減免"
+EnemyCritEffect = "敵人暴擊效果倍率"
 # --- EHP / Max Hit ---
 TotalEHP = "有效血量"
 PhysicalMaxHit = "最大可承受物理單擊"
@@ -90,8 +139,15 @@ ChargeFrenzyMaximum = "最大狂暴充能"
 ChargeEnduranceCurrent = "耐力充能"
 ChargeEnduranceMaximum = "最大耐力充能"
 # --- Skill Mechanics ---
+# PoBR composed labels; official ActiveSkills.valakos_charge supplies 觸發,
+# whirling_slash supplies 效果範圍. No exact official use/cap/count label is available.
+TriggerRateCap = "觸發速率上限"
+SkillTriggerRate = "技能觸發速率"
 AoeRadius = "技能範圍半徑"
+AoeAreaMod = "效果範圍倍率"
+ProjectileCount = "投射物數量"
 Cooldown = "冷卻時間"
+CooldownStoredUses = "冷卻儲存使用次數"
 ManaCost = "魔力消耗"
 LifeCost = "生命消耗"
 

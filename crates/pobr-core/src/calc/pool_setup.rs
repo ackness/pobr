@@ -92,6 +92,8 @@ pub fn build_pool_ctx(
     }
     PoolCtx {
         max_life: base.max_life,
+        damage_instead_reserves_life: db.flag(cfg, "DamageInsteadReservesLife"),
+        life_unreserved: base.life_recoverable,
         es_bypass_by_type,
         mom_shared,
         mom_by_type,
@@ -227,6 +229,7 @@ pub fn build_pool_state(
         energy_shield: base.energy_shield_recovery_cap,
         mana: base.mana_unreserved,
         life: base.life_recoverable,
+        life_reserved_by_damage: 0.0,
         life_loss_lost_over_time: 0.0,
         life_below_half_loss_lost_over_time: 0.0,
     }

@@ -953,8 +953,24 @@ impl GainWhenHit {
     /// Adds `gain × count` to each pool, capped at `cap_mult ×` its full value
     /// (LifeRecoverable / ManaUnreserved / EnergyShieldRecoveryCap / Ward,
     /// vendor :2146-2151 and :2159-2164).
-    fn apply(&self, pool: &mut PoolState, full: &PoolState, count: f64, cap_mult: f64) {
-        pool.life = (pool.life + self.life * count).min(cap_mult * full.life);
+    fn apply(
+        &self,
+        pool: &mut PoolState,
+        full: &PoolState,
+        count: f64,
+        cap_mult: f64,
+        ctx: &PoolCtx,
+    ) {
+        pool.recover_life(
+            self.life * count,
+            if ctx.damage_instead_reserves_life {
+                // Even an accelerated batch cannot multiply the room left
+                // below damage reservation. Ordinary missing Life may heal.
+                ctx.life_unreserved
+            } else {
+                cap_mult * full.life
+            },
+        );
         pool.mana = (pool.mana + self.mana * count).min(cap_mult * full.mana);
         pool.energy_shield =
             (pool.energy_shield + self.energy_shield * count).min(cap_mult * full.energy_shield);
@@ -1090,7 +1106,7 @@ fn hits_to_die_inner(
             let gain_mult = iteration_multiplier * cycles;
             params
                 .gain
-                .apply(&mut pool, pools_full, gain_mult - 1.0, gain_mult);
+                .apply(&mut pool, pools_full, gain_mult - 1.0, gain_mult, ctx);
         }
         let after = reduce_pools(&pool, &hit, ctx);
         last_overkill = after.overkill;
@@ -1112,7 +1128,7 @@ fn hits_to_die_inner(
         }
         // :2159-2164 recovery from this hit, only while still alive.
         if gain_active && pool.life > 0.0 {
-            params.gain.apply(&mut pool, pools_full, 1.0, 1.0);
+            params.gain.apply(&mut pool, pools_full, 1.0, 1.0, ctx);
         }
         iteration_multiplier = 1.0;
         // :3095-3119 recursion acceleration: recomputes at speed_up× damage from the full pool, estimating a safe number of hits to skip.
@@ -1483,6 +1499,9 @@ pub fn fill_ehp_pob2(
         // Pool view (:1411 the ES recovery cap / :2644-2657 recoverable life)
         // CappingES (flags like ArmourESRecoveryCap) and the lowLife/lowES config are left for later.
         let life_recoverable = out.life_unreserved.max(1.0);
+        // Widow's Reign does not release active skill or permanent reservation.
+        // This is the fresh snapshot; reduce_pools retains damage reservation
+        // through the sequence and lowers the recovery cap after every hit.
         let es_recovery_cap = out.energy_shield;
         let base = PoolBaseStats {
             max_life: out.life,

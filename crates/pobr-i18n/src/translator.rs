@@ -166,3 +166,64 @@ fn interpolate(template: &str, args: &[(&str, I18nValue)]) -> String {
     }
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Keep fallback coverage independent of the completeness of shipped locales.
+    fn partial_translator() -> Translator {
+        Translator {
+            active: LanguageId::new("zh-TW"),
+            fallback: LanguageId::new(CANONICAL_LANGUAGE),
+            active_bundle: Bundle::new(),
+            fallback_bundle: Bundle::from([
+                (
+                    "fixture.untranslated".to_string(),
+                    "Fallback for {name}".to_string(),
+                ),
+                (
+                    "stat.fixture_untranslated".to_string(),
+                    "Untranslated stat".to_string(),
+                ),
+                (
+                    "display.FixtureUntranslated".to_string(),
+                    "Untranslated display stat".to_string(),
+                ),
+            ]),
+        }
+    }
+
+    #[test]
+    fn missing_key_falls_back_to_en_us() {
+        let t = partial_translator();
+        assert_eq!(t.text("fixture.untranslated"), "Fallback for {name}");
+    }
+
+    #[test]
+    fn format_falls_back_when_key_missing() {
+        let t = partial_translator();
+        assert_eq!(
+            t.format(
+                "fixture.untranslated",
+                &[("name", I18nValue::Text("PoBR".to_string()))],
+            ),
+            "Fallback for PoBR"
+        );
+    }
+
+    #[test]
+    fn stat_labels_fall_back_when_key_missing() {
+        let t = partial_translator();
+        let stat = StatId::new("fixture_untranslated");
+        assert_eq!(t.stat_text(&stat), "Untranslated stat");
+        assert_eq!(
+            t.stat_text_by_key(&Translator::stat_text_key(&stat)),
+            "Untranslated stat"
+        );
+        assert_eq!(
+            t.display_stat_text(&DisplayStatId::new("FixtureUntranslated")),
+            "Untranslated display stat"
+        );
+    }
+}

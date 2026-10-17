@@ -1,6 +1,6 @@
 //! Integration tests for lint-i18n against the real embedded pobr-i18n bundles.
 
-use lint_i18n::{LanguageReport, lint_languages};
+use lint_i18n::{LanguageReport, LintReport, format_report, lint_languages};
 use pobr_i18n::{CANONICAL_LANGUAGE, LanguageId};
 
 #[test]
@@ -63,16 +63,19 @@ fn zh_tw_has_no_extra_keys() {
 
 #[test]
 fn missing_keys_are_warnings_not_failures() {
-    // Arrange / Act
-    let report = lint_languages().expect("lint should succeed");
-    let zh = zh_tw_report(&report);
+    // A synthetic partial locale keeps warning coverage when shipped bundles are complete.
+    let report = LintReport {
+        canonical: LanguageId::new(CANONICAL_LANGUAGE),
+        canonical_key_count: 1,
+        languages: vec![LanguageReport {
+            language: LanguageId::new("fixture"),
+            missing_keys: vec!["fixture.untranslated".to_string()],
+            extra_keys: vec![],
+        }],
+    };
 
-    // Assert: zh-TW is intentionally partial, so missing keys are allowed and
-    // surfaced only as warnings; they never make the report fail.
-    assert!(
-        !zh.missing_keys.is_empty(),
-        "zh-TW is a partial translation and should report some missing keys"
-    );
+    assert!(format_report(&report).contains("warning: missing key `fixture.untranslated`"));
+    assert_eq!(report.exit_code(), 0);
     assert!(
         !report.has_extra_keys(),
         "missing keys alone must not constitute a failure"

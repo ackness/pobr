@@ -1,12 +1,19 @@
-# zh-TW error messages (developer-supplied; no official zh-TW table).
+# zh-TW PoBR error messages, translated from the canonical English meaning.
+# No corresponding official game messages; wording is developer-supplied.
 # Keys MUST be a subset of en-US/errors.toml. Missing keys fall back to en-US.
 
 [build_code]
 invalid_base64 = "無效的構築代碼：不是有效的 Base64"
+inflate_failed = "無效的構築代碼：無法解壓縮"
 invalid_xml = "無效的構築代碼：XML 格式錯誤"
 
 [item]
 unknown_base = "未知的物品基底：{base}"
+parse_failed = "無法解析物品文字"
 
 [import]
 unrecognised = "無法辨識匯入的內容"
+download_failed = "無法從 {url} 下載構築"
+
+[calc]
+missing_skill = "尚未選擇主動技能"

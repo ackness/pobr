@@ -1,13 +1,35 @@
-# zh-TW UI strings (developer-supplied translations; no official zh-TW table).
+# zh-TW PoBR UI wording, except for the official gem class names noted below.
 # Keys MUST be a subset of en-US/ui.toml. Missing keys fall back to en-US.
+# Gem class names reuse official 0.5.5.4.2 Traditional Chinese ItemClasses:
+# "Active Skill Gem" / "Support Skill Gem". Other wording is PoBR-supplied.
+
+[app]
+title = "Path of Building in Rust"
 
 [build]
 copy_code = "複製 BD"
 import_code = "匯入 BD"
+new_build = "新增構築"
+save_build = "儲存構築"
 
 [items]
 create_custom = "建立自訂物品"
 unsupported_mod = "不支援的詞綴"
+edit = "編輯"
+delete = "刪除"
+
+[tree]
+allocate = "配置"
+deallocate = "取消配置"
+points_used = "已使用點數：{used}/{total}"
+
+[skills]
+active_gem = "技能寶石"
+support_gem = "輔助寶石"
+
+[config]
+title = "設定"
+enemy_level = "敵人等級"
 
 [view]
 calcs = "計算"
