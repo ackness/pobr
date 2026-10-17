@@ -28,10 +28,9 @@ fn zh_tw_translated_key_returns_chinese() {
 }
 
 #[test]
-fn missing_key_falls_back_to_en_us() {
+fn newly_translated_build_key_returns_chinese() {
     let t = Translator::new(LanguageId::new("zh-TW")).unwrap();
-    // `build.new_build` only exists in en-US.
-    assert_eq!(t.text("build.new_build"), "New build");
+    assert_eq!(t.text("build.new_build"), "新增構築");
 }
 
 #[test]
@@ -74,14 +73,13 @@ fn format_number_renders_integers_without_decimals() {
 }
 
 #[test]
-fn format_falls_back_when_key_missing() {
+fn newly_translated_error_interpolates_url() {
     let t = Translator::new(LanguageId::new("zh-TW")).unwrap();
-    // `import.download_failed` only exists in en-US.
     let out = t.format(
         "import.download_failed",
         &[("url", I18nValue::Text("https://pobb.in/x".to_string()))],
     );
-    assert_eq!(out, "Failed to download build from https://pobb.in/x");
+    assert_eq!(out, "無法從 https://pobb.in/x 下載構築");
 }
 
 #[test]

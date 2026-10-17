@@ -5,7 +5,7 @@
 //! user-facing text for the supported languages.
 //!
 //! - `en-US` is the canonical source of truth and the universal fallback.
-//! - `zh-TW` is a partial translation; any key it omits falls back to `en-US`,
+//! - `zh-TW` covers the canonical keys; any future key it omits falls back to `en-US`,
 //!   and a key absent from both resolves to the key (or stat id) itself.
 //!
 //! All six locale files are embedded via `include_str!`, so there is no runtime
@@ -16,7 +16,7 @@
 //!
 //! let t = Translator::new(LanguageId::new("zh-TW")).unwrap();
 //! assert_eq!(t.text("build.copy_code"), "複製 BD");      // translated
-//! assert_eq!(t.text("build.new_build"), "New build");    // falls back to en-US
+//! assert_eq!(t.text("build.new_build"), "新增構築");     // translated
 //! let msg = t.format(
 //!     "item.unknown_base",
 //!     &[("base", I18nValue::Text("Iron Ring".into()))],

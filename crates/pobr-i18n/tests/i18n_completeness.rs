@@ -29,21 +29,32 @@ fn non_canonical_languages_have_no_extra_keys() {
     }
 }
 
-/// zh-TW must at least cover the core stats so the most common display names
-/// are localized.
+/// The completed zh-TW bundle must retain canonical key and placeholder parity.
 #[test]
-fn zh_tw_covers_core_stats() {
-    let keys = Translator::all_keys(&LanguageId::new("zh-TW")).unwrap();
-    for core in [
-        "stat.life",
-        "stat.mana",
-        "stat.energy_shield",
-        "stat.fire_resistance",
-        "stat.cold_resistance",
-        "stat.lightning_resistance",
-    ] {
-        assert!(keys.contains(core), "zh-TW is missing core stat key {core}");
+fn zh_tw_covers_canonical_keys_and_placeholders() {
+    let en = Translator::new(LanguageId::new("en-US")).unwrap();
+    let zh = Translator::new(LanguageId::new("zh-TW")).unwrap();
+    let canonical_keys = Translator::all_keys(en.active()).unwrap();
+    let translated_keys = Translator::all_keys(zh.active()).unwrap();
+    assert_eq!(translated_keys, canonical_keys, "zh-TW key drift");
+
+    for key in canonical_keys {
+        assert_eq!(
+            placeholders(&zh.text(&key)),
+            placeholders(&en.text(&key)),
+            "zh-TW placeholder drift for {key}"
+        );
     }
+}
+
+fn placeholders(text: &str) -> Vec<&str> {
+    let mut names: Vec<_> = text
+        .split('{')
+        .skip(1)
+        .filter_map(|part| part.split_once('}').map(|(name, _)| name))
+        .collect();
+    names.sort_unstable();
+    names
 }
 
 #[test]

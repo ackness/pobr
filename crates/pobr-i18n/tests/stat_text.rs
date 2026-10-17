@@ -21,14 +21,14 @@ fn stat_text_returns_translated_name_for_zh_tw() {
     let t = Translator::new(LanguageId::new("zh-TW")).unwrap();
     assert_eq!(t.stat_text(&StatId::new("life")), "生命");
     assert_eq!(t.stat_text(&StatId::new("mana")), "魔力");
+    assert_eq!(t.stat_text(&StatId::new("spirit")), "精魂");
     assert_eq!(t.stat_text(&StatId::new("fire_resistance")), "火焰抗性");
 }
 
 #[test]
-fn stat_text_falls_back_to_en_us_when_untranslated() {
+fn stat_text_returns_newly_translated_accuracy() {
     let t = Translator::new(LanguageId::new("zh-TW")).unwrap();
-    // `accuracy` exists in en-US stats but is not translated to zh-TW.
-    assert_eq!(t.stat_text(&StatId::new("accuracy")), "Accuracy");
+    assert_eq!(t.stat_text(&StatId::new("accuracy")), "命中");
 }
 
 #[test]
@@ -53,9 +53,8 @@ fn stat_text_by_key_resolves_like_stat_text() {
     let t = Translator::new(LanguageId::new("zh-TW")).unwrap();
     let key = stat_text_key(&StatId::new("fire_resistance"));
     assert_eq!(t.stat_text_by_key(&key), "火焰抗性");
-    // Untranslated key falls back to en-US.
     let acc = stat_text_key(&StatId::new("accuracy"));
-    assert_eq!(t.stat_text_by_key(&acc), "Accuracy");
+    assert_eq!(t.stat_text_by_key(&acc), "命中");
 }
 
 #[test]
@@ -122,17 +121,15 @@ fn display_stat_text_returns_zh_tw_translations() {
 }
 
 #[test]
-fn display_stat_text_falls_back_to_en_us_for_untranslated_zh_tw() {
+fn display_stat_text_returns_newly_translated_mechanics() {
     let t = Translator::new(LanguageId::new("zh-TW")).unwrap();
-    // EsRechargeRate is in en-US but not zh-TW; should fall back.
     assert_eq!(
         t.display_stat_text(&DisplayStatId::new("EsRechargeRate")),
-        "Energy Shield Recharge Rate"
+        "能量護盾充能率"
     );
-    // ActionRate not translated to zh-TW.
     assert_eq!(
         t.display_stat_text(&DisplayStatId::new("ActionRate")),
-        "Action Rate"
+        "技能使用速率"
     );
 }
 
