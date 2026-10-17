@@ -242,8 +242,14 @@ fn gem_catalog_entries(
         .iter()
         .map(|(name, def)| (def.id.as_str(), name.as_str()))
         .collect();
-    // Several gem bases can grant the same effect. Choose one whole gem by
-    // native minimum level, then stable id, before deriving any row metadata.
+    let has_display_name = |id: &str| {
+        name_by_gem_id.get(id).is_some_and(|name| {
+            !name.trim().is_empty() && *name != "Coming Soon" && !name.starts_with("Metadata/")
+        })
+    };
+    // Several gem bases can grant the same effect. Prefer a named public base
+    // over internal bases, then native minimum level and stable id. Placeholder
+    // names do not identify a public gem. Derive all metadata from the winner.
     let mut by_skill: BTreeMap<&str, &pobr_data::catalog::SkillGemDef> = BTreeMap::new();
     for gem in data.skill_gems.values() {
         let Some(skill_id) = gem.granted_effect_id.as_deref() else {
@@ -252,7 +258,13 @@ fn gem_catalog_entries(
         by_skill
             .entry(skill_id)
             .and_modify(|current| {
-                if (gem.min_level_req, &gem.id) < (current.min_level_req, &current.id) {
+                if (!has_display_name(&gem.id), gem.min_level_req, &gem.id)
+                    < (
+                        !has_display_name(&current.id),
+                        current.min_level_req,
+                        &current.id,
+                    )
+                {
                     *current = gem;
                 }
             })
@@ -444,6 +456,27 @@ mod tests {
             })
             .cloned()
             .collect::<Vec<_>>();
+        const PUBLIC_UNLEASH: &str = "Metadata/items/Gems/SkillGemStaffUnleash";
+        const PUBLIC_SNIPER: &str = "Metadata/Items/Gems/SkillGemSkeletalWarrior";
+        // These real-data pairs tie on level. Raise only the named candidates'
+        // requirements in this fixture so lower-level internal/ascendancy gems
+        // must still lose, with the entire public gem row preserved.
+        let named_candidates = duplicate_families
+            .iter()
+            .filter(|gem| {
+                matches!(
+                    gem.granted_effect_id.as_deref(),
+                    Some("SummonSkeletalSnipersPlayer" | "UnleashPlayer")
+                )
+            })
+            .cloned()
+            .map(|mut gem| {
+                if matches!(gem.id.as_str(), PUBLIC_UNLEASH | PUBLIC_SNIPER) {
+                    gem.min_level_req = 20;
+                }
+                gem
+            })
+            .collect::<Vec<_>>();
         // Unknown11 sorts before Unknown4 but requires level 32 instead of 7.
         // Unknown5 ties Unknown4's level, but has a later id and another colour.
         let level_candidates = [
@@ -459,10 +492,11 @@ mod tests {
                 vec![
                     "Metadata/Items/Gems/SupportGemEmpoweredSparks",
                     "Metadata/Items/Gems/ReservationSkillGemUnknown1",
-                    "Metadata/Items/Gems/SkillGemSkeletalSniper",
-                    "Metadata/Items/Gem/SkillGemAscendancyUnleash",
+                    PUBLIC_SNIPER,
+                    PUBLIC_UNLEASH,
                 ],
             ),
+            (named_candidates, vec![PUBLIC_SNIPER, PUBLIC_UNLEASH]),
             (
                 level_candidates,
                 vec!["Metadata/Items/Gems/SkillGemUnknown4"],
@@ -484,6 +518,14 @@ mod tests {
                     .unwrap();
                 assert_eq!(row.name_zh_tw.as_ref(), zh_names.get(*id));
                 assert_eq!(row.name_zh_cn.as_ref(), cn_names.get(*id));
+                match *id {
+                    PUBLIC_UNLEASH => {
+                        assert_eq!(row.name, "Unleash");
+                        assert_eq!(row.colour, Some("int"));
+                    }
+                    PUBLIC_SNIPER => assert_eq!(row.name, "Skeletal Sniper"),
+                    _ => {}
+                }
             }
             let expected = serde_json::to_value(expected).unwrap();
             candidates.sort_by(|a, b| a.id.cmp(&b.id));
