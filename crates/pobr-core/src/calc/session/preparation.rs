@@ -242,7 +242,9 @@ pub(in crate::calc) fn bridge_ancestral_boost(env: &mut Env) {
         let strike = has_type("MeleeSingleTarget");
         let slam = has_type("Slam");
         let special = has_type("SpecialAncestralBoost");
-        let eligible = has_type("Attack")
+        // Native callers can select an attack through CalcConfig::attack()
+        // while supplying only its Strike/Slam subtype.
+        let eligible = (cfg.flags.intersects(ModFlags::ATTACK) || has_type("Attack"))
             && (strike || slam || special)
             && ![
                 "Triggered",

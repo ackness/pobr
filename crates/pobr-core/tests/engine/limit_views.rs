@@ -541,8 +541,19 @@ fn full_mana_percentage_defaults_to_the_whole_pool_and_takes_the_override() {
 }
 
 fn strike_session(skill_types: SkillTypes, mods: Vec<Modifier>) -> CalculationSession {
+    strike_session_with_boost(skill_types, mods, false)
+}
+
+fn strike_session_with_boost(
+    skill_types: SkillTypes,
+    mods: Vec<Modifier>,
+    boosted: bool,
+) -> CalculationSession {
     let mut cfg = pobr_core::CalcConfig::attack();
     cfg.skill_types = skill_types;
+    if boosted {
+        cfg = cfg.with_condition("AncestrallyBoosted", true);
+    }
     let mut session = super::support::session(MinimalInput {
         base_hit_min: 100.0,
         base_hit_max: 100.0,
@@ -621,21 +632,36 @@ fn ancestrally_boosted_strikes_target_two_additional_enemies_per_boost_effect() 
         ))
         .with_tag(pobr_core::ModTag::condition("AncestrallyBoosted", false));
     let strike = SkillTypes::from_pob2_name("MeleeSingleTarget").unwrap();
-    let boosted = strike_session(
+    // Source presence does not select a boosted use without an explicit state.
+    let available = strike_session(
         strike,
         vec![
             Modifier::flag("Condition:AncestrallyBoosted"),
             targets.clone(),
         ],
     );
+    close(
+        value(&available, "StrikeTargets"),
+        1.0,
+        "no automatic boost",
+    );
+    let boosted = strike_session_with_boost(
+        strike,
+        vec![
+            Modifier::flag("Condition:AncestrallyBoosted"),
+            targets.clone(),
+        ],
+        true,
+    );
     close(value(&boosted, "StrikeTargets"), 3.0, "one boost effect");
-    let doubled = strike_session(
+    let doubled = strike_session_with_boost(
         strike,
         vec![
             Modifier::flag("Condition:AncestrallyBoosted"),
             Modifier::number("Multiplier:AncestralBoostEffect", ModType::Base, 1.0),
             targets.clone(),
         ],
+        true,
     );
     close(
         value(&doubled, "StrikeTargets"),
