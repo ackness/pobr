@@ -30,7 +30,7 @@
       "0.5.5.4.2/generated/special_vendor.json": "12d91522257bfb57b5cdfc63073bd3a5df8c7a87d2b1c13c3ba3f959c936d4a5",
       "0.5.5.4.2/overlay/mod_parser_rules.json": "c719c7c3eeed65048067f264fd0a62f81cc20d89b917f05e2aa53753166242af",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
-      "overlay-common/special_mods.json": "a28b1df0b9104161fbf86befd97c90ddc2fea117413004236132595a4b1a5a76"
+      "overlay-common/special_mods.json": "e1def29ec38a1f73adce6f1ad897185467486a59568987a50b644f9c45003cf4"
     },
     "effective_rules": [
       {
@@ -2537,6 +2537,22 @@
       },
       {
         "id": "strike_skills_target_additional_enemies",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "olroth_guard_after_effect",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "sanguis_consecrated_ground_on_use",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -19652,11 +19668,11 @@
   },
   "summary": {
     "no_effect": 140,
-    "parsed": 16336,
+    "parsed": 16340,
     "pobr_gap": 1614,
-    "recognized_empty": 187,
+    "recognized_empty": 185,
     "text_channel": 788,
-    "upstream_gap": 23572
+    "upstream_gap": 23570
   },
   "entries": {
     "% of spent Runic Ward granted as Guard@100%": {
@@ -256125,25 +256141,34 @@
         "stat:stat_descriptions:local_consecrate_ground_on_flask_use_radius",
         "translation:使用时产生奉献地面"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": [],
-      "special_rule_id": "vnd_creates_consecrated_ground_on_use_a33bd101",
+      "mod_names": [
+        "UtilityConsecratedGroundDuration",
+        "UtilityConsecratedGroundRadiusMetres"
+      ],
+      "special_rule_id": "sanguis_consecrated_ground_on_use",
       "matching_special_rules": [
+        "sanguis_consecrated_ground_on_use",
         "vnd_creates_consecrated_ground_on_use_a33bd101"
       ]
     },
     "Creates Consecrated Ground on use": {
       "sources": [
+        "rule:sanguis_consecrated_ground_on_use",
         "stat:stat_descriptions:charm_create_consecrated_ground_when_used",
         "translation:使用时产生奉献地面",
         "unique:Sanguis Heroum"
       ],
-      "status": "recognized_empty",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": [],
-      "special_rule_id": "vnd_creates_consecrated_ground_on_use_a33bd101",
+      "mod_names": [
+        "UtilityConsecratedGroundDuration",
+        "UtilityConsecratedGroundRadiusMetres"
+      ],
+      "special_rule_id": "sanguis_consecrated_ground_on_use",
       "matching_special_rules": [
+        "sanguis_consecrated_ground_on_use",
         "vnd_creates_consecrated_ground_on_use_a33bd101"
       ]
     },
@@ -293170,20 +293195,33 @@
     },
     "Gain Guard equal to Current Runic Ward for 10 seconds when Effect ends": {
       "sources": [
+        "rule:olroth_guard_after_effect",
         "unique:Olroth's Resolve"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "UtilityWardAsGuardDuration"
+      ],
+      "special_rule_id": "olroth_guard_after_effect",
+      "matching_special_rules": [
+        "olroth_guard_after_effect"
+      ]
     },
     "Gain Guard equal to Current Runic Ward for 29 seconds when Effect ends": {
       "sources": [
         "compound:stat_descriptions:local_unique_flask_gain_%_of_current_ward_as_guard_when_flask_effect_ends",
         "translation:效果结束时，获得相当于当前符文结界的防卫，持续 {1} 秒"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "UtilityWardAsGuardDuration"
+      ],
+      "special_rule_id": "olroth_guard_after_effect",
+      "matching_special_rules": [
+        "olroth_guard_after_effect"
+      ]
     },
     "Gain Helbrym's Composure for 17 second when Supported Skills cause you to Shapeshift": {
       "sources": [
