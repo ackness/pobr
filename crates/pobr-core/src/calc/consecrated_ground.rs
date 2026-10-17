@@ -31,6 +31,11 @@ pub(super) fn is_active(db: &ModDb, cfg: &CalcConfig) -> bool {
 /// to an ally's ground and carries no creator/effect snapshot.
 pub(super) fn apply(db: &mut ModDb, cfg: &mut CalcConfig) {
     let on_ground = is_active(db, cfg);
+    // Keep the non-combat finalization contract: read discovery may observe the
+    // input, but an inactive mechanic must not write derived conditions.
+    if !cfg.mode_combat {
+        return;
+    }
     cfg.conditions
         .insert("OnConsecratedGround".into(), on_ground);
     if !on_ground
