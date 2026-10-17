@@ -1,0 +1,48 @@
+{
+  "options": [
+    {
+      "var": "conditionOnConsecratedGround",
+      "input_type": "check",
+      "section": "When In Combat",
+      "label": "Are you on Consecrated Ground?",
+      "tooltip": "Explicit standing-on-ground snapshot for this actor only: regenerate 5% of maximum Life per second and take 50% reduced Curse effect. Does not assume ground ownership or uptime from an equipped source. Modifiers to ground you create are not included.",
+      "effects": [
+        {
+          "target": "player",
+          "name": "Condition:OnConsecratedGround",
+          "mod_type": "FLAG",
+          "value_bool": true,
+          "tags": [
+            {
+              "type": "condition",
+              "var": "Combat"
+            }
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "var": "conditionMinionsOnConsecratedGround",
+      "input_type": "check",
+      "section": "When In Combat",
+      "label": "Are your Minions on Consecrated Ground?",
+      "tooltip": "Explicit standing-on-ground snapshot for this actor only: regenerate 5% of maximum Life per second and take 50% reduced Curse effect. Does not assume ground ownership or uptime from an equipped source. Modifiers to ground you create are not included.",
+      "effects": [
+        {
+          "target": "minion",
+          "name": "Condition:OnConsecratedGround",
+          "mod_type": "FLAG",
+          "value_bool": true,
+          "tags": [
+            {
+              "type": "condition",
+              "var": "Combat"
+            }
+          ]
+        }
+      ],
+      "verified": true
+    }
+  ]
+}

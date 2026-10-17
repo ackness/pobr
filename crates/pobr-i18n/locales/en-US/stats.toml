@@ -845,3 +845,11 @@ Flask2GuardDuration = "Flask 2 Guard Duration"
 DynamismChargeInterval = "Dynamism Charge Generation Interval"
 DynamismChargeEventRate = "Dynamism Charge Generation Events per Second"
 DynamismAllyChargeEventRate = "Dynamism Ally Charge Generation Events per Second"
+
+# Consecrated Ground: game KeywordPopups TW term is 奉獻地面.
+Charm1ConsecratedGroundDuration = "Charm 1 Consecrated Ground Duration (s)"
+Charm1ConsecratedGroundRadiusMetres = "Charm 1 Consecrated Ground Radius (m)"
+Charm2ConsecratedGroundDuration = "Charm 2 Consecrated Ground Duration (s)"
+Charm2ConsecratedGroundRadiusMetres = "Charm 2 Consecrated Ground Radius (m)"
+Charm3ConsecratedGroundDuration = "Charm 3 Consecrated Ground Duration (s)"
+Charm3ConsecratedGroundRadiusMetres = "Charm 3 Consecrated Ground Radius (m)"

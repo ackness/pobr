@@ -4,6 +4,9 @@ import type { Lang } from './i18n';
 export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
   DynamismBaseInterval: {"en-US": "Dynamism generation interval", "zh-TW": "奇術動力生成間隔", "zh-CN": "奇术动力生成间隔"},
   DynamismRecipientEnabled: {"en-US": "Generation directed to this recipient", "zh-TW": "生成球歸此接收者", "zh-CN": "生成球归此接收者"},
+  // TW uses verified game terminology; CN is contextual UI wording, not official game text.
+  UtilityConsecratedGroundDuration: { 'en-US': 'Created Consecrated Ground duration (s)', 'zh-TW': '所建立奉獻地面的持續時間（秒）', 'zh-CN': '所创建奉献地面的持续时间（秒）' },
+  UtilityConsecratedGroundRadiusMetres: { 'en-US': 'Created Consecrated Ground radius (m)', 'zh-TW': '所建立奉獻地面的半徑（公尺）', 'zh-CN': '所创建奉献地面的半径（米）' },
   UtilityGuardBaseDuration: {"en-US": "Guard grant duration", "zh-TW": "護衛授予持續時間", "zh-CN": "护卫授予持续时间"},
   UtilityGuardEnabled: {"en-US": "Guard snapshot enabled", "zh-TW": "護衛快照啟用", "zh-CN": "护卫快照启用"},
   OlrothGuard: {"en-US": "Remaining Guard from Olroth's Resolve", "zh-TW": "奧爾羅斯的決心尚存護衛", "zh-CN": "奥尔罗斯的决心尚存护卫"},

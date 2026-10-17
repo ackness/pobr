@@ -163,4 +163,5 @@ pub(crate) fn round(value: f64) -> f64 {
 
 mod sidebar;
 
+mod consecrated_ground;
 pub mod utility;

@@ -6,7 +6,28 @@
  * 渲染前先剥 `^xRRGGBB` / `^N` 颜色码（见 ConfigPanel 的 stripColorCodes）。
  */
 
+// TW terminology verified against the game's corresponding KeywordPopups text.
+// The retained official tables contain English and TW, not CN KeywordPopups.
+// New CN ground labels/help are contextual application copy, not official translations.
+export const CONFIG_LABEL_ZH_TW: Record<string, string> = {
+  conditionOnConsecratedGround: '你位於奉獻地面？',
+  conditionMinionsOnConsecratedGround: '你的召喚物位於奉獻地面？',
+};
+
+const CONSECRATED_GROUND_HELP: Record<string, string> = {
+  'zh-TW': '僅明確指定的角色視為位於奉獻地面：每秒回復 5% 最大生命，且減少 50% 身上的詛咒效果。不因裝備或啟用護符而假設位於其地面，也不計入你製造的地面效果詞綴。',
+  'zh-CN': '仅明确指定的角色视为位于奉献地面：每秒回复 5% 最大生命，并减少 50% 身上的诅咒效果。不会因装备或启用护符而假设位于其地面，也不计入你创建的地面效果词缀。',
+};
+
+export function configTooltip(lang: string, variable: string, fallback?: string): string | undefined {
+  if (variable === 'conditionOnConsecratedGround' || variable === 'conditionMinionsOnConsecratedGround') {
+    return CONSECRATED_GROUND_HELP[lang] ?? fallback;
+  }
+  return fallback;
+}
+
 export const CONFIG_LABEL_ZH: Record<string, string> = {
+  conditionMinionsOnConsecratedGround: '你的召唤物位于奉献地面？',
   energyIncomingHitRate: '每秒可格挡来袭命中数：',
   energyMinionDeathsPerSecond: '每秒被击杀召唤物数：',
   energyMinionPower: '被击杀召唤物的平均威能：',
@@ -258,7 +279,7 @@ export const CONFIG_LABEL_ZH: Record<string, string> = {
   conditionOnBurningGround: '你处于燃烧之地？',
   conditionOnCausticGround: '你处于腐蚀之地？',
   conditionOnChilledGround: '你处于冰缓之地？',
-  conditionOnConsecratedGround: '你处于奉献之地？',
+  conditionOnConsecratedGround: '你位于奉献地面？',
   conditionOnFungalGround: '你处于真菌之地？',
   conditionOnIgnitedGround: '你处于点燃之地？',
   conditionOnShockedGround: '你处于感电之地？',

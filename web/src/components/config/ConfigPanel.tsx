@@ -7,7 +7,7 @@ import type { ConfigInputValue, ConfigOption, CustomModifierBlock, EnemyTier } f
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useSkillName } from '../../hooks/useSkillName';
 import { bindT, configSectionLabel, damageTypeLabel, enemyTierLabel, t, type Lang } from '../../lib/i18n';
-import { CONFIG_LABEL_ZH, LIST_OPTION_ZH } from '../../lib/configLabels';
+import { CONFIG_LABEL_ZH, CONFIG_LABEL_ZH_TW, LIST_OPTION_ZH, configTooltip } from '../../lib/configLabels';
 import { configDefaultValue } from '../../lib/configDefaults';
 import { configApplicability, configExistsInGame, configVisibilityInputs, showConfigOption, type Applicability } from '../../lib/configVisibility';
 import './config.css';
@@ -62,7 +62,8 @@ function stripColorCodes(text: string): string {
 /** 本地化配置标签：中文界面查汉化表（缺条目回退英文原文）。 */
 function optionLabel(lang: Lang, option: ConfigOption): string {
   const en = stripColorCodes(option.label ?? option.var);
-  const label = lang === 'en-US' ? en : CONFIG_LABEL_ZH[option.var] ?? en;
+  const label = lang === 'en-US' ? en
+    : (lang === 'zh-TW' ? CONFIG_LABEL_ZH_TW[option.var] : undefined) ?? CONFIG_LABEL_ZH[option.var] ?? en;
   const actor = Object.hasOwn(CHARGE_ACTORS, option.var) ? CHARGE_ACTORS[option.var] : undefined;
   return actor ? `${t(lang, actor)}: ${label}` : label;
 }
@@ -90,6 +91,7 @@ function OptionRow({
 }) {
   const tt = bindT(lang);
   const label = optionLabel(lang, option);
+  const tooltip = configTooltip(lang, option.var, option.tooltip);
   const fallback = configDefaultValue(option);
   const effective = value ?? fallback;
   const [draft, setDraft] = useState(String(value ?? ''));
@@ -98,7 +100,7 @@ function OptionRow({
     <div className={`config-item${overridden ? ' is-overridden' : ''}`} data-config-var={option.var}>
       <div className="config-description">
         <label className="config-key" htmlFor={`config-${option.var}`}>{label}</label>
-        {option.tooltip && <p className="config-help" id={`config-help-${option.var}`}>{stripColorCodes(option.tooltip)}</p>}
+        {tooltip && <p className="config-help" id={`config-help-${option.var}`}>{stripColorCodes(tooltip)}</p>}
         <code className="config-raw-key">{option.var}</code>
         <span className="config-source">{tt(value === undefined ? 'config.sourceDefault' : 'config.sourceSaved')}</span>
         {applicability !== 'applicable' && <span className="config-applicability">
@@ -109,7 +111,7 @@ function OptionRow({
       {option.input_type === 'check' ? (
         <input
           id={`config-${option.var}`}
-          aria-describedby={option.tooltip ? `config-help-${option.var}` : undefined}
+          aria-describedby={tooltip ? `config-help-${option.var}` : undefined}
           type="checkbox"
           checked={typeof effective === 'number' ? effective !== 0 : effective === true}
           disabled={busy}
@@ -119,7 +121,7 @@ function OptionRow({
       ) : option.input_type === 'list' ? (
         <select
           id={`config-${option.var}`}
-          aria-describedby={option.tooltip ? `config-help-${option.var}` : undefined}
+          aria-describedby={tooltip ? `config-help-${option.var}` : undefined}
           value={String(effective ?? '')}
           disabled={busy}
           onChange={(e) => onChange(e.target.value)}
@@ -143,7 +145,7 @@ function OptionRow({
       ) : (
         <input
           id={`config-${option.var}`}
-          aria-describedby={option.tooltip ? `config-help-${option.var}` : undefined}
+          aria-describedby={tooltip ? `config-help-${option.var}` : undefined}
           className="config-value"
           type={option.input_type === 'text' ? 'text' : 'number'}
           value={draft}

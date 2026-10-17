@@ -1023,9 +1023,9 @@ which still says 10% skill speed / 5% movement speed. All new rules declare
 `exporter: "absent"` and a game source. Periodic spirit attacks, Wolf's
 maim/on-hit armour break remain outside reported calculations. Ox's slow
 potency is
-read when a slow applies, and its threshold bonus feeds `AilmentThreshold`. “Energy Shield Recharge starts on use”,
-“Creates Ignited Ground … when used” and “Creates Consecrated Ground on Use”
-remain unsupported pending an event model.
+read when a slow applies, and its threshold bonus feeds `AilmentThreshold`. “Energy Shield Recharge starts on use” and
+“Creates Ignited Ground … when used” remain unsupported pending an event model;
+Consecrated Ground uses the explicit snapshot below.
 
 Olroth's Resolve “Gain Guard equal to Current Runic Ward for 10 seconds when
 Effect ends” (`local_unique_flask_gain_%_of_current_ward_as_guard_when_flask_effect_ends`,
@@ -1186,3 +1186,31 @@ justify changing the imported gem or the game's level bonuses.
 已有配置控件或 handler 不代表对应机制已生效，handler 的数量不是界面控件的覆盖率。
 
 Calcs 的命中区间 `Physical/Fire/Cold/Lightning/Chaos` + `Min/Max` 和 `TotalMin/TotalMax` 是非暴击命中经过敌人减伤后的上下界：直接把现有命中分量乘 DPS 阶段保留的该类型 `EffMult`，明细给出减伤前界限与倍率，不再运行减伤计算。保留小数，沿用上文的精度约定；PoB2 的整数上下界可能造成小额命中的明显相对误差。攻击的区间、`EffMult`、`CritEffect` 只在 `MainHand…` / `OffHand…` 字段展示，与 PoB2 的手别表对应，顶层同名字段留 0；法术等无手别计算使用顶层。`DpsMultiplier` 保留技能、INC、MORE、手榴弹重复引爆与弹幕因子，双持按交替攻击取平均、同时命中取和；不包含 `QuantityMultiplier`。`Repeats` 沿用现有重复次数，`TotalNumberOfHits` 是 EHP 阶段算出的死亡前承受攻击总次数（已计避免被击中），不是技能命中次数。`StrikeTargets` 尚无目标数量计算，目录不提供该值。这些字段只展示已有计算，不改变伤害或 EHP。
+
+Consecrated Ground (`calc::consecrated_ground`) uses the game
+[ConsecratedGround keyword](https://poe2db.tw/us/Keywords): an actor explicitly
+standing on it regenerates 5% of its current maximum Life per second and has
+50% reduced Curse effect (`life_regeneration_rate_per_minute_%`,
+`curse_effect_on_self_+%`, buff `ground_consecration`). Config
+`conditionOnConsecratedGround` and native `OnConsecratedGround` /
+`Condition:OnConsecratedGround` share the combat snapshot; duplicate grants
+apply once. Minions require `conditionMinionsOnConsecratedGround` or their
+own condition flag, never the player's position. Sanguis Heroum's
+`UniqueCharmCreateConsecratedGround1` in the active game's `base/mods.json`
+and [item text](https://poe2db.tw/us/Sanguis_Heroum) supply
+`charm_create_consecrated_ground_when_used_duration_ms = 4000` and
+`charm_create_consecrated_ground_when_used_radius = 14` (1.4 metres). The local
+`Charm<N>ConsecratedGroundDuration` / `ConsecratedGroundRadiusMetres` views
+retain these per-use properties on inactive equipped charms too; they neither
+establish that ground exists nor place any actor on it. Charm effect, quality
+and charm duration do not scale this separate ground event. This source rule
+is exporter-absent; the base ground benefit is implemented by PoB2 too.
+Ground ownership and an ally's ground effect are not inputs, so
+`ConsecratedGroundEffect` is deliberately not consumed: the user's own-ground
+modifiers must not scale an ally's ground. No use frequency, uptime, lingering
+effect or in-game timing measurement is assumed. TW labels use the game's
+[奉獻地面 keyword](https://poe2db.tw/tw/Keywords) and
+[嗜血英雄／止血護符 text](https://poe2db.tw/tw/Sanguis_Heroum); surrounding UI
+phrasing is application copy, not an official translation. Retained official
+tables provide English and TW only; the new CN labels/help are contextual
+application wording, not an official CN translation.

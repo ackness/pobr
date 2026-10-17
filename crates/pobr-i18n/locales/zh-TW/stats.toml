@@ -858,3 +858,11 @@ Flask2GuardDuration = "藥劑 2 護衛持續時間"
 DynamismChargeInterval = "奇術動力充能生成間隔"
 DynamismChargeEventRate = "奇術動力每秒充能生成事件"
 DynamismAllyChargeEventRate = "奇術動力每秒友方充能生成事件"
+
+# Consecrated Ground: game KeywordPopups TW term is 奉獻地面.
+Charm1ConsecratedGroundDuration = "護符 1 奉獻地面持續時間（秒）"
+Charm1ConsecratedGroundRadiusMetres = "護符 1 奉獻地面半徑（公尺）"
+Charm2ConsecratedGroundDuration = "護符 2 奉獻地面持續時間（秒）"
+Charm2ConsecratedGroundRadiusMetres = "護符 2 奉獻地面半徑（公尺）"
+Charm3ConsecratedGroundDuration = "護符 3 奉獻地面持續時間（秒）"
+Charm3ConsecratedGroundRadiusMetres = "護符 3 奉獻地面半徑（公尺）"

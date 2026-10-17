@@ -303,3 +303,306 @@ fn configured_action_speed_slow_reads_potency_and_preserves_reference_basis() {
         reference.effective_movement_speed_mod
     );
 }
+
+#[test]
+fn consecrated_ground_config_and_native_state_agree_without_assuming_a_source() {
+    use pobr_core::calc::{CalculationSession, MinimalInput};
+    use pobr_core::{CalcConfig, Modifier};
+    use pobr_data::prelude::*;
+    let data = data();
+    for (configured, combat) in [(false, true), (true, true), (true, false)] {
+        let xml_config =
+            format!(r#"<Input name="conditionOnConsecratedGround" boolean="{configured}"/>"#);
+        // End-to-end config uses the normal combat view.
+        if combat {
+            let output = calculate(&data, &xml_config, true, &[]);
+            let expected = if configured { 0.05 * output.life } else { 0.0 };
+            assert!((output.life_regen - expected).abs() < 1e-8);
+            assert_eq!(
+                output.curse_effect_on_self,
+                if configured { 50.0 } else { 100.0 }
+            );
+        }
+        for native_flag in [false, true] {
+            let mut cfg = CalcConfig::new().with_mode_combat(combat);
+            cfg.track_reads();
+            if !native_flag {
+                cfg = cfg.with_condition("OnConsecratedGround", configured);
+            }
+            let mut session = CalculationSession::new(MinimalInput {
+                base_life: 1000.0,
+                ..Default::default()
+            })
+            .with_config(cfg);
+            // A changed final maximum Life must be used; no flat 50-life grant.
+            session.add_modifiers([
+                Modifier::number("MaximumLife", ModType::Inc, 50.0),
+                // The actor can be on an ally's ground. Its own ground effect
+                // and ordinary buff effect cannot silently scale that ground.
+                Modifier::number("ConsecratedGroundEffect", ModType::Inc, 100.0),
+                Modifier::number("BuffEffect", ModType::Inc, 100.0),
+            ]);
+            if native_flag && configured {
+                session.add_modifiers([
+                    Modifier::flag("Condition:OnConsecratedGround"),
+                    Modifier::flag("Condition:OnConsecratedGround"),
+                ]);
+            }
+            session.perform_minimal().unwrap();
+            assert!(
+                session
+                    .config()
+                    .read_variables()
+                    .conditions
+                    .contains("OnConsecratedGround")
+            );
+            assert_eq!(session.output().life, 1500.0);
+            assert_eq!(
+                session.output().life_regen,
+                if configured && combat { 75.0 } else { 0.0 }
+            );
+            assert_eq!(
+                session.output().curse_effect_on_self,
+                if configured && combat { 50.0 } else { 100.0 }
+            );
+            if configured && combat {
+                assert!(!session.detail_sources("LifeRegen").is_empty());
+                assert!(!session.detail_sources("CurseEffectOnSelf").is_empty());
+            }
+        }
+    }
+}
+
+#[test]
+fn consecrated_ground_creation_properties_are_local_even_when_the_charm_is_inactive() {
+    use pobr_core::calc::{CalculationSession, MinimalInput};
+    use pobr_core::{CalcConfig, Modifier, display_catalog, display_value};
+    use pobr_data::{catalog::UtilityBaseStats, prelude::*};
+    let data = data();
+    // Check our fixed creation properties against the active game snapshot,
+    // not an exporter tooltip or a pinned-version path.
+    let mods: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(repo_data_root().join(data_version()).join("base/mods.json"))
+            .unwrap(),
+    )
+    .unwrap();
+    let source = mods
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|m| m["id"] == "UniqueCharmCreateConsecratedGround1")
+        .unwrap();
+    for (id, expected) in [
+        ("charm_create_consecrated_ground_when_used", 1),
+        (
+            "charm_create_consecrated_ground_when_used_duration_ms",
+            4000,
+        ),
+        ("charm_create_consecrated_ground_when_used_radius", 14),
+    ] {
+        let stat = source["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["stat_id"] == id)
+            .unwrap();
+        assert_eq!(stat["min"], expected);
+        assert_eq!(stat["max"], expected);
+    }
+    for present in [false, true] {
+        for active in [false, true] {
+            for on_ground in [false, true] {
+                let item = Item {
+                    base: "Staunching Charm".into(),
+                    quality: 20,
+                    rarity: ItemRarity::Unique,
+                    corrupted: false,
+                    modifier_texts: if present {
+                        vec!["Creates Consecrated Ground on use".into()]
+                    } else {
+                        vec![]
+                    },
+                    implicit_texts: vec![],
+                    enchant_texts: vec![],
+                    rolled_defence: RolledDefence::default(),
+                    socketed: vec![],
+                    parsed_stats: vec![],
+                };
+                let mut session = CalculationSession::new(MinimalInput {
+                    base_life: 2000.0,
+                    ..Default::default()
+                })
+                .with_config(
+                    CalcConfig::new()
+                        .with_mode_combat(true)
+                        .with_condition("OnConsecratedGround", on_ground),
+                );
+                session.set_parser_rules(data.parser_rules.as_ref().unwrap().clone());
+                // Duplicate sources must not duplicate the ground's benefit.
+                for slot in ["Charm 1", "Charm 2"] {
+                    session.add_utility_base(
+                        slot,
+                        &item,
+                        &UtilityBaseStats {
+                            life: 0.0,
+                            mana: 0.0,
+                            duration: 3.0,
+                            charges_max: 40.0,
+                            charges_used: 30.0,
+                        },
+                    );
+                    if active {
+                        session.add_flask_charm(slot, &item);
+                    } else {
+                        session.add_inactive_utility_properties(slot, &item);
+                    }
+                }
+                session.add_modifiers([
+                    Modifier::number("CharmEffect", ModType::Inc, 100.0),
+                    Modifier::number("CharmDuration", ModType::Inc, 100.0),
+                ]);
+                session.perform_minimal().unwrap();
+                assert!(
+                    session.unsupported_modifier_texts().is_empty(),
+                    "{:?}",
+                    session.unsupported_modifier_texts()
+                );
+                assert_eq!(
+                    session.output().life_regen,
+                    if on_ground { 100.0 } else { 0.0 }
+                );
+                for slot in [1, 2] {
+                    for (field, value, input) in [
+                        (
+                            "ConsecratedGroundDuration",
+                            4.0,
+                            "UtilityConsecratedGroundDuration",
+                        ),
+                        (
+                            "ConsecratedGroundRadiusMetres",
+                            1.4,
+                            "UtilityConsecratedGroundRadiusMetres",
+                        ),
+                    ] {
+                        let id = format!("Charm{slot}{field}");
+                        let expected = if present { value } else { 0.0 };
+                        assert_eq!(display_value(session.output(), &id), expected);
+                        let detail = session.derived_detail(&id).unwrap();
+                        assert_eq!(detail.formula, input);
+                        assert_eq!(detail.inputs, vec![(input.into(), expected)]);
+                        assert!(
+                            display_catalog()
+                                .iter()
+                                .find(|d| d.id.as_str() == id)
+                                .unwrap()
+                                .pob_key
+                                .is_none()
+                        );
+                    }
+                }
+            }
+        }
+    }
+    // The exporter does not model Sanguis's creation properties. Reference
+    // basis excludes those local stats without excluding explicit ground state.
+    let mut session = CalculationSession::new(MinimalInput::default());
+    session.set_parser_rules(data.parser_rules.as_ref().unwrap().clone());
+    session.set_exporter_rules(false, Default::default());
+    session
+        .add_modifier_texts(&["Creates Consecrated Ground on use"])
+        .unwrap();
+    assert!(
+        session
+            .exporter_rules()
+            .any(|rule| rule.id == "sanguis_consecrated_ground_on_use")
+    );
+    assert!(
+        session
+            .mods_named("UtilityConsecratedGroundDuration")
+            .is_empty()
+    );
+    assert!(
+        session
+            .mods_named("UtilityConsecratedGroundRadiusMetres")
+            .is_empty()
+    );
+    assert!(!session.has_flag("Condition:OnConsecratedGround"));
+}
+
+#[test]
+fn consecrated_ground_minions_require_their_own_explicit_state() {
+    let data = data();
+    for player_ground in [false, true] {
+        for minion_ground in [false, true] {
+            let xml = format!(
+                r#"<PathOfBuilding2>
+<Build level="90" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="SummonSkeletalArsonistsPlayer" level="20" enabled="true"/></Skill></Skills>
+<Config><Input name="conditionOnConsecratedGround" boolean="{player_ground}"/>
+<Input name="conditionMinionsOnConsecratedGround" boolean="{minion_ground}"/></Config>
+</PathOfBuilding2>"#
+            );
+            let build = parse_build(&xml).unwrap();
+            let session =
+                pobr_build::calculate_with_data_session(&build, &data, &Default::default())
+                    .unwrap();
+            let output = session.output();
+            assert!(
+                (output.life_regen
+                    - if player_ground {
+                        output.life * 0.05
+                    } else {
+                        0.0
+                    })
+                .abs()
+                    < 1e-8
+            );
+            let minion = &output.minions[0];
+            assert!(
+                (minion.stats["LifeRegen"]
+                    - if minion_ground {
+                        minion.life * 0.05
+                    } else {
+                        0.0
+                    })
+                .abs()
+                    < 1e-8,
+                "player={player_ground}, minion={minion_ground}: {minion:?}"
+            );
+            assert_eq!(
+                minion.stats["CurseEffectOnSelf"],
+                if minion_ground { 50.0 } else { 100.0 }
+            );
+            if minion_ground {
+                for stat in ["LifeRegen", "CurseEffectOnSelf"] {
+                    let detail =
+                        pobr_build::breakdown::detail::minion_stat_detail(&session, 0, stat)
+                            .unwrap();
+                    assert!(!detail.breakdown.mods.is_empty());
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn consecrated_ground_unchecked_config_overrides_imported_state() {
+    use pobr_core::rules::config_interpreter::ConfigInputValue;
+    let data = data();
+    let mut build = parse_build(
+        r#"<PathOfBuilding2><Build level="80" className="Warrior"/>
+<Config><Input name="conditionOnConsecratedGround" boolean="true"/></Config></PathOfBuilding2>"#,
+    )
+    .unwrap();
+    assert_eq!(
+        build.config.conditions.get("OnConsecratedGround"),
+        Some(&true)
+    );
+    build.config.raw_inputs.values.insert(
+        "conditionOnConsecratedGround".into(),
+        ConfigInputValue::Bool(false),
+    );
+    let output = calculate_with_data(&build, &data, &Default::default()).unwrap();
+    assert_eq!(output.life_regen, 0.0);
+    assert_eq!(output.curse_effect_on_self, 100.0);
+}

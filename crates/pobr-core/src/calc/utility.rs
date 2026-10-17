@@ -61,7 +61,12 @@ pub const FLASK_STATS: &[&str] = &[
     "LifeRemovedOnUse",
 ];
 
-pub const CHARM_STATS: &[&str] = &["LifeRecoveryOnUse", "ManaRecoveryOnUse"];
+pub const CHARM_STATS: &[&str] = &[
+    "LifeRecoveryOnUse",
+    "ManaRecoveryOnUse",
+    "ConsecratedGroundDuration",
+    "ConsecratedGroundRadiusMetres",
+];
 
 pub fn item_stat(id: &str) -> Option<(&str, &str)> {
     let split = id.find(|c: char| c.is_ascii_digit())? + 1;
@@ -90,6 +95,8 @@ pub fn is_local_property(name: &str, text: &str) -> bool {
             | "UtilityManaOnUse"
             | "UtilityCannotBeUsed"
             | "UtilityWardAsGuardDuration"
+            | "UtilityConsecratedGroundDuration"
+            | "UtilityConsecratedGroundRadiusMetres"
             | "UtilityLifeRecoveryRemovedFromMana"
             | "UtilityManaRecoveryRemovedFromLife"
     ) {
@@ -397,6 +404,14 @@ pub fn calculate(env: &mut Env) {
             for (field, name) in [
                 ("LifeRecoveryOnUse", "UtilityLifeOnUse"),
                 ("ManaRecoveryOnUse", "UtilityManaOnUse"),
+                (
+                    "ConsecratedGroundDuration",
+                    "UtilityConsecratedGroundDuration",
+                ),
+                (
+                    "ConsecratedGroundRadiusMetres",
+                    "UtilityConsecratedGroundRadiusMetres",
+                ),
             ] {
                 let recovered = sum(db, cfg, ModType::Base, &local(name)).max(0.0);
                 write(field, recovered, name, &[(name, recovered)]);

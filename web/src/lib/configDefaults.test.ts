@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import type { ConfigOption } from '../api/types';
 import { configDefaultValue } from './configDefaults';
-import { CONFIG_LABEL_ZH } from './configLabels';
+import { CONFIG_LABEL_ZH, CONFIG_LABEL_ZH_TW, configTooltip } from './configLabels';
 
 const version = readFileSync(new URL('../../../data/CURRENT', import.meta.url), 'utf8').trim();
 const options: ConfigOption[] = JSON.parse(readFileSync(new URL(`../../../data/${version}/overlay/config_options.json`, import.meta.url), 'utf8')).options;
@@ -29,4 +29,19 @@ test('numeric defaults preserve zero and distinguish state from placeholder prec
 
 test('every current configuration label has a Chinese display translation', () => {
   expect(options.filter(option => !CONFIG_LABEL_ZH[option.var]).map(option => option.var)).toEqual([]);
+});
+
+// Only this mechanic's new copy is localized here; preserve other config tooltips.
+test('Consecrated Ground labels and help keep actor state explicit in both Chinese locales', () => {
+  const ground: ConfigOption[] = JSON.parse(readFileSync(new URL('../../../data/overlay-common/consecrated_ground_config_options.json', import.meta.url), 'utf8')).options;
+  for (const option of ground) {
+    expect(configDefaultValue(option)).toBe(false);
+    expect(CONFIG_LABEL_ZH_TW[option.var]).toContain('奉獻地面');
+    expect(CONFIG_LABEL_ZH[option.var]).toContain('奉献地面');
+    expect(configTooltip('zh-TW', option.var, option.tooltip)).toContain('明確指定');
+    expect(configTooltip('zh-CN', option.var, option.tooltip)).toContain('明确指定');
+    expect(configTooltip('en-US', option.var, option.tooltip)).toBe(option.tooltip);
+  }
+  expect(configTooltip('zh-TW', 'unrelated', 'Existing tooltip')).toBe('Existing tooltip');
+  expect(configTooltip('zh-TW', 'unrelated')).toBeUndefined();
 });

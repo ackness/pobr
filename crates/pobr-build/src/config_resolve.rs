@@ -59,6 +59,7 @@ use crate::handlers::{build_registry, campaign_progress_from_config, enemy_tier_
 /// player-side snapshot is not wired up. Retire the three exposure mappings when
 /// that channel is activated, or exposure will be counted twice.
 const EXPLICIT_BOOLEAN_CONDITIONS: &[(&str, &str)] = &[
+    ("conditionOnConsecratedGround", "OnConsecratedGround"),
     ("conditionAncestrallyBoosted", "AncestrallyBoosted"),
     ("conditionAncestralCryActive", "AncestralCryActive"),
     ("usePowerCharges", "UsePowerCharges"),
@@ -219,12 +220,31 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
 
     // quest entries still go through the legacy text channel (§3-⑤): excluded from
     // modifier injection to avoid double-counting with `global_modifier_texts`.
-    let player_mods = outcome
+    let mut player_mods: Vec<Modifier> = outcome
         .player_mods
         .iter()
         .filter(|m| !is_quest_mod(m))
         .cloned()
         .collect();
+    // Minions are assembled later from MinionModifier payloads. Forward this
+    // explicit per-actor ground state through that channel; the other legacy
+    // minion config effects remain outside this mechanic's scope.
+    player_mods.extend(
+        outcome
+            .minion_mods
+            .iter()
+            .filter(|modifier| modifier.name.as_str() == "Condition:OnConsecratedGround")
+            .map(|modifier| {
+                let mut wrapped = Modifier::new(
+                    "MinionModifier",
+                    pobr_data::prelude::ModType::List,
+                    pobr_core::ModValue::NestedMods(vec![modifier.clone()]),
+                );
+                wrapped.origin = modifier.origin.clone();
+                wrapped.source = modifier.source.clone();
+                wrapped
+            }),
+    );
     let enemy_mods = outcome.enemy_mods.clone();
 
     ResolvedConfig {

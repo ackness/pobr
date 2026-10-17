@@ -6571,6 +6571,30 @@
       "examples": [
         "Gain Guard equal to Current Runic Ward for 10 seconds when Effect ends"
       ]
+    },
+    {
+      "id": "sanguis_consecrated_ground_on_use",
+      "pattern": "^creates consecrated ground on use$",
+      "mods": [
+        {
+          "name": "UtilityConsecratedGroundDuration",
+          "type": "BASE",
+          "value": 4
+        },
+        {
+          "name": "UtilityConsecratedGroundRadiusMetres",
+          "type": "BASE",
+          "value": 1.4
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_create_consecrated_ground_when_used; charm_create_consecrated_ground_when_used_duration_ms; charm_create_consecrated_ground_when_used_radius; Mods UniqueCharmCreateConsecratedGround1; https://poe2db.tw/us/Sanguis_Heroum",
+      "source_note": "Game Mods UniqueCharmCreateConsecratedGround1: 4000 ms duration, radius 14 game units (1.4 metres). Local per-use creation properties, retained even for an inactive equipped charm; not scaled by charm effect, charm duration or quality. No use event, ground presence, standing on it, or uptime is inferred. Explicit OnConsecratedGround supplies the separate base ground benefit; own-ground effect scaling is not modelled. Regression: skills::config_handlers::consecrated_ground. No in-game timing test.",
+      "examples": [
+        "Creates Consecrated Ground on use"
+      ]
     }
   ]
 }

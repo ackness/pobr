@@ -220,12 +220,22 @@ pub fn minion_detail_descriptors() -> BTreeMap<String, DetailKind> {
         "CritChance",
         "CritMultiplier",
         "Accuracy",
+        "LifeRegen",
+        "CurseEffectOnSelf",
     ]
     .into_iter()
     .map(|id| {
         (
             id.into(),
-            if matches!(id, "Armour" | "Evasion" | "EnergyShield" | "Accuracy") {
+            if matches!(
+                id,
+                "Armour"
+                    | "Evasion"
+                    | "EnergyShield"
+                    | "Accuracy"
+                    | "LifeRegen"
+                    | "CurseEffectOnSelf"
+            ) {
                 DetailKind::Sources
             } else {
                 DetailKind::Steps

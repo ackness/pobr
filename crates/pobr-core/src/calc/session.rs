@@ -1721,6 +1721,15 @@ impl CalculationSession {
     /// its speed is that of its own skill.
     fn minion_stat_names(&self, cfg: &CalcConfig, stat: &str) -> Vec<ModName> {
         match stat {
+            "LifeRegen" => [
+                "LifeRegen",
+                "LifeRegenPercent",
+                "LifeRegenRate",
+                "LifeRecoveryRate",
+            ]
+            .into_iter()
+            .map(ModName::from)
+            .collect(),
             "Life" => vec![ModName::from("MaximumLife"), ModName::from("Life")],
             "ActionRate" => super::skill_use_time::speed_names_for(cfg),
             _ => self.stat_mod_names(stat),

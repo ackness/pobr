@@ -62,6 +62,7 @@ pub fn env_finalize(env: &mut Env) {
     // Stage 6.8: Blind on whichever side is stated to be Blinded, after the
     // modifiers to its effect have reached that side.
     super::blind::apply_blind(env);
+    super::consecrated_ground::apply(&mut env.player.mod_db, &mut env.cfg);
     super::player_debuffs::apply(env);
     super::armour_break::apply_armour_break(env);
     super::armour_break::apply_fully_broken_effect(env);

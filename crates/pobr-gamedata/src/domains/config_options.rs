@@ -25,6 +25,12 @@ impl GameData {
         ))
         .expect("bundled Archon config options");
         catalog.options = crate::paths::merge_by_key(own.options, catalog.options, |o| &o.var);
+        // Standing on ground is per actor, not inferred for the player's allies.
+        let ground: ConfigOptionsDef = serde_json::from_str(include_str!(
+            "../../../../data/overlay-common/consecrated_ground_config_options.json"
+        ))
+        .expect("bundled Consecrated Ground config options");
+        catalog.options = crate::paths::merge_by_key(catalog.options, ground.options, |o| &o.var);
         catalog.options.sort_by(|a, b| a.var.cmp(&b.var));
         Ok(catalog)
     }

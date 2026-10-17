@@ -365,6 +365,12 @@ fn inject_companion_life(env: &mut Env) {
 /// the created population twice and discard the independent Presence override.
 pub(crate) fn minion_cfg(env: &Env, minion: &super::Actor) -> CalcConfig {
     let mut cfg = env.cfg.clone();
+    // Standing on ground is per actor. The player's state never establishes
+    // the minion's position; its explicit Condition flag does.
+    cfg.conditions.remove("OnConsecratedGround");
+    let on_ground = super::consecrated_ground::is_active(&minion.mod_db, &cfg);
+    cfg.conditions
+        .insert("OnConsecratedGround".into(), on_ground);
     // The shared resistance pass reads the actor's inherent maximum.
     // A minion uses the monster default (75%), independent of the player.
     cfg.constants
@@ -526,6 +532,7 @@ fn perform_minions(env: &mut Env) {
     for minion in &mut minions {
         // Minions use their own skill and hit the same enemy as the player.
         let mut minion_cfg = minion_cfg(env, minion);
+        super::consecrated_ground::apply(&mut minion.mod_db, &mut minion_cfg);
         apply_gigantic(minion, &minion_cfg);
         let (auras, conditions) =
             super::buff_pass::auras_on_minion(env, &minion.mod_db, &minion_cfg);
@@ -549,6 +556,10 @@ fn perform_minions(env: &mut Env) {
         minion.breakdown = BreakdownTable::from_steps(output.breakdown);
         let enemy_accuracy = super::setup_env::enemy_accuracy(&env.enemy, &minion_cfg);
         calc_defence(minion, &minion_cfg, enemy_accuracy);
+        minion.output.life_regen =
+            calc_regen(&minion.mod_db, &minion_cfg, minion.output.life, "LifeRegen");
+        minion.output.curse_effect_on_self =
+            100.0 * super::player_debuffs::effect(&minion.mod_db, &minion_cfg, "CurseEffectOnSelf");
 
         // Cross-Actor trace edge: player count cap → this minion's DPS output (player-source → minion-output).
         let minion_dps_node =
@@ -569,6 +580,7 @@ fn perform_minions(env: &mut Env) {
             energy_shield: minion.output.energy_shield,
             stats: super::minion::MINION_RESISTANCE_STATS
                 .into_iter()
+                .chain(["LifeRegen", "CurseEffectOnSelf"])
                 .map(|id| {
                     (
                         id.into(),

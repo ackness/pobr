@@ -104,7 +104,7 @@ pub(super) fn calculate_views(env: &mut Env) {
     out.hinder_immunity = db.flag(cfg, "HinderImmune");
 }
 
-fn effect(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
+pub(super) fn effect(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
     let names = [ModName::from(name)];
     ((1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)).max(0.0)
 }

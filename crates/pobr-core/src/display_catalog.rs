@@ -2621,13 +2621,22 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
                     continue;
                 }
                 let id = format!("{kind}{slot}{field}");
-                let vt = if matches!(*field, "Duration" | "GuardDuration") {
+                let vt = if matches!(
+                    *field,
+                    "Duration" | "GuardDuration" | "ConsecratedGroundDuration"
+                ) {
                     Vt::TimeSeconds
                 } else {
                     Vt::Number
                 };
                 let definition = DisplayStatDefinition::computed(id.as_str(), Cat::Recovery, vt);
-                let definition = if matches!(*field, "GuardAfterEffect" | "GuardDuration") {
+                let definition = if matches!(
+                    *field,
+                    "GuardAfterEffect"
+                        | "GuardDuration"
+                        | "ConsecratedGroundDuration"
+                        | "ConsecratedGroundRadiusMetres"
+                ) {
                     definition
                 } else {
                     definition.with_pob_key(id.as_str())
