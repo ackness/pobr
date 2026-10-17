@@ -97,7 +97,9 @@
       "stats": [
         "SpiritReserved"
       ],
-      "reason": "SpiritReserved reports the enabled skills' full requested reservation (223); PoB2 caps this displayed field at the Spirit pool (146), while both report -77 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved).",
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (223); PoB2 caps this displayed field at the Spirit pool (146), while both report -77 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+    },
+    {
       "build": "3bfac6cd6482",
       "stats": ["AilmentThreshold"],
       "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/maintainer-guide.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
@@ -547,6 +549,16 @@
         "totalTakenDamage"
       ],
       "reason": "enemies in Presence gain Chaos damage from all of their damage (Evergrasping Ring), PoB2 only from their physical damage (docs/maintainer-guide.md, Evergrasping)"
+    },
+    {
+      "build": "acolyte-of-chayula-decompose-7505238a9c8d",
+      "stats": ["FreezeBuildupAvg"],
+      "reason": "Decompose's poison cloud deals no hit, and Chaotic Freeze (support_chaotic_freeze_dots_allow_enemies_to_be_frozen_by_chaos_damage) says \"Chaos damage Contributes to Freeze buildup for Hits against targets taking damage over time from Supported Skills\": PoBR builds no Freeze from the cloud (0), PoB2 builds it from the cloud's Chaos damage (docs/maintainer-guide.md, FreezeBuildupAvg)"
+    },
+    {
+      "build": "ranger-deadeye-ice-shot-b6ce7b3a4329",
+      "stats": ["FreezeBuildupAvg"],
+      "reason": "PoBR/PoB2 0.745 = the Xesht poise factor 9.38/17 (0.552) times Minion Pact II's 35% more damage taken as active with the Rhoa (1.35); per-damage buildup (35% increased, 25% more, Freezing Mark) agrees (docs/maintainer-guide.md, FreezeBuildupAvg and Minion Pact)"
     }
   ]
 }

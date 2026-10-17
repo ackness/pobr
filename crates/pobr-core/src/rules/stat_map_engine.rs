@@ -1223,10 +1223,13 @@ pub(crate) fn translated_mod_name_parts<'a>(
         | "DamagingAilmentDuration"
         | "MineDuration"
         | "EnemyElementalAilmentDuration"
-        // Inflicted Shock / Chill duration (`shock_duration_+%`,
-        // `chill_duration_+%`), read by `calc::ailment::duration_mod_names`.
+        // Inflicted Shock / Chill / Freeze duration (`shock_duration_+%`,
+        // `chill_duration_+%`, `freeze_duration_+%`,
+        // `chill_and_freeze_duration_+%`, `active_skill_freeze_duration_+%_final`),
+        // read by `calc::ailment::duration_mod_names`.
         | "EnemyShockDuration"
         | "EnemyChillDuration"
+        | "EnemyFreezeDuration"
         // Freeze buildup ("more Freeze Buildup",
         // `active_skill_hit_damage_freeze_multiplier_+%_final`; Freezing
         // Mark's curse `freezing_mark_hit_damage_freeze_multiplier_+%_final`

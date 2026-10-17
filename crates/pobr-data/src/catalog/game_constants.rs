@@ -320,6 +320,11 @@ pub struct GameMechanicsConstantsDef {
     /// non-players by default" (https://poe2db.tw/us/Keywords).
     #[serde(default = "default_chill_base_duration")]
     pub chill_base_duration: f64,
+    /// Freeze's base duration (seconds). The game's Freeze keyword: "Freeze
+    /// is an Ailment that causes targets to be unable to move or act, and
+    /// lasts 4 seconds by default" (https://poe2db.tw/us/Keywords).
+    #[serde(default = "default_freeze_base_duration")]
+    pub freeze_base_duration: f64,
 }
 
 // serde default functions (same source as the `Default` impl's values, a
@@ -344,6 +349,9 @@ fn default_shock_base_duration() -> f64 {
 }
 fn default_chill_base_duration() -> f64 {
     8.0
+}
+fn default_freeze_base_duration() -> f64 {
+    4.0
 }
 fn default_ehp_calc_max_iterations() -> f64 {
     50.0
@@ -474,6 +482,7 @@ impl Default for GameMechanicsConstantsDef {
             buff_expiration_slow_cap: default_buff_expiration_slow_cap(),
             shock_base_duration: default_shock_base_duration(),
             chill_base_duration: default_chill_base_duration(),
+            freeze_base_duration: default_freeze_base_duration(),
         }
     }
 }

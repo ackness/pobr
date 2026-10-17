@@ -11,7 +11,7 @@ use pobr_core::calc::ailment::{
     shock_effect, stack_potential, stacking_ailment_dps, stacking_ailment_dps_traced,
     threshold_derived_chance, weighted_source_damage,
 };
-use pobr_core::{CalcConfig, ModDb, Modifier, TraceGraph, TraceOperation};
+use pobr_core::{CalcConfig, ModDb, ModTag, Modifier, TraceGraph, TraceOperation};
 use pobr_data::prelude::*;
 
 #[test]
@@ -132,8 +132,15 @@ fn elemental_prohibitions_override_bonuses_without_disabling_other_ailments() {
                 ignite_traced(&source, &player, &enemy, &cfg, 1000.0, &mut trace);
             let (shock_chance, shock, shock_node) =
                 shock_traced(&source, &player, &enemy, &cfg, 1000.0, &mut trace);
-            let (chill, chill_node) =
-                chill_traced(10_000.0, 1000.0, &player, &ModDb::new(), &cfg, &mut trace);
+            let (chill, chill_node) = chill_traced(
+                10_000.0,
+                1000.0,
+                &player,
+                &ModDb::new(),
+                &cfg,
+                0.0,
+                &mut trace,
+            );
             let (freeze, freeze_node) =
                 freeze_poise_buildup_traced(1000.0, &player, &cfg, &mut trace);
             let (electrocute, electrocute_node) =
@@ -562,7 +569,7 @@ fn chill_traced_writes_trace_and_matches_non_traced() {
     let player = ModDb::new();
     let mut trace = TraceGraph::new();
 
-    let (effect, node) = chill_traced(350.0, 1000.0, &player, &ModDb::new(), &cfg, &mut trace);
+    let (effect, node) = chill_traced(350.0, 1000.0, &player, &ModDb::new(), &cfg, 0.0, &mut trace);
     let expected = chill_effect(350.0, 1000.0);
     assert!(
         (effect - expected).abs() < 1e-6,
@@ -582,7 +589,7 @@ fn chill_traced_with_ailment_magnitude_mod() {
     player.add_mod(Modifier::number("AilmentMagnitude", ModType::Inc, 50.0));
     let mut trace = TraceGraph::new();
 
-    let (effect, _) = chill_traced(350.0, 1000.0, &player, &ModDb::new(), &cfg, &mut trace);
+    let (effect, _) = chill_traced(350.0, 1000.0, &player, &ModDb::new(), &cfg, 0.0, &mut trace);
     assert!(
         (effect - 50.0).abs() < 1e-6,
         "+50% AilmentMagnitude: ratio=0.35*1.5=0.525 → clamp 50, got {effect}"
@@ -1606,9 +1613,71 @@ fn chill_traced_reads_the_targets_chill_magnitude() {
     player.add_mod(Modifier::number("EnemyChillMagnitude", ModType::Inc, 20.0));
     let mut enemy = ModDb::new();
     let mut trace = TraceGraph::new();
-    let (alone, _) = chill_traced(350.0, 1000.0, &player, &enemy, &cfg, &mut trace);
+    let (alone, _) = chill_traced(350.0, 1000.0, &player, &enemy, &cfg, 0.0, &mut trace);
     assert!((alone - 42.0).abs() < 1e-9, "{alone}");
     enemy.add_mod(Modifier::number("SelfChillMagnitude", ModType::Inc, -20.0));
-    let (reduced, _) = chill_traced(350.0, 1000.0, &player, &enemy, &cfg, &mut trace);
+    let (reduced, _) = chill_traced(350.0, 1000.0, &player, &enemy, &cfg, 0.0, &mut trace);
     assert!((reduced - 33.6).abs() < 1e-9, "{reduced}");
+}
+
+/// "20% increased Magnitude of Chill / Shock you inflict with Critical Hits"
+/// (game stats `chill_effect_+%_with_critical_strikes`,
+/// `shock_effect_+%_with_critical_strikes`) parse under `CriticalStrike`
+/// and apply to the critical share of the hit's ailments. With a 25% crit
+/// share the attacker factor is 0.75 * 1 + 0.25 * 1.2 = 1.05, so Chill is
+/// 100 * (350 / 1000) * 1.05 = 36.75; without crits it stays 35.
+#[test]
+fn critical_hit_magnitude_lines_apply_to_the_critical_share() {
+    let cfg = CalcConfig::attack();
+    let mut player = ModDb::new();
+    player.add_mod(
+        Modifier::number("EnemyChillMagnitude", ModType::Inc, 20.0)
+            .with_tag(ModTag::condition("CriticalStrike", false)),
+    );
+    let mut trace = TraceGraph::new();
+    let (no_crit, _) = chill_traced(350.0, 1000.0, &player, &ModDb::new(), &cfg, 0.0, &mut trace);
+    assert!((no_crit - 35.0).abs() < 1e-9, "{no_crit}");
+    let (weighted, _) = chill_traced(
+        350.0,
+        1000.0,
+        &player,
+        &ModDb::new(),
+        &cfg,
+        0.25,
+        &mut trace,
+    );
+    assert!((weighted - 36.75).abs() < 1e-9, "{weighted}");
+
+    // Shock: a hit that never / always crits (crit multiplier 1, so the
+    // damage is the same); the crit line's 20% reaches the magnitude.
+    let mut shock_player = ModDb::new();
+    shock_player.add_mod(
+        Modifier::number("EnemyShockMagnitude", ModType::Inc, 20.0)
+            .with_tag(ModTag::condition("CriticalStrike", false)),
+    );
+    let never = AilmentSource::new(10_000.0, 1.0, 0.0, false);
+    let always = AilmentSource::new(10_000.0, 1.0, 1.0, false);
+    let enemy = ModDb::new();
+    let (_, base, _) = pobr_core::calc::ailment::shock_traced(
+        &never,
+        &shock_player,
+        &enemy,
+        &cfg,
+        10_000.0,
+        &mut trace,
+    );
+    let (_, crit, _) = pobr_core::calc::ailment::shock_traced(
+        &always,
+        &shock_player,
+        &enemy,
+        &cfg,
+        10_000.0,
+        &mut trace,
+    );
+
+    // 50 * (10000 / 10000)^0.4 = 50%, and 60% with the critical line.
+    assert!(
+        (base - 0.5).abs() < 1e-9 && (crit - 0.6).abs() < 1e-9,
+        "{base} {crit}"
+    );
 }

@@ -824,6 +824,7 @@ GemLevel = "Selected Skill Gem Level"
 
 ShockDuration = "Shock duration"
 ChillDuration = "Chill duration"
+FreezeDuration = "Freeze duration"
 ChillEffectMod = "Chill magnitude multiplier"
 FreezeBuildupAvg = "Freeze buildup per hit"
 SelfFreezeEffect = "Freeze Effect on You"

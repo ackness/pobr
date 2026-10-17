@@ -46,7 +46,11 @@ pub(crate) fn is_display_stat(stat: &str) -> bool {
 fn is_non_damaging_view(stat: &str) -> bool {
     matches!(
         stat,
-        "ShockDuration" | "ChillDuration" | "ChillEffectMod" | "FreezeBuildupAvg"
+        "ShockDuration"
+            | "ChillDuration"
+            | "FreezeDuration"
+            | "ChillEffectMod"
+            | "FreezeBuildupAvg"
     )
 }
 
@@ -72,17 +76,13 @@ fn non_damaging_detail(env: &Env, stat: &str) -> DerivedDetail {
             _ => none("CanFreeze"),
         };
     }
-    let kind = if stat == "ShockDuration" {
-        AilmentType::Shock
-    } else {
-        AilmentType::Chill
+    let (kind, gate) = match stat {
+        "ShockDuration" => (AilmentType::Shock, "CanShock"),
+        "FreezeDuration" => (AilmentType::Freeze, "CanFreeze"),
+        _ => (AilmentType::Chill, "CanChill"),
     };
     let Some((_, t)) = env.non_damaging_terms.iter().find(|(k, _)| *k == kind) else {
-        return none(if kind == AilmentType::Shock {
-            "CanShock"
-        } else {
-            "CanChill"
-        });
+        return none(gate);
     };
     if stat == "ChillEffectMod" {
         return DerivedDetail {

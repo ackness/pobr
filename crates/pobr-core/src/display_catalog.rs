@@ -1581,6 +1581,12 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             "ShockDuration",
         ),
         computed(
+            "FreezeDuration",
+            Cat::Ailment,
+            Vt::TimeSeconds,
+            "FreezeDuration",
+        ),
+        computed(
             "FreezeBuildupAvg",
             Cat::Ailment,
             Vt::Percent,
@@ -2858,6 +2864,7 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "ChillEffectMod" => output.chill_effect_mod,
         "ChillDuration" => output.chill_duration,
         "ShockDuration" => output.shock_duration,
+        "FreezeDuration" => output.freeze_duration,
         "FreezeBuildupAvg" => output.freeze_buildup_avg,
         "AilmentThreshold" => output.ailment_threshold,
         "LifeOnKill" => output.life_on_kill,

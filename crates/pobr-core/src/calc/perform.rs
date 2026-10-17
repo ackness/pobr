@@ -281,6 +281,24 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     freeze.enabled &= !no_trigger_events(env);
     env.player.output.freeze_buildup_avg = freeze.value();
     env.freeze_buildup_terms = Some(freeze);
+    // The duration of a Freeze this hit builds: reported only when the hit
+    // builds Freeze at all.
+    if freeze.value() > 0.0
+        && let Some(terms) = super::ailment::non_damaging_ailment_terms(
+            AilmentType::Freeze,
+            &env.player.mod_db,
+            &env.enemy.mod_db,
+            &env.cfg,
+            super::ailment::ailment_crit_share(
+                &env.player.mod_db,
+                &env.cfg,
+                env.player.output.crit_chance,
+            ),
+        )
+    {
+        env.player.output.freeze_duration = terms.duration();
+        env.non_damaging_terms.push((AilmentType::Freeze, terms));
+    }
     let mut pin = super::ailment::pin_terms(env, stun_damage, &output.crit_avg);
     pin.enabled &= !no_trigger_events(env);
     env.player.output.pin_buildup_avg = pin.value();
@@ -2149,14 +2167,30 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
     let lightning_hit = cross_type_source_hit(AilmentType::Shock, components, player, cfg);
 
     let mut non_damaging_terms = Vec::new();
+    // The critical share of the hit's ailments: "with Critical Hits"
+    // magnitude lines apply to it.
+    let ailment_crit = if never_from_crit { 0.0 } else { crit_chance };
     if cold_hit > 0.0 {
         // Lane B: chill's action-speed reduction (%). 0 (doesn't apply) when the magnitude is below the minimum threshold.
-        let (chill, _) = chill_traced(cold_hit, threshold, player, enemy, cfg, &mut trace);
+        let (chill, _) = chill_traced(
+            cold_hit,
+            threshold,
+            player,
+            enemy,
+            cfg,
+            ailment_crit,
+            &mut trace,
+        );
         env.player.output.chill_effect = chill;
         // The duration and magnitude modifier of a Chill this hit can inflict.
         if !player.flag(cfg, "CannotChill")
-            && let Some(terms) =
-                super::ailment::non_damaging_ailment_terms(AilmentType::Chill, player, enemy, cfg)
+            && let Some(terms) = super::ailment::non_damaging_ailment_terms(
+                AilmentType::Chill,
+                player,
+                enemy,
+                cfg,
+                ailment_crit,
+            )
         {
             env.player.output.chill_duration = terms.duration();
             env.player.output.chill_effect_mod = terms.effect_mod();
@@ -2176,8 +2210,13 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
         env.player.output.shock_chance = chance;
         env.player.output.shock_effect = magnitude;
         if chance > 0.0
-            && let Some(terms) =
-                super::ailment::non_damaging_ailment_terms(AilmentType::Shock, player, enemy, cfg)
+            && let Some(terms) = super::ailment::non_damaging_ailment_terms(
+                AilmentType::Shock,
+                player,
+                enemy,
+                cfg,
+                ailment_crit,
+            )
         {
             env.player.output.shock_duration = terms.duration();
             non_damaging_terms.push((AilmentType::Shock, terms));

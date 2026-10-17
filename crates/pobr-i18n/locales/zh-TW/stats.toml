@@ -781,6 +781,7 @@ GemLevel = "所選技能寶石等級"
 
 ShockDuration = "感電持續時間"
 ChillDuration = "冰緩持續時間"
+FreezeDuration = "冰凍持續時間"
 ChillEffectMod = "冰緩幅度倍率"
 FreezeBuildupAvg = "每次擊中凍結積累"
 SelfFreezeEffect = "自身受到的凍結效果"

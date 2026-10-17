@@ -283,6 +283,7 @@ pub fn ailment_base_duration(ailment: AilmentType, cfg: &CalcConfig) -> Option<f
         AilmentType::Poison => Some(gc.poison_base_duration),
         AilmentType::Shock => Some(gc.shock_base_duration),
         AilmentType::Chill => Some(gc.chill_base_duration),
+        AilmentType::Freeze => Some(gc.freeze_base_duration),
         _ => None,
     }
 }
@@ -300,9 +301,11 @@ fn is_elemental_ailment(ailment: AilmentType) -> bool {
 pub(crate) fn duration_mod_names(ailment: AilmentType) -> Vec<ModName> {
     let own = ailment_mod_name(ailment);
     let mut names = match ailment {
-        // "increased Shock / Chill Duration" (`shock_duration_+%`,
-        // `chill_duration_+%`) reads as the inflicted `Enemy<Ailment>Duration`.
-        AilmentType::Shock | AilmentType::Chill => {
+        // "increased Shock / Chill / Freeze Duration" (`shock_duration_+%`,
+        // `chill_duration_+%`, `freeze_duration_+%`, and both of
+        // `chill_and_freeze_duration_+%`) reads as the inflicted
+        // `Enemy<Ailment>Duration`.
+        AilmentType::Shock | AilmentType::Chill | AilmentType::Freeze => {
             vec![ModName::from(format!("Enemy{own}Duration"))]
         }
         _ => vec![
@@ -927,7 +930,8 @@ pub fn shock_traced(
         ModName::from("AilmentMagnitude"),
         ModName::from("EnemyShockMagnitude"),
     ];
-    let (attacker, defender) = effect_mod_factors(AilmentType::Shock, player, enemy, cfg);
+    let (attacker, defender) =
+        effect_mod_factors(AilmentType::Shock, player, enemy, cfg, source.crit_chance);
     let effect_mod = attacker * defender;
     let magnitude = shock_effect_with_mods(
         weighted_hit,
@@ -1176,9 +1180,10 @@ fn record_effmult_trace(
 
 // Chill effect calculation
 
-/// The duration and magnitude-modifier inputs of a Shock or Chill the
-/// selected skill inflicts, retained for `ShockDuration`, `ChillDuration`
-/// and `ChillEffectMod` and their derived views.
+/// The duration and magnitude-modifier inputs of a Shock, Chill or Freeze
+/// the selected skill inflicts, retained for `ShockDuration`,
+/// `ChillDuration`, `FreezeDuration` and `ChillEffectMod` and their derived
+/// views.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct NonDamagingAilmentTerms {
     pub duration: AilmentDurationTerms,
@@ -1198,17 +1203,36 @@ impl NonDamagingAilmentTerms {
     }
 }
 
-/// [`NonDamagingAilmentTerms`] for Shock or Chill (`None` for other ailments).
+/// The share of a hit's ailments that come from critical hits (a fraction):
+/// the hit's critical chance, or 0 under `AilmentsAreNeverFromCrit`.
+pub(crate) fn ailment_crit_share(player: &ModDb, cfg: &CalcConfig, crit_chance: f64) -> f64 {
+    if player.flag(cfg, "AilmentsAreNeverFromCrit") {
+        0.0
+    } else {
+        crit_chance.clamp(0.0, 1.0)
+    }
+}
+
+/// [`NonDamagingAilmentTerms`] for Shock, Chill or Freeze (`None` for other
+/// ailments).
+///
+/// `crit_chance` (a fraction) is the hit's critical share, see
+/// [`effect_mod_factors`].
 pub fn non_damaging_ailment_terms(
     ailment: AilmentType,
     player: &ModDb,
     enemy: &ModDb,
     cfg: &CalcConfig,
+    crit_chance: f64,
 ) -> Option<NonDamagingAilmentTerms> {
-    if !matches!(ailment, AilmentType::Shock | AilmentType::Chill) {
+    if !matches!(
+        ailment,
+        AilmentType::Shock | AilmentType::Chill | AilmentType::Freeze
+    ) {
         return None;
     }
-    let (attacker_effect, defender_effect) = effect_mod_factors(ailment, player, enemy, cfg);
+    let (attacker_effect, defender_effect) =
+        effect_mod_factors(ailment, player, enemy, cfg, crit_chance);
     Some(NonDamagingAilmentTerms {
         duration: ailment_duration_terms(ailment, player, Some(enemy), cfg)?,
         enemy_duration: debuff_duration_mult(enemy, cfg),
@@ -1223,21 +1247,38 @@ pub fn non_damaging_ailment_terms(
 /// `Self<Ailment>Magnitude` / `AilmentMagnitude` from the enemy database.
 /// Each is `(1 + increased / 100) * more`. Shock and Chill magnitudes and
 /// the `ShockEffectMod` / `ChillEffectMod` views share this function.
+///
+/// The attacker factor is weighted by the hit's critical share
+/// `crit_chance` (a fraction): the critical share reads the modifiers under
+/// the `CriticalStrike` condition, so "increased Magnitude of Shock / Chill
+/// you inflict with Critical Hits" (game stats
+/// `shock_effect_+%_with_critical_strikes`,
+/// `chill_effect_+%_with_critical_strikes`) applies to the ailments critical
+/// hits inflict: `(1 - c) * factor + c * factor_on_crit`.
 pub(crate) fn effect_mod_factors(
     ailment: AilmentType,
     player: &ModDb,
     enemy: &ModDb,
     cfg: &CalcConfig,
+    crit_chance: f64,
 ) -> (f64, f64) {
     let own = ailment_mod_name(ailment);
-    let factor = |db: &ModDb, name: String| {
+    let factor = |db: &ModDb, cfg: &CalcConfig, name: String| {
         let names = [ModName::from(name), ModName::from("AilmentMagnitude")];
         ((1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)).max(0.0)
     };
-    (
-        factor(player, format!("Enemy{own}Magnitude")),
-        factor(enemy, format!("Self{own}Magnitude")),
-    )
+    let attacker_name = format!("Enemy{own}Magnitude");
+    let crit = crit_chance.clamp(0.0, 1.0);
+    let mut attacker = factor(player, cfg, attacker_name.clone());
+    if crit > 0.0 && !cfg.condition("CriticalStrike") {
+        let on_crit = factor(
+            player,
+            &cfg.clone().with_condition("CriticalStrike", true),
+            attacker_name,
+        );
+        attacker = attacker * (1.0 - crit) + on_crit * crit;
+    }
+    (attacker, factor(enemy, cfg, format!("Self{own}Magnitude")))
 }
 
 /// The chill effect (action speed reduction percentage, integer scale):
@@ -1296,6 +1337,7 @@ pub fn chill_traced(
     player: &ModDb,
     enemy: &ModDb,
     cfg: &CalcConfig,
+    crit_chance: f64,
     trace: &mut TraceGraph,
 ) -> (f64, TraceNodeId) {
     if let Some(node) = prohibited_ailment_node(player, cfg, "CannotChill", "ChillEffect", trace) {
@@ -1305,7 +1347,8 @@ pub fn chill_traced(
         ModName::from("AilmentMagnitude"),
         ModName::from("EnemyChillMagnitude"),
     ];
-    let (attacker, defender) = effect_mod_factors(AilmentType::Chill, player, enemy, cfg);
+    let (attacker, defender) =
+        effect_mod_factors(AilmentType::Chill, player, enemy, cfg, crit_chance);
     let effect_mod = attacker * defender;
 
     let effect = chill_effect_with_mods(damage, enemy_threshold, effect_mod);
