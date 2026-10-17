@@ -5583,7 +5583,8 @@
       "game_source": "pin_duration_+%; KeywordPopups Pinned; GameConstants PinDuration",
       "examples": [
         "25% increased Pin duration"
-      ]
+      ],
+      "source_note": "Game stat pin_duration_+%; calc::effect_views applies EnemyPinDuration INC to the inflicted Pin duration, starting from GameConstants.PinDuration and combining with the target duration/expiry terms. Does not set the enemy Pinned condition or assume uptime. Regression: engine::effect_views (Pin duration and gem-stat cases). No in-game timing test; see the maintainer guide."
     },
     {
       "id": "reduced_pin_duration",
@@ -5608,7 +5609,8 @@
       "game_source": "pin_duration_+%; KeywordPopups Pinned; GameConstants PinDuration",
       "examples": [
         "25% reduced Pin duration"
-      ]
+      ],
+      "source_note": "Game stat pin_duration_+%; calc::effect_views applies EnemyPinDuration INC to the inflicted Pin duration, starting from GameConstants.PinDuration and combining with the target duration/expiry terms. Does not set the enemy Pinned condition or assume uptime. Regression: engine::effect_views (Pin duration and gem-stat cases). No in-game timing test; see the maintainer guide."
     },
     {
       "id": "mauling_stuns_buildup",
