@@ -1,8 +1,8 @@
 //! Integration tests for `translate` (default features, run on the host).
 //!
-//! Covers: a direct en-US hit, a zh-TW translation hit, a zh-TW missing key
-//! falling back to en-US, a key missing everywhere falling back to the raw
-//! key, and an unknown language falling back to the canonical language.
+//! Covers direct en-US and zh-TW hits, a key missing everywhere falling back
+//! to the raw key, and an unknown language falling back to the canonical
+//! language. Partial-bundle key fallback is covered in pobr-i18n's unit tests.
 
 use pobr_wasm::translate;
 
@@ -34,12 +34,12 @@ fn returns_zh_tw_translation() {
 }
 
 #[test]
-fn falls_back_to_en_us_for_missing_zh_key() {
-    // Arrange / Act: zh-TW omits this key, falls back to canonical en-US.
+fn returns_newly_completed_zh_tw_translation() {
+    // Arrange / Act: this formerly missing key now has a shipped translation.
     let text = translate("zh-TW", "build.new_build");
 
     // Assert
-    assert_eq!(text, "New build");
+    assert_eq!(text, "新增構築");
 }
 
 #[test]
