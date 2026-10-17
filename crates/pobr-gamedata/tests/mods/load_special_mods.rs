@@ -109,7 +109,7 @@ fn s0_crit_override_entry() {
 #[test]
 fn unmodelled_recognition_only_entries() {
     let def = load();
-    for id in ["primed_pin_unmodelled", "doubled_totem_limit_unmodelled"] {
+    for id in ["primed_pin_unmodelled"] {
         let e = def.entries.iter().find(|e| e.id == id).unwrap();
         assert_eq!(e.batch, "unmodelled", "{id}");
         assert!(

@@ -2262,10 +2262,13 @@ fn utility_followup_rules_preserve_game_amounts_and_distinguish_missing_models()
         assert_eq!(rule.exporter, pobr_data::source::ExporterCoverage::Absent);
         assert!(rule.game_source.contains(stat));
     }
-    for (text, no_effect) in [
-        ("Your Totem Limit is doubled", false),
-        ("Corrupting will always result in change", true),
-    ] {
+    let doubled = parse_mod("Your Totem Limit is doubled").unwrap();
+    assert_eq!(doubled.status, ParseStatus::Parsed);
+    assert_eq!(doubled.mods.len(), 1);
+    assert_eq!(doubled.mods[0].name.as_str(), "ActiveTotemLimit");
+    assert_eq!(doubled.mods[0].mod_type, ModType::More);
+    assert_eq!(doubled.mods[0].value, ModValue::Number(100.0));
+    for (text, no_effect) in [("Corrupting will always result in change", true)] {
         let parsed = parse_mod(text).unwrap();
         assert_eq!(parsed.status, ParseStatus::Parsed, "{text}");
         assert!(parsed.mods.is_empty(), "{text}");

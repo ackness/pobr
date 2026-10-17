@@ -1248,7 +1248,7 @@ fn every_charge_multiplier_input_has_an_off_on_ledger_fixture() {
 }
 
 #[test]
-fn utility_followups_keep_missing_models_visible_and_crafting_no_effect() {
+fn utility_followups_model_totem_limits_and_keep_crafting_no_effect() {
     let data = data();
     let ledger = ledger(
         &data,
@@ -1258,12 +1258,13 @@ fn utility_followups_keep_missing_models_visible_and_crafting_no_effect() {
             "Corrupting will always result in change",
         ],
     );
-    for text in ["Your Totem Limit is doubled"] {
-        assert_eq!(
-            line(&ledger, "item.amulet.explicit", text).status,
-            LineStatus::Unmodelled
-        );
-    }
+    let doubled = line(
+        &ledger,
+        "item.amulet.explicit",
+        "Your Totem Limit is doubled",
+    );
+    assert_eq!(doubled.status, LineStatus::Applied);
+    assert_eq!(doubled.modifiers[0].name, "ActiveTotemLimit");
     assert_eq!(
         line(
             &ledger,
