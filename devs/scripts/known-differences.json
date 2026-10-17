@@ -559,6 +559,36 @@
       "build": "ranger-deadeye-ice-shot-b6ce7b3a4329",
       "stats": ["FreezeBuildupAvg"],
       "reason": "PoBR/PoB2 0.745 = the Xesht poise factor 9.38/17 (0.552) times Minion Pact II's 35% more damage taken as active with the Rhoa (1.35); per-damage buildup (35% increased, 25% more, Freezing Mark) agrees (docs/maintainer-guide.md, FreezeBuildupAvg and Minion Pact)"
+    },
+    {
+
+      "build": "druid-oracle-grim-pillars-0a7cf6c82619",
+      "stats": [
+        "ActiveTotemLimit"
+      ],
+      "reason": "ActiveTotemLimit starts from the Spell Totem gem's own level stat base_number_of_totems_allowed (game GrantedEffectsPerLevel: 2 at level 20, 3 from level 23) plus BASE ActiveTotemLimit lines such as Unnamed Heartwood's +1; PoB2's limit for the skill a Spell Totem uses leaves out the gem's level stat, so the reference shows 2 where PoBR's reference basis shows 3 (game mode doubles it with Ancestral Bond, an exporter-absent rule). Display only; damage still counts one totem (docs/maintainer-guide.md, calc::totem)."
+    },
+    {
+      "build": "druid-oracle-grim-pillars-f74c11ce4b4d",
+      "stats": [
+        "ActiveTotemLimit"
+      ],
+      "reason": "ActiveTotemLimit starts from the Spell Totem gem's own level stat base_number_of_totems_allowed (game GrantedEffectsPerLevel: 2 at level 20, 3 from level 23) plus BASE ActiveTotemLimit lines such as Unnamed Heartwood's +1; PoB2's limit for the skill a Spell Totem uses leaves out the gem's level stat, so the reference shows 2 where PoBR's reference basis shows 3 (game mode doubles it with Ancestral Bond, an exporter-absent rule). Display only; damage still counts one totem (docs/maintainer-guide.md, calc::totem)."
+    },
+    {
+      "build": "monk-invoker-grim-pillars-19a4efbb971d",
+      "stats": [
+        "ActiveTotemLimit"
+      ],
+      "reason": "ActiveTotemLimit starts from the Spell Totem gem's own level stat base_number_of_totems_allowed (game GrantedEffectsPerLevel: 2 at level 20, 3 from level 23) plus BASE ActiveTotemLimit lines such as Unnamed Heartwood's +1; PoB2's limit for the skill a Spell Totem uses leaves out the gem's level stat, so the reference shows 2 where PoBR's reference basis shows 3 (game mode doubles it with Ancestral Bond, an exporter-absent rule). Display only; damage still counts one totem (docs/maintainer-guide.md, calc::totem)."
+    },
+    {
+      "build": "monk-invoker-grim-pillars-5dda2982b793",
+      "stats": [
+        "ActiveTotemLimit"
+      ],
+      "reason": "ActiveTotemLimit starts from the Spell Totem gem's own level stat base_number_of_totems_allowed (game GrantedEffectsPerLevel: 2 at level 20, 3 from level 23) plus BASE ActiveTotemLimit lines such as Unnamed Heartwood's +1; PoB2's limit for the skill a Spell Totem uses leaves out the gem's level stat, so the reference shows 2 where PoBR's reference basis shows 3 (game mode doubles it with Ancestral Bond, an exporter-absent rule). Display only; damage still counts one totem (docs/maintainer-guide.md, calc::totem)."
+
     }
   ]
 }

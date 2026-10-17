@@ -506,6 +506,40 @@ fn full_life_percentage_defaults_to_the_whole_pool_and_takes_the_override() {
     close(overridden(&detail.context), 1.0, "overridden");
 }
 
+#[test]
+fn full_mana_percentage_defaults_to_the_whole_pool_and_takes_the_override() {
+    let session = run(Vec::new(), Vec::new());
+    close(value(&session, "FullManaPercentage"), 100.0, "default");
+    // Idle Hands: "You count as on Full Mana while at 90% of maximum Mana or
+    // above" (game stat `full_mana_threshold_%_override`,
+    // `Mods.UniqueFullManaThreshold1` = 90).
+    let parsed = super::support::parse_mod(
+        "You count as on Full Mana while at 90% of maximum Mana or above",
+    )
+    .unwrap();
+    assert_eq!(
+        parsed.status,
+        pobr_core::mod_parser::ParseStatus::Parsed,
+        "{parsed:?}"
+    );
+    let session = run(parsed.mods, Vec::new());
+    close(value(&session, "FullManaPercentage"), 90.0, "override");
+    let detail = session.derived_detail("FullManaPercentage").unwrap();
+    close(detail.inputs[0].1, 90.0, "override detail");
+    let overridden = detail
+        .context
+        .iter()
+        .find(|(name, _)| name == "FullManaThresholdOverridden")
+        .unwrap()
+        .1;
+    close(overridden, 1.0, "overridden");
+    close(
+        value(&session, "FullLifePercentage"),
+        100.0,
+        "Life untouched",
+    );
+}
+
 fn strike_session(skill_types: SkillTypes, mods: Vec<Modifier>) -> CalculationSession {
     let mut cfg = pobr_core::CalcConfig::attack();
     cfg.skill_types = skill_types;

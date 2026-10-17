@@ -88,6 +88,23 @@ fn secondary_effects_keep_their_damage() {
     assert!(runes.total_hit_avg > 300.0, "{runes:?}");
 }
 
+/// Conductive Runes' game constant `rune_hazard_base_number_of_runes_allowed`
+/// = 20 (both stat sets) is its Hazard rune limit; another skill has none.
+#[test]
+fn conductive_runes_reports_its_rune_limit() {
+    let data = data();
+    for set in [1, 2] {
+        let runes = calculate(&data, "ConductiveRunesPlayer", set, &[]);
+        assert_eq!(
+            pobr_core::display_value(&runes, "ActiveHazardLimit"),
+            20.0,
+            "set {set}"
+        );
+    }
+    let other = calculate(&data, "RollingSlamPlayer", 1, &[]);
+    assert_eq!(pobr_core::display_value(&other, "ActiveHazardLimit"), 0.0);
+}
+
 #[test]
 fn explosive_demise_needs_a_minion_to_detonate() {
     let output = calculate(&data(), "DestructiveLinkSkeletonBombadierMinion", 1, &[]);

@@ -554,10 +554,64 @@ pub(crate) fn totem_base_modifiers(
             ),
         )),
     ];
+    // Armour and Evasion: the level's `DefaultMonsterStats` value
+    // (`base/monster_scaling.json`) times the
+    // monster type's `MonsterTypes.Armour` / `Evasion` percentage.
+    for (name, table, factor) in [
+        (
+            "TotemArmourBase",
+            data.constants.monster_scaling.armour_at(monster_level),
+            totem.armour,
+        ),
+        (
+            "TotemEvasionBase",
+            data.constants.monster_scaling.evasion_at(monster_level),
+            totem.evasion,
+        ),
+    ] {
+        let value = (f64::from(table) * factor).floor();
+        if value > 0.0 {
+            modifiers.push(
+                Modifier::number(name, ModType::Base, value).with_origin(origin(
+                    name,
+                    format!("level {monster_level} totem: DefaultMonsterStats {table} x MonsterTypes {factor}"),
+                )),
+            );
+        }
+    }
+    if totem.energy_shield_from_life > 0.0 {
+        modifiers.push(
+            Modifier::number(
+                "TotemEnergyShieldFromLife",
+                ModType::Base,
+                totem.energy_shield_from_life,
+            )
+            .with_origin(origin(
+                "TotemEnergyShieldFromLife",
+                "totem monster MonsterTypes.EnergyShieldFromLife".into(),
+            )),
+        );
+    }
+    // The totem gem's `base_number_of_totems_allowed` (a constant or a level
+    // stat: 1 for Shockwave Totem, 2 for a level-20 Spell Totem) is the base
+    // of the totem limit, whichever skill the totem uses.
+    let stats = data.effect_stats(&gem.skill_id, level, gem.quality, None);
+    let limit: f64 = stats
+        .all()
+        .filter(|stat| stat.stat == "base_number_of_totems_allowed")
+        .map(|stat| stat.value)
+        .sum();
+    if limit != 0.0 {
+        modifiers.push(
+            Modifier::number("TotemLimitBase", ModType::Base, limit).with_origin(origin(
+                "base_number_of_totems_allowed",
+                format!("{} base_number_of_totems_allowed ({limit})", gem.skill_id),
+            )),
+        );
+    }
     // A skill a meta totem uses (Spell Totem) reads the totem gem's own
     // level stats; the main skill's stats are already mapped.
     if gem.skill_id != skill_id {
-        let stats = data.effect_stats(&gem.skill_id, level, gem.quality, None);
         for stat in stats.all() {
             let name = match stat.stat.as_str() {
                 "totem_elemental_resistance_%" => "TotemElementalResist",

@@ -213,6 +213,12 @@ pub struct TotemDef {
     pub life_multiplier: f64,
     /// Base Fire, Cold, Lightning and Chaos resistances of the variety's monster type.
     pub resistances: [f64; 4],
+    /// `MonsterTypes.Armour` / `Evasion` as factors of the level's
+    /// `DefaultMonsterStats.Armour` / `Evasion` (1 for the Spell Totem's armour).
+    pub armour: f64,
+    pub evasion: f64,
+    /// `MonsterTypes.EnergyShieldFromLife` in percent of maximum Life.
+    pub energy_shield_from_life: f64,
 }
 
 fn totem_defs(
@@ -233,6 +239,9 @@ fn totem_defs(
                 TotemDef {
                     life_multiplier: f64::from(row.life_multiplier) / 100.0,
                     resistances: res,
+                    armour: f64::from(row.armour) / 100.0,
+                    evasion: f64::from(row.evasion) / 100.0,
+                    energy_shield_from_life: f64::from(row.energy_shield_from_life),
                 },
             )
         })

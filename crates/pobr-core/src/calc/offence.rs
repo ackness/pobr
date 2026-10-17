@@ -302,12 +302,14 @@ pub(crate) struct ResistanceNames<'a> {
 /// A totem's resistance: the same truncation, maximum, hard cap and floor as
 /// the player's, over the totem's own names (`Totem<X>Resist`, elemental
 /// also `TotemElementalResist`; max `Totem<X>ResistMax` /
-/// `TotemElementalResistMax`), from the monster base maximum.
+/// `TotemElementalResistMax`), from the monster base maximum. `auras` is what
+/// the character's auras add to the totem ([`super::totem::aura_resistances`]).
 pub(crate) fn resolve_totem_resistance(
     db: &ModDb,
     cfg: &CalcConfig,
     element: &str,
     is_elemental: bool,
+    auras: SharedResistance,
 ) -> ResistanceResolution {
     let short = format!("Totem{element}Resist");
     let max_short = format!("Totem{element}ResistMax");
@@ -328,11 +330,7 @@ pub(crate) fn resolve_totem_resistance(
             max_overrides: [max_short.as_str(), max_short.as_str()],
             base_max: cfg.constants.monster().base_maximum_all_resistances_pct,
         },
-        SharedResistance {
-            flat: 0.0,
-            inc: 0.0,
-            max: 0.0,
-        },
+        auras,
     )
 }
 
@@ -409,10 +407,11 @@ pub(crate) fn resolve_resistance_over_time(
 /// Maximum Fire Resistance also grant Maximum Cold and Lightning
 /// Resistance". The elemental resistance penalty is not a modifier to Fire
 /// Resistance, and "all Elemental Resistances" already grants the others.
-struct SharedResistance {
-    flat: f64,
-    inc: f64,
-    max: f64,
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub(crate) struct SharedResistance {
+    pub(crate) flat: f64,
+    pub(crate) inc: f64,
+    pub(crate) max: f64,
 }
 
 fn shared_fire_resistance(db: &ModDb, cfg: &CalcConfig, element: &str) -> SharedResistance {

@@ -218,6 +218,7 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "PowerChargesMax",
         ],
         "EnemyMarkLimit" => &["EnemyMarkLimit"],
+        "ActiveHazardLimit" => &["HazardRuneLimit"],
         "ActionSpeedMod" => &["ActionSpeed", "SlowEffectOnSelf", "UnaffectedBySlows"],
         "MovementSpeedMod" => &[
             "MovementSpeed",

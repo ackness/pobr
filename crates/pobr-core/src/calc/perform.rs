@@ -450,13 +450,35 @@ fn apply_main_hand_share(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env)
 /// the minion itself. Not for a hidden monster, nor when the character's
 /// auras cannot affect allies.
 fn apply_extra_auras(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env) {
-    let player = &env.player.mod_db;
-    if player.flag(&env.cfg, "SelfAurasCannotAffectAllies")
-        || minion.mod_db.flag(cfg, "HiddenMonster")
-    {
+    if minion.mod_db.flag(cfg, "HiddenMonster") {
         return;
     }
-    let auras: Vec<Modifier> = player
+    let auras = extra_aura_mods(env);
+    if auras.is_empty() {
+        return;
+    }
+    let names = [
+        ModName::from("BuffEffectOnSelf"),
+        ModName::from("AuraEffectOnSelf"),
+    ];
+    let scale = (1.0 + minion.mod_db.sum(ModType::Inc, cfg, &names) / 100.0)
+        * minion.mod_db.more(cfg, &names);
+    for aura in auras {
+        minion
+            .mod_db
+            .scale_add_mod(aura, scale, &env.high_precision);
+    }
+}
+
+/// The modifiers of the character's ally-only auras (`ExtraAura`, "Allies in
+/// your Presence have …"), unscaled; empty when the character's auras cannot
+/// affect allies.
+pub(super) fn extra_aura_mods(env: &Env) -> Vec<Modifier> {
+    let player = &env.player.mod_db;
+    if player.flag(&env.cfg, "SelfAurasCannotAffectAllies") {
+        return Vec::new();
+    }
+    player
         .named("ExtraAura")
         .filter(|outer| outer.mod_type == ModType::List && outer.matches(&env.cfg))
         .flat_map(|outer| {
@@ -476,21 +498,7 @@ fn apply_extra_auras(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env) {
                     inner
                 })
         })
-        .collect();
-    if auras.is_empty() {
-        return;
-    }
-    let names = [
-        ModName::from("BuffEffectOnSelf"),
-        ModName::from("AuraEffectOnSelf"),
-    ];
-    let scale = (1.0 + minion.mod_db.sum(ModType::Inc, cfg, &names) / 100.0)
-        * minion.mod_db.more(cfg, &names);
-    for aura in auras {
-        minion
-            .mod_db
-            .scale_add_mod(aura, scale, &env.high_precision);
-    }
+        .collect()
 }
 
 fn perform_minions(env: &mut Env) {

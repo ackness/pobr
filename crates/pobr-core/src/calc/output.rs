@@ -71,6 +71,12 @@ pub struct OutputTable {
     pub totem_duration_mod: f64,
     /// Maximum Life of a totem the selected skill places; 0 without one.
     pub totem_life: f64,
+    /// Armour, Evasion and maximum Energy Shield of that totem ([`super::totem`]).
+    pub totem_armour: f64,
+    pub totem_evasion: f64,
+    pub totem_energy_shield: f64,
+    /// How many totems the selected skill's totem gem allows (0 without one).
+    pub active_totem_limit: f64,
     pub self_bleed_duration: f64,
     pub self_poison_duration: f64,
     pub self_ignite_duration: f64,
@@ -700,6 +706,10 @@ impl Default for OutputTable {
             missing_totem_resist: [0.0; 4],
             totem_duration_mod: 1.0,
             totem_life: 0.0,
+            totem_armour: 0.0,
+            totem_evasion: 0.0,
+            totem_energy_shield: 0.0,
+            active_totem_limit: 0.0,
             self_bleed_duration: 100.0,
             self_poison_duration: 100.0,
             self_ignite_duration: 100.0,

@@ -280,3 +280,140 @@ fn totem_details_reconstruct_their_values() {
     assert_eq!(duration.inputs[0], ("TotemDurationInc".to_string(), -10.0));
     assert!((output.totem_duration_mod - 0.9).abs() < 1e-12);
 }
+
+/// A Spell Totem build whose second group holds `aura` (a gem element).
+fn build_with_aura(aura: &str) -> Build {
+    let xml = format!(
+        r#"<PathOfBuilding2>
+<Build level="80" className="Sorceress" ascendClassName="None" mainSocketGroup="1"/>
+<Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
+<Skills defaultGemLevel="20" activeSkillSet="1"><SkillSet id="1">
+  <Skill enabled="true" mainActiveSkill="2">
+    {SPELL_TOTEM}
+    <Gem gemId="Metadata/Items/Gems/SkillGemGrimPillars" skillId="GrimPillarsPlayer" nameSpec="Grim Pillars" variantId="GrimPillars" enabled="true" level="20" quality="0"/>
+  </Skill>
+  <Skill enabled="true">{aura}</Skill>
+</SkillSet></Skills>
+<Config></Config>
+</PathOfBuilding2>"#
+    );
+    parse_build(&xml).expect("parse synthetic build")
+}
+
+const PURITY_OF_FIRE: &str = r#"<Gem gemId="Metadata/Items/Gems/SkillGemPurityOfFire" skillId="PurityOfFirePlayer" nameSpec="Purity of Fire" variantId="PurityOfFire" enabled="true" level="20" quality="0"/>"#;
+
+/// A totem is an Ally in the character's Presence, so the character's auras
+/// reach it: level-20 Purity of Fire's game stat
+/// `base_skill_buff_fire_damage_resistance_%_to_apply` = 41 adds to the Spell
+/// Totem's own 75% Fire Resistance (116 uncapped, capped at the monster
+/// maximum of 75). Cold, Lightning and Chaos keep the gem's values.
+#[test]
+fn the_characters_auras_reach_its_totem() {
+    let data = data();
+    let options = DataOrchestratorOptions::default();
+    let with =
+        calculate_with_data(&build_with_aura(PURITY_OF_FIRE), &data, &options).expect("calculate");
+    let without = calculate_with_data(&build_with_aura(""), &data, &options).expect("calculate");
+    assert_eq!(without.totem_resist_total, [75.0, 75.0, 75.0, 35.0]);
+    assert_eq!(with.totem_resist_total, [116.0, 75.0, 75.0, 35.0]);
+    assert_eq!(with.totem_resist, [75.0, 75.0, 75.0, 35.0]);
+
+    let result = diagnose(&build_with_aura(PURITY_OF_FIRE), &data, &options).expect("diagnose");
+    let detail = result
+        .session
+        .derived_detail("TotemFireResistTotal")
+        .expect("detail");
+    let flat = detail
+        .inputs
+        .iter()
+        .find(|(name, _)| name == "TotemResistanceFlat")
+        .unwrap()
+        .1;
+    assert_eq!(flat, 116.0);
+}
+
+/// The Spell Totem's defences from the game's monster tables: a level-40
+/// totem has `DefaultMonsterStats.Armour` 418 (`base/monster_scaling.json`);
+/// the `SpellTotem` monster type's `MonsterTypes.Armour` is 100% and its
+/// `Evasion` and `EnergyShieldFromLife` are 0, so the totem has 418 Armour,
+/// no Evasion and no Energy Shield. The character's own Grim Pillars places
+/// no totem.
+#[test]
+fn a_spell_totem_has_the_armour_of_its_monster_type() {
+    let data = data();
+    let options = DataOrchestratorOptions::default();
+    let output = calculate_with_data(&build(true, ""), &data, &options).expect("calculate");
+    assert_eq!(output.totem_armour, 418.0);
+    assert_eq!(output.totem_evasion, 0.0);
+    assert_eq!(output.totem_energy_shield, 0.0);
+    let own = calculate_with_data(&build(false, ""), &data, &options).expect("calculate");
+    assert_eq!(own.totem_armour, 0.0);
+
+    let result = diagnose(&build(true, ""), &data, &options).expect("diagnose");
+    let detail = result
+        .session
+        .derived_detail("TotemArmour")
+        .expect("detail");
+    let input = |id: &str| detail.inputs.iter().find(|(n, _)| n == id).unwrap().1;
+    assert_eq!(
+        (input("TotemDefenceBase")
+            * (1.0 + input("TotemDefenceInc") / 100.0)
+            * input("TotemDefenceMore"))
+        .round(),
+        418.0
+    );
+}
+
+/// The totem limit: the level-20 Spell Totem gem's `base_number_of_totems_allowed`
+/// is 2, "+1 to maximum number of Summoned Totems"
+/// (`number_of_additional_totems_allowed`) adds one, and Ancestral Bond's
+/// "Your Totem Limit is doubled" (`keystone_ancestral_bond`) doubles the sum.
+/// The damage still counts one totem.
+#[test]
+fn the_totem_limit_comes_from_the_totem_gem_and_its_modifiers() {
+    let data = data();
+    let limit = |lines: &[&str]| {
+        let options = DataOrchestratorOptions {
+            extra_modifier_texts: lines.iter().map(|line| line.to_string()).collect(),
+            ..DataOrchestratorOptions::default()
+        };
+        calculate_with_data(&build(true, ""), &data, &options).expect("calculate")
+    };
+    let plain = limit(&[]);
+    assert_eq!(plain.active_totem_limit, 2.0);
+    let more = limit(&["+1 to maximum number of Summoned Totems"]);
+    assert_eq!(more.active_totem_limit, 3.0);
+    let doubled = limit(&[
+        "+1 to maximum number of Summoned Totems",
+        "Your Totem Limit is doubled",
+    ]);
+    assert_eq!(doubled.active_totem_limit, 6.0);
+    assert_eq!(doubled.total_hit_avg, plain.total_hit_avg);
+    assert_eq!(doubled.action_rate, plain.action_rate);
+
+    let own = calculate_with_data(
+        &build(false, ""),
+        &data,
+        &DataOrchestratorOptions::default(),
+    )
+    .expect("calculate");
+    assert_eq!(own.active_totem_limit, 0.0);
+
+    let options = DataOrchestratorOptions {
+        extra_modifier_texts: vec!["Your Totem Limit is doubled".into()],
+        ..DataOrchestratorOptions::default()
+    };
+    let result = diagnose(&build(true, ""), &data, &options).expect("diagnose");
+    let detail = result
+        .session
+        .derived_detail("ActiveTotemLimit")
+        .expect("detail");
+    let input = |id: &str| detail.inputs.iter().find(|(n, _)| n == id).unwrap().1;
+    assert_eq!(input("TotemLimitBase"), 2.0);
+    assert_eq!(
+        input("HasTotem")
+            * ((input("TotemLimitBase") + input("AdditionalTotemLimit")) * input("TotemLimitMore"))
+                .floor(),
+        4.0
+    );
+}

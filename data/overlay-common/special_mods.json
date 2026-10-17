@@ -6091,14 +6091,20 @@
       "exporter": "absent"
     },
     {
-      "id": "doubled_totem_limit_unmodelled",
+      "id": "doubled_totem_limit",
       "pattern": "your totem limit is doubled",
-      "mods": [],
+      "mods": [
+        {
+          "name": "ActiveTotemLimit",
+          "type": "MORE",
+          "value": 100
+        }
+      ],
       "verified": false,
-      "batch": "unmodelled",
+      "batch": "S2",
       "exporter": "absent",
       "game_source": "keystone_ancestral_bond; base/stats.json; Ancestral Bond game text",
-      "source_note": "Totem limit not modelled; the selected totem still reports one totem's damage.",
+      "source_note": "Doubles the ActiveTotemLimit view (calc::totem::limit_terms). DPS still counts one totem.",
       "examples": [
         "Your Totem Limit is doubled"
       ]
@@ -6452,6 +6458,25 @@
       "source_note": "The threshold the FullLifePercentage view reports (calc::limit_display); the default is 100 because the game exports no constant for it and there is no in-game test. The Full Life condition itself stays the explicit config/Chaos Inoculation state: possessing the line does not establish that the character is at the threshold, so the line changes no other output. No current game mod, passive node or unique carries the stat.",
       "examples": [
         "You count as on Full Life while at 90% of maximum Life or above"
+      ]
+    },
+    {
+      "id": "full_mana_threshold_override",
+      "exporter": "absent",
+      "game_source": "base/stats.json: full_mana_threshold_%_override (stat description: You count as on Full Mana while at {0}% of maximum Mana or above; Mods.UniqueFullManaThreshold1 = 90, Idle Hands)",
+      "pattern": "you count as on full mana while at (\\d+(?:\\.\\d+)?)% of maximum mana or above",
+      "mods": [
+        {
+          "name": "FullManaPercentage",
+          "type": "OVERRIDE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "The threshold the FullManaPercentage view reports (calc::limit_display); the default is 100 because the game exports no constant for it and there is no in-game test. The Full Mana condition itself stays the explicit config state: possessing the line does not establish that the character is at the threshold, so the line changes no other output.",
+      "examples": [
+        "You count as on Full Mana while at 90% of maximum Mana or above"
       ]
     },
     {

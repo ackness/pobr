@@ -69,7 +69,8 @@ by the batch gate.
      group from the same ModDb query the calculation uses. `pobr_build::breakdown::detail::detail_kind` must agree.
    - Labels: `crates/pobr-i18n/locales/en-US/stats.toml`, `crates/pobr-i18n/locales/zh-TW/stats.toml`,
      `web/src/lib/detailLabels.ts`.
-   - The locked count in `crates/pobr-core/tests/golden/display_catalog.rs` (+N, with a comment).
+   - Do not lock catalog counts. Existing catalog checks verify unique ids, labels,
+     computed values and detail wiring on the active data version.
 3. Test: `cargo test -q -p pobr-core --test golden display_catalog` and one
    engine test that checks the value and that the derived inputs rebuild it.
 4. Compare with PoB2 on two or three builds only, using a CLI the gate already

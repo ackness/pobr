@@ -25,17 +25,36 @@ pub struct TotemVarietyDef {
     pub monster_variety: String,
     /// `MonsterVarieties.LifeMultiplier`, in percent (100 = 1x).
     pub life_multiplier: u32,
+    /// The variety's `MonsterTypes.Armour` / `Evasion`: percent of the level's
+    /// `DefaultMonsterStats.Armour` / `Evasion` (100 = the table value).
+    #[serde(default)]
+    pub armour: u32,
+    #[serde(default)]
+    pub evasion: u32,
+    /// `MonsterTypes.EnergyShieldFromLife`: maximum Energy Shield as a percent
+    /// of maximum Life.
+    #[serde(default)]
+    pub energy_shield_from_life: u32,
 }
 
 impl Default for TotemVarietiesDef {
     /// The patch 0.5.5.4.2 rows, for a data pack without the file.
     fn default() -> Self {
+        // MonsterTypes.Armour is 100 for every totem type but the Shockwave
+        // and Dark Effigy totems (0); Evasion and EnergyShieldFromLife are 0.
         let row = |effect: &str, active: &str, id: u32, variety: &str, life: u32| TotemVarietyDef {
             granted_effect: effect.into(),
             active_skill: active.into(),
             skill_totem_id: id,
             monster_variety: format!("Metadata/Monsters/Totems/{variety}"),
             life_multiplier: life,
+            armour: if matches!(variety, "ShockwaveTotem" | "DarkEffigyTotem_") {
+                0
+            } else {
+                100
+            },
+            evasion: 0,
+            energy_shield_from_life: 0,
         };
         Self {
             totems: vec![
