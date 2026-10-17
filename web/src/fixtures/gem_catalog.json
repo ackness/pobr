@@ -4833,25 +4833,6 @@
     ]
   },
   {
-    "active_effect_ids": [
-      "DoLiterallyNothingPlayer"
-    ],
-    "colour": null,
-    "effect_forms": [
-      {
-        "skill_id": "DoLiterallyNothingPlayer",
-        "stat_sets": []
-      }
-    ],
-    "is_lineage": false,
-    "is_support": true,
-    "name": "Coming Soon",
-    "name_zh_cn": "敬请期待",
-    "name_zh_tw": "敬請期待",
-    "skill_id": "DoLiterallyNothingPlayer",
-    "tags": []
-  },
-  {
     "active_effect_ids": [],
     "colour": "int",
     "effect_forms": [],
@@ -8048,9 +8029,9 @@
     ],
     "is_lineage": false,
     "is_support": true,
-    "name": "Empowered Sparks II",
-    "name_zh_cn": "强化火花 II",
-    "name_zh_tw": "強化電球II",
+    "name": "Empowered Sparks I",
+    "name_zh_cn": "强化火花 I",
+    "name_zh_tw": "強化電球I",
     "skill_id": "SupportEmpoweredSparksPlayer",
     "tags": [
       "GeneratesCharges"
@@ -17019,50 +17000,22 @@
   },
   {
     "active_effect_ids": [
-      "SummonSkeletalSnipersPlayer",
-      "CommandSkeletalSniperPlayer"
-    ],
-    "additional_skill_ids": [
-      "CommandSkeletalSniperPlayer"
+      "DoLiterallyNothingPlayer"
     ],
     "colour": "int",
     "effect_forms": [
       {
-        "skill_id": "SummonSkeletalSnipersPlayer",
-        "stat_sets": [
-          {
-            "id": "SummonSkeletalSnipersPlayer",
-            "index": 1,
-            "label": "Minion Info",
-            "stage": null
-          }
-        ]
-      },
-      {
-        "skill_id": "CommandSkeletalSniperPlayer",
+        "skill_id": "DoLiterallyNothingPlayer",
         "stat_sets": []
       }
     ],
     "is_lineage": false,
     "is_support": false,
-    "name": "Metadata/Items/Gems/SkillGemSkeletalSniper",
-    "name_zh_cn": "魔侍神射手",
-    "name_zh_tw": "骷髏狙擊手",
-    "skill_id": "SummonSkeletalSnipersPlayer",
-    "tags": [
-      "Chaos",
-      "CommandableMinion",
-      "CreatesMinion",
-      "CreatesSkeletonMinion",
-      "CreatesUndeadMinion",
-      "Fire",
-      "HasReservation",
-      "Minion",
-      "MinionsCanExplode",
-      "MultipleReservation",
-      "Persistent",
-      "Physical"
-    ]
+    "name": "Metadata/Items/Gems/SkillGemUnknown11",
+    "name_zh_cn": "敬请期待",
+    "name_zh_tw": "敬請期待",
+    "skill_id": "DoLiterallyNothingPlayer",
+    "tags": []
   },
   {
     "active_effect_ids": [],
@@ -23305,6 +23258,53 @@
       "CreatesMinion",
       "CreatesSkeletonMinion",
       "CreatesUndeadMinion",
+      "HasReservation",
+      "Minion",
+      "MinionsCanExplode",
+      "MultipleReservation",
+      "Persistent",
+      "Physical"
+    ]
+  },
+  {
+    "active_effect_ids": [
+      "SummonSkeletalSnipersPlayer",
+      "CommandSkeletalSniperPlayer"
+    ],
+    "additional_skill_ids": [
+      "CommandSkeletalSniperPlayer"
+    ],
+    "colour": "int",
+    "effect_forms": [
+      {
+        "skill_id": "SummonSkeletalSnipersPlayer",
+        "stat_sets": [
+          {
+            "id": "SummonSkeletalSnipersPlayer",
+            "index": 1,
+            "label": "Minion Info",
+            "stage": null
+          }
+        ]
+      },
+      {
+        "skill_id": "CommandSkeletalSniperPlayer",
+        "stat_sets": []
+      }
+    ],
+    "is_lineage": false,
+    "is_support": false,
+    "name": "Skeletal Sniper",
+    "name_zh_cn": "魔侍神射手",
+    "name_zh_tw": "骷髏狙擊手",
+    "skill_id": "SummonSkeletalSnipersPlayer",
+    "tags": [
+      "Chaos",
+      "CommandableMinion",
+      "CreatesMinion",
+      "CreatesSkeletonMinion",
+      "CreatesUndeadMinion",
+      "Fire",
       "HasReservation",
       "Minion",
       "MinionsCanExplode",

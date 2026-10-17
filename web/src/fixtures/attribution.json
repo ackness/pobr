@@ -2,7 +2,7 @@
   "baseline": {
     "EnergyShield": 9593.0,
     "Life": 1.0,
-    "TotalDPS": 6265.33506007,
+    "TotalDPS": 6710.690618353,
     "TotalEHP": 22686.945773096
   },
   "entries": [
@@ -10,7 +10,7 @@
       "deltas": {
         "EnergyShield": 1012.0,
         "Life": 0.0,
-        "TotalDPS": 2142.825145334999,
+        "TotalDPS": 2295.1424723030004,
         "TotalEHP": 2393.0778739179987
       },
       "id": "amulet",
@@ -20,7 +20,7 @@
       "deltas": {
         "EnergyShield": 408.0,
         "Life": 0.0,
-        "TotalDPS": 1930.9774623679996,
+        "TotalDPS": 2376.333020651,
         "TotalEHP": 964.7981942279984
       },
       "id": "belt",
@@ -31,7 +31,7 @@
         "EnergyShield": 4462.0,
         "Life": 0.0,
         "TotalDPS": 0.0,
-        "TotalEHP": 11951.564961076998
+        "TotalEHP": 10551.297898639998
       },
       "id": "bodyarmour",
       "kind": "item"
@@ -41,7 +41,7 @@
         "EnergyShield": 1032.0,
         "Life": 0.0,
         "TotalDPS": 178.1422233129997,
-        "TotalEHP": 6834.309211014999
+        "TotalEHP": 2440.3719030469983
       },
       "id": "boots",
       "kind": "item"
@@ -51,7 +51,7 @@
         "EnergyShield": 857.0,
         "Life": 0.0,
         "TotalDPS": 178.1422233129997,
-        "TotalEHP": 6301.11396712
+        "TotalEHP": 2026.5491481699976
       },
       "id": "gloves",
       "kind": "item"
@@ -61,7 +61,7 @@
         "EnergyShield": 2836.0,
         "Life": 0.0,
         "TotalDPS": 0.0,
-        "TotalEHP": 8882.062911857998
+        "TotalEHP": 6706.293330466999
       },
       "id": "helmet",
       "kind": "item"
@@ -70,7 +70,7 @@
       "deltas": {
         "EnergyShield": 0.0,
         "Life": 0.0,
-        "TotalDPS": 356.2844466259994,
+        "TotalDPS": 356.2844466260003,
         "TotalEHP": 0.0
       },
       "id": "ring1",
@@ -80,8 +80,8 @@
       "deltas": {
         "EnergyShield": 0.0,
         "Life": 0.0,
-        "TotalDPS": 356.2844466259994,
-        "TotalEHP": 1057.940476464999
+        "TotalDPS": 356.2844466260003,
+        "TotalEHP": 0.0
       },
       "id": "ring2",
       "kind": "item"
@@ -90,7 +90,7 @@
       "deltas": {
         "EnergyShield": 0.0,
         "Life": 0.0,
-        "TotalDPS": 4564.526591041999,
+        "TotalDPS": 4858.255014005,
         "TotalEHP": 0.0
       },
       "id": "weapon1",
@@ -130,7 +130,7 @@
       "deltas": {
         "EnergyShield": 0.0,
         "Life": 0.0,
-        "TotalDPS": 409.8817329019994,
+        "TotalDPS": 439.0171432569996,
         "TotalEHP": 0.0
       },
       "id": "2",
@@ -150,7 +150,7 @@
       "deltas": {
         "EnergyShield": 0.0,
         "Life": 0.0,
-        "TotalDPS": 409.8817329019994,
+        "TotalDPS": 439.0171432569996,
         "TotalEHP": 0.0
       },
       "id": "4",
@@ -250,7 +250,7 @@
       "deltas": {
         "EnergyShield": 0.0,
         "Life": 0.0,
-        "TotalDPS": 0.0,
+        "TotalDPS": 445.3555582830004,
         "TotalEHP": 0.0
       },
       "id": "Charm 2",

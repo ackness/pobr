@@ -1,17 +1,25 @@
 {
   "breakdown_descriptors": {
     "Accuracy": "steps",
+    "AccuracyHitChance": "derived",
     "AccuracyHitChanceUncapped": "derived",
     "ActionRate": "steps",
+    "ActionSpeedMod": "sources",
+    "ActiveHazardLimit": "sources",
     "ActiveMinionLimit": "sources",
+    "ActiveTotemLimit": "derived",
     "AilmentThreshold": "sources",
     "AoeAreaMod": "sources",
     "AoeRadius": "sources",
+    "ArchonDuration": "derived",
+    "ArchonRecoveryPeriod": "derived",
     "AreaOfEffectRadiusMetres": "derived",
     "Armour": "steps",
+    "ArmourBreakPerHit": "derived",
     "AuraDuration": "derived",
     "AuraEffectMod": "sources",
     "AverageBurstDamage": "derived",
+    "AverageBurstHits": "derived",
     "AverageDamage": "derived",
     "AvoidAllDamageFromHits": "sources",
     "AvoidBleeding": "sources",
@@ -23,9 +31,19 @@
     "AvoidShock": "sources",
     "AvoidStun": "derived",
     "BleedActiveStacks": "derived",
+    "BleedChance": "derived",
     "BleedDPS": "steps",
     "BleedDamage": "derived",
+    "BleedDuration": "derived",
+    "BleedEffMult": "derived",
+    "BleedMagnitudeEffect": "derived",
+    "BleedPhysicalMax": "derived",
+    "BleedPhysicalMin": "derived",
+    "BleedRollAverage": "derived",
+    "BleedStackPotentialPercent": "derived",
     "BleedStackedDPS": "derived",
+    "BleedStacksMax": "derived",
+    "BlindUptime": "derived",
     "BlockChance": "sources",
     "BlockChanceMax": "sources",
     "BlockEffect": "sources",
@@ -34,10 +52,34 @@
     "ChainMax": "sources",
     "ChannelTime": "sources",
     "ChannelTimeToTrigger": "derived",
+    "ChaosAfterReductionTakenHitMulti": "derived",
+    "ChaosAttackTakenHitMult": "sources",
+    "ChaosBaseTakenHitMult": "derived",
+    "ChaosDamageReductionMax": "derived",
+    "ChaosDotEHP": "derived",
+    "ChaosEffMult": "derived",
+    "ChaosEnemyDamage": "none",
+    "ChaosEnemyDamageMult": "none",
+    "ChaosEnemyPen": "none",
+    "ChaosEnergyShieldBypass": "none",
+    "ChaosManaEffectiveLife": "derived",
+    "ChaosMax": "derived",
     "ChaosMaxHit": "derived",
+    "ChaosMin": "derived",
+    "ChaosMoMHitPool": "derived",
     "ChaosResist": "steps",
     "ChaosResistMax": "none",
     "ChaosResistOverCap": "derived",
+    "ChaosResistOverTime": "derived",
+    "ChaosResistTakenHitMulti": "derived",
+    "ChaosResistTotal": "derived",
+    "ChaosSpellTakenHitMult": "sources",
+    "ChaosTakenDamage": "derived",
+    "ChaosTakenDotMult": "derived",
+    "ChaosTakenHit": "derived",
+    "ChaosTakenHitMult": "derived",
+    "ChaosTotalHitPool": "derived",
+    "ChaosTotalPool": "derived",
     "ChargeEnduranceCurrent": "derived",
     "ChargeEnduranceMaximum": "sources",
     "ChargeFrenzyCurrent": "derived",
@@ -49,57 +91,115 @@
     "Charm1ChargesMax": "derived",
     "Charm1ChargesUsed": "derived",
     "Charm1Duration": "derived",
+    "Charm1LifeRecoveryOnUse": "derived",
+    "Charm1ManaRecoveryOnUse": "derived",
     "Charm1Uses": "derived",
     "Charm2ChargeGen": "derived",
     "Charm2ChargesGained": "derived",
     "Charm2ChargesMax": "derived",
     "Charm2ChargesUsed": "derived",
     "Charm2Duration": "derived",
+    "Charm2LifeRecoveryOnUse": "derived",
+    "Charm2ManaRecoveryOnUse": "derived",
     "Charm2Uses": "derived",
     "Charm3ChargeGen": "derived",
     "Charm3ChargesGained": "derived",
     "Charm3ChargesMax": "derived",
     "Charm3ChargesUsed": "derived",
     "Charm3Duration": "derived",
+    "Charm3LifeRecoveryOnUse": "derived",
+    "Charm3ManaRecoveryOnUse": "derived",
     "Charm3Uses": "derived",
+    "CharmLimit": "sources",
+    "ChillDuration": "derived",
     "ChillEffect": "sources",
+    "ChillEffectMod": "derived",
+    "ColdAfterReductionTakenHitMulti": "derived",
+    "ColdAttackTakenHitMult": "sources",
+    "ColdBaseTakenHitMult": "derived",
+    "ColdDamageReduction": "derived",
+    "ColdDamageReductionMax": "derived",
+    "ColdDotEHP": "derived",
+    "ColdEffMult": "derived",
+    "ColdEnemyDamage": "none",
+    "ColdEnemyDamageMult": "none",
+    "ColdEnemyPen": "none",
+    "ColdEnergyShieldBypass": "none",
+    "ColdManaEffectiveLife": "derived",
+    "ColdMax": "derived",
     "ColdMaxHit": "derived",
+    "ColdMin": "derived",
+    "ColdMoMHitPool": "derived",
     "ColdResist": "steps",
     "ColdResistMax": "sources",
     "ColdResistOverCap": "derived",
+    "ColdResistOverTime": "derived",
+    "ColdResistTakenHitMulti": "derived",
+    "ColdResistTotal": "derived",
+    "ColdSpellTakenHitMult": "sources",
+    "ColdTakenDamage": "derived",
+    "ColdTakenDotMult": "derived",
+    "ColdTakenHit": "derived",
+    "ColdTakenHitMult": "derived",
+    "ColdTotalHitPool": "derived",
+    "ColdTotalPool": "derived",
     "CombinedAvg": "derived",
     "CombinedAvgToMonsterLife": "derived",
     "CombinedDPS": "steps",
+    "ConfiguredDamageChance": "derived",
+    "ConfiguredNotHitChance": "derived",
     "Cooldown": "sources",
     "CooldownStoredUses": "sources",
+    "CorruptedBloodImmunity": "sources",
     "CritBifurcates": "derived",
     "CritChance": "steps",
+    "CritEffect": "derived",
     "CritExtraDamageReduction": "sources",
     "CritMultiplier": "steps",
+    "CullMultiplier": "derived",
     "CullingDPS": "derived",
+    "CurrentChill": "derived",
+    "CurrentShock": "derived",
+    "CurseActivationDelay": "derived",
     "CurseEffectMod": "sources",
+    "CurseEffectOnSelf": "sources",
+    "DamageReductionMax": "derived",
+    "DamageTakenOnBlock": "derived",
     "DazeChance": "sources",
+    "DazeUptime": "derived",
+    "DebuffExpirationModifier": "sources",
     "DecayDPS": "derived",
     "DeflectChance": "derived",
+    "DeflectEffect": "derived",
     "DeflectionRating": "derived",
     "Dex": "sources",
+    "DpsMultiplier": "derived",
     "Duration": "derived",
+    "DurationMod": "derived",
     "DurationSecondary": "derived",
+    "EHPSurvivalTime": "derived",
     "ESCost": "sources",
     "ESPerSecondCost": "derived",
     "ESPercentCost": "sources",
     "ESPercentPerSecondCost": "derived",
     "EffectiveActionRate": "derived",
     "EffectiveBlockChance": "sources",
+    "EffectiveLootRarityMod": "sources",
     "EffectiveMovementSpeedMod": "sources",
     "EffectiveSpellBlockChance": "sources",
     "ElectrocuteBuildupPct": "sources",
+    "EnduranceChargesDuration": "derived",
+    "EnemyAilmentThreshold": "derived",
+    "EnemyCritChance": "derived",
     "EnemyCritEffect": "derived",
+    "EnemyCurseLimit": "sources",
+    "EnemyMarkLimit": "sources",
     "EnergyShield": "steps",
     "EnergyShieldLeechGainPerHit": "derived",
     "EnergyShieldLeechGainRate": "derived",
     "EnergyShieldOnKill": "sources",
     "EnergyShieldRecoveryCap": "derived",
+    "EnergyShieldRecoveryRateMod": "sources",
     "EnergyShieldRegen": "sources",
     "EnergyShieldRegenRecovery": "sources",
     "EsLeechRate": "derived",
@@ -110,17 +210,48 @@
     "EvadeChance": "derived",
     "Evasion": "steps",
     "ExplodeChance": "sources",
+    "ExposureEffectOnSelf": "sources",
+    "FireAfterReductionTakenHitMulti": "derived",
+    "FireAttackTakenHitMult": "sources",
+    "FireBaseTakenHitMult": "derived",
+    "FireDamageReduction": "derived",
+    "FireDamageReductionMax": "derived",
+    "FireDotEHP": "derived",
+    "FireEffMult": "derived",
+    "FireEnemyDamage": "none",
+    "FireEnemyDamageMult": "none",
+    "FireEnemyPen": "none",
+    "FireEnergyShieldBypass": "none",
+    "FireManaEffectiveLife": "derived",
+    "FireMax": "derived",
     "FireMaxHit": "derived",
+    "FireMin": "derived",
+    "FireMoMHitPool": "derived",
     "FireResist": "steps",
     "FireResistMax": "sources",
     "FireResistOverCap": "derived",
+    "FireResistOverTime": "derived",
+    "FireResistTakenHitMulti": "derived",
+    "FireResistTotal": "derived",
+    "FireSpellTakenHitMult": "sources",
+    "FireTakenDamage": "derived",
+    "FireTakenDotMult": "derived",
+    "FireTakenHit": "derived",
+    "FireTakenHitMult": "derived",
+    "FireTotalHitPool": "derived",
+    "FireTotalPool": "derived",
     "FiringRate": "sources",
     "Flask1ChargeGen": "derived",
     "Flask1ChargesGained": "derived",
     "Flask1ChargesMax": "derived",
     "Flask1ChargesUsed": "derived",
     "Flask1Duration": "derived",
+    "Flask1EnergyShieldInstantRecovery": "derived",
+    "Flask1EnergyShieldRecovery": "derived",
+    "Flask1EnergyShieldRecoveryPerSecond": "derived",
     "Flask1InstantRecovery": "derived",
+    "Flask1LifeRemovedOnUse": "derived",
+    "Flask1ManaRemovedOnUse": "derived",
     "Flask1Recovery": "derived",
     "Flask1RecoveryPerSecond": "derived",
     "Flask1Uses": "derived",
@@ -129,25 +260,57 @@
     "Flask2ChargesMax": "derived",
     "Flask2ChargesUsed": "derived",
     "Flask2Duration": "derived",
+    "Flask2EnergyShieldInstantRecovery": "derived",
+    "Flask2EnergyShieldRecovery": "derived",
+    "Flask2EnergyShieldRecoveryPerSecond": "derived",
     "Flask2InstantRecovery": "derived",
+    "Flask2LifeRemovedOnUse": "derived",
+    "Flask2ManaRemovedOnUse": "derived",
     "Flask2Recovery": "derived",
     "Flask2RecoveryPerSecond": "derived",
     "Flask2Uses": "derived",
     "FlaskChargeGen": "sources",
     "FlaskEffect": "sources",
     "ForkCount": "sources",
+    "FreezeBuildupAvg": "derived",
     "FreezeBuildupPct": "sources",
+    "FreezeDuration": "derived",
+    "FrenzyChargesDuration": "derived",
     "FullDPS": "derived",
     "FullDotDPS": "derived",
+    "FullLifePercentage": "derived",
+    "FullManaPercentage": "derived",
     "FullyBrokenArmourEffect": "sources",
+    "GemLevel": "derived",
+    "GlobalGemAttributeRequirements": "sources",
+    "GlobalItemAttributeRequirements": "sources",
+    "GlobalWeaponAttributeRequirements": "sources",
+    "HeavyStunBuildupAvg": "derived",
+    "HinderImmunity": "sources",
     "HitChance": "steps",
     "HitSpeed": "derived",
+    "HitsToFullyBreakArmour": "derived",
+    "IgniteChancePerHit": "derived",
+    "IgniteColdMax": "derived",
+    "IgniteColdMin": "derived",
     "IgniteDPS": "steps",
     "IgniteDamage": "derived",
+    "IgniteDuration": "derived",
+    "IgniteEffMult": "derived",
+    "IgniteFireMax": "derived",
+    "IgniteFireMin": "derived",
+    "IgniteLightningMax": "derived",
+    "IgniteLightningMin": "derived",
+    "IgniteMagnitudeEffect": "derived",
+    "IgniteRollAverage": "derived",
+    "IgniteStackPotentialPercent": "derived",
+    "IgniteStacksMax": "derived",
     "Int": "sources",
     "Life": "steps",
+    "LifeCancellableReservation": "derived",
     "LifeCost": "sources",
     "LifeFlaskChargeGen": "sources",
+    "LifeHitPool": "derived",
     "LifeLeechGainPerHit": "derived",
     "LifeLeechGainRate": "derived",
     "LifeLeechRate": "derived",
@@ -157,17 +320,68 @@
     "LifePercentPerSecondCost": "derived",
     "LifeRecoupRate": "derived",
     "LifeRecoverable": "derived",
+    "LifeRecoveryRateMod": "sources",
     "LifeRegen": "sources",
     "LifeRegenRecovery": "sources",
     "LifeReserved": "sources",
     "LifeUnreserved": "derived",
     "LifeUnreservedPercent": "derived",
+    "LightRadiusMod": "sources",
+    "LightningAfterReductionTakenHitMulti": "derived",
+    "LightningAttackTakenHitMult": "sources",
+    "LightningBaseTakenHitMult": "derived",
+    "LightningDamageReduction": "derived",
+    "LightningDamageReductionMax": "derived",
+    "LightningDotEHP": "derived",
+    "LightningEffMult": "derived",
+    "LightningEnemyDamage": "none",
+    "LightningEnemyDamageMult": "none",
+    "LightningEnemyPen": "none",
+    "LightningEnergyShieldBypass": "none",
+    "LightningManaEffectiveLife": "derived",
+    "LightningMax": "derived",
     "LightningMaxHit": "derived",
+    "LightningMin": "derived",
+    "LightningMoMHitPool": "derived",
     "LightningResist": "steps",
     "LightningResistMax": "sources",
     "LightningResistOverCap": "derived",
+    "LightningResistOverTime": "derived",
+    "LightningResistTakenHitMulti": "derived",
+    "LightningResistTotal": "derived",
+    "LightningSpellTakenHitMult": "sources",
+    "LightningTakenDamage": "derived",
+    "LightningTakenDotMult": "derived",
+    "LightningTakenHit": "derived",
+    "LightningTakenHitMult": "derived",
+    "LightningTotalHitPool": "derived",
+    "LightningTotalPool": "derived",
+    "LowLifePercentage": "derived",
+    "LowestAttribute": "derived",
+    "MaimImmunity": "sources",
+    "MaimUptime": "derived",
     "MainHandAccuracy": "derived",
+    "MainHandChaosEffMult": "derived",
+    "MainHandChaosMax": "derived",
+    "MainHandChaosMin": "derived",
+    "MainHandColdEffMult": "derived",
+    "MainHandColdMax": "derived",
+    "MainHandColdMin": "derived",
+    "MainHandCritEffect": "derived",
+    "MainHandDpsMultiplier": "derived",
+    "MainHandFireEffMult": "derived",
+    "MainHandFireMax": "derived",
+    "MainHandFireMin": "derived",
+    "MainHandLightningEffMult": "derived",
+    "MainHandLightningMax": "derived",
+    "MainHandLightningMin": "derived",
+    "MainHandPhysicalEffMult": "derived",
+    "MainHandPhysicalMax": "derived",
+    "MainHandPhysicalMin": "derived",
+    "MainHandTotalMax": "derived",
+    "MainHandTotalMin": "derived",
     "Mana": "steps",
+    "ManaCancellableReservation": "derived",
     "ManaCost": "sources",
     "ManaFlaskChargeGen": "sources",
     "ManaLeechGainPerHit": "derived",
@@ -177,16 +391,32 @@
     "ManaPerSecondCost": "derived",
     "ManaPercentCost": "sources",
     "ManaPercentPerSecondCost": "derived",
+    "ManaRecoupRate": "derived",
+    "ManaRecoveryRateMod": "sources",
     "ManaRegen": "sources",
     "ManaRegenRecovery": "sources",
     "ManaReserved": "sources",
     "ManaUnreserved": "derived",
     "ManaUnreservedPercent": "derived",
+    "MaxEnergyShieldLeechRate": "derived",
+    "MaxLifeLeechRate": "derived",
+    "MaxLifeLeechRatePercent": "derived",
+    "MaxManaLeechRate": "derived",
+    "MaximumChill": "derived",
+    "MaximumColdInfusions": "derived",
+    "MaximumFireInfusions": "derived",
+    "MaximumLightningInfusions": "derived",
+    "MaximumShock": "derived",
     "MeleeEvadeChance": "derived",
     "MineLayingTime": "sources",
     "MineThrowCount": "sources",
     "MirageBurningGroundDPS": "derived",
     "MirageDPS": "derived",
+    "MissingTotemChaosResist": "derived",
+    "MissingTotemColdResist": "derived",
+    "MissingTotemFireResist": "derived",
+    "MissingTotemLightningResist": "derived",
+    "MovementSpeedMod": "sources",
     "MovementSpeedWhileUsingSkill": "sources",
     "NetEnergyShieldRegen": "derived",
     "NetLifeRegen": "derived",
@@ -195,14 +425,70 @@
     "NumberOfDamagingHits": "none",
     "NumberOfMitigatedHits": "none",
     "OffHandAccuracy": "derived",
+    "OffHandChaosEffMult": "derived",
+    "OffHandChaosMax": "derived",
+    "OffHandChaosMin": "derived",
+    "OffHandColdEffMult": "derived",
+    "OffHandColdMax": "derived",
+    "OffHandColdMin": "derived",
+    "OffHandCritEffect": "derived",
+    "OffHandDpsMultiplier": "derived",
+    "OffHandFireEffMult": "derived",
+    "OffHandFireMax": "derived",
+    "OffHandFireMin": "derived",
+    "OffHandLightningEffMult": "derived",
+    "OffHandLightningMax": "derived",
+    "OffHandLightningMin": "derived",
+    "OffHandPhysicalEffMult": "derived",
+    "OffHandPhysicalMax": "derived",
+    "OffHandPhysicalMin": "derived",
+    "OffHandTotalMax": "derived",
+    "OffHandTotalMin": "derived",
+    "PhysicalAfterReductionTakenHitMulti": "derived",
+    "PhysicalAttackTakenHitMult": "sources",
+    "PhysicalBaseTakenHitMult": "derived",
     "PhysicalDamageReduction": "derived",
+    "PhysicalDamageReductionMax": "derived",
+    "PhysicalDotEHP": "derived",
+    "PhysicalEffMult": "derived",
+    "PhysicalEnemyDamage": "none",
+    "PhysicalEnemyDamageMult": "none",
+    "PhysicalEnemyPen": "none",
+    "PhysicalEnergyShieldBypass": "none",
+    "PhysicalManaEffectiveLife": "derived",
+    "PhysicalMax": "derived",
     "PhysicalMaxHit": "derived",
+    "PhysicalMin": "derived",
+    "PhysicalMoMHitPool": "derived",
+    "PhysicalResistTakenHitMulti": "derived",
+    "PhysicalSpellTakenHitMult": "sources",
+    "PhysicalTakenDamage": "derived",
+    "PhysicalTakenDotMult": "derived",
+    "PhysicalTakenHit": "derived",
+    "PhysicalTakenHitMult": "derived",
+    "PhysicalTotalHitPool": "derived",
+    "PhysicalTotalPool": "derived",
     "PierceCount": "sources",
+    "PinBuildupAvg": "derived",
     "PoisonActiveStacks": "derived",
+    "PoisonChance": "derived",
+    "PoisonChaosMax": "derived",
+    "PoisonChaosMin": "derived",
     "PoisonDPS": "steps",
     "PoisonDamage": "derived",
+    "PoisonDuration": "derived",
+    "PoisonEffMult": "derived",
+    "PoisonMagnitudeEffect": "derived",
+    "PoisonPhysicalMax": "derived",
+    "PoisonPhysicalMin": "derived",
+    "PoisonRollAverage": "derived",
+    "PoisonStackPotentialPercent": "derived",
     "PoisonStackedDPS": "derived",
+    "PoisonStacksMax": "derived",
+    "PowerChargesDuration": "derived",
     "PreEffectiveCritChance": "derived",
+    "PreEffectiveCritMultiplier": "derived",
+    "PresenceRadius": "sources",
     "PresenceRadiusMetres": "sources",
     "ProjectileCount": "sources",
     "ProjectileEvadeChance": "derived",
@@ -213,12 +499,30 @@
     "RagePerSecondCost": "derived",
     "RageRegenRecovery": "sources",
     "ReloadTime": "sources",
+    "RemnantsPerUse": "derived",
+    "Repeats": "derived",
     "ReqDex": "derived",
     "ReqInt": "derived",
     "ReqStr": "derived",
     "ReservationDPS": "derived",
+    "ReservationDpsMultiplier": "derived",
     "ReserveDuration": "derived",
+    "SecondMinimalMaximumHitTaken": "derived",
+    "SelfBleedDuration": "sources",
+    "SelfBleedEffect": "sources",
+    "SelfBlindDuration": "sources",
+    "SelfChillDuration": "sources",
+    "SelfChillEffect": "sources",
+    "SelfFreezeDuration": "sources",
+    "SelfFreezeEffect": "sources",
+    "SelfIgniteDuration": "sources",
+    "SelfIgniteEffect": "sources",
+    "SelfPoisonDuration": "sources",
+    "SelfPoisonEffect": "sources",
+    "SelfShockDuration": "sources",
     "SelfStunChance": "derived",
+    "ShockChance": "derived",
+    "ShockDuration": "derived",
     "ShockEffect": "sources",
     "SkillTriggerRate": "derived",
     "SpellBlockChance": "sources",
@@ -232,13 +536,16 @@
     "SplitCount": "sources",
     "StoredUses": "sources",
     "Str": "sources",
+    "StrikeTargets": "derived",
     "StunDuration": "derived",
     "StunThreshold": "derived",
+    "SurroundedRadiusMetres": "derived",
     "TakenMultiChaos": "sources",
     "TakenMultiCold": "sources",
     "TakenMultiFire": "sources",
     "TakenMultiLightning": "sources",
     "TakenMultiPhysical": "sources",
+    "TimeToFullyBreakArmour": "derived",
     "TotalBuildDegen": "derived",
     "TotalDPS": "steps",
     "TotalDot": "derived",
@@ -246,8 +553,24 @@
     "TotalEHP": "derived",
     "TotalEHPLowestMaxHit": "derived",
     "TotalHitAvg": "steps",
+    "TotalMax": "derived",
+    "TotalMin": "derived",
     "TotalNetRegen": "derived",
+    "TotalNumberOfHits": "derived",
     "TotalTotemPlacementTime": "sources",
+    "TotemArmour": "derived",
+    "TotemChaosResist": "derived",
+    "TotemChaosResistTotal": "derived",
+    "TotemColdResist": "derived",
+    "TotemColdResistTotal": "derived",
+    "TotemDurationMod": "derived",
+    "TotemEnergyShield": "derived",
+    "TotemEvasion": "derived",
+    "TotemFireResist": "derived",
+    "TotemFireResistTotal": "derived",
+    "TotemLife": "derived",
+    "TotemLightningResist": "derived",
+    "TotemLightningResistTotal": "derived",
     "TrapThrowCount": "sources",
     "TrapThrowingTime": "sources",
     "TriggerRateCap": "derived",
@@ -263,7 +586,11 @@
     "WithBleedDPS": "derived",
     "WithDotDPS": "derived",
     "WithIgniteDPS": "derived",
-    "WithPoisonDPS": "derived"
+    "WithPoisonDPS": "derived",
+    "WitherEffectOnSelf": "sources",
+    "totalEnemyDamage": "derived",
+    "totalTakenDamage": "derived",
+    "totalTakenHit": "derived"
   },
   "breakdowns": {
     "Accuracy": {
@@ -319,8 +646,8 @@
           },
           {
             "op": "increased",
-            "operand": 140.0,
-            "result": 3.0
+            "operand": 170.0,
+            "result": 3.375
           },
           {
             "op": "cooldown_cap",
@@ -330,7 +657,7 @@
         ],
         "value": 0.204750205
       },
-      "inc_total": 140.0,
+      "inc_total": 170.0,
       "kind": "steps",
       "mods": [
         {
@@ -350,6 +677,15 @@
           "slot": null,
           "source_text": "Onslaught",
           "value": 20.0
+        },
+        {
+          "active": true,
+          "mod_type": "INC",
+          "origin_id": "flask.charm2",
+          "origin_kind": "Flask",
+          "slot": "charm2",
+          "source_text": "CharmSpirit",
+          "value": 30.0
         },
         {
           "active": true,
@@ -487,13 +823,13 @@
       "actor": {
         "kind": "player"
       },
-      "base_total": 95.0,
+      "base_total": 125.0,
       "formula": {
         "steps": [
           {
             "op": "flat",
-            "operand": 95.0,
-            "result": 95.0
+            "operand": 125.0,
+            "result": 125.0
           },
           {
             "op": "cap",
@@ -523,6 +859,15 @@
           "slot": null,
           "source_text": "+10% to Cold Resistance",
           "value": 10.0
+        },
+        {
+          "active": true,
+          "mod_type": "BASE",
+          "origin_id": "flask.charm2",
+          "origin_kind": "Flask",
+          "slot": "charm2",
+          "source_text": "CharmSpirit",
+          "value": 30.0
         },
         {
           "active": true,
@@ -572,16 +917,16 @@
         "steps": [
           {
             "op": "hit_dps",
-            "operand": 6265.33506007,
-            "result": 6265.33506007
+            "operand": 6710.690618353,
+            "result": 6710.690618353
           },
           {
             "op": "dot_dps",
             "operand": 4.534608386,
-            "result": 6269.869668456
+            "result": 6715.225226739
           }
         ],
-        "value": 6269.869668456
+        "value": 6715.225226739
       },
       "inc_total": 0.0,
       "kind": "steps",
@@ -1419,13 +1764,13 @@
       "actor": {
         "kind": "player"
       },
-      "base_total": 114.0,
+      "base_total": 144.0,
       "formula": {
         "steps": [
           {
             "op": "flat",
-            "operand": 114.0,
-            "result": 114.0
+            "operand": 144.0,
+            "result": 144.0
           },
           {
             "op": "cap",
@@ -1455,6 +1800,15 @@
           "slot": null,
           "source_text": "+10% to Fire Resistance",
           "value": 10.0
+        },
+        {
+          "active": true,
+          "mod_type": "BASE",
+          "origin_id": "flask.charm2",
+          "origin_kind": "Flask",
+          "slot": "charm2",
+          "source_text": "CharmSpirit",
+          "value": 30.0
         },
         {
           "active": true,
@@ -1725,13 +2079,13 @@
       "actor": {
         "kind": "player"
       },
-      "base_total": 91.0,
+      "base_total": 121.0,
       "formula": {
         "steps": [
           {
             "op": "flat",
-            "operand": 91.0,
-            "result": 91.0
+            "operand": 121.0,
+            "result": 121.0
           },
           {
             "op": "cap",
@@ -1761,6 +2115,15 @@
           "slot": null,
           "source_text": "+10% to Lightning Resistance",
           "value": 10.0
+        },
+        {
+          "active": true,
+          "mod_type": "BASE",
+          "origin_id": "flask.charm2",
+          "origin_kind": "Flask",
+          "slot": "charm2",
+          "source_text": "CharmSpirit",
+          "value": 30.0
         },
         {
           "active": true,
@@ -2001,32 +2364,32 @@
         "steps": [
           {
             "op": "average_hit",
-            "operand": 28598.034015,
-            "result": 28598.034015
+            "operand": 30630.853215,
+            "result": 30630.853215
           },
           {
             "op": "enemy_mitigation",
             "operand": 1.07,
-            "result": 30599.89639605
+            "result": 32775.01294005
           },
           {
             "op": "uses_per_second",
             "operand": 0.204750205,
-            "result": 6265.335060069999
+            "result": 6710.69061835289
           },
           {
             "op": "chance_to_hit",
             "operand": 100.0,
-            "result": 6265.335060069999
+            "result": 6710.69061835289
           }
         ],
-        "value": 6265.33506007
+        "value": 6710.690618353
       },
       "inc_total": 0.0,
       "kind": "steps",
       "mitigation": [
         {
-          "average": 8131.2768,
+          "average": 10164.096,
           "damage_type": "Lightning",
           "defence_mods": [
             {
@@ -2057,8 +2420,8 @@
               "value": -45.0
             }
           ],
-          "mitigated": 8700.466176,
-          "multiplier": 1.07,
+          "mitigated": 10875.58272,
+          "multiplier": 1.0699999999999998,
           "reduction": -7.0,
           "resist": -7.0,
           "resist_inverted": 0.0,
@@ -2208,15 +2571,15 @@
         "damage_effect": 1.0,
         "rows": [
           {
-            "avg": 1771.52,
-            "base_max": 830.4,
-            "base_min": 553.6,
-            "crit_avg": 8131.2768,
+            "avg": 2214.4,
+            "base_max": 1038.0,
+            "base_min": 692.0,
+            "crit_avg": 10164.096,
             "damage_type": "Lightning",
             "increased": 156.0,
-            "max": 2125.824,
+            "max": 2657.28,
             "max_mods": [],
-            "min": 1417.216,
+            "min": 1771.52,
             "min_mods": [],
             "mods": [
               {
@@ -2538,6 +2901,15 @@
               {
                 "active": true,
                 "mod_type": "BASE",
+                "origin_id": "flask.charm2",
+                "origin_kind": "Flask",
+                "slot": "charm2",
+                "source_text": "CharmSpirit",
+                "value": 20.0
+              },
+              {
+                "active": true,
+                "mod_type": "BASE",
                 "origin_id": "item.weapon1.explicit",
                 "origin_kind": "ItemAffix",
                 "slot": "weapon1",
@@ -2590,16 +2962,16 @@
         "steps": [
           {
             "op": "non_crit_hit",
-            "operand": 6230.5085,
-            "result": 6230.5085
+            "operand": 6673.388500000001,
+            "result": 6673.388500000001
           },
           {
             "op": "crit_hits",
             "operand": 100.0,
-            "result": 28598.034015
+            "result": 30630.853215
           }
         ],
-        "value": 28598.034015
+        "value": 30630.853215
       },
       "inc_total": 0.0,
       "kind": "steps",
@@ -2611,7 +2983,7 @@
   "main_minion_index": null,
   "main_skill": {
     "active_skill_index": 1,
-    "combined_dps": 6269.869668456,
+    "combined_dps": 6715.225226739,
     "dot_dps": 4.534608386,
     "group_index": 4,
     "hit_damage": [
@@ -2622,10 +2994,10 @@
         "min": 0.0
       },
       {
-        "avg": 1771.52,
+        "avg": 2214.4,
         "damage_type": "Lightning",
-        "max": 2125.824,
-        "min": 1417.216
+        "max": 2657.28,
+        "min": 1771.52
       },
       {
         "avg": 3905.3885,
@@ -2640,11 +3012,571 @@
         "min": 442.88
       }
     ],
-    "hit_dps": 6265.33506007,
+    "hit_dps": 6710.690618353,
     "skill_id": "FrostBombPlayer"
   },
   "minions": [],
   "stats": [
+    {
+      "category": "Offence",
+      "id": "PhysicalMin",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "PhysicalMax",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "PhysicalEffMult",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "FireMin",
+      "value": 473.8816000000001
+    },
+    {
+      "category": "Offence",
+      "id": "FireMax",
+      "value": 710.8224000000001
+    },
+    {
+      "category": "Offence",
+      "id": "FireEffMult",
+      "value": 1.07
+    },
+    {
+      "category": "Offence",
+      "id": "ColdMin",
+      "value": 3343.0125560000006
+    },
+    {
+      "category": "Offence",
+      "id": "ColdMax",
+      "value": 5014.518834
+    },
+    {
+      "category": "Offence",
+      "id": "ColdEffMult",
+      "value": 1.07
+    },
+    {
+      "category": "Offence",
+      "id": "LightningMin",
+      "value": 1895.5264
+    },
+    {
+      "category": "Offence",
+      "id": "LightningMax",
+      "value": 2843.2896000000005
+    },
+    {
+      "category": "Offence",
+      "id": "LightningEffMult",
+      "value": 1.07
+    },
+    {
+      "category": "Offence",
+      "id": "ChaosMin",
+      "value": -0.0
+    },
+    {
+      "category": "Offence",
+      "id": "ChaosMax",
+      "value": -0.0
+    },
+    {
+      "category": "Offence",
+      "id": "ChaosEffMult",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "TotalMin",
+      "value": 5712.420556000001
+    },
+    {
+      "category": "Offence",
+      "id": "TotalMax",
+      "value": 8568.630834000001
+    },
+    {
+      "category": "Offence",
+      "id": "CritEffect",
+      "value": 4.59
+    },
+    {
+      "category": "Offence",
+      "id": "DpsMultiplier",
+      "value": 1.0
+    },
+    {
+      "category": "Offence",
+      "id": "MainHandPhysicalMin",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "MainHandPhysicalMax",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "MainHandPhysicalEffMult",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "MainHandFireMin",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "MainHandFireMax",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "MainHandFireEffMult",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "MainHandColdMin",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "MainHandColdMax",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "MainHandColdEffMult",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "MainHandLightningMin",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "MainHandLightningMax",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "MainHandLightningEffMult",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "MainHandChaosMin",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "MainHandChaosMax",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "MainHandChaosEffMult",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "MainHandTotalMin",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "MainHandTotalMax",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "MainHandCritEffect",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "MainHandDpsMultiplier",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "OffHandPhysicalMin",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "OffHandPhysicalMax",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "OffHandPhysicalEffMult",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "OffHandFireMin",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "OffHandFireMax",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "OffHandFireEffMult",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "OffHandColdMin",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "OffHandColdMax",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "OffHandColdEffMult",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "OffHandLightningMin",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "OffHandLightningMax",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "OffHandLightningEffMult",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "OffHandChaosMin",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "OffHandChaosMax",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "OffHandChaosEffMult",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "OffHandTotalMin",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "OffHandTotalMax",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "OffHandCritEffect",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "OffHandDpsMultiplier",
+      "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "Repeats",
+      "value": 1.0
+    },
+    {
+      "category": "Defence",
+      "id": "TotalNumberOfHits",
+      "value": 5.34313371952335
+    },
+    {
+      "category": "Defence",
+      "id": "ExposureEffectOnSelf",
+      "value": 100.0
+    },
+    {
+      "category": "Defence",
+      "id": "WitherEffectOnSelf",
+      "value": 100.0
+    },
+    {
+      "category": "Defence",
+      "id": "SelfBleedEffect",
+      "value": 100.0
+    },
+    {
+      "category": "Defence",
+      "id": "SelfIgniteEffect",
+      "value": 100.0
+    },
+    {
+      "category": "Defence",
+      "id": "SelfChillEffect",
+      "value": 100.0
+    },
+    {
+      "category": "Defence",
+      "id": "SelfFreezeEffect",
+      "value": 100.0
+    },
+    {
+      "category": "Defence",
+      "id": "SelfPoisonEffect",
+      "value": 100.0
+    },
+    {
+      "category": "Defence",
+      "id": "SelfBlindDuration",
+      "value": 100.0
+    },
+    {
+      "category": "Defence",
+      "id": "DebuffExpirationModifier",
+      "value": 100.0
+    },
+    {
+      "category": "Defence",
+      "id": "CurseEffectOnSelf",
+      "value": 100.0
+    },
+    {
+      "category": "Defence",
+      "id": "SelfBleedDuration",
+      "value": 100.0
+    },
+    {
+      "category": "Defence",
+      "id": "SelfPoisonDuration",
+      "value": 100.0
+    },
+    {
+      "category": "Defence",
+      "id": "SelfIgniteDuration",
+      "value": 50.0
+    },
+    {
+      "category": "Defence",
+      "id": "SelfChillDuration",
+      "value": 100.0
+    },
+    {
+      "category": "Defence",
+      "id": "SelfFreezeDuration",
+      "value": 100.0
+    },
+    {
+      "category": "Defence",
+      "id": "SelfShockDuration",
+      "value": 100.0
+    },
+    {
+      "category": "Defence",
+      "id": "CorruptedBloodImmunity",
+      "value": 0.0
+    },
+    {
+      "category": "Defence",
+      "id": "MaimImmunity",
+      "value": 0.0
+    },
+    {
+      "category": "Defence",
+      "id": "HinderImmunity",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "IgniteChancePerHit",
+      "value": 0.7127397
+    },
+    {
+      "category": "Ailment",
+      "id": "IgniteDuration",
+      "value": 4.395604395604395
+    },
+    {
+      "category": "Ailment",
+      "id": "IgniteEffMult",
+      "value": 1.07
+    },
+    {
+      "category": "Ailment",
+      "id": "IgniteMagnitudeEffect",
+      "value": 1.3
+    },
+    {
+      "category": "Ailment",
+      "id": "IgniteRollAverage",
+      "value": 50.0
+    },
+    {
+      "category": "Ailment",
+      "id": "IgniteStacksMax",
+      "value": 1.0
+    },
+    {
+      "category": "Ailment",
+      "id": "IgniteStackPotentialPercent",
+      "value": 0.6414663722489603
+    },
+    {
+      "category": "Ailment",
+      "id": "IgniteFireMin",
+      "value": 442.88
+    },
+    {
+      "category": "Ailment",
+      "id": "IgniteFireMax",
+      "value": 664.32
+    },
+    {
+      "category": "Ailment",
+      "id": "IgniteColdMin",
+      "value": -0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "IgniteColdMax",
+      "value": -0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "IgniteLightningMin",
+      "value": -0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "IgniteLightningMax",
+      "value": -0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "BleedChance",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "BleedDuration",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "BleedEffMult",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "BleedMagnitudeEffect",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "BleedRollAverage",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "BleedStacksMax",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "BleedStackPotentialPercent",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "BleedPhysicalMin",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "BleedPhysicalMax",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "PoisonChance",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "PoisonDuration",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "PoisonEffMult",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "PoisonMagnitudeEffect",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "PoisonRollAverage",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "PoisonStacksMax",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "PoisonStackPotentialPercent",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "PoisonPhysicalMin",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "PoisonPhysicalMax",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "PoisonChaosMin",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "PoisonChaosMax",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "ShockChance",
+      "value": 3.5636986000000004
+    },
     {
       "category": "DotDamage",
       "id": "DecayDPS",
@@ -2678,17 +3610,157 @@
     {
       "category": "Defence",
       "id": "EffectiveMovementSpeedMod",
-      "value": 1.523
+      "value": 1.668
     },
     {
       "category": "SkillMechanics",
       "id": "MovementSpeedWhileUsingSkill",
-      "value": 0.45687
+      "value": 0.5005200000000001
     },
     {
       "category": "Defence",
       "id": "PresenceRadiusMetres",
       "value": 4.9
+    },
+    {
+      "category": "Defence",
+      "id": "PresenceRadius",
+      "value": 49.0
+    },
+    {
+      "category": "Utility",
+      "id": "CharmLimit",
+      "value": 3.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "EnemyCurseLimit",
+      "value": 2.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "EnemyMarkLimit",
+      "value": 1.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "ActiveHazardLimit",
+      "value": 0.0
+    },
+    {
+      "category": "Defence",
+      "id": "ActionSpeedMod",
+      "value": 1.0
+    },
+    {
+      "category": "Defence",
+      "id": "MovementSpeedMod",
+      "value": 1.6684
+    },
+    {
+      "category": "Misc",
+      "id": "LightRadiusMod",
+      "value": 1.33
+    },
+    {
+      "category": "Misc",
+      "id": "GemLevel",
+      "value": 28.0
+    },
+    {
+      "category": "Misc",
+      "id": "EffectiveLootRarityMod",
+      "value": 1.3
+    },
+    {
+      "category": "Recovery",
+      "id": "LifeRecoveryRateMod",
+      "value": 1.0
+    },
+    {
+      "category": "Recovery",
+      "id": "ManaRecoveryRateMod",
+      "value": 1.0
+    },
+    {
+      "category": "Recovery",
+      "id": "EnergyShieldRecoveryRateMod",
+      "value": 1.0
+    },
+    {
+      "category": "Resource",
+      "id": "LowLifePercentage",
+      "value": 35.0
+    },
+    {
+      "category": "Resource",
+      "id": "LifeCancellableReservation",
+      "value": 100.0
+    },
+    {
+      "category": "Resource",
+      "id": "ManaCancellableReservation",
+      "value": 100.0
+    },
+    {
+      "category": "Resource",
+      "id": "FullLifePercentage",
+      "value": 100.0
+    },
+    {
+      "category": "Resource",
+      "id": "FullManaPercentage",
+      "value": 100.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "DurationMod",
+      "value": 1.9575
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "StrikeTargets",
+      "value": 0.0
+    },
+    {
+      "category": "Resource",
+      "id": "LowestAttribute",
+      "value": 56.0
+    },
+    {
+      "category": "Requirement",
+      "id": "GlobalGemAttributeRequirements",
+      "value": 1.0
+    },
+    {
+      "category": "Requirement",
+      "id": "GlobalItemAttributeRequirements",
+      "value": 1.0
+    },
+    {
+      "category": "Requirement",
+      "id": "GlobalWeaponAttributeRequirements",
+      "value": 1.0
+    },
+    {
+      "category": "Ailment",
+      "id": "MaximumChill",
+      "value": 50.0
+    },
+    {
+      "category": "Ailment",
+      "id": "MaximumShock",
+      "value": 100.0
+    },
+    {
+      "category": "Ailment",
+      "id": "CurrentChill",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "CurrentShock",
+      "value": 0.0
     },
     {
       "category": "SkillMechanics",
@@ -2713,7 +3785,7 @@
     {
       "category": "Offence",
       "id": "CombinedAvgToMonsterLife",
-      "value": 19.011212101195532
+      "value": 20.362576217845003
     },
     {
       "category": "Offence",
@@ -2723,17 +3795,22 @@
     {
       "category": "Offence",
       "id": "AverageDamage",
-      "value": 30599.89639605
+      "value": 32775.01294005
     },
     {
       "category": "Offence",
       "id": "AverageBurstDamage",
-      "value": 30599.89639605
+      "value": 32775.01294005
+    },
+    {
+      "category": "Offence",
+      "id": "AverageBurstHits",
+      "value": 1.0
     },
     {
       "category": "Offence",
       "id": "CombinedAvg",
-      "value": 6265.33506007
+      "value": 6710.690618353
     },
     {
       "category": "SkillMechanics",
@@ -2758,17 +3835,17 @@
     {
       "category": "Offence",
       "id": "WithIgniteDPS",
-      "value": 6269.869668456
+      "value": 6715.225226739
     },
     {
       "category": "Offence",
       "id": "WithBleedDPS",
-      "value": 6265.33506007
+      "value": 6710.690618353
     },
     {
       "category": "Offence",
       "id": "WithPoisonDPS",
-      "value": 6265.33506007
+      "value": 6710.690618353
     },
     {
       "category": "Offence",
@@ -2779,6 +3856,11 @@
       "category": "Offence",
       "id": "OffHandAccuracy",
       "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "AccuracyHitChance",
+      "value": 100.0
     },
     {
       "category": "Offence",
@@ -2942,6 +4024,96 @@
     },
     {
       "category": "SkillMechanics",
+      "id": "TotemLife",
+      "value": -0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "TotemArmour",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "ActiveTotemLimit",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "TotemEvasion",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "TotemEnergyShield",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "TotemDurationMod",
+      "value": 1.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "TotemFireResist",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "TotemColdResist",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "TotemLightningResist",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "TotemChaosResist",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "TotemFireResistTotal",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "TotemColdResistTotal",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "TotemLightningResistTotal",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "TotemChaosResistTotal",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "MissingTotemFireResist",
+      "value": 75.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "MissingTotemColdResist",
+      "value": 75.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "MissingTotemLightningResist",
+      "value": 75.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "MissingTotemChaosResist",
+      "value": 75.0
+    },
+    {
+      "category": "SkillMechanics",
       "id": "TrapThrowingTime",
       "value": 0.0
     },
@@ -2976,19 +4148,29 @@
       "value": 0.0
     },
     {
+      "category": "SkillMechanics",
+      "id": "ArchonDuration",
+      "value": 11.11111111111111
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "ArchonRecoveryPeriod",
+      "value": 20.0
+    },
+    {
       "category": "Offence",
       "id": "TotalDPS",
-      "value": 6265.33506007
+      "value": 6710.690618353
     },
     {
       "category": "HitDamage",
       "id": "TotalHitAvg",
-      "value": 28598.034015
+      "value": 30630.853215
     },
     {
       "category": "Offence",
       "id": "CombinedDPS",
-      "value": 6269.869668456
+      "value": 6715.225226739
     },
     {
       "category": "Offence",
@@ -3043,7 +4225,7 @@
     {
       "category": "Ailment",
       "id": "ShockEffect",
-      "value": 0.272730516
+      "value": 1.3
     },
     {
       "category": "Resource",
@@ -3268,17 +4450,17 @@
     {
       "category": "Recovery",
       "id": "EsRechargeRate",
-      "value": 0.125
+      "value": 0.15
     },
     {
       "category": "Recovery",
       "id": "EsRechargeDelay",
-      "value": 5.0
+      "value": 0.0
     },
     {
       "category": "Recovery",
       "id": "EsRechargePerSecond",
-      "value": 1199.125
+      "value": 1438.95
     },
     {
       "category": "Avoidance",
@@ -3323,7 +4505,7 @@
     {
       "category": "Avoidance",
       "id": "AvoidBleeding",
-      "value": -0.0
+      "value": 100.0
     },
     {
       "category": "Mitigation",
@@ -3361,6 +4543,16 @@
       "value": 1.0
     },
     {
+      "category": "Mitigation",
+      "id": "EnemyCritChance",
+      "value": 3.75
+    },
+    {
+      "category": "Mitigation",
+      "id": "SecondMinimalMaximumHitTaken",
+      "value": 34264.0
+    },
+    {
       "category": "Utility",
       "id": "ChargePowerCurrent",
       "value": 0.0
@@ -3391,6 +4583,21 @@
       "value": 3.0
     },
     {
+      "category": "Utility",
+      "id": "PowerChargesDuration",
+      "value": 15.0
+    },
+    {
+      "category": "Utility",
+      "id": "FrenzyChargesDuration",
+      "value": 15.0
+    },
+    {
+      "category": "Utility",
+      "id": "EnduranceChargesDuration",
+      "value": 15.0
+    },
+    {
       "category": "Recovery",
       "id": "LifeLeechRate",
       "value": 0.0
@@ -3407,7 +4614,32 @@
     },
     {
       "category": "Recovery",
+      "id": "MaxLifeLeechRate",
+      "value": 0.2
+    },
+    {
+      "category": "Recovery",
+      "id": "MaxManaLeechRate",
+      "value": 404.74
+    },
+    {
+      "category": "Recovery",
+      "id": "MaxEnergyShieldLeechRate",
+      "value": 959.3
+    },
+    {
+      "category": "Recovery",
+      "id": "MaxLifeLeechRatePercent",
+      "value": 20.0
+    },
+    {
+      "category": "Recovery",
       "id": "LifeRecoupRate",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "ManaRecoupRate",
       "value": 0.0
     },
     {
@@ -3437,6 +4669,16 @@
     },
     {
       "category": "Ailment",
+      "id": "HeavyStunBuildupAvg",
+      "value": 0.032626748159999996
+    },
+    {
+      "category": "Ailment",
+      "id": "PinBuildupAvg",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
       "id": "DazeChance",
       "value": -0.0
     },
@@ -3447,18 +4689,103 @@
     },
     {
       "category": "Ailment",
+      "id": "ArmourBreakPerHit",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "HitsToFullyBreakArmour",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "TimeToFullyBreakArmour",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "DazeUptime",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "MaimUptime",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "BlindUptime",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "MaximumFireInfusions",
+      "value": 3.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "MaximumColdInfusions",
+      "value": 3.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "MaximumLightningInfusions",
+      "value": 3.0
+    },
+    {
+      "category": "Defence",
+      "id": "SurroundedRadiusMetres",
+      "value": 3.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "CurseActivationDelay",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "RemnantsPerUse",
+      "value": 1.0
+    },
+    {
+      "category": "Ailment",
       "id": "ChillEffect",
       "value": 0.0
     },
     {
       "category": "Ailment",
+      "id": "ChillEffectMod",
+      "value": 1.9
+    },
+    {
+      "category": "Ailment",
+      "id": "ChillDuration",
+      "value": 10.549450549450547
+    },
+    {
+      "category": "Ailment",
+      "id": "ShockDuration",
+      "value": 8.79120879120879
+    },
+    {
+      "category": "Ailment",
+      "id": "FreezeDuration",
+      "value": 4.395604395604395
+    },
+    {
+      "category": "Ailment",
+      "id": "FreezeBuildupAvg",
+      "value": 0.2167016792334849
+    },
+    {
+      "category": "Ailment",
       "id": "FreezeBuildupPct",
-      "value": 0.00019206
+      "value": 0.000011298
     },
     {
       "category": "Ailment",
       "id": "ElectrocuteBuildupPct",
-      "value": 0.000119598
+      "value": 7.035e-6
     },
     {
       "category": "DotDamage",
@@ -3563,7 +4890,7 @@
     {
       "category": "Mitigation",
       "id": "BlockEffect",
-      "value": -0.0
+      "value": 100.0
     },
     {
       "category": "Avoidance",
@@ -3574,6 +4901,11 @@
       "category": "Avoidance",
       "id": "DeflectChance",
       "value": 0.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "DeflectEffect",
+      "value": 40.0
     },
     {
       "category": "Avoidance",
@@ -3652,6 +4984,581 @@
     },
     {
       "category": "Mitigation",
+      "id": "PhysicalEnemyDamage",
+      "value": 975.85625
+    },
+    {
+      "category": "Mitigation",
+      "id": "FireEnemyDamage",
+      "value": 975.85625
+    },
+    {
+      "category": "Mitigation",
+      "id": "ColdEnemyDamage",
+      "value": 975.85625
+    },
+    {
+      "category": "Mitigation",
+      "id": "LightningEnemyDamage",
+      "value": 975.85625
+    },
+    {
+      "category": "Mitigation",
+      "id": "ChaosEnemyDamage",
+      "value": 390.3425
+    },
+    {
+      "category": "Mitigation",
+      "id": "PhysicalTakenDamage",
+      "value": 975.85625
+    },
+    {
+      "category": "Mitigation",
+      "id": "FireTakenDamage",
+      "value": 975.85625
+    },
+    {
+      "category": "Mitigation",
+      "id": "ColdTakenDamage",
+      "value": 975.85625
+    },
+    {
+      "category": "Mitigation",
+      "id": "LightningTakenDamage",
+      "value": 975.85625
+    },
+    {
+      "category": "Mitigation",
+      "id": "ChaosTakenDamage",
+      "value": 390.3425
+    },
+    {
+      "category": "Mitigation",
+      "id": "PhysicalTakenHit",
+      "value": 975.85625
+    },
+    {
+      "category": "Mitigation",
+      "id": "FireTakenHit",
+      "value": 273.23975
+    },
+    {
+      "category": "Mitigation",
+      "id": "ColdTakenHit",
+      "value": 273.23975
+    },
+    {
+      "category": "Mitigation",
+      "id": "LightningTakenHit",
+      "value": 273.23975
+    },
+    {
+      "category": "Mitigation",
+      "id": "ChaosTakenHit",
+      "value": 0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "PhysicalTakenHitMult",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "FireTakenHitMult",
+      "value": 0.28
+    },
+    {
+      "category": "Mitigation",
+      "id": "ColdTakenHitMult",
+      "value": 0.28
+    },
+    {
+      "category": "Mitigation",
+      "id": "LightningTakenHitMult",
+      "value": 0.28
+    },
+    {
+      "category": "Mitigation",
+      "id": "ChaosTakenHitMult",
+      "value": 0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "PhysicalEnergyShieldBypass",
+      "value": -0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "FireEnergyShieldBypass",
+      "value": -0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "ColdEnergyShieldBypass",
+      "value": -0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "LightningEnergyShieldBypass",
+      "value": -0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "ChaosEnergyShieldBypass",
+      "value": -0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "FireDamageReduction",
+      "value": 0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "ColdDamageReduction",
+      "value": 0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "LightningDamageReduction",
+      "value": 0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "totalEnemyDamage",
+      "value": 4293.7675
+    },
+    {
+      "category": "Mitigation",
+      "id": "totalTakenDamage",
+      "value": 4293.7675
+    },
+    {
+      "category": "Mitigation",
+      "id": "totalTakenHit",
+      "value": 1795.5755
+    },
+    {
+      "category": "Mitigation",
+      "id": "ConfiguredDamageChance",
+      "value": 100.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "ConfiguredNotHitChance",
+      "value": 0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "DamageTakenOnBlock",
+      "value": -0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "PhysicalEnemyDamageMult",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "FireEnemyDamageMult",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "ColdEnemyDamageMult",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "LightningEnemyDamageMult",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "ChaosEnemyDamageMult",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "PhysicalEnemyPen",
+      "value": 0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "FireEnemyPen",
+      "value": 3.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "ColdEnemyPen",
+      "value": 3.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "LightningEnemyPen",
+      "value": 3.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "ChaosEnemyPen",
+      "value": 0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "PhysicalResistTakenHitMulti",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "FireResistTakenHitMulti",
+      "value": 0.28
+    },
+    {
+      "category": "Mitigation",
+      "id": "ColdResistTakenHitMulti",
+      "value": 0.28
+    },
+    {
+      "category": "Mitigation",
+      "id": "LightningResistTakenHitMulti",
+      "value": 0.28
+    },
+    {
+      "category": "Mitigation",
+      "id": "ChaosResistTakenHitMulti",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "PhysicalAttackTakenHitMult",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "FireAttackTakenHitMult",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "ColdAttackTakenHitMult",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "LightningAttackTakenHitMult",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "ChaosAttackTakenHitMult",
+      "value": 0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "PhysicalSpellTakenHitMult",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "FireSpellTakenHitMult",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "ColdSpellTakenHitMult",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "LightningSpellTakenHitMult",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "ChaosSpellTakenHitMult",
+      "value": 0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "PhysicalAfterReductionTakenHitMulti",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "FireAfterReductionTakenHitMulti",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "ColdAfterReductionTakenHitMulti",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "LightningAfterReductionTakenHitMulti",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "ChaosAfterReductionTakenHitMulti",
+      "value": 0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "PhysicalBaseTakenHitMult",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "FireBaseTakenHitMult",
+      "value": 0.28
+    },
+    {
+      "category": "Mitigation",
+      "id": "ColdBaseTakenHitMult",
+      "value": 0.28
+    },
+    {
+      "category": "Mitigation",
+      "id": "LightningBaseTakenHitMult",
+      "value": 0.28
+    },
+    {
+      "category": "Mitigation",
+      "id": "ChaosBaseTakenHitMult",
+      "value": 0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "PhysicalDamageReductionMax",
+      "value": 90.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "FireDamageReductionMax",
+      "value": 90.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "ColdDamageReductionMax",
+      "value": 90.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "LightningDamageReductionMax",
+      "value": 90.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "ChaosDamageReductionMax",
+      "value": 90.0
+    },
+    {
+      "category": "Resource",
+      "id": "PhysicalManaEffectiveLife",
+      "value": 1.0
+    },
+    {
+      "category": "Resource",
+      "id": "FireManaEffectiveLife",
+      "value": 1.0
+    },
+    {
+      "category": "Resource",
+      "id": "ColdManaEffectiveLife",
+      "value": 1.0
+    },
+    {
+      "category": "Resource",
+      "id": "LightningManaEffectiveLife",
+      "value": 1.0
+    },
+    {
+      "category": "Resource",
+      "id": "ChaosManaEffectiveLife",
+      "value": 1.0
+    },
+    {
+      "category": "Resource",
+      "id": "PhysicalMoMHitPool",
+      "value": 1.0
+    },
+    {
+      "category": "Resource",
+      "id": "FireMoMHitPool",
+      "value": 1.0
+    },
+    {
+      "category": "Resource",
+      "id": "ColdMoMHitPool",
+      "value": 1.0
+    },
+    {
+      "category": "Resource",
+      "id": "LightningMoMHitPool",
+      "value": 1.0
+    },
+    {
+      "category": "Resource",
+      "id": "ChaosMoMHitPool",
+      "value": 1.0
+    },
+    {
+      "category": "Resource",
+      "id": "PhysicalTotalHitPool",
+      "value": 9594.0
+    },
+    {
+      "category": "Resource",
+      "id": "FireTotalHitPool",
+      "value": 9594.0
+    },
+    {
+      "category": "Resource",
+      "id": "ColdTotalHitPool",
+      "value": 9594.0
+    },
+    {
+      "category": "Resource",
+      "id": "LightningTotalHitPool",
+      "value": 9594.0
+    },
+    {
+      "category": "Resource",
+      "id": "ChaosTotalHitPool",
+      "value": 4797.5
+    },
+    {
+      "category": "Mitigation",
+      "id": "DamageReductionMax",
+      "value": 90.0
+    },
+    {
+      "category": "Resource",
+      "id": "LifeHitPool",
+      "value": 1.0
+    },
+    {
+      "category": "Resistance",
+      "id": "FireResistTotal",
+      "value": 144.0
+    },
+    {
+      "category": "Resistance",
+      "id": "ColdResistTotal",
+      "value": 125.0
+    },
+    {
+      "category": "Resistance",
+      "id": "LightningResistTotal",
+      "value": 121.0
+    },
+    {
+      "category": "Resistance",
+      "id": "ChaosResistTotal",
+      "value": 0.0
+    },
+    {
+      "category": "Resistance",
+      "id": "FireResistOverTime",
+      "value": 75.0
+    },
+    {
+      "category": "Resistance",
+      "id": "ColdResistOverTime",
+      "value": 75.0
+    },
+    {
+      "category": "Resistance",
+      "id": "LightningResistOverTime",
+      "value": 75.0
+    },
+    {
+      "category": "Resistance",
+      "id": "ChaosResistOverTime",
+      "value": 0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "PhysicalTakenDotMult",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "FireTakenDotMult",
+      "value": 0.25
+    },
+    {
+      "category": "Mitigation",
+      "id": "ColdTakenDotMult",
+      "value": 0.25
+    },
+    {
+      "category": "Mitigation",
+      "id": "LightningTakenDotMult",
+      "value": 0.25
+    },
+    {
+      "category": "Mitigation",
+      "id": "ChaosTakenDotMult",
+      "value": 0.0
+    },
+    {
+      "category": "Resource",
+      "id": "PhysicalTotalPool",
+      "value": 9594.0
+    },
+    {
+      "category": "Resource",
+      "id": "FireTotalPool",
+      "value": 9594.0
+    },
+    {
+      "category": "Resource",
+      "id": "ColdTotalPool",
+      "value": 9594.0
+    },
+    {
+      "category": "Resource",
+      "id": "LightningTotalPool",
+      "value": 9594.0
+    },
+    {
+      "category": "Resource",
+      "id": "ChaosTotalPool",
+      "value": 4797.5
+    },
+    {
+      "category": "Mitigation",
+      "id": "PhysicalDotEHP",
+      "value": 9594.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "FireDotEHP",
+      "value": 38376.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "ColdDotEHP",
+      "value": 38376.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "LightningDotEHP",
+      "value": 38376.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "ChaosDotEHP",
+      "value": null
+    },
+    {
+      "category": "Mitigation",
+      "id": "EHPSurvivalTime",
+      "value": 0.0
+    },
+    {
+      "category": "Mitigation",
       "id": "TotalEHPLowestMaxHit",
       "value": 9593.0
     },
@@ -3678,17 +5585,17 @@
     {
       "category": "Resistance",
       "id": "FireResistOverCap",
-      "value": 39.0
+      "value": 69.0
     },
     {
       "category": "Resistance",
       "id": "ColdResistOverCap",
-      "value": 20.0
+      "value": 50.0
     },
     {
       "category": "Resistance",
       "id": "LightningResistOverCap",
-      "value": 16.0
+      "value": 46.0
     },
     {
       "category": "Resistance",
@@ -3714,6 +5621,11 @@
       "category": "Offence",
       "id": "PreEffectiveCritChance",
       "value": 100.0
+    },
+    {
+      "category": "Offence",
+      "id": "PreEffectiveCritMultiplier",
+      "value": 4.59
     },
     {
       "category": "SkillMechanics",
@@ -3744,6 +5656,21 @@
       "category": "Offence",
       "id": "CullingDPS",
       "value": 0.0
+    },
+    {
+      "category": "Offence",
+      "id": "CullMultiplier",
+      "value": 1.0
+    },
+    {
+      "category": "Offence",
+      "id": "EnemyAilmentThreshold",
+      "value": 71303.0
+    },
+    {
+      "category": "Offence",
+      "id": "ReservationDpsMultiplier",
+      "value": 1.0
     },
     {
       "category": "SkillMechanics",
@@ -3822,6 +5749,31 @@
     },
     {
       "category": "Recovery",
+      "id": "Flask1EnergyShieldRecovery",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask1EnergyShieldInstantRecovery",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask1EnergyShieldRecoveryPerSecond",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask1ManaRemovedOnUse",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask1LifeRemovedOnUse",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
       "id": "Flask2Duration",
       "value": 10.5
     },
@@ -3867,6 +5819,31 @@
     },
     {
       "category": "Recovery",
+      "id": "Flask2EnergyShieldRecovery",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask2EnergyShieldInstantRecovery",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask2EnergyShieldRecoveryPerSecond",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask2ManaRemovedOnUse",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Flask2LifeRemovedOnUse",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
       "id": "Charm1Duration",
       "value": 3.9
     },
@@ -3894,6 +5871,16 @@
       "category": "Recovery",
       "id": "Charm1ChargesGained",
       "value": 1.22
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm1LifeRecoveryOnUse",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm1ManaRecoveryOnUse",
+      "value": 0.0
     },
     {
       "category": "Recovery",
@@ -3927,6 +5914,16 @@
     },
     {
       "category": "Recovery",
+      "id": "Charm2LifeRecoveryOnUse",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm2ManaRecoveryOnUse",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
       "id": "Charm3Duration",
       "value": 3.9
     },
@@ -3954,6 +5951,16 @@
       "category": "Recovery",
       "id": "Charm3ChargesGained",
       "value": 1.22
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm3LifeRecoveryOnUse",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "Charm3ManaRecoveryOnUse",
+      "value": 0.0
     }
   ],
   "tree_effects": {
@@ -3982,14 +5989,7 @@
     "15% chance for Remnants you pick up to count as picking up an additional Remnant",
     "Every 3 seconds during Effect, deal 100% of Mana spent in those seconds as Chaos Damage to Enemies within 3 metres",
     "Deals 25% of current Mana as Chaos Damage to you when Effect ends",
-    "25% Chance to gain a Charge when you kill an enemy",
-    "Energy Shield Recharge starts on use",
     "Tree:12876: Grants Skill: <underline>{Meditate}",
-    "Tree:22538: 8% reduced [Slow|Slowing] Potency of [Debuff|Debuffs] on You",
-    "Tree:43396: 50% increased [Totem|Totem] Placement range",
-    "Tree:45202: Your [Totem] [Limit] is doubled",
-    "Tree:45202: No [Charges|Charge] requirement for placing [Totem|Totems]",
-    "Tree:55412: 8% reduced [Slow|Slowing] Potency of [Debuff|Debuffs] on You",
-    "Tree:64659: 20% reduced [Slow|Slowing] Potency of [Debuff|Debuffs] on You"
+    "Tree:45202: No [Charges|Charge] requirement for placing [Totem|Totems]"
   ]
 }

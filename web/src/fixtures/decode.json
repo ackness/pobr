@@ -1,5 +1,7 @@
 {
+  "active_config_set": 1,
   "active_loadout": 0,
+  "active_skill_set": 1,
   "character": {
     "ascendancy_name": "Invoker",
     "class_name": "Monk",
@@ -28,6 +30,12 @@
     "questAct 4Halls Of The DeadTawhoa's Test": "+5 to Dexterity",
     "questInterlude 2QimahSeven Pillars": "3% increased Movement Speed"
   },
+  "config_sets": [
+    {
+      "id": 1,
+      "title": "Default"
+    }
+  ],
   "custom_modifier_blocks": [],
   "items": {
     "equipped": [
@@ -122,6 +130,7 @@
   },
   "loadouts": [
     {
+      "config": null,
       "item": null,
       "name": "Default",
       "skill": null,
@@ -130,6 +139,16 @@
   ],
   "main_socket_group": 4,
   "notes": null,
+  "party": {
+    "exports": {},
+    "members": []
+  },
+  "skill_sets": [
+    {
+      "id": 1,
+      "title": "Default"
+    }
+  ],
   "socket_groups": [
     {
       "active_skill_id": "BlasphemyPlayer",
