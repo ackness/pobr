@@ -548,6 +548,8 @@ ArchonRecoveryPeriod = "Archon Recovery Period (s)"
 
 HeavyStunBuildupAvg = "Heavy Stun Buildup per Hit"
 PinBuildupAvg = "Pin Buildup per Hit"
+PinBuildupRequired = "Pin Buildup Required"
+PinDuration = "Pin Duration"
 # Player-side debuff modifier views.
 CurseEffectOnSelf = "Curse Effect on You"
 SelfBleedDuration = "Bleeding Duration on You"

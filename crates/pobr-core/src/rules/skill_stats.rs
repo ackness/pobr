@@ -34,6 +34,9 @@ fn exporter_rule(stat: &str) -> Option<std::sync::Arc<pobr_data::source::Exporte
                 "cannot_inflict_blind",
                 "curse_delay_duration_ms",
                 "chance_%_to_create_additional_remnant",
+                "pin_almost_pinned_enemies",
+                "pin_duration_+%",
+                "support_pin_pin_duration_+%_final",
             ]
             .into_iter()
             .map(|stat| (stat, pobr_data::source::ExporterCoverage::Absent))
@@ -369,6 +372,17 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
             ])
         }
         "skill_disabled_unless_cloned" => Some(vec![Modifier::flag("MirageSkill")]),
+        "pin_almost_pinned_enemies" => Some(vec![Modifier::flag("PinOnPrimed")]),
+        "pin_duration_+%" => Some(vec![Modifier::number(
+            "EnemyPinDuration",
+            ModType::Inc,
+            value,
+        )]),
+        "support_pin_pin_duration_+%_final" => Some(vec![Modifier::number(
+            "EnemyPinDuration",
+            ModType::More,
+            value,
+        )]),
         // Armour Break per hit (`calc::effect_views`): "Break Armour equal to
         // {0}% of Physical / Fire / Hit Damage dealt", "Supported Skills Break
         // {0}% more Armour".

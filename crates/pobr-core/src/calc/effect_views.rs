@@ -167,6 +167,7 @@ impl ScaledTerms {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct EffectTerms {
     pub armour_break: ArmourBreakTerms,
+    pub pin: PinApplicationTerms,
     /// Daze, Maim and Blind, in [`DEBUFFS`] order.
     pub uptime: [DebuffUptimeTerms; 3],
     /// Fire, Cold and Lightning maximum Infusions (base + added).
@@ -177,6 +178,37 @@ pub struct EffectTerms {
     pub curse_delay: ScaledTerms,
     /// Remnants per use: 1 + chance / 100 (`added` is the chance).
     pub remnants: ScaledTerms,
+}
+
+/// Pin application requirements, not a prediction of the enemy's current state.
+/// `KeywordPopups.PrimedPin` gives 40/50/60/70% buildup by monster rarity.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct PinApplicationTerms {
+    pub enabled: bool,
+    pub on_primed: bool,
+    pub primed_threshold: f64,
+    pub duration: super::ailment::AilmentDurationTerms,
+    pub enemy_duration: f64,
+}
+
+impl PinApplicationTerms {
+    pub fn required_buildup(&self) -> f64 {
+        if !self.enabled {
+            0.0
+        } else if self.on_primed {
+            self.primed_threshold
+        } else {
+            100.0
+        }
+    }
+
+    pub fn duration(&self) -> f64 {
+        if self.enabled {
+            (self.duration.value() * self.enemy_duration).max(0.0)
+        } else {
+            0.0
+        }
+    }
 }
 
 /// One uptime view: (output id, chance modifier, duration modifier, base
@@ -453,6 +485,38 @@ fn curse_delay_terms(db: &ModDb, cfg: &CalcConfig) -> ScaledTerms {
     terms
 }
 
+fn pin_application_terms(env: &Env, hit_rate: f64) -> PinApplicationTerms {
+    let db = &env.player.mod_db;
+    let enemy = &env.enemy.mod_db;
+    let cfg = hit_cfg(&env.cfg);
+    let on_primed = db.flag(&cfg, "PinOnPrimed");
+    let primed_threshold = if enemy.flag(&cfg, "Condition:Unique") {
+        70.0
+    } else if enemy.flag(&cfg, "Condition:Rare") || enemy.flag(&cfg, "Condition:RareOrUnique") {
+        60.0
+    } else if enemy.flag(&cfg, "Condition:Magic") {
+        50.0
+    } else {
+        40.0
+    };
+    let names = [ModName::from("EnemyPinDuration")];
+    let target = [ModName::from("SelfPinDuration")];
+    PinApplicationTerms {
+        enabled: hit_rate > 0.0
+            && !db.flag(&cfg, "CannotPin")
+            && !enemy.flag(&cfg, "PinImmune")
+            && (on_primed || env.player.output.pin_buildup_avg > 0.0),
+        on_primed,
+        primed_threshold,
+        duration: super::ailment::AilmentDurationTerms {
+            base: cfg.constants.game().pin_base_duration,
+            increased: db.sum(ModType::Inc, &cfg, &names) + enemy.sum(ModType::Inc, &cfg, &target),
+            more: db.more(&cfg, &names) * enemy.more(&cfg, &target),
+        },
+        enemy_duration: super::ailment::debuff_duration_mult(enemy, &cfg),
+    }
+}
+
 /// `combined` is the selected hit's per-type damage (mitigated in effective
 /// mode), the same input Heavy Stun and Pin buildup read.
 pub(super) fn fill(env: &mut Env, combined: &[(DamageType, f64)]) {
@@ -466,6 +530,7 @@ pub(super) fn fill(env: &mut Env, combined: &[(DamageType, f64)]) {
     remnants.enabled = generates_remnants;
     let terms = EffectTerms {
         armour_break: armour_break_terms(env, combined, hit_rate),
+        pin: pin_application_terms(env, hit_rate),
         uptime: uptime_terms(env, hit_rate),
         infusions: INFUSIONS.map(|(_, name)| {
             scaled(
@@ -490,7 +555,9 @@ pub(super) fn fill(env: &mut Env, combined: &[(DamageType, f64)]) {
 }
 
 /// The views with a derived detail; each detail's inputs reconstruct the value.
-pub const DETAIL_STATS: [&str; 12] = [
+pub const DETAIL_STATS: [&str; 14] = [
+    "PinBuildupRequired",
+    "PinDuration",
     "ArmourBreakPerHit",
     "HitsToFullyBreakArmour",
     "TimeToFullyBreakArmour",
@@ -534,6 +601,30 @@ fn armour_break_inputs(t: &ArmourBreakTerms) -> (String, Vec<(String, f64)>) {
 pub(crate) fn detail(env: &Env, stat: &str) -> Option<super::session::detail::DerivedDetail> {
     let terms = &env.player.output.effect_terms;
     let (formula, inputs): (String, Vec<(String, f64)>) = match stat {
+        "PinBuildupRequired" => {
+            let t = &terms.pin;
+            (
+                "CanInflictPin * (100 - PinsPrimedEnemies * (100 - PrimedPinThreshold))".into(),
+                vec![
+                    ("CanInflictPin".into(), f64::from(u8::from(t.enabled))),
+                    ("PinsPrimedEnemies".into(), f64::from(u8::from(t.on_primed))),
+                    ("PrimedPinThreshold".into(), t.primed_threshold),
+                ],
+            )
+        }
+        "PinDuration" => {
+            let t = &terms.pin;
+            (
+                "CanInflictPin * max(BasePinDuration * (1 + PinDurationIncreased / 100) * PinDurationMore * EnemyDebuffDuration, 0)".into(),
+                vec![
+                    ("CanInflictPin".into(), f64::from(u8::from(t.enabled))),
+                    ("BasePinDuration".into(), t.duration.base),
+                    ("PinDurationIncreased".into(), t.duration.increased),
+                    ("PinDurationMore".into(), t.duration.more),
+                    ("EnemyDebuffDuration".into(), t.enemy_duration),
+                ],
+            )
+        }
         "ArmourBreakPerHit" => armour_break_inputs(&terms.armour_break),
         "HitsToFullyBreakArmour" | "TimeToFullyBreakArmour" => {
             let t = &terms.armour_break;

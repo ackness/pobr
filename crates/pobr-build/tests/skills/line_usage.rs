@@ -208,20 +208,19 @@ Implicits: 0
 }
 
 #[test]
-fn conditional_offence_limits_report_the_missing_models() {
+fn primed_pin_and_duration_lines_have_application_readers() {
     let data = data();
-    let text = "Pin Enemies which are Primed for Pinning";
-    let ledger = ledger(&data, &[], &[text]);
-    let row = line(&ledger, "item.amulet.explicit", text);
-    assert_eq!(row.status, LineStatus::Unmodelled, "{row:?}");
-    assert!(
-        row.reason
-            .as_deref()
-            .unwrap()
-            .contains("primed_pin_unmodelled"),
-        "{row:?}"
-    );
-    assert!(row.modifiers.is_empty());
+    let texts = [
+        "Pin Enemies which are Primed for Pinning",
+        "25% increased Pin duration",
+    ];
+    let ledger = ledger(&data, &[], &texts);
+    for text in texts {
+        let row = line(&ledger, "item.amulet.explicit", text);
+        assert_eq!(row.status, LineStatus::Applied, "{row:?}");
+        assert_eq!(row.modifiers.len(), 1);
+        assert_eq!(row.modifiers[0].status, ModifierStatus::Applied, "{row:?}");
+    }
 }
 
 /// Daze duration, attack Maim and attack Blind feed the uptime views

@@ -67,7 +67,7 @@ cache at all.
 - One worktree and one branch per agent. Never `git stash`: all worktrees share it.
 - Agents commit locally and never push. Before the last commit, merge the working
   branch, keep both sides of append-only conflicts (catalog entries, labels,
-  rule lists), recompute the locked catalog count, and rerun `mise run regen` when
+  rule lists), check catalog wiring and labels, and rerun `mise run regen` when
   rules changed. Generated files are regenerated, never merged by hand.
 - Keep concurrent agents' files disjoint where possible. Two agents adding the same
   display id or rule produce a semantic conflict that goes back to the later one.

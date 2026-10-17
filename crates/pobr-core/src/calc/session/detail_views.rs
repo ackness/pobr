@@ -78,6 +78,8 @@ pub const DERIVED_STATS: &[&str] = &[
     "CurrentShock",
     "HeavyStunBuildupAvg",
     "PinBuildupAvg",
+    "PinBuildupRequired",
+    "PinDuration",
     "PhysicalTakenDamage",
     "FireTakenDamage",
     "ColdTakenDamage",

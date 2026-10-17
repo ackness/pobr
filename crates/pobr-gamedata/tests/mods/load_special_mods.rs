@@ -103,22 +103,20 @@ fn s0_crit_override_entry() {
     assert_eq!(m.value, TemplateValueDef::Capture("$1".to_string()));
 }
 
-/// A recognition-only entry for a mechanic PoBR does not model (batch
-/// `unmodelled`): both mods and handler absent. The line stays a gap, it is
-/// not a no-effect (`S0`) line.
+/// Primed Pin now has a threshold reader, rather than being recognition-only.
 #[test]
-fn unmodelled_recognition_only_entries() {
+fn primed_pin_has_a_traceable_application_rule() {
     let def = load();
-    for id in ["primed_pin_unmodelled"] {
+    for id in [
+        "pin_on_primed",
+        "increased_pin_duration",
+        "reduced_pin_duration",
+    ] {
         let e = def.entries.iter().find(|e| e.id == id).unwrap();
-        assert_eq!(e.batch, "unmodelled", "{id}");
+        assert_eq!(e.batch, "S2", "{id}");
         assert!(
-            e.mods.is_empty() && e.handler_id.is_none(),
-            "{id}: recognition-only shape"
-        );
-        assert!(
-            e.source_note.is_some(),
-            "{id}: must annotate vendor's actual semantics"
+            !e.mods.is_empty() && e.game_source.is_some(),
+            "{id}: must produce modifiers with game provenance"
         );
     }
 }
@@ -418,15 +416,15 @@ fn modelled_effect_view_lines_keep_their_game_sources() {
 }
 
 #[test]
-fn conditional_offence_limits_keep_game_provenance_and_model_reasons() {
+fn primed_pin_keeps_game_provenance_and_application_conventions() {
     let def = load();
     let entry = def
         .entries
         .iter()
-        .find(|entry| entry.id == "primed_pin_unmodelled")
+        .find(|entry| entry.id == "pin_on_primed")
         .unwrap();
-    assert_eq!(entry.batch, "unmodelled");
-    assert!(entry.mods.is_empty() && entry.handler_id.is_none());
+    assert_eq!(entry.batch, "S2");
+    assert_eq!(entry.mods.len(), 1);
     assert!(
         entry
             .game_source
@@ -439,7 +437,7 @@ fn conditional_offence_limits_keep_game_provenance_and_model_reasons() {
             .source_note
             .as_deref()
             .unwrap()
-            .contains("Primed-pin thresholds")
+            .contains("PinBuildupRequired")
     );
     assert_eq!(entry.exporter, pobr_data::source::ExporterCoverage::Absent);
 }

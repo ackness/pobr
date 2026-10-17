@@ -470,6 +470,8 @@
     "PhysicalTotalPool": "derived",
     "PierceCount": "sources",
     "PinBuildupAvg": "derived",
+    "PinBuildupRequired": "derived",
+    "PinDuration": "derived",
     "PoisonActiveStacks": "derived",
     "PoisonChance": "derived",
     "PoisonChaosMax": "derived",
@@ -4675,6 +4677,16 @@
     {
       "category": "Ailment",
       "id": "PinBuildupAvg",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "PinBuildupRequired",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "PinDuration",
       "value": 0.0
     },
     {

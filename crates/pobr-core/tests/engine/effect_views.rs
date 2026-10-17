@@ -41,6 +41,120 @@ fn close(actual: f64, expected: f64) {
     assert!((actual - expected).abs() < 1e-9, "{actual} != {expected}");
 }
 
+#[test]
+fn pin_application_uses_primed_thresholds_without_granting_buildup() {
+    for (rarity, threshold) in [
+        (None, 40.0),
+        (Some("Magic"), 50.0),
+        (Some("Rare"), 60.0),
+        (Some("Unique"), 70.0),
+    ] {
+        let mut s = session(
+            CalcConfig::spell(),
+            &["Pin Enemies which are Primed for Pinning"],
+        );
+        if let Some(rarity) = rarity {
+            s.add_enemy_modifiers([Modifier::flag(format!("Condition:{rarity}"))]);
+        }
+        s.perform_minimal().unwrap();
+        assert_eq!(display_value(s.output(), "PinBuildupRequired"), threshold);
+        assert_eq!(display_value(s.output(), "PinBuildupAvg"), 0.0);
+        assert_eq!(display_value(s.output(), "PinDuration"), 3.0);
+        assert_eq!(
+            input(&s, "PinBuildupRequired", "PrimedPinThreshold"),
+            threshold
+        );
+        assert_eq!(input(&s, "PinBuildupRequired", "PinsPrimedEnemies"), 1.0);
+    }
+
+    let mut regular = session(CalcConfig::spell(), &["Physical Damage is Pinning"]);
+    regular.perform_minimal().unwrap();
+    assert!(display_value(regular.output(), "PinBuildupAvg") > 0.0);
+    assert_eq!(display_value(regular.output(), "PinBuildupRequired"), 100.0);
+
+    for block in [None, Some("CannotPin")] {
+        let lines = if block.is_some() {
+            vec!["Pin Enemies which are Primed for Pinning"]
+        } else {
+            vec![]
+        };
+        let mut s = session(CalcConfig::spell(), &lines);
+        if let Some(flag) = block {
+            s.add_modifiers([Modifier::flag(flag)]);
+        }
+        s.perform_minimal().unwrap();
+        assert_eq!(display_value(s.output(), "PinBuildupRequired"), 0.0);
+        assert_eq!(display_value(s.output(), "PinDuration"), 0.0);
+    }
+}
+
+#[test]
+fn pin_duration_uses_runtime_base_modifiers_and_enemy_expiry() {
+    let mut cfg = CalcConfig::spell().with_mode_effective(true);
+    cfg.constants.game_constants.game.pin_base_duration = 5.0;
+    let mut s = session(
+        cfg,
+        &[
+            "Pin Enemies which are Primed for Pinning",
+            "50% increased Pin duration",
+            "25% reduced Pin duration",
+        ],
+    );
+    s.add_modifiers([Modifier::number("EnemyPinDuration", ModType::More, 20.0)]);
+    s.add_enemy_modifiers([Modifier::number("BuffExpireFaster", ModType::Inc, -50.0)]);
+    s.perform_minimal().unwrap();
+    close(
+        display_value(s.output(), "PinDuration"),
+        5.0 * 1.25 * 1.2 * 2.0,
+    );
+    close(input(&s, "PinDuration", "BasePinDuration"), 5.0);
+    close(input(&s, "PinDuration", "PinDurationIncreased"), 25.0);
+    close(input(&s, "PinDuration", "PinDurationMore"), 1.2);
+    close(input(&s, "PinDuration", "EnemyDebuffDuration"), 2.0);
+}
+
+#[test]
+fn pin_gem_stats_share_the_application_model() {
+    let mut s = session(CalcConfig::spell(), &[]);
+    for (stat, value) in [
+        ("pin_almost_pinned_enemies", 1.0),
+        ("pin_duration_+%", 25.0),
+        ("support_pin_pin_duration_+%_final", 50.0),
+    ] {
+        let modifiers = pobr_core::rules::skill_stats::skill_modifiers(stat, value).unwrap();
+        assert!(modifiers.iter().all(|m| {
+            m.exporter_rule
+                .as_ref()
+                .is_some_and(|rule| rule.game_source == stat)
+        }));
+        s.add_modifiers(modifiers);
+    }
+    s.perform_minimal().unwrap();
+    assert_eq!(display_value(s.output(), "PinBuildupRequired"), 40.0);
+    close(display_value(s.output(), "PinDuration"), 3.0 * 1.25 * 1.5);
+    assert_eq!(display_value(s.output(), "PinBuildupAvg"), 0.0);
+}
+
+#[test]
+fn primed_pin_cannot_apply_without_hits_or_to_an_immune_enemy() {
+    for immune in [false, true] {
+        let cfg = if immune {
+            CalcConfig::spell()
+        } else {
+            CalcConfig::spell()
+                .with_flags(ModFlags::SPELL)
+                .with_skill_name(Some("Non-hitting skill".into()))
+        };
+        let mut s = session(cfg, &["Pin Enemies which are Primed for Pinning"]);
+        if immune {
+            s.add_enemy_modifiers([Modifier::flag("PinImmune")]);
+        }
+        s.perform_minimal().unwrap();
+        assert_eq!(display_value(s.output(), "PinBuildupRequired"), 0.0);
+        assert_eq!(display_value(s.output(), "PinDuration"), 0.0);
+    }
+}
+
 fn armour_session(tier: EnemyTier, cfg: CalcConfig, lines: &[&str]) -> CalculationSession {
     let mut session = session(cfg.with_mode_effective(true), lines);
     session.setup_enemy(10, tier);

@@ -2,6 +2,12 @@ import type { Lang } from './i18n';
 
 /** Modifier input names for optional Calcs details; no calculation logic. */
 export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
+  CanInflictPin: { 'en-US': 'Can inflict Pin', 'zh-TW': '可造成定身', 'zh-CN': '可造成定身' },
+  PinsPrimedEnemies: { 'en-US': 'Pins enemies primed for Pin', 'zh-TW': '使準備好定身的敵人定身', 'zh-CN': '使准备好定身的敌人定身' },
+  PrimedPinThreshold: { 'en-US': 'Primed Pin buildup threshold', 'zh-TW': '準備好定身的累積門檻', 'zh-CN': '准备好定身的积累门槛' },
+  BasePinDuration: { 'en-US': 'Base Pin duration', 'zh-TW': '基礎定身持續時間', 'zh-CN': '基础定身持续时间' },
+  PinDurationIncreased: { 'en-US': 'Increased Pin duration', 'zh-TW': '定身持續時間增加', 'zh-CN': '定身持续时间增加' },
+  PinDurationMore: { 'en-US': 'More Pin duration multiplier', 'zh-TW': '定身持續時間更多倍率', 'zh-CN': '定身持续时间更多倍率' },
   HitsPerDuration: { 'en-US': 'Hits during the debuff duration', 'zh-TW': '減益期間的擊中次數', 'zh-CN': '减益期间的击中次数' },
   AttackDamageTaken: { 'en-US': 'Attack damage taken', 'zh-TW': '承受的攻擊傷害', 'zh-CN': '承受的攻击伤害' },
   SpellDamageTaken: { 'en-US': 'Spell damage taken', 'zh-TW': '承受的法術傷害', 'zh-CN': '承受的法术伤害' },

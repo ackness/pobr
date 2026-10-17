@@ -5548,17 +5548,66 @@
       ]
     },
     {
-      "id": "primed_pin_unmodelled",
+      "id": "pin_on_primed",
       "pattern": "^(?:supported skills )?pin enemies which are primed for pinning$",
-      "mods": [],
+      "mods": [
+        {
+          "name": "PinOnPrimed",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
       "verified": false,
-      "batch": "unmodelled",
+      "batch": "S2",
       "exporter": "absent",
       "game_source": "base/stats.json: pin_almost_pinned_enemies; KeywordPopups PrimedPin (40% / 50% / 60% / 70% Pin buildup for Normal / Magic / Rare / Unique)",
-      "source_note": "Primed-pin thresholds and the pin-on-hit-while-primed rule are not modelled; PinBuildupAvg is the buildup per hit, not a Pin application chance.",
+      "source_note": "Lowers the reported PinBuildupRequired to the target rarity's PrimedPin threshold. A hit can Pin an already primed enemy even without its own buildup source. Does not infer enemy state or Pin uptime.",
       "examples": [
         "Pin Enemies which are Primed for Pinning",
         "Supported Skills Pin Enemies which are Primed for Pinning"
+      ]
+    },
+    {
+      "id": "increased_pin_duration",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased pin duration$",
+      "mods": [
+        {
+          "name": "EnemyPinDuration",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "pin_duration_+%; KeywordPopups Pinned; GameConstants PinDuration",
+      "examples": [
+        "25% increased Pin duration"
+      ]
+    },
+    {
+      "id": "reduced_pin_duration",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% reduced pin duration$",
+      "mods": [
+        {
+          "name": "EnemyPinDuration",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "pin_duration_+%; KeywordPopups Pinned; GameConstants PinDuration",
+      "examples": [
+        "25% reduced Pin duration"
       ]
     },
     {

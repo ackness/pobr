@@ -654,7 +654,7 @@
     "base_total": 0.0,
     "derived": {
       "context": [],
-      "formula": "(ArmourBreakFlat) * (1 + ArmourBreakIncreased / 100) * ArmourBreakMore * ArmourBreakRarityMultiplier",
+      "formula": "max((ArmourBreakFlat) * (1 + ArmourBreakIncreased / 100) * ArmourBreakMore * ArmourBreakRarityMultiplier, 0)",
       "inputs": [
         {
           "id": "ArmourBreakFlat",
@@ -1220,7 +1220,7 @@
     "base_total": 0.0,
     "derived": {
       "context": [],
-      "formula": "100 * (f * (1 - (1 - DebuffChance / 100)^(k + 1)) + (1 - f) * (1 - (1 - DebuffChance / 100)^k)), k = floor(HitsPerDuration), f = HitsPerDuration - k, HitsPerDuration = LandedHitsPerSecond * DebuffBaseDuration * (1 + DebuffDurationIncreased / 100) * EnemyDebuffDuration",
+      "formula": "CanInflictDebuff * 100 * ((HitsPerDuration - floor(HitsPerDuration)) * (1 - pow(1 - DebuffChance / 100, floor(HitsPerDuration) + 1)) + (1 - HitsPerDuration + floor(HitsPerDuration)) * (1 - pow(1 - DebuffChance / 100, floor(HitsPerDuration))))",
       "inputs": [
         {
           "id": "CanInflictDebuff",
@@ -1229,6 +1229,10 @@
         {
           "id": "DebuffChance",
           "value": -0.0
+        },
+        {
+          "id": "HitsPerDuration",
+          "value": 0.900000901098901
         },
         {
           "id": "LandedHitsPerSecond",
@@ -4794,7 +4798,7 @@
     "base_total": 0.0,
     "derived": {
       "context": [],
-      "formula": "CanCurse * CurseBaseDelay * (1 + CurseDelayIncreased / 100) * CurseDelayMore",
+      "formula": "CanCurse * max(CurseBaseDelay * (1 + CurseDelayIncreased / 100) * CurseDelayMore, 0)",
       "inputs": [
         {
           "id": "CanCurse",
@@ -4902,7 +4906,7 @@
     "base_total": 0.0,
     "derived": {
       "context": [],
-      "formula": "100 * (f * (1 - (1 - DebuffChance / 100)^(k + 1)) + (1 - f) * (1 - (1 - DebuffChance / 100)^k)), k = floor(HitsPerDuration), f = HitsPerDuration - k, HitsPerDuration = LandedHitsPerSecond * DebuffBaseDuration * (1 + DebuffDurationIncreased / 100) * EnemyDebuffDuration",
+      "formula": "CanInflictDebuff * 100 * ((HitsPerDuration - floor(HitsPerDuration)) * (1 - pow(1 - DebuffChance / 100, floor(HitsPerDuration) + 1)) + (1 - HitsPerDuration + floor(HitsPerDuration)) * (1 - pow(1 - DebuffChance / 100, floor(HitsPerDuration))))",
       "inputs": [
         {
           "id": "CanInflictDebuff",
@@ -4911,6 +4915,10 @@
         {
           "id": "DebuffChance",
           "value": -0.0
+        },
+        {
+          "id": "HitsPerDuration",
+          "value": 1.800001802197802
         },
         {
           "id": "LandedHitsPerSecond",
@@ -8954,7 +8962,7 @@
     "base_total": 0.0,
     "derived": {
       "context": [],
-      "formula": "ceil(EnemyArmour / ArmourBreakPerHit)",
+      "formula": "0 * ArmourBreakPerHit",
       "inputs": [
         {
           "id": "EnemyArmour",
@@ -11293,7 +11301,7 @@
     "base_total": 0.0,
     "derived": {
       "context": [],
-      "formula": "100 * (f * (1 - (1 - DebuffChance / 100)^(k + 1)) + (1 - f) * (1 - (1 - DebuffChance / 100)^k)), k = floor(HitsPerDuration), f = HitsPerDuration - k, HitsPerDuration = LandedHitsPerSecond * DebuffBaseDuration * (1 + DebuffDurationIncreased / 100) * EnemyDebuffDuration",
+      "formula": "CanInflictDebuff * 100 * ((HitsPerDuration - floor(HitsPerDuration)) * (1 - pow(1 - DebuffChance / 100, floor(HitsPerDuration) + 1)) + (1 - HitsPerDuration + floor(HitsPerDuration)) * (1 - pow(1 - DebuffChance / 100, floor(HitsPerDuration))))",
       "inputs": [
         {
           "id": "CanInflictDebuff",
@@ -11302,6 +11310,10 @@
         {
           "id": "DebuffChance",
           "value": -0.0
+        },
+        {
+          "id": "HitsPerDuration",
+          "value": 0.900000901098901
         },
         {
           "id": "LandedHitsPerSecond",
@@ -12824,7 +12836,7 @@
     "base_total": 0.0,
     "derived": {
       "context": [],
-      "formula": "BaseMaximumInfusions + AddedMaximumInfusions",
+      "formula": "max(BaseMaximumInfusions + AddedMaximumInfusions, 0)",
       "inputs": [
         {
           "id": "BaseMaximumInfusions",
@@ -12849,7 +12861,7 @@
     "base_total": 0.0,
     "derived": {
       "context": [],
-      "formula": "BaseMaximumInfusions + AddedMaximumInfusions",
+      "formula": "max(BaseMaximumInfusions + AddedMaximumInfusions, 0)",
       "inputs": [
         {
           "id": "BaseMaximumInfusions",
@@ -12874,7 +12886,7 @@
     "base_total": 0.0,
     "derived": {
       "context": [],
-      "formula": "BaseMaximumInfusions + AddedMaximumInfusions",
+      "formula": "max(BaseMaximumInfusions + AddedMaximumInfusions, 0)",
       "inputs": [
         {
           "id": "BaseMaximumInfusions",
@@ -14627,6 +14639,72 @@
         {
           "id": "CanPin",
           "value": 0.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "PinBuildupRequired": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "CanInflictPin * (100 - PinsPrimedEnemies * (100 - PrimedPinThreshold))",
+      "inputs": [
+        {
+          "id": "CanInflictPin",
+          "value": 0.0
+        },
+        {
+          "id": "PinsPrimedEnemies",
+          "value": 0.0
+        },
+        {
+          "id": "PrimedPinThreshold",
+          "value": 70.0
+        }
+      ]
+    },
+    "formula": null,
+    "inc_total": 0.0,
+    "kind": "derived",
+    "mods": [],
+    "more_total": 1.0
+  },
+  "PinDuration": {
+    "actor": {
+      "kind": "player"
+    },
+    "base_total": 0.0,
+    "derived": {
+      "context": [],
+      "formula": "CanInflictPin * max(BasePinDuration * (1 + PinDurationIncreased / 100) * PinDurationMore * EnemyDebuffDuration, 0)",
+      "inputs": [
+        {
+          "id": "CanInflictPin",
+          "value": 0.0
+        },
+        {
+          "id": "BasePinDuration",
+          "value": 3.0
+        },
+        {
+          "id": "PinDurationIncreased",
+          "value": -0.0
+        },
+        {
+          "id": "PinDurationMore",
+          "value": 1.0
+        },
+        {
+          "id": "EnemyDebuffDuration",
+          "value": 1.0989010989010988
         }
       ]
     },
@@ -16640,7 +16718,7 @@
     "base_total": 0.0,
     "derived": {
       "context": [],
-      "formula": "floor(SurroundedBaseRadius * floor(100 * sqrt((1 + SurroundedAreaIncreased / 100) * SurroundedAreaMore)) / 100) / 10",
+      "formula": "floor(SurroundedBaseRadius * floor(100 * sqrt(max((1 + SurroundedAreaIncreased / 100) * SurroundedAreaMore, 0))) / 100) / 10",
       "inputs": [
         {
           "id": "SurroundedBaseRadius",
@@ -16724,7 +16802,7 @@
     "base_total": 0.0,
     "derived": {
       "context": [],
-      "formula": "ceil(EnemyArmour / ArmourBreakPerHit) / LandedHitsPerSecond",
+      "formula": "0 * ArmourBreakPerHit",
       "inputs": [
         {
           "id": "EnemyArmour",

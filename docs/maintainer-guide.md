@@ -291,8 +291,8 @@ source does not establish the target state. Coming Calamity's 40% elemental
 bonuses require their matching Herald; added attack damage (including
 Asphyxia's Wrath) applies only to attacks. Daze duration and attack Maim chance
 feed the debuff uptime views described under “On-hit effect views” below;
-primed-Pin thresholds remain an `unmodelled` entry (KeywordPopups PrimedPin
-40/50/60/70% thresholds need a pin-state model). Sources: game `base/stats.json` (`damage_+%_vs_frozen_enemies`,
+primed-Pin thresholds and duration feed `PinBuildupRequired` / `PinDuration`
+as described below. Sources: game `base/stats.json` (`damage_+%_vs_frozen_enemies`,
 `bleeding_magnitude_+%_against_pinned_enemies`, `triggered_spell_spell_damage_+%`,
 `hit_damage_stun_multiplier_+%`, `daze_duration_+%`, `maim_on_hit_%`,
 `pin_almost_pinned_enemies`) and `base/passive_tree.json` (Coming
@@ -360,10 +360,19 @@ That is a convention, **no in-game test**. A skill with
 `support_pin_buildup_pin_instead_of_stun` (the Pin support) builds no Heavy Stun
 (`HeavyStunBuildupAvg` is 0) and its damage counts toward Pin; the support's
 buildup modifiers are the Pin ones, and PoBR does not copy the skill's Heavy
-Stun modifiers to Pin as PoB2 does. Primed-Pin thresholds (`KeywordPopups[400]`:
-40% / 50% / 60% / 70% by rarity, `pin_almost_pinned_enemies`) and the 3-second
-Pin duration are not modelled: `primed_pin_unmodelled` is exporter-absent and
-`conditionEnemyPinned` stays a configured state. PoB2 pins from unmitigated hit
+Stun modifiers to Pin as PoB2 does. `PinBuildupRequired` reports the buildup
+threshold for the selected hit: normally 100%, or the target's Primed-Pin
+threshold when `pin_almost_pinned_enemies` (Constricting Command) grants
+`PinOnPrimed`. Game `KeywordPopups[400].PrimedPin` gives 40% / 50% / 60% / 70%
+for Normal / Magic / Rare / Unique enemies. This rule can Pin an already
+primed enemy without granting the skill a source of buildup. `PinDuration`
+uses `GameConstants[46].PinDuration = 3000 / 1000` (3 seconds), the inflicted
+`pin_duration_+%`, the Pin support's duration MORE, target `SelfPinDuration`
+and enemy debuff expiry rate. Both views are zero without a Pin source,
+when the skill cannot hit, or when Pin is prohibited. These are application
+requirements and duration views, with derived inputs that rebuild each value;
+no hit-sequence, buildup decay or uptime is inferred, and `conditionEnemyPinned`
+stays a configured state. The new rules are exporter-absent. PoB2 pins from unmitigated hit
 averages and evaluates `Physical Spell Critical Hits build Pin` once against the
 skill, so a physical spell pins with every damage type; that rule declares
 `exporter: "differs"`. Worked comparisons against the pinned oracle: Chronomancer

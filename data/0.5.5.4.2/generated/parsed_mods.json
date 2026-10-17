@@ -8517,7 +8517,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Duration",
+          "name": "EnemyPinDuration",
           "type": "Inc",
           "value": 10.0
         }
@@ -12908,7 +12908,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Duration",
+          "name": "EnemyPinDuration",
           "type": "Inc",
           "value": 15.0
         }
@@ -16680,7 +16680,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Duration",
+          "name": "EnemyPinDuration",
           "type": "Inc",
           "value": 20.0
         }

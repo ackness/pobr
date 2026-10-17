@@ -244,6 +244,10 @@ pub struct GameMechanicsConstantsDef {
     /// `HeavyStunThresholdModifier`).
     #[serde(default = "default_pin_damage_scale")]
     pub pin_damage_scale: f64,
+    /// Enemy Pin duration, in seconds: game `GameConstants.PinDuration`
+    /// is 3000 / 1000, also stated by `KeywordPopups.Pinned`.
+    #[serde(default = "default_pin_base_duration")]
+    pub pin_base_duration: f64,
     /// Negative-armour damage-bonus cap (%). Data.lua:194
     /// NegArmourDmgBonusCap = 100.
     pub neg_armour_dmg_bonus_cap: f64,
@@ -352,6 +356,9 @@ fn default_chill_base_duration() -> f64 {
 }
 fn default_freeze_base_duration() -> f64 {
     4.0
+}
+fn default_pin_base_duration() -> f64 {
+    3.0
 }
 fn default_ehp_calc_max_iterations() -> f64 {
     50.0
@@ -466,6 +473,7 @@ impl Default for GameMechanicsConstantsDef {
             heavy_stun_threshold_modifier: 500.0,
             heavy_stun_modifier_duration: 16.5,
             pin_damage_scale: default_pin_damage_scale(),
+            pin_base_duration: default_pin_base_duration(),
             neg_armour_dmg_bonus_cap: 100.0,
             //  EHP loop magic numbers + normal-monster DPS multiplier
             //  (Data.lua:228/235/237/239).

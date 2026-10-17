@@ -1989,15 +1989,15 @@ fn effect_view_lines_parse_to_their_modifiers() {
 }
 
 #[test]
-fn conditional_offence_limits_stay_visible_as_unmodelled() {
-    // Primed Pin thresholds (Constricting Command) are not modelled.
+fn primed_pin_is_an_application_rule_without_granting_buildup() {
     let text = "Pin Enemies which are Primed for Pinning";
     let parsed = parse_mod(text).unwrap();
     assert_eq!(parsed.status, ParseStatus::Parsed, "{text}: {parsed:?}");
-    assert!(parsed.mods.is_empty(), "{text}: {parsed:?}");
+    assert_eq!(parsed.mods.len(), 1, "{text}: {parsed:?}");
+    assert_eq!(parsed.mods[0].name.as_str(), "PinOnPrimed");
     let meta = parsed.special_meta.unwrap();
-    assert!(!meta.no_effect, "{text} must remain a model gap");
-    assert_eq!(meta.entry_id, "primed_pin_unmodelled");
+    assert!(!meta.no_effect);
+    assert_eq!(meta.entry_id, "pin_on_primed");
 }
 
 #[test]

@@ -1532,6 +1532,9 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             "HeavyStunBuildupAvg",
         ),
         computed("PinBuildupAvg", Cat::Ailment, Vt::Percent, "PinBuildupAvg"),
+        DisplayStatDefinition::computed("PinBuildupRequired", Cat::Ailment, Vt::Percent)
+            .with_higher_is_better(Some(false)),
+        DisplayStatDefinition::computed("PinDuration", Cat::Ailment, Vt::TimeSeconds),
         computed("DazeChance", Cat::Ailment, Vt::Percent, "DazeChance"),
         computed(
             "FullyBrokenArmourEffect",
@@ -2913,6 +2916,8 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "DazeChance" => output.daze_chance,
         "HeavyStunBuildupAvg" => output.heavy_stun_buildup_avg,
         "PinBuildupAvg" => output.pin_buildup_avg,
+        "PinBuildupRequired" => output.effect_terms.pin.required_buildup(),
+        "PinDuration" => output.effect_terms.pin.duration(),
         "FullyBrokenArmourEffect" => output.fully_broken_armour_effect,
         "ArmourBreakPerHit" => output.effect_terms.armour_break.per_hit(),
         "HitsToFullyBreakArmour" => output.effect_terms.armour_break.hits_to_fully_break(),
