@@ -268,6 +268,7 @@ pub(super) fn stage_build_cfg(
         // stage 6's buff_expander.
         .with_mode_combat(true);
     cfg.periodic_hits_assume_sustained = !options.periodic_uptime;
+    cfg.ancestral_boost_assume_supported = !options.ancestral_boost_snapshots;
     // DistanceRamp's skillDist (matching vendor CalcActiveSkill.lua:671+684, 0.22.0):
     // `effectiveRange = env.configInput.enemyDistance or env.configPlaceholder.enemyDistance`,
     // `skillDist = env.mode_effective and effectiveRange`. From 0.22.0 on, **a

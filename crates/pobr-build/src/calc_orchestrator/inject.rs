@@ -717,24 +717,23 @@ pub(super) fn inject_main_skill_mods(
     }
 }
 
-/// The game's Ancestral Boost rule for Strikes: "An Ancestrally Boosted Strike
-/// will target 2 additional Enemies" ([Keywords](https://poe2db.tw/us/Keywords);
-/// the Ancestral Cry stat `ancestral_cry_empowered_attacks_strike_X_additional_enemies`
-/// is the same 2). A skill that is Ancestrally Boosted (`Condition:AncestrallyBoosted`,
-/// set by the gem stats of Ancestral Call and Fist of War) has one boost effect,
-/// doubled by `double_ancestral_boost_effect`; each effect adds two targets to a
-/// Strike skill (`MeleeSingleTarget`). Slam attacks are not Strikes, so they get
-/// no targets. The targets are shown as `StrikeTargets` and multiply nothing.
-/// The boost-effect count is written by `CalculationSession::bridge_player_conditions`
-/// together with the condition.
+/// The game's Ancestral Boost keyword: two additional Strike targets, or
+/// 30% more Slam damage and 25% increased Slam area. Preparation resolves
+/// the source, timing and snapshot once; each bonus reads the same effect.
+/// Additional targets never multiply single-target damage.
 fn ancestral_boost_modifiers() -> Vec<Modifier> {
     let origin = ModifierSource::new(SourceId::new(
         SourceKind::CharacterBase,
         "base.AncestralBoost",
     ))
-    .with_raw_text("Ancestrally Boosted Strikes target 2 additional Enemies");
-    vec![
-        Modifier::number("AdditionalStrikeTarget", ModType::Base, 2.0)
+    .with_raw_text("Ancestral Boost: 2 additional Strike targets; 30% more Slam damage and 25% increased Slam area");
+    let mut mods = vec![
+        Modifier::number("AdditionalStrikeTarget", ModType::Base, 1.0)
+            .with_tag(pobr_core::ModTag::multiplier(
+                "AncestralBoostStrikeTargets",
+                1.0,
+                None,
+            ))
             .with_tag(pobr_core::ModTag::multiplier(
                 "AncestralBoostEffect",
                 1.0,
@@ -745,8 +744,31 @@ fn ancestral_boost_modifiers() -> Vec<Modifier> {
                     .expect("MeleeSingleTarget is a game skill type"),
             ))
             .with_tag(pobr_core::ModTag::condition("AncestrallyBoosted", false))
-            .with_origin(origin),
-    ]
+            .with_origin(origin.clone()),
+    ];
+    for (name, kind, value) in [
+        ("Damage", ModType::More, 30.0),
+        ("AreaOfEffect", ModType::Inc, 25.0),
+    ] {
+        mods.push(
+            Modifier::number(name, kind, value)
+                .with_tag(pobr_core::ModTag::multiplier(
+                    "AncestralBoostEffect",
+                    1.0,
+                    None,
+                ))
+                .with_tag(pobr_core::ModTag::SkillTypes(
+                    pobr_data::skill::SkillTypes::from_pob2_name("Slam")
+                        .expect("Slam is a game skill type"),
+                ))
+                .with_tag(pobr_core::ModTag::condition(
+                    "AncestralBoostSnapshot",
+                    false,
+                ))
+                .with_origin(origin.clone()),
+        );
+    }
+    mods
 }
 
 /// Stage 1: character base (level + class-derived attributes → BASE) + elemental resistance penalty (campaign progress tier).

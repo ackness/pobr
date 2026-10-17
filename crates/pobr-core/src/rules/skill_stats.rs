@@ -37,6 +37,10 @@ fn exporter_rule(stat: &str) -> Option<std::sync::Arc<pobr_data::source::Exporte
                 "pin_almost_pinned_enemies",
                 "pin_duration_+%",
                 "support_pin_pin_duration_+%_final",
+                "support_ancestral_call_damage_+%_final",
+                "ancestral_cry_empowered_attacks_strike_X_additional_enemies",
+                "ancestral_cry_non_skill_physical_to_fire_convert_%",
+                "gem_quality_ancestral_cry_global_fire_damage_granted_+%_final",
             ]
             .into_iter()
             .map(|stat| (stat, pobr_data::source::ExporterCoverage::Absent))
@@ -596,12 +600,37 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         "replace_off_hand_unarmed_attack_stats_with_shield_type" => Some(Vec::new()),
         // "Your Hits can't be Evaded" (including the implicit stat on palms).
         "global_always_hit" => Some(vec![Modifier::flag("CannotBeEvaded")]),
-        // Ancestral Call: the supported Strike is Ancestrally Boosted (every
-        // `ancestral_call_spirit_strike_interval_ms`). The boosted state is the
-        // one `StrikeTargets` shows; how often it applies is not modelled.
+        // These flags identify a boost source. Preparation resolves the
+        // selected attack's state separately from the support's availability.
         "support_ancestral_call_strike_is_ancestral_boosted" => {
             Some(vec![Modifier::flag("Condition:AncestrallyBoosted")])
         }
+        "ancestral_call_spirit_strike_interval_ms" | "ancestral_slam_interval_duration" => {
+            let name = if stat == "ancestral_call_spirit_strike_interval_ms" {
+                "AncestralCallCooldown"
+            } else {
+                "FistOfWarCooldown"
+            };
+            // Both native values are milliseconds, despite the Slam name.
+            Some(vec![
+                Modifier::number(name, ModType::Base, value / 1000.0),
+                Modifier::flag("Condition:AncestrallyBoosted"),
+            ])
+        }
+        "double_ancestral_boost_effect" => Some(vec![Modifier::number(
+            "Multiplier:AncestralBoostEffect",
+            ModType::Base,
+            1.0,
+        )]),
+        // Call III's damage penalty applies to every supported attack, not
+        // just the uses that receive its boost.
+        "support_ancestral_call_damage_+%_final" => {
+            Some(vec![Modifier::number("Damage", ModType::More, value)])
+        }
+        // The Cry grants these to the character through its buff, once.
+        "ancestral_cry_empowered_attacks_strike_X_additional_enemies"
+        | "ancestral_cry_non_skill_physical_to_fire_convert_%"
+        | "gem_quality_ancestral_cry_global_fire_damage_granted_+%_final" => Some(Vec::new()),
         // Mace Strike hits once with each weapon. Keep each hit's damage and
         // critical chance, but count both hits when dual wielding.
         "skill_double_hits_when_dual_wielding" => Some(vec![
@@ -943,6 +972,21 @@ pub fn player_buff_modifiers(stat: &str, value: f64, skill: BuffSkill) -> Option
 
 fn player_buff_modifiers_impl(stat: &str, value: f64, skill: BuffSkill) -> Option<Vec<Modifier>> {
     match stat {
+        // An enabled Cry is a source; only an explicitly active Cry grants
+        // its buff. The shared boost state handles Strike/Slam eligibility.
+        "ancestral_cry_empowered_attacks_strike_X_additional_enemies" => Some(vec![
+            Modifier::number("AncestralCryStrikeTargets", ModType::Base, value)
+                .with_tag(ModTag::condition("AncestralCryActive", false)),
+        ]),
+        "ancestral_cry_non_skill_physical_to_fire_convert_%" => Some(vec![
+            Modifier::number("PhysicalDamageConvertToFire", ModType::Base, value)
+                .with_tag(ModTag::condition("AncestralCryActive", false))
+                .with_tag(ModTag::condition("AncestralBoostSnapshot", false)),
+        ]),
+        "gem_quality_ancestral_cry_global_fire_damage_granted_+%_final" => Some(vec![
+            Modifier::number("FireDamage", ModType::More, value)
+                .with_tag(ModTag::condition("AncestralCryActive", false)),
+        ]),
         // Refraction III: the banner applies Elemental Exposure to the
         // enemies in its area, this much per 1000 of the character's Armour,
         // while it is planted. The exposure is reduced with the others once

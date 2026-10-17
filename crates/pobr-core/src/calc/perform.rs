@@ -76,6 +76,9 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     super::minion::bridge_count_multipliers(&env.player.mod_db, &mut env.cfg);
 
     super::env_finalize::env_finalize(env); // M3 env-finalize stage (T0 is entirely no-op; blueprint §1 D1)
+    // Cry's explicitly active buff is now available; select one boosted use
+    // before damage, area and Strike-target queries consume the shared state.
+    super::session::preparation::bridge_ancestral_boost(env);
 
     // Projectile speed → projectile damage conversion (vendor CalcOffence.lua:840-845: when the
     // `ProjectileSpeedAppliesToProjectileDamage` flag is active, each INC ProjectileSpeed mod is

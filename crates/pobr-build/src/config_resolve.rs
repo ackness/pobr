@@ -59,6 +59,8 @@ use crate::handlers::{build_registry, campaign_progress_from_config, enemy_tier_
 /// player-side snapshot is not wired up. Retire the three exposure mappings when
 /// that channel is activated, or exposure will be counted twice.
 const EXPLICIT_BOOLEAN_CONDITIONS: &[(&str, &str)] = &[
+    ("conditionAncestrallyBoosted", "AncestrallyBoosted"),
+    ("conditionAncestralCryActive", "AncestralCryActive"),
     ("usePowerCharges", "UsePowerCharges"),
     ("useFrenzyCharges", "UseFrenzyCharges"),
     ("useEnduranceCharges", "UseEnduranceCharges"),
@@ -161,6 +163,20 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
             "EnergyIncomingHitRate".into(),
             if *ms > 0.0 { 1000.0 / ms } else { 0.0 },
         );
+    }
+
+    // Explicit attack timing is also available to JSON `config_inputs`
+    // callers, which write raw inputs rather than the XML-derived fields.
+    // Retain invalid numbers so the readiness check rejects them instead of
+    // silently reusing a previously imported ready state.
+    if let Some(ConfigInputValue::Number(seconds)) = config
+        .raw_inputs
+        .values
+        .get("multiplierAncestralBoostElapsedSeconds")
+    {
+        config
+            .multipliers
+            .insert("AncestralBoostElapsedSeconds".into(), *seconds);
     }
 
     let Some(catalog) = catalog else {

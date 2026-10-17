@@ -178,23 +178,8 @@ impl CalculationSession {
                 self.set_condition(condition, true);
             }
         }
-        self.bridge_ancestral_boost();
         self.bridge_low_pool_conditions();
         self.bridge_surrounded();
-    }
-
-    /// Ancestrally Boosted: a skill whose gem stats set `Condition:AncestrallyBoosted`
-    /// (Ancestral Call, Fist of War) has one boost effect, and each
-    /// `double_ancestral_boost_effect` (`Multiplier:AncestralBoostEffect`) adds
-    /// another. The modifiers that wait for the boost scale by this count
-    /// (`AdditionalStrikeTarget`, +2 per effect). How often the boost is up
-    /// (the call or slam interval) is not modelled: the state is "boosted".
-    fn bridge_ancestral_boost(&mut self) {
-        if self.has_flag("Condition:AncestrallyBoosted") {
-            self.set_condition("AncestrallyBoosted", true);
-            let effects = 1.0 + self.base_sum("Multiplier:AncestralBoostEffect");
-            self.set_multiplier("AncestralBoostEffect", effects);
-        }
     }
 
     /// Surrounded: as many enemies near the character as the game requires,
@@ -234,4 +219,85 @@ impl CalculationSession {
     pub fn bridge_minion_presence(&mut self) {
         super::super::minion::bridge_count_multipliers(&self.env.player.mod_db, &mut self.env.cfg);
     }
+}
+
+/// Resolve one attack's Ancestral Boost after enabled buffs have been merged.
+/// A support is a source, not uptime. Explicit elapsed seconds describe the
+/// time since that support last boosted this skill; an explicit snapshot (or
+/// the existing Max Hit choice) can instead select an available boosted use.
+/// No attack rotation, Cry expiry, or repeat-use frequency is inferred.
+pub(in crate::calc) fn bridge_ancestral_boost(env: &mut Env) {
+    let db = &env.player.mod_db;
+    let cfg = &env.cfg;
+    let sum = |name| db.sum(ModType::Base, cfg, &[ModName::from(name)]);
+    let source = db.flag(cfg, "Condition:AncestrallyBoosted");
+    let effect = 1.0 + sum("Multiplier:AncestralBoostEffect").max(0.0);
+    let (active, targets) = if cfg.ancestral_boost_assume_supported {
+        // Preserve the previously exported support snapshot, including its
+        // Strike target count. New Slam/Cry effects are game-only below.
+        (source, 2.0)
+    } else {
+        let has_type =
+            |name| SkillTypes::from_pob2_name(name).is_some_and(|ty| cfg.skill_types.contains(ty));
+        let strike = has_type("MeleeSingleTarget");
+        let slam = has_type("Slam");
+        let special = has_type("SpecialAncestralBoost");
+        let eligible = has_type("Attack")
+            && (strike || slam || special)
+            && ![
+                "Triggered",
+                "UsedByProxy",
+                "OtherThingUsesSkill",
+                "UsedByTotem",
+                "SummonsTotem",
+                "Trapped",
+                "RemoteMined",
+            ]
+            .into_iter()
+            .any(has_type);
+        // Use the tracked accessor even when the input is absent: config
+        // discovery needs to know this condition can select the snapshot.
+        let requested_value = cfg.condition("AncestrallyBoosted");
+        let requested = cfg
+            .conditions
+            .contains_key("AncestrallyBoosted")
+            .then_some(requested_value);
+        let snapshot = requested.unwrap_or_else(|| db.flag(cfg, "Condition:WarcryMaxHit"));
+        let interval = if strike || special {
+            sum("AncestralCallCooldown")
+        } else if slam {
+            sum("FistOfWarCooldown")
+        } else {
+            0.0
+        };
+        // The optional input must stay optional: an absent timer does not
+        // mean that the support is ready, nor that an attack just consumed it.
+        let timed_ready = cfg
+            .multiplier_if_set("AncestralBoostElapsedSeconds")
+            .map(|seconds| {
+                seconds.is_finite() && seconds >= 0.0 && interval > 0.0 && seconds >= interval
+            });
+        let cry_targets = sum("AncestralCryStrikeTargets");
+        let cry_active = (strike || slam) && cry_targets > 0.0;
+        (
+            eligible
+                && requested != Some(false)
+                && (cry_active || (source && timed_ready.unwrap_or(snapshot))),
+            if cry_active { cry_targets } else { 2.0 },
+        )
+    };
+    env.cfg
+        .conditions
+        .insert("AncestrallyBoosted".into(), active);
+    env.cfg.conditions.insert(
+        "AncestralBoostSnapshot".into(),
+        active && !env.cfg.ancestral_boost_assume_supported,
+    );
+    env.cfg.multipliers.insert(
+        "AncestralBoostEffect".into(),
+        if active { effect } else { 0.0 },
+    );
+    env.cfg
+        .multipliers
+        .insert("AncestralBoostStrikeTargets".into(), targets);
 }

@@ -145,6 +145,9 @@ pub struct DataOrchestratorOptions {
     /// Limit maintained orb/storm uptime by its duration and the use rate.
     /// The reference exporter assumes continuous exposure.
     pub periodic_uptime: bool,
+    /// Resolve Ancestral Boost for an explicitly selected attack snapshot.
+    /// Reference mode retains the former always-boosted support state.
+    pub ancestral_boost_snapshots: bool,
     /// Evaluate all groups marked includeInFullDPS. Defaults to false.
     pub full_dps: bool,
     /// Include rules missing from the reference exporter (the game default).
@@ -167,6 +170,7 @@ impl Default for DataOrchestratorOptions {
             energy_triggers: true,
             rain_landings: true,
             periodic_uptime: true,
+            ancestral_boost_snapshots: true,
             full_dps: false,
             exporter_absent_rules: true,
             exporter_rule_overrides: Default::default(),
@@ -196,6 +200,7 @@ impl DataOrchestratorOptions {
     /// arrows land.
     ///
     /// Orb/storm uptime is also assumed continuous by the exporter.
+    /// Ancestral supports retain the earlier boosted snapshot in this basis.
     /// A model added here is verified by its own tests, not by the reference.
     pub fn on_reference_basis(self) -> Self {
         Self {
@@ -204,6 +209,7 @@ impl DataOrchestratorOptions {
             energy_triggers: false,
             rain_landings: false,
             periodic_uptime: false,
+            ancestral_boost_snapshots: false,
             ..self
         }
     }

@@ -200,6 +200,9 @@ pub struct CalcConfig {
     /// Reference comparison assumes an orb or storm is continuously maintained.
     /// Game calculations instead cap its uptime by duration and use rate.
     pub periodic_hits_assume_sustained: bool,
+    /// Reference compatibility: a support's presence selects its boosted state.
+    /// Otherwise Ancestral Boost requires an explicit snapshot or elapsed time.
+    pub ancestral_boost_assume_supported: bool,
     /// The conditions and multipliers asked for through [`Self::condition`]
     /// and [`Self::multiplier`], once [`Self::track_reads`] turns it on. The
     /// configs a stage narrows from this one are clones and share it.
