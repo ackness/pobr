@@ -742,3 +742,142 @@ fn flask_removal_is_a_share_of_the_flasks_own_recovery_per_use() {
     near(out["Flask1ManaRemovedOnUse"], 300.33);
     near(out["Flask2LifeRemovedOnUse"], 69.375);
 }
+
+#[test]
+fn olroth_guard_is_an_explicit_remaining_snapshot_independent_of_active_flask() {
+    use pobr_core::{CalcConfig, Modifier, display_value};
+    for (life, combat, active, present, input, expected) in [
+        (1000.0, true, false, true, None, 0.0),
+        (1000.0, true, false, true, Some(300.0), 300.0),
+        (1000.0, true, true, true, Some(300.0), 300.0),
+        (100.0, true, false, true, Some(300.0), 200.0),
+        (1000.0, true, false, true, Some(0.0), 0.0),
+        (1000.0, true, false, true, Some(-1.0), 0.0),
+        (1000.0, false, false, true, Some(300.0), 0.0),
+        (1000.0, true, false, false, Some(300.0), 0.0),
+    ] {
+        let mut cfg = CalcConfig::new().with_mode_combat(combat);
+        if let Some(amount) = input {
+            cfg = cfg.with_multiplier("OlrothGuard", amount);
+        }
+        let mut session = super::support::session(MinimalInput {
+            base_life: life,
+            ..Default::default()
+        })
+        .with_config(cfg);
+        // The captured Ward may exceed the character's current Ward after a
+        // buff ends. Neither current Ward nor maximum Ward is the Guard input.
+        session.add_modifiers([Modifier::number("Ward", ModType::Base, 50.0)]);
+        let item = Item {
+            base: "Ultimate Life Flask".into(),
+            implicit_texts: vec![],
+            quality: 20,
+            ..charm(if present {
+                &["Gain Guard equal to Current Runic Ward for 10 seconds when Effect ends"]
+            } else {
+                &[]
+            })
+        };
+        // Two copies describe a single strongest Guard buff, never a sum.
+        for slot in ["Flask 1", "Flask 2"] {
+            session.add_utility_base(
+                slot,
+                &item,
+                &UtilityBaseStats {
+                    life: 920.0,
+                    mana: 0.0,
+                    duration: 3.0,
+                    charges_max: 75.0,
+                    charges_used: 10.0,
+                },
+            );
+            if active {
+                session.add_flask_charm(slot, &item);
+            } else {
+                session.add_inactive_utility_properties(slot, &item);
+            }
+        }
+        session.add_modifiers([Modifier::number("FlaskEffect", ModType::Inc, 100.0)]);
+        session.perform_minimal().unwrap();
+        assert!(session.unsupported_modifier_texts().is_empty());
+        assert_eq!(
+            display_value(session.output(), "Flask1GuardAfterEffect"),
+            expected
+        );
+        assert_eq!(
+            display_value(session.output(), "Flask2GuardAfterEffect"),
+            expected
+        );
+        assert_eq!(
+            display_value(session.output(), "Flask1GuardDuration"),
+            if present { 10.0 } else { 0.0 }
+        );
+        assert_eq!(session.output().physical_max_hit, life + 50.0 + expected);
+        let detail = session.derived_detail("Flask1GuardAfterEffect").unwrap();
+        assert!(detail.formula.contains("GuardLifeCap"));
+    }
+}
+
+#[test]
+fn olroth_guard_competes_with_charm_guard_instead_of_stacking() {
+    use pobr_core::{CalcConfig, Modifier};
+    let mut session = super::support::session(MinimalInput {
+        base_life: 1000.0,
+        ..Default::default()
+    })
+    .with_config(
+        CalcConfig::new()
+            .with_mode_combat(true)
+            .with_multiplier("OlrothGuard", 300.0),
+    );
+    session.add_modifiers([Modifier::number("CharmGuard", ModType::Base, 500.0)]);
+    let item = charm(&["Gain Guard equal to Current Runic Ward for 10 seconds when Effect ends"]);
+    session.add_inactive_utility_properties("Flask 2", &item);
+    session.perform_minimal().unwrap();
+    assert_eq!(session.output().physical_max_hit, 1500.0);
+}
+
+#[test]
+fn dynamism_reports_generation_events_without_assigning_held_charge_counts() {
+    use pobr_core::{CalcConfig, Modifier, display_value};
+    for (sources, allies) in [(0, false), (1, false), (2, false), (1, true)] {
+        let mut session = super::support::session(MinimalInput::default())
+            .with_config(CalcConfig::new().with_mode_combat(true));
+        for _ in 0..sources {
+            session
+                .add_modifier_texts(&["Grants Thaumaturgical Dynamism"])
+                .unwrap();
+        }
+        if allies {
+            session.add_modifiers([Modifier::flag("ChargesGainedByAllies")]);
+        }
+        session.track_modifier_reads();
+        session.perform_minimal().unwrap();
+        let rate = if sources > 0 { 0.2 } else { 0.0 };
+        assert_eq!(
+            display_value(session.output(), "DynamismChargeInterval"),
+            if sources > 0 { 5.0 } else { 0.0 }
+        );
+        assert_eq!(
+            display_value(session.output(), "DynamismChargeEventRate"),
+            if allies { 0.0 } else { rate }
+        );
+        assert_eq!(
+            display_value(session.output(), "DynamismAllyChargeEventRate"),
+            if allies { rate } else { 0.0 }
+        );
+        for charge in ["PowerCharge", "FrenzyCharge", "EnduranceCharge"] {
+            assert_eq!(session.config().multiplier(charge), 0.0);
+        }
+        if sources > 0 {
+            assert!(
+                session
+                    .read_modifier_names()
+                    .iter()
+                    .any(|name| name.as_str() == "ThaumaturgicalDynamismChargeInterval")
+            );
+        }
+        let detail = session.derived_detail("DynamismChargeEventRate").unwrap();
+        assert!(!detail.formula.is_empty());
+    }
+}

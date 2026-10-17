@@ -5236,7 +5236,7 @@
       "batch": "S2",
       "exporter": "absent",
       "game_source": "ascendancy_gemling_charge_generator_buff_display; BuffTemplates.AscendancyGemlingChargeGenerator: gain_random_charge_every_X_ms_from_total_socketed_gem_attribute_requirements = 5000; https://poe2db.tw/us/Thaumaturgical_Dynamism",
-      "source_note": "Game text and stats; regression: engine::keystones. See maintainer guide for snapshot and event-model limits."
+      "source_note": "Game text and stats; calc::charge_generation reports the interval and total generation event rate, redirected to allies by Conduit. Does not infer held charges, per-type probability or on-gain chain effects. The keyword confirms the requirement bias but supplies no numeric probability formula. Regression: engine::utility::dynamism_reports_generation_events_without_assigning_held_charge_counts. See maintainer guide."
     },
     {
       "id": "focused_thrust_projectile_damage",
@@ -6549,6 +6549,25 @@
       "source_note": "Game stat melee_attack_number_of_spirit_strikes (Non-Vaal Strike Skills target {0} additional nearby Enemy[ies]); Strike skills are the MeleeSingleTarget skill type. The additional targets are shown as StrikeTargets (calc::limit_display) and multiply no damage. PoE2 has no Vaal skills, so the Non-Vaal qualifier excludes nothing. No current game mod, passive node or unique carries the stat.",
       "examples": [
         "Non-Vaal Strike Skills target 1 additional nearby Enemy"
+      ]
+    },
+    {
+      "id": "olroth_guard_after_effect",
+      "pattern": "^gain guard equal to current runic ward for (\\d+(?:\\.\\d+)?) seconds when effect ends$",
+      "mods": [
+        {
+          "name": "UtilityWardAsGuardDuration",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "local_unique_flask_gain_%_of_current_ward_as_guard_when_flask_effect_ends; Olroth's Resolve: https://poe2db.tw/us/Olroths_Resolve",
+      "source_note": "Local event metadata; does not become a during-effect buff. Explicit remaining Guard snapshot (OlrothGuard) feeds the strongest Guard layer, capped at 200% maximum Life. Ten seconds is the grant duration, not inferred uptime; neither maximum Ward nor automatic effect expiry is assumed. Regression: engine::utility::olroth_guard. No in-game test.",
+      "examples": [
+        "Gain Guard equal to Current Runic Ward for 10 seconds when Effect ends"
       ]
     }
   ]

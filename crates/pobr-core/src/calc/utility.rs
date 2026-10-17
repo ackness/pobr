@@ -49,6 +49,8 @@ pub const ITEM_STATS: &[&str] = &[
 ];
 
 pub const FLASK_STATS: &[&str] = &[
+    "GuardAfterEffect",
+    "GuardDuration",
     "EnergyShieldRecovery",
     "EnergyShieldInstantRecovery",
     "EnergyShieldRecoveryPerSecond",
@@ -87,6 +89,7 @@ pub fn is_local_property(name: &str, text: &str) -> bool {
         "UtilityLifeOnUse"
             | "UtilityManaOnUse"
             | "UtilityCannotBeUsed"
+            | "UtilityWardAsGuardDuration"
             | "UtilityLifeRecoveryRemovedFromMana"
             | "UtilityManaRecoveryRemovedFromLife"
     ) {
@@ -117,6 +120,79 @@ pub fn query_config(cfg: &CalcConfig) -> CalcConfig {
     cfg.skill_types = SkillTypes::NONE;
     cfg.skill_name = None;
     cfg
+}
+
+/// A snapshot of Guard still present from an earlier Olroth use. Reusing the
+/// flask does not remove that buff. The input is remaining Guard, not maximum
+/// Ward: neither elapsed time nor intervening damage can be inferred here.
+pub fn olroth_guard(db: &ModDb, cfg: &CalcConfig, slot: &str, max_life: f64) -> f64 {
+    let duration = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from(local_name(
+            slot,
+            "UtilityWardAsGuardDuration",
+        ))],
+    );
+    if !cfg.mode_combat || duration <= 0.0 {
+        return 0.0;
+    }
+    cfg.multiplier_if_set("OlrothGuard")
+        .unwrap_or(0.0)
+        .clamp(0.0, 2.0 * max_life.max(0.0))
+}
+
+/// Runs after Life is resolved; the same snapshot feeds the hit-pool setup.
+pub fn calculate_guard_views(env: &mut Env) {
+    let cfg = query_config(&env.cfg);
+    for item in env.utility_items.iter().filter(|item| !item.is_charm) {
+        let slot = item.slot.replace(' ', "");
+        let duration_name = local_name(&slot, "UtilityWardAsGuardDuration");
+        let duration = env.player.mod_db.sum(
+            ModType::Base,
+            &cfg,
+            &[ModName::from(duration_name.as_str())],
+        );
+        let amount = olroth_guard(&env.player.mod_db, &cfg, &slot, env.player.output.life);
+        for (field, value, formula, inputs) in [
+            (
+                "GuardDuration",
+                duration,
+                "UtilityGuardBaseDuration",
+                vec![("UtilityGuardBaseDuration".into(), duration)],
+            ),
+            (
+                "GuardAfterEffect",
+                amount,
+                "UtilityGuardEnabled * min(max(OlrothGuard, 0), GuardLifeCap)",
+                vec![
+                    (
+                        "UtilityGuardEnabled".into(),
+                        if cfg.mode_combat && duration > 0.0 {
+                            1.0
+                        } else {
+                            0.0
+                        },
+                    ),
+                    (
+                        "OlrothGuard".into(),
+                        cfg.multiplier_if_set("OlrothGuard").unwrap_or(0.0),
+                    ),
+                    ("GuardLifeCap".into(), 2.0 * env.player.output.life.max(0.0)),
+                ],
+            ),
+        ] {
+            let id = format!("{slot}{field}");
+            env.player.output.utility_stats.insert(id.clone(), value);
+            env.utility_details.insert(
+                id,
+                UtilityTerms {
+                    formula: formula.into(),
+                    inputs,
+                },
+            );
+        }
+    }
 }
 
 fn sum(db: &ModDb, cfg: &CalcConfig, kind: ModType, names: &[String]) -> f64 {

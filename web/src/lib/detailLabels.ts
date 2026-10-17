@@ -2,6 +2,13 @@ import type { Lang } from './i18n';
 
 /** Modifier input names for optional Calcs details; no calculation logic. */
 export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
+  DynamismBaseInterval: {"en-US": "Dynamism generation interval", "zh-TW": "奇術動力生成間隔", "zh-CN": "奇术动力生成间隔"},
+  DynamismRecipientEnabled: {"en-US": "Generation directed to this recipient", "zh-TW": "生成球歸此接收者", "zh-CN": "生成球归此接收者"},
+  UtilityGuardBaseDuration: {"en-US": "Guard grant duration", "zh-TW": "護衛授予持續時間", "zh-CN": "护卫授予持续时间"},
+  UtilityGuardEnabled: {"en-US": "Guard snapshot enabled", "zh-TW": "護衛快照啟用", "zh-CN": "护卫快照启用"},
+  OlrothGuard: {"en-US": "Remaining Guard from Olroth's Resolve", "zh-TW": "奧爾羅斯的決心尚存護衛", "zh-CN": "奥尔罗斯的决心尚存护卫"},
+  GuardLifeCap: {"en-US": "Guard cap from maximum Life", "zh-TW": "最大生命決定的護衛上限", "zh-CN": "最大生命决定的护卫上限"},
+
   CanInflictPin: { 'en-US': 'Can inflict Pin', 'zh-TW': '可造成定身', 'zh-CN': '可造成定身' },
   PinsPrimedEnemies: { 'en-US': 'Pins enemies primed for Pin', 'zh-TW': '使準備好定身的敵人定身', 'zh-CN': '使准备好定身的敌人定身' },
   PrimedPinThreshold: { 'en-US': 'Primed Pin buildup threshold', 'zh-TW': '準備好定身的累積門檻', 'zh-CN': '准备好定身的积累门槛' },

@@ -2581,6 +2581,17 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             "ProjectileSpeedMod",
         ),
     ];
+    for id in crate::calc::charge_generation::STATS {
+        catalog.push(DisplayStatDefinition::computed(
+            *id,
+            Cat::Recovery,
+            if *id == "DynamismChargeInterval" {
+                Vt::TimeSeconds
+            } else {
+                Vt::Number
+            },
+        ));
+    }
     for (id, _) in crate::calc::utility::GLOBAL_STATS {
         catalog.push(computed(
             id,
@@ -2610,25 +2621,27 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
                     continue;
                 }
                 let id = format!("{kind}{slot}{field}");
-                let vt = if *field == "Duration" {
+                let vt = if matches!(*field, "Duration" | "GuardDuration") {
                     Vt::TimeSeconds
                 } else {
                     Vt::Number
                 };
-                catalog.push(
-                    DisplayStatDefinition::computed(id.as_str(), Cat::Recovery, vt)
-                        .with_pob_key(id.as_str())
-                        .with_higher_is_better(
-                            if matches!(
-                                *field,
-                                "ChargesUsed" | "ManaRemovedOnUse" | "LifeRemovedOnUse"
-                            ) {
-                                Some(false)
-                            } else {
-                                None
-                            },
-                        ),
-                );
+                let definition = DisplayStatDefinition::computed(id.as_str(), Cat::Recovery, vt);
+                let definition = if matches!(*field, "GuardAfterEffect" | "GuardDuration") {
+                    definition
+                } else {
+                    definition.with_pob_key(id.as_str())
+                };
+                catalog.push(definition.with_higher_is_better(
+                    if matches!(
+                        *field,
+                        "ChargesUsed" | "ManaRemovedOnUse" | "LifeRemovedOnUse"
+                    ) {
+                        Some(false)
+                    } else {
+                        None
+                    },
+                ));
             }
         }
     }
@@ -2663,6 +2676,9 @@ pub fn extract_display_values(output: &OutputTable) -> Vec<DisplayStatValue> {
 /// [`extract_display_values`], including fractional chance to percent conversion.
 /// Unknown ids return 0.
 pub fn display_value(output: &OutputTable, id: &str) -> f64 {
+    if let Some(value) = output.charge_generation.value(id) {
+        return value;
+    }
     if let Some(value) = output.utility_stats.get(id) {
         return *value;
     }

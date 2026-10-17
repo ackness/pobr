@@ -189,7 +189,13 @@ mod tests {
         let mut entries = vec![entry("energyIncomingHitRate"), entry("other")];
         append_energy_options(&mut entries);
         append_energy_options(&mut entries);
-        assert_eq!(entries.len(), 7);
+        let unique: std::collections::BTreeSet<_> =
+            entries.iter().map(|entry| &entry.var).collect();
+        assert_eq!(
+            unique.len(),
+            entries.len(),
+            "refresh must retain unique keys"
+        );
         let incoming = entries
             .iter()
             .find(|entry| entry.var == "energyIncomingHitRate")
@@ -204,6 +210,15 @@ mod tests {
             .find(|entry| entry.var == "enemyKillsPerSecond")
             .unwrap();
         assert_eq!(kills.effects[0].name, "Multiplier:EnemyKillsPerSecond");
+        let guard = entries
+            .iter()
+            .find(|entry| entry.var == "olrothGuard")
+            .unwrap();
+        assert_eq!(guard.effects[0].name, "Multiplier:OlrothGuard");
+        assert!(
+            guard.default.is_none(),
+            "Guard requires an explicit snapshot"
+        );
         let curses = entries
             .iter()
             .find(|entry| entry.var == "multiplierCursesOnSelf")

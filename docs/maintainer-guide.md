@@ -661,13 +661,15 @@ modifiers. Other skills in a rotation and channel start/stop events are not
 simulated. These charge and loss rules, and the previously unrecognized Scarred Faith
 regeneration wording, declare `exporter: "absent"`.
 Thaumaturgical Dynamism (`ascendancy_gemling_charge_generator_buff_display`)
-is recognized as a five-second generator, from game
+reports a five-second generation interval and 0.2 generation events per second, from game
 `BuffTemplates.AscendancyGemlingChargeGenerator`'s
 `gain_random_charge_every_X_ms_from_total_socketed_gem_attribute_requirements = 5000`
 ([buff data](https://poe2db.tw/us/Thaumaturgical_Dynamism)). Random charge
-selection weighted by socketed gem attribute requirements needs a gain-event
-model; the interval modifier remains unread in diagnostics and never assumes
-full charges or grants an unconditional damage buff.
+selection is biased by socketed gem attribute requirements, but the [game keyword](https://poe2db.tw/us/Keywords) supplies no numeric probability formula.
+`calc::charge_generation` reports the total event rate, directed to allies by Conduit;
+multiple grants do not stack. It leaves configured charge counts unchanged and does
+not simulate consumption, per-type probabilities, extra on-gain chains or uptime.
+These event views have no invented PoB reference key.
 
 Full DPS（`calc_orchestrator::full_dps::calculate`，`DataOrchestratorOptions::full_dps`，默认关闭）是构筑码中勾选 `includeInFullDPS` 的组里每个启用效果的持续输出之和，不模拟技能轮转。数量取组的 `groupCount`，没有时取宝石的 `count`（可为小数，不是正的有限数时不计入）；每个效果按自己的武器组、天赋、辅助与触发环境计算，召唤物行用该召唤宝石创建的召唤物；物品内建触发技能的自动行在可编辑的组已纳入同一技能时跳过。命中 DPS 乘数量相加；流血、点燃、毒共用各自的层数上限，单层伤害高的先占层（`full_dps::allocate_stacks`）；同一技能不可叠加的持续伤害只取较强的一份，可叠加的（`DotCanStack`）乘数量，持续伤害总上限与最强的 Culling Strike 倍率各只计一次。逐技能的行（`FullDpsSkill`：数量、单实例命中 DPS、分到的持续伤害、最终贡献、未支持词条与错误）之和等于 `FullDPS`。`includeInFullDPS`、`groupCount`、宝石的 `count` 与 `enableGlobal1/2` 导入导出时保留，WASM 请求里是组的 `include_in_full_dps`、`group_count` 与宝石的 `count`；Web 的技能页编辑它们，只在有组纳入时请求 `full_dps: true`。
 
@@ -953,9 +955,23 @@ which still says 10% skill speed / 5% movement speed. All new rules declare
 maim/on-hit armour break remain outside reported calculations. Ox's slow
 potency is
 read when a slow applies, and its threshold bonus feeds `AilmentThreshold`. “Energy Shield Recharge starts on use”,
-“Creates Ignited Ground … when used”, “Creates Consecrated Ground on Use”,
-and “Gain Guard equal to Current Runic Ward … when Effect ends” remain
-unsupported pending an event model.
+“Creates Ignited Ground … when used” and “Creates Consecrated Ground on Use”
+remain unsupported pending an event model.
+
+Olroth's Resolve “Gain Guard equal to Current Runic Ward for 10 seconds when
+Effect ends” (`local_unique_flask_gain_%_of_current_ward_as_guard_when_flask_effect_ends`,
+[game text](https://poe2db.tw/us/Olroths_Resolve)) retains local event metadata
+for equipped flasks, including inactive slots. Config `olrothGuard` supplies
+Guard still present from an earlier use, after any intervening damage, within
+the ten-second lifetime; unset/zero grants none. This is an explicit snapshot,
+not an estimate from current/maximum Ward or flask uptime. Reusing the flask
+does not by itself remove existing Guard. The strongest Guard grant wins
+(including charm Guard), capped at 200% maximum Life, and feeds EHP/max-hit
+pools without changing Ward. Flask effect, quality and flask duration do not
+scale the end-event metadata. `Flask<N>GuardAfterEffect` / `GuardDuration` show
+the input capped for that slot and the nominal lifetime, with reconstructible
+details and no invented PoB reference keys. The rule is exporter-absent; there
+is no in-game timing test.
 
 Cat possession's game `critical_strike_chance_+% = 100` is an INC modifier to
 `CriticalStrikeChance` (5% base becomes 10%); all possession names have reader

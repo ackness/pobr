@@ -8,7 +8,7 @@
     "extracted_files": [
       "Modules/ConfigOptions.lua"
     ],
-    "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --vendor-root vendor/PathOfBuilding-PoE2/src --what config-options"
+    "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --vendor-root vendor/PathOfBuilding-PoE2/src --what config-options --out data/0.5.5.4.2/overlay/config_options.json"
   },
   "options": [
     {
@@ -13558,6 +13558,30 @@
         {
           "target": "player",
           "name": "Multiplier:NearbyBleedingEnemies",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "input"
+          }
+        }
+      ],
+      "verified": true
+    },
+    {
+      "var": "olrothGuard",
+      "input_type": "count_allow_zero",
+      "section": "When In Combat",
+      "label": "Remaining Guard from Olroth's Resolve:",
+      "tooltip": "Guard still present from a previous flask effect ending, within its 10 second duration. Starts equal to Runic Ward at that time and is reduced by damage taken; capped at 200% maximum Life. Leave blank or set 0 for no Guard. The flask may be active again while this Guard persists.",
+      "visibility": {
+        "if_mod": [
+          "LocalUtility:Flask1:UtilityWardAsGuardDuration",
+          "LocalUtility:Flask2:UtilityWardAsGuardDuration"
+        ]
+      },
+      "effects": [
+        {
+          "target": "player",
+          "name": "Multiplier:OlrothGuard",
           "mod_type": "BASE",
           "value": {
             "kind": "input"

@@ -221,6 +221,7 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     let ailment_fallback_ranges = output.stored_ranges.clone();
     env.player.output = OutputTable::from(&output);
     super::utility::calculate(env);
+    super::charge_generation::calculate(env);
     super::player_debuffs::calculate_views(env);
     super::totem::calculate(env);
     env.player.output.crit_hit_avg = output.stored_crit_avg.iter().map(|(_, avg)| avg).sum();
@@ -951,6 +952,7 @@ fn fill_mechanics(env: &mut Env) {
 
     // The Block/Spirit/Ward/Deflection panel family
     super::defence_panels::fill_defence_panels(env, &keystones);
+    super::utility::calculate_guard_views(env);
 
     // --- EHP PoB2-convention pipeline (must run after both the D/E fills — the not-hit/block/
     //     deflect layers read their OutputTable output, defaulting to 0 → neutral 1.0). Starting

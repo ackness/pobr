@@ -653,3 +653,66 @@ fn archon_timings_have_derived_json_details() {
         );
     }
 }
+
+#[test]
+fn flask_end_guard_and_dynamism_events_have_reconstructible_details_and_config() {
+    init();
+    let xml = pobr_build::decode_pob_code(&utility_fixture::code()).unwrap()
+        .replacen("40% increased Charges", "40% increased Charges\nGain Guard equal to Current Runic Ward for 10 seconds when Effect ends", 1)
+        .replacen("active=\"true\"", "active=\"false\"", 1);
+    let ids = [
+        "Flask1GuardAfterEffect",
+        "Flask1GuardDuration",
+        "DynamismChargeInterval",
+        "DynamismChargeEventRate",
+        "DynamismAllyChargeEventRate",
+    ];
+    let request = json!({
+        "pob_code":pobr_build::encode_pob_code(&xml).unwrap(),
+        "config_inputs":{"olrothGuard":300}, "config_context":true,
+        "extra_modifiers":["Grants Thaumaturgical Dynamism"], "breakdowns":ids,
+    });
+    let result = calculate(request.clone());
+    let stats: std::collections::BTreeMap<_, _> = result["stats"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|row| (row["id"].as_str().unwrap(), row["value"].as_f64().unwrap()))
+        .collect();
+    close(stats["Flask1GuardAfterEffect"], 300.0, "Guard snapshot");
+    close(stats["Flask1GuardDuration"], 10.0, "Guard duration");
+    close(stats["DynamismChargeEventRate"], 0.2, "Dynamism rate");
+    for id in ids {
+        assert_eq!(detail_descriptors()[id], DetailKind::Derived);
+        let derived = &result["breakdowns"][id]["derived"];
+        let inputs = derived["inputs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|row| (row["id"].as_str().unwrap(), &row["value"]))
+            .collect();
+        close(
+            evaluate(derived["formula"].as_str().unwrap(), &inputs),
+            stats[id],
+            id,
+        );
+    }
+    assert_eq!(
+        result["config_context"]["predicates"]["if_mod"]["LocalUtility:Flask1:UtilityWardAsGuardDuration"],
+        true
+    );
+    let mut without = request;
+    without["config_inputs"] = json!({});
+    let without = calculate(without);
+    let max_hit = |result: &Value| {
+        result["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["id"] == "PhysicalMaxHit")
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+    assert!(max_hit(&result) > max_hit(&without));
+}

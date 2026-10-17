@@ -157,8 +157,13 @@ pub fn build_pool_state(
     let charm_guard = db
         .max_of(ModType::Base, cfg, &[ModName::from("CharmGuard")])
         .clamp(0.0, 2.0 * base.max_life.max(0.0));
-    if charm_guard > 0.0 && charm_guard >= guard_shared {
-        guard_shared = charm_guard;
+    let olroth_guard = ["Flask1", "Flask2"]
+        .map(|slot| super::utility::olroth_guard(db, cfg, slot, base.max_life))
+        .into_iter()
+        .fold(0.0, f64::max);
+    let granted_guard = charm_guard.max(olroth_guard);
+    if granted_guard > 0.0 && granted_guard >= guard_shared {
+        guard_shared = granted_guard;
         guard_shared_rate = 100.0;
     }
     let mut guard_rate_by_type = [0.0_f64; 5];
