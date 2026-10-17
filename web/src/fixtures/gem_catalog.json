@@ -16365,6 +16365,40 @@
   },
   {
     "active_effect_ids": [
+      "UnleashPlayer"
+    ],
+    "colour": null,
+    "effect_forms": [
+      {
+        "skill_id": "UnleashPlayer",
+        "stat_sets": [
+          {
+            "id": "UnleashPlayer",
+            "index": 1,
+            "label": "Unleash",
+            "stage": null
+          }
+        ]
+      }
+    ],
+    "is_lineage": false,
+    "is_support": false,
+    "name": "Metadata/Items/Gem/SkillGemAscendancyUnleash",
+    "name_zh_cn": "释出",
+    "name_zh_tw": "釋放",
+    "skill_id": "UnleashPlayer",
+    "tags": [
+      "Buff",
+      "Cooldown",
+      "Duration",
+      "EmpowersOtherSkill",
+      "ModifiesNextSkill",
+      "Spell",
+      "UsableWhileMoving"
+    ]
+  },
+  {
+    "active_effect_ids": [
       "BlinkReservationPlayer",
       "BlinkPlayer"
     ],
@@ -16810,6 +16844,25 @@
   },
   {
     "active_effect_ids": [
+      "DoLiterallyNothingPlayer"
+    ],
+    "colour": null,
+    "effect_forms": [
+      {
+        "skill_id": "DoLiterallyNothingPlayer",
+        "stat_sets": []
+      }
+    ],
+    "is_lineage": false,
+    "is_support": false,
+    "name": "Metadata/Items/Gems/ReservationSkillGemUnknown1",
+    "name_zh_cn": "敬请期待",
+    "name_zh_tw": "敬請期待",
+    "skill_id": "DoLiterallyNothingPlayer",
+    "tags": []
+  },
+  {
+    "active_effect_ids": [
       "CorpseCloudPlayer"
     ],
     "additional_skill_ids": [
@@ -17000,22 +17053,50 @@
   },
   {
     "active_effect_ids": [
-      "DoLiterallyNothingPlayer"
+      "SummonSkeletalSnipersPlayer",
+      "CommandSkeletalSniperPlayer"
+    ],
+    "additional_skill_ids": [
+      "CommandSkeletalSniperPlayer"
     ],
     "colour": "int",
     "effect_forms": [
       {
-        "skill_id": "DoLiterallyNothingPlayer",
+        "skill_id": "SummonSkeletalSnipersPlayer",
+        "stat_sets": [
+          {
+            "id": "SummonSkeletalSnipersPlayer",
+            "index": 1,
+            "label": "Minion Info",
+            "stage": null
+          }
+        ]
+      },
+      {
+        "skill_id": "CommandSkeletalSniperPlayer",
         "stat_sets": []
       }
     ],
     "is_lineage": false,
     "is_support": false,
-    "name": "Metadata/Items/Gems/SkillGemUnknown11",
-    "name_zh_cn": "敬请期待",
-    "name_zh_tw": "敬請期待",
-    "skill_id": "DoLiterallyNothingPlayer",
-    "tags": []
+    "name": "Metadata/Items/Gems/SkillGemSkeletalSniper",
+    "name_zh_cn": "魔侍神射手",
+    "name_zh_tw": "骷髏狙擊手",
+    "skill_id": "SummonSkeletalSnipersPlayer",
+    "tags": [
+      "Chaos",
+      "CommandableMinion",
+      "CreatesMinion",
+      "CreatesSkeletonMinion",
+      "CreatesUndeadMinion",
+      "Fire",
+      "HasReservation",
+      "Minion",
+      "MinionsCanExplode",
+      "MultipleReservation",
+      "Persistent",
+      "Physical"
+    ]
   },
   {
     "active_effect_ids": [],
@@ -23268,53 +23349,6 @@
   },
   {
     "active_effect_ids": [
-      "SummonSkeletalSnipersPlayer",
-      "CommandSkeletalSniperPlayer"
-    ],
-    "additional_skill_ids": [
-      "CommandSkeletalSniperPlayer"
-    ],
-    "colour": "int",
-    "effect_forms": [
-      {
-        "skill_id": "SummonSkeletalSnipersPlayer",
-        "stat_sets": [
-          {
-            "id": "SummonSkeletalSnipersPlayer",
-            "index": 1,
-            "label": "Minion Info",
-            "stage": null
-          }
-        ]
-      },
-      {
-        "skill_id": "CommandSkeletalSniperPlayer",
-        "stat_sets": []
-      }
-    ],
-    "is_lineage": false,
-    "is_support": false,
-    "name": "Skeletal Sniper",
-    "name_zh_cn": "魔侍神射手",
-    "name_zh_tw": "骷髏狙擊手",
-    "skill_id": "SummonSkeletalSnipersPlayer",
-    "tags": [
-      "Chaos",
-      "CommandableMinion",
-      "CreatesMinion",
-      "CreatesSkeletonMinion",
-      "CreatesUndeadMinion",
-      "Fire",
-      "HasReservation",
-      "Minion",
-      "MinionsCanExplode",
-      "MultipleReservation",
-      "Persistent",
-      "Physical"
-    ]
-  },
-  {
-    "active_effect_ids": [
       "SummonSkeletalStormMagesPlayer",
       "CommandSkeletalStormMagePlayer"
     ],
@@ -26995,40 +27029,6 @@
       "Attack",
       "CrossbowAmmoSkill",
       "CrossbowSkill"
-    ]
-  },
-  {
-    "active_effect_ids": [
-      "UnleashPlayer"
-    ],
-    "colour": "int",
-    "effect_forms": [
-      {
-        "skill_id": "UnleashPlayer",
-        "stat_sets": [
-          {
-            "id": "UnleashPlayer",
-            "index": 1,
-            "label": "Unleash",
-            "stage": null
-          }
-        ]
-      }
-    ],
-    "is_lineage": false,
-    "is_support": false,
-    "name": "Unleash",
-    "name_zh_cn": "释出",
-    "name_zh_tw": "釋放",
-    "skill_id": "UnleashPlayer",
-    "tags": [
-      "Buff",
-      "Cooldown",
-      "Duration",
-      "EmpowersOtherSkill",
-      "ModifiesNextSkill",
-      "Spell",
-      "UsableWhileMoving"
     ]
   },
   {

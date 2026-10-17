@@ -20,6 +20,20 @@ fn fixtures_dir() -> std::path::PathBuf {
     repo_data_root().join("../web/src/fixtures")
 }
 
+fn write_gem_catalog_fixture(out: &std::path::Path) {
+    let catalog = pobr_wasm::gem_catalog_json().expect("gem catalog");
+    std::fs::write(out.join("gem_catalog.json"), pretty(&catalog)).unwrap();
+}
+
+#[test]
+#[ignore = "manual gem catalog fixture regeneration"]
+fn generate_gem_catalog_fixture() {
+    pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
+    let out = fixtures_dir();
+    std::fs::create_dir_all(&out).expect("mkdir fixtures");
+    write_gem_catalog_fixture(&out);
+}
+
 #[test]
 #[ignore = "manual Calcs fixture regeneration"]
 fn generate_stat_detail_fixtures() {
@@ -138,8 +152,7 @@ fn generate_web_fixtures() {
     .unwrap();
 
     // The gem catalog (used by the manual skill-editing picker).
-    let catalog = pobr_wasm::gem_catalog_json().expect("gem catalog");
-    std::fs::write(out.join("gem_catalog.json"), pretty(&catalog)).unwrap();
+    write_gem_catalog_fixture(&out);
     let minions = pobr_wasm::minion_catalog_json().expect("minion catalog");
     std::fs::write(out.join("minion_catalog.json"), pretty(&minions)).unwrap();
 

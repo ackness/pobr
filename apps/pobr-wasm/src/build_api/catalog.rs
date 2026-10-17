@@ -223,24 +223,46 @@ pub fn gem_catalog_json() -> Result<String, String> {
 
 fn gem_catalog_impl() -> Result<String, super::ApiError> {
     let data = state::build_data().map_err(super::ApiError::not_initialized)?;
-    let name_by_gem_id: std::collections::HashMap<&str, &str> = data
-        .base_items
-        .iter()
-        .map(|(name, def)| (def.id.as_str(), name.as_str()))
-        .collect();
     // The Chinese name sidecar (gem base id -> localized name); degrades to
     // an empty table when the file is missing (the data pack lacks that language).
     let game = state::game_data()?;
     let zh_names = game.base_item_names("zh-TW").unwrap_or_default();
     let cn_names = game.base_item_names("zh-CN").unwrap_or_default();
-    let mut by_skill: BTreeMap<String, GemCatalogEntry> = BTreeMap::new();
+    let entries = gem_catalog_entries(&data, &zh_names, &cn_names);
+    Ok(serde_json::to_string(&entries).map_err(|e| format!("serialize: {e}"))?)
+}
+
+fn gem_catalog_entries(
+    data: &pobr_build::BuildData,
+    zh_names: &BTreeMap<String, String>,
+    cn_names: &BTreeMap<String, String>,
+) -> Vec<GemCatalogEntry> {
+    let name_by_gem_id: std::collections::HashMap<&str, &str> = data
+        .base_items
+        .iter()
+        .map(|(name, def)| (def.id.as_str(), name.as_str()))
+        .collect();
+    // Several gem bases can grant the same effect. Choose one whole gem by
+    // native minimum level, then stable id, before deriving any row metadata.
+    let mut by_skill: BTreeMap<&str, &pobr_data::catalog::SkillGemDef> = BTreeMap::new();
     for gem in data.skill_gems.values() {
-        let Some(skill_id) = gem.granted_effect_id.clone() else {
+        let Some(skill_id) = gem.granted_effect_id.as_deref() else {
             continue;
         };
+        by_skill
+            .entry(skill_id)
+            .and_modify(|current| {
+                if (gem.min_level_req, &gem.id) < (current.min_level_req, &current.id) {
+                    *current = gem;
+                }
+            })
+            .or_insert(gem);
+    }
+    let mut entries = Vec::with_capacity(by_skill.len());
+    for (skill_id, gem) in by_skill {
         let mut tags = data
             .granted_effects
-            .get(&skill_id)
+            .get(skill_id)
             .map(|effect| {
                 if gem.is_support {
                     effect
@@ -258,12 +280,12 @@ fn gem_catalog_impl() -> Result<String, super::ApiError> {
         tags.dedup();
         let mut additional_skill_ids = data
             .gem_effects
-            .get(&skill_id)
+            .get(skill_id)
             .map(|link| {
                 link.additional_granted_effect_ids
                     .iter()
                     .chain(&link.additional_stat_set_ids)
-                    .filter(|id| *id != &skill_id)
+                    .filter(|id| id.as_str() != skill_id)
                     .cloned()
                     .collect::<Vec<_>>()
             })
@@ -271,16 +293,16 @@ fn gem_catalog_impl() -> Result<String, super::ApiError> {
         additional_skill_ids.sort();
         additional_skill_ids.dedup();
         let active_effect_ids: Vec<String> = pobr_core::skill_env::group_active_effects(
-            std::iter::once((skill_id.as_str(), 1, 0, None)),
-            data.as_ref(),
+            std::iter::once((skill_id, 1, 0, None)),
+            data,
         )
         .map(|effect| effect.skill_id.to_owned())
         .collect();
-        by_skill.entry(skill_id.clone()).or_insert(GemCatalogEntry {
-            skill_id,
+        entries.push(GemCatalogEntry {
+            skill_id: skill_id.to_owned(),
             effect_forms: active_effect_ids
                 .iter()
-                .map(|id| effect_forms(&data, id))
+                .map(|id| effect_forms(data, id))
                 .collect(),
             active_effect_ids,
             additional_skill_ids,
@@ -301,9 +323,8 @@ fn gem_catalog_impl() -> Result<String, super::ApiError> {
             tags,
         });
     }
-    let mut entries: Vec<GemCatalogEntry> = by_skill.into_values().collect();
     entries.sort_by(|a, b| a.name.cmp(&b.name).then(a.skill_id.cmp(&b.skill_id)));
-    Ok(serde_json::to_string(&entries).map_err(|e| format!("serialize: {e}"))?)
+    entries
 }
 
 // translate_lines_json (English -> Simplified Chinese display translation: tree mod tooltips / config options, etc)
@@ -400,6 +421,94 @@ pub fn minion_catalog_json() -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn gem_catalog_canonical_rows_ignore_insertion_order() {
+        let game = pobr_gamedata::GameData::new(pobr_gamedata::current_data_dir());
+        let mut data = pobr_build::BuildData::load(&game).unwrap();
+        let zh_names = game.base_item_names("zh-TW").unwrap();
+        let cn_names = game.base_item_names("zh-CN").unwrap();
+        let all_gems = std::mem::take(&mut data.skill_gems);
+        let duplicate_families = all_gems
+            .values()
+            .filter(|gem| {
+                matches!(
+                    gem.granted_effect_id.as_deref(),
+                    Some(
+                        "SupportEmpoweredSparksPlayer"
+                            | "DoLiterallyNothingPlayer"
+                            | "SummonSkeletalSnipersPlayer"
+                            | "UnleashPlayer"
+                    )
+                )
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        // Unknown11 sorts before Unknown4 but requires level 32 instead of 7.
+        // Unknown5 ties Unknown4's level, but has a later id and another colour.
+        let level_candidates = [
+            "Metadata/Items/Gems/SkillGemUnknown11",
+            "Metadata/Items/Gems/SkillGemUnknown4",
+            "Metadata/Items/Gems/SkillGemUnknown5",
+        ]
+        .map(|id| all_gems[id].clone())
+        .to_vec();
+        for (mut candidates, canonical_ids) in [
+            (
+                duplicate_families,
+                vec![
+                    "Metadata/Items/Gems/SupportGemEmpoweredSparks",
+                    "Metadata/Items/Gems/ReservationSkillGemUnknown1",
+                    "Metadata/Items/Gems/SkillGemSkeletalSniper",
+                    "Metadata/Items/Gem/SkillGemAscendancyUnleash",
+                ],
+            ),
+            (
+                level_candidates,
+                vec!["Metadata/Items/Gems/SkillGemUnknown4"],
+            ),
+        ] {
+            // The expected full rows come from only the known canonical bases,
+            // preserving real effect forms, aliases and localization sidecars.
+            data.skill_gems = canonical_ids
+                .iter()
+                .map(|id| ((*id).to_owned(), all_gems[*id].clone()))
+                .collect();
+            let expected = gem_catalog_entries(&data, &zh_names, &cn_names);
+            assert_eq!(expected.len(), canonical_ids.len());
+            for id in &canonical_ids {
+                let gem = &all_gems[*id];
+                let row = expected
+                    .iter()
+                    .find(|row| Some(&row.skill_id) == gem.granted_effect_id.as_ref())
+                    .unwrap();
+                assert_eq!(row.name_zh_tw.as_ref(), zh_names.get(*id));
+                assert_eq!(row.name_zh_cn.as_ref(), cn_names.get(*id));
+            }
+            let expected = serde_json::to_value(expected).unwrap();
+            candidates.sort_by(|a, b| a.id.cmp(&b.id));
+            // Rebuild the HashMap in every rotation of both insertion orders;
+            // repeated reads of one map would not expose first-entry selection.
+            for reverse in [false, true] {
+                if reverse {
+                    candidates.reverse();
+                }
+                for offset in 0..candidates.len() {
+                    data.skill_gems = candidates[offset..]
+                        .iter()
+                        .chain(&candidates[..offset])
+                        .map(|gem| (gem.id.clone(), gem.clone()))
+                        .collect();
+                    let actual = gem_catalog_entries(&data, &zh_names, &cn_names);
+                    assert_eq!(
+                        serde_json::to_value(actual).unwrap(),
+                        expected,
+                        "reverse={reverse}, offset={offset}"
+                    );
+                }
+            }
+        }
+    }
 
     #[test]
     fn classify_item_lines_json_kind_sequence() {
