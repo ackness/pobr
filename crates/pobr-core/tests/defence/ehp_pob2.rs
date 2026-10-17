@@ -34,6 +34,359 @@ fn default_params() -> EhpLoopParams {
     EhpLoopParams::from_constants(&RuntimeConstants::default(), false)
 }
 
+// Game stat reserve_life_instead_of_loss_from_damage_for_x_ms, current
+// Widow's Reign: damage reserves Life until 3 seconds without damage to Life.
+// No test below advances that timer or automatically disables a skill.
+fn widow_mods() -> Vec<Modifier> {
+    let mods =
+        crate::support::parse_mod("Life that would be lost by taking Damage is instead Reserved")
+            .unwrap()
+            .mods;
+    assert!(
+        mods.iter()
+            .any(|m| m.name.as_str() == "DamageInsteadReservesLife")
+    );
+    mods
+}
+
+fn widow_pools(life: f64) -> (PoolState, PoolCtx) {
+    let db = {
+        let mut db = pobr_core::ModDb::new();
+        db.add_list(widow_mods());
+        db
+    };
+    let cfg = CalcConfig::default();
+    let base = pobr_core::calc::PoolBaseStats {
+        max_life: life,
+        life_recoverable: life,
+        ..Default::default()
+    };
+    let ctx = pobr_core::calc::build_pool_ctx(
+        &db,
+        &cfg,
+        &pobr_core::rules::DefenceKeystones::default(),
+        &base,
+    );
+    assert!(ctx.damage_instead_reserves_life);
+    (
+        pobr_core::calc::build_pool_state(&db, &cfg, &base, 0.0),
+        ctx,
+    )
+}
+
+#[test]
+fn widow_damage_reservation_blocks_recovery_across_serial_hits() {
+    let (pools, ctx) = widow_pools(1000.0);
+    let hit = TypedDamage {
+        physical: 250.0,
+        ..Default::default()
+    };
+    let mut after = reduce_pools(&pools, &hit, &ctx);
+    assert_eq!(after.pools.life, 750.0);
+    assert_eq!(after.pools.life_reserved_by_damage, 250.0);
+    assert_eq!(after.pools.life_recovery_cap(1000.0), 750.0);
+    assert!(
+        after
+            .resources_lost
+            .contains(&(DamageType::Physical, "life_reserved", 250.0))
+    );
+    assert!(
+        !after
+            .resources_lost
+            .iter()
+            .any(|(_, layer, _)| *layer == "life")
+    );
+    after.pools.recover_life(1000.0, 1000.0);
+    assert_eq!(after.pools.life, 750.0);
+    let next = reduce_pools(&after.pools, &hit, &ctx);
+    assert_eq!(next.pools.life, 500.0);
+    assert_eq!(next.pools.life_reserved_by_damage, 500.0);
+    let quiet_snapshot = reduce_pools(&next.pools, &TypedDamage::default(), &ctx);
+    assert_eq!(
+        quiet_snapshot.pools, next.pools,
+        "no hit does not imply elapsed expiry"
+    );
+
+    let params = EhpLoopParams {
+        gain: GainWhenHit {
+            life: 100.0,
+            ..Default::default()
+        },
+        ..default_params()
+    };
+    assert_eq!(number_of_hits_to_die(&hit, &pools, &ctx, &params), 4.0);
+    assert_eq!(
+        number_of_hits_to_die(
+            &TypedDamage {
+                physical: 1.0,
+                ..Default::default()
+            },
+            &pools,
+            &ctx,
+            &params,
+        ),
+        1000.0,
+        "accelerated recovery must not expand reservation capacity"
+    );
+    let normal = PoolCtx {
+        damage_instead_reserves_life: false,
+        ..ctx
+    };
+    assert_eq!(number_of_hits_to_die(&hit, &pools, &normal, &params), 6.0);
+    let normal_hit = reduce_pools(&pools, &hit, &normal);
+    assert_eq!(normal_hit.pools.life_reserved_by_damage, 0.0);
+    assert!(
+        normal_hit
+            .resources_lost
+            .contains(&(DamageType::Physical, "life", 250.0))
+    );
+    assert_eq!(
+        number_of_hits_to_die(&hit, &pools, &normal, &default_params()),
+        4.0
+    );
+}
+
+#[test]
+fn widow_perform_ehp_does_not_count_block_recovery_as_released_reservation() {
+    let run = |equipped: bool, recovery: f64| {
+        let mut mods = if equipped { widow_mods() } else { vec![] };
+        mods.extend([
+            Modifier::number("ShieldBlockChance", ModType::Base, 50.0),
+            Modifier::number("LifeOnBlock", ModType::Base, recovery),
+        ]);
+        let mut env = player_with(
+            ActorBaseStats {
+                life: 1000.0,
+                ..Default::default()
+            },
+            mods,
+        );
+        env.enemy.mod_db.add_list([
+            Modifier::number("EnemyPhysicalDamage", ModType::Base, 250.0),
+            Modifier::flag("NeverCrit"),
+        ]);
+        perform(&mut env).unwrap();
+        env.player.output
+    };
+    let ordinary = run(false, 100.0);
+    let widow = run(true, 100.0);
+    let no_recovery = run(true, 0.0);
+    assert_eq!(widow.life_recoverable, ordinary.life_recoverable);
+    assert_eq!(widow.physical_max_hit, ordinary.physical_max_hit);
+    assert!(widow.total_ehp > 0.0);
+    assert!(ordinary.total_ehp > widow.total_ehp);
+    assert_eq!(widow.total_ehp, no_recovery.total_ehp);
+    assert_eq!(
+        widow.number_of_mitigated_hits,
+        no_recovery.number_of_mitigated_hits
+    );
+}
+
+#[test]
+fn widow_reservation_is_distinct_from_ordinary_missing_life_and_death() {
+    let (mut pools, ctx) = widow_pools(1000.0);
+    pools.life = 400.0; // Life previously spent on costs, not damage reservation.
+    pools.life_reserved_by_damage = 200.0;
+    let hit = TypedDamage {
+        physical: 300.0,
+        ..Default::default()
+    };
+    let mut after = reduce_pools(&pools, &hit, &ctx);
+    assert_eq!(after.pools.life_reserved_by_damage, 500.0);
+    assert_eq!(
+        after.pools.life, 400.0,
+        "reservation only clamps current Life"
+    );
+    after.pools.recover_life(200.0, 1000.0);
+    assert_eq!(
+        after.pools.life, 500.0,
+        "ordinary missing Life remains recoverable"
+    );
+    let mut lethal = reduce_pools(
+        &after.pools,
+        &TypedDamage {
+            physical: 600.0,
+            ..Default::default()
+        },
+        &ctx,
+    );
+    assert_eq!(lethal.pools.life, 0.0);
+    assert_eq!(lethal.pools.life_reserved_by_damage, 1000.0);
+    assert_eq!(lethal.overkill, 100.0);
+    lethal.pools.recover_life(1000.0, 1000.0);
+    assert_eq!(
+        lethal.pools.life, 0.0,
+        "recovery cannot revive a fully reserved pool"
+    );
+}
+
+#[test]
+fn widow_keeps_skill_and_permanent_reservations_and_maximum_life_distinct() {
+    for equipped in [false, true] {
+        let mut mods = if equipped { widow_mods() } else { vec![] };
+        mods.extend([
+            Modifier::number("LifeReservedPercent", ModType::Inc, 20.0),
+            Modifier::number("LifeReservationEfficiency", ModType::Inc, 100.0),
+            Modifier::number("ExtraLifeReserved", ModType::Base, 25.0),
+        ]);
+        let mut env = player_with(
+            ActorBaseStats {
+                life: 1000.0,
+                ..Default::default()
+            },
+            mods,
+        );
+        perform(&mut env).unwrap();
+        let out = &env.player.output;
+        assert_eq!(out.life, 1000.0);
+        // Skill reservation = 200/2; permanent reservation = 250, unscaled.
+        assert_eq!(out.life_reserved, 350.0);
+        assert_eq!(out.life_unreserved, 650.0);
+        assert_eq!(out.life_recoverable, 650.0);
+        assert_eq!(out.physical_max_hit, 650.0);
+        assert_eq!(out.ehp_terms.as_ref().unwrap().total_pool[0], 650.0);
+        assert_eq!(out.limit_views.life_permanent_reserved, 25.0);
+        assert_eq!(out.limit_views.life_cancellable_reservation, 75.0);
+
+        if equipped {
+            let (mut pools, mut ctx) = widow_pools(out.life);
+            ctx.life_unreserved = out.life_unreserved;
+            pools.life = out.life_recoverable;
+            let after = reduce_pools(
+                &pools,
+                &TypedDamage {
+                    physical: 200.0,
+                    ..Default::default()
+                },
+                &ctx,
+            );
+            assert_eq!(
+                after.pools.life_reserved_by_damage, 200.0,
+                "efficiency is skill-only"
+            );
+            assert_eq!(after.pools.life_recovery_cap(out.life_unreserved), 450.0);
+        }
+    }
+}
+
+#[test]
+fn widow_reserves_only_damage_after_energy_shield_and_mind_over_matter() {
+    let (mut pools, mut ctx) = widow_pools(1000.0);
+    pools.energy_shield = 300.0;
+    pools.mana = 200.0;
+    ctx.mom_shared = 50.0;
+    let after = reduce_pools(
+        &pools,
+        &TypedDamage {
+            physical: 500.0,
+            ..Default::default()
+        },
+        &ctx,
+    );
+    assert_eq!(after.pools.energy_shield, 0.0);
+    assert_eq!(after.pools.mana, 100.0);
+    assert_eq!(after.pools.life, 900.0);
+    assert_eq!(after.pools.life_reserved_by_damage, 100.0);
+    let next = reduce_pools(
+        &after.pools,
+        &TypedDamage {
+            physical: 500.0,
+            ..Default::default()
+        },
+        &ctx,
+    );
+    assert_eq!(next.pools.mana, 0.0);
+    assert_eq!(next.pools.life, 500.0);
+    assert_eq!(next.pools.life_reserved_by_damage, 500.0);
+
+    // PoE2 chaos consumes twice as much ES, rather than bypassing it.
+    let chaos = reduce_pools(
+        &pools,
+        &TypedDamage {
+            chaos: 200.0,
+            ..Default::default()
+        },
+        &ctx,
+    );
+    assert_eq!(chaos.pools.energy_shield, 0.0);
+    assert_eq!(chaos.pools.mana, 175.0);
+    assert_eq!(chaos.pools.life_reserved_by_damage, 25.0);
+}
+
+#[test]
+fn widow_chaos_inoculation_and_bypass_do_not_create_extra_life() {
+    let mut mods = widow_mods();
+    mods.extend(crate::support::parse_mod("Maximum Life is 1").unwrap().mods);
+    let mut env = player_with(
+        ActorBaseStats {
+            life: 1000.0,
+            energy_shield: 300.0,
+            ..Default::default()
+        },
+        mods,
+    );
+    perform(&mut env).unwrap();
+    let out = &env.player.output;
+    assert_eq!(out.life, 1.0);
+    assert_eq!(out.life_recoverable, 1.0);
+    assert_eq!(out.physical_max_hit, 301.0);
+    assert!(out.chaos_max_hit.is_infinite());
+
+    let (mut pools, mut ctx) = widow_pools(1.0);
+    pools.energy_shield = 300.0;
+    let hit = TypedDamage {
+        physical: 1.0,
+        ..Default::default()
+    };
+    assert_eq!(
+        reduce_pools(&pools, &hit, &ctx)
+            .pools
+            .life_reserved_by_damage,
+        0.0
+    );
+    ctx.es_bypass_by_type[0] = 100.0;
+    let after = reduce_pools(&pools, &hit, &ctx);
+    assert_eq!(after.pools.energy_shield, 300.0);
+    assert_eq!(after.pools.life_reserved_by_damage, 1.0);
+    assert_eq!(after.pools.life, 0.0);
+}
+
+#[test]
+fn widow_hit_only_defences_do_not_inflate_damage_over_time_pool() {
+    let mut mods = widow_mods();
+    mods.extend([
+        Modifier::number("GuardAbsorbRate", ModType::Base, 100.0),
+        Modifier::number("GuardAbsorbLimit", ModType::Base, 400.0),
+    ]);
+    let mut env = player_with(
+        ActorBaseStats {
+            life: 1000.0,
+            ..Default::default()
+        },
+        mods,
+    );
+    perform(&mut env).unwrap();
+    let out = &env.player.output;
+    assert_eq!(out.physical_max_hit, 1400.0);
+    assert_eq!(out.ehp_terms.as_ref().unwrap().total_pool[0], 1000.0);
+    let (mut pools, ctx) = widow_pools(1000.0);
+    pools.guard_shared = 400.0;
+    pools.guard_shared_rate = 100.0;
+    let after = reduce_pools(
+        &pools,
+        &TypedDamage {
+            physical: 500.0,
+            ..Default::default()
+        },
+        &ctx,
+    );
+    assert_eq!(after.pools.life_reserved_by_damage, 100.0);
+    assert_eq!(
+        after.recoupable_by_type[0], 500.0,
+        "reservation still comes from damage taken"
+    );
+}
+
 /// Naive per-hit path (no recursive acceleration): same semantics as the vendor's main
 /// loop but with iterationMultiplier fixed at 1, still applying the overkill fractional
 /// fold at the end. Serves as the comparison baseline for accelerated-path equivalence.

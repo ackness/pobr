@@ -113,10 +113,30 @@ pub struct PoolState {
     pub mana: f64,
     /// Life pool (the EHP view = LifeRecoverable).
     pub life: f64,
+    /// Life reserved by damage during this sequence (Widow's Reign), separate
+    /// from the skill/permanent reservation already excluded by pool setup.
+    /// It reduces the recovery ceiling; it never expires implicitly.
+    pub life_reserved_by_damage: f64,
     /// Accumulated deferred loss redirected by loss-prevention (the
     /// above-half / below-half segments, CalcDefence.lua:611-651).
     pub life_loss_lost_over_time: f64,
     pub life_below_half_loss_lost_over_time: f64,
+}
+
+impl PoolState {
+    /// Life that can currently be recovered, given the pool's configured
+    /// unreserved maximum before damage. Reservation is not missing Life.
+    pub fn life_recovery_cap(&self, life_unreserved: f64) -> f64 {
+        (life_unreserved - self.life_reserved_by_damage).max(0.0)
+    }
+
+    /// Recover ordinary missing Life without recovering damage reservation or
+    /// reviving a depleted pool. No elapsed-time assumption is made here.
+    pub fn recover_life(&mut self, amount: f64, life_unreserved: f64) {
+        if self.life > 0.0 {
+            self.life = (self.life + amount).min(self.life_recovery_cap(life_unreserved));
+        }
+    }
 }
 
 /// Context that doesn't change per hit (flags / ratios read from the ModDb
@@ -129,6 +149,13 @@ pub struct PoolState {
 pub struct PoolCtx {
     /// Maximum life (the half-life baseline for the segmented life hit pool, vendor `output.Life`).
     pub max_life: f64,
+    /// Widow's Reign: damage reaching Life reserves it instead of creating
+    /// recoverable missing Life (`reserve_life_instead_of_loss_from_damage_for_x_ms`).
+    pub damage_instead_reserves_life: bool,
+    /// Configured unreserved Life before damage reservation. With Widow's
+    /// Reign, damage consumes this capacity even when costs have lowered
+    /// current Life; recovery can restore only the ordinary missing Life.
+    pub life_unreserved: f64,
     /// Per-type ES bypass (%, 0-100; vendor :2715's Override or Σ BASE,
     /// clamped at :2720. Note that in PoE2, chaos does **not** default to
     /// bypass -- chaos double-deducting ES (:582) takes its place instead).
@@ -189,7 +216,7 @@ pub struct PoolsAfter {
     /// resourcesLostToTypeDamage keys):
     /// `"ally:<id>"` / `"aegis"` / `"shared_elemental_aegis"` / `"shared_aegis"` /
     /// `"guard"` / `"shared_guard"` / `"ward"` / `"energy_shield"` /
-    /// `"eternal_life_prevented"` / `"mana"` / `"life"` / `"life_loss_prevented"` /
+    /// `"eternal_life_prevented"` / `"mana"` / `"life"` / `"life_reserved"` / `"life_loss_prevented"` /
     /// `"overkill"`.
     /// Note: vendor only records a breakdown row when the amount is ≥1 (a
     /// display-layer truncation); this implementation keeps every detail >0, losing no precision.
@@ -224,7 +251,11 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
     let mut ward = pools.ward;
     let mut energy_shield = pools.energy_shield;
     let mut mana = pools.mana;
-    let mut life = pools.life;
+    let mut life = if ctx.damage_instead_reserves_life && pools.life > 0.0 {
+        pools.life_recovery_cap(ctx.life_unreserved)
+    } else {
+        pools.life
+    };
     let mut life_loss_lost_over_time = pools.life_loss_lost_over_time;
     let mut life_below_half_loss_lost_over_time = pools.life_below_half_loss_lost_over_time;
 
@@ -485,6 +516,22 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
         + if ward_applies { ward } else { 0.0 })
     .floor();
 
+    // Only damage that reached Life becomes reservation: ES, MoM, guards,
+    // Ward and overkill do not. Preserve the effective damage pool deduction
+    // for lethal-hit accounting, but retain its different recovery semantics.
+    let mut life_reserved_by_damage = pools.life_reserved_by_damage;
+    if ctx.damage_instead_reserves_life {
+        for (_, layer, amount) in &mut resources_lost {
+            if *layer == "life" {
+                life_reserved_by_damage += *amount;
+                *layer = "life_reserved";
+            }
+        }
+        // Reservation clamps current Life to its new ceiling; it does not
+        // subtract damage a second time from Life already missing to costs.
+        life = pools.life.min(life);
+    }
+
     PoolsAfter {
         pools: PoolState {
             allies,
@@ -499,6 +546,7 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
             energy_shield,
             mana,
             life,
+            life_reserved_by_damage,
             life_loss_lost_over_time,
             life_below_half_loss_lost_over_time,
         },
