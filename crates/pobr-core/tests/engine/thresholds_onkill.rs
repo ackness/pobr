@@ -171,6 +171,223 @@ fn fully_broken_armour_scales_physical_hits_and_leaves_bleed_unchanged() {
     assert_eq!(base.average_damage, 100.0);
 }
 
+const MOLTEN_GIFT: &str =
+    "Fully Broken Armour you inflict also increases Fire Damage Taken from Hits";
+const STORMS_REBUKE: &str =
+    "Fully Broken Armour you inflict also increases Cold and Lightning Damage Taken from Hits";
+
+#[test]
+fn fully_broken_armour_extends_the_scaled_hit_vulnerability_to_granted_elements() {
+    for (line, damage_type, expected) in [
+        (MOLTEN_GIFT, DamageType::Fire, 123.0),
+        (STORMS_REBUKE, DamageType::Cold, 123.0),
+        (STORMS_REBUKE, DamageType::Lightning, 123.0),
+        (MOLTEN_GIFT, DamageType::Cold, 100.0),
+        (STORMS_REBUKE, DamageType::Fire, 100.0),
+        (MOLTEN_GIFT, DamageType::Chaos, 100.0),
+        (MOLTEN_GIFT, DamageType::Physical, 123.0),
+    ] {
+        let mut session = session(&[line, "15% increased effect of Fully Broken Armour"])
+            .with_config(
+                CalcConfig::spell()
+                    .with_damage_type(damage_type)
+                    .with_mode_effective(true)
+                    .with_condition("EnemyArmourFullyBroken", true),
+            );
+        if damage_type != DamageType::Physical {
+            session.add_modifiers([Modifier::number(
+                format!("PhysicalDamageConvertTo{damage_type:?}"),
+                ModType::Base,
+                100.0,
+            )]);
+        }
+        session.perform_minimal().unwrap();
+        assert!(session.unsupported_modifier_texts().is_empty());
+        // The Molten One's Gift (28542) has 15% increased effect: 20 * 1.15 = 23.
+        assert_eq!(
+            session.output().average_damage,
+            expected,
+            "{damage_type:?}: {line}"
+        );
+    }
+}
+
+#[test]
+fn fully_broken_armour_elemental_grants_require_an_effective_nonimmune_full_break() {
+    // Zero Armour alone does not establish Fully Broken Armour; a partial
+    // configured break must not activate the vulnerability either.
+    for (grant, broken, effective, immune, armour, amount, expected) in [
+        (true, false, true, false, 0.0, None, 100.0),
+        (false, true, true, false, 0.0, None, 100.0),
+        (true, true, false, false, 0.0, None, 100.0),
+        (true, true, true, true, 0.0, None, 100.0),
+        (true, false, true, false, 1000.0, Some(250.0), 100.0),
+        (true, false, true, false, 1000.0, Some(1000.0), 120.0),
+        (true, true, true, false, 0.0, None, 120.0),
+    ] {
+        let mut session = session(if grant { &[MOLTEN_GIFT] } else { &[] }).with_config(
+            CalcConfig::spell()
+                .with_mode_effective(effective)
+                .with_condition("EnemyArmourFullyBroken", broken),
+        );
+        session.add_modifiers([Modifier::number(
+            "PhysicalDamageConvertToFire",
+            ModType::Base,
+            100.0,
+        )]);
+        session.add_enemy_modifiers([Modifier::number("Armour", ModType::Base, armour)]);
+        if let Some(amount) = amount {
+            session.add_enemy_modifiers([
+                Modifier::flag("ArmourBreakConfigured"),
+                Modifier::number("ArmourBreakAmount", ModType::Base, amount),
+            ]);
+        }
+        if immune {
+            session.add_enemy_modifiers([Modifier::flag("ArmourBreakImmune")]);
+        }
+        session.track_modifier_reads();
+        session.perform_minimal().unwrap();
+        assert_eq!(session.output().average_damage, expected);
+        let reads = session.modifier_reads();
+        for flag in session.mods_named("ArmourBreakFireDamageTaken") {
+            assert_eq!(reads.counted(flag), expected > 100.0);
+        }
+    }
+}
+
+#[test]
+fn fully_broken_armour_elemental_hits_scale_once_and_leave_damage_over_time_unchanged() {
+    let run = |broken, increased_effect| {
+        let mut session = session(&[
+            MOLTEN_GIFT,
+            MOLTEN_GIFT,
+            STORMS_REBUKE,
+            "100% chance to Ignite",
+            "100% chance to inflict Bleeding on Hit",
+            "Adds 100 to 100 Fire Damage",
+            "Adds 100 to 100 Cold Damage",
+            "Adds 100 to 100 Lightning Damage",
+            "Adds 100 to 100 Chaos Damage",
+        ])
+        .with_config(
+            CalcConfig::spell()
+                .with_mode_effective(true)
+                .with_condition("EnemyArmourFullyBroken", broken),
+        );
+        session.add_modifiers([
+            Modifier::number("FullyBrokenArmourEffect", ModType::Inc, increased_effect),
+            Modifier::number("FullyBrokenArmourEffect", ModType::More, 20.0),
+            Modifier::number("FireDot", ModType::Base, 80.0),
+            Modifier::number("ColdDot", ModType::Base, 70.0),
+            Modifier::number("LightningDot", ModType::Base, 60.0),
+        ]);
+        // The vulnerability adds to other increased damage taken.
+        session.add_enemy_modifiers([Modifier::number("DamageTaken", ModType::Inc, 10.0)]);
+        session.track_modifier_reads();
+        session.perform_minimal().unwrap();
+        assert!(session.unsupported_modifier_texts().is_empty());
+        session
+    };
+    let base = run(false, 50.0);
+    let broken = run(true, 50.0);
+    let zero_effect = run(true, -100.0);
+    // 20 * 1.5 * 1.2 = 36% increased taken for physical and three elements,
+    // plus the unrelated 10%; Chaos still gets only that unrelated 10%.
+    assert_eq!(base.output().average_damage, 550.0);
+    assert_eq!(broken.output().average_damage, 694.0);
+    assert_eq!(zero_effect.output().average_damage, 550.0);
+    assert!(base.output().ignite_dps > 0.0);
+    assert!(base.output().bleed_dps > 0.0);
+    assert!(base.output().skill_total_dot > 0.0);
+    assert_eq!(broken.output().ignite_dps, base.output().ignite_dps);
+    assert_eq!(broken.output().bleed_dps, base.output().bleed_dps);
+    assert_eq!(
+        broken.output().skill_total_dot,
+        base.output().skill_total_dot
+    );
+    let reads = zero_effect.modifier_reads();
+    for flag in zero_effect.mods_named("ArmourBreakFireDamageTaken") {
+        assert!(
+            !reads.counted(flag),
+            "zero magnitude does not consume the extension"
+        );
+    }
+}
+
+#[test]
+fn fully_broken_armour_elemental_debuff_is_shared_with_minion_hits_and_retains_its_source() {
+    use pobr_core::calc::{Actor, ActorBaseStats, Env, env_finalize, perform};
+
+    let source = SourceId::new(SourceKind::PassiveNode, "node.28542");
+    let run = |player_grant, minion_grant| {
+        let mut player = Actor::new(
+            80,
+            ActorBaseStats {
+                life: 1000.0,
+                hit_min: 100.0,
+                hit_max: 100.0,
+                action_rate: 1.0,
+                ..Default::default()
+            },
+        );
+        player.mod_db.add_mod(Modifier::number(
+            "PhysicalDamageConvertToFire",
+            ModType::Base,
+            100.0,
+        ));
+        let mut minion = player.clone();
+        player.mod_db.add_mod(Modifier::number(
+            "FullyBrokenArmourEffect",
+            ModType::Inc,
+            15.0,
+        ));
+        minion.mod_db.add_mod(Modifier::number(
+            "FullyBrokenArmourEffect",
+            ModType::Inc,
+            200.0,
+        ));
+        if player_grant {
+            player.mod_db.add_mod(
+                Modifier::flag("ArmourBreakFireDamageTaken")
+                    .with_origin(ModifierSource::new(source.clone()).with_raw_text(MOLTEN_GIFT)),
+            );
+        }
+        if minion_grant {
+            minion
+                .mod_db
+                .add_mod(Modifier::flag("ArmourBreakFireDamageTaken"));
+        }
+        let mut env = Env::new(player).with_config(CalcConfig::spell().with_mode_effective(true));
+        env.enemy
+            .mod_db
+            .add_mod(Modifier::flag("Condition:ArmourFullyBroken"));
+        env.minions.push(minion);
+        env_finalize::env_finalize(&mut env);
+        // Finalizing again, including the ordinary perform pass, must not
+        // inject either the physical or granted elemental bonus twice.
+        env_finalize::env_finalize(&mut env);
+        perform(&mut env).unwrap();
+        env
+    };
+    let granted = run(true, false);
+    assert_eq!(granted.player.output.average_damage, 123.0);
+    assert_eq!(granted.minions[0].output.average_damage, 123.0);
+    for name in ["PhysicalDamageTaken", "FireDamageTaken"] {
+        assert_eq!(granted.enemy.mod_db.named(name).count(), 1);
+    }
+    let applied = granted
+        .enemy
+        .mod_db
+        .named("FireDamageTaken")
+        .next()
+        .unwrap();
+    assert_eq!(applied.origin.as_ref().unwrap().source_id, source);
+    assert_eq!(applied.keyword_flags, KeywordFlags::HIT);
+    let only_minion = run(false, true);
+    assert_eq!(only_minion.player.output.average_damage, 100.0);
+    assert_eq!(only_minion.minions[0].output.average_damage, 100.0);
+}
+
 #[test]
 fn heavy_stun_uses_eligible_crit_weighted_hits_and_shared_poise_scaling() {
     let run = |distance, cannot_stun: Option<&str>| {

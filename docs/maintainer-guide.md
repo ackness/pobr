@@ -282,6 +282,17 @@ and makes non-player targets take 20% increased Physical damage from Hits;
 and it affects hits only when the enemy is configured as fully broken.
 These fields expose source details through the display catalog.
 
+The Molten One's Gift (passive 28542) extends the same Fully Broken Armour
+percentage to Fire Hits; Storm's Rebuke (22726) extends it to Cold and Lightning
+Hits (`fully_broken_armour_and_sundered_armour_you_inflict_also_applies_to_*`
+in the active game's `base/stats.json`, with the wording in `base/passive_tree.json`).
+The existing effect modifiers scale each granted type once, including the
+15% increased effect on The Molten One's Gift. This is the player's inflicted
+debuff on the shared enemy, so minion Hits benefit too; minion-only grants and
+effect modifiers do not alter it. The existing Fully Broken Armour state is
+required even when the enemy has no Armour. Damage over time is unaffected,
+and neither breaking Armour nor its uptime is inferred from possessing a grant.
+
 Conditional offence uses existing state: `conditionEnemyFrozen` and
 `conditionEnemyPinned` pass through `config_resolve::bridge_enemy_conditions`;
 enabled Herald skills set `AffectedByHeraldofAsh` / `AffectedByHeraldofThunder`

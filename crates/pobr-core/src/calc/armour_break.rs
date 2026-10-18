@@ -103,17 +103,33 @@ pub(crate) fn apply_fully_broken_effect(env: &mut Env) {
         return;
     }
     let effect = fully_broken_effect(&env.player.mod_db, &env.cfg);
-    env.enemy.mod_db.add_mod(
-        Modifier::number("PhysicalDamageTaken", ModType::Inc, effect)
-            .with_keyword_flags(KeywordFlags::HIT)
-            .with_source("FullyBrokenArmour")
-            .with_origin(
-                ModifierSource::new(SourceId::new(SourceKind::Buff, "debuff.FullyBrokenArmour"))
-                    .with_raw_text(format!(
-                        "Fully Broken Armour: {effect}% increased Physical damage taken from Hits"
-                    )),
-            ),
-    );
+    for (damage_type, extension) in [
+        ("Physical", None),
+        ("Fire", Some("ArmourBreakFireDamageTaken")),
+        ("Cold", Some("ArmourBreakColdDamageTaken")),
+        ("Lightning", Some("ArmourBreakLightningDamageTaken")),
+    ] {
+        let mut source = SourceId::new(SourceKind::Buff, "debuff.FullyBrokenArmour");
+        if let Some(flag) = extension {
+            if effect == 0.0 || !env.player.mod_db.flag(&env.cfg, flag) {
+                continue;
+            }
+            // This extends the inflicted enemy debuff, so other actors hitting
+            // that enemy benefit too. It does not transfer the granting flag or
+            // borrow a minion's modifiers to the player's Armour Break.
+            if let Some(origin) = env.player.mod_db.flag_origin(&env.cfg, flag) {
+                source = origin;
+            }
+        }
+        env.enemy.mod_db.add_mod(
+            Modifier::number(format!("{damage_type}DamageTaken"), ModType::Inc, effect)
+                .with_keyword_flags(KeywordFlags::HIT)
+                .with_source("FullyBrokenArmour")
+                .with_origin(ModifierSource::new(source).with_raw_text(format!(
+                    "Fully Broken Armour: {effect}% increased {damage_type} damage taken from Hits"
+                ))),
+        );
+    }
 }
 
 #[cfg(test)]
