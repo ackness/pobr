@@ -586,6 +586,160 @@ fn spellslinger_counts_casts_while_critical_triggers_count_periodic_hits() {
 }
 
 #[test]
+fn energy_triggered_periodic_payloads_keep_their_hit_cadence() {
+    let data = data();
+    for (skill, duration, active_rate, duration_modifier) in [
+        ("SolarOrbPlayer", Some(10.0), 1.0 / 1.4, None),
+        ("FirestormPlayer", Some(6.0), 5.0, None),
+        ("BallLightningPlayer", None, 5.0, None),
+        (
+            "SolarOrbPlayer",
+            Some(0.1),
+            1.0 / 1.4,
+            Some("99% reduced Skill Effect Duration"),
+        ),
+    ] {
+        let mut opts = options(BOSS.0, &["+50% to Block chance"]);
+        opts.extra_modifier_texts
+            .extend(duration_modifier.map(str::to_string));
+        let xml = meta_xml("MetaCastOnBlockPlayer", &[], &[]).replace("CometPlayer", skill);
+        let unknown = calculate(&data, &xml, &opts);
+        assert!(unknown.energy_trigger.as_ref().unwrap().at_own_rate);
+        let own = calculate(
+            &data,
+            &xml,
+            &DataOrchestratorOptions {
+                energy_triggers: false,
+                ..opts.clone()
+            },
+        );
+        assert_eq!(unknown.action_rate, own.action_rate);
+        assert_eq!(unknown.dps, own.dps);
+        // Reference mode never applies the Energy cadence, even with an explicit zero.
+        let reference = calculate(
+            &data,
+            &meta_xml(
+                "MetaCastOnBlockPlayer",
+                &[],
+                &[("energyIncomingHitRate", 0.0)],
+            )
+            .replace("CometPlayer", skill),
+            &opts.clone().on_reference_basis(),
+        );
+        assert_eq!(reference.energy_trigger, None);
+        assert_rate(reference.action_rate, active_rate);
+
+        for incoming in [100.0, 0.06, 0.0] {
+            let xml = meta_xml(
+                "MetaCastOnBlockPlayer",
+                &[],
+                &[("energyIncomingHitRate", incoming)],
+            )
+            .replace("CometPlayer", skill);
+            let build = parse_build(&xml).unwrap();
+            let session = pobr_build::calculate_with_data_session(&build, &data, &opts).unwrap();
+            let out = session.output();
+            let terms = out.energy_trigger.as_ref().unwrap();
+            assert!(!terms.at_own_rate);
+            let uptime = if incoming == 0.0 {
+                0.0
+            } else {
+                duration.map_or(1.0, |seconds| {
+                    (seconds * terms.triggers_per_second).min(1.0)
+                })
+            };
+            let expected = active_rate * uptime;
+            assert!(
+                (out.action_rate - expected).abs() < 1e-9,
+                "{skill}: {} != {expected}",
+                out.action_rate
+            );
+            assert_eq!(out.effective_action_rate, out.action_rate);
+            assert_eq!(
+                out.skill_use_time.as_ref().unwrap().effective_rate,
+                out.action_rate
+            );
+            assert!((out.dps - unknown.dps * expected / unknown.action_rate).abs() < 1e-6);
+            for (stat, value) in [("ActionRate", out.action_rate), ("TotalDPS", out.dps)] {
+                assert_eq!(
+                    session.stat_formula(stat).unwrap().value,
+                    value,
+                    "{skill}: {stat}"
+                );
+            }
+            assert_eq!(
+                session
+                    .derived_detail("EffectiveActionRate")
+                    .unwrap()
+                    .inputs,
+                vec![("ActionRate".into(), out.action_rate)],
+            );
+            if incoming == 0.0 {
+                let sustained = calculate(
+                    &data,
+                    &xml,
+                    &DataOrchestratorOptions {
+                        periodic_uptime: false,
+                        ..opts.clone()
+                    },
+                );
+                assert_eq!(sustained.action_rate, 0.0);
+                assert_eq!(sustained.dps, 0.0);
+            }
+        }
+    }
+}
+
+#[test]
+fn energy_trigger_cadence_reuses_rain_limits_and_summary() {
+    use pobr_core::calc::{CalculationSession, MinimalInput, energy, rain};
+    use pobr_core::{CalcConfig, Modifier};
+    use pobr_data::prelude::ModType;
+
+    // Exercise the shared rain conversion directly; this does not assert that
+    // a particular attack can be socketed in a spell-only meta gem.
+    for reference_hits in [false, true] {
+        for rate in [10.0, 0.5, 0.0] {
+            let mut session = CalculationSession::new(MinimalInput {
+                base_action_rate: 2.0,
+                base_hit_min: 100.0,
+                base_hit_max: 100.0,
+                ..Default::default()
+            })
+            .with_config(
+                CalcConfig::spell()
+                    .with_multiplier("EnergyMinionDeathsPerSecond", rate)
+                    .with_rain_hits_whenever_allowed(reference_hits),
+            );
+            session.add_modifiers([
+                Modifier::number(energy::MAXIMUM_ENERGY, ModType::Base, 100.0),
+                Modifier::number(energy::ENERGY_PER_MINION_POWER, ModType::Base, 100.0),
+                Modifier::number(rain::LANDING_INTERVAL, ModType::Base, 80.0),
+                Modifier::number(rain::HIT_INTERVAL, ModType::Base, 120.0),
+                Modifier::number("ProjectileCount", ModType::Base, 5.0),
+            ]);
+            session.perform_minimal().unwrap();
+            let out = session.output();
+            let expected = if rate == 0.0 {
+                0.0
+            } else if reference_hits {
+                1.0 / 0.12
+            } else {
+                (3.0 * rate).min(6.25)
+            };
+            assert!((out.action_rate - expected).abs() < 1e-9);
+            assert_eq!(out.effective_action_rate, out.action_rate);
+            assert_eq!(session.rain().unwrap().hits_per_second, out.action_rate);
+            assert_eq!(
+                session.stat_formula("ActionRate").unwrap().value,
+                out.action_rate
+            );
+            assert_eq!(session.stat_formula("TotalDPS").unwrap().value, out.dps);
+        }
+    }
+}
+
+#[test]
 fn elemental_invocation_spends_cast_time_energy_instead_of_its_500_storage() {
     let data = data();
     let xml = meta_xml("MetaElementalInvocationPlayer", &[spark()], &[]);

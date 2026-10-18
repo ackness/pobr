@@ -1075,13 +1075,31 @@ impl CalculationSession {
             None => (&env.cfg, &input),
         };
         let db = &env.player.mod_db;
-        let uses = super::offence::resolve_use_rate(db, cfg, hand_input);
+        let uses = env
+            .player
+            .output
+            .energy_trigger
+            .as_ref()
+            .filter(|terms| !terms.at_own_rate)
+            .map_or_else(
+                || super::offence::resolve_use_rate(db, cfg, hand_input),
+                |terms| terms.triggers_per_second,
+            );
         super::rain::rain_hits(db, cfg, uses).map(|rain| {
             let mut summary = rain.summary();
             if let Some(reload) = env.crossbow_reload {
                 summary.hits_per_second = super::round(
                     summary.hits_per_second * reload.effective_rate / reload.firing_rate,
                 );
+            }
+            if env
+                .player
+                .output
+                .energy_trigger
+                .as_ref()
+                .is_some_and(|terms| !terms.at_own_rate)
+            {
+                summary.hits_per_second = env.player.output.action_rate;
             }
             summary
         })
