@@ -338,6 +338,9 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
 }
 
 fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
+    if let Some(mods) = crate::calc::combo::skill_modifiers(stat, value) {
+        return Some(mods);
+    }
     match stat {
         // "{0}% increased amount of Life/Mana Leeched" and "Leech ...
         // {0}% faster" are distinct: speed changes duration, not amount.

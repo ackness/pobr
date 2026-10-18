@@ -874,3 +874,7 @@ Charm3IgnitedGroundIgniteDPS = "Charm 3 Ignited Ground Potential Ignite DPS"
 Charm3IgnitedGroundIgniteDuration = "Charm 3 Ignited Ground Ignite Duration (s)"
 CadiroArrowReturn = "Reversing arrow can return (no extra hit assumed)"
 CadiroArrowKillRarity = "Covetous arrow kill rarity (increased %)"
+
+# Combo / Finality use game KeywordPopups terms; full labels are contextual UI copy.
+ComboMaximum = "Selected Skill Maximum Combo"
+ComboGainPerEligibleEvent = "Expected Combo per Eligible Event (Empty Counter)"

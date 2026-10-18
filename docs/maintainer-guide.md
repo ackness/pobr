@@ -1035,7 +1035,14 @@ Focused Thrust (`projectile_damage_+%_with_spears_while_there_no_enemies_surroun
 “#% increased Damage per Curse on you” (`damage_+%_per_active_curse_on_self`)
 scales by the PoBR config input `multiplierCursesOnSelf`
 (`Multiplier:CurseOnSelf`); with no count the line is inactive with that config
-gate. The ledger finds count gates from the modifier's zero-scaling
+gate. A reader blocked by a numeric `MultiplierThreshold` also reports a
+config gate when the catalog declares its multiplier setter and setting that
+one boundary satisfies every other requirement. Cadiro's unspecified arrow
+therefore remains inactive/config-gated, rather than an implementation gap.
+Unknown setters, unrelated skill/condition gates, conflicting thresholds,
+non-finite inputs and stored zero/false keep their existing classification.
+The calculation and its actual unmet reason are unchanged.
+The ledger finds count gates from the modifier's zero-scaling
 `Multiplier` tags and the config catalog. Static gate labels are borrowed;
 dynamic labels and config ids are owned, with the same JSON string fields.
 Plain and removable Power/Frenzy/Endurance charge counts share the calculation's
@@ -1310,3 +1317,45 @@ TW and CN arrow names use their respective game KeywordPopups
 [CN](https://poe2db.tw/cn/Crescendo_Arrows), and corresponding five linked names);
 these differ from the abbreviations in the item line. Surrounding control/help
 wording is application copy. No in-game timing or geometry test is claimed.
+
+### Combo generation snapshots
+
+`calc::combo` reports `ComboMaximum` and `ComboGainPerEligibleEvent` for the selected
+receiving skill. The current [Combo keyword](https://poe2db.tw/us/Combo) describes a
+counter on some skills, built by striking enemies with the same bound weapon;
+weapon swaps lose it. [Tempest Bell](https://poe2db.tw/us/Tempest_Bell) and
+[Mantra of Destruction](https://poe2db.tw/us/Mantra_of_Destruction) explicitly build
+it with other skills. Current `base/granted_effect_stat_sets.json` gives required
+amounts 4 and 8; Combo Finisher I/II require 3/5, and Culmination I/II and Vruun's
+Inevitability give an explicit maximum of 10. Required amounts serve as capacity
+only without an explicit maximum; they are never added to that separate cap.
+Supported receivers come through the existing support eligibility checks.
+
+This is one successful eligible event **starting from an empty counter**, with
+only global gain modifiers, not the receiving skill's own hit/cast rate.
+`additional_combo_gain_on_hit` ([Martial Adept, passive 41751](https://poe2db.tw/us/Martial_Adept))
+adds its integer count once to that event. `additional_combo_gain_chance_%` says
+“chance to build an additional Combo”: its contributions add to one probability
+bounded to 0–100%, adding exactly one Combo on success. Therefore with fixed bonus
+`a`, chance `p` as a fraction and capacity `c`, expected gain is
+`(1-p) × min(c, 1+a) + p × min(c, 2+a)`. Count inputs are nonnegative integers.
+This additive, nonrecursive interpretation follows the wording and the shared
+stat IDs; the combined interaction has **not been measured in game**. There is
+no overflow mechanic in those descriptions. No held counter, decay, uptime,
+event frequency, automatic spending, recovery or DPS bonus is inferred.
+Practiced Combo modifies the generating strike, not the receiver: its support
+bonus is not borrowed from a different skill or included in this global-only view.
+
+The Finality keyword forbids Combo gain. `conditionFinality` / native `Finality`
+is an explicit current snapshot; false/off retires an imported true state, and
+an explicit native condition overrides a `Condition:Finality` modifier flag.
+Absent a receiver, outside combat, during Finality, or for unsupported proxy /
+minion receivers, generation is zero; inactive paths do not read global gain
+modifiers. The checkbox only models this gain restriction, not Finality's other
+bonuses. New generation rules are exporter-absent; reference mode preserves the
+existing Culmination selected-stack multiplier but excludes these generation
+views. Calcs formulas retain their inputs and have no invented PoB output keys.
+`連擊` and `終極` are the corresponding current game TW keyword terms
+([TW keyword](https://poe2db.tw/tw/Combo)); full labels/help are contextual UI copy.
+CN uses `连击` and `绝杀` from the corresponding retained
+`i18n/zh-CN/stat_lines.json` gain-Combo and gain-Finality entries.

@@ -11,6 +11,7 @@ pub mod cadiro_arrows;
 pub mod channel;
 pub mod charge_generation;
 pub mod charm_spirits;
+pub mod combo;
 mod configured_damage;
 pub mod crit;
 pub mod crit_pass;

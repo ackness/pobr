@@ -25,6 +25,7 @@ const CADIRO_HELP: Record<string, string> = {
 };
 
 export const CONFIG_LABEL_ZH_TW: Record<string, string> = {
+  conditionFinality: '你目前擁有終極（無法獲得連擊）？',
   conditionBeiraIgniteActive: '敵人正受到貝伊拉的悲痛造成的點燃？',
   cadiroArrow: '卡迪羅的詭計箭矢：',
   conditionOnConsecratedGround: '你位於奉獻地面？',
@@ -42,6 +43,11 @@ const BEIRA_GROUND_HELP: Record<string, string> = {
 };
 
 export function configTooltip(lang: string, variable: string, fallback?: string): string | undefined {
+  // Finality: TW keyword 終極, CN retained stat_lines 绝杀; help is app copy.
+  if (variable === 'conditionFinality') {
+    if (lang === 'zh-TW') return '明確指定目前擁有終極，只禁止此連擊獲取視圖的累積。不推算增益持續時間、跳過打擊或終擊暴擊加成。每次事件從空計數開始，要求其他技能以同一綁定武器成功造成符合條件的擊中。不推算事件頻率或自動消耗連擊。';
+    if (lang === 'zh-CN') return '明确指定当前拥有绝杀，只禁止此连击获取视图的积累。不推算增益持续时间、跳过打击或终击暴击加成。每次事件从空计数开始，要求其他技能以同一绑定武器成功造成符合条件的命中。不推算事件频率或自动消耗连击。';
+  }
   if (variable === 'cadiroArrow') return CADIRO_HELP[lang] ?? fallback;
   if (variable === 'conditionOnConsecratedGround' || variable === 'conditionMinionsOnConsecratedGround') {
     return CONSECRATED_GROUND_HELP[lang] ?? fallback;
@@ -53,6 +59,7 @@ export function configTooltip(lang: string, variable: string, fallback?: string)
 }
 
 export const CONFIG_LABEL_ZH: Record<string, string> = {
+  conditionFinality: '当前拥有绝杀（无法获得连击）？',
   conditionBeiraIgniteActive: '敌人正受到贝拉的苦楚造成的点燃？',
   cadiroArrow: '卡迪罗的赌局箭矢：',
   conditionMinionsOnConsecratedGround: '你的召唤物位于奉献地面？',

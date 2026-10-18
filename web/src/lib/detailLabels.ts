@@ -2,6 +2,18 @@ import type { Lang } from './i18n';
 
 /** Modifier input names for optional Calcs details; no calculation logic. */
 export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
+  // Combo / Finality game terms; the complete explanations are contextual UI copy.
+  ComboRequiredThreshold: { 'en-US': 'Combo required to use (capacity when no separate maximum)', 'zh-TW': '使用所需連擊（未另訂上限時的容量）', 'zh-CN': '使用所需连击（未另订上限时的容量）' },
+  ComboExplicitMaximum: { 'en-US': 'Explicit maximum Combo', 'zh-TW': '明定連擊上限', 'zh-CN': '明定连击上限' },
+  ComboCounterMaximum: {"en-US": "Selected skill maximum Combo", "zh-TW": "所選技能連擊上限", "zh-CN": "所选技能连击上限"},
+  ComboGainEnabled: {"en-US": "Combo gain enabled", "zh-TW": "可獲得連擊", "zh-CN": "可获得连击"},
+  ComboGuaranteedAdditional: {"en-US": "Guaranteed additional Combo per gain event", "zh-TW": "每次獲得連擊時必定額外獲得的連擊", "zh-CN": "每次获得连击时必定额外获得的连击"},
+  ComboExtraProbability: {"en-US": "Probability of one additional Combo", "zh-TW": "額外獲得一個連擊的機率", "zh-CN": "额外获得一个连击的概率"},
+  ComboEmptyCounter: {"en-US": "Receiving counter starts empty", "zh-TW": "獲得連擊的技能計數從零開始", "zh-CN": "获得连击的技能计数从零开始"},
+  ComboOtherSkillEligibleEvent: {"en-US": "Successful eligible hit with another skill", "zh-TW": "其他技能的符合條件成功擊中", "zh-CN": "其他技能的符合条件成功击中"},
+  ComboSameBoundWeapon: {"en-US": "Event uses the receiving skill’s bound weapon", "zh-TW": "事件使用獲得連擊技能所綁定的武器", "zh-CN": "事件使用获得连击技能所绑定的武器"},
+  ComboGlobalGainModifiersOnly: {"en-US": "Global gain modifiers only; generator support unspecified", "zh-TW": "僅計全域獲取詞綴；未指定產生事件技能的輔助", "zh-CN": "仅计全局获取词缀；未指定产生事件技能的辅助"},
+  ComboAdditionalChanceBeforeCap: {"en-US": "Additional Combo chance before probability bounds (%)", "zh-TW": "限制前額外連擊機率（%）", "zh-CN": "限制前额外连击概率（%）"},
   UtilityIgnitedGroundDuration: {"en-US": "Created Ignited Ground duration (s)", "zh-TW": "所建立點燃地面的持續時間（秒）", "zh-CN": "所创建燃烧地面的持续时间（秒）"},
   BeiraGroundPresent: {"en-US": "Beira ground source equipped", "zh-TW": "已裝備貝伊拉點燃地面來源", "zh-CN": "已装备贝拉的苦楚燃烧地面来源"},
   IgnitedGroundBaseRadius: {"en-US": "Ignited Ground base radius (m)", "zh-TW": "點燃地面基礎半徑（公尺）", "zh-CN": "燃烧地面基础半径（米）"},

@@ -719,6 +719,9 @@ impl CalculationSession {
     }
 
     pub fn derived_detail(&self, stat: &str) -> Option<DerivedDetail> {
+        if let Some(detail) = self.output().combo_generation.detail(stat) {
+            return Some(detail);
+        }
         if let Some(detail) = self.output().charge_generation.detail(stat) {
             return Some(detail);
         }

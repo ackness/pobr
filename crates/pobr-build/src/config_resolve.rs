@@ -59,6 +59,7 @@ use crate::handlers::{build_registry, campaign_progress_from_config, enemy_tier_
 /// player-side snapshot is not wired up. Retire the three exposure mappings when
 /// that channel is activated, or exposure will be counted twice.
 const EXPLICIT_BOOLEAN_CONDITIONS: &[(&str, &str)] = &[
+    ("conditionFinality", "Finality"),
     ("conditionBeiraIgniteActive", "BeiraIgniteActive"),
     ("conditionOnConsecratedGround", "OnConsecratedGround"),
     ("conditionAncestrallyBoosted", "AncestrallyBoosted"),
@@ -405,6 +406,14 @@ fn bridge_combat_player_conditions(
 /// Missing or non-boolean inputs leave existing behavior intact; raw inputs are not
 /// modified, so resolving a calculation cannot change imported values or types.
 fn apply_explicit_boolean_conditions(conditions: &mut HashMap<String, bool>, build: &Build) {
+    // Finality is a checkbox snapshot: explicit off/invalid inputs retire
+    // imported state just like false; only the boolean true enables it.
+    if let Some(value) = build.config.raw_inputs.values.get("conditionFinality") {
+        conditions.insert(
+            "Finality".into(),
+            matches!(value, ConfigInputValue::Bool(true)),
+        );
+    }
     for (input_name, cond_var) in EXPLICIT_BOOLEAN_CONDITIONS {
         if let Some(pobr_core::rules::config_interpreter::ConfigInputValue::Bool(enabled)) =
             build.config.raw_inputs.values.get(*input_name)

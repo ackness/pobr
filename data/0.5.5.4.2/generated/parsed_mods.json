@@ -6654,7 +6654,14 @@
     },
     {
       "text": "10% Chance to build an additional [Combo] on [Hit]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ComboAdditionalGainChance",
+          "type": "Base",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "10% [FasterESRechargeStart|faster start of Energy Shield Recharge]",
@@ -14815,7 +14822,14 @@
     },
     {
       "text": "20% Chance to build an additional [Combo] on [Hit]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ComboAdditionalGainChance",
+          "type": "Base",
+          "value": 20.0
+        }
+      ]
     },
     {
       "text": "20% Chance to gain a Charge when you kill an enemy",
@@ -25734,7 +25748,14 @@
     },
     {
       "text": "5% Chance to build an additional [Combo] on [Hit]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ComboAdditionalGainChance",
+          "type": "Base",
+          "value": 5.0
+        }
+      ]
     },
     {
       "text": "5% [FasterESRechargeStart|faster start of Energy Shield Recharge]",
@@ -42253,7 +42274,14 @@
     },
     {
       "text": "When you gain [Combo], gain an additional [Combo]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ComboAdditionalGain",
+          "type": "Base",
+          "value": 1.0
+        }
+      ]
     },
     {
       "text": "When you kill a Rare monster, you gain its Modifiers for 60 seconds",

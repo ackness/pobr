@@ -267,6 +267,15 @@ pub(super) fn stage_build_cfg(
         // setting (combat_conditions below) + env_finalize stage 3's flask/charm merge +
         // stage 6's buff_expander.
         .with_mode_combat(true);
+    // A disabled group may remain selected for the ordinary skill preview;
+    // it cannot be an active Combo receiver.
+    if main
+        .main_skill
+        .as_ref()
+        .is_some_and(|(_, group, _)| !group.enabled)
+    {
+        cfg = cfg.with_condition("ComboReceiverDisabled", true);
+    }
     cfg.periodic_hits_assume_sustained = !options.periodic_uptime;
     cfg.ancestral_boost_assume_supported = !options.ancestral_boost_snapshots;
     // DistanceRamp's skillDist (matching vendor CalcActiveSkill.lua:671+684, 0.22.0):

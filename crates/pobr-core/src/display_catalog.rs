@@ -2590,6 +2590,13 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
         ));
     }
+    for id in crate::calc::combo::STATS {
+        catalog.push(DisplayStatDefinition::computed(
+            *id,
+            Cat::SkillMechanics,
+            Vt::Number,
+        ));
+    }
     for id in crate::calc::charge_generation::STATS {
         catalog.push(DisplayStatDefinition::computed(
             *id,
@@ -2708,6 +2715,9 @@ pub fn extract_display_values(output: &OutputTable) -> Vec<DisplayStatValue> {
 /// [`extract_display_values`], including fractional chance to percent conversion.
 /// Unknown ids return 0.
 pub fn display_value(output: &OutputTable, id: &str) -> f64 {
+    if let Some(value) = output.combo_generation.value(id) {
+        return value;
+    }
     if let Some(value) = output.charge_generation.value(id) {
         return value;
     }

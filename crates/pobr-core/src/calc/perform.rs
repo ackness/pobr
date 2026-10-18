@@ -225,6 +225,7 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     env.player.output = OutputTable::from(&output);
     super::utility::calculate(env);
     super::charge_generation::calculate(env);
+    super::combo::calculate(env);
     super::player_debuffs::calculate_views(env);
     super::totem::calculate(env);
     env.player.output.crit_hit_avg = output.stored_crit_avg.iter().map(|(_, avg)| avg).sum();

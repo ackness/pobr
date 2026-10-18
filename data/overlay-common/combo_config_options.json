@@ -1,0 +1,20 @@
+{
+  "options": [
+    {
+      "var": "conditionFinality",
+      "input_type": "check",
+      "section": "When In Combat",
+      "label": "Do you currently have Finality (Combo gain disabled)?",
+      "tooltip": "Explicit current Finality snapshot. The game keyword says skills cannot gain Combo during Finality. This control only gates the Combo generation view; it does not simulate buff duration, skipped strikes, or the Final Strike critical bonus. The per-event Combo view starts from an empty receiving counter and requires a successful eligible hit with another skill using the same bound weapon. No event frequency or automatic Combo spending is assumed.",
+      "effects": [
+        {
+          "target": "player",
+          "name": "Condition:Finality",
+          "mod_type": "FLAG",
+          "value_bool": true
+        }
+      ],
+      "verified": true
+    }
+  ]
+}

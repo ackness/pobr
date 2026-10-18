@@ -100,6 +100,7 @@ pub struct OutputTable {
     pub fully_broken_armour_effect: f64,
     pub utility_stats: std::collections::BTreeMap<String, f64>,
     pub charge_generation: super::charge_generation::ChargeGeneration,
+    pub combo_generation: super::combo::ComboGeneration,
     pub decay_dps: f64,
     pub mirage_burning_ground_dps: f64,
 
@@ -735,6 +736,7 @@ impl Default for OutputTable {
             fully_broken_armour_effect: 0.0,
             utility_stats: Default::default(),
             charge_generation: Default::default(),
+            combo_generation: Default::default(),
             decay_dps: 0.0,
             mirage_burning_ground_dps: 0.0,
 

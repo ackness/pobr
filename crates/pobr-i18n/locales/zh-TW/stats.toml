@@ -887,3 +887,7 @@ Charm3IgnitedGroundIgniteDPS = "護符 3 點燃地面潛在點燃每秒傷害"
 Charm3IgnitedGroundIgniteDuration = "護符 3 點燃地面的點燃持續時間（秒）"
 CadiroArrowReturn = "迴轉箭可返回（未假設額外擊中）"
 CadiroArrowKillRarity = "貪婪箭擊殺掉落稀有度（增加 %）"
+
+# Combo / Finality use game KeywordPopups terms; full labels are contextual UI copy.
+ComboMaximum = "所選技能連擊上限"
+ComboGainPerEligibleEvent = "每次符合條件事件的預期連擊（空計數）"

@@ -6672,6 +6672,65 @@
       "examples": [
         "Creates Ignited Ground for 4 seconds when used, Igniting enemies as though dealing Fire damage equal to 500% of your maximum Life"
       ]
+    },
+    {
+      "id": "combo_additional_gain_chance",
+      "pattern": "(\\d+(?:\\.\\d+)?)% chance to build an additional combo on hit",
+      "mods": [
+        {
+          "name": "ComboAdditionalGainChance",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "additional_combo_gain_chance_%",
+      "exporter": "absent",
+      "source_note": "Game Combo keyword and Martial Adept (passive 41751): https://poe2db.tw/us/Combo and https://poe2db.tw/us/Martial_Adept . calc::combo reports the selected receiving skill's expected gain from one eligible event with an empty counter. Fixed additional Combo is additive once per gain event; the chance stat is a probability for one additional Combo, not increased gain or an independent roll per source. No recursive gain, rate, spending, or damage is assumed. Finality forbids gain. Generator-specific support modifiers require a separately selected generator and are not inferred from the receiver.",
+      "examples": [
+        "20% Chance to build an additional Combo on Hit",
+        "50% chance to build an additional Combo on Hit"
+      ]
+    },
+    {
+      "id": "combo_additional_gain",
+      "pattern": "when you gain combo, gain (\\d+(?:\\.\\d+)?) additional combo",
+      "mods": [
+        {
+          "name": "ComboAdditionalGain",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "additional_combo_gain_on_hit",
+      "exporter": "absent",
+      "source_note": "Game Combo keyword and Martial Adept (passive 41751): https://poe2db.tw/us/Combo and https://poe2db.tw/us/Martial_Adept . calc::combo reports the selected receiving skill's expected gain from one eligible event with an empty counter. Fixed additional Combo is additive once per gain event; the chance stat is a probability for one additional Combo, not increased gain or an independent roll per source. No recursive gain, rate, spending, or damage is assumed. Finality forbids gain. Generator-specific support modifiers require a separately selected generator and are not inferred from the receiver.",
+      "examples": [
+        "When you gain Combo, gain 1 additional Combo"
+      ]
+    },
+    {
+      "id": "combo_additional_gain_one",
+      "pattern": "(?:when you gain combo, gain an additional combo|build an additional combo on hit)",
+      "mods": [
+        {
+          "name": "ComboAdditionalGain",
+          "type": "BASE",
+          "value": 1
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "additional_combo_gain_on_hit",
+      "exporter": "absent",
+      "source_note": "Game Combo keyword and Martial Adept (passive 41751): https://poe2db.tw/us/Combo and https://poe2db.tw/us/Martial_Adept . calc::combo reports the selected receiving skill's expected gain from one eligible event with an empty counter. Fixed additional Combo is additive once per gain event; the chance stat is a probability for one additional Combo, not increased gain or an independent roll per source. No recursive gain, rate, spending, or damage is assumed. Finality forbids gain. Generator-specific support modifiers require a separately selected generator and are not inferred from the receiver.",
+      "examples": [
+        "When you gain Combo, gain an additional Combo",
+        "Build an additional Combo on Hit"
+      ]
     }
   ]
 }
