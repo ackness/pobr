@@ -44,6 +44,43 @@ fn close(a: f64, b: f64) {
 }
 
 #[test]
+fn cadiro_numeric_selection_gate_is_reported_only_for_eligible_arrows() {
+    let data = data();
+    for (skill, selected, expected_gate) in [
+        ("IceShotPlayer", None, true),
+        ("IceShotPlayer", Some(0), true),
+        ("IceShotPlayer", Some(4), false),
+        ("FireballPlayer", None, false),
+    ] {
+        let build = build(skill, "Crude Bow", true, selected);
+        let diagnosis = pobr_build::diagnose(&build, &data, &Default::default()).unwrap();
+        let usage = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+        let source = usage
+            .lines
+            .iter()
+            .flat_map(|line| &line.modifiers)
+            .find(|modifier| modifier.name == "CadiroArrows")
+            .unwrap();
+        assert_eq!(
+            source
+                .read_gate
+                .as_ref()
+                .map(|gate| gate.config_option.as_deref()),
+            if expected_gate {
+                Some(Some("cadiroArrow"))
+            } else {
+                None
+            }
+        );
+        if selected == Some(4) {
+            assert_eq!(source.status, pobr_build::usage::ModifierStatus::Applied);
+        } else {
+            assert_eq!(source.status, pobr_build::usage::ModifierStatus::Inactive);
+        }
+    }
+}
+
+#[test]
 fn cadiro_six_arrows_have_distinct_effects_without_extra_hits() {
     let data = data();
     let baseline = run(&build("IceShotPlayer", "Crude Bow", false, None), &data);

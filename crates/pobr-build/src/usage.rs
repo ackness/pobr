@@ -432,6 +432,16 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
                                         .flatten()
                                 })
                                 .or_else(|| multiplier_zero_gate(modifier, context, data))
+                                .or_else(|| {
+                                    diagnosis
+                                        .reads
+                                        .sites
+                                        .contains_key(modifier.name.as_str())
+                                        .then(|| {
+                                            multiplier_threshold_gate(modifier, context.cfg, data)
+                                        })
+                                        .flatten()
+                                })
                         })
                         .flatten(),
                     status,
@@ -878,6 +888,62 @@ fn multiplier_zero_gate(
                     config_option: Some(Cow::Owned(option)),
                 });
             }
+        }
+    }
+    None
+}
+
+/// A real reader waiting only for a threshold whose variable has a catalog
+/// config setter. Probe one boundary without changing the calculation: all
+/// other conditions, flags and thresholds must also match there. Unknown or
+/// conflicting requirements therefore keep their original classification.
+fn multiplier_threshold_gate(
+    modifier: &Modifier,
+    cfg: &pobr_core::CalcConfig,
+    data: &BuildData,
+) -> Option<ReadGate> {
+    use pobr_core::ModTag;
+
+    if matches!(
+        modifier.value,
+        ModValue::Number(0.0) | ModValue::Bool(false)
+    ) || modifier.matches(cfg)
+    {
+        return None;
+    }
+    let catalog = data.config_catalog.as_deref()?;
+    for tag in &modifier.tags {
+        let ModTag::MultiplierThreshold {
+            var,
+            threshold,
+            upper,
+        } = tag
+        else {
+            continue;
+        };
+        let current = cfg.multiplier(var);
+        if !current.is_finite()
+            || !threshold.is_finite()
+            || if *upper {
+                current <= *threshold
+            } else {
+                current >= *threshold
+            }
+        {
+            continue;
+        }
+        let Some(option) = multiplier_option_setting(catalog, var) else {
+            continue;
+        };
+        let probe = cfg.clone().with_multiplier(var, *threshold);
+        if modifier.matches(&probe) {
+            return Some(ReadGate {
+                state: Cow::Owned(format!(
+                    "{var} is {current}, needs {} {threshold}",
+                    if *upper { "at most" } else { "at least" }
+                )),
+                config_option: Some(Cow::Owned(option)),
+            });
         }
     }
     None
@@ -1544,6 +1610,76 @@ mod tests {
         assert_eq!(query_kind("BASE Armour [slot helmet]"), Some("BASE"));
         assert_eq!(query_kind("NAMED Damage"), None);
         assert_eq!(query_kind("EVAL Life"), None);
+    }
+
+    #[test]
+    fn numeric_multiplier_threshold_gates_preserve_other_requirements() {
+        use pobr_core::{CalcConfig, ModTag};
+        use pobr_data::modifier::ModFlags;
+        use pobr_gamedata::ruleset::ConfigCatalog;
+
+        let option = serde_json::from_value(serde_json::json!({
+            "var": "cadiroArrow", "input_type": "list", "section": "Skill Options",
+            "effects": [{"target": "player", "name": "Multiplier:CadiroArrow",
+                "mod_type": "BASE", "value": {"kind": "input"}}]
+        }))
+        .unwrap();
+        let mut data = BuildData::empty();
+        data.config_catalog = Some(std::sync::Arc::new(ConfigCatalog::new(vec![option])));
+        let threshold = |var: &str, value, upper| ModTag::MultiplierThreshold {
+            var: var.into(),
+            threshold: value,
+            upper,
+        };
+        let source = Modifier::flag("CadiroArrows")
+            .with_flags(ModFlags::ATTACK | ModFlags::BOW)
+            .with_keyword_flags(KeywordFlags::ARROW)
+            .with_tag(threshold("CadiroArrow", 1.0, false));
+        let cfg = CalcConfig::attack()
+            .with_flags(ModFlags::ATTACK | ModFlags::BOW)
+            .with_keyword_flags(KeywordFlags::ARROW);
+        let gate = multiplier_threshold_gate(&source, &cfg, &data).unwrap();
+        assert_eq!(gate.config_option.as_deref(), Some("cadiroArrow"));
+        assert_eq!(gate.state, "CadiroArrow is 0, needs at least 1");
+        assert_eq!(cfg.multiplier("CadiroArrow"), 0.0);
+        assert!(
+            multiplier_threshold_gate(
+                &source,
+                &cfg.clone().with_multiplier("CadiroArrow", 1.0),
+                &data
+            )
+            .is_none()
+        );
+
+        // A config setter cannot excuse an unrelated skill/condition gate,
+        // an unknown multiplier, conflicting bounds or a stored false value.
+        for blocked in [
+            source.clone().with_tag(ModTag::condition("Missing", false)),
+            source.clone().with_tag(threshold("Unknown", 1.0, false)),
+            source
+                .clone()
+                .with_tag(threshold("CadiroArrow", -1.0, true)),
+            Modifier {
+                value: ModValue::Bool(false),
+                ..source.clone()
+            },
+        ] {
+            assert!(multiplier_threshold_gate(&blocked, &cfg, &data).is_none());
+        }
+        assert!(multiplier_threshold_gate(&source, &CalcConfig::spell(), &data).is_none());
+        assert!(multiplier_threshold_gate(&source, &cfg, &BuildData::empty()).is_none());
+        assert!(
+            multiplier_threshold_gate(
+                &source,
+                &cfg.clone().with_multiplier("CadiroArrow", f64::NAN),
+                &data
+            )
+            .is_none()
+        );
+        let upper = Modifier::flag("Upper").with_tag(threshold("CadiroArrow", 4.0, true));
+        let high = cfg.with_multiplier("CadiroArrow", 6.0);
+        let gate = multiplier_threshold_gate(&upper, &high, &data).unwrap();
+        assert_eq!(gate.state, "CadiroArrow is 6, needs at most 4");
     }
 
     #[test]
