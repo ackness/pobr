@@ -60,6 +60,7 @@ use crate::handlers::{build_registry, campaign_progress_from_config, enemy_tier_
 /// that channel is activated, or exposure will be counted twice.
 const EXPLICIT_BOOLEAN_CONDITIONS: &[(&str, &str)] = &[
     ("conditionFinality", "Finality"),
+    ("conditionFullMana", "FullMana"),
     ("conditionBeiraIgniteActive", "BeiraIgniteActive"),
     ("conditionOnConsecratedGround", "OnConsecratedGround"),
     ("conditionAncestrallyBoosted", "AncestrallyBoosted"),
@@ -150,6 +151,7 @@ fn resolve_volatility_inputs(config: &mut BuildConfig) {
 /// Resolves the consumption view of build config (see module doc for details).
 pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> ResolvedConfig {
     let mut config = build.config.clone();
+    apply_remnant_inputs(&mut config);
     resolve_volatility_inputs(&mut config);
     // One arrow selection across native, XML and JSON callers. Explicit off,
     // false or invalid values retire an imported selection; absence preserves it.
@@ -250,6 +252,7 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
 
     merge_conditions(&mut config.conditions, &outcome);
     merge_multipliers(&mut config.multipliers, &outcome);
+    apply_remnant_inputs(&mut config);
     resolve_volatility_inputs(&mut config);
     bridge_enemy_conditions(&mut config.conditions, &outcome);
     bridge_combat_player_conditions(&mut config.conditions, &outcome);
@@ -492,6 +495,27 @@ fn is_quest_mod(modifier: &Modifier) -> bool {
         .origin
         .as_ref()
         .is_some_and(|origin| origin.source_id.id.starts_with("config.quest"))
+}
+
+// These optional event snapshots are shared by native, XML and JSON callers.
+fn apply_remnant_inputs(config: &mut BuildConfig) {
+    for (input, multiplier) in pobr_core::calc::remnant_pickup::CONFIG_INPUTS {
+        if let Some(raw) = config.raw_inputs.values.get(*input) {
+            let value = match raw {
+                ConfigInputValue::Number(n) => *n,
+                ConfigInputValue::Text(s) => s.parse::<f64>().unwrap_or(0.0),
+                ConfigInputValue::Bool(_) => 0.0,
+            };
+            config.multipliers.insert(
+                (*multiplier).into(),
+                if value.is_finite() {
+                    value.max(0.0)
+                } else {
+                    0.0
+                },
+            );
+        }
+    }
 }
 
 #[cfg(test)]

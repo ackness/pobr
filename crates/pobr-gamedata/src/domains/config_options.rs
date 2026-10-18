@@ -46,6 +46,11 @@ impl GameData {
         ))
         .expect("bundled Combo config options");
         catalog.options = crate::paths::merge_by_key(catalog.options, combo.options, |o| &o.var);
+        let remnants: ConfigOptionsDef = serde_json::from_str(include_str!(
+            "../../../../data/overlay-common/remnant_pickup_config_options.json"
+        ))
+        .expect("bundled Remnant pickup config options");
+        catalog.options = crate::paths::merge_by_key(catalog.options, remnants.options, |o| &o.var);
         let volatility: ConfigOptionsDef = serde_json::from_str(include_str!(
             "../../../../data/overlay-common/volatility_config_options.json"
         ))

@@ -896,3 +896,11 @@ CadiroArrowKillRarity = "貪婪箭擊殺掉落稀有度（增加 %）"
 # Combo / Finality use game KeywordPopups terms; full labels are contextual UI copy.
 ComboMaximum = "所選技能連擊上限"
 ComboGainPerEligibleEvent = "每次符合條件事件的預期連擊（空計數）"
+# Remnant event views; surrounding wording is contextual UI copy.
+RemnantManaRecoveryPercent = "每次收集痕跡回復魔力（最大魔力 %）"
+RemnantManaRecoverablePerPickup = "每次收集痕跡可回復的魔力上限"
+RemnantManaRecoverablePerSecond = "指定收集頻率下每秒可回復的魔力上限"
+CreatedRemnantDuplicateChance = "所製造痕跡賦予兩次效果的機率"
+CreatedRemnantEffectGrantsPerPickup = "每個所製造痕跡被收集時的預期固有效果次數"
+CreatedRemnantEffectGrantsPerSecond = "指定自製痕跡收集頻率下每秒預期固有效果次數"
+CreatedRemnantPotentialEffectGrantsPerUse = "每次使用製造的痕跡全數被收集時之潛在固有效果次數"

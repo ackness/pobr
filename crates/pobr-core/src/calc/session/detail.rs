@@ -49,6 +49,12 @@ fn hit_source_taken_names(stat: &str) -> Option<Vec<String>> {
 /// Each group represents a genuine query. Explicit enemy groups use the enemy
 /// database; derived relationships never appear as synthetic modifier rows.
 pub fn source_names(stat: &str) -> Vec<String> {
+    if matches!(
+        stat,
+        "RemnantManaRecoveryPercent" | "CreatedRemnantDuplicateChance"
+    ) {
+        return vec![stat.into()];
+    }
     if stat == "VolatilityRefreshChance" {
         return vec!["VolatilityRefreshChance".into()];
     }
@@ -598,6 +604,24 @@ pub fn source_names(stat: &str) -> Vec<String> {
 impl CalculationSession {
     pub fn detail_sources(&self, stat: &str) -> Vec<SourceGroup<'_>> {
         let db = &self.env.player.mod_db;
+        if matches!(
+            stat,
+            "RemnantManaRecoveryPercent" | "CreatedRemnantDuplicateChance"
+        ) {
+            let cfg = super::super::utility::query_config(&self.env.cfg);
+            let names = [ModName::from(stat)];
+            let filtered = db.filtered(super::super::remnant_pickup::is_player_source);
+            return vec![SourceGroup {
+                name: stat.into(),
+                more_precision: None,
+                totals: (filtered.sum(ModType::Base, &cfg, &names), 0.0, 1.0),
+                rows: db
+                    .evaluate_names(&cfg, &names)
+                    .into_iter()
+                    .filter(|r| super::super::remnant_pickup::is_player_source(r.modifier))
+                    .collect(),
+            }];
+        }
         let view_names = super::super::player_debuffs::view_names(stat);
         if !view_names.is_empty() {
             let cfg = &self.env.cfg;
@@ -627,7 +651,8 @@ impl CalculationSession {
             }
             return groups;
         }
-        let mut cfg = if super::super::volatility_events::STATS.contains(&stat)
+        let mut cfg = if super::super::remnant_pickup::STATS.contains(&stat)
+            || super::super::volatility_events::STATS.contains(&stat)
             || super::super::charge_generation::STATS.contains(&stat)
             || super::super::utility::GLOBAL_STATS
                 .iter()

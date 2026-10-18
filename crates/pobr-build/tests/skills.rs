@@ -161,3 +161,5 @@ mod sidebar_remaining;
 
 #[path = "skills/combo.rs"]
 mod combo;
+#[path = "skills/remnant_pickup.rs"]
+mod remnant_pickup;

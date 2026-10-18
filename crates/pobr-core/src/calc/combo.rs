@@ -11,6 +11,7 @@ use crate::Modifier;
 pub const STATS: &[&str] = &["ComboMaximum", "ComboGainPerEligibleEvent"];
 pub const MAXIMUM: &str = "ComboMaximum";
 pub const REQUIRED: &str = "ComboRequired";
+pub const FINISHER_REQUIRED: &str = "ComboFinisherRequired";
 pub const ADDITIONAL: &str = "ComboAdditionalGain";
 pub const CHANCE: &str = "ComboAdditionalGainChance";
 
@@ -25,10 +26,10 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
     ) {
         return None;
     }
-    let name = if stat == "skill_maximum_number_of_combo_stacks" {
-        MAXIMUM
-    } else {
-        REQUIRED
+    let name = match stat {
+        "skill_maximum_number_of_combo_stacks" => MAXIMUM,
+        "support_combo_finisher_required_number_of_combo_stacks" => FINISHER_REQUIRED,
+        _ => REQUIRED,
     };
     let mut capacity = Modifier::number(name, ModType::Base, value);
     capacity.set_exporter_rule(&std::sync::Arc::new(pobr_data::source::ExporterRule {
@@ -51,6 +52,7 @@ pub fn skill_modifiers(stat: &str, value: f64) -> Option<Vec<Modifier>> {
 pub struct ComboGeneration {
     pub maximum: f64,
     pub required: f64,
+    pub finisher_required: f64,
     pub explicit_maximum: f64,
     pub additional: f64,
     /// The aggregate chance stat, before the ordinary probability bounds.
@@ -79,7 +81,7 @@ impl ComboGeneration {
                 if self.explicit_maximum > 0.0 {
                     "max(0, floor(ComboExplicitMaximum))"
                 } else {
-                    "max(0, floor(ComboRequiredThreshold))"
+                    "max(0, floor(max(ComboRequiredThreshold, ComboFinisherThreshold)))"
                 }
             } else {
                 "ComboGainEnabled * ((1 - ComboExtraProbability) * min(ComboCounterMaximum, 1 + ComboGuaranteedAdditional) + ComboExtraProbability * min(ComboCounterMaximum, 2 + ComboGuaranteedAdditional))"
@@ -88,6 +90,7 @@ impl ComboGeneration {
             inputs: if stat == "ComboMaximum" {
                 vec![
                     ("ComboRequiredThreshold".into(), self.required),
+                    ("ComboFinisherThreshold".into(), self.finisher_required),
                     ("ComboExplicitMaximum".into(), self.explicit_maximum),
                 ]
             } else {
@@ -129,17 +132,21 @@ pub fn calculate(env: &mut Env) {
     // A required amount is the capacity for Bell, Mantra and Combo Finisher
     // (their descriptions say to reach maximum Combo). An explicit maximum,
     // as on Culmination, is a distinct stat and must never be added to it.
-    let explicit_maximum = db.sum(ModType::Base, cfg, &[MAXIMUM.into()]);
+    let explicit_maximum = db.max_of(ModType::Base, cfg, &[MAXIMUM.into()]);
     let limit = explicit_maximum.max(0.0).floor();
+    // Quality can reduce the active skill's own requirement (Mantra), so
+    // combine those signed contributions before comparing separate requirements.
     let required = db.sum(ModType::Base, cfg, &[REQUIRED.into()]);
+    let finisher_required = db.max_of(ModType::Base, cfg, &[FINISHER_REQUIRED.into()]);
     let maximum = if explicit_maximum > 0.0 {
         limit
     } else {
-        required.max(0.0).floor()
+        required.max(finisher_required).max(0.0).floor()
     };
     let mut terms = ComboGeneration {
         maximum,
         required,
+        finisher_required,
         explicit_maximum,
         ..Default::default()
     };

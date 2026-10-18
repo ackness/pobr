@@ -4,6 +4,7 @@ import type { Lang } from './i18n';
 export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
   // Combo / Finality game terms; the complete explanations are contextual UI copy.
   ComboRequiredThreshold: { 'en-US': 'Combo required to use (capacity when no separate maximum)', 'zh-TW': '使用所需連擊（未另訂上限時的容量）', 'zh-CN': '使用所需连击（未另订上限时的容量）' },
+  ComboFinisherThreshold: { 'en-US': 'Support Combo requirement (separate threshold)', 'zh-TW': '輔助所需連擊（獨立門檻）', 'zh-CN': '辅助所需连击（独立门槛）' },
   ComboExplicitMaximum: { 'en-US': 'Explicit maximum Combo', 'zh-TW': '明定連擊上限', 'zh-CN': '明定连击上限' },
   ComboCounterMaximum: {"en-US": "Selected skill maximum Combo", "zh-TW": "所選技能連擊上限", "zh-CN": "所选技能连击上限"},
   ComboGainEnabled: {"en-US": "Combo gain enabled", "zh-TW": "可獲得連擊", "zh-CN": "可获得连击"},
@@ -14,6 +15,25 @@ export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
   ComboSameBoundWeapon: {"en-US": "Event uses the receiving skill’s bound weapon", "zh-TW": "事件使用獲得連擊技能所綁定的武器", "zh-CN": "事件使用获得连击技能所绑定的武器"},
   ComboGlobalGainModifiersOnly: {"en-US": "Global gain modifiers only; generator support unspecified", "zh-TW": "僅計全域獲取詞綴；未指定產生事件技能的輔助", "zh-CN": "仅计全局获取词缀；未指定产生事件技能的辅助"},
   ComboAdditionalChanceBeforeCap: {"en-US": "Additional Combo chance before probability bounds (%)", "zh-TW": "限制前額外連擊機率（%）", "zh-CN": "限制前额外连击概率（%）"},
+  RemnantCanGainMana: { 'en-US': 'Pickup recovery source present and Mana gain allowed', 'zh-TW': '具有收集回復來源且可獲得魔力', 'zh-CN': '具有收集回复来源且可获得魔力' },
+  ManaUnreserved: { 'en-US': 'Unreserved Mana capacity', 'zh-TW': '未保留魔力容量', 'zh-CN': '未保留魔力容量' },
+  MaximumMana: { 'en-US': 'Maximum Mana', 'zh-TW': '最大魔力', 'zh-CN': '最大魔力' },
+  RemnantFiniteLimit: { 'en-US': 'Largest finite representable number', 'zh-TW': '可表示的最大有限數值', 'zh-CN': '可表示的最大有限数值' },
+  // TW 痕跡 follows retained game skill names; these event labels are application copy.
+  RemnantManaRecoveryPercent: {"en-US": "Mana recovered per Remnant pickup (% of maximum)", "zh-TW": "每次收集痕跡回復魔力（最大魔力 %）", "zh-CN": "每次收集残迹回复魔力（最大魔力 %）"},
+  RemnantManaRecoverablePerPickup: {"en-US": "Potential Mana recoverable per Remnant pickup", "zh-TW": "每次收集痕跡可回復的魔力上限", "zh-CN": "每次收集残迹可回复的魔力上限"},
+  RemnantManaRecoverablePerSecond: {"en-US": "Potential Mana recoverable from configured pickups per second", "zh-TW": "指定收集頻率下每秒可回復的魔力上限", "zh-CN": "指定收集频率下每秒可回复的魔力上限"},
+  CreatedRemnantDuplicateChance: {"en-US": "Created Remnant effect duplication chance", "zh-TW": "所製造痕跡賦予兩次效果的機率", "zh-CN": "所创建残迹赋予两次效果的几率"},
+  CreatedRemnantEffectGrantsPerPickup: {"en-US": "Expected intrinsic grants per created Remnant collected", "zh-TW": "每個所製造痕跡被收集時的預期固有效果次數", "zh-CN": "每个所创建残迹被收集时的预期固有效果次数"},
+  CreatedRemnantEffectGrantsPerSecond: {"en-US": "Expected intrinsic grants from configured created Remnant pickups per second", "zh-TW": "指定自製痕跡收集頻率下每秒預期固有效果次數", "zh-CN": "指定自创残迹收集频率下每秒预期固有效果次数"},
+  CreatedRemnantPotentialEffectGrantsPerUse: {"en-US": "Potential intrinsic grants per use if all Remnants are collected", "zh-TW": "每次使用製造的痕跡全數被收集時之潛在固有效果次數", "zh-CN": "每次使用创建的残迹全部被收集时的潜在固有效果次数"},
+  RemnantCombatEnabled: {"en-US": "Remnant combat snapshot enabled", "zh-TW": "痕跡戰鬥快照啟用", "zh-CN": "残迹战斗快照启用"},
+  RemnantMissingManaCap: {"en-US": "Missing Mana cap (potential maximum when unspecified)", "zh-TW": "缺少的魔力上限（未指定時採潛在最大值）", "zh-CN": "缺失的魔力上限（未指定时采用潜在最大值）"},
+  RemnantMissingManaSpecified: {"en-US": "Missing Mana or Full Mana explicitly specified", "zh-TW": "已明確指定缺少魔力或滿魔力", "zh-CN": "已明确指定缺失魔力或满魔力"},
+  RemnantGrantEnabled: {"en-US": "Own-created Remnant grant snapshot enabled", "zh-TW": "自製痕跡固有效果快照啟用", "zh-CN": "自创残迹固有效果快照启用"},
+  RemnantPickupsPerSecond: {"en-US": "Remnants collected by you per second", "zh-TW": "你每秒收集的痕跡數", "zh-CN": "你每秒收集的残迹数"},
+  CreatedRemnantPickupsPerSecond: {"en-US": "Your created Remnants collected per second", "zh-TW": "每秒被收集的自製痕跡數", "zh-CN": "每秒被收集的自创残迹数"},
+
   UtilityIgnitedGroundDuration: {"en-US": "Created Ignited Ground duration (s)", "zh-TW": "所建立點燃地面的持續時間（秒）", "zh-CN": "所创建燃烧地面的持续时间（秒）"},
   BeiraGroundPresent: {"en-US": "Beira ground source equipped", "zh-TW": "已裝備貝伊拉點燃地面來源", "zh-CN": "已装备贝拉的苦楚燃烧地面来源"},
   IgnitedGroundBaseRadius: {"en-US": "Ignited Ground base radius (m)", "zh-TW": "點燃地面基礎半徑（公尺）", "zh-CN": "燃烧地面基础半径（米）"},

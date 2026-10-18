@@ -125,6 +125,10 @@ fn combo_receiving_skill_capacity_comes_from_current_game_stats_and_support_gati
             "{skill} {support}"
         );
     }
+    let mut quality = build("MantraOfDestructionPlayer", "", "", "");
+    quality.socket_groups[0].gem_skills[0].quality = 40;
+    quality.socket_groups[0].active_gem_quality = Some(40);
+    assert_eq!(value(&calculate(&data, &quality, &[]), "ComboMaximum"), 6.0);
     let passive = calculate(&data, &build("TempestBellPlayer", "", "", "41751"), &[]);
     assert_eq!(value(&passive, "ComboGainPerEligibleEvent"), 2.0);
 }
@@ -295,6 +299,11 @@ fn combo_explicit_maximum_is_not_added_to_requirement_and_proxies_are_inactive()
         for (stat, count) in [
             ("active_skill_required_number_of_combo_stacks", 4.0),
             ("skill_maximum_number_of_combo_stacks", 10.0),
+            ("skill_maximum_number_of_combo_stacks", 9.0),
+            (
+                "support_combo_finisher_required_number_of_combo_stacks",
+                3.0,
+            ),
         ] {
             session.add_modifiers(combo::skill_modifiers(stat, count).unwrap());
         }
@@ -302,5 +311,29 @@ fn combo_explicit_maximum_is_not_added_to_requirement_and_proxies_are_inactive()
         session.perform_minimal().unwrap();
         assert_eq!(value(&session, "ComboMaximum"), 10.0);
         assert_eq!(value(&session, "ComboGainPerEligibleEvent"), expected);
+    }
+}
+
+#[test]
+fn combo_distinct_thresholds_do_not_add_but_quality_adjusts_its_own_requirement() {
+    for (base, quality, finisher, expected) in [
+        (4.0, 0.0, 3.0, 4.0),
+        (8.0, -2.0, 3.0, 6.0),
+        (4.0, 0.0, 5.0, 5.0),
+    ] {
+        let mut session = CalculationSession::new(MinimalInput::default())
+            .with_config(CalcConfig::default().with_mode_combat(true));
+        for (stat, value) in [
+            ("active_skill_required_number_of_combo_stacks", base),
+            ("active_skill_required_number_of_combo_stacks", quality),
+            (
+                "support_combo_finisher_required_number_of_combo_stacks",
+                finisher,
+            ),
+        ] {
+            session.add_modifiers(combo::skill_modifiers(stat, value).unwrap());
+        }
+        session.perform_minimal().unwrap();
+        assert_eq!(value(&session, "ComboMaximum"), expected);
     }
 }

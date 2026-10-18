@@ -5,6 +5,11 @@ use crate::calc::{perform, skill_dot, survivability::ChargeKind};
 pub const DERIVED_STATS: &[&str] = &[
     "ComboMaximum",
     "ComboGainPerEligibleEvent",
+    "RemnantManaRecoverablePerPickup",
+    "RemnantManaRecoverablePerSecond",
+    "CreatedRemnantEffectGrantsPerPickup",
+    "CreatedRemnantEffectGrantsPerSecond",
+    "CreatedRemnantPotentialEffectGrantsPerUse",
     "VolatilityExplosionQuantity",
     "VolatilityRestoredPerExplosion",
     "VolatilityRestoredPerSecond",

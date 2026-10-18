@@ -26,6 +26,10 @@ const CADIRO_HELP: Record<string, string> = {
 
 export const CONFIG_LABEL_ZH_TW: Record<string, string> = {
   conditionFinality: '你目前擁有終極（無法獲得連擊）？',
+  remnantPickupsPerSecond: "你每秒收集的痕跡數：",
+  createdRemnantPickupsPerSecond: "每秒被收集的自製痕跡數：",
+  remnantPickupMissingMana: "每次收集痕跡前缺少的魔力：",
+
   volatilityExplosionQuantity: '單次爆炸的易爆層數：',
   volatilityExplosionsPerSecond: '每秒符合條件的易爆爆炸次數：',
   conditionBeiraIgniteActive: '敵人正受到貝伊拉的悲痛造成的點燃？',
@@ -62,6 +66,10 @@ export function configTooltip(lang: string, variable: string, fallback?: string)
     if (lang === 'zh-TW') return '明確指定目前擁有終極，只禁止此連擊獲取視圖的累積。不推算增益持續時間、跳過打擊或終擊暴擊加成。每次事件從空計數開始，要求其他技能以同一綁定武器成功造成符合條件的擊中。不推算事件頻率或自動消耗連擊。';
     if (lang === 'zh-CN') return '明确指定当前拥有绝杀，只禁止此连击获取视图的积累。不推算增益持续时间、跳过打击或终击暴击加成。每次事件从空计数开始，要求其他技能以同一绑定武器成功造成符合条件的命中。不推算事件频率或自动消耗连击。';
   }
+  if (['remnantPickupsPerSecond', 'createdRemnantPickupsPerSecond', 'remnantPickupMissingMana'].includes(variable)) {
+    if (lang === 'zh-TW') return '收集頻率須明確填寫，未填或 0 不產生每秒速率。你的收集次數用於魔力回復；你製造的痕跡被收集次數只用於其固有效果次數。重複賦予效果不增加收集者的魔力回復或增益幅度。回復值為潛在上限，可指定每次收集前缺少的魔力；0 或滿魔力時不回復。未模擬魔力消耗、持續覆蓋或收集時機。';
+    if (lang === 'zh-CN') return '收集频率须明确填写，未填或 0 不产生每秒速率。你的收集次数用于魔力回复；你创建的残迹被收集次数只用于其固有效果次数。重复赋予效果不增加收集者的魔力回复或增益幅度。回复值为潜在上限，可指定每次收集前缺失的魔力；0 或满魔力时不回复。不模拟魔力消耗、持续覆盖或收集时机。';
+  }
   if (VOLATILITY_HELP[variable]) return VOLATILITY_HELP[variable][lang] ?? fallback;
   if (variable === 'cadiroArrow') return CADIRO_HELP[lang] ?? fallback;
   if (variable === 'conditionOnConsecratedGround' || variable === 'conditionMinionsOnConsecratedGround') {
@@ -75,6 +83,10 @@ export function configTooltip(lang: string, variable: string, fallback?: string)
 
 export const CONFIG_LABEL_ZH: Record<string, string> = {
   conditionFinality: '当前拥有绝杀（无法获得连击）？',
+  remnantPickupsPerSecond: "你每秒收集的残迹数：",
+  createdRemnantPickupsPerSecond: "每秒被收集的自创残迹数：",
+  remnantPickupMissingMana: "每次收集残迹前缺失的魔力：",
+
   volatilityExplosionQuantity: '单次爆炸的无常层数：',
   volatilityExplosionsPerSecond: '每秒符合条件的无常爆炸次数：',
   conditionBeiraIgniteActive: '敌人正受到贝拉的苦楚造成的点燃？',
