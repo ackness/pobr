@@ -25,6 +25,10 @@ const CADIRO_HELP: Record<string, string> = {
 };
 
 export const CONFIG_LABEL_ZH_TW: Record<string, string> = {
+  remnantPickupsPerSecond: "你每秒收集的痕跡數：",
+  createdRemnantPickupsPerSecond: "每秒被收集的自製痕跡數：",
+  remnantPickupMissingMana: "每次收集痕跡前缺少的魔力：",
+
   conditionBeiraIgniteActive: '敵人正受到貝伊拉的悲痛造成的點燃？',
   cadiroArrow: '卡迪羅的詭計箭矢：',
   conditionOnConsecratedGround: '你位於奉獻地面？',
@@ -42,6 +46,10 @@ const BEIRA_GROUND_HELP: Record<string, string> = {
 };
 
 export function configTooltip(lang: string, variable: string, fallback?: string): string | undefined {
+  if (['remnantPickupsPerSecond', 'createdRemnantPickupsPerSecond', 'remnantPickupMissingMana'].includes(variable)) {
+    if (lang === 'zh-TW') return '收集頻率須明確填寫，未填或 0 不產生每秒速率。你的收集次數用於魔力回復；你製造的痕跡被收集次數只用於其固有效果次數。重複賦予效果不增加收集者的魔力回復或增益幅度。回復值為潛在上限，可指定每次收集前缺少的魔力；0 或滿魔力時不回復。未模擬魔力消耗、持續覆蓋或收集時機。';
+    if (lang === 'zh-CN') return '收集频率须明确填写，未填或 0 不产生每秒速率。你的收集次数用于魔力回复；你创建的残迹被收集次数只用于其固有效果次数。重复赋予效果不增加收集者的魔力回复或增益幅度。回复值为潜在上限，可指定每次收集前缺失的魔力；0 或满魔力时不回复。不模拟魔力消耗、持续覆盖或收集时机。';
+  }
   if (variable === 'cadiroArrow') return CADIRO_HELP[lang] ?? fallback;
   if (variable === 'conditionOnConsecratedGround' || variable === 'conditionMinionsOnConsecratedGround') {
     return CONSECRATED_GROUND_HELP[lang] ?? fallback;
@@ -53,6 +61,10 @@ export function configTooltip(lang: string, variable: string, fallback?: string)
 }
 
 export const CONFIG_LABEL_ZH: Record<string, string> = {
+  remnantPickupsPerSecond: "你每秒收集的残迹数：",
+  createdRemnantPickupsPerSecond: "每秒被收集的自创残迹数：",
+  remnantPickupMissingMana: "每次收集残迹前缺失的魔力：",
+
   conditionBeiraIgniteActive: '敌人正受到贝拉的苦楚造成的点燃？',
   cadiroArrow: '卡迪罗的赌局箭矢：',
   conditionMinionsOnConsecratedGround: '你的召唤物位于奉献地面？',

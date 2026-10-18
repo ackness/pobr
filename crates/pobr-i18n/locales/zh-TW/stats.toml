@@ -887,3 +887,12 @@ Charm3IgnitedGroundIgniteDPS = "護符 3 點燃地面潛在點燃每秒傷害"
 Charm3IgnitedGroundIgniteDuration = "護符 3 點燃地面的點燃持續時間（秒）"
 CadiroArrowReturn = "迴轉箭可返回（未假設額外擊中）"
 CadiroArrowKillRarity = "貪婪箭擊殺掉落稀有度（增加 %）"
+
+# Remnant event views; surrounding wording is contextual UI copy.
+RemnantManaRecoveryPercent = "每次收集痕跡回復魔力（最大魔力 %）"
+RemnantManaRecoverablePerPickup = "每次收集痕跡可回復的魔力上限"
+RemnantManaRecoverablePerSecond = "指定收集頻率下每秒可回復的魔力上限"
+CreatedRemnantDuplicateChance = "所製造痕跡賦予兩次效果的機率"
+CreatedRemnantEffectGrantsPerPickup = "每個所製造痕跡被收集時的預期固有效果次數"
+CreatedRemnantEffectGrantsPerSecond = "指定自製痕跡收集頻率下每秒預期固有效果次數"
+CreatedRemnantPotentialEffectGrantsPerUse = "每次使用製造的痕跡全數被收集時之潛在固有效果次數"

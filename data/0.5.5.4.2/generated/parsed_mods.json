@@ -11375,7 +11375,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LocalEffect",
+          "name": "CreatedRemnantDuplicateChance",
           "type": "Base",
           "value": 15.0
         }
@@ -40693,7 +40693,14 @@
     },
     {
       "text": "Recover 3% of Maximum Mana when you collect a [Remnant]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "RemnantManaRecoveryPercent",
+          "type": "Base",
+          "value": 3.0
+        }
+      ]
     },
     {
       "text": "Recover 3% of maximum Life for each [Charges|Endurance Charge] consumed",

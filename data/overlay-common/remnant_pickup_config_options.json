@@ -1,0 +1,58 @@
+{
+  "options": [
+    {
+      "var": "remnantPickupsPerSecond",
+      "input_type": "count_allow_zero",
+      "section": "When In Combat",
+      "label": "Remnants collected by you per second:",
+      "tooltip": "Explicit player pickup frequency, regardless of creator. Arcane Remnants recovers Mana once per collection. Unset or zero gives no recovery rate. Recovery is potential and assumes the specified missing Mana before each pickup; it is not regeneration or sustain.",
+      "effects": [
+        {
+          "target": "player",
+          "name": "Multiplier:RemnantPickupsPerSecond",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "input"
+          }
+        }
+      ],
+      "verified": true
+    },
+    {
+      "var": "createdRemnantPickupsPerSecond",
+      "input_type": "count_allow_zero",
+      "section": "When In Combat",
+      "label": "Your created Remnants collected per second:",
+      "tooltip": "Explicit frequency at which Remnants you created are collected. Counts expected intrinsic effect grants, including their chance to grant effects twice. Other creators use their own chance. Does not multiply collector recovery, buff magnitude, duration, or stacks.",
+      "effects": [
+        {
+          "target": "player",
+          "name": "Multiplier:CreatedRemnantPickupsPerSecond",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "input"
+          }
+        }
+      ],
+      "verified": true
+    },
+    {
+      "var": "remnantPickupMissingMana",
+      "input_type": "count_allow_zero",
+      "section": "When In Combat",
+      "label": "Missing Mana before each Remnant pickup:",
+      "tooltip": "Optional player Mana deficit immediately before a pickup. Caps Arcane Remnants recovery; zero prevents recovery. When unset, output is the potential recoverable amount from maximum Mana. Full Mana prevents recovery. No Mana spending or pickup timing is inferred.",
+      "effects": [
+        {
+          "target": "player",
+          "name": "Multiplier:RemnantPickupMissingMana",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "input"
+          }
+        }
+      ],
+      "verified": true
+    }
+  ]
+}

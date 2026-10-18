@@ -155,3 +155,6 @@ mod limits_reservation;
 mod party;
 #[path = "skills/sidebar_remaining.rs"]
 mod sidebar_remaining;
+
+#[path = "skills/remnant_pickup.rs"]
+mod remnant_pickup;

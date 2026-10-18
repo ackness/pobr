@@ -2590,6 +2590,17 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
         ));
     }
+    for id in crate::calc::remnant_pickup::STATS {
+        catalog.push(DisplayStatDefinition::computed(
+            *id,
+            Cat::Recovery,
+            if id.ends_with("Percent") || id.ends_with("Chance") {
+                Vt::Percent
+            } else {
+                Vt::Number
+            },
+        ));
+    }
     for id in crate::calc::charge_generation::STATS {
         catalog.push(DisplayStatDefinition::computed(
             *id,

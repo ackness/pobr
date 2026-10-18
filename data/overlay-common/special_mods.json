@@ -12,6 +12,44 @@
   },
   "entries": [
     {
+      "id": "remnant_pickup_mana_recovery",
+      "pattern": "recover (\\d+)% of maximum mana when you collect a remnant",
+      "mods": [
+        {
+          "name": "RemnantManaRecoveryPercent",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "remnant_recover_%_mana_on_pickup",
+      "exporter": "absent",
+      "source_note": "Passive 46124 Arcane Remnants: collector's recovery, separate from a created Remnant's intrinsic effects. calc::remnant_pickup reports potential recovery per collection and only an explicitly configured pickup rate; caps by explicit missing Mana or Full Mana.",
+      "examples": [
+        "Recover 3% of Maximum Mana when you collect a Remnant"
+      ]
+    },
+    {
+      "id": "created_remnant_duplicate_effects",
+      "pattern": "(\\d+)% chance for remnants you create to grant their effects twice",
+      "mods": [
+        {
+          "name": "CreatedRemnantDuplicateChance",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "created_remnants_have_%_chance_to_duplicate_pick_up_results",
+      "exporter": "absent",
+      "source_note": "Current game passive 40985 Empowering Remnants governs the creator's intrinsic effect-grant events. Historical generic stat-description wording about counting as another pickup is not used to duplicate Arcane recovery or buff magnitude. Chance clamps to 100%; rates require explicit own-created pickup frequency.",
+      "examples": [
+        "15% chance for Remnants you create to grant their effects twice"
+      ]
+    },
+    {
       "id": "cadiro_selected_arrow",
       "pattern": "each arrow fired is a crescendo, splinter, reversing, diamond, covetous, or blunt arrow",
       "mods": [

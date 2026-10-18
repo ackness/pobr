@@ -1317,3 +1317,45 @@ TW and CN arrow names use their respective game KeywordPopups
 [CN](https://poe2db.tw/cn/Crescendo_Arrows), and corresponding five linked names);
 these differ from the abbreviations in the item line. Surrounding control/help
 wording is application copy. No in-game timing or geometry test is claimed.
+
+Remnant pickup views (`calc::remnant_pickup`) keep the collector's Arcane
+Remnants recovery separate from the creator's Empowering Remnants effect grants.
+The active game's `base/passive_tree.json` nodes 46124 / 40985 and `base/stats.json`
+provide `remnant_recover_%_mana_on_pickup` (3% maximum Mana per collection) and
+`created_remnants_have_%_chance_to_duplicate_pick_up_results` (15% chance for
+**Remnants you create** to grant their effects twice; also visible in the
+[current passive text](https://poe2db.tw/us/Empowering_Remnants)). The older generic
+`stat_descriptions` overlay says a pickup counts as another pickup, but that is
+not the current passive wording and does not establish that the collector's
+separate recovery triggers twice. Accordingly Arcane recovery is not multiplied
+by duplication chance or Remnant effect. Instant on-pickup recovery is not Mana
+regeneration and is not scaled by recovery-rate modifiers.
+
+`remnantPickupsPerSecond` / native `RemnantPickupsPerSecond` counts the player's
+collections from any creator. `createdRemnantPickupsPerSecond` /
+`CreatedRemnantPickupsPerSecond` counts collections of the player's own created
+Remnants, including collections by another recipient; another creator's chance
+is unknown and is never substituted. `remnantPickupMissingMana` /
+`RemnantPickupMissingMana` is an optional deficit immediately before each pickup:
+recovery retains the maximum-Mana percentage basis, but cannot exceed that
+deficit or unreserved Mana capacity. Full Mana or an explicit zero deficit gives
+zero recovery. `CannotGainMana` also suppresses recovery; `NoManaRegen` does not
+block this instant event. Without a deficit, displays explicitly say **potential** recovery;
+none of these views is added to regeneration, sustain, or EHP. A supplied rate
+assumes that same deficit before each event, not simulated spending between them.
+Missing or zero rates do not infer collection from skill use. XML, JSON raw inputs
+and native multipliers agree; explicit false, zero or invalid raw input retires
+an imported value. Config reads are tracked even when absent. Combat is required
+for event outputs; source percentage/chance properties remain inspectable.
+
+Expected intrinsic effect-grant counts are `1 + clamp(chance, 0, 100) / 100` for
+one collected own-created Remnant; this is event metadata, not buff magnitude,
+duration, stacks, DPS, or a recursive pickup chain. Potential grants per use reuse
+`effect_terms.remnants_per_use()` and explicitly require **all created Remnants
+to be collected**; the view does not establish that any are collected. Products
+saturate only at the largest finite representable number, recorded in details.
+The two rules are exporter-absent and excluded on the reference basis. No in-game
+timing or duplication interaction test is claimed. Retained official TW skill
+names `mana_remnants` / `life_remnants` are 魔力痕跡 / 生命痕跡; the new labels and
+help use 痕跡, with the remaining wording being contextual application copy.
+The CN labels/help are contextual UI copy, not an official CN translation.

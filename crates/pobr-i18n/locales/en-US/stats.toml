@@ -874,3 +874,12 @@ Charm3IgnitedGroundIgniteDPS = "Charm 3 Ignited Ground Potential Ignite DPS"
 Charm3IgnitedGroundIgniteDuration = "Charm 3 Ignited Ground Ignite Duration (s)"
 CadiroArrowReturn = "Reversing arrow can return (no extra hit assumed)"
 CadiroArrowKillRarity = "Covetous arrow kill rarity (increased %)"
+
+# Remnant event views; surrounding wording is contextual UI copy.
+RemnantManaRecoveryPercent = "Mana recovered per Remnant pickup (% of maximum)"
+RemnantManaRecoverablePerPickup = "Potential Mana recoverable per Remnant pickup"
+RemnantManaRecoverablePerSecond = "Potential Mana recoverable from configured pickups per second"
+CreatedRemnantDuplicateChance = "Created Remnant effect duplication chance"
+CreatedRemnantEffectGrantsPerPickup = "Expected intrinsic grants per created Remnant collected"
+CreatedRemnantEffectGrantsPerSecond = "Expected intrinsic grants from configured created Remnant pickups per second"
+CreatedRemnantPotentialEffectGrantsPerUse = "Potential intrinsic grants per use if all Remnants are collected"
