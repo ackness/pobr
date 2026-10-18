@@ -30,7 +30,7 @@
       "0.5.5.4.2/generated/special_vendor.json": "12d91522257bfb57b5cdfc63073bd3a5df8c7a87d2b1c13c3ba3f959c936d4a5",
       "0.5.5.4.2/overlay/mod_parser_rules.json": "c719c7c3eeed65048067f264fd0a62f81cc20d89b917f05e2aa53753166242af",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
-      "overlay-common/special_mods.json": "64f44bfd87013731c6da91260348ce6c72579899905d195b48c046f7198b41c1"
+      "overlay-common/special_mods.json": "4a0aae05a8327c29f46c50c6546682efc60c067e69d718249ef45985548424b8"
     },
     "effective_rules": [
       {
@@ -2633,6 +2633,14 @@
       },
       {
         "id": "combo_additional_gain_one",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "defend_with_armour_against_projectile_attacks",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -19748,11 +19756,11 @@
   },
   "summary": {
     "no_effect": 140,
-    "parsed": 16383,
+    "parsed": 16386,
     "pobr_gap": 1614,
     "recognized_empty": 185,
     "text_channel": 788,
-    "upstream_gap": 23532
+    "upstream_gap": 23529
   },
   "entries": {
     "% of spent Runic Ward granted as Guard@100%": {
@@ -263753,9 +263761,15 @@
       "sources": [
         "stat:stat_descriptions:defend_with_%_armour_against_ranged_attacks"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArmourDefenseAgainstProjectileAttacks"
+      ],
+      "special_rule_id": "defend_with_armour_against_projectile_attacks",
+      "matching_special_rules": [
+        "defend_with_armour_against_projectile_attacks"
+      ]
     },
     "Defend with 1% of Armour while not on Low Energy Shield": {
       "sources": [
@@ -263789,11 +263803,18 @@
     },
     "Defend with 120% of Armour against Projectile Attacks": {
       "sources": [
-        "passive:19236"
+        "passive:19236",
+        "rule:defend_with_armour_against_projectile_attacks"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArmourDefenseAgainstProjectileAttacks"
+      ],
+      "special_rule_id": "defend_with_armour_against_projectile_attacks",
+      "matching_special_rules": [
+        "defend_with_armour_against_projectile_attacks"
+      ]
     },
     "Defend with 120% of Armour while not on Low Energy Shield": {
       "sources": [
@@ -263845,9 +263866,15 @@
       "sources": [
         "translation:对投射物攻击以 {0}% 的护甲防御"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ArmourDefenseAgainstProjectileAttacks"
+      ],
+      "special_rule_id": "defend_with_armour_against_projectile_attacks",
+      "matching_special_rules": [
+        "defend_with_armour_against_projectile_attacks"
+      ]
     },
     "Defend with 17% of Armour while not on Low Energy Shield": {
       "sources": [
