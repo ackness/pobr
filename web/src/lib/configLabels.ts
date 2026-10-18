@@ -26,6 +26,8 @@ const CADIRO_HELP: Record<string, string> = {
 
 export const CONFIG_LABEL_ZH_TW: Record<string, string> = {
   conditionFinality: '你目前擁有終極（無法獲得連擊）？',
+  volatilityExplosionQuantity: '單次爆炸的易爆層數：',
+  volatilityExplosionsPerSecond: '每秒符合條件的易爆爆炸次數：',
   conditionBeiraIgniteActive: '敵人正受到貝伊拉的悲痛造成的點燃？',
   cadiroArrow: '卡迪羅的詭計箭矢：',
   conditionOnConsecratedGround: '你位於奉獻地面？',
@@ -42,12 +44,25 @@ const BEIRA_GROUND_HELP: Record<string, string> = {
   "zh-CN": "明确指定敌人已因燃烧地面积累至少 50% 易燃而受到点燃。装备或启用护符不代表已点燃；以当前最大生命作为创建地面时的快照。普通点燃仅取最强来源，多重点燃的跨来源叠加另列且不加入总伤害。不自动估算使用频率、积累时间、到期或覆盖率。"
 };
 
+// 易爆 / 无常 are retained game names; these event controls are application copy.
+const VOLATILITY_HELP: Record<string, Record<string, string>> = {
+  volatilityExplosionQuantity: {
+    'zh-TW': '明確指定你身上單次爆炸的易爆整數層數；未設定或 0 表示停用。受遊戲層數上限限制（預設 200，Controlled Chaos 為 30）。預期重新獲得層數為爆炸層數乘以機率。此快照不賦予層數、不套用易爆增益或計算傷害。',
+    'zh-CN': '明确指定你身上单次爆炸的无常整数层数；未设置或 0 表示停用。受游戏层数上限限制（默认 200，Controlled Chaos 为 30）。预期重新获得层数为爆炸层数乘以几率。此快照不赋予层数、不应用无常增益或计算伤害。',
+  },
+  volatilityExplosionsPerSecond: {
+    'zh-TW': '可選填與指定層數相符、每秒符合條件的爆炸次數；未設定或 0 不估算每秒重新獲得量。重設的四秒計時器與攻擊速度無法確定此頻率。重新獲得的層數不排定後續爆炸，亦不推算循環連鎖或平均覆蓋率。',
+    'zh-CN': '可选填与指定层数相符、每秒符合条件的爆炸次数；未设置或 0 不估算每秒重新获得量。重置的四秒计时器与攻击速度无法确定此频率。重新获得的层数不安排后续爆炸，也不推算循环连锁或平均覆盖率。',
+  },
+};
+
 export function configTooltip(lang: string, variable: string, fallback?: string): string | undefined {
   // Finality: TW keyword 終極, CN retained stat_lines 绝杀; help is app copy.
   if (variable === 'conditionFinality') {
     if (lang === 'zh-TW') return '明確指定目前擁有終極，只禁止此連擊獲取視圖的累積。不推算增益持續時間、跳過打擊或終擊暴擊加成。每次事件從空計數開始，要求其他技能以同一綁定武器成功造成符合條件的擊中。不推算事件頻率或自動消耗連擊。';
     if (lang === 'zh-CN') return '明确指定当前拥有绝杀，只禁止此连击获取视图的积累。不推算增益持续时间、跳过打击或终击暴击加成。每次事件从空计数开始，要求其他技能以同一绑定武器成功造成符合条件的命中。不推算事件频率或自动消耗连击。';
   }
+  if (VOLATILITY_HELP[variable]) return VOLATILITY_HELP[variable][lang] ?? fallback;
   if (variable === 'cadiroArrow') return CADIRO_HELP[lang] ?? fallback;
   if (variable === 'conditionOnConsecratedGround' || variable === 'conditionMinionsOnConsecratedGround') {
     return CONSECRATED_GROUND_HELP[lang] ?? fallback;
@@ -60,6 +75,8 @@ export function configTooltip(lang: string, variable: string, fallback?: string)
 
 export const CONFIG_LABEL_ZH: Record<string, string> = {
   conditionFinality: '当前拥有绝杀（无法获得连击）？',
+  volatilityExplosionQuantity: '单次爆炸的无常层数：',
+  volatilityExplosionsPerSecond: '每秒符合条件的无常爆炸次数：',
   conditionBeiraIgniteActive: '敌人正受到贝拉的苦楚造成的点燃？',
   cadiroArrow: '卡迪罗的赌局箭矢：',
   conditionMinionsOnConsecratedGround: '你的召唤物位于奉献地面？',

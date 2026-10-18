@@ -39,6 +39,11 @@ movement_speed = "Movement Speed"
 # from `display_catalog`. `Translator::display_stat_text` looks these up.
 # Convention: `display.<DisplayStatId>` (lowercased snake_case of the Pascal ID).
 [display]
+# Volatility event views; contextual UI wording using the game term.
+VolatilityRefreshChance = "Volatility Refresh Chance"
+VolatilityExplosionQuantity = "Volatility Stacks Exploded"
+VolatilityRestoredPerExplosion = "Expected Volatility Restored per Explosion"
+VolatilityRestoredPerSecond = "Expected Volatility Restored per Second"
 # --- Offence ---
 TotalDPS = "Total DPS"
 TotalHitAvg = "Average Hit"

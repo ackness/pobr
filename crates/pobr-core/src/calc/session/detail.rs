@@ -49,6 +49,9 @@ fn hit_source_taken_names(stat: &str) -> Option<Vec<String>> {
 /// Each group represents a genuine query. Explicit enemy groups use the enemy
 /// database; derived relationships never appear as synthetic modifier rows.
 pub fn source_names(stat: &str) -> Vec<String> {
+    if stat == "VolatilityRefreshChance" {
+        return vec!["VolatilityRefreshChance".into()];
+    }
     if super::super::charge_generation::STATS.contains(&stat) {
         return vec![
             "ThaumaturgicalDynamismChargeInterval".into(),
@@ -624,7 +627,8 @@ impl CalculationSession {
             }
             return groups;
         }
-        let mut cfg = if super::super::charge_generation::STATS.contains(&stat)
+        let mut cfg = if super::super::volatility_events::STATS.contains(&stat)
+            || super::super::charge_generation::STATS.contains(&stat)
             || super::super::utility::GLOBAL_STATS
                 .iter()
                 .any(|(id, _)| *id == stat)
@@ -720,6 +724,9 @@ impl CalculationSession {
 
     pub fn derived_detail(&self, stat: &str) -> Option<DerivedDetail> {
         if let Some(detail) = self.output().combo_generation.detail(stat) {
+            return Some(detail);
+        }
+        if let Some(detail) = self.output().volatility_events.detail(stat) {
             return Some(detail);
         }
         if let Some(detail) = self.output().charge_generation.detail(stat) {

@@ -18351,7 +18351,14 @@
     },
     {
       "text": "25% chance that when [Volatility] on you explodes, you regain an equivalent amount of [Volatility]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "VolatilityRefreshChance",
+          "type": "Base",
+          "value": 25.0
+        }
+      ]
     },
     {
       "text": "25% chance to inflict [Daze] with [Hit|Hits] against Enemies further than 6m",
@@ -39787,7 +39794,14 @@
     },
     {
       "text": "Maximum [Volatility] is 30",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "VolatilityMaximum",
+          "type": "Override",
+          "value": 30.0
+        }
+      ]
     },
     {
       "text": "Megalomaniac",

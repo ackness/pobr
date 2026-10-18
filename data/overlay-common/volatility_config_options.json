@@ -1,0 +1,40 @@
+{
+  "options": [
+    {
+      "var": "volatilityExplosionQuantity",
+      "input_type": "count_allow_zero",
+      "section": "When In Combat",
+      "label": "Volatility stacks in one explosion:",
+      "tooltip": "Explicit whole-number quantity on you that explodes in one eligible event; unset or zero is off. Capped by the game maximum (200 by default, or 30 with Controlled Chaos). Expected restoration is this quantity times your refresh chance. This snapshot does not grant stacks, apply Volatile Power or calculate damage.",
+      "effects": [
+        {
+          "target": "player",
+          "name": "Multiplier:VolatilityExplosionQuantity",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "input"
+          }
+        }
+      ],
+      "verified": true
+    },
+    {
+      "var": "volatilityExplosionsPerSecond",
+      "input_type": "count_allow_zero",
+      "section": "When In Combat",
+      "label": "Eligible Volatility explosions per second:",
+      "tooltip": "Optional explicit rate of eligible explosions with the configured quantity. Unset or zero gives no per-second estimate. The resetting four-second timer and attack speed do not establish this rate. Regained stacks do not schedule further explosions; no recursive chain or average uptime is assumed.",
+      "effects": [
+        {
+          "target": "player",
+          "name": "Multiplier:VolatilityExplosionsPerSecond",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "input"
+          }
+        }
+      ],
+      "verified": true
+    }
+  ]
+}

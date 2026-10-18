@@ -218,6 +218,7 @@ pub(super) fn fill_sidebar(env: &mut Env) {
     }
     super::limit_display::fill(env);
     super::cadiro_arrows::fill(env);
+    super::volatility_events::calculate(env);
 }
 
 /// Game keywords: a player's base Elemental Ailment Threshold is half Life.

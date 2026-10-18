@@ -5,6 +5,9 @@ use crate::calc::{perform, skill_dot, survivability::ChargeKind};
 pub const DERIVED_STATS: &[&str] = &[
     "ComboMaximum",
     "ComboGainPerEligibleEvent",
+    "VolatilityExplosionQuantity",
+    "VolatilityRestoredPerExplosion",
+    "VolatilityRestoredPerSecond",
     "DynamismChargeInterval",
     "DynamismChargeEventRate",
     "DynamismAllyChargeEventRate",

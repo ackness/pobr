@@ -3,6 +3,9 @@
 //! Aggregated test binary: originally separate test files, merged into submodules (22→4) to cut the number of linked test binaries and speed up builds.
 #![allow(clippy::all)]
 
+#[path = "skills/volatility_events.rs"]
+mod volatility_events;
+
 #[path = "skills/cadiro_arrows.rs"]
 mod cadiro_arrows;
 
