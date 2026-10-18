@@ -941,7 +941,8 @@ def main(argv=None) -> int:
         if args.refresh or not cached.is_file():
             run_oracle(xml, cached, names)
         else:
-            print(f"compare: PoB2 side from {cached.relative_to(REPO)}", file=sys.stderr)
+            display = cached.relative_to(REPO) if cached.is_relative_to(REPO) else cached
+            print(f"compare: PoB2 side from {display}", file=sys.stderr)
         oracle = load_json(cached)
 
     if basis == "oracle":

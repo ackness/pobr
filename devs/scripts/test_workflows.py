@@ -777,6 +777,36 @@ class CompareBuildTests(unittest.TestCase):
             with self.subTest(variant=variant):
                 self.assertEqual(self.compare.decode_code(variant), xml)
 
+    def test_cached_oracle_can_live_in_another_worktree(self):
+        xml = '<PathOfBuilding2><Build level="90" className="Ranger"/></PathOfBuilding2>'
+        code = base64.urlsafe_b64encode(zlib.compress(xml.encode("utf-8"))).decode("ascii")
+        with tempfile.TemporaryDirectory(prefix="pobr compare cache ") as temp:
+            root = Path(temp).resolve()
+            repo = root / "repo"
+            repo.mkdir()
+            (repo / "code.txt").write_text(code, encoding="utf-8")
+            (repo / "engine.json").write_text("{}", encoding="utf-8")
+            for cache in (repo / ".cache/pob2-oracle", root / "warm/.cache/pob2-oracle"):
+                with self.subTest(cache=cache), \
+                        patch.object(self.compare, "REPO", repo), \
+                        patch.object(self.compare, "CACHE", cache), \
+                        patch.object(self.compare, "vendor_commit", return_value="pinned"), \
+                        patch.object(self.compare, "run_oracle") as oracle:
+                    cached = self.compare.oracle_cache_path(
+                        code, self.compare.oracle_names([], {}), "pinned")
+                    cached.parent.mkdir(parents=True)
+                    cached.write_text("{}", encoding="utf-8")
+                    output, errors = io.StringIO(), io.StringIO()
+                    with contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
+                        status = self.compare.main([
+                            str(repo), "--engine-json", str(repo / "engine.json")])
+                    self.assertEqual(status, 0)
+                    oracle.assert_not_called()
+                    self.assertIn("every panel stat agrees with PoB2", output.getvalue())
+                    display = (Path(".cache/pob2-oracle") / cached.name
+                               if cache.parent.parent == repo else cached)
+                    self.assertEqual(errors.getvalue(), f"compare: PoB2 side from {display}\n")
+
     def report(self, folder, *arguments):
         """The comparison of the build in `folder` with its two saved outputs."""
         output = io.StringIO()
