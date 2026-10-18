@@ -282,6 +282,17 @@ and makes non-player targets take 20% increased Physical damage from Hits;
 and it affects hits only when the enemy is configured as fully broken.
 These fields expose source details through the display catalog.
 
+The Molten One's Gift (passive 28542) extends the same Fully Broken Armour
+percentage to Fire Hits; Storm's Rebuke (22726) extends it to Cold and Lightning
+Hits (`fully_broken_armour_and_sundered_armour_you_inflict_also_applies_to_*`
+in the active game's `base/stats.json`, with the wording in `base/passive_tree.json`).
+The existing effect modifiers scale each granted type once, including the
+15% increased effect on The Molten One's Gift. This is the player's inflicted
+debuff on the shared enemy, so minion Hits benefit too; minion-only grants and
+effect modifiers do not alter it. The existing Fully Broken Armour state is
+required even when the enemy has no Armour. Damage over time is unaffected,
+and neither breaking Armour nor its uptime is inferred from possessing a grant.
+
 Conditional offence uses existing state: `conditionEnemyFrozen` and
 `conditionEnemyPinned` pass through `config_resolve::bridge_enemy_conditions`;
 enabled Herald skills set `AffectedByHeraldofAsh` / `AffectedByHeraldofThunder`
@@ -1155,6 +1166,8 @@ PoBR 主要计算静态构筑及选定条件下的结果，不追求完整还原
 猎手偷取怪物词缀、移动回蓝、拾取魔力残片回魔只是说明静态计算中通常无需追踪的事件收益，例子并不穷尽，也不是固定排除名单。其他词条同样先评估需求；具体取舍由目标计算决定。
 
 ### 输入去向与诊断
+
+`AdditionalRingSlot` 和 `GemlingQuality` 由现有构筑预处理读取天赋文本，分别决定第三戒指栏与宝石附加品质效果，不依赖 ModDb 查询。诊断只在来源为对应的无条件天赋行、且实际预处理判定启用时将其列为 `outside`；自定义词条或其他来源的同名 flag 不能据此消除未读取提示。
 
 一个输入可能在四处丢失，引擎必须把每一处都记下来，而不是让数值悄悄偏小：
 

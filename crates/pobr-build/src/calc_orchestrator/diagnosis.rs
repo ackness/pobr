@@ -407,6 +407,46 @@ pub(crate) fn read_outside_the_database(name: &str) -> Option<&'static str> {
         .map(|(_, consumer)| *consumer)
 }
 
+/// These readers inspect passive text, not arbitrary flags of the same name.
+pub(crate) fn read_from_build_structure(
+    modifier: &Modifier,
+    build: &Build,
+    data: &BuildData,
+) -> Option<&'static str> {
+    let (text, reader) = match modifier.name.as_str() {
+        "AdditionalRingSlot" => (
+            "+1 ring slot",
+            "third ring slot availability (skill::resolve::additional_ring_slot_allocated)",
+        ),
+        "GemlingQuality" => (
+            "gem quality grants socketed skills an additional effect",
+            "alternate gem quality effects (skill::resolve::gemling_quality_flag)",
+        ),
+        _ => return None,
+    };
+    let origin = modifier.origin.as_ref()?;
+    if !matches!(
+        origin.source_id.kind,
+        pobr_data::source::SourceKind::PassiveNode | pobr_data::source::SourceKind::AscendancyNode
+    ) || modifier.mod_type != ModType::Flag
+        || modifier.value.as_bool() != Some(true)
+        || !modifier.tags.is_empty()
+        || !modifier.flags.is_empty()
+        || !modifier.keyword_flags.is_empty()
+        || !super::skill::resolve::clean_grant_text(origin.raw_text.as_deref()?)
+            .trim()
+            .eq_ignore_ascii_case(text)
+    {
+        return None;
+    }
+    let active = match modifier.name.as_str() {
+        "AdditionalRingSlot" => super::skill::resolve::additional_ring_slot_allocated(build, data),
+        "GemlingQuality" => super::skill::resolve::gemling_quality_flag(build, data),
+        _ => unreachable!(),
+    };
+    active.then_some(reader)
+}
+
 /// Conditions the orchestration sets from what a build has before the
 /// calculation. One it set for this build is in the calculation's condition
 /// map; one listed here it would have set for another build (another weapon,
@@ -620,6 +660,7 @@ pub fn diagnose(
         .unread_modifiers()
         .into_iter()
         .filter(|modifier| read_outside_the_database(modifier.name.as_str()).is_none())
+        .filter(|modifier| read_from_build_structure(modifier, build, data).is_none())
         .filter(|modifier| read_under_a_state(modifier.name.as_str()).is_none())
         .filter(|modifier| !depended_on(modifier.name.as_str()))
         .map(ModifierRef::of)
