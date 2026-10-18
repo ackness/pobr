@@ -531,14 +531,31 @@ fn giants_blood_grip_accepts_only_eligible_weapon_bases_in_either_hand() {
             } else {
                 (base, "Wooden Club")
             };
-            let build = dual_build(Some(weapon(off, &[])))
+            let mut build = dual_build(Some(weapon(off, &[])))
                 .set_item(EquipmentSlot::Weapon1, weapon(main, &[]));
+            let ordinary = main == "Wooden Club" && off == "Wooden Club";
+            assert_eq!(
+                pobr_core::skill_env::can_dual_wield(&build, &data, true),
+                eligible,
+                "equipment grip: {main} / {off}"
+            );
+            assert_eq!(
+                pobr_core::skill_env::can_dual_wield(&build, &data, false),
+                ordinary
+            );
+            // The current skill data does not expose weapon allowlists.
+            // Axes/swords test grip only; positive attack pairs use maces.
+            if matches!(base, "Splitting Greataxe" | "Corroded Longsword") {
+                continue;
+            }
+            build.socket_groups =
+                vec![SocketGroup::new().with_active_skill("MeleeMaceMacePlayer", 20)];
             let enabled = calculate_with_data(&build, &data, &opts(&["Giant's Blood"])).unwrap();
             assert_eq!(enabled.off_hand.is_some(), eligible, "{main} / {off}");
             let absent = calculate_with_data(&build, &data, &opts(&[])).unwrap();
             assert_eq!(
                 absent.off_hand.is_some(),
-                main == "Wooden Club" && off == "Wooden Club",
+                ordinary,
                 "no keystone: {main} / {off}"
             );
         }

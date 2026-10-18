@@ -11,6 +11,105 @@ fn data() -> BuildData {
         .expect("load repository data")
 }
 
+#[test]
+fn structure_flags_report_real_passive_consumers_without_hiding_other_sources() {
+    let data = data();
+    for (node, skill, weapon, name, text) in [
+        (
+            34785,
+            "FireballPlayer",
+            "",
+            "AdditionalRingSlot",
+            "+1 Ring Slot",
+        ),
+        (
+            14429,
+            "FlashGrenadePlayer",
+            "Tense Crossbow",
+            "GemlingQuality",
+            "Gem Quality grants Socketed Skills an additional effect",
+        ),
+    ] {
+        let run = |allocated: bool, extra: bool, ring: bool| {
+            let nodes = if allocated {
+                node.to_string()
+            } else {
+                String::new()
+            };
+            let mut build = parse_build(&format!(r#"<PathOfBuilding2>
+<Build level="80" className="Witch" mainSocketGroup="1"/>
+<Tree activeSpec="1"><Spec nodes="{nodes}"/></Tree>
+<Skills><Skill enabled="true"><Gem skillId="{skill}" level="20" quality="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: RARE
+Test Ring
+Gold Ring
+Implicits: 0
++100 to maximum Life
+</Item><Item id="2">Rarity: NORMAL
+{weapon}
+Implicits: 0
+</Item><ItemSet id="1"><Slot name="Ring 3" itemId="1"/><Slot name="Weapon 1" itemId="2"/></ItemSet></Items>
+</PathOfBuilding2>"#)).unwrap();
+            if !ring {
+                build.items.remove(&pobr_data::item::EquipmentSlot::Ring3);
+            }
+            let options = DataOrchestratorOptions {
+                extra_modifier_texts: if extra { vec![text.into()] } else { vec![] },
+                ..Default::default()
+            };
+            let diagnosis = diagnose(&build, &data, &options).unwrap();
+            let usage = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+            (diagnosis, usage)
+        };
+        let (baseline, _) = run(false, false, true);
+        let (active, usage) = run(true, false, true);
+        assert!(!active.unread_modifiers.iter().any(|m| m.name == name));
+        let modifier = usage
+            .lines
+            .iter()
+            .flat_map(|line| &line.modifiers)
+            .find(|m| m.name == name)
+            .unwrap();
+        assert_eq!(modifier.status, ModifierStatus::Outside);
+        assert!(
+            modifier
+                .reason
+                .as_deref()
+                .unwrap()
+                .contains("skill::resolve::")
+        );
+        if name == "AdditionalRingSlot" {
+            let (without_ring, _) = run(true, false, false);
+            assert!(active.session.output().life > without_ring.session.output().life);
+        } else {
+            assert!(
+                active.session.output().total_hit_avg > baseline.session.output().total_hit_avg
+            );
+            assert!(
+                active.session.mod_db().iter_mods().any(|m| m
+                    .name
+                    .as_str()
+                    .ends_with("DamageGainAsLightning")
+                    && m.value.as_number() == Some(10.0))
+            );
+        }
+        // The preprocessing readers do not consume a custom flag merely
+        // because its name/text matches an implemented passive feature.
+        for allocated in [false, true] {
+            let (fake, usage) = run(allocated, true, true);
+            assert!(fake.unread_modifiers.iter().any(|m| m.name == name));
+            let custom = usage
+                .lines
+                .iter()
+                .filter(|line| line.source_kind.as_deref() != Some("PassiveNode"))
+                .flat_map(|line| &line.modifiers)
+                .find(|m| m.name == name)
+                .unwrap();
+            assert_eq!(custom.status, ModifierStatus::Unread);
+        }
+    }
+}
+
 /// A Witch casting Fireball, wearing a body armour and an amulet with
 /// `armour` and `amulet` lines, with node 20686 (“+5% to Quality of all
 /// Skills”) allocated.
@@ -494,6 +593,15 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
     let data = data();
     for &(name, ref gate) in READ_UNDER_A_STATE {
         let text = match name {
+            "ArmourBreakFireDamageTaken" => {
+                "Fully Broken Armour you inflict also increases Fire Damage Taken from Hits"
+            }
+            "ArmourBreakColdDamageTaken" | "ArmourBreakLightningDamageTaken" => {
+                "Fully Broken Armour you inflict also increases Cold and Lightning Damage Taken from Hits"
+            }
+            "ArmourDefenseAgainstProjectileAttacks" => {
+                "Defend with 120% of Armour against Projectile Attacks"
+            }
             "BleedFaster" | "IgniteFaster" | "PoisonFaster" => {
                 "Damaging Ailments deal damage 20% faster"
             }
@@ -529,8 +637,10 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
             );
             let skill = if damage_reader && !active {
                 "ManaRemnantsPlayer"
-            } else if name == "LightningDamage" {
+            } else if matches!(name, "LightningDamage" | "ArmourBreakLightningDamageTaken") {
                 "ArcPlayer"
+            } else if name == "ArmourBreakColdDamageTaken" {
+                "IceNovaPlayer"
             } else if active && matches!(name, "CurseDelay" | "CurseActivation") {
                 "DespairPlayer"
             } else {
@@ -541,7 +651,10 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
                 .config_option
                 .as_deref()
                 .map(|option| {
-                    if option == "enemyKillsPerSecond" {
+                    if option == "enemyDamageType" {
+                        format!(r#"<Config><Input name="enemyDamageType" string="{}"/></Config>"#,
+                            if active { "Projectile" } else { "Melee" })
+                    } else if option == "enemyKillsPerSecond" {
                         // Count-type kill rate: absent when off, 2/s when on.
                         if active {
                             r#"<Config><Input name="enemyKillsPerSecond" number="2"/></Config>"#.to_string()
@@ -585,6 +698,8 @@ Implicits: 0
                 .unwrap()
             };
             let mut options = DataOrchestratorOptions {
+                mode_effective: name.starts_with("ArmourBreak")
+                    || name == "ArmourDefenseAgainstProjectileAttacks",
                 extra_modifier_texts: if is_charge_on_kill {
                     Vec::new()
                 } else {

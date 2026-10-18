@@ -185,6 +185,17 @@ pub fn can_dual_wield(
         })
 }
 
+/// Dual-wielding off-hand source with ordinary one-handed weapon eligibility.
+/// Call [`dual_wield_off_hand_contribution_with_giants_blood`] when the
+/// caller also resolves Giant's Blood.
+pub fn dual_wield_off_hand_contribution(
+    equipment: &dyn EquipmentView,
+    data: &dyn WeaponContributionLookup,
+    main_effect: Option<&pobr_data::catalog::GrantedEffectDef>,
+) -> Option<WeaponContribution> {
+    dual_wield_off_hand_contribution_with_giants_blood(equipment, data, main_effect, false)
+}
+
 /// Dual-wielding off-hand (Weapon2) weapon source (matching vendor
 /// `CalcOffence.lua:2369-2449`'s weapon2Attack pass source assembly). Produced when
 /// all of the following hold:
@@ -201,7 +212,7 @@ pub fn can_dual_wield(
 /// - vendor also trims this pass by the skill's weapon restrictions (a `weaponTypes`
 ///   allowlist); PoBR doesn't model weapon restrictions, and approximates it as
 ///   "dual wielding always produces one";
-pub fn dual_wield_off_hand_contribution(
+pub fn dual_wield_off_hand_contribution_with_giants_blood(
     equipment: &dyn EquipmentView,
     data: &dyn WeaponContributionLookup,
     main_effect: Option<&pobr_data::catalog::GrantedEffectDef>,

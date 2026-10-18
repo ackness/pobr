@@ -282,6 +282,17 @@ and makes non-player targets take 20% increased Physical damage from Hits;
 and it affects hits only when the enemy is configured as fully broken.
 These fields expose source details through the display catalog.
 
+The Molten One's Gift (passive 28542) extends the same Fully Broken Armour
+percentage to Fire Hits; Storm's Rebuke (22726) extends it to Cold and Lightning
+Hits (`fully_broken_armour_and_sundered_armour_you_inflict_also_applies_to_*`
+in the active game's `base/stats.json`, with the wording in `base/passive_tree.json`).
+The existing effect modifiers scale each granted type once, including the
+15% increased effect on The Molten One's Gift. This is the player's inflicted
+debuff on the shared enemy, so minion Hits benefit too; minion-only grants and
+effect modifiers do not alter it. The existing Fully Broken Armour state is
+required even when the enemy has no Armour. Damage over time is unaffected,
+and neither breaking Armour nor its uptime is inferred from possessing a grant.
+
 Conditional offence uses existing state: `conditionEnemyFrozen` and
 `conditionEnemyPinned` pass through `config_resolve::bridge_enemy_conditions`;
 enabled Herald skills set `AffectedByHeraldofAsh` / `AffectedByHeraldofThunder`
@@ -1156,6 +1167,8 @@ PoBR 主要计算静态构筑及选定条件下的结果，不追求完整还原
 
 ### 输入去向与诊断
 
+`AdditionalRingSlot` 和 `GemlingQuality` 由现有构筑预处理读取天赋文本，分别决定第三戒指栏与宝石附加品质效果，不依赖 ModDb 查询。诊断只在来源为对应的无条件天赋行、且实际预处理判定启用时将其列为 `outside`；自定义词条或其他来源的同名 flag 不能据此消除未读取提示。
+
 一个输入可能在四处丢失，引擎必须把每一处都记下来，而不是让数值悄悄偏小：
 
 | 环节 | 丢失方式 | 记录位置 |
@@ -1462,3 +1475,28 @@ requirements and halved inherent Strength Life are retained. Shields remain
 shield sources; staves, quarterstaves, bows, crossbows and other excluded weapon
 types gain no second-hand eligibility. This is static weapon-source selection,
 not a general equipment legality or skill weapon-restriction validator.
+
+### Static helmet threshold and projectile Armour
+
+Strong Chin (current passive 10998,
+`stun_threshold_+_from_lowest_of_base_helmet_evasion_rating_and_armour`) already
+uses the generated parser's `StunThreshold` BASE modifier and the existing
+`LowestOfArmourAndEvasionOnhelmet` snapshot. The retained game text says
+“Evasion and Armour on your Helmet”: the minimum is taken after the helmet's
+local flat/increased modifiers and quality, before global defence increases.
+Known bases use current game base values; imported defence displays are only a
+fallback for unknown bases. Missing either defence contributes zero. Ordinary
+Stun Threshold increases/multipliers then apply to the added amount.
+
+Projectile Bulwark (current passive 19236,
+`defend_with_%_armour_against_ranged_attacks`) says “Defend with 120% of Armour
+against Projectile Attacks”. It uses the configured incoming enemy
+`enemyDamageType = Projectile` category, independently of the player's skill.
+Melee, spell, spell-projectile, untyped and unspecified/Average hits receive no
+conditional benefit. It changes effective applied Armour in the shared
+mitigation snapshot used by damage taken, EHP, max-hit and existing details;
+character Armour and borrowed Evasion/ES terms remain separate. The percentage
+uses the existing strongest-`ArmourDefense` convention rather than multiplying
+several “defend with” percentages; this stacking interaction has no in-game
+measurement here. The current pinned exporter has no projectile-specific rule,
+so that source is exporter-absent. No new condition, event or display is added.

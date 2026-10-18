@@ -6827,6 +6827,32 @@
         "When you gain Combo, gain an additional Combo",
         "Build an additional Combo on Hit"
       ]
+    },
+    {
+      "id": "defend_with_armour_against_projectile_attacks",
+      "pattern": "defend with (\\d+(?:\\.\\d+)?)% of armour against projectile attacks",
+      "mods": [
+        {
+          "name": "ArmourDefenseAgainstProjectileAttacks",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "base": -100.0
+              }
+            ]
+          }
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "base/stats.json: defend_with_%_armour_against_ranged_attacks; base/passive_tree.json: Projectile Bulwark (19236)",
+      "exporter": "absent",
+      "source_note": "Current passive text limits this Armour defence percentage to incoming Projectile Attacks. calc::taken selects it only from the configured enemy HitCategory::Projectile and takes the strongest percentage together with ArmourDefense; player skill flags do not qualify it. It changes effective applied Armour used by taken-hit, EHP and max-hit calculations, not character Armour. Unspecified/Average, melee and spell hits remain unchanged.",
+      "examples": [
+        "Defend with 120% of Armour against Projectile Attacks"
+      ]
     }
   ]
 }

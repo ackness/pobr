@@ -58,7 +58,12 @@ pub(crate) fn dual_wield_off_hand_contribution(
     data: &BuildData,
     main_effect: Option<&pobr_data::catalog::GrantedEffectDef>,
 ) -> Option<WeaponContribution> {
-    pobr_core::skill_env::dual_wield_off_hand_contribution(build, data, main_effect, true)
+    pobr_core::skill_env::dual_wield_off_hand_contribution_with_giants_blood(
+        build,
+        data,
+        main_effect,
+        true,
+    )
 }
 
 /// Strips PoB item mod `{tag}` markers (e.g. `{desecrated}{enchant}`), returning the untagged lowercase text.

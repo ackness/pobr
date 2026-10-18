@@ -40,7 +40,8 @@ use serde::Serialize;
 use crate::breakdown::BREAKDOWN_STATS;
 use crate::calc_orchestrator::{
     ReadGate, condition_set_from_build, config_option_setting, engine_ctx,
-    multiplier_option_setting, read_outside_the_database, read_under_a_state,
+    multiplier_option_setting, read_from_build_structure, read_outside_the_database,
+    read_under_a_state,
 };
 use crate::{Build, BuildData, Diagnosis, LineFate, ModifierRef};
 
@@ -398,14 +399,19 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
                 } else {
                     &main
                 };
-                let (status, reason) = judge(
-                    modifier,
-                    &diagnosis.reads,
-                    context,
-                    &variables,
-                    &minions,
-                    &slot_bases,
-                );
+                let (status, reason) =
+                    if let Some(reader) = read_from_build_structure(modifier, build, data) {
+                        (ModifierStatus::Outside, Some(reader.into()))
+                    } else {
+                        judge(
+                            modifier,
+                            &diagnosis.reads,
+                            context,
+                            &variables,
+                            &minions,
+                            &slot_bases,
+                        )
+                    };
                 UsageModifier {
                     name: modifier.name.as_str().to_string(),
                     mod_type: modifier.mod_type.as_trace_label(),
