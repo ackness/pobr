@@ -41,6 +41,7 @@ pub(super) struct ResolvedWeapons {
     pub dmg_mult: f64,
     pub hand_weapon: Option<pobr_core::calc::WeaponBase>,
     pub off_hand_weapon: Option<pobr_core::calc::WeaponBase>,
+    pub requires_giants_blood: bool,
     pub bypasses_cooldown: bool,
 }
 
@@ -514,9 +515,8 @@ pub(super) fn stage_weapon_bases(
         .main_skill
         .as_ref()
         .and_then(|(skill, _, skill_id)| weapon_contribution(build, data, skill_id, skill));
-    // Dual-wielding off-hand: when the main hand is a real one-handed weapon and
-    // Weapon2 is also a weapon base, assembles a second off-hand weapon source
-    // (matching vendor's weapon2Attack pass, CalcOffence.lua:2369-2449).
+    // Prepare a candidate for weapons permitted in one hand. Giant's Blood
+    // is read after source injection; without it the candidate is retired.
     let off_weapon = weapon
         .as_ref()
         .filter(|_| attacks_with_weapon(&main.main_skill_types))
@@ -535,6 +535,8 @@ pub(super) fn stage_weapon_bases(
     };
     let hand_weapon = weapon.as_ref().map(to_hand_base);
     let off_hand_weapon = off_weapon.as_ref().map(to_hand_base);
+    let requires_giants_blood = pobr_core::skill_env::can_dual_wield(build, data, true)
+        && !pobr_core::skill_env::can_dual_wield(build, data, false);
 
     // Cooldown-limited rate: PoB's order — first fully compute every speed inc/more,
     // then apply `min(rate, 1/effective_cooldown)` (effective_cooldown shortened via
@@ -567,6 +569,7 @@ pub(super) fn stage_weapon_bases(
         dmg_mult,
         hand_weapon,
         off_hand_weapon,
+        requires_giants_blood,
         bypasses_cooldown,
     }
 }

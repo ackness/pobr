@@ -12,6 +12,24 @@
   },
   "entries": [
     {
+      "id": "giants_blood_one_hand_grip",
+      "pattern": "you can wield two-handed axes, maces and swords in one hand",
+      "mods": [
+        {
+          "name": "GiantsBlood",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "can_wield_2h_axe_sword_mace_in_one_hand",
+      "source_note": "Current passive 32349 permits these two-handed bases in one hand; original weapon type/flags are preserved. Final source resolution enables the second weapon and DualWielding condition.",
+      "examples": [
+        "You can wield Two-Handed Axes, Maces and Swords in one hand"
+      ]
+    },
+    {
       "id": "volatility_refresh_chance",
       "pattern": "(\\d+(?:\\.\\d+)?)% chance that when volatility on you (?:explodes|detonates), you regain an equivalent amount of volatility",
       "mods": [

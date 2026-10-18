@@ -1448,3 +1448,17 @@ views. Calcs formulas retain their inputs and have no invented PoB output keys.
 ([TW keyword](https://poe2db.tw/tw/Combo)); full labels/help are contextual UI copy.
 CN uses `连击` and `绝杀` from the corresponding retained
 `i18n/zh-CN/stat_lines.json` gain-Combo and gain-Finality entries.
+
+Giant's Blood uses the current game's passive 32349 and stat
+`can_wield_2h_axe_sword_mace_in_one_hand`: two-handed Axes, Maces and Swords may
+supply either hand of a dual-wield weapon attack. The prepared equipment view
+provides possible weapon sources; after all modifiers and item-granted keystones
+arrive, the `GiantsBlood` flag enables the second hand and `DualWielding`.
+Without it, the second-hand candidate contributes no attack. Local modifiers of
+an unused off-hand weapon never become global modifiers. This changes permitted
+grip only: base classes, per-hand `Weapon2H` flags, `UsingTwoHandedMelee`,
+two-handed damage modifiers, the existing triple martial-weapon attribute
+requirements and halved inherent Strength Life are retained. Shields remain
+shield sources; staves, quarterstaves, bows, crossbows and other excluded weapon
+types gain no second-hand eligibility. This is static weapon-source selection,
+not a general equipment legality or skill weapon-restriction validator.

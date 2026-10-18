@@ -74,7 +74,7 @@ pub use triggers::{
     recognize_trigger_config, source_cond_matches, trigger_modifiers,
 };
 pub use weapon::{
-    WeaponContribution, WeaponContributionLookup, WeaponItemLookup,
+    WeaponContribution, WeaponContributionLookup, WeaponItemLookup, can_dual_wield,
     dual_wield_off_hand_contribution, non_weapon_attack_contribution, off_hand_defence,
     per_shield_defence_scale, shield_elemental_damage_modifiers, unarmed_contribution,
     weapon_contribution, weapon_item_contribution,

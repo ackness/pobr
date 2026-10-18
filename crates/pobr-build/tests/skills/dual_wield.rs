@@ -456,3 +456,242 @@ fn mace_strike_counts_both_weapon_hits() {
     let hand = single.main_hand.as_ref().expect("single hand");
     assert!((single.dps - hand.average_hit * hand.speed * hand.hit_chance).abs() < 1e-6);
 }
+
+/// Giant's Blood permits a second two-handed mace without changing either
+/// weapon's two-handed damage identity.
+#[test]
+fn giants_blood_mace_strike_includes_the_second_two_handed_weapon() {
+    let data = load_build_data();
+    let mut build = dual_build(Some(weapon("Felled Greatclub", &[])))
+        .set_item(EquipmentSlot::Weapon1, weapon("Felled Greatclub", &[]));
+    build.socket_groups = vec![SocketGroup::new().with_active_skill("MeleeMaceMacePlayer", 20)];
+    let single = calculate_with_data(&build, &data, &opts(&[])).expect("without keystone");
+    assert!(single.off_hand.is_none());
+    build
+        .tree
+        .allocated_nodes
+        .push(pobr_data::passive_tree::NodeId(32349));
+    let dual = calculate_with_data(&build, &data, &opts(&[])).expect("Giant's Blood");
+    let mh = dual.main_hand.as_ref().expect("main hand");
+    let oh = dual.off_hand.as_ref().expect("Giant's Blood off hand");
+    assert!((oh.average_hit - mh.average_hit).abs() < 1e-9);
+    assert!((dual.dps - 2.0 * mh.average_hit * mh.speed * mh.hit_chance).abs() < 1e-6);
+    assert!(dual.dps > single.dps, "{} > {}", dual.dps, single.dps);
+
+    let two_handed = calculate_with_data(
+        &build,
+        &data,
+        &opts(&["100% increased Damage with Two Handed Weapons"]),
+    )
+    .unwrap();
+    assert!(two_handed.main_hand.unwrap().average_hit > mh.average_hit);
+    assert!(two_handed.off_hand.unwrap().average_hit > oh.average_hit);
+    let one_handed = calculate_with_data(
+        &build,
+        &data,
+        &opts(&["100% increased Damage with One Handed Weapons"]),
+    )
+    .unwrap();
+    assert_eq!(one_handed.dps, dual.dps);
+    let condition = calculate_with_data(
+        &build,
+        &data,
+        &opts(&["100% increased Attack Speed while Dual Wielding"]),
+    )
+    .unwrap();
+    assert!(condition.action_rate > dual.action_rate);
+    assert_eq!(dual.limit_views.global_weapon_attribute_requirements, 3.0);
+    assert_eq!(single.limit_views.global_weapon_attribute_requirements, 1.0);
+    let more_strength = calculate_with_data(&build, &data, &opts(&["+100 to Strength"])).unwrap();
+    assert_eq!(more_strength.life - dual.life, 100.0);
+}
+
+#[test]
+fn giants_blood_grip_accepts_only_eligible_weapon_bases_in_either_hand() {
+    let data = load_build_data();
+    let bases = [
+        ("Felled Greatclub", true),
+        ("Splitting Greataxe", true),
+        ("Corroded Longsword", true),
+        ("Wooden Club", true),
+        ("Wrapped Quarterstaff", false),
+        ("Ashen Staff", false),
+        ("Crude Bow", false),
+        ("Makeshift Crossbow", false),
+        ("Changeling Talisman", false),
+        ("Golden Shield", false),
+        ("Twig Focus", false),
+        ("Broadhead Quiver", false),
+    ];
+    for (base, eligible) in bases {
+        assert!(data.base_items.contains_key(base), "real base {base}");
+        for offhand in [false, true] {
+            let (main, off) = if offhand {
+                ("Felled Greatclub", base)
+            } else {
+                (base, "Wooden Club")
+            };
+            let build = dual_build(Some(weapon(off, &[])))
+                .set_item(EquipmentSlot::Weapon1, weapon(main, &[]));
+            let enabled = calculate_with_data(&build, &data, &opts(&["Giant's Blood"])).unwrap();
+            assert_eq!(enabled.off_hand.is_some(), eligible, "{main} / {off}");
+            let absent = calculate_with_data(&build, &data, &opts(&[])).unwrap();
+            assert_eq!(
+                absent.off_hand.is_some(),
+                main == "Wooden Club" && off == "Wooden Club",
+                "no keystone: {main} / {off}"
+            );
+        }
+    }
+    let shield = dual_build(Some(weapon("Crucible Tower Shield", &[])))
+        .set_item(EquipmentSlot::Weapon1, weapon("Felled Greatclub", &[]));
+    let plain = calculate_with_data(&shield, &data, &opts(&["Giant's Blood"])).unwrap();
+    let dual_bonus = calculate_with_data(
+        &shield,
+        &data,
+        &opts(&[
+            "Giant's Blood",
+            "100% increased Attack Speed while Dual Wielding",
+        ]),
+    )
+    .unwrap();
+    assert!(plain.block_chance > 0.0);
+    assert_eq!(plain.dps, dual_bonus.dps);
+}
+
+#[test]
+fn giants_blood_sources_and_local_offhand_mods_do_not_leak() {
+    let data = load_build_data();
+    let build = dual_build(Some(weapon("Felled Greatclub", &[])))
+        .set_item(EquipmentSlot::Weapon1, weapon("Felled Greatclub", &[]));
+    let local = build.clone().set_item(
+        EquipmentSlot::Weapon2,
+        weapon(
+            "Felled Greatclub",
+            &[
+                "100% increased Physical Damage",
+                "50% increased Attack Speed",
+                "50% increased Critical Hit Chance",
+                "Adds 10 to 20 Fire Damage",
+            ],
+        ),
+    );
+    let run =
+        |build: &Build, extra: &[&str]| calculate_with_data(build, &data, &opts(extra)).unwrap();
+    let absent = run(&build, &[]);
+    assert_eq!(run(&local, &[]).dps, absent.dps);
+    let excluded = dual_build(Some(weapon("Wrapped Quarterstaff", &[])));
+    let excluded_local = dual_build(Some(weapon(
+        "Wrapped Quarterstaff",
+        &[
+            "100% increased Physical Damage",
+            "50% increased Attack Speed",
+        ],
+    )));
+    assert_eq!(run(&excluded_local, &[]).dps, run(&excluded, &[]).dps);
+    let excluded_global = dual_build(Some(weapon(
+        "Wrapped Quarterstaff",
+        &["100% increased Damage"],
+    )));
+    let global = run(&excluded_global, &[]);
+    assert!(global.off_hand.is_none());
+    assert!(global.dps > run(&excluded, &[]).dps);
+    let plain = run(&build, &["Giant's Blood"]);
+    let boosted = run(&local, &["Giant's Blood"]);
+    assert_eq!(
+        boosted.main_hand.as_ref().unwrap(),
+        plain.main_hand.as_ref().unwrap()
+    );
+    assert!(boosted.off_hand.unwrap().total_dps > plain.off_hand.unwrap().total_dps);
+
+    let grant = build.clone().set_item(
+        EquipmentSlot::Ring1,
+        weapon("Iron Ring", &["Giant's Blood"]),
+    );
+    assert!(run(&grant, &[]).off_hand.is_some());
+    // Native conditional flags are evaluated, not accepted merely because
+    // their name exists in the modifier store.
+    for enabled in [false, true] {
+        use pobr_core::calc::{CalculationSession, HandSource, WeaponBase};
+        let mut session = CalculationSession::new(MinimalInput::default())
+            .with_config(pobr_core::CalcConfig::default().with_condition("TestGrip", enabled));
+        session.add_modifiers([pobr_core::Modifier::flag("GiantsBlood")
+            .with_tag(pobr_core::ModTag::condition("TestGrip", false))]);
+        session.set_hand_sources(
+            vec![
+                HandSource::main_hand(WeaponBase::default()),
+                HandSource::off_hand(WeaponBase::default()),
+            ],
+            false,
+        );
+        session.prepare_giants_blood_dual_wielding();
+        session.perform_minimal().unwrap();
+        assert_eq!(session.config().condition("DualWielding"), enabled);
+        assert_eq!(session.output().off_hand.is_some(), enabled);
+    }
+    // A spell retains the equipment's dual-wield condition, but no weapon
+    // hand pass or local weapon damage.
+    let mut spell = local;
+    spell.socket_groups = vec![SocketGroup::new().with_active_skill("FireballPlayer", 20)];
+    let spell_out = run(&spell, &["Giant's Blood"]);
+    assert!(spell_out.main_hand.is_none() && spell_out.off_hand.is_none());
+}
+
+#[test]
+fn giants_blood_grants_follow_active_jewel_sockets_and_weapon_sets() {
+    let data = load_build_data();
+    let socket = data
+        .passive_nodes
+        .values()
+        .find(|node| node.kind == pobr_data::catalog::PassiveNodeKind::JewelSocket)
+        .unwrap()
+        .skill;
+    let xml = |allocated: bool, second: bool| {
+        let nodes = if allocated {
+            socket.to_string()
+        } else {
+            String::new()
+        };
+        format!(
+            r#"<PathOfBuilding2>
+<Build level="50" className="Warrior" mainSocketGroup="1"/>
+<Tree activeSpec="1"><Spec nodes="{nodes}"><Sockets><Socket nodeId="{socket}" itemId="3"/></Sockets></Spec></Tree>
+<Skills><Skill><Gem skillId="MeleeMaceMacePlayer" level="20"/></Skill></Skills>
+<Items activeItemSet="1">
+<Item id="1">Rarity: NORMAL
+Felled Greatclub
+Implicits: 0</Item>
+<Item id="2">Rarity: NORMAL
+Wooden Club
+Implicits: 0</Item>
+<Item id="3">Rarity: UNIQUE
+Test Keystone Jewel
+Ruby
+Implicits: 0
+Giant's Blood</Item>
+<ItemSet id="1" useSecondWeaponSet="{second}">
+<Slot name="Weapon 1" itemId="1"/><Slot name="Weapon 2" itemId="1"/>
+<Slot name="Weapon 1 Swap" itemId="2"/><Slot name="Weapon 2 Swap" itemId="2"/>
+</ItemSet></Items></PathOfBuilding2>"#
+        )
+    };
+    for allocated in [false, true] {
+        for second in [false, true] {
+            let build = pobr_build::parse_build(&xml(allocated, second)).unwrap();
+            let out = calculate_with_data(&build, &data, &opts(&[])).unwrap();
+            assert_eq!(out.off_hand.is_some(), allocated || second);
+        }
+    }
+    // A grant on the inactive weapon set cannot enable the held two-handers.
+    let source_on_swap = xml(false, false).replace(
+        "Wooden Club\nImplicits: 0",
+        "Wooden Club\nImplicits: 0\nGiant's Blood",
+    );
+    let build = pobr_build::parse_build(&source_on_swap).unwrap();
+    assert!(
+        calculate_with_data(&build, &data, &opts(&[]))
+            .unwrap()
+            .off_hand
+            .is_none()
+    );
+}

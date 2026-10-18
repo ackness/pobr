@@ -158,6 +158,33 @@ pub fn weapon_item_contribution(
     })
 }
 
+/// Whether both equipped weapons can be held in one hand. Giant's Blood
+/// changes permitted grip only: each weapon retains its original type flags.
+pub fn can_dual_wield(
+    equipment: &dyn EquipmentView,
+    data: &dyn WeaponItemLookup,
+    giants_blood: bool,
+) -> bool {
+    [EquipmentSlot::Weapon1, EquipmentSlot::Weapon2]
+        .into_iter()
+        .all(|slot| {
+            let Some(item) = equipment.item(slot) else {
+                return false;
+            };
+            data.weapon_base(&item.base.to_string()).is_some()
+                && data.base_item(&item.base.to_string()).is_some_and(|base| {
+                    data.weapon_type_info(&base.item_class).is_some_and(|kind| {
+                        kind.one_hand
+                            || (giants_blood
+                                && matches!(
+                                    base.item_class.as_str(),
+                                    "Two Hand Axe" | "Two Hand Mace" | "Two Hand Sword"
+                                ))
+                    })
+                })
+        })
+}
+
 /// Dual-wielding off-hand (Weapon2) weapon source (matching vendor
 /// `CalcOffence.lua:2369-2449`'s weapon2Attack pass source assembly). Produced when
 /// all of the following hold:
@@ -165,10 +192,10 @@ pub fn weapon_item_contribution(
 /// - The main skill is a **weapon attack** (not a spell, not a non-weapon attack like
 ///   Shield Wall — the latter's off-hand source is assembled separately by
 ///   [`non_weapon_attack_contribution`]);
-/// - The main hand has a **one-handed** weapon base equipped (vendor's precondition for
-///   dual wielding; unarmed/two-handed weapons don't produce this);
-/// - Weapon2 is a weapon base (shield/quiver/foci → `None`, the same source as
-///   `weapon_type_conditions`'s `DualWielding` determination).
+/// - Both hands have weapons permitted in one hand by [`can_dual_wield`].
+///   Callers preparing sources before modifier resolution may pass `true`
+///   for Giant's Blood, then retire that candidate if the final source flag
+///   is absent. Shields, quivers and foci never supply a second weapon.
 ///
 /// Slice notes (TODO(parity), a known vendor behavior difference):
 /// - vendor also trims this pass by the skill's weapon restrictions (a `weaponTypes`
@@ -178,6 +205,7 @@ pub fn dual_wield_off_hand_contribution(
     equipment: &dyn EquipmentView,
     data: &dyn WeaponContributionLookup,
     main_effect: Option<&pobr_data::catalog::GrantedEffectDef>,
+    giants_blood: bool,
 ) -> Option<WeaponContribution> {
     let is_weapon_attack = main_effect
         .map(|e| e.is_attack() && !e.is_non_weapon_attack())
@@ -185,13 +213,11 @@ pub fn dual_wield_off_hand_contribution(
     if !is_weapon_attack {
         return None;
     }
-    // The main hand must be an equipped one-handed weapon (per the weapon_types table).
-    let mh = equipment.item(EquipmentSlot::Weapon1)?;
-    let mh_def = data.base_item(&mh.base.to_string())?;
-    let mh_one_hand = data
-        .weapon_type_info(&mh_def.item_class)
-        .is_some_and(|w| w.one_hand);
-    if !mh_one_hand || data.weapon_base(&mh.base.to_string()).is_none() {
+    if !can_dual_wield(
+        equipment,
+        WeaponContributionLookup::as_weapon_item_lookup(data),
+        giants_blood,
+    ) {
         return None;
     }
     let off = equipment.item(EquipmentSlot::Weapon2)?;

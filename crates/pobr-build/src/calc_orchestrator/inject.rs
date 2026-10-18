@@ -854,11 +854,12 @@ pub(super) fn inject_items(
         // into weapon_contribution as an independent weapon-source multiplier zone ×
         // baseMultiplier); leaving it in the global set would double-count and
         // incorrectly fold it into the additive bucket (PoB treats it as an independent
-        // multiplier zone). Dual-wielding off-hand: Weapon2 is stripped the same way
-        // when consumed as an off-hand weapon source — its local mods are already
-        // folded into the off-hand WeaponContribution (when not consumed, the global
-        // injection is left untouched).
-        if slot == EquipmentSlot::Weapon1 || (slot == EquipmentSlot::Weapon2 && off_weapon_active) {
+        // multiplier zone). A real off-hand weapon is stripped the same way:
+        // its local modifiers never become global when its hand cannot attack.
+        if slot == EquipmentSlot::Weapon1
+            || (slot == EquipmentSlot::Weapon2
+                && data.weapon_base(&item.base.to_string()).is_some())
+        {
             take_item_lines(
                 session,
                 slot,

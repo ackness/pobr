@@ -601,6 +601,9 @@ fn attributes_without_skills(
         stage_inject_passives(&mut session, &ctx)?;
         stage_inject_extra_texts(&mut session, &ctx)?;
         let mut session = session.finish_sources();
+        if ctx.weapons.requires_giants_blood {
+            session.prepare_giants_blood_dual_wielding();
+        }
         inject_build_multipliers(&mut session, build, data);
         let class = character_base(build, data).filter(|_| options.inject_character_base);
         let bases = class.map_or([0.0; 3], |c| [c.strength, c.dexterity, c.intelligence]);
@@ -748,6 +751,9 @@ fn calculate_prepared_with_context(
     let mut session = session.finish_sources();
     if context.track_reads {
         session.track_modifier_reads();
+    }
+    if ctx.weapons.requires_giants_blood {
+        session.prepare_giants_blood_dual_wielding();
     }
     inject_build_multipliers(&mut session, build, data);
     inject_spirit_reservation(&mut session, build, data);

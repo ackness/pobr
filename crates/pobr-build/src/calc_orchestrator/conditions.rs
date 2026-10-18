@@ -192,17 +192,9 @@ pub(crate) fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'s
     }
     // A valid second one-handed weapon is required for a dual-wield attack;
     // shields, quivers, and unmapped bases aren't second weapon sources.
-    if main.is_some_and(|w| w.one_hand)
-        && build.items.get(&EquipmentSlot::Weapon2).is_some_and(|off| {
-            data.weapon_base(&off.base.to_string()).is_some()
-                && data
-                    .base_items
-                    .get(&off.base.to_string())
-                    .is_some_and(|def| {
-                        weapon_type_info(data, &def.item_class).is_some_and(|w| w.one_hand)
-                    })
-        })
-    {
+    // Giant's Blood is settled after source injection, including keystones
+    // granted by an item. Category/grip conditions above retain base identity.
+    if pobr_core::skill_env::can_dual_wield(build, data, false) {
         vars.push("DualWielding");
     }
     vars

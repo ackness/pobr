@@ -45,10 +45,9 @@ pub(crate) fn weapon_contribution(
 /// - The main skill is a **weapon attack** (not a spell, not a non-weapon attack like
 ///   Shield Wall — the latter's off-hand source is assembled separately by
 ///   [`non_weapon_attack_contribution`]);
-/// - The main hand has a **one-handed** weapon base equipped (vendor's precondition for
-///   dual wielding; unarmed/two-handed weapons don't produce this);
-/// - Weapon2 is a weapon base (shield/quiver/foci → `None`, the same source as
-///   `weapon_type_conditions`'s `DualWielding` determination).
+/// - Both weapons can be held in one hand, including the Giant's Blood
+///   candidate. The final source flag settles that candidate after injection;
+/// - Shield/quiver/focus bases never supply a second weapon.
 ///
 /// Slice notes (TODO(parity), a known vendor behavior difference):
 /// - vendor also trims this pass by the skill's weapon restrictions (a `weaponTypes`
@@ -59,7 +58,7 @@ pub(crate) fn dual_wield_off_hand_contribution(
     data: &BuildData,
     main_effect: Option<&pobr_data::catalog::GrantedEffectDef>,
 ) -> Option<WeaponContribution> {
-    pobr_core::skill_env::dual_wield_off_hand_contribution(build, data, main_effect)
+    pobr_core::skill_env::dual_wield_off_hand_contribution(build, data, main_effect, true)
 }
 
 /// Strips PoB item mod `{tag}` markers (e.g. `{desecrated}{enchant}`), returning the untagged lowercase text.

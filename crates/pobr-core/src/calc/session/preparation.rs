@@ -18,6 +18,21 @@ pub(in crate::calc) fn life_mana_pools(env: &Env) -> (f64, f64) {
 }
 
 impl CalculationSession {
+    /// Settles a dual-wield equipment pair that requires Giant's Blood.
+    /// Called after all sources arrive, before attribute/reservation reads.
+    /// The candidate weapons keep their two-handed type and local modifiers;
+    /// without the source, only the candidate off-hand attack is retired.
+    pub fn prepare_giants_blood_dual_wielding(&mut self) {
+        crate::calc::keystone_merge::merge_keystones(&mut self.env);
+        let enabled = self.has_flag("GiantsBlood");
+        self.set_condition("DualWielding", enabled);
+        if !enabled && self.env.hand_sources.len() == 2 {
+            self.env
+                .hand_sources
+                .retain(|source| source.label != crate::HandTag::OffHand);
+        }
+    }
+
     /// Derives attribute bonuses and captures the initial actor stat/multiplier values.
     /// Call once after source injection and the build's equipment facts (attributes can
     /// scale on them, as "per Socket filled" does), and before condition bridging.
