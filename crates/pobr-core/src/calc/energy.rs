@@ -117,6 +117,7 @@ pub struct EnergyTriggerTerms {
     pub trigger_rate_cap: f64,
     pub triggers_per_second: f64,
     pub invocation: bool,
+    /// Hit-rate/DPS adjustment after the payload converts triggered uses into hits.
     pub rate_multiplier: f64,
 }
 
@@ -474,14 +475,36 @@ pub fn apply_energy_trigger(env: &mut Env) {
     out.energy_trigger_source = best.source.clone();
     out.skill_trigger_rate = round(best.triggers_per_second);
     out.trigger_rate_cap = round(best.trigger_rate_cap);
-    let own_rate = out.effective_action_rate;
+    // Triggers create new uses; a maintained orb/storm or rain still hits on
+    // its own cadence. Reuse that model with the resolved trigger use rate,
+    // including its duration/per-use limit, rather than multiplying pulses.
+    let hit_rate = super::rain::rain_hits(db, cfg, best.triggers_per_second)
+        .map(|hits| hits.rate)
+        .or_else(|| {
+            super::periodic::periodic_hits(db, cfg, best.triggers_per_second).map(|hits| hits.rate)
+        })
+        .map(|rate| {
+            if best.triggers_per_second > 0.0 {
+                rate
+            } else {
+                // Explicitly stopped triggers cannot maintain an instance,
+                // including when the sustained-hit compatibility flag is set.
+                0.0
+            }
+        });
+    let own_rate = if hit_rate.is_some() {
+        out.action_rate
+    } else {
+        out.effective_action_rate
+    };
+    let rate = hit_rate.unwrap_or(best.triggers_per_second);
     if own_rate > 0.0 {
-        let factor = best.triggers_per_second / own_rate;
+        let factor = rate / own_rate;
         best.rate_multiplier = factor;
         out.dps = round(out.dps * factor);
         out.action_rate = round(out.action_rate * factor);
     }
-    out.effective_action_rate = out.skill_trigger_rate;
+    out.effective_action_rate = round(rate);
     if let Some(use_time) = &mut out.skill_use_time {
         use_time.effective_rate = out.effective_action_rate;
     }

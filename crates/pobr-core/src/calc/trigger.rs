@@ -602,6 +602,8 @@ pub struct TriggerSourceStats {
     pub ailments: super::energy::AilmentSourceStats,
     /// Hit cadence, which can differ from the cast cadence for periodic skills.
     pub hit_rate: f64,
+    /// Uses per second before a rain or periodic skill converts uses into hits.
+    pub use_rate: f64,
 }
 
 impl TriggerSourceStats {

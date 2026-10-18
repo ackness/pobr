@@ -1013,6 +1013,19 @@ impl CalculationSession {
         super::periodic::is_periodic(&self.env.player.mod_db, &self.env.cfg)
     }
 
+    /// The selected skill's own use cadence, before uses become rain or periodic
+    /// hits. Trigger sources such as Spellslinger count casts at this rate.
+    pub fn own_skill_use_rate(&self) -> f64 {
+        let env = &self.env;
+        let input = perform::player_input(env);
+        let hand = perform::main_hand_scope(env);
+        let (cfg, input) = match &hand {
+            Some((cfg, input)) => (cfg, input),
+            None => (&env.cfg, &input),
+        };
+        super::offence::resolve_use_rate(&env.player.mod_db, cfg, input)
+    }
+
     /// Incoming enemy inputs used by EHP and maximum-hit calculations.
     /// Preset rows remain visible but inactive when an explicit value replaces them.
     pub fn enemy_hit_mods(&self, include_damage: bool) -> Vec<crate::ModEvaluation<'_>> {
@@ -1062,13 +1075,31 @@ impl CalculationSession {
             None => (&env.cfg, &input),
         };
         let db = &env.player.mod_db;
-        let uses = super::offence::resolve_use_rate(db, cfg, hand_input);
+        let uses = env
+            .player
+            .output
+            .energy_trigger
+            .as_ref()
+            .filter(|terms| !terms.at_own_rate)
+            .map_or_else(
+                || super::offence::resolve_use_rate(db, cfg, hand_input),
+                |terms| terms.triggers_per_second,
+            );
         super::rain::rain_hits(db, cfg, uses).map(|rain| {
             let mut summary = rain.summary();
             if let Some(reload) = env.crossbow_reload {
                 summary.hits_per_second = super::round(
                     summary.hits_per_second * reload.effective_rate / reload.firing_rate,
                 );
+            }
+            if env
+                .player
+                .output
+                .energy_trigger
+                .as_ref()
+                .is_some_and(|terms| !terms.at_own_rate)
+            {
+                summary.hits_per_second = env.player.output.action_rate;
             }
             summary
         })

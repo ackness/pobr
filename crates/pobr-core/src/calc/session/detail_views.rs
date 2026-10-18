@@ -1207,7 +1207,13 @@ impl CalculationSession {
                     .as_ref()
                     .is_some_and(|terms| !terms.at_own_rate)
                 {
-                    one("SkillTriggerRate", out.skill_trigger_rate)
+                    if super::super::periodic::is_periodic(db, cfg)
+                        || super::super::rain::is_rain(db, cfg)
+                    {
+                        one("ActionRate", out.action_rate)
+                    } else {
+                        one("SkillTriggerRate", out.skill_trigger_rate)
+                    }
                 } else if out.action_rate > 0.0 {
                     one("ActionRate", out.action_rate)
                 } else {
