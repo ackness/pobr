@@ -35353,7 +35353,19 @@
     },
     {
       "text": "Creates Ignited Ground for 4 seconds when used, Igniting enemies as though dealing Fire damage equal to 500% of your maximum Life",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "UtilityIgnitedGroundDuration",
+          "type": "Base",
+          "value": 4.0
+        },
+        {
+          "name": "UtilityIgnitedGroundLifePercent",
+          "type": "Base",
+          "value": 500.0
+        }
+      ]
     },
     {
       "text": "Curses you inflict ignore Curse limit",

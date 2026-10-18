@@ -606,3 +606,366 @@ fn consecrated_ground_unchecked_config_overrides_imported_state() {
     assert_eq!(output.life_regen, 0.0);
     assert_eq!(output.curse_effect_on_self, 100.0);
 }
+
+mod beira_ignited_ground {
+    use super::*;
+    use pobr_core::calc::{CalculationSession, MinimalInput};
+    use pobr_core::{CalcConfig, Modifier, display_catalog, display_value};
+    use pobr_data::{catalog::UtilityBaseStats, prelude::*};
+
+    const LINE: &str = "Creates Ignited Ground for 4 seconds when used, Igniting enemies as though dealing Fire damage equal to 500% of your maximum Life";
+
+    fn setup(data: &BuildData, cfg: CalcConfig, present: bool, active: bool) -> CalculationSession {
+        let mut cfg = cfg;
+        cfg.track_reads();
+        let mut session = CalculationSession::new(MinimalInput {
+            base_life: 1000.0,
+            base_hit_min: 10.0,
+            base_hit_max: 10.0,
+            base_action_rate: 1.0,
+            ..Default::default()
+        })
+        .with_config(cfg);
+        session.set_parser_rules(data.parser_rules.as_ref().unwrap().clone());
+        let item = Item {
+            base: "Dousing Charm".into(),
+            quality: 20,
+            rarity: ItemRarity::Unique,
+            corrupted: false,
+            modifier_texts: if present { vec![LINE.into()] } else { vec![] },
+            implicit_texts: vec![],
+            enchant_texts: vec![],
+            rolled_defence: RolledDefence::default(),
+            socketed: vec![],
+            parsed_stats: vec![],
+        };
+        for slot in ["Charm 1", "Charm 2"] {
+            session.add_utility_base(
+                slot,
+                &item,
+                &UtilityBaseStats {
+                    life: 0.0,
+                    mana: 0.0,
+                    duration: 3.0,
+                    charges_max: 80.0,
+                    charges_used: 60.0,
+                },
+            );
+            if active {
+                session.add_flask_charm(slot, &item);
+            } else {
+                session.add_inactive_utility_properties(slot, &item);
+            }
+        }
+        session
+    }
+
+    #[test]
+    fn snapshot_is_independent_of_charm_activation_and_requires_established_ignite() {
+        let data = data();
+        let mods: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(repo_data_root().join(data_version()).join("base/mods.json"))
+                .unwrap(),
+        )
+        .unwrap();
+        let source = mods
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|m| m["id"] == "UniqueCharmIgniteEnemiesInPresence1")
+            .unwrap();
+        let stat = source["stats"].as_array().unwrap().iter().find(|s|
+            s["stat_id"] == "charm_ignite_ground_as_though_dealing_fire_damage_equal_to_x%_of_your_maximum_life_when_used"
+        ).unwrap();
+        assert_eq!(stat["min"], 500);
+        assert_eq!(stat["max"], 500);
+        for present in [false, true] {
+            for active in [false, true] {
+                for combat in [false, true] {
+                    for established in [false, true] {
+                        let mut s = setup(
+                            &data,
+                            CalcConfig::new()
+                                .with_mode_combat(combat)
+                                .with_condition("BeiraIgniteActive", established),
+                            present,
+                            active,
+                        );
+                        s.add_modifiers([
+                            Modifier::number("MaximumLife", ModType::Inc, 50.0),
+                            Modifier::number("LifeReserved", ModType::Base, 500.0),
+                            Modifier::number("CharmEffect", ModType::Inc, 100.0),
+                            Modifier::number("CharmDuration", ModType::Inc, 100.0),
+                        ]);
+                        s.perform_minimal().unwrap();
+                        assert!(s.unsupported_modifier_texts().is_empty());
+                        assert_eq!(s.output().life, 1500.0);
+                        assert!(s.output().life_unreserved < s.output().life);
+                        assert!(
+                            s.config()
+                                .read_variables()
+                                .conditions
+                                .contains("BeiraIgniteActive")
+                        );
+                        let expected = if present { 1500.0 } else { 0.0 };
+                        for slot in [1, 2] {
+                            for (field, value) in [
+                                ("IgnitedGroundDuration", 4.0),
+                                ("IgnitedGroundRadiusMetres", 2.0),
+                                ("IgnitedGroundSourceDamage", 7500.0),
+                                ("IgnitedGroundIgniteDPS", 1500.0),
+                                ("IgnitedGroundIgniteDuration", 4.0),
+                            ] {
+                                let id = format!("Charm{slot}{field}");
+                                assert_eq!(
+                                    display_value(s.output(), &id),
+                                    if present { value } else { 0.0 },
+                                    "{id}"
+                                );
+                                assert!(s.derived_detail(&id).is_some());
+                                assert!(
+                                    display_catalog()
+                                        .iter()
+                                        .find(|d| d.id.as_str() == id)
+                                        .unwrap()
+                                        .pob_key
+                                        .is_none()
+                                );
+                                assert_eq!(
+                                    pobr_build::breakdown::detail::detail_kind(&id),
+                                    pobr_build::breakdown::detail::DetailKind::Derived
+                                );
+                            }
+                        }
+                        let current = if established && combat { expected } else { 0.0 };
+                        assert_eq!(display_value(s.output(), "BeiraIgniteDPS"), current);
+                        assert_eq!(display_value(s.output(), "CombinedIgniteDPS"), current);
+                        assert_eq!(s.output().combined_dps, s.output().dps + current);
+                        // Local scope must not rewrite the selected skill's enemy state.
+                        assert!(!s.config().condition("EnemyIgnited"));
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn non_hit_scope_uses_global_ignite_scaling_and_enemy_mitigation_only() {
+        let data = data();
+        let cfg = CalcConfig::new()
+            .with_mode_combat(true)
+            .with_mode_effective(true)
+            .with_condition("BeiraIgniteActive", true)
+            .with_condition("CriticalStrike", true);
+        let mut s = setup(&data, cfg.clone(), true, true);
+        s.add_modifiers([
+            Modifier::number("AilmentMagnitude", ModType::Inc, 50.0),
+            Modifier::number("IgniteFaster", ModType::Inc, 25.0),
+            Modifier::number("IgniteDuration", ModType::Inc, 50.0),
+            Modifier::number("FirePenetration", ModType::Base, 100.0),
+            Modifier::number("Damage", ModType::Inc, 900.0),
+            Modifier::number("AilmentMagnitude", ModType::More, 900.0).with_flags(ModFlags::ATTACK),
+            Modifier::number("AilmentMagnitude", ModType::More, 900.0).with_flags(ModFlags::SPELL),
+            Modifier::number("AilmentMagnitude", ModType::More, 900.0)
+                .with_tag(pobr_core::ModTag::condition("CriticalStrike", false)),
+            Modifier::number("AilmentMagnitude", ModType::More, 900.0).with_origin(
+                ModifierSource::new(SourceId::new(SourceKind::SupportGem, "test.support")),
+            ),
+            Modifier::flag("CannotIgnite").with_origin(ModifierSource::new(SourceId::new(
+                SourceKind::SkillGem,
+                "test.skill",
+            ))),
+        ]);
+        s.add_enemy_modifiers([
+            Modifier::number("FireResist", ModType::Base, 50.0),
+            Modifier::number("FireDamageTaken", ModType::Inc, 20.0),
+        ]);
+        s.perform_minimal().unwrap();
+        // 1000 Life * 500% * 20% Ignite * 1.5 magnitude * 1.25 rate * .5 resist * 1.2 taken.
+        assert_eq!(display_value(s.output(), "BeiraIgniteDPS"), 1125.0);
+        assert_eq!(
+            display_value(s.output(), "Charm1IgnitedGroundIgniteDuration"),
+            4.8
+        );
+        let detail = s.derived_detail("Charm1IgnitedGroundIgniteDPS").unwrap();
+        let input = |name: &str| detail.inputs.iter().find(|(key, _)| key == name).unwrap().1;
+        let expected = input("IgnitedGroundSourceDamage")
+            * input("IgniteBaseFraction")
+            * (1.0 + input("IgniteMagnitudeIncreased") / 100.0)
+            * input("IgniteMagnitudeMore")
+            * input("EnemyIgniteMultiplier")
+            * input("IgniteEffect")
+            * input("IgniteRate");
+        assert!((expected - 1125.0).abs() < 1e-9);
+        for block in ["CannotIgnite", "DealNoDamage", "DealNoFire"] {
+            let mut blocked = setup(&data, cfg.clone(), true, true);
+            blocked.add_modifiers([Modifier::flag(block)]);
+            blocked.perform_minimal().unwrap();
+            assert_eq!(
+                display_value(blocked.output(), "BeiraIgniteDPS"),
+                0.0,
+                "{block}"
+            );
+        }
+        let mut stopped = setup(&data, cfg, true, true);
+        stopped.add_modifiers([Modifier::number("IgniteFaster", ModType::Inc, -100.0)]);
+        stopped.perform_minimal().unwrap();
+        assert_eq!(display_value(stopped.output(), "BeiraIgniteDPS"), 0.0);
+        assert_eq!(
+            display_value(stopped.output(), "Charm1IgnitedGroundIgniteDuration"),
+            0.0
+        );
+        assert_eq!(
+            stopped
+                .derived_detail("Charm1IgnitedGroundIgniteDuration")
+                .unwrap()
+                .formula,
+            "0 * IgniteBaseDuration"
+        );
+    }
+
+    #[test]
+    fn strongest_ignite_wins_and_reference_basis_excludes_ground_source() {
+        let data = data();
+        for fire in [100.0, 20000.0] {
+            let cfg = CalcConfig::new()
+                .with_mode_combat(true)
+                .with_damage_type(DamageType::Fire)
+                .with_condition("BeiraIgniteActive", true);
+            let mut s = setup(&data, cfg, true, true);
+            s.add_modifiers([
+                Modifier::number("FireDamageMin", ModType::Base, fire),
+                Modifier::number("FireDamageMax", ModType::Base, fire),
+                Modifier::number("IgniteChance", ModType::Base, 100.0),
+            ]);
+            s.perform_minimal().unwrap();
+            let main = s.output().ignite_stacked_dps.max(s.output().ignite_dps);
+            assert!(main > 0.0);
+            if fire == 100.0 {
+                assert!(main < 1000.0);
+            } else {
+                assert!(main > 1000.0);
+            }
+            assert_eq!(
+                display_value(s.output(), "CombinedIgniteDPS"),
+                main.max(1000.0)
+            );
+            assert_eq!(s.output().combined_dps, s.output().dps + main.max(1000.0));
+        }
+        let mut stacked = setup(
+            &data,
+            CalcConfig::new()
+                .with_mode_combat(true)
+                .with_condition("BeiraIgniteActive", true),
+            true,
+            true,
+        );
+        stacked.add_modifiers([
+            Modifier::number("FireDamageMin", ModType::Base, 100.0),
+            Modifier::number("FireDamageMax", ModType::Base, 100.0),
+            Modifier::number("IgniteChance", ModType::Base, 100.0),
+            Modifier::flag("IgniteCanStack"),
+            Modifier::number("IgniteStacks", ModType::Base, 1.0),
+        ]);
+        stacked.perform_minimal().unwrap();
+        assert_eq!(stacked.output().ignite_max_stacks, 2.0);
+        assert_eq!(display_value(stacked.output(), "BeiraIgniteDPS"), 1000.0);
+        assert_eq!(
+            display_value(stacked.output(), "CombinedIgniteDPS"),
+            stacked
+                .output()
+                .ignite_stacked_dps
+                .max(stacked.output().ignite_dps)
+        );
+        let cfg = CalcConfig::new()
+            .with_mode_combat(true)
+            .with_condition("BeiraIgniteActive", true);
+        let mut s = setup(&data, cfg, false, false);
+        s.set_exporter_rules(false, Default::default());
+        s.add_modifier_texts(&[LINE]).unwrap();
+        assert!(
+            s.exporter_rules()
+                .any(|r| r.id == "beira_ignited_ground_on_use")
+        );
+        assert!(s.mods_named("UtilityIgnitedGroundDuration").is_empty());
+        assert!(s.mods_named("UtilityIgnitedGroundLifePercent").is_empty());
+        s.perform_minimal().unwrap();
+        assert_eq!(display_value(s.output(), "BeiraIgniteDPS"), 0.0);
+    }
+
+    #[test]
+    fn xml_json_and_native_flag_agree_and_explicit_false_retires_import() {
+        use pobr_core::rules::config_interpreter::ConfigInputValue;
+        let data = data();
+        let xml = format!(
+            r#"<PathOfBuilding2><Build level="80" className="Warrior"/>
+<Items activeItemSet="1"><Item id="1">Rarity: UNIQUE
+Beira's Anguish
+Dousing Charm
+Implicits: 0
+{LINE}
+</Item><ItemSet id="1"><Slot name="Charm 1" itemId="1" active="false"/></ItemSet></Items>
+<Config><Input name="conditionBeiraIgniteActive" boolean="true"/></Config></PathOfBuilding2>"#
+        );
+        let captured = parse_build(
+            &xml.replace("4 seconds", "6 seconds")
+                .replace("500%", "250%"),
+        )
+        .unwrap();
+        let captured_out = calculate_with_data(&captured, &data, &Default::default()).unwrap();
+        assert_eq!(
+            display_value(&captured_out, "Charm1IgnitedGroundDuration"),
+            6.0
+        );
+        assert_eq!(
+            display_value(&captured_out, "BeiraIgniteDPS"),
+            captured_out.life * 0.5
+        );
+        let mut build = parse_build(&xml).unwrap();
+        assert_eq!(
+            build.config.conditions.get("BeiraIgniteActive"),
+            Some(&true)
+        );
+        let out = calculate_with_data(&build, &data, &Default::default()).unwrap();
+        assert_eq!(display_value(&out, "BeiraIgniteDPS"), out.life);
+        // Optional Full DPS must count the charm once, independent of the
+        // number of included skills and their simultaneous-source counts.
+        let mut full_build = build.clone();
+        for (skill, count) in [("SparkPlayer", 3.0), ("FrostboltPlayer", 5.0)] {
+            let mut group = pobr_build::SocketGroup::new().with_gem_skill(skill, 20);
+            group.include_in_full_dps = true;
+            group.group_count = Some(count);
+            full_build.socket_groups.push(group);
+        }
+        let full = pobr_build::calc_orchestrator::full_dps::calculate(
+            &full_build,
+            &data,
+            &Default::default(),
+        )
+        .unwrap();
+        assert_eq!(full.dot_dps, out.life);
+        assert_eq!(
+            full.skills.iter().map(|row| row.dot_dps).sum::<f64>(),
+            out.life
+        );
+        build.config.raw_inputs.values.insert(
+            "conditionBeiraIgniteActive".into(),
+            ConfigInputValue::Bool(false),
+        );
+        let off = calculate_with_data(&build, &data, &Default::default()).unwrap();
+        assert_eq!(display_value(&off, "BeiraIgniteDPS"), 0.0);
+        for condition in [None, Some(false)] {
+            let mut cfg = CalcConfig::new().with_mode_combat(true);
+            if let Some(value) = condition {
+                cfg = cfg.with_condition("BeiraIgniteActive", value);
+            }
+            let mut s = setup(&data, cfg, true, false);
+            s.add_modifiers([Modifier::flag("Condition:BeiraIgniteActive")]);
+            s.perform_minimal().unwrap();
+            assert_eq!(
+                display_value(s.output(), "BeiraIgniteDPS"),
+                if condition.is_none() { 1000.0 } else { 0.0 }
+            );
+        }
+    }
+}

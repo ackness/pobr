@@ -6615,6 +6615,30 @@
       "examples": [
         "Creates Consecrated Ground on use"
       ]
+    },
+    {
+      "id": "beira_ignited_ground_on_use",
+      "pattern": "^creates ignited ground for (\\d+(?:\\.\\d+)?) seconds when used, igniting enemies as though dealing fire damage equal to (\\d+(?:\\.\\d+)?)% of your maximum life$",
+      "mods": [
+        {
+          "name": "UtilityIgnitedGroundDuration",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "UtilityIgnitedGroundLifePercent",
+          "type": "BASE",
+          "value": "$2"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "charm_ignite_ground_as_though_dealing_fire_damage_equal_to_x%_of_your_maximum_life_when_used; UniqueCharmIgniteEnemiesInPresence1; https://poe2db.tw/us/Beiras_Anguish",
+      "source_note": "Current item: ground lasts 4 seconds and ignites as though dealing 500% maximum Life as Fire damage. Local on-use properties; not charm buff duration/effect/quality. Game Keywords IgnitedGround: default 2 metre radius, repeatedly inflicts Flammability and ignites only at 50%. Explicit BeiraIgniteActive declares an already-established ignite; no automatic use or buildup/uptime inferred. Regression: skills::config_handlers::beira_ignited_ground. No in-game timing test.",
+      "examples": [
+        "Creates Ignited Ground for 4 seconds when used, Igniting enemies as though dealing Fire damage equal to 500% of your maximum Life"
+      ]
     }
   ]
 }

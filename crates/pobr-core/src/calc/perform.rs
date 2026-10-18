@@ -308,7 +308,8 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     env.player.output.pin_buildup_avg = pin.value();
     env.pin_terms = Some(pin);
     // Skill DoT + combined-DPS family: runs after fill_ailments — TotalDotDPS only reads the
-    // current bleed/poison/ignite values from the ailment side (ailment.rs is untouched, per the T4 wave agreement).
+    // current bleed/poison/ignite values, including an explicitly established charm Ignite.
+    super::beira_ground::calculate(env);
     fill_skill_dot_stage(env);
     fill_damage_views(env);
     fill_resource_cost_rates(env);
@@ -1311,7 +1312,11 @@ pub(super) fn skill_dot_terms(env: &Env) -> super::skill_dot::SkillDotTerms {
         base_dps: out.dps,
         bleed_dps: pick(out.bleed_stacked_dps, out.bleed_dps),
         poison_dps: pick(out.poison_stacked_dps, out.poison_dps),
-        ignite_dps: pick(out.ignite_stacked_dps, out.ignite_dps),
+        ignite_dps: out
+            .utility_stats
+            .get("CombinedIgniteDPS")
+            .copied()
+            .unwrap_or_else(|| pick(out.ignite_stacked_dps, out.ignite_dps)),
     };
     super::skill_dot::skill_dot_terms(&env.player.mod_db, &env.enemy.mod_db, &env.cfg, &inputs)
 }

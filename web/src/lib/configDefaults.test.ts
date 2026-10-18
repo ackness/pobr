@@ -45,3 +45,16 @@ test('Consecrated Ground labels and help keep actor state explicit in both Chine
   expect(configTooltip('zh-TW', 'unrelated', 'Existing tooltip')).toBe('Existing tooltip');
   expect(configTooltip('zh-TW', 'unrelated')).toBeUndefined();
 });
+
+
+test('Beira ground requires an explicit established Ignite and defaults off', () => {
+  const [option]: ConfigOption[] = JSON.parse(readFileSync(new URL('../../../data/overlay-common/beira_config_options.json', import.meta.url), 'utf8')).options;
+  expect(configDefaultValue(option)).toBe(false);
+  expect(CONFIG_LABEL_ZH_TW[option.var]).toContain('貝伊拉的悲痛');
+  expect(CONFIG_LABEL_ZH[option.var]).toContain('点燃');
+  for (const lang of ['zh-TW', 'zh-CN']) {
+    expect(configTooltip(lang, option.var, option.tooltip)).toContain('50%');
+    expect(configTooltip(lang, option.var, option.tooltip)).toContain('最大生命');
+  }
+  expect(configTooltip('en-US', option.var, option.tooltip)).toBe(option.tooltip);
+});

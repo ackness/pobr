@@ -66,6 +66,11 @@ pub const CHARM_STATS: &[&str] = &[
     "ManaRecoveryOnUse",
     "ConsecratedGroundDuration",
     "ConsecratedGroundRadiusMetres",
+    "IgnitedGroundDuration",
+    "IgnitedGroundRadiusMetres",
+    "IgnitedGroundSourceDamage",
+    "IgnitedGroundIgniteDPS",
+    "IgnitedGroundIgniteDuration",
 ];
 
 pub fn item_stat(id: &str) -> Option<(&str, &str)> {
@@ -97,6 +102,8 @@ pub fn is_local_property(name: &str, text: &str) -> bool {
             | "UtilityWardAsGuardDuration"
             | "UtilityConsecratedGroundDuration"
             | "UtilityConsecratedGroundRadiusMetres"
+            | "UtilityIgnitedGroundDuration"
+            | "UtilityIgnitedGroundLifePercent"
             | "UtilityLifeRecoveryRemovedFromMana"
             | "UtilityManaRecoveryRemovedFromLife"
     ) {
