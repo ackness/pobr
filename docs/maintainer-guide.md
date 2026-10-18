@@ -876,6 +876,31 @@ PoBR 自有词条规则声明 `exporter: "absent"`（导出工具未实现）或
 
 Generic player slows already represented by negative `ActionSpeed` modifiers now use one calculation for skill rates, warcry timing, proxy placement, channel timing and movement (`calc::skill_use_time::action_speed_factor`). The [game Slow keyword](https://poe2db.tw/us/Keywords) defines separate slows as multiplicative; each penalty is scaled by `SlowEffectOnSelf` (`base_slow_potency_+%`, for example Mail Coat’s 30% reduction), and `UnaffectedBySlows` (`slows_have_no_potency_on_you`, Wanderlust / Relentless Pursuit) removes those penalties while preserving positive speed bonuses. A 50% slow with 30% reduced potency is a 35% slow. The potency text rules are `exporter: "absent"`; reference mode omits them. Existing custom modifiers can supply an explicit action-speed slow; self Temporal Chains and movement-only debuffs remain unmodelled, and ordinary equipment / skill movement penalties are unchanged. `SkillSpeed`, `WarcrySpeed` and `TotemPlacementSpeed` already have separate consumers: a partial ledger row on a build without a warcry or totem is expected, not a missing speed bonus. Every negative `ActionSpeed` modifier counts as a slow. That holds because the only player sources today are debuffs: self Chill, Temporal Chains and Maddening Presence. The game defines Slows as "modifiers from Debuffs" and keeps non-debuff reductions under separate stats (`action_speed_-%`, `overencumbered_action_speed_+%_final`). A new non-debuff source of reduced Action Speed must therefore use a separate name, or slowing potency would scale it.
 
+Outgoing “Debuffs you inflict have N% increased Slow Magnitude” is
+`base_debuff_slow_magnitude_+%` (active game `Mods` entry
+`PassageUniqueAmanamuIncreasedDebuffSlowMagnitude`, range 12–20), distinct
+from incoming `base_slow_potency_+%`. The game's
+[Slow Magnitude Modifier](https://poe2db.tw/us/Slow_Magnitude_Modifier)
+applies only to the slowing component of an inflicted debuff. The rule
+currently feeds `EnemyChillMagnitude`, reusing the existing Chill magnitude
+sum, trace and derived details: 30% Chill with 20% increased Chill magnitude
+and 20% increased Slow magnitude becomes 42%, capped at the game's default
+50% maximum ([Chill keyword](https://poe2db.tw/us/Chill)). Enemy slowing
+potency then scales that capped reduction separately (50% less gives a 21%
+slow). This applies to the hit magnitude estimate and explicit player
+`ChillBase` / `ChillMinimum` sources. Enemy `ChillVal` and player
+`ChillOverride` already specify final magnitudes and remain unchanged.
+The line supplies no source, condition or uptime; cold damage alone still
+does not write an enemy action-speed penalty. It changes neither incoming
+slows, Shock/Freeze magnitude, nor debuff duration/expiration. Inactive
+sources leave enemy modifiers and conditions untouched. The rule is
+exporter-absent and omitted on the reference basis. **Remaining scope:**
+[Temporal Chains](https://poe2db.tw/us/Temporal_Chains) has separate slow
+and effect-expiration components; its enemy slow payload is not yet
+consumed, and Hinder/Maim movement reductions have no enemy movement model.
+These need their own consumers before this rule can cover their slowing
+components. No in-game timing or uptime measurement is assumed.
+
 Player Shock and explicitly configured Chill magnitudes are scaled by
 `SelfShockEffect` / `SelfChillEffect` (`calc::player_debuffs`), using game stats
 `shocked_effect_on_self_+%` and `chill_effectiveness_on_self_+%` from

@@ -35680,7 +35680,14 @@
     },
     {
       "text": "Debuffs you inflict have 30% increased Slow Magnitude",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyChillMagnitude",
+          "type": "Inc",
+          "value": 30.0
+        }
+      ]
     },
     {
       "text": "Deerstalker Hood",
@@ -44426,23 +44433,58 @@
     },
     {
       "text": "[Debuff|Debuffs] you inflict have 10% increased [SlowMagnitudeModifier|Slow Magnitude]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyChillMagnitude",
+          "type": "Inc",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "[Debuff|Debuffs] you inflict have 4% increased [SlowMagnitudeModifier|Slow Magnitude]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyChillMagnitude",
+          "type": "Inc",
+          "value": 4.0
+        }
+      ]
     },
     {
       "text": "[Debuff|Debuffs] you inflict have 5% increased [SlowMagnitudeModifier|Slow Magnitude]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyChillMagnitude",
+          "type": "Inc",
+          "value": 5.0
+        }
+      ]
     },
     {
       "text": "[Debuff|Debuffs] you inflict have 6% increased [SlowMagnitudeModifier|Slow Magnitude]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyChillMagnitude",
+          "type": "Inc",
+          "value": 6.0
+        }
+      ]
     },
     {
       "text": "[Debuff|Debuffs] you inflict have 7% increased [SlowMagnitudeModifier|Slow Magnitude]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyChillMagnitude",
+          "type": "Inc",
+          "value": 7.0
+        }
+      ]
     },
     {
       "text": "[DecimatingStrike|Decimating Strike]",

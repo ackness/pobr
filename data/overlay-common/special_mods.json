@@ -12,6 +12,26 @@
   },
   "entries": [
     {
+      "id": "outgoing_debuff_slow_magnitude",
+      "exporter": "absent",
+      "game_source": "base_debuff_slow_magnitude_+%",
+      "pattern": "debuffs you inflict have (\\d+(?:\\.\\d+)?)% increased slow magnitude",
+      "mods": [
+        {
+          "name": "EnemyChillMagnitude",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "Game stat base_debuff_slow_magnitude_+% (PassageUniqueAmanamuIncreasedDebuffSlowMagnitude: 12-20). Slow Magnitude scales only the slowing component of inflicted debuffs: https://poe2db.tw/us/Slow_Magnitude_Modifier . Chill is currently the only modeled outgoing slow magnitude; reuse EnemyChillMagnitude for its hit estimate and explicit Base/Minimum application, before the Chill cap. This does not implement Temporal Chains, Hinder or Maim speed reductions, change final ChillVal/Override inputs, or imply uptime. Incoming base_slow_potency_+% is a separate stat.",
+      "examples": [
+        "Debuffs you inflict have 12% increased Slow Magnitude",
+        "Debuffs you inflict have 20% increased Slow Magnitude"
+      ]
+    },
+    {
       "id": "reduced_slowing_potency_on_self",
       "exporter": "absent",
       "game_source": "base_slow_potency_+%",
