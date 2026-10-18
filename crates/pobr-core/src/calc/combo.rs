@@ -161,15 +161,17 @@ pub fn calculate(env: &mut Env) {
         };
         // Only the player's receiver is supported. A proxy counter is not
         // charged by the player's global Combo gains.
-        let proxy = cfg.skill_types.intersects(
-            SkillTypes::MINION
-                | SkillTypes::SUMMONS_TOTEM
-                | SkillTypes::TRAPPED
-                | SkillTypes::REMOTE_MINED
-                | SkillTypes::TRIGGERED,
-        ) || cfg
-            .skill_types
-            .intersects(SkillTypes::from_pob2_name("UsedByProxy").unwrap_or_default());
+        let proxy = env.player.minion.is_some()
+            || cfg.skill_types.intersects(
+                SkillTypes::MINION
+                    | SkillTypes::SUMMONS_TOTEM
+                    | SkillTypes::TRAPPED
+                    | SkillTypes::REMOTE_MINED
+                    | SkillTypes::TRIGGERED,
+            )
+            || cfg
+                .skill_types
+                .intersects(SkillTypes::from_pob2_name("UsedByProxy").unwrap_or_default());
         terms.enabled = cfg.mode_combat && !finality && !proxy;
         if terms.enabled {
             terms.additional = db.sum(ModType::Base, cfg, &[ADDITIONAL.into()]);
@@ -177,4 +179,41 @@ pub fn calculate(env: &mut Env) {
         }
     }
     env.player.output.combo_generation = terms;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        CalcConfig,
+        calc::{Actor, ActorBaseStats, MinionIdentity},
+    };
+
+    #[test]
+    fn combo_identified_minion_cannot_consume_player_gain_modifiers() {
+        for minion in [false, true] {
+            let mut actor = Actor::new(80, ActorBaseStats::default());
+            if minion {
+                actor.minion = Some(MinionIdentity::default());
+            }
+            actor.mod_db.add_list([
+                Modifier::number(REQUIRED, ModType::Base, 4.0),
+                Modifier::number(ADDITIONAL, ModType::Base, 1.0),
+                Modifier::number(CHANCE, ModType::Base, 50.0),
+            ]);
+            actor.mod_db.track_reads();
+            let mut env = Env::new(actor).with_config(CalcConfig::attack().with_mode_combat(true));
+            calculate(&mut env);
+            let terms = &env.player.output.combo_generation;
+            assert_eq!(terms.maximum, 4.0);
+            assert_eq!(
+                terms.value("ComboGainPerEligibleEvent"),
+                Some(if minion { 0.0 } else { 2.5 })
+            );
+            let reads = env.player.mod_db.read_snapshot();
+            for name in [ADDITIONAL, CHANCE] {
+                assert_eq!(reads.sites.contains_key(&ModName::from(name)), !minion);
+            }
+        }
+    }
 }
