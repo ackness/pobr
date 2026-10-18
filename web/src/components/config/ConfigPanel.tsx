@@ -7,7 +7,7 @@ import type { ConfigInputValue, ConfigOption, CustomModifierBlock, EnemyTier } f
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useSkillName } from '../../hooks/useSkillName';
 import { bindT, configSectionLabel, damageTypeLabel, enemyTierLabel, t, type Lang } from '../../lib/i18n';
-import { CONFIG_LABEL_ZH, CONFIG_LABEL_ZH_TW, LIST_OPTION_ZH, configTooltip } from '../../lib/configLabels';
+import { CONFIG_LABEL_ZH, CONFIG_LABEL_ZH_TW, configListOptionLabel, configTooltip } from '../../lib/configLabels';
 import { configDefaultValue } from '../../lib/configDefaults';
 import { configApplicability, configExistsInGame, configVisibilityInputs, showConfigOption, type Applicability } from '../../lib/configVisibility';
 import './config.css';
@@ -132,7 +132,7 @@ function OptionRow({
             const zh = lang !== 'en-US'
               ? en.split(/\r?\n/).map(line => {
                 const text = line.trim();
-                return LIST_OPTION_ZH[text] ?? listLabels[text] ?? text;
+                return configListOptionLabel(lang, text) ?? listLabels[text] ?? text;
               }).join(' / ')
               : en;
             return (
@@ -219,7 +219,7 @@ export function ConfigPanel({ session, lang }: Props) {
         options
           .flatMap((o) => o.list_options ?? [])
           .flatMap((o) => stripColorCodes(o.label).split(/\r?\n/).map(line => line.trim()))
-          .filter((l) => !(l in LIST_OPTION_ZH)),
+          .filter((l) => !configListOptionLabel(lang, l)),
       ),
     ];
     if (pending.length === 0) return;

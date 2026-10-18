@@ -1,0 +1,59 @@
+{
+  "options": [
+    {
+      "var": "cadiroArrow",
+      "input_type": "list",
+      "section": "Skill Options",
+      "label": "Cadiro's Gambit arrow:",
+      "tooltip": "Select one arrow for the selected bow-arrow skill. Unspecified is neutral. Crescendo adds 6 chains and 60% increased Damage per explicitly configured prior chain; Splinter splits to 6 targets; Reversing pierces all targets and can return; Diamond always critically hits with 60% increased Critical Damage Bonus; Covetous grants 600% increased Rarity only on its kills; Blunt grants 600% increased Stun Buildup. No probability average, extra return hits or loot outcome is assumed.",
+      "list_options": [
+        {
+          "value": "0",
+          "number": 0,
+          "label": "Unspecified arrow"
+        },
+        {
+          "value": "1",
+          "number": 1,
+          "label": "Crescendo Arrow"
+        },
+        {
+          "value": "2",
+          "number": 2,
+          "label": "Splinter Arrow"
+        },
+        {
+          "value": "3",
+          "number": 3,
+          "label": "Reversing Arrow"
+        },
+        {
+          "value": "4",
+          "number": 4,
+          "label": "Diamond Arrow"
+        },
+        {
+          "value": "5",
+          "number": 5,
+          "label": "Covetous Arrow"
+        },
+        {
+          "value": "6",
+          "number": 6,
+          "label": "Blunt Arrow"
+        }
+      ],
+      "effects": [
+        {
+          "target": "player",
+          "name": "Multiplier:CadiroArrow",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "input"
+          }
+        }
+      ],
+      "verified": true
+    }
+  ]
+}

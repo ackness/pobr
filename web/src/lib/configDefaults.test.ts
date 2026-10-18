@@ -60,3 +60,20 @@ test('Beira ground requires an explicit established Ignite and defaults off', ()
   }
   expect(configTooltip('en-US', option.var, option.tooltip)).toBe(option.tooltip);
 });
+
+test('Cadiro defaults to unspecified and uses each locale’s game arrow names', async () => {
+  const { configListOptionLabel } = await import('./configLabels');
+  const arrow: ConfigOption = JSON.parse(readFileSync(new URL('../../../data/overlay-common/cadiro_config_options.json', import.meta.url), 'utf8')).options[0];
+  expect(configDefaultValue(arrow)).toBe('0');
+  expect(configListOptionLabel('zh-TW', 'Crescendo Arrow')).toBe('強鳴箭');
+  expect(configListOptionLabel('zh-CN', 'Crescendo Arrow')).toBe('渐强箭');
+  expect(configListOptionLabel('zh-TW', 'Diamond Arrow')).toBe('鑽石箭');
+  expect(configListOptionLabel('zh-CN', 'Diamond Arrow')).toBe('金刚箭');
+  for (const option of arrow.list_options ?? []) {
+    expect(configListOptionLabel('zh-TW', option.label)).toBeTruthy();
+    expect(configListOptionLabel('zh-CN', option.label)).toBeTruthy();
+  }
+  expect(configTooltip('zh-TW', arrow.var, arrow.tooltip)).toContain('未指定');
+  expect(configTooltip('zh-CN', arrow.var, arrow.tooltip)).toContain('未指定');
+  expect(configTooltip('en-US', arrow.var, arrow.tooltip)).toBe(arrow.tooltip);
+});

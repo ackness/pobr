@@ -260,6 +260,8 @@ pub fn source_names(stat: &str) -> Vec<String> {
         ],
         "CurseEffectMod" => &["CurseEffect", "SelectedCurseEffect"],
         "EffectiveLootRarityMod" => &["LootRarity"],
+        "CadiroArrowReturn" => &["CadiroArrowReturn"],
+        "CadiroArrowKillRarity" => &["CadiroArrowKillRarity"],
         "ActiveMinionLimit" => &["SelectedMinionLimit"],
         "ExplodeChance" => &["EnemyExplodeChance"],
         "QuantityMultiplier" => &["QuantityMultiplier"],

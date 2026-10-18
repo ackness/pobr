@@ -7,6 +7,7 @@ pub mod bear_form;
 pub mod blind;
 pub mod breakdown;
 pub mod buff_pass;
+pub mod cadiro_arrows;
 pub mod channel;
 pub mod charge_generation;
 pub mod charm_spirits;

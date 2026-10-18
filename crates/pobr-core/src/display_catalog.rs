@@ -24,6 +24,8 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         DisplayStatDefinition::computed(id, cat, vt).with_pob_key(pob)
     };
     let mut catalog = vec![
+        DisplayStatDefinition::computed("CadiroArrowReturn", Cat::Offence, Vt::Number),
+        DisplayStatDefinition::computed("CadiroArrowKillRarity", Cat::Offence, Vt::Percent),
         computed("PhysicalMin", Cat::Offence, Vt::Number, "PhysicalMin"),
         computed("PhysicalMax", Cat::Offence, Vt::Number, "PhysicalMax"),
         computed(
@@ -2745,6 +2747,8 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
 
         "EffectiveMovementSpeedMod" => output.effective_movement_speed_mod,
         "EffectiveLootRarityMod" => output.effective_loot_rarity_mod,
+        "CadiroArrowReturn" => output.cadiro_arrow_return,
+        "CadiroArrowKillRarity" => output.cadiro_arrow_kill_rarity,
         "GemLevel" => output.gem_level,
         "MovementSpeedWhileUsingSkill" => output.movement_speed_while_using_skill,
         "PresenceRadiusMetres" => output.presence_radius_metres,

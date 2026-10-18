@@ -113,6 +113,10 @@ pub struct OutputTable {
     /// Rarity of Items found as a multiplier: `(1 + increased / 100) * more`
     /// over `LootRarity`.
     pub effective_loot_rarity_mod: f64,
+    /// Selected Reversing arrow returns; no extra hit is assumed.
+    pub cadiro_arrow_return: f64,
+    /// Increased rarity only for enemies killed by the selected Covetous arrow.
+    pub cadiro_arrow_kill_rarity: f64,
     /// The level the selected skill's gem runs at: its own level plus the
     /// levels items, passives and supports add. Zero without a skill.
     pub gem_level: f64,
@@ -741,6 +745,8 @@ impl Default for OutputTable {
 
             effective_movement_speed_mod: 0.0,
             effective_loot_rarity_mod: 1.0,
+            cadiro_arrow_return: 0.0,
+            cadiro_arrow_kill_rarity: 0.0,
             gem_level: 0.0,
             movement_speed_while_using_skill: 0.0,
             presence_radius_metres: 0.0,

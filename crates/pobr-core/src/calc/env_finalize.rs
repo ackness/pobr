@@ -68,6 +68,7 @@ pub fn env_finalize(env: &mut Env) {
     super::armour_break::apply_fully_broken_effect(env);
     super::crit::apply_inexorable_critical(env);
     super::configured_damage::apply(env);
+    super::cadiro_arrows::apply(env);
     // Stage 6.9: what Bear form gives a character the main skill puts in it.
     super::bear_form::apply_bear_form(env);
     // Stage 7 (T4): applies non-damaging ailments (Chill/Shock → enemy db).

@@ -10,8 +10,23 @@
 // The retained official tables contain English and TW, not CN KeywordPopups.
 // New full labels/help are contextual app copy. CN Beira uses the pinned
 // zh-CN words/stat_lines entries: 贝拉的苦楚 / 燃烧地面.
+// Cadiro names use the corresponding game KeywordPopups in TW/CN, which
+// differ from the abbreviated names on the item. Help is application copy.
+const CADIRO_OPTIONS: Record<string, Record<string, string>> = {
+  'zh-TW': { 'Unspecified arrow': '未指定箭矢', 'Crescendo Arrow': '強鳴箭', 'Splinter Arrow': '斷片箭', 'Reversing Arrow': '迴轉箭', 'Diamond Arrow': '鑽石箭', 'Covetous Arrow': '貪婪箭', 'Blunt Arrow': '重擊箭' },
+  'zh-CN': { 'Unspecified arrow': '未指定箭矢', 'Crescendo Arrow': '渐强箭', 'Splinter Arrow': '裂片箭', 'Reversing Arrow': '回转箭', 'Diamond Arrow': '金刚箭', 'Covetous Arrow': '贪婪箭', 'Blunt Arrow': '钝击箭' },
+};
+export function configListOptionLabel(lang: string, text: string): string | undefined {
+  return CADIRO_OPTIONS[lang]?.[text] ?? (lang === 'en-US' ? undefined : LIST_OPTION_ZH[text]);
+}
+const CADIRO_HELP: Record<string, string> = {
+  'zh-TW': '僅選定弓箭技能的一支箭矢；未指定時不加成。強鳴箭額外連鎖 6 次，每次已發生的連鎖增加 60% 傷害（使用「技能已連鎖次數」設定）；斷片箭裂化至 6 個目標；迴轉箭穿透所有目標並可返回；鑽石箭必定暴擊，暴擊傷害加成增加 60%；貪婪箭僅在其擊殺時增加 600% 掉落稀有度；重擊箭增加 600% 暈眩累積。不假設機率平均、返回的額外擊中或實際掉落結果。',
+  'zh-CN': '仅选择当前弓箭技能的一支箭矢；未指定时无加成。渐强箭额外连锁 6 次，每次已发生的连锁提高 60% 伤害（使用「技能已连锁次数」设置）；裂片箭分裂至 6 个目标；回转箭贯穿所有目标并可归返；金刚箭必定暴击，暴击伤害加成提高 60%；贪婪箭仅在其击败敌人时提高 600% 掉落稀有度；钝击箭提高 600% 晕眩积蓄。不假设概率平均、归返的额外命中或实际掉落结果。',
+};
+
 export const CONFIG_LABEL_ZH_TW: Record<string, string> = {
   conditionBeiraIgniteActive: '敵人正受到貝伊拉的悲痛造成的點燃？',
+  cadiroArrow: '卡迪羅的詭計箭矢：',
   conditionOnConsecratedGround: '你位於奉獻地面？',
   conditionMinionsOnConsecratedGround: '你的召喚物位於奉獻地面？',
 };
@@ -27,6 +42,7 @@ const BEIRA_GROUND_HELP: Record<string, string> = {
 };
 
 export function configTooltip(lang: string, variable: string, fallback?: string): string | undefined {
+  if (variable === 'cadiroArrow') return CADIRO_HELP[lang] ?? fallback;
   if (variable === 'conditionOnConsecratedGround' || variable === 'conditionMinionsOnConsecratedGround') {
     return CONSECRATED_GROUND_HELP[lang] ?? fallback;
   }
@@ -38,6 +54,7 @@ export function configTooltip(lang: string, variable: string, fallback?: string)
 
 export const CONFIG_LABEL_ZH: Record<string, string> = {
   conditionBeiraIgniteActive: '敌人正受到贝拉的苦楚造成的点燃？',
+  cadiroArrow: '卡迪罗的赌局箭矢：',
   conditionMinionsOnConsecratedGround: '你的召唤物位于奉献地面？',
   energyIncomingHitRate: '每秒可格挡来袭命中数：',
   energyMinionDeathsPerSecond: '每秒被击杀召唤物数：',

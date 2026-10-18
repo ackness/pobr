@@ -9,6 +9,7 @@
 //! Calculation order (must not be reordered; a literal mirror of
 //! `CalcOffence.lua` L3681–3838):
 //! 0. `Flag(NeverCrit)` bypasses the pipeline: chance/multiplier = 0, effect = 1.
+//!    `AlwaysCrit` fixes chance at 100% and skips the evasion reroll, after NeverCrit.
 //! 1. `crit_chance = (baseCrit + ΣBase + enemy.SelfCritChance) × (1 + (Σinc + enemy.IncSelfCritChance)/100) × Πmore`
 //! 2. clamp to `[0, CritChanceCap]` (default 100%, overridable by `Override`/`Sum BASE`) → PreEffectiveCritChance
 //! 3. under `mode_effective`, multiply by the hit-chance downgrade (the evasion re-roll)
@@ -229,10 +230,11 @@ pub(crate) fn adjust_crit_chance(
     hit_chance: f64,
     mode_effective: bool,
 ) -> CritChanceAdjust {
-    let mut crit_pct = capped_pct;
+    let always = player.flag(cfg, "AlwaysCrit");
+    let mut crit_pct = if always { 100.0 } else { capped_pct };
 
     // 3) mode_effective: hit chance downgrade (the evasion re-roll)
-    if mode_effective {
+    if mode_effective && !always {
         crit_pct *= hit_chance;
     }
 
@@ -264,7 +266,7 @@ pub(crate) fn adjust_crit_chance(
     }
 
     CritChanceAdjust {
-        hit_chance: mode_effective.then_some(hit_chance),
+        hit_chance: (mode_effective && !always).then_some(hit_chance),
         lucky,
         bifurcate,
         inevitable,
@@ -278,6 +280,8 @@ pub(crate) fn adjust_crit_chance(
 /// percentage points.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct CritChanceTerms {
+    /// Guaranteed critical hits do not roll chance (NeverCrit takes precedence).
+    always: bool,
     /// The weapon/skill base, or the `CritChanceBase` override replacing it.
     source_base: f64,
     player_flat: f64,
@@ -298,6 +302,9 @@ impl CritChanceTerms {
     /// The chance after the cap, before hit chance, lucky, bifurcate and
     /// inevitable adjustments.
     pub(crate) fn capped_pct(&self) -> f64 {
+        if self.always {
+            return 100.0;
+        }
         let base_pct = self.base_pct();
         let inc = self.player_inc + self.enemy_inc;
         let crit_pct = (base_pct * (1.0 + inc / 100.0) * self.more).min(self.cap);
@@ -313,6 +320,10 @@ impl CritChanceTerms {
     /// it is shown as its own step on top of the player's `increased` step.
     pub(crate) fn formula(&self, adjust: &CritChanceAdjust) -> StatFormula {
         let mut steps = FormulaBuilder::default();
+        if self.always {
+            steps.set(FormulaOp::Override, 100.0, 100.0);
+            return steps.finish(100.0);
+        }
         steps.scaled(self.source_base, self.player_flat, 0.0, 1.0);
         if self.enemy_flat != 0.0 {
             steps.set(
@@ -407,6 +418,7 @@ pub(crate) fn crit_chance_terms(
         0.0
     };
     CritChanceTerms {
+        always: player.flag(cfg, "AlwaysCrit"),
         source_base,
         player_flat,
         enemy_flat,
@@ -769,6 +781,7 @@ fn record_trace(
     // NoCritMultiplier) are connected into attribution so breakdowns can
     // trace back to the flag's source (SourceKind::Config or the mod's own origin).
     for flag in [
+        "AlwaysCrit",
         "CritChanceLucky",
         "BifurcateCrit",
         "InevitableCriticalHits",

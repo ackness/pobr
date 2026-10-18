@@ -118,6 +118,23 @@ pub(crate) struct ResolvedConfig {
 /// Resolves the consumption view of build config (see module doc for details).
 pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> ResolvedConfig {
     let mut config = build.config.clone();
+    // One arrow selection across native, XML and JSON callers. Explicit off,
+    // false or invalid values retire an imported selection; absence preserves it.
+    if let Some(value) = config.raw_inputs.values.get("cadiroArrow") {
+        let selected = match value {
+            ConfigInputValue::Number(n) => *n,
+            ConfigInputValue::Text(text) => text.parse::<f64>().unwrap_or(0.0),
+            ConfigInputValue::Bool(_) => 0.0,
+        };
+        config.multipliers.insert(
+            pobr_core::calc::cadiro_arrows::SELECTION.into(),
+            if selected.is_finite() && (0.0..=6.0).contains(&selected) && selected.fract() == 0.0 {
+                selected
+            } else {
+                0.0
+            },
+        );
+    }
     // Explicit stage controls feed the same multipliers as the native API.
     // Raw inputs also survive XML export; unset inputs retain engine defaults.
     for (input, multiplier) in [

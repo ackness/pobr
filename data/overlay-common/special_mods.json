@@ -12,6 +12,39 @@
   },
   "entries": [
     {
+      "id": "cadiro_selected_arrow",
+      "pattern": "each arrow fired is a crescendo, splinter, reversing, diamond, covetous, or blunt arrow",
+      "mods": [
+        {
+          "name": "CadiroArrows",
+          "type": "FLAG",
+          "value": true,
+          "flags": [
+            "Attack",
+            "Bow"
+          ],
+          "keyword_flags": [
+            "Arrow"
+          ],
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "var": "CadiroArrow",
+              "threshold": 1
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "each_arrow_fired_gains_random_perdandus_prefix",
+      "exporter": "absent",
+      "source_note": "UniquePerandusArrows1; game KeywordPopups UniqueArrowModifierChain/Split/PierceReturn/Crit/Rarity/Stun (https://poe2db.tw/us/Cadiros_Gambit). One explicit selected-arrow snapshot; no random average, return-hit count or loot outcome simulation. calc::cadiro_arrows consumes the source flag.",
+      "examples": [
+        "Each Arrow fired is a Crescendo, Splinter, Reversing, Diamond, Covetous, or Blunt Arrow"
+      ]
+    },
+    {
       "id": "outgoing_debuff_slow_magnitude",
       "exporter": "absent",
       "game_source": "base_debuff_slow_magnitude_+%",

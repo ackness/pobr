@@ -20,6 +20,12 @@ fn double_crit_chance(db: &ModDb, cfg: &CalcConfig, capped: f64, hit: f64) -> (b
     if !cfg.mode_effective || !db.flag(cfg, "BifurcateCrit") {
         return (false, 0.0);
     }
+    if super::crit::never_crit(db, cfg) {
+        return (true, 0.0);
+    }
+    if db.flag(cfg, "AlwaysCrit") {
+        return (true, 1.0);
+    }
     let mut chance = (capped * hit).clamp(0.0, 1.0);
     if db.flag(cfg, "CritChanceLucky") {
         chance = 1.0 - (1.0 - chance).powi(2);
@@ -211,6 +217,7 @@ pub(super) fn fill_sidebar(env: &mut Env) {
         out.decay_dps = out.skill_total_dot;
     }
     super::limit_display::fill(env);
+    super::cadiro_arrows::fill(env);
 }
 
 /// Game keywords: a player's base Elemental Ailment Threshold is half Life.

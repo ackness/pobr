@@ -22,6 +22,8 @@ export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
   MainIgniteDPS: {"en-US": "Selected skill Ignite DPS", "zh-TW": "所選技能點燃每秒傷害", "zh-CN": "所选技能点燃每秒伤害"},
   BeiraCanMerge: {"en-US": "Ordinary strongest-Ignite comparison applies", "zh-TW": "可比較一般最強點燃", "zh-CN": "可比较一般最强点燃"},
   BeiraIgniteDPS: {"en-US": "Current Beira Ignite DPS", "zh-TW": "目前貝伊拉點燃每秒傷害", "zh-CN": "当前贝拉的苦楚点燃每秒伤害"},
+  CadiroArrowReturn: { 'en-US': 'Reversing arrow can return (no extra hit assumed)', 'zh-TW': '迴轉箭可返回（未假設額外擊中）', 'zh-CN': '回转箭可归返（不假设额外命中）' },
+  CadiroArrowKillRarity: { 'en-US': 'Increased rarity on Covetous arrow kills (%)', 'zh-TW': '貪婪箭擊殺掉落稀有度增加（%）', 'zh-CN': '贪婪箭击败敌人的掉落稀有度提高（%）' },
   DynamismBaseInterval: {"en-US": "Dynamism generation interval", "zh-TW": "奇術動力生成間隔", "zh-CN": "奇术动力生成间隔"},
   DynamismRecipientEnabled: {"en-US": "Generation directed to this recipient", "zh-TW": "生成球歸此接收者", "zh-CN": "生成球归此接收者"},
   // TW uses verified game terminology; CN is contextual UI wording, not official game text.

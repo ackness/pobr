@@ -1279,3 +1279,34 @@ effect or in-game timing measurement is assumed. TW labels use the game's
 phrasing is application copy, not an official translation. Retained official
 tables provide English and TW only; the new CN labels/help are contextual
 application wording, not an official CN translation.
+
+Cadiro's Gambit (`calc::cadiro_arrows`) uses the retained active unique,
+`UniquePerandusArrows1` and stat `each_arrow_fired_gains_random_perdandus_prefix`.
+The game's linked keywords define [Crescendo](https://poe2db.tw/us/Crescendo_Arrows)
+as 6 additional chains and 60% increased damage per prior chain,
+[Splinter](https://poe2db.tw/us/Splinter_Arrows) as splitting to 6 targets,
+[Reversing](https://poe2db.tw/us/Reversing_Arrows) as piercing all targets and
+returning, [Diamond](https://poe2db.tw/us/Diamond_Arrows) as guaranteed critical
+hits with 60% increased critical damage bonus,
+[Covetous](https://poe2db.tw/us/Covetous_Arrows) as 600% increased rarity on its
+kills, and [Blunt](https://poe2db.tw/us/Blunt_Arrows) as 600% increased stun buildup.
+The single `cadiroArrow` selection maps to native multiplier `CadiroArrow`:
+0/unset is neutral, and 1–6 follow that order. Explicit zero/false/invalid input
+retires an imported selection. Only the selected attack's `skill_can_fire_arrows`
+stat and Bow weapon flags qualify; spells, crossbows, minions, proxy skills and
+non-arrow secondary stat sets do not inherit the effect. Combat mode is required.
+Crescendo reuses `skillChainCount` (native `Chain`) for the hit's prior chains,
+capped by available chains, defaulting to the initial hit. This is increased
+damage, not MORE damage or additional single-target hits. Diamond preserves
+the first accuracy check, bypasses the critical evasion reroll, and yields to
+`NeverCrit`. The source's fixed effects do not stack from duplicate grants.
+`CadiroArrowReturn` and `CadiroArrowKillRarity` retain source details and have no
+invented PoB keys; return geometry/timing and loot outcomes remain unmodelled.
+No equal probabilities, average DPS, all-six simultaneous effects, or extra
+return/chain hits are assumed. The new source rule is exporter-absent and
+excluded on the reference basis; the ordinary quiver attack speed is unchanged.
+TW and CN arrow names use their respective game KeywordPopups
+([TW](https://poe2db.tw/tw/Crescendo_Arrows),
+[CN](https://poe2db.tw/cn/Crescendo_Arrows), and corresponding five linked names);
+these differ from the abbreviations in the item line. Surrounding control/help
+wording is application copy. No in-game timing or geometry test is claimed.
