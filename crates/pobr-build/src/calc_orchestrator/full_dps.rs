@@ -45,6 +45,8 @@ pub(super) fn calculate_prepared(
     let mut ailments: [Vec<StackSource>; 3] = std::array::from_fn(|_| Vec::new());
     let mut skill_dots: BTreeMap<String, Vec<StackSource>> = BTreeMap::new();
     let mut cull: f64 = 1.0;
+    let mut beira: Option<StackSource> = None;
+    let mut mixed_ignite_stacks = false;
     for (group_index, group) in prepared.socket_groups.iter().enumerate() {
         if !group.enabled || !group.include_in_full_dps {
             continue;
@@ -147,6 +149,22 @@ pub(super) fn calculate_prepared(
                 Ok(session) => {
                     row.unsupported_modifiers = session.unsupported_modifier_texts().to_vec();
                     let out = session.output();
+                    // A charm is one independent player source. Keep its strongest
+                    // snapshot once, never multiply it by a skill/group count.
+                    let ground = out
+                        .utility_stats
+                        .get("BeiraIgniteDPS")
+                        .copied()
+                        .unwrap_or(0.0);
+                    if ground > beira.as_ref().map_or(0.0, |source| source.dps) {
+                        beira = Some(StackSource {
+                            index,
+                            dps: ground,
+                            stacks: 1.0,
+                            cap: 1.0,
+                        });
+                    }
+                    mixed_ignite_stacks |= out.ignite_max_stacks > 1.0;
                     let enabled_group = scoped.socket_groups[..group_index]
                         .iter()
                         .filter(|g| g.enabled)
@@ -229,6 +247,11 @@ pub(super) fn calculate_prepared(
             }
             result.skills.push(row);
         }
+    }
+    // Cross-source multi-Ignite budgets are unverified, as in the selected
+    // skill view. Ordinary Ignites compete for one enemy-wide instance.
+    if !mixed_ignite_stacks && let Some(source) = beira {
+        ailments[1].push(source);
     }
     // Bleeding/Ignite/Poison each share an enemy-wide active limit. The game's
     // `number_of_additional_poison_stacks` increases that limit, not the number

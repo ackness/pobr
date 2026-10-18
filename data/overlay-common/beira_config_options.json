@@ -1,0 +1,20 @@
+{
+  "options": [
+    {
+      "var": "conditionBeiraIgniteActive",
+      "input_type": "check",
+      "section": "When In Combat",
+      "label": "Does the enemy currently have an Ignite from Beira's Anguish?",
+      "tooltip": "Declare an already-established ground Ignite after Flammability reached 50%. Equipping or enabling the charm does not establish an Ignite. Uses current maximum Life as the creation snapshot. Ordinary ignites use the strongest source, not their sum. Mixed-source multi-Ignite stacking is shown separately and not added to the total. No automatic use frequency, buildup time, expiry or uptime.",
+      "effects": [
+        {
+          "target": "player",
+          "name": "Condition:BeiraIgniteActive",
+          "mod_type": "FLAG",
+          "value_bool": true
+        }
+      ],
+      "verified": true
+    }
+  ]
+}

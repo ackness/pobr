@@ -2581,6 +2581,13 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             "ProjectileSpeedMod",
         ),
     ];
+    for id in crate::calc::beira_ground::STATS {
+        catalog.push(DisplayStatDefinition::computed(
+            *id,
+            Cat::DotDamage,
+            Vt::Number,
+        ));
+    }
     for id in crate::calc::charge_generation::STATS {
         catalog.push(DisplayStatDefinition::computed(
             *id,
@@ -2623,19 +2630,33 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
                 let id = format!("{kind}{slot}{field}");
                 let vt = if matches!(
                     *field,
-                    "Duration" | "GuardDuration" | "ConsecratedGroundDuration"
+                    "Duration"
+                        | "GuardDuration"
+                        | "ConsecratedGroundDuration"
+                        | "IgnitedGroundDuration"
+                        | "IgnitedGroundIgniteDuration"
                 ) {
                     Vt::TimeSeconds
                 } else {
                     Vt::Number
                 };
-                let definition = DisplayStatDefinition::computed(id.as_str(), Cat::Recovery, vt);
+                let category = if field.starts_with("IgnitedGround") {
+                    Cat::DotDamage
+                } else {
+                    Cat::Recovery
+                };
+                let definition = DisplayStatDefinition::computed(id.as_str(), category, vt);
                 let definition = if matches!(
                     *field,
                     "GuardAfterEffect"
                         | "GuardDuration"
                         | "ConsecratedGroundDuration"
                         | "ConsecratedGroundRadiusMetres"
+                        | "IgnitedGroundDuration"
+                        | "IgnitedGroundRadiusMetres"
+                        | "IgnitedGroundSourceDamage"
+                        | "IgnitedGroundIgniteDPS"
+                        | "IgnitedGroundIgniteDuration"
                 ) {
                     definition
                 } else {

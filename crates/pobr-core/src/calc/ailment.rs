@@ -426,10 +426,24 @@ pub fn ignite_instance(
     db: &ModDb,
     cfg: &CalcConfig,
 ) -> AilmentInstance {
+    let cfg = &ailment_scoped_cfg(cfg, AilmentType::Ignite);
+    ignite_instance_in_scope(pre_mitigation_fire_hit, db, cfg)
+}
+
+/// Non-hit ground cannot critically strike. Keep the shared magnitude/duration
+/// calculation while bypassing the hit panel's stacked-critical scope.
+pub(crate) fn ground_ignite_instance(source: f64, db: &ModDb, cfg: &CalcConfig) -> AilmentInstance {
+    ignite_instance_in_scope(source, db, cfg)
+}
+
+fn ignite_instance_in_scope(
+    pre_mitigation_fire_hit: f64,
+    db: &ModDb,
+    cfg: &CalcConfig,
+) -> AilmentInstance {
     let gc = cfg.constants.game();
     let base_dps = pre_mitigation_fire_hit * gc.ignite_base_fraction;
-    // Keyword scope (vendor dotTypeCfg): mods with KeywordFlag.Ignite apply only to ignite.
-    let cfg = &ailment_scoped_cfg(cfg, AilmentType::Ignite);
+    // Caller supplies either the hit ailment scope or the independent ground scope.
     // PoE2 ignite magnitude is scaled only by `AilmentMagnitude` (PoB2's ailmentPercentBase factor).
     // Source: PoB2 CalcOffence.lua L5145-5146.
     let magnitude_dps = scale_magnitude(base_dps, db, cfg, &[ModName::from("AilmentMagnitude")]);

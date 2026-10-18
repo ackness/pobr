@@ -1023,9 +1023,8 @@ which still says 10% skill speed / 5% movement speed. All new rules declare
 `exporter: "absent"` and a game source. Periodic spirit attacks, Wolf's
 maim/on-hit armour break remain outside reported calculations. Ox's slow
 potency is
-read when a slow applies, and its threshold bonus feeds `AilmentThreshold`. “Energy Shield Recharge starts on use” and
-“Creates Ignited Ground … when used” remain unsupported pending an event model;
-Consecrated Ground uses the explicit snapshot below.
+read when a slow applies, and its threshold bonus feeds `AilmentThreshold`. “Energy Shield Recharge starts on use” remains unsupported pending an event model;
+Ignited and Consecrated Ground use the explicit snapshots below.
 
 Olroth's Resolve “Gain Guard equal to Current Runic Ward for 10 seconds when
 Effect ends” (`local_unique_flask_gain_%_of_current_ward_as_guard_when_flask_effect_ends`,
@@ -1041,6 +1040,37 @@ scale the end-event metadata. `Flask<N>GuardAfterEffect` / `GuardDuration` show
 the input capped for that slot and the nominal lifetime, with reconstructible
 details and no invented PoB reference keys. The rule is exporter-absent; there
 is no in-game timing test.
+
+Beira's Anguish (official TW 貝伊拉的悲痛) creates Ignited Ground (點燃地面)
+for 4 seconds, igniting as though dealing Fire damage equal to 500% maximum
+Life (`UniqueCharmIgniteEnemiesInPresence1`, current game Mods). Current
+[game Keywords](https://poe2db.tw/us/Keywords) give a default ground radius of
+2 metres and require non-hit ground to build Flammability (易燃) to 50% before
+Igniting; the [current item text](https://poe2db.tw/us/Beiras_Anguish) replaced
+its pre-0.3 immediate nearby Ignite. Per-charm `IgnitedGroundDuration`,
+`IgnitedGroundRadiusMetres`, `IgnitedGroundSourceDamage`,
+`IgnitedGroundIgniteDPS` and `IgnitedGroundIgniteDuration` report potential
+from currently equipped sources, even inactive charms. Current maximum Life
+is the creation snapshot, including reserved Life. This is independent of the
+selected skill's hit, crit, attack/spell modifiers and local supports. Shared
+global Ignite magnitude, rate, duration and enemy resistance/taken apply;
+hit-only penetration does not. Charm quality/effect/buff duration do not scale
+these on-use event properties; no in-game timing test has been performed.
+
+`conditionBeiraIgniteActive` explicitly declares an already established,
+currently active ground Ignite in combat; merely equipping/enabling the charm
+never grants DPS. `BeiraIgniteDPS` is the strongest such charm source.
+`CombinedIgniteDPS` and total DoT use the strongest of that and the selected
+skill's ordinary Ignite, never their sum. Optional Full DPS includes that charm
+source once in the shared Ignite limit, independent of included skill counts.
+When an included/selected skill supports
+multiple simultaneous Ignites, cross-source stacking is unverified: the Beira
+value remains separate and is not added to total damage. No use frequency,
+buildup time, location, expiry or uptime is inferred. The item rule is
+exporter-absent; reference basis excludes the new source. Calcs labels and
+configuration help are application copy using the verified official TW terms;
+CN copy is contextual because no corresponding retained official CN table was
+found. Headhunter remains unchanged at the owner's request.
 
 Cat possession's game `critical_strike_chance_+% = 100` is an INC modifier to
 `CriticalStrikeChance` (5% base becomes 10%); all possession names have reader

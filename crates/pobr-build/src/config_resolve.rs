@@ -59,6 +59,7 @@ use crate::handlers::{build_registry, campaign_progress_from_config, enemy_tier_
 /// player-side snapshot is not wired up. Retire the three exposure mappings when
 /// that channel is activated, or exposure will be counted twice.
 const EXPLICIT_BOOLEAN_CONDITIONS: &[(&str, &str)] = &[
+    ("conditionBeiraIgniteActive", "BeiraIgniteActive"),
     ("conditionOnConsecratedGround", "OnConsecratedGround"),
     ("conditionAncestrallyBoosted", "AncestrallyBoosted"),
     ("conditionAncestralCryActive", "AncestralCryActive"),

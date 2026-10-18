@@ -166,6 +166,8 @@ pub const DERIVED_STATS: &[&str] = &[
     "OffHandDpsMultiplier",
     "Repeats",
     "TotalNumberOfHits",
+    "BeiraIgniteDPS",
+    "CombinedIgniteDPS",
     "IgniteChancePerHit",
     "IgniteDuration",
     "IgniteEffMult",
