@@ -55,6 +55,56 @@ pub(super) fn calculate(env: &mut Env) {
         } else {
             player.flag(&cfg, "Condition:BeiraIgniteActive")
         };
+    let slots: Vec<_> = env
+        .utility_items
+        .iter()
+        .filter(|item| item.is_charm)
+        .map(|item| {
+            let slot = item.slot.replace(' ', "");
+            let local = |name| {
+                player
+                    .sum(
+                        ModType::Base,
+                        &cfg,
+                        &[ModName::from(utility::local_name(&slot, name))],
+                    )
+                    .max(0.0)
+            };
+            let duration = local("UtilityIgnitedGroundDuration");
+            let percent = local("UtilityIgnitedGroundLifePercent");
+            (slot, duration, percent)
+        })
+        .collect();
+    if !slots
+        .iter()
+        .any(|(_, duration, percent)| *duration > 0.0 && *percent > 0.0)
+    {
+        for (slot, duration, _) in slots {
+            write(
+                env,
+                format!("{slot}IgnitedGroundDuration"),
+                duration,
+                "UtilityIgnitedGroundDuration",
+                vec![("UtilityIgnitedGroundDuration", duration)],
+            );
+            for field in [
+                "IgnitedGroundRadiusMetres",
+                "IgnitedGroundSourceDamage",
+                "IgnitedGroundIgniteDPS",
+                "IgnitedGroundIgniteDuration",
+            ] {
+                write(
+                    env,
+                    format!("{slot}{field}"),
+                    0.0,
+                    "0 * BeiraGroundPresent",
+                    vec![("BeiraGroundPresent", 0.0)],
+                );
+            }
+        }
+        fill_totals(env, active, 0.0);
+        return;
+    }
     let enemy = &env.enemy.mod_db;
     let enabled = !["CannotIgnite", "DealNoDamage", "DealNoFire"]
         .into_iter()
@@ -76,24 +126,7 @@ pub(super) fn calculate(env: &mut Env) {
     let base_duration = cfg.constants.game().ignite_base_duration;
     let cap = cfg.constants.game().dot_dps_cap;
     let mut strongest: f64 = 0.0;
-    let slots: Vec<_> = env
-        .utility_items
-        .iter()
-        .filter(|item| item.is_charm)
-        .map(|item| item.slot.replace(' ', ""))
-        .collect();
-    for slot in slots {
-        let local = |name| {
-            player
-                .sum(
-                    ModType::Base,
-                    &cfg,
-                    &[ModName::from(utility::local_name(&slot, name))],
-                )
-                .max(0.0)
-        };
-        let ground_duration = local("UtilityIgnitedGroundDuration");
-        let percent = local("UtilityIgnitedGroundLifePercent");
+    for (slot, ground_duration, percent) in slots {
         let present = ground_duration > 0.0 && percent > 0.0;
         let source = if present { life * percent / 100.0 } else { 0.0 };
         let instance = ailment::ground_ignite_instance(source, &player, &cfg);
@@ -182,6 +215,10 @@ pub(super) fn calculate(env: &mut Env) {
             ],
         );
     }
+    fill_totals(env, active, strongest);
+}
+
+fn fill_totals(env: &mut Env, active: bool, strongest: f64) {
     let current = if active { strongest } else { 0.0 };
     write(
         env,

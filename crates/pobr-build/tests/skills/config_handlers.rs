@@ -750,6 +750,33 @@ mod beira_ignited_ground {
     }
 
     #[test]
+    fn absent_ground_source_does_not_consume_global_ignite_inputs() {
+        let data = data();
+        for present in [false, true] {
+            let mut s = setup(
+                &data,
+                CalcConfig::new().with_mode_combat(true),
+                present,
+                false,
+            );
+            s.add_modifiers([Modifier::number("IgniteFaster", ModType::Inc, 25.0)]);
+            s.track_modifier_reads();
+            s.perform_minimal().unwrap();
+            assert_eq!(
+                s.mod_db()
+                    .read_names()
+                    .contains(&ModName::from("IgniteFaster")),
+                present
+            );
+            assert_eq!(
+                display_value(s.output(), "Charm1IgnitedGroundIgniteDPS"),
+                if present { 1250.0 } else { 0.0 }
+            );
+            assert_eq!(display_value(s.output(), "BeiraIgniteDPS"), 0.0);
+        }
+    }
+
+    #[test]
     fn non_hit_scope_uses_global_ignite_scaling_and_enemy_mitigation_only() {
         let data = data();
         let cfg = CalcConfig::new()
