@@ -12,6 +12,46 @@
   },
   "entries": [
     {
+      "id": "volatility_refresh_chance",
+      "pattern": "(\\d+(?:\\.\\d+)?)% chance that when volatility on you (?:explodes|detonates), you regain an equivalent amount of volatility",
+      "mods": [
+        {
+          "name": "VolatilityRefreshChance",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "volatility_refresh_%_chance",
+      "exporter": "absent",
+      "source_note": "Instability passive 43944; exact exploded-quantity restoration on success. calc::volatility_events uses an explicit explosion quantity and optional supplied eligible explosion rate. No recursive event scheduling, damage, buff uptime or automatic timer rate.",
+      "examples": [
+        "25% chance that when Volatility on you explodes, you regain an equivalent amount of Volatility",
+        "15% chance that when Volatility on you explodes, you regain an equivalent amount of Volatility",
+        "25% chance that when Volatility on you detonates, you regain an equivalent amount of Volatility"
+      ]
+    },
+    {
+      "id": "volatility_maximum_override",
+      "pattern": "maximum volatility is (\\d+)",
+      "mods": [
+        {
+          "name": "VolatilityMaximum",
+          "type": "OVERRIDE",
+          "value": "$1"
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "maximum_volatility_allowed",
+      "exporter": "absent",
+      "source_note": "Controlled Chaos; game KeywordPopups.Volatility default maximum 200, replaced by this maximum (not added). Only caps the explicit explosion snapshot in calc::volatility_events; does not grant stacks or model other Volatility effects.",
+      "examples": [
+        "Maximum Volatility is 30"
+      ]
+    },
+    {
       "id": "remnant_pickup_mana_recovery",
       "pattern": "recover (\\d+)% of maximum mana when you collect a remnant",
       "mods": [

@@ -116,10 +116,42 @@ pub(crate) struct ResolvedConfig {
     pub custom_mod_lines: Vec<String>,
 }
 
+fn resolve_volatility_inputs(config: &mut BuildConfig) {
+    // Explicit Volatility event controls override stale native/imported state,
+    // including false, zero and invalid input. Absence preserves native inputs.
+    for (input, multiplier) in [
+        (
+            "volatilityExplosionQuantity",
+            pobr_core::calc::volatility_events::QUANTITY,
+        ),
+        (
+            "volatilityExplosionsPerSecond",
+            pobr_core::calc::volatility_events::RATE,
+        ),
+    ] {
+        if let Some(value) = config.raw_inputs.values.get(input) {
+            let number = match value {
+                ConfigInputValue::Number(n) => *n,
+                ConfigInputValue::Text(text) => text.parse::<f64>().unwrap_or(0.0),
+                ConfigInputValue::Bool(_) => 0.0,
+            };
+            config.multipliers.insert(
+                multiplier.into(),
+                if number.is_finite() && number >= 0.0 {
+                    number
+                } else {
+                    0.0
+                },
+            );
+        }
+    }
+}
+
 /// Resolves the consumption view of build config (see module doc for details).
 pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> ResolvedConfig {
     let mut config = build.config.clone();
     apply_remnant_inputs(&mut config);
+    resolve_volatility_inputs(&mut config);
     // One arrow selection across native, XML and JSON callers. Explicit off,
     // false or invalid values retire an imported selection; absence preserves it.
     if let Some(value) = config.raw_inputs.values.get("cadiroArrow") {
@@ -220,6 +252,7 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
     merge_conditions(&mut config.conditions, &outcome);
     merge_multipliers(&mut config.multipliers, &outcome);
     apply_remnant_inputs(&mut config);
+    resolve_volatility_inputs(&mut config);
     bridge_enemy_conditions(&mut config.conditions, &outcome);
     bridge_combat_player_conditions(&mut config.conditions, &outcome);
     apply_explicit_boolean_conditions(&mut config.conditions, build);

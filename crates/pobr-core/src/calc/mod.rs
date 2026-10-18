@@ -55,6 +55,7 @@ pub mod survivability;
 pub mod taken;
 pub(crate) mod totem;
 pub mod trigger;
+pub mod volatility_events;
 pub mod warcry;
 pub mod withered;
 

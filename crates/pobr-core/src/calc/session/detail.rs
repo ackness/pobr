@@ -55,6 +55,9 @@ pub fn source_names(stat: &str) -> Vec<String> {
     ) {
         return vec![stat.into()];
     }
+    if stat == "VolatilityRefreshChance" {
+        return vec!["VolatilityRefreshChance".into()];
+    }
     if super::super::charge_generation::STATS.contains(&stat) {
         return vec![
             "ThaumaturgicalDynamismChargeInterval".into(),
@@ -649,6 +652,7 @@ impl CalculationSession {
             return groups;
         }
         let mut cfg = if super::super::remnant_pickup::STATS.contains(&stat)
+            || super::super::volatility_events::STATS.contains(&stat)
             || super::super::charge_generation::STATS.contains(&stat)
             || super::super::utility::GLOBAL_STATS
                 .iter()
@@ -744,6 +748,9 @@ impl CalculationSession {
     }
 
     pub fn derived_detail(&self, stat: &str) -> Option<DerivedDetail> {
+        if let Some(detail) = self.output().volatility_events.detail(stat) {
+            return Some(detail);
+        }
         if let Some(detail) = self.output().charge_generation.detail(stat) {
             return Some(detail);
         }
