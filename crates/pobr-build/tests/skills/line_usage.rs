@@ -593,6 +593,15 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
     let data = data();
     for &(name, ref gate) in READ_UNDER_A_STATE {
         let text = match name {
+            "ArmourBreakFireDamageTaken" => {
+                "Fully Broken Armour you inflict also increases Fire Damage Taken from Hits"
+            }
+            "ArmourBreakColdDamageTaken" | "ArmourBreakLightningDamageTaken" => {
+                "Fully Broken Armour you inflict also increases Cold and Lightning Damage Taken from Hits"
+            }
+            "ArmourDefenseAgainstProjectileAttacks" => {
+                "Defend with 120% of Armour against Projectile Attacks"
+            }
             "BleedFaster" | "IgniteFaster" | "PoisonFaster" => {
                 "Damaging Ailments deal damage 20% faster"
             }
@@ -628,8 +637,10 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
             );
             let skill = if damage_reader && !active {
                 "ManaRemnantsPlayer"
-            } else if name == "LightningDamage" {
+            } else if matches!(name, "LightningDamage" | "ArmourBreakLightningDamageTaken") {
                 "ArcPlayer"
+            } else if name == "ArmourBreakColdDamageTaken" {
+                "IceNovaPlayer"
             } else if active && matches!(name, "CurseDelay" | "CurseActivation") {
                 "DespairPlayer"
             } else {
@@ -640,7 +651,10 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
                 .config_option
                 .as_deref()
                 .map(|option| {
-                    if option == "enemyKillsPerSecond" {
+                    if option == "enemyDamageType" {
+                        format!(r#"<Config><Input name="enemyDamageType" string="{}"/></Config>"#,
+                            if active { "Projectile" } else { "Melee" })
+                    } else if option == "enemyKillsPerSecond" {
                         // Count-type kill rate: absent when off, 2/s when on.
                         if active {
                             r#"<Config><Input name="enemyKillsPerSecond" number="2"/></Config>"#.to_string()
@@ -684,6 +698,8 @@ Implicits: 0
                 .unwrap()
             };
             let mut options = DataOrchestratorOptions {
+                mode_effective: name.starts_with("ArmourBreak")
+                    || name == "ArmourDefenseAgainstProjectileAttacks",
                 extra_modifier_texts: if is_charge_on_kill {
                     Vec::new()
                 } else {

@@ -201,6 +201,42 @@ impl ReadGate {
 /// Gated readers, alongside the consumers outside the database. Keep the
 /// actual consumer here so a registry entry can be checked against its code.
 pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
+    // `calc::armour_break::apply_fully_broken_effect` extends the inflicted debuff.
+    (
+        "ArmourBreakFireDamageTaken",
+        ReadGate {
+            state: Cow::Borrowed(
+                "an effective, nonimmune enemy has Fully Broken Armour with nonzero effect",
+            ),
+            config_option: Some(Cow::Borrowed("conditionEnemyArmourBroken")),
+        },
+    ),
+    (
+        "ArmourBreakColdDamageTaken",
+        ReadGate {
+            state: Cow::Borrowed(
+                "an effective, nonimmune enemy has Fully Broken Armour with nonzero effect",
+            ),
+            config_option: Some(Cow::Borrowed("conditionEnemyArmourBroken")),
+        },
+    ),
+    (
+        "ArmourBreakLightningDamageTaken",
+        ReadGate {
+            state: Cow::Borrowed(
+                "an effective, nonimmune enemy has Fully Broken Armour with nonzero effect",
+            ),
+            config_option: Some(Cow::Borrowed("conditionEnemyArmourBroken")),
+        },
+    ),
+    // `calc::taken::effective_applied_armour_for_category` uses the enemy hit category.
+    (
+        "ArmourDefenseAgainstProjectileAttacks",
+        ReadGate {
+            state: Cow::Borrowed("the incoming enemy hit is a projectile attack"),
+            config_option: Some(Cow::Borrowed("enemyDamageType")),
+        },
+    ),
     // `calc::perform::damaging_ailment_for_pass` reads rate only for active ailments.
     (
         "BleedFaster",
