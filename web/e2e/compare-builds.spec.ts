@@ -49,29 +49,123 @@ test('compare stages without mutation, share A config, and apply one item to ina
 });
 
 
-test('copying an absent config value stays cleared when an imported stage is reopened', async ({ page }) => {
-  const workspace = comparisonWorkspace();
-  const a = workspace.builds[0].stages[0];
-  a.saved.state.pobCode = deflateSync(`<PathOfBuilding2><Build level="20" className="Ranger" mainSocketGroup="1"/>
-    <Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
-    <Skills><Skill enabled="true"><Gem skillId="SparkPlayer" level="5" enabled="true"/></Skill></Skills>
-    <Config><Input name="conditionLowLife" boolean="true"/></Config></PathOfBuilding2>`).toString('base64url');
-  a.saved.state.params.config_inputs.conditionLowLife = true;
-  await page.addInitScript(raw => localStorage.setItem('pobr-build-state', raw), workspaceEnvelope(workspace));
-  await page.goto('/');
-  await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
-  await page.getByRole('button', { name: 'Compare', exact: true }).click();
-  await page.getByRole('combobox', { name: 'Build / stage A', exact: true }).selectOption('stage-a');
-  await page.getByRole('combobox', { name: 'Build / stage B', exact: true }).selectOption('stage-b');
-  const row = page.locator('[data-config-key="conditionLowLife"]');
-  await expect(row).toContainText('Not set');
-  await row.getByRole('button', { name: 'Apply B → A', exact: true }).click();
-  await expect(row).toHaveCount(0);
-  await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption('stage-a');
-  await page.getByRole('button', { name: 'Build', exact: true }).click();
-  await expect(page.locator('.import-summary')).toBeVisible();
-  const restored = await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!));
-  expect(restored.state.params.config_inputs).not.toHaveProperty('conditionLowLife');
-  expect(restored.state.pobCode).toBe(a.saved.state.pobCode);
-  expect(restored.workspace.builds[0].stages[1]).toEqual(workspace.builds[0].stages[1]);
-});
+for (const activeStage of ['stage-a', 'stage-b']) {
+  test(`copying unset config into ${activeStage === 'stage-a' ? 'active' : 'inactive'} A keeps controls, defaults and reset consistent`, async ({ page }) => {
+    const workspace = comparisonWorkspace();
+    workspace.builds[0].activeStage = activeStage;
+    const a = workspace.builds[0].stages[0];
+    const shockKey = 'conditionEnemyShocked';
+    const questKey = 'questAct 1ClearfellBeira';
+    a.saved.state.pobCode = deflateSync(`<PathOfBuilding2><Build level="20" className="Ranger" mainSocketGroup="1"/>
+      <Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
+      <Skills><Skill enabled="true"><Gem skillId="SparkPlayer" level="5" enabled="true"/></Skill></Skills>
+      <Config activeConfigSet="7"><ConfigSet id="7" title="Imported">
+        <Input name="${shockKey}" boolean="true"/><Input name="${questKey}" boolean="false"/>
+        <Input name="conditionFullLife" boolean="false"/><Input name="ActiveBrands" number="0"/>
+        <Input name="futureInput" string="20"/>
+      </ConfigSet><ConfigSet id="3" title="Other"><Input name="${shockKey}" boolean="false"/></ConfigSet></Config>
+      </PathOfBuilding2>`).toString('base64url');
+    Object.assign(a.saved.state.params.config_inputs, { [shockKey]: true, [questKey]: false, futureInput: '20' });
+    // A reload must read the result of Compare, not reseed the initial fixture.
+    await page.addInitScript(raw => {
+      if (!localStorage.getItem('pobr-build-state')) localStorage.setItem('pobr-build-state', raw);
+    }, workspaceEnvelope(workspace));
+    await page.goto('/');
+    await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
+    await expect(page.locator('.topbar-busy')).toHaveCount(0);
+    const snapshot = () => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!));
+    const compare = async () => {
+      await page.getByRole('button', { name: 'Compare', exact: true }).click();
+      await page.getByRole('combobox', { name: 'Build / stage A', exact: true }).selectOption('stage-a');
+      await page.getByRole('combobox', { name: 'Build / stage B', exact: true }).selectOption('stage-b');
+    };
+    const copyUnset = async (key: string) => {
+      const difference = page.locator(`[data-config-key="${key}"]`);
+      await expect(difference).toContainText('Not set');
+      await difference.getByRole('button', { name: 'Apply B → A', exact: true }).click();
+      await expect(difference).toHaveCount(0);
+    };
+    const config = async () => {
+      await page.getByRole('button', { name: 'Config', exact: true }).click();
+      await expect(page.getByRole('combobox', { name: 'Config set', exact: true })).toHaveValue('7', { timeout: 90_000 });
+      await expect(page.locator('.topbar-busy')).toHaveCount(0);
+    };
+    const row = (key: string) => page.locator(`.config-item[data-config-var="${key}"]`);
+    const findControl = async (key: string) => {
+      await page.getByRole('button', { name: 'Show all options', exact: true }).click();
+      await page.getByLabel('Search config options…').fill(key);
+      await expect(row(key).locator('input')).toBeEnabled();
+    };
+    await compare();
+    await copyUnset(shockKey);
+    await copyUnset(questKey);
+    const copied = await snapshot();
+    expect(copied.workspace.builds[0].activeStage).toBe(activeStage);
+    expect(copied.workspace.builds[0].stages[1]).toEqual(workspace.builds[0].stages[1]);
+    expect(copied.workspace.builds[0].stages[0].saved.state.params.config_inputs)
+      .toEqual({ conditionFullLife: false, ActiveBrands: 0, futureInput: '20' });
+    if (activeStage !== 'stage-a') await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption('stage-a');
+    await config();
+    await findControl(shockKey);
+    await expect(row(shockKey).locator('input')).not.toBeChecked();
+    await expect(row(shockKey).locator('.config-source')).toHaveText('Default · no saved value');
+    await expect(row(shockKey).locator('.config-reset')).toBeVisible();
+    await expect(page.locator(`.config-quick-entry[data-config-var="${shockKey}"]`)).toContainText('Catalog default');
+    await expect(page.locator(`.config-quick-entry[data-config-var="${shockKey}"] output`)).toContainText('false');
+    await page.getByRole('checkbox', { name: /^Configured only/ }).check();
+    await expect(row(shockKey)).toHaveCount(0);
+    await page.getByRole('checkbox', { name: /^Configured only/ }).uncheck();
+    // Unset must resolve a true catalog default as well as shock's false default.
+    await findControl(questKey);
+    await expect(row(questKey).locator('input')).toBeChecked();
+    await expect(row(questKey).locator('.config-source')).toHaveText('Default · no saved value');
+    await expect(row(questKey).locator('.config-reset')).toBeVisible();
+    await page.reload();
+    await config();
+    await findControl(shockKey);
+    await expect(row(shockKey).locator('input')).not.toBeChecked();
+    expect((await snapshot()).state.params.config_inputs).not.toHaveProperty(shockKey);
+    // Reset is still relative to A's imported config, not the copied value.
+    await row(shockKey).locator('.config-reset').click();
+    await expect(row(shockKey).locator('input')).toBeChecked();
+    await expect(row(shockKey).locator('.config-reset')).toHaveCount(0);
+    expect((await snapshot()).state.params.config_inputs[shockKey]).toBe(true);
+    await findControl(questKey);
+    await row(questKey).locator('.config-reset').click();
+    await expect(row(questKey).locator('input')).not.toBeChecked();
+    await expect(row(questKey).locator('.config-reset')).toHaveCount(0);
+    expect((await snapshot()).state.params.config_inputs[questKey]).toBe(false);
+    await compare();
+    await copyUnset(shockKey);
+    await copyUnset(questKey);
+    await config();
+    const sets = page.getByRole('combobox', { name: 'Config set', exact: true });
+    // Saving and leaving a named set makes its cleared values the new baseline.
+    await sets.selectOption('3');
+    await expect(sets).toHaveValue('3');
+    await expect(sets).toBeEnabled();
+    await findControl(shockKey);
+    await expect(row(shockKey).locator('input')).not.toBeChecked();
+    await expect(row(shockKey).locator('.config-reset')).toHaveCount(0);
+    expect((await snapshot()).state.params.config_inputs[shockKey]).toBe(false);
+    await sets.selectOption('7');
+    await expect(sets).toHaveValue('7');
+    await expect(sets).toBeEnabled();
+    await expect(row(shockKey).locator('input')).not.toBeChecked();
+    await expect(row(shockKey).locator('.config-reset')).toHaveCount(0);
+    expect((await snapshot()).state.params.config_inputs)
+      .toEqual({ conditionFullLife: false, ActiveBrands: 0, futureInput: '20' });
+    await row(shockKey).locator('input').check();
+    await expect(row(shockKey).locator('.config-reset')).toBeEnabled();
+    await row(shockKey).locator('.config-reset').click();
+    await expect(row(shockKey).locator('input')).not.toBeChecked();
+    expect((await snapshot()).state.params.config_inputs).not.toHaveProperty(shockKey);
+    await page.reload();
+    await config();
+    await findControl(shockKey);
+    await expect(row(shockKey).locator('input')).not.toBeChecked();
+    await expect(row(shockKey).locator('.config-reset')).toHaveCount(0);
+    expect((await snapshot()).state.params.config_inputs).not.toHaveProperty(shockKey);
+    expect((await snapshot()).workspace.builds[0].stages[1]).toEqual(workspace.builds[0].stages[1]);
+  });
+}
