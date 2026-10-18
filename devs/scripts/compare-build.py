@@ -567,9 +567,17 @@ def disagreeing_stats(entries: dict, main_output: dict) -> list:
 
 def run_engine(code_file: Path, stats) -> dict:
     breakdown = ",".join(["all", *stats])
-    command = ["cargo", "run", "-q", "-p", "pobr-cli", "--", "calculate-build",
+    given = os.environ.get("POBR_BIN")
+    if given:
+        binary = Path(given).resolve()
+        if not binary.is_file():
+            raise SystemExit(f"compare: POBR_BIN={given} is not a file")
+        launcher = [str(binary)]
+    else:
+        launcher = ["cargo", "run", "-q", "-p", "pobr-cli", "--"]
+    command = [*launcher, "calculate-build",
                "--file", str(code_file), "--breakdown", breakdown, "--json", "--reference-basis"]
-    print(f"compare: calculating with the engine ({' '.join(command[:6])} ...)", file=sys.stderr)
+    print(f"compare: calculating with the engine ({' '.join(launcher)} ...)", file=sys.stderr)
     # Cargo's own messages (a build lock, compile errors) stay on stderr.
     result = subprocess.run(command, cwd=REPO, stdout=subprocess.PIPE, text=True)
     if result.returncode != 0:
@@ -941,7 +949,8 @@ def main(argv=None) -> int:
         if args.refresh or not cached.is_file():
             run_oracle(xml, cached, names)
         else:
-            print(f"compare: PoB2 side from {cached.relative_to(REPO)}", file=sys.stderr)
+            display = cached.relative_to(REPO) if cached.is_relative_to(REPO) else cached
+            print(f"compare: PoB2 side from {display}", file=sys.stderr)
         oracle = load_json(cached)
 
     if basis == "oracle":

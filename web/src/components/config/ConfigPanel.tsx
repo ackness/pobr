@@ -240,13 +240,13 @@ export function ConfigPanel({ session, lang }: Props) {
     };
   }, [lang, options]);
 
-  const overrides = session.calcParams.config_inputs;
+  // The session already materializes imported config. Missing keys are unset;
+  // source XML is only the Reset baseline, never a fallback for current values.
+  const inputs = session.calcParams.config_inputs;
   const buildInputs = session.build?.config_inputs ?? {};
-  const effective = (key: string): ConfigInputValue | undefined =>
-    key in overrides ? overrides[key] : buildInputs[key];
-  const isOverridden = (key: string) => key in overrides && overrides[key] !== buildInputs[key];
+  const effective = (key: string): ConfigInputValue | undefined => inputs[key];
+  const isOverridden = (key: string) => inputs[key] !== buildInputs[key];
   const resetInput = (key: string) => session.setConfigInput(key, buildInputs[key] ?? null);
-  const inputs = useMemo(() => ({ ...buildInputs, ...overrides }), [buildInputs, overrides]);
   const visibilityInputs = useMemo(() => configVisibilityInputs(options, inputs), [options, inputs]);
   const context = !session.busy && !session.calcError ? session.calc?.config_context : null;
 
@@ -288,7 +288,7 @@ export function ConfigPanel({ session, lang }: Props) {
     const known = SECTION_ORDER.filter((s) => bySection.has(s));
     const rest = [...bySection.keys()].filter((s) => !SECTION_ORDER.includes(s)).sort();
     return [...known, ...rest].map((name) => ({ name, options: bySection.get(name)! }));
-  }, [options, query, configuredOnly, overrides, buildInputs, lang, context, inputs, visibilityInputs, allOptions, session.dataVersion]);
+  }, [options, query, configuredOnly, lang, context, inputs, visibilityInputs, allOptions, session.dataVersion]);
 
   useEffect(() => {
     if (!focusTarget || session.busy) return;
@@ -305,13 +305,14 @@ export function ConfigPanel({ session, lang }: Props) {
     option.var !== 'customMods' && option.var !== 'enemyIsBoss' &&
     configExistsInGame(option, session.dataVersion) && effective(option.var) !== undefined).length;
 
-  // Unknown and game-excluded saved inputs remain editable in the raw advanced view.
+  // Unknown and game-excluded inputs remain editable, including cleared source
+  // keys so their original values can still be restored with Reset.
   const extraKeys = useMemo(() => {
     const known = new Set(options.filter(o => configExistsInGame(o, session.dataVersion)).map((o) => o.var));
-    return [...new Set([...Object.keys(buildInputs), ...Object.keys(overrides)])]
+    return [...new Set([...Object.keys(buildInputs), ...Object.keys(inputs)])]
       .filter((k) => k !== 'customMods' && k !== 'enemyIsBoss' && !known.has(k))
       .sort();
-  }, [options, buildInputs, overrides, session.dataVersion]);
+  }, [options, buildInputs, inputs, session.dataVersion]);
 
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('true');
