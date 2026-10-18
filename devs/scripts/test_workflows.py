@@ -777,6 +777,83 @@ class CompareBuildTests(unittest.TestCase):
             with self.subTest(variant=variant):
                 self.assertEqual(self.compare.decode_code(variant), xml)
 
+    def test_cached_oracle_can_live_in_another_worktree(self):
+        xml = '<PathOfBuilding2><Build level="90" className="Ranger"/></PathOfBuilding2>'
+        code = base64.urlsafe_b64encode(zlib.compress(xml.encode("utf-8"))).decode("ascii")
+        with tempfile.TemporaryDirectory(prefix="pobr compare cache ") as temp:
+            root = Path(temp).resolve()
+            repo = root / "repo"
+            repo.mkdir()
+            (repo / "code.txt").write_text(code, encoding="utf-8")
+            (repo / "engine.json").write_text("{}", encoding="utf-8")
+            for cache in (repo / ".cache/pob2-oracle", root / "warm/.cache/pob2-oracle"):
+                with self.subTest(cache=cache), \
+                        patch.object(self.compare, "REPO", repo), \
+                        patch.object(self.compare, "CACHE", cache), \
+                        patch.object(self.compare, "vendor_commit", return_value="pinned"), \
+                        patch.object(self.compare, "run_oracle") as oracle:
+                    cached = self.compare.oracle_cache_path(
+                        code, self.compare.oracle_names([], {}), "pinned")
+                    cached.parent.mkdir(parents=True)
+                    cached.write_text("{}", encoding="utf-8")
+                    output, errors = io.StringIO(), io.StringIO()
+                    with contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
+                        status = self.compare.main([
+                            str(repo), "--engine-json", str(repo / "engine.json")])
+                    self.assertEqual(status, 0)
+                    oracle.assert_not_called()
+                    self.assertIn("every panel stat agrees with PoB2", output.getvalue())
+                    display = (Path(".cache/pob2-oracle") / cached.name
+                               if cache.parent.parent == repo else cached)
+                    self.assertEqual(errors.getvalue(), f"compare: PoB2 side from {display}\n")
+
+    def test_engine_command_uses_requested_binary_or_default_cargo(self):
+        with tempfile.TemporaryDirectory(prefix="pobr compare binary ") as temp:
+            binary = Path(temp) / "pobr"
+            binary.touch()
+            code = Path(temp) / "build code.txt"
+            report = {"breakdowns": [{"stat": "Life", "value": 100}]}
+            for given in (None, "", str(binary)):
+                with self.subTest(binary=given), patch.dict(os.environ, {}, clear=True), \
+                        patch.object(self.compare.subprocess, "run", return_value=
+                                     subprocess.CompletedProcess([], 0, json.dumps(report))) as run, \
+                        contextlib.redirect_stderr(io.StringIO()):
+                    if given is not None:
+                        os.environ["POBR_BIN"] = given
+                    self.assertEqual(self.compare.run_engine(code, ["Life", "TotalDPS"]), report)
+                    launcher = ([str(binary.resolve())] if given else
+                                ["cargo", "run", "-q", "-p", "pobr-cli", "--"])
+                    run.assert_called_once_with([
+                        *launcher, "calculate-build", "--file", str(code),
+                        "--breakdown", "all,Life,TotalDPS", "--json", "--reference-basis"],
+                        cwd=self.compare.REPO, stdout=subprocess.PIPE, text=True)
+
+    def test_engine_rejects_invalid_requested_binary_without_building(self):
+        with tempfile.TemporaryDirectory(prefix="pobr compare missing binary ") as temp:
+            for binary in (Path(temp) / "missing", Path(temp)):
+                with self.subTest(binary=binary), \
+                        patch.dict(os.environ, {"POBR_BIN": str(binary)}), \
+                        patch.object(self.compare.subprocess, "run") as run:
+                    with self.assertRaises(SystemExit) as error:
+                        self.compare.run_engine(Path("code.txt"), [])
+                    self.assertEqual(str(error.exception),
+                                     f"compare: POBR_BIN={binary} is not a file")
+                    run.assert_not_called()
+
+    def test_engine_process_failures_are_reported_for_both_launchers(self):
+        with tempfile.TemporaryDirectory(prefix="pobr compare failed engine ") as temp:
+            binary = Path(temp) / "pobr"
+            binary.touch()
+            for given in ("", str(binary)):
+                with self.subTest(binary=given), patch.dict(os.environ, {"POBR_BIN": given}), \
+                        patch.object(self.compare.subprocess, "run", return_value=
+                                     subprocess.CompletedProcess([], 17, "not JSON")) as run, \
+                        contextlib.redirect_stderr(io.StringIO()):
+                    with self.assertRaises(SystemExit) as error:
+                        self.compare.run_engine(Path("code.txt"), [])
+                    self.assertEqual(str(error.exception), "compare: the engine failed (17)")
+                    run.assert_called_once()
+
     def report(self, folder, *arguments):
         """The comparison of the build in `folder` with its two saved outputs."""
         output = io.StringIO()
