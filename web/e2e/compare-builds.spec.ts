@@ -153,8 +153,14 @@ for (const activeStage of ['stage-a', 'stage-b']) {
     await expect(sets).toBeEnabled();
     await expect(row(shockKey).locator('input')).not.toBeChecked();
     await expect(row(shockKey).locator('.config-reset')).toHaveCount(0);
-    expect((await snapshot()).state.params.config_inputs)
-      .toEqual({ conditionFullLife: false, ActiveBrands: 0, futureInput: '20' });
+    const selected = await snapshot();
+    // Encoding a named set may add native defaults; the edited inputs retain
+    // their types, and neither explicitly cleared key may reappear.
+    expect(selected.state.params.config_inputs)
+      .toMatchObject({ conditionFullLife: false, ActiveBrands: 0, futureInput: '20' });
+    expect(selected.state.params.config_inputs).not.toHaveProperty(shockKey);
+    expect(selected.state.params.config_inputs).not.toHaveProperty(questKey);
+    expect(selected.workspace.builds[0].stages[1]).toEqual(workspace.builds[0].stages[1]);
     await row(shockKey).locator('input').check();
     await expect(row(shockKey).locator('.config-reset')).toBeEnabled();
     await row(shockKey).locator('.config-reset').click();
@@ -165,7 +171,11 @@ for (const activeStage of ['stage-a', 'stage-b']) {
     await findControl(shockKey);
     await expect(row(shockKey).locator('input')).not.toBeChecked();
     await expect(row(shockKey).locator('.config-reset')).toHaveCount(0);
-    expect((await snapshot()).state.params.config_inputs).not.toHaveProperty(shockKey);
-    expect((await snapshot()).workspace.builds[0].stages[1]).toEqual(workspace.builds[0].stages[1]);
+    const reloaded = await snapshot();
+    expect(reloaded.state.params.config_inputs)
+      .toMatchObject({ conditionFullLife: false, ActiveBrands: 0, futureInput: '20' });
+    expect(reloaded.state.params.config_inputs).not.toHaveProperty(shockKey);
+    expect(reloaded.state.params.config_inputs).not.toHaveProperty(questKey);
+    expect(reloaded.workspace.builds[0].stages[1]).toEqual(workspace.builds[0].stages[1]);
   });
 }
