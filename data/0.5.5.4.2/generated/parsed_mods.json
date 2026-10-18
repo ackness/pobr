@@ -35735,7 +35735,14 @@
     },
     {
       "text": "Defend with 120% of [Armour] against [Projectile] [Attack|Attacks]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArmourDefenseAgainstProjectileAttacks",
+          "type": "Base",
+          "value": 20.0
+        }
+      ]
     },
     {
       "text": "Defend with 120% of [Armour] while not on [LowEnergyShield|Low Energy Shield]",

@@ -1448,3 +1448,28 @@ views. Calcs formulas retain their inputs and have no invented PoB output keys.
 ([TW keyword](https://poe2db.tw/tw/Combo)); full labels/help are contextual UI copy.
 CN uses `连击` and `绝杀` from the corresponding retained
 `i18n/zh-CN/stat_lines.json` gain-Combo and gain-Finality entries.
+
+### Static helmet threshold and projectile Armour
+
+Strong Chin (current passive 10998,
+`stun_threshold_+_from_lowest_of_base_helmet_evasion_rating_and_armour`) already
+uses the generated parser's `StunThreshold` BASE modifier and the existing
+`LowestOfArmourAndEvasionOnhelmet` snapshot. The retained game text says
+“Evasion and Armour on your Helmet”: the minimum is taken after the helmet's
+local flat/increased modifiers and quality, before global defence increases.
+Known bases use current game base values; imported defence displays are only a
+fallback for unknown bases. Missing either defence contributes zero. Ordinary
+Stun Threshold increases/multipliers then apply to the added amount.
+
+Projectile Bulwark (current passive 19236,
+`defend_with_%_armour_against_ranged_attacks`) says “Defend with 120% of Armour
+against Projectile Attacks”. It uses the configured incoming enemy
+`enemyDamageType = Projectile` category, independently of the player's skill.
+Melee, spell, spell-projectile, untyped and unspecified/Average hits receive no
+conditional benefit. It changes effective applied Armour in the shared
+mitigation snapshot used by damage taken, EHP, max-hit and existing details;
+character Armour and borrowed Evasion/ES terms remain separate. The percentage
+uses the existing strongest-`ArmourDefense` convention rather than multiplying
+several “defend with” percentages; this stacking interaction has no in-game
+measurement here. The current pinned exporter has no projectile-specific rule,
+so that source is exporter-absent. No new condition, event or display is added.

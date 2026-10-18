@@ -167,13 +167,37 @@ pub fn effective_applied_armour(
     energy_shield: f64,
     dtype: DamageType,
 ) -> f64 {
+    effective_applied_armour_for_category(
+        db,
+        cfg,
+        &MitigationInputs {
+            armour,
+            evasion,
+            energy_shield,
+            ..Default::default()
+        },
+        dtype,
+        HitCategory::Average,
+    )
+}
+
+fn effective_applied_armour_for_category(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    inputs: &MitigationInputs,
+    dtype: DamageType,
+    category: HitCategory,
+) -> f64 {
     let name = dt_prefix(dtype);
     let armour_pct = armour_applies_pct(db, cfg, dtype);
-    // ArmourDefense: vendor :1392's `(modDB:Max(nil, "ArmourDefense") or 0) / 100`.
-    let armour_defense = db
-        .max_of(ModType::Base, cfg, &[ModName::from("ArmourDefense")])
-        .max(0.0)
-        / 100.0;
+    // Conditional defence uses the incoming enemy hit, never the player's
+    // selected skill. An unspecified/Average hit supplies no projectile attack
+    // assumption. As with ArmourDefense, only the strongest percentage applies.
+    let mut defence_names = vec![ModName::from("ArmourDefense")];
+    if category == HitCategory::Projectile {
+        defence_names.push(ModName::from("ArmourDefenseAgainstProjectileAttacks"));
+    }
+    let armour_defense = db.max_of(ModType::Base, cfg, &defence_names).max(0.0) / 100.0;
     let other_pct = |def: &str| -> f64 {
         if db.flag(cfg, &format!("{def}DoesNotApplyTo{name}DamageTaken")) {
             0.0
@@ -185,10 +209,10 @@ pub fn effective_applied_armour(
             )
         }
     };
-    let from_armour = (armour * armour_pct / 100.0) * (1.0 + armour_defense);
+    let from_armour = (inputs.armour * armour_pct / 100.0) * (1.0 + armour_defense);
     // Evasion/ES borrowed terms each get their own max(…, 0) (vendor :2356/:2358).
-    let from_evasion = (evasion * other_pct("Evasion") / 100.0).max(0.0);
-    let from_es = (energy_shield * other_pct("EnergyShield") / 100.0).max(0.0);
+    let from_evasion = (inputs.evasion * other_pct("Evasion") / 100.0).max(0.0);
+    let from_es = (inputs.energy_shield * other_pct("EnergyShield") / 100.0).max(0.0);
     round(from_armour + from_evasion + from_es)
 }
 
@@ -440,14 +464,8 @@ pub(crate) fn build_mitigation_ctx_for_category(
         ctx.after_reduction_multi[i] = taken_mult * deflect_multi;
         // Armour-applies percentage and effective applied armour (13-G7 percentage model).
         ctx.armour_applies_pct[i] = armour_applies_pct(db, cfg, dt);
-        ctx.effective_applied_armour[i] = effective_applied_armour(
-            db,
-            cfg,
-            inputs.armour,
-            inputs.evasion,
-            inputs.energy_shield,
-            dt,
-        );
+        ctx.effective_applied_armour[i] =
+            effective_applied_armour_for_category(db, cfg, inputs, dt, category);
     }
     ctx
 }

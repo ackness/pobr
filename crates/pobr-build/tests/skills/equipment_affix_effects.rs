@@ -1581,3 +1581,198 @@ fn recharge_rate_and_archon_start_bonuses_reach_build_outputs() {
     // The conditional recharge bonus is not an Archon-granted buff to scale.
     assert!((active.output().es_recharge_delay - 4.0 / 1.2).abs() < 1e-7);
 }
+
+#[test]
+fn static_defences_strong_chin_uses_local_helmet_defences() {
+    use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
+    let data = data();
+    let mut helmet = item(
+        "Brimmed Helm",
+        &[
+            "+14 to Armour",
+            "+30 to Evasion Rating",
+            "50% increased Armour and Evasion",
+        ],
+    );
+    helmet.quality = 20;
+    // Stale exported displays must not replace the current base/local calculation.
+    helmet.rolled_defence.armour = Some(9999.0);
+    helmet.rolled_defence.evasion = Some(9999.0);
+    let mut base = build("SparkPlayer")
+        .set_item(EquipmentSlot::Helmet, helmet)
+        .with_tree(PassiveTreeSpec {
+            allocated_nodes: vec![NodeId(10998)],
+            ..Default::default()
+        });
+    base.config.global_modifier_texts = vec![
+        "100% increased Armour and Evasion Rating".into(),
+        "50% increased Stun Threshold".into(),
+    ];
+    let mut without = data.clone();
+    without
+        .passive_nodes
+        .get_mut(&10998)
+        .unwrap()
+        .stats
+        .retain(|line| !line.contains("Stun"));
+    let plain = run(&base, &without);
+    let with = run(&base, &data);
+    // Brimmed Helm base 26/20: (26+14)*1.5*1.2=72 Armour;
+    // (20+30)*1.5*1.2=90 Evasion. Global defence scaling is excluded.
+    close(
+        with.output().stun_threshold - plain.output().stun_threshold,
+        72.0 * 1.5,
+    );
+    close(with.output().armour, plain.output().armour);
+    let detail = with.derived_detail("StunThreshold").unwrap();
+    let value = |id: &str| detail.inputs.iter().find(|input| input.0 == id).unwrap().1;
+    close(value("ThresholdAdded"), 72.0);
+    close(
+        (value("ThresholdBase") + value("ThresholdAdded"))
+            * value("ThresholdIncrease")
+            * value("ThresholdMore"),
+        with.output().stun_threshold,
+    );
+    for missing in [None, Some("Rusted Greathelm")] {
+        let mut one_defence = base.clone();
+        one_defence.items.remove(&EquipmentSlot::Helmet);
+        if let Some(helmet) = missing {
+            one_defence
+                .items
+                .insert(EquipmentSlot::Helmet, item(helmet, &[]));
+        }
+        close(
+            run(&one_defence, &data).output().stun_threshold,
+            run(&one_defence, &without).output().stun_threshold,
+        );
+    }
+}
+
+#[test]
+fn static_defences_projectile_bulwark_uses_incoming_attack_category() {
+    use pobr_core::rules::config_interpreter::ConfigInputValue;
+    use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
+    let data = data();
+    let mut without = data.clone();
+    without
+        .passive_nodes
+        .get_mut(&19236)
+        .unwrap()
+        .stats
+        .retain(|line| !line.contains("Defend"));
+    for skill in ["SparkPlayer", "IceShotPlayer", "Melee1HMacePlayer"] {
+        assert!(data.granted_effects.contains_key(skill));
+        for category in [
+            "Projectile",
+            "Melee",
+            "Spell",
+            "SpellProjectile",
+            "Untyped",
+            "Average",
+            "",
+        ] {
+            let mut base = build(skill).with_tree(PassiveTreeSpec {
+                allocated_nodes: vec![NodeId(19236)],
+                ..Default::default()
+            });
+            base.config
+                .global_modifier_texts
+                .push("+10000 to Armour".into());
+            for (name, value) in [
+                ("enemyPhysicalDamage", 1000.0),
+                ("enemyFireDamage", 0.0),
+                ("enemyColdDamage", 0.0),
+                ("enemyLightningDamage", 0.0),
+                ("enemyChaosDamage", 0.0),
+                ("enemyCritChance", 0.0),
+            ] {
+                base.config
+                    .raw_inputs
+                    .values
+                    .insert(name.into(), ConfigInputValue::Number(value));
+            }
+            if !category.is_empty() {
+                base.config.raw_inputs.values.insert(
+                    "enemyDamageType".into(),
+                    ConfigInputValue::Text(category.into()),
+                );
+            }
+            let plain = run(&base, &without);
+            let with = run(&base, &data);
+            close(with.output().armour, plain.output().armour);
+            let armour = with
+                .ehp_terms()
+                .unwrap()
+                .mitigation
+                .effective_applied_armour[0];
+            let expected_scale = if category == "Projectile" { 1.2 } else { 1.0 };
+            close(armour, plain.output().armour * expected_scale);
+            if category == "Projectile" {
+                assert!(
+                    with.output().physical_max_hit > plain.output().physical_max_hit,
+                    "{skill}"
+                );
+                assert!(
+                    with.output().total_ehp > plain.output().total_ehp,
+                    "{skill}"
+                );
+                let detail = with.derived_detail("PhysicalDamageReduction").unwrap();
+                let dr = detail
+                    .inputs
+                    .iter()
+                    .find(|input| input.0 == "ArmourReduction")
+                    .unwrap()
+                    .1;
+                close(dr, with.ehp_terms().unwrap().damage_reduction[0].armour);
+                assert!(
+                    with.ehp_terms().unwrap().taken_hit[0]
+                        < plain.ehp_terms().unwrap().taken_hit[0]
+                );
+                for stat in ["PhysicalTakenHit", "PhysicalMaxHit", "TotalEHP"] {
+                    let detail = with.derived_detail(stat).unwrap();
+                    let value =
+                        |id: &str| detail.inputs.iter().find(|input| input.0 == id).unwrap().1;
+                    let expected = match stat {
+                        "PhysicalTakenHit" => {
+                            (value("ConvertedIncomingDamage")
+                                * value("ResistTakenMultiplier")
+                                * value("ReductionTakenMultiplier")
+                                + value("FlatDamageTaken"))
+                            .max(0.0)
+                                * value("AfterReductionMultiplier")
+                        }
+                        "PhysicalMaxHit" => {
+                            (value("SolvedMaxHit") / value("EnemyDamageMultiplier")).round()
+                        }
+                        "TotalEHP" => {
+                            value("NumberOfMitigatedHits") * value("EnemyDamage")
+                                / (1.0 - value("NotHitChance") / 100.0)
+                        }
+                        _ => unreachable!(),
+                    };
+                    close(pobr_core::display_value(with.output(), stat), expected);
+                }
+            } else {
+                close(
+                    with.output().physical_max_hit,
+                    plain.output().physical_max_hit,
+                );
+                close(with.output().total_ehp, plain.output().total_ehp);
+            }
+            if category == "Projectile" {
+                base.config
+                    .global_modifier_texts
+                    .push("Defend with 150% of Armour".into());
+                let strongest = run(&base, &data);
+                close(
+                    strongest
+                        .ehp_terms()
+                        .unwrap()
+                        .mitigation
+                        .effective_applied_armour[0],
+                    strongest.output().armour * 1.5,
+                );
+            }
+        }
+    }
+}
