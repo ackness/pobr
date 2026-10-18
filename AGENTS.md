@@ -98,18 +98,21 @@ Documentation-only changes need diff/link review, not builds.
 ## Accuracy Workflow
 
 PoBR primarily simulates a static build under selected conditions, not a full
-gameplay timeline. Headhunter stolen effects, Mana gained through movement and
-Mana Remnant pickup recovery are outside the default static calculation scope;
-do not add event rates, automatic triggers or uptime models just to consume
-these lines. Preserve existing Headhunter behavior as requested by the owner.
-The gap queue is diagnostic inventory, not an implementation backlog. Before
-dispatching a fix, identify the supported static output or explicitly requested
-simulation it affects and the concrete error or user need it addresses.
-Frequency and missing-reader counts alone do not justify a model, config
-control, display field or abstraction. Preserve inactive conditions and honest
-diagnostics for deferred mechanics; do not mark them globally effectless just
-because the current simulation omits them. Prefer the smallest existing-path
-change; avoid speculative simulation, abstractions and performance work.
+gameplay timeline. Before implementing or delegating any modifier feature,
+evaluate whether it meets the simulator's needs: which target output it affects
+under the selected actors, skills, conditions and simulation assumptions; what
+concrete error or user need it addresses; and whether that benefit justifies
+the added complexity. If there is no clear need, do not implement it merely
+because it is unsupported. Judge effects by this reasoning, not a fixed list
+of modifier names or trigger types. Do not invent event histories, rates or
+uptime to justify an otherwise unnecessary feature.
+
+The gap queue is diagnostic inventory, not an implementation backlog. Frequency
+and missing-reader counts alone do not justify a model, config control, display
+field or abstraction. Preserve inactive conditions and honest diagnostics for
+deferred mechanics; do not mark them globally effectless just because the
+current simulation omits them. Prefer the smallest existing-path change;
+avoid speculative simulation, abstractions and performance work.
 
 Improve calculation accuracy in batches, not one build at a time:
 
