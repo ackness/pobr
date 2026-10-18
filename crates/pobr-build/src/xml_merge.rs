@@ -434,6 +434,8 @@ fn preserve_skill_metadata(old: &str, edited: &str) -> String {
                             "gemId",
                             "nameSpec",
                             "level",
+                            // Import folds this into the exported gem level.
+                            "corruptLevel",
                             "quality",
                             "enabled",
                             "count",

@@ -78,6 +78,51 @@ fn corruption_survives_export_and_decode() {
     );
 }
 
+#[test]
+fn corruption_level_is_not_reapplied_after_structured_export() {
+    init();
+    for (level, corruption, expected) in [
+        (20, Some("1"), 21),
+        (20, Some("-1"), 19),
+        (20, Some("0"), 20),
+        (20, Some("nil"), 20),
+        (20, None, 20),
+        (1, Some("-1"), 1),
+    ] {
+        let corruption = corruption
+            .map(|value| format!(r#" corruptLevel="{value}""#))
+            .unwrap_or_default();
+        let xml = format!(
+            r#"<PathOfBuilding2>
+<Build level="85" className="Sorceress" mainSocketGroup="1"/>
+<Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true">
+<Gem skillId="FireballPlayer" level="{level}" quality="0" corrupted="true"{corruption} extensionData="retained"/>
+</Skill></SkillSet></Skills>
+</PathOfBuilding2>"#
+        );
+        let mut code = pobr_build::encode_pob_code(&xml).unwrap();
+        for round in 0..3 {
+            let decoded = decode(&code);
+            let gem = &decoded["socket_groups"][0]["gems"][0];
+            assert_eq!(gem["level"], expected, "{corruption}, round {round}");
+            assert_eq!(gem["corrupted"], true);
+            // Decode also returns display-only group fields. Export receives
+            // only the structured edit fields, as the web request does.
+            let request = json!({
+                "base_code": code,
+                "character": { "level": 85, "class_name": "Sorceress" },
+                "main_socket_group": 0,
+                "socket_groups": [{ "enabled": true, "gems": [gem] }],
+            });
+            code = pobr_wasm::encode_build_json(&request.to_string()).unwrap();
+            let xml = pobr_build::decode_pob_code(&code).unwrap();
+            assert!(!xml.contains("corruptLevel="), "{xml}");
+            assert!(xml.contains(r#"extensionData="retained""#), "{xml}");
+            assert_eq!(decode(&code)["socket_groups"][0]["gems"][0], *gem);
+        }
+    }
+}
+
 /// A Companion summoning `minion` when given, on a character with 100 Spirit.
 fn companion(minion: Option<&str>) -> Value {
     let mut gem = json!({ "skill_id": "SummonBeastPlayer", "level": 20, "quality": 0 });
