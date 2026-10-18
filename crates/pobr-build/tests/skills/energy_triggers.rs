@@ -554,6 +554,38 @@ fn spellslinger_stores_500_but_spends_300_on_comet_and_gains_14_per_spark() {
 }
 
 #[test]
+fn spellslinger_counts_casts_while_critical_triggers_count_periodic_hits() {
+    let data = data();
+    let ball = gem("BallLightningPlayer", "Ball Lightning");
+    for (extra, casts) in [(vec![], 1.0), (vec!["100% increased Cast Speed"], 2.0)] {
+        let opts = options(BOSS.0, &extra);
+        let source = calculate(&data, &build_xml(&[], &[ball.clone()], OTHER), &opts);
+        // A 1000 ms base cast, but a hit every 200 ms while in range.
+        assert_rate(source.action_rate, 5.0);
+        let out = calculate(
+            &data,
+            &meta_xml("MetaSpellslingerPlayer", &[ball.clone()], &[]),
+            &opts,
+        );
+        let terms = out.energy_trigger.as_ref().unwrap();
+        assert_eq!(terms.source.as_deref(), Some("BallLightningPlayer"));
+        assert_rate(terms.events_per_second, casts);
+        assert_rate(terms.energy_per_event, 20.0 * GEM_GAIN);
+        assert_rate(out.skill_trigger_rate, casts * 20.0 * GEM_GAIN / 300.0);
+
+        let critical = calculate(
+            &data,
+            &meta_xml("MetaCastOnCritPlayer", &[ball.clone()], &[]),
+            &opts,
+        );
+        assert_rate(
+            critical.energy_trigger.as_ref().unwrap().events_per_second,
+            critical_hits_per_second(&source),
+        );
+    }
+}
+
+#[test]
 fn elemental_invocation_spends_cast_time_energy_instead_of_its_500_storage() {
     let data = data();
     let xml = meta_xml("MetaElementalInvocationPlayer", &[spark()], &[]);

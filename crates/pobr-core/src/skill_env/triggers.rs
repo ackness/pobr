@@ -542,7 +542,9 @@ fn energy_trigger_modifiers<S: TriggerSubCalc>(
         source.value = ModValue::NestedMods(vec![
             value(
                 energy::SOURCE_RATE,
-                if crit.is_some() || spellslinger {
+                if spellslinger {
+                    stats.use_rate
+                } else if crit.is_some() {
                     stats.action_rate
                 } else {
                     stats.hit_rate

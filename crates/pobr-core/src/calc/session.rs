@@ -1013,6 +1013,19 @@ impl CalculationSession {
         super::periodic::is_periodic(&self.env.player.mod_db, &self.env.cfg)
     }
 
+    /// The selected skill's own use cadence, before uses become rain or periodic
+    /// hits. Trigger sources such as Spellslinger count casts at this rate.
+    pub fn own_skill_use_rate(&self) -> f64 {
+        let env = &self.env;
+        let input = perform::player_input(env);
+        let hand = perform::main_hand_scope(env);
+        let (cfg, input) = match &hand {
+            Some((cfg, input)) => (cfg, input),
+            None => (&env.cfg, &input),
+        };
+        super::offence::resolve_use_rate(&env.player.mod_db, cfg, input)
+    }
+
     /// Incoming enemy inputs used by EHP and maximum-hit calculations.
     /// Preset rows remain visible but inactive when an explicit value replaces them.
     pub fn enemy_hit_mods(&self, include_damage: bool) -> Vec<crate::ModEvaluation<'_>> {
