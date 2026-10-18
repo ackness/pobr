@@ -30,9 +30,41 @@
       "0.5.5.4.2/generated/special_vendor.json": "12d91522257bfb57b5cdfc63073bd3a5df8c7a87d2b1c13c3ba3f959c936d4a5",
       "0.5.5.4.2/overlay/mod_parser_rules.json": "c719c7c3eeed65048067f264fd0a62f81cc20d89b917f05e2aa53753166242af",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
-      "overlay-common/special_mods.json": "3aaa59f8737270814ccdf1eb1c4ec57fe05b80b3edf5c4522189dd86fdd69d8c"
+      "overlay-common/special_mods.json": "64f44bfd87013731c6da91260348ce6c72579899905d195b48c046f7198b41c1"
     },
     "effective_rules": [
+      {
+        "id": "volatility_refresh_chance",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "volatility_maximum_override",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "remnant_pickup_mana_recovery",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "created_remnant_duplicate_effects",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
       {
         "id": "cadiro_selected_arrow",
         "files": [
@@ -2577,6 +2609,30 @@
       },
       {
         "id": "beira_ignited_ground_on_use",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "combo_additional_gain_chance",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "combo_additional_gain",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "combo_additional_gain_one",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -19692,11 +19748,11 @@
   },
   "summary": {
     "no_effect": 140,
-    "parsed": 16354,
+    "parsed": 16383,
     "pobr_gap": 1614,
     "recognized_empty": 185,
     "text_channel": 788,
-    "upstream_gap": 23557
+    "upstream_gap": 23532
   },
   "entries": {
     "% of spent Runic Ward granted as Guard@100%": {
@@ -49636,9 +49692,15 @@
       "sources": [
         "stat:passive_skill_stat_descriptions:additional_combo_gain_chance_%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ComboAdditionalGainChance"
+      ],
+      "special_rule_id": "combo_additional_gain_chance",
+      "matching_special_rules": [
+        "combo_additional_gain_chance"
+      ]
     },
     "1% Chance to cause Bleeding Enemies to Flee on hit": {
       "sources": [
@@ -50588,10 +50650,14 @@
       "sources": [
         "stat:passive_skill_stat_descriptions:created_remnants_have_%_chance_to_duplicate_pick_up_results"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "LocalEffect"
+        "CreatedRemnantDuplicateChance"
+      ],
+      "special_rule_id": "created_remnant_duplicate_effects",
+      "matching_special_rules": [
+        "created_remnant_duplicate_effects"
       ]
     },
     "1% chance for Remnants you pick up to count as picking up an additional Remnant": {
@@ -51170,9 +51236,15 @@
       "sources": [
         "stat:stat_descriptions:volatility_refresh_%_chance"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "VolatilityRefreshChance"
+      ],
+      "special_rule_id": "volatility_refresh_chance",
+      "matching_special_rules": [
+        "volatility_refresh_chance"
+      ]
     },
     "1% chance to Aggravate Bleeding on Hit": {
       "sources": [
@@ -53579,9 +53651,15 @@
       "sources": [
         "stat:stat_descriptions:additional_combo_gain_chance_%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ComboAdditionalGainChance"
+      ],
+      "special_rule_id": "combo_additional_gain_chance",
+      "matching_special_rules": [
+        "combo_additional_gain_chance"
+      ]
     },
     "1% chance to cause Bleeding on Hit": {
       "sources": [
@@ -83360,9 +83438,15 @@
         "passive:37780",
         "passive:7888"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ComboAdditionalGainChance"
+      ],
+      "special_rule_id": "combo_additional_gain_chance",
+      "matching_special_rules": [
+        "combo_additional_gain_chance"
+      ]
     },
     "10% Global chance to Blind Enemies on Hit": {
       "sources": [
@@ -90873,12 +90957,17 @@
     },
     "15% chance for Remnants you create to grant their effects twice": {
       "sources": [
-        "passive:40985"
+        "passive:40985",
+        "rule:created_remnant_duplicate_effects"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "LocalEffect"
+        "CreatedRemnantDuplicateChance"
+      ],
+      "special_rule_id": "created_remnant_duplicate_effects",
+      "matching_special_rules": [
+        "created_remnant_duplicate_effects"
       ]
     },
     "15% chance for Shapeshift Slam Skills you use yourself to cause an additional Aftershock": {
@@ -90897,6 +90986,20 @@
       "vendor_status": "partial",
       "mod_names": [
         "SpellDamage"
+      ]
+    },
+    "15% chance that when Volatility on you explodes, you regain an equivalent amount of Volatility": {
+      "sources": [
+        "rule:volatility_refresh_chance"
+      ],
+      "status": "parsed",
+      "vendor_status": "unsupported",
+      "mod_names": [
+        "VolatilityRefreshChance"
+      ],
+      "special_rule_id": "volatility_refresh_chance",
+      "matching_special_rules": [
+        "volatility_refresh_chance"
       ]
     },
     "15% chance to Blind Enemies on Hit with Attacks": {
@@ -96998,9 +97101,15 @@
       "sources": [
         "translation:击中时有 {0}% 的几率额外积累一次连击"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ComboAdditionalGainChance"
+      ],
+      "special_rule_id": "combo_additional_gain_chance",
+      "matching_special_rules": [
+        "combo_additional_gain_chance"
+      ]
     },
     "17% Chance to cause Bleeding Enemies to Flee on hit": {
       "sources": [
@@ -98785,10 +98894,14 @@
       "sources": [
         "translation:你创造的残片有 {0}% 的几率生效两次"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "partial",
       "mod_names": [
-        "LocalEffect"
+        "CreatedRemnantDuplicateChance"
+      ],
+      "special_rule_id": "created_remnant_duplicate_effects",
+      "matching_special_rules": [
+        "created_remnant_duplicate_effects"
       ]
     },
     "17% chance for Remnants you pick up to count as picking up an additional Remnant": {
@@ -99843,9 +99956,15 @@
       "sources": [
         "translation:你的无常被引爆时，你有 {0}% 的几率重新获得等量的无常"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "VolatilityRefreshChance"
+      ],
+      "special_rule_id": "volatility_refresh_chance",
+      "matching_special_rules": [
+        "volatility_refresh_chance"
+      ]
     },
     "17% chance to Aggravate Bleeding on Hit": {
       "sources": [
@@ -102981,9 +103100,15 @@
       "sources": [
         "translation:击中时有 {0}% 的几率额外积累一次连击"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ComboAdditionalGainChance"
+      ],
+      "special_rule_id": "combo_additional_gain_chance",
+      "matching_special_rules": [
+        "combo_additional_gain_chance"
+      ]
     },
     "17% chance to cast a linked Spell on Melee kill": {
       "sources": [
@@ -169099,11 +169224,18 @@
     },
     "20% Chance to build an additional Combo on Hit": {
       "sources": [
-        "passive:28963"
+        "passive:28963",
+        "rule:combo_additional_gain_chance"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ComboAdditionalGainChance"
+      ],
+      "special_rule_id": "combo_additional_gain_chance",
+      "matching_special_rules": [
+        "combo_additional_gain_chance"
+      ]
     },
     "20% Chance to gain a Charge when you kill an enemy": {
       "sources": [
@@ -174252,13 +174384,34 @@
         "vnd_d_chance_on_shocking_enemies_to_created_464339c3"
       ]
     },
+    "25% chance that when Volatility on you detonates, you regain an equivalent amount of Volatility": {
+      "sources": [
+        "rule:volatility_refresh_chance"
+      ],
+      "status": "parsed",
+      "vendor_status": "unsupported",
+      "mod_names": [
+        "VolatilityRefreshChance"
+      ],
+      "special_rule_id": "volatility_refresh_chance",
+      "matching_special_rules": [
+        "volatility_refresh_chance"
+      ]
+    },
     "25% chance that when Volatility on you explodes, you regain an equivalent amount of Volatility": {
       "sources": [
-        "passive:43944"
+        "passive:43944",
+        "rule:volatility_refresh_chance"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "VolatilityRefreshChance"
+      ],
+      "special_rule_id": "volatility_refresh_chance",
+      "matching_special_rules": [
+        "volatility_refresh_chance"
+      ]
     },
     "25% chance to Aggravate Bleeding on Hit": {
       "sources": [
@@ -182935,9 +183088,15 @@
         "mods:equipment:BerserkInfluenceAdditionalCombo1",
         "search_mods:influence:BerserkInfluenceAdditionalCombo1"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ComboAdditionalGainChance"
+      ],
+      "special_rule_id": "combo_additional_gain_chance",
+      "matching_special_rules": [
+        "combo_additional_gain_chance"
+      ]
     },
     "39% increased Critical Damage Bonus": {
       "sources": [
@@ -183888,9 +184047,15 @@
       "sources": [
         "search_mods:desecrated:AbyssModQuarterstaffAmanamuSuffixChanceToGenerateAdditionalCombo"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ComboAdditionalGainChance"
+      ],
+      "special_rule_id": "combo_additional_gain_chance",
+      "matching_special_rules": [
+        "combo_additional_gain_chance"
+      ]
     },
     "40% faster Curse Activation": {
       "sources": [
@@ -186452,9 +186617,15 @@
         "passive:3640",
         "passive:55377"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ComboAdditionalGainChance"
+      ],
+      "special_rule_id": "combo_additional_gain_chance",
+      "matching_special_rules": [
+        "combo_additional_gain_chance"
+      ]
     },
     "5% additional Physical Damage Reduction": {
       "sources": [
@@ -187884,6 +188055,20 @@
       "vendor_status": "parsed",
       "mod_names": [
         "PierceChance"
+      ]
+    },
+    "50% chance to build an additional Combo on Hit": {
+      "sources": [
+        "rule:combo_additional_gain_chance"
+      ],
+      "status": "parsed",
+      "vendor_status": "unsupported",
+      "mod_names": [
+        "ComboAdditionalGainChance"
+      ],
+      "special_rule_id": "combo_additional_gain_chance",
+      "matching_special_rules": [
+        "combo_additional_gain_chance"
       ]
     },
     "50% chance to cause Bleeding on Critical Hit": {
@@ -191478,9 +191663,15 @@
         "mods:equipment:BerserkInfluenceAdditionalCombo2",
         "search_mods:influence:BerserkInfluenceAdditionalCombo2"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ComboAdditionalGainChance"
+      ],
+      "special_rule_id": "combo_additional_gain_chance",
+      "matching_special_rules": [
+        "combo_additional_gain_chance"
+      ]
     },
     "60% increased Amount Recovered": {
       "sources": [
@@ -242256,11 +242447,18 @@
     },
     "Build an additional Combo on Hit": {
       "sources": [
+        "rule:combo_additional_gain_one",
         "translation:击中时额外积累一次连击"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ComboAdditionalGain"
+      ],
+      "special_rule_id": "combo_additional_gain_one",
+      "matching_special_rules": [
+        "combo_additional_gain_one"
+      ]
     },
     "Bulwark": {
       "sources": [
@@ -331478,25 +331676,44 @@
       "sources": [
         "stat:stat_descriptions:maximum_volatility_allowed"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "VolatilityMaximum"
+      ],
+      "special_rule_id": "volatility_maximum_override",
+      "matching_special_rules": [
+        "volatility_maximum_override"
+      ]
     },
     "Maximum Volatility is 17": {
       "sources": [
         "translation:无常上限为 {0}"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "VolatilityMaximum"
+      ],
+      "special_rule_id": "volatility_maximum_override",
+      "matching_special_rules": [
+        "volatility_maximum_override"
+      ]
     },
     "Maximum Volatility is 30": {
       "sources": [
-        "passive:30748"
+        "passive:30748",
+        "rule:volatility_maximum_override"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "VolatilityMaximum"
+      ],
+      "special_rule_id": "volatility_maximum_override",
+      "matching_special_rules": [
+        "volatility_maximum_override"
+      ]
     },
     "Maximum accumulated Embers@17": {
       "sources": [
@@ -367482,9 +367699,15 @@
       "sources": [
         "stat:stat_descriptions:remnant_recover_%_mana_on_pickup"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "RemnantManaRecoveryPercent"
+      ],
+      "special_rule_id": "remnant_pickup_mana_recovery",
+      "matching_special_rules": [
+        "remnant_pickup_mana_recovery"
+      ]
     },
     "Recover 1% of Maximum Mana when you expend at least 10 Combo": {
       "sources": [
@@ -368288,9 +368511,15 @@
       "sources": [
         "translation:收集残片时恢复 {0}% 魔力上限"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "RemnantManaRecoveryPercent"
+      ],
+      "special_rule_id": "remnant_pickup_mana_recovery",
+      "matching_special_rules": [
+        "remnant_pickup_mana_recovery"
+      ]
     },
     "Recover 17% of Maximum Mana when you expend at least 10 Combo": {
       "sources": [
@@ -369170,11 +369399,18 @@
     },
     "Recover 3% of Maximum Mana when you collect a Remnant": {
       "sources": [
-        "passive:46124"
+        "passive:46124",
+        "rule:remnant_pickup_mana_recovery"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "RemnantManaRecoveryPercent"
+      ],
+      "special_rule_id": "remnant_pickup_mana_recovery",
+      "matching_special_rules": [
+        "remnant_pickup_mana_recovery"
+      ]
     },
     "Recover 3% of maximum Life for each Endurance Charge consumed": {
       "sources": [
@@ -421345,23 +421581,50 @@
       "vendor_status": "unsupported",
       "mod_names": []
     },
+    "When you gain Combo, gain 1 additional Combo": {
+      "sources": [
+        "rule:combo_additional_gain"
+      ],
+      "status": "parsed",
+      "vendor_status": "unsupported",
+      "mod_names": [
+        "ComboAdditionalGain"
+      ],
+      "special_rule_id": "combo_additional_gain",
+      "matching_special_rules": [
+        "combo_additional_gain"
+      ]
+    },
     "When you gain Combo, gain 17 additional Combo": {
       "sources": [
         "translation:获得连击时，获得 {0} 个额外连击"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ComboAdditionalGain"
+      ],
+      "special_rule_id": "combo_additional_gain",
+      "matching_special_rules": [
+        "combo_additional_gain"
+      ]
     },
     "When you gain Combo, gain an additional Combo": {
       "sources": [
         "passive:41751",
+        "rule:combo_additional_gain_one",
         "stat:stat_descriptions:additional_combo_gain_on_hit",
         "translation:获得连击时，获得一个额外连击"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "ComboAdditionalGain"
+      ],
+      "special_rule_id": "combo_additional_gain_one",
+      "matching_special_rules": [
+        "combo_additional_gain_one"
+      ]
     },
     "When you gain a Key 17% chance to gain another": {
       "sources": [

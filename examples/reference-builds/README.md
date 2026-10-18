@@ -134,5 +134,7 @@ mise run builds:fetch examples/reference-builds/holdout --pick last
 | 2026-10-17 (same changes; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1913/2034 (94.1%) |
 | 2026-10-18 (round 50: Beira ground uses an explicit established-Ignite snapshot and a shared strongest-Ignite limit; Cadiro uses one selected arrow; outgoing Slow Magnitude feeds modeled Chill. New rules are exporter-absent; reference agreement and compared-row counts are unchanged) | `tuned/` | 69 | 58 (84%) | 5790/6119 (94.6%) |
 | 2026-10-18 (same changes; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1913/2034 (94.1%) |
+| 2026-10-18 (round 51: Combo generation uses a receiving-skill counter; Volatility restoration and Remnant pickup effects use explicit events. Collector Mana recovery stays separate from creator effect duplication. New rules are exporter-absent; reference agreement and compared-row counts are unchanged) | `tuned/` | 69 | 58 (84%) | 5790/6119 (94.6%) |
+| 2026-10-18 (same changes; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1913/2034 (94.1%) |
 
 吻合行里有按游戏规则有意不同于参考值的行（例如护身符授予的技能不保留精魄，见 `reference_report.rs` 基线旁的说明），所以上限不是 100%。
