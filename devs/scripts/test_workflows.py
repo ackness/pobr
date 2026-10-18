@@ -807,6 +807,53 @@ class CompareBuildTests(unittest.TestCase):
                                if cache.parent.parent == repo else cached)
                     self.assertEqual(errors.getvalue(), f"compare: PoB2 side from {display}\n")
 
+    def test_engine_command_uses_requested_binary_or_default_cargo(self):
+        with tempfile.TemporaryDirectory(prefix="pobr compare binary ") as temp:
+            binary = Path(temp) / "pobr"
+            binary.touch()
+            code = Path(temp) / "build code.txt"
+            report = {"breakdowns": [{"stat": "Life", "value": 100}]}
+            for given in (None, "", str(binary)):
+                with self.subTest(binary=given), patch.dict(os.environ, {}, clear=True), \
+                        patch.object(self.compare.subprocess, "run", return_value=
+                                     subprocess.CompletedProcess([], 0, json.dumps(report))) as run, \
+                        contextlib.redirect_stderr(io.StringIO()):
+                    if given is not None:
+                        os.environ["POBR_BIN"] = given
+                    self.assertEqual(self.compare.run_engine(code, ["Life", "TotalDPS"]), report)
+                    launcher = ([str(binary.resolve())] if given else
+                                ["cargo", "run", "-q", "-p", "pobr-cli", "--"])
+                    run.assert_called_once_with([
+                        *launcher, "calculate-build", "--file", str(code),
+                        "--breakdown", "all,Life,TotalDPS", "--json", "--reference-basis"],
+                        cwd=self.compare.REPO, stdout=subprocess.PIPE, text=True)
+
+    def test_engine_rejects_invalid_requested_binary_without_building(self):
+        with tempfile.TemporaryDirectory(prefix="pobr compare missing binary ") as temp:
+            for binary in (Path(temp) / "missing", Path(temp)):
+                with self.subTest(binary=binary), \
+                        patch.dict(os.environ, {"POBR_BIN": str(binary)}), \
+                        patch.object(self.compare.subprocess, "run") as run:
+                    with self.assertRaises(SystemExit) as error:
+                        self.compare.run_engine(Path("code.txt"), [])
+                    self.assertEqual(str(error.exception),
+                                     f"compare: POBR_BIN={binary} is not a file")
+                    run.assert_not_called()
+
+    def test_engine_process_failures_are_reported_for_both_launchers(self):
+        with tempfile.TemporaryDirectory(prefix="pobr compare failed engine ") as temp:
+            binary = Path(temp) / "pobr"
+            binary.touch()
+            for given in ("", str(binary)):
+                with self.subTest(binary=given), patch.dict(os.environ, {"POBR_BIN": given}), \
+                        patch.object(self.compare.subprocess, "run", return_value=
+                                     subprocess.CompletedProcess([], 17, "not JSON")) as run, \
+                        contextlib.redirect_stderr(io.StringIO()):
+                    with self.assertRaises(SystemExit) as error:
+                        self.compare.run_engine(Path("code.txt"), [])
+                    self.assertEqual(str(error.exception), "compare: the engine failed (17)")
+                    run.assert_called_once()
+
     def report(self, folder, *arguments):
         """The comparison of the build in `folder` with its two saved outputs."""
         output = io.StringIO()
