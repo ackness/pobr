@@ -97,6 +97,20 @@ Documentation-only changes need diff/link review, not builds.
 
 ## Accuracy Workflow
 
+PoBR primarily simulates a static build under selected conditions, not a full
+gameplay timeline. Headhunter stolen effects, Mana gained through movement and
+Mana Remnant pickup recovery are outside the default static calculation scope;
+do not add event rates, automatic triggers or uptime models just to consume
+these lines. Preserve existing Headhunter behavior as requested by the owner.
+The gap queue is diagnostic inventory, not an implementation backlog. Before
+dispatching a fix, identify the supported static output or explicitly requested
+simulation it affects and the concrete error or user need it addresses.
+Frequency and missing-reader counts alone do not justify a model, config
+control, display field or abstraction. Preserve inactive conditions and honest
+diagnostics for deferred mechanics; do not mark them globally effectless just
+because the current simulation omits them. Prefer the smallest existing-path
+change; avoid speculative simulation, abstractions and performance work.
+
 Improve calculation accuracy in batches, not one build at a time:
 
 1. Find the problems of every build at once with `mise run triage`. It runs the
