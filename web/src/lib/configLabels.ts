@@ -8,7 +8,8 @@
 
 // TW terminology verified against the game's corresponding KeywordPopups text.
 // The retained official tables contain English and TW, not CN KeywordPopups.
-// New CN ground labels/help are contextual application copy, not official translations.
+// New full labels/help are contextual app copy. CN Beira uses the pinned
+// zh-CN words/stat_lines entries: 贝拉的苦楚 / 燃烧地面.
 export const CONFIG_LABEL_ZH_TW: Record<string, string> = {
   conditionBeiraIgniteActive: '敵人正受到貝伊拉的悲痛造成的點燃？',
   conditionOnConsecratedGround: '你位於奉獻地面？',
@@ -22,7 +23,7 @@ const CONSECRATED_GROUND_HELP: Record<string, string> = {
 
 const BEIRA_GROUND_HELP: Record<string, string> = {
   "zh-TW": "明確指定敵人已因點燃地面累積至少 50% 易燃而受到點燃。裝備或啟用護符不代表已點燃；以目前最大生命作為製造地面時的快照。一般點燃僅取最強來源，多重點燃的跨來源疊加另列且不加入總傷害。不自動估算使用頻率、積累時間、到期或覆蓋率。",
-  "zh-CN": "明确指定敌人已因点燃地面积累至少 50% 易燃而受到点燃。装备或启用护符不代表已点燃；以当前最大生命作为创建地面时的快照。普通点燃仅取最强来源，多重点燃的跨来源叠加另列且不加入总伤害。不自动估算使用频率、积累时间、到期或覆盖率。"
+  "zh-CN": "明确指定敌人已因燃烧地面积累至少 50% 易燃而受到点燃。装备或启用护符不代表已点燃；以当前最大生命作为创建地面时的快照。普通点燃仅取最强来源，多重点燃的跨来源叠加另列且不加入总伤害。不自动估算使用频率、积累时间、到期或覆盖率。"
 };
 
 export function configTooltip(lang: string, variable: string, fallback?: string): string | undefined {
@@ -36,7 +37,7 @@ export function configTooltip(lang: string, variable: string, fallback?: string)
 }
 
 export const CONFIG_LABEL_ZH: Record<string, string> = {
-  conditionBeiraIgniteActive: '敌人正受到贝伊拉的悲痛造成的点燃？',
+  conditionBeiraIgniteActive: '敌人正受到贝拉的苦楚造成的点燃？',
   conditionMinionsOnConsecratedGround: '你的召唤物位于奉献地面？',
   energyIncomingHitRate: '每秒可格挡来袭命中数：',
   energyMinionDeathsPerSecond: '每秒被击杀召唤物数：',

@@ -1101,8 +1101,11 @@ value remains separate and is not added to total damage. No use frequency,
 buildup time, location, expiry or uptime is inferred. The item rule is
 exporter-absent; reference basis excludes the new source. Calcs labels and
 configuration help are application copy using the verified official TW terms;
-CN copy is contextual because no corresponding retained official CN table was
-found. Headhunter remains unchanged at the owner's request.
+CN copy is contextual, using the pinned `i18n/zh-CN/words.json` item name
+`贝拉的苦楚` and the matching `stat_lines.json` term
+燃烧地面; these dictionaries combine trade and PoE2DB sources and are not
+claimed to be a retained official CN KeywordPopups table. Headhunter remains
+unchanged at the owner's request.
 
 Cat possession's game `critical_strike_chance_+% = 100` is an INC modifier to
 `CriticalStrikeChance` (5% base becomes 10%); all possession names have reader

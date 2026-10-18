@@ -2,9 +2,9 @@ import type { Lang } from './i18n';
 
 /** Modifier input names for optional Calcs details; no calculation logic. */
 export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
-  UtilityIgnitedGroundDuration: {"en-US": "Created Ignited Ground duration (s)", "zh-TW": "所建立點燃地面的持續時間（秒）", "zh-CN": "所创建点燃地面的持续时间（秒）"},
-  BeiraGroundPresent: {"en-US": "Beira ground source equipped", "zh-TW": "已裝備貝伊拉點燃地面來源", "zh-CN": "已装备贝伊拉点燃地面来源"},
-  IgnitedGroundBaseRadius: {"en-US": "Ignited Ground base radius (m)", "zh-TW": "點燃地面基礎半徑（公尺）", "zh-CN": "点燃地面基础半径（米）"},
+  UtilityIgnitedGroundDuration: {"en-US": "Created Ignited Ground duration (s)", "zh-TW": "所建立點燃地面的持續時間（秒）", "zh-CN": "所创建燃烧地面的持续时间（秒）"},
+  BeiraGroundPresent: {"en-US": "Beira ground source equipped", "zh-TW": "已裝備貝伊拉點燃地面來源", "zh-CN": "已装备贝拉的苦楚燃烧地面来源"},
+  IgnitedGroundBaseRadius: {"en-US": "Ignited Ground base radius (m)", "zh-TW": "點燃地面基礎半徑（公尺）", "zh-CN": "燃烧地面基础半径（米）"},
   IgnitedGroundLifePercent: {"en-US": "Equivalent Fire damage (% of maximum Life)", "zh-TW": "等效火焰傷害（最大生命百分比）", "zh-CN": "等效火焰伤害（最大生命百分比）"},
   BeiraCanIgnite: {"en-US": "Ground can inflict Ignite", "zh-TW": "地面可造成點燃", "zh-CN": "地面可造成点燃"},
   IgnitedGroundSourceDamage: {"en-US": "Ground equivalent Fire damage", "zh-TW": "地面等效火焰傷害", "zh-CN": "地面等效火焰伤害"},
@@ -17,11 +17,11 @@ export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
   IgniteBaseDuration: {"en-US": "Base Ignite duration (s)", "zh-TW": "基礎點燃持續時間（秒）", "zh-CN": "基础点燃持续时间（秒）"},
   IgniteDurationIncreased: {"en-US": "Increased Ignite duration (%)", "zh-TW": "點燃持續時間增加（%）", "zh-CN": "点燃持续时间增加（%）"},
   IgniteDurationMore: {"en-US": "More Ignite duration multiplier", "zh-TW": "點燃持續時間更多倍率", "zh-CN": "点燃持续时间更多倍率"},
-  BeiraIgniteActive: {"en-US": "Established Beira Ignite is active", "zh-TW": "貝伊拉造成的點燃正生效", "zh-CN": "贝伊拉造成的点燃正生效"},
-  BeiraStrongestIgniteDPS: {"en-US": "Strongest potential Beira Ignite DPS", "zh-TW": "貝伊拉最強潛在點燃每秒傷害", "zh-CN": "贝伊拉最强潜在点燃每秒伤害"},
+  BeiraIgniteActive: {"en-US": "Established Beira Ignite is active", "zh-TW": "貝伊拉造成的點燃正生效", "zh-CN": "贝拉的苦楚造成的点燃正生效"},
+  BeiraStrongestIgniteDPS: {"en-US": "Strongest potential Beira Ignite DPS", "zh-TW": "貝伊拉最強潛在點燃每秒傷害", "zh-CN": "贝拉的苦楚最强潜在点燃每秒伤害"},
   MainIgniteDPS: {"en-US": "Selected skill Ignite DPS", "zh-TW": "所選技能點燃每秒傷害", "zh-CN": "所选技能点燃每秒伤害"},
   BeiraCanMerge: {"en-US": "Ordinary strongest-Ignite comparison applies", "zh-TW": "可比較一般最強點燃", "zh-CN": "可比较一般最强点燃"},
-  BeiraIgniteDPS: {"en-US": "Current Beira Ignite DPS", "zh-TW": "目前貝伊拉點燃每秒傷害", "zh-CN": "当前贝伊拉点燃每秒伤害"},
+  BeiraIgniteDPS: {"en-US": "Current Beira Ignite DPS", "zh-TW": "目前貝伊拉點燃每秒傷害", "zh-CN": "当前贝拉的苦楚点燃每秒伤害"},
   DynamismBaseInterval: {"en-US": "Dynamism generation interval", "zh-TW": "奇術動力生成間隔", "zh-CN": "奇术动力生成间隔"},
   DynamismRecipientEnabled: {"en-US": "Generation directed to this recipient", "zh-TW": "生成球歸此接收者", "zh-CN": "生成球归此接收者"},
   // TW uses verified game terminology; CN is contextual UI wording, not official game text.
