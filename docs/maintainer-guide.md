@@ -1035,7 +1035,14 @@ Focused Thrust (`projectile_damage_+%_with_spears_while_there_no_enemies_surroun
 “#% increased Damage per Curse on you” (`damage_+%_per_active_curse_on_self`)
 scales by the PoBR config input `multiplierCursesOnSelf`
 (`Multiplier:CurseOnSelf`); with no count the line is inactive with that config
-gate. The ledger finds count gates from the modifier's zero-scaling
+gate. A reader blocked by a numeric `MultiplierThreshold` also reports a
+config gate when the catalog declares its multiplier setter and setting that
+one boundary satisfies every other requirement. Cadiro's unspecified arrow
+therefore remains inactive/config-gated, rather than an implementation gap.
+Unknown setters, unrelated skill/condition gates, conflicting thresholds,
+non-finite inputs and stored zero/false keep their existing classification.
+The calculation and its actual unmet reason are unchanged.
+The ledger finds count gates from the modifier's zero-scaling
 `Multiplier` tags and the config catalog. Static gate labels are borrowed;
 dynamic labels and config ids are owned, with the same JSON string fields.
 Plain and removable Power/Frenzy/Endurance charge counts share the calculation's
