@@ -16,7 +16,6 @@ export const DETAIL_LABELS: Record<string, Record<Lang, string>> = {
   ComboGlobalGainModifiersOnly: {"en-US": "Global gain modifiers only; generator support unspecified", "zh-TW": "僅計全域獲取詞綴；未指定產生事件技能的輔助", "zh-CN": "仅计全局获取词缀；未指定产生事件技能的辅助"},
   ComboAdditionalChanceBeforeCap: {"en-US": "Additional Combo chance before probability bounds (%)", "zh-TW": "限制前額外連擊機率（%）", "zh-CN": "限制前额外连击概率（%）"},
   RemnantCanGainMana: { 'en-US': 'Pickup recovery source present and Mana gain allowed', 'zh-TW': '具有收集回復來源且可獲得魔力', 'zh-CN': '具有收集回复来源且可获得魔力' },
-  ManaUnreserved: { 'en-US': 'Unreserved Mana capacity', 'zh-TW': '未保留魔力容量', 'zh-CN': '未保留魔力容量' },
   MaximumMana: { 'en-US': 'Maximum Mana', 'zh-TW': '最大魔力', 'zh-CN': '最大魔力' },
   RemnantFiniteLimit: { 'en-US': 'Largest finite representable number', 'zh-TW': '可表示的最大有限數值', 'zh-CN': '可表示的最大有限数值' },
   // TW 痕跡 follows retained game skill names; these event labels are application copy.
