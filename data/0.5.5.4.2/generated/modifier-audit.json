@@ -30,9 +30,25 @@
       "0.5.5.4.2/generated/special_vendor.json": "12d91522257bfb57b5cdfc63073bd3a5df8c7a87d2b1c13c3ba3f959c936d4a5",
       "0.5.5.4.2/overlay/mod_parser_rules.json": "c719c7c3eeed65048067f264fd0a62f81cc20d89b917f05e2aa53753166242af",
       "0.5.5.4.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
-      "overlay-common/special_mods.json": "e1def29ec38a1f73adce6f1ad897185467486a59568987a50b644f9c45003cf4"
+      "overlay-common/special_mods.json": "3aaa59f8737270814ccdf1eb1c4ec57fe05b80b3edf5c4522189dd86fdd69d8c"
     },
     "effective_rules": [
+      {
+        "id": "cadiro_selected_arrow",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "outgoing_debuff_slow_magnitude",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
       {
         "id": "reduced_slowing_potency_on_self",
         "files": [
@@ -2553,6 +2569,14 @@
       },
       {
         "id": "sanguis_consecrated_ground_on_use",
+        "files": [
+          "overlay-common/special_mods.json"
+        ],
+        "replaced_files": [],
+        "non_effective_fields": []
+      },
+      {
+        "id": "beira_ignited_ground_on_use",
         "files": [
           "overlay-common/special_mods.json"
         ],
@@ -19668,11 +19692,11 @@
   },
   "summary": {
     "no_effect": 140,
-    "parsed": 16340,
+    "parsed": 16354,
     "pobr_gap": 1614,
     "recognized_empty": 185,
     "text_channel": 788,
-    "upstream_gap": 23570
+    "upstream_gap": 23557
   },
   "entries": {
     "% of spent Runic Ward granted as Guard@100%": {
@@ -256200,25 +256224,47 @@
       "sources": [
         "stat:stat_descriptions:charm_ignite_ground_as_though_dealing_fire_damage_equal_to_x%_of_your_maximum_life_when_used"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "UtilityIgnitedGroundDuration",
+        "UtilityIgnitedGroundLifePercent"
+      ],
+      "special_rule_id": "beira_ignited_ground_on_use",
+      "matching_special_rules": [
+        "beira_ignited_ground_on_use"
+      ]
     },
     "Creates Ignited Ground for 4 seconds when used, Igniting enemies as though dealing Fire damage equal to 17% of your maximum Life": {
       "sources": [
         "translation:使用时造成持续 4 秒的燃烧地面，地面点燃敌人时造成等同你生命上限 {0}% 的火焰伤害"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "UtilityIgnitedGroundDuration",
+        "UtilityIgnitedGroundLifePercent"
+      ],
+      "special_rule_id": "beira_ignited_ground_on_use",
+      "matching_special_rules": [
+        "beira_ignited_ground_on_use"
+      ]
     },
     "Creates Ignited Ground for 4 seconds when used, Igniting enemies as though dealing Fire damage equal to 500% of your maximum Life": {
       "sources": [
+        "rule:beira_ignited_ground_on_use",
         "unique:Beira's Anguish"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "UtilityIgnitedGroundDuration",
+        "UtilityIgnitedGroundLifePercent"
+      ],
+      "special_rule_id": "beira_ignited_ground_on_use",
+      "matching_special_rules": [
+        "beira_ignited_ground_on_use"
+      ]
     },
     "Creates Shocked Ground with a 29 second duration": {
       "sources": [
@@ -263209,9 +263255,15 @@
       "sources": [
         "stat:stat_descriptions:base_debuff_slow_magnitude_+%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnemyChillMagnitude"
+      ],
+      "special_rule_id": "outgoing_debuff_slow_magnitude",
+      "matching_special_rules": [
+        "outgoing_debuff_slow_magnitude"
+      ]
     },
     "Debuffs you inflict have 10% increased Slow Magnitude": {
       "sources": [
@@ -263219,17 +263271,43 @@
         "passive:39990",
         "passive:54805"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnemyChillMagnitude"
+      ],
+      "special_rule_id": "outgoing_debuff_slow_magnitude",
+      "matching_special_rules": [
+        "outgoing_debuff_slow_magnitude"
+      ]
+    },
+    "Debuffs you inflict have 12% increased Slow Magnitude": {
+      "sources": [
+        "rule:outgoing_debuff_slow_magnitude"
+      ],
+      "status": "parsed",
+      "vendor_status": "unsupported",
+      "mod_names": [
+        "EnemyChillMagnitude"
+      ],
+      "special_rule_id": "outgoing_debuff_slow_magnitude",
+      "matching_special_rules": [
+        "outgoing_debuff_slow_magnitude"
+      ]
     },
     "Debuffs you inflict have 17% increased Slow Magnitude": {
       "sources": [
         "translation:你造成的减益的减速强度提高 {0}%"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnemyChillMagnitude"
+      ],
+      "special_rule_id": "outgoing_debuff_slow_magnitude",
+      "matching_special_rules": [
+        "outgoing_debuff_slow_magnitude"
+      ]
     },
     "Debuffs you inflict have 17% reduced Slow Magnitude": {
       "sources": [
@@ -263241,19 +263319,32 @@
     },
     "Debuffs you inflict have 20% increased Slow Magnitude": {
       "sources": [
+        "rule:outgoing_debuff_slow_magnitude",
         "unique:The Prisoner's Manacles"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnemyChillMagnitude"
+      ],
+      "special_rule_id": "outgoing_debuff_slow_magnitude",
+      "matching_special_rules": [
+        "outgoing_debuff_slow_magnitude"
+      ]
     },
     "Debuffs you inflict have 30% increased Slow Magnitude": {
       "sources": [
         "unique:The Prisoner's Manacles"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnemyChillMagnitude"
+      ],
+      "special_rule_id": "outgoing_debuff_slow_magnitude",
+      "matching_special_rules": [
+        "outgoing_debuff_slow_magnitude"
+      ]
     },
     "Debuffs you inflict have 4% increased Slow Magnitude": {
       "sources": [
@@ -263261,9 +263352,15 @@
         "passive:44563",
         "passive:59053"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnemyChillMagnitude"
+      ],
+      "special_rule_id": "outgoing_debuff_slow_magnitude",
+      "matching_special_rules": [
+        "outgoing_debuff_slow_magnitude"
+      ]
     },
     "Debuffs you inflict have 5% increased Slow Magnitude": {
       "sources": [
@@ -263272,26 +263369,44 @@
         "passive:54640",
         "passive:54975"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnemyChillMagnitude"
+      ],
+      "special_rule_id": "outgoing_debuff_slow_magnitude",
+      "matching_special_rules": [
+        "outgoing_debuff_slow_magnitude"
+      ]
     },
     "Debuffs you inflict have 6% increased Slow Magnitude": {
       "sources": [
         "passive:27990"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnemyChillMagnitude"
+      ],
+      "special_rule_id": "outgoing_debuff_slow_magnitude",
+      "matching_special_rules": [
+        "outgoing_debuff_slow_magnitude"
+      ]
     },
     "Debuffs you inflict have 7% increased Slow Magnitude": {
       "sources": [
         "passive:17867",
         "passive:37092"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "EnemyChillMagnitude"
+      ],
+      "special_rule_id": "outgoing_debuff_slow_magnitude",
+      "matching_special_rules": [
+        "outgoing_debuff_slow_magnitude"
+      ]
     },
     "Decay deals 17 Chaos damage per second": {
       "sources": [
@@ -266527,13 +266642,20 @@
     },
     "Each Arrow fired is a Crescendo, Splinter, Reversing, Diamond, Covetous, or Blunt Arrow": {
       "sources": [
+        "rule:cadiro_selected_arrow",
         "stat:stat_descriptions:each_arrow_fired_gains_random_perdandus_prefix",
         "translation:每支射出的箭都是渐强、裂片、回转、金刚、贪婪或钝击箭矢",
         "unique:Cadiro's Gambit"
       ],
-      "status": "unsupported",
+      "status": "parsed",
       "vendor_status": "unsupported",
-      "mod_names": []
+      "mod_names": [
+        "CadiroArrows"
+      ],
+      "special_rule_id": "cadiro_selected_arrow",
+      "matching_special_rules": [
+        "cadiro_selected_arrow"
+      ]
     },
     "Each Corpse spawned has 17% chance to be a Forgotten Corpse": {
       "sources": [
