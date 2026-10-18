@@ -1310,3 +1310,36 @@ TW and CN arrow names use their respective game KeywordPopups
 [CN](https://poe2db.tw/cn/Crescendo_Arrows), and corresponding five linked names);
 these differ from the abbreviations in the item line. Surrounding control/help
 wording is application copy. No in-game timing or geometry test is claimed.
+
+
+Volatility restoration (`calc::volatility_events`) uses active game stat
+`volatility_refresh_%_chance`, Instability passive 43944 (25%), and
+`maximum_volatility_allowed` (Controlled Chaos: 30). The game's
+[Volatility keyword](https://poe2db.tw/us/Volatility#VolatilityRef) defines a
+200-stack default maximum, a four-second explosion timer reset by each new
+stack, and at most one gain per 0.1 seconds. The explosion consumes its stacks;
+on a successful refresh the equivalent exploded amount is regained. The keyword
+also describes 100 Physical self-damage per stack and ten seconds of Volatile
+Power, but these are not simulated by this restoration view. The explicit
+`volatilityExplosionQuantity` / native `VolatilityExplosionQuantity` snapshot
+must be a finite positive whole number; it is capped by the final maximum,
+which Controlled Chaos replaces rather than increases (also clarified in the
+[0.3.0 patch notes](https://poe2db.tw/us/Version_0.3.0)). Expected restoration per
+explosion is capped quantity times the summed refresh chance, clamped to 0–100%.
+The optional `volatilityExplosionsPerSecond` / native
+`VolatilityExplosionsPerSecond` is a supplied rate of eligible explosions of
+that same quantity. Without it, the per-second view is zero; invalid rates and
+overflow are rejected. No rate is inferred from attack speed or the resetting
+timer, and restored stacks never feed back into an infinite-chain calculation,
+even at 100% chance. No current stack count, damage, defence, Volatile Power,
+expiry, or average uptime is changed. Without a source, all views are zero. With a player source, chance and cap
+remain potential metadata even with absent/zero/invalid quantity or in noncombat
+mode; all event outcomes remain zero. Minion actors are excluded. Explicit raw false,
+zero or invalid values retire imported native settings; absent inputs preserve
+them, and both controls are tracked even when absent. Both new source rules are
+exporter-absent and excluded on the reference basis. Fields have retained
+formula inputs, source groups, and no invented PoB keys. Retained game names
+[易爆](https://poe2db.tw/tw/Volatility) / [无常](https://poe2db.tw/cn/Volatility)
+supply the TW/CN term; complete labels and help are contextual application copy.
+No in-game timing or gain-cooldown interaction test is claimed; callers supply
+eligible events rather than assuming refresh bypasses any gain restrictions.

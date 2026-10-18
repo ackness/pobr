@@ -45,6 +45,11 @@ movement_speed = "移動速度"
 # Display-stat label keys; newly added keys fall back to en-US until translated.
 # Keys MUST be a subset of en-US/stats.toml [display] section.
 [display]
+# Volatility event views; contextual UI wording using the game term.
+VolatilityRefreshChance = "易爆重新獲得機率"
+VolatilityExplosionQuantity = "易爆爆炸層數"
+VolatilityRestoredPerExplosion = "每次爆炸預期重新獲得的易爆層數"
+VolatilityRestoredPerSecond = "每秒預期重新獲得的易爆層數"
 # --- Offence ---
 TotalDPS = "總 DPS"
 TotalHitAvg = "平均命中"

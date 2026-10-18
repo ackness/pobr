@@ -41,6 +41,12 @@ impl GameData {
         ))
         .expect("bundled Cadiro arrow config options");
         catalog.options = crate::paths::merge_by_key(catalog.options, arrows.options, |o| &o.var);
+        let volatility: ConfigOptionsDef = serde_json::from_str(include_str!(
+            "../../../../data/overlay-common/volatility_config_options.json"
+        ))
+        .expect("bundled Volatility config options");
+        catalog.options =
+            crate::paths::merge_by_key(catalog.options, volatility.options, |o| &o.var);
         catalog.options.sort_by(|a, b| a.var.cmp(&b.var));
         Ok(catalog)
     }
