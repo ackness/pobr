@@ -160,6 +160,11 @@ jobs:
       - name: Worker runtime smoke
         run: pnpm test:worker
       - name: Build wasm
+        # Binaryen's Linux release workers can exhaust their small musl stacks
+        # on this module. Keep all optimization passes, but use the main thread.
+        # https://github.com/WebAssembly/binaryen/issues/7570
+        env:
+          BINARYEN_CORES: '1'
         run: pnpm build-wasm
       - name: Sync game data
         run: pnpm sync-data

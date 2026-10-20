@@ -387,7 +387,7 @@ checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
 
 [[package]]
 name = "lint-i18n"
-version = "0.0.36"
+version = "0.0.37"
 dependencies = [
  "pobr-i18n",
 ]
@@ -465,7 +465,7 @@ dependencies = [
 
 [[package]]
 name = "pobr-cli"
-version = "0.0.36"
+version = "0.0.37"
 dependencies = [
  "clap",
  "pobr-build",
@@ -499,7 +499,7 @@ dependencies = [
 
 [[package]]
 name = "pobr-data-adapter"
-version = "0.0.36"
+version = "0.0.37"
 dependencies = [
  "pobr-data",
  "serde",
@@ -509,7 +509,7 @@ dependencies = [
 
 [[package]]
 name = "pobr-desktop"
-version = "0.0.36"
+version = "0.0.37"
 dependencies = [
  "pobr-build",
  "pobr-core",
@@ -559,7 +559,7 @@ dependencies = [
 
 [[package]]
 name = "pobr-wasm"
-version = "0.0.36"
+version = "0.0.37"
 dependencies = [
  "pobr-build",
  "pobr-core",
@@ -575,7 +575,7 @@ dependencies = [
 
 [[package]]
 name = "precompile-mods"
-version = "0.0.36"
+version = "0.0.37"
 dependencies = [
  "pobr-core",
  "pobr-data",
@@ -772,7 +772,7 @@ dependencies = [
 
 [[package]]
 name = "sync-pob-catalog"
-version = "0.0.36"
+version = "0.0.37"
 dependencies = [
  "pobr-core",
  "pobr-data",
