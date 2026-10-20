@@ -163,6 +163,11 @@ Rust 检查 fmt/Clippy/nextest/doctest/i18n 与数据兼容；Web 检查脚本�
 界面交互改动需要时在本地跑对应 spec，或显式请求一次云端 E2E。`mise run full` 仅运行 Rust 门禁，包含 fmt/Clippy、nextest + doctest
 （无 nextest 时使用 Cargo）和 i18n。离线或排查 CI 时可显式使用，无需重复已通过的云端全量验证。
 
+Linux CI 的 WASM 构建设置 `BINARYEN_CORES=1`，让 wasm-pack 下载的 Binaryen 在主线程执行。
+该模块在 Linux 预编译优化器的工作线程上曾触发 SIGSEGV，切为单线程后完整构建与解包计算通过；
+参见 [Binaryen #7570](https://github.com/WebAssembly/binaryen/issues/7570)。所有优化步骤仍保留，
+不以禁用 wasm-opt 或忽略失败来发布。此设置只影响构建时并行度，不改变浏览器计算的线程模型。
+
 应用发版更新 `[workspace.package].version`，用 `cargo metadata --format-version 1 > /dev/null`
 刷新应用/工具的锁文件版本，保留七个库的独立版本。数据活动版本在运行时读取 `data/CURRENT`，
 与应用版本分开。版本更新仍需对应检查，但不因应用版本或活动数据标记变化使所有基础库失去缓存。
