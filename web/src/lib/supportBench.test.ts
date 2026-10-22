@@ -5,7 +5,7 @@ import { env } from 'node:process';
 import type { CalculateBuildRequest, CalculateBuildResponse, GemInput, OptimizeVariantsResponse, SocketGroupInput } from '../api/types';
 import { compareObjectiveStats, evaluateVariants, scoreOf, type Objective } from './optimize';
 import { applySupportPlan, eligibleSupports, optimizeSupports, supportSetCompatible, supportSetsCompatible, supportVariant, usableSupportLevel, type SupportMetadata } from './supportOptimizer';
-import { groupsForWeaponSet, switchWeapons, weaponSetRequest, type WeaponSetState } from './weaponSets';
+import { switchWeapons, weaponSetRequest, type WeaponSetState } from './weaponSets';
 import type { TradeCatalog } from './tradeOptimizer';
 
 const bridge = vi.hoisted(() => ({ optimize: undefined as undefined | ((input: string) => string), judge: undefined as undefined | ((input: string) => string) }));
@@ -108,7 +108,7 @@ describe.skipIf(env.POBR_UPGRADE_BENCH !== '1')('real WASM support planner compa
         weaponSwap: { active: 1, alternate_items: [{ slot: 'weapon1', text: 'Rarity: NORMAL\nAshen Staff' }], exclusive_nodes: [[], []] },
       };
       const request: CalculateBuildRequest = { character: { level: 85, class_name: fixture.className },
-        main_socket_group: 0, items: editor.items, socket_groups: groupsForWeaponSet(editor.socketGroups, 1),
+        main_socket_group: 0, items: editor.items, ...weaponSetRequest(editor),
         extra_modifiers: ['+1000 to maximum Life', '+1500 to Evasion Rating', '+55% to all Elemental Resistances'],
       };
       const baselineResponse = calculate(request);
@@ -161,7 +161,7 @@ describe.skipIf(env.POBR_UPGRADE_BENCH !== '1')('real WASM support planner compa
       const afterEditor = { ...editor, socketGroups: applySupportPlan(editor.socketGroups, 0, best) };
       expect(afterEditor.socketGroups[1]).toEqual(editor.socketGroups[1]);
       expect(afterEditor.socketGroups[1].enabled).toBe(true);
-      const appliedRequest = { ...request, socket_groups: groupsForWeaponSet(afterEditor.socketGroups, 1) };
+      const appliedRequest = { ...request, ...weaponSetRequest(afterEditor) };
       expect(appliedRequest.socket_groups).toEqual(best.variant.socket_groups);
       sameStats(statsOf(calculate(appliedRequest)), best.stats);
       const afterAlternate = switchWeapons(afterEditor, 2);

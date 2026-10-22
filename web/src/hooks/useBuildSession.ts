@@ -226,7 +226,7 @@ export interface BuildSession {
 // 计算请求不带 pob_code：导入时 XML 内容已全量物化进 state（materialize +
 // config_inputs/main_socket_group），再带 code 只是让 Rust 每次重算都白解码
 // 一遍然后立刻被覆盖项冲掉。state.pobCode 仅存档用（恢复会话时重建 build 视图）。
-// 请求按 state 的武器组物化技能组，并以 weapon_swap.active 写明计算哪一组。
+// Preserve user-enabled groups; weapon_swap.active names their equipment/passive context.
 export function toRequest(state: BuildState): CalculateBuildRequest {
   return {
     tree_version: state.treeVersion,
@@ -1356,8 +1356,6 @@ export function useBuildSession(configContextActive = false): BuildSession {
     const request = toRequest(state);
     return backend.encodeBuild({
       ...request,
-      socket_groups: state.socketGroups,
-      weapon_swap: state.weaponSwap,
       notes: composeNotes(notes, state.annotations),
       base_code: state.pobCode ?? undefined,
     });
@@ -1377,8 +1375,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
       const backend = await getBackend();
       // Flush the active slice before changing the XML selection; other sets
       // remain in the export base, including fields this app cannot interpret.
-      let code = await backend.encodeBuild({ ...toRequest(current), socket_groups: current.socketGroups,
-        weapon_swap: current.weaponSwap, notes: composeNotes(notesRef.current, current.annotations),
+      let code = await backend.encodeBuild({ ...toRequest(current), notes: composeNotes(notesRef.current, current.annotations),
         base_code: current.pobCode ?? undefined });
       if (op !== 'select') code = await backend.manageLoadout(code, op, name, { kind, [kind]: id });
       const decoded = await backend.switchLoadout(code, op === 'select' ? { [kind]: id } : {});

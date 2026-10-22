@@ -30,25 +30,15 @@ export function skillWeaponSet(state: WeaponSetState, index?: number): 1 | 2 {
   return (index === undefined ? undefined : state.socketGroups[index]?.weapon_set) ?? state.weaponSwap?.active ?? 1;
 }
 
-/** A calculation contains only the groups enabled for that weapon set. Keep
- * their indices stable for the sidebar, skill metrics, and optimizer variants.
- */
-export function groupsForWeaponSet(groups: SocketGroupInput[], active: 1 | 2): SocketGroupInput[] {
-  return groups.map(group => ({ ...group,
-    ...(group.include_in_full_dps ? { full_dps_enabled: group.enabled } : {}),
-    enabled: group.enabled && (!group.weapon_set || group.weapon_set === active) }));
-}
-
-/** The request fields for the weapon set in use: its enabled groups, and
- * `weapon_swap`, whose `active` set the engine calculates, applying "while
- * using Weapon Set 1/2" modifiers. A build that never swapped uses set 1.
+/** The request names the equipment/passive context without changing user-enabled
+ * skill groups. Rust applies weapon bindings, including all-set reservation.
  */
 export function weaponSetRequest(state: Pick<WeaponSetState, 'socketGroups' | 'weaponSwap'>):
   { socket_groups: SocketGroupInput[]; weapon_swap: WeaponSwap } {
   const swap = state.weaponSwap;
   const active = swap?.active ?? 1;
   return {
-    socket_groups: groupsForWeaponSet(state.socketGroups, active),
+    socket_groups: state.socketGroups,
     // Only the fields the request schema knows; it rejects any other key.
     weapon_swap: { active, alternate_items: swap?.alternate_items ?? [], exclusive_nodes: swap?.exclusive_nodes ?? [[], []] },
   };

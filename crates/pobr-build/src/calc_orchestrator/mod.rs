@@ -350,8 +350,10 @@ pub struct SkillMetricsReport {
     pub skills: Vec<SkillMetrics>,
 }
 
-/// Calculates every active effect of every enabled group without requiring a
-/// primary skill. Each calculation keeps the whole build's aura/support context.
+/// Calculates every active effect of enabled groups used in the current weapon
+/// set, without requiring a primary skill. Each calculation keeps the whole
+/// build's aura/support context. Callers evaluating another set must supply its
+/// equipment/passive context; group indices always refer to the complete build.
 /// Missing effect data and individual calculation failures remain visible rows.
 pub fn calculate_skill_metrics(
     build: &Build,
@@ -364,7 +366,7 @@ pub fn calculate_skill_metrics(
     let mut scoped = prepared.as_ref().clone();
     let mut skills = Vec::new();
     for (group_index, group) in prepared.socket_groups.iter().enumerate() {
-        if !group.enabled {
+        if !group.enabled || !group.active_in_weapon_set(build.weapon_set) {
             continue;
         }
         for effect in group_active_effects(data, group) {
