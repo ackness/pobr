@@ -1,9 +1,16 @@
 /**
  * pobr-wasm JSON 契约类型（与 `apps/pobr-wasm/src/build_api.rs` 一一对应）。
  *
- * 契约冻结：Rust 侧 `apps/pobr-wasm/tests/contract_golden.rs` 钉住 JSON 键集合；
- * 改这里必须同步改 Rust DTO 与 golden，反之亦然。
+ * Shared request DTOs are generated from Rust; remaining response/view types
+ * are checked by contract_golden.rs and the real WASM request-conversion tests.
  */
+
+import type {
+  CharacterOverride, GemInput, JewelInput, SlotIssue, SlotItemInput, SocketGroupInput, WeaponSwap,
+} from './generated/request.js';
+export type {
+  CharacterOverride, GemInput, JewelInput, SlotIssue, SlotItemInput, SocketGroupInput, WeaponSwap,
+} from './generated/request.js';
 
 /**
  * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
@@ -23,13 +30,6 @@ export interface ApiErrorJson {
   message: string;
   /** 出错槽位（装备槽 id / Flask·Charm 槽名），供局部提示。 */
   slot?: string;
-}
-
-/** 单件来源文本解析失败的降级记录（该件被跳过，其余照算）。 */
-export interface SlotIssue {
-  /** 装备槽 id / `Flask N`·`Charm N` / `Jewel@<socket_node>`。 */
-  slot: string;
-  message: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -134,12 +134,6 @@ export interface SocketGroupJson {
 
 export type ConfigInputValue = boolean | number | string;
 
-export interface WeaponSwap {
-  active: 1 | 2;
-  alternate_items: SlotItemInput[];
-  exclusive_nodes: [number[], number[]];
-}
-
 export interface CustomModifierBlock {
   title: string;
   enabled: boolean;
@@ -201,62 +195,6 @@ export interface LoadoutJson {
 // ---------------------------------------------------------------------------
 
 export type EnemyTier = 'none' | 'boss' | 'pinnacle' | 'uber';
-
-/** 角色身份覆盖（白手起 build 必填 class_name；导入后可改等级/升华）。 */
-export interface CharacterOverride {
-  level?: number;
-  class_name?: string;
-  ascendancy_name?: string;
-}
-
-/** 手动技能组宝石条目（gem id 由后端按 skill_id 反查）。 */
-export interface GemInput {
-  /** Omitted means enabled. Disabled gems stay editable. */
-  enabled?: boolean;
-  count?: number | null;
-  enable_global_1?: boolean | null;
-  enable_global_2?: boolean | null;
-  stat_set_index?: number | null;
-  /** Raw PoB name for an unresolved slot; display/export metadata, never calculation identity. */
-  name_spec?: string | null;
-  /** Whether the gem is corrupted ("all Corrupted Skill Gems" modifiers test it); omitted means not. */
-  corrupted?: boolean;
-  /** The monster a minion gem summons (PoB skillMinion), passed through from decode. */
-  minion?: string | null;
-  /** Which of the minion's skills it uses (PoB skillMinionSkill, 1-based), passed through from decode. */
-  minion_skill?: number | null;
-  skill_id: string;
-  level: number;
-  quality: number;
-}
-
-/** 手动技能组（整份替换 build 的 socket_groups）。 */
-export interface SocketGroupInput {
-  /** Original enabled state before masking for the inspected weapon set. */
-  full_dps_enabled?: boolean;
-  include_in_full_dps?: boolean;
-  group_count?: number | null;
-  weapon_set?: 1 | 2 | null;
-  slot?: string | null;
-  enabled: boolean;
-  /** PoB's 1-based selection among this group's active skills. */
-  main_active_skill?: number | null;
-  /** decode 后透传的装备授予技能来源；手动组省略。 */
-  source?: string | null;
-  gems: GemInput[];
-}
-
-/** 手动装备（PoB 原始文本块；整份替换装备槽）。 */
-export interface SlotItemInput {
-  slot: string;
-  text: string;
-}
-
-/** 手动树插槽珠宝（插槽已加点才生效；范围珠宝 grant 行走几何展开）。 */
-export interface JewelInput {
-  socket_node: number;
-  text: string;
-}
 
 export interface MinionCatalog {
   monsters: Array<{ id: string; name: string; beast: boolean; spectre: boolean;
@@ -847,6 +785,8 @@ export interface EnergyTriggerTerms {
 }
 
 export interface CalculateBuildResponse {
+  /** Engine release and runtime input pack; absent in older saved/mock responses. */
+  provenance?: CalculationProvenance;
   /** Present only when config_context was requested. */
   config_context?: ConfigContext;
   minions?: MinionOutput[];
@@ -870,6 +810,13 @@ export interface CalculateBuildResponse {
   /** 单件装备/药剂/珠宝文本解析失败的降级记录（据 slot 标红；空 = 全部成功）。 */
   item_errors: SlotIssue[];
   tree_effects?: PassiveJewelState;
+}
+
+export interface CalculationProvenance {
+  engine_version: string;
+  data_version: string | null;
+  /** SHA-256 of the runtime input pack, including shared overlays and patches. */
+  data_sha256: string;
 }
 
 export interface PassiveAllocationGrant {

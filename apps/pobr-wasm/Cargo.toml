@@ -20,6 +20,10 @@ serde_json.workspace = true
 # wasm-bindgen 绑定仅在 wasm feature 下启用，保证宿主 `cargo build` 不需 wasm 工具链。
 wasm-bindgen = { version = "0.2", optional = true }
 
+[dev-dependencies]
+# Host-only contract generation; never linked into the shipped WASM engine.
+ts-rs = "=12.0.1"
+
 [features]
 default = []
 wasm = ["dep:wasm-bindgen"]

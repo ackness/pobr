@@ -47,6 +47,7 @@ export function sourceFingerprint(root) {
     'apps/.cargo/config', 'apps/.cargo/config.toml',
     'apps/pobr-wasm/.cargo/config', 'apps/pobr-wasm/.cargo/config.toml',
     'apps/pobr-wasm/Cargo.toml', 'apps/pobr-wasm/build.rs', 'apps/pobr-wasm/src', 'web/src/api/types.ts',
+    'web/src/api/generated',
     'web/scripts/build-wasm.mjs', 'web/scripts/wasm-build-inputs.mjs']) collect(path);
   // Shared config catalogs may be embedded by pobr-gamedata. Hash this small
   // family conservatively so adding one needs no separate cache-input list.

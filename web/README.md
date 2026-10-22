@@ -11,6 +11,17 @@ engine**: it only consumes the JSON contract of `apps/pobr-wasm`
 `apps/pobr-wasm/tests/contract_golden.rs` on the Rust side) — no Rust type imports, no
 formula duplication.
 
+Seven shared request DTOs are generated from Rust into
+`src/api/generated/request.ts` by the pinned, host-only `ts-rs` dev dependency.
+After changing those DTOs, run
+`cargo test -p pobr-wasm --lib export_typescript_contract -- --ignored` from the
+repository root and commit the result. The ordinary Rust library tests and PR CI
+check for drift without rewriting files. Remaining response/view types stay in
+`src/api/types.ts` and retain their Rust contract assertions.
+`pnpm --dir web test:wasm-contract` uses the real frontend materialization and
+request conversion against built WASM; prepare current WASM and synced data first.
+Full CI runs this regression after those preparation steps.
+
 ## Builds and stages
 
 Use **Manage builds** to keep separate builds for different skills. Copy the current
@@ -190,6 +201,7 @@ calculations. Validate Worker changes in the actual workerd runtime.
 | `pnpm --dir web build` | tsc + production build (dist/) |
 | `pnpm --dir web typecheck` | type check only |
 | `pnpm --dir web test src/lib/skillSelection.test.ts` | selected Vitest unit tests |
+| `pnpm --dir web test:wasm-contract` | real request conversion against current WASM/data |
 | `pnpm --dir web test:worker` | Worker tests in the actual workerd runtime |
 | `pnpm --dir web exec playwright test e2e/build-roundtrip.spec.ts` | Selected E2E spec; requires current dist and prepared WASM/data |
 | `pnpm --dir web build-wasm` | build or reuse verified WASM; `--force` rebuilds |

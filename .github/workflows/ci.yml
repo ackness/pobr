@@ -163,6 +163,8 @@ jobs:
         run: pnpm build-wasm
       - name: Sync game data
         run: pnpm sync-data
+      - name: Real WASM request contract
+        run: pnpm test:wasm-contract
       # Typecheck already passed above; bundle without repeating tsc.
       - name: Build
         run: pnpm exec vite build

@@ -47,7 +47,10 @@ In a repository checkout, the canonical skill is at
 Its API guide is
 [`.claude/skills/use-pobr-wasm/references/api.md`](https://github.com/ackness/pobr/blob/master/.claude/skills/use-pobr-wasm/references/api.md).
 Generated `pobr_wasm.d.ts` documents JS exports; `api-types.ts` supplies JSON
-request/response types. Use `import type` for the latter.
+request/response types, including its bundled `generated/request.ts` dependency.
+Use `import type` for the latter. Full calculation responses include `provenance`
+with the engine version, data version and effective data-pack SHA-256; retain it
+with the calculation input when reporting discrepancies.
 
 ## Build and release maintenance
 

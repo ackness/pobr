@@ -47,7 +47,7 @@ jobs:
           echo "$files"
           rust=false
           web=false
-          if grep -qE '^(crates|apps|tools|data|examples|devs/scripts|\.github/workflows)/|^(Cargo\.(toml|lock)|mise\.toml|rust-toolchain\.toml)$' <<< "$files"; then rust=true; fi
+          if grep -qE '^(crates|apps|tools|data|examples|devs/scripts|\.github/workflows)/|^web/src/api/(generated/|types\.ts$)|^(Cargo\.(toml|lock)|mise\.toml|rust-toolchain\.toml)$' <<< "$files"; then rust=true; fi
           if grep -qE '^(web|\.github/workflows)/' <<< "$files"; then web=true; fi
           echo "rust=$rust" >> "$GITHUB_OUTPUT"
           echo "web=$web" >> "$GITHUB_OUTPUT"
@@ -74,6 +74,8 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Smoke tests
         run: bash devs/scripts/driver.sh smoke
+      - name: Generated request contract
+        run: cargo test -p pobr-wasm --lib typescript_contract_is_current
       # The parity baseline must not drop; see docs/maintainer-guide.md "Parity 体系".
       - name: Parity regression gate
         run: cargo test -p pobr-build --test parity no_regression

@@ -46,6 +46,7 @@ function fixture(t) {
     cpSync(join(repo, file), join(root, file));
   }
   cpSync(join(repo, '.claude/skills/use-pobr-wasm'), join(root, '.claude/skills/use-pobr-wasm'), { recursive: true });
+  cpSync(join(repo, 'web/src/api/generated'), join(root, 'web/src/api/generated'), { recursive: true });
   const pkgRoot = join(root, 'web/src/wasm/pkg');
   write('web/src/wasm/pkg/build-receipt.json', {
     version: 1, sourceFingerprint: sourceFingerprint(root), schemaVersion: compiledSchema(pkgRoot),
@@ -68,11 +69,14 @@ test('archive preserves complete data, bindings and skill; hashes and size arith
   for (const [file, content] of Object.entries(data.files)) {
     assert.equal(content, readFileSync(join(root, 'web/public/data/1.2.3', file), 'utf8'));
   }
-  for (const file of ['pobr_wasm.d.ts', 'pobr_wasm_bg.wasm.d.ts', 'api-types.ts', 'skills/use-pobr-wasm/SKILL.md',
+  for (const file of ['pobr_wasm.d.ts', 'pobr_wasm_bg.wasm.d.ts', 'api-types.ts', 'generated/request.ts', 'skills/use-pobr-wasm/SKILL.md',
     'skills/use-pobr-wasm/references/api.md', 'skills/use-pobr-wasm/scripts/demo.mjs', 'example.mjs', 'LICENSE']) {
     assert.ok(readFileSync(join(packageRoot, file)).length);
   }
   assert.throws(() => readFileSync(join(packageRoot, 'unrelated.txt')), { code: 'ENOENT' });
+  execFileSync(process.execPath, [join(repo, 'web/node_modules/typescript/bin/tsc'),
+    '--noEmit', '--strict', '--module', 'NodeNext', '--target', 'ES2022', 'api-types.ts'],
+  { cwd: packageRoot, stdio: 'pipe' });
   assert.equal(report.totals.wasmJsCompressedDataBytes, report.files.reduce((sum, file) => sum + file.bytes, 0));
   for (const line of readFileSync(join(root, '.cache/wasm-release/SHA256SUMS'), 'utf8').trim().split('\n')) {
     const [expected, name] = line.split('  ');
@@ -120,6 +124,11 @@ test('reject same-version source and binding changes, including new embedded inp
   write('crates/pobr-i18n/locales/en-US/ui.toml', 'new = "embedded"');
   assert.throws(() => packageWasm({ root }), /Stale WASM source snapshot/);
   rmSync(join(root, 'crates'), { recursive: true });
+  const generated = 'web/src/api/generated/request.ts';
+  const originalTypes = readFileSync(join(root, generated), 'utf8');
+  write(generated, `${originalTypes}\nexport type Changed = string;\n`);
+  assert.throws(() => packageWasm({ root }), /Stale WASM source snapshot/);
+  write(generated, originalTypes);
   write('web/src/wasm/pkg/pobr_wasm.d.ts', 'changed binding');
   assert.throws(() => packageWasm({ root }), /bindings differ/);
 });

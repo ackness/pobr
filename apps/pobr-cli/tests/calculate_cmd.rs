@@ -214,6 +214,16 @@ fn full_build_and_marginal_reports_preserve_rejected_modifiers() {
             .any(|text| text == unknown)
     );
     assert_eq!(report.data_version, pobr_gamedata::data_version());
+    let data = pobr_gamedata::GameData::new(repo_data_dir());
+    assert_eq!(report.provenance.engine_version, env!("CARGO_PKG_VERSION"));
+    assert_eq!(
+        report.provenance.data_version.as_deref(),
+        Some(report.data_version.as_str())
+    );
+    assert_eq!(
+        report.provenance.data_sha256,
+        data.identity().unwrap().sha256
+    );
     let extra = "Another unsupported candidate modifier";
     let marginal = pobr_cli::marginal_contribution(&pobr_cli::MarginalRequest {
         build_code: code,
@@ -238,6 +248,7 @@ fn full_build_and_marginal_reports_preserve_rejected_modifiers() {
     );
     assert!(pobr_cli::render_marginal(&marginal).contains(extra));
     assert_eq!(marginal.data_version, report.data_version);
+    assert_eq!(marginal.provenance, report.provenance);
 }
 
 #[test]
