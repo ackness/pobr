@@ -67,4 +67,3 @@ alternate_items: Array<SlotItemInput>,
 exclusive_nodes: [Array<number>, Array<number>], };
 
 export type JewelInput = { socket_node: number, text: string, };
-

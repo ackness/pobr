@@ -32,12 +32,14 @@ fn declarations() -> String {
         output.push_str(&declaration);
         output.push_str("\n\n");
     }
-    // ts-rs preserves documentation layout but can leave trailing spaces.
+    // Normalize trailing spaces and emit exactly one final newline.
     output
         .lines()
         .map(str::trim_end)
         .collect::<Vec<_>>()
         .join("\n")
+        .trim_end()
+        .to_owned()
         + "\n"
 }
 
