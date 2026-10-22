@@ -477,7 +477,7 @@ fn coverage_build(host: &str, support: Option<&str>) -> pobr_build::Build {
 fn coverage_session(
     build: &pobr_build::Build,
     data: &BuildData,
-) -> pobr_core::calc::CalculationSession {
+) -> pobr_core::calc::CompletedCalculationSession {
     pobr_build::calculate_with_data_session(build, data, &panel_opts()).unwrap()
 }
 

@@ -1,6 +1,6 @@
 //! Output coverage for the ranked item/passive wording batch.
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data_session, parse_build};
-use pobr_core::calc::CalculationSession;
+use pobr_core::calc::CompletedCalculationSession;
 
 use crate::test_data as data;
 
@@ -10,7 +10,7 @@ fn run(
     items: &str,
     slots: &str,
     extra: &[&str],
-) -> CalculationSession {
+) -> CompletedCalculationSession {
     let mark = if skill == "UnearthPlayer" {
         r#"<Skill enabled="true"><Gem skillId="WolfPounceMarkPlayer" level="20" enabled="true"/></Skill>"#
     } else {

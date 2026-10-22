@@ -127,7 +127,10 @@ pub use pool_setup::{
 pub use scaled_damage::{
     AllMultExtras, DpsEndFactors, ScaledDamage, all_mult, dps_end_factors, scaled_damage_effect,
 };
-pub use session::{BuffKind, BuffSpec, CalculationSession, HitDamageMods, SkillDotMods};
+pub use session::{
+    BuffKind, BuffSpec, CalculationSession, CompletedCalculationSession, HitDamageMods,
+    SkillDotMods,
+};
 pub use setup_env::{env_with_enemy, reduce_enemy_exposure, setup_enemy};
 pub use skill_dot::{
     DotIsFlags, SkillDotInputs, SkillDotOutput, SkillDotPart, SkillDotTerms, calc_skill_dot,

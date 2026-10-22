@@ -159,6 +159,56 @@ fn completed_session_rejects_recalculation_without_mutating_derived_resources() 
 }
 
 #[test]
+fn finished_session_retains_matching_output_sources_and_conditions() {
+    use pobr_core::{ModTag, Modifier, calc::output::FullDpsOutput};
+    use pobr_data::prelude::ModType;
+
+    let mut s = session(MinimalInput {
+        base_life: 100.0,
+        ..Default::default()
+    });
+    s.set_condition("LowLife", true);
+    s.add_modifiers([
+        Modifier::number("MaximumLife", ModType::Base, 50.0),
+        Modifier::number("MaximumLife", ModType::Inc, 20.0)
+            .with_tag(ModTag::condition("LowLife", false)),
+    ]);
+    s.track_modifier_reads();
+    let completed = s.finish().unwrap();
+    assert_eq!(completed.output().life, 180.0);
+    assert_eq!(completed.stat_formula("Life").unwrap().value, 180.0);
+    assert_eq!(completed.stat_totals("Life"), (50.0, 20.0, 1.0));
+    assert!(completed.config().condition("LowLife"));
+    assert!(completed.read_variables().conditions.contains("LowLife"));
+    assert!(completed.unread_modifiers().is_empty());
+
+    // Attaching the separately calculated rollup preserves every main-pass value
+    // and its source queries, including the condition-dependent Life increase.
+    let mut expected = completed.output().clone();
+    let full_dps = FullDpsOutput {
+        dps: 1234.0,
+        ..Default::default()
+    };
+    expected.full_dps = Some(full_dps.clone());
+    let completed = completed.with_full_dps(full_dps);
+    assert_eq!(completed.output(), &expected);
+    assert_eq!(completed.stat_formula("Life").unwrap().value, 180.0);
+    assert_eq!(completed.stat_totals("Life"), (50.0, 20.0, 1.0));
+}
+
+#[test]
+fn finish_rejects_a_session_performed_through_the_legacy_api() {
+    use pobr_core::calc::CalcError;
+
+    let mut s = session(MinimalInput::default());
+    s.perform_minimal().unwrap();
+    // In particular, a legacy caller cannot change a completed input and then
+    // bless the stale output as a new read-only completed calculation.
+    s.set_condition("LowLife", true);
+    assert!(matches!(s.finish(), Err(CalcError::AlreadyPerformed)));
+}
+
+#[test]
 fn player_preparation_preserves_attribute_bonus_rules_and_sources() {
     use pobr_core::{CharacterBase, Modifier};
     use pobr_data::prelude::ModType;

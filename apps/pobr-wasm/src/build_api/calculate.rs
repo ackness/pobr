@@ -213,7 +213,7 @@ fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
                 serde_json::to_string(&full).map_err(|e| format!("serialize Full DPS: {e}"))
             },
         )?;
-        session.set_full_dps(
+        session = session.with_full_dps(
             serde_json::from_str(&full).map_err(|e| format!("read cached Full DPS: {e}"))?,
         );
     }

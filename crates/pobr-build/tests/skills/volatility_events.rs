@@ -3,7 +3,7 @@ use pobr_build::{
     Build, BuildData, DataOrchestratorOptions, calculate_with_data_session, parse_build,
 };
 use pobr_core::calc::{
-    CalculationSession, MinimalInput,
+    CalculationSession, CompletedCalculationSession, MinimalInput,
     volatility_events::{QUANTITY, RATE, STATS},
 };
 use pobr_core::rules::config_interpreter::ConfigInputValue;
@@ -30,7 +30,7 @@ fn build(config: &str, source: bool, cap: bool) -> Build {
     }
     build
 }
-fn run(build: &Build, data: &BuildData) -> CalculationSession {
+fn run(build: &Build, data: &BuildData) -> CompletedCalculationSession {
     calculate_with_data_session(build, data, &DataOrchestratorOptions::default()).unwrap()
 }
 fn close(a: f64, b: f64) {
