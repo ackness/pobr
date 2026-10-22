@@ -7,7 +7,7 @@ edition.workspace = true
 pobr-data.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-sha2 = "0.11"
+sha2 = { version = "0.11", default-features = false }
 
 [features]
 # Test-only snapshot pins (`test_pins::assert_pin`, with opt-in write-back).

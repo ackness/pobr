@@ -48,8 +48,15 @@ export function sourceFingerprint(root) {
     'apps/pobr-wasm/.cargo/config', 'apps/pobr-wasm/.cargo/config.toml',
     'apps/pobr-wasm/Cargo.toml', 'apps/pobr-wasm/build.rs', 'apps/pobr-wasm/src', 'web/src/api/types.ts',
     'web/scripts/build-wasm.mjs', 'web/scripts/wasm-build-inputs.mjs']) collect(path);
-  // All seven libraries are dependencies of the WASM engine; tests and runtime
-  // game data are deliberately excluded from the compile-input fingerprint.
+  // Shared config catalogs may be embedded by pobr-gamedata. Hash this small
+  // family conservatively so adding one needs no separate cache-input list.
+  const shared = 'data/overlay-common';
+  if (existsSync(join(root, shared))) {
+    for (const name of readdirSync(join(root, shared)).filter(name => name.endsWith('_config_options.json'))) {
+      collect(`${shared}/${name}`);
+    }
+  }
+  // All seven libraries are dependencies of the WASM engine; tests are excluded.
   if (existsSync(join(root, 'crates'))) {
     for (const crate of readdirSync(join(root, 'crates')).sort()) {
       for (const path of ['Cargo.toml', 'build.rs', 'src', 'locales']) collect(`crates/${crate}/${path}`);
