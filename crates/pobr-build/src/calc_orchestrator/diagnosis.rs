@@ -14,8 +14,8 @@
 
 use std::borrow::Cow;
 
-use pobr_core::calc::CalculationSession;
 use pobr_core::calc::survivability::charge_multiplier_use_condition;
+use pobr_core::calc::{CalculationSession, CompletedCalculationSession};
 use pobr_core::{Modifier, ReadSnapshot, ReadVariables};
 
 use super::sources::ReceivedLine;
@@ -96,7 +96,7 @@ pub struct UnsetCondition {
 
 /// A completed calculation and its dropped inputs. See the module docs.
 pub struct Diagnosis {
-    pub session: CalculationSession,
+    pub session: CompletedCalculationSession,
     /// The effect that was calculated and its level; `None` when the build
     /// has no skill that resolves. A wrong skill or level drops no input, so
     /// nothing below would show it.

@@ -8,7 +8,7 @@ use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup,
     calculate_with_data_session,
 };
-use pobr_core::calc::{CalculationSession, MinimalInput};
+use pobr_core::calc::{CalculationSession, CompletedCalculationSession, MinimalInput};
 use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
 use pobr_data::monster::EnemyTier;
 use pobr_data::prelude::*;
@@ -40,7 +40,7 @@ fn twister_build() -> Build {
         .add_socket_group(SocketGroup::new().with_active_skill("TwisterPlayer", 20))
 }
 
-fn run(build: &Build, data: &BuildData) -> CalculationSession {
+fn run(build: &Build, data: &BuildData) -> CompletedCalculationSession {
     calculate_with_data_session(
         build,
         data,

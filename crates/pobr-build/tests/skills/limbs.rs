@@ -7,7 +7,7 @@ use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup,
     calculate_with_data_session,
 };
-use pobr_core::calc::CalculationSession;
+use pobr_core::calc::CompletedCalculationSession;
 use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, LimbSlot, RolledDefence};
 
 use crate::test_data as data;
@@ -43,7 +43,7 @@ fn archer() -> Build {
         .set_item(EquipmentSlot::Weapon1, item("Crude Bow", &[]))
 }
 
-fn run(build: &Build, data: &BuildData) -> CalculationSession {
+fn run(build: &Build, data: &BuildData) -> CompletedCalculationSession {
     calculate_with_data_session(build, data, &DataOrchestratorOptions::default())
         .expect("calculates")
 }

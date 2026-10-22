@@ -3,7 +3,7 @@ use pobr_build::{
     Build, BuildData, DataOrchestratorOptions, calculate_with_data_session, parse_build,
 };
 use pobr_core::calc::{
-    CalculationSession, MinimalInput,
+    CalculationSession, CompletedCalculationSession, MinimalInput,
     remnant_pickup::{CONFIG_INPUTS, STATS},
 };
 use pobr_core::rules::config_interpreter::ConfigInputValue;
@@ -21,7 +21,7 @@ fn build(skill: &str, nodes: &str, config: &str) -> Build {
     ))
     .unwrap()
 }
-fn run(b: &Build, d: &BuildData) -> CalculationSession {
+fn run(b: &Build, d: &BuildData) -> CompletedCalculationSession {
     calculate_with_data_session(b, d, &DataOrchestratorOptions::default()).unwrap()
 }
 fn close(a: f64, b: f64) {

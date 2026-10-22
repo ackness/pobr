@@ -3,7 +3,7 @@ use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup,
     calculate_with_data_session,
 };
-use pobr_core::calc::{CalculationSession, MinimalInput};
+use pobr_core::calc::{CompletedCalculationSession, MinimalInput};
 use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
 use pobr_data::monster::EnemyTier;
 
@@ -34,7 +34,7 @@ fn build(skill: &str) -> Build {
         .add_socket_group(SocketGroup::new().with_active_skill(skill, 16))
 }
 
-fn run(build: &Build, data: &BuildData) -> CalculationSession {
+fn run(build: &Build, data: &BuildData) -> CompletedCalculationSession {
     calculate_with_data_session(
         build,
         data,
@@ -1454,7 +1454,11 @@ fn exporter_absent_item_rules_apply_only_on_the_game_basis() {
     );
 }
 
-fn defence_with_lines(build: &Build, data: &BuildData, lines: &[&str]) -> CalculationSession {
+fn defence_with_lines(
+    build: &Build,
+    data: &BuildData,
+    lines: &[&str],
+) -> CompletedCalculationSession {
     calculate_with_data_session(
         build,
         data,

@@ -2,7 +2,7 @@
 use pobr_build::{
     Build, BuildData, DataOrchestratorOptions, calculate_with_data_session, parse_build,
 };
-use pobr_core::calc::{CalculationSession, MinimalInput};
+use pobr_core::calc::{CalculationSession, CompletedCalculationSession, MinimalInput};
 use pobr_core::rules::config_interpreter::ConfigInputValue;
 use pobr_core::{CalcConfig, Modifier, display_value};
 use pobr_data::prelude::*;
@@ -30,7 +30,7 @@ Implicits: 1
 </Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/><Slot name="Weapon 2" itemId="2"/></ItemSet></Items>
 <Config>{config}</Config></PathOfBuilding2>"#, if source { LINE } else { "" })).unwrap()
 }
-fn run(build: &Build, data: &BuildData) -> CalculationSession {
+fn run(build: &Build, data: &BuildData) -> CompletedCalculationSession {
     calculate_with_data_session(build, data, &DataOrchestratorOptions::default()).unwrap()
 }
 fn close(a: f64, b: f64) {

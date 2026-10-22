@@ -2,11 +2,11 @@
 use pobr_build::breakdown::detail::{DetailKind, stat_detail};
 use pobr_build::breakdown::stat_breakdown;
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data_session, parse_build};
-use pobr_core::calc::{CalculationSession, MinimalInput};
+use pobr_core::calc::{CalculationSession, CompletedCalculationSession, MinimalInput};
 
 use crate::test_data as data;
 
-fn calc(data: &BuildData, inputs: &str, extra: &[&str]) -> CalculationSession {
+fn calc(data: &BuildData, inputs: &str, extra: &[&str]) -> CompletedCalculationSession {
     let xml = format!(
         r#"<PathOfBuilding2><Build level="80" className="Warrior"/>
 <Config><Input name="resistancePenalty" number="0"/>{inputs}</Config></PathOfBuilding2>"#

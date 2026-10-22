@@ -39,7 +39,7 @@
 
 use std::borrow::Cow;
 
-use pobr_core::calc::{CalculationSession, MinimalInput, OutputTable};
+use pobr_core::calc::{CalculationSession, CompletedCalculationSession, MinimalInput, OutputTable};
 use pobr_core::rules::stat_map_engine::StatMapCatalog;
 use pobr_core::{CalcConfig, CharacterBase, Modifier};
 use pobr_data::item::EquipmentSlot;
@@ -442,14 +442,14 @@ pub fn calculate_with_data(
 }
 
 /// Runs the same pipeline as [`calculate_with_data`], but returns the completed
-/// [`CalculationSession`] itself (after perform) — for callers that need to read
+/// [`CompletedCalculationSession`] — for callers that need to read
 /// ModDb's per-source contributions (breakdown / attribution panels, e.g. `pobr-wasm`'s
 /// JSON contract layer) to keep querying beyond the output, without recomputing.
 pub fn calculate_with_data_session(
     build: &Build,
     data: &BuildData,
     options: &DataOrchestratorOptions,
-) -> Result<CalculationSession, BuildError> {
+) -> Result<CompletedCalculationSession, BuildError> {
     calculate_with_data_report(build, data, options).map(|report| report.session)
 }
 
@@ -460,13 +460,13 @@ pub fn calculate_with_data_session_tracked(
     build: &Build,
     data: &BuildData,
     options: &DataOrchestratorOptions,
-) -> Result<(CalculationSession, Build), BuildError> {
+) -> Result<(CompletedCalculationSession, Build), BuildError> {
     let mut context = CalculationContext::new(data, options);
     context.track_reads = true;
     let prepared = prepared_build_view(build, data, options);
     let mut session = calculate_prepared_with_context(&prepared, data, options, &mut context)?;
     if options.full_dps {
-        session.set_full_dps(full_dps::calculate_prepared(
+        session = session.with_full_dps(full_dps::calculate_prepared(
             build, &prepared, data, options,
         )?);
     }
@@ -476,7 +476,7 @@ pub fn calculate_with_data_session_tracked(
 /// A completed calculation and its mapping diagnostics, including trigger sources.
 /// Each report owns its records; subsequent calculations cannot overwrite them.
 pub struct CalculationReport {
-    pub session: CalculationSession,
+    pub session: CompletedCalculationSession,
     pub stat_map_records: Vec<StatMapCompareRecord>,
 }
 
@@ -511,11 +511,11 @@ fn calculate_with_context(
     data: &BuildData,
     options: &DataOrchestratorOptions,
     context: &mut CalculationContext,
-) -> Result<CalculationSession, BuildError> {
+) -> Result<CompletedCalculationSession, BuildError> {
     let prepared = prepared_build_view(build, data, options);
     let mut session = calculate_prepared_with_context(&prepared, data, options, context)?;
     if options.full_dps && !context.is_trigger_source {
-        session.set_full_dps(full_dps::calculate_prepared(
+        session = session.with_full_dps(full_dps::calculate_prepared(
             build, &prepared, data, options,
         )?);
     }
@@ -649,7 +649,7 @@ fn calculate_prepared_with_context(
     data: &BuildData,
     options: &DataOrchestratorOptions,
     context: &mut CalculationContext,
-) -> Result<CalculationSession, BuildError> {
+) -> Result<CompletedCalculationSession, BuildError> {
     let main = stage_resolve_main_skill(build, data);
     let (resolved_config, base_cfg) = stage_resolve_config(build, data, options);
     let (cfg, enemy_tier) =
@@ -797,9 +797,8 @@ fn calculate_prepared_with_context(
     // calc_defence — armour/evasion/ES, ailments, EHP, etc.); the full OutputTable is
     // taken, not the MinimalOutput subset (which loses defence etc.).
     session
-        .perform_minimal()
-        .map_err(|e| BuildError::Calc(e.to_string()))?;
-    Ok(session)
+        .finish()
+        .map_err(|e| BuildError::Calc(e.to_string()))
 }
 
 /// Fully resolved inputs used by source injection. No field is filled by a later stage.

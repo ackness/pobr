@@ -8,7 +8,7 @@ use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup,
     calculate_with_data_session,
 };
-use pobr_core::calc::CalculationSession;
+use pobr_core::calc::{CalculationSession, CompletedCalculationSession};
 
 const UMBRAL_WELL: &str = "Skeletal Minions you would create instead grant you Umbral Souls for each Minion you would have created";
 
@@ -31,7 +31,7 @@ fn witch() -> Build {
         .add_socket_group(SocketGroup::new().with_gem_skill("SummonSkeletalSnipersPlayer", 20))
 }
 
-fn run(build: &Build, data: &BuildData, lines: &[&str]) -> CalculationSession {
+fn run(build: &Build, data: &BuildData, lines: &[&str]) -> CompletedCalculationSession {
     let options = DataOrchestratorOptions {
         inject_character_base: true,
         extra_modifier_texts: lines.iter().map(|line| line.to_string()).collect(),

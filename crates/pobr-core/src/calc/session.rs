@@ -109,7 +109,9 @@ pub struct SkillDotMods<'a> {
     pub by_type: Vec<(DamageType, Vec<crate::ModEvaluation<'a>>)>,
 }
 
-#[derive(Debug, Clone)]
+/// Mutable inputs for a single calculation. Use [`Self::finish`] to calculate
+/// and retain a read-only result for output, breakdown and diagnosis queries.
+#[derive(Debug)]
 pub struct CalculationSession {
     env: Env,
     unsupported_modifier_texts: Vec<String>,
@@ -126,6 +128,63 @@ pub struct CalculationSession {
     /// [`set_parser_rules`]: CalculationSession::set_parser_rules
     /// [`unsupported_modifier_texts`]: CalculationSession::unsupported_modifier_texts
     parser_rules: Option<Arc<crate::mod_parser::CompiledParserRules>>,
+}
+
+/// A completed calculation with its original inputs and derived state retained.
+///
+/// Shared access delegates to [`CalculationSession`] so existing breakdown and
+/// diagnosis readers use the same calculation. There is deliberately no mutable
+/// dereference, inner-session extraction or session clone: changing inputs after
+/// perform would make these readers disagree with the stored output. Queries can
+/// still record diagnostic reads, but cannot change calculation inputs or output.
+///
+/// ```compile_fail,E0596
+/// use pobr_core::calc::{CalculationSession, MinimalInput};
+/// let mut completed = CalculationSession::new(MinimalInput::default()).finish().unwrap();
+/// completed.set_condition("LowLife", true);
+/// ```
+///
+/// ```compile_fail,E0596
+/// use pobr_core::calc::{CalculationSession, MinimalInput};
+/// let mut completed = CalculationSession::new(MinimalInput::default()).finish().unwrap();
+/// completed.set_stat("Life", 1.0);
+/// ```
+///
+/// ```compile_fail,E0596
+/// use pobr_core::calc::{CalculationSession, MinimalInput};
+/// let mut completed = CalculationSession::new(MinimalInput::default()).finish().unwrap();
+/// completed.add_modifiers(std::iter::empty());
+/// ```
+///
+/// ```compile_fail,E0596
+/// use pobr_core::calc::{CalculationSession, MinimalInput};
+/// let mut completed = CalculationSession::new(MinimalInput::default()).finish().unwrap();
+/// let mutable: &mut CalculationSession = &mut completed;
+/// ```
+///
+/// ```compile_fail,E0308
+/// use pobr_core::calc::{CalculationSession, MinimalInput};
+/// let completed = CalculationSession::new(MinimalInput::default()).finish().unwrap();
+/// let editable: CalculationSession = completed.clone();
+/// ```
+#[derive(Debug)]
+pub struct CompletedCalculationSession(CalculationSession);
+
+impl std::ops::Deref for CompletedCalculationSession {
+    type Target = CalculationSession;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl CompletedCalculationSession {
+    /// Attaches the build orchestrator's completed multi-skill rollup. Consumes
+    /// the result without reopening its inputs or recalculating the main skill.
+    pub fn with_full_dps(mut self, output: super::output::FullDpsOutput) -> Self {
+        self.0.set_full_dps(output);
+        self
+    }
 }
 
 impl CalculationSession {
@@ -701,6 +760,14 @@ impl CalculationSession {
             &self.env.player.output,
             &self.env.player.breakdown,
         ))
+    }
+
+    /// Runs the full calculation and consumes its mutable inputs. The returned
+    /// result retains all output, source attribution and diagnostic query APIs.
+    /// An already-performed session is rejected, just like [`Self::perform_minimal`].
+    pub fn finish(mut self) -> Result<CompletedCalculationSession, super::CalcError> {
+        self.perform_minimal()?;
+        Ok(CompletedCalculationSession(self))
     }
 
     pub fn unsupported_modifier_texts(&self) -> &[String] {

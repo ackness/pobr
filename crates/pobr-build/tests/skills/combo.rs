@@ -29,7 +29,11 @@ Implicits: 0
 <Config>{config}</Config></PathOfBuilding2>"#)).unwrap()
 }
 
-fn calculate(data: &BuildData, build: &Build, lines: &[&str]) -> CalculationSession {
+fn calculate(
+    data: &BuildData,
+    build: &Build,
+    lines: &[&str],
+) -> pobr_core::calc::CompletedCalculationSession {
     calculate_with_data_session(
         build,
         data,

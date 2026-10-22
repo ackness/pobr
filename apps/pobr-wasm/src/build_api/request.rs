@@ -14,7 +14,7 @@ use pobr_build::{
     calculate_with_data_session, decode_pob_code, import_build, import_build_with_allocated_nodes,
     radius_jewel_from_text,
 };
-use pobr_core::calc::{CalculationSession, MinimalInput};
+use pobr_core::calc::{CompletedCalculationSession, MinimalInput};
 use pobr_core::item_text::parse_pob_xml_item;
 use pobr_core::rules::config_interpreter::ConfigInputValue;
 use pobr_data::build_config::CustomModifierBlock;
@@ -645,7 +645,7 @@ pub(crate) fn import_build_from_request(
 pub(crate) fn run_session_for_build(
     build: &Build,
     req: &CalculateBuildRequest,
-) -> Result<CalculationSession, ApiError> {
+) -> Result<CompletedCalculationSession, ApiError> {
     let data = state::build_data().map_err(ApiError::not_initialized)?;
     let opts = orchestrator_options(req)?;
     Ok(calculate_with_data_session(build, &data, &opts).map_err(|e| format!("calculate: {e}"))?)
