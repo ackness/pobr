@@ -15,7 +15,7 @@ const source = `<PathOfBuilding2>
 <Skill enabled="true" set1="true" set2="false" includeInFullDPS="true">${gem('IceShotPlayer')}</Skill>
 <Skill enabled="true" set1="false" set2="true" includeInFullDPS="true">${gem('IceShotPlayer')}</Skill>
 <Skill enabled="true" set1="false" set2="true">${gem('BlinkReservationPlayer')}</Skill>
-<Skill enabled="true" set1="false" set2="true">${gem('EternalRagePlayer')}</Skill>
+<Skill enabled="true" set1="false" set2="true">${gem('AlchemistsBoonPlayer')}</Skill>
 </Skills>
 <Items activeItemSet="1">
 <Item id="1">Rarity: RARE
@@ -71,6 +71,8 @@ describe.skipIf(env.POBR_WASM_CONTRACT !== '1')('real TS request to WASM weapon 
     const request = toRequest(state);
     expect(request.pob_code).toBeUndefined();
     expect(request.socket_groups?.map(group => group.enabled)).toEqual([false, true, true, true, true]);
+    expect(request.socket_groups?.map(group => group.weapon_set ?? null)).toEqual([null, 1, 2, 2, 2]);
+    expect(request.weapon_swap?.active).toBe(1);
     expect(request.socket_groups?.every(group => !('full_dps_enabled' in group))).toBe(true);
     const first = calculate(request);
     const direct = calculate({ pob_code: code, full_dps: true });
@@ -78,6 +80,7 @@ describe.skipIf(env.POBR_WASM_CONTRACT !== '1')('real TS request to WASM weapon 
     expect(first.stats).toEqual(direct.stats);
     expect(first.main_skill).toEqual(direct.main_skill);
     expect(first.full_dps).toEqual(direct.full_dps);
+    // Blink reserves 60 in all sets; Alchemist's Boon reserves 30 only in set 2.
     expect(stat(first, 'SpiritReserved')).toBe(60);
     expect(first.main_skill?.group_index).toBe(1);
     expect(metrics(request).skills.map(row => row.group_index)).toEqual([1]);
@@ -87,7 +90,7 @@ describe.skipIf(env.POBR_WASM_CONTRACT !== '1')('real TS request to WASM weapon 
     const secondRequest = toRequest(switched);
     const second = calculate(secondRequest);
     expect(second.item_errors).toEqual([]);
-    expect(stat(second, 'SpiritReserved')).toBe(160);
+    expect(stat(second, 'SpiritReserved')).toBe(90);
     expect(second.main_skill?.group_index).toBe(2);
     expect(stat(second, 'TotalDPS')).toBeGreaterThan(stat(first, 'TotalDPS')!);
     expect(metrics(secondRequest).skills.map(row => row.group_index)).toEqual([2, 3, 3, 4]);
