@@ -489,6 +489,11 @@ fn energy_trigger_modifiers<S: TriggerSubCalc>(
     groups.for_each_enabled_group(&mut |other| {
         let other_index = index;
         index += 1;
+        // Filter before ranking/truncation, preserving the enabled-group index
+        // used by sub-calculation. Other-set skills are not event sources here.
+        if !other.active_in_weapon_set {
+            return;
+        }
         for (gem_index, gem) in other.gems.iter().enumerate() {
             let by_hand = data.effect(&gem.skill_id).is_some_and(|effect| {
                 if spellslinger {

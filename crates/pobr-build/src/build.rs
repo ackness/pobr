@@ -155,6 +155,12 @@ pub struct SocketGroup {
 }
 
 impl SocketGroup {
+    /// Whether the group can be used with this equipment/passive context.
+    /// Independent of user enablement: persistent effects may span weapon sets.
+    pub fn active_in_weapon_set(&self, set: WeaponSet) -> bool {
+        self.weapon_set.is_none_or(|number| number == set.number())
+    }
+
     /// Whether the active skills are socketed gems rather than granted by equipment.
     pub fn from_gem(&self) -> bool {
         self.source.as_deref().is_none_or(str::is_empty)
@@ -575,9 +581,7 @@ impl pobr_core::skill_env::SocketGroupView for Build {
         for group in self.enabled_socket_groups() {
             let gems = group.gem_inputs();
             let mut enabled = group.enabled_group(&gems);
-            enabled.active_in_weapon_set = group
-                .weapon_set
-                .is_none_or(|set| set == self.weapon_set.number());
+            enabled.active_in_weapon_set = group.active_in_weapon_set(self.weapon_set);
             f(enabled);
         }
     }

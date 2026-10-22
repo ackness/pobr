@@ -152,3 +152,112 @@ fn a_main_skill_a_weapon_grants_is_used_in_that_weapons_set() {
     let sets: Vec<_> = held.socket_groups.iter().map(|g| g.weapon_set).collect();
     assert_eq!(sets, vec![None, None, Some(1)]);
 }
+
+/// Enablement is a player choice; the active weapon context gates inspected
+/// attacks and overview rows while all-set reservation still reads Blink.
+#[test]
+fn inactive_groups_keep_reservation_without_becoming_main_or_overview_attacks() {
+    use pobr_build::{calculate_skill_metrics, resolve_main_skill_selection};
+    let data = data();
+    let mut other = SocketGroup::new().with_gem_skill("FireballPlayer", 20);
+    other.weapon_set = Some(2);
+    let mut blink = SocketGroup::new().with_gem_skill("BlinkReservationPlayer", 20);
+    blink.weapon_set = Some(2);
+    let mut build = Build::new()
+        .add_socket_group(other)
+        .add_socket_group(
+            SocketGroup::new()
+                .with_gem_skill("CometPlayer", 20)
+                .with_enabled(false),
+        )
+        .add_socket_group(SocketGroup::new().with_gem_skill("SparkPlayer", 20))
+        .add_socket_group(blink);
+    let options = DataOrchestratorOptions::default();
+    assert_eq!(
+        resolve_main_skill_selection(&build, data),
+        Some((2, 1, "SparkPlayer".into()))
+    );
+    let panel = calculate_with_data_session(&build, data, &options).unwrap();
+    assert_eq!(panel.output().spirit_reserved, 60.0);
+    let rows = calculate_skill_metrics(&build, data, &options).unwrap();
+    assert_eq!(
+        rows.skills
+            .iter()
+            .map(|row| row.group_index)
+            .collect::<Vec<_>>(),
+        [2]
+    );
+    assert_eq!(
+        rows.skills[0].output.as_ref().unwrap().dps,
+        panel.output().dps
+    );
+
+    // A stale explicit index cannot silently substitute another skill or use
+    // the wrong weapons; it is valid again when that context is selected.
+    build.main_socket_group = Some(1);
+    assert!(resolve_main_skill_selection(&build, data).is_none());
+    build.weapon_set = WeaponSet::Second;
+    assert_eq!(
+        resolve_main_skill_selection(&build, data),
+        Some((0, 1, "FireballPlayer".into()))
+    );
+    let rows = calculate_skill_metrics(&build, data, &options).unwrap();
+    assert_eq!(
+        rows.skills
+            .iter()
+            .map(|row| row.group_index)
+            .collect::<Vec<_>>(),
+        [0, 2, 3, 3]
+    );
+    build.socket_groups[3].enabled = false;
+    assert_eq!(
+        calculate_with_data_session(&build, data, &options)
+            .unwrap()
+            .output()
+            .spirit_reserved,
+        0.0
+    );
+}
+
+#[test]
+fn energy_sources_are_evaluated_only_in_their_weapon_context() {
+    let data = data();
+    let mut meta = SocketGroup::new()
+        .with_gem_skill("MetaCastOnCritPlayer", 20)
+        .with_gem_skill("CometPlayer", 20);
+    meta.main_active_skill = Some(2);
+    let mut source = SocketGroup::new().with_gem_skill("SparkPlayer", 20);
+    source.weapon_set = Some(2);
+    let mut build = Build::new()
+        .add_socket_group(meta)
+        .add_socket_group(source)
+        .with_main_socket_group(1);
+    let options = DataOrchestratorOptions {
+        extra_modifier_texts: vec!["10000% increased Spell Damage".into()],
+        mode_effective: true,
+        ..Default::default()
+    };
+    let first = calculate_with_data_session(&build, data, &options).unwrap();
+    assert!(first.output().energy_trigger_source.is_none());
+    build.weapon_set = WeaponSet::Second;
+    let second = calculate_with_data_session(&build, data, &options).unwrap();
+    assert_eq!(
+        second.output().energy_trigger_source.as_deref(),
+        Some("SparkPlayer")
+    );
+
+    // Inactive sources cannot occupy the bounded candidate list and hide a
+    // slower source that can actually be used with the current weapons.
+    build.weapon_set = WeaponSet::First;
+    for _ in 0..5 {
+        build.socket_groups.push(build.socket_groups[1].clone());
+    }
+    build
+        .socket_groups
+        .push(SocketGroup::new().with_gem_skill("FireballPlayer", 20));
+    let crowded = calculate_with_data_session(&build, data, &options).unwrap();
+    assert_eq!(
+        crowded.output().energy_trigger_source.as_deref(),
+        Some("FireballPlayer")
+    );
+}
