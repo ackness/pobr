@@ -4,8 +4,11 @@
 //! shapes defined here — it never imports Rust types and never re-implements
 //! any calculation. Every value is computed by this module calling into
 //! existing crate capabilities. JSON shapes are pinned by
-//! `tests/contract_golden.rs`, with `web/src/api/types.ts` hand-written to
-//! mirror them isomorphically; a shape change must touch both places plus the golden fixture.
+//! `tests/contract_golden.rs`. Shared request DTOs generate
+//! `web/src/api/generated/request.ts` through the host-only `typescript` tests;
+//! remaining shapes are mirrored in `web/src/api/types.ts`. Shape changes must
+//! update their types and contract assertions. The web WASM contract test also
+//! exercises the actual frontend request conversion against the compiled engine.
 //!
 //! Every entry point is `&str -> Result<String, String>` (JSON in, JSON
 //! out). **The Err side is also JSON**: [`ApiError`] encodes
@@ -30,6 +33,8 @@ mod decode;
 mod encode;
 mod request;
 mod support;
+#[cfg(test)]
+mod typescript;
 mod uniques;
 mod usage;
 pub use support::support_groups_compatible_json;

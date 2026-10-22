@@ -144,10 +144,10 @@ jobs:
           cache-dependency-path: web/pnpm-lock.yaml
       - name: Dictionary snapshot tests
         run: node --test ../pipeline/test-dictionary-source.mjs ../pipeline/test-translation-source.mjs ../pipeline/test-query-patch-version.mjs
-      - name: WASM packaging tests
-        run: node --test scripts/package-wasm.test.mjs scripts/sync-data.test.mjs
       - name: Install
         run: pnpm install --frozen-lockfile
+      - name: WASM packaging tests
+        run: node --test scripts/package-wasm.test.mjs scripts/sync-data.test.mjs
       - name: Typecheck (pre-wasm placeholder tolerated via ts-ignore)
         run: pnpm typecheck
       - name: Unit tests
@@ -163,6 +163,8 @@ jobs:
         run: pnpm build-wasm
       - name: Sync game data
         run: pnpm sync-data
+      - name: Real WASM request contract
+        run: pnpm test:wasm-contract
       # Typecheck already passed above; bundle without repeating tsc.
       - name: Build
         run: pnpm exec vite build

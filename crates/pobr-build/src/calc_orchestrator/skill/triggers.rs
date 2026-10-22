@@ -83,6 +83,11 @@ impl pobr_core::skill_env::TriggerSubCalc for OrchestratorSubCalc<'_> {
             .enumerate()
             .filter(|(_, group)| group.enabled)
             .nth(group_index)?;
+        // An enabled skill in the other set is not an event source for this
+        // equipment context. Never calculate it with the current weapons.
+        if !group.active_in_weapon_set(self.build.weapon_set) {
+            return None;
+        }
         let source_gem = group.gem_skills.get(gem_index)?;
         // Additional effects from preceding gems occupy ordinals too.
         let active_pos = super::resolve::group_active_effects(self.data, group)

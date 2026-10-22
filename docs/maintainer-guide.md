@@ -161,7 +161,9 @@ schema 3 的运行时域读取与历史树枚举受 manifest inventory 约束；
 
 schema 3 的 `manifest.json` 列出运行时文件及 SHA-256；`BuildData::load` 在可选域降级前校验完整快照。旧 schema 1/2 保留兼容行为。`patch/` 与 `overlay-common/` 是独立覆盖层，不属于快照哈希清单。正式数据和 Web 同步先完成候选生成/校验，再替换目录；失败恢复旧目录，不自动 bless golden。
 
-`CalculationSession` / `Env` 只执行一次；再次 `perform` 返回 `AlreadyPerformed`。重算应创建新会话，避免再次应用资源转换。属性缩放与资源派生共享包含职业基础值及 INC/MORE 的最终属性；天赋关联的装备、品质和诊断查询都使用所选树。
+`CalculationSession` / `Env` 只执行一次；再次 `perform` 返回 `AlreadyPerformed`。构筑计算入口返回 `CompletedCalculationSession`，只允许读取输出、来源和分解，不能再修改输入；手动组装会话使用 `finish(self)` 完成计算。Full DPS 使用消费式 `with_full_dps` 附加汇总，不开放输入修改。重算应创建新会话，避免再次应用资源转换。属性缩放与资源派生共享包含职业基础值及 INC/MORE 的最终属性；天赋关联的装备、品质和诊断查询都使用所选树。
+
+`GameData::identity()` 对快照、共享覆盖层及有效 patch 的文件字节计算稳定摘要；`BuildData::load` 在加载时固定它，克隆共享缓存。原生目录与 WASM 内存数据使用同一算法。CLI 完整构筑、marginal 和 WASM 完整计算响应中的 `provenance` 包含 `engine_version`、`data_version`、`data_sha256`。摘要用于定位输入数据包，JSON 空白变化也会改变摘要，不代表计算语义变化；同版本开发构建还须保留源码 revision，完整复现还需要构筑输入与所选条件。修改磁盘数据后应创建新的 `GameData`，不能复用已加载实例。
 
 Web 的计算、市场目录和天赋树使用初始化时固定的数据版本；重新初始化清除翻译与词缀层级缓存。节点规划逐节点计算，不能按原始词条文本共享包含位置/半径效应的结果。缺少历史树展示元数据时保留导入和计算，禁用不可靠的历史树编辑/规划。存档导入校验嵌套结构，非法存档不覆盖当前内容；启动失败保留原始字节并提供下载恢复。
 

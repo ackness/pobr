@@ -1102,6 +1102,7 @@ pub const REFERENCE_TOLERANCE: f64 = 0.05;
 #[derive(Debug, Clone, Serialize)]
 pub struct CalculateBuildReport {
     pub data_version: String,
+    pub provenance: pobr_build::provenance::CalculationProvenance,
     /// Rejected modifier text; successful calculation does not imply complete support.
     pub unsupported_modifiers: Vec<String>,
     /// Items the build uses that could not be read. Not empty means the
@@ -1379,6 +1380,10 @@ pub fn calculate_build_detailed(
     };
     Ok(CalculateBuildReport {
         data_version: game_data.manifest()?.poe_version,
+        provenance: pobr_build::provenance::CalculationProvenance::from_data(
+            &game_data,
+            env!("CARGO_PKG_VERSION"),
+        )?,
         unsupported_modifiers: session.unsupported_modifier_texts().to_vec(),
         missing_items: import
             .missing_items()
@@ -1469,6 +1474,7 @@ pub struct MarginalRequest {
 #[derive(Debug, Clone, Serialize)]
 pub struct MarginalReport {
     pub data_version: String,
+    pub provenance: pobr_build::provenance::CalculationProvenance,
     pub tree_version: TreeVersionDiag,
     pub baseline_unsupported_modifiers: Vec<String>,
     pub unsupported_modifiers: Vec<String>,
@@ -1513,6 +1519,10 @@ pub fn marginal_contribution(req: &MarginalRequest) -> Result<MarginalReport, Cl
 
     Ok(MarginalReport {
         data_version: game_data.manifest()?.poe_version,
+        provenance: pobr_build::provenance::CalculationProvenance::from_data(
+            &game_data,
+            env!("CARGO_PKG_VERSION"),
+        )?,
         tree_version: TreeVersionDiag {
             build_tree_version: tree.build_tree_version,
             unknown_node_count: tree.unknown_nodes.len(),
@@ -1841,6 +1851,11 @@ mod marginal_tests {
     fn render_marginal_reports_no_impact_when_empty() {
         let report = MarginalReport {
             data_version: "test".into(),
+            provenance: pobr_build::provenance::CalculationProvenance {
+                engine_version: env!("CARGO_PKG_VERSION").into(),
+                data_version: Some("test".into()),
+                data_sha256: "test".into(),
+            },
             tree_version: TreeVersionDiag {
                 build_tree_version: None,
                 unknown_node_count: 0,

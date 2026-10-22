@@ -703,7 +703,10 @@ fn a_companion_attacks_with_what_the_character_gives_it() {
 
 /// A Huntress whose tamed beast's gems, one group each, summon `beasts`,
 /// every group with Loyalty.
-fn loyal_companions(data: &BuildData, beasts: &[&str]) -> pobr_core::calc::CalculationSession {
+fn loyal_companions(
+    data: &BuildData,
+    beasts: &[&str],
+) -> pobr_core::calc::CompletedCalculationSession {
     let groups: String = beasts
         .iter()
         .map(|beast| {

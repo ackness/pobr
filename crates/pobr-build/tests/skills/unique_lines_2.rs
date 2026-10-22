@@ -1,12 +1,12 @@
 //! Named gems, Parry, and increases shared by unique item text.
 use pobr_build::breakdown::stat_breakdown;
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data_session, parse_build};
-use pobr_core::calc::CalculationSession;
+use pobr_core::calc::{CalculationSession, CompletedCalculationSession};
 use pobr_data::prelude::DamageType;
 
 use crate::test_data as data;
 
-fn calc(data: &BuildData, skill: &str, level: u32, extra: &[&str]) -> CalculationSession {
+fn calc(data: &BuildData, skill: &str, level: u32, extra: &[&str]) -> CompletedCalculationSession {
     let xml = format!(
         r#"<PathOfBuilding2><Build level="80" className="Sorceress" mainSocketGroup="1"/>
 <Skills><Skill enabled="true"><Gem skillId="{skill}" level="{level}" enabled="true"/></Skill></Skills>

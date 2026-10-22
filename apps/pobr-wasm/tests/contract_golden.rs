@@ -158,8 +158,21 @@ fn calculate_build_json_shape() {
             "main_minion_index",
             "item_errors",
             "tree_effects",
+            "provenance",
         ],
         "CalculateBuildResponse",
+    );
+    let identity = pobr_gamedata::GameData::new(pobr_gamedata::current_data_dir())
+        .identity()
+        .expect("data identity")
+        .clone();
+    assert_eq!(
+        json["provenance"],
+        serde_json::json!({
+            "engine_version": env!("CARGO_PKG_VERSION"),
+            "data_version": identity.data_version,
+            "data_sha256": identity.sha256,
+        })
     );
 
     // main_skill: a real damage build always has a main skill, with

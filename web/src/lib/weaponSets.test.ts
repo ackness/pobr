@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { applyTreeAllocation, treeAllocationRequest, groupsForWeaponSet, skillWeaponSet, switchWeapons, validWeaponSwap, weaponSetRequest, type WeaponSetState } from './weaponSets';
+import { applyTreeAllocation, treeAllocationRequest, skillWeaponSet, switchWeapons, validWeaponSwap, weaponSetRequest, type WeaponSetState } from './weaponSets';
 const state: WeaponSetState = {
   items: [{ slot: 'weapon1', text: 'Bow' }, { slot: 'weapon2', text: 'Quiver' }, { slot: 'ring1', text: 'Ring' }],
   allocatedNodes: [10, 11], socketGroups: [{ enabled: true, weapon_set: 2, gems: [] }],
@@ -18,15 +18,12 @@ test('skill bindings choose their set, while shared skills follow the active set
   expect(skillWeaponSet(state, 1)).toBe(1);
   expect(skillWeaponSet(state)).toBe(1);
   expect(skillWeaponSet(switchWeapons(state, 2))).toBe(2);
-  const groups = [...state.socketGroups, { enabled: true, gems: [] }, { enabled: false, gems: [] }];
-  expect(groupsForWeaponSet(groups, 1).map(g => g.enabled)).toEqual([false, true, false]);
-  expect(groupsForWeaponSet(groups, 2).map(g => g.enabled)).toEqual([true, true, false]);
 });
-test('a request names the set its groups are enabled for, the first when weapons never swapped', () => {
+test('requests preserve user-enabled groups and name the current weapon context', () => {
   const groups = [...state.socketGroups, { enabled: true, gems: [] }];
   const first = weaponSetRequest({ socketGroups: groups, weaponSwap: state.weaponSwap });
   expect(first.weapon_swap).toEqual(state.weaponSwap);
-  expect(first.socket_groups.map(g => g.enabled)).toEqual([false, true]);
+  expect(first.socket_groups).toBe(groups);
   const second = weaponSetRequest(switchWeapons({ ...state, socketGroups: groups }, 2));
   expect(second.weapon_swap).toEqual({ active: 2, alternate_items: [state.items[0], state.items[1]], exclusive_nodes: [[11], [22]] });
   expect(second.socket_groups.map(g => g.enabled)).toEqual([true, true]);
@@ -42,13 +39,14 @@ test('older saves start with an empty second set and reject malformed swap data'
   expect(validWeaponSwap({ active: 3 })).toBeUndefined();
   expect(validWeaponSwap(state.weaponSwap)).toBe(state.weaponSwap);
 });
-test('Full DPS keeps the original enabled state of an included alternate-set group', () => {
-  const groups = groupsForWeaponSet([
-    { enabled: true, weapon_set: 2, include_in_full_dps: true, gems: [] },
-    { enabled: false, weapon_set: 2, include_in_full_dps: true, gems: [] },
-  ], 1);
-  expect(groups.map(group => group.enabled)).toEqual([false, false]);
-  expect(groups.map(group => group.full_dps_enabled)).toEqual([true, false]);
+test('included and disabled alternate-set groups keep their enabled state without a Full DPS override', () => {
+  const socketGroups = [
+    { enabled: true, weapon_set: 2 as const, include_in_full_dps: true, gems: [] },
+    { enabled: false, weapon_set: 2 as const, include_in_full_dps: true, gems: [] },
+  ];
+  const request = weaponSetRequest({ socketGroups, weaponSwap: state.weaponSwap });
+  expect(request.socket_groups).toEqual(socketGroups);
+  expect(request.socket_groups.every(group => !('full_dps_enabled' in group))).toBe(true);
 });
 
 test('validated tree edits keep inactive allocations and alternate equipment through swaps', () => {

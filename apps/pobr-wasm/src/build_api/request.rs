@@ -14,7 +14,7 @@ use pobr_build::{
     calculate_with_data_session, decode_pob_code, import_build, import_build_with_allocated_nodes,
     radius_jewel_from_text,
 };
-use pobr_core::calc::{CalculationSession, MinimalInput};
+use pobr_core::calc::{CompletedCalculationSession, MinimalInput};
 use pobr_core::item_text::parse_pob_xml_item;
 use pobr_core::rules::config_interpreter::ConfigInputValue;
 use pobr_data::build_config::CustomModifierBlock;
@@ -33,6 +33,7 @@ use crate::state;
 /// unknown slot name, etc. — client bugs) still go through the hard error
 /// [`ApiError::bad_request`].
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
 pub(crate) struct SlotIssue {
     /// The equipment slot id / `Flask N`·`Charm N` slot name / `Jewel@<socket_node>`.
     pub(crate) slot: String,
@@ -52,6 +53,8 @@ pub(crate) fn parse_attribute_choice(s: &str) -> Result<AttributeChoice, String>
 /// build from scratch / changing level and class after import).
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(optional_fields))]
 pub struct CharacterOverride {
     pub(crate) level: Option<u32>,
     pub(crate) class_name: Option<String>,
@@ -64,7 +67,10 @@ pub struct CharacterOverride {
 /// `gem_effects` table by `skill_id` (support classification depends on the gem id).
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(optional_fields = nullable))]
 pub struct GemInput {
+    #[cfg_attr(test, ts(as = "Option<bool>", optional))]
     pub(crate) enabled: bool,
     pub(crate) count: Option<f64>,
     pub(crate) enable_global_1: Option<bool>,
@@ -77,6 +83,7 @@ pub struct GemInput {
     /// Source display metadata for unresolved slots; never used to resolve calculation effects.
     pub(crate) name_spec: Option<String>,
     /// Whether the gem is corrupted; omitted means it is not.
+    #[cfg_attr(test, ts(as = "Option<bool>", optional))]
     pub(crate) corrupted: bool,
     /// The monster a minion gem summons (PoB `skillMinion`); a Companion's
     /// beast and a Spectre's monster set the Spirit it reserves.
@@ -108,12 +115,16 @@ impl Default for GemInput {
 /// A manual skill group (wholesale replaces the build's socket_groups).
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(optional_fields = nullable))]
 pub struct SocketGroupInput {
-    /// Original enabled state before the UI masks groups for the inspected weapon set.
-    /// Calculation-only metadata: Full DPS can still evaluate the other set.
+    /// Legacy clients used this before masking enabled by weapon set. New
+    /// requests preserve user enablement independently of weapon-set activity.
     pub(crate) full_dps_enabled: Option<bool>,
+    #[cfg_attr(test, ts(as = "Option<bool>", optional))]
     pub(crate) include_in_full_dps: bool,
     pub(crate) group_count: Option<f64>,
+    #[cfg_attr(test, ts(optional = nullable, type = "1 | 2 | null"))]
     pub(crate) weapon_set: Option<u8>,
     pub(crate) slot: Option<String>,
     pub(crate) enabled: bool,
@@ -145,6 +156,7 @@ impl Default for SocketGroupInput {
 /// import path; wholesale replaces the equipment slot).
 #[derive(Debug, Clone, Default, Deserialize, serde::Serialize)]
 #[serde(default, deny_unknown_fields)]
+#[cfg_attr(test, derive(ts_rs::TS))]
 pub struct SlotItemInput {
     pub(crate) slot: String,
     pub(crate) text: String,
@@ -152,8 +164,11 @@ pub struct SlotItemInput {
 
 #[derive(Debug, Clone, Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(rename = "WeaponSwap"))]
 pub struct WeaponSwapInput {
     /// The weapon set in use, 1 or 2.
+    #[cfg_attr(test, ts(type = "1 | 2"))]
     pub(crate) active: u8,
     /// The other set's weapons. A group bound to that set (a skill one of
     /// them grants) is used with them.
@@ -166,6 +181,7 @@ pub struct WeaponSwapInput {
 /// if the socket node is allocated, matching XML import gating).
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[cfg_attr(test, derive(ts_rs::TS))]
 pub struct JewelInput {
     pub(crate) socket_node: u32,
     pub(crate) text: String,
@@ -645,7 +661,7 @@ pub(crate) fn import_build_from_request(
 pub(crate) fn run_session_for_build(
     build: &Build,
     req: &CalculateBuildRequest,
-) -> Result<CalculationSession, ApiError> {
+) -> Result<CompletedCalculationSession, ApiError> {
     let data = state::build_data().map_err(ApiError::not_initialized)?;
     let opts = orchestrator_options(req)?;
     Ok(calculate_with_data_session(build, &data, &opts).map_err(|e| format!("calculate: {e}"))?)

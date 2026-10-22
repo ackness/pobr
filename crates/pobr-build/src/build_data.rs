@@ -274,6 +274,8 @@ impl BuildData {
     /// return value rather than reloading the same version directory repeatedly.
     pub fn load(data: &GameData) -> Result<Self, LoadError> {
         data.validate_manifest()?;
+        // Pin report provenance alongside the immutable data used by this build.
+        data.identity()?;
         let passive_nodes = data
             .passive_nodes()?
             .into_iter()

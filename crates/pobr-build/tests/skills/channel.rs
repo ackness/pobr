@@ -3,7 +3,7 @@ use pobr_build::{
     Build, BuildConfig, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup,
     calculate_with_data_session,
 };
-use pobr_core::calc::CalculationSession;
+use pobr_core::calc::{CalculationSession, CompletedCalculationSession};
 use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
 
 use crate::test_data as data;
@@ -14,7 +14,7 @@ fn calculate(
     set: u32,
     stages: Option<f64>,
     speed: bool,
-) -> CalculationSession {
+) -> CompletedCalculationSession {
     let weapon = match skill {
         "SuperchargedSlamPlayer" => "Felled Greatclub",
         "PerfectStrikePlayer" => "Wooden Club",

@@ -19,6 +19,7 @@
 //!   shells).
 
 pub mod domains;
+mod identity;
 pub mod manifest;
 pub mod overlay;
 pub mod paths;
@@ -35,6 +36,7 @@ use pobr_data::catalog::{
     SkillGemDef, SkillLevelDef, SkillStatSetDef, StatDef,
 };
 
+pub use identity::DataIdentity;
 pub use overlay::{MergeError, merge};
 pub use ruleset::RuleSet;
 
@@ -103,6 +105,8 @@ pub struct GameData {
     snapshot: std::sync::Arc<
         std::sync::OnceLock<Result<Option<pobr_data::catalog::DataManifest>, String>>,
     >,
+    /// Effective input-pack fingerprint, fixed on first request and shared by clones.
+    identity: std::sync::Arc<std::sync::OnceLock<Result<DataIdentity, String>>>,
 }
 
 impl GameData {
@@ -112,6 +116,7 @@ impl GameData {
             root: version_dir.into(),
             files: None,
             snapshot: Default::default(),
+            identity: Default::default(),
         }
     }
 
@@ -127,6 +132,7 @@ impl GameData {
             root: PathBuf::from("<memory>"),
             files: Some(std::sync::Arc::new(files)),
             snapshot: Default::default(),
+            identity: Default::default(),
         }
     }
 

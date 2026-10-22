@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:wasm-contract": "POBR_WASM_CONTRACT=1 vitest run src/hooks/useBuildSession.wasm.test.ts",
     "test:worker": "node --test worker-tests/*.test.mjs",
     "sync-data": "node scripts/sync-data.mjs",
     "package-wasm": "node scripts/package-wasm.mjs",

@@ -72,12 +72,16 @@ fn resolved_group_skill<'a>(
 }
 
 /// Resolves the explicit main context exactly. A missing main group retains the
-/// panel's first-resolvable-group fallback; an invalid explicit choice never does.
+/// panel's first-resolvable-group fallback within the active weapon set; an
+/// invalid explicit choice never does.
 pub(crate) fn resolve_main_skill<'a>(
     build: &'a Build,
     data: &'a BuildData,
 ) -> Option<(ResolvedSkillLevel, &'a SocketGroup, &'a str, Option<u32>)> {
-    let resolve = |group| {
+    let resolve = |group: &'a SocketGroup| {
+        if !group.active_in_weapon_set(build.weapon_set) {
+            return None;
+        }
         let (resolved, effect) = resolved_group_skill(build, data, group)?;
         Some((resolved, group, effect.skill_id, effect.stat_set_index))
     };

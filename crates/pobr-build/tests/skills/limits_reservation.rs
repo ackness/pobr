@@ -6,7 +6,7 @@ use pobr_build::{
     DataOrchestratorOptions, calculate_with_data, calculate_with_data_session, parse_build,
     parse_build_from_code,
 };
-use pobr_core::calc::{CalculationSession, MinimalInput, OutputTable};
+use pobr_core::calc::{CompletedCalculationSession, MinimalInput, OutputTable};
 use pobr_core::display_value;
 use pobr_core::rules::config_interpreter::ConfigInputValue;
 use pobr_data::prelude::{DamageType, ModName, ModType};
@@ -99,7 +99,7 @@ fn ancestral_snapshot(
     cry: bool,
     inputs: &str,
     reference: bool,
-) -> CalculationSession {
+) -> CompletedCalculationSession {
     let cry = if cry {
         r#"<Skill><Gem skillId="AncestralCryPlayer" level="20" quality="0"/></Skill>"#
     } else {

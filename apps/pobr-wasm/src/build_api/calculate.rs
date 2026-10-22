@@ -22,6 +22,7 @@ use crate::state;
 
 #[derive(Debug, Serialize)]
 struct CalculateBuildResponse {
+    provenance: pobr_build::provenance::CalculationProvenance,
     minions: Vec<MinionOutputJson>,
     main_minion_index: Option<usize>,
     /// Absent unless requested. Rows include counts and their allocated DPS.
@@ -212,7 +213,7 @@ fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
                 serde_json::to_string(&full).map_err(|e| format!("serialize Full DPS: {e}"))
             },
         )?;
-        session.set_full_dps(
+        session = session.with_full_dps(
             serde_json::from_str(&full).map_err(|e| format!("read cached Full DPS: {e}"))?,
         );
     }
@@ -251,6 +252,13 @@ fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
             },
         );
     let response = CalculateBuildResponse {
+        provenance: pobr_build::provenance::CalculationProvenance::from_data(
+            state::game_data()
+                .map_err(super::ApiError::not_initialized)?
+                .as_ref(),
+            env!("CARGO_PKG_VERSION"),
+        )
+        .map_err(|e| format!("data identity: {e}"))?,
         minions: minion_outputs(&session, &data, &req),
         main_minion_index,
         full_dps: session.output().full_dps.clone(),

@@ -1,7 +1,7 @@
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data_session, parse_build};
-use pobr_core::calc::CalculationSession;
+use pobr_core::calc::CompletedCalculationSession;
 
-fn run(data: &BuildData, skill: &str, config: &str, lines: &[&str]) -> CalculationSession {
+fn run(data: &BuildData, skill: &str, config: &str, lines: &[&str]) -> CompletedCalculationSession {
     let xml = format!(
         r#"<PathOfBuilding2><Build level="80" className="Warrior" mainSocketGroup="1"/>
 <Skills><Skill enabled="true"><Gem skillId="{skill}" level="20" enabled="true"/></Skill></Skills>

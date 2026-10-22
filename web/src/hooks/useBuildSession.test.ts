@@ -4,12 +4,12 @@ import type { BuildJson, CalculateBuildRequest, SkillMetricsResponse } from '../
 import { parseWorkspace, createWorkspace } from '../lib/buildWorkspace';
 
 // The engine answers a skill overview request with a row for each group the
-// request enables, named after the weapon set the request names.
+// request enables in its weapon context, named after that weapon set.
 const engine = vi.hoisted(() => ({ requests: [] as CalculateBuildRequest[] }));
 vi.mock('../api/backend', () => ({ getBackend: async () => ({
   skillMetrics: async (request: CalculateBuildRequest): Promise<SkillMetricsResponse> => {
     engine.requests.push(request);
-    return { item_errors: [], skills: (request.socket_groups ?? []).flatMap((group, group_index) => group.enabled ? [{
+    return { item_errors: [], skills: (request.socket_groups ?? []).flatMap((group, group_index) => group.enabled && (!group.weapon_set || group.weapon_set === request.weapon_swap?.active) ? [{
       group_index, active_skill_index: 1, skill_id: `${group.gems[0].skill_id} in set ${request.weapon_swap?.active}`,
       status: 'calculated' as const, unsupported_modifiers: [], error: null,
       metrics: { hit_dps: 0, dot_dps: 0, combined_dps: 0, average_hit: 0, action_rate: 0, mana_cost: 0, life_cost: 0, cooldown: 0 },
@@ -95,7 +95,7 @@ describe('skill overview across weapon sets', () => {
     expect(engine.requests.map(request => request.weapon_swap?.active)).toEqual([1, 2]);
     expect(engine.requests.map(request => request.items?.find(item => item.slot === 'weapon1')?.text)).toEqual(['Bow', 'Staff']);
     expect(engine.requests.map(request => request.socket_groups?.map(group => group.enabled)))
-      .toEqual([[true, false, true], [true, true, false]]);
+      .toEqual([[true, true, true], [true, true, true]]);
     // The group bound to the set not in use is calculated in that set; a shared
     // group only in the set in use.
     expect(report.skills.map(row => row.skill_id)).toEqual(['Shared in set 1', 'Second in set 2', 'First in set 1']);

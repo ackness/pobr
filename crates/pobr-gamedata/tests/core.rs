@@ -5,6 +5,8 @@
 //! submodules (26→4), reducing the number of linked binaries to speed up builds.
 #![allow(clippy::all)]
 
+#[path = "core/data_identity.rs"]
+mod data_identity;
 #[path = "core/full_stat_ingestion.rs"]
 mod full_stat_ingestion;
 #[path = "core/load_character_constants.rs"]
