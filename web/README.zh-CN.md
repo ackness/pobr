@@ -73,7 +73,7 @@ VITE_POBR_BACKEND=mock pnpm --dir web dev
 mock fixture 由真实契约生成（契约变更后重跑并提交）：
 
 ```bash
-cargo test -p pobr-wasm --test gen_fixtures -- --ignored
+cargo test -p pobr-wasm --features diagnostics --test gen_fixtures -- --ignored
 ```
 
 ## 开发与验证

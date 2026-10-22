@@ -455,7 +455,6 @@ dependencies = [
  "pobr-core",
  "pobr-data",
  "pobr-gamedata",
- "pobr-item",
  "pobr-tree",
  "quick-xml",
  "serde",
@@ -508,16 +507,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pobr-desktop"
-version = "0.0.37"
-dependencies = [
- "pobr-build",
- "pobr-core",
- "pobr-data",
- "pobr-i18n",
-]
-
-[[package]]
 name = "pobr-gamedata"
 version = "0.0.29"
 dependencies = [
@@ -543,7 +532,6 @@ dependencies = [
 name = "pobr-item"
 version = "0.0.29"
 dependencies = [
- "pobr-core",
  "pobr-data",
 ]
 

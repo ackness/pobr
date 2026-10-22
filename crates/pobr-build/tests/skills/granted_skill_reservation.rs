@@ -9,12 +9,8 @@
 //! per 1%, so a gem with 20% quality reserves 100 / 1.10 = 91.
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data")
-}
+use crate::test_data as data;
 
 fn archmage(level: u32, quality: u32, corrupted: bool) -> String {
     format!(

@@ -12,7 +12,6 @@
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_core::calc::OutputTable;
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 const ARCHMAGE: &str = r#"<Gem gemId="Metadata/Items/Gem/SkillGemArchmage" skillId="ArchmagePlayer" nameSpec="Archmage" level="20" quality="20" enabled="true"/>"#;
 
@@ -27,10 +26,7 @@ const SOUL: &str = "{enchant}{rune}Can roll Soul modifiers";
 /// modifiers on Runes and Idols".
 const WISDOM_OF_THE_MAJI: &str = "42253";
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data")
-}
+use crate::test_data as data;
 
 /// A Sorceress with Archmage and a Body Armour holding `socketed`, whose
 /// socketed things give it `lines`.

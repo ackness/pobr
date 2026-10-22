@@ -1,20 +1,10 @@
 use pobr_build::calc_orchestrator::full_dps;
 use pobr_build::{
-    Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
+    Build, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
     parse_build,
 };
-use pobr_gamedata::{GameData, repo_data_root};
-use std::sync::OnceLock;
 
-fn data() -> &'static BuildData {
-    static DATA: OnceLock<BuildData> = OnceLock::new();
-    DATA.get_or_init(|| {
-        BuildData::load(&GameData::new(
-            repo_data_root().join(pobr_gamedata::data_version()),
-        ))
-        .unwrap()
-    })
-}
+use crate::test_data as data;
 fn group(skill: &str, count: u32) -> SocketGroup {
     let mut group = SocketGroup::new().with_gem_skill(skill, 20);
     group.include_in_full_dps = true;

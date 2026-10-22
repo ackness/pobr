@@ -6,7 +6,7 @@
 //! 2. `compile_rules`: the one-time cost of ParserRules → CompiledParserRules (including
 //!    building the aho-corasick automaton) — a load-time, not hot-path, cost.
 //!
-//! Run: `cargo bench -p pobr-core --bench mod_parser_bench`
+//! Run: `cargo bench -p pobr-core --features benchmarks --bench mod_parser_bench`
 
 use std::path::PathBuf;
 

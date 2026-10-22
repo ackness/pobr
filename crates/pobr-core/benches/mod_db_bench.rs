@@ -1,6 +1,6 @@
 //! ModDb aggregation benchmark: sum / more query throughput over 5000 modifiers.
 //!
-//! Run with: `cargo bench -p pobr-core --bench mod_db_bench`.
+//! Run with: `cargo bench -p pobr-core --features benchmarks --bench mod_db_bench`.
 //! Guards against regressions in large-scale Modifier aggregation, which is PoBR's
 //! core performance target.
 

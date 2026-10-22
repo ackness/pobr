@@ -1,6 +1,6 @@
 //! pobr-i18n: localization for PoBR's display layer.
 //!
-//! The calc engine works purely in stable IDs (`StatId`, `SkillId`,
+//! The calc engine works purely in stable IDs (`StatId`, skill IDs,
 //! `ItemBaseId`) and stable UI/error keys. This crate maps those keys to
 //! user-facing text for the supported languages.
 //!

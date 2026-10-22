@@ -1,15 +1,7 @@
-use std::sync::OnceLock;
-
-use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
+use pobr_build::{DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_core::calc::OutputTable;
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
-fn data() -> &'static BuildData {
-    static DATA: OnceLock<BuildData> = OnceLock::new();
-    DATA.get_or_init(|| {
-        BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap()
-    })
-}
+use crate::test_data as data;
 
 fn calculate(skills: &str, modifiers: &[&str]) -> OutputTable {
     let xml = format!(

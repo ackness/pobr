@@ -1,24 +1,17 @@
 //! Cancellable reservation, duration modifier, Full Life threshold and Strike targets
 //! on complete builds.
-use std::sync::OnceLock;
 
 use pobr_build::calc_orchestrator::calculate_with_data_session_tracked;
 use pobr_build::{
-    BuildData, DataOrchestratorOptions, calculate_with_data, calculate_with_data_session,
-    parse_build, parse_build_from_code,
+    DataOrchestratorOptions, calculate_with_data, calculate_with_data_session, parse_build,
+    parse_build_from_code,
 };
 use pobr_core::calc::{CalculationSession, MinimalInput, OutputTable};
 use pobr_core::display_value;
 use pobr_core::rules::config_interpreter::ConfigInputValue;
 use pobr_data::prelude::{DamageType, ModName, ModType};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
-fn data() -> &'static BuildData {
-    static DATA: OnceLock<BuildData> = OnceLock::new();
-    DATA.get_or_init(|| {
-        BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap()
-    })
-}
+use crate::test_data as data;
 
 fn calculate(skills: &str, modifiers: &[&str]) -> OutputTable {
     let xml = format!(

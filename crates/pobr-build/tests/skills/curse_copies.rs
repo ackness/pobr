@@ -3,7 +3,6 @@
 //! has the stronger Despair, whichever group comes first.
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 const DESPAIR: &str = r#"<Gem gemId="Metadata/Items/Gems/SkillGemDespair" skillId="DespairPlayer" nameSpec="Despair" level="20" quality="0" enabled="true"/>"#;
 const HEIGHTENED_CURSE: &str = r#"<Gem gemId="Metadata/Items/Gems/SupportGemHeightenedCurse" skillId="SupportCurseEffectPlayer" nameSpec="Heightened Curse" level="1" quality="0" enabled="true"/>"#;
@@ -34,8 +33,7 @@ fn chaos_damage(data: &BuildData, groups: &[&str]) -> f64 {
 
 #[test]
 fn the_enemy_has_the_strongest_copy_of_a_curse() {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data");
+    let data = crate::test_data();
     let stronger = format!("{DESPAIR}{HEIGHTENED_CURSE}");
     let plain = chaos_damage(&data, &[DESPAIR]);
     let heightened = chaos_damage(&data, &[&stronger]);

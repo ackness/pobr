@@ -20,12 +20,9 @@
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_core::calc::MinimalInput;
 use pobr_data::monster::EnemyTier;
-use pobr_gamedata::{GameData, repo_data_root};
+use pobr_gamedata::repo_data_root;
 
-fn load_build_data() -> BuildData {
-    let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
-    BuildData::load(&data).expect("load BuildData from repo data")
-}
+use crate::test_data as load_build_data;
 
 fn panel_opts() -> DataOrchestratorOptions {
     DataOrchestratorOptions {
@@ -321,7 +318,7 @@ const UNMODELED_RESOURCE_EFFECTS: [(&str, &str, f64, &str); 2] = [
 #[test]
 fn support_coverage_resource_effects_are_attributed_without_inventing_costs() {
     for (support, stat, value, _) in UNMODELED_RESOURCE_EFFECTS {
-        let mut data = load_build_data();
+        let mut data = load_build_data().clone();
         let build = coverage_build("FrostBombPlayer", Some(support));
         let supported = coverage_session(&build, &data);
         let receipts: Vec<_> = supported
@@ -366,7 +363,7 @@ fn support_coverage_resource_receipts_stop_when_the_stat_is_recognized() {
     use std::sync::Arc;
 
     for (support, stat, value, _) in UNMODELED_RESOURCE_EFFECTS {
-        let mut data = load_build_data();
+        let mut data = load_build_data().clone();
         let build = coverage_build("FrostBombPlayer", Some(support));
         // Reuse real empty, numerical and separately-consumed LIST mappings.
         // A later recognized mapping must not retain an Unknown-only receipt.
@@ -444,7 +441,7 @@ fn support_coverage_resource_effects_do_not_leak_from_other_or_incompatible_grou
 #[test]
 fn support_coverage_resource_effects_follow_the_stat_not_the_gem_name() {
     for (source, stat, _, _) in UNMODELED_RESOURCE_EFFECTS {
-        let mut data = load_build_data();
+        let mut data = load_build_data().clone();
         let effect = data.skill_stat_sets[source].sets[0]
             .constant_stats
             .iter()
@@ -700,7 +697,7 @@ fn support_coverage_resource_loss_is_disclosed_without_becoming_a_cost() {
 
 #[test]
 fn support_coverage_resource_loss_requires_a_nonzero_calculated_compatible_payload() {
-    let mut data = load_build_data();
+    let mut data = load_build_data().clone();
     let support = "SupportAtzirisImpatiencePlayer";
     let loss_stat = "lose_%_of_life_es_and_mana_when_skill_is_used";
     let assert_no_loss = |build: &pobr_build::Build, data: &BuildData| {
@@ -772,7 +769,7 @@ fn support_coverage_removed_disabled_and_incompatible_payloads_do_not_disclose_f
 
 #[test]
 fn support_coverage_zero_payload_is_not_a_limit() {
-    let mut data = load_build_data();
+    let mut data = load_build_data().clone();
     // Synthetic zero-valued input to the real mapping/ingestion boundary.
     let stat = data.skill_stat_sets.get_mut(FORK).unwrap().sets[0]
         .constant_stats
@@ -794,7 +791,7 @@ fn support_coverage_selected_set_owns_payload_value_and_identity() {
     use pobr_data::catalog::stat_map::SkillStatMapDef;
     use std::sync::Arc;
 
-    let mut data = load_build_data();
+    let mut data = load_build_data().clone();
     // Fork has one real set. A synthetic second form reuses its actual mapping;
     // only input set/value vary, never the engine outcome or diagnostic.
     let sets = &mut data.skill_stat_sets.get_mut(FORK).unwrap().sets;
@@ -1100,7 +1097,7 @@ fn support_coverage_effective_zero_conditional_number_is_not_a_limit() {
     use pobr_core::rules::stat_map_engine::{MappedOutcome, StatMapCatalog, map_stat};
     use std::sync::Arc;
 
-    let mut data = load_build_data();
+    let mut data = load_build_data().clone();
     let build = coverage_build("FireballPlayer", Some(FORK));
     let baseline = coverage_session(&build, &data);
     let mut mapping = coverage_mapping();
@@ -1137,7 +1134,7 @@ fn support_coverage_routed_sibling_does_not_hide_a_skipped_conditional_number() 
     };
     use std::sync::Arc;
 
-    let mut data = load_build_data();
+    let mut data = load_build_data().clone();
     let build = coverage_build("FireballPlayer", Some(FORK));
     let baseline = coverage_session(&build, &data);
     let mut mapping = coverage_mapping();
@@ -1206,7 +1203,6 @@ mod elemental_armament {
     use pobr_core::calc::CalculationSession;
     use pobr_core::rules::config_interpreter::ConfigInputValue;
     use pobr_data::prelude::{DamageType, ModType, SourceKind};
-    use std::sync::LazyLock;
 
     const SUPPORT: &str = "SupportElementalArmamentPlayerThree";
     const STAT: &str =
@@ -1219,11 +1215,7 @@ mod elemental_armament {
         "EnemyElectrocuted",
     ];
 
-    static DATA: LazyLock<BuildData> = LazyLock::new(load_build_data);
-
-    fn data() -> &'static BuildData {
-        &DATA
-    }
+    use crate::test_data as data;
 
     fn options(effective: bool) -> DataOrchestratorOptions {
         DataOrchestratorOptions {

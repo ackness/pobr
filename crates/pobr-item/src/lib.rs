@@ -9,10 +9,8 @@
 //!   annotations / unmodeled annotations that the calc view deliberately
 //!   discards) is owned by this crate's [`ItemDraft`], and supports BuildRaw round-tripping.
 //!
-//! Reuses `pobr-core::mod_parser` to parse English modifier text, avoiding
-//! duplicated rules at the item layer; rule functions (variant gating /
-//! range resolution) will eventually get a shared entry point from
-//! pobr-core, with this crate only orchestrating them.
+//! Modifier lines remain raw text in this edit view; parsing them for
+//! calculation belongs to the build/core pipeline.
 
 pub mod annotations;
 pub mod build_raw;

@@ -5,7 +5,7 @@
 //! on-demand `skill_metrics_json`. Run with `--nocapture` to see numbers:
 //!
 //! ```bash
-//! cargo test -p pobr-wasm --test perf_timing -- --ignored --nocapture
+//! cargo test -p pobr-wasm --features diagnostics --test perf_timing -- --ignored --nocapture
 //! ```
 
 use pobr_gamedata::repo_data_root;

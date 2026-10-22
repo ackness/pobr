@@ -230,18 +230,12 @@ impl AttributionReport {
 /// Sums the input-node values a source directly contributes among an output
 /// node's ancestor chain.
 ///
-/// Algorithm (RFC §5.1; **review C1 note: this is an algorithm rewrite of the
-/// old "single global-visited flat DFS"**, not "add a field, ignore it,
-/// fallback" — I2's zero-regression guarantee rests on "the new recursive
-/// branch never triggers on Combine-free graphs, and behavior is bit-for-bit
-/// identical", locked by the `legacy_equivalence` unit test; rolling back
-/// means `git revert` on this file's changes, with the old implementation
-/// kept as a copy in `#[cfg(test)] direct_value_for_source_legacy`):
+/// Algorithm (RFC §5.1):
 ///
 /// - If the output node itself is a [`TraceOperation::Combine`]:
 ///   `total = Σᵢ weights[i] × direct(legᵢ)` (including the leg root).
-/// - Within a leg: keeps the old visited-DFS semantics, but **the visited set
-///   is independent per leg**; encountering a nested Combine node during
+/// - Within a leg: counts each ancestor once with a visited set that is
+///   independent per leg; encountering a nested Combine node during
 ///   traversal doesn't expand its incoming edges, it recurses by weight
 ///   instead (nested merging).
 /// - When `pass_filter = Some(p)`, only accumulates Input nodes where
@@ -427,53 +421,18 @@ fn percent(value: f64, final_value: f64) -> Option<f64> {
 }
 
 #[cfg(test)]
-mod direct_rewrite_tests {
-    //! Review C1: direct is an **algorithm rewrite**; the old implementation
-    //! is kept here byte-for-byte as evidence of equivalence — the old and
-    //! new algorithms must be bit-for-bit identical on Combine-free graphs
-    //! (I2's internal mirror; the external mirror is `tests/attribution.rs` /
-    //! `tests/trace.rs` passing with zero changes).
+mod direct_tests {
+    //! Direct contributions on shared paths and a single-leg Combine.
 
     use super::*;
     use crate::{CombineMode, TraceOperation};
-
-    /// A verbatim copy of the old implementation (`direct_value_for_source`
-    /// before the rewrite, a single global-visited flat DFS). For
-    /// equivalence testing only — never call it on a production path.
-    fn direct_value_for_source_legacy(
-        trace: &TraceGraph,
-        output_node: TraceNodeId,
-        source: &SourceId,
-    ) -> f64 {
-        let mut total = 0.0;
-        let mut visited = vec![false; trace.nodes().len()];
-        let mut stack = trace.incoming(output_node);
-
-        while let Some(current) = stack.pop() {
-            let idx = current.as_usize();
-            if visited.get(idx).copied().unwrap_or(true) {
-                continue;
-            }
-            visited[idx] = true;
-
-            if let Some(node) = trace.node(current) {
-                if node.source.as_ref() == Some(source) {
-                    total += node.value;
-                }
-                stack.extend(trace.incoming(current));
-            }
-        }
-
-        total
-    }
 
     fn src(id: &str) -> SourceId {
         SourceId::new(SourceKind::Item, id)
     }
 
-    /// A Combine-free graph with diamond sharing + multi-layer operators: old and new algorithms are bit-for-bit identical (I2).
     #[test]
-    fn no_combine_graph_matches_legacy_bit_for_bit() {
+    fn diamond_paths_count_each_source_input_once() {
         let mut trace = TraceGraph::new();
         let a = trace.add_source_node("weapon flat", 60.0, src("weapon"));
         let b = trace.add_source_node("helmet flat", 40.0, src("helmet"));
@@ -489,19 +448,18 @@ mod direct_rewrite_tests {
         trace.add_edge(scaled, out);
         trace.add_edge(sum, out); // Diamond: sum reaches out via two paths
 
-        for id in ["weapon", "helmet", "absent"] {
+        for (id, expected) in [("weapon", 90.0), ("helmet", 40.0), ("absent", 0.0)] {
             let source = src(id);
             assert_eq!(
                 direct_value_for_source(&trace, out, &source, None),
-                direct_value_for_source_legacy(&trace, out, &source),
-                "on a no-Combine graph, new and old direct must be bit-for-bit equal (source={id})"
+                expected,
+                "source={id}: diamond paths must count each source input once"
             );
         }
     }
 
-    /// An OR passthrough single-leg Combine (single-hand build shape): equivalent to the old algorithm reading the leg directly (I3's attribution-side mirror).
     #[test]
-    fn single_leg_or_combine_matches_legacy_on_leg() {
+    fn single_leg_or_combine_preserves_source_value() {
         let mut trace = TraceGraph::new();
         let input = trace.add_source_node("weapon dps leg", 50.0, src("weapon"));
         let leg = trace.add_node("MH TotalDPS", 50.0, TraceOperation::Multiply);
@@ -511,7 +469,7 @@ mod direct_rewrite_tests {
         let source = src("weapon");
         assert_eq!(
             direct_value_for_source(&trace, combined, &source, None),
-            direct_value_for_source_legacy(&trace, leg, &source),
+            50.0,
         );
     }
 }

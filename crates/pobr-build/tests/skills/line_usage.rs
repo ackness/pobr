@@ -4,12 +4,8 @@
 
 use pobr_build::usage::{LineStatus, LineUsage, ModifierStatus, UsageLine};
 use pobr_build::{BuildData, DataOrchestratorOptions, diagnose, parse_build};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data")
-}
+use crate::test_data as data;
 
 #[test]
 fn structure_flags_report_real_passive_consumers_without_hiding_other_sources() {

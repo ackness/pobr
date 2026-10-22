@@ -6,14 +6,12 @@ use std::path::Path;
 
 use pobr_build::breakdown::{BREAKDOWN_STATS, stat_breakdown};
 use pobr_build::{
-    BuildData, DataOrchestratorOptions, calculate_with_data_session, decode_pob_code, parse_build,
+    DataOrchestratorOptions, calculate_with_data_session, decode_pob_code, parse_build,
 };
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 #[test]
 fn every_line_of_a_jewelled_build_names_its_source() {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data");
+    let data = crate::test_data();
     // A Gemling Legionnaire with rare and unique jewels in tree sockets and a
     // radius jewel whose grants reach Mana.
     let builds = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/wasm-benchmark/builds");

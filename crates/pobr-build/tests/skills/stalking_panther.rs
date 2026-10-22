@@ -3,7 +3,6 @@
 //! Body Armour is halved".
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 /// The notable's passive tree node.
 const STALKING_PANTHER: &str = "63254";
@@ -15,10 +14,7 @@ const GLOVES: Piece = ("Gloves", "Polished Bracers");
 const BOOTS: Piece = ("Boots", "Cinched Boots");
 const BODY_ARMOUR: Piece = ("Body Armour", "Slipstrike Vest");
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data")
-}
+use crate::test_data as data;
 
 /// Evasion Rating of a Huntress wearing `worn`, with or without the notable.
 fn evasion(data: &BuildData, worn: &[Piece], notable: bool) -> f64 {

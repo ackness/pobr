@@ -11,9 +11,7 @@ use pobr_core::{CalcConfig, Modifier, display_value};
 use pobr_data::prelude::*;
 use pobr_gamedata::{GameData, data_version, repo_data_root};
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap()
-}
+use crate::test_data as data;
 fn build(config: &str, source: bool, cap: bool) -> Build {
     let nodes = if source { "43944" } else { "" };
     let mut build = parse_build(&format!(

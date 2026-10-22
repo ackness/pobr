@@ -67,8 +67,8 @@ Rust 计算引擎由 WebAssembly 应用和 CLI 共用，支持词条离线预编
 和 `AttributionReport` 提供计算追踪与来源归因。计算使用稳定 ID，与显示翻译分离；游戏数据
 使用版本化 JSON 快照。PoB2 parity 测试保护已记录的回归基线，不代表所有机制均已覆盖。
 
-计算在浏览器内完成；WeGame 和市集 HTTP 适配由 Pages Worker 提供。桌面应用目前仍是
-占位入口，WASM/JSON API 与 CLI 仍在迭代，可能随版本变更。
+计算在浏览器内完成；WeGame 和市集 HTTP 适配由 Pages Worker 提供。
+WASM/JSON API 与 CLI 仍在迭代，可能随版本变更。
 
 ### 性能与 BD 分析
 
@@ -127,7 +127,7 @@ modifier 文本 → 解析 → ModDb → 聚合查询 → calc
 
 ## Workspace 结构
 
-14 个 member：`crates/` 为 7 个库、`apps/` 为 3 个应用入口、`tools/` 含 4 个 Rust 工具。React / TypeScript 的 `web/` 与 Lua oracle 不在 Cargo workspace 中。
+13 个 member：`crates/` 为 7 个库、`apps/` 为 2 个应用入口、`tools/` 含 4 个 Rust 工具。React / TypeScript 的 `web/` 与 Lua oracle 不在 Cargo workspace 中。
 
 | Crate | 职责 |
 |-------|------|
@@ -140,7 +140,6 @@ modifier 文本 → 解析 → ModDb → 聚合查询 → calc
 | `crates/pobr-item` | raw item 文本的全保真编辑态解析 + 逆向序列化（BuildRaw 往返） |
 | `apps/pobr-cli` | CLI：`calculate` / `calculate-build` / `parse-mod` / `explain-mod` / `decode-code` / `encode-code` |
 | `apps/pobr-wasm` | Web/WASM API：纯 Rust JSON 入出，`wasm` feature 下 wasm-bindgen 绑定 |
-| `apps/pobr-desktop` | 示例计算与文本摘要占位入口，尚未接入 GUI 框架 |
 | `tools/pobr-data-adapter` | 数据管线适配器：GGG `.dat` 导出 → 反范式化为入库 JSON |
 | `tools/sync-pob-catalog` | 从 PoB 核心 Lua 抽取属性 catalog、parity 检查 / diff |
 | `tools/lint-i18n` | 语言包完整性检查 |

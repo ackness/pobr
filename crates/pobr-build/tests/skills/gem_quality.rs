@@ -28,13 +28,9 @@
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::calc::MinimalInput;
 use pobr_data::monster::EnemyTier;
-use pobr_gamedata::{GameData, repo_data_root};
 use std::path::Path;
 
-fn load_data() -> BuildData {
-    let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
-    BuildData::load(&data).expect("load BuildData")
-}
+use crate::test_data as load_data;
 
 /// Build code for the stormweaver-comet fixture (15 q20 gems).
 fn stormweaver_code() -> String {

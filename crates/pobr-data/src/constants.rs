@@ -57,17 +57,6 @@ impl DamageType {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ClassId {
-    Marauder,
-    Duelist,
-    Ranger,
-    Shadow,
-    Witch,
-    Templar,
-    Scion,
-}
-
 /// An elemental sub-type, used to aggregate `ElementalDamage` (fire/cold/lightning).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ElementalType {

@@ -856,34 +856,6 @@ pub fn pick_group_main_skill<'a>(
         .map(|effect| (effect.skill_id, effect.gem_level, effect.stat_set_index))
 }
 
-/// Data channel: the statmap data engine. Maps a stat list through
-/// [`stat_map_engine::map_stat`] into `Modifier`s with `SourceId` attribution.
-///
-/// `SkillData` items have no consumer yet and are ignored (don't participate in the
-/// calculation, can't cause miscalculation); `Unsupported` / `Unknown` are silently
-/// skipped (classification observation goes through Compare mode).
-///
-/// Returns empty when `catalog` is `None` (old data pack — the data channel misses
-/// entirely, matching `mapped_stat_modifiers`'s semantics).
-pub fn data_mapped_stat_modifiers(
-    stats: &[pobr_data::catalog::SkillDamageStat],
-    source_kind: SourceKind,
-    label_prefix: &str,
-    effect_id: &str,
-    set_key: Option<&str>,
-    catalog: Option<&crate::rules::stat_map_engine::StatMapCatalog>,
-) -> Vec<Modifier> {
-    let mut ctx = crate::skill_env::StatMapCtx::data(catalog);
-    crate::skill_env::mapped_stat_modifiers(
-        &mut ctx,
-        stats,
-        source_kind,
-        label_prefix,
-        effect_id,
-        set_key,
-    )
-}
-
 /// The CostTypes channel is already divided into points or percent per use
 /// or per second. Mana is injected by the existing base-parameter adapter.
 pub fn additional_resource_cost_modifiers(costs: &[super::ResolvedCost]) -> Vec<Modifier> {

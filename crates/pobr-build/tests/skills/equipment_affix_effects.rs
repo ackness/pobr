@@ -6,11 +6,8 @@ use pobr_build::{
 use pobr_core::calc::{CalculationSession, MinimalInput};
 use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
 use pobr_data::monster::EnemyTier;
-use pobr_gamedata::{GameData, repo_data_root};
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(pobr_gamedata::current_data_dir())).unwrap()
-}
+use crate::test_data as data;
 
 fn item(base: &str, mods: &[&str]) -> Item {
     Item {
@@ -58,7 +55,7 @@ fn close(actual: f64, expected: f64) {
 
 #[test]
 fn granted_jewel_sockets_follow_selected_tree_data_after_renumbering() {
-    let mut data = data();
+    let mut data = data().clone();
     let mut nodes = std::collections::HashMap::new();
     for (skill, id, name) in [
         (900001, "voices_jewel_slot1__", "Sinister Jewel Socket"),
@@ -175,7 +172,7 @@ Implicits: 0
 fn body_armour_granted_crit_reduction_requires_normal_chest() {
     {
         let version = pobr_gamedata::data_version();
-        let data = BuildData::load(&GameData::new(repo_data_root().join(&version))).unwrap();
+        let data = data();
         for rarity in [
             None,
             Some(ItemRarity::Normal),
@@ -804,7 +801,7 @@ fn clipboard_metadata_and_locally_consumed_defences_are_not_unsupported() {
 
 #[test]
 fn time_lost_jewels_use_selected_geometry_radius_upgrades_and_combined_effects() {
-    let mut data = data();
+    let mut data = data().clone();
     let mut nodes = std::collections::HashMap::new();
     for (skill, kind, x, stats) in [
         (900010, "jewel_socket", 0.0, vec![]),
@@ -885,7 +882,7 @@ fn time_lost_jewels_use_selected_geometry_radius_upgrades_and_combined_effects()
 /// then scales it by its own effect.
 #[test]
 fn the_adorned_scales_what_a_radius_jewel_grants() {
-    let mut data = data();
+    let mut data = data().clone();
     let mut nodes = std::collections::HashMap::new();
     for (skill, kind, x) in [(900040, "jewel_socket", 0.0), (900041, "notable", 100.0)] {
         nodes.insert(skill, serde_json::from_value(serde_json::json!({
@@ -961,7 +958,7 @@ fn the_adorned_scales_what_a_radius_jewel_grants() {
 
 #[test]
 fn time_lost_scaling_preserves_fractional_recovery_and_both_damage_endpoints() {
-    let mut data = data();
+    let mut data = data().clone();
     let mut nodes = std::collections::HashMap::new();
     for (skill, kind, stats) in [
         (900020, "jewel_socket", vec![]),
@@ -1015,7 +1012,7 @@ fn time_lost_scaling_preserves_fractional_recovery_and_both_damage_endpoints() {
 
 #[test]
 fn overlapping_time_lost_jewels_share_the_last_local_effect_per_node() {
-    let mut data = data();
+    let mut data = data().clone();
     data.passive_nodes.clear();
     for (skill, kind, stats) in [
         (900031, "jewel_socket", vec![]),

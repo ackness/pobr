@@ -5,11 +5,8 @@ use pobr_build::{
 };
 use pobr_core::calc::CalculationSession;
 use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap()
-}
+use crate::test_data as data;
 
 fn calculate(
     data: &BuildData,

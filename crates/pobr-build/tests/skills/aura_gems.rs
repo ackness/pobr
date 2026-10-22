@@ -7,7 +7,6 @@
 
 use pobr_build::{Build, BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 /// A Fireball build, with a level 19 Purity of Ice of `quality` when given.
 fn build(purity_quality: Option<u32>) -> Build {
@@ -56,8 +55,7 @@ fn cold_resistance(data: &BuildData, build: &Build) -> f64 {
 
 #[test]
 fn an_aura_gem_keeps_its_quality_and_gains_levels() {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data");
+    let data = crate::test_data();
     let without = cold_resistance(&data, &build(None));
     let granted = |build: &Build| cold_resistance(&data, build) - without;
 
@@ -79,9 +77,8 @@ fn an_aura_gem_keeps_its_quality_and_gains_levels() {
 /// "Companion: {0}", falls back to the skill's own name.
 #[test]
 fn a_buff_has_the_name_the_game_shows() {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data");
-    let name = |skill| pobr_core::skill_env::buff_skill_name(&data, skill);
+    let data = crate::test_data();
+    let name = |skill| pobr_core::skill_env::buff_skill_name(data, skill);
     assert_eq!(name("SnipersMarkPlayer"), "Sniper's Mark");
     assert_eq!(name("ArcticArmourPlayer"), "Arctic Armour");
     assert_eq!(name("SummonBeastPlayer"), "Summon Beast");

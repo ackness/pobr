@@ -7,12 +7,8 @@ use pobr_build::{
     calculate_with_data_session,
 };
 use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
-use pobr_gamedata::{GameData, repo_data_root};
 
-fn data() -> BuildData {
-    let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
-    BuildData::load(&data).expect("load BuildData from repo data")
-}
+use crate::test_data as data;
 
 fn rain_of_arrows() -> Build {
     Build::new()

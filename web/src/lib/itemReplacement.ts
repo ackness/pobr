@@ -184,21 +184,3 @@ export async function compareReplacementPositions(request: CalculateBuildRequest
   if (!positions.length) throw new Error(rejected[0]?.reason ?? 'No replacement result');
   return { text: normalized, base: context.base, requiredLevel: Math.max(context.requiredLevel, augmentLevel), lines, baseline: result.baseline, positions, rejected };
 }
-
-export async function compareReplacement(request: CalculateBuildRequest, slot: string, text: string,
-  signal?: AbortSignal, dependencies: ComparisonDependencies = {}) {
-  const normalized = normalizeCopiedItem(text);
-  signal?.throwIfAborted();
-  const catalog = dependencies.catalog ?? await loadTradeCatalog();
-  signal?.throwIfAborted();
-  const translate = dependencies.translate ?? (await getBackend()).translateLines;
-  signal?.throwIfAborted();
-  await validateReplacement(request, slot, normalized, catalog, translate);
-  signal?.throwIfAborted();
-  const evaluate = dependencies.evaluate ?? evaluateVariants;
-  const result = await evaluate({ request, signal, variants: [tradeItemVariant(request, slot, normalized)] });
-  if (result.aborted || signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
-  const row = result.results[0];
-  if (!row || row.error) throw new Error(row?.error ?? 'No replacement result');
-  return { text: normalized, baseline: result.baseline, stats: row.stats, unsupported: row.unsupported ?? [] };
-}

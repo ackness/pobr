@@ -1,15 +1,8 @@
 //! Costs follow the game's payment event, including explicit sustained drains.
-use std::sync::OnceLock;
 
-use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
+use pobr_build::{DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 
-fn data() -> &'static BuildData {
-    static DATA: OnceLock<BuildData> = OnceLock::new();
-    DATA.get_or_init(|| {
-        BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap()
-    })
-}
+use crate::test_data as data;
 
 #[test]
 fn oil_barrage_pays_its_explicit_drain_without_repeating_the_start_cost() {

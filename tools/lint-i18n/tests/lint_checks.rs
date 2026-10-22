@@ -48,20 +48,6 @@ fn canonical_language_is_a_superset_of_every_other_language() {
 }
 
 #[test]
-fn zh_tw_has_no_extra_keys() {
-    // Arrange / Act
-    let report = lint_languages().expect("lint should succeed");
-    let zh = zh_tw_report(&report);
-
-    // Assert
-    assert!(
-        zh.extra_keys.is_empty(),
-        "zh-TW must not contain keys missing from {CANONICAL_LANGUAGE}: {:?}",
-        zh.extra_keys
-    );
-}
-
-#[test]
 fn missing_keys_are_warnings_not_failures() {
     // A synthetic partial locale keeps warning coverage when shipped bundles are complete.
     let report = LintReport {
@@ -89,12 +75,4 @@ fn exit_code_is_success_when_no_extra_keys() {
 
     // Assert
     assert_eq!(report.exit_code(), 0);
-}
-
-fn zh_tw_report(report: &lint_i18n::LintReport) -> &LanguageReport {
-    report
-        .languages
-        .iter()
-        .find(|lang| lang.language == LanguageId::new("zh-TW"))
-        .expect("zh-TW must be present in report")
 }

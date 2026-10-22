@@ -7,9 +7,8 @@
 //! - Scavenged Plating (PoB2 act_str.lua:16685-16703): 4% more Armour per
 //!   stack, capped by `scavenged_plating_maximum_stacks_display` (10).
 
-use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
+use pobr_build::{DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_core::calc::OutputTable;
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 struct StackingBuff {
     gem_id: &'static str,
@@ -22,8 +21,7 @@ struct StackingBuff {
 
 /// Each case is `(stacks, group enabled, gem enabled, expected stat)`.
 fn assert_stacking_buff(buff: &StackingBuff, cases: &[(u32, bool, bool, f64)]) {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data");
+    let data = crate::test_data();
     let options = DataOrchestratorOptions {
         inject_character_base: false,
         mode_effective: true,

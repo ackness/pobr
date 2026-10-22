@@ -4,6 +4,8 @@ version = "0.0.29"
 edition.workspace = true
 
 [features]
+# Keep benchmark-only dependencies out of ordinary tests.
+benchmarks = ["dep:criterion"]
 # 测试专用规则加载 helper（`mod_parser::test_compiled_rules`）。仅供下游集成测试
 # （独立 crate）取 `CompiledParserRules`——读仓库 `data/<version>/` 的 parser/special
 # 规则文件，故引入 serde_json + fs I/O。**默认 off**：开启才破 pobr-core「本体零 I/O
@@ -19,18 +21,20 @@ regex.workspace = true
 aho-corasick.workspace = true
 # test-rules 专用（规则文件反序列化）；feature 关时不编译，零 I/O 不变式不破。
 serde_json = { workspace = true, optional = true }
+criterion = { version = "0.8", default-features = false, optional = true }
 
 [dev-dependencies]
-criterion = { version = "0.8", default-features = false }
 # 仅测试侧反序列化 statmap 条目 fixture（lib 本体维持零 I/O / 零 serde_json）。
 serde_json.workspace = true
 
 [[bench]]
 name = "mod_db_bench"
 harness = false
+required-features = ["benchmarks"]
 
 # M6-B parser 引擎 vs legacy 中位耗时 bench（蓝图 §9，engine ≤ 1.10× legacy）。
 [[bench]]
 name = "mod_parser_bench"
 harness = false
+required-features = ["benchmarks"]
 

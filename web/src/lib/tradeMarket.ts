@@ -1,75 +1,9 @@
 import { getBackend } from '../api/backend';
 import type { CalculateBuildRequest, VariantInput } from '../api/types';
 import { compareObjectiveStats, evaluateVariants, feasibleOf, scoreOf, type EvaluateOptions, type Objective } from './optimize';
-import type { TradePriceCap, TradeRealm, WeightedStat } from './trade';
-import { tradeItemVariant, type TradeCatalog, type TradeGem } from './tradeOptimizer';
+import type { TradeCatalog, TradeGem } from './tradeOptimizer';
 import { eligibleSupports, lineageAvailable, sameSupportFamily, supportSetsCompatible, type SupportMetadata } from './supportOptimizer';
 import { preserveSkillSelection } from './skillSelection';
-
-export interface MarketItem {
-  name?: string; baseType?: string; typeLine?: string;
-  properties?: { name?: string; type?: number; values: [string, number][] }[];
-  requirements?: { name: string; values: [string, number][] }[];
-}
-export interface Listing { id: string; url?: string; price: { amount: number; currency: string }; item: MarketItem }
-export interface MarketResponse { search_mode?: 'weighted' | 'price' | 'budget'; url: string; total: number; sampled: number; listings: Listing[] }
-export interface MarketQuery {
-  realm: TradeRealm; league: string; category: string; weighted?: WeightedStat[];
-  price?: TradePriceCap; maxLevel?: number; gem?: { name: string; level: number; quality: number };
-}
-export async function searchMarket(query: MarketQuery, signal?: AbortSignal): Promise<MarketResponse> {
-  const response = await fetch('/api/trade/search', { method: 'POST', signal,
-    headers: { 'content-type': 'application/json' }, body: JSON.stringify(query) });
-  const data = await response.json();
-  if (!response.ok) throw Object.assign(new Error(data.error ?? `Trade HTTP ${response.status}`), { status: response.status });
-  return data as MarketResponse;
-}
-export interface MarketUpgrade {
-  listing: Listing; url: string; text: string; variant: VariantInput;
-  stats: Record<string, number>; gain: number; warnings: string[];
-}
-export interface MarketRanking { baseline: Record<string, number>; upgrades: MarketUpgrade[]; rejected: number }
-
-/** Prices stay in their quoted currency; never compare unlike currencies numerically. */
-export function rankMarket(upgrades: MarketUpgrade[], valueCurrency?: string): MarketUpgrade[] {
-  const score = (entry: MarketUpgrade) => valueCurrency
-    ? entry.listing.price.currency === valueCurrency && entry.listing.price.amount > 0 ? entry.gain / entry.listing.price.amount : -Infinity
-    : entry.gain;
-  return [...upgrades].sort((a, b) => score(b) - score(a) || b.gain - a.gain ||
-    (a.listing.price.currency === b.listing.price.currency ? a.listing.price.amount - b.listing.price.amount : 0));
-}
-
-export async function evaluateMarket(options: {
-  request: CalculateBuildRequest; slot: string; market: MarketResponse; objective: Objective;
-  signal?: AbortSignal; onProgress?: EvaluateOptions['onProgress'];
-  evaluate?: typeof evaluateVariants;
-  importItems?: (items: unknown[]) => Promise<{ text?: string; warnings?: string[]; error?: string }[]>;
-}): Promise<MarketRanking> {
-  const { request, slot, market, objective, signal, onProgress } = options;
-  signal?.throwIfAborted();
-  if (!market.listings.length) return { baseline: {}, upgrades: [], rejected: 0 };
-  const importer = options.importItems ?? (await getBackend()).importTradeItems;
-  const imported = await importer(market.listings.map(entry => entry.item));
-  const candidates = imported.flatMap((entry, index) => entry.text && !entry.error ? [{
-    listing: market.listings[index], text: entry.text, warnings: entry.warnings ?? [],
-    variant: tradeItemVariant(request, slot, entry.text),
-  }] : []);
-  const result = await (options.evaluate ?? evaluateVariants)({ request,
-    variants: candidates.map(entry => entry.variant), signal, onProgress });
-  if (result.aborted) throw new DOMException('Search cancelled', 'AbortError');
-  signal?.throwIfAborted();
-  const baseScore = scoreOf(result.baseline, objective);
-  let rejected = imported.length - candidates.length;
-  const upgrades = result.results.flatMap(row => {
-    if (row.error) { rejected++; return []; }
-    const candidate = candidates[row.index];
-    const gain = scoreOf(row.stats, objective) - baseScore;
-    if (!Number.isFinite(gain) || gain <= 0) return [];
-    return [{ ...candidate, url: candidate.listing.url ?? market.url, stats: row.stats, gain,
-      warnings: [...candidate.warnings, ...(row.unsupported ?? [])] }];
-  });
-  return { baseline: result.baseline, upgrades: rankMarket(upgrades), rejected };
-}
 
 export type GemAcquisition = 'skill-adjustment' | 'market-lineage' | 'market-skill';
 export function gemAcquisition(gem: TradeGem): GemAcquisition {
@@ -181,28 +115,4 @@ export async function planGemUpgrades(request: CalculateBuildRequest, catalog: T
     counts.set(plan.acquisition, count + 1);
     return count < 3;
   });
-}
-
-export async function evaluateGemMarket(request: CalculateBuildRequest, plan: GemPlan, market: MarketResponse,
-  objective: Objective, signal?: AbortSignal): Promise<MarketRanking> {
-  const property = (item: MarketItem, type: number) => {
-    const raw = item.properties?.find(entry => entry.type === type)?.values[0]?.[0];
-    return raw === undefined ? undefined : Number.parseInt(raw.replace(/[^\d]/g, ''), 10);
-  };
-  const candidates = market.listings.flatMap(listing => {
-    const level = property(listing.item, 5);
-    const quality = property(listing.item, 6) ?? 0;
-    if (!level || level > 40 || quality > 100) return [];
-    return [{ listing, variant: gemVariant(request, plan.group, plan.position, plan.gem, level, quality),
-      text: `${plan.gem.name}\nLevel: ${level}\nQuality: ${quality}` }];
-  });
-  const result = await evaluateVariants({ request, variants: candidates.map(entry => entry.variant), signal });
-  if (result.aborted) throw new DOMException('Search cancelled', 'AbortError');
-  signal?.throwIfAborted();
-  return { baseline: result.baseline, rejected: market.listings.length - candidates.length,
-    upgrades: rankMarket(result.results.flatMap(row => {
-      const gain = scoreOf(row.stats, objective) - scoreOf(result.baseline, objective);
-      if (row.error || !Number.isFinite(gain) || gain <= 0) return [];
-      return [{ ...candidates[row.index], url: candidates[row.index].listing.url ?? market.url, stats: row.stats, gain, warnings: row.unsupported ?? [] }];
-    })) };
 }

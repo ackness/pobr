@@ -1,7 +1,7 @@
 //! A one-shot audit probe: enumerates tree node mod lines plus demo build
 //! equipment/jewel mod lines, runs the en->zh display translation, and
 //! dumps unmatched lines to target/zh_gap_report.txt.
-//! Run with: cargo test -p pobr-wasm --test zh_gap_probe -- --nocapture --ignored
+//! Run with: cargo test -p pobr-wasm --features diagnostics --test zh_gap_probe -- --nocapture --ignored
 
 use std::collections::BTreeMap;
 

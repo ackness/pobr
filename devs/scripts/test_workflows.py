@@ -48,8 +48,6 @@ import json, os, pathlib, sys
 args = sys.argv[1:]
 with open(os.environ["CALLS"], "a", encoding="utf-8") as out:
     out.write(json.dumps(args) + "\\n")
-if args == ["nextest", "--version"]:
-    sys.exit(0 if os.environ.get("HAS_NEXTEST") else 1)
 if args[:1] == ["metadata"]:
     print(json.dumps({"target_directory": str(pathlib.Path.cwd() / "target")}))
     sys.exit(0)
@@ -95,7 +93,7 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
             "TMPDIR": str(self.root / "tmp"),
             "POBR_PATCH": "test",
         }
-        for key in ["HAS_NEXTEST", "FAIL_COMMAND", "FAIL_TEST", "FAIL_REGEN", "FAIL_QUALITY", "GH_EXIT"]:
+        for key in ["FAIL_COMMAND", "FAIL_TEST", "FAIL_REGEN", "FAIL_QUALITY", "GH_EXIT"]:
             self.env.pop(key, None)
 
     def write(self, rel, text):
@@ -301,39 +299,27 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
                     self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
                     self.assertFalse((self.root / "calls.jsonl").exists())
 
-    def test_full_uses_nextest_and_keeps_doctests(self):
-        self.env["HAS_NEXTEST"] = "1"
+    def test_full_uses_cargo_workspace_tests_including_doctests(self):
         result = self.run_script("devs/scripts/driver.sh", "full")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [
             ["fmt", "--all", "--check"],
-            ["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"],
-            ["nextest", "--version"],
-            ["nextest", "run", "--workspace"],
-            ["test", "--workspace", "--doc"],
+            ["clippy", "--workspace", "--all-targets", "--features",
+             "pobr-core/benchmarks,pobr-build/benchmarks,pobr-wasm/diagnostics", "--", "-D", "warnings"],
+            ["test", "--workspace"],
             ["run", "-p", "lint-i18n"],
         ])
 
-    def test_full_falls_back_only_when_nextest_is_unavailable(self):
-        result = self.run_script("devs/scripts/driver.sh", "full")
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(self.calls()[2:], [
-            ["nextest", "--version"], ["test", "--workspace"], ["run", "-p", "lint-i18n"],
-        ])
-
     def test_full_stops_at_failure_without_retrying_tests(self):
-        for command, has_nextest in [("fmt", "1"), ("clippy", "1"),
-                                     ("nextest", "1"), ("test", "1"), ("test", "")]:
-            with self.subTest(command=command, has_nextest=has_nextest):
+        for command in ["fmt", "clippy", "test"]:
+            with self.subTest(command=command):
                 (self.root / "calls.jsonl").unlink(missing_ok=True)
                 self.env["FAIL_COMMAND"] = command
-                self.env["HAS_NEXTEST"] = has_nextest
                 result = self.run_script("devs/scripts/driver.sh", "full")
                 self.assertEqual(result.returncode, 17, result.stdout + result.stderr)
                 calls = self.calls()
                 self.assertEqual(calls[-1][0], command)
-                self.assertEqual(sum(call[0] == command and "--version" not in call
-                                     for call in calls), 1)
+                self.assertEqual(sum(call[0] == command for call in calls), 1)
 
     def test_gate_runs_every_selected_step_and_names_the_failures(self):
         self.env["FAIL_COMMAND"] = "fmt"

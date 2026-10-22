@@ -25,7 +25,6 @@
 //! recognized and their key extracted; fetching is left to the caller).
 
 pub mod breakdown;
-pub mod buff_stat_map;
 pub mod build;
 pub mod build_code;
 pub mod build_config;

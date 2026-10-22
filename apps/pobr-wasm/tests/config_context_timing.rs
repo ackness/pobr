@@ -1,5 +1,5 @@
 //! Native calculation-only tracking comparison. No JSON response cache or network.
-//! Run: cargo test -p pobr-wasm --test config_context_timing -- --ignored --nocapture
+//! Run: cargo test -p pobr-wasm --features diagnostics --test config_context_timing -- --ignored --nocapture
 
 use pobr_build::calc_orchestrator::calculate_with_data_session_tracked;
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data_session};

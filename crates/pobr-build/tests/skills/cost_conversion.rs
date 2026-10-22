@@ -13,7 +13,6 @@
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_core::calc::OutputTable;
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 const EFFICIENCY: &str = r#"<Gem gemId="Metadata/Items/Gems/SupportGemInspirationTwo" skillId="SupportEfficiencyPlayerTwo" nameSpec="Efficiency II" level="1" quality="0" enabled="true"/>"#;
 const ZENITH: &str = r#"<Gem gemId="Metadata/Items/Gem/SupportGemZenithTwo" skillId="SupportZenithPlayerTwo" nameSpec="Zenith II" level="1" quality="0" enabled="true"/>"#;
@@ -49,10 +48,7 @@ fn calculate(
     calculate_with_data(&build, data, &options).expect("calculate")
 }
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data")
-}
+use crate::test_data as data;
 
 #[test]
 fn supports_that_change_cost_change_what_the_skill_costs() {

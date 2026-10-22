@@ -1,18 +1,11 @@
 //! Exact active-effect selection and independent per-skill calculation contracts.
 
 use pobr_build::{
-    Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup,
-    calculate_skill_metrics, calculate_with_data, parse_build_from_code,
-    resolve_main_skill_selection,
+    Build, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_skill_metrics,
+    calculate_with_data, parse_build_from_code, resolve_main_skill_selection,
 };
-use pobr_gamedata::{GameData, repo_data_root};
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(
-        repo_data_root().join(pobr_gamedata::data_version()),
-    ))
-    .expect("load current game data")
-}
+use crate::test_data as data;
 
 fn build() -> Build {
     Build::new().with_character(CharacterIdentity {
@@ -191,7 +184,7 @@ fn unknown_effect_and_invalid_ordinals_never_borrow_another_skill() {
 
 #[test]
 fn unavailable_level_data_does_not_abort_sibling_rows_or_renumber_groups() {
-    let mut data = data();
+    let mut data = data().clone();
     data.granted_effect_levels.remove("ElementalWeaknessPlayer");
     let build = build()
         .add_socket_group(
@@ -216,7 +209,7 @@ fn unavailable_level_data_does_not_abort_sibling_rows_or_renumber_groups() {
 
 #[test]
 fn complete_effect_ordinals_preserve_provenance_and_skip_support_effects() {
-    let mut data = data();
+    let mut data = data().clone();
     data.gem_effects
         .get_mut("ViciousHexSupportPlayer")
         .unwrap()

@@ -7,14 +7,10 @@
 //! counts the others.
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 const PER_EMPTY_SLOT: &str = "+40 to Spirit for each of your empty Charm slots";
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data")
-}
+use crate::test_data as data;
 
 /// The character's Spirit with a Heavy Belt carrying `belt` lines (header
 /// lines first, then implicits), `charms` Golden Charms in the Charm slots

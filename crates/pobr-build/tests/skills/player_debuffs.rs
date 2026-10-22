@@ -1,6 +1,5 @@
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_core::calc::OutputTable;
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 fn calculate(data: &BuildData, inputs: &str, extra: &[&str], reference: bool) -> OutputTable {
     let xml = format!(
@@ -22,7 +21,7 @@ fn calculate(data: &BuildData, inputs: &str, extra: &[&str], reference: bool) ->
 
 #[test]
 fn configured_player_shock_reads_its_effect_reduction_in_game_mode() {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap();
+    let data = crate::test_data();
     let inputs = r#"<Input name="conditionShocked" boolean="true"/>"#;
     let reduced = ["40% reduced effect of Shock on you"];
     // Retain the imported config's existing 15% magnitude: 15 * .6 = 9%.
@@ -39,7 +38,7 @@ fn configured_player_shock_reads_its_effect_reduction_in_game_mode() {
 
 #[test]
 fn configured_chill_reaches_action_speed_only_when_active_and_supplied() {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap();
+    let data = crate::test_data();
     let reduction = ["40% reduced Effect of Chill on you"];
     let plain = calculate(&data, "", &reduction, false);
     for (state, speed) in [(true, 0.7), (false, 1.0)] {
@@ -62,7 +61,7 @@ fn configured_chill_reaches_action_speed_only_when_active_and_supplied() {
 
 #[test]
 fn self_duration_support_buffs_reach_the_display_views() {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap();
+    let data = crate::test_data();
     let xml = r#"<PathOfBuilding2>
 <Build level="80" className="Witch" ascendClassName="None" mainSocketGroup="1"/>
 <Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" quality="0" enabled="true"/></Skill>
@@ -97,7 +96,7 @@ fn self_duration_support_buffs_reach_the_display_views() {
 
 #[test]
 fn freeze_poison_and_blind_self_views_read_their_game_stats() {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap();
+    let data = crate::test_data();
     let plain = calculate(&data, "", &[], false);
     for id in ["SelfFreezeEffect", "SelfPoisonEffect", "SelfBlindDuration"] {
         assert_eq!(pobr_core::display_value(&plain, id), 100.0, "{id}");
@@ -123,7 +122,7 @@ fn freeze_poison_and_blind_self_views_read_their_game_stats() {
 #[test]
 fn inflicted_shock_and_chill_durations_reconstruct_from_their_detail() {
     use pobr_build::diagnose;
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap();
+    let data = crate::test_data();
     for (skill, stat, line) in [
         (
             "SparkPlayer",

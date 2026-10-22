@@ -104,13 +104,6 @@ export async function compareBuilds(a: CalculateBuildRequest, b: CalculateBuildR
   return { before, after, stats: compareStats(comparisonStats(before), comparisonStats(after)) };
 }
 
-export function allocationDiff(a: number[], b: number[]) {
-  const aa = new Set(a), bb = new Set(b);
-  return { added: [...bb].filter(id => !aa.has(id)).sort((x, y) => x - y),
-    removed: [...aa].filter(id => !bb.has(id)).sort((x, y) => x - y),
-    shared: [...aa].filter(id => bb.has(id)).sort((x, y) => x - y) };
-}
-
 /** Ordered line multiset: repeated modifiers retain their counts and raw text. */
 export function diffText(a = '', b = '') {
   const linesA = a ? a.split(/\r?\n/) : [], linesB = b ? b.split(/\r?\n/) : [];

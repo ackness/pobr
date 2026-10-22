@@ -1,6 +1,5 @@
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data_session, parse_build};
 use pobr_core::calc::CalculationSession;
-use pobr_gamedata::{GameData, current_data_dir};
 
 fn run(data: &BuildData, skill: &str, config: &str, lines: &[&str]) -> CalculationSession {
     let xml = format!(
@@ -27,7 +26,7 @@ fn run(data: &BuildData, skill: &str, config: &str, lines: &[&str]) -> Calculati
 
 #[test]
 fn unearth_per_minion_damage_reads_created_and_configured_counts() {
-    let data = BuildData::load(&GameData::new(current_data_dir())).unwrap();
+    let data = crate::test_data();
     let base = run(&data, "UnearthPlayer", "", &[]);
     let per = "10% increased Damage per Minion";
     let summoned = run(&data, "UnearthPlayer", "", &[per]);
@@ -69,7 +68,7 @@ fn unearth_per_minion_damage_reads_created_and_configured_counts() {
 
 #[test]
 fn minions_share_the_resolved_count_without_adding_the_spawned_count_twice() {
-    let data = BuildData::load(&GameData::new(current_data_dir())).unwrap();
+    let data = crate::test_data();
     let config = r#"<Input name="multiplierSummonedMinion" number="3"/><Input name="multiplierMinionsInPresence" number="2"/>"#;
     let base = run(&data, "UnearthPlayer", config, &[]);
     let boosted = run(
@@ -129,7 +128,7 @@ fn minions_share_the_resolved_count_without_adding_the_spawned_count_twice() {
 
 #[test]
 fn a_specific_summon_count_does_not_include_other_minion_kinds() {
-    let data = BuildData::load(&GameData::new(current_data_dir())).unwrap();
+    let data = crate::test_data();
     let base = run(&data, "FireballPlayer", "", &[]);
     let absent = run(
         &data,

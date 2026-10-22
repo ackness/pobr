@@ -1,11 +1,8 @@
 //! Output coverage for the ranked item/passive wording batch.
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data_session, parse_build};
 use pobr_core::calc::CalculationSession;
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap()
-}
+use crate::test_data as data;
 
 fn run(
     data: &BuildData,

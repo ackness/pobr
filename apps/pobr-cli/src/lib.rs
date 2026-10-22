@@ -59,9 +59,6 @@ pub enum CliError {
     /// Game data failed to load (missing data dir / JSON deserialization failure).
     #[error("game data load error: {0}")]
     GameData(#[from] pobr_gamedata::LoadError),
-    /// The feature isn't implemented yet (kept as a placeholder).
-    #[error("not implemented: {0}")]
-    NotImplemented(&'static str),
 }
 
 // calculate

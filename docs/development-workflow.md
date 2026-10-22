@@ -15,7 +15,6 @@ Web 初次准备见 [Web README](../web/README.md)，数据更新见 [pipeline/R
 | Node | 本地 `mise.toml` 与 CI 均指定 Node 26 |
 | pnpm | 本地 mise 与 CI 仅固定稳定主版本 `12`；运行 `mise install` 配置。依赖 lockfile 固定解析结果，更新直接依赖时保持原主版本，不采用预发布版本 |
 | WASM | `wasm32-unknown-unknown` target + wasm-pack（本地 mise 钉定 0.15.0，CI 用 taiki-e/install-action 取最新版），仅构建 Web 引擎时需要 |
-| cargo-nextest | 本地可选，CI 安装；完整门禁另跑 doctest |
 | LuaJIT | vendor 抽取、oracle 及相关工具测试需要；普通计算使用已入库数据 |
 
 `mise run setup` 在新机器上一次装好 Rust（mise 读取 `rust-toolchain.toml`，不在 `mise.toml`
@@ -40,6 +39,17 @@ mise run gate                                 # Once per batch of merged changes
 mise run gate --only core,parity              # Rerun only the failed steps
 mise run warm <warm checkout>                 # New worktree: copy-on-write clone of its target/debug
 ```
+
+基准和手动诊断按需编译，普通测试不编译 Criterion 或五个 WASM 诊断/fixture 生成目标：
+
+```bash
+cargo bench -p pobr-core --features benchmarks --bench mod_db_bench
+cargo bench -p pobr-build --features benchmarks --bench perform_bench
+cargo test -p pobr-wasm --features diagnostics --test perf_timing -- --ignored --nocapture
+```
+
+完整 CI 和 `mise run full` 的 Clippy 显式启用这两个 feature，继续检查手动工具；
+日常定向测试和 PR 检查不启用。`gen_fixtures` 同样需要 `--features diagnostics`。
 
 小改动的文件与检查步骤见[改动配方](recipes.md)。单个改动只跑定向测试；`gate` 由合并多个改动的人运行一次，
 不在每个改动上重复（规则见 [AGENTS.md](../AGENTS.md#validation-budget)）。
@@ -80,8 +90,13 @@ Web 纯 TS/CSS 修改复用 WASM，运行相关 Vitest 与 typecheck；`pnpm --d
 `POBR_BIN` 运行的是那份 checkout 的引擎，用于读取游戏数据、台账和 PoB2 结果，不用于测量本 worktree 的改动。
 
 根 `Cargo.toml` 的 dev/test 对第三方依赖使用 `opt-level = 3`，workspace crate 保持未优化。
-多数集成测试每个用例加载一次游戏数据快照（JSON 解析加 SHA-256 校验）；依赖未优化时一次加载约 3.4 s，
+游戏数据快照加载包含 JSON 解析和 SHA-256 校验；依赖未优化时历史测量一次加载约 3.4 s，
 优化后约 0.65 s。依赖只编译一次并长期缓存，不影响日常修改 workspace 代码后的重编译速度。
+`pobr-build --test skills` 的当前快照由套件内一个只读 `LazyLock` 共享，修改数据的测试显式 clone，
+合成数据 fixture 保持独立。新增此套件测试复用 `crate::test_data()`，不要重复加载同一版本。
+日常测试和完整门禁统一使用 `cargo test`，套件内复用快照，同时覆盖 doctest；无需额外安装测试 runner。
+规则生成测试的确定性、覆盖率计数和已提交 golden 共用两次生成；物品往返的 corpus 大小、
+语义断言和 byte-diff 报告共用一次遍历，均保留原有断言。
 
 根 `Cargo.toml` 的 dev/test 还使用 `debug = "line-tables-only"` 和 `incremental = false`。
 前者保留回溯行号，后者停止积累每个 crate 的增量对象图和中间文件。
@@ -157,11 +172,10 @@ PR 只能读取自己和 master 的缓存，所以这次运行决定了新 PR �
 把轻量检查漏掉的回归提前到第二天发现，而不是攒到发版。
 
 当前 [ci.yml](../.github/workflows/ci.yml) 包含独立的 Rust lint、Rust 测试和 Web 门禁。
-Rust 检查 fmt/Clippy/nextest/doctest/i18n 与数据兼容；Web 检查脚本、类型、单测、Worker、
+Rust 检查 fmt/Clippy/Cargo tests（含 doctest）/i18n 与数据兼容；Web 检查脚本、类型、单测、Worker、
 真实 WASM 与打包。Playwright E2E 默认不运行：tag、发版 PR 和普通手动触发都跳过，
 只有 `mise run ci <ref> --e2e`（或在 Actions 页勾选 `e2e`）才运行，约 15 分钟。
-界面交互改动需要时在本地跑对应 spec，或显式请求一次云端 E2E。`mise run full` 仅运行 Rust 门禁，包含 fmt/Clippy、nextest + doctest
-（无 nextest 时使用 Cargo）和 i18n。离线或排查 CI 时可显式使用，无需重复已通过的云端全量验证。
+界面交互改动需要时在本地跑对应 spec，或显式请求一次云端 E2E。`mise run full` 仅运行 Rust 门禁，包含 fmt/Clippy、`cargo test --workspace`（含 doctest）和 i18n。离线或排查 CI 时可显式使用，无需重复已通过的云端全量验证。
 
 Linux CI 的 WASM 构建设置 `BINARYEN_CORES=1`，让 wasm-pack 下载的 Binaryen 在主线程执行。
 该模块在 Linux 预编译优化器的工作线程上曾触发 SIGSEGV，切为单线程后完整构建与解包计算通过；
@@ -211,7 +225,6 @@ mise run timings build parity                # Compile selected suite with Cargo
 # Open target/cargo-timings/cargo-timing.html
 
 time mise run test build parity              # Compare unchanged cold/warm inputs
-cargo nextest run -p pobr-build --test parity
 
 mise run test build parity parity_baseline_report -- --ignored --nocapture
 mise run test build parity effective_switch_dual_run_report -- --ignored --nocapture
@@ -234,8 +247,8 @@ cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakdown TotalDPS,
 不要为了测量清缓存。测试目标由 `mise run targets` 读取当前 manifest；深层 tests 文件通常是
 汇总套件的模块，并非每个文件都会单独链接。
 
-nextest 按用例启动独立进程，进程间不共享 `OnceLock`；大量游戏数据初始化时应实测运行成本。
-日常定向测试默认 Cargo，完整门禁使用 nextest 并补 doctest。
+测试耗时应区分编译和执行；不要为每个用例重新加载相同的只读游戏快照。
+需要修改 fixture 的测试显式 clone；依赖未初始化状态的测试须独立隔离该状态，不能因执行顺序提前返回。
 上述三个 parity 报告仅作诊断，默认忽略；两种模式的 no_regression、golden、契约和
 独立语料健康断言继续默认执行，不为加速删减回归覆盖。
 

@@ -8,7 +8,6 @@ members = [
     "crates/pobr-item",
     "crates/pobr-build",
     "apps/pobr-cli",
-    "apps/pobr-desktop",
     "apps/pobr-wasm",
     # 工具
     "tools/sync-pob-catalog",

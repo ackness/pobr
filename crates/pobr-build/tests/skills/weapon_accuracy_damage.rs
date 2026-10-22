@@ -8,7 +8,6 @@ use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
 };
 use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 const PENETRATE: &str = "Attacks using your Weapons have Added Physical Damage equal to 25% of the Accuracy Rating on the Weapon";
 
@@ -47,8 +46,7 @@ fn average_hit(data: &BuildData, bow_mods: &[&str], amulet_mods: &[&str]) -> f64
 
 #[test]
 fn a_quarter_of_the_accuracy_rating_on_the_weapon_is_added_as_physical_damage() {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data");
+    let data = crate::test_data();
     let accurate_bow = ["+400 to Accuracy Rating"];
     let plain = average_hit(&data, &accurate_bow, &[]);
     let with_penetrate = average_hit(&data, &accurate_bow, &[PENETRATE]);
@@ -70,7 +68,7 @@ fn a_quarter_of_the_accuracy_rating_on_the_weapon_is_added_as_physical_damage() 
 
 #[test]
 fn melee_weapon_spell_damage_uses_the_equipped_weapon_class() {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap();
+    let data = crate::test_data();
     for (base, melee) in [
         ("Crude Bow", false),
         ("Ashen Staff", false),

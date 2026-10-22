@@ -1,9 +1,8 @@
-use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data_session, parse_build};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
+use pobr_build::{DataOrchestratorOptions, calculate_with_data_session, parse_build};
 
 #[test]
 fn prevented_recoup_carrier_values_apply_only_on_game_basis() {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap();
+    let data = crate::test_data();
     let build = parse_build(
         r#"<PathOfBuilding2><Build level="80" className="Warrior"/></PathOfBuilding2>"#,
     )

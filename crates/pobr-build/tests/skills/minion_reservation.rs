@@ -9,16 +9,12 @@
 //! amount is taken, rounded up.
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 const QUADRILLA: &str = "Metadata/Monsters/Quadrilla/Quadrilla";
 const BRAMBLE_APE: &str = "Metadata/Monsters/Monkeys/Bramble/BrambleMonkey1";
 const PORCUPINE_CRAB: &str = "Metadata/Monsters/QuillCrab/QuillCrab";
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data")
-}
+use crate::test_data as data;
 
 /// A skill group holding one gem, summoning `minion` when given.
 fn group(skill: &str, level: u32, minion: Option<&str>) -> String {

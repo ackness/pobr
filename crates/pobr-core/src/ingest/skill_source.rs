@@ -134,10 +134,8 @@ impl std::error::Error for SkillGatingError {}
 
 /// The minimal input for ingesting a gem: a stable gem id + a set of modifier texts + whether it's a support gem.
 ///
-/// This is the skill domain's minimal carrier (doesn't depend on
-/// [`Gem`](pobr_data::gem::Gem)'s level/quality/granted_effect and other
-/// fields not yet part of this slice), holding only what's needed for the
-/// "source-level attribution" loop.
+/// Carries gem identity and modifier text for source-level attribution.
+/// Level, quality and granted effects are resolved by the skill pipeline.
 #[derive(Debug, Clone)]
 pub struct GemModSource {
     /// The stable gem id (used internally for calculation; display text goes through i18n).

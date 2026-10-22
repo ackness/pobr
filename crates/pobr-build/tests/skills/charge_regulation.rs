@@ -10,15 +10,11 @@ use pobr_build::{
     parse_build,
 };
 use pobr_core::calc::OutputTable;
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 const FIREBALL: &str = r#"<Gem gemId="Metadata/Items/Gem/SkillGemFireball" skillId="FireballPlayer" nameSpec="Fireball" level="20" quality="0" enabled="true"/>"#;
 const CHARGE_REGULATION: &str = r#"<Gem gemId="Metadata/Items/Gem/SkillGemChargeInfusion" skillId="ChargeRegulationPlayer" nameSpec="Charge Regulation" level="20" quality="0" enabled="true"/>"#;
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data")
-}
+use crate::test_data as data;
 
 /// A Fireball caster with flat defences, with or without Charge Regulation,
 /// using the charges named in `charges` (`usePowerCharges`, ...).

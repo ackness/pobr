@@ -1,5 +1,5 @@
 //! Phase-level timing of one recalc (diagnostic; not a gate).
-//! `cargo test -p pobr-wasm --test perf_phases --release -- --ignored --nocapture`
+//! `cargo test -p pobr-wasm --features diagnostics --test perf_phases --release -- --ignored --nocapture`
 //!
 //! `POBR_DATA_VERSION` selects the dataset (default: golden parity version).
 //! `POBR_PERF_ITERS` repeats the steady-state samples (default: 3).

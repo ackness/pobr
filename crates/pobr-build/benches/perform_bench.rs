@@ -8,7 +8,7 @@
 //! when there's no crit mod), and any short-circuit must ship with an
 //! equivalence test.
 //!
-//! Run with: `cargo bench -p pobr-build --bench perform_bench`.
+//! Run with: `cargo bench -p pobr-build --features benchmarks --bench perform_bench`.
 //! CI doesn't run criterion (too slow); the gate is a manual run before merge
 //! with results posted to the PR, matching the `mod_db_bench` convention. See
 //! `devs/scripts/bench-baseline.md` for the baseline-recording process.

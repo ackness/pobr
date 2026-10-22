@@ -1,7 +1,5 @@
 use std::ops::{BitOr, BitOrAssign};
 
-use crate::stat::StatId;
-
 /// Bitmask word count (320 bits, covering PoB2's whole SkillType enum
 /// range — the current max id is 290, see `Global.lua`'s SkillType table;
 /// high ids like Companion=198 and Grenade=159 are all within range).
@@ -202,23 +200,4 @@ impl BitOrAssign for SkillTypes {
             *w |= r;
         }
     }
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct SkillFlags(u64);
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SkillId(String);
-
-impl From<&str> for SkillId {
-    fn from(value: &str) -> Self {
-        Self(value.into())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct SkillDefinition {
-    pub id: SkillId,
-    pub stats: Vec<StatId>,
-    pub skill_types: SkillTypes,
 }

@@ -12,8 +12,6 @@
 
 use pobr_data::prelude::*;
 
-use crate::TraceGraph;
-use crate::TraceOperation;
 use crate::calc::defence::armour_reduction;
 use crate::rules::DefenceKeystones;
 use crate::{CalcConfig, ModDb};
@@ -352,45 +350,11 @@ pub fn calc_ehp_with_opts(
     }
 }
 
-/// Traced version of `calc_ehp`: records a Mitigate node each for fire and physical max hit, and a Clamp node for the total.
-pub fn calc_ehp_traced(
-    life: f64,
-    es: f64,
-    mana: f64,
-    resistances: &ResistanceSuite,
-    armour: f64,
-    reference_hit: f64,
-    trace: &mut TraceGraph,
-) -> EhpResult {
-    let result = calc_ehp(life, es, mana, resistances, armour, reference_hit);
-
-    let fire_node = trace.add_node(
-        "fire max hit",
-        result.fire_max_hit,
-        TraceOperation::Mitigate,
-    );
-    let phys_node = trace.add_node(
-        "physical max hit",
-        result.physical_max_hit,
-        TraceOperation::Mitigate,
-    );
-    let total_node = trace.add_node(
-        "total EHP (lowest)",
-        result.total_ehp,
-        TraceOperation::Clamp,
-    );
-    trace.add_edge(fire_node, total_node);
-    trace.add_edge(phys_node, total_node);
-
-    result
-}
-
 // The PoB2-view EHP: vendor `CalcDefence.lua`'s numberOfHitsToDie × per-hit incoming damage.
 //
 // `total_ehp` is still the old lowest-max-hit view; this section's values
 // live on `total_ehp_pob2` / `*_max_hit_pob2` / `number_of_damaging_hits` /
-// `number_of_mitigated_hits`. This pipeline attaches no trace -- attribution
-// only reuses calc_ehp_traced's Mitigate/Clamp nodes.
+// `number_of_mitigated_hits`.
 
 /// Per-type array index order (= `DamageType as usize`, the same convention as pool_damage/taken).
 const DAMAGE_TYPE_BY_INDEX: [DamageType; 5] = [
