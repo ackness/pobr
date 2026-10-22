@@ -7,11 +7,8 @@ use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, calculate_with_data_session,
 };
 use pobr_core::parse_pob_xml_item;
-use pobr_gamedata::GameData;
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(pobr_gamedata::current_data_dir())).unwrap()
-}
+use crate::test_data as data;
 
 fn grand_spectrum(base: &str, line: &str) -> String {
     format!("Rarity: UNIQUE\nGrand Spectrum\n{base}\nLimited to: 3\n{line}")

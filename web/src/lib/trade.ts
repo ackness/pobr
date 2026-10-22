@@ -1,14 +1,6 @@
 /** Official trade templates, live realm/league discovery and weighted search links.
- * Affix probes live in tradeOptimizer.ts; actual listing recalculation lives in tradeMarket.ts.
+ * Affix probes live in tradeOptimizer.ts; gem upgrade planning lives in tradeMarket.ts.
  */
-
-import type { TradeStatEntry } from '../api/types';
-
-interface TradeMapFile {
-  templates: Record<string, TradeStatEntry>;
-}
-
-let mapPromise: Promise<Record<string, TradeStatEntry>> | null = null;
 
 /** 数字骨架化（与 pipeline/extract-trade-map.lua 同规则）：先剥 {…} 标注再归一数字。 */
 export function normalizeTradeLine(line: string): string {
@@ -16,23 +8,6 @@ export function normalizeTradeLine(line: string): string {
     .replace(/\{[^}]*\}/g, '')
     .trim()
     .replace(/\d+(\.\d+)?/g, '#');
-}
-
-/** 加载词条→trade id 映射（静态资产；缺文件/mock 后端返回空表 → 功能隐藏）。 */
-export function loadTradeMap(): Promise<Record<string, TradeStatEntry>> {
-  mapPromise ??= (async () => {
-    try {
-      const manifest = (await (await fetch('/data/manifest.json')).json()) as {
-        version: string;
-      };
-      const res = await fetch(`/data/${manifest.version}/overlay/trade_stat_map.json`);
-      if (!res.ok) return {};
-      return ((await res.json()) as TradeMapFile).templates ?? {};
-    } catch {
-      return {};
-    }
-  })();
-  return mapPromise;
 }
 
 /** Representative stat value: average flat damage range, otherwise the signed number. */

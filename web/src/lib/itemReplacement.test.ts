@@ -1,6 +1,6 @@
 /// <reference lib="es2024.promise" />
 import { expect, test, vi } from 'vitest';
-import { compareReplacement, compareReplacementPositions, normalizeCopiedItem, replacementAffixes, validateReplacement } from './itemReplacement';
+import { compareReplacementPositions, normalizeCopiedItem, replacementAffixes, validateReplacement } from './itemReplacement';
 import type { TradeCatalog } from './tradeOptimizer';
 import type { CalculateBuildRequest, ItemAugmentInfo, RuneCatalogEntry } from '../api/types';
 import type { EvaluateOptions, EvaluateResult } from './optimize';
@@ -50,14 +50,12 @@ test('required level uses declared/base requirements, not item level', async () 
   await expect(validateReplacement({ ...request, character: { level: 1 } }, 'ring1', 'Rarity: NORMAL\nSapphire Ring', catalog, translate)).rejects.toThrow('item-level');
 });
 
-test('unknown bases, wrong slots, inactive jewel sockets and unidentified items never reach calc', async () => {
+test('validation rejects unknown bases, wrong slots, inactive jewel sockets and unidentified items', async () => {
   for (const [slot, text, error] of [
     ['helmet', copied, 'wrong-slot'], ['ring1', 'Rarity: RARE\nSapphire Ring\nTwin Bow', 'wrong-slot'], ['ring1', copied.replace('Sapphire Ring', 'Unknown'), 'unknown-base'],
     ['Jewel@13', 'Rarity: MAGIC\nRuby', 'wrong-slot'], ['ring1', `${copied}\nUnidentified`, 'unidentified-item'],
   ]) {
-    const evaluate = vi.fn();
-    await expect(compareReplacement(request, slot, text, undefined, { catalog, translate, evaluate })).rejects.toThrow(error);
-    expect(evaluate).not.toHaveBeenCalled();
+    await expect(validateReplacement(request, slot, text, catalog, translate)).rejects.toThrow(error);
   }
 });
 
@@ -72,21 +70,10 @@ test('quiver needs a bow and coordinated weapon changes are rejected', async () 
   await expect(validateReplacement({ ...request, items: [{ slot: 'weapon1', text: 'Rarity: NORMAL\nTwin Bow' }] }, 'weapon2', 'Rarity: NORMAL\nPrimed Quiver', catalog, translate)).resolves.toEqual(catalog.bases[2]);
 });
 
-test('preview substitutes only the requested position and preserves the source build', async () => {
-  const original = structuredClone(request);
-  const evaluate = vi.fn(async () => ({ baseline: { TotalDPS: 100, TotalEHP: 1000 },
-    results: [{ index: 0, label: null, stats: { TotalDPS: 90, TotalEHP: 1200 }, unsupported: ['Guard'], error: null }], aborted: false }));
-  const result = await compareReplacement(request, 'ring1', copied, undefined, { catalog, translate, evaluate });
-  expect(evaluate).toHaveBeenCalledWith({ request, signal: undefined, variants: [{ set_items: [{ slot: 'ring1', text: copied }] }] });
-  expect(result.stats.TotalDPS).toBe(90);
-  expect(result.unsupported).toEqual(['Guard']);
-  expect(request).toEqual(original);
-});
-
 test('cancelled comparisons do not evaluate or return stale results', async () => {
   const controller = new AbortController(); controller.abort();
   const evaluate = vi.fn();
-  await expect(compareReplacement(request, 'ring1', copied, controller.signal, { catalog, translate, evaluate })).rejects.toThrow();
+  await expect(compareReplacementPositions(request, copied, controller.signal, { catalog, translate, evaluate })).rejects.toThrow();
   expect(evaluate).not.toHaveBeenCalled();
 });
 
@@ -98,7 +85,7 @@ const classify = vi.fn(async () => [
 const evaluatePositions = async ({ variants }: EvaluateOptions): Promise<EvaluateResult> => ({
   baseline: { TotalDPS: 100, TotalEHP: 1000 }, aborted: false,
   results: variants.map((_, index) => ({ index, label: null, error: null,
-    stats: { TotalDPS: index ? 110 : 90, TotalEHP: 1000 }, unsupported: [] })),
+    stats: { TotalDPS: index ? 110 : 90, TotalEHP: 1000 }, unsupported: ['Guard'] })),
 });
 
 test('one copied ring compares both occupied ring positions in one batch without modifying the build', async () => {
@@ -107,6 +94,7 @@ test('one copied ring compares both occupied ring positions in one batch without
   const result = await compareReplacementPositions(request, copied, undefined, { catalog, translate, classify, evaluate });
   expect(result.positions.map(row => row.slot)).toEqual(['ring1', 'ring2']);
   expect(result.positions.map(row => row.stats.TotalDPS)).toEqual([90, 110]);
+  expect(result.positions.map(row => row.unsupported)).toEqual([['Guard'], ['Guard']]);
   expect(result.requiredLevel).toBe(60);
   expect(result.lines).toEqual(await classify());
   expect(evaluate).toHaveBeenCalledTimes(1);
@@ -132,10 +120,14 @@ test('failed destinations remain explained while valid destination results stay 
   expect(result.rejected).toEqual([{ slot: 'ring1', reason: 'Cannot calculate this ring position' }]);
 });
 
-test('missing positions, changed weapon family and excessive requirements explain why no comparison is possible', async () => {
+test('invalid items, missing positions, changed weapon family and excessive requirements explain why no comparison is possible', async () => {
   const evaluate = vi.fn(evaluatePositions);
   await expect(compareReplacementPositions({ character: { level: 85 } }, copied, undefined,
     { catalog, translate, classify, evaluate })).rejects.toThrow('no-compatible-slot');
+  for (const [text, error] of [[copied.replace('Sapphire Ring', 'Unknown'), 'unknown-base'], [`${copied}\nUnidentified`, 'unidentified-item']]) {
+    await expect(compareReplacementPositions(request, text, undefined,
+      { catalog, translate, classify, evaluate })).rejects.toThrow(error);
+  }
   const expanded = { ...catalog, bases: [...catalog.bases, { name: 'Ashen Staff', category: 'weapon.staff', level: 1, tags: [], implicits: [] }] };
   const staffBuild = { ...request, items: [{ slot: 'weapon1', text: 'Rarity: NORMAL\nAshen Staff' }] };
   await expect(compareReplacementPositions(staffBuild, 'Rarity: NORMAL\nTwin Bow', undefined,
@@ -306,16 +298,14 @@ test('aborting metadata lookup or reforge preparation never sends partial varian
   }
 });
 
-test.each(['single', 'positions'] as const)('cancelled %s backend acquisition never starts translation', async mode => {
+test('cancelled backend acquisition never starts translation', async () => {
   const controller = new AbortController();
   const base = await getBackend();
   const lateTranslation = vi.fn(translate);
   const { promise, resolve } = Promise.withResolvers<typeof base>();
   vi.mocked(getBackend).mockReturnValueOnce(promise);
   const text = copied.replace('Sapphire Ring', '蓝玉戒指');
-  const pending = mode === 'single'
-    ? compareReplacement(request, 'ring1', text, controller.signal, { catalog })
-    : compareReplacementPositions(request, text, controller.signal, { catalog });
+  const pending = compareReplacementPositions(request, text, controller.signal, { catalog });
   controller.abort();
   resolve({ ...base, translateLines: lateTranslation });
   await expect(pending).rejects.toMatchObject({ name: 'AbortError' });

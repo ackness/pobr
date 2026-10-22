@@ -9,14 +9,10 @@ use pobr_build::{
     calculate_with_data_session,
 };
 use pobr_core::calc::CalculationSession;
-use pobr_gamedata::{GameData, repo_data_root};
 
 const UMBRAL_WELL: &str = "Skeletal Minions you would create instead grant you Umbral Souls for each Minion you would have created";
 
-fn data() -> BuildData {
-    let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
-    BuildData::load(&data).expect("load BuildData from repo data")
-}
+use crate::test_data as data;
 
 /// A Witch casting Fireball beside a Skeletal Reaver and a Skeletal Sniper.
 fn witch() -> Build {

@@ -1,6 +1,6 @@
 //! pobr-i18n: localization for PoBR's display layer.
 //!
-//! The calc engine works purely in stable IDs (`StatId`, `SkillId`,
+//! The calc engine works purely in stable IDs (`StatId`, skill IDs,
 //! `ItemBaseId`) and stable UI/error keys. This crate maps those keys to
 //! user-facing text for the supported languages.
 //!
@@ -8,8 +8,8 @@
 //! - `zh-TW` covers the canonical keys; any future key it omits falls back to `en-US`,
 //!   and a key absent from both resolves to the key (or stat id) itself.
 //!
-//! All six locale files are embedded via `include_str!`, so there is no runtime
-//! path dependency.
+//! All six locale files become embedded string tables at build time, so there
+//! is no runtime parser or path dependency.
 //!
 //! ```
 //! use pobr_i18n::{LanguageId, Translator, I18nValue};

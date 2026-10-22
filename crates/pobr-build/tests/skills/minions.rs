@@ -13,7 +13,7 @@ use pobr_core::calc::build_minion_context_from_def;
 use pobr_core::calc::minion::{
     AttributeInfusion, minion_level_from_gem_level, resolve_minion_level,
 };
-use pobr_gamedata::{GameData, repo_data_root};
+use pobr_gamedata::repo_data_root;
 
 // Minion reference values (life/damage/DPS, from Minions.lua/Spectres.lua + the
 // PoB2 panel) are checked against the active data version.
@@ -21,10 +21,7 @@ fn version() -> String {
     pobr_gamedata::data_version()
 }
 
-fn load_data() -> BuildData {
-    let data = GameData::new(repo_data_root().join(version()));
-    BuildData::load(&data).expect("load golden parity version data")
-}
+use crate::test_data as load_data;
 
 fn default_opts() -> DataOrchestratorOptions {
     DataOrchestratorOptions {

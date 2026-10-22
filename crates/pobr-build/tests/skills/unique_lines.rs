@@ -9,11 +9,8 @@ use pobr_core::calc::{Actor, ActorBaseStats, BuffKind, BuffSpec, Env, OutputTabl
 use pobr_core::{CalcConfig, Modifier};
 use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
 use pobr_data::prelude::*;
-use pobr_gamedata::{GameData, current_data_dir};
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(current_data_dir())).unwrap()
-}
+use crate::test_data as data;
 
 fn build(skill: &str) -> Build {
     Build::new()

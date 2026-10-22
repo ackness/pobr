@@ -10,7 +10,7 @@ disagreements with historical design notes.
   localization, modifier calculation, passive trees, item editing, and build
   orchestration. `crates/pobr-core/src/` separates `model`, `parse`, `rules`, `ingest`,
   `aggregate`, `calc`, and `attribute`.
-- `apps/` contains CLI, WASM/JSON bindings, and a desktop placeholder.
+- `apps/` contains CLI and WASM/JSON bindings.
   `web/` is the React/TypeScript application; its backend consumes the
   `apps/pobr-wasm/src/build_api/` JSON contract.
 - `tools/` and `pipeline/` generate and verify versioned `data/` snapshots.

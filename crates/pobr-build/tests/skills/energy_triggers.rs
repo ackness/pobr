@@ -11,7 +11,6 @@
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_core::calc::OutputTable;
 use pobr_data::monster::{EnemyTier, enemy_ailment_threshold};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 /// Enemy level of every calculation here: the lowest a Pinnacle boss has.
 const ENEMY_LEVEL: u32 = 82;
@@ -24,10 +23,7 @@ const GEM_GAIN: f64 = 1.57;
 const BOSS: (EnemyTier, f64) = (EnemyTier::Pinnacle, 20.0);
 const MONSTER: (EnemyTier, f64) = (EnemyTier::None, 1.0);
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data")
-}
+use crate::test_data as data;
 
 #[test]
 fn channel_time_to_trigger_uses_the_meta_gems_energy_capacity_and_continuous_gain() {

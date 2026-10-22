@@ -1,10 +1,9 @@
-use pobr_build::{Build, BuildData, DataOrchestratorOptions, SocketGroup, calculate_with_data};
+use pobr_build::{Build, DataOrchestratorOptions, SocketGroup, calculate_with_data};
 use pobr_data::item::{EquipmentSlot, Item, ItemRarity, RolledDefence};
-use pobr_gamedata::{GameData, current_data_dir};
 
 #[test]
 fn item_local_and_global_requirement_modifiers_stay_separate() {
-    let mut data = BuildData::load(&GameData::new(current_data_dir())).unwrap();
+    let mut data = crate::test_data().clone();
     data.base_items.insert(
         "RequirementBoots".into(),
         serde_json::from_value(serde_json::json!({
@@ -86,7 +85,7 @@ fn item_local_and_global_requirement_modifiers_stay_separate() {
 
 #[test]
 fn local_flat_requirement_is_added_after_base_requirement_conversion() {
-    let data = BuildData::load(&GameData::new(current_data_dir())).unwrap();
+    let data = crate::test_data();
     let build = pobr_build::parse_build(
         r#"<PathOfBuilding2><Build level="90" className="Huntress"/>
         <Items><Item id="1">Rarity: UNIQUE
@@ -117,7 +116,7 @@ Implicits: 2
 
 #[test]
 fn gem_requirements_follow_more_and_highest_attribute_text() {
-    let data = BuildData::load(&GameData::new(current_data_dir())).unwrap();
+    let data = crate::test_data();
     let build =
         Build::new().add_socket_group(SocketGroup::new().with_gem_skill("FireballPlayer", 20));
     let calc = |lines: &[&str]| {
@@ -153,7 +152,7 @@ fn gem_requirements_follow_more_and_highest_attribute_text() {
 
 #[test]
 fn corruption_level_bonus_does_not_increase_gem_requirements() {
-    let data = BuildData::load(&GameData::new(current_data_dir())).unwrap();
+    let data = crate::test_data();
     let build = pobr_build::parse_build(r#"<PathOfBuilding2><Build level="90" className="Witch"/>
         <Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="18" corruptLevel="1" enabled="true"/></Skill></Skills>
         </PathOfBuilding2>"#).unwrap();

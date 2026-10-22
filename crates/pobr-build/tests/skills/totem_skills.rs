@@ -9,12 +9,8 @@
 use pobr_build::{
     Build, BuildData, DataOrchestratorOptions, calculate_with_data, diagnose, parse_build,
 };
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data")
-}
+use crate::test_data as data;
 
 const SPELL_TOTEM: &str = r#"<Gem gemId="Metadata/Items/Gems/SkillGemSpellTotem" skillId="SummonMetaTotemSpellTotemPlayer" nameSpec="Spell Totem" variantId="MetaSpellTotem" enabled="true" level="20" quality="0"/>"#;
 

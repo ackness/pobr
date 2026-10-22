@@ -5,4 +5,3 @@ edition.workspace = true
 
 [dependencies]
 pobr-data.workspace = true
-pobr-core.workspace = true

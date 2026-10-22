@@ -1,18 +1,11 @@
 use pobr_build::party::{Party, PartyMember, import_member, parse_party, party_xml};
 use pobr_build::{
-    Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
+    Build, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
     encode_pob_code,
 };
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 use std::collections::BTreeMap;
-use std::sync::OnceLock;
 
-fn data() -> &'static BuildData {
-    static DATA: OnceLock<BuildData> = OnceLock::new();
-    DATA.get_or_init(|| {
-        BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap()
-    })
-}
+use crate::test_data as data;
 fn build() -> Build {
     Build::new()
         .with_character(CharacterIdentity {

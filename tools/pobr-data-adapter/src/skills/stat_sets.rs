@@ -233,11 +233,6 @@ pub(super) fn crit_from_statset_levels(
 /// whitelist (the adapter-side whitelist suffix predicate has been removed)
 /// — the statmap data engine (`pobr-core::rules::stat_map_engine`, T2) needs
 /// to see every stat to exhaustively cross-reference them.
-/// **Migration-invariant guarantee**: the same predicate has been moved to
-/// the consumption-side legacy path (`pobr-build::legacy_stat_filter`,
-/// filtering at the Legacy channel's entry point in
-/// `mapped_stat_modifiers`), keeping ninja parity byte-for-byte unchanged;
-/// that consumption-side filter will be removed alongside legacy in T2.4.
 ///
 /// Verification baseline: FireballPlayer L1 -> `spell_minimum/maximum_base_fire_damage` = 8 / 12
 /// (matches PoB's own parsed `Data/Skills/act_int.lua` byte-for-byte; the

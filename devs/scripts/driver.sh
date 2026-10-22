@@ -280,20 +280,11 @@ Script subcommands for the renamed tasks: data, diff, lua.
 EOF
 }
 
-cmd_workspace_tests() {
-  if cargo nextest --version >/dev/null 2>&1; then
-    cargo nextest run --workspace && cargo test --workspace --doc
-  else
-    say "nextest unavailable; using cargo test (including doctests)"
-    cargo test --workspace
-  fi
-}
-
 cmd_full() {
   say "Full workspace gate: fmt, clippy, tests (including doctests), i18n"
   cargo fmt --all --check &&
-    cargo clippy --workspace --all-targets -- -D warnings &&
-    cmd_workspace_tests &&
+    cargo clippy --workspace --all-targets --features pobr-core/benchmarks,pobr-build/benchmarks,pobr-wasm/diagnostics -- -D warnings &&
+    cargo test --workspace &&
     cargo run -p lint-i18n
 }
 

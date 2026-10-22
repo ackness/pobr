@@ -140,24 +140,6 @@ export function connectedAllocation(
   return new Set([...access.connected, ...[...access.free].filter(id => allocated.has(id))]);
 }
 
-/**
- * 取消一个已加点节点。仅当图模型能完整解释当前加点全集（全部可达根）时才做
- * 级联清理；导入的真实 build 常含模型外连接（class 起点挂接边缺失、武器组加点），
- * 此时退化为单点取消，绝不误删整棵树。
- */
-export function deallocateNode(
-  graph: PassiveGraph,
-  allocated: ReadonlySet<number>,
-  root: number | null,
-  removed: number,
-  grants: readonly PassiveAllocationGrant[] = [],
-): Set<number> {
-  const remaining = new Set(allocated);
-  remaining.delete(removed);
-  if (connectedAllocation(graph, allocated, root, grants).size !== allocated.size) return remaining;
-  return connectedAllocation(graph, remaining, root, grants);
-}
-
 /** Revoke only allocations whose known jewel dependency was removed or changed. */
 export function reconcileJewelAllocation(
   nodes: PassiveNode[], allocated: number[], className: string,

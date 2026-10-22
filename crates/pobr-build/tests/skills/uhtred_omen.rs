@@ -5,7 +5,6 @@
 //! meta gem (Boundless Energy II needs a skill that generates Energy).
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 const UHTRED: &str = r#"<Gem gemId="Metadata/Items/Gem/SupportGemUhtredsOmen" skillId="SupportUhtredOmenPlayer" nameSpec="Uhtred's Omen" level="1" quality="0" enabled="true"/>"#;
 
@@ -35,8 +34,7 @@ fn comet_hit(data: &BuildData, level: u32, extra: &str) -> f64 {
 
 #[test]
 fn uhtreds_omen_counts_the_support_gems_modifying_the_skill() {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data");
+    let data = crate::test_data();
     assert_eq!(comet_hit(&data, 20, UHTRED), comet_hit(&data, 22, ""));
     assert!(comet_hit(&data, 22, "") > comet_hit(&data, 20, ""));
 }

@@ -7,7 +7,7 @@
 
 use pobr_data::prelude::*;
 
-use crate::{CalcConfig, ModDb, TraceGraph, TraceNodeId, TraceOperation, TracedValue};
+use crate::{CalcConfig, ModDb};
 
 use super::round;
 
@@ -257,71 +257,6 @@ pub fn crossbow_reload_time(db: &crate::ModDb, cfg: &CalcConfig, base_reload_s: 
         return base_reload_s;
     }
     base_reload_s / multi
-}
-
-/// Traced version of `calc_skill_use_time`: records nodes for the speed bucket, action speed, and final rate.
-pub fn calc_skill_use_time_traced(
-    db: &ModDb,
-    cfg: &CalcConfig,
-    base_use_time: f64,
-    use_time_penalty: f64,
-    is_channelling: bool,
-    trace: &mut TraceGraph,
-) -> (SkillUseTime, TraceNodeId) {
-    let result = calc_skill_use_time(db, cfg, base_use_time, use_time_penalty, is_channelling);
-
-    let base_node = trace.add_source_node(
-        "base use time",
-        base_use_time,
-        SourceId::new(SourceKind::CharacterBase, "base.UseTime"),
-    );
-    let speed_bucket = db.sum_traced(
-        ModType::Inc,
-        cfg,
-        &speed_names_for(cfg),
-        trace,
-        "skill speed bucket (Attack/Cast/Skill)",
-    );
-    let action_speed = db.sum_traced(
-        ModType::Inc,
-        cfg,
-        &[ModName::from(ACTION_SPEED)],
-        trace,
-        "action speed (independent)",
-    );
-    let rate_node = trace.add_node(
-        "effective action rate",
-        result.effective_rate,
-        TraceOperation::Multiply,
-    );
-    trace.add_edge(base_node, rate_node);
-    trace.add_edge(speed_bucket.node_id, rate_node);
-    trace.add_edge(action_speed.node_id, rate_node);
-
-    (result, rate_node)
-}
-
-/// Convenience wrapper returning a traced value.
-pub fn calc_skill_use_time_traced_value(
-    db: &ModDb,
-    cfg: &CalcConfig,
-    base_use_time: f64,
-    use_time_penalty: f64,
-    is_channelling: bool,
-    trace: &mut TraceGraph,
-) -> TracedValue {
-    let (result, node_id) = calc_skill_use_time_traced(
-        db,
-        cfg,
-        base_use_time,
-        use_time_penalty,
-        is_channelling,
-        trace,
-    );
-    TracedValue {
-        value: result.effective_rate,
-        node_id,
-    }
 }
 
 #[cfg(test)]

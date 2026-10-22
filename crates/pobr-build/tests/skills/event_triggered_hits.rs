@@ -2,11 +2,8 @@
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_core::calc::OutputTable;
-use pobr_gamedata::{GameData, current_data_dir};
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(current_data_dir())).unwrap()
-}
+use crate::test_data as data;
 
 fn calculate(data: &BuildData, primary: &str, extra: &[&str]) -> OutputTable {
     let xml = format!(

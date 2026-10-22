@@ -379,34 +379,6 @@ pub fn calc_projectile_count(db: &ModDb, cfg: &CalcConfig) -> ProjectileCountRes
     }
 }
 
-/// Traced version of `calc_projectile_count`.
-pub fn calc_projectile_count_traced(
-    db: &ModDb,
-    cfg: &CalcConfig,
-    trace: &mut TraceGraph,
-) -> (ProjectileCountResult, TraceNodeId) {
-    let result = calc_projectile_count(db, cfg);
-
-    let proj_names = [ModName::from("ProjectileCount")];
-    let base_node = db.sum_traced(
-        ModType::Base,
-        cfg,
-        &proj_names,
-        trace,
-        "ProjectileCount BASE sum",
-    );
-    let more_node = db.more_traced(cfg, &proj_names, trace, "ProjectileCount MORE factor");
-    let count_node = trace.add_node(
-        "projectile count",
-        result.projectile_count,
-        TraceOperation::Multiply,
-    );
-    trace.add_edge(base_node.node_id, count_node);
-    trace.add_edge(more_node.node_id, count_node);
-
-    (result, count_node)
-}
-
 // §3  Cooldown
 
 /// Cooldown calculation result.
@@ -550,43 +522,6 @@ fn finalize_cooldown(raw_cd: f64, stored_uses: u32, tick_seconds: f64) -> (f64, 
         let rounded = (raw_cd * tick_rate).ceil() / tick_rate;
         (round(rounded), true)
     }
-}
-
-/// Traced version of `calc_cooldown`.
-pub fn calc_cooldown_traced(
-    db: &ModDb,
-    cfg: &CalcConfig,
-    base_cooldown_s: f64,
-    base_stored_uses: u32,
-    trace: &mut TraceGraph,
-) -> (CooldownResult, TraceNodeId) {
-    let result = calc_cooldown(db, cfg, base_cooldown_s, base_stored_uses);
-
-    let cd_recovery_names = [ModName::from("CooldownRecovery")];
-    let base_node = trace.add_source_node(
-        "base cooldown",
-        base_cooldown_s,
-        SourceId::new(SourceKind::CharacterBase, "base.Cooldown"),
-    );
-    let inc_node = db.sum_traced(
-        ModType::Inc,
-        cfg,
-        &cd_recovery_names,
-        trace,
-        "CooldownRecovery INC sum",
-    );
-    let more_node = db.more_traced(
-        cfg,
-        &cd_recovery_names,
-        trace,
-        "CooldownRecovery MORE factor",
-    );
-    let cd_node = trace.add_node("cooldown", result.cooldown, TraceOperation::Multiply);
-    trace.add_edge(base_node, cd_node);
-    trace.add_edge(inc_node.node_id, cd_node);
-    trace.add_edge(more_node.node_id, cd_node);
-
-    (result, cd_node)
 }
 
 // §4  Cost and reservation
@@ -942,60 +877,6 @@ pub fn calc_spirit_reservation(
         final_cost: round(reserved),
         no_cost: false,
     }
-}
-
-/// Traced version of `calc_skill_cost` (using Mana as the example; other resource types work the same way).
-pub fn calc_skill_cost_traced(
-    db: &ModDb,
-    cfg: &CalcConfig,
-    kind: SkillCostKind,
-    resource_mod_prefix: &str,
-    base_cost: f64,
-    trace: &mut TraceGraph,
-) -> (SkillCostResult, TraceNodeId) {
-    let result = calc_skill_cost(db, cfg, kind, resource_mod_prefix, base_cost);
-
-    let type_cost_name = format!("{resource_mod_prefix}Cost");
-    let inc_names = [
-        ModName::from(type_cost_name.as_str()),
-        ModName::from("Cost"),
-    ];
-    let base_node = trace.add_source_node(
-        format!("{resource_mod_prefix} base cost"),
-        base_cost,
-        SourceId::new(SourceKind::CharacterBase, format!("base.{type_cost_name}")),
-    );
-    let inc_node = db.sum_traced(
-        ModType::Inc,
-        cfg,
-        &inc_names,
-        trace,
-        format!("{type_cost_name} INC sum"),
-    );
-    let more_type_node = db.more_traced(
-        cfg,
-        &[ModName::from(type_cost_name.as_str())],
-        trace,
-        format!("{type_cost_name} MORE factor"),
-    );
-    // The support gem's cost multiplier: added to the graph as an independent factor node (traceable back to the SupportGem source).
-    let support_mult_node = db.more_traced(
-        cfg,
-        &[ModName::from("SupportManaMultiplier")],
-        trace,
-        "SupportManaMultiplier MORE factor",
-    );
-    let cost_node = trace.add_node(
-        format!("{resource_mod_prefix} final cost"),
-        result.final_cost,
-        TraceOperation::Multiply,
-    );
-    trace.add_edge(base_node, cost_node);
-    trace.add_edge(inc_node.node_id, cost_node);
-    trace.add_edge(more_type_node.node_id, cost_node);
-    trace.add_edge(support_mult_node.node_id, cost_node);
-
-    (result, cost_node)
 }
 
 /// Skill effect durations share the general Duration modifiers; the first

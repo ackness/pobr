@@ -8,7 +8,6 @@ members = [
     "crates/pobr-item",
     "crates/pobr-build",
     "apps/pobr-cli",
-    "apps/pobr-desktop",
     "apps/pobr-wasm",
     # 工具
     "tools/sync-pob-catalog",
@@ -51,3 +50,9 @@ incremental = false
 # once and stay cached, so workspace crates keep their fast unoptimized builds.
 [profile.dev.package."*"]
 opt-level = 3
+
+# Cross-crate optimization for the shipped engine, independent of local tests.
+[profile.wasm-release]
+inherits = "release"
+lto = "thin"
+codegen-units = 1

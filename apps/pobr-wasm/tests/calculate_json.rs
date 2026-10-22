@@ -169,13 +169,15 @@ fn collects_unparseable_modifier_as_unsupported() {
 fn errors_on_modifiers_without_initialized_data() {
     // Non-empty modifiers with uninitialized data -> an explicit error
     // (fail-fast, never silently dropping mod lines).
-    // Note: this test case relies on nextest running each test in its own
-    // process (other test cases sharing a process may have already called init).
-    let input = r#"{ "base_life": 100, "modifiers": ["+10 to maximum life"] }"#;
-    if pobr_wasm::is_data_ready() {
-        return; // Already initialized by a shared process — skip (cargo test's single-process mode).
-    }
-    let result = calculate_json(input);
-    assert!(result.is_err());
-    assert!(result.unwrap_err().contains("game data"));
+    // Engine state is thread-local. A fresh thread guarantees the uninitialized
+    // branch is exercised under any runner, even after other cases initialize.
+    std::thread::spawn(|| {
+        assert!(!pobr_wasm::is_data_ready());
+        let input = r#"{ "base_life": 100, "modifiers": ["+10 to maximum life"] }"#;
+        let result = calculate_json(input);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("game data"));
+    })
+    .join()
+    .expect("uninitialized-data check");
 }

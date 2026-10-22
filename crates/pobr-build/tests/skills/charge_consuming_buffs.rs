@@ -7,7 +7,6 @@
 //! charge, and one without charges gains nothing.
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 const FIREBALL: &str = r#"<Gem gemId="Metadata/Items/Gem/SkillGemFireball" skillId="FireballPlayer" nameSpec="Fireball" level="20" quality="0" enabled="true"/>"#;
 const BONESTORM: &str = r#"<Gem gemId="Metadata/Items/Gem/SkillGemBonestorm" skillId="BonestormPlayer" nameSpec="Bonestorm" level="20" quality="0" enabled="true"/>"#;
@@ -53,10 +52,7 @@ fn average_hit(
     output.total_hit_avg
 }
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data")
-}
+use crate::test_data as data;
 
 /// How much the buff of `buff_gems` multiplies the average hit by.
 fn gain_from(

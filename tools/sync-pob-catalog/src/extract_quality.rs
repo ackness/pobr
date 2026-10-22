@@ -14,10 +14,6 @@
 //! (ascending effect_id, preserving vendor order within each effect),
 //! shortest-round-trip number representation, and whole-document
 //! serialization, guaranteeing **byte-stable** output on repeated runs with the same input.
-//!
-//! NOTE(T2): the luajit invocation / `_meta` construction here overlaps a
-//! bit with `extract_lua.rs` — this file belongs to the T2 (stat-map
-//! extraction) owner, who can factor out the shared layer once T2 lands.
 
 use std::fs;
 use std::io::{self, Write};

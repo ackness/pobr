@@ -10,17 +10,13 @@
 //! value-for-value), average hit 280.
 
 use pobr_build::{
-    Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
+    Build, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
 };
 use pobr_core::calc::MinimalInput;
 use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
 use pobr_data::monster::EnemyTier;
-use pobr_gamedata::{GameData, repo_data_root};
 
-fn load_build_data() -> BuildData {
-    let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
-    BuildData::load(&data).expect("load BuildData from repo data")
-}
+use crate::test_data as load_build_data;
 
 fn fireball_build(gem_level: u32) -> Build {
     Build::new()

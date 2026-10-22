@@ -12,11 +12,8 @@ use pobr_core::calc::{CalculationSession, MinimalInput};
 use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
 use pobr_data::monster::EnemyTier;
 use pobr_data::prelude::*;
-use pobr_gamedata::GameData;
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(pobr_gamedata::current_data_dir())).unwrap()
-}
+use crate::test_data as data;
 
 fn ring(mods: &[&str]) -> Item {
     Item {

@@ -2,14 +2,11 @@
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_core::calc::OutputTable;
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 const SHAMAN: &str = "Metadata/Monsters/SerpentClanMonster/SerpentClanCaster";
 const RIBRATTLE: &str = "Metadata/Monsters/PitifulFabrications/Canopy/PitifulFabrication02";
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap()
-}
+use crate::test_data as data;
 
 fn calculate(
     data: &BuildData,

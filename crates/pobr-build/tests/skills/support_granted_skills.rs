@@ -8,7 +8,6 @@
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_core::calc::OutputTable;
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 /// A curse supported by Doedre's Undoing, calculating the group's
 /// `main_active_skill`-th skill: 1 is the curse, 2 is Dark Consequences.
@@ -32,10 +31,7 @@ fn calculate(data: &BuildData, main_active_skill: u32, modifiers: &[&str]) -> Ou
     calculate_with_data(&build, data, &options).expect("calculate")
 }
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data")
-}
+use crate::test_data as data;
 
 const FASTER_CASTING: &[&str] = &["50% increased Cast Speed"];
 

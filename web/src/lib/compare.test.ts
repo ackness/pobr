@@ -36,7 +36,7 @@ describe('diffStats', () => {
   });
 });
 
-import { allocationDiff, compareStats, comparisonStats, comparisonRequests, configDifferences, copySection, diffText, formatComparisonDelta, itemDifferences, resolvedTreeVersion, skillDifferences, weaponDifferences, type StageState } from './compare';
+import { compareStats, comparisonStats, comparisonRequests, configDifferences, copySection, diffText, formatComparisonDelta, itemDifferences, resolvedTreeVersion, skillDifferences, weaponDifferences, type StageState } from './compare';
 import { switchWeapons } from './weaponSets';
 
 const state = (): StageState => ({
@@ -125,8 +125,7 @@ describe('whole-build comparison', () => {
     a.socketGroups[0].source = 'Weapon 1';
     expect(copySection(a, b, { kind: 'skill', index: 0 })).toBe(a);
   });
-  test('lists passive set differences and resolves Default against current data', () => {
-    expect(allocationDiff([3, 2, 2, 1], [2, 4])).toEqual({ added: [4], removed: [1, 3], shared: [2] });
+  test('resolves Default tree version against current data', () => {
     expect(resolvedTreeVersion('Default', '0.5.5.4.2')).toBe('0_5');
     expect(resolvedTreeVersion(undefined, '0.5.5.4.2')).toBe('0_5');
     expect(resolvedTreeVersion('0_4', '0.5.5.4.2')).toBe('0_4');

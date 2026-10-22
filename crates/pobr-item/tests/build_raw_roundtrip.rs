@@ -88,21 +88,17 @@ fn corpus() -> Vec<(String, String)> {
 }
 
 #[test]
-fn corpus_is_non_empty() {
-    let c = corpus();
-    assert!(
-        c.len() >= 100,
-        "expected ≥100 real item blocks, got {} (builds dir = {:?})",
-        c.len(),
-        builds_dir()
-    );
-}
-
-#[test]
 fn semantic_fixpoint_roundtrip_all_real_items() {
     let mut failures = Vec::new();
     let corpus = corpus();
-    assert!(!corpus.is_empty(), "empty corpus");
+    assert!(
+        corpus.len() >= 100,
+        "expected ≥100 real item blocks, got {} (builds dir = {:?})",
+        corpus.len(),
+        builds_dir()
+    );
+    let mut exact = 0usize;
+    let mut diff = 0usize;
 
     for (id, raw) in &corpus {
         let Ok(d1) = ItemDraft::parse(raw) else {
@@ -110,6 +106,11 @@ fn semantic_fixpoint_roundtrip_all_real_items() {
             continue;
         };
         let rebuilt = d1.build_raw();
+        if normalize(raw) == normalize(&rebuilt) {
+            exact += 1;
+        } else {
+            diff += 1;
+        }
         let Ok(d2) = ItemDraft::parse(&rebuilt) else {
             failures.push(format!("{id}: re-parse of build_raw failed"));
             continue;
@@ -121,6 +122,11 @@ fn semantic_fixpoint_roundtrip_all_real_items() {
             ));
         }
     }
+
+    eprintln!(
+        "[build_raw byte-diff report] exact={exact} diff={diff} total={}",
+        corpus.len()
+    );
 
     if !failures.is_empty() {
         let shown: Vec<_> = failures.iter().take(5).collect();
@@ -136,29 +142,6 @@ fn semantic_fixpoint_roundtrip_all_real_items() {
                 .join("\n\n")
         );
     }
-}
-
-/// Byte-contract report (not a gate): counts line-by-line diffs between build_raw and the normalized original.
-#[test]
-fn byte_diff_report() {
-    let corpus = corpus();
-    let mut exact = 0usize;
-    let mut diff = 0usize;
-    for (_, raw) in &corpus {
-        let Ok(d) = ItemDraft::parse(raw) else {
-            continue;
-        };
-        let rebuilt = d.build_raw();
-        if normalize(raw) == normalize(&rebuilt) {
-            exact += 1;
-        } else {
-            diff += 1;
-        }
-    }
-    eprintln!(
-        "[build_raw byte-diff report] exact={exact} diff={diff} total={}",
-        corpus.len()
-    );
 }
 
 fn normalize(s: &str) -> Vec<String> {

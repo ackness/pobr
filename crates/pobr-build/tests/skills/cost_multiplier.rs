@@ -13,14 +13,10 @@ use pobr_build::{
     parse_build_from_code,
 };
 use pobr_data::catalog::{GrantedEffectDef, SkillLevelDef};
-use pobr_gamedata::{GameData, repo_data_root};
 use serde_json::json;
 use std::path::Path;
 
-fn repo_data() -> BuildData {
-    let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
-    BuildData::load(&data).expect("load repo data")
-}
+use crate::test_data as repo_data;
 
 /// Oracle comparison: druid-oracle-comet — Comet + a compatible cost-multiplier
 /// support (current compatible set = Magnified Area II (+30%)).

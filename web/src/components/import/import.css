@@ -34,11 +34,6 @@
   letter-spacing: 0.02em;
 }
 
-/* 同卡片内的第二段标题（分享 code 下面接本地存档） */
-.build-card-divide {
-  margin-top: var(--space-6) !important;
-}
-
 .build-card-hint {
   margin-top: 0;
   color: var(--text-secondary);

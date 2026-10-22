@@ -1,12 +1,6 @@
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
-use pobr_gamedata::{GameData, repo_data_root};
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(
-        repo_data_root().join(pobr_gamedata::data_version()),
-    ))
-    .expect("game data")
-}
+use crate::test_data as data;
 
 fn calculate(
     data: &BuildData,

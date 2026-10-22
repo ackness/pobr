@@ -166,7 +166,7 @@ mod tests {
         StatDescriptionsDef { scopes }
     }
 
-    /// Load the real overlay rules (no test-rules feature needed; same approach as stat_desc_parse_rate).
+    /// Load the real overlay rules without the test-rules feature.
     fn real_rules() -> CompiledParserRules {
         let path = pobr_gamedata::current_data_dir().join("overlay/mod_parser_rules.json");
         let doc: ModParserRulesDoc =

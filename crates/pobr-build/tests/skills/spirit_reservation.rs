@@ -13,13 +13,9 @@ use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
 };
 use pobr_data::catalog::{GrantedEffectDef, SkillLevelDef};
-use pobr_gamedata::GameData;
 use serde_json::json;
 
-fn repo_data() -> BuildData {
-    let data = GameData::new(pobr_gamedata::repo_data_root().join(pobr_gamedata::data_version()));
-    BuildData::load(&data).expect("load repo data")
-}
+use crate::test_data as repo_data;
 
 /// Builds a synthetic [`BuildData`]: a persistent-reservation aura (Spirit 60,
 /// optionally with its own reservation multiplier) plus a support (optionally

@@ -1,18 +1,15 @@
 use pobr_build::jewel_tree::passive_jewel_state;
 use pobr_build::{
-    Build, BuildData, CharacterIdentity, DataOrchestratorOptions, calculate_with_data_session,
+    Build, CharacterIdentity, DataOrchestratorOptions, calculate_with_data_session,
     radius_jewel_from_text,
 };
 use pobr_core::parse_pob_xml_item;
 use pobr_data::catalog::PassiveNodeDef;
 use pobr_data::item::EquipmentSlot;
 use pobr_data::passive_tree::{AttributeChoice, NodeId, PassiveTreeSpec};
-use pobr_gamedata::GameData;
 use serde_json::json;
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(pobr_gamedata::current_data_dir())).unwrap()
-}
+use crate::test_data as data;
 fn node(skill: u32, id: &str, name: &str, kind: &str, x: f64, stats: &[&str]) -> PassiveNodeDef {
     serde_json::from_value(
         json!({"skill":skill,"id":id,"name":name,"kind":kind,"x":x,"y":0.0,"stats":stats}),
@@ -39,7 +36,7 @@ fn jewel(mods: &str) -> String {
 
 #[test]
 fn allocation_uses_selected_tree_ring_boundaries_and_stable_class_ids() {
-    let mut data = data();
+    let mut data = data().clone();
     let entries = [
         node(900001, "socket", "Jewel Socket", "jewel_socket", 0.0, &[]),
         node(
@@ -142,7 +139,7 @@ fn allocation_uses_selected_tree_ring_boundaries_and_stable_class_ids() {
 
 #[test]
 fn from_nothing_uses_named_keystone_center_and_rejects_unknown_centers() {
-    let mut data = data();
+    let mut data = data().clone();
     data.passive_nodes = [
         node(900001, "socket", "Socket", "jewel_socket", 10000.0, &[]),
         node(2, "key", "Future Keystone", "keystone", 0.0, &[]),
@@ -180,7 +177,7 @@ fn from_nothing_uses_named_keystone_center_and_rejects_unknown_centers() {
 
 #[test]
 fn from_nothing_reads_its_line_as_the_item_text_wraps_it() {
-    let mut data = data();
+    let mut data = data().clone();
     data.passive_nodes = [
         node(900001, "socket", "Socket", "jewel_socket", 10000.0, &[]),
         node(2, "key", "Future Keystone", "keystone", 0.0, &[]),
@@ -213,7 +210,7 @@ fn variants_and_rolls_are_normalized_before_jewel_tree_directives() {
 
 #[test]
 fn kalguur_keystones_replace_old_stats_and_remove_inherent_attribute_bonuses() {
-    let mut data = data();
+    let mut data = data().clone();
     data.passive_nodes = [
         node(900001, "socket", "Socket", "jewel_socket", 0.0, &[]),
         node(
@@ -286,7 +283,7 @@ fn kalguur_keystones_replace_old_stats_and_remove_inherent_attribute_bonuses() {
 
 #[test]
 fn abyss_small_passives_replace_stats_preserve_attribute_choice_and_expose_missing_seeds() {
-    let mut data = data();
+    let mut data = data().clone();
     data.passive_nodes = [
         node(900001, "socket", "Socket", "jewel_socket", 0.0, &[]),
         node(
@@ -356,7 +353,7 @@ fn abyss_small_passives_replace_stats_preserve_attribute_choice_and_expose_missi
 /// Notable "+10 to Strength" stays +10 (game: Hulking Form, Titan Warrior1).
 #[test]
 fn hulking_form_scales_small_passives_but_not_notables() {
-    let mut data = data();
+    let mut data = data().clone();
     data.passive_nodes = [
         node(11, "small", "Small", "normal", 0.0, &["+10 to Strength"]),
         node(

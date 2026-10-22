@@ -15,15 +15,11 @@
 //! Tiara 240. Quality scales an item's Runic Ward like its other defences.
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 const BOOTS: &str = "Runeforged Cryptic Leggings";
 const HELMET: &str = "Runeforged Ancestral Tiara";
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data")
-}
+use crate::test_data as data;
 
 /// An item block: `lines` come after the base type, before the modifiers.
 fn item(id: usize, base: &str, lines: &[&str], modifiers: &[&str]) -> String {

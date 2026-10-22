@@ -94,29 +94,6 @@ export function rankVariants(results: VariantStats[], objective: Objective): Var
   });
 }
 
-/** 非空子集（大小 ≤ maxSize），生成顺序：先小组合后大组合。 */
-export function subsets<T>(items: T[], maxSize: number): T[][] {
-  const out: T[][] = [];
-  const n = items.length;
-  const cap = Math.min(maxSize, n);
-  for (let mask = 1; mask < 1 << n; mask += 1) {
-    const picked = items.filter((_, i) => mask & (1 << i));
-    if (picked.length <= cap) out.push(picked);
-  }
-  return out.sort((a, b) => a.length - b.length);
-}
-
-/** 非空子集数 Σ C(n,k), k ≤ cap（枚举前的组合数预检）。 */
-export function subsetCount(n: number, cap: number): number {
-  let total = 0;
-  let c = 1;
-  for (let k = 1; k <= Math.min(n, cap); k += 1) {
-    c = (c * (n - k + 1)) / k;
-    total += c;
-  }
-  return total;
-}
-
 export interface EvaluateOptions {
   /** Explicit display stats for reports; ordinary planners retain their shared set. */
   stats?: string[];

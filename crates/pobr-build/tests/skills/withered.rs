@@ -6,7 +6,6 @@
 //! minions can inflict Withered, and for nobody else.
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 /// A spell whose hit is Chaos damage only.
 const HEXBLAST: &str = r#"<Gem gemId="Metadata/Items/Gems/SkillGemHexblast" skillId="HexblastPlayer" nameSpec="Hexblast" level="20" quality="0" enabled="true"/>"#;
@@ -16,10 +15,7 @@ const WITHERING_PRESENCE: &str = r#"<Gem gemId="Metadata/Items/Gem/SkillGemWithe
 
 const INFLICTS: &str = "25% chance to inflict Withered for 2 seconds on Hit";
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data")
-}
+use crate::test_data as data;
 
 /// The DPS of `main_gem` against an enemy stated to hold `stacks` Withered,
 /// for a character with `modifiers` and the gems of `other_group`.

@@ -1,11 +1,10 @@
 use pobr_build::usage::{LineStatus, ModifierStatus};
-use pobr_build::{BuildData, DataOrchestratorOptions, diagnose, parse_build};
+use pobr_build::{DataOrchestratorOptions, diagnose, parse_build};
 use pobr_core::display_value;
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 #[test]
 fn charge_durations_scale_game_base_and_reconstruct_without_changing_other_outputs() {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap();
+    let data = crate::test_data();
     // The game's Charges tooltip gives all three kinds a 15-second base.
     // Generic and kind-specific increases add; more modifiers multiply.
     let lines = [

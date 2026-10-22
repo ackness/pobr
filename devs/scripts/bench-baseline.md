@@ -9,8 +9,8 @@
 
 ```bash
 # 记录/对比基线（criterion 自动与上次运行对比）
-cargo bench -p pobr-build --bench perform_bench
-cargo bench -p pobr-core  --bench mod_db_bench   # 聚合内核吞吐不得回归
+cargo bench -p pobr-build --features benchmarks --bench perform_bench
+cargo bench -p pobr-core --features benchmarks --bench mod_db_bench   # 聚合内核吞吐不得回归
 
 # criterion 历史数据在 target/criterion/<case>/，多 worktree 场景注意
 # CARGO_TARGET_DIR 隔离会让基线分散——M4 门禁对比一律在主仓库默认 target 跑。

@@ -7,16 +7,12 @@
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_core::calc::OutputTable;
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 const ICE_SHOT: &str = r#"<Gem gemId="Metadata/Items/Gem/SkillGemIceShot" skillId="IceShotPlayer" nameSpec="Ice Shot" level="20" quality="0" enabled="true"/>"#;
 
 const BLIND_II: &str = r#"<Gem gemId="Metadata/Items/Gems/SupportGemBlindTwo" skillId="SupportBlindPlayerTwo" nameSpec="Blind II" level="1" quality="0" enabled="true"/>"#;
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data")
-}
+use crate::test_data as data;
 
 /// A bow attacker with some Evasion and Deflection Rating, against an enemy
 /// that is or is not stated to be Blinded.

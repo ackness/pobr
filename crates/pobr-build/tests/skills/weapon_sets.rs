@@ -5,16 +5,12 @@
 //! a skill a weapon of that set grants, or a group set to it.
 
 use pobr_build::{
-    Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup, WeaponSet,
+    Build, CharacterIdentity, DataOrchestratorOptions, SocketGroup, WeaponSet,
     calculate_with_data_session, import_build,
 };
 use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
-use pobr_gamedata::{GameData, repo_data_root};
 
-fn data() -> BuildData {
-    let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
-    BuildData::load(&data).expect("load BuildData from repo data")
-}
+use crate::test_data as data;
 
 /// A Ranger shooting Ice Shot, supported by Rigwald's Ferocity, from a bow
 /// in the weapon set `set`.

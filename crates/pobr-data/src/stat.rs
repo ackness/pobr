@@ -41,12 +41,6 @@ impl fmt::Display for StatId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StatDescription {
-    pub id: StatId,
-    pub text: String,
-}
-
 /// The bounds a stat is clamped to. Consumed by `pobr-core`'s `stat_boundary`;
 /// pure data, no logic.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]

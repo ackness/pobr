@@ -89,8 +89,8 @@ JSON snapshots supply game data. PoB2 parity tests guard the recorded regression
 baseline; they do not imply complete mechanic coverage.
 
 Calculation runs locally in the browser; WeGame and market HTTP adapters use a
-Pages Worker. The desktop application is currently a placeholder. The WASM/JSON
-API and CLI are still evolving and may change between releases.
+Pages Worker. The WASM/JSON API and CLI are still evolving and may change
+between releases.
 
 ### Performance and build analysis
 
@@ -163,7 +163,7 @@ in-memory `GameData` / `BuildData`.
 
 ## Workspace layout
 
-14 members: seven libraries in `crates/`, three application entry points in
+13 members: seven libraries in `crates/`, two application entry points in
 `apps/`, and four Rust tools in `tools/`. The React/TypeScript `web/` application
 and Lua oracle are outside the Cargo workspace.
 
@@ -178,7 +178,6 @@ and Lua oracle are outside the Cargo workspace.
 | `crates/pobr-item` | Full-fidelity edit-mode parsing of raw item text + reverse serialization (BuildRaw round-trip) |
 | `apps/pobr-cli` | CLI: `calculate` / `calculate-build` / `parse-mod` / `explain-mod` / `decode-code` / `encode-code` |
 | `apps/pobr-wasm` | Web/WASM API: pure-Rust JSON in/out; wasm-bindgen bindings behind the `wasm` feature |
-| `apps/pobr-desktop` | Example calculation and text summary placeholder; no GUI framework yet |
 | `tools/pobr-data-adapter` | Data pipeline adapter: GGG `.dat` export → denormalized committed JSON |
 | `tools/sync-pob-catalog` | Extracts the stat catalog from PoB core Lua; parity check / diff |
 | `tools/lint-i18n` | Language pack completeness check |

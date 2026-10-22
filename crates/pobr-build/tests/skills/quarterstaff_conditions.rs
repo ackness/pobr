@@ -7,15 +7,11 @@
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_core::calc::OutputTable;
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 const WHILE_WIELDING: &str =
     "30% increased Armour, Evasion and Energy Shield while wielding a Quarterstaff";
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data")
-}
+use crate::test_data as data;
 
 /// A Monk with flat defences from elsewhere, wielding `weapon` (nothing when
 /// empty), with `extra` modifiers.

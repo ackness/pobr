@@ -1,11 +1,10 @@
 //! Archon shared bonuses are opt-in and excluded from exporter-reference runs.
-use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data_session, parse_build};
+use pobr_build::{DataOrchestratorOptions, calculate_with_data_session, parse_build};
 use pobr_core::display_value;
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 #[test]
 fn archon_config_applies_shared_bonuses_and_reference_basis_omits_absent_rules() {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap();
+    let data = crate::test_data();
     let options = DataOrchestratorOptions {
         extra_modifier_texts: [
             "Archon Buffs also grant 10% increased Movement Speed",

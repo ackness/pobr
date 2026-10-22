@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { explicitItemLines, itemForAffixProbes, scoreEquipment, withoutTradeStat } from './equipmentScore';
+import { itemForAffixProbes, scoreEquipment, tradeStatRemovals } from './equipmentScore';
 import { buildTradeQuery, tradeQueryWeights, type WeightedStat } from './trade';
 
 const stats: WeightedStat[] = [
@@ -17,10 +17,10 @@ describe('current equipment market Sum', () => {
 
   test('counted rune and enchant lines leave every following explicit affix available for scoring and removal', () => {
     const text = 'Rarity: RARE\nReference\nVile Robe\nImplicits: 3\n{enchant}{rune}+50 to maximum Life\n--------\nNote: retained metadata\n{enchant}+60 to maximum Life\n+30% to Fire Resistance (implicit)\n+75 to maximum Life\n+40% to Fire Resistance';
-    expect(explicitItemLines(text).map(row => row.line)).toEqual(['+75 to maximum Life', '+40% to Fire Resistance']);
+    expect(scoreEquipment(text, stats).contributions.map(row => row.line)).toEqual(['+75 to maximum Life', '+40% to Fire Resistance']);
     expect(scoreEquipment(text, stats)).toMatchObject({ complete: true, matchedLines: 2, totalLines: 2,
       score: 75 * 1.235 + 40 * 2.346 });
-    const removed = withoutTradeStat(text, stats[0], stats)!;
+    const removed = tradeStatRemovals(text, stats).get(stats[0].id)!;
     expect(removed.value).toBe(75);
     expect(removed.text).toContain('{enchant}{rune}+50 to maximum Life');
     expect(removed.text).toContain('{enchant}+60 to maximum Life');
@@ -55,7 +55,7 @@ describe('current equipment market Sum', () => {
     const attack = { id: 'explicit.attack', line: 'Adds 29 to 45 Fire damage to Attacks', value: 37, weight: 2 };
     const text = 'Rarity: RARE\nReference\nIron Ring\nAdds 10 TO 20 Fire Damage to Attacks';
     expect(scoreEquipment(text, [attack])).toMatchObject({ complete: true, score: 30 });
-    expect(withoutTradeStat(text, attack, [attack])).toEqual({ text: 'Rarity: RARE\nReference\nIron Ring', value: 15 });
+    expect(tradeStatRemovals(text, [attack]).get(attack.id)).toEqual({ text: 'Rarity: RARE\nReference\nIron Ring', value: 15 });
   });
 
   test('does not misrepresent missing or ambiguous mappings as complete scores', () => {
@@ -95,7 +95,7 @@ test('a wrapped official stat is counted and removed once, including crafted exp
   expect(result.contributions.filter(row => row.id === compound.id)).toEqual([
     expect.objectContaining({ value: 2, score: 4 }),
   ]);
-  expect(withoutTradeStat(wrapped, compound, [...stats, compound])).toEqual({ text: `${header}\n+70 to maximum Life`, value: 2 });
+  expect(tradeStatRemovals(wrapped, [...stats, compound]).get(compound.id)).toEqual({ text: `${header}\n+70 to maximum Life`, value: 2 });
   expect(scoreEquipment(`${header}\n${compound.line} (crafted)`, [compound])).toMatchObject({ complete: true, score: 6 });
   expect(scoreEquipment(`${header}\nInflict Anaemia on Hit`, [compound]).complete).toBe(false);
 });
@@ -109,7 +109,7 @@ test('conditional constants, flags and official wording keep the correct trade u
   const text = `${header}\nEvery 4 seconds, gain 10% increased Damage\nYour Hits can't be Evaded\n{desecrated}8% increased Spirit Reservation Efficiency of Skills`;
   expect(scoreEquipment(text, [condition, flag, alias])).toMatchObject({ complete: true, score: 67 });
   expect(scoreEquipment(text.replace('Every 4', 'Every 8'), [condition, flag, alias]).complete).toBe(false);
-  expect(withoutTradeStat(text, flag, [condition, flag, alias])?.value).toBe(1);
+  expect(tradeStatRemovals(text, [condition, flag, alias]).get(flag.id)?.value).toBe(1);
   const rolledFlag = { ...flag, line: '10% chance to Daze on Hit', trade_line: 'Dazes on Hit' };
   expect(scoreEquipment(`${header}\n7% chance to Daze on Hit`, [rolledFlag])).toMatchObject({ complete: true, score: 5 });
 });
@@ -119,7 +119,7 @@ test('corruption enchant weights exclude socket runes and removal updates the im
   const text = 'Rarity: RARE\nReference\nIron Ring\nRunic Ward: 50\nImplicits: 4\n{enchant}Allocates Ancestral Reach\n{enchant}{rune}+20 to maximum Life\n{enchant}+30 to maximum Life\n+10% to Fire Resistance\n{crafted}+70 to maximum Life';
   const weighted = [...stats, enchant];
   expect(scoreEquipment(text, weighted)).toMatchObject({ complete: true, score: 60 + 70 * 1.235 });
-  const removed = withoutTradeStat(text, enchant, weighted)!;
+  const removed = tradeStatRemovals(text, weighted).get(enchant.id)!;
   expect(removed.value).toBe(30);
   expect(removed.text).toContain('Implicits: 3');
   expect(removed.text).toContain('{enchant}{rune}+20 to maximum Life');
@@ -128,12 +128,12 @@ test('corruption enchant weights exclude socket runes and removal updates the im
 
 test('removes only the probed explicit effect; rolled defence is not reused after local affix changes', () => {
   const text = 'Rarity: RARE\nReference\nIron Ring\nQuality: 20\nArmour: 600\nImplicits: 1\n+20% to Fire Resistance\n+30% to Fire Resistance\n+70 to maximum Life';
-  const result = withoutTradeStat(itemForAffixProbes(text), stats[1], stats)!;
+  const result = tradeStatRemovals(itemForAffixProbes(text), stats).get(stats[1].id)!;
   expect(result.value).toBe(30);
   expect(result.text).toContain('+20% to Fire Resistance');
   expect(result.text).toContain('+70 to maximum Life');
   expect(result.text).toContain('Quality: 20');
   expect(result.text).not.toContain('+30% to Fire Resistance');
   expect(result.text).not.toContain('Armour: 600');
-  expect(explicitItemLines(result.text).map(row => row.line)).toEqual(['+70 to maximum Life']);
+  expect(scoreEquipment(result.text, stats).contributions.map(row => row.line)).toEqual(['+70 to maximum Life']);
 });

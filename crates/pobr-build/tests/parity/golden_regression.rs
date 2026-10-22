@@ -1,43 +1,8 @@
-//! End-to-end pipeline smoke test + determinism guard (**not** PoB2 numeric parity).
+//! Empty-build calculation and codec regression checks, not numeric PoB parity.
 //!
-//! This suite feeds real PoB2 ninja build codes into the whole
-//! `decode -> Build -> calc` pipeline: decode the build code -> parse the
-//! header -> construct a Build -> run CalcOrchestrator, verifying it never
-//! crashes and that two calls with the same input agree field-for-field
-//! (determinism).
-//!
-//! Key limitation: `build_from_code` only constructs a `CharacterIdentity`
-//! (level / class / ascendancy) — **it doesn't load any gear or passive
-//! mods**. CalcOrchestrator only aggregates mods from
-//! `build.equipped_items()`, and this Build has no gear, so the vast majority
-//! of outputs land on `OutputTable::default()`'s neutral empty-build defaults
-//! (life / mana / resistances / dps = 0.0; taken_multi_* / enemy_crit_effect /
-//! crit_multiplier etc. stay at their neutral 1.0 / 2.0). The constants named
-//! `*_NEUTRAL_*` below are exactly these defaults — they are **not** real
-//! PoB2 golden values, so don't read them as a numeric parity baseline.
-//! (Same goes for the `_golden_` test function names: "golden" here means
-//! "snapshot / regression lock", not numeric alignment.)
-//!
-//! So this suite actually guards three things:
-//! 1. Pipeline smoke: codec + header parsing + Build construction +
-//!    CalcOrchestrator run end-to-end without error;
-//! 2. Determinism: two calls with the same input agree field-for-field;
-//! 3. Injected-mod sanity: the only assertion that "computes a non-zero
-//!    result" comes from an explicitly injected `MinimalInput` (e.g.
-//!    base_life 500 + `"+1000 to maximum Life"` -> life = 1500), verifying the
-//!    mod actually reaches the calculation.
-//!
-//! Real field-for-field PoB2 numeric parity is the responsibility of suites
-//! like `ninja_parity.rs`, not this one.
-//!
-//! Tolerance rules:
-//! - Integer-like fields (life / mana and other whole-number base attributes):
-//!   `delta.abs() < 0.5` (rounding tolerance).
-//! - Float fields (crit_chance / dps etc.): `relative < 1e-6` (one part per million).
-//!
-//! If `build_from_code` is ever changed to load gear/passive mods, replace the
-//! corresponding `*_NEUTRAL_*` constants with real expected values — that's
-//! when this suite would graduate to numeric parity.
+//! Real build codes supply character identity only. One calculation checks the
+//! neutral output fields; separate cases cover injected modifiers and determinism.
+//! Gear/passive/skill parity is checked by the real-build suites.
 
 use pobr_build::{
     Build, CharacterIdentity, OrchestratorOptions, calculate, decode_pob_code, parse_build_header,
@@ -103,17 +68,6 @@ fn default_opts() -> OrchestratorOptions {
     }
 }
 
-// Deadeye neutral empty-build baseline
-//
-// Uses an all-zero MinimalInput (no gear/passive mods injected; CalcOrchestrator
-// only collects mods from build.equipped_items(), and this test's Build has no
-// gear, so output is the base default value). This makes the codec ->
-// Build-construction -> CalcOrchestrator end-to-end pipeline stable to test
-// without depending on external data files. These are OutputTable::default()'s
-// neutral defaults, not real PoB2 golden values.
-//
-// If gear/passive mod injection is added later, update the baseline here.
-
 /// Expected character level after decoding the Deadeye build (from XML `<Build level="...">`).
 const DEADEYE_EXPECTED_LEVEL: u32 = 98;
 
@@ -177,6 +131,110 @@ fn deadeye_golden_calc_baseline() {
         out.lightning_resistance,
     );
     assert_near_float("dps", DEADEYE_NEUTRAL_DPS, out.dps);
+
+    // Crit chance: no base-crit mod -> 0.0.
+    assert_near_float("crit_chance", 0.0, out.crit_chance);
+    // Crit multiplier: PoE2's base value 2.0 (PLAYER_BASE_CRIT_DAMAGE_BONUS = 100%).
+    assert_near_float(
+        "crit_multiplier",
+        DEADEYE_NEUTRAL_CRIT_MULTIPLIER,
+        out.crit_multiplier,
+    );
+    // Pre-effective-mode crit chance: no base -> 0.0.
+    assert_near_float(
+        "pre_effective_crit_chance",
+        0.0,
+        out.pre_effective_crit_chance,
+    );
+
+    // ES recharge: no mods -> recharge rate 0, delay 0, per-second 0.
+    assert_near_float("es_recharge_rate", 0.0, out.es_recharge_rate);
+    assert_near_float("es_recharge_delay", 0.0, out.es_recharge_delay);
+    assert_near_float("es_recharge_per_second", 0.0, out.es_recharge_per_second);
+
+    // Avoidance: no mods -> all 0.
+    assert_near_float(
+        "avoid_all_damage_from_hits",
+        0.0,
+        out.avoid_all_damage_from_hits,
+    );
+    assert_near_float("avoid_ignite", 0.0, out.avoid_ignite);
+    assert_near_float("avoid_shock", 0.0, out.avoid_shock);
+    assert_near_float("avoid_chill", 0.0, out.avoid_chill);
+    assert_near_float("avoid_freeze", 0.0, out.avoid_freeze);
+    assert_near_float("avoid_poison", 0.0, out.avoid_poison);
+    assert_near_float("avoid_bleeding", 0.0, out.avoid_bleeding);
+    assert_near_float("avoid_stun", 0.0, out.avoid_stun);
+
+    // Damage-taken multipliers are neutral: default 1.0.
+    assert_near_float("taken_multi_physical", 1.0, out.taken_multi_physical);
+    assert_near_float("taken_multi_fire", 1.0, out.taken_multi_fire);
+    assert_near_float("taken_multi_cold", 1.0, out.taken_multi_cold);
+    assert_near_float("taken_multi_lightning", 1.0, out.taken_multi_lightning);
+    assert_near_float("taken_multi_chaos", 1.0, out.taken_multi_chaos);
+
+    // Extra crit damage reduction / enemy crit effect (neutral).
+    assert_near_float(
+        "crit_extra_damage_reduction",
+        0.0,
+        out.crit_extra_damage_reduction,
+    );
+    assert_near_float("enemy_crit_effect", 1.0, out.enemy_crit_effect);
+
+    // Charges: no mods -> current/maximum both 0.
+    assert_eq!(out.charge_power_current, 0.0, "charge_power_current");
+    assert_eq!(out.charge_power_maximum, 0, "charge_power_maximum");
+    assert_eq!(out.charge_frenzy_current, 0.0, "charge_frenzy_current");
+    assert_eq!(out.charge_frenzy_maximum, 0, "charge_frenzy_maximum");
+    assert_eq!(
+        out.charge_endurance_current, 0.0,
+        "charge_endurance_current"
+    );
+    assert_eq!(out.charge_endurance_maximum, 0, "charge_endurance_maximum");
+
+    // Leech rates: no mods -> 0.
+    assert_near_float("life_leech_rate", 0.0, out.life_leech_rate);
+    assert_near_float("mana_leech_rate", 0.0, out.mana_leech_rate);
+    assert_near_float("es_leech_rate", 0.0, out.es_leech_rate);
+
+    // Recoup: no mods -> 0.
+    assert_near_float("life_recoup_rate", 0.0, out.life_recoup_rate);
+    assert_near_float("es_recoup_rate", 0.0, out.es_recoup_rate);
+
+    assert_near_float("chill_effect", 0.0, out.chill_effect);
+    assert_near_float("freeze_buildup_pct", 0.0, out.freeze_buildup_pct);
+    assert_near_float("electrocute_buildup_pct", 0.0, out.electrocute_buildup_pct);
+
+    // Stacked DPS / active stacks: no hit-producing mods -> 0.
+    assert_near_float("bleed_stacked_dps", 0.0, out.bleed_stacked_dps);
+    assert_near_float("bleed_active_stacks", 0.0, out.bleed_active_stacks);
+    assert_near_float("poison_stacked_dps", 0.0, out.poison_stacked_dps);
+    assert_near_float("poison_active_stacks", 0.0, out.poison_active_stacks);
+
+    // Skill mechanics: no base mods -> 0.
+    assert_near_float("aoe_radius", 0.0, out.aoe_radius);
+    // Area scaling is a multiplier, neutral at 1 even without a base radius.
+    assert_near_float("aoe_area_mod", 1.0, out.aoe_area_mod);
+    assert_near_float("projectile_count", 0.0, out.projectile_count);
+    assert_near_float("cooldown", 0.0, out.cooldown);
+    assert_eq!(out.cooldown_stored_uses, 0, "cooldown_stored_uses");
+    assert_near_float("mana_cost", 0.0, out.mana_cost);
+    assert_near_float("life_cost", 0.0, out.life_cost);
+    assert_near_float("spirit_reserved", 0.0, out.spirit_reserved);
+
+    // Trigger: no trigger mods -> 0.
+    assert_near_float("trigger_rate_cap", 0.0, out.trigger_rate_cap);
+    assert_near_float("skill_trigger_rate", 0.0, out.skill_trigger_rate);
+
+    assert_near_float("bleed_dps", 0.0, out.bleed_dps);
+    assert_near_float("ignite_dps", 0.0, out.ignite_dps);
+    assert_near_float("poison_dps", 0.0, out.poison_dps);
+    assert_near_float("shock_effect", 0.0, out.shock_effect);
+
+    assert_near_float("action_rate", 0.0, out.action_rate);
+    assert_near_float("effective_action_rate", 0.0, out.effective_action_rate);
+    // hit_chance: base_accuracy=0 + enemy_evasion=0 -> formula returns 1.0 (100%).
+    assert_near_float("hit_chance", DEADEYE_NEUTRAL_HIT_CHANCE, out.hit_chance);
 }
 
 #[test]
@@ -241,202 +299,10 @@ fn martial_artist_golden_decode_and_calc() {
     assert_near_int("martial_artist_life", 0.0, out.life);
 }
 
-// Regression guard: ensures the decode -> Build -> Calc pipeline doesn't silently break during refactors
-
-#[test]
-fn pipeline_smoke_test_both_fixtures() {
-    for (name, code) in [
-        ("deadeye", DEADEYE_CODE),
-        ("martial_artist", MARTIAL_ARTIST_CODE),
-    ] {
-        let xml =
-            decode_pob_code(code.trim()).unwrap_or_else(|e| panic!("{name}: decode failed: {e}"));
-        let header = parse_build_header(&xml)
-            .unwrap_or_else(|e| panic!("{name}: parse_build_header failed: {e}"));
-        let build = Build::new().with_character(CharacterIdentity {
-            level: header.identity.level,
-            class_name: header.identity.class_name.clone(),
-            ascendancy_name: header.identity.ascendancy_name.clone(),
-        });
-        calculate(&build, &default_opts())
-            .unwrap_or_else(|e| panic!("{name}: calculate failed: {e}"));
-    }
-}
-
-// Wave 1 / Wave 2 new-field snapshots (empty Build + empty MinimalInput -> all default neutral values)
-//
-// Purpose: pins the baseline values of OutputTable fields added in Wave 1/2
-// in their default (no mods) state, so they can't be silently rewritten
-// during a refactor.
-// Baseline values all follow OutputTable::default()'s neutral rules:
-//   - most fields are 0.0 (no effect with no mods)
-//   - taken_multi_* = 1.0 (a neutral multiplier, neither reduces nor increases damage taken)
-//   - enemy_crit_effect = 1.0 (neutral)
-
-/// Wave 1 crit field snapshot (crit_chance / crit_multiplier / pre_effective_crit_chance).
-///
-/// Note: crit_multiplier's base value = 1 + PLAYER_BASE_CRIT_DAMAGE_BONUS/100 = 2.0
-/// (PoE2's convention); it stays at 2.0 with no extra damage-bonus mods.
-/// crit_chance has no mods -> 0.0 (no base crit).
+// Empty-input constants (PoE2 base crit damage bonus and guaranteed hit without evasion).
 const DEADEYE_NEUTRAL_CRIT_MULTIPLIER: f64 = 2.0;
 
-#[test]
-fn deadeye_golden_wave1_crit_fields() {
-    let build = build_from_code(DEADEYE_CODE);
-    let out = calculate(&build, &default_opts()).expect("calc");
-
-    // Crit chance: no base-crit mod -> 0.0.
-    assert_near_float("crit_chance", 0.0, out.crit_chance);
-    // Crit multiplier: PoE2's base value 2.0 (PLAYER_BASE_CRIT_DAMAGE_BONUS = 100%).
-    assert_near_float(
-        "crit_multiplier",
-        DEADEYE_NEUTRAL_CRIT_MULTIPLIER,
-        out.crit_multiplier,
-    );
-    // Pre-effective-mode crit chance: no base -> 0.0.
-    assert_near_float(
-        "pre_effective_crit_chance",
-        0.0,
-        out.pre_effective_crit_chance,
-    );
-}
-
-/// Wave 2 defence extension field snapshot: ES recharge / avoidance / damage-taken multipliers / crit reduction.
-#[test]
-fn deadeye_golden_wave2_defence_extension_fields() {
-    let build = build_from_code(DEADEYE_CODE);
-    let out = calculate(&build, &default_opts()).expect("calc");
-
-    // ES recharge: no mods -> recharge rate 0, delay 0, per-second 0.
-    assert_near_float("es_recharge_rate", 0.0, out.es_recharge_rate);
-    assert_near_float("es_recharge_delay", 0.0, out.es_recharge_delay);
-    assert_near_float("es_recharge_per_second", 0.0, out.es_recharge_per_second);
-
-    // Avoidance: no mods -> all 0.
-    assert_near_float(
-        "avoid_all_damage_from_hits",
-        0.0,
-        out.avoid_all_damage_from_hits,
-    );
-    assert_near_float("avoid_ignite", 0.0, out.avoid_ignite);
-    assert_near_float("avoid_shock", 0.0, out.avoid_shock);
-    assert_near_float("avoid_chill", 0.0, out.avoid_chill);
-    assert_near_float("avoid_freeze", 0.0, out.avoid_freeze);
-    assert_near_float("avoid_poison", 0.0, out.avoid_poison);
-    assert_near_float("avoid_bleeding", 0.0, out.avoid_bleeding);
-    assert_near_float("avoid_stun", 0.0, out.avoid_stun);
-
-    // Damage-taken multipliers are neutral: default 1.0.
-    assert_near_float("taken_multi_physical", 1.0, out.taken_multi_physical);
-    assert_near_float("taken_multi_fire", 1.0, out.taken_multi_fire);
-    assert_near_float("taken_multi_cold", 1.0, out.taken_multi_cold);
-    assert_near_float("taken_multi_lightning", 1.0, out.taken_multi_lightning);
-    assert_near_float("taken_multi_chaos", 1.0, out.taken_multi_chaos);
-
-    // Extra crit damage reduction / enemy crit effect (neutral).
-    assert_near_float(
-        "crit_extra_damage_reduction",
-        0.0,
-        out.crit_extra_damage_reduction,
-    );
-    assert_near_float("enemy_crit_effect", 1.0, out.enemy_crit_effect);
-}
-
-/// Wave 2 charges / leech / recoup snapshot (no mods -> all 0).
-#[test]
-fn deadeye_golden_wave2_charges_leech_recoup_fields() {
-    let build = build_from_code(DEADEYE_CODE);
-    let out = calculate(&build, &default_opts()).expect("calc");
-
-    // Charges: no mods -> current/maximum both 0.
-    assert_eq!(out.charge_power_current, 0.0, "charge_power_current");
-    assert_eq!(out.charge_power_maximum, 0, "charge_power_maximum");
-    assert_eq!(out.charge_frenzy_current, 0.0, "charge_frenzy_current");
-    assert_eq!(out.charge_frenzy_maximum, 0, "charge_frenzy_maximum");
-    assert_eq!(
-        out.charge_endurance_current, 0.0,
-        "charge_endurance_current"
-    );
-    assert_eq!(out.charge_endurance_maximum, 0, "charge_endurance_maximum");
-
-    // Leech rates: no mods -> 0.
-    assert_near_float("life_leech_rate", 0.0, out.life_leech_rate);
-    assert_near_float("mana_leech_rate", 0.0, out.mana_leech_rate);
-    assert_near_float("es_leech_rate", 0.0, out.es_leech_rate);
-
-    // Recoup: no mods -> 0.
-    assert_near_float("life_recoup_rate", 0.0, out.life_recoup_rate);
-    assert_near_float("es_recoup_rate", 0.0, out.es_recoup_rate);
-}
-
-/// Wave 2 ailment extension snapshot (no mods -> all 0).
-#[test]
-fn deadeye_golden_wave2_ailment_extension_fields() {
-    let build = build_from_code(DEADEYE_CODE);
-    let out = calculate(&build, &default_opts()).expect("calc");
-
-    assert_near_float("chill_effect", 0.0, out.chill_effect);
-    assert_near_float("freeze_buildup_pct", 0.0, out.freeze_buildup_pct);
-    assert_near_float("electrocute_buildup_pct", 0.0, out.electrocute_buildup_pct);
-
-    // Stacked DPS / active stacks: no hit-producing mods -> 0.
-    assert_near_float("bleed_stacked_dps", 0.0, out.bleed_stacked_dps);
-    assert_near_float("bleed_active_stacks", 0.0, out.bleed_active_stacks);
-    assert_near_float("poison_stacked_dps", 0.0, out.poison_stacked_dps);
-    assert_near_float("poison_active_stacks", 0.0, out.poison_active_stacks);
-}
-
-/// Wave 2 skill mechanics / trigger snapshot (no base config -> all 0).
-#[test]
-fn deadeye_golden_wave2_skill_mechanics_and_trigger_fields() {
-    let build = build_from_code(DEADEYE_CODE);
-    let out = calculate(&build, &default_opts()).expect("calc");
-
-    // Skill mechanics: no base mods -> 0.
-    assert_near_float("aoe_radius", 0.0, out.aoe_radius);
-    // Area scaling is a multiplier, neutral at 1 even without a base radius.
-    assert_near_float("aoe_area_mod", 1.0, out.aoe_area_mod);
-    assert_near_float("projectile_count", 0.0, out.projectile_count);
-    assert_near_float("cooldown", 0.0, out.cooldown);
-    assert_eq!(out.cooldown_stored_uses, 0, "cooldown_stored_uses");
-    assert_near_float("mana_cost", 0.0, out.mana_cost);
-    assert_near_float("life_cost", 0.0, out.life_cost);
-    assert_near_float("spirit_reserved", 0.0, out.spirit_reserved);
-
-    // Trigger: no trigger mods -> 0.
-    assert_near_float("trigger_rate_cap", 0.0, out.trigger_rate_cap);
-    assert_near_float("skill_trigger_rate", 0.0, out.skill_trigger_rate);
-}
-
-/// Wave 1 ailment DPS field snapshot (empty Build -> expects all 0).
-#[test]
-fn deadeye_golden_wave1_ailment_dps_fields() {
-    let build = build_from_code(DEADEYE_CODE);
-    let out = calculate(&build, &default_opts()).expect("calc");
-
-    assert_near_float("bleed_dps", 0.0, out.bleed_dps);
-    assert_near_float("ignite_dps", 0.0, out.ignite_dps);
-    assert_near_float("poison_dps", 0.0, out.poison_dps);
-    assert_near_float("shock_effect", 0.0, out.shock_effect);
-}
-
-/// Wave 1 action-rate field snapshot.
-///
-/// Note: with base_accuracy=0 + enemy_evasion=0, the hit-chance formula
-/// degenerates to 1.0 (100%). action_rate / effective_action_rate have no
-/// base mods -> 0.0.
 const DEADEYE_NEUTRAL_HIT_CHANCE: f64 = 1.0;
-
-#[test]
-fn deadeye_golden_wave1_action_rate_fields() {
-    let build = build_from_code(DEADEYE_CODE);
-    let out = calculate(&build, &default_opts()).expect("calc");
-
-    assert_near_float("action_rate", 0.0, out.action_rate);
-    assert_near_float("effective_action_rate", 0.0, out.effective_action_rate);
-    // hit_chance: base_accuracy=0 + enemy_evasion=0 -> formula returns 1.0 (100%).
-    assert_near_float("hit_chance", DEADEYE_NEUTRAL_HIT_CHANCE, out.hit_chance);
-}
 
 /// Wave 2 ES mod injection: verifies an ES mod is correctly parsed and injected into the calc pipeline.
 ///
@@ -448,7 +314,7 @@ fn deadeye_golden_wave1_action_rate_fields() {
 /// path works + default fields match expectations. Full ES-calculation unit
 /// tests live at the pobr-core layer (defense.rs / session.rs).
 #[test]
-fn deadeye_golden_wave2_es_modifier_pipeline_ok() {
+fn energy_shield_modifier_preserves_minimal_output_contract() {
     let build = build_from_code(DEADEYE_CODE);
     let opts = OrchestratorOptions {
         base_input: MinimalInput {
@@ -480,7 +346,7 @@ fn deadeye_golden_wave2_es_modifier_pipeline_ok() {
 ///
 /// Only injects known-parseable mods; avoids triggering a ParseError (unsupported mod text would return Err).
 #[test]
-fn deadeye_golden_wave2_all_fields_deterministic() {
+fn injected_calculation_is_deterministic() {
     let build = build_from_code(DEADEYE_CODE);
     let opts = OrchestratorOptions {
         base_input: MinimalInput {

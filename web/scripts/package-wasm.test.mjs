@@ -193,6 +193,7 @@ test('build wrapper reuses verified inputs and rebuilds only changed build input
   const originalReceipt = readFileSync(receiptPath, 'utf8');
   write('web/src/components/Unrelated.tsx', 'UI only');
   write('data/1.2.3/base/items.json', '[]');
+  write('data/overlay-common/special_mods.json', '{"runtimeOnly":true}');
   write('docs/unrelated.md', 'docs only');
   execFileSync('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid',
     '-c', 'commit.gpgsign=false', 'commit', '--quiet', '--allow-empty', '-m', 'unrelated'], { cwd: root });
@@ -202,6 +203,8 @@ test('build wrapper reuses verified inputs and rebuilds only changed build input
   for (const [path, content] of [
     ['apps/pobr-wasm/src/lib.rs', 'changed source'],
     ['crates/pobr-i18n/locales/en-US/ui.toml', 'embedded = "changed"'],
+    ['data/overlay-common/archon_config_options.json', '{"options":[]}'],
+    ['data/overlay-common/new_mechanic_config_options.json', '{"options":[]}'],
     ['rustc-version', 'rustc fixture\nhost: changed-host'],
     ['tool-version', 'wasm-pack changed'],
     ['.cargo/config.toml', '[build]\njobs = 2\n'],

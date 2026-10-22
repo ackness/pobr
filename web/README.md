@@ -157,7 +157,7 @@ Mock fixtures are generated from the real contract (re-run and commit after
 contract changes):
 
 ```bash
-cargo test -p pobr-wasm --test gen_fixtures -- --ignored
+cargo test -p pobr-wasm --features diagnostics --test gen_fixtures -- --ignored
 ```
 
 ## Development and validation

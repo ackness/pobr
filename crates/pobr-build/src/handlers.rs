@@ -69,22 +69,6 @@ pub fn build_registry() -> HandlerRegistry {
     registry
 }
 
-/// Builds the special-mod handler registry — the runtime dispatch point for
-/// `handler_id: "special:<name>"` entries in `overlay/special_mods.json`. `BuildData`
-/// uses it at load time to compile [`pobr_core::rules::SpecialModRules`], kept separate
-/// from the buff/config domain's [`build_registry`] (special is an independent parsing
-/// surface).
-///
-/// The gate test `special_mods_gate.rs` verifies: this registry covers every
-/// `handler_id`, the total is <100, and it's <10% of all special entries (architecture
-/// §5's hard-boundary monitor for the DSL).
-pub fn build_special_registry() -> HandlerRegistry {
-    let mut registry = HandlerRegistry::new();
-    pobr_core::rules::register_special_handlers(&mut registry)
-        .expect("startup-time special handler registration should not conflict");
-    registry
-}
-
 /// First batch of config handlers.
 ///
 /// Convention: when a handler's real consumption goes through the **scalar channel**

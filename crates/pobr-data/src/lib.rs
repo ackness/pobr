@@ -3,8 +3,6 @@ pub mod catalog;
 pub mod constants;
 pub mod damage;
 pub mod display_stat;
-pub mod game_data;
-pub mod gem;
 pub mod item;
 pub mod minion;
 pub mod modifier;
@@ -21,8 +19,6 @@ pub mod prelude {
     pub use crate::constants::*;
     pub use crate::damage::*;
     pub use crate::display_stat::*;
-    pub use crate::game_data::*;
-    pub use crate::gem::*;
     pub use crate::item::*;
     pub use crate::minion::*;
     pub use crate::modifier::*;

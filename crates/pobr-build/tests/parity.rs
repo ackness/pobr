@@ -45,7 +45,7 @@ mod diagnose_build;
 // real build end-to-end: only asserts ranges/determinism/import correctness
 mod e2e_real_build;
 #[path = "parity/golden_regression.rs"]
-// uses calculate(), zero data loading -> pure calc-code regression lock
+// minimal text-only calculation and codec regressions
 mod golden_regression;
 #[path = "parity/multi_version.rs"]
 // iterates every ingested version, proving calc is version-independent

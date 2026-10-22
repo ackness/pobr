@@ -5,7 +5,6 @@ use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
 };
 use pobr_core::calc::OutputTable;
-use pobr_gamedata::{GameData, current_data_dir};
 
 fn calculate(data: &BuildData, skill: &str, lines: &[&str]) -> OutputTable {
     let build = Build::new()
@@ -28,7 +27,7 @@ fn calculate(data: &BuildData, skill: &str, lines: &[&str]) -> OutputTable {
 
 #[test]
 fn detonate_living_innate_culling_contributes_to_combined_dps() {
-    let data = BuildData::load(&GameData::new(current_data_dir())).unwrap();
+    let data = crate::test_data();
     let innate = calculate(&data, "DetonateLivingPlayer", &[]);
     let explicit = calculate(&data, "DetonateLivingPlayer", &["Culling Strike"]);
     // spells_have_culling_strike: "Your Spells have Culling Strike".
@@ -39,7 +38,7 @@ fn detonate_living_innate_culling_contributes_to_combined_dps() {
 
 #[test]
 fn average_damage_tooltip_does_not_remove_rate_or_damage_over_time() {
-    let data = BuildData::load(&GameData::new(current_data_dir())).unwrap();
+    let data = crate::test_data();
     for skill in [
         "GrimPillarsPlayer",
         "LightningWarpPlayer",

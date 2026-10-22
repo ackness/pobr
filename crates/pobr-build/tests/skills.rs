@@ -3,6 +3,19 @@
 //! Aggregated test binary: originally separate test files, merged into submodules (22→4) to cut the number of linked test binaries and speed up builds.
 #![allow(clippy::all)]
 
+/// One immutable snapshot per test process. Tests that alter fixture data clone it
+/// explicitly so parallel cases cannot affect each other. libtest reuses this
+/// across cases, including in the full Cargo gate.
+fn test_data() -> &'static pobr_build::BuildData {
+    static DATA: std::sync::LazyLock<pobr_build::BuildData> = std::sync::LazyLock::new(|| {
+        pobr_build::BuildData::load(&pobr_gamedata::GameData::new(
+            pobr_gamedata::current_data_dir(),
+        ))
+        .expect("load current repository game data")
+    });
+    &DATA
+}
+
 #[path = "skills/volatility_events.rs"]
 mod volatility_events;
 

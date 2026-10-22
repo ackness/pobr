@@ -4,7 +4,6 @@ import {
   buildPassiveGraph,
   classStartSkill,
   connectedAllocation,
-  deallocateNode,
   shortestAllocationPath,
   reconcileJewelAllocation,
 } from './passiveGraph';
@@ -35,8 +34,8 @@ describe('passive graph', () => {
     expect(shortestAllocationPath(graph, new Set([2]), 1, 5, grants)).toEqual([5]);
     expect(shortestAllocationPath(graph, new Set([2, 5]), 1, 6, grants)).toEqual([3, 4, 6]);
     expect([...connectedAllocation(graph, new Set([2, 5, 6]), 1, grants)].sort()).toEqual([2, 5]);
-    expect([...deallocateNode(graph, new Set([2, 5]), 1, 2, grants)]).toEqual([]);
-    expect([...deallocateNode(graph, new Set([2, 3, 4, 5]), 1, 2, grants)].sort()).toEqual([3, 4, 5]);
+    expect([...connectedAllocation(graph, new Set([5]), 1, grants)]).toEqual([]);
+    expect([...connectedAllocation(graph, new Set([3, 4, 5]), 1, grants)].sort()).toEqual([3, 4, 5]);
   });
 
   it('uses an extra implicit class start only while its provider is connected', () => {
@@ -44,7 +43,7 @@ describe('passive graph', () => {
     const grants = [{ source: 2, nodes: [], roots: [10] }];
     expect(shortestAllocationPath(graph, new Set([2]), 1, 12, grants)).toEqual([11, 12]);
     expect([...connectedAllocation(graph, new Set([2, 11, 12]), 1, grants)].sort((a,b)=>a-b)).toEqual([2, 11, 12]);
-    expect([...deallocateNode(graph, new Set([2, 11, 12]), 1, 2, grants)]).toEqual([]);
+    expect([...connectedAllocation(graph, new Set([11, 12]), 1, grants)]).toEqual([]);
     expect(shortestAllocationPath(graph, new Set(), 1, 12, grants)).toEqual([]);
   });
 
@@ -53,7 +52,7 @@ describe('passive graph', () => {
     const circular = [{ source: 11, nodes: [], roots: [10] }];
     expect(connectedAllocation(graph, new Set([11]), 1, circular).size).toBe(0);
     const grants = [{ source: 2, nodes: [11], roots: [] }, { source: 3, nodes: [11], roots: [] }];
-    expect([...deallocateNode(graph, new Set([2, 3, 11]), 1, 2, grants)].sort((a,b)=>a-b)).toEqual([3, 11]);
+    expect([...connectedAllocation(graph, new Set([3, 11]), 1, grants)].sort((a,b)=>a-b)).toEqual([3, 11]);
   });
   it('fills reverse edges and finds a deterministic shortest path', () => {
     const graph = buildPassiveGraph([
@@ -80,18 +79,6 @@ describe('passive graph', () => {
   it('keeps an allocated root in the connected set', () => {
     const graph = buildPassiveGraph([node(1, [2]), node(2, [3]), node(3)]);
     expect([...connectedAllocation(graph, new Set([1, 2, 3]), 1)].sort()).toEqual([1, 2, 3]);
-  });
-
-  it('cascades deallocation when the whole allocation is root-connected', () => {
-    const graph = buildPassiveGraph([node(1, [2]), node(2, [3]), node(3, [4]), node(4)]);
-    expect([...deallocateNode(graph, new Set([2, 3, 4]), 1, 2)]).toEqual([]);
-  });
-
-  it('falls back to single-node removal when the model cannot explain the allocation', () => {
-    // 导入的真实 build：加点集合与 class 起点在模型里不连通（挂接边缺失/武器组加点）。
-    const graph = buildPassiveGraph([node(1), node(5, [6]), node(6, [7]), node(7)]);
-    const result = deallocateNode(graph, new Set([5, 6, 7]), 1, 7);
-    expect([...result].sort()).toEqual([5, 6]);
   });
 
   it('maps current PoE2 classes to their shared start nodes', () => {

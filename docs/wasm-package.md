@@ -63,6 +63,10 @@ pnpm --dir web smoke-wasm-package
 Outputs go under `.cache/wasm-release/`. Packaging reuses the built WASM and the
 complete synchronized Web data manifest, including shared overlays and i18n.
 It excludes the UI, images, example player builds and maintenance audit report.
+The same `build-wasm` command selects `wasm-release` (release optimizations,
+ThinLTO and one codegen unit). Dev/test settings are unchanged. Locale TOML is
+validated and compiled to string tables automatically; keep editing the existing
+locale files as usual. The TOML parser runs on the build host, outside the WASM.
 `build-wasm` first checks the source fingerprint, tool versions, relevant build
 environment/Cargo configuration, generated binding hashes and compiled schema.
 Unchanged inputs reuse the existing package and its original receipt without
@@ -70,7 +74,8 @@ calling wasm-pack. `pnpm --dir web build-wasm --force` explicitly rebuilds throu
 Cargo without cleaning its cache. Missing or old receipts cause one normal build.
 A new receipt is written only after a successful build with unchanged compile
 inputs. Packaging verifies that receipt against the current Rust sources,
-embedded locales, manifests, lockfile, build configuration and JSON types, checks
+embedded locales, shared `*_config_options.json` catalogs, manifests, lockfile,
+build configuration and JSON types, checks
 the generated binding hashes, and reads the schema from the compiled engine.
 It also compares synchronized data with the current snapshot and patch/common
 layers, including same-version changes. Stale inputs require a rebuild or sync;

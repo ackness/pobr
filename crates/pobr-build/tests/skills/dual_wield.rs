@@ -17,17 +17,13 @@
 //! Shortsword (One Hand Sword): physical 6-9, 645ms, 5% crit.
 
 use pobr_build::{
-    Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
+    Build, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
 };
 use pobr_core::calc::MinimalInput;
 use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
 use pobr_data::monster::EnemyTier;
-use pobr_gamedata::{GameData, repo_data_root};
 
-fn load_build_data() -> BuildData {
-    let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
-    BuildData::load(&data).expect("load BuildData from repo data")
-}
+use crate::test_data as load_build_data;
 
 fn weapon(base_name: &str, mods: &[&str]) -> Item {
     Item {
@@ -535,12 +531,12 @@ fn giants_blood_grip_accepts_only_eligible_weapon_bases_in_either_hand() {
                 .set_item(EquipmentSlot::Weapon1, weapon(main, &[]));
             let ordinary = main == "Wooden Club" && off == "Wooden Club";
             assert_eq!(
-                pobr_core::skill_env::can_dual_wield(&build, &data, true),
+                pobr_core::skill_env::can_dual_wield(&build, data, true),
                 eligible,
                 "equipment grip: {main} / {off}"
             );
             assert_eq!(
-                pobr_core::skill_env::can_dual_wield(&build, &data, false),
+                pobr_core::skill_env::can_dual_wield(&build, data, false),
                 ordinary
             );
             // The current skill data does not expose weapon allowlists.

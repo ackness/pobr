@@ -12,16 +12,12 @@
 //!   chance.
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 const SHIELD: &str = "Crucible Tower Shield";
 
 const MAGMA_BARRIER: &str = r#"<Skill enabled="true" mainActiveSkill="1"><Gem gemId="Metadata/Items/Gem/SkillGemMagmaBarrier" skillId="MagmaBarrierPlayer" nameSpec="Magma Barrier" level="18" quality="20" enabled="true"/></Skill>"#;
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data")
-}
+use crate::test_data as data;
 
 /// The block chance of the shield's base type.
 fn base_block(data: &BuildData) -> f64 {

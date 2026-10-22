@@ -32,9 +32,9 @@ fn data_dir() -> PathBuf {
     repo_root().join("data").join(patch())
 }
 
-/// Regen consistency: two precompile runs on the same isolated data copy produce byte-identical output.
+/// Two isolated runs cover determinism, coverage accounting and the committed golden.
 #[test]
-fn precompile_is_byte_stable() {
+fn precompile_is_byte_stable_and_matches_committed_coverage() {
     let src_data = data_dir();
     assert!(
         src_data.is_dir(),
@@ -47,10 +47,12 @@ fn precompile_is_byte_stable() {
 
     let corpus1 = corpus::collect(&tmp_data, None).expect("collect 1");
     let outcome1 = parsed::precompile(&corpus1, &tmp_data).expect("precompile 1");
+    assert_coverage_counts(&corpus1, &outcome1);
     let cov1 = outcome1.coverage;
     report::emit(&cov1, 40, &tmp_data).expect("report 1");
     let parsed1 = std::fs::read(tmp_data.join("generated/parsed_mods.json")).unwrap();
     let report1 = std::fs::read(tmp_data.join("generated/parse-coverage.json")).unwrap();
+    assert_committed_coverage(&report1);
 
     let corpus2 = corpus::collect(&tmp_data, None).expect("collect 2");
     let outcome2 = parsed::precompile(&corpus2, &tmp_data).expect("precompile 2");
@@ -72,14 +74,7 @@ fn precompile_is_byte_stable() {
 }
 
 /// Three-way counts are self-consistent, and the coverage ratio is defined correctly.
-#[test]
-fn coverage_counts_are_consistent() {
-    let src_data = data_dir();
-    let tmp = mirror_data_dir(&src_data);
-    let tmp_data = tmp.join("data").join(patch());
-
-    let corpus = corpus::collect(&tmp_data, None).expect("collect");
-    let outcome = parsed::precompile(&corpus, &tmp_data).expect("precompile");
+fn assert_coverage_counts(corpus: &corpus::Corpus, outcome: &parsed::PrecompileOutcome) {
     let cov = &outcome.coverage;
 
     assert_eq!(
@@ -107,14 +102,11 @@ fn coverage_counts_are_consistent() {
         (0.0..=1.0).contains(&ratio),
         "coverage ratio should be in [0,1]: {ratio}"
     );
-
-    std::fs::remove_dir_all(&tmp).ok();
 }
 
 /// Golden: the committed parse-coverage.json summary must equal a fresh rerun.
 /// Also checks the committed report against the baseline (the ratchet baseline tracks the artifact).
-#[test]
-fn committed_coverage_matches_fresh_run() {
+fn assert_committed_coverage(fresh_report: &[u8]) {
     let committed_path = data_dir().join("generated/parse-coverage.json");
     if !committed_path.is_file() {
         // Skip before the first commit (artifact not on disk yet) — this
@@ -126,17 +118,7 @@ fn committed_coverage_matches_fresh_run() {
         serde_json::from_slice(&std::fs::read(&committed_path).unwrap()).unwrap();
     let committed_summary = &committed["summary"];
 
-    let src_data = data_dir();
-    let tmp = mirror_data_dir(&src_data);
-    let tmp_data = tmp.join("data").join(patch());
-    let corpus = corpus::collect(&tmp_data, None).expect("collect");
-    let outcome = parsed::precompile(&corpus, &tmp_data).expect("precompile");
-    let cov = outcome.coverage;
-    report::emit(&cov, 40, &tmp_data).expect("report");
-    let fresh: serde_json::Value = serde_json::from_slice(
-        &std::fs::read(tmp_data.join("generated/parse-coverage.json")).unwrap(),
-    )
-    .unwrap();
+    let fresh: serde_json::Value = serde_json::from_slice(fresh_report).unwrap();
 
     assert_eq!(
         committed_summary, &fresh["summary"],
@@ -165,8 +147,6 @@ fn committed_coverage_matches_fresh_run() {
              if this is expected (corpus expansion), update devs/ci/parse-coverage-baseline.json in the same PR"
         );
     }
-
-    std::fs::remove_dir_all(&tmp).ok();
 }
 
 /// Mirror the version data directory into a unique temp `<tmp>/data/<patch>/`

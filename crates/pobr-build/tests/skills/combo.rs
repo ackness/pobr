@@ -9,11 +9,8 @@ use pobr_core::{
     display_catalog,
 };
 use pobr_data::prelude::ModType;
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap()
-}
+use crate::test_data as data;
 
 fn build(skill: &str, support: &str, config: &str, nodes: &str) -> Build {
     let support = if support.is_empty() {

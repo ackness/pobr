@@ -3,21 +3,23 @@ name = "pobr-build"
 version = "0.0.29"
 edition.workspace = true
 
+[features]
+benchmarks = ["dep:criterion"]
+
 [dependencies]
 pobr-data.workspace = true
 pobr-core.workspace = true
 pobr-tree.workspace = true
-pobr-item.workspace = true
 pobr-gamedata.workspace = true
 base64 = "0.23"
 flate2 = "1"
 quick-xml = "0.42"
 thiserror = "2"
 serde.workspace = true
+criterion = { version = "0.8", default-features = false, optional = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }
-criterion = { version = "0.8", default-features = false }
 # 测试取真实 CompiledParserRules（读仓库数据目录）；仅测试构建启用。
 pobr-core = { workspace = true, features = ["test-rules"] }
 # Snapshot pins for data-count assertions; test builds only.
@@ -26,3 +28,4 @@ pobr-gamedata = { workspace = true, features = ["test-pins"] }
 [[bench]]
 name = "perform_bench"
 harness = false
+required-features = ["benchmarks"]

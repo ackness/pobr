@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { feasibleOf, rankVariants, scoreOf, subsetCount, subsets } from './optimize';
+import { feasibleOf, rankVariants, scoreOf } from './optimize';
 import type { VariantStats } from '../api/types';
 
 describe('scoreOf / feasibleOf', () => {
@@ -39,15 +39,5 @@ describe('rankVariants', () => {
       obj,
     );
     expect(ranked.map((r) => r.index)).toEqual([3, 0, 1, 2]);
-  });
-});
-
-describe('subsets / subsetCount', () => {
-  test('enumerates non-empty subsets up to maxSize, small first', () => {
-    const out = subsets(['a', 'b', 'c'], 2);
-    expect(out.length).toBe(6); // C(3,1) + C(3,2)
-    expect(out.slice(0, 3).every((s) => s.length === 1)).toBe(true);
-    expect(subsetCount(3, 2)).toBe(6);
-    expect(subsetCount(8, 3)).toBe(8 + 28 + 56);
   });
 });

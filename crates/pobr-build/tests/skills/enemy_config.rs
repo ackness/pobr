@@ -3,11 +3,8 @@ use pobr_build::breakdown::detail::{DetailKind, stat_detail};
 use pobr_build::breakdown::stat_breakdown;
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data_session, parse_build};
 use pobr_core::calc::{CalculationSession, MinimalInput};
-use pobr_gamedata::{GameData, current_data_dir};
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(current_data_dir())).unwrap()
-}
+use crate::test_data as data;
 
 fn calc(data: &BuildData, inputs: &str, extra: &[&str]) -> CalculationSession {
     let xml = format!(

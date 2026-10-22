@@ -63,10 +63,6 @@ function itemLines(text: string): ItemLine[] {
   return result;
 }
 
-export function explicitItemLines(text: string): ItemLine[] {
-  return itemLines(text).filter(row => row.namespace === 'explicit');
-}
-
 function numericValue(line: string, template: StatTemplate, referenceLine = template.line): number | null {
   if (!template.value_indices) return lineValue(line.toLowerCase());
   // A flag has no numeric query value, even when PoB exports a variable roll.
@@ -134,11 +130,6 @@ export function scoreEquipment(text: string, weighted: readonly WeightedStat[], 
   return { score: contributions.reduce((sum, row) => sum + row.score, 0),
     complete: /^\s*Rarity:/im.test(text) && unscoredLines.length === 0, matchedLines: groups.length - unscoredLines.length,
     totalLines: groups.length, contributions, unscoredLines };
-}
-
-/** Remove the complete official stat while retaining every other item source. */
-export function withoutTradeStat(text: string, stat: StatTemplate, templates: readonly StatTemplate[]): { text: string; value: number } | undefined {
-  return tradeStatRemovals(text, templates).get(stat.id);
 }
 
 /** Match the current item once, including large option-based passive catalogs. */

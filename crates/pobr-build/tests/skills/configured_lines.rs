@@ -15,12 +15,8 @@ use pobr_build::{
     diagnose, parse_build,
 };
 use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data")
-}
+use crate::test_data as data;
 
 /// A build with one Fireball gem carrying `gem_attributes`, the passive nodes
 /// `nodes` and `config` as the content of its `<Config>`.

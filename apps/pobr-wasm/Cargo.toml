@@ -23,7 +23,25 @@ wasm-bindgen = { version = "0.2", optional = true }
 [features]
 default = []
 wasm = ["dep:wasm-bindgen"]
+# Manual timing probes and fixture generators do not belong to the default gate.
+diagnostics = []
 
-[dev-dependencies]
-# Snapshot pins for data-count assertions; test builds only.
-pobr-gamedata = { workspace = true, features = ["test-pins"] }
+[[test]]
+name = "config_context_timing"
+required-features = ["diagnostics"]
+
+[[test]]
+name = "perf_phases"
+required-features = ["diagnostics"]
+
+[[test]]
+name = "perf_timing"
+required-features = ["diagnostics"]
+
+[[test]]
+name = "zh_gap_probe"
+required-features = ["diagnostics"]
+
+[[test]]
+name = "gen_fixtures"
+required-features = ["diagnostics"]

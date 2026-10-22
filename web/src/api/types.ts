@@ -393,14 +393,6 @@ export interface OptimizeVariantsResponse {
   variants: VariantStats[];
 }
 
-/** 词条 → 官方 trade2 stat 映射条目（overlay/trade_stat_map.json，静态资产直读）。 */
-export interface TradeStatEntry {
-  /** 官方 stat id（如 `explicit.stat_3372524247`）。 */
-  id: string;
-  /** 官方展示文案。 */
-  text: string;
-}
-
 /** 符文/魂核目录条目（rune_catalog_json）。 */
 export interface RuneCatalogEntry {
   /** canonical 英文名（`Rune:` 行与 reforge 请求的键）。 */

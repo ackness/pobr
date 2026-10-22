@@ -1,5 +1,5 @@
 //! Frontend mock fixture generator (`#[ignore]`, run manually):
-//! `cargo test -p pobr-wasm --test gen_fixtures -- --ignored`
+//! `cargo test -p pobr-wasm --features diagnostics --test gen_fixtures -- --ignored`
 //!
 //! Produces `web/src/fixtures/*.json` from the real contract entry points,
 //! guaranteeing the mock backend's shape has zero drift from the real wasm

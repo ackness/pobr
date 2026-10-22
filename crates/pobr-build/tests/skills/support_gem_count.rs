@@ -8,15 +8,11 @@
 //! socketed**, and stays inactive with **0** (a missing lower-bound key means
 //! "not active" — a fail-safe under-count semantics).
 
-use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
+use pobr_build::{DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_core::calc::MinimalInput;
 use pobr_data::monster::EnemyTier;
-use pobr_gamedata::{GameData, repo_data_root};
 
-fn load_build_data() -> BuildData {
-    let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
-    BuildData::load(&data).expect("load BuildData from repo data")
-}
+use crate::test_data as load_build_data;
 
 fn opts_with_threshold_line() -> DataOrchestratorOptions {
     DataOrchestratorOptions {

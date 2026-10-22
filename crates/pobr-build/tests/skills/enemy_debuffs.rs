@@ -13,12 +13,8 @@ use pobr_build::{
     calculate_with_data,
 };
 use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
-fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data")
-}
+use crate::test_data as data;
 
 fn item(base: &str, mods: &[&str]) -> Item {
     Item {

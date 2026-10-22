@@ -1,55 +1,10 @@
-//! ModCache golden differential.
+//! Optional ModCache differential report against a captured PoB2 fixture.
 //!
-//! Cross-checks the data-driven engine's output (`parse_mod_engine` + the real rule
-//! set) mod-by-mod against a golden dump offline-captured from vendor PoB2's
-//! `Data/ModCache.lua` (`tests/fixtures/modcache_golden.json`, produced by
-//! `tools/pob2-oracle/oracle.lua --mode modcache-dump`), producing a **five-state
-//! report**. This is the correctness baseline for the Track B engine rewrite: once B
-//! switches over it reuses the same golden fixture and the same report schema, and the
-//! diff-fixing loop treats this report as the shared input (contract 5).
-//!
-//! # The five-state verdict (§5.2 terms, relative to where the vendor golden lands)
-//!
-//! | state | definition | §5.2 equivalent |
-//! |----|------|-----------|
-//! | `eq`     | golden parsed, PoBR parsed, and the canonical forms are equal | EQ |
-//! | `diff`   | both sides parsed but the canonical forms differ | DIFF (blocks the switch — B has final say on the fix) |
-//! | `miss`   | golden parsed but PoBR is unsupported (a PoBR gap) | the mirror of NEW_ONLY (vendor can, PoBR can't) |
-//! | `extra`  | golden unsupported but PoBR parsed (PoBR over-parses) | the mirror of OLD_ONLY (PoBR can, vendor's cache is empty) |
-//! | `unsup`  | both sides unsupported | UNSUP (counted as a coverage gap, doesn't block) |
-//!
-//! Hit rate = `eq / (total golden-parsed entries)` — the Track B rewrite's goal is to
-//! drive `miss`/`diff` to zero, pushing the hit rate toward 100%.
-//!
-//! # canonical comparison rules (**the key tradeoff in this batch**)
-//!
-//! Modifier canonical = `(name, type, value, flags[], keywordFlags[])`. **The tag
-//! structure does not participate in the EQ/DIFF verdict** — the vendor tag table and
-//! pobr's `ModTag` have different field shapes (vendor uses
-//! `{type="Multiplier",var=...,div=...}`, pobr uses a shaped enum), and mapping them
-//! field-by-field is Track B rewrite work, not this cross-check baseline's job. Tag
-//! count differences are recorded in the report detail (`tag_delta`) as a reference
-//! for B, but they don't trigger DIFF. Once the B engine lands, this can be tightened
-//! to full tag equality on the same fixture.
-//!
-//! This tradeoff keeps the baseline **stable** (no flood of false DIFFs from tag
-//! representation differences) while still precisely capturing real deviations at the
-//! name/type/value/flag level — which is the core correctness signal for the engine.
-//!
-//! # Artifacts
-//!
-//! The report is written to `target/parser-modcache-diff-report.json` (schema
-//! documented on `DiffReport` in this module, contract 5), consumed by both CI and B's
-//! diff-fixing loop. This test does **not** enforce a hard hit-rate threshold (the
-//! engine's coverage of the full ModCache corpus is inherently partial — the hard
-//! gate is the parity suite); it only asserts that the fixture loads, the report
-//! generates, and the five-state counts are self-consistent (keeping the baseline
-//! runnable).
-//!
-//! Implementation note: pobr-core's dev-deps only include `serde_json` (no `serde`
-//! derive), so golden loading and report construction go entirely through
-//! `serde_json::Value` field access by hand — consistent with the repo convention of
-//! "zero serde_json in the lib itself" (this is test-only usage).
+//! The report compares modifier names, values and flags; tag shapes are reported
+//! separately and no accuracy threshold is enforced. Run explicitly with:
+//! `cargo test -p pobr-core --test parser engine_modcache_differential -- --ignored --nocapture`.
+//! Output: `target/parser-modcache-diff-report.json`. The default test validates
+//! fixture consistency; behavioral parser and build parity tests enforce regressions.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -584,6 +539,7 @@ fn golden_fixture_is_self_consistent() {
 /// test only guards the baseline's runnability and prints the hit rate to stderr
 /// (visible with `--nocapture`) to track gap convergence.
 #[test]
+#[ignore = "diagnostic report without a regression threshold; run explicitly with --ignored"]
 fn engine_modcache_differential() {
     let doc = load_golden();
     let report = run_differential(&doc);

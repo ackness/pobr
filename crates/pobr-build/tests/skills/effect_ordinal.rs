@@ -1,8 +1,7 @@
-use pobr_build::{BuildData, parse_build, resolve_main_skill_selection};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
+use pobr_build::{parse_build, resolve_main_skill_selection};
 
 fn assert_selection(primary: &str, ordered: &[&str]) {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap();
+    let data = crate::test_data();
     for (index, expected) in ordered.iter().enumerate() {
         let ordinal = index + 1;
         let xml = format!(
@@ -50,7 +49,7 @@ fn mirage_display_order_skips_support_and_selects_spawn_before_meta() {
 
 #[test]
 fn selected_crossbow_shots_keep_the_ammo_reload_modifiers() {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap();
+    let data = crate::test_data();
     for (primary, reload, bolts) in [
         ("ExplosiveShotAmmoPlayer", 0.8 / 0.7, 1.0),
         ("SiegeCascadeAmmoPlayer", 0.8 / 0.7, 1.0),
@@ -81,7 +80,7 @@ fn selected_crossbow_shots_keep_the_ammo_reload_modifiers() {
 
 #[test]
 fn requiem_fires_without_a_magazine_or_reload() {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap();
+    let data = crate::test_data();
     let session = pobr_build::calculate_with_data_session(
         &crossbow("CrossbowRequiemAmmoPlayer"),
         &data,
@@ -109,7 +108,7 @@ Makeshift Crossbow
 
 #[test]
 fn magma_spray_uses_its_fire_base_and_complete_groups_of_shield_defence() {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap();
+    let data = crate::test_data();
     let run = |armour: u32| {
         let build = parse_build(&format!(
             r#"<PathOfBuilding2><Build level="90" className="Witch"/>
@@ -139,7 +138,7 @@ Implicits: 0
 
 #[test]
 fn granted_periodic_effects_use_their_game_intervals() {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap();
+    let data = crate::test_data();
     for (primary, rate) in [
         ("ArchonOfChayulaPlayer", 5.0),
         ("TheStarsAnswerPlayer", 1000.0 / 300.0),

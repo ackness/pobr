@@ -8,7 +8,6 @@
 
 use pobr_build::{Build, BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
-use pobr_gamedata::{GameData, data_version, repo_data_root};
 
 /// A build with one Fireball gem carrying `gem_attributes`.
 fn build(gem_attributes: &str) -> Build {
@@ -62,8 +61,7 @@ fn a_build_code_keeps_whether_a_gem_is_corrupted() {
 
 #[test]
 fn a_level_bonus_for_corrupted_skill_gems_applies_to_a_corrupted_gem_only() {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data");
+    let data = crate::test_data();
     let clean = r#"level="20""#;
     let corrupted = r#"level="20" corrupted="true""#;
     let level_20 = average_hit(&data, &build(clean));
@@ -100,8 +98,7 @@ fn gear(base: &str, corrupted: bool, counts_them: bool) -> Item {
 
 #[test]
 fn corrupted_items_equipped_are_counted() {
-    let data = BuildData::load(&GameData::new(repo_data_root().join(data_version())))
-        .expect("load repository data");
+    let data = crate::test_data();
     let fire_resistance = |build: &Build| {
         calculate_with_data(build, &data, &DataOrchestratorOptions::default())
             .expect("calculate")

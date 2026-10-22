@@ -1,17 +1,9 @@
 //! Repeated spell hits come from the game's timing stats, not cast speed.
 use pobr_build::{
-    Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup,
-    calculate_with_data_session,
+    Build, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data_session,
 };
-use pobr_gamedata::{GameData, data_version, repo_data_root};
-use std::sync::OnceLock;
 
-fn data() -> &'static BuildData {
-    static DATA: OnceLock<BuildData> = OnceLock::new();
-    DATA.get_or_init(|| {
-        BuildData::load(&GameData::new(repo_data_root().join(data_version()))).unwrap()
-    })
-}
+use crate::test_data as data;
 
 fn build(skill: &str) -> Build {
     Build::new()

@@ -78,6 +78,7 @@ fn special_registry() -> HandlerRegistry {
 #[test]
 fn special_mods_compile_clean() {
     let entries = load_entries();
+    report_verified_distribution(&entries);
     let registry = special_registry();
     let rules = SpecialModRules::compile(&entries, &registry)
         .expect("all repo special entries should compile cleanly (pattern/mod_type/enums/id gate)");
@@ -153,9 +154,7 @@ fn ids_and_patterns_unique() {
 
 /// A report of the `verified:false` count (not an assertion — acceptance is judged by the
 /// trend/spot-checks, not a hard percentage threshold).
-#[test]
-fn report_verified_distribution() {
-    let entries = load_entries();
+fn report_verified_distribution(entries: &[SpecialTemplateDef]) {
     let total = entries.len();
     let verified = entries.iter().filter(|e| e.verified).count();
     let unverified = total - verified;
