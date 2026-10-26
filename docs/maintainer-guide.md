@@ -1829,3 +1829,34 @@ unverified and is not enabled merely to match the exporter. Melting Maelstrom's
 finite per-use recovery remains in the existing flask utility output, without
 assuming permanent flask uptime. Time of Need and Ghost Dance's repeat intervals
 remain separate from activation cooldowns; no event history is inferred.
+
+Watch How I Do It supplies recipient-local `MainHandDamageToAllies` through the
+existing ally aura path. Only the main-hand weapon's own damage components feed
+attacking recipients; player or ring-added damage does not. Companion-only
+sharing remains separate, and existing aura, hidden-recipient and Presence gates
+still apply. Damage per different Companion counts distinct resolved companion
+identities with positive populations in enabled, active-set groups, not capacity
+or duplicate copies. Existing explicit false/zero Presence snapshots suppress it;
+a positive aggregate does not locate individual companions.
+
+Resistance per equipped item with a Lightning resistance modifier counts each
+current ordinary equipment slot once. Direct all-element and negative modifiers
+qualify; cancelling modifiers or an inactive condition do not erase the item's
+modifier. Nested ally/minion grants and separately stored jewels/flasks/charms
+do not count. This follows the existing equipment-count boundary; eligibility of
+Transcendent limbs and maximum-resistance-only modifiers is not client-verified.
+
+Loreweave's combined rarity/exclusion stat retains only its own rarity source,
+not every rarity modifier on the same item. The exact adjacent pair is joined
+within its section before parsing and diagnostic collection; imported text stays
+unchanged. Native and reference-basis modes retain the allowed 84% (factor 1.84),
+whereas pinned PoB2 also applies a 15% charm (1.99). This partial support is
+`exporter: "differs"`, so comparison does not discard the supported numeric part.
+
+Crimson Assault replaces Bleeding's base duration with one second before the
+existing duration INC/MORE and faster-damage modifiers. Instance damage, retained
+terms and source views use the same resolved base. Shattering Spite's native
+`active_skill_damaging_ailment_effect_+%_final` applies its -50% through damaging
+ailment effect; it does not infer Bloodstone Lance counts or conditional leech.
+The pinned exporter omits this stat, so it is disabled only for reference-basis
+comparison. Neither change explains every remaining saved BleedDPS difference.
