@@ -71,6 +71,40 @@ fn an_aura_gem_keeps_its_quality_and_gains_levels() {
     );
 }
 
+#[test]
+fn item_grant_uses_the_listed_groups_supports_and_enabled_state() {
+    let data = crate::test_data();
+    let build = parse_build(
+        r#"<PathOfBuilding2><Build level="100" className="Witch" mainSocketGroup="1"/>
+<Items><Item id="1">Rarity: RARE
+Test Sceptre
+Stoic Sceptre
+Implicits: 1
+Grants Skill: Level 20 Discipline
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+<Skills>
+<Skill enabled="true" slot="Weapon 1" source="Item:1:Test Sceptre, Stoic Sceptre"><Gem skillId="DisciplinePlayer" level="20" enabled="true"/></Skill>
+<Skill enabled="true"><Gem skillId="DisciplinePlayer" level="20" enabled="true"/><Gem skillId="SupportUhtredExodusPlayer" level="1" enabled="true"/></Skill>
+</Skills></PathOfBuilding2>"#,
+    )
+    .unwrap();
+    let options = DataOrchestratorOptions {
+        extra_modifier_texts: vec!["+200 to Intelligence".into(), "+100 to Strength".into()],
+        ..Default::default()
+    };
+    let output = calculate_with_data(&build, data, &options).unwrap();
+    // The supported Discipline runs at 23 and grants 439 total ES. The
+    // earlier item-source copy must not hide it with its unsupported level 20.
+    assert_eq!(output.energy_shield, 439.0);
+    let selection = pobr_build::resolve_main_skill_selection(&build, data).unwrap();
+    assert_eq!(selection, (1, 1, "DisciplinePlayer".into()));
+
+    let mut disabled = build;
+    disabled.socket_groups[1].enabled = false;
+    let output = calculate_with_data(&disabled, data, &options).unwrap();
+    assert_eq!(output.energy_shield, 0.0);
+}
+
 /// A buff has the name the game shows for its skill (`Sniper's Mark`, which
 /// the curse priority table knows; `Arctic Armour`, whose skill is
 /// `new_new_arctic_armour`). A name with a placeholder, a Companion's

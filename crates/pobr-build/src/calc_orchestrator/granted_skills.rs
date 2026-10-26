@@ -252,7 +252,9 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
 /// first, at the level the item grants, with no quality and uncorrupted (a
 /// character imported from the game lists a granted skill a second time
 /// there, holding its supports). One such ordinary group is the granted
-/// skill; any other gem of the same skill is a gem.
+/// skill; any other gem of the same skill is a gem. When that listed group
+/// exists, its supports and enabled state take precedence over the item's
+/// duplicate group, as they do for a tree-granted skill.
 ///
 /// A granted skill is used at the highest level up to the one the item names
 /// whose requirements the character meets, so each such group records that
@@ -351,10 +353,18 @@ pub(crate) fn mark_item_granted_skills(build: &Build, data: &BuildData) -> Optio
             .enumerate()
             .position(|(index, group)| !claimed.contains(&index) && listed(group));
         for (index, group) in groups.iter_mut().enumerate() {
-            if !own(group) && listed_at != Some(index) {
+            let is_own = own(group);
+            if !is_own && listed_at != Some(index) {
                 continue;
             }
             claimed.insert(index);
+            if is_own && let Some(listed) = listed_at {
+                group.enabled = false;
+                if marked.main_socket_group == Some(index + 1) {
+                    marked.main_socket_group = Some(listed + 1);
+                }
+                any = true;
+            }
             if let Some(level) = level
                 && group
                     .gem_skills

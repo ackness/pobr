@@ -159,6 +159,20 @@ fn named_levels_on_a_secondary_effect_raise_the_whole_gem() {
     assert!(usage.skills.iter().all(|skill| skill.level == 23));
 }
 
+#[test]
+fn named_levels_use_the_skeletal_storm_mage_gems_name() {
+    use pobr_build::{Build, SocketGroup};
+    let data = data();
+    let mut build = Build::new()
+        .add_socket_group(SocketGroup::new().with_gem_skill("SummonSkeletalStormMagesPlayer", 20));
+    build.config.global_modifier_texts =
+        vec!["+3 to Level of all Skeletal Storm Mage Skills".into()];
+    let diagnosis =
+        pobr_build::diagnose(&build, data, &DataOrchestratorOptions::default()).unwrap();
+    let usage = pobr_build::usage::line_usage(&diagnosis, &build, data);
+    assert_eq!(usage.skills[0].level, 23);
+}
+
 /// ItemExperiencePerLevel: level 19 requires character level 84, level 20
 /// requires 90. Spear Throw's imported 1 is a placeholder; +3 Attack levels
 /// apply after that character-level baseline, giving 22 and 23 respectively.

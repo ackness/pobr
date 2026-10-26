@@ -161,3 +161,35 @@ fn corruption_level_bonus_does_not_increase_gem_requirements() {
     let result = calculate_with_data(&build, &data, &DataOrchestratorOptions::default()).unwrap();
     assert_eq!(result.req_int, 137.0);
 }
+
+#[test]
+fn a_separate_gem_keeps_requirements_beside_the_same_item_grant() {
+    let data = crate::test_data();
+    let build = pobr_build::parse_build(
+        r#"<PathOfBuilding2><Build level="90" className="Witch"/>
+        <Items><Item id="1">Rarity: RARE
+Test Amulet
+Absent Amulet
+Implicits: 1
+Grants Skill: Level 20 Cast on Dodge
+</Item><ItemSet id="1"><Slot name="Amulet" itemId="1"/></ItemSet></Items>
+        <Skills>
+        <Skill enabled="true"><Gem skillId="MetaCastOnDodgePlayer" level="20" quality="0" enabled="true"/></Skill>
+        <Skill enabled="true"><Gem skillId="MetaCastOnDodgePlayer" level="20" corruptLevel="1" corrupted="true" quality="23" enabled="true"/></Skill>
+        <Skill enabled="true" slot="Amulet" source="Item:1:Test Amulet, Absent Amulet"><Gem skillId="MetaCastOnDodgePlayer" level="20" quality="0" enabled="true"/></Skill>
+        </Skills></PathOfBuilding2>"#,
+    )
+    .unwrap();
+    let result = calculate_with_data(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+    // The first group represents the amulet's grant. The second is an actual
+    // level-20 gem, with a corruption bonus that does not raise its requirements.
+    assert_eq!(result.req_dex, 86.0);
+    assert_eq!(result.req_int, 86.0);
+
+    let mut only_granted = build;
+    only_granted.socket_groups.remove(1);
+    let result =
+        calculate_with_data(&only_granted, &data, &DataOrchestratorOptions::default()).unwrap();
+    assert_eq!(result.req_dex, 0.0);
+    assert_eq!(result.req_int, 0.0);
+}
