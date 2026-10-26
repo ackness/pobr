@@ -248,6 +248,12 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // so there's no self-reference).
     super::warcry::apply_warcry_uptime(env);
 
+    super::skill_mechanics::snapshot_remaining_chains(
+        &env.player.mod_db,
+        &env.enemy.mod_db,
+        &mut env.cfg,
+    );
+
     let input = player_input(env);
     // The hand-pass entry point. When `hand_sources` is empty (non-attack skill / old entry
     // point), `run_hand_passes` passes straight through to `calculate_minimal_vs_enemy`, behavior
@@ -654,6 +660,11 @@ fn perform_minions(env: &mut Env) {
         }
         apply_extra_auras(minion, &minion_cfg, env);
         apply_main_hand_share(minion, &minion_cfg, env);
+        super::skill_mechanics::snapshot_remaining_chains(
+            &minion.mod_db,
+            &env.enemy.mod_db,
+            &mut minion_cfg,
+        );
         let mut input = MinimalInput::from(minion.base);
         input.enemy_evasion = super::setup_env::enemy_evasion(&env.enemy, &minion_cfg);
 

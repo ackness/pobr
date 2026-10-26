@@ -916,9 +916,12 @@ pub(crate) fn hit_pass(
     // produces NONE, unchanged value-for-value); ailment scaling separately
     // strips Hit via `ailment_scoped_cfg`, and ignite/bleed etc.'s DoT base
     // is still derived from hit damage that includes Hit (matching PoB2: DoT inherits hit bonuses).
-    let hit_cfg = cfg
+    let mut hit_cfg = cfg
         .clone()
         .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT);
+    // Resolve again in this hand's scope; an off-hand chain bonus must not
+    // change the other hand, and minimal/traced callers need the same snapshot.
+    super::skill_mechanics::snapshot_remaining_chains(db, enemy_db, &mut hit_cfg);
     // ScaledDamageEffect (the DD/TD factor; effect == 1.0 unchanged
     // bit-for-bit when there's no mod; crit_chance is
     // a fraction input).
@@ -1463,9 +1466,12 @@ fn total_dps_traced(
     // TODO(attribution surface): DD/TD mods have no Input node yet (missing
     // direct, falling back to marginal).
     // The hit-view cfg: adds `KeywordFlags::HIT` (shares its source with the non-traced path, see the comment there).
-    let hit_cfg = cfg
+    let mut hit_cfg = cfg
         .clone()
         .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT);
+    // Resolve again in this hand's scope; an off-hand chain bonus must not
+    // change the other hand, and minimal/traced callers need the same snapshot.
+    super::skill_mechanics::snapshot_remaining_chains(db, enemy_db, &mut hit_cfg);
     let scaled = scaled_damage_effect(db, enemy_db, &hit_cfg, crit.chance);
     let crit_pass = run_crit_passes(
         db,

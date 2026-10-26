@@ -1016,6 +1016,23 @@ pub struct ProjectileCounts {
     pub bounce: f64,
 }
 
+/// Damage is for the selected hit along the chain. With no chain-count
+/// snapshot this is the initial hit; capacity alone never adds hits to DPS.
+pub(super) fn snapshot_remaining_chains(db: &ModDb, enemy: &ModDb, cfg: &mut CalcConfig) {
+    let available = projectile_behavior_counts(db, enemy, cfg).chain;
+    let used = cfg
+        .multiplier_if_set("Chain")
+        .unwrap_or_else(|| db.sum(ModType::Base, &*cfg, &[ModName::from("ChainCount")]));
+    let used = if used.is_finite() {
+        used.clamp(0.0, available)
+    } else {
+        0.0
+    };
+    let remaining = available - used;
+    cfg.stats.insert("ChainRemaining".into(), remaining);
+    cfg.multipliers.insert("ChainRemaining".into(), remaining);
+}
+
 pub fn projectile_behavior_counts(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig) -> ProjectileCounts {
     let sum = |name: &str| db.sum(ModType::Base, cfg, &[ModName::from(name)]);
     let flag = |name: &str| db.flag(cfg, name);
