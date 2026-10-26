@@ -1838,6 +1838,11 @@ still apply. Damage per different Companion counts distinct resolved companion
 identities with positive populations in enabled, active-set groups, not capacity
 or duplicate copies. Existing explicit false/zero Presence snapshots suppress it;
 a positive aggregate does not locate individual companions.
+Companion membership is independent of damageability: Manifest Weapon counts
+as a Companion and obeys Presence exclusions, but its undamageable body does
+not add to `TotalCompanionLife`. Shared weapon-damage contributions retain each
+grant's original source and raw text; Watch How I Do It and Catha remain distinct
+in minion detail rows instead of becoming one anonymous derived modifier.
 
 Resistance per equipped item with a Lightning resistance modifier counts each
 current ordinary equipment slot once. Direct all-element and negative modifiers
