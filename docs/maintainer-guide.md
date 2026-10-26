@@ -1865,3 +1865,19 @@ terms and source views use the same resolved base. Shattering Spite's native
 ailment effect; it does not infer Bloodstone Lance counts or conditional leech.
 The pinned exporter omits this stat, so it is disabled only for reference-basis
 comparison. Neither change explains every remaining saved BleedDPS difference.
+
+Oisin's `mana_leech_from_elemental_instead` uses the existing elemental Mana-leech
+eligibility and excludes Physical damage from that resource's leech. It grants no
+percentage, keeps source attack/spell restrictions, and preserves independently
+eligible Chaos leech. The whole-hit ceiling still includes all damage before
+eligibility weighting. Life/ES conversion and the panel's existing conventions
+are unchanged.
+
+Brutality's native no-elemental/no-chaos stats admit the existing `DealNo*` flags
+through the shared player/minion mapper. The existing post-conversion damage
+gates remove those components while retaining physical MORE and support scope.
+The separate chance to ignore physical reduction remains diagnostic; this batch
+does not infer a missing mitigation contribution or add a probabilistic model.
+Second Wind's double-use capability remains unsupported, but the only selected
+groups in this cohort select Convalescence's ineligible reservation effect;
+the active effect is not silently substituted.
