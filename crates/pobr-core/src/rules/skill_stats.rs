@@ -168,17 +168,19 @@ pub fn corpse_explosion_damage(stat: &str, value: f64) -> Option<(DamageType, f6
     }
 }
 
-/// The stats that say how many minions a summoning skill creates, of each
-/// kind of minion it summons.
-const SUMMONED_MINION_COUNTS: [&str; 2] = [
+/// The stats that set the count or limit used for a summoning skill's
+/// minion snapshot, for each kind of minion it summons.
+const SUMMONED_MINION_COUNTS: [&str; 3] = [
     // Cackling Companions: "Summons {0} Hyenas".
     "skill_hyena_cackle_size",
     // Wolf Pack: pack size grows from 3 at gem level 1 to 6 at level 20.
     "skill_wolf_pack_size",
+    // Raise Zombie: the skill's base limit, before temporary-minion bonuses.
+    "base_number_of_zombies_allowed",
 ];
 
-/// Whether the stat `stat` of a summoning skill is the number of minions it
-/// creates. They are counted where the skill creates them
+/// Whether the stat `stat` supplies the count or limit of a summoning
+/// skill's minion snapshot. It is read where the skill creates them
 /// (`skill_env::spawn_minions`); the stat grants the skill nothing.
 pub fn is_summoned_minion_count(stat: &str) -> bool {
     SUMMONED_MINION_COUNTS.contains(&stat)

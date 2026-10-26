@@ -150,3 +150,30 @@ fn a_specific_summon_count_does_not_include_other_minion_kinds() {
         raging.config().multiplier("SummonedMinion")
     );
 }
+
+#[test]
+fn minion_static_zombie_limit_uses_the_summoning_skills_game_stat() {
+    let data = crate::test_data();
+    let base = run(&data, "RaiseZombiePlayer", "", &[]);
+    let extra = run(
+        &data,
+        "RaiseZombiePlayer",
+        "",
+        &["Temporary Minion Skills have +5 to Limit of Minions summoned"],
+    );
+    // base_number_of_zombies_allowed is 10, not the one-minion fallback.
+    assert_eq!(base.output().active_minion_limit, 10.0);
+    assert_eq!(extra.output().active_minion_limit, 15.0);
+    assert_eq!(extra.config().multiplier("SummonedMinion"), 15.0);
+    assert_eq!(extra.config().multiplier("MinionPresenceCount"), 15.0);
+    assert_eq!(extra.output().minions[0].dps, base.output().minions[0].dps);
+
+    // The persistent Wolf Pack retains its own count and ignores this bonus.
+    let wolves = run(
+        &data,
+        "WolfPackPlayer",
+        "",
+        &["Temporary Minion Skills have +5 to Limit of Minions summoned"],
+    );
+    assert_eq!(wolves.output().active_minion_limit, 6.0);
+}
