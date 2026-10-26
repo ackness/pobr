@@ -21090,12 +21090,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Life",
+          "name": "MaximumLife",
           "type": "Inc",
           "value": 3.0
         },
         {
-          "name": "Mana",
+          "name": "MaximumMana",
           "type": "Inc",
           "value": 3.0
         },
@@ -21251,13 +21251,9 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LightningDamage",
+          "name": "LightningLuckyHitsChance",
           "type": "Base",
-          "value": 30.0,
-          "kw": 262144,
-          "tags": [
-            "DamageType(Lightning)"
-          ]
+          "value": 30.0
         }
       ]
     },

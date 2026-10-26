@@ -26,6 +26,16 @@
       "examples": ["3% increased maximum Life, Mana and Energy Shield"]
     },
     {
+      "id": "lightning_damage_with_hits_lucky_chance",
+      "pattern": "^(\\d+)% chance for lightning damage with hits to be lucky$",
+      "mods": [{"name": "LightningLuckyHitsChance", "type": "BASE", "value": "$1"}],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "chance_for_extra_damage_roll_with_lightning_damage_%; UniqueHeartPrefixLuckyLightningDamageChancePercent; passive 44566 Lightning Rod",
+      "source_note": "Feeds the existing per-type hit-luck chance query. Retains imported Heart of the Well rolls and passive magnitudes; does not add an ailment roll modifier.",
+      "examples": ["20% chance for Lightning Damage with Hits to be Lucky", "25% chance for Lightning Damage with Hits to be Lucky", "30% chance for Lightning Damage with Hits to be Lucky"]
+    },
+    {
       "id": "mystic_harvest_elemental_life_leech",
       "pattern": "^life leech recovers based on your elemental damage as well as physical damage$",
       "mods": [{"name": "LifeLeechBasedOnElementalDamage", "type": "FLAG", "value": true}],

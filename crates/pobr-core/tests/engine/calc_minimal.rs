@@ -53,6 +53,90 @@ fn eldritch_will_combined_pools_use_player_names_and_retain_source() {
 }
 
 #[test]
+fn lightning_lucky_hit_text_preserves_rolls_and_uses_only_the_lightning_range() {
+    use pobr_core::calc::{Actor, ActorBaseStats, Env, lucky_hit_chance, perform};
+    for (heart, generic, lightning_chance) in [(20, 0, 0.5), (25, 0, 0.55), (0, 20, 0.5)] {
+        for cfg in [CalcConfig::attack(), CalcConfig::spell()] {
+            let mut env = Env::new(Actor::new(
+                90,
+                ActorBaseStats {
+                    action_rate: 2.0,
+                    ..Default::default()
+                },
+            ));
+            env.cfg = cfg;
+            env.player.mod_db.add_list([
+                Modifier::number("LightningDamageMin", ModType::Base, 10.0),
+                Modifier::number("LightningDamageMax", ModType::Base, 100.0),
+                Modifier::number("FireDamageMin", ModType::Base, 10.0),
+                Modifier::number("FireDamageMax", ModType::Base, 100.0),
+                Modifier::number("LuckyHitsChance", ModType::Base, f64::from(generic)),
+                Modifier::number("CritChanceBase", ModType::Override, 0.0),
+            ]);
+            for (text, kind, id) in [
+                (
+                    format!("{heart}% chance for Lightning Damage with Hits to be Lucky"),
+                    SourceKind::Jewel,
+                    "jewel.heart",
+                ),
+                (
+                    "30% chance for [Lightning] Damage with [Hit|Hits] to be [Lucky]".into(),
+                    SourceKind::PassiveNode,
+                    "node.44566",
+                ),
+            ] {
+                let parsed = crate::support::parse_mod(&text).unwrap();
+                assert!(parsed.is_complete());
+                assert_eq!(parsed.mods.len(), 1);
+                assert_eq!(parsed.mods[0].name.as_str(), "LightningLuckyHitsChance");
+                env.player.mod_db.add_list(parsed.mods.into_iter().map(|m| {
+                    m.with_origin(
+                        ModifierSource::new(SourceId::new(kind.clone(), id)).with_raw_text(&text),
+                    )
+                }));
+            }
+            for critical in [false, true] {
+                assert_eq!(
+                    lucky_hit_chance(
+                        &env.player.mod_db,
+                        &env.cfg,
+                        DamageType::Lightning,
+                        critical
+                    ),
+                    lightning_chance
+                );
+                assert_eq!(
+                    lucky_hit_chance(&env.player.mod_db, &env.cfg, DamageType::Fire, critical),
+                    f64::from(generic) / 100.0
+                );
+            }
+            perform(&mut env).unwrap();
+            // 10..100 averages 55 normally and 70 when lucky. Typed luck
+            // adds only to Lightning; the existing generic chance covers both.
+            let expected = 110.0 + 15.0 * (lightning_chance + f64::from(generic) / 100.0);
+            assert!((env.player.output.total_hit_avg - expected).abs() < 1e-9);
+            assert!((env.player.output.dps - expected * 2.0).abs() < 1e-9);
+            let heart_mod = env
+                .player
+                .mod_db
+                .named("LightningLuckyHitsChance")
+                .find(|m| {
+                    m.origin
+                        .as_ref()
+                        .is_some_and(|o| o.source_id.id == "jewel.heart")
+                })
+                .unwrap();
+            assert_eq!(
+                heart_mod.origin.as_ref().unwrap().raw_text.as_deref(),
+                Some(
+                    format!("{heart}% chance for Lightning Damage with Hits to be Lucky").as_str()
+                )
+            );
+        }
+    }
+}
+
+#[test]
 fn blackflame_covenant_converts_only_fire_spells_and_preserves_ignite_magnitude() {
     use pobr_core::TraceGraph;
     use pobr_core::calc::ailment::{AilmentSource, ignite_traced};
