@@ -1662,6 +1662,13 @@ remain diagnostic. Frozen Titan06 has twelve allocated small passives with
 The retained game stat is
 `local_historic_abyss_jewel_conquered_small_passives_grant_elemental_damage_+%`;
 its imported roll is preserved instead of rebuilding it from a current range.
+The separate "Conquered Attribute Passive Skills also grant ..." directive
+attaches only to attribute nodes under the same radius, allocation and weapon-set
+gates. It retains the imported roll and source, and does not receive Hulking
+Form's small-passive amplification. Reduced frozen regressions cover Ritualist09's
+two +6 Intelligence grants (147 to 160 final Intelligence) and Smith06's three
++5 Strength grants (271 to 287 final Strength); these checks do not reconstruct
+seed-specific notable replacements.
 
 Frozen Witchhunter10's Megalomaniac grants Leather Bound Gauntlets (51446):
 1323 equipped-glove Armour adds 1323 base Evasion. This affects Armour/Evasion,
