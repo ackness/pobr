@@ -150,6 +150,34 @@ fn ingest_item_in(slot: &str, item: &Item, ctx: ParseCtx<'_>) -> Result<ItemInge
     Ok(ingest)
 }
 
+/// Join only the adjacent two-line Loreweave rarity stat within one item
+/// section. Ingest and the received-line ledger use this same boundary;
+/// imported text is borrowed unchanged except for the joined pair's newline.
+pub fn join_loreweave_rarity(texts: &[String]) -> impl Iterator<Item = std::borrow::Cow<'_, str>> {
+    use crate::mod_parser::engine::strip_display_markup;
+
+    static RARITY: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
+        regex::Regex::new(r"(?i)^[+-]?\d+(?:\.\d+)?% increased rarity of items found$")
+            .expect("literal Loreweave rarity pattern")
+    });
+    let mut lines = texts.iter().peekable();
+    std::iter::from_fn(move || {
+        let text = lines.next()?;
+        if lines.peek().is_some_and(|next| {
+            strip_display_markup(next.trim())
+                .eq_ignore_ascii_case("Your other Modifiers to Rarity of Items found do not apply")
+        }) && RARITY.is_match(&strip_display_markup(text.trim()))
+        {
+            Some(std::borrow::Cow::Owned(format!(
+                "{text}\n{}",
+                lines.next().unwrap()
+            )))
+        } else {
+            Some(std::borrow::Cow::Borrowed(text.as_str()))
+        }
+    })
+}
+
 /// Parses one section's modifier text and appends it to `ingest`.
 fn ingest_section(
     slot: &str,
@@ -167,14 +195,14 @@ fn ingest_section(
         format!("item.{slot}.{}", section.id_suffix()),
     );
 
-    for text in texts {
-        match ctx.parse(text)?.into_applicable(text) {
+    for text in join_loreweave_rarity(texts) {
+        match ctx.parse(&text)?.into_applicable(&text) {
             Ok(mods) => {
                 for mut modifier in mods {
                     substitute_slot_placeholder(&mut modifier, slot);
                     let origin = ModifierSource::new(source_id.clone())
                         .with_slot(slot)
-                        .with_raw_text(text.clone());
+                        .with_raw_text(text.as_ref());
                     ingest.modifiers.push(modifier.with_origin(origin));
                 }
             }

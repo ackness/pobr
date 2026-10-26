@@ -8,6 +8,148 @@ use pobr_build::{BuildData, DataOrchestratorOptions, diagnose, parse_build};
 use crate::test_data as data;
 
 #[test]
+fn loreweave_split_stat_has_one_attributed_ledger_source() {
+    use pobr_data::item::EquipmentSlot;
+
+    let data = data();
+    let exclusion = "Your other Modifiers to Rarity of Items found do not apply";
+    let ordinary = "10% increased Rarity of Items found";
+    let life = "+100 to maximum Life";
+    let mut build = parse_build(r#"<PathOfBuilding2>
+<Build level="80" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: UNIQUE
+Loreweave
+Ornate Ringmail
+Implicits: 0
+</Item><Item id="2">Rarity: NORMAL
+Golden Charm
+Implicits: 0
+</Item><Item id="3">Rarity: NORMAL
+Heavy Belt
+Implicits: 1
+Has 3 Charm Slots
+</Item><ItemSet id="1"><Slot name="Body Armour" itemId="1"/><Slot name="Charm 3" itemId="2" active="true"/><Slot name="Belt" itemId="3"/></ItemSet></Items>
+</PathOfBuilding2>"#).unwrap();
+    for rarity in [
+        "84% increased Rarity of Items found",
+        "84% increased [Rarity] of Items found",
+    ] {
+        let raw = vec![
+            ordinary.into(),
+            rarity.into(),
+            exclusion.into(),
+            life.into(),
+        ];
+        build
+            .items
+            .get_mut(&EquipmentSlot::BodyArmour)
+            .unwrap()
+            .modifier_texts = raw.clone();
+        let combined = format!("{rarity}\n{exclusion}");
+        for options in [
+            DataOrchestratorOptions::default(),
+            DataOrchestratorOptions::default().on_reference_basis(),
+        ] {
+            let diagnosis = diagnose(&build, &data, &options).unwrap();
+            assert!((diagnosis.session.output().effective_loot_rarity_mod - 1.84).abs() < 1e-9);
+            assert_eq!(build.items[&EquipmentSlot::BodyArmour].modifier_texts, raw);
+            let usage = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+            let paired = line(&usage, "item.bodyarmour.explicit", &combined);
+            assert_eq!(paired.source_kind.as_deref(), Some("ItemAffix"));
+            assert_eq!(paired.status, LineStatus::Applied);
+            assert_eq!(paired.modifiers.len(), 2);
+            assert!(
+                paired
+                    .modifiers
+                    .iter()
+                    .all(|m| m.status == ModifierStatus::Applied)
+            );
+            assert!(!usage.lines.iter().any(|l| l.source_id.as_deref()
+                == Some("item.bodyarmour.explicit")
+                && matches!(l.text.as_deref(), Some(t) if t == rarity || t == exclusion)));
+            assert_eq!(
+                line(&usage, "item.bodyarmour.explicit", ordinary).status,
+                LineStatus::Inactive
+            );
+            assert_eq!(
+                line(&usage, "item.bodyarmour.explicit", life).status,
+                LineStatus::Applied
+            );
+            let charm = usage
+                .lines
+                .iter()
+                .find(|l| {
+                    l.source_id.as_deref() == Some("flask.charm3")
+                        && l.modifiers.iter().any(|m| m.name == "LootRarity")
+                })
+                .unwrap();
+            assert_eq!(charm.status, LineStatus::Inactive);
+            for modifier in diagnosis.session.mod_db().named("LootRarityExclusive") {
+                let origin = modifier.origin.as_ref().unwrap();
+                assert_eq!(origin.source_id.id, "item.bodyarmour.explicit");
+                assert_eq!(origin.raw_text.as_deref(), Some(combined.as_str()));
+                assert_eq!(origin.slot.as_deref(), Some("bodyarmour"));
+            }
+        }
+    }
+    // The same bounded helper records and ingests the negative cases too.
+    for (implicit, explicit) in [
+        (vec![], vec![exclusion, life]),
+        (
+            vec![],
+            vec!["84% increased Rarity of Items found", life, exclusion],
+        ),
+        (
+            vec![],
+            vec![
+                "84% increased Rarity of Items found while on Low Life",
+                exclusion,
+                life,
+            ],
+        ),
+        (
+            vec![],
+            vec![
+                "Minions have 84% increased Rarity of Items found",
+                exclusion,
+                life,
+            ],
+        ),
+        (
+            vec!["84% increased Rarity of Items found"],
+            vec![exclusion, life],
+        ),
+    ] {
+        let armour = build.items.get_mut(&EquipmentSlot::BodyArmour).unwrap();
+        armour.implicit_texts = implicit.iter().map(|s| (*s).into()).collect();
+        armour.modifier_texts = explicit.iter().map(|s| (*s).into()).collect();
+        let diagnosis = diagnose(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+        assert_eq!(
+            diagnosis
+                .session
+                .mod_db()
+                .named("LootRarityExclusive")
+                .count(),
+            0
+        );
+        let usage = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+        assert_eq!(
+            line(&usage, "item.bodyarmour.explicit", exclusion).status,
+            LineStatus::Unparsed
+        );
+        for (source, texts) in [
+            ("item.bodyarmour.implicit", implicit),
+            ("item.bodyarmour.explicit", explicit),
+        ] {
+            for text in texts {
+                line(&usage, source, text);
+            }
+        }
+    }
+}
+
+#[test]
 fn structure_flags_report_real_passive_consumers_without_hiding_other_sources() {
     let data = data();
     for (node, skill, weapon, name, text) in [
