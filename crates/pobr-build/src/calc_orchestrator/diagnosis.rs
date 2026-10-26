@@ -502,6 +502,12 @@ const SET_BY_THE_ORCHESTRATION: &[&str] = &[
     "DualWielding",
     "UsingShield",
     "UsingFocus",
+    // `prepare::stage_build_cfg`: empty off hand, main-hand martial grip and
+    // the equipped helmet's local defence comparison.
+    "OffHandIsEmpty",
+    "UsingOneHandedWeapon",
+    "HelmetArmourHigherThanEvasion",
+    "HelmetEvasionHigherThanArmour",
     // `conditions::combat_conditions`: what using the main skill means.
     "HitRecently",
     "HitSpellRecently",
