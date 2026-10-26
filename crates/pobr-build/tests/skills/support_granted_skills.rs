@@ -223,3 +223,36 @@ Implicits: 0
         );
     }
 }
+
+/// Uhtred's Augury gives +2 levels with exactly two other supports. Chain II
+/// supports a Skeletal Sniper's projectiles, so it counts beside Minion Mastery
+/// even though the summoning effect itself has no Projectile type. Reservation
+/// uses the same resulting level: the game rows charge 30 at 20 and 29 at 21–24.
+#[test]
+fn minion_supports_set_gem_levels_and_reservation() {
+    use pobr_build::{Build, SocketGroup, diagnose};
+    let data = data();
+    let options = DataOrchestratorOptions::default();
+    let sniper = SocketGroup::new()
+        .with_gem_skill("SummonSkeletalSnipersPlayer", 19)
+        .with_gem_skill("SupportMinionMasteryPlayer", 1)
+        .with_gem_skill("SupportUhtredAuguryPlayer", 1);
+    for (group, level, spirit) in [
+        (sniper.clone(), 20, 30.0),
+        (sniper.with_gem_skill("SupportChainPlayerTwo", 1), 22, 29.0),
+        (
+            SocketGroup::new()
+                .with_gem_skill("SummonSkeletalReaversPlayer", 20)
+                .with_gem_skill("SupportMinionMasteryPlayer", 1),
+            21,
+            29.0,
+        ),
+    ] {
+        let build = Build::new().add_socket_group(group);
+        let diagnosis = diagnose(&build, data, &options).unwrap();
+        let usage = pobr_build::usage::line_usage(&diagnosis, &build, data);
+        assert_eq!(usage.skills[0].level, level);
+        let output = calculate_with_data(&build, data, &options).unwrap();
+        assert_eq!(output.spirit_reserved, spirit, "at skill level {level}");
+    }
+}

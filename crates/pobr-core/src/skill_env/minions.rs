@@ -763,6 +763,22 @@ pub(super) fn minion_supports_for_cost(
     data: &(impl MinionLookup + EffectLookup + ?Sized),
     skill_id: &str,
 ) -> Vec<crate::skill_env::CompatibleSupport> {
+    let mut seen = std::collections::HashSet::new();
+    minion_support_judgements(group, data, skill_id)
+        .into_iter()
+        .flat_map(|judgement| judgement.compatible)
+        .filter(|support| seen.insert((support.gem_index, support.effect_id.clone())))
+        .collect()
+}
+
+/// A support can modify a summoning gem through any of its minion's skills.
+/// Keep the individual judgements for gem properties too: Uhtred's support
+/// count includes Chain on a Skeletal Sniper's projectile attack.
+pub(super) fn minion_support_judgements(
+    group: &crate::skill_env::EnabledGroup<'_>,
+    data: &(impl MinionLookup + EffectLookup + ?Sized),
+    skill_id: &str,
+) -> Vec<crate::skill_env::GroupSupportJudgement> {
     use std::collections::HashSet;
 
     let Some(summon) = data.effect(skill_id).filter(|effect| {
@@ -814,8 +830,7 @@ pub(super) fn minion_supports_for_cost(
                 &summon_types,
             )
     });
-    let mut supports = Vec::new();
-    let mut seen = HashSet::new();
+    let mut judgements = Vec::new();
     for minion in summoned_minions(data, skill_id, chosen) {
         let Some(def) = data.minion_def(minion) else {
             continue;
@@ -826,16 +841,15 @@ pub(super) fn minion_supports_for_cost(
             };
             let mut types: HashSet<_> = effect.skill_types.iter().cloned().collect();
             types.insert("CreatesMinion".into());
-            let judgement =
-                judge_group_supports(&types, effect.cannot_be_supported, false, &candidates);
-            for support in judgement.compatible {
-                if seen.insert((support.gem_index, support.effect_id.clone())) {
-                    supports.push(support);
-                }
-            }
+            judgements.push(judge_group_supports(
+                &types,
+                effect.cannot_be_supported,
+                false,
+                &candidates,
+            ));
         }
     }
-    supports
+    judgements
 }
 
 /// Whether the skill `skill_id` makes a monster the player picks its minion:

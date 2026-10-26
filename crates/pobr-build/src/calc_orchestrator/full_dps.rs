@@ -291,7 +291,7 @@ fn allocate_stacks(sources: &mut [StackSource], rows: &mut [FullDpsSkill]) {
     }
 }
 
-fn other_weapon_set(build: &Build) -> Build {
+pub(super) fn other_weapon_set(build: &Build) -> Build {
     let mut swapped = build.clone();
     for slot in [Weapon1, Weapon2] {
         swapped.items.remove(&slot);

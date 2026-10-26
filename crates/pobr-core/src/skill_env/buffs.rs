@@ -270,7 +270,13 @@ pub fn spirit_reservation_modifiers(
             }
             // The level the skill is used at: "+N to Level of all Minion
             // Skills" lowers what a minion skill reserves.
-            let level = gem.gem_level + gem.global_levels(gem_level_bonuses, data);
+            let level = gem.gem_level
+                + gem.global_levels(gem_level_bonuses, data)
+                + super::resolve::support_granted_gem_levels(
+                    &super::buff_specs::gem_judgements(&group, data, &gem.skill_id),
+                    group.gems,
+                    data,
+                );
             let es = data.effect_stats(&gem.skill_id, level, gem.quality, gem.stat_set_index);
             // Only skills explicitly marked by the game keep reserving when
             // their weapon set is inactive (Blink, Convalescence, etc.). Do

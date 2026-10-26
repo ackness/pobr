@@ -355,16 +355,8 @@ fn gem_judgements(
     data: &BuildData,
     skill_id: &str,
 ) -> Vec<pobr_core::skill_env::GroupSupportJudgement> {
-    use pobr_core::skill_env::EffectLookup;
-    let secondary = data
-        .additional_effects(skill_id)
-        .iter()
-        .map(String::as_str)
-        .filter(|id| data.granted_effects.get(*id).is_some_and(|e| !e.is_support));
-    std::iter::once(skill_id)
-        .chain(secondary)
-        .map(|id| crate::support::judge_group_supports(group, data, id, group.from_gem()))
-        .collect()
+    let gems = group.gem_inputs();
+    pobr_core::skill_env::gem_judgements(&group.enabled_group(&gems), data, skill_id)
 }
 
 /// The quality half of [`support_granted_gem_levels`] (same scope and compatibility rules).
@@ -474,21 +466,11 @@ pub(crate) fn bind_required_weapon_sets(build: &Build, data: &BuildData) -> Opti
     adjusted
 }
 
-/// Equipment context for a skill used with the other weapon set. Settle its
-/// Bonded lines before either attributes or skill bonuses read that equipment.
+/// Equipment, passive and jewel context for a skill used with the other
+/// weapon set. Settle its Bonded lines before attributes or skill bonuses
+/// read those sources.
 pub(crate) fn other_weapon_set_view(build: &Build, data: &BuildData) -> Build {
-    use pobr_data::item::EquipmentSlot::{Weapon1, Weapon2};
-    let mut swapped = build.clone();
-    for slot in [Weapon1, Weapon2] {
-        swapped.items.remove(&slot);
-        if let Some(item) = build.other_weapons.get(&slot) {
-            swapped.items.insert(slot, item.clone());
-        }
-    }
-    swapped.weapon_set = match build.weapon_set {
-        crate::build::WeaponSet::First => crate::build::WeaponSet::Second,
-        crate::build::WeaponSet::Second => crate::build::WeaponSet::First,
-    };
+    let swapped = super::super::full_dps::other_weapon_set(build);
     super::super::item::bonded::resolve_bonded_modifiers(&swapped, data).unwrap_or(swapped)
 }
 

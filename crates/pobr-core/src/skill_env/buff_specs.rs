@@ -48,7 +48,7 @@ impl<T: StatSetLookup + EffectLookup + StatMapLookup + GemPropertyLookup + Minio
 /// (the engine-semantics counterpart of `pobr-build`'s `judge_group_supports`).
 pub fn group_judgement<'a>(
     group: &EnabledGroup<'a>,
-    data: &'a (dyn BuffEnv + 'a),
+    data: &'a (impl EffectLookup + ?Sized),
     skill_id: &str,
 ) -> GroupSupportJudgement {
     use std::collections::HashSet;
@@ -96,7 +96,7 @@ pub fn group_judgement<'a>(
 /// any of a gem's effects modifies the gem.
 pub fn gem_judgements<'a>(
     group: &EnabledGroup<'a>,
-    data: &'a (dyn BuffEnv + 'a),
+    data: &'a (impl EffectLookup + MinionLookup + ?Sized),
     gem_skill_id: &str,
 ) -> Vec<GroupSupportJudgement> {
     let secondary = data
@@ -106,7 +106,10 @@ pub fn gem_judgements<'a>(
         .filter(|id| data.effect(id).is_some_and(|e| !e.is_support));
     std::iter::once(gem_skill_id)
         .chain(secondary)
-        .map(|id| group_judgement(group, data, id))
+        .flat_map(|id| {
+            std::iter::once(group_judgement(group, data, id))
+                .chain(super::minions::minion_support_judgements(group, data, id))
+        })
         .collect()
 }
 
