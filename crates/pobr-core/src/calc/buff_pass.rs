@@ -318,6 +318,13 @@ fn scale_buff_mod(
 /// larger. ExtraAura carries the buff's ally modifiers, which use the same
 /// comparison after effect scaling; other LIST payloads remain append-only.
 fn merge_buff(dest: &mut Vec<Modifier>, src: Vec<Modifier>) {
+    let same_params = |a: &Modifier, b: &Modifier| {
+        a.name == b.name
+            && a.mod_type == b.mod_type
+            && a.flags == b.flags
+            && a.keyword_flags == b.keyword_flags
+            && a.tags == b.tags
+    };
     for mut incoming in src {
         let extra_aura = incoming.mod_type == ModType::List
             && incoming.name.as_str() == "ExtraAura"
@@ -335,23 +342,45 @@ fn merge_buff(dest: &mut Vec<Modifier>, src: Vec<Modifier>) {
                 }
             }
         }
-        if (incoming.mod_type != ModType::List || extra_aura)
-            && let Some(existing) = dest.iter_mut().find(|m| {
-                m.name == incoming.name
-                    && m.mod_type == incoming.mod_type
-                    && m.flags == incoming.flags
-                    && m.keyword_flags == incoming.keyword_flags
-                    && m.tags == incoming.tags
-                    && (!extra_aura || m.value.as_nested_mods().is_some())
-            })
+        if extra_aura {
+            // Keep each source-bearing wrapper for the line ledger. Only its
+            // displaced leaves are removed; surviving leaves retain the wrapper's
+            // gates and are forwarded exactly once to the minion.
+            for existing in dest.iter_mut() {
+                if !same_params(existing, &incoming) {
+                    continue;
+                }
+                if let (ModValue::NestedMods(old), ModValue::NestedMods(new)) =
+                    (&mut existing.value, &mut incoming.value)
+                {
+                    old.retain(|leaf| {
+                        let Some(index) = new.iter().position(|candidate| {
+                            candidate.mod_type != ModType::List && same_params(leaf, candidate)
+                        }) else {
+                            return true;
+                        };
+                        if let (Some(old), Some(new)) =
+                            (leaf.value.as_number(), new[index].value.as_number())
+                            && new > old
+                        {
+                            return false;
+                        }
+                        new.remove(index);
+                        true
+                    });
+                }
+            }
+            dest.retain(|modifier| {
+                !(same_params(modifier, &incoming)
+                    && modifier.value.as_nested_mods().is_some_and(<[_]>::is_empty))
+            });
+            if incoming.value.as_nested_mods().is_some_and(<[_]>::is_empty) {
+                continue;
+            }
+        } else if incoming.mod_type != ModType::List
+            && let Some(existing) = dest.iter_mut().find(|m| same_params(m, &incoming))
         {
-            if extra_aura
-                && let (ModValue::NestedMods(dest), ModValue::NestedMods(src)) =
-                    (&mut existing.value, &incoming.value)
-            {
-                merge_buff(dest, src.clone());
-            } else if let (Some(old), Some(new)) =
-                (existing.value.as_number(), incoming.value.as_number())
+            if let (Some(old), Some(new)) = (existing.value.as_number(), incoming.value.as_number())
                 && new > old
             {
                 *existing = incoming;
@@ -1766,6 +1795,73 @@ mod tests {
                 .sum(ModType::Base, &env.cfg, &[ModName::from("EnergyShield")]),
             165.0
         );
+    }
+
+    #[test]
+    fn ordinary_buff_copies_extra_aura_keeps_partial_sources_and_matching_params() {
+        use pobr_data::modifier::{KeywordFlags, ModFlags};
+
+        let aura = |source: &str, damage, speed| {
+            Modifier::new(
+                "ExtraAura",
+                ModType::List,
+                ModValue::NestedMods(vec![
+                    Modifier::number("Damage", ModType::Inc, damage),
+                    Modifier::number("AttackSpeed", ModType::Inc, speed),
+                ]),
+            )
+            .with_origin(ModifierSource::new(SourceId::new(
+                SourceKind::SkillGem,
+                source,
+            )))
+        };
+        for reverse in [false, true] {
+            let mut copies = vec![aura("first", 10.0, 40.0), aura("second", 20.0, 30.0)];
+            if reverse {
+                copies.reverse();
+            }
+            let mut merged = Vec::new();
+            merge_buff(&mut merged, copies);
+            assert_eq!(merged.len(), 2, "both wrappers keep their winning leaf");
+            for (stat, value, source) in
+                [("Damage", 20.0, "second"), ("AttackSpeed", 40.0, "first")]
+            {
+                let wrapper = merged
+                    .iter()
+                    .find(|m| m.origin.as_ref().unwrap().source_id.id == source)
+                    .unwrap();
+                let leaves = wrapper.value.as_nested_mods().unwrap();
+                assert_eq!(leaves.len(), 1);
+                assert_eq!(leaves[0].name.as_str(), stat);
+                assert_eq!(leaves[0].value.as_number(), Some(value));
+                assert_eq!(leaves[0].origin, wrapper.origin);
+            }
+            merge_buff(&mut merged, vec![aura("strongest", 30.0, 50.0)]);
+            assert_eq!(merged.len(), 1, "fully displaced wrappers are removed");
+            assert_eq!(merged[0].origin.as_ref().unwrap().source_id.id, "strongest");
+
+            let mut distinct = aura("distinct", 100.0, 100.0);
+            distinct.value = ModValue::NestedMods(vec![
+                Modifier::number("Damage", ModType::Inc, 100.0).with_flags(ModFlags::ATTACK),
+                Modifier::number("Damage", ModType::Inc, 100.0)
+                    .with_keyword_flags(KeywordFlags::HIT),
+                Modifier::number("Damage", ModType::Inc, 100.0)
+                    .with_tag(ModTag::condition("ConditionalLeaf", false)),
+            ]);
+            merge_buff(&mut merged, vec![distinct]);
+            assert_eq!(merged.len(), 2, "different leaf parameters remain separate");
+            assert_eq!(merged[0].value.as_nested_mods().unwrap().len(), 2);
+            assert_eq!(merged[1].value.as_nested_mods().unwrap().len(), 3);
+            let gated = aura("gated", 1000.0, 1000.0)
+                .with_tag(ModTag::condition("ConditionalWrapper", false));
+            merge_buff(&mut merged, vec![gated]);
+            assert_eq!(merged.len(), 3, "different wrapper gates remain separate");
+
+            let mut unrelated = aura("unrelated", 1.0, 1.0);
+            unrelated.name = "MinionModifier".into();
+            merge_buff(&mut merged, vec![unrelated.clone(), unrelated]);
+            assert_eq!(merged.len(), 5, "other LIST kinds still append");
+        }
     }
 
     /// mergeBuff's same-name strongest-wins (vendor :41-63): two specs for the same-named aura don't stack, the larger value is taken.

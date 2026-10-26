@@ -1457,7 +1457,7 @@ fn minion_static_offering_effect_uses_the_offerings_types() {
 
 #[test]
 fn ordinary_buff_copies_keep_strongest_pain_offering() {
-    use pobr_build::calculate_with_data_session;
+    use pobr_build::{diagnose, usage::line_usage};
     use pobr_data::source::SourceKind;
 
     let offering = |level| SocketGroup::new().with_gem_skill("PainOfferingPlayer", level);
@@ -1466,6 +1466,7 @@ fn ordinary_buff_copies_keep_strongest_pain_offering() {
     let mut disabled_gem = offering(20);
     disabled_gem.gem_skills[0].enabled = false;
     for (copies, damage, speed) in [
+        (vec![offering(20)], 58.0, 29.0),
         (vec![offering(20), offering(20)], 58.0, 29.0),
         (vec![offering(18), offering(20)], 58.0, 29.0),
         (vec![offering(20), offering(18)], 58.0, 29.0),
@@ -1475,7 +1476,7 @@ fn ordinary_buff_copies_keep_strongest_pain_offering() {
         let mut build = zombie_build(20);
         build.socket_groups.extend(copies);
         for effect in [false, true] {
-            let result = calculate_with_data_session(
+            let diagnosis = diagnose(
                 &build,
                 load_data(),
                 &DataOrchestratorOptions {
@@ -1488,6 +1489,8 @@ fn ordinary_buff_copies_keep_strongest_pain_offering() {
                 },
             )
             .unwrap();
+            let result = &diagnosis.session;
+            let usage = line_usage(&diagnosis, &build, load_data());
             for (stat, raw, source) in [
                 ("Damage", damage, "pain_offering_damage_+%"),
                 (
@@ -1520,6 +1523,26 @@ fn ordinary_buff_copies_keep_strongest_pain_offering() {
                 assert_eq!(
                     origin.raw_text.as_deref(),
                     Some(format!("buff PainOfferingPlayer {source} ({raw}){note}").as_str())
+                );
+                let lines: Vec<_> = usage
+                    .lines
+                    .iter()
+                    .filter(|line| {
+                        line.source_id.as_deref()
+                            == Some(format!("buff.PainOfferingPlayer.{source}").as_str())
+                    })
+                    .collect();
+                assert_eq!(lines.len(), 1, "one winning {source} ledger line");
+                assert_eq!(lines[0].source_kind.as_deref(), Some("SkillGem"));
+                assert_eq!(lines[0].text, origin.raw_text);
+                assert_eq!(lines[0].modifiers.len(), 1);
+                assert_eq!(lines[0].modifiers[0].name, "ExtraAura");
+                assert_eq!(
+                    lines[0].modifiers[0].value,
+                    pobr_build::usage::UsageValue::Text(format!(
+                        "[nested {}]",
+                        if stat == "Damage" { 1 } else { 2 }
+                    ))
                 );
             }
         }
