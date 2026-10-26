@@ -54,6 +54,15 @@ fn base_resolution_keeps_exact_names_and_excludes_false_suffix_matches() {
         ("Emerald Ring of the Fox", "Emerald Ring"),
         ("Rotund Emerald Ring of the Ruby", "Emerald Ring"),
         ("Exceptional Ornate Plate", "Ornate Plate"),
+        ("Fists of Stone of the Fox", "Fists of Stone"),
+        (
+            "Runeforged Fists of Stone of the Fox",
+            "Runeforged Fists of Stone",
+        ),
+        (
+            "Rotund Runeforged Fists of Stone of the Fox",
+            "Runeforged Fists of Stone",
+        ),
     ] {
         assert_eq!(data.base_item(name).unwrap().name, expected);
     }
@@ -63,6 +72,7 @@ fn base_resolution_keeps_exact_names_and_excludes_false_suffix_matches() {
         "UnrecognisedStructured Hammer",
         "Squire's Structured Hammer Replica",
         "Squire's Structured Hammer of ",
+        "Unknown Gloves of Fists of Stone",
     ] {
         assert!(data.base_item(name).is_none(), "{name}");
     }
@@ -77,6 +87,24 @@ fn base_resolution_keeps_exact_names_and_excludes_false_suffix_matches() {
             .item_class,
         "Jewel"
     );
+}
+
+#[test]
+fn decorated_base_with_of_preserves_per_level_defence() {
+    let data = test_data();
+    let text = "Rarity: MAGIC\nFists of Stone of the Fox\nEnergy Shield: 100\nImplicits: 1\nHas +1 to maximum Energy Shield per player level";
+    let mut magic = imported("Gloves", text, "FireballPlayer");
+    let mut canonical = imported(
+        "Gloves",
+        &text.replace("Fists of Stone of the Fox", "Fists of Stone"),
+        "FireballPlayer",
+    );
+    magic.character.level = 100;
+    canonical.character.level = 100;
+    let run =
+        |build: &_| calculate_with_data(build, data, &DataOrchestratorOptions::default()).unwrap();
+    assert_eq!(run(&canonical).energy_shield, 100.0);
+    assert_eq!(run(&magic).energy_shield, 100.0);
 }
 
 #[test]
