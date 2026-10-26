@@ -569,3 +569,87 @@ fn total_channel_follows_conversion() {
     assert_eq!(res.armour, 60.0);
     assert_eq!(res.energy_shield, 40.0);
 }
+
+/// Discipline's total ES stays a direct addition when converted by Eldritch
+/// Battery. Destination increases and more modifiers only scale converted base.
+#[test]
+fn converted_total_pools_add_after_destination_scaling() {
+    use pobr_core::calc::{FormulaOp, MinimalInput};
+
+    for target in ["Life", "Mana"] {
+        for (conversion, gain) in [(100.0, 0.0), (50.0, 0.0), (0.0, 25.0)] {
+            let mut session = crate::support::session(MinimalInput {
+                base_life: 100.0,
+                base_mana: 100.0,
+                ..Default::default()
+            });
+            let maximum = format!("Maximum{target}");
+            session.add_modifiers([
+                Modifier::number("EnergyShield", ModType::Base, 500.0),
+                Modifier::number("EnergyShield", ModType::Inc, 100.0),
+                Modifier::number("EnergyShieldTotal", ModType::Base, 509.0),
+                Modifier::number(
+                    format!("EnergyShieldConvertTo{target}"),
+                    ModType::Base,
+                    conversion,
+                ),
+                Modifier::number(format!("EnergyShieldGainAs{target}"), ModType::Base, gain),
+                Modifier::number(maximum.as_str(), ModType::Inc, 66.0),
+                Modifier::number(maximum.as_str(), ModType::More, 20.0),
+            ]);
+            session.perform_minimal().unwrap();
+            let rate = (conversion + gain) / 100.0;
+            let expected = (100.0 + 500.0 * rate) * 1.66 * 1.2 + 509.0 * rate;
+            let output = session.output();
+            let pool = if target == "Life" {
+                output.life
+            } else {
+                output.mana
+            };
+            assert!(
+                (pool - expected).abs() < 1e-9,
+                "{target}: {pool} != {expected}"
+            );
+            assert_eq!(
+                output.energy_shield,
+                (1509.0 * (1.0 - conversion / 100.0)).round()
+            );
+            let formula = session.stat_formula(target).expect("pool formula");
+            assert!((formula.value - expected).abs() < 1e-9);
+            assert!(
+                formula
+                    .steps
+                    .iter()
+                    .any(|step| step.op == FormulaOp::FlatAfter && step.operand == 509.0 * rate)
+            );
+            assert!(
+                session
+                    .stat_mod_names(target)
+                    .contains(&ModName::from(format!("{target}Total")))
+            );
+        }
+    }
+
+    // Frozen Acolyte03: (2765 Mana + 1044 converted base ES) * 1.66,
+    // then the Discipline level 23 total (439 * 1.16, truncated to 509).
+    let mut session = crate::support::session(MinimalInput {
+        base_life: 1000.0,
+        base_mana: 2765.0,
+        ..Default::default()
+    });
+    session
+        .add_modifier_texts(["Converts all Energy Shield to Mana"])
+        .unwrap();
+    session.add_modifiers([
+        Modifier::number("EnergyShield", ModType::Base, 1044.0),
+        Modifier::number("EnergyShieldTotal", ModType::Base, 509.0),
+        Modifier::number("MaximumMana", ModType::Inc, 66.0),
+        // An explicit pool override still wins over direct totals (e.g. CI).
+        Modifier::number("LifeTotal", ModType::Base, 509.0),
+        Modifier::number("MaximumLife", ModType::Override, 1.0),
+    ]);
+    session.perform_minimal().unwrap();
+    assert_eq!(session.output().mana, 6831.94);
+    assert_eq!(session.output().energy_shield, 0.0);
+    assert_eq!(session.output().life, 1.0);
+}
