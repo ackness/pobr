@@ -391,6 +391,15 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
                 Modifier::number(name, ModType::Base, value / 100.0).with_flags(ModFlags::ATTACK),
             ])
         }
+        // Derange adds a cost equal to the character's Intelligence. Like
+        // Archmage's added cost, support cost multipliers scale the skill's
+        // own cost, not this additional resource cost.
+        "gain_energy_shield_cost_equal_to_intelligence" => Some(vec![
+            Modifier::number("ESCostNoMult", ModType::Base, value).with_tag(ModTag::PercentStat {
+                stat: "Intelligence".into(),
+                percent: Some(100.0),
+            }),
+        ]),
         "skill_disabled_unless_cloned" => Some(vec![Modifier::flag("MirageSkill")]),
         // Native Ballista hosts and the support half that makes a socketed
         // attack Ballista-used. This is skill identity, not a combat toggle.
