@@ -1549,6 +1549,21 @@ Ignore Warcry Cooldowns retain their existing roles. Frozen Warbringer05 has
 an 800 ms base and 868% applied increased speed, giving 12.1 uses per second
 with its cooldown explicitly removed.
 
+Blackened Heart scales Unholy Might buffs the character grants from the
+character's completed maximum Mana, once per full 100 Mana. Necromantic
+Conduit's ally grant expands that named buff after it reaches the minion;
+the minion's Mana does not determine the caster's granted magnitude. Recipient
+buff effect remains separate, duplicate flags establish one buff, and the
+player's own buff condition is not inherited by every minion. Low Mana,
+inactive grants, zero Presence count and blocked ally auras preserve their
+gates. The derived ally magnitude retains the caster's passive origin.
+
+Enemy `<Element>Resistance` and `<Element>Resist` modifiers are aliases in
+mitigation and its source breakdown. Xoph's Presence reduction therefore
+combines with Exposure; an explicit winning resistance override still
+bypasses those base modifiers. Hits, damage over time, minions and Sacred
+Flame use the same resolved resistance.
+
 Skin of the Loyal's four uncapped-resistance flags add the corresponding final
 uncapped resistance as an increased Armour, Evasion, Energy Shield or Ailment
 Threshold modifier. These are ordinary increases, not multipliers. They read
@@ -1593,3 +1608,23 @@ effect from duplicate copies; explaining Evade/Deflect does not by itself
 explain TotalEHP. The Blood Mage03 pinned-oracle EHP has a separately traced
 positive-Life floating residue after lethal damage; its recursive batched-hit
 result is not a valid numerical target.
+
+Frozen Lich02's Storm Mage reaches gem level 38 / monster level 76 after the
+named +3 level bonus is recognized. Its base Life 4729 and 213% increased Life
+give 14801.77. The pinned exporter additionally deducts the monster's 15%
+Energy Shield share, producing approximately 12582 Life. The retained
+`energyShield` field and the native schema's conversion comment come from the
+vendor extraction path; they do not independently establish whether the game
+deducts Life or grants additional Energy Shield. Keep this row unresolved,
+without changing the formula or classifying it as a known reference error.
+
+Storm Mage's separate quality stat
+`minion_maximum_life_%_to_gain_as_maximum_energy_shield` grants extra ES from
+that minion's completed Life. Its retained handler uses `EnergyShield BASE`
+with `PercentStat(Life)`, not the base-resource gain-as matrix channel. The
+existing PercentStat convention rounds this contribution upward before normal
+ES scaling; this rounding has no in-game measurement. Resolve the recipient's
+Life after its buffs, before offence and defence, and use the same snapshot
+for its source queries and ES formula. Player Life and unrelated minions do
+not supply this value. This quality grant does not deduct Life or resolve the
+intrinsic 15% question above.
