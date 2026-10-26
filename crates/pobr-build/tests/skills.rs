@@ -97,6 +97,8 @@ mod minion_curses;
 mod minions;
 #[path = "skills/no_damage.rs"]
 mod no_damage;
+#[path = "skills/oisin_leech.rs"]
+mod oisin_leech;
 #[path = "skills/player_debuffs.rs"]
 mod player_debuffs;
 #[path = "skills/quarterstaff_conditions.rs"]

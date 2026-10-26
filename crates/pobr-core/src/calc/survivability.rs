@@ -713,6 +713,16 @@ pub(crate) fn leech_percent(
         return 0.0;
     }
     let source_percent = |name: &str| {
+        // Oisin's Oath (mana_leech_from_elemental_instead) replaces the
+        // Physical funding type, including any-damage sources' Physical
+        // component. Keep the original percentages for elemental conversion;
+        // other resource and damage-type eligibility remains unchanged.
+        if name == "Mana"
+            && damage_type == DamageType::Physical
+            && db.flag(cfg, "Condition:NoManaLeechFromPhysicalDamage")
+        {
+            return 0.0;
+        }
         let ty = format!("{damage_type:?}");
         let mut names = vec![
             ModName::from(format!("Damage{name}Leech")),
