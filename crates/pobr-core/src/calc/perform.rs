@@ -113,6 +113,8 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         let extras = [
             ("MaximumLife", resources.extra_life),
             ("MaximumMana", resources.extra_mana),
+            ("LifeTotal", resources.extra_life_total),
+            ("ManaTotal", resources.extra_mana_total),
             ("Ward", resources.extra_ward),
         ];
         for (name, value) in extras {

@@ -2514,6 +2514,7 @@ pub(crate) struct PoolTerms {
     converted_pct: f64,
     inc: f64,
     more: f64,
+    flat_after: f64,
     override_value: Option<f64>,
     pub(crate) value: f64,
 }
@@ -2541,6 +2542,13 @@ impl PoolTerms {
         }
         steps.increased(self.inc);
         steps.more(self.more);
+        if self.flat_after != 0.0 {
+            steps.set(
+                FormulaOp::FlatAfter,
+                self.flat_after,
+                steps.current() + self.flat_after,
+            );
+        }
         steps.finish(self.value)
     }
 }
@@ -2551,11 +2559,16 @@ pub(crate) fn pool_terms(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) ->
     let flat = db.sum(ModType::Base, cfg, &names);
     let inc = db.sum(ModType::Inc, cfg, &names);
     let more = db.more(cfg, &names);
+    // Discipline grants total ES. Its converted share remains a total,
+    // added after the destination pool's increases and multipliers.
+    let total_name = format!("{}Total", name.trim_start_matches("Maximum"));
+    let flat_after =
+        db.sum(ModType::Base, cfg, &[ModName::from(total_name)]) * (1.0 - converted_pct / 100.0);
     // OVERRIDE wins over everything (ChaosInoculation etc. pool clamping).
     let override_value = db.override_(cfg, name);
     // vendor CalcDefence.lua:92-95: `(base × (1 − conv/100) + extra) × (1+inc) × more`.
     let value = override_value.unwrap_or_else(|| {
-        (base + flat) * (1.0 - converted_pct / 100.0) * (1.0 + inc / 100.0) * more
+        (base + flat) * (1.0 - converted_pct / 100.0) * (1.0 + inc / 100.0) * more + flat_after
     });
     PoolTerms {
         base,
@@ -2563,6 +2576,7 @@ pub(crate) fn pool_terms(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) ->
         converted_pct,
         inc,
         more,
+        flat_after,
         override_value,
         value: round(value),
     }
@@ -2673,15 +2687,31 @@ fn scaled_pool_traced(
         more_factor,
         TraceOperation::QueryMore,
     );
-    let final_value = round(base_total * (1.0 + inc_mods.value / 100.0) * more_factor);
+    let scaled = base_total * (1.0 + inc_mods.value / 100.0) * more_factor;
+    let scaled_node = trace.add_node(
+        format!("{output_label} scaled"),
+        scaled,
+        TraceOperation::Multiply,
+    );
+    trace.add_edge(base_total_node, scaled_node);
+    trace.add_edge(inc_mods.node_id, scaled_node);
+    trace.add_edge(more_node, scaled_node);
+    let total_name = format!("{}Total", stat_name.trim_start_matches("Maximum"));
+    let total_mods = db.sum_traced(
+        ModType::Base,
+        cfg,
+        &[ModName::from(total_name.as_str())],
+        trace,
+        format!("{total_name} direct modifier sum"),
+    );
+    let final_value = round(scaled + total_mods.value * conv_factor);
     let final_node = trace.add_node(
         format!("{output_label} final"),
         final_value,
-        TraceOperation::Multiply,
+        TraceOperation::Add,
     );
-    trace.add_edge(base_total_node, final_node);
-    trace.add_edge(inc_mods.node_id, final_node);
-    trace.add_edge(more_node, final_node);
+    trace.add_edge(scaled_node, final_node);
+    trace.add_edge(total_mods.node_id, final_node);
 
     TracedValue {
         value: final_value,

@@ -229,6 +229,9 @@ pub struct DefenceResources {
     /// The amount converted from defence sources into Mana (includes the old dedicated ES→Mana
     /// channel; PoB2 `ExtraMana` BASE semantics).
     pub extra_mana: f64,
+    /// Converted direct-total amounts, added after the destination's INC/MORE scaling.
+    pub extra_life_total: f64,
+    pub extra_mana_total: f64,
     /// The Runic Ward Life and Mana grant ("Gain 5% of maximum Life as Extra
     /// maximum Runic Ward", the game's `base_maximum_life_%_to_gain_as_maximum_ward`):
     /// a Runic Ward base like the others these sources grant, from the same
@@ -635,11 +638,6 @@ pub(crate) fn defence_resource_terms(
         }
     }
 
-    // Life/Mana's Total converted-in amount (total_received[3]/[4], vendor :1397
-    // `NewMod("<Res>Total")` fed straight into pool calculation) currently has no output channel
-    // — the only existing Total source in the data is Discipline's EnergyShieldTotal (on the
-    // defence side), which is always 0 when there's no defence→Life/Mana conversion mod; wiring
-    // it up will need scaled_pool to add a direct-add term (not multiplied by inc).
     (
         DefenceResources {
             armour: out[0],
@@ -647,6 +645,8 @@ pub(crate) fn defence_resource_terms(
             energy_shield: out[2],
             extra_life: received[3],
             extra_mana: received[4],
+            extra_life_total: total_received[3],
+            extra_mana_total: total_received[4],
             extra_ward,
         },
         terms,
