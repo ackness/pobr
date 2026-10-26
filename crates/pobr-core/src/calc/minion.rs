@@ -721,6 +721,24 @@ pub(crate) fn bridge_count_multipliers(db: &ModDb, cfg: &mut CalcConfig) {
             cfg.stats.insert(var.into(), count);
         }
     }
+    // A positive Presence count does not locate individual actors. Keep the
+    // existing in-Presence convention for prepared companions; explicit zero
+    // counts or an absent Companion exclude their distinct-type contribution.
+    let companion_kinds = if cfg.conditions.get("CompanionInPresence") == Some(&false)
+        || ["SummonedMinion", "MinionPresenceCount"]
+            .iter()
+            .any(|name| cfg.multiplier_if_set(name).is_some_and(|n| n <= 0.0))
+    {
+        0.0
+    } else {
+        db.sum(
+            ModType::Base,
+            &scope,
+            &[ModName::from("DifferentCompanions")],
+        )
+    };
+    cfg.multipliers
+        .insert("DifferentCompanionsInPresence".into(), companion_kinds);
     // "per Summoned <kind>" uses that kind's created population, not the total.
     for var in [
         "ActiveGolemLimit",

@@ -16,6 +16,93 @@ const POISON: &str =
     "Immune to [Poison] if Equipped Helmet has higher [Evasion] Rating than [Armour]";
 
 #[test]
+fn damage_per_different_companion_counts_prepared_identities_in_presence() {
+    const LINE: &str = "24% increased Damage per each different Companion in your Presence";
+    let check = |build: &Build, expected: f64| {
+        let plain = run(build, &[]);
+        let boosted = run(build, &[LINE]);
+        assert!(boosted.unsupported_modifier_texts().is_empty());
+        assert_eq!(
+            boosted.config().multiplier("DifferentCompanionsInPresence"),
+            expected
+        );
+        assert_eq!(boosted.base_sum("Damage"), plain.base_sum("Damage"));
+        let increase = boosted.mod_db().sum(
+            pobr_data::modifier::ModType::Inc,
+            boosted.config(),
+            &[pobr_data::modifier::ModName::from("Damage")],
+        ) - plain.mod_db().sum(
+            pobr_data::modifier::ModType::Inc,
+            plain.config(),
+            &[pobr_data::modifier::ModName::from("Damage")],
+        );
+        assert_eq!(increase, 24.0 * expected);
+        if expected == 0.0 {
+            assert_eq!(boosted.output().dps, plain.output().dps);
+        } else {
+            assert!(boosted.output().dps > plain.output().dps);
+        }
+    };
+    let bare = build("FireballPlayer");
+    check(&bare, 0.0);
+    let mut wolf = SocketGroup::new().with_gem_skill("WolfPackPlayer", 20);
+    wolf.gem_skills[0].quality = 20; // Seven wolves are one different Companion.
+    let one = bare.clone().add_socket_group(wolf.clone());
+    check(&one, 1.0);
+    check(&one.clone().add_socket_group(wolf.clone()), 1.0);
+    check(
+        &one.clone().add_socket_group(
+            SocketGroup::new().with_gem_skill("SummonSkeletalWarriorsPlayer", 20),
+        ),
+        1.0,
+    );
+    check(
+        &one.clone()
+            .add_socket_group(SocketGroup::new().with_gem_skill("WildProtectorPlayer", 20)),
+        2.0,
+    );
+    let mut inactive = one.clone();
+    inactive.socket_groups[1].enabled = false;
+    check(&inactive, 0.0);
+    inactive = one.clone();
+    inactive.socket_groups[1].gem_skills[0].enabled = false;
+    check(&inactive, 0.0);
+    for name in ["SummonedMinion", "MinionPresenceCount"] {
+        let mut zero = one.clone();
+        zero.config.multipliers.insert(name.into(), 0.0);
+        check(&zero, 0.0);
+    }
+    let mut absent = one.clone();
+    absent
+        .config
+        .conditions
+        .insert("CompanionInPresence".into(), false);
+    check(&absent, 0.0);
+    let mut alternate = one.clone();
+    alternate.socket_groups[1].weapon_set = Some(2);
+    check(&alternate, 0.0);
+    alternate.weapon_set = WeaponSet::Second;
+    check(&alternate, 1.0);
+
+    // A chosen beast's identity matters even when both use Tame Beast.
+    let beast = |id: &str| {
+        let mut group = SocketGroup::new().with_gem_skill("SummonBeastPlayer", 20);
+        group.gem_skills[0].minion = Some(id.into());
+        group
+    };
+    let a = beast("Metadata/Monsters/Quadrilla/Quadrilla");
+    let b = beast("Metadata/Monsters/Werewolves/WerewolfPack1");
+    check(
+        &bare
+            .clone()
+            .add_socket_group(a.clone())
+            .add_socket_group(a.clone()),
+        1.0,
+    );
+    check(&bare.add_socket_group(a).add_socket_group(b), 2.0);
+}
+
+#[test]
 fn companion_presence_default_requires_an_enabled_companion_skill() {
     for enabled in [None, Some(false), Some(true)] {
         for explicit in [None, Some(false), Some(true)] {
