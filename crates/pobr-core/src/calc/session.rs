@@ -1209,8 +1209,8 @@ impl CalculationSession {
     /// aggregated under its own name.
     pub fn stat_mod_names(&self, stat: &str) -> Vec<ModName> {
         let names: &[&str] = match stat {
-            "Life" => &["MaximumLife", "LifeTotal"],
-            "Mana" => &["MaximumMana", "ManaTotal"],
+            "Life" => &["MaximumLife", "ExtraLife", "LifeTotal", "ExtraLifeTotal"],
+            "Mana" => &["MaximumMana", "ExtraMana", "ManaTotal", "ExtraManaTotal"],
             "FireResist" => &["FireResistance", "FireResist", "ElementalResist"],
             "ColdResist" => &["ColdResistance", "ColdResist", "ElementalResist"],
             "LightningResist" => &["LightningResistance", "LightningResist", "ElementalResist"],

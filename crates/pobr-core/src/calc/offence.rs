@@ -2554,14 +2554,24 @@ impl PoolTerms {
 pub(crate) fn pool_terms(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) -> PoolTerms {
     let names = [ModName::from(name)];
     let converted_pct = pool_conversion_pct(db, cfg, name);
-    let flat = db.sum(ModType::Base, cfg, &names);
+    let pool_name = name.trim_start_matches("Maximum");
+    let flat = db.sum(
+        ModType::Base,
+        cfg,
+        &[
+            ModName::from(name),
+            ModName::from(format!("Extra{pool_name}")),
+        ],
+    );
     let inc = db.sum(ModType::Inc, cfg, &names);
     let more = db.more(cfg, &names);
     // Discipline grants total ES. Its converted share remains a total,
     // added after the destination pool's increases and multipliers.
-    let total_name = format!("{}Total", name.trim_start_matches("Maximum"));
-    let flat_after =
-        db.sum(ModType::Base, cfg, &[ModName::from(total_name)]) * (1.0 - converted_pct / 100.0);
+    let total_names = [
+        ModName::from(format!("{pool_name}Total")),
+        ModName::from(format!("Extra{pool_name}Total")),
+    ];
+    let flat_after = db.sum(ModType::Base, cfg, &total_names) * (1.0 - converted_pct / 100.0);
     // OVERRIDE wins over everything (ChaosInoculation etc. pool clamping).
     let override_value = db.override_(cfg, name);
     // vendor CalcDefence.lua:92-95: `(base × (1 − conv/100) + extra) × (1+inc) × more`.
@@ -2585,11 +2595,8 @@ pub(crate) fn pool_terms(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) ->
 /// Only deducts from the pool itself; the **conversion into** ES/Armour/
 /// Evasion is handled by the defence matrix against the undeducted global
 /// base (`:1364`'s `ceil(globalBase × rate/100)`, see calc_defence_resources).
-// ponytail: vendor applies conv only to the base segment, exempting
-// Extra<res> -- PoBR's matrix conversion is currently injected as
-// Maximum<res> BASE, so it gets deducted along with everything else; the
-// fixture set has no "bidirectional conversion" build, migrate the injected
-// name to the Extra<res> channel if one shows up.
+// The separate Extra<res> input prevents matrix feedback. Keep the existing
+// pool deduction order: this rate applies to the combined flat pool.
 fn pool_conversion_pct(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
     let prefix = match name {
         "MaximumLife" => "Life",
@@ -2657,7 +2664,10 @@ fn scaled_pool_traced(
     let base_mods = db.sum_traced(
         ModType::Base,
         cfg,
-        &names,
+        &[
+            ModName::from(stat_name),
+            ModName::from(format!("Extra{}", stat_name.trim_start_matches("Maximum"))),
+        ],
         trace,
         format!("{stat_name} BASE modifier sum"),
     );
@@ -2698,7 +2708,10 @@ fn scaled_pool_traced(
     let total_mods = db.sum_traced(
         ModType::Base,
         cfg,
-        &[ModName::from(total_name.as_str())],
+        &[
+            ModName::from(total_name.as_str()),
+            ModName::from(format!("Extra{total_name}")),
+        ],
         trace,
         format!("{total_name} direct modifier sum"),
     );

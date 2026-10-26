@@ -97,24 +97,22 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
 
     // Five-way defensive resource conversion matrix (PoB2 CalcDefence.lua:1301-1390): the amount
     // converted from defence sources (Armour/Evasion/ES) to non-defence targets (Life/Mana) is
-    // injected as MaximumLife/MaximumMana BASE before the minimal calculation (corresponds to
+    // injected as ExtraLife/ExtraMana BASE before the minimal calculation (corresponds to
     // PoB2's `NewMod("Extra"..name, "BASE", …)` :1383, subject to the Life/Mana global factors).
     // The old dedicated ES→Mana channel (es_to_mana_rate) has been folded into this matrix (the
     // ES-side shrinking happens inside calc_defence); with no matrix mods present, the converted
     // amount is always 0 and this block is a no-op.
     {
         let keystones = crate::rules::DefenceKeystones::from_db(&env.player.mod_db, &env.cfg);
-        let resources = super::defence::calc_defence_resources(
+        let (resources, _, converted_totals) = super::defence::defence_resource_terms_and_totals(
             &env.player.mod_db,
             &env.cfg,
             &env.player.base,
             &keystones,
         );
         let extras = [
-            ("MaximumLife", resources.extra_life),
-            ("MaximumMana", resources.extra_mana),
-            ("LifeTotal", resources.extra_life_total),
-            ("ManaTotal", resources.extra_mana_total),
+            ("ExtraLife", resources.extra_life),
+            ("ExtraMana", resources.extra_mana),
             ("Ward", resources.extra_ward),
         ];
         for (name, value) in extras {
@@ -127,13 +125,15 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
                 .with_source("defence resource conversion")]);
             }
         }
+        env.player.mod_db.add_list(converted_totals);
 
         // Snapshot the defence output back into cfg.stats (vendor's calcs.defence runs before
         // offence, CalcPerform.lua:3298/:3361 — so offence and later stages' GetStat calls can
         // read the final defence values; PoBR's hand_pass runs before calc_defence, so the three
         // final defence values from the same calc_defence_resources call are backfilled early
-        // here. The later calc_defence call recomputes the same values from the same inputs
-        // (deterministic), equivalent to vendor's ordering. MaximumEnergyShield and EnergyShield
+        // here. The later calc_defence call recomputes from the original inputs:
+        // Extra* outputs are only read by pools, so they cannot feed the matrix twice.
+        // MaximumEnergyShield and EnergyShield
         // share the same value under two keys (CalcDefence.lua:1400-1401);
         // LowestOfArmourAndEvasion is at :1414.
         // Note: if a stat-self-referencing mod ever appears (e.g. PercentStat{EnergyShield}→ES
