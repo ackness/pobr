@@ -85,6 +85,17 @@ for (const viewport of [{ width: 390, size: 32 }, { width: 1440, size: 16 }, { w
       expect(widths.scroll, `${route} has page-wide overflow`).toBeLessThanOrEqual(widths.client + 1);
       expect(await page.locator('main [title]').count(), `${route} uses browser tooltips`).toBe(0);
     }
+    if (viewport.width === 390) {
+      await page.getByRole('button', { name: 'Open menu', exact: true }).click();
+      await page.getByRole('button', { name: 'Appearance & language', exact: true }).click();
+      await page.setViewportSize({ width: 390, height: 400 });
+      await page.getByRole('button', { name: 'Light', exact: true }).click();
+      await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(247, 246, 243)');
+      const sheet = page.locator('.v2-settings');
+      expect(await sheet.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+      await page.getByRole('button', { name: 'Close', exact: true }).click();
+      await expect(sheet).toHaveCount(0);
+    }
     expect(errors).toEqual([]);
   });
 }
