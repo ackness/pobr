@@ -229,6 +229,14 @@ pub(super) fn inject_buffs_and_heralds(
         }
         session.add_buff_skill(spec);
     }
+    for spec in pobr_core::skill_env::flame_wall_buff_specs(
+        build,
+        data,
+        &super::skill::resolve::gem_property_bonuses(build, data),
+        session.config(),
+    ) {
+        session.add_buff_skill(spec);
+    }
     // 4b'. Player-side buffs granted by supports (Precision I/II → Accuracy INC,
     //     sup_dex.lua:4181-4250) → BuffSpec(kind=Buff); buff_pass's Buff branch
     //     (CalcPerform.lua:1949-1962) applies the BuffEffect multiplier zone before merging into the player db.

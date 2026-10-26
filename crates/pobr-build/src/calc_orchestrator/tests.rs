@@ -1389,12 +1389,11 @@ fn synth_stat_set(set_id: &str, vendor_idx: Option<u32>) -> pobr_data::catalog::
 }
 
 /// Global-only merge for the main skill's unselected statSet — the full path
-/// is reachable with real data (FlameWall as the multi-set carrier); gating on
-/// the GlobalEffect tag is a translation boundary (see the switchover log
-/// §5), so current injection is always zero (the structure is in place but
-/// doesn't compute wrong values). Non-global stats are never injected from an unselected set.
+/// is reachable with real data (FlameWall as the multi-set carrier). Flame
+/// Wall's projectile buff uses its explicit config-gated buff path; neither
+/// its wall damage nor lingering ignite enters through this generic merge.
 #[test]
-fn unselected_set_global_only_zero_injection_before_m3() {
+fn unselected_set_global_merge_does_not_inject_flame_wall_payloads() {
     let data = repo_data();
     // Precondition: FlameWall really is multi-set (vendor export has ≥2), and its unselected-set snapshot is non-empty.
     let unsel = data.unselected_set_stats("FlameWallPlayer", 20, 0, None);
@@ -1407,7 +1406,7 @@ fn unselected_set_global_only_zero_injection_before_m3() {
         unselected_set_global_modifiers(&mut test_context(&data), &group, &data, "FlameWallPlayer");
     assert!(
         mods.is_empty(),
-        "before M3 wires up the GlobalEffect tag, unselected-set injection should be zero, got {mods:?}"
+        "Flame Wall must use its scoped buff path, got generic mods {mods:?}"
     );
     // Builder path (no gem_skills): no statSet context → empty.
     let empty_group = SocketGroup::new();

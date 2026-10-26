@@ -30,7 +30,9 @@ use crate::skill_env::stat_map::{
 use crate::skill_env::support::{GroupSupportJudgement, SupportCandidate, judge_group_supports};
 use crate::skill_env::{EnabledGroup, GemInput};
 
+mod flame_wall;
 mod minions;
+pub use flame_wall::flame_wall_buff_specs;
 pub(super) use minions::minion_curse_specs;
 
 /// The lookup surface the buff/warcry spec builders need.

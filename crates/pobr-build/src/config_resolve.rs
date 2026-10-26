@@ -62,6 +62,7 @@ const EXPLICIT_BOOLEAN_CONDITIONS: &[(&str, &str)] = &[
     ("companionInPresence", "CompanionInPresence"),
     ("conditionFinality", "Finality"),
     ("conditionFullMana", "FullMana"),
+    ("flameWallAddedDamage", "FlameWallAddedDamage"),
     ("conditionBeiraIgniteActive", "BeiraIgniteActive"),
     ("conditionOnConsecratedGround", "OnConsecratedGround"),
     ("conditionAncestrallyBoosted", "AncestrallyBoosted"),
