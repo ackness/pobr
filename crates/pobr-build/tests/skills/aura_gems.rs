@@ -83,3 +83,61 @@ fn a_buff_has_the_name_the_game_shows() {
     assert_eq!(name("ArcticArmourPlayer"), "Arctic Armour");
     assert_eq!(name("SummonBeastPlayer"), "Summon Beast");
 }
+
+#[test]
+fn alchemists_boon_quality_speed_requires_the_corresponding_active_flask() {
+    use pobr_build::calculate_with_data_session;
+    use pobr_data::passive_tree::NodeId;
+    use pobr_data::prelude::{ModName, ModType};
+
+    let data = crate::test_data();
+    for (life_active, mana_active) in [(false, false), (true, false), (false, true)] {
+        let xml = format!(
+            r#"<PathOfBuilding2>
+<Build level="80" className="Mercenary" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill>
+<Skill enabled="true"><Gem skillId="AlchemistsBoonPlayer" level="20" quality="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1">
+<Item id="1">Rarity: NORMAL
+Gargantuan Life Flask
+Implicits: 0</Item>
+<Item id="2">Rarity: NORMAL
+Gargantuan Mana Flask
+Implicits: 0</Item>
+<ItemSet id="1"><Slot name="Flask 1" itemId="1" active="{life_active}"/>
+<Slot name="Flask 2" itemId="2" active="{mana_active}"/></ItemSet></Items>
+</PathOfBuilding2>"#
+        );
+        let mut build = parse_build(&xml).unwrap();
+        // The speed is the additional quality effect, not ordinary quality.
+        for additional_quality in [false, true] {
+            build.tree.allocated_nodes = if additional_quality {
+                vec![NodeId(14429)]
+            } else {
+                Vec::new()
+            };
+            let session = calculate_with_data_session(
+                &build,
+                data,
+                &DataOrchestratorOptions::against_reference_enemy(),
+            )
+            .unwrap();
+            assert_eq!(session.config().condition("UsingLifeFlask"), life_active);
+            assert_eq!(session.config().condition("UsingManaFlask"), mana_active);
+            for (name, active) in [("AttackSpeed", life_active), ("CastSpeed", mana_active)] {
+                let value =
+                    session
+                        .mod_db()
+                        .sum(ModType::Inc, session.config(), &[ModName::from(name)]);
+                assert_eq!(
+                    value,
+                    if active && additional_quality {
+                        20.0
+                    } else {
+                        0.0
+                    }
+                );
+            }
+        }
+    }
+}
