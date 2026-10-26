@@ -554,6 +554,55 @@ fn hits_to_die_zero_damage_and_ward_pool() {
 }
 
 #[test]
+fn enemy_critical_damage_uses_incoming_hit_flags() {
+    // Desensitisation (28267) changes the enemy's critical damage bonus;
+    // Controlling Magic (13823) separately changes its critical chance.
+    let mut mods =
+        crate::support::parse_mod("Hits against you have 25% reduced Critical Damage Bonus")
+            .unwrap()
+            .mods;
+    mods.extend(
+        crate::support::parse_mod("Hits have 25% reduced Critical Hit Chance against you")
+            .unwrap()
+            .mods,
+    );
+    for flags in [
+        ModFlags::NONE,
+        ModFlags::DOT,
+        ModFlags::SPELL,
+        ModFlags::ATTACK,
+    ] {
+        let mut env = player_with(
+            ActorBaseStats {
+                life: 1000.0,
+                ..Default::default()
+            },
+            mods.clone(),
+        );
+        env.cfg.flags = flags;
+        env.cfg.mode_effective = true;
+        env.enemy.mod_db.add_list([
+            Modifier::number("EnemyPhysicalDamage", ModType::Override, 1000.0),
+            Modifier::number("EnemyCritChance", ModType::Override, 100.0),
+            Modifier::number("EnemyCritDamage", ModType::Override, 40.0),
+            // The player's spell/attack flags cannot select the type of
+            // enemy hit. Only the untyped hit reduction above applies.
+            Modifier::number("CriticalStrikeMultiplier", ModType::Inc, -50.0)
+                .with_flags(ModFlags::SPELL),
+        ]);
+        perform(&mut env).unwrap();
+        let out = &env.player.output;
+        // 100% * 0.75 chance, 40% * 0.75 bonus: 1000 * (1 + .75*.30).
+        assert_eq!(out.enemy_crit_chance, 75.0);
+        assert!(
+            (out.ehp_terms.as_ref().unwrap().enemy_damage[0] - 1225.0).abs() < 1e-9,
+            "{flags:?}: {:?}",
+            out.ehp_terms.as_ref().unwrap().enemy_damage,
+        );
+    }
+}
+
+#[test]
 fn loss_prevention_exhausts_life_exactly_without_roundoff_survival() {
     let pools = PoolState {
         life: 1000.32,
