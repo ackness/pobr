@@ -1785,6 +1785,11 @@ Ballista damage and speed modifiers. Capacity queries include
 `ActiveBallistaLimit` and the host's `TotemsAreBallistae` category alongside
 generic totem additions; raw support-compatibility types remain unchanged.
 Capacity is not evidence of how many totems are present.
+Frozen Warbringer08's selected Ballista capacity is 1 base + 1 ascendancy +
+2 crossbow + 1 passive = 5, with no override and a neutral MORE factor. Pinned
+PoB2 returns 2 because its capacity query misses the Ballista additions when
+the selected attack lacks its host's type. Only this capacity row is explained;
+the remaining damage difference is separate.
 
 Unique item grants use the game's `ModGrantedSkills` attachment relationship,
 not display-name collision order. The current catalog records Coming Calamity's
