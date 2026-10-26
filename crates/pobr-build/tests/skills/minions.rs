@@ -801,3 +801,186 @@ Wooden Club
         }
     }
 }
+
+#[test]
+fn minion_static_support_cost_follows_the_minions_skills() {
+    let data = load_data();
+    let opts = default_opts();
+    let bare = zombie_build(20);
+    let base = calculate_with_data(&bare, data, &opts).unwrap();
+    let mut supported = bare.clone();
+    supported.socket_groups[0]
+        .gem_skills
+        .push(pobr_build::build::GemSkillRef {
+            skill_id: "SupportMinionMeleeSplashPlayerTwo".into(),
+            gem_level: 1,
+            ..Default::default()
+        });
+    let boosted = calculate_with_data(&supported, data, &opts).unwrap();
+    // Minion Splash II requires CreatesMinion AND MeleeSingleTarget. The
+    // zombie's melee strike qualifies and the summon pays its 110% cost.
+    assert_eq!(base.mana_cost, 102.0);
+    assert_eq!(boosted.mana_cost, 112.0);
+    assert_eq!(boosted.action_rate, base.action_rate);
+    assert_eq!(boosted.minions[0].dps, base.minions[0].dps);
+
+    // Clash's melee requirement does not override its explicit Minion
+    // exclusion; its 120% cost must not be borrowed from the zombie attack.
+    let mut excluded = bare.clone();
+    excluded.socket_groups[0]
+        .gem_skills
+        .push(pobr_build::build::GemSkillRef {
+            skill_id: "SupportClashPlayer".into(),
+            gem_level: 1,
+            ..Default::default()
+        });
+    assert_eq!(
+        calculate_with_data(&excluded, data, &opts)
+            .unwrap()
+            .mana_cost,
+        base.mana_cost
+    );
+
+    // Raise Zombie's unrelated selected monster does not replace its zombie.
+    supported.socket_groups[0].gem_skills[0].minion = Some("RaisedSkeletonCleric".into());
+    assert_eq!(
+        calculate_with_data(&supported, data, &opts)
+            .unwrap()
+            .mana_cost,
+        112.0
+    );
+
+    // A player attack/spell is not a minion's strike, and another group's
+    // support never changes this summoning skill's cost.
+    for skill in ["FireballPlayer", "SummonSkeletalArsonistsPlayer"] {
+        let build = Build::new().add_socket_group(SocketGroup::new().with_gem_skill(skill, 20));
+        let plain = calculate_with_data(&build, data, &opts).unwrap();
+        let mut with_support = build;
+        with_support.socket_groups[0]
+            .gem_skills
+            .push(pobr_build::build::GemSkillRef {
+                skill_id: "SupportMinionMeleeSplashPlayerTwo".into(),
+                gem_level: 1,
+                ..Default::default()
+            });
+        assert_eq!(
+            calculate_with_data(&with_support, data, &opts)
+                .unwrap()
+                .mana_cost,
+            plain.mana_cost
+        );
+    }
+    let other_group = bare.add_socket_group(
+        SocketGroup::new()
+            .with_gem_skill("FireballPlayer", 20)
+            .with_gem_skill("SupportMinionMeleeSplashPlayerTwo", 1),
+    );
+    assert_eq!(
+        calculate_with_data(&other_group, data, &opts)
+            .unwrap()
+            .mana_cost,
+        102.0
+    );
+}
+
+#[test]
+fn minion_static_presence_auras_reach_allies_once_and_stay_off_the_weapon() {
+    use pobr_build::calculate_with_data_session;
+    use pobr_data::modifier::{ModFlags, ModName, ModType};
+
+    let data = load_data();
+    let build = |line: &str, slot: &str, base: &str| {
+        pobr_build::parse_build(&format!(r#"<PathOfBuilding2>
+<Build level="90" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="RaiseZombiePlayer" level="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: RARE
+Aura Test
+{base}
+{line}
+</Item><ItemSet id="1"><Slot name="{slot}" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#)).unwrap()
+    };
+    let calc = |line, slot, base| {
+        calculate_with_data_session(&build(line, slot, base), data, &default_opts()).unwrap()
+    };
+    for (slot, item) in [("Ring 1", "Gold Ring"), ("Weapon 1", "Rattling Sceptre")] {
+        let bare = calc("", slot, item);
+        for (line, player_bonus) in [
+            (
+                "You and Allies in your Presence have 8% increased Attack Speed",
+                8.0,
+            ),
+            (
+                "Allies in your Presence have 8% increased Attack Speed",
+                0.0,
+            ),
+        ] {
+            let aura = calc(line, slot, item);
+            assert!(
+                (aura.output().minions[0].dps / bare.output().minions[0].dps - 1.08).abs() < 1e-8,
+                "{slot}: {line}"
+            );
+            let cfg = aura.config().clone().with_flags(ModFlags::ATTACK);
+            assert_eq!(
+                aura.mod_db()
+                    .sum(ModType::Inc, &cfg, &[ModName::from("AttackSpeed")]),
+                player_bonus
+            );
+        }
+        let resist = calc(
+            "You and Allies in your Presence have +19% to Chaos Resistance",
+            slot,
+            item,
+        );
+        assert_eq!(
+            resist.output().chaos_resistance - bare.output().chaos_resistance,
+            19.0
+        );
+        assert_eq!(
+            resist.output().minions[0].stats["ChaosResist"]
+                - bare.output().minions[0].stats["ChaosResist"],
+            19.0
+        );
+    }
+}
+
+#[test]
+fn minion_static_offering_effect_uses_the_offerings_types() {
+    use pobr_build::calculate_with_data_session;
+
+    let data = load_data();
+    let mut build = zombie_build(20)
+        .add_socket_group(SocketGroup::new().with_gem_skill("PainOfferingPlayer", 20));
+    let baseline = calculate_with_data_session(&build, data, &default_opts()).unwrap();
+    let boosted = calculate_with_data_session(
+        &build,
+        data,
+        &DataOrchestratorOptions {
+            extra_modifier_texts: vec!["Offering Skills have 30% increased Buff effect".into()],
+            ..default_opts()
+        },
+    )
+    .unwrap();
+    // Game level-20 Pain Offering: 58% damage, 29% speed. Existing buff
+    // precision truncates these to 75 and 37 after 30% increased effect.
+    assert_eq!(baseline.minion_stat_totals(0, "Damage").1, 58.0);
+    assert_eq!(boosted.minion_stat_totals(0, "Damage").1, 75.0);
+    assert_eq!(baseline.minion_stat_totals(0, "AttackSpeed").1, 29.0);
+    assert_eq!(boosted.minion_stat_totals(0, "AttackSpeed").1, 37.0);
+
+    // Changing the selected player skill must not change the Offering buff.
+    build.main_socket_group = Some(2);
+    let selected = calculate_with_data_session(
+        &build,
+        data,
+        &DataOrchestratorOptions {
+            extra_modifier_texts: vec!["Offering Skills have 30% increased Buff effect".into()],
+            ..default_opts()
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        selected.output().minions[0].dps,
+        boosted.output().minions[0].dps
+    );
+}

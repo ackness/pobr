@@ -354,8 +354,8 @@ fn parse_mod_engine_impl(
 /// minion / enemy wrapping).
 ///
 /// LIST wrapping implemented so far: `addToMinion` (MinionModifier), `applyToEnemy`
-/// (EnemyModifier), `newAura`+`newAuraOnlyAllies` (ExtraAura, not consumed by the player when
-/// allies-only — vendor `ModParser.lua:6877` + `CalcPerform.lua:3104`). The remaining misc
+/// (EnemyModifier), and `newAura` (ExtraAura for allies, with a player copy
+/// unless `newAuraOnlyAllies` is set). The remaining misc
 /// wrappers (addToAura / addToSkill) aren't wired up yet (their lines are returned unchanged).
 #[derive(Default)]
 struct EffectsAccumulator {
@@ -425,35 +425,30 @@ impl EffectsAccumulator {
     }
 
     /// misc wrapping: turn the produced mods into LIST-wrapped mods (vendor :6680-6750).
-    /// Implemented so far: MinionModifier, EnemyModifier, ExtraAura (newAura+onlyAllies); the
+    /// Implemented so far: MinionModifier, EnemyModifier, ExtraAura (newAura); the
     /// rest (addToAura / addToSkill) are conservatively skipped — those lines are returned
     /// unchanged.
     fn wrap_list(&self, mods: Vec<Modifier>) -> Vec<Modifier> {
-        // `newAura` + `newAuraOnlyAllies` (vendor `ModParser.lua:6877`): wrap each inner mod as
-        // an `ExtraAura LIST` — the player's offence pipeline only reads special names like
-        // `Damage`/`SpellDamage`, never the `ExtraAura` wrapper, so the player's own
-        // contribution is 0 (matching `CalcPerform.lua:3104`'s `if not onlyAllies` skipping the
-        // player and only emitting to minions). Aura phrases that are **not** onlyAllies
-        // ("You and Allies in your Presence …") are not wrapped — the player themself also
-        // gets the inner mod (same as vendor: player is included in the `if not onlyAllies`
-        // branch). Minion-side ExtraAura consumption is a follow-up (this build set doesn't
-        // have minions contributing to player DPS, so wrapping alone fixes the player's
-        // inflated numbers).
-        if self.new_aura && self.new_aura_only_allies && !mods.is_empty() {
-            return mods
-                .into_iter()
-                .map(|inner| {
-                    let mut wrapper = Modifier::new(
-                        "ExtraAura",
-                        ModType::List,
-                        ModValue::NestedMods(vec![inner.clone()]),
-                    );
-                    if let Some(src) = &inner.source {
-                        wrapper = wrapper.with_source(src.clone());
-                    }
-                    wrapper
-                })
-                .collect();
+        // Presence auras grant their modifiers to allies. "You and Allies"
+        // also retains the player's own copy; the ExtraAura payload is read
+        // with each recipient's skill flags, not the summoner's attack.
+        if self.new_aura && !mods.is_empty() {
+            let mut result = Vec::new();
+            for inner in mods {
+                let mut wrapper = Modifier::new(
+                    "ExtraAura",
+                    ModType::List,
+                    ModValue::NestedMods(vec![inner.clone()]),
+                );
+                if let Some(src) = &inner.source {
+                    wrapper = wrapper.with_source(src.clone());
+                }
+                if !self.new_aura_only_allies {
+                    result.push(inner);
+                }
+                result.push(wrapper);
+            }
+            return result;
         }
         if self.add_to_minion && !mods.is_empty() {
             return mods

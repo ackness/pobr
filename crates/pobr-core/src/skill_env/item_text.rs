@@ -147,21 +147,24 @@ pub fn parse_adds_with_suffix(clean: &str, suffix: &str) -> Option<(f64, f64)> {
 
 /// Whether a mod text is a weapon-local mod (matches the `local_mods.weapon` rules).
 /// A "N% reduced" line is the same local stat as the "N% increased" line its
-/// rule names, with a negative value (see [`local_percent`]).
+/// rule names, with a negative value (see [`local_percent`]). A numeric
+/// prefix is required: "Allies in your Presence have N% increased Attack
+/// Speed" belongs to allies, not the weapon's local attack rate.
 pub fn is_weapon_local_mod(
     text: &str,
     rules: &pobr_data::catalog::local_mods::WeaponLocalModsDef,
 ) -> bool {
     let clean = clean_item_text(text);
     let as_increased = clean.replacen("% reduced ", "% increased ", 1);
-    rules
-        .increased_suffixes
+    rules.increased_suffixes.iter().any(|suffix| {
+        [&clean, &as_increased].into_iter().any(|text| {
+            text.strip_suffix(suffix.as_str())
+                .is_some_and(|number| number.trim().parse::<f64>().is_ok())
+        })
+    }) || rules
+        .adds_damage_suffixes
         .iter()
-        .any(|s| clean.ends_with(s.as_str()) || as_increased.ends_with(s.as_str()))
-        || rules
-            .adds_damage_suffixes
-            .iter()
-            .any(|s| parse_adds_with_suffix(&clean, s).is_some())
+        .any(|s| parse_adds_with_suffix(&clean, s).is_some())
 }
 
 /// Parses a local defence increased% mod (e.g. `+12% increased Armour` / `+8% increased Evasion and Energy Shield`).
