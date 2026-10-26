@@ -1770,6 +1770,20 @@ increases/reductions of the source regeneration rate. Source BASE, MORE and
 recovery modifiers do not transfer. Detail groups retain the original sources
 and conditions and include only those INC contributions.
 
+Eldritch Will's `maximum_life_mana_and_energy_shield_+%` uses the resource
+names consumed by the pool calculation: `MaximumLife`, `MaximumMana` and
+`EnergyShield`. The shorter `Life` and `Mana` INC aliases are not pool inputs.
+`MovementSpeedAppliesToEnergyShieldRecharge` similarly shares only MovementSpeed
+INC into recharge rate, preserving source conditions and the same detail rows.
+It does not transfer base speed, MORE factors, action speed or movement penalties,
+and does not establish recharge uptime.
+
+`chance_for_extra_damage_roll_with_lightning_damage_%` supplies
+`LightningLuckyHitsChance`, not flat Lightning damage. Preserve the imported
+roll and use the existing per-type hit-luck calculation; generic hit luck and
+Lightning hit luck combine only for Lightning hits. This rule does not change
+the separate ailment damage-roll convention.
+
 [Derange](https://poe2db.tw/us/Derange) adds an ES cost equal to final
 Intelligence (`gain_energy_shield_cost_equal_to_intelligence`). Its compatible,
 selected support supplies `ESCostNoMult` through the existing cost path.
