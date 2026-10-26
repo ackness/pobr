@@ -753,8 +753,9 @@ pub(crate) fn leech_percent(
 
 /// Calculates a resource's leech result from the ModDb.
 ///
-/// `leech_mod` is internalized as `resource.leech_mod_name()`; the caller is
-/// responsible for supplying `hit_damage` (usually physical/hit damage; PoE2 defaults to physical only).
+/// Compatibility API for a physical-only hit. Callers with multiple damage
+/// types use `calc_leech_for_hit` so eligibility and the whole-hit ceiling
+/// retain the original damage ratios.
 ///
 /// Source: agent-docs/recovery-charges-buffs.md §2.2;
 ///       PoB2 `src/Modules/CalcDefence.lua`'s leech section.
@@ -763,6 +764,24 @@ pub fn calc_leech_from_db(
     cfg: &CalcConfig,
     pool: f64,
     hit_damage: f64,
+    resource: LeechResource,
+) -> LeechResult {
+    calc_leech_for_hit(
+        db,
+        cfg,
+        pool,
+        &[(DamageType::Physical, hit_damage)],
+        resource,
+    )
+}
+
+/// One instance from the supplied post-conversion damage components. The
+/// caller selects the damage basis (the panel's hit or effective dealt damage).
+pub(crate) fn calc_leech_for_hit(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    pool: f64,
+    damage: &[(DamageType, f64)],
     resource: LeechResource,
 ) -> LeechResult {
     // Proxy damage does not grant the player ordinary leech. PoB2
@@ -784,14 +803,22 @@ pub fn calc_leech_from_db(
     {
         return LeechResult::zero(pool, resource);
     }
-    // The typed names are emitted by PoB's equipment/passive parser. The
-    // legacy untyped names remain accepted by the minimal calculation API.
-    // hit_damage must be the physical component after conversion, never the
-    // total hit (which would let elemental added damage fuel physical leech).
-    let leech_pct = leech_percent(db, cfg, resource, DamageType::Physical);
+    // The game's 40,000 damage ceiling applies to the whole hit, preserving
+    // each type's share. Ineligible types still count towards that ceiling.
+    let total: f64 = damage.iter().map(|(_, amount)| amount.max(0.0)).sum();
+    let scale = if total > 0.0 {
+        (cfg.constants.game().effective_max_damage_for_leech / total).min(1.0)
+    } else {
+        0.0
+    };
+    let amount: f64 = damage
+        .iter()
+        .map(|&(ty, damage)| {
+            damage.max(0.0) * scale * leech_percent(db, cfg, resource, ty).max(0.0) / 100.0
+        })
+        .sum();
     leech_instance(
-        hit_damage.clamp(0.0, LEECH_EFFECTIVE_MAX_HIT_DAMAGE) * leech_pct.max(0.0) / 100.0
-            * leech_modifier_factor(db, cfg, &format!("{name}Amount")),
+        amount * leech_modifier_factor(db, cfg, &format!("{name}Amount")),
         leech_modifier_factor(db, cfg, &format!("{name}Rate")),
         leech_cap_terms(db, cfg, pool, resource),
     )
