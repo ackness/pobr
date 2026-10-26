@@ -94,6 +94,24 @@ fn blackflame_covenant_converts_only_fire_spells_and_preserves_ignite_magnitude(
         );
         // Changing an Ignite's type alone does not change source eligibility.
         assert_eq!(env.player.mod_db.flag(&env.cfg, "ChaosCanIgnite"), enabled);
+        let mut session =
+            pobr_core::calc::CalculationSession::new(MinimalInput::from(env.player.base))
+                .with_config(env.cfg.clone());
+        session.add_modifiers(env.player.mod_db.iter_mods().cloned());
+        session.add_enemy_modifiers(env.enemy.mod_db.iter_mods().cloned());
+        session.perform_minimal().unwrap();
+        let detail = session.derived_detail("IgniteEffMult").unwrap();
+        let input = |id: &str| detail.inputs.iter().find(|(name, _)| name == id).unwrap().1;
+        let reconstructed = (1.0 - input("AilmentEnemyResistance") / 100.0)
+            * (1.0 + input("AilmentDamageTakenIncreased") / 100.0)
+            * input("AilmentDamageTakenMore");
+        assert!((reconstructed - mitigation).abs() < 1e-9);
+        assert!(
+            (pobr_core::display_catalog::display_value(session.output(), "IgniteEffMult")
+                - reconstructed)
+                .abs()
+                < 1e-9
+        );
     }
 }
 
