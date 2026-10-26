@@ -5,6 +5,99 @@ use pobr_core::{CalcConfig, ModDb, ModTag, ModValue};
 use pobr_data::prelude::*;
 
 #[test]
+fn final_static_loreweave_exclusivity_requires_its_paired_rarity_source() {
+    let exclusion = "Your other Modifiers to Rarity of Items found do not apply";
+    for value in ["84", "+84.5", "-12.5"] {
+        let rarity = format!("{value}% increased Rarity of Items found");
+        for separator in ["\n", " "] {
+            let text = format!("{rarity}{separator}{exclusion}");
+            let parsed = parse_mod(&text).unwrap();
+            assert!(parsed.is_complete(), "{parsed:?}");
+            assert_eq!(parsed.mods.len(), 2);
+            let increase = &parsed.mods[0];
+            assert_eq!(increase.name.as_str(), "LootRarity");
+            assert_eq!(increase.mod_type, ModType::Inc);
+            assert_eq!(increase.value, ModValue::Number(value.parse().unwrap()));
+            let flag = &parsed.mods[1];
+            assert_eq!(flag.name.as_str(), "LootRarityExclusive");
+            assert_eq!(flag.mod_type, ModType::Flag);
+            assert_eq!(flag.value, ModValue::Bool(true));
+            for modifier in &parsed.mods {
+                assert_eq!(modifier.source.as_deref(), Some(text.as_str()));
+                assert!(modifier.tags.is_empty());
+                let rule = modifier.exporter_rule.as_ref().unwrap();
+                assert_eq!(rule.exporter, pobr_data::source::ExporterCoverage::Differs);
+                assert_eq!(rule.game_source, "unique_body_armour_item_rarity_only_+%");
+            }
+            // Coverage belongs to the combined rule. Reference mode must keep
+            // its supported numeric increase as well as the native exclusion.
+            for include_absent in [true, false] {
+                let mut db = ModDb::new();
+                db.set_exporter_rules(include_absent, Default::default());
+                db.add_list(parsed.mods.clone());
+                assert_eq!(
+                    db.sum(
+                        ModType::Inc,
+                        &CalcConfig::new(),
+                        &[ModName::from("LootRarity")]
+                    ),
+                    value.parse::<f64>().unwrap()
+                );
+                assert!(db.flag(&CalcConfig::new(), "LootRarityExclusive"));
+            }
+        }
+        let ordinary = parse_mod(&rarity).unwrap();
+        assert!(
+            ordinary
+                .mods
+                .iter()
+                .all(|m| m.name.as_str() != "LootRarityExclusive")
+        );
+    }
+    let ordinary = parse_mod("84% increased Rarity of Items found").unwrap();
+    assert!(ordinary.is_complete(), "{ordinary:?}");
+    assert_eq!(ordinary.mods.len(), 1);
+    assert_eq!(ordinary.mods[0].name.as_str(), "LootRarity");
+    assert_eq!(ordinary.mods[0].mod_type, ModType::Inc);
+    assert_eq!(ordinary.mods[0].value, ModValue::Number(84.0));
+    let standalone = parse_mod(exclusion).unwrap();
+    assert!(!standalone.is_complete(), "{standalone:?}");
+    assert!(
+        standalone
+            .mods
+            .iter()
+            .all(|m| m.name.as_str() != "LootRarityExclusive")
+    );
+}
+
+#[test]
+fn final_static_crimson_assault_overrides_only_the_bleeding_base_duration() {
+    for (text, duration) in [
+        ("Base [Bleeding] Duration is 1 second", 1.0),
+        ("Base Bleeding Duration is 2 seconds", 2.0),
+        ("Base Bleeding Duration is 1.5 seconds", 1.5),
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert!(parsed.is_complete(), "{parsed:?}");
+        assert_eq!(parsed.mods.len(), 1);
+        let modifier = &parsed.mods[0];
+        assert_eq!(modifier.name.as_str(), "BaseBleedingDuration");
+        assert_eq!(modifier.mod_type, ModType::Override);
+        assert_eq!(modifier.value, ModValue::Number(duration));
+        assert_eq!(modifier.source.as_deref(), Some(text));
+        assert!(modifier.tags.is_empty());
+        assert!(modifier.exporter_rule.is_none()); // The pinned exporter implements this stat.
+    }
+    let other_ailment = parse_mod("Base Ignite Duration is 1 second").unwrap();
+    assert!(
+        other_ailment
+            .mods
+            .iter()
+            .all(|m| m.name.as_str() != "BaseBleedingDuration")
+    );
+}
+
+#[test]
 fn coordinated_static_watch_how_i_do_it_is_a_nested_ally_grant() {
     let first = "[Allies] in your [Presence] gain added [Attack] Damage equal";
     for value in [25.0, 12.5] {
