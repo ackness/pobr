@@ -93,6 +93,8 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // Charges have no inherent bonuses; disabled use retains only the minimum.
     env.cfg = super::survivability::charge_multipliers_panel_default(&env.player.mod_db, &env.cfg);
 
+    apply_resistance_scaled_defences(env);
+
     // Five-way defensive resource conversion matrix (PoB2 CalcDefence.lua:1301-1390): the amount
     // converted from defence sources (Armour/Evasion/ES) to non-defence targets (Life/Mana) is
     // injected as MaximumLife/MaximumMana BASE before the minimal calculation (corresponds to
@@ -367,6 +369,70 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
 
     env.performed = true;
     Ok(())
+}
+
+/// Skin of the Loyal's defence increases use the total resistance before its
+/// maximum and minimum caps. Resolve after buffs and charges, before the
+/// defence conversion matrix applies increases to its destination resources.
+fn apply_resistance_scaled_defences(env: &mut Env) {
+    for (flag, target, element, base) in [
+        (
+            "ArmourIncreasedByUncappedFireRes",
+            "Armour",
+            "Fire",
+            env.player.base.fire_resistance,
+        ),
+        (
+            "EnergyShieldIncreasedByUncappedColdRes",
+            "EnergyShield",
+            "Cold",
+            env.player.base.cold_resistance,
+        ),
+        (
+            "EvasionRatingIncreasedByUncappedLightningRes",
+            "Evasion",
+            "Lightning",
+            env.player.base.lightning_resistance,
+        ),
+        (
+            "AilmentThresholdIncreasedByUncappedChaosRes",
+            "AilmentThreshold",
+            "Chaos",
+            0.0,
+        ),
+    ] {
+        if !env.player.mod_db.flag(&env.cfg, flag) {
+            continue;
+        }
+        // Resource-dependent resistance uses the post-buff pools. Conversion
+        // has not run yet; feeding converted resources back would create a cycle.
+        let mut cfg = env.cfg.clone();
+        let (life, mana) = super::session::preparation::life_mana_pools(env);
+        for (name, value) in [("Life", life), ("Mana", mana)] {
+            cfg.stats.insert(name.into(), value);
+            cfg.multipliers.insert(name.into(), value);
+        }
+        let resistance = super::offence::resolve_resistance(
+            &env.player.mod_db,
+            &cfg,
+            base,
+            element,
+            element != "Chaos",
+        );
+        let origin = env
+            .player
+            .mod_db
+            .flag_source(&env.cfg, flag)
+            .cloned()
+            .unwrap_or_else(|| ModifierSource::new(SourceId::new(SourceKind::Derived, flag)))
+            .with_stat(target)
+            .with_mod_type(ModType::Inc);
+        env.player.mod_db.add_mod(
+            Modifier::number(target, ModType::Inc, resistance.total)
+                .with_source(flag)
+                .with_origin(origin),
+        );
+    }
 }
 
 /// (#12 companion allies layer) Writes the companion total life into the db (vendor

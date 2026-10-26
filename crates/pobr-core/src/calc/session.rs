@@ -1933,7 +1933,7 @@ fn ailment_of(stat: &str) -> Option<AilmentType> {
 /// Conditions a pass of the calculation works out for itself, for the hit
 /// or hand it is computing or from what the character has in effect. Absent
 /// from the condition map, they do not hold; nothing is missing.
-pub const CONDITIONS_SET_BY_A_PASS: [&str; 26] = [
+pub const CONDITIONS_SET_BY_A_PASS: [&str; 27] = [
     // `calc::offence` and `calc::crit_pass`: the critical and the
     // non-critical half of a hit.
     "CriticalStrike",
@@ -1951,9 +1951,10 @@ pub const CONDITIONS_SET_BY_A_PASS: [&str; 26] = [
     // `calc::buff_pass`: curses and marks on the enemy.
     "EnemyCursed",
     "EnemyMarked",
-    // `env_finalize`: the enemy's own Intimidated and Crushed flags.
+    // `env_finalize`: states granted by active enemy-side modifiers.
     "EnemyIntimidated",
     "EnemyCrushed",
+    "EnemyHindered",
     // `calc::armour_break`: derived from the enemy's remaining Armour.
     "EnemyArmourBroken",
     "EnemyArmourFullyBroken",
