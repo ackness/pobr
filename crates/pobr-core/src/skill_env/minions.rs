@@ -625,23 +625,57 @@ fn minion_skill(
     let index = chosen.unwrap_or(1).clamp(1, skills.len().max(1) as u32) as usize - 1;
     skills
         .get(index)
-        .map(|(id, effect)| crate::calc::MinionSkill {
-            id: (*id).clone(),
-            types: effect.skill_types.clone(),
-            cast_time: effect.cast_time.map_or(0.0, |ms| f64::from(ms) / 1000.0),
-            damage_multiplier: {
-                let level = minion_skill_level(data, id, minion_level);
-                data.selected_set_level_row(id, level, None)
-                    .map(|row| row.damage_multiplier)
-                    .or_else(|| {
-                        data.effect_level_row(id, level)
-                            .and_then(|row| row.base_multiplier)
-                    })
-            },
-            command: data
-                .effect_stats(id, 1, 0, None)
-                .all()
-                .any(|stat| stat.stat == skill_stats::COMMAND_SKILL_STAT),
+        .map(|(id, effect)| {
+            let stats = data.effect_stats(id, 1, 0, None);
+            let has = |name| {
+                stats
+                    .all()
+                    .any(|stat| stat.stat == name && stat.value != 0.0)
+            };
+            // A generic basic attack lists both Melee and Projectile types.
+            // Its arrow/wand stats are capabilities; the equipped weapon
+            // determines the hit. An explicitly projectile stat set wins,
+            // and absent weapon metadata must not invent a melee weapon.
+            let arrows = has("skill_can_fire_arrows");
+            let wands = has("skill_can_fire_wand_projectiles");
+            let projectile_hit = if effect.skill_types.iter().any(|kind| kind == "Attack")
+                && (arrows || wands)
+            {
+                if has(super::STAT_IS_PROJECTILE) {
+                    Some(true)
+                } else {
+                    def.weapon_type1
+                        .as_deref()
+                        .or(def.weapon_type2.as_deref())
+                        .map(|weapon| (arrows && weapon == "Bow") || (wands && weapon == "Wand"))
+                        .or_else(|| {
+                            def.monster_tags
+                                .iter()
+                                .any(|tag| tag == "is_unarmed")
+                                .then_some(false)
+                        })
+                }
+            } else {
+                None
+            };
+            crate::calc::MinionSkill {
+                id: (*id).clone(),
+                types: effect.skill_types.clone(),
+                projectile_hit,
+                cast_time: effect.cast_time.map_or(0.0, |ms| f64::from(ms) / 1000.0),
+                damage_multiplier: {
+                    let level = minion_skill_level(data, id, minion_level);
+                    data.selected_set_level_row(id, level, None)
+                        .map(|row| row.damage_multiplier)
+                        .or_else(|| {
+                            data.effect_level_row(id, level)
+                                .and_then(|row| row.base_multiplier)
+                        })
+                },
+                command: stats
+                    .all()
+                    .any(|stat| stat.stat == skill_stats::COMMAND_SKILL_STAT),
+            }
         })
         .unwrap_or_default()
 }

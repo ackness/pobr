@@ -195,3 +195,241 @@ fn flame_wall_uses_effective_level_and_strongest_copy_independent_of_selection()
         }
     }
 }
+
+fn with_sniper(build: Build) -> Build {
+    build.add_socket_group(SocketGroup::new().with_gem_skill("SummonSkeletalSnipersPlayer", 20))
+}
+
+fn with_melee_minions(build: Build) -> Build {
+    build
+        .add_socket_group(SocketGroup::new().with_gem_skill("SummonSkeletalReaversPlayer", 20))
+        .add_socket_group(SocketGroup::new().with_gem_skill("RagingSpiritsPlayer", 20))
+}
+
+fn minion_fire(session: &CompletedCalculationSession, index: usize) -> (f64, f64) {
+    (
+        session.minion_stat_totals(index, "FireDamageMin").0,
+        session.minion_stat_totals(index, "FireDamageMax").0,
+    )
+}
+
+#[test]
+fn flame_wall_shares_configured_damage_with_allied_projectiles_without_aura_scaling() {
+    let mut active = with_melee_minions(with_sniper(build(
+        "SparkPlayer",
+        Some(true),
+        vec![wall(20)],
+    )));
+    let baseline = calculate(&with_sniper(build(
+        "SparkPlayer",
+        Some(false),
+        vec![wall(20)],
+    )));
+    let shared = calculate(&active);
+    assert_eq!(shared.output().minions[0].skill_id, "MinionMeleeBow");
+    assert_eq!(minion_fire(&shared, 0), (27.0, 41.0));
+    assert!(
+        shared.minion_output(0).unwrap().total_hit_avg
+            > baseline.minion_output(0).unwrap().total_hit_avg
+    );
+    assert!(
+        shared
+            .minion_output(0)
+            .unwrap()
+            .damage_components
+            .iter()
+            .any(|part| { part.damage_type == DamageType::Fire && part.avg() > 0.0 })
+    );
+    // Reaver's equipped axes and Raging Spirit's explicit unarmed tag both
+    // resolve their generic basic attack as melee, despite its raw types.
+    assert_eq!(shared.minion_count(), 3);
+    for melee in [1, 2] {
+        assert_eq!(minion_fire(&shared, melee), (0.0, 0.0));
+    }
+    for name in ["FireDamageMin", "FireDamageMax"] {
+        let rows = shared.minion_stat_mods(0, name);
+        let applied: Vec<_> = rows.iter().filter(|row| row.active).collect();
+        assert_eq!(applied.len(), 1);
+        let source = applied[0].modifier.origin.as_ref().unwrap();
+        assert_eq!(source.source_id.kind, SourceKind::SkillGem);
+        assert!(
+            source
+                .source_id
+                .id
+                .starts_with("buff.FlameWallPlayer.flame_wall_")
+        );
+    }
+    // Wall passage is its own explicit snapshot, independent of Presence
+    // and the caster's aura magnitude. This line must actually be parsed.
+    active
+        .config
+        .global_modifier_texts
+        .push("100% increased effect of Non-Curse Auras from your Skills".into());
+    active
+        .config
+        .multipliers
+        .insert("MinionPresenceCount".into(), 0.0);
+    let aura_effect = calculate(&active);
+    assert!(!aura_effect.mods_named("AuraEffect").is_empty());
+    assert_eq!(minion_fire(&aura_effect, 0), (27.0, 41.0));
+    assert_eq!(
+        aura_effect.minion_output(0).unwrap().damage_components,
+        shared.minion_output(0).unwrap().damage_components
+    );
+
+    for config in [None, Some(false)] {
+        let off = calculate(&with_sniper(build("SparkPlayer", config, vec![wall(20)])));
+        assert_eq!(minion_fire(&off, 0), (0.0, 0.0));
+    }
+    let mut disabled = wall(20);
+    disabled.gem_skills[0].enabled = false;
+    for walls in [vec![], vec![disabled]] {
+        let off = calculate(&with_sniper(build("SparkPlayer", Some(true), walls)));
+        assert_eq!(minion_fire(&off, 0), (0.0, 0.0));
+    }
+    let copies = calculate(&with_sniper(build(
+        "SparkPlayer",
+        Some(true),
+        vec![wall(20), wall(34)],
+    )));
+    assert_eq!(minion_fire(&copies, 0), (71.0, 107.0));
+    let source = copies.minion_stat_mods(0, "FireDamageMin")[0]
+        .modifier
+        .origin
+        .as_ref()
+        .unwrap();
+    assert!(source.raw_text.as_deref().unwrap().contains("level 34"));
+}
+
+fn party_wall(min: u32, max: u32) -> pobr_build::party::PartyMember {
+    pobr_build::party::PartyMember {
+        blocks: std::collections::BTreeMap::from([(
+            "Aura".into(),
+            format!(
+                "otherEffects\nFlame Wall|100|{min}|Skill:FlameWallPlayer|FireDamageMin|BASE|Projectile|-|-\nFlame Wall|100|{max}|Skill:FlameWallPlayer|FireDamageMax|BASE|Projectile|-|-\n---"
+            ),
+        )]),
+        ..Default::default()
+    }
+}
+
+#[test]
+fn flame_wall_local_and_party_copies_keep_the_strongest_for_player_and_minion() {
+    for (level, party, expected, origin) in [
+        (20, (27, 41), (27.0, 41.0), SourceKind::SkillGem),
+        (20, (34, 51), (34.0, 51.0), SourceKind::Buff),
+        (34, (27, 41), (71.0, 107.0), SourceKind::SkillGem),
+    ] {
+        let mut receiver = with_melee_minions(with_sniper(build(
+            "SparkPlayer",
+            Some(true),
+            vec![wall(level)],
+        )));
+        receiver.party.members.push(party_wall(party.0, party.1));
+        let result = calculate(&receiver);
+        assert_eq!((fire(&result).added_min, fire(&result).added_max), expected);
+        assert_eq!(minion_fire(&result, 0), expected);
+        for melee in [1, 2] {
+            assert_eq!(minion_fire(&result, melee), (0.0, 0.0));
+        }
+        let player = result.hit_source_mods(0, &[DamageType::Fire]);
+        let minion = result.minion_stat_mods(0, "FireDamageMin");
+        for rows in [&player[0].added_min, &minion] {
+            let applied: Vec<_> = rows
+                .iter()
+                .filter(|row| row.active && row.value.is_some_and(|v| v > 0.0))
+                .collect();
+            assert_eq!(applied.len(), 1);
+            let source = applied[0].modifier.origin.as_ref().unwrap();
+            assert_eq!(source.source_id.kind, origin);
+            if origin == SourceKind::Buff {
+                assert!(source.source_id.id.starts_with("party."));
+            }
+        }
+    }
+    // Imported otherEffects already declares its active contribution; the
+    // local wall's config controls creation of only the local copy.
+    let mut party_only = with_melee_minions(with_sniper(build(
+        "SparkPlayer",
+        Some(false),
+        vec![wall(34)],
+    )));
+    party_only.party.members.push(party_wall(27, 41));
+    let result = calculate(&party_only);
+    assert_eq!(
+        (fire(&result).added_min, fire(&result).added_max),
+        (27.0, 41.0)
+    );
+    assert_eq!(minion_fire(&result, 0), (27.0, 41.0));
+    for melee in [1, 2] {
+        assert_eq!(minion_fire(&result, melee), (0.0, 0.0));
+    }
+}
+
+#[test]
+fn flame_wall_generic_minion_attack_keeps_unknown_context_and_explicit_projectiles() {
+    let data = crate::test_data();
+    let reaver = &data.minions["RaisedSkeletonReaver"];
+    assert_eq!(reaver.weapon_type1.as_deref(), Some("One Hand Axe"));
+    assert_eq!(reaver.weapon_type2.as_deref(), Some("One Hand Axe"));
+    assert_eq!(
+        data.minions["RaisedSkeletonSniper"].weapon_type1.as_deref(),
+        Some("Bow")
+    );
+    let raw_types = &data.granted_effects["MinionMeleeStep"].skill_types;
+    assert!(raw_types.iter().any(|kind| kind == "Projectile"));
+    assert!(raw_types.iter().any(|kind| kind == "Melee"));
+    let build = with_melee_minions(with_sniper(build(
+        "SparkPlayer",
+        Some(true),
+        vec![wall(20)],
+    )));
+    let calc = |data| {
+        calculate_with_data_session(
+            &build,
+            data,
+            &DataOrchestratorOptions::against_reference_enemy(),
+        )
+        .unwrap()
+    };
+    let normal = calc(data);
+
+    let mut unknown = data.clone();
+    let reaver = unknown.minions.get_mut("RaisedSkeletonReaver").unwrap();
+    reaver.weapon_type1 = None;
+    reaver.weapon_type2 = None;
+    reaver.monster_tags.clear();
+    assert!(!reaver.monster_tags.iter().any(|tag| tag == "is_unarmed"));
+    let unresolved = calc(&unknown);
+    // Missing equipment data is not proof of a melee weapon. Keep the
+    // former raw-type interpretation until the context is supplied.
+    assert_eq!(minion_fire(&unresolved, 1), (27.0, 41.0));
+    assert_eq!(minion_fire(&unresolved, 2), (0.0, 0.0));
+
+    let mut explicit = data.clone();
+    explicit
+        .skill_stat_sets
+        .get_mut("MinionMeleeStep")
+        .unwrap()
+        .sets[0]
+        .implicit_stats
+        .push("base_is_projectile".into());
+    let explicit_projectile = calc(&explicit);
+    for index in [0, 1, 2] {
+        assert_eq!(minion_fire(&explicit_projectile, index), (27.0, 41.0));
+    }
+    // Only actual hit flags change; skill metadata and the player's own
+    // projectile damage retain their existing interpretation.
+    assert_eq!(
+        &explicit.granted_effects["MinionMeleeStep"].skill_types,
+        raw_types
+    );
+    assert_eq!(
+        normal.output().damage_components,
+        unresolved.output().damage_components
+    );
+    assert_eq!(
+        normal.output().damage_components,
+        explicit_projectile.output().damage_components
+    );
+}

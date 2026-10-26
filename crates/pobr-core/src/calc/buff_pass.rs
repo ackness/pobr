@@ -345,8 +345,9 @@ fn merge_buff(dest: &mut Vec<Modifier>, src: Vec<Modifier>) {
 /// effect, added to the minion's own increased and more effect of buffs and
 /// auras on itself, and the aura's magnitude; same-named auras keep the
 /// strongest of each modifier. Returns the modifiers and the conditions they
-/// set on the minion. Nothing when buffs are off or the character's auras
-/// cannot affect allies.
+/// set on the minion. Also shares configured Flame Wall projectile damage and
+/// imported party buffs. Aura restrictions and scaling only apply to auras.
+/// Nothing when buffs are off.
 pub(crate) fn auras_on_minion(
     env: &Env,
     minion_db: &ModDb,
@@ -398,6 +399,48 @@ pub(crate) fn auras_on_minion(
         conditions.push(affected_by_condition(&spec.name));
     }
     let mut has_aura = !conditions.is_empty();
+    // Flame Wall explicitly adds damage to allied projectiles. The existing
+    // passage config selects that snapshot for projectile recipients; neither
+    // aura Presence nor a previous cast/weapon swap establishes passage.
+    if env.cfg.condition("FlameWallAddedDamage")
+        && minion_cfg.flags.intersects(ModFlags::PROJECTILE)
+    {
+        for spec in env
+            .buff_skills
+            .iter()
+            .filter(|spec| spec.kind == BuffKind::Buff && spec.skill_id == "FlameWallPlayer")
+        {
+            let buff_cfg = env
+                .cfg
+                .clone()
+                .with_skill_types(spec.skill_types)
+                .with_keyword_flags(crate::skill_env::skill_keyword_flags(spec.skill_types));
+            let effect = [ModName::from("BuffEffect")];
+            let received = [ModName::from("BuffEffectOnSelf")];
+            let inc = player.sum(ModType::Inc, &buff_cfg, &effect)
+                + minion_db.sum(ModType::Inc, minion_cfg, &received)
+                + spec.local_effect_inc;
+            let more = player.more(&buff_cfg, &effect)
+                * minion_db.more(minion_cfg, &received)
+                * spec.local_effect_more
+                * spec.magnitude;
+            let source_id = format!("buff.{}", spec.skill_id);
+            let mods = spec
+                .mods
+                .iter()
+                .map(|m| {
+                    scale_buff_mod(
+                        &env.high_precision,
+                        m,
+                        (1.0 + inc / 100.0) * more,
+                        &source_id,
+                    )
+                })
+                .collect();
+            merge_buff(buffs.entry(spec.name.clone()).or_default(), mods);
+            conditions.push(affected_by_condition(&spec.name));
+        }
+    }
     for party in &env.party_buff_skills {
         let spec = &party.spec;
         if !matches!(

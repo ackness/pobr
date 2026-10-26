@@ -5,7 +5,7 @@
 use pobr_data::modifier::ModFlags;
 
 use super::*;
-use crate::{CalcConfig, ModTag};
+use crate::CalcConfig;
 
 /// Builds Flame Wall's added-fire buff only when the existing config declares
 /// that the projectile passed through an available wall. No wall lifetime,
@@ -62,14 +62,11 @@ pub fn flame_wall_buff_specs(
                         "Flame Wall level {level}: {} ({})",
                         stat.stat, stat.value
                     ));
+                    // Passage gated creation above. A second payload tag would
+                    // stop an equivalent imported party buff from merging.
                     Some(
                         Modifier::number(name, ModType::Base, stat.value)
                             .with_flags(ModFlags::PROJECTILE)
-                            .with_tag(ModTag::Condition {
-                                var: "FlameWallAddedDamage".into(),
-                                negated: false,
-                                actor: None,
-                            })
                             .with_origin(origin),
                     )
                 })
