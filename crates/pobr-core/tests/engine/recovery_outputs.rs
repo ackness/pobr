@@ -543,3 +543,100 @@ fn parsed_mystic_harvest_extends_physical_attack_leech_before_ghost_reaver() {
         value(&run(mods, 2.0), "EnergyShieldLeechGainPerHit", 0.0);
     }
 }
+
+#[test]
+fn regeneration_shares_only_increases_and_reductions_with_the_destination() {
+    // additive_modifiers_to_life_regeneration_also_apply_to_mana_regeneration_rate
+    // and mana_regeneration_rate_modifiers_apply_to_rage_regeneration.
+    for (source, destination, text) in [
+        (
+            "Life",
+            "Mana",
+            "Increases and Reductions to Life Regeneration Rate also apply to Mana Regeneration Rate",
+        ),
+        (
+            "Mana",
+            "Rage",
+            "Increases and Reductions to Mana Regeneration Rate also apply to Rage Regeneration Rate",
+        ),
+    ] {
+        let mut mods = crate::support::parse_mod(text).unwrap().mods;
+        mods.extend([
+            Modifier::number(format!("{source}Regen"), ModType::Base, 1000.0),
+            Modifier::number(format!("{source}RegenPercent"), ModType::Base, 10.0),
+            Modifier::number(format!("{source}Regen"), ModType::Inc, 50.0)
+                .with_source("recovery.shared"),
+            Modifier::number(format!("{source}Regen"), ModType::Inc, -20.0),
+            Modifier::number(format!("{source}RegenRate"), ModType::Inc, 10.0),
+            Modifier::number(format!("{source}Regen"), ModType::More, 100.0),
+            Modifier::number(format!("{source}RecoveryRate"), ModType::Inc, 100.0),
+            Modifier::number(format!("{source}Regen"), ModType::Inc, 500.0).with_tag(
+                pobr_core::ModTag::Condition {
+                    var: "UnselectedRecoveryCondition".into(),
+                    negated: false,
+                    actor: None,
+                },
+            ),
+            Modifier::number(format!("{destination}Regen"), ModType::Base, 10.0),
+            Modifier::number(format!("{destination}Regen"), ModType::Inc, 20.0),
+            Modifier::number(format!("{destination}Regen"), ModType::More, 50.0),
+        ]);
+        let env = run(mods.clone(), 0.0);
+        // 10 * (1 + (20 + 50 - 20 + 10) / 100) * 1.5 = 24.
+        value(&env, &format!("{destination}RegenRecovery"), 24.0);
+        // Query-time routing leaves the original sources and modifiers intact.
+        assert_eq!(
+            env.player.mod_db.named(&format!("{source}Regen")).count(),
+            5
+        );
+        assert_eq!(
+            env.player
+                .mod_db
+                .named(&format!("{destination}Regen"))
+                .count(),
+            3
+        );
+        let mut session = pobr_core::calc::CalculationSession::new(pobr_core::calc::MinimalInput {
+            base_life: 1000.0,
+            base_mana: 500.0,
+            ..Default::default()
+        });
+        session.add_modifiers(mods);
+        let completed = session.finish().unwrap();
+        let output = display_value(completed.output(), &format!("{destination}RegenRecovery"));
+        assert_eq!(output, 24.0);
+        for stat in [
+            format!("{destination}Regen"),
+            format!("{destination}RegenRecovery"),
+        ] {
+            let groups = completed.detail_sources(&stat);
+            let shared = groups
+                .iter()
+                .find(|g| g.name == format!("{source}Regen"))
+                .unwrap();
+            assert_eq!(shared.totals, (0.0, 30.0, 1.0));
+            assert!(
+                shared
+                    .rows
+                    .iter()
+                    .all(|r| r.modifier.mod_type == ModType::Inc)
+            );
+            assert!(
+                shared
+                    .rows
+                    .iter()
+                    .any(|r| !r.active && r.value == Some(500.0))
+            );
+            assert!(
+                shared
+                    .rows
+                    .iter()
+                    .any(|r| r.active && r.modifier.source.as_deref() == Some("recovery.shared"))
+            );
+            let base: f64 = groups.iter().map(|g| g.totals.0).sum();
+            let inc: f64 = groups.iter().map(|g| g.totals.1).sum();
+            let more: f64 = groups.iter().map(|g| g.totals.2).product();
+            assert_eq!(base * (1.0 + inc / 100.0) * more, output);
+        }
+    }
+}
