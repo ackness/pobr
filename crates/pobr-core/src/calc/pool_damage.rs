@@ -294,7 +294,10 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
             if (ally.damage_type.is_none() || ally.damage_type == Some(dtype))
                 && ally.remaining > 0.0
             {
-                let temp = (rem * ally.mitigation_pct / 100.0).min(ally.remaining);
+                // Several companions can supply more than 100% in total,
+                // but they cannot take more damage than this hit contains.
+                let temp =
+                    (rem * ally.mitigation_pct.clamp(0.0, 100.0) / 100.0).min(ally.remaining);
                 ally.remaining -= temp;
                 rem -= temp;
                 if temp > 0.0 {
@@ -699,13 +702,17 @@ pub fn extend_total_hit_pool(
             pool = apply_protected_layer(pool, protected, 1.0 - guard_rate / 100.0);
         }
     }
-    // allies (:3567-3595): each layer is folded in via poolProtected in turn
-    // (when mitigation is 0, protected=∞ and the formula naturally degenerates to the original pool).
+    // A fully absorbing ally contributes its finite pool, just like a
+    // fully absorbing guard. Partial shares use the protected-pool formula.
     for ally in &pools.allies {
         if ally.remaining > 0.0 && (ally.damage_type.is_none() || ally.damage_type == Some(dtype)) {
-            let rate = ally.mitigation_pct / 100.0;
-            let protected = pool_protected(ally.remaining, rate);
-            pool = apply_protected_layer(pool, protected, 1.0 - rate);
+            let rate = ally.mitigation_pct.clamp(0.0, 100.0) / 100.0;
+            if rate >= 1.0 {
+                pool += ally.remaining;
+            } else {
+                let protected = pool_protected(ally.remaining, rate);
+                pool = apply_protected_layer(pool, protected, 1.0 - rate);
+            }
         }
     }
     pool

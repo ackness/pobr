@@ -554,6 +554,71 @@ fn hits_to_die_zero_damage_and_ward_pool() {
 }
 
 #[test]
+fn companion_damage_share_cannot_exceed_incoming_hit() {
+    // Loyalty on different companions can sum past 100%. "Damage taken
+    // before you" transfers the hit, never extra damage to the companion.
+    for share in [50.0, 100.0, 110.0] {
+        let pools = PoolState {
+            life: 1000.0,
+            allies: vec![pobr_core::calc::AllyLayer {
+                id: "companion",
+                remaining: 10_000.0,
+                mitigation_pct: share,
+                damage_type: None,
+            }],
+            ..Default::default()
+        };
+        let ctx = PoolCtx {
+            max_life: pools.life,
+            ..Default::default()
+        };
+        let after = reduce_pools(
+            &pools,
+            &TypedDamage {
+                physical: 400.0,
+                fire: 600.0,
+                ..Default::default()
+            },
+            &ctx,
+        );
+        let absorbed = 1000.0 * share.min(100.0) / 100.0;
+        assert_eq!(after.pools.allies[0].remaining, 10_000.0 - absorbed);
+        assert_eq!(after.pools.life, absorbed);
+        assert_eq!(after.overkill, 0.0);
+        assert_eq!(
+            after.recoupable_by_type.iter().sum::<f64>(),
+            1000.0 - absorbed
+        );
+
+        let expected_pool = if share < 100.0 { 2000.0 } else { 11_000.0 };
+        let total_pool =
+            pobr_core::calc::extend_total_hit_pool(pools.life, DamageType::Physical, &pools, &ctx);
+        assert_eq!(total_pool, expected_pool);
+        let hit = TypedDamage {
+            physical: 500.0,
+            ..Default::default()
+        };
+        assert_eq!(
+            number_of_hits_to_die(&hit, &pools, &ctx, &default_params()),
+            expected_pool / 500.0,
+        );
+        let depleted = reduce_pools(
+            &pools,
+            &TypedDamage {
+                physical: 12_000.0,
+                ..Default::default()
+            },
+            &ctx,
+        );
+        assert_eq!(depleted.pools.life, 0.0);
+        if share >= 100.0 {
+            assert_eq!(depleted.pools.allies[0].remaining, 0.0);
+            assert_eq!(depleted.overkill, 1000.0);
+        }
+    }
+}
+
+#[test]
 fn ward_with_life_loss_prevention_absorbs_the_remaining_hit() {
     // Grasping Wounds prevents Life loss, not damage to Runic Ward. The
     // latter absorbs damage after Life reaches 1, including lethal excess.
