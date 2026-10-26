@@ -571,6 +571,7 @@ pub fn buff_pass(env: &mut Env) {
                 let buff_cfg = env
                     .cfg
                     .clone()
+                    .with_skill_types(spec.skill_types)
                     .with_keyword_flags(crate::skill_env::skill_keyword_flags(spec.skill_types));
                 let mut inc = env.player.mod_db.sum(ModType::Inc, &buff_cfg, &inc_names)
                     + spec.local_effect_inc;

@@ -943,3 +943,44 @@ Aura Test
         );
     }
 }
+
+#[test]
+fn minion_static_offering_effect_uses_the_offerings_types() {
+    use pobr_build::calculate_with_data_session;
+
+    let data = load_data();
+    let mut build = zombie_build(20)
+        .add_socket_group(SocketGroup::new().with_gem_skill("PainOfferingPlayer", 20));
+    let baseline = calculate_with_data_session(&build, data, &default_opts()).unwrap();
+    let boosted = calculate_with_data_session(
+        &build,
+        data,
+        &DataOrchestratorOptions {
+            extra_modifier_texts: vec!["Offering Skills have 30% increased Buff effect".into()],
+            ..default_opts()
+        },
+    )
+    .unwrap();
+    // Game level-20 Pain Offering: 58% damage, 29% speed. Existing buff
+    // precision truncates these to 75 and 37 after 30% increased effect.
+    assert_eq!(baseline.minion_stat_totals(0, "Damage").1, 58.0);
+    assert_eq!(boosted.minion_stat_totals(0, "Damage").1, 75.0);
+    assert_eq!(baseline.minion_stat_totals(0, "AttackSpeed").1, 29.0);
+    assert_eq!(boosted.minion_stat_totals(0, "AttackSpeed").1, 37.0);
+
+    // Changing the selected player skill must not change the Offering buff.
+    build.main_socket_group = Some(2);
+    let selected = calculate_with_data_session(
+        &build,
+        data,
+        &DataOrchestratorOptions {
+            extra_modifier_texts: vec!["Offering Skills have 30% increased Buff effect".into()],
+            ..default_opts()
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        selected.output().minions[0].dps,
+        boosted.output().minions[0].dps
+    );
+}
