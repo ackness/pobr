@@ -1,0 +1,40 @@
+{
+  "name": "stormweaver-09",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Kabanister-2511/Shkolnik",
+    "account": "Kabanister-2511",
+    "character": "Shkolnik",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:57:17+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Kabanister-2511&name=Shkolnik&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Stormweaver",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 9,
+    "index_sha256": "d1ef8ddee86218ab8cd37da374336c3c8a422ec9aec5efa7d663988184642b7f",
+    "character_response_sha256": "0a6f71d4e5fe430facfba1d16b92833f50ce4a0bd98fd9f677ff8203f18a62af",
+    "upstream_updated_utc": "2026-10-12T15:36:50.349779Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-25T12:03:41.632631Z"
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Stormweaver",
+    "level": 100,
+    "main_skill": "Living Bomb"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 12,
+    "code_sha256": "a2d9edfe3b6b0e89b31e5af04ce92020ab1e7a11f815475128e363c0346eecc5",
+    "code_chars": 12796,
+    "decoded_bytes": 49368
+  }
+}

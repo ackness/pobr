@@ -1,0 +1,40 @@
+{
+  "name": "acolyte-of-chayula-05",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/basauking-2872/MonK_SUPP",
+    "account": "basauking-2872",
+    "character": "MonK_SUPP",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:30+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=basauking-2872&name=MonK_SUPP&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Acolyte+of+Chayula",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 5,
+    "index_sha256": "720a4229719289af8ed99a62f5030ac97155620a00eb46772c25d1a11fcc24e0",
+    "character_response_sha256": "f93f8b699d8e884a3b42eff0f655f543595a66464db68a5a5c97759ed71c6c35",
+    "upstream_updated_utc": "2026-10-22T04:21:29.332358Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:25.207842Z",
+    "upstream_last_checked_utc": "2026-10-25T04:32:36.547399Z"
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Acolyte of Chayula",
+    "level": 100,
+    "main_skill": "Refutation"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "3ee6856d332f9e906153b58494eefa9ed5725635d42bfc51e88351ad9aa0cb23",
+    "code_chars": 11632,
+    "decoded_bytes": 39551
+  }
+}

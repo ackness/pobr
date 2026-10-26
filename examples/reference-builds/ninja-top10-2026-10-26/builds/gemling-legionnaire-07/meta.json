@@ -1,0 +1,40 @@
+{
+  "name": "gemling-legionnaire-07",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/cclemon-4830/wednesdeey",
+    "account": "cclemon-4830",
+    "character": "wednesdeey",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:51:19+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=cclemon-4830&name=wednesdeey&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Gemling+Legionnaire",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 7,
+    "index_sha256": "ad135f5c2387bc24d4bea51e0e42e8c659af8d6055c720e85af447339cf8f0f7",
+    "character_response_sha256": "6baf5a0b8646006c8ca72f365f22612ff620a992a46ea2f2d448bcff2cd9552f",
+    "upstream_updated_utc": "2026-10-15T22:00:41.142357Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.289671Z",
+    "upstream_last_checked_utc": "2026-10-23T22:28:38.290068Z"
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Gemling Legionnaire",
+    "level": 100,
+    "main_skill": "Frost Bomb"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 11,
+    "code_sha256": "8743dd5397f38a4635d8d9b3ef610c918bcb1177cf953222375b83b71a516a9e",
+    "code_chars": 11704,
+    "decoded_bytes": 40881
+  }
+}

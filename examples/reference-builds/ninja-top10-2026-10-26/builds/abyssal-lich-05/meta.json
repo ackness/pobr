@@ -1,0 +1,40 @@
+{
+  "name": "abyssal-lich-05",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/DYooG4-5573/SmallToitoi",
+    "account": "DYooG4-5573",
+    "character": "SmallToitoi",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:25+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=DYooG4-5573&name=SmallToitoi&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Abyssal+Lich",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 5,
+    "index_sha256": "a136a96d92db7b38ac002bf5b7b97bc0296e57b46453b6f21c321c0f81b5ef84",
+    "character_response_sha256": "0ebbfc2d12daceb10bb035da6d7d7eedce0d3f043b7233928865191d4721d1e8",
+    "upstream_updated_utc": "2026-09-30T11:51:45.394888Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-25T11:46:35.906543Z"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Abyssal Lich",
+    "level": 99,
+    "main_skill": "Twister"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 13,
+    "code_sha256": "78bcaa46402d1efc6b7677c5d896c37a053370526127309dc7d627ced4589e02",
+    "code_chars": 13628,
+    "decoded_bytes": 54043
+  }
+}

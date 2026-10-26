@@ -1,0 +1,40 @@
+{
+  "name": "deadeye-09",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/pattarachaitam-9228/HuoYuHao_TFR",
+    "account": "pattarachaitam-9228",
+    "character": "HuoYuHao_TFR",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:50:21+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=pattarachaitam-9228&name=HuoYuHao_TFR&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Deadeye",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 9,
+    "index_sha256": "44dc1747546e40f5915aeb30be9db6d4645ec00832ec89032e0a1b921892e920",
+    "character_response_sha256": "4eae6ee262c71ff06ce210b8184dcf194609a8d102b499cd3e11cf8d5e256919",
+    "upstream_updated_utc": "2026-10-10T08:34:13.672677Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:25.714478Z",
+    "upstream_last_checked_utc": "2026-10-22T10:23:04.282851Z"
+  },
+  "character": {
+    "class": "Ranger",
+    "ascendancy": "Deadeye",
+    "level": 100,
+    "main_skill": "Ice Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 10,
+    "code_sha256": "16cd5623219edc4a38b38a993450feb68573138c15cc6c95e47dd7b9d64fdcd3",
+    "code_chars": 12816,
+    "decoded_bytes": 50484
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "invoker-10",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/TroubleChild11-2419/RosesAreRedHereticsDead",
+    "account": "TroubleChild11-2419",
+    "character": "RosesAreRedHereticsDead",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:52:33+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=TroubleChild11-2419&name=RosesAreRedHereticsDead&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Invoker",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 10,
+    "index_sha256": "8308d5c3a58ecd7f6d385839f7db95048e43af8bd76d2e216805da613c23cea3",
+    "character_response_sha256": "5323631f785e1765e979b9ace3c6c5249578af81c5d888c50675c223da230047",
+    "upstream_updated_utc": "2026-10-18T05:24:06.177242Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-25T01:29:15.732956Z"
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Invoker",
+    "level": 98,
+    "main_skill": "Living Bomb"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 10,
+    "code_sha256": "f4d31d50d13f0f64231892208745e69565dd8f6cb215a302d09ecad02ea5918a",
+    "code_chars": 12108,
+    "decoded_bytes": 47792
+  }
+}

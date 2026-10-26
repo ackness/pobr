@@ -1,0 +1,40 @@
+{
+  "name": "invoker-06",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/nimlot26-0974/Nimlotian",
+    "account": "nimlot26-0974",
+    "character": "Nimlotian",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:52:20+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=nimlot26-0974&name=Nimlotian&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Invoker",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 6,
+    "index_sha256": "8308d5c3a58ecd7f6d385839f7db95048e43af8bd76d2e216805da613c23cea3",
+    "character_response_sha256": "f9751d6d40e67ea7cff2cf153ebc946c8708c77da56c0a826f6190e32aa2f545",
+    "upstream_updated_utc": "2026-10-12T05:32:45.09068Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-25T02:49:46.439531Z"
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Invoker",
+    "level": 98,
+    "main_skill": "Tempest Bell"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 7,
+    "code_sha256": "44b1a45e02eda970e51b85b61fc423010e3c9538433f1b8ec4da6beaf9ab0a72",
+    "code_chars": 11896,
+    "decoded_bytes": 46387
+  }
+}

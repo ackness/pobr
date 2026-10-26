@@ -1,0 +1,40 @@
+{
+  "name": "oracle-06",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/comoestoy-4292/Manni_TradeTourist",
+    "account": "comoestoy-4292",
+    "character": "Manni_TradeTourist",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:53:56+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=comoestoy-4292&name=Manni_TradeTourist&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Oracle",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 6,
+    "index_sha256": "e5277dadbd2cde3a7c72387529bcbcbbdb7e4e98007b75fb4935d80ef3360c47",
+    "character_response_sha256": "cfbecae76687a2bef174f6e107afb336734b1497c8768b210b8f523f93cc0397",
+    "upstream_updated_utc": "2026-09-19T19:48:04.74218Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.400877Z",
+    "upstream_last_checked_utc": "2026-10-20T01:13:49.381968Z"
+  },
+  "character": {
+    "class": "Druid",
+    "ascendancy": "Oracle",
+    "level": 100,
+    "main_skill": "Grim Pillars"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 9,
+    "code_sha256": "64732531928863dbb999e46184ca1e506adc01fdc587167b3fde11c3182e8de4",
+    "code_chars": 13724,
+    "decoded_bytes": 54161
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "pathfinder-04",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/ADJF-7642/%E6%AD%8C%E5%88%A9%E4%BA%9A%E5%B7%A8%E4%BA%BA",
+    "account": "ADJF-7642",
+    "character": "歌利亚巨人",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:54:21+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=ADJF-7642&name=%E6%AD%8C%E5%88%A9%E4%BA%9A%E5%B7%A8%E4%BA%BA&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Pathfinder",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 4,
+    "index_sha256": "97e6a76625b8f5a57cb940932b16eaf3861b666a35991aad6a40c63ef82a8d03",
+    "character_response_sha256": "4cb0eee9e4e47831a1090046c46bbadf94975aeb54331639f7f444fb7968dbcb",
+    "upstream_updated_utc": "2026-10-07T06:32:09.196839Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.514166Z",
+    "upstream_last_checked_utc": "2026-10-23T07:26:28.387891Z"
+  },
+  "character": {
+    "class": "Ranger",
+    "ascendancy": "Pathfinder",
+    "level": 100,
+    "main_skill": "Purity of Ice"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 1,
+    "code_sha256": "dab6b999de3704a09313a3e84159ff6f28c2b296d70c52a44d25451dc176d98e",
+    "code_chars": 9752,
+    "decoded_bytes": 30554
+  }
+}

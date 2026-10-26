@@ -1,0 +1,40 @@
+{
+  "name": "amazon-06",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Mr_Gandalf_Sir-1681/George_Fentanyahu",
+    "account": "Mr_Gandalf_Sir-1681",
+    "character": "George_Fentanyahu",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:35+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Mr_Gandalf_Sir-1681&name=George_Fentanyahu&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Amazon",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 6,
+    "index_sha256": "d02a718c55fd5605947bb438dec47faa4ce6d241f076360e4494bf9a36333793",
+    "character_response_sha256": "202db9f5eb457245d4469ddab7e9e01fa0c6e9f75b6f1c53afc2cfee08a374ab",
+    "upstream_updated_utc": "2026-10-03T11:19:52.381931Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-21T00:59:46.750046Z"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Amazon",
+    "level": 99,
+    "main_skill": "Lightning Spear"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 12,
+    "code_sha256": "7d46a7441ffb1f82b7bc8c07cbc82b78bc864309ab9ac8503227a9cce121c60e",
+    "code_chars": 13000,
+    "decoded_bytes": 49572
+  }
+}

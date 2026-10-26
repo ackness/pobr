@@ -1,0 +1,40 @@
+{
+  "name": "abyssal-lich-10",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/dengsir-0912/dengsirdd",
+    "account": "dengsir-0912",
+    "character": "dengsirdd",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:28+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=dengsir-0912&name=dengsirdd&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Abyssal+Lich",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 10,
+    "index_sha256": "a136a96d92db7b38ac002bf5b7b97bc0296e57b46453b6f21c321c0f81b5ef84",
+    "character_response_sha256": "5ca46068fc04e3e34aed89b6d57c93b32a589a523613a68fc86d2bb6c0824215",
+    "upstream_updated_utc": "2026-10-12T14:46:34.389091Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-23T11:17:47.592567Z"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Abyssal Lich",
+    "level": 99,
+    "main_skill": "Twister"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 11,
+    "code_sha256": "dfe19431e3eff7612b280d07860f88e33b4895ade37d82af717cf84923172b00",
+    "code_chars": 14340,
+    "decoded_bytes": 57631
+  }
+}

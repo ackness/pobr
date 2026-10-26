@@ -1,0 +1,40 @@
+{
+  "name": "lich-10",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/jerkass005-2720/%E5%9B%9B%E8%99%9F%E5%B7%AB%E5%A6%96",
+    "account": "jerkass005-2720",
+    "character": "四號巫妖",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:53:05+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=jerkass005-2720&name=%E5%9B%9B%E8%99%9F%E5%B7%AB%E5%A6%96&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Lich",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 10,
+    "index_sha256": "bf9399b55432e1c67fa82cfc371720d0d43a3187dbf10815aecca6c547c5738a",
+    "character_response_sha256": "a00a3f6dfed1cac78d736a28f062a4aa9f33c7e6bb6b2ed55b6ea2205917ca7c",
+    "upstream_updated_utc": "2026-10-13T08:03:15.109543Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-26T02:55:52.269983Z"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Lich",
+    "level": 100,
+    "main_skill": "Arctic Armour"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 7,
+    "code_sha256": "71e8e82ec2e02edc39c996be0cfbe266570f18e6ae7c7dd7c32bcd6ed602c3f1",
+    "code_chars": 10252,
+    "decoded_bytes": 34965
+  }
+}

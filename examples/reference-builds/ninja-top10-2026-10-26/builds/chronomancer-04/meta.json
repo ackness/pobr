@@ -1,0 +1,40 @@
+{
+  "name": "chronomancer-04",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/azrama-9306/LIONRENIE",
+    "account": "azrama-9306",
+    "character": "LIONRENIE",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:43+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=azrama-9306&name=LIONRENIE&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Chronomancer",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 4,
+    "index_sha256": "979a57de6925bde9d636cd7cd38f75ac920850eac435a828767a09b910794872",
+    "character_response_sha256": "4b255f796d195a8ae9b87c2ee97e5f7074c5caac0d57b6effc03c33305e8940f",
+    "upstream_updated_utc": "2026-10-19T04:42:30.205012Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-24T13:35:37.419619Z"
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Chronomancer",
+    "level": 100,
+    "main_skill": "Impending Doom"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 8,
+    "code_sha256": "1c78b2aabb87dbe34f61ce0d68417d2c589a39f7aeb573d4940c079c2b2db9c5",
+    "code_chars": 14256,
+    "decoded_bytes": 60506
+  }
+}

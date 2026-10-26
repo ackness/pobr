@@ -1,0 +1,40 @@
+{
+  "name": "witchhunter-03",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Alnair-1832/Alnair_",
+    "account": "Alnair-1832",
+    "character": "Alnair_",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:59:06+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Alnair-1832&name=Alnair_&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Witchhunter",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 3,
+    "index_sha256": "68c825c7ede7286776caf99b559b87c95922487f52e1027b6ac2e7e7646aa393",
+    "character_response_sha256": "d95c896b92a557f9a8c5c2c2e3f719129f70e7f9402bcb62fd667753e07243e6",
+    "upstream_updated_utc": "2026-10-06T08:25:16.595986Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-23T17:03:00.696859Z"
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Witchhunter",
+    "level": 99,
+    "main_skill": "Crossbow Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 1,
+    "code_sha256": "94cfb3497f05d647f368b363bdfeb29e7ee43da85a4c18a38f1b002ad142fa0c",
+    "code_chars": 13424,
+    "decoded_bytes": 53344
+  }
+}

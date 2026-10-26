@@ -1,0 +1,40 @@
+{
+  "name": "infernalist-09",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Raymond296979222-1873/%E6%88%91%E4%B8%AD%E4%BA%86%E4%BA%94%E7%99%BE%E8%90%AC",
+    "account": "Raymond296979222-1873",
+    "character": "我中了五百萬",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:51:57+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Raymond296979222-1873&name=%E6%88%91%E4%B8%AD%E4%BA%86%E4%BA%94%E7%99%BE%E8%90%AC&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Infernalist",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 9,
+    "index_sha256": "c86aab7ef28b505d366d0b367ccb7201de6268eabe2288a940b8d7dc6b7a23a6",
+    "character_response_sha256": "745060727d8fd9a956d5a16ef993acbabf45c37d83254057a1ababe9438ba652",
+    "upstream_updated_utc": "2026-10-26T08:59:59.174198Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-26T08:59:59.174198Z"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Infernalist",
+    "level": 100,
+    "main_skill": "Comet"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 11,
+    "code_sha256": "dcf63b18e9e2f70f70485a95602aadeb896ddc074f0b7a09551c9822d3440cf1",
+    "code_chars": 12932,
+    "decoded_bytes": 51795
+  }
+}

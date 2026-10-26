@@ -1,0 +1,40 @@
+{
+  "name": "infernalist-02",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/pomsohandsome-1141/%E0%B8%AD%E0%B8%B8%E0%B8%AD%E0%B8%B4%E0%B8%AD%E0%B9%89%E0%B8%B2%E0%B8%AD%E0%B8%B8%E0%B8%AD%E0%B8%B4%E0%B8%AD%E0%B9%89%E0%B8%B2%E0%B8%AD%E0%B8%B4%E0%B8%AD%E0%B9%88%E0%B8%AD%E0%B8%87",
+    "account": "pomsohandsome-1141",
+    "character": "อุอิอ้าอุอิอ้าอิอ่อง",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:51:35+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=pomsohandsome-1141&name=%E0%B8%AD%E0%B8%B8%E0%B8%AD%E0%B8%B4%E0%B8%AD%E0%B9%89%E0%B8%B2%E0%B8%AD%E0%B8%B8%E0%B8%AD%E0%B8%B4%E0%B8%AD%E0%B9%89%E0%B8%B2%E0%B8%AD%E0%B8%B4%E0%B8%AD%E0%B9%88%E0%B8%AD%E0%B8%87&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Infernalist",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 2,
+    "index_sha256": "c86aab7ef28b505d366d0b367ccb7201de6268eabe2288a940b8d7dc6b7a23a6",
+    "character_response_sha256": "e1ef9d4dd1cbd45744ceb55a463ffc1cf1b5f65ecf8e0e56ab4d64624ba787c7",
+    "upstream_updated_utc": "2026-10-22T19:24:07.953238Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.482484Z",
+    "upstream_last_checked_utc": "2026-10-24T19:31:37.008457Z"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Infernalist",
+    "level": 100,
+    "main_skill": "Lightning Warp"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 10,
+    "code_sha256": "bb662188dcb45680ae07baaff24ba1084fd81c3ff750ef5da1d971deb438139d",
+    "code_chars": 12588,
+    "decoded_bytes": 47639
+  }
+}

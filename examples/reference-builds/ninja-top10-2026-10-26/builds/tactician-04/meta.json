@@ -1,0 +1,40 @@
+{
+  "name": "tactician-04",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/fuga-8810/FR_mrRedFlag",
+    "account": "fuga-8810",
+    "character": "FR_mrRedFlag",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:57:33+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=fuga-8810&name=FR_mrRedFlag&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Tactician",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 4,
+    "index_sha256": "165d7f878a35e33bc0ecb9545231966e2e0c96f7ec55bbd0e0afa3d8df6d717d",
+    "character_response_sha256": "b988a1d91c438fe64e1ae5838c2c1822493e8b1e8bc09ad571590d0c61aa37f9",
+    "upstream_updated_utc": "2026-10-18T12:51:07.155154Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.344363Z",
+    "upstream_last_checked_utc": "2026-10-25T01:28:29.102655Z"
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Tactician",
+    "level": 100,
+    "main_skill": "War Banner"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 6,
+    "code_sha256": "fc010118395ecb4199209487e169cae61c4eb618d5297829ddd7648cd243c280",
+    "code_chars": 10260,
+    "decoded_bytes": 35867
+  }
+}

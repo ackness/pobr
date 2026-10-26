@@ -1,0 +1,40 @@
+{
+  "name": "martial-artist-01",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%EB%B0%95%ED%83%9C%EC%A4%80-2959/%ED%95%98%EB%8D%B0%EC%8A%A4%EC%9D%BC%EC%A3%BC%EB%85%84",
+    "account": "박태준-2959",
+    "character": "하데스일주년",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:53:08+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=%EB%B0%95%ED%83%9C%EC%A4%80-2959&name=%ED%95%98%EB%8D%B0%EC%8A%A4%EC%9D%BC%EC%A3%BC%EB%85%84&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Martial+Artist",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 1,
+    "index_sha256": "02aea86a90fa6da528c053195c09e6f13ddd2745a1893a6dc6bffbf6ecf7e1a7",
+    "character_response_sha256": "5ba96530b3c49f091b4c40e3adc64dbaf5fdc8efa95f14672f71701795908839",
+    "upstream_updated_utc": "2026-09-15T02:13:37.007404Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.124866Z",
+    "upstream_last_checked_utc": "2026-10-22T09:25:29.758621Z"
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Martial Artist",
+    "level": 100,
+    "main_skill": "Flicker Strike"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 11,
+    "code_sha256": "9356c80e4520726e53d7728c17dc0d65ff200efea2eaf1c6401dab39af1c2b5c",
+    "code_chars": 12248,
+    "decoded_bytes": 48239
+  }
+}

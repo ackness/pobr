@@ -1,0 +1,40 @@
+{
+  "name": "smith-of-kitava-02",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/rnjaxodms00-3861/FR_DANI",
+    "account": "rnjaxodms00-3861",
+    "character": "FR_DANI",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:55:51+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=rnjaxodms00-3861&name=FR_DANI&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Smith+of+Kitava",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 2,
+    "index_sha256": "25fdb89549deb3ba14ddfee5e837bffbe12c6440602254acfcfb352492cd7fa3",
+    "character_response_sha256": "8475073fe3bc1311ae6a1c75b5f7f275740744d0d22ce20f2553f0e0b7d3c22e",
+    "upstream_updated_utc": "2026-10-19T13:58:22.81262Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-25T09:53:07.734234Z"
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Smith of Kitava",
+    "level": 100,
+    "main_skill": "Shield Wall"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 8,
+    "code_sha256": "799cc2ca12786b9dc6f8f2a83505c3b271a99a0a0fc30f166cc8cea91fb13fc4",
+    "code_chars": 14860,
+    "decoded_bytes": 56558
+  }
+}

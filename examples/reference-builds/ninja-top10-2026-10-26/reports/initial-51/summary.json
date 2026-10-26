@@ -1,0 +1,3181 @@
+{
+  "generated_at": "2026-10-26T10:07:51+00:00",
+  "git_commit": "db26811874a001e8f43cec00fbc0afcb4eb15689",
+  "data_version": "0.5.5.4.2",
+  "source_snapshot": "0757-20261026-16736",
+  "command": "mise run accuracy /root/codes/pobr/.cache/ninja-top10-2026-10-26/test-initial-51/builds",
+  "test_exit_code": 0,
+  "test_runtime_seconds": 52.35,
+  "builds_selected": 51,
+  "builds_imported_and_calculated": 51,
+  "missing_items_reported": 0,
+  "tolerance": 0.05,
+  "tolerance_definition": "abs(pobr-reference) <= 0.05 * max(abs(reference), 1)",
+  "agreed_rows": 4175,
+  "compared_rows": 4538,
+  "differing_rows": 363,
+  "row_agreement_percent": 92.0,
+  "builds_with_agreeing_damage": 25,
+  "damage_agreement_percent": 49.02,
+  "builds_with_all_compared_rows_agreeing": 5,
+  "unsupported_line_occurrences": 374,
+  "builds_with_unsupported_lines": 50,
+  "per_ascendancy": {
+    "Abyssal Lich": {
+      "builds": 10,
+      "agreed_rows": 788,
+      "compared_rows": 902,
+      "damage_agrees": 2,
+      "row_agreement_percent": 87.36
+    },
+    "Acolyte of Chayula": {
+      "builds": 10,
+      "agreed_rows": 841,
+      "compared_rows": 868,
+      "damage_agrees": 8,
+      "row_agreement_percent": 96.89
+    },
+    "Amazon": {
+      "builds": 10,
+      "agreed_rows": 837,
+      "compared_rows": 915,
+      "damage_agrees": 5,
+      "row_agreement_percent": 91.48
+    },
+    "Blood Mage": {
+      "builds": 10,
+      "agreed_rows": 800,
+      "compared_rows": 876,
+      "damage_agrees": 4,
+      "row_agreement_percent": 91.32
+    },
+    "Chronomancer": {
+      "builds": 10,
+      "agreed_rows": 829,
+      "compared_rows": 885,
+      "damage_agrees": 6,
+      "row_agreement_percent": 93.67
+    },
+    "Deadeye": {
+      "builds": 1,
+      "agreed_rows": 80,
+      "compared_rows": 92,
+      "damage_agrees": 0,
+      "row_agreement_percent": 86.96
+    }
+  },
+  "most_frequent_differences": {
+    "CombinedDPS": 26,
+    "SpiritUnreserved": 25,
+    "SpiritUnreservedPercent": 25,
+    "WithBleedDPS": 24,
+    "WithPoisonDPS": 24,
+    "TotalDPS": 24,
+    "WithIgniteDPS": 23,
+    "AverageBurstDamage": 17,
+    "TotalDotDPS": 17,
+    "IgniteDPS": 14,
+    "TotalEHP": 13,
+    "AverageDamage": 10,
+    "LifeLeechGainRate": 7,
+    "HitSpeed": 6,
+    "ActionRate": 6,
+    "PhysicalMaxHit": 5,
+    "FireMaxHit": 5,
+    "ColdMaxHit": 5,
+    "LightningMaxHit": 5,
+    "ChaosMaxHit": 5,
+    "CritMultiplier": 5,
+    "ReqStr": 5,
+    "CritChance": 4,
+    "LightningResistOverCap": 4,
+    "PreEffectiveCritChance": 4,
+    "LifeUnreserved": 3,
+    "LifeRecoverable": 3,
+    "LifeUnreservedPercent": 3,
+    "FireResistOverCap": 3,
+    "RageRegenRecovery": 3,
+    "ManaLeechGainRate": 3,
+    "LifePerSecondCost": 3,
+    "EnergyShield": 2,
+    "EnergyShieldRecoveryCap": 2,
+    "ActiveMinionLimit": 2,
+    "MinionTotalDPS": 2,
+    "ReqInt": 2,
+    "EnergyShieldLeechGainRate": 2,
+    "ActiveTotemLimit": 1,
+    "TotalDot": 1,
+    "WithDotDPS": 1,
+    "Spirit": 1,
+    "Cooldown": 1,
+    "ColdResistOverCap": 1,
+    "CombinedAvg": 1,
+    "Mana": 1,
+    "ManaUnreserved": 1,
+    "ManaRegenRecovery": 1,
+    "PoisonDPS": 1,
+    "DeflectChance": 1,
+    "EvadeChance": 1,
+    "MeleeEvadeChance": 1,
+    "ProjectileEvadeChance": 1,
+    "SpellEvadeChance": 1,
+    "SpellProjectileEvadeChance": 1,
+    "BleedDPS": 1,
+    "ReqDex": 1,
+    "LifeLeechGainPerHit": 1,
+    "ManaPerSecondCost": 1,
+    "ManaCost": 1
+  },
+  "limits": [
+    "Only the 51 files saved at test start; later downloads are excluded.",
+    "Native Rust importer and reference_conditions calculation; browser UI, WASM bindings and fresh pinned-PoB2 comparisons were not run.",
+    "The dashboard does not assert numerical agreement; a successful test process does not mean all values agree.",
+    "Reference values are embedded exporter results of unknown version, not confirmed game truth.",
+    "Damage uses the main skill minion's nonzero TotalDPS when available, otherwise the player's TotalDPS; it is not a full-build DPS total.",
+    "Only comparable exported display rows are measured; unsupported mechanics and all import-loss categories are not covered by the aggregate agreement rate.",
+    "Values in the per-row difference files are rounded to two decimal places by the existing dashboard; pass/fail decisions used full engine precision.",
+    "Unsupported line occurrences are summed per build and may repeat across builds."
+  ],
+  "builds": [
+    {
+      "build": "abyssal-lich-01",
+      "ascendancy": "Abyssal Lich",
+      "character": "重生之最阴暗蜷缩的蛆",
+      "main_skill": "Comet",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 78,
+      "compared_rows": 88,
+      "row_agreement_percent": 88.64,
+      "unsupported_modifier_lines": 8,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/lagannpe-9805/%E9%87%8D%E7%94%9F%E4%B9%8B%E6%9C%80%E9%98%B4%E6%9A%97%E8%9C%B7%E7%BC%A9%E7%9A%84%E8%9B%86",
+      "differences": [
+        {
+          "stat": "AverageBurstDamage",
+          "pobr": 9878560.86,
+          "reference": 9304439.38,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 7572208.22,
+          "reference": 7132056.07,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 7559649.86,
+          "reference": 7120298.68,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 7559649.86,
+          "reference": 7120298.68,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 7559649.86,
+          "reference": 7120298.68,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 7572208.22,
+          "reference": 7132056.07,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "TotalDotDPS",
+          "pobr": 12558.36,
+          "reference": 11757.4,
+          "displayed_ratio": "1.07x"
+        },
+        {
+          "stat": "IgniteDPS",
+          "pobr": 12558.36,
+          "reference": 11757.4,
+          "displayed_ratio": "1.07x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": -9.0,
+          "reference": -109.0,
+          "displayed_ratio": "0.08x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": -4.33,
+          "reference": -52.4,
+          "displayed_ratio": "0.08x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "abyssal-lich-02",
+      "ascendancy": "Abyssal Lich",
+      "character": "LyPurrrrrppple",
+      "main_skill": "Essence Drain",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 73,
+      "compared_rows": 89,
+      "row_agreement_percent": 82.02,
+      "unsupported_modifier_lines": 5,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/LyraelEyrie-5765/LyPurrrrrppple",
+      "differences": [
+        {
+          "stat": "ActiveTotemLimit",
+          "pobr": 0.0,
+          "reference": 1.0,
+          "displayed_ratio": "0.00x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 289543.42,
+          "reference": 305095.79,
+          "displayed_ratio": "0.95x"
+        },
+        {
+          "stat": "TotalDotDPS",
+          "pobr": 289543.42,
+          "reference": 305095.79,
+          "displayed_ratio": "0.95x"
+        },
+        {
+          "stat": "EnergyShield",
+          "pobr": 17274.0,
+          "reference": 16441.0,
+          "displayed_ratio": "1.05x"
+        },
+        {
+          "stat": "LifeUnreserved",
+          "pobr": 1.86,
+          "reference": 1.0,
+          "displayed_ratio": "1.86x"
+        },
+        {
+          "stat": "TotalEHP",
+          "pobr": 45845.58,
+          "reference": 43516.96,
+          "displayed_ratio": "1.05x"
+        },
+        {
+          "stat": "PhysicalMaxHit",
+          "pobr": 21594.0,
+          "reference": 20552.0,
+          "displayed_ratio": "1.05x"
+        },
+        {
+          "stat": "FireMaxHit",
+          "pobr": 77123.0,
+          "reference": 73401.0,
+          "displayed_ratio": "1.05x"
+        },
+        {
+          "stat": "ColdMaxHit",
+          "pobr": 77123.0,
+          "reference": 73401.0,
+          "displayed_ratio": "1.05x"
+        },
+        {
+          "stat": "LightningMaxHit",
+          "pobr": 77123.0,
+          "reference": 73401.0,
+          "displayed_ratio": "1.05x"
+        },
+        {
+          "stat": "ChaosMaxHit",
+          "pobr": 43192.0,
+          "reference": 41107.0,
+          "displayed_ratio": "1.05x"
+        },
+        {
+          "stat": "LifeRecoverable",
+          "pobr": 1.86,
+          "reference": 1.0,
+          "displayed_ratio": "1.86x"
+        },
+        {
+          "stat": "EnergyShieldRecoveryCap",
+          "pobr": 17274.0,
+          "reference": 16441.0,
+          "displayed_ratio": "1.05x"
+        },
+        {
+          "stat": "LifeUnreservedPercent",
+          "pobr": 0.11,
+          "reference": 0.06,
+          "displayed_ratio": "1.86x"
+        },
+        {
+          "stat": "TotalDot",
+          "pobr": 289543.42,
+          "reference": 305095.79,
+          "displayed_ratio": "0.95x"
+        },
+        {
+          "stat": "WithDotDPS",
+          "pobr": 289543.42,
+          "reference": 305095.79,
+          "displayed_ratio": "0.95x"
+        }
+      ],
+      "damage_agrees": true
+    },
+    {
+      "build": "abyssal-lich-03",
+      "ascendancy": "Abyssal Lich",
+      "character": "GreenDaily",
+      "main_skill": "Twister",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 82,
+      "compared_rows": 92,
+      "row_agreement_percent": 89.13,
+      "unsupported_modifier_lines": 2,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/eterfeier-2755/GreenDaily",
+      "differences": [
+        {
+          "stat": "AverageDamage",
+          "pobr": 1291112.39,
+          "reference": 1158897.59,
+          "displayed_ratio": "1.11x"
+        },
+        {
+          "stat": "AverageBurstDamage",
+          "pobr": 1291112.39,
+          "reference": 1158897.59,
+          "displayed_ratio": "1.11x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 3735660.12,
+          "reference": 3354006.52,
+          "displayed_ratio": "1.11x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 3641060.89,
+          "reference": 3268202.46,
+          "displayed_ratio": "1.11x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 3641060.89,
+          "reference": 3268202.46,
+          "displayed_ratio": "1.11x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 3641060.89,
+          "reference": 3268202.46,
+          "displayed_ratio": "1.11x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 3735660.12,
+          "reference": 3354006.52,
+          "displayed_ratio": "1.11x"
+        },
+        {
+          "stat": "CritMultiplier",
+          "pobr": 21.05,
+          "reference": 19.47,
+          "displayed_ratio": "1.08x"
+        },
+        {
+          "stat": "TotalDotDPS",
+          "pobr": 94599.24,
+          "reference": 85804.07,
+          "displayed_ratio": "1.10x"
+        },
+        {
+          "stat": "IgniteDPS",
+          "pobr": 94599.24,
+          "reference": 85804.07,
+          "displayed_ratio": "1.10x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "abyssal-lich-04",
+      "ascendancy": "Abyssal Lich",
+      "character": "Arbiter_of_Treason",
+      "main_skill": "Twister",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 74,
+      "compared_rows": 91,
+      "row_agreement_percent": 81.32,
+      "unsupported_modifier_lines": 0,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/sugMinChorizo-2175/Arbiter_of_Treason",
+      "differences": [
+        {
+          "stat": "AverageDamage",
+          "pobr": 70709.61,
+          "reference": 61405.23,
+          "displayed_ratio": "1.15x"
+        },
+        {
+          "stat": "AverageBurstDamage",
+          "pobr": 70709.61,
+          "reference": 61405.23,
+          "displayed_ratio": "1.15x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 147826.01,
+          "reference": 128329.79,
+          "displayed_ratio": "1.15x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 147302.27,
+          "reference": 127919.39,
+          "displayed_ratio": "1.15x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 147302.27,
+          "reference": 127919.39,
+          "displayed_ratio": "1.15x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 147302.27,
+          "reference": 127919.39,
+          "displayed_ratio": "1.15x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 147826.01,
+          "reference": 128329.79,
+          "displayed_ratio": "1.15x"
+        },
+        {
+          "stat": "CritChance",
+          "pobr": 58.1,
+          "reference": 54.34,
+          "displayed_ratio": "1.07x"
+        },
+        {
+          "stat": "CritMultiplier",
+          "pobr": 10.97,
+          "reference": 10.1,
+          "displayed_ratio": "1.09x"
+        },
+        {
+          "stat": "TotalDotDPS",
+          "pobr": 523.74,
+          "reference": 410.4,
+          "displayed_ratio": "1.28x"
+        },
+        {
+          "stat": "IgniteDPS",
+          "pobr": 523.74,
+          "reference": 410.4,
+          "displayed_ratio": "1.28x"
+        },
+        {
+          "stat": "Spirit",
+          "pobr": 173.0,
+          "reference": 150.0,
+          "displayed_ratio": "1.15x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": 59.0,
+          "reference": -47.0,
+          "displayed_ratio": "-1.26x"
+        },
+        {
+          "stat": "FireResistOverCap",
+          "pobr": 5.0,
+          "reference": 3.0,
+          "displayed_ratio": "1.67x"
+        },
+        {
+          "stat": "LightningResistOverCap",
+          "pobr": 24.0,
+          "reference": 12.0,
+          "displayed_ratio": "2.00x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": 34.1,
+          "reference": -31.33,
+          "displayed_ratio": "-1.09x"
+        },
+        {
+          "stat": "PreEffectiveCritChance",
+          "pobr": 58.1,
+          "reference": 54.34,
+          "displayed_ratio": "1.07x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "abyssal-lich-05",
+      "ascendancy": "Abyssal Lich",
+      "character": "SmallToitoi",
+      "main_skill": "Twister",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 82,
+      "compared_rows": 91,
+      "row_agreement_percent": 90.11,
+      "unsupported_modifier_lines": 3,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/DYooG4-5573/SmallToitoi",
+      "differences": [
+        {
+          "stat": "AverageDamage",
+          "pobr": 66334.91,
+          "reference": 62590.17,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "AverageBurstDamage",
+          "pobr": 66334.91,
+          "reference": 62590.17,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 175318.99,
+          "reference": 165252.46,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 174031.59,
+          "reference": 164141.47,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 174031.59,
+          "reference": 164141.47,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 174031.59,
+          "reference": 164141.47,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 175318.99,
+          "reference": 165252.46,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "TotalDotDPS",
+          "pobr": 1287.4,
+          "reference": 1110.99,
+          "displayed_ratio": "1.16x"
+        },
+        {
+          "stat": "IgniteDPS",
+          "pobr": 1287.4,
+          "reference": 1110.99,
+          "displayed_ratio": "1.16x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "abyssal-lich-06",
+      "ascendancy": "Abyssal Lich",
+      "character": "ASIZAXD",
+      "main_skill": "Twister",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 78,
+      "compared_rows": 91,
+      "row_agreement_percent": 85.71,
+      "unsupported_modifier_lines": 3,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/pole2pole0918-5843/ASIZAXD",
+      "differences": [
+        {
+          "stat": "AverageDamage",
+          "pobr": 130854.79,
+          "reference": 119404.38,
+          "displayed_ratio": "1.10x"
+        },
+        {
+          "stat": "AverageBurstDamage",
+          "pobr": 130854.79,
+          "reference": 119404.38,
+          "displayed_ratio": "1.10x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 317759.82,
+          "reference": 289518.56,
+          "displayed_ratio": "1.10x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 311973.22,
+          "reference": 284560.23,
+          "displayed_ratio": "1.10x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 311973.22,
+          "reference": 284560.23,
+          "displayed_ratio": "1.10x"
+        },
+        {
+          "stat": "ReqStr",
+          "pobr": 68.0,
+          "reference": 137.0,
+          "displayed_ratio": "0.50x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 311973.22,
+          "reference": 284560.23,
+          "displayed_ratio": "1.10x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 317759.82,
+          "reference": 289518.56,
+          "displayed_ratio": "1.10x"
+        },
+        {
+          "stat": "TotalDotDPS",
+          "pobr": 5786.6,
+          "reference": 4958.34,
+          "displayed_ratio": "1.17x"
+        },
+        {
+          "stat": "IgniteDPS",
+          "pobr": 5786.6,
+          "reference": 4958.34,
+          "displayed_ratio": "1.17x"
+        },
+        {
+          "stat": "RageRegenRecovery",
+          "pobr": 2.9,
+          "reference": 4.6,
+          "displayed_ratio": "0.63x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": 99.0,
+          "reference": -1.0,
+          "displayed_ratio": "-99.00x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": 27.12,
+          "reference": -0.27,
+          "displayed_ratio": "-99.00x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "abyssal-lich-07",
+      "ascendancy": "Abyssal Lich",
+      "character": "NImAa",
+      "main_skill": "Spark",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 83,
+      "compared_rows": 88,
+      "row_agreement_percent": 94.32,
+      "unsupported_modifier_lines": 16,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/nima-5633/NImAa",
+      "differences": [
+        {
+          "stat": "TotalDotDPS",
+          "pobr": 15.12,
+          "reference": 14.28,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "IgniteDPS",
+          "pobr": 15.12,
+          "reference": 14.28,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": 60.0,
+          "reference": -40.0,
+          "displayed_ratio": "-1.50x"
+        },
+        {
+          "stat": "LightningResistOverCap",
+          "pobr": 44.0,
+          "reference": 32.0,
+          "displayed_ratio": "1.38x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": 18.75,
+          "reference": -12.5,
+          "displayed_ratio": "-1.50x"
+        }
+      ],
+      "damage_agrees": true
+    },
+    {
+      "build": "abyssal-lich-08",
+      "ascendancy": "Abyssal Lich",
+      "character": "Seb_Zero",
+      "main_skill": "Twister",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 82,
+      "compared_rows": 92,
+      "row_agreement_percent": 89.13,
+      "unsupported_modifier_lines": 2,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Seboomafoo-3500/Seb_Zero",
+      "differences": [
+        {
+          "stat": "AverageDamage",
+          "pobr": 394381.78,
+          "reference": 354869.1,
+          "displayed_ratio": "1.11x"
+        },
+        {
+          "stat": "AverageBurstDamage",
+          "pobr": 394381.78,
+          "reference": 354869.1,
+          "displayed_ratio": "1.11x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 1005301.07,
+          "reference": 904298.8,
+          "displayed_ratio": "1.11x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 983468.27,
+          "reference": 884935.67,
+          "displayed_ratio": "1.11x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 983468.27,
+          "reference": 884935.67,
+          "displayed_ratio": "1.11x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 983468.27,
+          "reference": 884935.67,
+          "displayed_ratio": "1.11x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 1005301.07,
+          "reference": 904298.8,
+          "displayed_ratio": "1.11x"
+        },
+        {
+          "stat": "CritMultiplier",
+          "pobr": 12.71,
+          "reference": 11.63,
+          "displayed_ratio": "1.09x"
+        },
+        {
+          "stat": "TotalDotDPS",
+          "pobr": 21832.8,
+          "reference": 19363.13,
+          "displayed_ratio": "1.13x"
+        },
+        {
+          "stat": "IgniteDPS",
+          "pobr": 21832.8,
+          "reference": 19363.13,
+          "displayed_ratio": "1.13x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "abyssal-lich-09",
+      "ascendancy": "Abyssal Lich",
+      "character": "KOHCKOEM",
+      "main_skill": "Bone Cage",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 80,
+      "compared_rows": 88,
+      "row_agreement_percent": 90.91,
+      "unsupported_modifier_lines": 7,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/KOHb-1338/KOHCKOEM",
+      "differences": [
+        {
+          "stat": "AverageBurstDamage",
+          "pobr": 389159.61,
+          "reference": 370220.66,
+          "displayed_ratio": "1.05x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 1315359.48,
+          "reference": 1225430.37,
+          "displayed_ratio": "1.07x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 1315359.48,
+          "reference": 1225430.37,
+          "displayed_ratio": "1.07x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 1315359.48,
+          "reference": 1225430.37,
+          "displayed_ratio": "1.07x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 1315359.48,
+          "reference": 1225430.37,
+          "displayed_ratio": "1.07x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 1315359.48,
+          "reference": 1225430.37,
+          "displayed_ratio": "1.07x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": 14.0,
+          "reference": -86.0,
+          "displayed_ratio": "-0.16x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": 10.77,
+          "reference": -66.15,
+          "displayed_ratio": "-0.16x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "abyssal-lich-10",
+      "ascendancy": "Abyssal Lich",
+      "character": "dengsirdd",
+      "main_skill": "Twister",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 76,
+      "compared_rows": 92,
+      "row_agreement_percent": 82.61,
+      "unsupported_modifier_lines": 5,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/dengsir-0912/dengsirdd",
+      "differences": [
+        {
+          "stat": "AverageDamage",
+          "pobr": 562890.48,
+          "reference": 460817.28,
+          "displayed_ratio": "1.22x"
+        },
+        {
+          "stat": "AverageBurstDamage",
+          "pobr": 562890.48,
+          "reference": 460817.28,
+          "displayed_ratio": "1.22x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 1388974.62,
+          "reference": 1137127.92,
+          "displayed_ratio": "1.22x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 1364307.77,
+          "reference": 1116460.74,
+          "displayed_ratio": "1.22x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 1364307.77,
+          "reference": 1116460.74,
+          "displayed_ratio": "1.22x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 1364307.77,
+          "reference": 1116460.74,
+          "displayed_ratio": "1.22x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 1388974.62,
+          "reference": 1137127.92,
+          "displayed_ratio": "1.22x"
+        },
+        {
+          "stat": "CritChance",
+          "pobr": 71.66,
+          "reference": 67.46,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "CritMultiplier",
+          "pobr": 12.66,
+          "reference": 11.35,
+          "displayed_ratio": "1.12x"
+        },
+        {
+          "stat": "TotalDotDPS",
+          "pobr": 24666.85,
+          "reference": 20667.18,
+          "displayed_ratio": "1.19x"
+        },
+        {
+          "stat": "IgniteDPS",
+          "pobr": 24666.85,
+          "reference": 20667.18,
+          "displayed_ratio": "1.19x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": 360.0,
+          "reference": 262.0,
+          "displayed_ratio": "1.37x"
+        },
+        {
+          "stat": "FireResistOverCap",
+          "pobr": 36.0,
+          "reference": 34.0,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "LightningResistOverCap",
+          "pobr": 11.0,
+          "reference": 0.0,
+          "displayed_ratio": "—"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": 73.17,
+          "reference": 53.25,
+          "displayed_ratio": "1.37x"
+        },
+        {
+          "stat": "PreEffectiveCritChance",
+          "pobr": 46.77,
+          "reference": 42.95,
+          "displayed_ratio": "1.09x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "acolyte-of-chayula-01",
+      "ascendancy": "Acolyte of Chayula",
+      "character": "DOANXIEMm",
+      "main_skill": "Ghost Dance",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 82,
+      "compared_rows": 85,
+      "row_agreement_percent": 96.47,
+      "unsupported_modifier_lines": 4,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/HoangLong1101-3050/DOANXIEMm",
+      "differences": [
+        {
+          "stat": "ReqStr",
+          "pobr": 17.0,
+          "reference": 42.0,
+          "displayed_ratio": "0.40x"
+        },
+        {
+          "stat": "Cooldown",
+          "pobr": 0.0,
+          "reference": 8.02,
+          "displayed_ratio": "0.00x"
+        },
+        {
+          "stat": "ColdResistOverCap",
+          "pobr": 9.0,
+          "reference": 11.0,
+          "displayed_ratio": "0.82x"
+        }
+      ],
+      "damage_agrees": true
+    },
+    {
+      "build": "acolyte-of-chayula-02",
+      "ascendancy": "Acolyte of Chayula",
+      "character": "POSTEZAOLIXEIRO",
+      "main_skill": "Wolf Pack",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 86,
+      "compared_rows": 88,
+      "row_agreement_percent": 97.73,
+      "unsupported_modifier_lines": 10,
+      "damage_stat": "MinionTotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/xandocacm-7109/POSTEZAOLIXEIRO",
+      "differences": [
+        {
+          "stat": "ActiveMinionLimit",
+          "pobr": 7.0,
+          "reference": 0.0,
+          "displayed_ratio": "—"
+        },
+        {
+          "stat": "MinionTotalDPS",
+          "pobr": 153.28,
+          "reference": 164.61,
+          "displayed_ratio": "0.93x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "acolyte-of-chayula-03",
+      "ascendancy": "Acolyte of Chayula",
+      "character": "Forbidden_memes",
+      "main_skill": "Lightning Warp",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 74,
+      "compared_rows": 85,
+      "row_agreement_percent": 87.06,
+      "unsupported_modifier_lines": 16,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Jaymemes-7376/Forbidden_memes",
+      "differences": [
+        {
+          "stat": "AverageBurstDamage",
+          "pobr": 1363746.1,
+          "reference": 1105959.86,
+          "displayed_ratio": "1.23x"
+        },
+        {
+          "stat": "CombinedAvg",
+          "pobr": 1363746.1,
+          "reference": 1105959.86,
+          "displayed_ratio": "1.23x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 6491431.42,
+          "reference": 5264368.92,
+          "displayed_ratio": "1.23x"
+        },
+        {
+          "stat": "Mana",
+          "pobr": 6322.94,
+          "reference": 6832.0,
+          "displayed_ratio": "0.93x"
+        },
+        {
+          "stat": "LifeUnreserved",
+          "pobr": 45.29,
+          "reference": 23.0,
+          "displayed_ratio": "1.97x"
+        },
+        {
+          "stat": "ManaUnreserved",
+          "pobr": 6322.94,
+          "reference": 6832.0,
+          "displayed_ratio": "0.93x"
+        },
+        {
+          "stat": "ManaRegenRecovery",
+          "pobr": 168.4,
+          "reference": 182.0,
+          "displayed_ratio": "0.93x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": 11.0,
+          "reference": -86.0,
+          "displayed_ratio": "-0.13x"
+        },
+        {
+          "stat": "LifeRecoverable",
+          "pobr": 45.29,
+          "reference": 23.0,
+          "displayed_ratio": "1.97x"
+        },
+        {
+          "stat": "LifeUnreservedPercent",
+          "pobr": 3.63,
+          "reference": 1.84,
+          "displayed_ratio": "1.97x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": 3.0,
+          "reference": -23.43,
+          "displayed_ratio": "-0.13x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "acolyte-of-chayula-04",
+      "ascendancy": "Acolyte of Chayula",
+      "character": "BigLeans",
+      "main_skill": "Spiraling Conspiracy",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 87,
+      "compared_rows": 87,
+      "row_agreement_percent": 100.0,
+      "unsupported_modifier_lines": 7,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/leanpositive-7433/BigLeans",
+      "differences": [],
+      "damage_agrees": true
+    },
+    {
+      "build": "acolyte-of-chayula-05",
+      "ascendancy": "Acolyte of Chayula",
+      "character": "MonK_SUPP",
+      "main_skill": "Refutation",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 85,
+      "compared_rows": 86,
+      "row_agreement_percent": 98.84,
+      "unsupported_modifier_lines": 18,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/basauking-2872/MonK_SUPP",
+      "differences": [
+        {
+          "stat": "CritMultiplier",
+          "pobr": 2.12,
+          "reference": 2.0,
+          "displayed_ratio": "1.06x"
+        }
+      ],
+      "damage_agrees": true
+    },
+    {
+      "build": "acolyte-of-chayula-06",
+      "ascendancy": "Acolyte of Chayula",
+      "character": "qweqeqeqwesa",
+      "main_skill": "Malice",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 83,
+      "compared_rows": 84,
+      "row_agreement_percent": 98.81,
+      "unsupported_modifier_lines": 9,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/yydS-5950/qweqeqeqwesa",
+      "differences": [
+        {
+          "stat": "ReqInt",
+          "pobr": 65.0,
+          "reference": 114.0,
+          "displayed_ratio": "0.57x"
+        }
+      ],
+      "damage_agrees": true
+    },
+    {
+      "build": "acolyte-of-chayula-07",
+      "ascendancy": "Acolyte of Chayula",
+      "character": "ramjuly",
+      "main_skill": "Profane Ritual",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 87,
+      "compared_rows": 87,
+      "row_agreement_percent": 100.0,
+      "unsupported_modifier_lines": 9,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Koolzyx-9579/ramjuly",
+      "differences": [],
+      "damage_agrees": true
+    },
+    {
+      "build": "acolyte-of-chayula-08",
+      "ascendancy": "Acolyte of Chayula",
+      "character": "红衣_花粉僧",
+      "main_skill": "Raise Shield",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 86,
+      "compared_rows": 87,
+      "row_agreement_percent": 98.85,
+      "unsupported_modifier_lines": 4,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/vincent427-2886/%E7%BA%A2%E8%A1%A3_%E8%8A%B1%E7%B2%89%E5%83%A7",
+      "differences": [
+        {
+          "stat": "LightningResistOverCap",
+          "pobr": 3.0,
+          "reference": 4.0,
+          "displayed_ratio": "0.75x"
+        }
+      ],
+      "damage_agrees": true
+    },
+    {
+      "build": "acolyte-of-chayula-09",
+      "ascendancy": "Acolyte of Chayula",
+      "character": "Noxious_Fumes_",
+      "main_skill": "Poisonburst Arrow",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 86,
+      "compared_rows": 94,
+      "row_agreement_percent": 91.49,
+      "unsupported_modifier_lines": 8,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Jtangood-7403/Noxious_Fumes_",
+      "differences": [
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 11415398.17,
+          "reference": 17936119.85,
+          "displayed_ratio": "0.64x"
+        },
+        {
+          "stat": "ReqStr",
+          "pobr": 65.0,
+          "reference": 137.0,
+          "displayed_ratio": "0.47x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 11517368.86,
+          "reference": 18038360.98,
+          "displayed_ratio": "0.64x"
+        },
+        {
+          "stat": "TotalDotDPS",
+          "pobr": 9898526.42,
+          "reference": 16415692.39,
+          "displayed_ratio": "0.60x"
+        },
+        {
+          "stat": "PoisonDPS",
+          "pobr": 9796555.72,
+          "reference": 16313451.27,
+          "displayed_ratio": "0.60x"
+        },
+        {
+          "stat": "RageRegenRecovery",
+          "pobr": 2.5,
+          "reference": 4.5,
+          "displayed_ratio": "0.56x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": -11.0,
+          "reference": -111.0,
+          "displayed_ratio": "0.10x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": -5.24,
+          "reference": -52.86,
+          "displayed_ratio": "0.10x"
+        }
+      ],
+      "damage_agrees": true
+    },
+    {
+      "build": "acolyte-of-chayula-10",
+      "ascendancy": "Acolyte of Chayula",
+      "character": "tuziabc",
+      "main_skill": "Into the Breach",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 85,
+      "compared_rows": 85,
+      "row_agreement_percent": 100.0,
+      "unsupported_modifier_lines": 10,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/chickenyyy-7463/tuziabc",
+      "differences": [],
+      "damage_agrees": true
+    },
+    {
+      "build": "amazon-01",
+      "ascendancy": "Amazon",
+      "character": "Munifr",
+      "main_skill": "Twister",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 91,
+      "compared_rows": 93,
+      "row_agreement_percent": 97.85,
+      "unsupported_modifier_lines": 4,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Muni-1104/Munifr",
+      "differences": [
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": 1.0,
+          "reference": -99.0,
+          "displayed_ratio": "-0.01x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": 0.69,
+          "reference": -68.28,
+          "displayed_ratio": "-0.01x"
+        }
+      ],
+      "damage_agrees": true
+    },
+    {
+      "build": "amazon-02",
+      "ascendancy": "Amazon",
+      "character": "闪回超越",
+      "main_skill": "Ice Shot",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 68,
+      "compared_rows": 91,
+      "row_agreement_percent": 74.73,
+      "unsupported_modifier_lines": 18,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/yangcy-0206/%E9%97%AA%E5%9B%9E%E8%B6%85%E8%B6%8A",
+      "differences": [
+        {
+          "stat": "AverageDamage",
+          "pobr": 266102.56,
+          "reference": 293082.97,
+          "displayed_ratio": "0.91x"
+        },
+        {
+          "stat": "AverageBurstDamage",
+          "pobr": 266102.56,
+          "reference": 293082.97,
+          "displayed_ratio": "0.91x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 734173.64,
+          "reference": 791875.28,
+          "displayed_ratio": "0.93x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 732794.71,
+          "reference": 790321.68,
+          "displayed_ratio": "0.93x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 732794.71,
+          "reference": 790321.68,
+          "displayed_ratio": "0.93x"
+        },
+        {
+          "stat": "ReqInt",
+          "pobr": 46.0,
+          "reference": 114.0,
+          "displayed_ratio": "0.40x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 732794.71,
+          "reference": 790321.68,
+          "displayed_ratio": "0.93x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 734173.64,
+          "reference": 791875.28,
+          "displayed_ratio": "0.93x"
+        },
+        {
+          "stat": "CritChance",
+          "pobr": 53.15,
+          "reference": 58.75,
+          "displayed_ratio": "0.90x"
+        },
+        {
+          "stat": "TotalDotDPS",
+          "pobr": 1378.94,
+          "reference": 1553.6,
+          "displayed_ratio": "0.89x"
+        },
+        {
+          "stat": "IgniteDPS",
+          "pobr": 1378.94,
+          "reference": 1553.6,
+          "displayed_ratio": "0.89x"
+        },
+        {
+          "stat": "EnergyShield",
+          "pobr": 388.0,
+          "reference": 488.0,
+          "displayed_ratio": "0.80x"
+        },
+        {
+          "stat": "TotalEHP",
+          "pobr": 17655.42,
+          "reference": 19385.64,
+          "displayed_ratio": "0.91x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": 4.0,
+          "reference": -34.0,
+          "displayed_ratio": "-0.12x"
+        },
+        {
+          "stat": "DeflectChance",
+          "pobr": 16.0,
+          "reference": 18.0,
+          "displayed_ratio": "0.89x"
+        },
+        {
+          "stat": "EvadeChance",
+          "pobr": 55.0,
+          "reference": 58.0,
+          "displayed_ratio": "0.95x"
+        },
+        {
+          "stat": "MeleeEvadeChance",
+          "pobr": 55.0,
+          "reference": 58.0,
+          "displayed_ratio": "0.95x"
+        },
+        {
+          "stat": "ProjectileEvadeChance",
+          "pobr": 55.0,
+          "reference": 58.0,
+          "displayed_ratio": "0.95x"
+        },
+        {
+          "stat": "SpellEvadeChance",
+          "pobr": 55.0,
+          "reference": 58.0,
+          "displayed_ratio": "0.95x"
+        },
+        {
+          "stat": "SpellProjectileEvadeChance",
+          "pobr": 55.0,
+          "reference": 58.0,
+          "displayed_ratio": "0.95x"
+        },
+        {
+          "stat": "EnergyShieldRecoveryCap",
+          "pobr": 388.0,
+          "reference": 488.0,
+          "displayed_ratio": "0.80x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": 4.0,
+          "reference": -34.0,
+          "displayed_ratio": "-0.12x"
+        },
+        {
+          "stat": "PreEffectiveCritChance",
+          "pobr": 31.56,
+          "reference": 35.77,
+          "displayed_ratio": "0.88x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "amazon-03",
+      "ascendancy": "Amazon",
+      "character": "社会你姜姐",
+      "main_skill": "Twister",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 79,
+      "compared_rows": 92,
+      "row_agreement_percent": 85.87,
+      "unsupported_modifier_lines": 3,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/lxy1513027-0389/%E7%A4%BE%E4%BC%9A%E4%BD%A0%E5%A7%9C%E5%A7%90",
+      "differences": [
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 130871.64,
+          "reference": 123040.83,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 127755.08,
+          "reference": 120122.2,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 127755.08,
+          "reference": 120122.2,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 127755.08,
+          "reference": 120122.2,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 130871.64,
+          "reference": 123040.83,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "TotalDotDPS",
+          "pobr": 3116.56,
+          "reference": 2918.63,
+          "displayed_ratio": "1.07x"
+        },
+        {
+          "stat": "IgniteDPS",
+          "pobr": 3116.56,
+          "reference": 2918.63,
+          "displayed_ratio": "1.07x"
+        },
+        {
+          "stat": "TotalEHP",
+          "pobr": 24987.61,
+          "reference": 26639.53,
+          "displayed_ratio": "0.94x"
+        },
+        {
+          "stat": "PhysicalMaxHit",
+          "pobr": 3532.0,
+          "reference": 3744.0,
+          "displayed_ratio": "0.94x"
+        },
+        {
+          "stat": "FireMaxHit",
+          "pobr": 12613.0,
+          "reference": 13371.0,
+          "displayed_ratio": "0.94x"
+        },
+        {
+          "stat": "ColdMaxHit",
+          "pobr": 11036.0,
+          "reference": 11700.0,
+          "displayed_ratio": "0.94x"
+        },
+        {
+          "stat": "LightningMaxHit",
+          "pobr": 12178.0,
+          "reference": 12910.0,
+          "displayed_ratio": "0.94x"
+        },
+        {
+          "stat": "ChaosMaxHit",
+          "pobr": 2709.0,
+          "reference": 2922.0,
+          "displayed_ratio": "0.93x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "amazon-04",
+      "ascendancy": "Amazon",
+      "character": "一个大橙子",
+      "main_skill": "Twister",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 92,
+      "compared_rows": 92,
+      "row_agreement_percent": 100.0,
+      "unsupported_modifier_lines": 7,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/cxg-5677/%E4%B8%80%E4%B8%AA%E5%A4%A7%E6%A9%99%E5%AD%90",
+      "differences": [],
+      "damage_agrees": true
+    },
+    {
+      "build": "amazon-05",
+      "ascendancy": "Amazon",
+      "character": "Würdeohnewürde",
+      "main_skill": "Ice Shot",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 80,
+      "compared_rows": 91,
+      "row_agreement_percent": 87.91,
+      "unsupported_modifier_lines": 7,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/sawyer196-6413/W%C3%BCrdeohnew%C3%BCrde",
+      "differences": [
+        {
+          "stat": "AverageDamage",
+          "pobr": 482495.96,
+          "reference": 454859.96,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "AverageBurstDamage",
+          "pobr": 482495.96,
+          "reference": 454859.96,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 1067707.32,
+          "reference": 973667.26,
+          "displayed_ratio": "1.10x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 1066588.3,
+          "reference": 972672.53,
+          "displayed_ratio": "1.10x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 1066588.3,
+          "reference": 972672.53,
+          "displayed_ratio": "1.10x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 1066588.3,
+          "reference": 972672.53,
+          "displayed_ratio": "1.10x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 1067707.32,
+          "reference": 973667.26,
+          "displayed_ratio": "1.10x"
+        },
+        {
+          "stat": "CritChance",
+          "pobr": 70.34,
+          "reference": 66.86,
+          "displayed_ratio": "1.05x"
+        },
+        {
+          "stat": "TotalDotDPS",
+          "pobr": 1119.02,
+          "reference": 994.73,
+          "displayed_ratio": "1.12x"
+        },
+        {
+          "stat": "IgniteDPS",
+          "pobr": 1119.02,
+          "reference": 994.73,
+          "displayed_ratio": "1.12x"
+        },
+        {
+          "stat": "PreEffectiveCritChance",
+          "pobr": 45.54,
+          "reference": 42.44,
+          "displayed_ratio": "1.07x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "amazon-06",
+      "ascendancy": "Amazon",
+      "character": "George_Fentanyahu",
+      "main_skill": "Lightning Spear",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 87,
+      "compared_rows": 93,
+      "row_agreement_percent": 93.55,
+      "unsupported_modifier_lines": 6,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Mr_Gandalf_Sir-1681/George_Fentanyahu",
+      "differences": [
+        {
+          "stat": "LifeLeechGainRate",
+          "pobr": 0.2,
+          "reference": 0.0,
+          "displayed_ratio": "—"
+        },
+        {
+          "stat": "ManaLeechGainRate",
+          "pobr": 82.94,
+          "reference": 117.19,
+          "displayed_ratio": "0.71x"
+        },
+        {
+          "stat": "EnergyShieldLeechGainRate",
+          "pobr": 0.0,
+          "reference": 632.0,
+          "displayed_ratio": "0.00x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": 45.0,
+          "reference": -91.0,
+          "displayed_ratio": "-0.49x"
+        },
+        {
+          "stat": "FireResistOverCap",
+          "pobr": 29.0,
+          "reference": 27.0,
+          "displayed_ratio": "1.07x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": 17.37,
+          "reference": -35.14,
+          "displayed_ratio": "-0.49x"
+        }
+      ],
+      "damage_agrees": true
+    },
+    {
+      "build": "amazon-07",
+      "ascendancy": "Amazon",
+      "character": "雾里告白",
+      "main_skill": "Lightning Spear",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 79,
+      "compared_rows": 92,
+      "row_agreement_percent": 85.87,
+      "unsupported_modifier_lines": 7,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%E5%9C%A8%E9%9B%BE%E9%87%8C%E5%91%8A%E7%99%BD-1907/%E9%9B%BE%E9%87%8C%E5%91%8A%E7%99%BD",
+      "differences": [
+        {
+          "stat": "AverageDamage",
+          "pobr": 552987.17,
+          "reference": 409934.3,
+          "displayed_ratio": "1.35x"
+        },
+        {
+          "stat": "AverageBurstDamage",
+          "pobr": 552987.17,
+          "reference": 409934.3,
+          "displayed_ratio": "1.35x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 1544805.88,
+          "reference": 1144652.74,
+          "displayed_ratio": "1.35x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 1512972.89,
+          "reference": 1121580.24,
+          "displayed_ratio": "1.35x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 1512972.89,
+          "reference": 1121580.24,
+          "displayed_ratio": "1.35x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 1512972.89,
+          "reference": 1121580.24,
+          "displayed_ratio": "1.35x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 1544805.88,
+          "reference": 1144652.74,
+          "displayed_ratio": "1.35x"
+        },
+        {
+          "stat": "TotalDotDPS",
+          "pobr": 31832.99,
+          "reference": 23072.5,
+          "displayed_ratio": "1.38x"
+        },
+        {
+          "stat": "IgniteDPS",
+          "pobr": 31832.99,
+          "reference": 23072.5,
+          "displayed_ratio": "1.38x"
+        },
+        {
+          "stat": "LifeLeechGainRate",
+          "pobr": 0.2,
+          "reference": 0.0,
+          "displayed_ratio": "—"
+        },
+        {
+          "stat": "EnergyShieldLeechGainRate",
+          "pobr": 0.0,
+          "reference": 614.9,
+          "displayed_ratio": "0.00x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": 7.0,
+          "reference": -93.0,
+          "displayed_ratio": "-0.08x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": 2.77,
+          "reference": -36.76,
+          "displayed_ratio": "-0.08x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "amazon-08",
+      "ascendancy": "Amazon",
+      "character": "BloodmageNeverDied",
+      "main_skill": "Ice Shot",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 86,
+      "compared_rows": 90,
+      "row_agreement_percent": 95.56,
+      "unsupported_modifier_lines": 10,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/sunstar1992-1657/BloodmageNeverDied",
+      "differences": [
+        {
+          "stat": "ReqStr",
+          "pobr": 20.0,
+          "reference": 137.0,
+          "displayed_ratio": "0.15x"
+        },
+        {
+          "stat": "RageRegenRecovery",
+          "pobr": 4.0,
+          "reference": 4.5,
+          "displayed_ratio": "0.89x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": 6.0,
+          "reference": -94.0,
+          "displayed_ratio": "-0.06x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": 2.91,
+          "reference": -45.63,
+          "displayed_ratio": "-0.06x"
+        }
+      ],
+      "damage_agrees": true
+    },
+    {
+      "build": "amazon-09",
+      "ascendancy": "Amazon",
+      "character": "Ритуалистка_ДБ",
+      "main_skill": "Ice Shot",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 85,
+      "compared_rows": 91,
+      "row_agreement_percent": 93.41,
+      "unsupported_modifier_lines": 3,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/dumitru-birchin-4835/%D0%A0%D0%B8%D1%82%D1%83%D0%B0%D0%BB%D0%B8%D1%81%D1%82%D0%BA%D0%B0_%D0%94%D0%91",
+      "differences": [
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 3508248.0,
+          "reference": 3316485.9,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 3485263.47,
+          "reference": 3293775.91,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 3485263.47,
+          "reference": 3293775.91,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 3485263.47,
+          "reference": 3293775.91,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 3508248.0,
+          "reference": 3316485.9,
+          "displayed_ratio": "1.06x"
+        },
+        {
+          "stat": "TotalEHP",
+          "pobr": 66910.02,
+          "reference": 72429.03,
+          "displayed_ratio": "0.92x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "amazon-10",
+      "ascendancy": "Amazon",
+      "character": "VenasRITA",
+      "main_skill": "Ice Shot",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 90,
+      "compared_rows": 90,
+      "row_agreement_percent": 100.0,
+      "unsupported_modifier_lines": 11,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/nbxdfdthg-0386/VenasRITA",
+      "differences": [],
+      "damage_agrees": true
+    },
+    {
+      "build": "blood-mage-01",
+      "ascendancy": "Blood Mage",
+      "character": "Rakurimosa",
+      "main_skill": "Shattering Spite",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 85,
+      "compared_rows": 91,
+      "row_agreement_percent": 93.41,
+      "unsupported_modifier_lines": 15,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Shaelmao-0831/Rakurimosa",
+      "differences": [
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 635237.31,
+          "reference": 2516266.1,
+          "displayed_ratio": "0.25x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 659146.96,
+          "reference": 2540406.85,
+          "displayed_ratio": "0.26x"
+        },
+        {
+          "stat": "TotalDotDPS",
+          "pobr": 594295.06,
+          "reference": 2475598.64,
+          "displayed_ratio": "0.24x"
+        },
+        {
+          "stat": "BleedDPS",
+          "pobr": 570385.41,
+          "reference": 2451457.88,
+          "displayed_ratio": "0.23x"
+        },
+        {
+          "stat": "ManaLeechGainRate",
+          "pobr": 10.92,
+          "reference": 18.44,
+          "displayed_ratio": "0.59x"
+        },
+        {
+          "stat": "TotalEHP",
+          "pobr": 250667.47,
+          "reference": 21063.29,
+          "displayed_ratio": "11.90x"
+        }
+      ],
+      "damage_agrees": true
+    },
+    {
+      "build": "blood-mage-02",
+      "ascendancy": "Blood Mage",
+      "character": "tuziabcd",
+      "main_skill": "Life Remnants",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 83,
+      "compared_rows": 84,
+      "row_agreement_percent": 98.81,
+      "unsupported_modifier_lines": 5,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/chickenyyy-7463/tuziabcd",
+      "differences": [
+        {
+          "stat": "TotalEHP",
+          "pobr": 117001.04,
+          "reference": 52486.95,
+          "displayed_ratio": "2.23x"
+        }
+      ],
+      "damage_agrees": true
+    },
+    {
+      "build": "blood-mage-03",
+      "ascendancy": "Blood Mage",
+      "character": "XTIJOLOX",
+      "main_skill": "Impending Doom",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 78,
+      "compared_rows": 87,
+      "row_agreement_percent": 89.66,
+      "unsupported_modifier_lines": 2,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/II%20Tijolo%20II-8237/XTIJOLOX",
+      "differences": [
+        {
+          "stat": "HitSpeed",
+          "pobr": 8.0,
+          "reference": 11.68,
+          "displayed_ratio": "0.68x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 19430078.8,
+          "reference": 28367931.75,
+          "displayed_ratio": "0.68x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 19430078.8,
+          "reference": 28367931.75,
+          "displayed_ratio": "0.68x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 19430078.8,
+          "reference": 28367931.75,
+          "displayed_ratio": "0.68x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 19430078.8,
+          "reference": 28367931.75,
+          "displayed_ratio": "0.68x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 19430078.8,
+          "reference": 28367931.75,
+          "displayed_ratio": "0.68x"
+        },
+        {
+          "stat": "ActionRate",
+          "pobr": 8.0,
+          "reference": 11.68,
+          "displayed_ratio": "0.68x"
+        },
+        {
+          "stat": "LifeLeechGainRate",
+          "pobr": 630.26,
+          "reference": 705.82,
+          "displayed_ratio": "0.89x"
+        },
+        {
+          "stat": "TotalEHP",
+          "pobr": 15885.79,
+          "reference": 14765.0,
+          "displayed_ratio": "1.08x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "blood-mage-04",
+      "ascendancy": "Blood Mage",
+      "character": "YaSup",
+      "main_skill": "Impending Doom",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 79,
+      "compared_rows": 89,
+      "row_agreement_percent": 88.76,
+      "unsupported_modifier_lines": 2,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Yasup-0493/YaSup",
+      "differences": [
+        {
+          "stat": "HitSpeed",
+          "pobr": 8.0,
+          "reference": 6.96,
+          "displayed_ratio": "1.15x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 10790711.23,
+          "reference": 9395830.52,
+          "displayed_ratio": "1.15x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 10728567.36,
+          "reference": 9333858.86,
+          "displayed_ratio": "1.15x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 10728567.36,
+          "reference": 9333858.86,
+          "displayed_ratio": "1.15x"
+        },
+        {
+          "stat": "LifePerSecondCost",
+          "pobr": 810.32,
+          "reference": 176.25,
+          "displayed_ratio": "4.60x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 10728567.36,
+          "reference": 9333858.86,
+          "displayed_ratio": "1.15x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 10790711.23,
+          "reference": 9395830.52,
+          "displayed_ratio": "1.15x"
+        },
+        {
+          "stat": "ActionRate",
+          "pobr": 8.0,
+          "reference": 6.96,
+          "displayed_ratio": "1.15x"
+        },
+        {
+          "stat": "LifeLeechGainRate",
+          "pobr": 510.38,
+          "reference": 571.65,
+          "displayed_ratio": "0.89x"
+        },
+        {
+          "stat": "TotalEHP",
+          "pobr": 90069.5,
+          "reference": 17122.15,
+          "displayed_ratio": "5.26x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "blood-mage-05",
+      "ascendancy": "Blood Mage",
+      "character": "Rines_FR",
+      "main_skill": "Ember Fusillade",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 78,
+      "compared_rows": 88,
+      "row_agreement_percent": 88.64,
+      "unsupported_modifier_lines": 3,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Rines_sss-4494/Rines_FR",
+      "differences": [
+        {
+          "stat": "AverageBurstDamage",
+          "pobr": 1455866.1,
+          "reference": 2183784.1,
+          "displayed_ratio": "0.67x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 3285845.98,
+          "reference": 4104433.48,
+          "displayed_ratio": "0.80x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 3217464.08,
+          "reference": 4035633.02,
+          "displayed_ratio": "0.80x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 3217464.08,
+          "reference": 4035633.02,
+          "displayed_ratio": "0.80x"
+        },
+        {
+          "stat": "ReqDex",
+          "pobr": 72.0,
+          "reference": 86.0,
+          "displayed_ratio": "0.84x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 3217464.08,
+          "reference": 4035633.02,
+          "displayed_ratio": "0.80x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 3285845.98,
+          "reference": 4104433.48,
+          "displayed_ratio": "0.80x"
+        },
+        {
+          "stat": "TotalEHP",
+          "pobr": 216722.92,
+          "reference": 16354.63,
+          "displayed_ratio": "13.25x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": -140.0,
+          "reference": -240.0,
+          "displayed_ratio": "0.58x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": -53.03,
+          "reference": -90.91,
+          "displayed_ratio": "0.58x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "blood-mage-06",
+      "ascendancy": "Blood Mage",
+      "character": "FR_PDT",
+      "main_skill": "Impending Doom",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 81,
+      "compared_rows": 89,
+      "row_agreement_percent": 91.01,
+      "unsupported_modifier_lines": 4,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/pdtien97-3195/FR_PDT",
+      "differences": [
+        {
+          "stat": "HitSpeed",
+          "pobr": 8.0,
+          "reference": 8.84,
+          "displayed_ratio": "0.90x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 3504080.7,
+          "reference": 3845424.22,
+          "displayed_ratio": "0.91x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 3504080.7,
+          "reference": 3845424.22,
+          "displayed_ratio": "0.91x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 3504080.7,
+          "reference": 3845424.22,
+          "displayed_ratio": "0.91x"
+        },
+        {
+          "stat": "LifePerSecondCost",
+          "pobr": 861.94,
+          "reference": 238.11,
+          "displayed_ratio": "3.62x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 3504080.7,
+          "reference": 3845424.22,
+          "displayed_ratio": "0.91x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 3504080.7,
+          "reference": 3845424.22,
+          "displayed_ratio": "0.91x"
+        },
+        {
+          "stat": "ActionRate",
+          "pobr": 8.0,
+          "reference": 8.84,
+          "displayed_ratio": "0.90x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "blood-mage-07",
+      "ascendancy": "Blood Mage",
+      "character": "ForBM",
+      "main_skill": "Living Bomb",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 82,
+      "compared_rows": 86,
+      "row_agreement_percent": 95.35,
+      "unsupported_modifier_lines": 5,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/imhuy-2362/ForBM",
+      "differences": [
+        {
+          "stat": "LifeLeechGainPerHit",
+          "pobr": 8960.0,
+          "reference": 342.0,
+          "displayed_ratio": "26.20x"
+        },
+        {
+          "stat": "TotalEHP",
+          "pobr": 208054.0,
+          "reference": 9678.63,
+          "displayed_ratio": "21.50x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": -87.0,
+          "reference": -187.0,
+          "displayed_ratio": "0.47x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": -58.0,
+          "reference": -124.67,
+          "displayed_ratio": "0.47x"
+        }
+      ],
+      "damage_agrees": true
+    },
+    {
+      "build": "blood-mage-08",
+      "ascendancy": "Blood Mage",
+      "character": "nonowill",
+      "main_skill": "Impending Doom",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 71,
+      "compared_rows": 88,
+      "row_agreement_percent": 80.68,
+      "unsupported_modifier_lines": 6,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Will-3154/nonowill",
+      "differences": [
+        {
+          "stat": "HitSpeed",
+          "pobr": 8.0,
+          "reference": 8.84,
+          "displayed_ratio": "0.90x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 11887280.45,
+          "reference": 12973872.9,
+          "displayed_ratio": "0.92x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 11887280.45,
+          "reference": 12973872.9,
+          "displayed_ratio": "0.92x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 11887280.45,
+          "reference": 12973872.9,
+          "displayed_ratio": "0.92x"
+        },
+        {
+          "stat": "LifePerSecondCost",
+          "pobr": 2642.58,
+          "reference": 730.01,
+          "displayed_ratio": "3.62x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 11887280.45,
+          "reference": 12973872.9,
+          "displayed_ratio": "0.92x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 11887280.45,
+          "reference": 12973872.9,
+          "displayed_ratio": "0.92x"
+        },
+        {
+          "stat": "ActionRate",
+          "pobr": 8.0,
+          "reference": 8.84,
+          "displayed_ratio": "0.90x"
+        },
+        {
+          "stat": "LifeLeechGainRate",
+          "pobr": 516.15,
+          "reference": 578.14,
+          "displayed_ratio": "0.89x"
+        },
+        {
+          "stat": "TotalEHP",
+          "pobr": 60049.41,
+          "reference": 12752.35,
+          "displayed_ratio": "4.71x"
+        },
+        {
+          "stat": "PhysicalMaxHit",
+          "pobr": 9221.0,
+          "reference": 10270.0,
+          "displayed_ratio": "0.90x"
+        },
+        {
+          "stat": "FireMaxHit",
+          "pobr": 32933.0,
+          "reference": 36680.0,
+          "displayed_ratio": "0.90x"
+        },
+        {
+          "stat": "ColdMaxHit",
+          "pobr": 12807.0,
+          "reference": 14264.0,
+          "displayed_ratio": "0.90x"
+        },
+        {
+          "stat": "LightningMaxHit",
+          "pobr": 8089.0,
+          "reference": 9009.0,
+          "displayed_ratio": "0.90x"
+        },
+        {
+          "stat": "ChaosMaxHit",
+          "pobr": 9221.0,
+          "reference": 10270.0,
+          "displayed_ratio": "0.90x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": -110.0,
+          "reference": -210.0,
+          "displayed_ratio": "0.52x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": -96.49,
+          "reference": -184.21,
+          "displayed_ratio": "0.52x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "blood-mage-09",
+      "ascendancy": "Blood Mage",
+      "character": "MirroVip",
+      "main_skill": "Comet",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 84,
+      "compared_rows": 87,
+      "row_agreement_percent": 96.55,
+      "unsupported_modifier_lines": 6,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/tone-2329/MirroVip",
+      "differences": [
+        {
+          "stat": "LifeLeechGainRate",
+          "pobr": 641.05,
+          "reference": 221.91,
+          "displayed_ratio": "2.89x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": -135.0,
+          "reference": -235.0,
+          "displayed_ratio": "0.57x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": -83.85,
+          "reference": -145.96,
+          "displayed_ratio": "0.57x"
+        }
+      ],
+      "damage_agrees": true
+    },
+    {
+      "build": "blood-mage-10",
+      "ascendancy": "Blood Mage",
+      "character": "YuukiIzumie",
+      "main_skill": "Impending Doom",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 79,
+      "compared_rows": 87,
+      "row_agreement_percent": 90.8,
+      "unsupported_modifier_lines": 2,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/XLerRelx-0233/YuukiIzumie",
+      "differences": [
+        {
+          "stat": "HitSpeed",
+          "pobr": 8.0,
+          "reference": 10.0,
+          "displayed_ratio": "0.80x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 17322460.53,
+          "reference": 21653013.89,
+          "displayed_ratio": "0.80x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 17322460.53,
+          "reference": 21653013.89,
+          "displayed_ratio": "0.80x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 17322460.53,
+          "reference": 21653013.89,
+          "displayed_ratio": "0.80x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 17322460.53,
+          "reference": 21653013.89,
+          "displayed_ratio": "0.80x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 17322460.53,
+          "reference": 21653013.89,
+          "displayed_ratio": "0.80x"
+        },
+        {
+          "stat": "ActionRate",
+          "pobr": 8.0,
+          "reference": 10.0,
+          "displayed_ratio": "0.80x"
+        },
+        {
+          "stat": "LifeLeechGainRate",
+          "pobr": 667.5,
+          "reference": 747.49,
+          "displayed_ratio": "0.89x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "chronomancer-01",
+      "ascendancy": "Chronomancer",
+      "character": "lullabyTurnBackTime",
+      "main_skill": "Comet",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 73,
+      "compared_rows": 87,
+      "row_agreement_percent": 83.91,
+      "unsupported_modifier_lines": 9,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/fishoppa-1492/lullabyTurnBackTime",
+      "differences": [
+        {
+          "stat": "AverageBurstDamage",
+          "pobr": 51346676.6,
+          "reference": 59402861.12,
+          "displayed_ratio": "0.86x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 36039871.85,
+          "reference": 41670663.77,
+          "displayed_ratio": "0.86x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 36039871.85,
+          "reference": 41670663.77,
+          "displayed_ratio": "0.86x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 36039871.85,
+          "reference": 41670663.77,
+          "displayed_ratio": "0.86x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 36039871.85,
+          "reference": 41670663.77,
+          "displayed_ratio": "0.86x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 36039871.85,
+          "reference": 41670663.77,
+          "displayed_ratio": "0.86x"
+        },
+        {
+          "stat": "TotalEHP",
+          "pobr": 1368.26,
+          "reference": 1525.61,
+          "displayed_ratio": "0.90x"
+        },
+        {
+          "stat": "PhysicalMaxHit",
+          "pobr": 870.0,
+          "reference": 967.0,
+          "displayed_ratio": "0.90x"
+        },
+        {
+          "stat": "FireMaxHit",
+          "pobr": 1673.0,
+          "reference": 1860.0,
+          "displayed_ratio": "0.90x"
+        },
+        {
+          "stat": "ColdMaxHit",
+          "pobr": 1673.0,
+          "reference": 1860.0,
+          "displayed_ratio": "0.90x"
+        },
+        {
+          "stat": "LightningMaxHit",
+          "pobr": 1641.0,
+          "reference": 1825.0,
+          "displayed_ratio": "0.90x"
+        },
+        {
+          "stat": "ChaosMaxHit",
+          "pobr": 1775.0,
+          "reference": 1974.0,
+          "displayed_ratio": "0.90x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": -164.0,
+          "reference": -264.0,
+          "displayed_ratio": "0.62x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": -110.81,
+          "reference": -178.38,
+          "displayed_ratio": "0.62x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "chronomancer-02",
+      "ascendancy": "Chronomancer",
+      "character": "moheforbidden",
+      "main_skill": "Comet",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 85,
+      "compared_rows": 87,
+      "row_agreement_percent": 97.7,
+      "unsupported_modifier_lines": 8,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/mohdk-4859/moheforbidden",
+      "differences": [
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": 4.0,
+          "reference": -96.0,
+          "displayed_ratio": "-0.04x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": 2.67,
+          "reference": -64.0,
+          "displayed_ratio": "-0.04x"
+        }
+      ],
+      "damage_agrees": true
+    },
+    {
+      "build": "chronomancer-03",
+      "ascendancy": "Chronomancer",
+      "character": "MasterofTimeManagement",
+      "main_skill": "Comet",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 77,
+      "compared_rows": 88,
+      "row_agreement_percent": 87.5,
+      "unsupported_modifier_lines": 11,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/LFZL20241211-7826/MasterofTimeManagement",
+      "differences": [
+        {
+          "stat": "LifeUnreserved",
+          "pobr": 283.34,
+          "reference": 250.0,
+          "displayed_ratio": "1.13x"
+        },
+        {
+          "stat": "TotalEHP",
+          "pobr": 1483.36,
+          "reference": 1760.0,
+          "displayed_ratio": "0.84x"
+        },
+        {
+          "stat": "PhysicalMaxHit",
+          "pobr": 1420.0,
+          "reference": 1653.0,
+          "displayed_ratio": "0.86x"
+        },
+        {
+          "stat": "FireMaxHit",
+          "pobr": 2367.0,
+          "reference": 2661.0,
+          "displayed_ratio": "0.89x"
+        },
+        {
+          "stat": "ColdMaxHit",
+          "pobr": 2594.0,
+          "reference": 3019.0,
+          "displayed_ratio": "0.86x"
+        },
+        {
+          "stat": "LightningMaxHit",
+          "pobr": 950.0,
+          "reference": 1106.0,
+          "displayed_ratio": "0.86x"
+        },
+        {
+          "stat": "ChaosMaxHit",
+          "pobr": 1147.0,
+          "reference": 1368.0,
+          "displayed_ratio": "0.84x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": -52.0,
+          "reference": -113.0,
+          "displayed_ratio": "0.46x"
+        },
+        {
+          "stat": "LifeRecoverable",
+          "pobr": 283.34,
+          "reference": 250.0,
+          "displayed_ratio": "1.13x"
+        },
+        {
+          "stat": "LifeUnreservedPercent",
+          "pobr": 18.95,
+          "reference": 16.72,
+          "displayed_ratio": "1.13x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": -16.51,
+          "reference": -35.87,
+          "displayed_ratio": "0.46x"
+        }
+      ],
+      "damage_agrees": true
+    },
+    {
+      "build": "chronomancer-04",
+      "ascendancy": "Chronomancer",
+      "character": "LIONRENIE",
+      "main_skill": "Impending Doom",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 80,
+      "compared_rows": 88,
+      "row_agreement_percent": 90.91,
+      "unsupported_modifier_lines": 11,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/azrama-9306/LIONRENIE",
+      "differences": [
+        {
+          "stat": "AverageBurstDamage",
+          "pobr": 267223.18,
+          "reference": 287447.22,
+          "displayed_ratio": "0.93x"
+        },
+        {
+          "stat": "HitSpeed",
+          "pobr": 8.0,
+          "reference": 5.92,
+          "displayed_ratio": "1.35x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 2137785.4,
+          "reference": 1701687.54,
+          "displayed_ratio": "1.26x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 2137785.4,
+          "reference": 1701687.54,
+          "displayed_ratio": "1.26x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 2137785.4,
+          "reference": 1701687.54,
+          "displayed_ratio": "1.26x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 2137785.4,
+          "reference": 1701687.54,
+          "displayed_ratio": "1.26x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 2137785.4,
+          "reference": 1701687.54,
+          "displayed_ratio": "1.26x"
+        },
+        {
+          "stat": "ActionRate",
+          "pobr": 8.0,
+          "reference": 5.92,
+          "displayed_ratio": "1.35x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "chronomancer-05",
+      "ascendancy": "Chronomancer",
+      "character": "Es_Crono",
+      "main_skill": "Glacial Lance",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 89,
+      "compared_rows": 92,
+      "row_agreement_percent": 96.74,
+      "unsupported_modifier_lines": 7,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/ZaPPeRZaPPLiN-7376/Es_Crono",
+      "differences": [
+        {
+          "stat": "ManaLeechGainRate",
+          "pobr": 108.21,
+          "reference": 120.51,
+          "displayed_ratio": "0.90x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": 92.0,
+          "reference": 62.0,
+          "displayed_ratio": "1.48x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": 25.0,
+          "reference": 16.85,
+          "displayed_ratio": "1.48x"
+        }
+      ],
+      "damage_agrees": true
+    },
+    {
+      "build": "chronomancer-06",
+      "ascendancy": "Chronomancer",
+      "character": "FischDinoFresbee",
+      "main_skill": "Living Bomb",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 85,
+      "compared_rows": 87,
+      "row_agreement_percent": 97.7,
+      "unsupported_modifier_lines": 5,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/ChatinhoF-9367/FischDinoFresbee",
+      "differences": [
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": 96.0,
+          "reference": 4.0,
+          "displayed_ratio": "24.00x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": 31.48,
+          "reference": 1.31,
+          "displayed_ratio": "24.00x"
+        }
+      ],
+      "damage_agrees": true
+    },
+    {
+      "build": "chronomancer-07",
+      "ascendancy": "Chronomancer",
+      "character": "ZionKz",
+      "main_skill": "Raise Zombie",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 86,
+      "compared_rows": 90,
+      "row_agreement_percent": 95.56,
+      "unsupported_modifier_lines": 9,
+      "damage_stat": "MinionTotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/NNafk-4997/ZionKz",
+      "differences": [
+        {
+          "stat": "ActiveMinionLimit",
+          "pobr": 6.0,
+          "reference": 15.0,
+          "displayed_ratio": "0.40x"
+        },
+        {
+          "stat": "ManaPerSecondCost",
+          "pobr": 685.27,
+          "reference": 753.54,
+          "displayed_ratio": "0.91x"
+        },
+        {
+          "stat": "ManaCost",
+          "pobr": 357.53,
+          "reference": 393.15,
+          "displayed_ratio": "0.91x"
+        },
+        {
+          "stat": "MinionTotalDPS",
+          "pobr": 17041.39,
+          "reference": 23805.57,
+          "displayed_ratio": "0.72x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "chronomancer-08",
+      "ascendancy": "Chronomancer",
+      "character": "Tryon_FR",
+      "main_skill": "Comet",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 86,
+      "compared_rows": 88,
+      "row_agreement_percent": 97.73,
+      "unsupported_modifier_lines": 9,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/ZlIe-4730/Tryon_FR",
+      "differences": [
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": 3.0,
+          "reference": -97.0,
+          "displayed_ratio": "-0.03x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": 1.44,
+          "reference": -46.41,
+          "displayed_ratio": "-0.03x"
+        }
+      ],
+      "damage_agrees": true
+    },
+    {
+      "build": "chronomancer-09",
+      "ascendancy": "Chronomancer",
+      "character": "AddiChroniRemastered",
+      "main_skill": "Ember Fusillade",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 83,
+      "compared_rows": 87,
+      "row_agreement_percent": 95.4,
+      "unsupported_modifier_lines": 14,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/ADDii-3319/AddiChroniRemastered",
+      "differences": [
+        {
+          "stat": "TotalDotDPS",
+          "pobr": 61643.66,
+          "reference": 86612.73,
+          "displayed_ratio": "0.71x"
+        },
+        {
+          "stat": "IgniteDPS",
+          "pobr": 61643.66,
+          "reference": 86612.73,
+          "displayed_ratio": "0.71x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": 1.0,
+          "reference": -99.0,
+          "displayed_ratio": "-0.01x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": 0.37,
+          "reference": -36.67,
+          "displayed_ratio": "-0.01x"
+        }
+      ],
+      "damage_agrees": true
+    },
+    {
+      "build": "chronomancer-10",
+      "ascendancy": "Chronomancer",
+      "character": "ASASASAQWE",
+      "main_skill": "Thunderstorm",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 85,
+      "compared_rows": 91,
+      "row_agreement_percent": 93.41,
+      "unsupported_modifier_lines": 9,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/prasd123-5967/ASASASAQWE",
+      "differences": [
+        {
+          "stat": "AverageBurstDamage",
+          "pobr": 15.73,
+          "reference": 75.77,
+          "displayed_ratio": "0.21x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 15.73,
+          "reference": 151.54,
+          "displayed_ratio": "0.10x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 15.73,
+          "reference": 151.53,
+          "displayed_ratio": "0.10x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 15.73,
+          "reference": 151.53,
+          "displayed_ratio": "0.10x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 31.45,
+          "reference": 151.53,
+          "displayed_ratio": "0.21x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 31.46,
+          "reference": 151.54,
+          "displayed_ratio": "0.21x"
+        }
+      ],
+      "damage_agrees": false
+    },
+    {
+      "build": "deadeye-01",
+      "ascendancy": "Deadeye",
+      "character": "AddiDeadeyeiRemastered",
+      "main_skill": "Twister",
+      "imported_and_calculated": true,
+      "missing_items_reported": [],
+      "agreed_rows": 80,
+      "compared_rows": 92,
+      "row_agreement_percent": 86.96,
+      "unsupported_modifier_lines": 10,
+      "damage_stat": "TotalDPS",
+      "source_url": "https://poe.ninja/poe2/builds/forbiddenrites/character/ADDii-3319/AddiDeadeyeiRemastered",
+      "differences": [
+        {
+          "stat": "AverageDamage",
+          "pobr": 90671.1,
+          "reference": 168051.79,
+          "displayed_ratio": "0.54x"
+        },
+        {
+          "stat": "AverageBurstDamage",
+          "pobr": 90671.1,
+          "reference": 168051.79,
+          "displayed_ratio": "0.54x"
+        },
+        {
+          "stat": "WithIgniteDPS",
+          "pobr": 251879.21,
+          "reference": 471810.1,
+          "displayed_ratio": "0.53x"
+        },
+        {
+          "stat": "WithBleedDPS",
+          "pobr": 248644.81,
+          "reference": 465274.9,
+          "displayed_ratio": "0.53x"
+        },
+        {
+          "stat": "WithPoisonDPS",
+          "pobr": 248644.81,
+          "reference": 465274.9,
+          "displayed_ratio": "0.53x"
+        },
+        {
+          "stat": "ReqStr",
+          "pobr": 80.0,
+          "reference": 157.0,
+          "displayed_ratio": "0.51x"
+        },
+        {
+          "stat": "TotalDPS",
+          "pobr": 248644.81,
+          "reference": 465274.9,
+          "displayed_ratio": "0.53x"
+        },
+        {
+          "stat": "CombinedDPS",
+          "pobr": 251879.21,
+          "reference": 471810.1,
+          "displayed_ratio": "0.53x"
+        },
+        {
+          "stat": "TotalDotDPS",
+          "pobr": 3234.4,
+          "reference": 6535.2,
+          "displayed_ratio": "0.49x"
+        },
+        {
+          "stat": "IgniteDPS",
+          "pobr": 3234.4,
+          "reference": 6535.2,
+          "displayed_ratio": "0.49x"
+        },
+        {
+          "stat": "SpiritUnreserved",
+          "pobr": -136.0,
+          "reference": -226.0,
+          "displayed_ratio": "0.60x"
+        },
+        {
+          "stat": "SpiritUnreservedPercent",
+          "pobr": -56.67,
+          "reference": -94.17,
+          "displayed_ratio": "0.60x"
+        }
+      ],
+      "damage_agrees": false
+    }
+  ]
+}

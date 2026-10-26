@@ -1,0 +1,40 @@
+{
+  "name": "tactician-09",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/filthydub-6079/tanjvanicshards",
+    "account": "filthydub-6079",
+    "character": "tanjvanicshards",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:57:49+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=filthydub-6079&name=tanjvanicshards&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Tactician",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 9,
+    "index_sha256": "165d7f878a35e33bc0ecb9545231966e2e0c96f7ec55bbd0e0afa3d8df6d717d",
+    "character_response_sha256": "126f82c66d98d392a12821e7b9abc3f58fd5dc6a92d888173bc27068b44e3c0d",
+    "upstream_updated_utc": "2026-10-06T12:30:43.98269Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:24.593Z",
+    "upstream_last_checked_utc": "2026-10-22T16:23:18.968002Z"
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Tactician",
+    "level": 100,
+    "main_skill": "Galvanic Shards"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 5,
+    "code_sha256": "fb4a4b8640ccfe839e881fa53ffbbe7591dcdf2a5dd7465014fa997773a4e5ee",
+    "code_chars": 13556,
+    "decoded_bytes": 51467
+  }
+}

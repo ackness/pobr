@@ -1,0 +1,40 @@
+{
+  "name": "titan-10",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/jerkass001-4824/%E5%A3%B9%E8%99%9F%E6%B3%B0%E5%9D%A6",
+    "account": "jerkass001-4824",
+    "character": "壹號泰坦",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:58:24+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=jerkass001-4824&name=%E5%A3%B9%E8%99%9F%E6%B3%B0%E5%9D%A6&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Titan",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 10,
+    "index_sha256": "fd175276306519dbf480f0c20661795a3efd0c6b5ffb68ee47f925e1aae894d7",
+    "character_response_sha256": "ecbc03dab1ea3c5edb8f3fd03c6c45cb3d129248fe9d703cf33be2588e28fbc0",
+    "upstream_updated_utc": "2026-10-19T08:32:05.563111Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-26T03:33:21.744892Z"
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Titan",
+    "level": 100,
+    "main_skill": "Infernal Cry"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 3,
+    "code_sha256": "da490d54945c6800f484a19725c4f36385fee8a75565ec5d2c22c01246a750c4",
+    "code_chars": 9404,
+    "decoded_bytes": 29748
+  }
+}

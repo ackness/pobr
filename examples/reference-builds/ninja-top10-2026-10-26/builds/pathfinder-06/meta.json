@@ -1,0 +1,40 @@
+{
+  "name": "pathfinder-06",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/18774641305-2771/%E9%A3%8E%E6%9E%AA%E9%94%90%E7%9C%BC",
+    "account": "18774641305-2771",
+    "character": "风枪锐眼",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:54:28+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=18774641305-2771&name=%E9%A3%8E%E6%9E%AA%E9%94%90%E7%9C%BC&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Pathfinder",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 6,
+    "index_sha256": "97e6a76625b8f5a57cb940932b16eaf3861b666a35991aad6a40c63ef82a8d03",
+    "character_response_sha256": "17b21f4141732ecbe84d93d4c7bdcdada90ee813c64ba9ddc1da9d89258100da",
+    "upstream_updated_utc": "2026-10-20T19:11:07.952224Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:22.250005Z",
+    "upstream_last_checked_utc": "2026-10-25T05:26:29.4464Z"
+  },
+  "character": {
+    "class": "Ranger",
+    "ascendancy": "Pathfinder",
+    "level": 100,
+    "main_skill": "Ice Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "0d71ecab5958bd0baca6f8450a99cb698fe8c81f7aa90ad2faeb91b3961d50c3",
+    "code_chars": 13388,
+    "decoded_bytes": 49252
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "gemling-legionnaire-01",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/heygyus-0416/ResurrectForbidden",
+    "account": "heygyus-0416",
+    "character": "ResurrectForbidden",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:51:00+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=heygyus-0416&name=ResurrectForbidden&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Gemling+Legionnaire",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 1,
+    "index_sha256": "ad135f5c2387bc24d4bea51e0e42e8c659af8d6055c720e85af447339cf8f0f7",
+    "character_response_sha256": "a75c180ea77b992063c0714af76669b4a08b99e334717459316202570658c2f5",
+    "upstream_updated_utc": "2026-09-08T09:57:07.372292Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.050208Z",
+    "upstream_last_checked_utc": "2026-10-26T08:47:21.625313Z"
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Gemling Legionnaire",
+    "level": 100,
+    "main_skill": "Twister"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 14,
+    "code_sha256": "b7760354dd331566e5f480bcff9ff1029fad7840d2504e6f5e3759f83f788cc8",
+    "code_chars": 12792,
+    "decoded_bytes": 49819
+  }
+}

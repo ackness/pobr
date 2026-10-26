@@ -1,0 +1,40 @@
+{
+  "name": "chronomancer-09",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/ADDii-3319/AddiChroniRemastered",
+    "account": "ADDii-3319",
+    "character": "AddiChroniRemastered",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:45+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=ADDii-3319&name=AddiChroniRemastered&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Chronomancer",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 9,
+    "index_sha256": "979a57de6925bde9d636cd7cd38f75ac920850eac435a828767a09b910794872",
+    "character_response_sha256": "31c509093c6eee4d0d8e9533dc5d00c3c2e1cc8187945ad47817775625aa5b81",
+    "upstream_updated_utc": "2026-09-29T14:39:34.790001Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:24.473062Z",
+    "upstream_last_checked_utc": "2026-10-24T21:00:02.035618Z"
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Chronomancer",
+    "level": 99,
+    "main_skill": "Ember Fusillade"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 8,
+    "code_sha256": "f59b5b4c372e0b1e3e50bce6c4cbbb2b4f603aff3b96ca383d7c3bf50397087b",
+    "code_chars": 13400,
+    "decoded_bytes": 53712
+  }
+}

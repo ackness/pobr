@@ -1,0 +1,40 @@
+{
+  "name": "shaman-09",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/h824452981-2858/%E5%B9%BF%E8%A5%BF%E8%83%96%E7%86%8A%E5%B0%8F%E5%85%AB%E9%85%B1",
+    "account": "h824452981-2858",
+    "character": "广西胖熊小八酱",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:55:41+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=h824452981-2858&name=%E5%B9%BF%E8%A5%BF%E8%83%96%E7%86%8A%E5%B0%8F%E5%85%AB%E9%85%B1&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Shaman",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 9,
+    "index_sha256": "379de5bbac0249c2834fbbb8e871ab7eab47d1497078feb0678e5fe004184778",
+    "character_response_sha256": "4c1c80bf0c4161554fd899966fdb596822a1e19dd8fb4045cd2cb29c4d03f0a1",
+    "upstream_updated_utc": "2026-10-13T10:04:29.678793Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:25.571655Z",
+    "upstream_last_checked_utc": "2026-10-23T19:28:21.051048Z"
+  },
+  "character": {
+    "class": "Druid",
+    "ascendancy": "Shaman",
+    "level": 100,
+    "main_skill": "Grim Pillars"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 8,
+    "code_sha256": "502b5a620141eb0c48bd66b956ed318fa88338a4936d7f7a31b135d182f50e81",
+    "code_chars": 11984,
+    "decoded_bytes": 41484
+  }
+}

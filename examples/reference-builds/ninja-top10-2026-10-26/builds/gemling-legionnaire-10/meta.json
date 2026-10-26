@@ -1,0 +1,40 @@
+{
+  "name": "gemling-legionnaire-10",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/POFU-5934/%E5%8D%83%E5%AF%BB%E4%BD%99",
+    "account": "POFU-5934",
+    "character": "千寻余",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:51:28+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=POFU-5934&name=%E5%8D%83%E5%AF%BB%E4%BD%99&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Gemling+Legionnaire",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 10,
+    "index_sha256": "ad135f5c2387bc24d4bea51e0e42e8c659af8d6055c720e85af447339cf8f0f7",
+    "character_response_sha256": "860c7167c073858a5963c94b9d644eda8aaebe58144a58578bd0171ebca3d1f4",
+    "upstream_updated_utc": "2026-10-09T15:38:13.361469Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.32796Z",
+    "upstream_last_checked_utc": "2026-10-26T06:28:23.073959Z"
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Gemling Legionnaire",
+    "level": 100,
+    "main_skill": "Arc"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 3,
+    "code_sha256": "f98e69cedb917405cd69b7728c1487824912cf31732cbb53d3f73906408605ed",
+    "code_chars": 13436,
+    "decoded_bytes": 51728
+  }
+}

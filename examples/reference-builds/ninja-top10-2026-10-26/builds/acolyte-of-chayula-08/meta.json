@@ -1,0 +1,40 @@
+{
+  "name": "acolyte-of-chayula-08",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/vincent427-2886/%E7%BA%A2%E8%A1%A3_%E8%8A%B1%E7%B2%89%E5%83%A7",
+    "account": "vincent427-2886",
+    "character": "红衣_花粉僧",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:31+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=vincent427-2886&name=%E7%BA%A2%E8%A1%A3_%E8%8A%B1%E7%B2%89%E5%83%A7&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Acolyte+of+Chayula",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 8,
+    "index_sha256": "720a4229719289af8ed99a62f5030ac97155620a00eb46772c25d1a11fcc24e0",
+    "character_response_sha256": "0b345892dbd12bbcf6c27d18bb7042caed19a16323a156554adeefb4a4c460c2",
+    "upstream_updated_utc": "2026-10-24T19:32:30.655415Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:25.804455Z",
+    "upstream_last_checked_utc": "2026-10-26T05:42:42.226156Z"
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Acolyte of Chayula",
+    "level": 100,
+    "main_skill": "Raise Shield"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "e7d2c75e356d21fd31ca96403450b7ecdef57235c70af24cc96544c5407fa03e",
+    "code_chars": 11784,
+    "decoded_bytes": 42108
+  }
+}

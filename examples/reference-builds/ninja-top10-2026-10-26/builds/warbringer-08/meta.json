@@ -1,0 +1,40 @@
+{
+  "name": "warbringer-08",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/N4V3_TV-4477/BombNave",
+    "account": "N4V3_TV-4477",
+    "character": "BombNave",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:58:50+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=N4V3_TV-4477&name=BombNave&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Warbringer",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 8,
+    "index_sha256": "258427a5d84e3e6a608fbd3c06b1a9eeeb961957587d00b5811bf9dacaf69532",
+    "character_response_sha256": "513e394f8eedba109428bbc5b8ed271eeec8c1825581cd587c9a57b30e2038d9",
+    "upstream_updated_utc": "2026-10-01T09:25:57.80032Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-24T06:58:28.074572Z"
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Warbringer",
+    "level": 98,
+    "main_skill": "Cluster Grenade"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 7,
+    "code_sha256": "f581dd6944a5583314389509adfa9de372dace757eab1520061ddd2d23836464",
+    "code_chars": 11228,
+    "decoded_bytes": 40900
+  }
+}

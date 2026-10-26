@@ -1,0 +1,40 @@
+{
+  "name": "invoker-08",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%E4%BD%A0%E7%9F%A5%E9%81%93%E6%98%AF%E8%B0%81%E6%BB%8B%E4%BD%A0%E7%9A%84-4036/%E8%A6%81%E6%88%90%E4%B8%BA%E6%B5%B7%E8%B4%BC%E7%8E%8B%E7%9A%84%E6%AD%A6%E5%9C%A3",
+    "account": "你知道是谁滋你的-4036",
+    "character": "要成为海贼王的武圣",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:52:26+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=%E4%BD%A0%E7%9F%A5%E9%81%93%E6%98%AF%E8%B0%81%E6%BB%8B%E4%BD%A0%E7%9A%84-4036&name=%E8%A6%81%E6%88%90%E4%B8%BA%E6%B5%B7%E8%B4%BC%E7%8E%8B%E7%9A%84%E6%AD%A6%E5%9C%A3&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Invoker",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 8,
+    "index_sha256": "8308d5c3a58ecd7f6d385839f7db95048e43af8bd76d2e216805da613c23cea3",
+    "character_response_sha256": "683748ae96322edf076b7fa19f8059d329c12945d47381b60ea11f0561a8db00",
+    "upstream_updated_utc": "2026-10-15T16:57:30.504219Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-24T09:13:29.810748Z"
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Invoker",
+    "level": 98,
+    "main_skill": "Grim Pillars"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 12,
+    "code_sha256": "9d80e8c1a463f8569e2ad51d264e7ad6d1e101a40e474e673b6206a570177af5",
+    "code_chars": 12056,
+    "decoded_bytes": 44826
+  }
+}

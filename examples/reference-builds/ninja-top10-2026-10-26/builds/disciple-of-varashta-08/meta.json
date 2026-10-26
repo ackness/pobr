@@ -1,0 +1,40 @@
+{
+  "name": "disciple-of-varashta-08",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Merkosh84-4189/Aynola",
+    "account": "Merkosh84-4189",
+    "character": "Aynola",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:50:50+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Merkosh84-4189&name=Aynola&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Disciple+of+Varashta",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 8,
+    "index_sha256": "5bc5eaaca1e7d08f53be7032332c6b71178712ac034e484d4163c918b26bb73d",
+    "character_response_sha256": "d5a6efb47b01f16d5907410e375cab1d2d92164393a47a4c197e0ae9c686aeb4",
+    "upstream_updated_utc": "2026-10-24T19:31:37.421158Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.881706Z",
+    "upstream_last_checked_utc": "2026-10-25T19:34:58.968282Z"
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Disciple of Varashta",
+    "level": 100,
+    "main_skill": "Navira, the Last Mirage"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "189df89893cd6861cb67f491d76f15ec3b4bc40c53a12c2b8a2bc6cfdeaa4fa6",
+    "code_chars": 13024,
+    "decoded_bytes": 51897
+  }
+}

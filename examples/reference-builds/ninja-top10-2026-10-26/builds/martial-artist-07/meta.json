@@ -1,0 +1,40 @@
+{
+  "name": "martial-artist-07",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/doiah-3785/WHOSERDADDee",
+    "account": "doiah-3785",
+    "character": "WHOSERDADDee",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:53:27+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=doiah-3785&name=WHOSERDADDee&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Martial+Artist",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 7,
+    "index_sha256": "02aea86a90fa6da528c053195c09e6f13ddd2745a1893a6dc6bffbf6ecf7e1a7",
+    "character_response_sha256": "ebb3df027c9e92c2fc8533d55055adc6b2a78c22e5f353c877156cb91c8af218",
+    "upstream_updated_utc": "2026-10-08T03:32:33.569786Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.811497Z",
+    "upstream_last_checked_utc": "2026-10-26T09:39:18.496877Z"
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Martial Artist",
+    "level": 100,
+    "main_skill": "Quarterstaff Strike"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 1,
+    "code_sha256": "4c9d5fc60b7b5203e8e646fcc725988b5984e6eba7871adfccef51522557ab71",
+    "code_chars": 14160,
+    "decoded_bytes": 59341
+  }
+}

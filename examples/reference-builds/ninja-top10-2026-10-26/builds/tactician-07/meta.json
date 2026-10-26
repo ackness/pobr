@@ -1,0 +1,40 @@
+{
+  "name": "tactician-07",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/HARDERBETTER-1606/%EC%98%A4%EB%9D%BC%EB%8B%B4%EB%8B%B9%EB%B3%B5%EC%B9%98",
+    "account": "HARDERBETTER-1606",
+    "character": "오라담당복치",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:57:43+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=HARDERBETTER-1606&name=%EC%98%A4%EB%9D%BC%EB%8B%B4%EB%8B%B9%EB%B3%B5%EC%B9%98&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Tactician",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 7,
+    "index_sha256": "165d7f878a35e33bc0ecb9545231966e2e0c96f7ec55bbd0e0afa3d8df6d717d",
+    "character_response_sha256": "0998454c167375ae576142bb6ddfe301b3ab6a74c6ec651c9c37f922b7c1f668",
+    "upstream_updated_utc": "2026-10-25T16:34:28.804513Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.763068Z",
+    "upstream_last_checked_utc": "2026-10-26T04:36:01.696283Z"
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Tactician",
+    "level": 100,
+    "main_skill": "Convalescence"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "58e068d097a786a755eb1df9db6e043cea40c7ba861430b85da08b62c15939d6",
+    "code_chars": 12408,
+    "decoded_bytes": 47347
+  }
+}

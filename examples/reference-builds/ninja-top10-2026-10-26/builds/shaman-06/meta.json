@@ -1,0 +1,40 @@
+{
+  "name": "shaman-06",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Jubei-4556/%EC%9C%A0%EC%B9%98%EB%AF%B8%EC%B9%98%EC%9E%94%EC%B9%98",
+    "account": "Jubei-4556",
+    "character": "유치미치잔치",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:55:32+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Jubei-4556&name=%EC%9C%A0%EC%B9%98%EB%AF%B8%EC%B9%98%EC%9E%94%EC%B9%98&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Shaman",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 6,
+    "index_sha256": "379de5bbac0249c2834fbbb8e871ab7eab47d1497078feb0678e5fe004184778",
+    "character_response_sha256": "5204a2ba674f13bd1640733310ffa204787ccf2b0c41878f6a1ae2514d1ad65a",
+    "upstream_updated_utc": "2026-10-03T02:27:36.81712Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-23T04:25:48.276359Z"
+  },
+  "character": {
+    "class": "Druid",
+    "ascendancy": "Shaman",
+    "level": 100,
+    "main_skill": "Comet"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 9,
+    "code_sha256": "329be05f4a65b62b65af1230398b9e0284f2d2edd6c24440daca9ad344c2a548",
+    "code_chars": 13688,
+    "decoded_bytes": 59718
+  }
+}

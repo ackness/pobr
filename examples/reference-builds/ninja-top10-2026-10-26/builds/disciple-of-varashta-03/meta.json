@@ -1,0 +1,40 @@
+{
+  "name": "disciple-of-varashta-03",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/KingFud-1121/KingFud_Djinn_FR",
+    "account": "KingFud-1121",
+    "character": "KingFud_Djinn_FR",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:50:34+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=KingFud-1121&name=KingFud_Djinn_FR&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Disciple+of+Varashta",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 3,
+    "index_sha256": "5bc5eaaca1e7d08f53be7032332c6b71178712ac034e484d4163c918b26bb73d",
+    "character_response_sha256": "b2d309638c803f022c7d450f4cb60ac11461a157f7b67f67de10fa651a2d20ca",
+    "upstream_updated_utc": "2026-10-05T05:26:19.295173Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.185552Z",
+    "upstream_last_checked_utc": "2026-10-23T22:28:38.114014Z"
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Disciple of Varashta",
+    "level": 100,
+    "main_skill": "Navira, the Last Mirage"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "8c540eb52065278987f39f782d6619cd8b31a688b28a37fbc95d2bda865768c9",
+    "code_chars": 11384,
+    "decoded_bytes": 49016
+  }
+}

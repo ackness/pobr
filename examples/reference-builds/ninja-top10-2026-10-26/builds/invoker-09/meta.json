@@ -1,0 +1,40 @@
+{
+  "name": "invoker-09",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Acveduck-7162/Gupalo",
+    "account": "Acveduck-7162",
+    "character": "Gupalo",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:52:30+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Acveduck-7162&name=Gupalo&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Invoker",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 9,
+    "index_sha256": "8308d5c3a58ecd7f6d385839f7db95048e43af8bd76d2e216805da613c23cea3",
+    "character_response_sha256": "b67dfc0ea8124e4dd6ef1b55a99a05986daf85fbf4045d86ab7215642462e87e",
+    "upstream_updated_utc": "2026-10-16T19:19:34.993186Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-25T09:53:48.953402Z"
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Invoker",
+    "level": 98,
+    "main_skill": "Comet"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 9,
+    "code_sha256": "f49de601df50953bdb2fd5357ef2eed1803ae54f38f48236d5c8731764bf1912",
+    "code_chars": 11768,
+    "decoded_bytes": 43411
+  }
+}

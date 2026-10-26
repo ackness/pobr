@@ -1,0 +1,40 @@
+{
+  "name": "disciple-of-varashta-01",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/sky5602-5664/%EB%B0%94_%EB%9D%BC_%EC%8B%9C%ED%83%80",
+    "account": "sky5602-5664",
+    "character": "바_라_시타",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:50:28+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=sky5602-5664&name=%EB%B0%94_%EB%9D%BC_%EC%8B%9C%ED%83%80&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Disciple+of+Varashta",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 1,
+    "index_sha256": "5bc5eaaca1e7d08f53be7032332c6b71178712ac034e484d4163c918b26bb73d",
+    "character_response_sha256": "ef6fdaf344a4b3d70ea55534838347f72dc773e8e2f119924a5c4e7e9cdca98d",
+    "upstream_updated_utc": "2026-09-14T00:27:23.35201Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.077977Z",
+    "upstream_last_checked_utc": "2026-10-25T15:39:18.488983Z"
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Disciple of Varashta",
+    "level": 100,
+    "main_skill": "Navira, the Last Mirage"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 3,
+    "code_sha256": "e259b75e438a4891437f1154923ad27f26b4cf33373bb1a84afe69c779e210c9",
+    "code_chars": 12172,
+    "decoded_bytes": 44476
+  }
+}

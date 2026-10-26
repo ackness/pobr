@@ -1,0 +1,40 @@
+{
+  "name": "tactician-05",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/YadaZ1-3154/BONVOYAGE_G",
+    "account": "YadaZ1-3154",
+    "character": "BONVOYAGE_G",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:57:37+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=YadaZ1-3154&name=BONVOYAGE_G&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Tactician",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 5,
+    "index_sha256": "165d7f878a35e33bc0ecb9545231966e2e0c96f7ec55bbd0e0afa3d8df6d717d",
+    "character_response_sha256": "7cf680daf42f062ce85298b95a1427eacfccf6192c351f9429fa3a95736815c6",
+    "upstream_updated_utc": "2026-09-28T17:57:49.025958Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.505995Z",
+    "upstream_last_checked_utc": "2026-10-21T19:20:51.145175Z"
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Tactician",
+    "level": 100,
+    "main_skill": "Pounce"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 3,
+    "code_sha256": "6be6e1789b8ac9c89e4f07843062fe53706c1d9004457506041cd937b451554c",
+    "code_chars": 12360,
+    "decoded_bytes": 46759
+  }
+}

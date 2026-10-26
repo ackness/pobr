@@ -1,0 +1,40 @@
+{
+  "name": "smith-of-kitava-09",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Gloomy8567-2988/%EB%B0%95%EC%95%84%EB%B9%A0_%EC%9B%8C%EB%A6%AC%EC%96%B4",
+    "account": "Gloomy8567-2988",
+    "character": "박아빠_워리어",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:56:13+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Gloomy8567-2988&name=%EB%B0%95%EC%95%84%EB%B9%A0_%EC%9B%8C%EB%A6%AC%EC%96%B4&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Smith+of+Kitava",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 9,
+    "index_sha256": "25fdb89549deb3ba14ddfee5e837bffbe12c6440602254acfcfb352492cd7fa3",
+    "character_response_sha256": "6ba749483d022afc5fbce20c50fd69361cf5db9caf337e7dc47223c8311c19af",
+    "upstream_updated_utc": "2026-10-25T15:52:57.337978Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-26T07:16:29.915729Z"
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Smith of Kitava",
+    "level": 99,
+    "main_skill": "Earthshatter"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 7,
+    "code_sha256": "470f2b6a84792954d00761cc1cf428d43145dc7583e019265ff56397c54642f0",
+    "code_chars": 14308,
+    "decoded_bytes": 52013
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "abyssal-lich-04",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/sugMinChorizo-2175/Arbiter_of_Treason",
+    "account": "sugMinChorizo-2175",
+    "character": "Arbiter_of_Treason",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:25+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=sugMinChorizo-2175&name=Arbiter_of_Treason&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Abyssal+Lich",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 4,
+    "index_sha256": "a136a96d92db7b38ac002bf5b7b97bc0296e57b46453b6f21c321c0f81b5ef84",
+    "character_response_sha256": "bd412ca2b57c14a12a6aaab775684b02ad150dfe2c5a79fc4ed5d49014f6be21",
+    "upstream_updated_utc": "2026-10-20T20:33:25.704994Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-25T06:43:46.9138Z"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Abyssal Lich",
+    "level": 100,
+    "main_skill": "Twister"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 10,
+    "code_sha256": "86117619f5a3758ba8d4d407b76f6142f433a3a7b72f608a5b44de7930ef6997",
+    "code_chars": 13088,
+    "decoded_bytes": 50403
+  }
+}

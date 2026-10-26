@@ -1,0 +1,40 @@
+{
+  "name": "martial-artist-08",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/a4201192-2993/%E5%8E%9A%E5%88%A9%E7%81%AB%E8%88%8C%E5%9C%96%E9%A8%B0",
+    "account": "a4201192-2993",
+    "character": "厚利火舌圖騰",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:53:30+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=a4201192-2993&name=%E5%8E%9A%E5%88%A9%E7%81%AB%E8%88%8C%E5%9C%96%E9%A8%B0&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Martial+Artist",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 8,
+    "index_sha256": "02aea86a90fa6da528c053195c09e6f13ddd2745a1893a6dc6bffbf6ecf7e1a7",
+    "character_response_sha256": "e268323da96b2f0444e608826764392e7a114b638ff504de0e33209f62494b9f",
+    "upstream_updated_utc": "2026-10-01T08:10:08.378469Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.843373Z",
+    "upstream_last_checked_utc": "2026-10-23T13:27:28.116026Z"
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Martial Artist",
+    "level": 100,
+    "main_skill": "Killing Palm"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 9,
+    "code_sha256": "5bcb4fb95a666493cc3de8f10abf21b70dec75eb85a9694498ae8d96619c21fc",
+    "code_chars": 13888,
+    "decoded_bytes": 55209
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "deadeye-10",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/verso_poe-0938/verso_FBR",
+    "account": "verso_poe-0938",
+    "character": "verso_FBR",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:50:24+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=verso_poe-0938&name=verso_FBR&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Deadeye",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 10,
+    "index_sha256": "44dc1747546e40f5915aeb30be9db6d4645ec00832ec89032e0a1b921892e920",
+    "character_response_sha256": "2491cc4bf46c3130caadabaf7f97678f947b1780e8e0aa615f352788009df59e",
+    "upstream_updated_utc": "2026-10-08T11:34:48.905901Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-25T07:39:08.627502Z"
+  },
+  "character": {
+    "class": "Ranger",
+    "ascendancy": "Deadeye",
+    "level": 100,
+    "main_skill": "Ice Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 3,
+    "code_sha256": "11aef82ed3d2116c4ae1c65bb73adab7de08a8fbe2b6b9f43168d18273554757",
+    "code_chars": 12016,
+    "decoded_bytes": 45282
+  }
+}

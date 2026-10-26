@@ -1,0 +1,40 @@
+{
+  "name": "ritualist-04",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Tomikpomik-4685/forbidden_vivod",
+    "account": "Tomikpomik-4685",
+    "character": "forbidden_vivod",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:54:53+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Tomikpomik-4685&name=forbidden_vivod&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Ritualist",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 4,
+    "index_sha256": "1bf623e2612a8554cab6044ab4874665d511824502a2f6f0018f34fd81bbe141",
+    "character_response_sha256": "3257c9805f39b3a4967ed49008e5edbcdac8b4f995a22738c91c3f8488616904",
+    "upstream_updated_utc": "2026-09-20T08:54:18.478467Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.281427Z",
+    "upstream_last_checked_utc": "2026-10-20T13:15:09.710373Z"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Ritualist",
+    "level": 100,
+    "main_skill": "Ice Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "606fdf400f8754e1f717f5d5bd074ab943ec6da2073268d67a6ef8b6cc71afec",
+    "code_chars": 11152,
+    "decoded_bytes": 40540
+  }
+}

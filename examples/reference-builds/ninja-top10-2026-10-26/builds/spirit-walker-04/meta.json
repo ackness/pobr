@@ -1,0 +1,40 @@
+{
+  "name": "spirit-walker-04",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Tsundere-9674/%E5%90%83%E6%88%91%E6%A3%92%E6%A3%92%E7%B3%96",
+    "account": "Tsundere-9674",
+    "character": "吃我棒棒糖",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:56:29+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Tsundere-9674&name=%E5%90%83%E6%88%91%E6%A3%92%E6%A3%92%E7%B3%96&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Spirit+Walker",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 4,
+    "index_sha256": "fffcc37facc276b84d7aabd4eb971c32710d1e7b5ce08ad4847d2a88e000f01c",
+    "character_response_sha256": "8606d904f3babae30cbad7fd96d7bf48b29f94ca2cb4f734092564f8cdd8c6c2",
+    "upstream_updated_utc": "2026-10-26T03:01:16.513334Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.953807Z",
+    "upstream_last_checked_utc": "2026-10-26T03:01:16.513334Z"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Spirit Walker",
+    "level": 100,
+    "main_skill": "Companion: Quadrilla Sergeant"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 16,
+    "code_sha256": "0e162c3af9ce6d5b75e34aa29db542dd98d857db24ffaec0f7959c9d81727b28",
+    "code_chars": 14940,
+    "decoded_bytes": 68804
+  }
+}

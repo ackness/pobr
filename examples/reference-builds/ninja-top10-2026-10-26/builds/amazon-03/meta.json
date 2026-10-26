@@ -1,0 +1,40 @@
+{
+  "name": "amazon-03",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/lxy1513027-0389/%E7%A4%BE%E4%BC%9A%E4%BD%A0%E5%A7%9C%E5%A7%90",
+    "account": "lxy1513027-0389",
+    "character": "社会你姜姐",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:33+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=lxy1513027-0389&name=%E7%A4%BE%E4%BC%9A%E4%BD%A0%E5%A7%9C%E5%A7%90&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Amazon",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 3,
+    "index_sha256": "d02a718c55fd5605947bb438dec47faa4ce6d241f076360e4494bf9a36333793",
+    "character_response_sha256": "832a4c3129e7521342a40ea4cd8f10ab1f1e55b4f284bb8966a3d753d91aad2a",
+    "upstream_updated_utc": "2026-09-21T13:58:46.347221Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:24.514956Z",
+    "upstream_last_checked_utc": "2026-10-22T19:24:58.137406Z"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Amazon",
+    "level": 99,
+    "main_skill": "Twister"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 16,
+    "code_sha256": "cd49ffe5745a920ef6cb6f789fef41112198305f550d14ef8f730b6873461da2",
+    "code_chars": 13040,
+    "decoded_bytes": 50807
+  }
+}

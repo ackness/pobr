@@ -1,0 +1,40 @@
+{
+  "name": "oracle-10",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/ambrxhome-3035/%E6%AF%94%E5%88%A9%E8%80%B6_%E6%81%90%E6%80%96%E5%9B%BE%E8%85%BE%E9%9F%B3%E5%8F%89%E8%BD%A6%E5%A4%B4",
+    "account": "ambrxhome-3035",
+    "character": "比利耶_恐怖图腾音叉车头",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:54:09+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=ambrxhome-3035&name=%E6%AF%94%E5%88%A9%E8%80%B6_%E6%81%90%E6%80%96%E5%9B%BE%E8%85%BE%E9%9F%B3%E5%8F%89%E8%BD%A6%E5%A4%B4&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Oracle",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 10,
+    "index_sha256": "e5277dadbd2cde3a7c72387529bcbcbbdb7e4e98007b75fb4935d80ef3360c47",
+    "character_response_sha256": "428a2ed701d6d784066addb5a3cb8fc71eb4f024d308767a58d05531f0c07f4e",
+    "upstream_updated_utc": "2026-10-01T08:15:33.044637Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:22.063427Z",
+    "upstream_last_checked_utc": "2026-10-24T10:34:52.678384Z"
+  },
+  "character": {
+    "class": "Druid",
+    "ascendancy": "Oracle",
+    "level": 100,
+    "main_skill": "Lightning Bolt"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "194ad494a031fdcd7504e312d26fca64a1da661eb6552b59a4b01316718e6eee",
+    "code_chars": 13456,
+    "decoded_bytes": 51560
+  }
+}

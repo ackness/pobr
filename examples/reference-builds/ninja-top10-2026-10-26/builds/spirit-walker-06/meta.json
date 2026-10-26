@@ -1,0 +1,40 @@
+{
+  "name": "spirit-walker-06",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/xbidanh-5362/FB_Bicarry",
+    "account": "xbidanh-5362",
+    "character": "FB_Bicarry",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:56:36+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=xbidanh-5362&name=FB_Bicarry&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Spirit+Walker",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 6,
+    "index_sha256": "fffcc37facc276b84d7aabd4eb971c32710d1e7b5ce08ad4847d2a88e000f01c",
+    "character_response_sha256": "cbe3b704d7d6bccce1fe499db2000cf367fc1b17f243d4b2ad7b81e9413d8527",
+    "upstream_updated_utc": "2026-09-30T16:08:04.288562Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:22.481064Z",
+    "upstream_last_checked_utc": "2026-10-25T14:18:59.140076Z"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Spirit Walker",
+    "level": 100,
+    "main_skill": "Twister"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 14,
+    "code_sha256": "806650f78e2d94ca7ff7708cd8da6ae5695c7414468bf77236007907609b9c18",
+    "code_chars": 14116,
+    "decoded_bytes": 58938
+  }
+}

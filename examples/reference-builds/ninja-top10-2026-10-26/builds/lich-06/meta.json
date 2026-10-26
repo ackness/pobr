@@ -1,0 +1,40 @@
+{
+  "name": "lich-06",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Ray007-1442/Powershot_B",
+    "account": "Ray007-1442",
+    "character": "Powershot_B",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:52:52+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Ray007-1442&name=Powershot_B&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Lich",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 6,
+    "index_sha256": "bf9399b55432e1c67fa82cfc371720d0d43a3187dbf10815aecca6c547c5738a",
+    "character_response_sha256": "8c859d0508d2eccca29f10fff76685ba20dd870492fbb01dfbf81ed2b6d2166b",
+    "upstream_updated_utc": "2026-10-06T20:17:36.540298Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:26.078804Z",
+    "upstream_last_checked_utc": "2026-10-25T10:33:40.472022Z"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Lich",
+    "level": 100,
+    "main_skill": "Raise Shield"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 3,
+    "code_sha256": "88fc4f78b46936f221f99c260775a5353e8484ee64a9bb75ccf7153bee94b3dd",
+    "code_chars": 12468,
+    "decoded_bytes": 48962
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "ritualist-10",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/2742157048-7934/%E7%9A%AE%E7%BA%B3%E6%96%AF%E6%92%9E%E5%A4%A7%E7%A6%8F",
+    "account": "2742157048-7934",
+    "character": "皮纳斯撞大福",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:55:12+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=2742157048-7934&name=%E7%9A%AE%E7%BA%B3%E6%96%AF%E6%92%9E%E5%A4%A7%E7%A6%8F&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Ritualist",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 10,
+    "index_sha256": "1bf623e2612a8554cab6044ab4874665d511824502a2f6f0018f34fd81bbe141",
+    "character_response_sha256": "18ee6afad556f3b12531c93e3535a24572ca93c05bc94f6fbc376ec597b763d9",
+    "upstream_updated_utc": "2026-09-27T13:53:03.162016Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.908123Z",
+    "upstream_last_checked_utc": "2026-10-19T19:12:44.721574Z"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Ritualist",
+    "level": 100,
+    "main_skill": "Twister"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 10,
+    "code_sha256": "07f50c702f40a92fb1fc5595e809bae11a1f7c9e26e8c4f7580a28da195f2698",
+    "code_chars": 13128,
+    "decoded_bytes": 49985
+  }
+}

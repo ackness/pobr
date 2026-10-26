@@ -1,0 +1,40 @@
+{
+  "name": "oracle-07",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Cozie-5531/TooBrokeForTempo",
+    "account": "Cozie-5531",
+    "character": "TooBrokeForTempo",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:53:59+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Cozie-5531&name=TooBrokeForTempo&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Oracle",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 7,
+    "index_sha256": "e5277dadbd2cde3a7c72387529bcbcbbdb7e4e98007b75fb4935d80ef3360c47",
+    "character_response_sha256": "795eb1cc4fd48a007935af9cba95b739e7e6cc7f02018a92d840e6da4ee7f9ba",
+    "upstream_updated_utc": "2026-10-24T03:00:23.409621Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.767148Z",
+    "upstream_last_checked_utc": "2026-10-25T10:47:02.467482Z"
+  },
+  "character": {
+    "class": "Druid",
+    "ascendancy": "Oracle",
+    "level": 100,
+    "main_skill": "Lightning Bolt"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "0d590ab9c8136b654d825c9a58945891f22bba361e132c1154c5e2fa1c351787",
+    "code_chars": 12156,
+    "decoded_bytes": 46314
+  }
+}

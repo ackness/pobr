@@ -1,0 +1,40 @@
+{
+  "name": "smith-of-kitava-03",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Lugi-3501/BIG_MACE_WINDU",
+    "account": "Lugi-3501",
+    "character": "BIG_MACE_WINDU",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:55:54+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Lugi-3501&name=BIG_MACE_WINDU&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Smith+of+Kitava",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 3,
+    "index_sha256": "25fdb89549deb3ba14ddfee5e837bffbe12c6440602254acfcfb352492cd7fa3",
+    "character_response_sha256": "b2334c00a8a8d70c149eca2e54d4cd47da1347934853fa6fc6adc96c04300457",
+    "upstream_updated_utc": "2026-10-25T15:50:35.746015Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-26T07:13:45.249653Z"
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Smith of Kitava",
+    "level": 100,
+    "main_skill": "Frostbolt"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 3,
+    "code_sha256": "7f12a37162139e303ed6b8c8172cc11768dca3fb3a9c7a71c39869bb16a4aef6",
+    "code_chars": 12564,
+    "decoded_bytes": 42859
+  }
+}

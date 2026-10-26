@@ -1,0 +1,40 @@
+{
+  "name": "abyssal-lich-01",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/lagannpe-9805/%E9%87%8D%E7%94%9F%E4%B9%8B%E6%9C%80%E9%98%B4%E6%9A%97%E8%9C%B7%E7%BC%A9%E7%9A%84%E8%9B%86",
+    "account": "lagannpe-9805",
+    "character": "重生之最阴暗蜷缩的蛆",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:24+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=lagannpe-9805&name=%E9%87%8D%E7%94%9F%E4%B9%8B%E6%9C%80%E9%98%B4%E6%9A%97%E8%9C%B7%E7%BC%A9%E7%9A%84%E8%9B%86&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Abyssal+Lich",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 1,
+    "index_sha256": "a136a96d92db7b38ac002bf5b7b97bc0296e57b46453b6f21c321c0f81b5ef84",
+    "character_response_sha256": "35ada7624fa297985b30795721010f0f47d9a9c8e781d409e51d6c8149f7b82d",
+    "upstream_updated_utc": "2026-10-14T17:19:20.510246Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.891576Z",
+    "upstream_last_checked_utc": "2026-10-25T10:33:38.743795Z"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Abyssal Lich",
+    "level": 100,
+    "main_skill": "Comet"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 5,
+    "code_sha256": "2e634b6c5f2d931f8433f2eb5badfef11d5e4d18bf799055228fc786b38bdca3",
+    "code_chars": 13792,
+    "decoded_bytes": 56439
+  }
+}

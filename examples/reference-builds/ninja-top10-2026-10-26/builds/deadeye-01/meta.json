@@ -1,0 +1,40 @@
+{
+  "name": "deadeye-01",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/ADDii-3319/AddiDeadeyeiRemastered",
+    "account": "ADDii-3319",
+    "character": "AddiDeadeyeiRemastered",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:46+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=ADDii-3319&name=AddiDeadeyeiRemastered&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Deadeye",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 1,
+    "index_sha256": "44dc1747546e40f5915aeb30be9db6d4645ec00832ec89032e0a1b921892e920",
+    "character_response_sha256": "3fb279144c75511d85908d32cab063da41b0474554d08e3434eb82246aa8d31d",
+    "upstream_updated_utc": "2026-09-17T01:51:42.763077Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.213027Z",
+    "upstream_last_checked_utc": "2026-10-24T18:22:19.918517Z"
+  },
+  "character": {
+    "class": "Ranger",
+    "ascendancy": "Deadeye",
+    "level": 100,
+    "main_skill": "Twister"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 11,
+    "code_sha256": "ec614732a64ecc717351cabee7a0d3211410249a3cba1a75efc3996526551af4",
+    "code_chars": 14000,
+    "decoded_bytes": 56952
+  }
+}

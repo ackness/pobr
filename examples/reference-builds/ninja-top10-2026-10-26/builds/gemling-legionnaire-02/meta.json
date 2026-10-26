@@ -1,0 +1,40 @@
+{
+  "name": "gemling-legionnaire-02",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/dota2enjoyer-1809/KingPinUwU_Youtube",
+    "account": "dota2enjoyer-1809",
+    "character": "KingPinUwU_Youtube",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:51:03+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=dota2enjoyer-1809&name=KingPinUwU_Youtube&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Gemling+Legionnaire",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 2,
+    "index_sha256": "ad135f5c2387bc24d4bea51e0e42e8c659af8d6055c720e85af447339cf8f0f7",
+    "character_response_sha256": "dfcaa34ef820ad8dfe3dd82ec7d7259cd3a461468d32e077c0ee4bd53153afe0",
+    "upstream_updated_utc": "2026-10-17T16:06:12.031084Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.053794Z",
+    "upstream_last_checked_utc": "2026-10-26T09:27:37.445259Z"
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Gemling Legionnaire",
+    "level": 100,
+    "main_skill": "Ember Fusillade"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "61dabb9aed2f4fc451eb6b6aa807f536765e5753c799ec55788166ac9e28a8db",
+    "code_chars": 13564,
+    "decoded_bytes": 52191
+  }
+}

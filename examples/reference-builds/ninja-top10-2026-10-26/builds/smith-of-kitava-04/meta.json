@@ -1,0 +1,40 @@
+{
+  "name": "smith-of-kitava-04",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Ashtray_xyz-7977/HelbrymSHide",
+    "account": "Ashtray_xyz-7977",
+    "character": "HelbrymSHide",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:55:57+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Ashtray_xyz-7977&name=HelbrymSHide&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Smith+of+Kitava",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 4,
+    "index_sha256": "25fdb89549deb3ba14ddfee5e837bffbe12c6440602254acfcfb352492cd7fa3",
+    "character_response_sha256": "16b1ef897464ccf63e7032e03e4acab4e9ba30889b6d4ea18fda6552cb570862",
+    "upstream_updated_utc": "2026-10-12T13:12:22.964671Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-25T09:52:02.847509Z"
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Smith of Kitava",
+    "level": 99,
+    "main_skill": "Shield Wall"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 6,
+    "code_sha256": "cd1883210414270ed299eab92d27086696573ffa42e1557d5a7755d2aa0542b7",
+    "code_chars": 13524,
+    "decoded_bytes": 50543
+  }
+}

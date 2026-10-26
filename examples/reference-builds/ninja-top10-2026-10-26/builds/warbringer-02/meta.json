@@ -1,0 +1,40 @@
+{
+  "name": "warbringer-02",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/DerTolleW0ll3-0628/WarBringerWoLLe",
+    "account": "DerTolleW0ll3-0628",
+    "character": "WarBringerWoLLe",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:58:31+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=DerTolleW0ll3-0628&name=WarBringerWoLLe&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Warbringer",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 2,
+    "index_sha256": "258427a5d84e3e6a608fbd3c06b1a9eeeb961957587d00b5811bf9dacaf69532",
+    "character_response_sha256": "3f6c549eac66cc045cf430653b3ac44aa9e1e1931065c8533cda1deffb5ecb2b",
+    "upstream_updated_utc": "2026-10-20T03:54:56.342624Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-24T14:55:09.292913Z"
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Warbringer",
+    "level": 100,
+    "main_skill": "Rapid Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 6,
+    "code_sha256": "ebac3c1cddf16ef997f9045520f65f489dc58bcd18aa439a90d02bb93102195e",
+    "code_chars": 11824,
+    "decoded_bytes": 42413
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "lich-08",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/snoekgrifod-8512/dcmgggngu",
+    "account": "snoekgrifod-8512",
+    "character": "dcmgggngu",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:52:58+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=snoekgrifod-8512&name=dcmgggngu&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Lich",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 8,
+    "index_sha256": "bf9399b55432e1c67fa82cfc371720d0d43a3187dbf10815aecca6c547c5738a",
+    "character_response_sha256": "a81334680d9369cc3c0ac70b62095c708dff05f0a2b461b70a0915dca46165a6",
+    "upstream_updated_utc": "2026-10-10T00:05:24.415421Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-23T00:51:48.263812Z"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Lich",
+    "level": 100,
+    "main_skill": "Wolf Pack"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 5,
+    "code_sha256": "f13159e04270b331f1175f52df78a61d7f99b422c7f9c13645a4c43f8583d681",
+    "code_chars": 10508,
+    "decoded_bytes": 35099
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "smith-of-kitava-01",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/nerpitiwpitiwpitiwpitiw-5480/Nerpitiwpitiwptwptw",
+    "account": "nerpitiwpitiwpitiwpitiw-5480",
+    "character": "Nerpitiwpitiwptwptw",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:55:48+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=nerpitiwpitiwpitiwpitiw-5480&name=Nerpitiwpitiwptwptw&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Smith+of+Kitava",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 1,
+    "index_sha256": "25fdb89549deb3ba14ddfee5e837bffbe12c6440602254acfcfb352492cd7fa3",
+    "character_response_sha256": "2b7c2e68315882b694b6c4215e5957b9231f9e41e721e42b7aedf92b11e85c96",
+    "upstream_updated_utc": "2026-10-23T22:54:10.177697Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:25.662482Z",
+    "upstream_last_checked_utc": "2026-10-25T06:48:12.151289Z"
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Smith of Kitava",
+    "level": 100,
+    "main_skill": "Detonate Dead"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 1,
+    "code_sha256": "5ea70fb29dc30c06b1ffffc1591c6d50217425ece0738b32e0edf864a8e02e6b",
+    "code_chars": 13168,
+    "decoded_bytes": 48584
+  }
+}

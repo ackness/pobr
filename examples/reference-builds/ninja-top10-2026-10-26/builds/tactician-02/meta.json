@@ -1,0 +1,40 @@
+{
+  "name": "tactician-02",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%EB%8B%88%EC%9A%B0%ED%8A%B8-6957/%EB%8B%A4%EB%9E%98%EB%A6%AC_%EB%B9%85%ED%8D%BC%ED%82%B9%EA%B1%B4",
+    "account": "니우트-6957",
+    "character": "다래리_빅퍼킹건",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:57:27+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=%EB%8B%88%EC%9A%B0%ED%8A%B8-6957&name=%EB%8B%A4%EB%9E%98%EB%A6%AC_%EB%B9%85%ED%8D%BC%ED%82%B9%EA%B1%B4&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Tactician",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 2,
+    "index_sha256": "165d7f878a35e33bc0ecb9545231966e2e0c96f7ec55bbd0e0afa3d8df6d717d",
+    "character_response_sha256": "1b7561f34755399af53fa98f7f393294256bec424fbad029f05d00c8105645ce",
+    "upstream_updated_utc": "2026-09-29T06:00:05.561134Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.197608Z",
+    "upstream_last_checked_utc": "2026-10-24T04:29:32.255007Z"
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Tactician",
+    "level": 100,
+    "main_skill": "Explosive Spear"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 17,
+    "code_sha256": "07a536968dc232d2df0b1b21feb59dfccc7754922a267d2bfc1ff82a97631488",
+    "code_chars": 14316,
+    "decoded_bytes": 59087
+  }
+}

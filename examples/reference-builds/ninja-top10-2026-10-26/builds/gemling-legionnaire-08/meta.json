@@ -1,0 +1,40 @@
+{
+  "name": "gemling-legionnaire-08",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/zclzcl881204-7657/GhostGod",
+    "account": "zclzcl881204-7657",
+    "character": "GhostGod",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:51:22+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=zclzcl881204-7657&name=GhostGod&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Gemling+Legionnaire",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 8,
+    "index_sha256": "ad135f5c2387bc24d4bea51e0e42e8c659af8d6055c720e85af447339cf8f0f7",
+    "character_response_sha256": "fa1ee08611011ac7a3899de3e7db3e2ce2d152b756a4bc0dc1cf9cf565642af8",
+    "upstream_updated_utc": "2026-10-20T12:28:37.654197Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.301358Z",
+    "upstream_last_checked_utc": "2026-10-24T22:31:59.125402Z"
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Gemling Legionnaire",
+    "level": 100,
+    "main_skill": "Spark"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 7,
+    "code_sha256": "2cb238bed7e79480cd21559a74c2de11ddc9ded740472dcd91b6495f75d42d86",
+    "code_chars": 14400,
+    "decoded_bytes": 58269
+  }
+}

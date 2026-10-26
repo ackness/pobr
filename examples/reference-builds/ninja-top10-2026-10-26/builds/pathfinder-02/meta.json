@@ -1,0 +1,40 @@
+{
+  "name": "pathfinder-02",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/hxltdk-3168/hxxxxxxxxh",
+    "account": "hxltdk-3168",
+    "character": "hxxxxxxxxh",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:54:15+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=hxltdk-3168&name=hxxxxxxxxh&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Pathfinder",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 2,
+    "index_sha256": "97e6a76625b8f5a57cb940932b16eaf3861b666a35991aad6a40c63ef82a8d03",
+    "character_response_sha256": "3724a47b55f3293602f5b221b91d4b4a06d6918e96cf34b87f40b90b125bca99",
+    "upstream_updated_utc": "2026-10-23T13:53:53.186967Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.373375Z",
+    "upstream_last_checked_utc": "2026-10-26T06:45:15.542051Z"
+  },
+  "character": {
+    "class": "Ranger",
+    "ascendancy": "Pathfinder",
+    "level": 100,
+    "main_skill": "Convalescence"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "437899de20c90f8d785c153a3698767bb39fef777c5494fedffe3947bb509207",
+    "code_chars": 9992,
+    "decoded_bytes": 33949
+  }
+}

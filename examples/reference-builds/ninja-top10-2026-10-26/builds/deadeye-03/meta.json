@@ -1,0 +1,40 @@
+{
+  "name": "deadeye-03",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/WOualey-0844/BowberKurw%C3%A0",
+    "account": "WOualey-0844",
+    "character": "BowberKurwà",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:50:02+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=WOualey-0844&name=BowberKurw%C3%A0&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Deadeye",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 3,
+    "index_sha256": "44dc1747546e40f5915aeb30be9db6d4645ec00832ec89032e0a1b921892e920",
+    "character_response_sha256": "279b0da80cdb323828c28e47489278881dcbf32c8a92a797ac7c6eddc8279bde",
+    "upstream_updated_utc": "2026-09-25T18:42:44.301757Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.319356Z",
+    "upstream_last_checked_utc": "2026-10-23T16:28:18.040221Z"
+  },
+  "character": {
+    "class": "Ranger",
+    "ascendancy": "Deadeye",
+    "level": 100,
+    "main_skill": "Ice Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 10,
+    "code_sha256": "c5b02d971ffd19dbef6a54388acaf27d6184d9a7e903afe836ed919e6b3d83f2",
+    "code_chars": 11556,
+    "decoded_bytes": 43338
+  }
+}

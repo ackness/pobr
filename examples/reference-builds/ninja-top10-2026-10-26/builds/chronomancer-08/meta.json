@@ -1,0 +1,40 @@
+{
+  "name": "chronomancer-08",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/ZlIe-4730/Tryon_FR",
+    "account": "ZlIe-4730",
+    "character": "Tryon_FR",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:44+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=ZlIe-4730&name=Tryon_FR&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Chronomancer",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 8,
+    "index_sha256": "979a57de6925bde9d636cd7cd38f75ac920850eac435a828767a09b910794872",
+    "character_response_sha256": "e2614f6645e838cfde656313bd56dc7694b268e79348b5e3309019767e0e93e1",
+    "upstream_updated_utc": "2026-10-09T07:31:58.034387Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-24T10:10:45.107527Z"
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Chronomancer",
+    "level": 99,
+    "main_skill": "Comet"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "5c6e2b553836c714e00d01968e1c8ad53ff64ae4e321c712ffec68d8b73b6815",
+    "code_chars": 12444,
+    "decoded_bytes": 48589
+  }
+}
