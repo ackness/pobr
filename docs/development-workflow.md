@@ -15,11 +15,14 @@ Web 初次准备见 [Web README](../web/README.md)，数据更新见 [pipeline/R
 | Node | 本地 `mise.toml` 与 CI 均指定 Node 26 |
 | pnpm | 本地 mise 与 CI 仅固定稳定主版本 `12`；运行 `mise install` 配置。依赖 lockfile 固定解析结果，更新直接依赖时保持原主版本，不采用预发布版本 |
 | WASM | `wasm32-unknown-unknown` target + wasm-pack（本地 mise 钉定 0.15.0，CI 用 taiki-e/install-action 取最新版），仅构建 Web 引擎时需要 |
-| LuaJIT | vendor 抽取、oracle 及相关工具测试需要；普通计算使用已入库数据 |
+| LuaJIT | oracle 需要支持 `+=` 的 runtime；`mise run deps` 按 PoB2 Dockerfile 的 upstream commit 编译并缓存，见 [oracle setup](../tools/pob2-oracle/README.md#依赖--阻塞解决)。普通计算使用已入库数据 |
 
 `mise run setup` 在新机器上一次装好 Rust（mise 读取 `rust-toolchain.toml`，不在 `mise.toml`
 重复钉版本）、`wasm32-unknown-unknown` target、wasm-pack 0.15.0、Node/pnpm 和 `web/` 依赖；
 重复运行是安全的。LuaJIT 与 vendor 不在其中，仍由 `mise run deps` / `mise run vendor` 按需安装。
+`deps` 需要 Git、make、C 编译器，缓存 runtime 到 `${XDG_CACHE_HOME:-$HOME/.cache}/pobr/runtimes/`，
+不替换系统 LuaJIT。运行 Rust vendor 抽取时可设
+`POBR_LUAJIT="$(bash devs/scripts/pob2-luajit.sh resolve)"`；oracle runner 自动选择兼容的缓存。
 首次 `build-wasm` 还会编译一次 `wasm-bindgen-cli`，wasm-pack 会缓存。
 `mise run status` 查看环境就绪态。已有可用环境时跳过 bootstrap 和安装，
 不为日常测试更新工具链或重复构建整个 workspace。

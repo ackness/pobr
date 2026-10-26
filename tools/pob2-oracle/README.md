@@ -20,8 +20,23 @@ special-mods / config-options，`extract_lua::headless_lua_path`）用同一条 
 `shim/` 时 PoB2 的主模块加载失败，报错是 `modLib.parseMod missing after bootstrap`。
 `HeadlessWrapper.lua` 已经把 `lcurl.safe` stub 成 no-op，所以不需要 lcurl。
 
-需要：
-- `luajit`（默认 `/opt/homebrew/bin/luajit`，可用 `LUAJIT=...` 覆盖）
+需要支持 compound assignment（例如 `+=`）的 LuaJIT；仅 `luajit -v` 成功不代表兼容。
+当前 PoB2 pin `bb52d6b3` 的 [Dockerfile](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/blob/bb52d6b368307457eb9c54bb13f1829993d390b1/Dockerfile)
+使用 upstream LuaJIT `2460b3ff93a1c955de3d62cfc825de7d68dc272e`。
+旧版 Ubuntu / Homebrew LuaJIT 会在 `Modules/Main.lua` 报 ` '=' expected near '+'`。
+
+运行 `mise run deps` 可从该 commit 编译并缓存到
+`${XDG_CACHE_HOME:-$HOME/.cache}/pobr/runtimes/`，需要 Git、make 和 C 编译器，
+无需 sudo，不覆盖系统 LuaJIT；重复运行复用兼容的 runtime。
+两个 oracle runner 均按 `LUAJIT` → `POBR_LUAJIT` → 缓存 → Homebrew → PATH
+解析，并实际检查 `+=`。显式指定但无效的路径会报错，不会静默回退。
+`mise run status` 只检查，不安装。Rust 抽取工具可复用同一 runtime：
+
+```bash
+export POBR_LUAJIT="$(bash devs/scripts/pob2-luajit.sh resolve)"
+```
+
+独立 worktree 可设 `POBR_VENDOR_ROOT=/path/to/main/repo/vendor` 读取已有 vendor。
 
 ## 用法
 
