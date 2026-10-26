@@ -550,7 +550,8 @@ fn apply_main_hand_share(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env)
     if !cfg.flags.intersects(ModFlags::ATTACK) || minion.mod_db.flag(cfg, "HiddenMonster") {
         return;
     }
-    let companion_share = if minion.mod_db.flag(cfg, "GainMainHandDmgFromParent") {
+    let gains_companion_share = minion.mod_db.flag(cfg, "GainMainHandDmgFromParent");
+    let companion_share = if gains_companion_share {
         env.player
             .mod_db
             .get_multiplier("MainHandDamageToAllies", &env.cfg)
@@ -577,25 +578,76 @@ fn apply_main_hand_share(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env)
     if share <= 0.0 {
         return;
     }
-    let origin = || {
-        ModifierSource::new(SourceId::new(SourceKind::Derived, "minion.main_hand_share"))
-            .with_raw_text(format!("{share}% of your main hand Weapon's damage"))
+    // The aggregate queries above preserve multiplier precedence and source
+    // read tracking. Keep their evaluated contributions separate for details,
+    // including their original rule, parent source and raw game text.
+    let base_sources = |db: &ModDb, scope: &CalcConfig, name: &str| {
+        db.evaluate_named(scope, &ModName::from(name))
+            .into_iter()
+            .filter(|row| row.active && row.modifier.mod_type == ModType::Base)
+            .filter_map(|row| Some((row.modifier.clone(), row.value?)))
+            .collect::<Vec<_>>()
     };
-    for &(kind, min, max) in &env.main_hand_weapon_damage {
-        minion.mod_db.add_list([
-            Modifier::number(
-                format!("{kind:?}DamageMin"),
-                ModType::Base,
-                min * share / 100.0,
-            )
-            .with_origin(origin()),
-            Modifier::number(
-                format!("{kind:?}DamageMax"),
-                ModType::Base,
-                max * share / 100.0,
-            )
-            .with_origin(origin()),
-        ]);
+    let mut sources = Vec::new();
+    if gains_companion_share {
+        let name = "Multiplier:MainHandDamageToAllies";
+        let overridden = env
+            .player
+            .mod_db
+            .evaluate_named(&env.cfg, &ModName::from(name))
+            .into_iter()
+            .rev()
+            .filter(|row| row.active && row.modifier.mod_type == ModType::Override)
+            .find_map(|row| {
+                Some((
+                    row.modifier.clone(),
+                    row.modifier.effective_number(&env.cfg)?,
+                ))
+            });
+        if let Some(source) = overridden {
+            sources.push(source);
+        } else {
+            sources.extend(base_sources(&env.player.mod_db, &env.cfg, name));
+            let configured = env.cfg.multiplier("MainHandDamageToAllies");
+            if configured != 0.0 {
+                sources.push((
+                    Modifier::number(name, ModType::Base, configured).with_origin(
+                        ModifierSource::new(SourceId::new(
+                            SourceKind::Config,
+                            "MainHandDamageToAllies",
+                        )),
+                    ),
+                    configured,
+                ));
+            }
+        }
+    }
+    if in_presence {
+        sources.extend(base_sources(&minion.mod_db, cfg, "MainHandDamageToAllies"));
+    }
+    for (source, percent) in sources {
+        if percent == 0.0 {
+            continue;
+        }
+        for &(kind, min, max) in &env.main_hand_weapon_damage {
+            for (bound, damage) in [("Min", min), ("Max", max)] {
+                let mut added = source.clone();
+                added.name = format!("{kind:?}Damage{bound}").into();
+                added.mod_type = ModType::Base;
+                added.value = ModValue::Number(damage * percent / 100.0);
+                // Eligibility and scaling were evaluated in the source's
+                // actor scope. Do not reapply them to the recipient's flat
+                // damage; the ExtraAura pass already scaled aura effect.
+                added.flags = ModFlags::NONE;
+                added.keyword_flags = KeywordFlags::NONE;
+                added.tags.clear();
+                if let Some(origin) = &mut added.origin {
+                    origin.stat_id = Some(added.name.clone());
+                    origin.mod_type = Some(ModType::Base);
+                }
+                minion.mod_db.add_mod(added);
+            }
+        }
     }
 }
 

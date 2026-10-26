@@ -1311,6 +1311,235 @@ Hardwood Spear
 }
 
 #[test]
+fn main_hand_shares_retain_each_game_source_in_minion_details() {
+    use pobr_build::calculate_with_data_session;
+    use pobr_data::{item::EquipmentSlot, passive_tree::NodeId, prelude::*};
+
+    let data = load_data();
+    for summon in ["RaiseZombiePlayer", "SummonAzmerianWolfPlayer"] {
+        let mut build = pobr_build::parse_build(&format!(r#"<PathOfBuilding2>
+<Build level="90" className="Mercenary" mainSocketGroup="1"/>
+<Skills><Skill><Gem skillId="FireballPlayer" level="20"/></Skill>
+<Skill><Gem skillId="{summon}" level="20"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Wooden Club
+Adds 100 to 100 Physical Damage
+</Item><Item id="2">Rarity: NORMAL
+Gold Ring
+Companions gain added Attack Damage equal to 60% of your main hand Weapon's Damage
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/><Slot name="Ring 1" itemId="2"/></ItemSet></Items>
+</PathOfBuilding2>"#)).unwrap();
+        build.tree.allocated_nodes.push(NodeId(16249));
+        let weapon = pobr_core::skill_env::weapon_item_contribution(
+            &build.items[&EquipmentSlot::Weapon1],
+            data,
+        )
+        .unwrap();
+        let session = calculate_with_data_session(&build, data, &default_opts()).unwrap();
+        let aura = session
+            .mods_named("ExtraAura")
+            .into_iter()
+            .find(|m| {
+                m.origin
+                    .as_ref()
+                    .is_some_and(|o| o.source_id.id == "node.16249")
+            })
+            .expect("Watch How I Do It aura source");
+        let legacy = session.mods_named("Multiplier:MainHandDamageToAllies");
+        assert_eq!(legacy.len(), 1);
+        let pobr_core::ModValue::NestedMods(payload) = &aura.value else {
+            panic!("Watch How I Do It must carry an ally payload");
+        };
+        let aura_text = payload
+            .iter()
+            .find(|m| m.name.as_str() == "MainHandDamageToAllies")
+            .unwrap()
+            .source
+            .as_ref()
+            .or(aura.source.as_ref());
+        assert_ne!(
+            aura.origin.as_ref().unwrap().source_id,
+            legacy[0].origin.as_ref().unwrap().source_id
+        );
+        for (stat, weapon_damage) in [
+            ("PhysicalDamageMin", weapon.phys_min),
+            ("PhysicalDamageMax", weapon.phys_max),
+        ] {
+            let rows = session.minion_stat_mods(0, stat);
+            for (source, percent, source_text) in [
+                (aura, 25.0, aura_text),
+                (legacy[0], 60.0, legacy[0].source.as_ref()),
+            ] {
+                let expected = source
+                    .origin
+                    .clone()
+                    .unwrap()
+                    .with_stat(stat)
+                    .with_mod_type(ModType::Base);
+                let actual: Vec<_> = rows
+                    .iter()
+                    .filter(|r| {
+                        r.modifier
+                            .origin
+                            .as_ref()
+                            .is_some_and(|o| o.source_id == expected.source_id)
+                    })
+                    .collect();
+                if percent == 60.0 && summon == "RaiseZombiePlayer" {
+                    assert!(
+                        actual.is_empty(),
+                        "Catha's companion grant cannot reach a zombie"
+                    );
+                    continue;
+                }
+                assert_eq!(
+                    actual.len(),
+                    1,
+                    "shared damage retains each granting source once"
+                );
+                let actual = actual[0];
+                assert!(actual.active);
+                assert_eq!(actual.value, Some(weapon_damage * percent / 100.0));
+                assert_eq!(actual.modifier.origin.as_ref(), Some(&expected));
+                assert_eq!(actual.modifier.source.as_ref(), source_text);
+                assert_eq!(actual.modifier.exporter_rule, source.exporter_rule);
+                // Also require the source text itself, not merely a matching id.
+                assert!(
+                    expected
+                        .raw_text
+                        .as_ref()
+                        .is_some_and(|text| text.to_lowercase().contains("main hand"))
+                );
+            }
+            assert!(rows.iter().all(|r| {
+                r.modifier
+                    .origin
+                    .as_ref()
+                    .is_none_or(|o| o.source_id.id != "minion.main_hand_share")
+            }));
+        }
+    }
+}
+
+#[test]
+fn main_hand_shares_evaluate_sources_once_in_their_own_actor_scope() {
+    use pobr_core::calc::{CalculationSession, MinimalInput, MinionOrigin, MinionSkill};
+    use pobr_core::{CalcConfig, ModTag, ModValue, Modifier};
+    use pobr_data::{minion::minion_def_zombie, prelude::*};
+
+    for inactive in [false, true] {
+        let source = |id: &str| {
+            ModifierSource::new(SourceId::new(SourceKind::ItemAffix, id))
+                .with_parent(SourceId::new(SourceKind::Item, "item.test"))
+                .with_slot("weapon1")
+                .with_raw_text(format!("{id}: original shared weapon damage text"))
+        };
+        let legacy = Modifier::number("Multiplier:MainHandDamageToAllies", ModType::Base, 15.0)
+            .with_flags(ModFlags::SPELL)
+            .with_tag(ModTag::multiplier("ShareUnits", 1.0, None))
+            .with_tag(ModTag::condition("ShareEnabled", false))
+            .with_source("legacy original source")
+            .with_origin(source("legacy"));
+        let aura = Modifier::new(
+            "ExtraAura",
+            ModType::List,
+            ModValue::NestedMods(vec![
+                Modifier::number("MainHandDamageToAllies", ModType::Base, 10.0)
+                    .with_flags(ModFlags::ATTACK)
+                    .with_tag(ModTag::multiplier("ShareUnits", 1.0, None))
+                    .with_tag(ModTag::condition("ShareEnabled", false)),
+            ]),
+        )
+        .with_source("aura original source")
+        .with_origin(source("aura"));
+        let mut session = CalculationSession::new(MinimalInput {
+            base_life: 1000.0,
+            base_hit_min: 100.0,
+            base_hit_max: 100.0,
+            base_action_rate: 1.0,
+            ..Default::default()
+        })
+        .with_config(
+            CalcConfig::spell()
+                .with_multiplier("ShareUnits", 2.0)
+                .with_condition("ShareEnabled", !inactive),
+        );
+        session.set_main_hand_weapon_damage_components(vec![
+            (DamageType::Physical, 100.0, 200.0),
+            (DamageType::Cold, 40.0, 80.0),
+        ]);
+        session.add_modifiers([
+            legacy.clone(),
+            aura.clone(),
+            Modifier::number("BuffEffectOnSelf", ModType::Inc, 300.0),
+        ]);
+        session.add_minion_from_def(
+            &minion_def_zombie(),
+            20,
+            1,
+            Vec::new(),
+            vec![
+                Modifier::flag("GainMainHandDmgFromParent"),
+                Modifier::number("BuffEffectOnSelf", ModType::Inc, 100.0),
+            ],
+            AttributeInfusion::default(),
+            MinionOrigin {
+                skill: MinionSkill {
+                    id: "MinionMeleeStep".into(),
+                    types: vec!["Attack".into(), "Melee".into()],
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        );
+        session.perform_minimal().unwrap();
+        for (stat, weapon_damage) in [
+            ("PhysicalDamageMin", 100.0),
+            ("PhysicalDamageMax", 200.0),
+            ("ColdDamageMin", 40.0),
+            ("ColdDamageMax", 80.0),
+        ] {
+            let rows = session.minion_stat_mods(0, stat);
+            for (source, percent) in [(&legacy, 30.0), (&aura, 40.0)] {
+                let origin = source
+                    .origin
+                    .clone()
+                    .unwrap()
+                    .with_stat(stat)
+                    .with_mod_type(ModType::Base);
+                let actual = rows.iter().find(|r| {
+                    r.modifier
+                        .origin
+                        .as_ref()
+                        .is_some_and(|o| o.source_id == origin.source_id)
+                });
+                if inactive {
+                    assert!(actual.is_none(), "inactive source must not emit damage");
+                    continue;
+                }
+                let actual = actual.expect("each source contributes independently");
+                assert!(actual.active);
+                assert_eq!(actual.value, Some(weapon_damage * percent / 100.0));
+                assert_eq!(actual.modifier.origin, Some(origin));
+                assert_eq!(actual.modifier.source, source.source);
+                assert!(
+                    actual.modifier.tags.is_empty(),
+                    "scaling is already evaluated"
+                );
+                assert!(
+                    actual.modifier.flags.is_empty(),
+                    "player spell scope must not reach the minion attack"
+                );
+            }
+        }
+        assert_eq!(
+            session.minion_stat_totals(0, "ColdDamageMin").0,
+            if inactive { 0.0 } else { 28.0 }
+        );
+    }
+}
+
+#[test]
 fn watch_how_i_do_it_shares_only_the_main_hand_weapon_with_present_attack_allies() {
     use pobr_build::calculate_with_data_session;
     use pobr_data::{item::EquipmentSlot, passive_tree::NodeId};
