@@ -220,14 +220,20 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         let source = env
             .player
             .mod_db
-            .flag_origin(&env.cfg, "EnemyLightningResistEqualToYours")
+            .flag_source(&env.cfg, "EnemyLightningResistEqualToYours")
+            .cloned()
             .unwrap_or_else(|| {
-                SourceId::new(SourceKind::Derived, "EnemyLightningResistEqualToYours")
-            });
+                ModifierSource::new(SourceId::new(
+                    SourceKind::Derived,
+                    "EnemyLightningResistEqualToYours",
+                ))
+            })
+            .with_stat("LightningResist")
+            .with_mod_type(ModType::Override);
         env.enemy.mod_db.add_mod(
             Modifier::number("LightningResist", ModType::Override, resistance.final_value)
                 .with_source("Enemies in your Presence have Lightning Resistance equal to yours")
-                .with_origin(ModifierSource::new(source)),
+                .with_origin(source),
         );
     }
 
