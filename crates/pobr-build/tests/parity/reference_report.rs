@@ -452,7 +452,9 @@ const BASELINES: [Baseline; 3] = [
         // Mechanic batches expose more reference fields: +2 agreeing rows, 6 new rows.
         // Forbidden Rites input fixes: static equipment conditions, minion
         // auras/support costs, Offering effect, and weapon/enemy overrides (+3).
-        agreeing_rows: 5793,
+        // Skill/grant requirements also correct ReqInt in the existing Oracle
+        // Grim Pillars and Martial Artist Flicker Strike cases (+2; round 54).
+        agreeing_rows: 5795,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
