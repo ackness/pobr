@@ -2649,11 +2649,17 @@ Iron Ring
             build.config.conditions.get("ChampionIntimidate").copied(),
             Some(false)
         );
-        // Every other defaultState=true entry that didn't appear is still backfilled true.
+        // Ordinary defaults remain true, but companion Presence is resolved
+        // later from the selected build's enabled companion skills.
         assert_eq!(
-            build.config.conditions.get("CompanionInPresence").copied(),
+            build
+                .config
+                .conditions
+                .get("TargetingBrandedEnemy")
+                .copied(),
             Some(true)
         );
+        assert!(!build.config.conditions.contains_key("CompanionInPresence"));
     }
 
     #[test]
