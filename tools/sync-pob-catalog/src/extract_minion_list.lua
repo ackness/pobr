@@ -113,6 +113,9 @@ for effectId, skill in pairs(skills) do
 		if skill.minionHasItemSet then
 			parts[#parts + 1] = '"minion_has_item_set":true'
 		end
+		if skill.ignoreMinionTypes then
+			parts[#parts + 1] = '"ignore_minion_types":true'
+		end
 		if #parts > 0 then
 			print('{"effect_id":"' .. jsonEscape(effectId) .. '",' .. table.concat(parts, ",") .. "}")
 		end
