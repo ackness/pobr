@@ -1,3 +1,5 @@
+import { useUi } from '../shared/UiContext'
+import { t } from '../../lib/i18n'
 import * as React from "react"
 import { cn } from "cn"
 import { Dialog as DialogPrimitive } from "radix-ui"
@@ -53,6 +55,7 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
 }) {
+  const { lang } = useUi()
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -74,7 +77,7 @@ function DialogContent({
             >
               <XIcon
               />
-              <span className="sr-only">Close</span>
+              <span className="sr-only">{t(lang, 'common.close')}</span>
             </Button>
           </DialogPrimitive.Close>
         )}
@@ -101,6 +104,7 @@ function DialogFooter({
 }: React.ComponentProps<"div"> & {
   showCloseButton?: boolean
 }) {
+  const { lang } = useUi()
   return (
     <div
       data-slot="dialog-footer"
@@ -113,7 +117,7 @@ function DialogFooter({
       {children}
       {showCloseButton && (
         <DialogPrimitive.Close asChild>
-          <Button variant="outline">Close</Button>
+          <Button variant="outline">{t(lang, 'common.close')}</Button>
         </DialogPrimitive.Close>
       )}
     </div>

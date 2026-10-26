@@ -1,8 +1,10 @@
+import { UiProvider } from './components/shared/UiContext';
+import { AppDialogsProvider } from './components/shared/AppDialogs';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { UpgradeGoalProvider } from './hooks/useUpgradeGoal';
 import { useBuildSession } from './hooks/useBuildSession';
 import { buildImportErrorMessage } from './api/import';
-import { t, type Lang } from './lib/i18n';
+import { t, bootMessageLabel, type Lang } from './lib/i18n';
 import { TAB_IDS, TopBar, type TabId } from './components/shell/TopBar';
 import { WorkspaceSwitcher } from './components/import/BuildWorkspace';
 import { BuildPanel } from './components/import/BuildPanel';
@@ -116,13 +118,13 @@ function BuildApp() {
     return (
       <div className="boot-screen" aria-busy="true">
         <h1>PoBR</h1>
-        <p>{session.bootMessage ?? '…'}</p>
+        <p>{bootMessageLabel(lang, session.bootMessage ?? '…')}</p>
       </div>
     );
   }
 
   return (
-    <div className="app-shell">
+    <UiProvider lang={lang}><AppDialogsProvider scope={`${activeBuild?.id}:${stageKey}`}><div className="app-shell">
       <TopBar
         dataVersion={session.dataVersion}
         tab={tab}
@@ -219,6 +221,6 @@ function BuildApp() {
           {tab === 'config' && <ConfigPanel session={session} lang={lang} />}
         </main>
       </div>
-    </div>
+    </div></AppDialogsProvider></UiProvider>
   );
 }

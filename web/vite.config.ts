@@ -46,9 +46,18 @@ function importService(): Plugin {
   return { name: 'wegame-import', configureServer: middleware, configurePreviewServer: middleware };
 }
 
+// Preserve the legacy cascade while allowing the V2 shadcn layers to own controls.
+function legacyStyles(): Plugin {
+  return { name: 'legacy-style-layer', enforce: 'pre', transform(source, id) {
+    if (!id.endsWith('.css') || !id.includes('/src/') || id.includes('/src/v2/')) return;
+    const imports = source.match(/@import[^;]+;/g) ?? [];
+    return { code: `${imports.join('\n')}\n@layer legacy {\n${source.replace(/@import[^;]+;/g, '')}\n}`, map: null };
+  } };
+}
+
 export default defineConfig({
   define: { __POBR_APP_VERSION__: JSON.stringify(appVersion) },
-  plugins: [react(), tailwindcss(), importService()],
+  plugins: [legacyStyles(), react(), tailwindcss(), importService()],
   resolve: { alias: { '@': resolve(process.cwd(), 'src') } },
   test: {
     // e2e/ 归 Playwright；vitest 只跑 src 内单测。

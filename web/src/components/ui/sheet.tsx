@@ -1,3 +1,5 @@
+import { useUi } from '../shared/UiContext'
+import { t } from '../../lib/i18n'
 import * as React from "react"
 import { cn } from "cn"
 import { Dialog as SheetPrimitive } from "radix-ui"
@@ -53,6 +55,7 @@ function SheetContent({
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
 }) {
+  const { lang } = useUi()
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -75,7 +78,7 @@ function SheetContent({
             >
               <XIcon
               />
-              <span className="sr-only">Close</span>
+              <span className="sr-only">{t(lang, 'common.close')}</span>
             </Button>
           </SheetPrimitive.Close>
         )}
