@@ -132,10 +132,27 @@ pub(crate) struct TotemLimitTerms {
     pub(crate) value: f64,
 }
 
+/// A Ballista's capacity belongs to the host even when its socketed attack
+/// is selected. Retain the attack's types while exposing the host category
+/// to capacity modifiers; this does not change support compatibility.
+pub(crate) fn limit_cfg(cfg: &CalcConfig) -> CalcConfig {
+    let mut cfg = cfg.clone();
+    if cfg.condition("BallistaSkill") {
+        cfg.skill_types |= SkillTypes::from_pob2_name("TotemsAreBallistae").unwrap_or_default();
+    }
+    cfg
+}
+
 pub(crate) fn limit_terms(db: &ModDb, cfg: &CalcConfig) -> TotemLimitTerms {
+    let cfg = &limit_cfg(cfg);
     let names = [ModName::from("ActiveTotemLimit")];
     let base = db.sum(ModType::Base, cfg, &[ModName::from("TotemLimitBase")]);
-    let additional = db.sum(ModType::Base, cfg, &names);
+    let additional = db.sum(ModType::Base, cfg, &names)
+        + if cfg.condition("BallistaSkill") {
+            db.sum(ModType::Base, cfg, &[ModName::from("ActiveBallistaLimit")])
+        } else {
+            0.0
+        };
     let more = db.more(cfg, &names);
     let override_value = db.override_(cfg, "ActiveTotemLimit");
     let value = if has_totem(db, cfg) {

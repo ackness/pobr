@@ -21,10 +21,9 @@ use super::trigger::{
 use super::{
     BreakdownTable, CalcError, EhpOptions, Env, LeechResource, MinimalInput, MinionOutput,
     MitigationInputs, OutputTable, ResistanceSuite, build_mitigation_ctx, calc_avoidance,
-    calc_crit_extra_reduction, calc_defence, calc_ehp_with_opts, calc_es_recharge,
-    calc_leech_from_db, calc_regen, calc_skill_use_time, calc_taken_multi_suite,
-    calculate_minimal_vs_enemy, enemy_crit_effect, es_recharge_per_second, reservation,
-    resolve_all_charges, round, taken_mult_for_type_default,
+    calc_crit_extra_reduction, calc_defence, calc_ehp_with_opts, calc_es_recharge, calc_regen,
+    calc_skill_use_time, calc_taken_multi_suite, calculate_minimal_vs_enemy, enemy_crit_effect,
+    es_recharge_per_second, reservation, resolve_all_charges, round, taken_mult_for_type_default,
 };
 use crate::{TraceGraph, TraceOperation};
 
@@ -1194,7 +1193,7 @@ fn fill_mechanics(env: &mut Env) {
     )
     .seconds();
 
-    // Physical leech uses each attacking hand's post-conversion damage and
+    // Leech uses each attacking hand's post-conversion damage and
     // that hand's modifier scope. Never pair an off-hand leech affix with the
     // main hand's hit. Preserve the current single-instance panel model:
     // among hands, only the strongest recovery instance is active.
@@ -1281,24 +1280,37 @@ pub(super) fn leech_panel_terms(env: &Env) -> Vec<[super::survivability::LeechRe
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
     let leech_rates_for = |scope: &CalcConfig, components: &[super::DamageComponent]| {
-        let physical_hit = component_avg(components, DamageType::Physical);
+        let damage: Vec<_> = components
+            .iter()
+            .map(|c| (c.damage_type, c.avg()))
+            .collect();
         [
             (LeechResource::Life, env.player.output.life),
             (LeechResource::Mana, env.player.output.mana),
             (LeechResource::EnergyShield, env.player.output.energy_shield),
         ]
-        .map(|(resource, pool)| calc_leech_from_db(db, scope, pool, physical_hit, resource))
+        .map(|(resource, pool)| {
+            super::survivability::calc_leech_for_hit(db, scope, pool, &damage, resource)
+        })
     };
-    let has_leech_source = [
-        "LifeLeech",
-        "ManaLeech",
-        "EnergyShieldLeech",
-        "PhysicalDamageLifeLeech",
-        "PhysicalDamageManaLeech",
-        "PhysicalDamageEnergyShieldLeech",
-    ]
-    .iter()
-    .any(|name| db.named(name).next().is_some());
+    let has_leech_source = ["Life", "Mana", "EnergyShield"].iter().any(|resource| {
+        [
+            "",
+            "Damage",
+            "PhysicalDamage",
+            "FireDamage",
+            "ColdDamage",
+            "LightningDamage",
+            "ChaosDamage",
+            "ElementalDamage",
+        ]
+        .iter()
+        .any(|prefix| {
+            db.named(&format!("{prefix}{resource}Leech"))
+                .next()
+                .is_some()
+        })
+    });
     if !has_leech_source {
         // Most build variants have no leech: avoid cloning per-hand scopes.
         Vec::new()
@@ -2654,14 +2666,6 @@ pub(crate) fn enemy_ailment_threshold_terms(
         increased: enemy.sum(ModType::Inc, cfg, &names),
         more: enemy.more(cfg, &names),
     }
-}
-
-/// Gets a damage type's component average hit value (returns 0 if that component is absent).
-fn component_avg(components: &[super::DamageComponent], damage_type: DamageType) -> f64 {
-    components
-        .iter()
-        .find(|component| component.damage_type == damage_type)
-        .map_or(0.0, super::DamageComponent::avg)
 }
 
 /// The flat physical damage reduction bonus (fraction), from `PhysicalDamageReduction` Base (percentage points → fraction).

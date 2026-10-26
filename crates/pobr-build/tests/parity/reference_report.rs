@@ -454,7 +454,12 @@ const BASELINES: [Baseline; 3] = [
         // auras/support costs, Offering effect, and weapon/enemy overrides (+3).
         // Skill/grant requirements also correct ReqInt in the existing Oracle
         // Grim Pillars and Martial Artist Flicker Strike cases (+2; round 54).
-        agreeing_rows: 5795,
+        // Native Sands of Silk identity removes ordinary Blink's 157 Int
+        // requirement in Oracle Grim Pillars 0a7cf6c82619. Mana Tempest 19
+        // and Temporal Chains 19 still require 147; the reference counts the
+        // item grant as a gem. This restores the existing known exemption
+        // (-1 row), verified against ModGrantedSkills and independent gems.
+        agreeing_rows: 5794,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //

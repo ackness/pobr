@@ -19,10 +19,12 @@
 
 use std::collections::{HashMap, HashSet};
 
+use pobr_data::item::{EquipmentSlot, Item, ItemRarity};
+
 use crate::build::{Build, GemSkillRef, SocketGroup};
 use crate::build_data::BuildData;
 
-use super::skill::resolve::clean_grant_text;
+use super::skill::resolve::{clean_grant_text, group_active_effects, selected_group_effect};
 
 /// PoBR's synthesized groups have no PoB item id/name, so a source category marker is
 /// used instead; a single equipment slot in one Build only ever holds one item, so
@@ -61,18 +63,148 @@ fn skill_id_by_name(data: &BuildData) -> HashMap<String, &str> {
         .iter()
         .map(|(skill_id, def)| (def.gem_id.as_str(), skill_id.as_str()))
         .collect();
-    data.base_items
+    let mut by_name: HashMap<_, _> = data
+        .base_items
         .iter()
         .filter_map(|(name, def)| {
             gem_to_skill
                 .get(def.id.as_str())
                 .map(|skill_id| (name.to_lowercase(), *skill_id))
         })
-        .collect()
+        .collect();
+    // The base-item name index collapses ordinary and unique skill gems.
+    // Without an item attachment, a shared name means the ordinary effect.
+    for variant in &data.item_granted_skill_variants {
+        if data.gem_effects.contains_key(&variant.exported_effect_id) {
+            by_name.insert(
+                variant.skill_name.to_lowercase(),
+                variant.exported_effect_id.as_str(),
+            );
+        }
+    }
+    by_name
 }
 
 fn is_item_skill_source(source: Option<&str>) -> bool {
     source.is_some_and(|source| source == ITEM_SKILL_SOURCE || source.starts_with("Item:"))
+}
+
+#[derive(Clone, Copy)]
+struct GrantIdentity<'a> {
+    skill_id: &'a str,
+    exported_alias: Option<&'a str>,
+}
+
+impl GrantIdentity<'_> {
+    fn matches(self, skill_id: &str) -> bool {
+        self.skill_id == skill_id || self.exported_alias == Some(skill_id)
+    }
+
+    /// Only the prepared build is changed. Imported gem references, source
+    /// metadata and item text remain untouched on the caller's original build.
+    fn canonicalize(self, group: &mut SocketGroup, data: &BuildData) -> bool {
+        let Some(skill_id) = group
+            .gem_skills
+            .first()
+            .map(|gem| gem.skill_id.as_str())
+            .or(group.active_skill_id.as_deref())
+        else {
+            return false;
+        };
+        if self.exported_alias != Some(skill_id) {
+            return false;
+        }
+        // An ordinal belongs to the old effect list: ordinary Blink has a
+        // reservation and an action, whereas Sand Blink has one native effect.
+        // Keep the selected gem/effect identity when that list contracts.
+        let selected = group.main_active_skill.and_then(|_| {
+            selected_group_effect(data, group)
+                .map(|effect| (effect.gem_index, effect.skill_id.to_string()))
+        });
+        if group.active_skill_id.as_deref() == self.exported_alias {
+            group.active_skill_id = Some(self.skill_id.to_string());
+        }
+        if let Some(gem) = group.gem_skills.first_mut() {
+            gem.skill_id = self.skill_id.to_string();
+        }
+        if let Some(gem_id) = group.gem_ids.first_mut() {
+            *gem_id = data.gem_effects[self.skill_id].gem_id.clone();
+        }
+        if let Some((gem_index, selected_id)) = selected {
+            let selected_id = if gem_index == 0 {
+                self.skill_id
+            } else {
+                &selected_id
+            };
+            let ordinal = group_active_effects(data, group)
+                .find(|effect| effect.gem_index == gem_index && effect.skill_id == selected_id)
+                .map_or(0, |effect| effect.active_skill_index);
+            group.main_active_skill = Some(ordinal);
+        }
+        true
+    }
+}
+
+/// Only weapons have ownership by set. An armour skill's set controls its
+/// activation, not whether the equipped armour is the source of the grant.
+fn item_weapon_set(build: &Build, slot: EquipmentSlot) -> Option<u8> {
+    matches!(slot, EquipmentSlot::Weapon1 | EquipmentSlot::Weapon2)
+        .then_some(build.weapon_set.number())
+}
+
+/// Resolve an item variant only with an attachment: an exported item name
+/// matching the equipped unique's base/slot/set, or its already native effect
+/// in that item's group. `Item` does not retain the unique name itself.
+fn grant_identity<'a>(
+    build: &Build,
+    data: &'a BuildData,
+    item: &Item,
+    slot: &str,
+    set: Option<u8>,
+    name: &str,
+    by_name: &HashMap<String, &'a str>,
+) -> Option<GrantIdentity<'a>> {
+    let base = item.base.to_string();
+    let other_set = 3 - build.weapon_set.number();
+    if item.rarity == ItemRarity::Unique {
+        for variant in &data.item_granted_skill_variants {
+            if !variant.skill_name.eq_ignore_ascii_case(name)
+                || !variant.base_names.contains(&base)
+                || !data.gem_effects.contains_key(&variant.granted_effect_id)
+                || !data
+                    .granted_effects
+                    .contains_key(&variant.granted_effect_id)
+            {
+                continue;
+            }
+            let attached = build.socket_groups.iter().any(|group| {
+                is_item_skill_source(group.source.as_deref())
+                    && group.slot.as_deref().map(normalized_slot).as_deref() == Some(slot)
+                    && set.is_none_or(|set| {
+                        (group.weapon_set == Some(other_set)) == (set == other_set)
+                    })
+                    && (group.active_skill_id.as_deref() == Some(&variant.granted_effect_id)
+                        || group
+                            .source
+                            .as_deref()
+                            .and_then(|source| source.strip_prefix("Item:"))
+                            .and_then(|source| source.split_once(':'))
+                            .is_some_and(|(_, name)| {
+                                name == format!("{}, {base}", variant.item_name)
+                            }))
+            });
+            if attached {
+                return Some(GrantIdentity {
+                    skill_id: &variant.granted_effect_id,
+                    exported_alias: Some(&variant.exported_effect_id),
+                });
+            }
+        }
+    }
+    by_name.get(name).map(|&skill_id| GrantIdentity {
+        skill_id,
+        exported_alias: None,
+    })
 }
 
 /// Spear Throw is an inherent default attack, whose level follows the
@@ -151,7 +283,7 @@ pub(crate) fn resolved_granted_skill_texts(build: &Build, data: &BuildData) -> V
 /// there's nothing new (a zero-copy fast path).
 pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Option<Build> {
     // Cheaply probe for a granted-skill mod first, then build the lookup table (the vast majority of builds have no such mod).
-    let mut grants: Vec<(String, String, Option<u32>)> = Vec::new(); // (slot id, name, level)
+    let mut grants = Vec::new();
     for (slot, item) in build.equipped_items() {
         for text in item
             .implicit_texts
@@ -160,7 +292,7 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
             .chain(&item.enchant_texts)
         {
             if let Some((name, level)) = parse_grants_skill(text) {
-                grants.push((slot.id().to_string(), name, level));
+                grants.push((slot, item, name, level));
             }
         }
     }
@@ -169,25 +301,29 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
     }
 
     let by_name = skill_id_by_name(data);
-    let mut existing: HashSet<(String, String, String, u32)> = build
+    let other_set = 3 - build.weapon_set.number();
+    let mut existing: HashSet<(String, String, u32, bool)> = build
         .socket_groups
         .iter()
         .filter(|g| is_item_skill_source(g.source.as_deref()))
         .filter_map(|g| {
             Some((
-                ITEM_SKILL_SOURCE.to_string(),
                 normalized_slot(g.slot.as_deref()?),
                 g.active_skill_id.clone()?,
                 g.active_gem_level?,
+                g.weapon_set == Some(other_set),
             ))
         })
         .collect();
 
     let mut synthesized: Vec<SocketGroup> = Vec::new();
-    for (slot, name, level) in grants {
-        let Some(&skill_id) = by_name.get(&name) else {
+    for (slot, item, name, level) in grants {
+        let set = item_weapon_set(build, slot);
+        let Some(identity) = grant_identity(build, data, item, slot.id(), set, &name, &by_name)
+        else {
             continue; // A non-gem skill name (see module doc), skipped.
         };
+        let skill_id = identity.skill_id;
         let gem_id = data
             .gem_effects
             .get(skill_id)
@@ -195,19 +331,20 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
             .unwrap_or_default();
         // A line without a level stands for the group the build already
         // has for that skill in that slot, whatever its level.
-        if level.is_none()
-            && existing
-                .iter()
-                .any(|(_, s, id, _)| *s == normalized_slot(&slot) && id == skill_id)
-        {
+        if existing.iter().any(|(s, id, existing_level, other)| {
+            s == slot.id()
+                && identity.matches(id)
+                && level.is_none_or(|level| level == *existing_level)
+                && set.is_none_or(|set| *other == (set == other_set))
+        }) {
             continue;
         }
         let level = level.unwrap_or(MAX_LEVEL_FALLBACK);
         if !existing.insert((
-            ITEM_SKILL_SOURCE.to_string(),
-            normalized_slot(&slot),
+            slot.id().to_string(),
             skill_id.to_string(),
             level,
+            set == Some(other_set),
         )) {
             continue; // A group with the same item source, slot, skill, and level already exists.
         }
@@ -215,9 +352,9 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
             gem_requirement_levels: Vec::new(),
             include_in_full_dps: false,
             group_count: None,
-            weapon_set: None,
+            weapon_set: set,
             source: Some(ITEM_SKILL_SOURCE.to_string()),
-            slot: Some(slot),
+            slot: Some(slot.id().to_string()),
             enabled: true,
             gem_ids: vec![gem_id],
             active_skill_id: Some(skill_id.to_string()),
@@ -270,8 +407,9 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
 /// Returns `None` when no group is a skill the equipment grants.
 pub(crate) fn mark_item_granted_skills(build: &Build, data: &BuildData) -> Option<Build> {
     /// One "Grants Skill" line of an item.
-    struct Grant {
+    struct Grant<'a> {
         slot: String,
+        item: &'a Item,
         name: String,
         level: Option<u32>,
         /// The item waives the skill's reservation.
@@ -288,11 +426,7 @@ pub(crate) fn mark_item_granted_skills(build: &Build, data: &BuildData) -> Optio
     other_weapons.sort_by_key(|(slot, _)| slot.id());
     let mut grants: Vec<Grant> = Vec::new();
     let equipped = build.equipped_items().into_iter().map(|(slot, item)| {
-        let set = matches!(
-            slot,
-            pobr_data::item::EquipmentSlot::Weapon1 | pobr_data::item::EquipmentSlot::Weapon2
-        )
-        .then_some(build.weapon_set.number());
+        let set = item_weapon_set(build, slot);
         (slot, item, set)
     });
     let other = other_weapons
@@ -311,6 +445,7 @@ pub(crate) fn mark_item_granted_skills(build: &Build, data: &BuildData) -> Optio
             if let Some((name, level)) = parse_grants_skill(text) {
                 grants.push(Grant {
                     slot: normalized_slot(slot.id()),
+                    item,
                     name,
                     level,
                     reservation_free,
@@ -329,26 +464,31 @@ pub(crate) fn mark_item_granted_skills(build: &Build, data: &BuildData) -> Optio
     let mut any = false;
     for Grant {
         slot,
+        item,
         name,
         level,
         reservation_free,
         set,
     } in grants
     {
-        let Some(&skill_id) = by_name.get(&name) else {
+        let Some(identity) = grant_identity(build, data, item, &slot, set, &name, &by_name) else {
             continue;
         };
+        let skill_id = identity.skill_id;
         let own = |group: &SocketGroup| {
             is_item_skill_source(group.source.as_deref())
                 && group.slot.as_deref().map(normalized_slot).as_deref() == Some(slot.as_str())
-                && group.active_skill_id.as_deref() == Some(skill_id)
-                && (group.weapon_set == Some(other_set)) == (set == Some(other_set))
+                && group
+                    .active_skill_id
+                    .as_deref()
+                    .is_some_and(|id| identity.matches(id))
+                && set.is_none_or(|set| (group.weapon_set == Some(other_set)) == (set == other_set))
         };
         let listed = |group: &SocketGroup| {
             group.from_gem()
                 && set.is_none_or(|set| group.weapon_set.is_none_or(|group_set| group_set == set))
                 && group.gem_skills.first().is_some_and(|gem| {
-                    gem.skill_id == skill_id
+                    identity.matches(&gem.skill_id)
                         && level.is_none_or(|level| gem.gem_level == level)
                         && gem.quality == 0
                         && !gem.corrupted
@@ -382,6 +522,7 @@ pub(crate) fn mark_item_granted_skills(build: &Build, data: &BuildData) -> Optio
                 continue;
             }
             claimed.insert(index);
+            any |= identity.canonicalize(group, data);
             if is_own && let Some(listed) = listed_at {
                 group.enabled = false;
                 if marked.main_socket_group == Some(index + 1) {

@@ -438,6 +438,67 @@ fn config_visibility_context_tracks_skills_and_reads_without_enabling_conditions
     );
 }
 
+#[test]
+fn conditional_culling_exposes_rarity_configuration_without_activating_it() {
+    ensure_data();
+    let request = serde_json::json!({
+        "config_context": true,
+        "main_socket_group": 0,
+        "character": { "level": 90, "class_name": "Monk" },
+        "items": [{ "slot": "weapon1", "text": "Rarity: NORMAL\nWrapped Quarterstaff" }],
+        "socket_groups": [{ "gems": [
+            { "skill_id": "MeleeQuarterstaffPlayer", "level": 20 },
+            { "skill_id": "SupportCullingStrikePlayerTwo", "level": 1 }
+        ] }],
+        "config_inputs": { "enemyIsBoss": "None" }
+    });
+    let calculate = |request: &Value| -> Value {
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap()
+    };
+    let result = calculate(&request);
+    assert_eq!(
+        result["config_context"]["predicates"]["if_flag"]["CanCull"],
+        true
+    );
+    let mut without_support = request.clone();
+    without_support["socket_groups"][0]["gems"]
+        .as_array_mut()
+        .unwrap()
+        .pop();
+    let plain = calculate(&without_support);
+    assert_eq!(
+        plain["config_context"]["predicates"]["if_flag"]["CanCull"],
+        false
+    );
+    let stat = |result: &Value, id: &str| {
+        result["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["id"] == id)
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+    assert_eq!(
+        stat(&result, "CullingDPS"),
+        0.0,
+        "visibility must not enable culling"
+    );
+    assert_eq!(stat(&result, "TotalDPS"), stat(&plain, "TotalDPS"));
+    let mut rare = request.clone();
+    rare["config_inputs"]["conditionEnemyRareOrUnique"] = true.into();
+    assert!(stat(&calculate(&rare), "CullingDPS") > 0.0);
+    let mut incompatible = request;
+    incompatible["socket_groups"][0]["gems"][0]["skill_id"] = "FireballPlayer".into();
+    let rejected = calculate(&incompatible);
+    assert_eq!(
+        rejected["config_context"]["predicates"]["if_flag"]["CanCull"],
+        false
+    );
+}
+
 fn close(a: f64, b: f64) -> bool {
     (a - b).abs() <= 1e-6 * a.abs().max(b.abs()).max(1.0)
 }

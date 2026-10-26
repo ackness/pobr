@@ -413,3 +413,117 @@ fn the_totem_limit_comes_from_the_totem_gem_and_its_modifiers() {
         4.0
     );
 }
+
+#[test]
+fn ballista_skills_apply_their_own_bonuses_and_limit() {
+    let data = data();
+    let mortar = |in_totem: bool| {
+        let (host, main) = if in_totem {
+            (
+                r#"<Gem skillId="MetaMortarCannonPlayer" enabled="true" level="20" quality="20"/>"#,
+                2,
+            )
+        } else {
+            ("", 1)
+        };
+        parse_build(&format!(
+            r#"<PathOfBuilding2>
+<Build level="80" className="Warrior" ascendClassName="None" mainSocketGroup="1"/>
+<Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Makeshift Crossbow
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+<Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true" mainActiveSkill="{main}">
+{host}<Gem skillId="ClusterGrenadePlayer" enabled="true" level="20" quality="0"/>
+</Skill></SkillSet></Skills></PathOfBuilding2>"#
+        ))
+        .expect("parse mortar build")
+    };
+    for (build, ballista) in [
+        (mortar(true), true),
+        (mortar(false), false),
+        (build(true, ""), false),
+    ] {
+        let plain = diagnose(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+        let boosted = diagnose(
+            &build,
+            &data,
+            &DataOrchestratorOptions {
+                extra_modifier_texts: vec![
+                    "50% increased Ballista damage".into(),
+                    "Attacks used by Ballistas have 20% increased Attack Speed".into(),
+                    "+2 to maximum number of Summoned Ballista Totems".into(),
+                ],
+                ..DataOrchestratorOptions::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            boosted.session.config().condition("BallistaSkill"),
+            ballista
+        );
+        let a = plain.session.output();
+        let b = boosted.session.output();
+        assert!(a.total_hit_avg > 0.0);
+        assert_ratio(
+            b.total_hit_avg,
+            a.total_hit_avg,
+            if ballista { 1.5 } else { 1.0 },
+        );
+        assert_eq!(
+            b.active_totem_limit,
+            a.active_totem_limit + if ballista { 2.0 } else { 0.0 },
+            "limit terms {:?}; sources {:?}",
+            boosted
+                .session
+                .derived_detail("ActiveTotemLimit")
+                .map(|d| d.inputs),
+            boosted.session.evaluated_stat_mods("ActiveTotemLimit")
+        );
+        if ballista {
+            assert!(
+                boosted
+                    .session
+                    .stat_mod_names("ActiveTotemLimit")
+                    .iter()
+                    .any(|n| n.as_str() == "ActiveBallistaLimit")
+            );
+            let detail = boosted.session.derived_detail("ActiveTotemLimit").unwrap();
+            assert!(
+                boosted
+                    .session
+                    .evaluated_stat_mods("ActiveTotemLimit")
+                    .iter()
+                    .any(|m| m.active
+                        && m.modifier.name.as_str() == "ActiveBallistaLimit"
+                        && m.modifier.value.as_number() == Some(2.0))
+            );
+            let input = |id: &str| detail.inputs.iter().find(|(name, _)| name == id).unwrap().1;
+            assert_eq!(input("AdditionalTotemLimit"), 2.0);
+            assert_eq!(
+                (input("TotemLimitBase") + input("AdditionalTotemLimit")) * input("TotemLimitMore"),
+                b.active_totem_limit
+            );
+            let attack_speed = boosted.session.evaluated_stat_mods("ActionRate");
+            assert!(attack_speed.iter().any(|m| m.active
+                && m.modifier.name.as_str() == "AttackSpeed"
+                && m.modifier.value.as_number() == Some(20.0)));
+        } else {
+            assert_eq!(b.action_rate, a.action_rate);
+        }
+    }
+    let combined = calculate_with_data(
+        &mortar(true),
+        &data,
+        &DataOrchestratorOptions {
+            extra_modifier_texts: vec![
+                "+2 to maximum number of Summoned Ballista Totems".into(),
+                "+1 to maximum number of Summoned Totems".into(),
+                "Your Totem Limit is doubled".into(),
+            ],
+            ..DataOrchestratorOptions::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(combined.active_totem_limit, 8.0);
+}

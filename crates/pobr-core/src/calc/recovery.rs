@@ -169,8 +169,6 @@ fn gain_for_hit(
             ..Gain::default()
         };
     }
-    // The 40,000 damage ceiling applies to the whole hit. Scale each type
-    // proportionally, so added elemental damage cannot fuel physical leech.
     let dealt: Vec<_> = damage
         .iter()
         .map(|&(ty, amount)| {
@@ -182,33 +180,6 @@ fn gain_for_hit(
             (ty, (amount * multiplier).max(0.0))
         })
         .collect();
-    let total: f64 = dealt.iter().map(|(_, amount)| amount).sum();
-    let scale = if total > 0.0 {
-        (cfg.constants.game().effective_max_damage_for_leech / total).min(1.0)
-    } else {
-        0.0
-    };
-    let amount: f64 = dealt
-        .iter()
-        .map(|&(ty, damage)| {
-            let ty_name = TYPE_NAMES[ty as usize];
-            let mut percent = base(db, cfg, &format!("Damage{name}Leech"));
-            if ty == DamageType::Physical {
-                percent += base(db, cfg, &format!("{name}Leech"));
-            }
-            percent += base(db, cfg, &format!("{ty_name}Damage{name}Leech"));
-            if ty.is_elemental() {
-                percent += base(db, cfg, &format!("ElementalDamage{name}Leech"));
-            }
-            if db.flag(cfg, &format!("{name}LeechBasedOn{ty_name}Damage"))
-                || (ty.is_elemental()
-                    && db.flag(cfg, &format!("{name}LeechBasedOnElementalDamage")))
-            {
-                percent += base(db, cfg, &format!("PhysicalDamage{name}Leech"));
-            }
-            damage * scale * percent.max(0.0) / 100.0
-        })
-        .sum();
     // Reuse the engine's single-instance leech limits. A sustained rate also
     // needs sufficient hits to replace each expired instance; hit frequency
     // never stacks the recovery rates of overlapping instances.
@@ -218,10 +189,9 @@ fn gain_for_hit(
         (base(db, cfg, &format!("Instant{name}Leech")) / 100.0).clamp(0.0, 1.0)
     };
     let recovery = factor(db, cfg, &format!("{name}RecoveryRate"));
-    let amount = amount * factor(db, cfg, &format!("{name}LeechAmount"));
     let speed = factor(db, cfg, &format!("{name}LeechRate"));
     let cap = super::survivability::leech_cap_terms(db, cfg, pool, resource);
-    let instance = super::survivability::leech_instance(amount, speed, cap);
+    let instance = super::survivability::calc_leech_for_hit(db, cfg, pool, &dealt, resource);
     let normal = instance.instance_total * (1.0 - instant_fraction);
     let normal_instance = super::survivability::leech_instance(normal, speed, cap);
     Gain {

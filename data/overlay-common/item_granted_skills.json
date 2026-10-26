@@ -4,14 +4,61 @@
     "generator": "manual",
     "source": [
       "Game table ItemInherentSkills: one row per base item with the skills it grants and a NoReservation flag. The bases below are the rows with the flag set.",
-      "The granted skill is an ordinary Spirit skill (30 Spirit from a Lament Amulet, 60 from a Portent Amulet, 100 from an Absent Amulet) whose reservation the item waives. Reported in play: https://www.pathofexile.com/forum/view-thread/3975864"
+      "The granted skill is an ordinary Spirit skill (30 Spirit from a Lament Amulet, 60 from a Portent Amulet, 100 from an Absent Amulet) whose reservation the item waives. Reported in play: https://www.pathofexile.com/forum/view-thread/3975864",
+      "Game patch 0.5.5.4.2 ModGrantedSkills rows 9/10/11 and 1 join Mods to SkillGems, then GemEffects to GrantedEffects. Native table SHA-256: b166e508602a08892da1bd89f79d6d8f44b47a3cf07ff77d25c283f6ced2ec55. Extracted from https://patch-poe2.poecdn.com/0.5.5.4.2/Bundles2/ using pathofexile-dat 15.2.0 and dat-schema commit 87624689f5168d8fdd4b1f5bdccffe19e76f5bf1."
     ],
-    "notes": "The data adapter does not read ItemInherentSkills yet. Once it does, generate this list from the table and remove this file.",
-    "audit": "On a data version change, compare with the bases whose ItemInherentSkills row has NoReservation (the pinned PoB2 exports the same flag as grantedSkillsHaveNoReservation)."
+    "notes": "The data adapter does not read ItemInherentSkills yet. Once it does, generate reservation_free_bases from that table. Generate variants separately when ModGrantedSkills is exported. The four variants retain their native skill data, including additive support reservation. Their ordinary exported effect IDs are compatibility aliases observed in frozen character item-source groups, not native FK equivalences. Item identity requires matching source metadata or an already attached native effect; a display name alone is insufficient.",
+    "audit": "On a data version change, compare with the bases whose ItemInherentSkills row has NoReservation (the pinned PoB2 exports the same flag as grantedSkillsHaveNoReservation). Recheck the four ModGrantedSkills joins and native reservations on a data version change; replace this curated subset when the adapter exports the table."
   },
   "reservation_free_bases": [
     "Absent Amulet",
     "Lament Amulet",
     "Portent Amulet"
+  ],
+  "variants": [
+    {
+      "item_name": "The Coming Calamity",
+      "base_names": [
+        "Heroic Armour",
+        "Runemastered Heroic Armour"
+      ],
+      "skill_name": "Herald of Ash",
+      "granted_effect_id": "UniqueHeraldOfAshPlayer",
+      "exported_effect_id": "HeraldOfAshPlayer",
+      "game_mod_id": "UniqueGrantsHeraldOfAsh1"
+    },
+    {
+      "item_name": "The Coming Calamity",
+      "base_names": [
+        "Heroic Armour",
+        "Runemastered Heroic Armour"
+      ],
+      "skill_name": "Herald of Ice",
+      "granted_effect_id": "UniqueHeraldOfIcePlayer",
+      "exported_effect_id": "HeraldOfIcePlayer",
+      "game_mod_id": "UniqueGrantsHeraldOfIce1"
+    },
+    {
+      "item_name": "The Coming Calamity",
+      "base_names": [
+        "Heroic Armour",
+        "Runemastered Heroic Armour"
+      ],
+      "skill_name": "Herald of Thunder",
+      "granted_effect_id": "UniqueHeraldOfThunderPlayer",
+      "exported_effect_id": "HeraldOfThunderPlayer",
+      "game_mod_id": "UniqueGrantsHeraldOfThunder1"
+    },
+    {
+      "item_name": "Sands of Silk",
+      "base_names": [
+        "Shrouded Vest",
+        "Runemastered Shrouded Vest"
+      ],
+      "skill_name": "Blink",
+      "granted_effect_id": "BlinkSandPlayer",
+      "exported_effect_id": "BlinkReservationPlayer",
+      "game_mod_id": "UniqueGrantsBlinkSand1"
+    }
   ]
 }
