@@ -1,17 +1,18 @@
-import { Children, Fragment, isValidElement, useRef, useState, type ComponentProps, type ReactElement, type ReactNode } from 'react';
+import { Children, Fragment, isValidElement, useEffect, useRef, useState, type ComponentProps, type ReactElement, type ReactNode } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Checkbox } from '../ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectLabel, SelectGroup, SelectTrigger, SelectValue } from '../ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '../ui/tooltip';
-import { useUi } from './UiContext';
+import { useUi, usePanelActive } from './UiContext';
 import './controls.css';
 
 /** Native props stay valid on both presentations, including refs and form events. */
 export function AppTooltip({ content, children }: { content?: ReactNode; children: ReactElement }) {
   const { v2 } = useUi();
-  if (!content) return children;
+  const active = usePanelActive();
+  if (!content || !active) return children;
   return <TooltipProvider delayDuration={250}><Tooltip><TooltipTrigger asChild>{children}</TooltipTrigger>
     <TooltipContent className={v2 ? 'app-tooltip' : 'app-tooltip app-tooltip-legacy'}>{content}</TooltipContent>
   </Tooltip></TooltipProvider>;
@@ -69,6 +70,9 @@ export function AppSelectControl(props: ComponentProps<'select'>) {
 
 function RadixSelectControl({ children, value, defaultValue, onChange, title, className, id, name, disabled,
   ref, style, 'aria-label': label, 'aria-labelledby': labelledBy, 'aria-describedby': description, ...props }: ComponentProps<'select'>) {
+  const active = usePanelActive();
+  const [open, setOpen] = useState(false);
+  useEffect(() => { if (!active) setOpen(false); }, [active]);
   const options = optionsFrom(children);
   const [local, setLocal] = useState(String(defaultValue ?? options.find(option => !option.disabled)?.value ?? ''));
   const native = useRef<HTMLSelectElement | null>(null);
@@ -76,7 +80,7 @@ function RadixSelectControl({ children, value, defaultValue, onChange, title, cl
   const entries = options.some(option => option.value === selected) ? options : [{ value: selected, label: selected || '—' }, ...options];
   const encode = (raw: string) => `value:${raw}`;
   return <>
-    <Select value={encode(selected)} disabled={disabled} required={props.required} onValueChange={next => {
+    <Select open={open && active} onOpenChange={setOpen} value={encode(selected)} disabled={disabled} required={props.required} onValueChange={next => {
       const raw = next.slice(6);
       if (native.current) {
         native.current.value = raw;

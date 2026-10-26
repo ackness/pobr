@@ -1,3 +1,4 @@
+import { chineseScript } from '../../lib/chinese';
 import { useAppDialogs } from '../shared/AppDialogs';
 import { useSessionAction } from '../shared/useSessionAction';
 import { AppButton, AppInput, AppTextarea, AppSelectControl } from '../shared/controls';
@@ -29,7 +30,7 @@ export function BuildPanel({ session, lang, onImported }: Props) {
   const activeBuild = session.workspace?.builds.find(entry => entry.id === session.workspace?.activeBuild);
   const activeStage = activeBuild?.stages.find(entry => entry.id === activeBuild.activeStage);
   const zhName = (map: Record<string, string>, name: string) =>
-    lang !== 'en-US' ? (map[name] ?? name) : name;
+    lang !== 'en-US' ? chineseScript(map[name] ?? name, lang) : name;
   const [code, setCode] = useState('');
   const [fileError, setFileError] = useState<string | null>(null);
   const [importRecovery, setImportRecovery] = useState<'file' | 'source' | null>(null);

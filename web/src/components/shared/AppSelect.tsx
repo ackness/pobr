@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { usePopupPosition } from '../../hooks/usePopupPosition';
-import { useUi } from './UiContext';
+import { useUi, usePanelActive } from './UiContext';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '../ui/select';
 
 export interface AppSelectOption {
@@ -31,9 +31,12 @@ export function AppSelect(props: Props) {
 }
 
 function RadixAppSelect({ value, options, onChange, disabled, ariaLabel, placeholder }: Props) {
+  const active = usePanelActive();
+  const [open, setOpen] = useState(false);
+  useEffect(() => { if (!active) setOpen(false); }, [active]);
   const current = options.find(option => option.value === value);
   return <div className="app-select">
-    <Select value={current ? `value:${value}` : ''} disabled={disabled} onValueChange={next => onChange(next.slice(6))}>
+    <Select open={open && active} onOpenChange={setOpen} value={current ? `value:${value}` : ''} disabled={disabled} onValueChange={next => onChange(next.slice(6))}>
       <SelectTrigger aria-label={ariaLabel} className="app-select-trigger"><SelectValue placeholder={placeholder}>{current?.label}</SelectValue></SelectTrigger>
       <SelectContent position="popper" align="start" className="app-select-content">
         <SelectGroup>{options.map((option, index) => <Fragment key={option.value}>

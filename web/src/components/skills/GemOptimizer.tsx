@@ -1,3 +1,5 @@
+import { useUi } from '../shared/UiContext';
+import { uiStorageKey } from '../../lib/sessionStorage';
 import { AppButton, AppInput } from '../shared/controls';
 import { formatApiError } from '../../api/error';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -40,6 +42,7 @@ function savedExclusions(key: string): string[] {
 }
 
 export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemName, skillKey, focusNonce }: Props) {
+  const { v2 } = useUi();
   const tt = bindT(lang);
   const st = (key: Parameters<typeof supportText>[1]) => supportText(lang, key);
   const { goal, setGoal } = useUpgradeGoal();
@@ -49,7 +52,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   const [expanded, setExpanded] = useState(false);
   const [capacity, setCapacity] = useState(Math.max(2, Math.min(5, occupied)));
   const [includeLineage, setIncludeLineage] = useState(true);
-  const preferenceKey = `pobr-support-exclusions:${skillKey}`;
+  const preferenceKey = uiStorageKey(`pobr-support-exclusions:${skillKey}`, v2);
   const [excludedIds, setExcludedIds] = useState(() => savedExclusions(preferenceKey));
   const excluded = useMemo(() => new Set(excludedIds), [excludedIds]);
   const [search, setSearch] = useState('');

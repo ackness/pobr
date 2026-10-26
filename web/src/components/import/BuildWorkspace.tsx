@@ -1,3 +1,4 @@
+import { chineseScript } from '../../lib/chinese';
 import { useAppDialogs } from '../shared/AppDialogs';
 import { useSessionAction } from '../shared/useSessionAction';
 import { AppButton, AppInput, AppSelectControl } from '../shared/controls';
@@ -62,7 +63,7 @@ export function BuildWorkspace({ session, lang }: { session: BuildSession; lang:
     const nextName = await dialogs.prompt(tt('loadout.namePrompt'), op === 'rename' ? current : '');
     if (nextName?.trim() && valid()) void session.manageLoadout(op, nextName.trim());
   };
-  const className = (raw: string) => lang === 'en-US' ? raw : session.classNames.ascendancies[raw] ?? session.classNames.classes[raw] ?? raw;
+  const className = (raw: string) => lang === 'en-US' ? raw : chineseScript(session.classNames.ascendancies[raw] ?? session.classNames.classes[raw] ?? raw, lang);
   return <div className="workspace-management">
     <article className="build-card workspace-library" aria-labelledby="workspace-library-heading">
       <h3 id="workspace-library-heading">{text.libraryTitle}</h3>
