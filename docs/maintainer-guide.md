@@ -1793,6 +1793,14 @@ Only proven attached calculation groups are canonicalized; imported identities
 and independent gems remain intact. Zero base Spirit reservation does not exempt
 additive support reservation. Armour grants retain their group's activation set,
 and changing an effect list must preserve the selected effect's meaning.
+The native variants also have zero attribute shares. In the worked Oracle Grim
+Pillars `0a7cf6c82619`, Sands' grant no longer supplies ordinary Blink 20's
+157 Intelligence requirement; independent Mana Tempest 19 and Temporal Chains 19
+retain the correct maximum of 147. This deliberately loses one saved-reference
+match. Frozen Deadeye01 similarly needs 80 Strength from sixteen red supports,
+above its equipment requirements, after the attached native Heralds replace
+ordinary Herald of Ash's nominal 157. The other sixteen skill records are
+unchanged; only this exact requirement row is registered as explained.
 
 Mana Remnants' permanent regeneration buff is distinct from its collected
 Remnants. `RemnantEffect` does not scale that permanent buff; ordinary BuffEffect
