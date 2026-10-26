@@ -404,7 +404,7 @@ pub(super) fn stage_build_cfg(
     let one_handed_martial = build
         .items
         .get(&EquipmentSlot::Weapon1)
-        .and_then(|item| data.base_items.get(&item.base.to_string()))
+        .and_then(|item| data.base_item(&item.base.to_string()))
         .is_some_and(|base| {
             base.weapon.is_some()
                 && weapon_type_info(data, &base.item_class)
@@ -440,7 +440,7 @@ pub(super) fn stage_build_cfg(
     if build
         .items
         .get(&EquipmentSlot::Weapon2)
-        .and_then(|item| data.base_items.get(&item.base.to_string()))
+        .and_then(|item| data.base_item(&item.base.to_string()))
         .is_some_and(|base| base.item_class.as_str() == "Focus")
     {
         cfg = cfg.with_condition("UsingFocus", true);

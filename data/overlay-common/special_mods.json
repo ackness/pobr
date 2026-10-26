@@ -12,6 +12,81 @@
   },
   "entries": [
     {
+      "id": "spirit_with_200_strength",
+      "pattern": "\\+?(\\d+) to spirit while you have at least 200 strength",
+      "mods": [
+        {
+          "name": "Spirit",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "StatThreshold",
+              "stat": "Strength",
+              "threshold": 200.0
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "spirit_+_if_at_least_200_strength",
+      "source_note": "Grip of Kulemak: grants Spirit when the final Strength snapshot reaches 200. The existing stat threshold preserves the condition below that value.",
+      "examples": [
+        "+23 to Spirit while you have at least 200 Strength"
+      ]
+    },
+    {
+      "id": "spirit_with_200_dexterity",
+      "pattern": "\\+?(\\d+) to spirit while you have at least 200 dexterity",
+      "mods": [
+        {
+          "name": "Spirit",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "StatThreshold",
+              "stat": "Dexterity",
+              "threshold": 200.0
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "spirit_+_if_at_least_200_dexterity",
+      "source_note": "Grip of Kulemak: grants Spirit when the final Dexterity snapshot reaches 200. The existing stat threshold preserves the condition below that value.",
+      "examples": [
+        "+23 to Spirit while you have at least 200 Dexterity"
+      ]
+    },
+    {
+      "id": "spirit_with_200_intelligence",
+      "pattern": "\\+?(\\d+) to spirit while you have at least 200 intelligence",
+      "mods": [
+        {
+          "name": "Spirit",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "StatThreshold",
+              "stat": "Intelligence",
+              "threshold": 200.0
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "spirit_+_if_at_least_200_intelligence",
+      "source_note": "Grip of Kulemak: grants Spirit when the final Intelligence snapshot reaches 200. The existing stat threshold preserves the condition below that value.",
+      "examples": [
+        "+23 to Spirit while you have at least 200 Intelligence"
+      ]
+    },
+    {
       "id": "mark_skill_effect",
       "pattern": "(\\d+(?:\\.\\d+)?)% increased effect of your mark skills",
       "mods": [{ "name": "MarkEffect", "type": "INC", "value": "$1" }],
