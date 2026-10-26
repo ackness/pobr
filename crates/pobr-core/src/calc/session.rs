@@ -1843,6 +1843,9 @@ impl CalculationSession {
     /// Rebuild the actor snapshot used after its buffs were applied.
     fn minion_detail_cfg(&self, minion: &super::Actor) -> CalcConfig {
         let mut cfg = perform::minion_cfg(&self.env, minion);
+        // Match the actor-owned snapshot used by perform_minions' defence
+        // pass, including PercentStat(Life) grants of extra Energy Shield.
+        cfg.stats.insert("Life".into(), minion.output.life);
         super::skill_mechanics::snapshot_remaining_chains(
             &minion.mod_db,
             &self.env.enemy.mod_db,
@@ -1851,7 +1854,7 @@ impl CalculationSession {
         cfg
     }
 
-    /// The steps of minion `index`'s final resistance or offence `stat`
+    /// The steps of minion `index`'s Energy Shield, resistance or offence `stat`
     /// (`ActionRate`, `HitChance`, `TotalHitAvg`, `TotalDPS`, `CritChance`,
     /// `CritMultiplier`), as its calculation took them. `None` for any other
     /// stat, or when the steps do not end at the minion's DPS.
@@ -1861,6 +1864,13 @@ impl CalculationSession {
         let mut input = super::MinimalInput::from(minion.base);
         input.enemy_evasion = super::setup_env::enemy_evasion(&self.env.enemy, &cfg);
         let formula = match stat {
+            "EnergyShield" => {
+                let db = &minion.mod_db;
+                let keystones = crate::rules::DefenceKeystones::from_db(db, &cfg);
+                let (_, [_, _, terms]) =
+                    super::defence::defence_resource_terms(db, &cfg, &minion.base, &keystones);
+                terms.formula(db, &cfg, stat)
+            }
             "FireResist" | "ColdResist" | "LightningResist" | "ChaosResist" => {
                 let element = stat.strip_suffix("Resist")?;
                 super::offence::resolve_resistance(
@@ -1874,7 +1884,11 @@ impl CalculationSession {
             }
             _ => self.actor_pass_formula(&minion.mod_db, stat, &cfg, &input)?,
         };
-        let consistent = stat != "TotalDPS" || (formula.value - minion.output.dps).abs() <= 1e-6;
+        let consistent = match stat {
+            "TotalDPS" => (formula.value - minion.output.dps).abs() <= 1e-6,
+            "EnergyShield" => (formula.value - minion.output.energy_shield).abs() <= 1e-6,
+            _ => true,
+        };
         consistent.then_some(formula)
     }
 

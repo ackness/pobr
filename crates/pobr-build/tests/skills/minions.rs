@@ -320,6 +320,162 @@ fn summon_zombie_life_matches_core_derivation() {
     );
 }
 
+/// Storm Mage quality grants a percentage of its own maximum Life as extra
+/// ES. The retained handler uses PercentStat (ceil the flat contribution),
+/// then the ordinary ES factors, without deducting any Life.
+#[test]
+fn storm_mage_quality_gains_es_from_its_own_life() {
+    let data = load_data();
+    const SUMMON: &str = "SummonSkeletalStormMagesPlayer";
+    const STAT: &str = "minion_maximum_life_%_to_gain_as_maximum_energy_shield";
+    let quality_stat = data.gem_quality_stats[SUMMON]
+        .iter()
+        .find(|stat| stat.stat == STAT)
+        .unwrap();
+    assert_eq!(quality_stat.per_quality_rate, 1.0);
+
+    for (life_inc, gigantic, es_inc) in [(0, false, 0), (213, false, 0), (213, true, 50)] {
+        let mut options = default_opts();
+        options.extra_modifier_texts = vec![
+            "+12345 to maximum Life".into(),
+            "+987 to maximum Energy Shield".into(),
+            format!("Minions have {life_inc}% increased maximum Life"),
+            format!("Minions have {es_inc}% increased maximum Energy Shield"),
+        ];
+        if gigantic {
+            options
+                .extra_modifier_texts
+                .push("Your Minions are Gigantic".into());
+        }
+        let calculate = |quality| {
+            let build = Build::new()
+                .with_character(CharacterIdentity {
+                    level: 90,
+                    class_name: "Witch".into(),
+                    ascendancy_name: String::new(),
+                })
+                .add_socket_group(SocketGroup::new().with_gem_skill_quality(SUMMON, 38, quality))
+                .add_socket_group(SocketGroup::new().with_gem_skill("RaiseZombiePlayer", 20));
+            pobr_build::calculate_with_data_session(&build, &data, &options).unwrap()
+        };
+        let baseline = calculate(0);
+        let expected_life =
+            4729.0 * (1.0 + f64::from(life_inc) / 100.0) * if gigantic { 1.2 } else { 1.0 };
+        for quality in [35, 0, 1, 100] {
+            let session = calculate(quality);
+            let output = session.output();
+            let (index, mage) = output
+                .minions
+                .iter()
+                .enumerate()
+                .find(|(_, minion)| minion.summoned_by == SUMMON)
+                .unwrap();
+            assert_eq!(mage.level, 76);
+            assert!((mage.life - expected_life).abs() < 1e-6);
+            let gained = (mage.life * f64::from(quality) / 100.0).ceil();
+            // Level 76: floor(8924 × 0.53) = 4729 Life; the existing
+            // intrinsic ES is 4729 × 0.15 = 709.35, rounded after ES scaling.
+            let expected_es = ((709.35 + gained) * (1.0 + f64::from(es_inc) / 100.0)).round();
+            assert_eq!(mage.energy_shield, expected_es, "quality {quality}");
+            assert_eq!(output.life, baseline.output().life);
+            assert_eq!(output.energy_shield, baseline.output().energy_shield);
+            let zombie = output
+                .minions
+                .iter()
+                .find(|minion| minion.summoned_by == "RaiseZombiePlayer")
+                .unwrap();
+            let baseline_zombie = baseline
+                .output()
+                .minions
+                .iter()
+                .find(|minion| minion.summoned_by == "RaiseZombiePlayer")
+                .unwrap();
+            assert_eq!(zombie.life, baseline_zombie.life);
+            assert_eq!(zombie.energy_shield, baseline_zombie.energy_shield);
+            assert_eq!(zombie.dps, baseline_zombie.dps);
+
+            let life_detail =
+                pobr_build::breakdown::minion_stat_breakdown(&session, index, "Life").unwrap();
+            assert_eq!(life_detail.formula.unwrap().value, mage.life);
+            let detail =
+                pobr_build::breakdown::minion_stat_breakdown(&session, index, "EnergyShield")
+                    .unwrap();
+            assert_eq!(detail.formula.unwrap().value, mage.energy_shield);
+            assert_eq!(detail.base_total, 709.35 + gained);
+            assert_eq!(detail.inc_total, f64::from(es_inc));
+            let origin = format!("minion.{SUMMON}.{STAT}");
+            let contribution = detail
+                .mods
+                .iter()
+                .find(|row| row.origin_id.as_deref() == Some(&origin));
+            if quality == 0 {
+                assert!(contribution.is_none());
+            } else {
+                let contribution =
+                    contribution.expect("quality is attributed in the selected minion's ES");
+                assert_eq!(contribution.value, Some(gained));
+                assert!(contribution.active);
+                assert_eq!(contribution.origin_kind.as_deref(), Some("SkillGem"));
+            }
+        }
+    }
+}
+
+/// The Life snapshot used by ES and details is also the one offence sees.
+/// A synthetic Life-scaled damage line detects an inherited player snapshot.
+#[test]
+fn storm_mage_quality_life_snapshot_matches_offence_details() {
+    use pobr_core::calc::{CalculationSession, MinimalInput, MinionModifierEntry, MinionOrigin};
+    use pobr_core::{ModTag, Modifier};
+    use pobr_data::modifier::ModType;
+
+    let data = load_data();
+    let calculate = |with_life_damage| {
+        let mut session = CalculationSession::new(MinimalInput {
+            base_life: 1000.0,
+            ..Default::default()
+        });
+        session.set_stat("Life", 1000.0);
+        let mut modifiers = vec![Modifier::number("MaximumLife", ModType::Inc, 213.0)];
+        if with_life_damage {
+            modifiers.push(Modifier::number("Damage", ModType::More, 1.0).with_tag(
+                ModTag::PercentStat {
+                    stat: "Life".into(),
+                    percent: Some(1.0),
+                },
+            ));
+        }
+        session.add_minion_from_def(
+            data.minion_def("RaisedSkeletonStormMage").unwrap(),
+            38,
+            1,
+            modifiers
+                .into_iter()
+                .map(|inner| MinionModifierEntry {
+                    inner,
+                    minion_type: None,
+                })
+                .collect(),
+            vec![],
+            AttributeInfusion::default(),
+            MinionOrigin::default(),
+        );
+        session.finish().unwrap()
+    };
+    let baseline = calculate(false);
+    let scaled = calculate(true);
+    let minion = &scaled.output().minions[0];
+    assert_eq!(minion.life, 14801.77);
+    assert!(baseline.output().minions[0].dps > 0.0);
+    let ratio = minion.dps / baseline.output().minions[0].dps;
+    assert!(
+        (ratio - 2.49).abs() < 1e-6,
+        "ceil(1% of 14801.77) = 149% more: {ratio}"
+    );
+    let detail = pobr_build::breakdown::minion_stat_breakdown(&scaled, 0, "TotalDPS").unwrap();
+    assert_eq!(detail.formula.unwrap().value, minion.dps);
+}
+
 // B3: MinionModifier channel -- `Minions deal X% increased Damage` reaches the minion ModDb
 
 /// Player gear with `Minions deal 50% increased Damage` (attributed to the

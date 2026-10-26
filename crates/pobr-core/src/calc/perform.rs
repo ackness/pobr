@@ -772,6 +772,15 @@ fn perform_minions(env: &mut Env) {
             &env.enemy.mod_db,
             &mut minion_cfg,
         );
+        // Snapshot this recipient's completed pool after its buffs and Life
+        // factors, before either offence or defence reads PercentStat(Life).
+        let life = super::offence::scaled_pool(
+            &minion.mod_db,
+            &minion_cfg,
+            minion.base.life,
+            "MaximumLife",
+        );
+        minion_cfg.stats.insert("Life".into(), life);
         let mut input = MinimalInput::from(minion.base);
         input.enemy_evasion = super::setup_env::enemy_evasion(&env.enemy, &minion_cfg);
 

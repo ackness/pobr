@@ -223,6 +223,17 @@ fn minion_modifiers_impl(
         "feeding_frenzy_minion_damage_taken_+%_final" => {
             Modifier::number("DamageTaken", ModType::More, value)
         }
+        // Storm Mage quality: "Minions gain {0}% of their maximum Life as
+        // Extra maximum Energy Shield". The retained handler is flat ES
+        // with PercentStat(Life), using the minion's completed Life pool;
+        // it is not the base-resource LifeGainAsEnergyShield matrix channel.
+        "minion_maximum_life_%_to_gain_as_maximum_energy_shield" => {
+            Modifier::number("EnergyShield", ModType::Base, value)
+                .with_tag(ModTag::PercentStat {
+                    stat: "Life".into(),
+                    percent: Some(1.0),
+                })
+        }
         // "Supported Skills have {0}% increased Minion Attack Speed".
         "minion_attack_speed_+%" => Modifier::number("AttackSpeed", ModType::Inc, value),
         // Elemental Army and resistance stats on summoning skills affect
