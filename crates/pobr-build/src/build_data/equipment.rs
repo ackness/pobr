@@ -7,20 +7,30 @@ impl BuildData {
     /// base line: `Exceptional Ornate Plate`, `Squire's Structured Hammer`.
     /// Exact catalog names win. Otherwise the base must end the name before its
     /// optional ` of ...` suffix, on a word boundary; a base mentioned only in
-    /// the suffix must never identify the item. Trying the longest tail first
-    /// distinguishes `Emerald Ring` from `Emerald` or `Ring`.
+    /// the suffix must never identify the item. Bases can themselves contain
+    /// ` of `, so match the longest complete catalog name before discarding a
+    /// suffix. This also distinguishes `Emerald Ring` from `Emerald` or `Ring`.
     pub fn base_item(&self, name: &str) -> Option<&BaseItemDef> {
         if let Some(base) = self.base_items.get(name) {
             return Some(base);
         }
-        let stem = match name.split_once(" of ") {
-            Some((stem, suffix)) if !suffix.trim().is_empty() => stem,
-            Some(_) => return None,
-            None => name,
-        };
-        std::iter::once(stem)
-            .chain(stem.match_indices(' ').map(|(index, _)| &stem[index + 1..]))
-            .find_map(|candidate| self.base_items.get(candidate))
+        if name.ends_with(" of ") {
+            return None;
+        }
+        let first_of = name.find(" of ").unwrap_or(name.len());
+        std::iter::once(0)
+            .chain(name.match_indices(' ').map(|(index, _)| index + 1))
+            .take_while(|start| *start < first_of)
+            .flat_map(|start| {
+                let tail = &name[start..];
+                std::iter::once(tail).chain(
+                    tail.match_indices(" of ")
+                        .filter(|(index, _)| !tail[index + 4..].trim().is_empty())
+                        .map(|(index, _)| &tail[..index]),
+                )
+            })
+            .filter_map(|candidate| self.base_items.get(candidate))
+            .max_by_key(|base| base.name.len())
     }
 
     /// Looks up weapon base stats by base name (`Item.base` → `WeaponBaseStats`);
