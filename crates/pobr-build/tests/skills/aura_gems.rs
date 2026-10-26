@@ -105,6 +105,83 @@ Grants Skill: Level 20 Discipline
     assert_eq!(output.energy_shield, 0.0);
 }
 
+#[test]
+fn item_grant_matches_the_listed_weapon_set_before_redirecting_the_main_group() {
+    let data = crate::test_data();
+    let build = parse_build(
+        r#"<PathOfBuilding2><Build level="100" className="Witch" mainSocketGroup="3"/>
+<Items><Item id="1">Rarity: RARE
+First Staff
+Ashen Staff
+Implicits: 1
+Grants Skill: Level 20 Firebolt
+</Item><Item id="2">Rarity: RARE
+Second Staff
+Ashen Staff
+Implicits: 1
+Grants Skill: Level 20 Firebolt
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/><Slot name="Weapon 1 Swap" itemId="2"/></ItemSet></Items>
+<Skills>
+<Skill enabled="true" set1="false" set2="true"><Gem skillId="FireboltPlayer" level="20" enabled="true"/></Skill>
+<Skill enabled="true" set1="true" set2="false"><Gem skillId="FireboltPlayer" level="20" enabled="true"/></Skill>
+<Skill enabled="true" slot="Weapon 1" source="Item:1:First Staff, Ashen Staff"><Gem skillId="FireboltPlayer" level="20" enabled="true"/></Skill>
+<Skill enabled="true" slot="Weapon 1 Swap" source="Item:2:Second Staff, Ashen Staff"><Gem skillId="FireboltPlayer" level="20" enabled="true"/></Skill>
+</Skills></PathOfBuilding2>"#,
+    )
+    .unwrap();
+    assert_eq!(build.weapon_set, pobr_build::WeaponSet::First);
+    assert_eq!(
+        pobr_build::resolve_main_skill_selection(&build, data),
+        Some((1, 1, "FireboltPlayer".into())),
+    );
+    let mut second = build;
+    second.main_socket_group = Some(4);
+    second.weapon_set = pobr_build::WeaponSet::Second;
+    std::mem::swap(&mut second.items, &mut second.other_weapons);
+    assert_eq!(
+        pobr_build::resolve_main_skill_selection(&second, data),
+        Some((0, 1, "FireboltPlayer".into())),
+    );
+}
+
+#[test]
+fn item_grant_keeps_an_api_created_manual_gem_independent() {
+    let data = crate::test_data();
+    let build = Build::new()
+        .add_socket_group(pobr_build::SocketGroup::new().with_gem_skill("CometPlayer", 20))
+        .set_item(
+            EquipmentSlot::Ring1,
+            Item {
+                base: "Sapphire Ring".into(),
+                rarity: ItemRarity::Unique,
+                quality: 0,
+                corrupted: false,
+                implicit_texts: vec![],
+                modifier_texts: vec!["Grants Skill: Level 20 Comet".into()],
+                enchant_texts: vec![],
+                rolled_defence: RolledDefence::default(),
+                socketed: vec![],
+                parsed_stats: vec![],
+            },
+        );
+    let rows =
+        pobr_build::calculate_skill_metrics(&build, data, &DataOrchestratorOptions::default())
+            .unwrap();
+    assert_eq!(
+        rows.skills
+            .iter()
+            .filter(|s| s.skill_id == "CometPlayer")
+            .count(),
+        2
+    );
+    let diagnosis =
+        pobr_build::diagnose(&build, data, &DataOrchestratorOptions::default()).unwrap();
+    assert_eq!(
+        diagnosis.skills[0].gem_level, 20,
+        "manual gem is not downgraded as a grant"
+    );
+}
+
 /// A buff has the name the game shows for its skill (`Sniper's Mark`, which
 /// the curse priority table knows; `Arctic Armour`, whose skill is
 /// `new_new_arctic_armour`). A name with a placeholder, a Companion's

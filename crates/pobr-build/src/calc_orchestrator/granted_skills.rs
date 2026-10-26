@@ -251,7 +251,9 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
 /// own group for the skill, and the ordinary group that lists the same skill
 /// first, at the level the item grants, with no quality and uncorrupted (a
 /// character imported from the game lists a granted skill a second time
-/// there, holding its supports). One such ordinary group is the granted
+/// there, holding its supports, beside an exported `Item:` source group).
+/// A synthesized source does not turn a manual gem into an item grant.
+/// One such ordinary group in the granting weapon set is the granted
 /// skill; any other gem of the same skill is a gem. When that listed group
 /// exists, its supports and enabled state take precedence over the item's
 /// duplicate group, as they do for a tree-granted skill.
@@ -285,10 +287,14 @@ pub(crate) fn mark_item_granted_skills(build: &Build, data: &BuildData) -> Optio
     let mut other_weapons: Vec<_> = build.other_weapons.iter().collect();
     other_weapons.sort_by_key(|(slot, _)| slot.id());
     let mut grants: Vec<Grant> = Vec::new();
-    let equipped = build
-        .equipped_items()
-        .into_iter()
-        .map(|(slot, item)| (slot, item, None));
+    let equipped = build.equipped_items().into_iter().map(|(slot, item)| {
+        let set = matches!(
+            slot,
+            pobr_data::item::EquipmentSlot::Weapon1 | pobr_data::item::EquipmentSlot::Weapon2
+        )
+        .then_some(build.weapon_set.number());
+        (slot, item, set)
+    });
     let other = other_weapons
         .into_iter()
         .map(|(slot, item)| (*slot, item, Some(other_set)));
@@ -340,6 +346,7 @@ pub(crate) fn mark_item_granted_skills(build: &Build, data: &BuildData) -> Optio
         };
         let listed = |group: &SocketGroup| {
             group.from_gem()
+                && set.is_none_or(|set| group.weapon_set.is_none_or(|group_set| group_set == set))
                 && group.gem_skills.first().is_some_and(|gem| {
                     gem.skill_id == skill_id
                         && level.is_none_or(|level| gem.gem_level == level)
@@ -347,11 +354,28 @@ pub(crate) fn mark_item_granted_skills(build: &Build, data: &BuildData) -> Optio
                         && !gem.corrupted
                 })
         };
+        // A synthesized source alone says nothing about a user's ordinary
+        // gem. Only an existing exported item group establishes the duplicate
+        // listing convention; API-created manual groups remain independent.
+        let exported = marked.socket_groups.iter().any(|group| {
+            own(group)
+                && group
+                    .source
+                    .as_deref()
+                    .is_some_and(|source| source.starts_with("Item:"))
+        });
         let groups = &mut marked.socket_groups;
-        let listed_at = groups
-            .iter()
-            .enumerate()
-            .position(|(index, group)| !claimed.contains(&index) && listed(group));
+        let listed_at = exported
+            .then(|| {
+                groups
+                    .iter()
+                    .enumerate()
+                    .filter(|(index, group)| !claimed.contains(index) && listed(group))
+                    // Prefer an explicit matching set over an unbound listing.
+                    .min_by_key(|(_, group)| set.is_some() && group.weapon_set != set)
+                    .map(|(index, _)| index)
+            })
+            .flatten();
         for (index, group) in groups.iter_mut().enumerate() {
             let is_own = own(group);
             if !is_own && listed_at != Some(index) {
@@ -745,7 +769,8 @@ mod tests {
             .set_item(EquipmentSlot::Weapon1, granting_item(18))
             .add_socket_group(listed);
         build.character.level = 100;
-        let build = augment_item_granted_skills(&build, &data).unwrap();
+        let mut build = augment_item_granted_skills(&build, &data).unwrap();
+        build.socket_groups[1].source = Some("Item:1:Test Wand".into());
         let build = mark_item_granted_skills(&build, &data).unwrap();
         // The item's own group and the listed group are both the granted skill.
         assert!(
