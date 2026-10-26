@@ -1,6 +1,6 @@
 {
   "source_revision": "45a3c00a265a60ad69cf2c152395f443089abf13",
-  "status": "307 non-holdout cross-checks and 230 default calculations completed; initial gate9/10, one tuned requirement baseline pending evidence review",
+  "status": "307 non-holdout cross-checks and230 default calculations completed; initial9/10 gate plus successful targeted parity rerun after source-verified grant requirement baseline correction. No calculation formula changed for the baseline.",
   "causes": [
     {
       "cause": "typed Life leech converted to ES",

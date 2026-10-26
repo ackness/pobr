@@ -22,14 +22,14 @@
     {
       "id": "configuration",
       "requirement": "Use bounded existing snapshots/checkboxes, avoid invented histories",
-      "status": "verified by scoped implementation reviews; final gate pending",
-      "evidence": "Ballista derived identity; existing rare-enemy visibility; native grant tables; no new event model"
+      "status": "scoped reviews and current batch gate completed; no new event model",
+      "evidence": "review-summary.json and validation-summary.json; existing condition controls retained"
     },
     {
       "id": "cross_check",
       "requirement": "Use latest available PoB2 only as independent reference",
       "status": "upstream HEAD equals clean pin;307 non-holdout cross-checks completed without errors",
-      "evidence": "vendor-verification.json; after.json to be measured"
+      "evidence": "vendor-verification.json and triage.json;307 measured non-holdout cross-checks"
     },
     {
       "id": "deferred",
@@ -41,13 +41,13 @@
       "id": "validation",
       "requirement": "Run batch gate and calculate all 230 in reference and native default modes",
       "status": "230/230 reference/default calculations passed; initial9/10 gate plus targeted parity rerun passed after exact documented grant requirement baseline correction",
-      "evidence": "gate.log, native-summary.json, default-calculation.json to be produced"
+      "evidence": "gate.log, gate-rerun.log, validation-summary.json, native-summary.json and default-calculation.json"
     },
     {
       "id": "reporting",
       "requirement": "Report improvements, regressions and unresolved rows without claiming oracle agreement means correctness",
       "status": "current measurements reconciled; two exact new known rows, one residual stays reference; full remaining inventory retained",
-      "evidence": "build-report.py; row transitions and exact source provenance to be archived"
+      "evidence": "summary.json, row-transitions.csv, measurement-inputs.json and final-artifact-check.json"
     }
   ],
   "completion_proven": false,

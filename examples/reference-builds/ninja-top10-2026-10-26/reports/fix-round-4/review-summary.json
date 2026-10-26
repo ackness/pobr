@@ -89,6 +89,12 @@
       "result": "No native defect proven; Ballista5 exact; Gemling regeneration203INC transfer exact with saved residual unverified",
       "evidence": "evidence/new-static-rows.json",
       "response": "Only Warbringer ActiveTotemLimit added; Gemling stays reference classification with explicit5.1 residual"
+    },
+    {
+      "id": "round5-report-audit-r1",
+      "result": "All numeric/provenance/gate claims reconciled; oneP3 stale progress wording",
+      "response": "Completion and cause status fields now reference completed archived measurements and targeted rerun; nine next-batch defects remain explicitlypending as of frozen45a3 revision. Artifact hashes refreshed.",
+      "limits": "Read-only artifact/hash audit; no new calculations or game-client test."
     }
   ],
   "limits": [
