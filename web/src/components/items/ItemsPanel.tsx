@@ -1,3 +1,4 @@
+import { localizedName } from '../../lib/chinese';
 import { AppTooltip, AppButton, AppInput, AppTextarea } from '../shared/controls';
 import { UniqueCatalog } from './UniqueCatalog';
 import { uniqueT } from '../../lib/uniqueCatalogText';
@@ -303,7 +304,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
       || (!augmentInfo.editable && !['unsupported_item_type', 'no_augment_sockets'].includes(augmentInfo.reason ?? '')));
 
   const runeDisplayName = (entry: RuneCatalogEntry) =>
-    (lang === 'zh-CN' ? entry.name_zh_cn : lang === 'zh-TW' ? entry.name_zh_tw : null) ?? entry.name;
+    localizedName(lang, entry.name, entry.name_zh_cn, entry.name_zh_tw);
   const existingRuneName = (name: string) => {
     const entry = augmentInfo?.options.find(option => option.name === name);
     return entry ? runeDisplayName(entry) : name || tt('items.emptySocket');
