@@ -24005,11 +24005,11 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Condition:UnholyMight",
+          "name": "UnholyMightGrantedMagnitude",
           "type": "Inc",
           "value": 4.0,
           "tags": [
-            "Multiplier { var: \"Mana\", div: 100.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+            "PerStat { stat: \"Mana\", div: 100.0, limit: None, limit_var: None, actor: None }"
           ]
         }
       ]

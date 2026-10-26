@@ -543,6 +543,26 @@ pub fn expand_misc_buffs(env: &mut Env) {
     }
 }
 
+/// The definition installs the base magnitude before final Mana is available.
+/// Resolve the caster's granted magnitude once that resource snapshot is ready.
+/// Blackened Heart (`unholy_might_granted_magnitude_+%_per_100_maximum_mana`)
+/// is separate from the recipient's effect of buffs on itself.
+pub(super) fn resolve_unholy_might_magnitude(env: &mut Env) {
+    if !env.cfg.multipliers.contains_key("UnholyMightMagnitude") {
+        return;
+    }
+    let inc = env.player.mod_db.sum(
+        ModType::Inc,
+        &env.cfg,
+        &[ModName::from("UnholyMightGrantedMagnitude")],
+    );
+    if let Some(magnitude) = env.cfg.multipliers.get_mut("UnholyMightMagnitude") {
+        // Add magnitude points before the definition's multiplier tag rounds
+        // them: 100 + 16 must not become 115.999... through 100 * 1.16.
+        *magnitude += *magnitude * inc / 100.0;
+    }
+}
+
 /// Stage 7 (T4 implementation): applies non-damaging ailments -- folds
 /// Chill/Shock's Val/Base/Override and writes the result to the enemy db
 /// (mirrors CalcPerform.lua:3076-3180). Implementation in

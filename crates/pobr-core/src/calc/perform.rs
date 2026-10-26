@@ -1,6 +1,6 @@
 use pobr_data::prelude::*;
 
-use crate::{CalcConfig, ModDb, Modifier};
+use crate::{CalcConfig, ModDb, ModValue, Modifier};
 
 use super::ailment::{
     AilmentSource, AilmentStageTerms, AilmentTerms, HandAilmentMerge, StackConfig,
@@ -190,6 +190,8 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
             env.cfg.multipliers.insert("LifeCost".into(), life_cost);
         }
     }
+
+    super::env_finalize::resolve_unholy_might_magnitude(env);
 
     // Exposure, after the buffs and debuffs that apply it and the defences
     // some of it scales with: every `<El>Exposure` on the enemy comes down to
@@ -485,6 +487,13 @@ fn inject_companion_life(env: &mut Env) {
 /// the created population twice and discard the independent Presence override.
 pub(crate) fn minion_cfg(env: &Env, minion: &super::Actor) -> CalcConfig {
     let mut cfg = env.cfg.clone();
+    // A named buff belongs to its recipient, never to every actor merely
+    // because the player has it. Ally grants install their own magnitude.
+    cfg.conditions.remove("UnholyMight");
+    cfg.multipliers.remove("UnholyMightMagnitude");
+    let magnitude = minion.mod_db.get_multiplier("UnholyMightMagnitude", &cfg);
+    cfg.multipliers
+        .insert("UnholyMightMagnitude".into(), magnitude);
     // Standing on ground is per actor. The player's state never establishes
     // the minion's position; its explicit Condition flag does.
     cfg.conditions.remove("OnConsecratedGround");
@@ -579,7 +588,7 @@ fn apply_main_hand_share(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env)
 /// modifiers, scaled by the increased and more effect of buffs and auras on
 /// the minion itself. Not for a hidden monster, nor when the character's
 /// auras cannot affect allies.
-fn apply_extra_auras(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env) {
+fn apply_extra_auras(minion: &mut super::Actor, cfg: &mut CalcConfig, env: &Env) {
     if minion.mod_db.flag(cfg, "HiddenMonster") {
         return;
     }
@@ -587,16 +596,112 @@ fn apply_extra_auras(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env) {
     if auras.is_empty() {
         return;
     }
+    let unholy_might_grant = auras
+        .iter()
+        .find(|m| {
+            m.name.as_str() == "Condition:UnholyMight"
+                && m.mod_type == ModType::Flag
+                && m.value.as_bool() == Some(true)
+                && m.matches(&env.cfg)
+        })
+        .cloned();
     let names = [
         ModName::from("BuffEffectOnSelf"),
         ModName::from("AuraEffectOnSelf"),
     ];
-    let scale = (1.0 + minion.mod_db.sum(ModType::Inc, cfg, &names) / 100.0)
-        * minion.mod_db.more(cfg, &names);
+    let scale = (1.0 + minion.mod_db.sum(ModType::Inc, &*cfg, &names) / 100.0)
+        * minion.mod_db.more(&*cfg, &names);
     for aura in auras {
         minion
             .mod_db
             .scale_add_mod(aura, scale, &env.high_precision);
+    }
+    // Necromantic Conduit's ally flag arrives after the player's misc-buff
+    // pass. Expand only this named grant, with the caster's magnitude and the
+    // recipient's buff effect. A zero Presence count explicitly excludes all
+    // minions; a positive count does not assign positions to individual actors.
+    if let Some(grant) = unholy_might_grant
+        && cfg.mode_combat
+        && !env
+            .cfg
+            .multiplier_if_set("MinionPresenceCount")
+            .is_some_and(|n| n <= 0.0)
+    {
+        expand_ally_unholy_might(minion, cfg, env, &grant);
+    }
+}
+
+fn expand_ally_unholy_might(
+    minion: &mut super::Actor,
+    cfg: &mut CalcConfig,
+    env: &Env,
+    grant: &Modifier,
+) {
+    use crate::rules::buff_expander::{self, BuffExpandState, BuffExpansion};
+
+    let Some(definition) = env
+        .buff_definitions
+        .iter()
+        .find(|def| def.id == "UnholyMight")
+    else {
+        return;
+    };
+    if minion.mod_db.iter_mods().any(|m| {
+        m.origin.as_ref().is_some_and(|o| {
+            o.source_id.kind == SourceKind::Buff && o.source_id.id == "buff.UnholyMight"
+        })
+    }) {
+        return;
+    }
+    let mut expansion = BuffExpansion::default();
+    buff_expander::expand_one(
+        &BuffExpandState {
+            db: &minion.mod_db,
+            enemy_db: Some(&env.enemy.mod_db),
+            cfg,
+            mode_combat: cfg.mode_combat,
+            main_skill: None,
+        },
+        definition,
+        &env.buff_handler_registry,
+        &mut expansion,
+    );
+    for modifier in &mut expansion.mods {
+        if let (Some(origin), Some(source)) = (&mut modifier.origin, &grant.origin) {
+            origin.parent_source_id = Some(source.source_id.clone());
+            origin.raw_text = source.raw_text.clone();
+        }
+    }
+    // Keep each Blackened Heart source, but resolve its per-Mana value on the
+    // caster before crossing actors. The definition's base magnitude is 100;
+    // each percent increase is one additional point of that magnitude.
+    for source in env.player.mod_db.named("UnholyMightGrantedMagnitude") {
+        if source.mod_type != ModType::Inc || !source.matches(&env.cfg) {
+            continue;
+        }
+        let Some(value) = source.effective_number(&env.cfg) else {
+            continue;
+        };
+        let mut modifier = source.clone();
+        modifier.name = ModName::from("Multiplier:UnholyMightMagnitude");
+        modifier.mod_type = ModType::Base;
+        modifier.value = ModValue::Number(value);
+        modifier.tags.clear();
+        if let Some(origin) = &mut modifier.origin {
+            origin.stat_id = Some(modifier.name.clone());
+            origin.mod_type = Some(modifier.mod_type);
+        }
+        expansion.mods.push(modifier);
+    }
+    minion.mod_db.add_list(expansion.mods);
+    // Start from the recipient's own table; the parent's resolved multiplier
+    // must not be inherited or added a second time.
+    cfg.multipliers.remove("UnholyMightMagnitude");
+    let magnitude = minion.mod_db.get_multiplier("UnholyMightMagnitude", cfg);
+    cfg.multipliers
+        .insert("UnholyMightMagnitude".into(), magnitude);
+    for condition in expansion.conditions_set {
+        cfg.conditions.insert(condition, true);
     }
 }
 
@@ -660,7 +765,7 @@ fn perform_minions(env: &mut Env) {
         for condition in conditions {
             minion_cfg.conditions.insert(condition, true);
         }
-        apply_extra_auras(minion, &minion_cfg, env);
+        apply_extra_auras(minion, &mut minion_cfg, env);
         apply_main_hand_share(minion, &minion_cfg, env);
         super::skill_mechanics::snapshot_remaining_chains(
             &minion.mod_db,

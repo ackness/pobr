@@ -12,6 +12,23 @@
   },
   "entries": [
     {
+      "id": "blackened_heart_unholy_might_granted_magnitude",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased magnitude of unholy might buffs you grant per 100 maximum mana$",
+      "mods": [
+        {
+          "name": "UnholyMightGrantedMagnitude",
+          "type": "INC",
+          "value": "$1",
+          "tags": [{"type": "PerStat", "stat": "Mana", "div": 100}]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "unholy_might_granted_magnitude_+%_per_100_maximum_mana; passive 2877 Blackened Heart (AscendancyWitch3Notable4)",
+      "source_note": "Game text increases the magnitude of Unholy Might buffs YOU GRANT. Read from the caster's completed maximum Mana, once per full 100, for both self and ally grants. The recipient's Mana and buff effect are separate. Uses the existing UnholyMight definition and magnitude multiplier; no uptime is inferred.",
+      "examples": ["4% increased Magnitude of Unholy Might Buffs you grant per 100 maximum Mana"]
+    },
+    {
       "id": "weapon_added_cold_from_mana",
       "pattern": "^attacks with this weapon have added cold damage equal to (\\d+(?:\\.\\d+)?)% to (\\d+(?:\\.\\d+)?)% of maximum mana$",
       "mods": [
