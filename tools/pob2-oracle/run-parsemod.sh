@@ -27,17 +27,12 @@ VENDOR_ROOT="${POBR_VENDOR_ROOT:-$REPO_ROOT/vendor}"
 POB_SRC="$VENDOR_ROOT/PathOfBuilding-PoE2/src"
 RUNTIME="$VENDOR_ROOT/PathOfBuilding-PoE2/runtime/lua"
 
-LUAJIT="${LUAJIT:-${POBR_LUAJIT:-/opt/homebrew/bin/luajit}}"
-
 if [[ ! -d "$POB_SRC" ]]; then
 	echo "run-parsemod: vendor PoB2 missing (${POB_SRC}) -- skip" >&2
 	echo "run-parsemod: set POBR_VENDOR_ROOT to a checkout containing PathOfBuilding-PoE2/" >&2
 	exit 3
 fi
-if [[ ! -x "$LUAJIT" ]] && ! command -v "$LUAJIT" >/dev/null 2>&1; then
-	echo "run-parsemod: luajit unavailable (${LUAJIT}) -- skip" >&2
-	exit 3
-fi
+LUAJIT="$(bash "$REPO_ROOT/devs/scripts/pob2-luajit.sh" resolve)" || exit 3
 
 # Detect explicit --mode; default to parsemod. Make --lines-file / --out paths
 # absolute (the runner cd's into POB_SRC before invoking luajit).
