@@ -101,6 +101,13 @@ pub(super) fn collect(
         }
     }
     let mut predicates: BTreeMap<String, BTreeMap<String, Option<bool>>> = BTreeMap::new();
+    // A conditional culling grant must expose the rarity control that can
+    // activate it. Compatibility was already resolved when preparing the
+    // selected skill; this visibility fact does not enable the modifier.
+    let has_culling_grant = session.mods_named("CanCull").iter().any(|modifier| {
+        modifier.mod_type == pobr_data::prelude::ModType::Flag
+            && modifier.value.as_bool() == Some(true)
+    });
     for option in data
         .config_catalog
         .iter()
@@ -148,7 +155,7 @@ pub(super) fn collect(
                             "totem" => Some("SummonsTotem"),
                             _ => None,
                         };
-                        if session.has_flag(value) {
+                        if session.has_flag(value) || (value == "CanCull" && has_culling_grant) {
                             Some(true)
                         } else if let Some(name) = skill_type {
                             Some(cfg.skill_types.names().contains(&name))

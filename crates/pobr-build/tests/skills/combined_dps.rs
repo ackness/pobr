@@ -39,8 +39,9 @@ fn detonate_living_innate_culling_contributes_to_combined_dps() {
 #[test]
 fn culling_strike_ii_applies_only_to_compatible_selected_hits_against_rare_or_unique_enemies() {
     let data = crate::test_data();
-    let calculate = |skill: &str, support_enabled: bool, main_group: u32, enemy: &str| {
-        let build = pobr_build::parse_build(&format!(
+    let calculate =
+        |skill: &str, support_enabled: bool, main_group: u32, enemy: &str, effective: bool| {
+            let build = pobr_build::parse_build(&format!(
             r#"<PathOfBuilding2><Build level="90" className="Monk" mainSocketGroup="{main_group}"/>
 <Skills>
 <Skill enabled="true"><Gem skillId="{skill}" level="20" enabled="true"/>
@@ -53,13 +54,16 @@ Wrapped Quarterstaff
 <Config>{enemy}</Config></PathOfBuilding2>"#
         ))
         .unwrap();
-        pobr_build::calculate_with_data_session(
-            &build,
-            &data,
-            &DataOrchestratorOptions::against_reference_enemy(),
-        )
-        .unwrap()
-    };
+            pobr_build::calculate_with_data_session(
+                &build,
+                &data,
+                &DataOrchestratorOptions {
+                    mode_effective: effective,
+                    ..DataOrchestratorOptions::against_reference_enemy()
+                },
+            )
+            .unwrap()
+        };
     let unique = r#"<Input name="enemyIsBoss" string="Pinnacle"/>"#;
     for (enemy, threshold) in [
         (r#"<Input name="enemyIsBoss" string="None"/>"#, 0.0),
@@ -69,8 +73,8 @@ Wrapped Quarterstaff
         ),
         (unique, 5.0),
     ] {
-        let plain = calculate("MeleeQuarterstaffPlayer", false, 1, enemy);
-        let supported = calculate("MeleeQuarterstaffPlayer", true, 1, enemy);
+        let plain = calculate("MeleeQuarterstaffPlayer", false, 1, enemy, true);
+        let supported = calculate("MeleeQuarterstaffPlayer", true, 1, enemy, true);
         let output = supported.output();
         assert!(output.dps > 0.0);
         assert_eq!(output.dps, plain.output().dps);
@@ -87,6 +91,9 @@ Wrapped Quarterstaff
         assert!(
             (output.culling_dps - plain.output().combined_dps * (multiplier - 1.0)).abs() < 1e-6
         );
+        let panel = calculate("MeleeQuarterstaffPlayer", true, 1, enemy, false);
+        assert_eq!(panel.output().cull_multiplier, 1.0);
+        assert_eq!(panel.output().culling_dps, 0.0);
         let grants = supported.mods_named("CanCull");
         assert_eq!(grants.len(), 1);
         let origin = grants[0].origin.as_ref().unwrap();
@@ -105,7 +112,7 @@ Wrapped Quarterstaff
         ("MeleeQuarterstaffPlayer", true, 2),
         ("TempestBellPlayer", true, 1),
     ] {
-        let session = calculate(skill, enabled, main_group, unique);
+        let session = calculate(skill, enabled, main_group, unique, true);
         assert_eq!(
             session.output().culling_dps,
             0.0,
