@@ -224,6 +224,67 @@ fn other_weapon_tree_controls_skill_levels_and_quality() {
     );
 }
 
+#[test]
+fn weapon_restricted_attacks_take_levels_from_the_usable_set() {
+    use pobr_data::passive_tree::NodeId;
+    for (skill, level, weapon, bonus, expected) in [
+        (
+            "OilGrenadePlayer",
+            21,
+            "Siege Crossbow",
+            "+5 to Level of all Projectile Skills",
+            26,
+        ),
+        ("EscapeShotPlayer", 1, "Crude Bow", "", 2),
+        ("Melee1HMacePlayer", 20, "Flanged Mace", "", 24),
+        ("BoneshatterPlayer", 1, "Oak Greathammer", "", 5),
+    ] {
+        let mut build = Build::new()
+            .add_socket_group(SocketGroup::new().with_gem_skill("FireballPlayer", 1))
+            .add_socket_group(
+                SocketGroup::new()
+                    .with_active_skill(skill, level)
+                    .with_gem_skill(skill, level),
+            );
+        let item = |base: &str, bonus: &str| Item {
+            base: base.into(),
+            rarity: ItemRarity::Rare,
+            quality: 0,
+            corrupted: false,
+            implicit_texts: vec![],
+            modifier_texts: (!bonus.is_empty())
+                .then(|| bonus.into())
+                .into_iter()
+                .collect(),
+            enchant_texts: vec![],
+            rolled_defence: RolledDefence::default(),
+            socketed: vec![],
+            parsed_stats: vec![],
+        };
+        build.items.insert(
+            EquipmentSlot::Weapon1,
+            item("Striking Quarterstaff", "+4 to Level of all Attack Skills"),
+        );
+        build
+            .other_weapons
+            .insert(EquipmentSlot::Weapon1, item(weapon, bonus));
+        build.other_weapon_set_nodes = Some(vec![NodeId(19955)]); // +1 Cold Skill level
+        build
+            .config
+            .global_modifier_texts
+            .push("+4 to Level of all Melee Skills".into());
+        let diagnosis =
+            pobr_build::diagnose(&build, data(), &DataOrchestratorOptions::default()).unwrap();
+        let usage = pobr_build::usage::line_usage(&diagnosis, &build, data());
+        let resolved = usage
+            .skills
+            .iter()
+            .find(|entry| entry.skill_id == skill)
+            .unwrap();
+        assert_eq!(resolved.level, expected, "{skill}");
+    }
+}
+
 /// Enablement is a player choice; the active weapon context gates inspected
 /// attacks and overview rows while all-set reservation still reads Blink.
 #[test]

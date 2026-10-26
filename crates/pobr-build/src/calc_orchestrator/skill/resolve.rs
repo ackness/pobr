@@ -424,8 +424,9 @@ pub(crate) fn gem_property_bonuses(build: &Build, data: &BuildData) -> Vec<GemPr
 }
 
 /// These attack families require their weapon class (game skill descriptions:
-/// Rend requires Talismans, Spear Stab requires Spears, crossbow ammunition
-/// requires Crossbows). An unbound group uses the only set that can use it.
+/// Rend requires Talismans, bow skills require Bows, grenades and crossbow
+/// ammunition require Crossbows, Boneshatter and Mace Strike require Maces).
+/// An unbound group uses the only set that can use it.
 pub(crate) fn bind_required_weapon_sets(build: &Build, data: &BuildData) -> Option<Build> {
     use pobr_data::item::EquipmentSlot::Weapon1;
     let class = |items: &std::collections::HashMap<_, _>| {
@@ -449,16 +450,25 @@ pub(crate) fn bind_required_weapon_sets(build: &Build, data: &BuildData) -> Opti
             .and_then(|id| data.granted_effects.get(id));
         let Some(effect) = effect else { continue };
         let has = |kind| effect.skill_types.iter().any(|t| t == kind);
-        let required = if has("Shapeshift") {
-            "Talisman"
+        let required: &[&str] = if has("Shapeshift") {
+            &["Talisman"]
         } else if has("Spear") || effect.id == "SpearThrowPlayer" {
-            "Spear"
-        } else if has("CrossbowSkill") || has("CrossbowAmmoSkill") {
-            "Crossbow"
+            &["Spear"]
+        } else if has("Bow") {
+            &["Bow"]
+        } else if has("CrossbowSkill") || has("CrossbowAmmoSkill") || has("Grenade") {
+            &["Crossbow"]
+        } else if matches!(
+            effect.id.as_str(),
+            "BoneshatterPlayer" | "Melee1HMacePlayer"
+        ) {
+            &["One Hand Mace", "Two Hand Mace"]
         } else {
             continue;
         };
-        if here != Some(required) && there == Some(required) {
+        if !here.is_some_and(|class| required.contains(&class))
+            && there.is_some_and(|class| required.contains(&class))
+        {
             adjusted.get_or_insert_with(|| build.clone()).socket_groups[index].weapon_set =
                 Some(3 - build.weapon_set.number());
         }
