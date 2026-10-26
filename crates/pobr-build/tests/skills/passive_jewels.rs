@@ -392,15 +392,23 @@ fn conquered_small_additions_use_allocated_nodes_and_their_effect_scaling() {
     .map(|n| (n.skill, n))
     .collect();
     let line = "Conquered Small Passive Skills also grant 6% increased Elemental Damage";
+    let minion_line = "Conquered Small Passive Skills also grant Minions deal 4% increased damage";
     let unknown = "Conquered Small Passive Skills also grant something unsupported";
     let text = jewel(&format!(
-        "Glorifying the defilement of 14785 souls in tribute to Amanamu\nPassives in radius are Conquered by the Abyssals\nHistoric\n{line}\n{unknown}"
+        "Glorifying the defilement of 14785 souls in tribute to Amanamu\nPassives in radius are Conquered by the Abyssals\nHistoric\n{line}\n{minion_line}\n{unknown}"
     ));
     let mut build = build(&text, &[900001, 2, 3, 4, 6, 30115]);
+    build
+        .socket_groups
+        .push(pobr_build::SocketGroup::new().with_gem_skill("WolfPackPlayer", 20));
     let state = passive_jewel_state(&build, &data);
     assert_eq!(
         state.nodes[&2].stats,
-        ["+5 to Tribute", "6% increased Elemental Damage"]
+        [
+            "+5 to Tribute",
+            "6% increased Elemental Damage",
+            "Minions deal 4% increased damage"
+        ]
     );
     assert_eq!(state.nodes[&3].stats, ["+3 to Tribute"]);
     assert!(
@@ -440,6 +448,30 @@ fn conquered_small_additions_use_allocated_nodes_and_their_effect_scaling() {
         .filter_map(|m| m.value.as_number())
         .sum();
     assert_eq!(elemental, 18.0);
+    let minion_mods = calc.minion_stat_mods(0, "Damage");
+    let from_small: Vec<_> = minion_mods
+        .iter()
+        .filter(|m| {
+            m.active
+                && m.modifier
+                    .origin
+                    .as_ref()
+                    .is_some_and(|o| o.source_id.id == "node.2")
+        })
+        .collect();
+    assert_eq!(
+        from_small.iter().filter_map(|m| m.value).sum::<f64>(),
+        6.0,
+        "nested minion payload keeps the original4 plus its scaled delta2"
+    );
+    let scaled_dps = calc.minion_output(0).unwrap().dps;
+    build.tree.allocated_nodes.retain(|n| n.0 != 30115);
+    let unscaled = calculate_with_data_session(&build, &data, &options).unwrap();
+    let unscaled_dps = unscaled.minion_output(0).unwrap().dps;
+    assert!(
+        (scaled_dps / unscaled_dps - 1.12 / 1.08).abs() < 1e-8,
+        "two small passives grant12% with effect versus8% without it"
+    );
     // No conquest means no directive is consumed or applied.
     let plain = jewel(line);
     let no_conquest = self::build(&plain, &[900001, 2]);
