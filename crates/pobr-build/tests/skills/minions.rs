@@ -1250,6 +1250,146 @@ Wooden Club
 }
 
 #[test]
+fn watch_how_i_do_it_shares_only_the_main_hand_weapon_with_present_attack_allies() {
+    use pobr_build::calculate_with_data_session;
+    use pobr_data::{item::EquipmentSlot, passive_tree::NodeId};
+
+    let data = load_data();
+    let make = |summon: &str, weapon: &str, ring: &str| {
+        pobr_build::parse_build(&format!(r#"<PathOfBuilding2>
+<Build level="90" className="Mercenary" ascendClassName="Tactician" mainSocketGroup="1"/>
+<Skills><Skill><Gem skillId="FireballPlayer" level="20"/></Skill>
+<Skill><Gem skillId="{summon}" level="20"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Wooden Club
+{weapon}
+</Item><Item id="2">Rarity: NORMAL
+Gold Ring
+{ring}
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/><Slot name="Ring 1" itemId="2"/></ItemSet></Items>
+</PathOfBuilding2>"#)).unwrap()
+    };
+    let calc = |data: &BuildData, build: &Build, share: bool, lines: &[&str]| {
+        let mut build = build.clone();
+        if share {
+            build.tree.allocated_nodes.push(NodeId(16249));
+        }
+        let mut opts = default_opts();
+        opts.extra_modifier_texts = lines.iter().map(|line| (*line).to_owned()).collect();
+        let result = calculate_with_data_session(&build, data, &opts).unwrap();
+        assert!(
+            result.unsupported_modifier_texts().is_empty(),
+            "{:?}",
+            result.unsupported_modifier_texts()
+        );
+        result
+    };
+    let hit = |session: &pobr_core::calc::CompletedCalculationSession| {
+        session.minion_stat_formula(0, "TotalHitAvg").unwrap().value
+    };
+    for (summon, monster, attack_multiplier) in [
+        ("RaiseZombiePlayer", "RaisedZombie", 1.0),
+        ("SummonAzmerianWolfPlayer", "AzmerianWolf", 2.5),
+    ] {
+        let bare = make(summon, "", "");
+        let plain = calc(data, &bare, false, &[]);
+        let shared = calc(data, &bare, true, &[]);
+        assert!(hit(&shared) > hit(&plain));
+        assert_eq!(shared.output().dps, plain.output().dps);
+        for kind in ["Physical", "Fire", "Cold", "Lightning", "Chaos"] {
+            let line = format!("Adds 100 to 100 {kind} Damage");
+            let weapon = make(summon, &line, "");
+            let enhanced = calc(data, &weapon, true, &[]);
+            let effectiveness =
+                (data.minions[monster].damage * attack_multiplier * 100.0).round() / 100.0;
+            assert!(
+                (hit(&enhanced) - hit(&shared) - 25.0 * effectiveness * 1.05).abs() < 1e-6,
+                "{summon}: {kind}"
+            );
+            assert_eq!(hit(&calc(data, &weapon, false, &[])), hit(&plain));
+            assert_eq!(
+                hit(&calc(data, &make(summon, "", &line), true, &[])),
+                hit(&shared)
+            );
+        }
+        assert_eq!(
+            hit(&calc(
+                data,
+                &bare,
+                true,
+                &["Your Aura Buffs do not affect allies"]
+            )),
+            hit(&plain)
+        );
+        let mut absent = bare.clone();
+        absent
+            .config
+            .multipliers
+            .insert("MinionPresenceCount".into(), 0.0);
+        assert_eq!(hit(&calc(data, &absent, true, &[])), hit(&plain));
+        absent = bare.clone();
+        absent
+            .config
+            .conditions
+            .insert("CompanionInPresence".into(), false);
+        assert_eq!(
+            hit(&calc(data, &absent, true, &[])),
+            if summon == "RaiseZombiePlayer" {
+                hit(&shared)
+            } else {
+                hit(&plain)
+            }
+        );
+        let mut unarmed = bare;
+        unarmed.items.remove(&EquipmentSlot::Weapon1);
+        assert_eq!(
+            hit(&calc(data, &unarmed, true, &[])),
+            hit(&calc(data, &unarmed, false, &[]))
+        );
+    }
+    let mut caster = make("SummonWaterDjinnPlayer", "Adds 100 to 100 Cold Damage", "");
+    caster.socket_groups[1].gem_skills[0].minion_skill = Some(1);
+    assert_eq!(
+        hit(&calc(data, &caster, true, &[])),
+        hit(&calc(data, &caster, false, &[]))
+    );
+
+    // HiddenMonster is an actor flag, not a supported monster-table modifier.
+    // Exercise that recipient gate on prepared actors directly.
+    use pobr_core::calc::{Actor, ActorBaseStats, Env, perform};
+    use pobr_core::{CalcConfig, ModValue, Modifier};
+    use pobr_data::prelude::{DamageType, ModType};
+    let actor = Actor::new(
+        90,
+        ActorBaseStats {
+            life: 1000.0,
+            hit_min: 100.0,
+            hit_max: 100.0,
+            action_rate: 1.0,
+            ..Default::default()
+        },
+    );
+    let mut env = Env::new(actor.clone()).with_config(CalcConfig::attack());
+    env.main_hand_weapon_damage = vec![(DamageType::Physical, 100.0, 100.0)];
+    env.player.mod_db.add_mod(Modifier::new(
+        "ExtraAura",
+        ModType::List,
+        ModValue::NestedMods(vec![Modifier::number(
+            "MainHandDamageToAllies",
+            ModType::Base,
+            25.0,
+        )]),
+    ));
+    env.minions = vec![actor.clone(), actor];
+    env.minions[1]
+        .mod_db
+        .add_mod(Modifier::flag("HiddenMonster"));
+    perform(&mut env).unwrap();
+    assert!(env.minions[0].output.dps > env.minions[1].output.dps);
+    assert_eq!(env.minions[1].output.dps, env.player.output.dps);
+}
+
+#[test]
 fn minion_static_support_cost_follows_the_minions_skills() {
     let data = load_data();
     let opts = default_opts();
