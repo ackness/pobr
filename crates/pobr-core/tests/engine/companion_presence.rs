@@ -17,6 +17,9 @@ fn session(pair: bool, exclusion: &str, effect: f64) -> CalculationSession {
     if exclusion == "no_presence" {
         cfg.multipliers.insert("MinionPresenceCount".into(), 0.0);
     }
+    if exclusion == "companion_outside_presence" {
+        cfg = cfg.with_condition("CompanionInPresence", false);
+    }
     let mut s = CalculationSession::new(MinimalInput {
         base_life: 1000.0,
         base_hit_min: 100.0,
@@ -161,8 +164,17 @@ fn rune_pair_grants_average_elemental_damage_and_resistance_only_to_companions()
 #[test]
 fn rune_pair_obeys_presence_ally_block_hidden_and_inactive_grant() {
     let base = session(false, "", 0.0);
-    for exclusion in ["no_presence", "cannot_share", "hidden", "inactive_grant"] {
+    for exclusion in [
+        "no_presence",
+        "companion_outside_presence",
+        "cannot_share",
+        "hidden",
+        "inactive_grant",
+    ] {
         let s = session(true, exclusion, 0.0);
+        if exclusion == "companion_outside_presence" {
+            assert!(s.config().multiplier("MinionPresenceCount") > 0.0);
+        }
         for index in [0, 1] {
             close(
                 s.minion_output(index).unwrap().dps,

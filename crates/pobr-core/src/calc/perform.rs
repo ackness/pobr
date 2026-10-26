@@ -597,7 +597,9 @@ fn apply_extra_auras(minion: &mut super::Actor, cfg: &mut CalcConfig, env: &Env)
     // that summoning skill's recipients. Keep it nested until this pass so
     // it obeys the same ally block and recipient effect scaling as the
     // character's other Presence auras. Explicit zero excludes all minions;
-    // a positive count does not assign individual actors a position.
+    // explicit CompanionInPresence=false excludes this companion grant.
+    // An absent condition keeps the existing in-Presence default, and a
+    // positive count does not assign individual actors a position.
     if !env
         .player
         .mod_db
@@ -606,6 +608,7 @@ fn apply_extra_auras(minion: &mut super::Actor, cfg: &mut CalcConfig, env: &Env)
             .cfg
             .multiplier_if_set("MinionPresenceCount")
             .is_some_and(|n| n <= 0.0)
+        && env.cfg.conditions.get("CompanionInPresence") != Some(&false)
     {
         auras.extend(extra_aura_payloads(&minion.mod_db, cfg));
     }
