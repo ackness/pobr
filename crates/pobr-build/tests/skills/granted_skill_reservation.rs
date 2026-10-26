@@ -469,3 +469,76 @@ fn sands_variant_remaps_selected_and_following_active_effects() {
         }
     }
 }
+
+#[test]
+fn armour_grants_in_the_other_set_do_not_synthesize_unbound_aliases() {
+    for held in [WeaponSet::First, WeaponSet::Second] {
+        for bound in [1, 2] {
+            for id in ["BlinkSandPlayer", "BlinkReservationPlayer"] {
+                let mut build = unique_build(
+                    "Sands of Silk",
+                    "Shrouded Vest",
+                    "Grants Skill: Level 20 Blink",
+                    &[item_group("Sands of Silk", "Shrouded Vest", id, 20)],
+                );
+                build.weapon_set = held;
+                build.socket_groups[0].weapon_set = Some(bound);
+                if id == "BlinkReservationPlayer" {
+                    build.socket_groups[0].main_active_skill = Some(2);
+                }
+                let original = build.socket_groups.clone();
+                assert_eq!(reservation(&build), 0.0, "{held:?}, bound={bound}, {id}");
+                assert_eq!(
+                    resolve_main_skill_selection(&build, data()),
+                    (held.number() == bound).then(|| (0, 1, "BlinkSandPlayer".into()))
+                );
+                assert_eq!(build.socket_groups, original);
+            }
+        }
+    }
+}
+
+#[test]
+fn armour_grant_listings_keep_their_activation_set_independent_of_item_copies() {
+    for held in [WeaponSet::First, WeaponSet::Second] {
+        for item_set in [None, Some(1), Some(2)] {
+            for listed_set in [1, 2] {
+                for own in ["HeraldOfAshPlayer", "UniqueHeraldOfAshPlayer"] {
+                    for listed in ["HeraldOfAshPlayer", "UniqueHeraldOfAshPlayer"] {
+                        let mut build = unique_build(
+                            "The Coming Calamity",
+                            "Heroic Armour",
+                            "Grants Skill: Level 20 Herald of Ash",
+                            &[
+                                item_group("The Coming Calamity", "Heroic Armour", own, 20),
+                                skill_group(
+                                    "",
+                                    &(skill_gem(listed, 20, 0, false)
+                                        + &skill_gem("SupportPrecisionPlayer", 1, 0, false)),
+                                ),
+                            ],
+                        );
+                        build.weapon_set = held;
+                        build.socket_groups[0].weapon_set = item_set;
+                        build.socket_groups[1].weapon_set = Some(listed_set);
+                        let original = build.socket_groups.clone();
+                        let active = held.number() == listed_set;
+                        // The supported listing controls activation; the
+                        // armour's own duplicate must not enable it in another
+                        // set or cause an ordinary Herald to be synthesized.
+                        assert_eq!(
+                            reservation(&build),
+                            if active { 10.0 } else { 0.0 },
+                            "{held:?}, item={item_set:?}, listed={listed_set}, {own}, {listed}"
+                        );
+                        assert_eq!(
+                            resolve_main_skill_selection(&build, data()),
+                            active.then(|| (1, 1, "UniqueHeraldOfAshPlayer".into()))
+                        );
+                        assert_eq!(build.socket_groups, original);
+                    }
+                }
+            }
+        }
+    }
+}

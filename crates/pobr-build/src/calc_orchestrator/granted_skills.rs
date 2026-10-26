@@ -138,6 +138,8 @@ impl GrantIdentity<'_> {
     }
 }
 
+/// Only weapons have ownership by set. An armour skill's set controls its
+/// activation, not whether the equipped armour is the source of the grant.
 fn item_weapon_set(build: &Build, slot: EquipmentSlot) -> Option<u8> {
     matches!(slot, EquipmentSlot::Weapon1 | EquipmentSlot::Weapon2)
         .then_some(build.weapon_set.number())
@@ -171,7 +173,9 @@ fn grant_identity<'a>(
             let attached = build.socket_groups.iter().any(|group| {
                 is_item_skill_source(group.source.as_deref())
                     && group.slot.as_deref().map(normalized_slot).as_deref() == Some(slot)
-                    && (group.weapon_set == Some(other_set)) == (set == Some(other_set))
+                    && set.is_none_or(|set| {
+                        (group.weapon_set == Some(other_set)) == (set == other_set)
+                    })
                     && (group.active_skill_id.as_deref() == Some(&variant.granted_effect_id)
                         || group
                             .source
@@ -324,7 +328,7 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
             s == slot.id()
                 && identity.matches(id)
                 && level.is_none_or(|level| level == *existing_level)
-                && *other == (set == Some(other_set))
+                && set.is_none_or(|set| *other == (set == other_set))
         }) {
             continue;
         }
@@ -471,7 +475,7 @@ pub(crate) fn mark_item_granted_skills(build: &Build, data: &BuildData) -> Optio
                     .active_skill_id
                     .as_deref()
                     .is_some_and(|id| identity.matches(id))
-                && (group.weapon_set == Some(other_set)) == (set == Some(other_set))
+                && set.is_none_or(|set| (group.weapon_set == Some(other_set)) == (set == other_set))
         };
         let listed = |group: &SocketGroup| {
             group.from_gem()
