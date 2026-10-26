@@ -8,6 +8,9 @@
 #[path = "support/parse.rs"]
 mod support;
 
+#[path = "engine/enemy_resistance.rs"]
+mod enemy_resistance;
+
 #[path = "engine/effect_views.rs"]
 mod effect_views;
 

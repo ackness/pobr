@@ -1946,14 +1946,17 @@ fn enemy_taken_inc_only_names(type_cfg: &CalcConfig, damage_type: DamageType) ->
 }
 
 /// The names the enemy's resistance to `damage_type` is summed from. The
-/// three elements share `ElementalResist` (vendor's isElemental; chaos excluded).
+/// parser's `<Type>Resistance` and imported `<Type>Resist` name are aliases.
+/// The three elements also share `ElementalResist` (chaos excluded).
 fn enemy_resist_names(damage_type: DamageType) -> Vec<ModName> {
-    let own = ModName::from(format!("{damage_type:?}Resist"));
+    let mut names = vec![
+        ModName::from(format!("{damage_type:?}Resist")),
+        ModName::from(format!("{damage_type:?}Resistance")),
+    ];
     if damage_type.is_elemental() {
-        vec![own, ModName::from("ElementalResist")]
-    } else {
-        vec![own]
+        names.push(ModName::from("ElementalResist"));
     }
+    names
 }
 
 /// The enemy's own lines behind one damage type's [`EnemyMitigationTerms`].
@@ -1989,11 +1992,14 @@ pub(crate) fn enemy_mitigation_lines<'a>(
         let mut lines = enemy_db.evaluate_names(&resist_cfg, &names);
         // The same last matching numeric override as enemy_own_resist uses.
         // Shared ElementalResist overrides are not part of that query.
-        let winning = lines.iter().rposition(|line| {
-            line.active
-                && line.modifier.name == names[0]
-                && line.modifier.mod_type == ModType::Override
-                && line.modifier.effective_number(&resist_cfg).is_some()
+        // Keep the existing short-name override priority, then its alias.
+        let winning = names[..2].iter().find_map(|name| {
+            lines.iter().rposition(|line| {
+                line.active
+                    && line.modifier.name == *name
+                    && line.modifier.mod_type == ModType::Override
+                    && line.modifier.effective_number(&resist_cfg).is_some()
+            })
         });
         for (index, line) in lines.iter_mut().enumerate() {
             line.active &= match winning {
@@ -2116,13 +2122,16 @@ fn enemy_own_resist(enemy_db: &ModDb, type_cfg: &CalcConfig, damage_type: Damage
     };
     let resist_name = ModName::from(format!("{type_prefix}Resist"));
     let max_resist = enemy_max_resist_for(enemy_db, type_cfg, type_prefix, &resist_name);
-    let resist = match enemy_db.override_(type_cfg, resist_name.as_str()) {
+    let names = enemy_resist_names(damage_type);
+    let resist = match names[..2]
+        .iter()
+        .find_map(|name| enemy_db.override_(type_cfg, name.as_str()))
+    {
         Some(value) => value,
         None => {
-            let names: &[ModName] = &enemy_resist_names(damage_type);
-            let base = enemy_db.sum(ModType::Base, type_cfg, names);
-            let scale = (1.0 + enemy_db.sum(ModType::Inc, type_cfg, names) / 100.0)
-                * enemy_db.more(type_cfg, names);
+            let base = enemy_db.sum(ModType::Base, type_cfg, &names);
+            let scale = (1.0 + enemy_db.sum(ModType::Inc, type_cfg, &names) / 100.0)
+                * enemy_db.more(type_cfg, &names);
             base * scale.max(0.0)
         }
     };
