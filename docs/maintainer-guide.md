@@ -207,7 +207,7 @@ Presence item auras reach minions through `ExtraAura`; “You and Allies” addi
 
 The Coming Calamity's enemy resistance overrides retain the normalized `EnemyInPresence` condition, including inside nested modifier payloads; an already prefixed name must not become `EnemyEnemyInPresence`. Legacy of Northpaw's 7% weapon base critical chance replaces the locally modified weapon base before added critical chance and global increases. It applies independently to each actual weapon source; unarmed attacks, shields, spells and attacks with their own skill-defined base critical chance retain their own bases.
 
-Frozen `amazon-02` illustrates the existing Blind-effect difference: 8993 Evasion against level-82 enemy Accuracy 2114, with the strongest Blind II's single 20% increased effect, gives 24% less enemy accuracy and 55% rounded evade chance (16% Deflect). The pinned PoB2 counts three copies from Pounce's three active effects, giving 32% less accuracy and 58% evade (18% Deflect). Only those evade/deflect rows are classified as explained; its Energy Shield/Recovery Cap and TotalEHP differences have additional causes.
+Frozen `amazon-02` illustrates the existing Blind-effect difference: 8993 Evasion against level-82 enemy Accuracy 2114, with the strongest Blind II's single 20% increased effect, gives 24% less enemy accuracy and 55% rounded evade chance (16% Deflect). The pinned PoB2 counts three copies from Pounce's three active effects, giving 32% less accuracy and 58% evade (18% Deflect). Only those evade/deflect rows are classified as explained by Blind. The separate Energy Shield/Recovery Cap error was fixed by resolving Discipline's requirements against its own weapon-set tree; explaining Blind alone does not establish TotalEHP correctness.
 
 `SpiritReserved` reports the total reservation requested by the enabled skills,
 even when it exceeds the Spirit pool; `SpiritUnreserved = Spirit - SpiritReserved`
@@ -1535,6 +1535,19 @@ gem requirements. A listed grant keeps its supports and enabled state instead
 of acquiring a second enabled source copy. Minion-compatible supports can count
 for the summoning gem's support-based levels and reservation, using the same
 eligibility and no-type-borrowing restrictions as summon costs.
+
+Selected minion hits can establish the `Damage` capability required by a
+support even when their raw game skill types omit it, as with Fire Djinn's
+Brand. This uses that selected effect's intrinsic damage payload; it does not
+add raw types or borrow damage from a sibling skill. Non-damaging effects and
+otherwise incompatible supports remain ineligible.
+
+Selected warcries use `WarcrySpeed` for both action rate and its breakdown.
+Generic Skill Speed already feeds that bucket and is counted once; Cast Speed
+does not apply. Game cast time, action speed, cooldown recovery and explicit
+Ignore Warcry Cooldowns retain their existing roles. Frozen Warbringer05 has
+an 800 ms base and 868% applied increased speed, giving 12.1 uses per second
+with its cooldown explicitly removed.
 
 Skin of the Loyal's four uncapped-resistance flags add the corresponding final
 uncapped resistance as an increased Armour, Evasion, Energy Shield or Ailment
