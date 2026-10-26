@@ -273,6 +273,47 @@ fn dual_wield_golden_baseline() {
     near("oh.average_hit", GOLDEN_OH_AVG_HIT, oh.average_hit);
 }
 
+/// Legacy of Northpaw replaces weapon base crit, before added crit and increases.
+#[test]
+fn weapon_base_crit_override_preserves_source_scope_and_added_crit() {
+    let data = load_build_data();
+    let attack = dual_build(Some(weapon("Shortsword", &[]))).set_item(
+        EquipmentSlot::Weapon1,
+        weapon("Wooden Club", &["50% increased Critical Hit Chance"]),
+    );
+    let modifiers = [
+        "Base Critical Hit Chance for Attacks with Weapons is 7%",
+        "+1% to Critical Hit Chance",
+        "100% increased Critical Hit Chance",
+    ];
+    let out = calculate_with_data(&attack, data, &opts(&modifiers)).unwrap();
+    // The 7% replaces both the mace's local 7.5% and the sword's 5%,
+    // before added crit and global increases: (7 + 1) * 2 = 16%.
+    for hand in [out.main_hand.unwrap(), out.off_hand.unwrap()] {
+        assert!((hand.crit_chance - 0.16).abs() < 1e-9, "{hand:?}");
+    }
+
+    let mut unarmed = dual_build(None);
+    unarmed.items.remove(&EquipmentSlot::Weapon1);
+    let spell = Build::new()
+        .add_socket_group(SocketGroup::new().with_gem_skill("FireballPlayer", 20))
+        .set_item(EquipmentSlot::Weapon1, weapon("Wooden Club", &[]));
+    let shield = Build::new()
+        .add_socket_group(SocketGroup::new().with_gem_skill("ShieldWallPlayer", 20))
+        .set_item(EquipmentSlot::Weapon1, weapon("Wooden Club", &[]))
+        .set_item(EquipmentSlot::Weapon2, weapon("Crucible Tower Shield", &[]));
+    let own_crit = Build::new()
+        .add_socket_group(SocketGroup::new().with_active_skill("AcidicConcoctionPlayer", 20))
+        .set_item(EquipmentSlot::Weapon1, weapon("Wooden Club", &[]));
+    for build in [unarmed, spell, shield, own_crit] {
+        let baseline = calculate_with_data(&build, data, &opts(&modifiers[1..])).unwrap();
+        let overridden = calculate_with_data(&build, data, &opts(&modifiers)).unwrap();
+        assert!(baseline.crit_chance > 0.0);
+        assert_eq!(overridden.crit_chance, baseline.crit_chance);
+        assert_eq!(overridden.dps, baseline.dps);
+    }
+}
+
 /// Local weapon critical chance is folded before global increases and applies
 /// only to the weapon supplying each attack pass. Item.lua's weaponData formula.
 #[test]
