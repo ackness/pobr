@@ -1,9 +1,27 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import type { Breakdown } from '../../api/types';
-import { BreakdownTable } from './CalcsPanel';
+import { BreakdownTable, CalcsPanel } from './CalcsPanel';
+import type { BuildSession } from '../../hooks/useBuildSession';
+import { UiProvider } from '../shared/UiContext';
+import { TooltipProvider } from '../ui/tooltip';
 
 const empty: Breakdown = { base_total: 0, inc_total: 0, more_total: 1, mods: [], formula: null };
+
+test('V2 opens a metric browser and stable empty detail region without eager overview or attribution', () => {
+  const session = { calc: { stats: [{ id: 'Life', category: 'Resource', value: 100 }],
+    breakdowns: {}, breakdown_descriptors: { Life: 'steps' }, minions: [] }, socketGroups: [], calcParams: {} } as unknown as BuildSession;
+  const html = renderToStaticMarkup(<UiProvider v2 lang="en-US"><TooltipProvider>
+    <CalcsPanel session={session} lang="en-US" />
+  </TooltipProvider></UiProvider>);
+  expect(html).toContain('id="calcs-detail"');
+  expect(html).toContain('Choose a metric to inspect its calculation.');
+  expect(html).toContain('aria-controls="calcs-detail"');
+  expect(html).toContain('data-detail-kind="steps"');
+  expect(html).toContain('Metrics &amp; details');
+  expect(html).not.toContain('id="skill-metrics-heading"');
+  expect(html).not.toContain('id="attribution-heading"');
+});
 
 test.each([
   ['en-US', 'Energy trigger rate / own use rate'],
