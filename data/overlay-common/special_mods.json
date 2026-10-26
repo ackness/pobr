@@ -12,6 +12,30 @@
   },
   "entries": [
     {
+      "id": "loreweave_exclusive_item_rarity",
+      "pattern": "^([+-]?\\d+(?:\\.\\d+)?)% increased rarity of items found your other modifiers to rarity of items found do not apply$",
+      "mods": [
+        {"name": "LootRarity", "type": "INC", "value": "$1"},
+        {"name": "LootRarityExclusive", "type": "FLAG", "value": true}
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "unique_body_armour_item_rarity_only_+%",
+      "exporter": "differs",
+      "source_note": "The native combined stat grants this rarity increase and excludes other rarity modifiers. Require both lines so the increase and exclusion retain the same original source text and item origin. The pinned exporter supports the ordinary rarity increase but lacks the exclusion: 84% here plus a separate 15% yields its 1.99 factor, versus the native 1.84. Coverage is differs, retaining both mods on native and reference bases; absent would incorrectly discard the supported 84% too. No standalone exclusion flag or unsourced reduced-form variant is accepted.",
+      "examples": ["84% increased Rarity of Items found\nYour other Modifiers to Rarity of Items found do not apply"]
+    },
+    {
+      "id": "crimson_assault_base_bleeding_duration",
+      "pattern": "^base bleeding duration is (\\d+(?:\\.\\d+)?) seconds?$",
+      "mods": [{"name": "BaseBleedingDuration", "type": "OVERRIDE", "value": "$1"}],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "keystone_crimson_assault; passive 9085 Crimson Assault",
+      "source_note": "Replaces only Bleeding's base duration before existing duration increases, multipliers and rate modifiers. The pinned exporter implements the same native replacement under BleedDurationBase. This line does not change Bleeding magnitude, aggravation or other ailments' base durations.",
+      "examples": ["Base Bleeding Duration is 1 second"]
+    },
+    {
       "id": "watch_how_i_do_it_weapon_share",
       "pattern": "^allies in your presence gain added attack damage equal to (\\d+(?:\\.\\d+)?)% of your main hand weapon's damage$",
       "mods": [{"name": "ExtraAura", "type": "LIST", "value": {"mods": [{"name": "MainHandDamageToAllies", "type": "BASE", "value": "$1"}]}}],
