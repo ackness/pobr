@@ -1,0 +1,107 @@
+[
+  {
+    "skill_id": "SupportColdExposurePlayer",
+    "cn": "冰霜曝露",
+    "tw": "冰冷曝曬"
+  },
+  {
+    "skill_id": "SupportColdPenetrationPlayer",
+    "cn": "冰霜穿透",
+    "tw": "冰冷穿透"
+  },
+  {
+    "skill_id": "DemonFormPlayer",
+    "cn": "走火入魔",
+    "tw": "惡魔變身"
+  },
+  {
+    "skill_id": "DetonateDeadPlayer",
+    "cn": "爆灵术",
+    "tw": "屍體爆破"
+  },
+  {
+    "skill_id": "ElementalConfluxPlayer",
+    "cn": "元素汇流",
+    "tw": "元素匯流"
+  },
+  {
+    "skill_id": "EyeOfWinterPlayer",
+    "cn": "凛冬之眼",
+    "tw": "凜冬之眼"
+  },
+  {
+    "skill_id": "SupportFireExposurePlayer",
+    "cn": "火焰曝露",
+    "tw": "火焰曝曬"
+  },
+  {
+    "skill_id": "SupportFreshClipPlayer",
+    "cn": "新装箭匣 I",
+    "tw": "全新彈夾 I"
+  },
+  {
+    "skill_id": "SupportFreshClipPlayerTwo",
+    "cn": "新装箭匣 II",
+    "tw": "全新彈夾 II"
+  },
+  {
+    "skill_id": "FrostboltPlayer",
+    "cn": "寒冰弹",
+    "tw": "寒冰彈"
+  },
+  {
+    "skill_id": "UniqueHeraldOfAshPlayer",
+    "cn": "灰烬之捷",
+    "tw": "灰燼之捷"
+  },
+  {
+    "skill_id": "SupportLightningExposurePlayer",
+    "cn": "闪电曝露",
+    "tw": "閃電曝曬"
+  },
+  {
+    "skill_id": "SupportLightningPenetrationPlayer",
+    "cn": "闪电穿透",
+    "tw": "閃電穿透"
+  },
+  {
+    "skill_id": "ManaTempestPlayer",
+    "cn": "魔力风暴",
+    "tw": "魔力暴風"
+  },
+  {
+    "skill_id": "HeraldOfAshPlayer",
+    "cn": "灰烬之捷",
+    "tw": "灰燼之捷"
+  },
+  {
+    "skill_id": "SupportSpellCascadePlayer",
+    "cn": "多重范围施法",
+    "tw": "秘能爆發"
+  },
+  {
+    "skill_id": "SummonMetaTotemSpellTotemPlayer",
+    "cn": "法术图腾",
+    "tw": "法術圖騰"
+  },
+  {
+    "skill_id": "SummonSpiralingConspiracyPlayer",
+    "cn": "鸦群密谋",
+    "tw": "邪鴉旋纏"
+  },
+  {
+    "skill_id": "SupportStoicismPlayer",
+    "cn": "坚忍 I",
+    "tw": "堅忍 I"
+  },
+  {
+    "skill_id": "SupportStoicismPlayerTwo",
+    "cn": "坚忍 II",
+    "tw": "堅忍 II"
+  },
+  {
+    "skill_id": "WindDancerPlayer",
+    "cn": "风舞者",
+    "tw": "風魔舞者"
+  }
+]
