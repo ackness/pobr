@@ -1318,6 +1318,75 @@ fn shattering_spite_native_stat_halves_damaging_ailments_only() {
     );
 }
 
+/// Crimson Assault changes only the base: 1s × 1.5 increased × 1.2 more
+/// = 1.8s, then 100% faster damage makes the final duration 0.9s.
+#[test]
+fn crimson_assault_base_bleeding_duration_keeps_scaling_and_sources() {
+    use pobr_core::ModTag;
+    use pobr_core::calc::ailment::{
+        ailment_duration, bleed_instance, ignite_instance, poison_instance,
+    };
+    use pobr_core::calc::{CalculationSession, MinimalInput};
+
+    let text = "Base Bleeding Duration is 1 second";
+    let parsed = crate::support::parse_mod(text).unwrap();
+    assert!(parsed.is_complete());
+    let origin = ModifierSource::new(SourceId::new(SourceKind::PassiveNode, "node.9085"))
+        .with_raw_text(text);
+    for enabled in [false, true] {
+        let mut env = bleed_env(vec![
+            Modifier::number("BleedDuration", ModType::Inc, 50.0),
+            Modifier::number("BleedDuration", ModType::More, 20.0),
+            Modifier::number("BleedFaster", ModType::More, 100.0),
+        ]);
+        env.cfg.conditions.insert("CrimsonAssault".into(), enabled);
+        env.player
+            .mod_db
+            .add_list(parsed.mods.iter().cloned().map(|m| {
+                m.with_origin(origin.clone())
+                    .with_tag(ModTag::condition("CrimsonAssault", false))
+            }));
+        let base = if enabled { 1.0 } else { 5.0 };
+        let duration = base * 1.5 * 1.2;
+        let instance = bleed_instance(1000.0, &env.player.mod_db, &env.cfg);
+        assert!((instance.duration_secs - duration).abs() < 1e-9);
+        assert_eq!(instance.magnitude_dps, 150.0);
+        assert!(
+            (ailment_duration(AilmentType::Bleed, &env.player.mod_db, &env.cfg) - duration).abs()
+                < 1e-9
+        );
+        assert_eq!(
+            ignite_instance(1000.0, &env.player.mod_db, &env.cfg).duration_secs,
+            4.0
+        );
+        assert_eq!(
+            poison_instance(1000.0, &env.player.mod_db, &env.cfg).duration_secs,
+            2.0
+        );
+        let mut session =
+            CalculationSession::new(MinimalInput::from(env.player.base)).with_config(env.cfg);
+        session.add_modifiers(env.player.mod_db.iter_mods().cloned());
+        session.perform_minimal().unwrap();
+        let terms = &session.ailment_stage_terms("BleedDPS").unwrap().passes[0].1;
+        assert_eq!(terms.base_duration, base);
+        assert!((terms.duration_before_rate - duration).abs() < 1e-9);
+        assert!((terms.duration - duration / 2.0).abs() < 1e-9);
+        assert_eq!(terms.rate, 2.0);
+        let lines = session.ailment_lines("BleedDPS").unwrap();
+        let replacement = lines
+            .duration
+            .iter()
+            .find(|r| r.modifier.name.as_str() == "BaseBleedingDuration")
+            .unwrap();
+        assert_eq!(replacement.active, enabled);
+        assert_eq!(replacement.value, Some(1.0));
+        assert_eq!(
+            replacement.modifier.origin.as_ref().unwrap().source_id.id,
+            "node.9085"
+        );
+    }
+}
+
 /// BleedFaster (rateMod) amplifies bleed DPS: +100% BleedFaster → bleed_dps ×2.
 #[test]
 fn perform_ailment_faster_scales_bleed_dps() {

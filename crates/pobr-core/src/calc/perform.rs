@@ -2105,7 +2105,8 @@ fn damaging_ailment_for_pass(
         duration_before_rate,
         stack_potential: sp,
         hits_per_second: ctx.speed,
-        base_duration: super::ailment::ailment_base_duration(kind, cfg).unwrap_or(0.0),
+        base_duration: super::ailment::resolved_ailment_base_duration(kind, player, cfg)
+            .unwrap_or(0.0),
         enemy_duration: debuff_duration_mult(enemy, cfg),
         stacks: stack.active_stacks,
         max_stacks: stack.max_stacks as f64,

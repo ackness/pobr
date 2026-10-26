@@ -256,7 +256,7 @@ pub fn ailment_duration_terms(
     enemy: Option<&ModDb>,
     cfg: &CalcConfig,
 ) -> Option<AilmentDurationTerms> {
-    let base = ailment_base_duration(ailment, cfg)?;
+    let base = resolved_ailment_base_duration(ailment, player, cfg)?;
     let scoped = ailment_scoped_cfg(cfg, ailment);
     let names = duration_mod_names(ailment);
     let mut terms = AilmentDurationTerms {
@@ -288,6 +288,23 @@ pub fn ailment_base_duration(ailment: AilmentType, cfg: &CalcConfig) -> Option<f
     }
 }
 
+/// The game's base duration with an applicable base replacement. Crimson
+/// Assault replaces Bleeding's five-second base with one second; duration
+/// increases, more multipliers and damage rate still apply afterwards.
+pub fn resolved_ailment_base_duration(
+    ailment: AilmentType,
+    player: &ModDb,
+    cfg: &CalcConfig,
+) -> Option<f64> {
+    if ailment == AilmentType::Bleed
+        && let Some(duration) =
+            player.override_(&ailment_scoped_cfg(cfg, ailment), "BaseBleedingDuration")
+    {
+        return Some(duration);
+    }
+    ailment_base_duration(ailment, cfg)
+}
+
 fn is_elemental_ailment(ailment: AilmentType) -> bool {
     matches!(
         ailment,
@@ -317,6 +334,11 @@ pub(crate) fn duration_mod_names(ailment: AilmentType) -> Vec<ModName> {
         ModName::from("AilmentDuration"),
         ModName::from("EnemyAilmentDuration"),
     ]);
+    if ailment == AilmentType::Bleed {
+        // An OVERRIDE, not part of the INC/MORE sums. Keep the base
+        // replacement visible among the duration's attributed source rows.
+        names.push(ModName::from("BaseBleedingDuration"));
+    }
     // "Duration of Elemental Ailments on Enemies" affects Ignite, Shock and
     // Chill, not Bleeding or Poison; skill-effect duration alone affects none.
     if is_elemental_ailment(ailment) {
@@ -405,12 +427,7 @@ pub fn bleed_instance(
     // in finalize_ailment_dps (PoB2's effectMod, not double-counted).
     // Source: PoB2 CalcOffence.lua L5145-5146 / L5190.
     let magnitude_dps = scale_magnitude(base_dps, db, cfg, &[ModName::from("AilmentMagnitude")]);
-    let duration_secs = scale_duration(
-        gc.bleed_base_duration,
-        db,
-        cfg,
-        &duration_mod_names(AilmentType::Bleed),
-    );
+    let duration_secs = ailment_duration(AilmentType::Bleed, db, cfg);
     AilmentInstance {
         ailment: AilmentType::Bleed,
         magnitude_dps: round(magnitude_dps),
