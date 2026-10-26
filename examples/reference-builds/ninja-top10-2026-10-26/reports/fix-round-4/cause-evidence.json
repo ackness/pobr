@@ -1,0 +1,106 @@
+{
+  "source_revision": "45a3c00a265a60ad69cf2c152395f443089abf13",
+  "status": "307 non-holdout cross-checks and 230 default calculations completed; initial gate9/10, one tuned requirement baseline pending evidence review",
+  "causes": [
+    {
+      "cause": "typed Life leech converted to ES",
+      "commits": [
+        "e9eac4cd",
+        "9f699654",
+        "184aa7ae"
+      ],
+      "game_basis": [
+        "Mystic Harvest marked-up native text",
+        "convert_all_life_leech_to_energy_shield_leech",
+        "Stat Conversion keyword base-value destination scaling"
+      ],
+      "focused_evidence": "21 recovery_outputs tests include Fire-converted 1000 hit at 2%, Mystic Harvest and Ghost Reaver: sustained ES gain, panel and detail each 20; destination restrictions/modifiers, whole-hit cap and source provenance covered",
+      "limit": "Panel remains a raw average-hit single-instance per-hand view; sustained recovery uses its existing frequency model."
+    },
+    {
+      "cause": "regeneration INC sharing",
+      "commits": [
+        "949249ea"
+      ],
+      "game_basis": [
+        "additive_modifiers_to_life_regeneration_also_apply_to_mana_regeneration_rate",
+        "mana_regeneration_rate_modifiers_apply_to_rage_regeneration"
+      ],
+      "focused_evidence": "INC-only values and source/detail reconstruction, inactive origins preserved",
+      "limit": "Source BASE, MORE and recovery modifiers are not transferred."
+    },
+    {
+      "cause": "native Ballista identity and capacity",
+      "commits": [
+        "ca4e7abc"
+      ],
+      "game_basis": [
+        "base_skill_is_ballistified",
+        "is_ranged_attack_totem"
+      ],
+      "focused_evidence": "Mortar Cannon positive; ordinary Grenade and Spell Totem negative; generic plus Ballista capacity and doubled limit, displayed sources",
+      "limit": "Capacity does not invent a summoned count."
+    },
+    {
+      "cause": "static Culling Strike rarity capability",
+      "commits": [
+        "1526eb27",
+        "3636c29e"
+      ],
+      "game_basis": [
+        "support_culling_strike_vs_rare_or_unique_enemy"
+      ],
+      "focused_evidence": "normal/rare/pinnacle, effective-mode off, support eligibility/provenance and existing Rare control visibility",
+      "limit": "Post-cull bonuses remain diagnostic; no cull-event history."
+    },
+    {
+      "cause": "Derange Intelligence ES cost",
+      "commits": [
+        "cc80f776"
+      ],
+      "game_basis": [
+        "gain_energy_shield_cost_equal_to_intelligence"
+      ],
+      "focused_evidence": "Final Intelligence via ESCostNoMult, SupportGem origin, disabled/incompatible/unselected isolation and multiplier convention",
+      "limit": "No new cost or timing model."
+    },
+    {
+      "cause": "unique item-granted native effects and selection",
+      "commits": [
+        "e7ae8051",
+        "1da34acb",
+        "ef587706",
+        "45a3c00a"
+      ],
+      "evidence": "evidence/item-grant-variants.json",
+      "focused_evidence": "54 grant regressions; ordinary aliases to attached native variants, collapsed effect ordinal remap including API fallback, armour activation and independent gems",
+      "limit": "Generic unidentified grants remain ordinary without metadata/native attachment; support-added reservation still applies."
+    },
+    {
+      "cause": "permanent Mana Remnants buff scaling",
+      "commits": [
+        "ffa045d9"
+      ],
+      "evidence": "mana-regen-static-validation.json",
+      "focused_evidence": "Permanent regeneration excludes RemnantEffect; ordinary BuffEffect, actual remnant effects and strongest source preserved",
+      "limit": "Clarity II cross-effect compatibility remains unverified; finite flask uptime is deferred."
+    },
+    {
+      "cause": "Conquered Attribute passive additions",
+      "commits": [
+        "48d09499"
+      ],
+      "evidence": "evidence/native-attributes/implementation-validation.json",
+      "focused_evidence": "10 focused tests; reduced Int147->160 and Str271->287; Small/Attribute separation, Hulking Form exclusion, allocation/radius/socket/set scope and provenance",
+      "limit": "No seed-specific notable reconstruction or roll replacement."
+    }
+  ],
+  "cohort_after": {
+    "builds": 230,
+    "failures": 0,
+    "agreed_rows": 19190,
+    "compared_rows": 20427,
+    "damage_agrees": 169,
+    "unsupported_occurrences": 2109
+  }
+}

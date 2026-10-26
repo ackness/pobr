@@ -21090,12 +21090,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Life",
+          "name": "MaximumLife",
           "type": "Inc",
           "value": 3.0
         },
         {
-          "name": "Mana",
+          "name": "MaximumMana",
           "type": "Inc",
           "value": 3.0
         },
@@ -21251,13 +21251,9 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LightningDamage",
+          "name": "LightningLuckyHitsChance",
           "type": "Base",
-          "value": 30.0,
-          "kw": 262144,
-          "tags": [
-            "DamageType(Lightning)"
-          ]
+          "value": 30.0
         }
       ]
     },
@@ -42662,7 +42658,20 @@
     },
     {
       "text": "[Allies] in your [Presence] gain added [Attack] Damage equal\nto 25% of your main hand Weapon's damage",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "List",
+          "value": [
+            {
+              "name": "MainHandDamageToAllies",
+              "type": "Base",
+              "value": 25.0
+            }
+          ]
+        }
+      ]
     },
     {
       "text": "[Allies] in your [Presence] have 30% increased [Glory] generation",
