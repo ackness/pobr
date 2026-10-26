@@ -919,12 +919,19 @@ fn own_minion_count(
         return Some((1.0 + extra).max(0.0) as u32);
     }
     let mut count = None;
+    let mut limit_bonus = 0.0;
     for ds in data.effect_stats(skill_id, level, quality, set_index).all() {
         if skill_stats::is_summoned_minion_count(&ds.stat) {
             *count.get_or_insert(0.0) += ds.value;
+            // This stat is a base cap, unlike a pack size or spawn count.
+            // Add the completed player's named bonus once, even if both the
+            // skill and its quality contribute to the native cap.
+            if ds.stat == "base_number_of_zombies_allowed" {
+                limit_bonus = session.base_sum("ActiveZombieLimit");
+            }
         }
     }
-    count.map(|total: f64| total.max(0.0) as u32)
+    count.map(|total: f64| (total + limit_bonus).max(0.0) as u32)
 }
 
 /// How many of the minion `def` its skill creates: the player's BASE sum of

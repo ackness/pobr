@@ -369,14 +369,32 @@ fn minion_increased_damage_raises_minion_dps() {
 fn minion_limit_reads_completed_player_sources() {
     let data = load_data();
     let mut options = default_opts();
-    options
-        .extra_modifier_texts
-        .push("+3 to maximum number of Raised Zombies".into());
-    let session =
-        pobr_build::calculate_with_data_session(&zombie_build(20), &data, &options).unwrap();
-    let limit = session.base_sum("ActiveZombieLimit");
-    assert!(limit >= 3.0);
-    assert_eq!(session.base_sum("Multiplier:SummonedMinion"), limit);
+    for (line, named_bonus, expected) in [
+        (None, 0.0, 10.0),
+        (Some("+3 to maximum number of Raised Zombies"), 3.0, 13.0),
+        (
+            Some("Temporary Minion Skills have +5 to Limit of Minions summoned"),
+            3.0,
+            18.0,
+        ),
+    ] {
+        options.extra_modifier_texts.extend(line.map(str::to_owned));
+        let session =
+            pobr_build::calculate_with_data_session(&zombie_build(20), &data, &options).unwrap();
+        // The native cap is read from the originating skill; the player's
+        // named stat supplies only the additional limit, not a replacement.
+        assert_eq!(session.base_sum("ActiveZombieLimit"), named_bonus);
+        assert_eq!(session.output().active_minion_limit, expected);
+        assert_eq!(session.base_sum("Multiplier:SummonedMinion"), expected);
+        assert_eq!(session.base_sum("Multiplier:MinionPresenceCount"), expected);
+    }
+
+    // These zombie/temporary bonuses do not change a persistent wolf pack.
+    let wolves =
+        Build::new().add_socket_group(SocketGroup::new().with_gem_skill("WolfPackPlayer", 20));
+    let session = pobr_build::calculate_with_data_session(&wolves, &data, &options).unwrap();
+    assert_eq!(session.output().active_minion_limit, 6.0);
+    assert_eq!(session.base_sum("Multiplier:SummonedMinion"), 6.0);
 }
 
 /// Cackling Companions: "Summons {0} Hyenas", seven at gem level 7. The
