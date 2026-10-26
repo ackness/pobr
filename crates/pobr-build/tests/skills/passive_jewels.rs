@@ -348,6 +348,106 @@ fn abyss_small_passives_replace_stats_preserve_attribute_choice_and_expose_missi
     assert_eq!(empty_original.base_sum("Tribute"), 8.0);
 }
 
+#[test]
+fn conquered_small_additions_use_allocated_nodes_and_their_effect_scaling() {
+    let mut data = data().clone();
+    data.passive_nodes = [
+        node(900001, "socket", "Socket", "jewel_socket", 0.0, &[]),
+        node(
+            2,
+            "small",
+            "Small",
+            "normal",
+            100.0,
+            &["+100 to maximum Life"],
+        ),
+        node(
+            3,
+            "attr",
+            "Attribute",
+            "normal",
+            100.0,
+            &["+5 to any [Attributes|Attribute]"],
+        ),
+        node(
+            4,
+            "notable",
+            "Notable",
+            "notable",
+            100.0,
+            &["+30 to maximum Life"],
+        ),
+        node(5, "unallocated", "Unallocated", "normal", 100.0, &[]),
+        node(6, "outside", "Outside", "normal", 100000.0, &[]),
+        node(
+            30115,
+            "hulking",
+            "Hulking Form",
+            "notable",
+            100000.0,
+            &["50% increased effect of Small Passive Skills"],
+        ),
+    ]
+    .into_iter()
+    .map(|n| (n.skill, n))
+    .collect();
+    let line = "Conquered Small Passive Skills also grant 6% increased Elemental Damage";
+    let unknown = "Conquered Small Passive Skills also grant something unsupported";
+    let text = jewel(&format!(
+        "Glorifying the defilement of 14785 souls in tribute to Amanamu\nPassives in radius are Conquered by the Abyssals\nHistoric\n{line}\n{unknown}"
+    ));
+    let mut build = build(&text, &[900001, 2, 3, 4, 6, 30115]);
+    let state = passive_jewel_state(&build, &data);
+    assert_eq!(
+        state.nodes[&2].stats,
+        ["+5 to Tribute", "6% increased Elemental Damage"]
+    );
+    assert_eq!(state.nodes[&3].stats, ["+3 to Tribute"]);
+    assert!(
+        state.unresolved.contains(&4),
+        "do not invent seed-specific notables"
+    );
+    assert!(!state.nodes.contains_key(&6));
+    assert!(state.handled_modifiers.iter().any(|l| l == line));
+    assert!(!state.handled_modifiers.iter().any(|l| l == unknown));
+    let options = DataOrchestratorOptions::default();
+    let calc = calculate_with_data_session(&build, &data, &options).unwrap();
+    let elemental: f64 = calc
+        .mods_named("ElementalDamage")
+        .iter()
+        .filter_map(|m| m.value.as_number())
+        .sum();
+    assert_eq!(
+        elemental, 9.0,
+        "one allocated small passive, scaled by Hulking Form"
+    );
+    assert!(calc.mods_named("ElementalDamage").iter().all(|m| {
+        m.origin
+            .as_ref()
+            .is_some_and(|o| o.source_id.id == "node.2")
+    }));
+    assert!(
+        calc.unsupported_modifier_texts()
+            .iter()
+            .any(|l| l == unknown)
+    );
+    assert!(!calc.unsupported_modifier_texts().iter().any(|l| l == line));
+    build.tree.allocated_nodes.push(NodeId(5));
+    let calc = calculate_with_data_session(&build, &data, &options).unwrap();
+    let elemental: f64 = calc
+        .mods_named("ElementalDamage")
+        .iter()
+        .filter_map(|m| m.value.as_number())
+        .sum();
+    assert_eq!(elemental, 18.0);
+    // No conquest means no directive is consumed or applied.
+    let plain = jewel(line);
+    let no_conquest = self::build(&plain, &[900001, 2]);
+    let state = passive_jewel_state(&no_conquest, &data);
+    assert!(state.nodes.is_empty());
+    assert!(!state.handled_modifiers.iter().any(|l| l == line));
+}
+
 /// Hulking Form scales allocated small passives: a Normal "+10 to Strength"
 /// becomes +15 with "50% increased effect of Small Passive Skills", while a
 /// Notable "+10 to Strength" stays +10 (game: Hulking Form, Titan Warrior1).
