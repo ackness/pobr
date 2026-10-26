@@ -191,21 +191,7 @@ fn gain_for_hit(
     let amount: f64 = dealt
         .iter()
         .map(|&(ty, damage)| {
-            let ty_name = TYPE_NAMES[ty as usize];
-            let mut percent = base(db, cfg, &format!("Damage{name}Leech"));
-            if ty == DamageType::Physical {
-                percent += base(db, cfg, &format!("{name}Leech"));
-            }
-            percent += base(db, cfg, &format!("{ty_name}Damage{name}Leech"));
-            if ty.is_elemental() {
-                percent += base(db, cfg, &format!("ElementalDamage{name}Leech"));
-            }
-            if db.flag(cfg, &format!("{name}LeechBasedOn{ty_name}Damage"))
-                || (ty.is_elemental()
-                    && db.flag(cfg, &format!("{name}LeechBasedOnElementalDamage")))
-            {
-                percent += base(db, cfg, &format!("PhysicalDamage{name}Leech"));
-            }
+            let percent = super::survivability::leech_percent(db, cfg, resource, ty);
             damage * scale * percent.max(0.0) / 100.0
         })
         .sum();

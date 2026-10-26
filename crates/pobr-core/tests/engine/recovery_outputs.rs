@@ -408,3 +408,138 @@ fn strongest_leech_instance_recovers_instead_of_averaging_critical_rates() {
     );
     value(&env, "LifeLeechGainRate", 40.0);
 }
+
+#[test]
+fn ghost_reaver_converts_base_leech_and_uses_energy_shield_modifiers() {
+    // convert_all_life_leech_to_energy_shield_leech and the game's Stat
+    // Conversion keyword: base values transfer; destination modifiers apply.
+    let mut mods = Vec::new();
+    for text in [
+        "Life Leech is Converted to Energy Shield Leech",
+        "Leech 2% of Physical Attack Damage as Life",
+    ] {
+        mods.extend(crate::support::parse_mod(text).unwrap().mods);
+    }
+    mods.extend([
+        Modifier::number("PhysicalDamageEnergyShieldLeech", ModType::Base, 1.0),
+        Modifier::number("LifeOnHit", ModType::Base, 5.0),
+        Modifier::number("EnergyShieldOnHit", ModType::Base, 4.0),
+        Modifier::number("LifeLeechAmount", ModType::Inc, 900.0),
+        Modifier::number("LifeLeechRate", ModType::Inc, 900.0),
+        Modifier::number("LifeRecoveryRate", ModType::Inc, 900.0),
+        Modifier::flag("InstantLifeLeech"),
+        Modifier::number("EnergyShieldLeechAmount", ModType::Inc, 100.0),
+        Modifier::number("EnergyShieldLeechRate", ModType::Inc, 100.0),
+        Modifier::number("MaxEnergyShieldLeechRate", ModType::Inc, 100.0),
+        Modifier::number("EnergyShieldRecoveryRate", ModType::Inc, 50.0),
+    ]);
+    let env = run(mods.clone(), 2.0);
+    // (2% converted + 1% native) * 1000 * 2 amount = 60 per instance.
+    // Recovery is 90 per hit; the ES cap is 300 * 10% * 2 = 60/s before
+    // recovery rate. Neither Life's pool nor its modifiers contribute.
+    value(&env, "LifeLeechGainPerHit", 5.0);
+    value(&env, "LifeLeechGainRate", 10.0);
+    value(&env, "EnergyShieldLeechGainPerHit", 94.0);
+    value(&env, "EnergyShieldLeechGainRate", 98.0);
+    let panel = pobr_core::calc::calc_leech_from_db(
+        &env.player.mod_db,
+        &env.cfg,
+        env.player.output.energy_shield,
+        1000.0,
+        pobr_core::calc::LeechResource::EnergyShield,
+    );
+    assert_eq!(panel.instance_total, 60.0);
+    assert_eq!(panel.rate_cap_per_second, 60.0);
+    assert_eq!(panel.display_rate_per_second, 60.0);
+
+    mods.push(Modifier::number(
+        "InstantEnergyShieldLeech",
+        ModType::Base,
+        25.0,
+    ));
+    let env = run(mods, 2.0);
+    // Instant ES recovery is 15/hit; the remaining 45 receives recovery rate.
+    value(&env, "EnergyShieldLeechGainPerHit", 86.5);
+    value(&env, "EnergyShieldLeechGainRate", 128.0);
+}
+
+#[test]
+fn ghost_reaver_retains_damage_eligibility_and_destination_restrictions() {
+    for leech_name in ["PhysicalDamageLifeLeech", "LifeLeech"] {
+        let mods = vec![
+            Modifier::number(leech_name, ModType::Base, 2.0),
+            Modifier::flag("GhostReaver"),
+            Modifier::flag("LifeLeechBasedOnElementalDamage"),
+            Modifier::number("PhysicalDamageConvertToFire", ModType::Base, 100.0),
+            // Converted recovery does not require recovering Life.
+            Modifier::flag("CannotGainLife"),
+        ];
+        let env = run(mods.clone(), 2.0);
+        value(&env, "LifeLeechGainRate", 0.0);
+        value(&env, "EnergyShieldLeechGainRate", 20.0);
+        value(&env, "EnergyShieldLeechGainPerHit", 20.0);
+        for flag in ["CannotGainEnergyShield", "CannotLeechEnergyShield"] {
+            let mut blocked = mods.clone();
+            blocked.push(Modifier::flag(flag));
+            let env = run(blocked, 2.0);
+            value(&env, "EnergyShieldLeechGainRate", 0.0);
+            let panel = pobr_core::calc::calc_leech_from_db(
+                &env.player.mod_db,
+                &env.cfg,
+                env.player.output.energy_shield,
+                1000.0,
+                pobr_core::calc::LeechResource::EnergyShield,
+            );
+            assert_eq!(panel.instance_total, 0.0);
+            assert_eq!(panel.display_rate_per_second, 0.0);
+        }
+    }
+}
+
+#[test]
+fn parsed_mystic_harvest_extends_physical_attack_leech_before_ghost_reaver() {
+    let leech = crate::support::parse_mod("Leech 2% of Physical Attack Damage as Life")
+        .unwrap()
+        .mods;
+    let harvest = crate::support::parse_mod(
+        "[LifeLeech|Life Leech] recovers based on your [ElementalDamage|Elemental] damage as well as [Physical] damage",
+    ).unwrap().mods;
+    assert!(
+        harvest
+            .iter()
+            .any(|m| m.name.as_str() == "LifeLeechBasedOnElementalDamage")
+    );
+    let ghost = crate::support::parse_mod("Life Leech is Converted to Energy Shield Leech")
+        .unwrap()
+        .mods;
+    for conversion in [50.0, 100.0] {
+        let mut mods = leech.clone();
+        mods.extend(harvest.clone());
+        mods.extend(ghost.clone());
+        mods.extend([
+            Modifier::number("PhysicalDamageConvertToFire", ModType::Base, conversion),
+            Modifier::number("ChaosDamageMin", ModType::Base, 1000.0),
+            Modifier::number("ChaosDamageMax", ModType::Base, 1000.0),
+        ]);
+        let env = run(mods, 2.0);
+        // 1000 Physical/Fire damage funds 20 ES; the extra Chaos funds none.
+        value(&env, "LifeLeechGainPerHit", 0.0);
+        value(&env, "EnergyShieldLeechGainPerHit", 20.0);
+        value(&env, "EnergyShieldLeechGainRate", 20.0);
+        let mut spell = Env::new(env.player.clone());
+        spell.cfg = CalcConfig::spell();
+        perform(&mut spell).unwrap();
+        value(&spell, "EnergyShieldLeechGainPerHit", 0.0);
+    }
+    for mut mods in [leech, harvest] {
+        mods.extend(ghost.clone());
+        mods.push(Modifier::number(
+            "PhysicalDamageConvertToFire",
+            ModType::Base,
+            100.0,
+        ));
+        // Conversion alone cannot extend physical eligibility, and Mystic
+        // Harvest alone cannot grant a leech percentage.
+        value(&run(mods, 2.0), "EnergyShieldLeechGainPerHit", 0.0);
+    }
+}

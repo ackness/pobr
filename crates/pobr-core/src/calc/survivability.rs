@@ -675,6 +675,59 @@ pub(crate) fn leech_modifier_factor(db: &ModDb, cfg: &CalcConfig, name: &str) ->
     ((1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)).max(0.0)
 }
 
+/// Damage eligibility belongs to the leech source. Stat conversion redirects
+/// its base percentage before destination amount, speed and recovery modifiers:
+/// `convert_all_life_leech_to_energy_shield_leech` (Essentia Sanguis),
+/// https://poe2db.tw/us/Stat_Conversion.
+pub(crate) fn leech_percent(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    resource: LeechResource,
+    damage_type: DamageType,
+) -> f64 {
+    let ghost_reaver = db.flag(cfg, "GhostReaver");
+    if resource == LeechResource::Life && ghost_reaver {
+        return 0.0;
+    }
+    let source_percent = |name: &str| {
+        let ty = format!("{damage_type:?}");
+        let mut names = vec![
+            ModName::from(format!("Damage{name}Leech")),
+            ModName::from(format!("{ty}Damage{name}Leech")),
+        ];
+        if damage_type.is_elemental() {
+            names.push(ModName::from(format!("ElementalDamage{name}Leech")));
+        }
+        if damage_type == DamageType::Physical {
+            names.push(ModName::from(format!("{name}Leech")));
+        } else if db.flag(cfg, &format!("{name}LeechBasedOn{ty}Damage"))
+            || (damage_type.is_elemental()
+                && db.flag(cfg, &format!("{name}LeechBasedOnElementalDamage")))
+        {
+            // The legacy untyped name is physical leech too. Mystic Harvest
+            // extends both spellings without also counting the physical name
+            // twice on a physical hit.
+            names.extend([
+                ModName::from(format!("{name}Leech")),
+                ModName::from(format!("PhysicalDamage{name}Leech")),
+            ]);
+        }
+        db.sum(ModType::Base, cfg, &names)
+    };
+    match resource {
+        LeechResource::Life => source_percent("Life"),
+        LeechResource::Mana => source_percent("Mana"),
+        LeechResource::EnergyShield => {
+            source_percent("EnergyShield")
+                + if ghost_reaver {
+                    source_percent("Life")
+                } else {
+                    0.0
+                }
+        }
+    }
+}
+
 /// Calculates a resource's leech result from the ModDb.
 ///
 /// `leech_mod` is internalized as `resource.leech_mod_name()`; the caller is
@@ -700,30 +753,19 @@ pub fn calc_leech_from_db(
     if cfg.skill_types.intersects(proxy_types) {
         return LeechResult::zero(pool, resource);
     }
-    // CannotLeechXxx flag short-circuit
-    let cannot_flag = match resource {
-        LeechResource::Life => "CannotLeechLife",
-        LeechResource::Mana => "CannotLeechMana",
-        LeechResource::EnergyShield => "CannotLeechEnergyShield",
-    };
-    if db.flag(cfg, cannot_flag) {
+    // Restrictions belong to the receiving resource after conversion.
+    let name = resource.leech_mod_name().to_string();
+    let resource_name = name.trim_end_matches("Leech");
+    if db.flag(cfg, &format!("CannotLeech{resource_name}"))
+        || db.flag(cfg, &format!("CannotGain{resource_name}"))
+    {
         return LeechResult::zero(pool, resource);
     }
     // The typed names are emitted by PoB's equipment/passive parser. The
     // legacy untyped names remain accepted by the minimal calculation API.
     // hit_damage must be the physical component after conversion, never the
     // total hit (which would let elemental added damage fuel physical leech).
-    let physical_name = match resource {
-        LeechResource::Life => "PhysicalDamageLifeLeech",
-        LeechResource::Mana => "PhysicalDamageManaLeech",
-        LeechResource::EnergyShield => "PhysicalDamageEnergyShieldLeech",
-    };
-    let leech_pct = db.sum(
-        ModType::Base,
-        cfg,
-        &[resource.leech_mod_name(), ModName::from(physical_name)],
-    );
-    let name = resource.leech_mod_name().to_string();
+    let leech_pct = leech_percent(db, cfg, resource, DamageType::Physical);
     leech_instance(
         hit_damage.clamp(0.0, LEECH_EFFECTIVE_MAX_HIT_DAMAGE) * leech_pct.max(0.0) / 100.0
             * leech_modifier_factor(db, cfg, &format!("{name}Amount")),
