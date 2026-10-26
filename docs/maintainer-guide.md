@@ -1543,6 +1543,9 @@ the buff/charge resource snapshot before defence conversion, avoiding a
 self-referential conversion loop. Companion-in-Presence defaults on only when
 an enabled companion skill exists; explicit true/false remains a selected
 condition. Hinder applied by an active curse also supplies EnemyHindered.
+Enemy modifiers gated by an applied mark or curse are forwarded again after
+curse-slot selection. This enables Marked for Sickness only when a mark takes
+effect, without duplicating modifiers already active before the buff pass.
 
 Direct total Energy Shield, such as Discipline, converts into a direct Life or
 Mana total after the destination's increases/multipliers. It is not a new base

@@ -47,6 +47,10 @@ pub fn env_finalize(env: &mut Env) {
     super::charm_spirits::apply(env);
     // Stage 4 (T3): the nine-way buff dispatch (aura factor / curse priority+limit / debuff→enemy).
     buff_pass(env);
+    // Applying a mark/curse can satisfy an outer EnemyModifier condition.
+    // Forward newly eligible entries now; the existing multiset dedup keeps
+    // entries already forwarded before buffs from being added a second time.
+    forward_enemy_modifiers(env);
     // Stage 5 (T5): a second keystone merge pass (for keystones granted by buffs/flasks).
     merge_keystones(env);
     // Stage 6 (T2): equivalent to doActorMisc (flag → buff_definitions → mods).

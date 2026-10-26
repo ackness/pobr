@@ -208,6 +208,81 @@ mod hindered {
     }
 }
 
+#[test]
+fn marked_enemy_modifiers_use_the_applied_mark_without_duplicate_forwarding() {
+    use pobr_core::ModValue;
+    use pobr_core::calc::session::{BuffKind, BuffSpec};
+
+    for (mark_present, limit) in [(false, 1), (true, 0), (true, 1)] {
+        let mut env = Env::new(Actor::new(
+            90,
+            ActorBaseStats {
+                life: 1000.0,
+                action_rate: 1.0,
+                ..Default::default()
+            },
+        ))
+        .with_config(
+            CalcConfig::spell()
+                .with_mode_buffs(true)
+                .with_mode_effective(true),
+        );
+        for line in [
+            "Adds 100 to 100 Fire Damage",
+            "Enemies you Mark take 10% increased Damage",
+            "Enemies you Mark have 10% reduced Accuracy Rating",
+        ] {
+            let parsed = crate::support::parse_mod(line).unwrap();
+            assert!(parsed.is_complete(), "{line}: {parsed:?}");
+            env.player.mod_db.add_list(parsed.mods);
+        }
+        env.player.mod_db.add_mod(Modifier::number(
+            "EnemyMarkLimit",
+            ModType::Base,
+            f64::from(limit - 1),
+        ));
+        env.player.mod_db.add_mod(
+            Modifier::new(
+                "EnemyModifier",
+                ModType::List,
+                ModValue::NestedMods(vec![Modifier::number("DamageTaken", ModType::Inc, 5.0)]),
+            )
+            .with_source("always-on enemy modifier"),
+        );
+        if mark_present {
+            env.buff_skills.push(BuffSpec {
+                name: "Sniper's Mark".into(),
+                kind: BuffKind::Curse,
+                skill_id: "SnipersMarkPlayer".into(),
+                mods: vec![Modifier::number("MovementSpeed", ModType::Inc, -10.0)],
+                magnitude: 1.0,
+                slot: None,
+                socket_index: 1,
+                is_mark: true,
+                ignore_curse_limit: false,
+                local_effect_inc: 0.0,
+                local_effect_more: 1.0,
+                skill_types: pobr_data::skill::SkillTypes::NONE,
+            });
+        }
+        perform(&mut env).unwrap();
+        let marked = mark_present && limit > 0;
+        assert_eq!(env.cfg.condition("EnemyMarked"), marked);
+        let expected = if marked { 115.0 } else { 105.0 };
+        assert!(
+            (env.player.output.dps - expected).abs() < 1e-9,
+            "marked={marked}: {} != {expected}",
+            env.player.output.dps
+        );
+        assert_eq!(
+            env.enemy
+                .mod_db
+                .sum(ModType::Inc, &env.cfg, &["Accuracy".into()]),
+            if marked { -10.0 } else { 0.0 }
+        );
+    }
+}
+
 mod doryani {
     use super::*;
     use pobr_core::ModTag;
