@@ -1454,3 +1454,74 @@ fn minion_static_offering_effect_uses_the_offerings_types() {
         boosted.output().minions[0].dps
     );
 }
+
+#[test]
+fn ordinary_buff_copies_keep_strongest_pain_offering() {
+    use pobr_build::calculate_with_data_session;
+    use pobr_data::source::SourceKind;
+
+    let offering = |level| SocketGroup::new().with_gem_skill("PainOfferingPlayer", level);
+    let mut disabled_group = offering(20);
+    disabled_group.enabled = false;
+    let mut disabled_gem = offering(20);
+    disabled_gem.gem_skills[0].enabled = false;
+    for (copies, damage, speed) in [
+        (vec![offering(20), offering(20)], 58.0, 29.0),
+        (vec![offering(18), offering(20)], 58.0, 29.0),
+        (vec![offering(20), offering(18)], 58.0, 29.0),
+        (vec![disabled_group, offering(18)], 54.0, 28.0),
+        (vec![offering(18), disabled_gem], 54.0, 28.0),
+    ] {
+        let mut build = zombie_build(20);
+        build.socket_groups.extend(copies);
+        for effect in [false, true] {
+            let result = calculate_with_data_session(
+                &build,
+                load_data(),
+                &DataOrchestratorOptions {
+                    extra_modifier_texts: if effect {
+                        vec!["Offering Skills have 30% increased Buff effect".into()]
+                    } else {
+                        vec![]
+                    },
+                    ..default_opts()
+                },
+            )
+            .unwrap();
+            for (stat, raw, source) in [
+                ("Damage", damage, "pain_offering_damage_+%"),
+                (
+                    "AttackSpeed",
+                    speed,
+                    "pain_offering_attack_and_cast_speed_+%",
+                ),
+            ] {
+                let expected = if effect { (raw * 1.3_f64).trunc() } else { raw };
+                assert_eq!(result.minion_stat_totals(0, stat).1, expected);
+                let rows = result.minion_stat_mods(0, stat);
+                let applied: Vec<_> = rows
+                    .iter()
+                    .filter(|row| {
+                        row.active
+                            && row.modifier.origin.as_ref().is_some_and(|origin| {
+                                origin.source_id.id == format!("buff.PainOfferingPlayer.{source}")
+                            })
+                    })
+                    .collect();
+                assert_eq!(applied.len(), 1, "one strongest {stat} leaf");
+                assert_eq!(applied[0].value, Some(expected));
+                let origin = applied[0].modifier.origin.as_ref().unwrap();
+                assert_eq!(origin.source_id.kind, SourceKind::SkillGem);
+                let note = if effect {
+                    " (buff effect ×1.3000)"
+                } else {
+                    ""
+                };
+                assert_eq!(
+                    origin.raw_text.as_deref(),
+                    Some(format!("buff PainOfferingPlayer {source} ({raw}){note}").as_str())
+                );
+            }
+        }
+    }
+}

@@ -265,8 +265,8 @@ pub fn scale_value(
 /// sorts out its attribution: preserves the original `origin` (never dropped
 /// from the trace), falling back to `(SourceKind::Buff, fallback_source_id)`
 /// when there's no origin; the scaling multiplier is recorded in `raw_text`.
-/// Non-numeric payloads (Flag/Text/NestedMods) pass through unchanged
-/// (vendor only scales `value.mod` for table payloads; pobr buff mods are always numeric/Flag).
+/// Numeric leaves of nested payloads receive the same effect factor;
+/// flags and text pass through unchanged.
 fn scale_buff_mod(
     rules: &HighPrecisionRules,
     modifier: &Modifier,
@@ -315,19 +315,43 @@ fn scale_buff_mod(
 /// mergeBuff's same-name strongest-wins merge (vendor `CalcPerform.lua:41-63`):
 /// within the same buff-name bucket, when "the mod's params match"
 /// (name/type/flags/keyword_flags/tags) and both are numeric, takes the
-/// larger; LIST payloads are always appended (`:48`'s `mod.type ~= "LIST"`).
+/// larger. ExtraAura carries the buff's ally modifiers, which use the same
+/// comparison after effect scaling; other LIST payloads remain append-only.
 fn merge_buff(dest: &mut Vec<Modifier>, src: Vec<Modifier>) {
-    for incoming in src {
-        if incoming.mod_type != ModType::List
+    for mut incoming in src {
+        let extra_aura = incoming.mod_type == ModType::List
+            && incoming.name.as_str() == "ExtraAura"
+            && incoming.value.as_nested_mods().is_some();
+        if extra_aura && let ModValue::NestedMods(nested) = &mut incoming.value {
+            // Each leaf must retain its own source when differently sourced
+            // payloads share one wrapper. Minion forwarding otherwise inherits
+            // only the first wrapper's origin after the merge.
+            for inner in nested {
+                if inner.source.is_none() {
+                    inner.source = incoming.source.clone();
+                }
+                if inner.origin.is_none() {
+                    inner.origin = incoming.origin.clone();
+                }
+            }
+        }
+        if (incoming.mod_type != ModType::List || extra_aura)
             && let Some(existing) = dest.iter_mut().find(|m| {
                 m.name == incoming.name
                     && m.mod_type == incoming.mod_type
                     && m.flags == incoming.flags
                     && m.keyword_flags == incoming.keyword_flags
                     && m.tags == incoming.tags
+                    && (!extra_aura || m.value.as_nested_mods().is_some())
             })
         {
-            if let (Some(old), Some(new)) = (existing.value.as_number(), incoming.value.as_number())
+            if extra_aura
+                && let (ModValue::NestedMods(dest), ModValue::NestedMods(src)) =
+                    (&mut existing.value, &incoming.value)
+            {
+                merge_buff(dest, src.clone());
+            } else if let (Some(old), Some(new)) =
+                (existing.value.as_number(), incoming.value.as_number())
                 && new > old
             {
                 *existing = incoming;
