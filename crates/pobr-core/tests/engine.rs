@@ -14,6 +14,9 @@ mod enemy_resistance;
 #[path = "engine/unholy_might.rs"]
 mod unholy_might;
 
+#[path = "engine/companion_presence.rs"]
+mod companion_presence;
+
 #[path = "engine/effect_views.rs"]
 mod effect_views;
 

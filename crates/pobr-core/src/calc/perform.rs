@@ -592,7 +592,23 @@ fn apply_extra_auras(minion: &mut super::Actor, cfg: &mut CalcConfig, env: &Env)
     if minion.mod_db.flag(cfg, "HiddenMonster") {
         return;
     }
-    let auras = extra_aura_mods(env);
+    let mut auras = extra_aura_mods(env);
+    // A Companion-tagged MinionModifier can grant an ExtraAura only to
+    // that summoning skill's recipients. Keep it nested until this pass so
+    // it obeys the same ally block and recipient effect scaling as the
+    // character's other Presence auras. Explicit zero excludes all minions;
+    // a positive count does not assign individual actors a position.
+    if !env
+        .player
+        .mod_db
+        .flag(&env.cfg, "SelfAurasCannotAffectAllies")
+        && !env
+            .cfg
+            .multiplier_if_set("MinionPresenceCount")
+            .is_some_and(|n| n <= 0.0)
+    {
+        auras.extend(extra_aura_payloads(&minion.mod_db, cfg));
+    }
     if auras.is_empty() {
         return;
     }
@@ -713,9 +729,12 @@ pub(super) fn extra_aura_mods(env: &Env) -> Vec<Modifier> {
     if player.flag(&env.cfg, "SelfAurasCannotAffectAllies") {
         return Vec::new();
     }
-    player
-        .named("ExtraAura")
-        .filter(|outer| outer.mod_type == ModType::List && outer.matches(&env.cfg))
+    extra_aura_payloads(player, &env.cfg)
+}
+
+fn extra_aura_payloads(db: &ModDb, cfg: &CalcConfig) -> Vec<Modifier> {
+    db.named("ExtraAura")
+        .filter(|outer| outer.mod_type == ModType::List && outer.matches(cfg))
         .flat_map(|outer| {
             outer
                 .value

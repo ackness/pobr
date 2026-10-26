@@ -7044,6 +7044,86 @@
       "examples": [
         "Defend with 120% of Armour against Projectile Attacks"
       ]
+    },
+    {
+      "id": "companions_in_presence_gain_as_random_element",
+      "pattern": "companions in your presence gain (\\d+(?:\\.\\d+)?)% of damage as extra damage of a random element",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ExtraAura",
+                "type": "LIST",
+                "value": {
+                  "mods": [
+                    {
+                      "name": "DamageGainAsRandom",
+                      "type": "BASE",
+                      "value": "$1"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "Companion"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "companions_in_presence_non_skill_base_all_damage_%_to_gain_as_random_element",
+      "source_note": "Retained game stat and overlay/stat_descriptions.json: only Companions in Presence receive this effect. The summoning skill Companion type gates the MinionModifier; its nested ExtraAura applies through the existing recipient buff/aura scaling with HiddenMonster, SelfAurasCannotAffectAllies and explicit zero MinionPresenceCount exclusions. Positive counts do not assign actor positions. DamageGainAsRandom uses the existing equal three-element average. No in-game range/effect measurement.",
+      "examples": [
+        "Companions in your Presence Gain 20% of Damage as Extra Damage of a random Element"
+      ]
+    },
+    {
+      "id": "companions_in_presence_elemental_resistance",
+      "pattern": "companions in your presence have ([+-]?\\d+(?:\\.\\d+)?)% to all elemental resistances",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ExtraAura",
+                "type": "LIST",
+                "value": {
+                  "mods": [
+                    {
+                      "name": "ElementalResist",
+                      "type": "BASE",
+                      "value": "$1"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "Companion"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "companions_in_presence_base_resist_all_elements_%",
+      "source_note": "Retained game stat and overlay/stat_descriptions.json: only Companions in Presence receive this effect. The summoning skill Companion type gates the MinionModifier; its nested ExtraAura applies through the existing recipient buff/aura scaling with HiddenMonster, SelfAurasCannotAffectAllies and explicit zero MinionPresenceCount exclusions. Positive counts do not assign actor positions. DamageGainAsRandom uses the existing equal three-element average. No in-game range/effect measurement.",
+      "examples": [
+        "Companions in your Presence have -20% to all Elemental Resistances"
+      ]
     }
   ]
 }
