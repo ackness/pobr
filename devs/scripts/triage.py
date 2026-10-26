@@ -227,8 +227,10 @@ def spirit_leads(entries: dict, oracle: dict) -> list:
     return found
 
 
-def known_reason(known: list, build: str, stat: str):
+def known_reason(known: list, build: str, stat: str, xml_sha256=None):
     for entry in known:
+        if entry.get("xml_sha256") and entry["xml_sha256"] != xml_sha256:
+            continue
         if entry.get("build") and entry["build"] in build and stat in (entry.get("stats") or []):
             return entry.get("reason") or "known"
     return None
@@ -266,6 +268,24 @@ def enemy_leads(entries: dict, oracle: dict) -> list:
     found = []
     theirs = compare.as_dict(oracle.get("enemyMitigation"))
     breakdown = (entries.get("TotalDPS") or {}).get("breakdown") or {}
+    # The current CLI contract records final mitigation, not the old `enemy`
+    # raw-aggregate shape. An oracle's raw resistance sum can miss overrides
+    # and lowest-resistance selection (Doryani's Prototype + Sacred Flame).
+    # Its pre/post-mitigation hit averages retain their actual combined effect.
+    output = compare.as_dict(oracle.get("mainOutput"))
+    for row in compare.as_list(breakdown.get("mitigation")):
+        damage_type = row.get("damage_type")
+        if damage_type not in (*compare.ELEMENTS, "Chaos"):
+            continue  # Armour depends on hit size and crits; no scalar comparison.
+        stored = compare.number(output.get(damage_type + "StoredHitAvg"))
+        hit = compare.number(output.get(damage_type + "HitAverage"))
+        mine = compare.number(row.get("multiplier"))
+        if stored is None or stored <= 0 or hit is None or mine is None:
+            continue
+        effective = hit / stored
+        if not compare.agrees(mine, effective):
+            found.append(lead("enemy", "enemy", "effective multiplier", damage_type,
+                              pobr=mine, pob2=effective))
     for row in compare.as_list(breakdown.get("enemy")):
         damage_type = row.get("damage_type")
         other = compare.as_dict(theirs.get(damage_type))
@@ -471,11 +491,12 @@ def analyse(name: str, corpus: str, report: dict, oracle: dict, xml: str, known:
     main_skill = skill or info.get("grantedEffectId") or "main"
     item_slots = compare.item_slot_keys(xml)
     rows = []
+    xml_sha256 = hashlib.sha256(xml.encode("utf-8")).hexdigest()
     for row in reference.get("differing") or []:
         stat = row.get("stat")
         pobr, code = compare.number(row.get("pobr")), compare.number(row.get("reference"))
         now = compare.reference_value(oracle, row.get("pob_key") or "")
-        reason = known_reason(known, name, stat)
+        reason = known_reason(known, name, stat, xml_sha256)
         rows.append({"stat": stat, "pobr": pobr, "code": code, "pob2": now,
                      "class": "known" if reason else classify(pobr, code, now), "reason": reason})
     leads, seen, damage_done, pool_line, ehp_lines = [], set(), False, None, []

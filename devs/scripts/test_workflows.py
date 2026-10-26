@@ -1181,6 +1181,43 @@ class TriageTests(unittest.TestCase):
             with self.subTest(build=entry.get("build")):
                 self.assertTrue(entry["build"] and entry["stats"] and entry["reason"])
 
+    def test_known_differences_can_bind_short_rank_names_to_exact_xml(self):
+        import hashlib
+        xml = "<PathOfBuilding/>"
+        fingerprint = hashlib.sha256(xml.encode()).hexdigest()
+        known = [{"build": "blood-mage-03", "xml_sha256": fingerprint,
+                  "stats": ["HitSpeed"], "reason": "Witchtoad interval"}]
+        check = self.triage.known_reason
+        self.assertEqual(check(known, "blood-mage-03", "HitSpeed", fingerprint),
+                         "Witchtoad interval")
+        self.assertIsNone(check(known, "blood-mage-03", "HitSpeed"))
+        self.assertIsNone(check(known, "blood-mage-03", "HitSpeed", "another export"))
+        report = {"reference": {"differing": [
+            {"stat": "HitSpeed", "pob_key": "HitSpeed", "pobr": 8, "reference": 12}]}}
+        result = self.triage.analyse("blood-mage-03", "set", report, {}, xml, known)
+        self.assertEqual(result["rows"][0]["class"], "known")
+        result = self.triage.analyse("blood-mage-03", "set", report, {}, xml + "\n", known)
+        self.assertEqual(result["rows"][0]["class"], "no oracle")
+
+    def test_enemy_leads_read_current_final_mitigation_including_overrides(self):
+        entries = {"TotalDPS": {"breakdown": {"mitigation": [
+            {"damage_type": "Lightning", "resist": 40, "multiplier": 0.6},
+            {"damage_type": "Fire", "resist": 40, "multiplier": 0.6},
+            {"damage_type": "Cold", "multiplier": 0.6},
+            {"damage_type": "Physical", "multiplier": 0.5},
+        ]}}}
+        oracle = {"enemyMitigation": {"Lightning": {"resistBase": 40}},
+                  "mainOutput": {"LightningStoredHitAvg": 9.5, "LightningHitAverage": 26.98,
+                                 "FireStoredHitAvg": 14.5, "FireHitAverage": 41.18,
+                                 "ColdStoredHitAvg": 0, "ColdHitAverage": 0,
+                                 "PhysicalStoredHitAvg": 10, "PhysicalHitAverage": 10}}
+        found = self.triage.enemy_leads(entries, oracle)
+        self.assertEqual([(x["key"], x["type"]) for x in found],
+                         [("Lightning", "effective multiplier"), ("Fire", "effective multiplier")])
+        for row in found:
+            self.assertAlmostEqual(row["pob2"], 2.84)
+        self.assertEqual(self.triage.enemy_leads(entries, {}), [])
+
     def test_lines_meet_across_rolls_and_places(self):
         template = self.triage.template
         self.assertEqual(template("Tree:5332: 22% Chance to gain a Charge"),
