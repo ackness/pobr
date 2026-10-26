@@ -36297,7 +36297,7 @@
               "type": "Base",
               "value": 20.0,
               "tags": [
-                "Condition { var: \"EnemyEnemyInPresence\", negated: false, actor: None }"
+                "Condition { var: \"EnemyInPresence\", negated: false, actor: None }"
               ]
             }
           ]
@@ -36311,7 +36311,7 @@
               "type": "Base",
               "value": 20.0,
               "tags": [
-                "Condition { var: \"EnemyEnemyInPresence\", negated: false, actor: None }"
+                "Condition { var: \"EnemyInPresence\", negated: false, actor: None }"
               ]
             }
           ]
@@ -36325,7 +36325,7 @@
               "type": "Base",
               "value": 20.0,
               "tags": [
-                "Condition { var: \"EnemyEnemyInPresence\", negated: false, actor: None }"
+                "Condition { var: \"EnemyInPresence\", negated: false, actor: None }"
               ]
             }
           ]
