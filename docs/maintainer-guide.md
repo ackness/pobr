@@ -1885,3 +1885,10 @@ does not infer a missing mitigation contribution or add a probabilistic model.
 Second Wind's double-use capability remains unsupported, but the only selected
 groups in this cohort select Convalescence's ineligible reservation effect;
 the active effect is not silently substituted.
+
+War Banner's native `base_skill_buff_banner_attack_speed_+%_to_apply` supplies
+increased Attack Speed through the existing planted aura. It uses the selected
+`BannerPlanted` snapshot and normal aura scaling for player and allied attacks;
+it does not infer Glory generation, placement frequency or uptime. The pinned
+exporter omits this speed stat, so reference-basis comparison excludes only this
+contribution and retains the existing damage and accuracy contributions.
