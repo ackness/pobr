@@ -153,6 +153,77 @@ fn a_main_skill_a_weapon_grants_is_used_in_that_weapons_set() {
     assert_eq!(sets, vec![None, None, Some(1)]);
 }
 
+/// Discipline needs 88 Intelligence at level 15 and 80 at level 14. The
+/// granting set has 84, after replacing two +5 Intelligence passives with
+/// one, even though the selected set has 89. Its 185 total ES is added after
+/// the character's 117 base ES and 53% increased ES.
+#[test]
+fn other_weapon_tree_controls_granted_skill_requirements() {
+    let xml = r#"<PathOfBuilding2>
+<Build level="100" className="Huntress" mainSocketGroup="1"/>
+<Tree activeSpec="1"><Spec treeVersion="0_5" nodes="48198,49220,42658">
+<WeaponSet1 nodes="48198,49220"/><WeaponSet2 nodes="42658"/>
+<Overrides><AttributeOverride intNodes="42658"/></Overrides>
+</Spec></Tree>
+<Items activeItemSet="1"><Item id="1">Rarity: RARE
+Granting Sceptre
+Stoic Sceptre
+Implicits: 1
+Grants Skill: Level 19 Discipline
+</Item><ItemSet id="1"><Slot name="Weapon 1 Swap" itemId="1"/></ItemSet></Items>
+<Skills><Skill enabled="true"><Gem skillId="SparkPlayer" level="1" enabled="true"/></Skill>
+<Skill enabled="true" slot="Weapon 1 Swap" source="Item:1:Granting Sceptre, Stoic Sceptre">
+<Gem skillId="DisciplinePlayer" level="19" quality="0" enabled="true"/>
+</Skill></Skills></PathOfBuilding2>"#;
+    let build = import_build(xml).unwrap().build;
+    let options = DataOrchestratorOptions {
+        extra_modifier_texts: vec![
+            "+72 to Intelligence".into(),
+            "+100 to Strength".into(),
+            "+117 to maximum Energy Shield".into(),
+            "53% increased maximum Energy Shield".into(),
+        ],
+        ..Default::default()
+    };
+    let session = calculate_with_data_session(&build, data(), &options).unwrap();
+    assert_eq!(session.output().intelligence, 89.0);
+    assert_eq!(session.output().energy_shield, 364.0);
+    let diagnosis = pobr_build::diagnose(&build, data(), &options).unwrap();
+    let discipline = diagnosis
+        .skills
+        .iter()
+        .find(|skill| skill.skill_id == "DisciplinePlayer")
+        .unwrap();
+    assert_eq!(discipline.gem_level, 14);
+}
+
+/// The off-set gem reads that set's Endless Blizzard and Paragon, while the
+/// selected-set gem keeps its own two points of skill quality.
+#[test]
+fn other_weapon_tree_controls_skill_levels_and_quality() {
+    use pobr_data::passive_tree::NodeId;
+    let mut first = SocketGroup::new().with_gem_skill("IceShotPlayer", 20);
+    first.weapon_set = Some(1);
+    let mut second = first.clone();
+    second.weapon_set = Some(2);
+    let mut build = Build::new()
+        .add_socket_group(first)
+        .add_socket_group(second);
+    build.tree.allocated_nodes = vec![NodeId(34882)];
+    build.other_weapon_set_nodes = Some(vec![NodeId(19955), NodeId(20686)]);
+    let diagnosis =
+        pobr_build::diagnose(&build, data(), &DataOrchestratorOptions::default()).unwrap();
+    let usage = pobr_build::usage::line_usage(&diagnosis, &build, data());
+    assert_eq!(
+        usage
+            .skills
+            .iter()
+            .map(|skill| (skill.level, skill.quality))
+            .collect::<Vec<_>>(),
+        [(20, 2), (21, 5)]
+    );
+}
+
 /// Enablement is a player choice; the active weapon context gates inspected
 /// attacks and overview rows while all-set reservation still reads Blink.
 #[test]
