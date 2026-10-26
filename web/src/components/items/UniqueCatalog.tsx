@@ -10,6 +10,7 @@ import { loadTradeCatalog, type TradeCatalog } from '../../lib/tradeOptimizer';
 import { defaultUniqueSelection, filterUniques, uniqueGroups, uniqueOptions, uniquePreviewCatalog, uniqueRolls } from '../../lib/uniqueCatalog';
 import { uniqueT } from '../../lib/uniqueCatalogText';
 import { AppSelect } from '../shared/AppSelect';
+import { AppRange } from '../shared/AppRange';
 import { ItemDraftWorkbench } from './ItemDraftWorkbench';
 import './itemCrafter.css';
 
@@ -115,8 +116,8 @@ function UniqueItem({ entry, catalog, session, lang }: { entry: UniqueEntry; cat
         {([0, .5, 1] as const).map(value => <AppButton key={value} onClick={() => update({ ...selection,
           rolls: { ...selection.rolls, ...Object.fromEntries(rolls.map(line => [line.index, value])) } })}>{t(value === 0 ? 'minimum' : value === 1 ? 'maximum' : 'middle')}</AppButton>)}
       </div>{rolls.map((line, i) => <label key={line.index} className="unique-roll"><span>{labels[i]}</span>
-        <AppInput type="range" min="0" max="100" step="1" aria-label={`${t('roll')} ${i + 1}`} value={line.roll * 100}
-          onChange={event => update({ ...selection, rolls: { ...selection.rolls, [line.index]: Number(event.target.value) / 100 } })} /><output>{Math.round(line.roll * 100)}%</output>
+        <div><AppRange min={0} max={100} step={1} aria-label={`${t('roll')} ${i + 1}`} value={line.roll * 100} disabled={busy || session.busy}
+          onValueChange={value => update({ ...selection, rolls: { ...selection.rolls, [line.index]: value / 100 } })} /></div><output>{Math.round(line.roll * 100)}%</output>
       </label>)}</div>}
       <AppButton className="trade-primary" onClick={() => void prepare()}>{t(busy ? 'preparing' : 'preview')}</AppButton>
     </fieldset>
