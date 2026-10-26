@@ -9,8 +9,8 @@
 //! per 1%, so a gem with 20% quality reserves 100 / 1.10 = 91.
 
 use pobr_build::{
-    Build, BuildData, DataOrchestratorOptions, WeaponSet, calculate_with_data, parse_build,
-    resolve_main_skill_selection,
+    Build, BuildData, DataOrchestratorOptions, SocketGroup, WeaponSet, calculate_with_data,
+    parse_build, resolve_main_skill_selection,
 };
 use pobr_data::item::{EquipmentSlot, ItemRarity};
 
@@ -467,6 +467,56 @@ fn sands_variant_remaps_selected_and_following_active_effects() {
             build.socket_groups[selected_group].main_active_skill = Some(4);
             assert_eq!(resolve_main_skill_selection(&build, data()), None);
         }
+    }
+}
+
+#[test]
+fn sands_variant_remaps_active_skill_only_groups_and_preserves_manual_fallbacks() {
+    for (id, selected, attached, expected_ordinal, expected_id) in [
+        ("BlinkReservationPlayer", 2, true, 1, "BlinkSandPlayer"),
+        ("BlinkSandPlayer", 1, true, 1, "BlinkSandPlayer"),
+        ("BlinkReservationPlayer", 2, false, 2, "BlinkPlayer"),
+    ] {
+        let mut build = unique_build(
+            "Sands of Silk",
+            "Shrouded Vest",
+            "Grants Skill: Level 20 Blink",
+            &[],
+        );
+        let item_group = SocketGroup::new()
+            .with_source("Item:1:Sands of Silk, Shrouded Vest")
+            .with_slot("Body Armour");
+        let selected_group = if attached {
+            item_group.clone()
+        } else {
+            SocketGroup::new()
+        };
+        build.socket_groups.push(
+            selected_group
+                .with_active_skill(id, 20)
+                .with_main_active_skill(selected),
+        );
+        if !attached {
+            // Even a proven native attachment must not claim a separate API
+            // group's ordinary Blink fallback without exported gem metadata.
+            build
+                .socket_groups
+                .push(item_group.with_active_skill("BlinkSandPlayer", 20));
+        }
+        let original = build.socket_groups.clone();
+        let original_text = build.items[&EquipmentSlot::BodyArmour]
+            .implicit_texts
+            .clone();
+        assert_eq!(
+            resolve_main_skill_selection(&build, data()),
+            Some((0, expected_ordinal, expected_id.into())),
+            "id={id}, attached={attached}"
+        );
+        assert_eq!(build.socket_groups, original);
+        assert_eq!(
+            build.items[&EquipmentSlot::BodyArmour].implicit_texts,
+            original_text
+        );
     }
 }
 

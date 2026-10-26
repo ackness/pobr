@@ -103,10 +103,15 @@ impl GrantIdentity<'_> {
     /// Only the prepared build is changed. Imported gem references, source
     /// metadata and item text remain untouched on the caller's original build.
     fn canonicalize(self, group: &mut SocketGroup, data: &BuildData) -> bool {
-        let Some(gem) = group.gem_skills.first() else {
+        let Some(skill_id) = group
+            .gem_skills
+            .first()
+            .map(|gem| gem.skill_id.as_str())
+            .or(group.active_skill_id.as_deref())
+        else {
             return false;
         };
-        if self.exported_alias != Some(gem.skill_id.as_str()) {
+        if self.exported_alias != Some(skill_id) {
             return false;
         }
         // An ordinal belongs to the old effect list: ordinary Blink has a
@@ -119,7 +124,9 @@ impl GrantIdentity<'_> {
         if group.active_skill_id.as_deref() == self.exported_alias {
             group.active_skill_id = Some(self.skill_id.to_string());
         }
-        group.gem_skills[0].skill_id = self.skill_id.to_string();
+        if let Some(gem) = group.gem_skills.first_mut() {
+            gem.skill_id = self.skill_id.to_string();
+        }
         if let Some(gem_id) = group.gem_ids.first_mut() {
             *gem_id = data.gem_effects[self.skill_id].gem_id.clone();
         }
