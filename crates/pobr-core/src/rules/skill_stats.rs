@@ -666,14 +666,14 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         // against Rare or Unique Enemies". Boss presets use the bare rarity
         // condition; explicit enemy configuration uses the prefixed one.
         // No previous cull is required for this grant.
-        "support_culling_strike_vs_rare_or_unique_enemy" => {
-            Some(vec![Modifier::flag("CanCull").with_tag(
-                ModTag::ConditionAnyOf {
+        "support_culling_strike_vs_rare_or_unique_enemy" => Some(vec![
+            Modifier::flag("CanCull")
+                .with_tag(ModTag::condition("Effective", false))
+                .with_tag(ModTag::ConditionAnyOf {
                     vars: vec!["RareOrUnique".into(), "EnemyRareOrUnique".into()],
                     negated: false,
-                },
-            )])
-        }
+                }),
+        ]),
         // Detonate Living: "Your Spells have Culling Strike".
         "spells_have_culling_strike" => {
             Some(vec![Modifier::flag("CanCull").with_flags(ModFlags::SPELL)])
