@@ -7333,12 +7333,9 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LocalEffect",
+          "name": "MarkEffect",
           "type": "Inc",
-          "value": 10.0,
-          "tags": [
-            "SkillTypes(SkillTypes([0, 17179869184, 0, 0, 0]))"
-          ]
+          "value": 10.0
         }
       ]
     },
@@ -10100,12 +10097,9 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LocalEffect",
+          "name": "MarkEffect",
           "type": "Inc",
-          "value": 12.0,
-          "tags": [
-            "SkillTypes(SkillTypes([0, 17179869184, 0, 0, 0]))"
-          ]
+          "value": 12.0
         }
       ]
     },
@@ -29732,12 +29726,9 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LocalEffect",
+          "name": "MarkEffect",
           "type": "Inc",
-          "value": 8.0,
-          "tags": [
-            "SkillTypes(SkillTypes([0, 17179869184, 0, 0, 0]))"
-          ]
+          "value": 8.0
         }
       ]
     },

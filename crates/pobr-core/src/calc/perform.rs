@@ -194,6 +194,43 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // twice would lower the resistance twice).
     super::setup_env::reduce_enemy_exposure(&mut env.enemy.mod_db, &env.player.mod_db, &env.cfg);
 
+    // Doryani's Prototype sets the enemy's resistance to the player's final
+    // resistance, after buffs, charges and resource-dependent modifiers. An
+    // override replaces the enemy's own resistance, including curses/exposure;
+    // the shared enemy DB also makes this apply to minions and damage over time.
+    // Retain the existing priority of explicit enemy resistance overrides and
+    // the enemy's own maximum-resistance clamp in enemy_own_resist.
+    if env
+        .player
+        .mod_db
+        .flag(&env.cfg, "EnemyLightningResistEqualToYours")
+        && env
+            .enemy
+            .mod_db
+            .override_(&env.cfg, "LightningResist")
+            .is_none()
+    {
+        let resistance = super::offence::resolve_resistance(
+            &env.player.mod_db,
+            &env.cfg,
+            env.player.base.lightning_resistance,
+            "Lightning",
+            true,
+        );
+        let source = env
+            .player
+            .mod_db
+            .flag_origin(&env.cfg, "EnemyLightningResistEqualToYours")
+            .unwrap_or_else(|| {
+                SourceId::new(SourceKind::Derived, "EnemyLightningResistEqualToYours")
+            });
+        env.enemy.mod_db.add_mod(
+            Modifier::number("LightningResist", ModType::Override, resistance.final_value)
+                .with_source("Enemies in your Presence have Lightning Resistance equal to yours")
+                .with_origin(ModifierSource::new(source)),
+        );
+    }
+
     // Warcry uptime machinery (backlog #9, vendor CalcOffence.lua:3203-3256): injects the
     // uptime-scaled warcry offensive effect (Infernal's `DamageGainAsFire`) into the player db
     // **before** hand pass — vendor likewise writes into skillModList before the damage section,

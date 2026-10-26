@@ -516,6 +516,25 @@ pub fn buff_skill_specs(
                     // the enemy db, at the effect's level.
                     let es = effect_stats(skill_id, level, gem.quality, gem.stat_set_index);
                     let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
+                    if is_mark {
+                        let mods = super::buffs::mark_self_buff_modifiers(skill_id, &es);
+                        if !mods.is_empty() {
+                            specs.push(BuffSpec {
+                                name: buff_skill_name(data, skill_id),
+                                kind: BuffKind::CurseBuff,
+                                skill_id: skill_id.to_string(),
+                                mods,
+                                magnitude: 1.0,
+                                slot: group.slot.map(str::to_string),
+                                socket_index,
+                                is_mark: true,
+                                ignore_curse_limit: false,
+                                local_effect_inc: 0.0,
+                                local_effect_more: 1.0,
+                                skill_types: skill_type_bits(&effect.skill_types),
+                            });
+                        }
+                    }
                     // Vendor's registration precondition: buffList is built purely
                     // from GlobalEffect payloads, and a curse table entry is only
                     // constructed from buffList — a skill with **no** curse payload at

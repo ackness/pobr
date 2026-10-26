@@ -1817,7 +1817,7 @@ fn buff_skill_specs_classifies_aura_and_curse() {
         );
 
     let specs = buff_skill_specs(&mut test_context(&data), &build, &data);
-    assert_eq!(specs.len(), 3, "one spec each for aura + hex + mark");
+    assert_eq!(specs.len(), 4, "aura, hex, mark and the mark's self buff");
 
     let aura = specs
         .iter()
@@ -1863,11 +1863,19 @@ fn buff_skill_specs_classifies_aura_and_curse() {
 
     let mark = specs
         .iter()
-        .find(|s| s.skill_id == "FreezingMarkPlayer")
+        .find(|s| s.skill_id == "FreezingMarkPlayer" && s.kind == BuffKind::Curse)
         .expect("Freezing Mark spec");
     assert_eq!(mark.kind, BuffKind::Curse);
     assert!(mark.is_mark, "Mark token → is_mark");
     assert_eq!(mark.socket_index, 3);
+    let buff = specs
+        .iter()
+        .find(|s| s.skill_id == "FreezingMarkPlayer" && s.kind == BuffKind::CurseBuff)
+        .expect("Freezing Mark self buff");
+    assert!(buff.is_mark);
+    assert_eq!(buff.mods.len(), 1);
+    assert_eq!(buff.mods[0].name.as_str(), "DamageGainAsCold");
+    assert_eq!(buff.mods[0].value.as_number(), Some(30.0));
 
     // Active skills that aren't aura/curse, and supports, produce no spec.
     let bare = Build::new()

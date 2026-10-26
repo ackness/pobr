@@ -109,6 +109,7 @@ pub(crate) fn support_buff_specs(
 /// (`*_damage_buff_damage_%_to_gain_as_<type>`). This buff is a **global** self-effect,
 /// so it iterates every enabled socket group's gem_skills, deduplicated by id to avoid
 /// double injection.
+#[cfg(test)]
 pub(crate) fn self_buff_offensive_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
     pobr_core::skill_env::self_buff_offensive_modifiers(build, data)
 }

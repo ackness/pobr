@@ -11,7 +11,7 @@ use super::DataOrchestratorOptions;
 use super::conditions::{apply_condition_implications, build_has_companion_skill};
 use super::conditions::{
     attacks_with_weapon, combat_conditions, damage_keywords, main_hand_offhand_is_shield,
-    skill_type_bits, skill_type_flags, weapon_cfg_flags, weapon_type_conditions,
+    skill_type_bits, skill_type_flags, weapon_cfg_flags, weapon_type_conditions, weapon_type_info,
 };
 use crate::build::{Build, SocketGroup};
 use crate::build_data::{BuildData, ResolvedSkillLevel};
@@ -396,6 +396,39 @@ pub(super) fn stage_build_cfg(
         // allocating a key for the common neutral / panel calculation.
         cfg.multipliers.remove("EnemyElementalAilmentCount");
     }
+
+    // Dance with Death's "One-Handed Martial Weapon ... in your Main Hand" is an
+    // equipment requirement, independent of the selected skill's weapon flags.
+    // A real weapon base and its original grip exclude unarmed, caster weapons
+    // and two-handed weapons held in one hand through Giant's Blood.
+    let one_handed_martial = build
+        .items
+        .get(&EquipmentSlot::Weapon1)
+        .and_then(|item| data.base_items.get(&item.base.to_string()))
+        .is_some_and(|base| {
+            base.weapon.is_some()
+                && weapon_type_info(data, &base.item_class)
+                    .is_some_and(|weapon| weapon.one_hand && weapon.melee)
+        });
+    cfg = cfg
+        .with_condition("UsingOneHandedWeapon", one_handed_martial)
+        .with_condition(
+            "OffHandIsEmpty",
+            !build.items.contains_key(&EquipmentSlot::Weapon2),
+        );
+
+    // The helmet's local final ratings, before character-wide defence scaling.
+    // Strict comparisons leave both immunities off for ties or no helmet.
+    let helmet = build
+        .items
+        .get(&EquipmentSlot::Helmet)
+        .and_then(|item| {
+            super::item::defence::item_rolled_defence(item, data, build.character.level)
+        })
+        .unwrap_or_default();
+    cfg = cfg
+        .with_condition("HelmetArmourHigherThanEvasion", helmet[0] > helmet[1])
+        .with_condition("HelmetEvasionHigherThanArmour", helmet[1] > helmet[0]);
 
     // PoB2's `Condition:UsingShield` (CalcSetup: set true when the off-hand is a
     // shield). Determined from whether the current active equipment group's off-hand

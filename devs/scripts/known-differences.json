@@ -1,6 +1,85 @@
 {
-  "_doc": "Reference rows `mise run triage` files as known: differences the repository already explains, so a triage lists only what is left to look at. `build` is a fragment of the build folder's name (or a synthetic skill-sweep case id), `stats` the rows it explains, `reason` where the explanation is. Synthetic case entries document sweep findings; skill-sweep does not yet consume this registry. Add an entry when a difference is documented as deliberate; remove it when the engine changes.",
+  "_doc": "Reference rows `mise run triage` files as known: differences the repository already explains, so a triage lists only what is left to look at. `build` is a fragment of the build folder's name (or a synthetic skill-sweep case id), `xml_sha256`, when present, binds an entry to the exact decoded UTF-8 XML so short rank names cannot match another snapshot; `stats` the rows it explains, `reason` where the explanation is. Synthetic case entries document sweep findings; skill-sweep does not yet consume this registry. Add an entry when a difference is documented as deliberate; remove it when the engine changes.",
   "differences": [
+    {
+      "build": "blood-mage-03",
+      "xml_sha256": "fea80051e36d924393bb81a308954c88d9ce1bdf4134bea1e01099dec71c1eec",
+      "stats": [
+        "HitSpeed",
+        "ActionRate",
+        "TotalDPS",
+        "CombinedDPS",
+        "WithIgniteDPS",
+        "WithBleedDPS",
+        "WithPoisonDPS"
+      ],
+      "reason": "Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+    },
+    {
+      "build": "blood-mage-04",
+      "xml_sha256": "7bdfe0518be6239fb10e2bf8fd5e9642adc324eb45c0089207730b122f38b4ac",
+      "stats": [
+        "HitSpeed",
+        "ActionRate",
+        "TotalDPS",
+        "CombinedDPS",
+        "WithIgniteDPS",
+        "WithBleedDPS",
+        "WithPoisonDPS"
+      ],
+      "reason": "Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+    },
+    {
+      "build": "blood-mage-06",
+      "xml_sha256": "8cbbaed9e372e7dcee62b8320d6b1344472d047fcccd048788aa569f842c0e2e",
+      "stats": [
+        "HitSpeed",
+        "ActionRate",
+        "TotalDPS",
+        "CombinedDPS",
+        "WithIgniteDPS",
+        "WithBleedDPS",
+        "WithPoisonDPS"
+      ],
+      "reason": "Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+    },
+    {
+      "build": "blood-mage-08",
+      "xml_sha256": "94b22cc3493e6c76ed5133da4726a2dad5da0439415d0ede0648b9cdd5a325ef",
+      "stats": [
+        "HitSpeed",
+        "ActionRate",
+        "TotalDPS",
+        "CombinedDPS",
+        "WithIgniteDPS",
+        "WithBleedDPS",
+        "WithPoisonDPS"
+      ],
+      "reason": "Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+    },
+    {
+      "build": "blood-mage-10",
+      "xml_sha256": "5862d1eeecea278fd3a06664097e08541afa8f986be806d89c8347bb729440c2",
+      "stats": [
+        "HitSpeed",
+        "ActionRate",
+        "TotalDPS",
+        "CombinedDPS",
+        "WithIgniteDPS",
+        "WithBleedDPS",
+        "WithPoisonDPS"
+      ],
+      "reason": "Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+    },
+    {
+      "build": "chronomancer-04",
+      "xml_sha256": "dd201d6c894a9a46a91e7e82d5c11dce1dcbd7ea3f16da19246be4965687270e",
+      "stats": [
+        "HitSpeed",
+        "ActionRate"
+      ],
+      "reason": "Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+    },
     {
       "build": "druid-oracle-ember-fusillade",
       "stats": [

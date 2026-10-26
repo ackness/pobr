@@ -12,6 +12,20 @@
   },
   "entries": [
     {
+      "id": "mark_skill_effect",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased effect of your mark skills",
+      "mods": [{ "name": "MarkEffect", "type": "INC", "value": "$1" }],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "mark_effect_+%",
+      "exporter": "absent",
+      "source_note": "Mark Effect passives and item affixes scale the numerical effects of Mark skills, including their granted damage buffs. The active-mark/buff assumption is unchanged; no trigger rate or uptime is inferred. The generic LocalEffect parse has no reader in the pinned exporter.",
+      "examples": [
+        "12% increased Effect of your Mark Skills",
+        "21% increased Effect of your Mark Skills"
+      ]
+    },
+    {
       "id": "volatility_refresh_chance",
       "pattern": "(\\d+(?:\\.\\d+)?)% chance that when volatility on you (?:explodes|detonates), you regain an equivalent amount of volatility",
       "mods": [
@@ -3689,6 +3703,30 @@
         "Bear Skills Convert 80% of Physical Damage to Fire Damage"
       ],
       "source_note": "Game stat non_skill_physical_damage_%_to_convert_to_fire_with_bear_skills (Fury of the King): skills of the game type Bear convert that share of their Physical damage to Fire."
+    },
+    {
+      "id": "enemies_in_presence_lightning_resistance_equal_to_yours",
+      "pattern": "enemies in your presence have lightning resistance equal to yours",
+      "mods": [
+        {
+          "name": "EnemyLightningResistEqualToYours",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "EnemyInPresence"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "game_source": "enemies_in_presence_lightning_resist_equal_to_yours",
+      "examples": [
+        "Enemies in your Presence have Lightning Resistance equal to yours"
+      ],
+      "source_note": "Doryani's Prototype (UniqueNearbyEnemyLightningResistanceEqual1) sets the enemy's Lightning Resistance to the player's final resistance while in Presence. Resolve after player buffs and charges; enemy curses and Exposure do not lower this replacement value. The enemy property applies to all damage sources and composes with Sacred Flame's lowest-elemental-resistance rule. Retain explicit enemy override priority and the enemy's own maximum resistance; these interactions have no in-game measurement."
     },
     {
       "id": "enemies_in_presence_resist_elemental_damage_by_lowest_resistance",

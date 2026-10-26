@@ -553,6 +553,125 @@ fn hits_to_die_zero_damage_and_ward_pool() {
     assert!((hits - 5.0).abs() < 1e-9, "hits = {hits}");
 }
 
+#[test]
+fn ward_with_life_loss_prevention_absorbs_the_remaining_hit() {
+    // Grasping Wounds prevents Life loss, not damage to Runic Ward. The
+    // latter absorbs damage after Life reaches 1, including lethal excess.
+    let pools = PoolState {
+        life: 1000.0,
+        ward: 500.0,
+        ..Default::default()
+    };
+    let ctx = PoolCtx {
+        max_life: 1000.0,
+        prevented_life_loss: 25.0,
+        ..Default::default()
+    };
+    let after = reduce_pools(
+        &pools,
+        &TypedDamage {
+            physical: 1500.0,
+            ..Default::default()
+        },
+        &ctx,
+    );
+    // 1332 damage costs 999 Life and defers 333; Ward takes the other 168.
+    assert_eq!(after.pools.life, 1.0);
+    assert_eq!(after.pools.ward, 332.0);
+    assert_eq!(after.pools.life_loss_lost_over_time, 333.0);
+    assert_eq!(after.overkill, 0.0);
+
+    let mixed = reduce_pools(
+        &pools,
+        &TypedDamage {
+            physical: 1000.0,
+            fire: 500.0,
+            ..Default::default()
+        },
+        &ctx,
+    );
+    assert!((mixed.pools.life - after.pools.life).abs() < 1e-9);
+    assert!((mixed.pools.ward - after.pools.ward).abs() < 1e-9);
+    assert_eq!(mixed.pools.life_loss_lost_over_time, 333.0);
+    assert_eq!(mixed.overkill, 0.0);
+
+    let lethal = reduce_pools(
+        &after.pools,
+        &TypedDamage {
+            physical: 400.0,
+            ..Default::default()
+        },
+        &ctx,
+    );
+    assert_eq!(lethal.pools.ward, 0.0);
+    assert_eq!(lethal.pools.life, 0.0);
+    assert!((lethal.overkill - (400.0 - 332.0 - 1.0 / 0.75)).abs() < 1e-9);
+    assert!((lethal.pools.life_loss_lost_over_time - 1000.0 / 3.0).abs() < 1e-9);
+
+    let hit = TypedDamage {
+        physical: 100.0,
+        ..Default::default()
+    };
+    let params = EhpLoopParams::from_constants(&RuntimeConstants::default(), true);
+    let hits = number_of_hits_to_die(&hit, &pools, &ctx, &params);
+    assert!(
+        (hits - (1000.0 / 0.75 + 500.0) / 100.0).abs() < 1e-9,
+        "{hits}"
+    );
+}
+
+#[test]
+fn ward_with_life_loss_prevention_respects_half_life_and_bypass() {
+    let pools = PoolState {
+        life: 750.0,
+        ward: 500.0,
+        ..Default::default()
+    };
+    let ctx = PoolCtx {
+        max_life: 1000.0,
+        life_loss_below_half_prevented: 50.0,
+        ..Default::default()
+    };
+    let hit = TypedDamage {
+        physical: 1500.0,
+        ..Default::default()
+    };
+    let after = reduce_pools(&pools, &hit, &ctx);
+    // 250 damage reaches half Life, 998 more reaches 1; Ward takes 252.
+    assert_eq!(after.pools.life, 1.0);
+    assert_eq!(after.pools.ward, 248.0);
+    assert_eq!(after.pools.life_below_half_loss_lost_over_time, 499.0);
+    assert_eq!(after.overkill, 0.0);
+
+    let bypass = reduce_pools(
+        &pools,
+        &hit,
+        &PoolCtx {
+            ward_bypass: 100.0,
+            ..ctx.clone()
+        },
+    );
+    assert_eq!(bypass.pools.life, 0.0);
+    assert_eq!(bypass.pools.ward, 500.0);
+    assert_eq!(bypass.overkill, 250.0);
+
+    let fractional = reduce_pools(
+        &PoolState {
+            life: 0.5,
+            ward: 100.0,
+            ..Default::default()
+        },
+        &TypedDamage {
+            physical: 10.0,
+            ..Default::default()
+        },
+        &ctx,
+    );
+    assert_eq!(fractional.pools.life, 0.5, "damage must not restore Life");
+    assert_eq!(fractional.pools.ward, 90.0);
+    assert_eq!(fractional.pools.life_below_half_loss_lost_over_time, 0.0);
+}
+
 /// Accelerated path vs. naive per-hit path equivalence (Track F test plan; acceleration
 /// is just a step-skipping optimization, so results must match for pool shapes that
 /// drain linearly). Covers three pool shapes:
