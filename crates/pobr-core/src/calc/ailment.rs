@@ -893,18 +893,29 @@ pub fn ignite_traced(
         threshold,
         trace,
     );
-    compute_damaging_ailment(
+    let chaos_ignite = player.flag(cfg, "IgniteToChaos");
+    let (output, node) = compute_damaging_ailment(
         source,
         player,
         enemy,
         cfg,
         AilmentType::Ignite,
-        DamageType::Fire,
+        if chaos_ignite {
+            DamageType::Chaos
+        } else {
+            DamageType::Fire
+        },
         chance_hit,
         chance_crit,
         chance_node,
         trace,
-    )
+    );
+    if chaos_ignite {
+        let source = super::crit::flag_source(player, cfg, "IgniteToChaos");
+        let flag_node = trace.add_source_node("IgniteToChaos", 1.0, source);
+        trace.add_edge(flag_node, node);
+    }
+    (output, node)
 }
 
 /// Shock's chance-derived chance + effect magnitude (a non-damaging ailment), writes to the TraceGraph.

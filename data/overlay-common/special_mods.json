@@ -12,6 +12,36 @@
   },
   "entries": [
     {
+      "id": "blackflame_covenant_fire_spell_conversion",
+      "pattern": "^fire spells convert (\\d+)% of fire damage to chaos damage$",
+      "mods": [{"name": "FireDamageConvertToChaos", "type": "BASE", "value": "$1", "tags": [{"type": "SkillType", "skillType": "Spell"}, {"type": "SkillType", "skillType": "Fire"}]}],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "keystone_fire_spells_become_chaos_spells; passive 42680 Blackflame Covenant",
+      "source_note": "Game passive text converts the Fire damage of Fire-tagged spells, not every skill dealing Fire damage. Uses the existing final-type conversion matrix.",
+      "examples": ["Fire Spells Convert 100% of Fire Damage to Chaos Damage"]
+    },
+    {
+      "id": "blackflame_covenant_chaos_ignite_source",
+      "pattern": "^chaos damage from fire spells contributes to flammability and ignite magnitudes$",
+      "mods": [{"name": "ChaosCanIgnite", "type": "FLAG", "value": true, "tags": [{"type": "SkillType", "skillType": "Spell"}, {"type": "SkillType", "skillType": "Fire"}]}],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "keystone_fire_spells_become_chaos_spells; passive 42680 Blackflame Covenant",
+      "source_note": "Chaos hit damage from Fire spells enters the existing Ignite source and threshold calculation. Does not turn all spells or attacks into Fire skills.",
+      "examples": ["Chaos Damage from Fire Spells Contributes to Flammability and Ignite Magnitudes"]
+    },
+    {
+      "id": "blackflame_covenant_chaos_ignite_damage",
+      "pattern": "^ignite inflicted with fire spells deals chaos damage instead of fire damage$",
+      "mods": [{"name": "IgniteToChaos", "type": "FLAG", "value": true, "tags": [{"type": "SkillType", "skillType": "Spell"}, {"type": "SkillType", "skillType": "Fire"}]}],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "keystone_fire_spells_become_chaos_spells; passive 42680 Blackflame Covenant",
+      "source_note": "Changes the resulting Ignite damage type and enemy mitigation, preserving Ignite magnitude, duration and chance. No second damage-scaling pass applies to the ailment.",
+      "examples": ["Ignite inflicted with Fire Spells deals Chaos Damage instead of Fire Damage"]
+    },
+    {
       "id": "blackened_heart_unholy_might_granted_magnitude",
       "pattern": "^(\\d+(?:\\.\\d+)?)% increased magnitude of unholy might buffs you grant per 100 maximum mana$",
       "mods": [

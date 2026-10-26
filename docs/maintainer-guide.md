@@ -1564,6 +1564,18 @@ combines with Exposure; an explicit winning resistance override still
 bypasses those base modifiers. Hits, damage over time, minions and Sacred
 Flame use the same resolved resistance.
 
+Blackflame Covenant (game passive 42680,
+`keystone_fire_spells_become_chaos_spells`) applies only when the selected skill
+has both the Spell and Fire types. Its three retained game lines convert Fire
+to Chaos, include Chaos hit damage in the existing Ignite source calculation,
+and make that Ignite deal Chaos damage. The last operation changes enemy
+resistance and damage-taken queries, not the ailment's source, magnitude,
+duration or chance; damage increases are not applied a second time and
+penetration still does not affect damage over time. The type-changing passive
+remains an ancestor of the Ignite trace. This is a static rule, with no new
+combat state or inferred trigger history. The [game text](https://poe2db.tw/us/Blackflame_Covenant)
+and retained passive agree; PoB2 is a cross-check.
+
 Skin of the Loyal's four uncapped-resistance flags add the corresponding final
 uncapped resistance as an increased Armour, Evasion, Energy Shield or Ailment
 Threshold modifier. These are ordinary increases, not multipliers. They read

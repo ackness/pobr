@@ -3,6 +3,101 @@ use pobr_core::{CalcConfig, ModDb, Modifier};
 use pobr_data::prelude::*;
 
 #[test]
+fn blackflame_covenant_converts_only_fire_spells_and_preserves_ignite_magnitude() {
+    use pobr_core::TraceGraph;
+    use pobr_core::calc::ailment::{AilmentSource, ignite_traced};
+    use pobr_core::calc::{Actor, ActorBaseStats, Env, perform};
+
+    let fire_type = SkillTypes::from_pob2_name("Fire").unwrap();
+    let lines = [
+        "Fire Spells Convert 100% of Fire Damage to Chaos Damage",
+        "Chaos Damage from Fire Spells Contributes to Flammability and Ignite Magnitudes",
+        "Ignite inflicted with Fire Spells deals Chaos Damage instead of Fire Damage",
+    ];
+    for (types, enabled) in [
+        (SkillTypes::SPELL | fire_type, true),
+        (SkillTypes::SPELL, false),
+        (SkillTypes::ATTACK | fire_type, false),
+    ] {
+        let mut env = Env::new(Actor::new(
+            80,
+            ActorBaseStats {
+                life: 1000.0,
+                action_rate: 1.0,
+                ..Default::default()
+            },
+        ));
+        env.cfg = CalcConfig::spell()
+            .with_skill_types(types)
+            .with_mode_effective(true);
+        for line in lines {
+            let parsed = crate::support::parse_mod(line).unwrap();
+            assert!(parsed.is_complete(), "{line}: {parsed:?}");
+            env.player.mod_db.add_list(parsed.mods.into_iter().map(|m| {
+                m.with_origin(
+                    ModifierSource::new(SourceId::new(SourceKind::PassiveNode, "node.42680"))
+                        .with_raw_text(line),
+                )
+            }));
+        }
+        env.player.mod_db.add_list([
+            Modifier::number("FireDamageMin", ModType::Base, 100.0),
+            Modifier::number("FireDamageMax", ModType::Base, 100.0),
+            Modifier::number("FireDamage", ModType::Inc, 900.0),
+            Modifier::number("ChaosDamage", ModType::Inc, 100.0),
+            Modifier::number("AilmentChance", ModType::Base, 100.0),
+            Modifier::number("ChaosPenetration", ModType::Base, 20.0),
+        ]);
+        env.enemy.mod_db.add_list([
+            Modifier::number("FireResist", ModType::Base, 75.0),
+            Modifier::number("ChaosResist", ModType::Base, 20.0),
+            Modifier::number("ChaosDamageTaken", ModType::Inc, 50.0),
+        ]);
+        perform(&mut env).unwrap();
+        // Conversion uses the destination increases only. Ignite magnitude
+        // comes from that hit once; only its mitigation changes to Chaos.
+        let source = if enabled { 200.0 } else { 1000.0 };
+        let mitigation = if enabled { 1.2 } else { 0.25 };
+        assert!((env.player.output.total_hit_avg - source).abs() < 1e-9);
+        assert!((env.player.output.ignite_dps - source * 0.2 * mitigation).abs() < 1e-9);
+
+        let mut trace = TraceGraph::new();
+        let (ignite, node) = ignite_traced(
+            &AilmentSource::new(source, 1.0, 0.0, false),
+            &env.player.mod_db,
+            &env.enemy.mod_db,
+            &env.cfg,
+            1000.0,
+            &mut trace,
+        );
+        assert!((ignite.eff_mult - mitigation).abs() < 1e-9);
+        assert_eq!(
+            trace
+                .source_ancestors(node)
+                .iter()
+                .any(|s| s.id == "node.42680"),
+            enabled
+        );
+        assert_eq!(
+            trace
+                .nodes()
+                .iter()
+                .any(|n| n.label == "enemy ChaosResist BASE"),
+            enabled
+        );
+        assert_eq!(
+            trace
+                .nodes()
+                .iter()
+                .any(|n| n.label == "enemy FireResist BASE"),
+            !enabled
+        );
+        // Changing an Ignite's type alone does not change source eligibility.
+        assert_eq!(env.player.mod_db.flag(&env.cfg, "ChaosCanIgnite"), enabled);
+    }
+}
+
+#[test]
 fn chain_remaining_trace_uses_the_selected_hits_snapshot_in_both_crit_legs() {
     use pobr_core::ModTag;
 
