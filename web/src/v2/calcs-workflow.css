@@ -1,4 +1,4 @@
-@layer components {
+@layer v2 {
 .v2-root .calcs-workspace { min-width: 0; }
 .v2-root .calcs-view-tabs { display: flex; flex-wrap: wrap; height: auto; width: fit-content; max-width: 100%; gap: .25rem; margin-bottom: 1rem; }
 .v2-root .calcs-view-tabs [role="tab"] { min-height: 2.5rem; padding: .5rem .85rem; white-space: normal; }

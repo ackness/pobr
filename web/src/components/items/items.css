@@ -379,14 +379,3 @@
   .limb-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
-.v2-root .items-workspace { display: grid; grid-template-columns: minmax(18rem, .9fr) minmax(0, 1.1fr); align-items: start; gap: 1.25rem; }
-.v2-root .items-equipped, .v2-root .item-detail, .v2-root .library-panel { border-radius: 1.25rem; }
-.v2-root .doll-slot { display: grid; min-height: 6rem; height: auto; border-radius: 1rem; justify-content: stretch; }
-.v2-root .paper-doll { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.v2-root .utility-row { grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr)); }
-.v2-root .item-detail-header { gap: .75rem; }
-.v2-root .item-actions { gap: .5rem; }
-.v2-root .library-row-toggle { justify-content: flex-start; white-space: normal; }
-@media (min-width: 1900px) { .v2-root .paper-doll { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 1200px) { .v2-root .items-workspace { grid-template-columns: minmax(0, 1fr); } }
-@media (max-width: 600px) { .v2-root .doll-slot { min-height: 5rem; } }

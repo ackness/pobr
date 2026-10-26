@@ -50,8 +50,10 @@ function importService(): Plugin {
 function legacyStyles(): Plugin {
   return { name: 'legacy-style-layer', enforce: 'pre', transform(source, id) {
     if (!id.endsWith('.css') || !id.includes('/src/') || id.includes('/src/v2/')) return;
+    const order = '@layer legacy, theme, base, components, utilities, v2;';
+    if (id.endsWith('/shared/controls.css')) return { code: `${order}\n@layer v2 {\n${source}\n}`, map: null };
     const imports = source.match(/@import[^;]+;/g) ?? [];
-    return { code: `${imports.join('\n')}\n@layer legacy {\n${source.replace(/@import[^;]+;/g, '')}\n}`, map: null };
+    return { code: `${order}\n${imports.join('\n')}\n@layer legacy {\n${source.replace(/@import[^;]+;/g, '')}\n}`, map: null };
   } };
 }
 
