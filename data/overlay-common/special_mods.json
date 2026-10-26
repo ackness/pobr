@@ -12,6 +12,20 @@
   },
   "entries": [
     {
+      "id": "maximum_life_mana_and_energy_shield",
+      "pattern": "^(\\d+)% increased maximum life, mana and energy shield$",
+      "mods": [
+        {"name": "MaximumLife", "type": "INC", "value": "$1"},
+        {"name": "MaximumMana", "type": "INC", "value": "$1"},
+        {"name": "EnergyShield", "type": "INC", "value": "$1"}
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "maximum_life_mana_and_energy_shield_+%; passive 3894 Eldritch Will",
+      "source_note": "The native combined pool stat uses the existing player pool names. Preserves the original value and source without introducing global Life/Mana aliases.",
+      "examples": ["3% increased maximum Life, Mana and Energy Shield"]
+    },
+    {
       "id": "mystic_harvest_elemental_life_leech",
       "pattern": "^life leech recovers based on your elemental damage as well as physical damage$",
       "mods": [{"name": "LifeLeechBasedOnElementalDamage", "type": "FLAG", "value": true}],

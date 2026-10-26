@@ -3,6 +3,56 @@ use pobr_core::{CalcConfig, ModDb, Modifier};
 use pobr_data::prelude::*;
 
 #[test]
+fn eldritch_will_combined_pools_use_player_names_and_retain_source() {
+    use pobr_core::calc::{Actor, ActorBaseStats, Env, perform};
+    let text = "3% increased maximum Life, Mana and [EnergyShield|Energy Shield]";
+    let parsed = crate::support::parse_mod(text).unwrap();
+    assert!(parsed.is_complete());
+    let mut env = Env::new(Actor::new(
+        90,
+        ActorBaseStats {
+            life: 4353.0,
+            mana: 894.0,
+            energy_shield: 1000.0,
+            ..Default::default()
+        },
+    ));
+    env.player.mod_db.add_list([
+        Modifier::number("MaximumLife", ModType::Inc, 73.0),
+        Modifier::number("MaximumMana", ModType::Inc, 16.0),
+    ]);
+    env.player.mod_db.add_list(parsed.mods.into_iter().map(|m| {
+        m.with_origin(
+            ModifierSource::new(SourceId::new(SourceKind::PassiveNode, "node.3894"))
+                .with_raw_text(text),
+        )
+    }));
+    perform(&mut env).unwrap();
+    assert_eq!(env.player.output.life, 7661.28);
+    assert_eq!(env.player.output.mana, 1063.86);
+    assert_eq!(env.player.output.energy_shield, 1030.0);
+    for name in ["MaximumLife", "MaximumMana", "EnergyShield"] {
+        let modifier = env
+            .player
+            .mod_db
+            .named(name)
+            .find(|m| {
+                m.origin
+                    .as_ref()
+                    .is_some_and(|o| o.source_id.id == "node.3894")
+            })
+            .unwrap();
+        assert_eq!(modifier.mod_type, ModType::Inc);
+        assert_eq!(
+            modifier.origin.as_ref().unwrap().raw_text.as_deref(),
+            Some(text)
+        );
+    }
+    assert!(env.player.mod_db.named("Life").next().is_none());
+    assert!(env.player.mod_db.named("Mana").next().is_none());
+}
+
+#[test]
 fn blackflame_covenant_converts_only_fire_spells_and_preserves_ignite_magnitude() {
     use pobr_core::TraceGraph;
     use pobr_core::calc::ailment::{AilmentSource, ignite_traced};
