@@ -1,3 +1,4 @@
+import { localizedName } from './chinese';
 import type { GemCatalogEntry } from '../api/types';
 import type { Lang } from './i18n';
 
@@ -6,8 +7,7 @@ export function prettySkillId(id: string): string {
 }
 
 export function gemDisplayName(entry: GemCatalogEntry, lang: Lang): string {
-  const name = lang === 'zh-CN' ? entry.name_zh_cn ?? entry.name_zh_tw ?? entry.name
-    : lang === 'zh-TW' ? entry.name_zh_tw ?? entry.name_zh_cn ?? entry.name : entry.name;
+  const name = localizedName(lang, entry.name, entry.name_zh_cn, entry.name_zh_tw);
   // Companion and Spectre names reserve a suffix for the chosen monster.
   // Generic gem labels omit it; the minion controls show the monster's name.
   return name.replace(/[:：]\s*\{0\}$/, '').trim();

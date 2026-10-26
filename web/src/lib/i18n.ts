@@ -1,4 +1,5 @@
 import { DETAIL_LABELS } from './detailLabels';
+import { CONFIG_LABEL_ZH, CONFIG_LABEL_ZH_TW } from './configLabels';
 /**
  * UI 文案三语字典（en-US / zh-TW / zh-CN）。
  *
@@ -16,6 +17,38 @@ export const LANGS: Lang[] = ['en-US', 'zh-TW', 'zh-CN'];
 type Entry = { 'en-US': string; 'zh-TW': string; 'zh-CN': string };
 
 const DICT = {
+  'common.close': { 'en-US': 'Close', 'zh-TW': '關閉', 'zh-CN': '关闭' },
+  'common.open': { 'en-US': 'Open', 'zh-TW': '開啟', 'zh-CN': '打开' },
+  'common.cancel': { 'en-US': 'Cancel', 'zh-TW': '取消', 'zh-CN': '取消' },
+  'common.save': { 'en-US': 'Save', 'zh-TW': '儲存', 'zh-CN': '保存' },
+  'common.apply': { 'en-US': 'Apply', 'zh-TW': '套用', 'zh-CN': '应用' },
+  'common.confirm': { 'en-US': 'Confirm', 'zh-TW': '確認', 'zh-CN': '确认' },
+  'common.delete': { 'en-US': 'Delete', 'zh-TW': '刪除', 'zh-CN': '删除' },
+  'common.remove': { 'en-US': 'Remove', 'zh-TW': '移除', 'zh-CN': '移除' },
+  'common.add': { 'en-US': 'Add', 'zh-TW': '新增', 'zh-CN': '添加' },
+  'common.edit': { 'en-US': 'Edit', 'zh-TW': '編輯', 'zh-CN': '编辑' },
+  'common.reset': { 'en-US': 'Reset', 'zh-TW': '重設', 'zh-CN': '重置' },
+  'common.search': { 'en-US': 'Search', 'zh-TW': '搜尋', 'zh-CN': '搜索' },
+  'common.clear': { 'en-US': 'Clear', 'zh-TW': '清除', 'zh-CN': '清除' },
+  'common.filter': { 'en-US': 'Filter', 'zh-TW': '篩選', 'zh-CN': '筛选' },
+  'common.sort': { 'en-US': 'Sort', 'zh-TW': '排序', 'zh-CN': '排序' },
+  'common.settings': { 'en-US': 'Settings', 'zh-TW': '設定', 'zh-CN': '设置' },
+  'common.previous': { 'en-US': 'Previous', 'zh-TW': '上一項', 'zh-CN': '上一项' },
+  'common.next': { 'en-US': 'Next', 'zh-TW': '下一項', 'zh-CN': '下一项' },
+  'common.expand': { 'en-US': 'Expand', 'zh-TW': '展開', 'zh-CN': '展开' },
+  'common.collapse': { 'en-US': 'Collapse', 'zh-TW': '收合', 'zh-CN': '收起' },
+  'common.loading': { 'en-US': 'Loading…', 'zh-TW': '載入中…', 'zh-CN': '加载中…' },
+  'common.help': { 'en-US': 'Help', 'zh-TW': '說明', 'zh-CN': '帮助' },
+  'common.originalText': { 'en-US': 'Original text', 'zh-TW': '原始文字', 'zh-CN': '原始文本' },
+  'common.rawDiagnostics': { 'en-US': 'Original diagnostics', 'zh-TW': '原始診斷', 'zh-CN': '原始诊断' },
+  'a11y.mainNavigation': { 'en-US': 'Main navigation', 'zh-TW': '主要導覽', 'zh-CN': '主导航' },
+  'a11y.language': { 'en-US': 'Interface language', 'zh-TW': '介面語言', 'zh-CN': '界面语言' },
+  'a11y.closeDialog': { 'en-US': 'Close dialog', 'zh-TW': '關閉對話框', 'zh-CN': '关闭对话框' },
+  'a11y.openMenu': { 'en-US': 'Open menu', 'zh-TW': '開啟選單', 'zh-CN': '打开菜单' },
+  'a11y.closeMenu': { 'en-US': 'Close menu', 'zh-TW': '關閉選單', 'zh-CN': '关闭菜单' },
+  'a11y.previousPage': { 'en-US': 'Previous page', 'zh-TW': '上一頁', 'zh-CN': '上一页' },
+  'a11y.nextPage': { 'en-US': 'Next page', 'zh-TW': '下一頁', 'zh-CN': '下一页' },
+  'a11y.skipToContent': { 'en-US': 'Skip to content', 'zh-TW': '跳至主要內容', 'zh-CN': '跳至主要内容' },
   "namedSets.skill": { "en-US": "Skill set", "zh-TW": "技能組合", "zh-CN": "技能组合" },
   "namedSets.config": {"en-US": "Config set", "zh-TW": "配置組", "zh-CN": "配置组"},
   "namedSets.create": {"en-US": "New set", "zh-TW": "新增組合", "zh-CN": "新建组合"},
@@ -997,6 +1030,26 @@ export function bindT(lang: Lang): (key: UiKey) => string {
   return (key) => t(lang, key);
 }
 
+const BOOT_MESSAGES: Record<string, Entry> = {
+  '初始化…': { 'en-US': 'Initializing…', 'zh-TW': '初始化中…', 'zh-CN': '初始化…' },
+  '加载数据清单…': { 'en-US': 'Loading data manifest…', 'zh-TW': '載入資料清單…', 'zh-CN': '加载数据清单…' },
+  '构建数据索引…': { 'en-US': 'Indexing game data…', 'zh-TW': '建立遊戲資料索引…', 'zh-CN': '构建数据索引…' },
+  '就绪': { 'en-US': 'Ready', 'zh-TW': '就緒', 'zh-CN': '就绪' },
+};
+
+/** Localize existing progress messages at the UI boundary; unknown diagnostics
+ * retain their original text. No change to the session or backend contract. */
+export function bootMessageLabel(lang: Lang, message: string): string {
+  const exact = BOOT_MESSAGES[message]?.[lang];
+  if (exact) return exact;
+  const progress = /^加载游戏数据 (\d+)\/(\d+)…$/.exec(message);
+  if (progress) {
+    const prefix = lang === 'en-US' ? 'Loading game data' : lang === 'zh-TW' ? '載入遊戲資料' : '加载游戏数据';
+    return `${prefix} ${progress[1]}/${progress[2]}…`;
+  }
+  return message;
+}
+
 // ---------------------------------------------------------------------------
 // 动态键标签（槽位 / 配置分区 / 敌人档位 / 聚合属性名）——键来自数据，
 // 不进 DICT；查不到回退原键。
@@ -1027,7 +1080,9 @@ const SLOT_LABELS: Record<string, Entry> = {
 
 /** 装备槽稳定 id → 本地化槽位名。 */
 export function slotLabel(lang: Lang, slotId: string): string {
-  return SLOT_LABELS[slotId]?.[lang] ?? slotId;
+  const utility = /^(flask|charm)([1-3])$/i.exec(slotId);
+  const canonical = utility ? `${utility[1].toLowerCase() === 'flask' ? 'Flask' : 'Charm'} ${utility[2]}` : slotId;
+  return SLOT_LABELS[canonical]?.[lang] ?? slotId;
 }
 
 /**
@@ -1137,6 +1192,12 @@ const ORIGIN_KIND_LABELS: Record<string, Entry> = {
   SkillLevel: { 'en-US': 'Skill level', 'zh-TW': '技能等級', 'zh-CN': '技能等级' },
   GemQuality: { 'en-US': 'Gem quality', 'zh-TW': '寶石品質', 'zh-CN': '宝石品质' },
   Config: { 'en-US': 'Config', 'zh-TW': '配置', 'zh-CN': '配置' },
+  ConfigOption: { 'en-US': 'Config option', 'zh-TW': '配置選項', 'zh-CN': '配置选项' },
+  EnemyConfig: { 'en-US': 'Enemy config', 'zh-TW': '敵人配置', 'zh-CN': '敌人配置' },
+  CampaignReward: { 'en-US': 'Campaign reward', 'zh-TW': '劇情獎勵', 'zh-CN': '剧情奖励' },
+  GameConstant: { 'en-US': 'Game constant', 'zh-TW': '遊戲常數', 'zh-CN': '游戏常数' },
+  Flask: { 'en-US': 'Flask / Charm', 'zh-TW': '藥劑／護符', 'zh-CN': '药剂／护符' },
+  GrantedKeystone: { 'en-US': 'Granted keystone', 'zh-TW': '授予的關鍵天賦', 'zh-CN': '授予的核心天赋' },
   Buff: { 'en-US': 'Buff', 'zh-TW': '增益', 'zh-CN': '增益' },
   Derived: { 'en-US': 'Derived', 'zh-TW': '派生', 'zh-CN': '派生' },
 };
@@ -1144,6 +1205,43 @@ const ORIGIN_KIND_LABELS: Record<string, Entry> = {
 /** 词条来源类别（SourceKind 名）→ 本地化。 */
 export function originKindLabel(lang: Lang, kind: string): string {
   return ORIGIN_KIND_LABELS[kind]?.[lang] ?? kind;
+}
+
+const MOD_TYPE_LABELS: Record<string, Entry> = {
+  BASE: { 'en-US': 'Base', 'zh-TW': '基礎', 'zh-CN': '基础' },
+  INC: { 'en-US': 'Increased / Reduced', 'zh-TW': '增加／減少', 'zh-CN': '提高／降低' },
+  MORE: { 'en-US': 'More / Less', 'zh-TW': '更多／更少', 'zh-CN': '总增／总降' },
+  FLAG: { 'en-US': 'Condition', 'zh-TW': '條件', 'zh-CN': '条件' },
+  OVERRIDE: { 'en-US': 'Override', 'zh-TW': '覆寫', 'zh-CN': '覆盖' },
+  LIST: { 'en-US': 'Effect list', 'zh-TW': '效果清單', 'zh-CN': '效果列表' },
+};
+
+/** Display only; accepts JSON enum names and uppercase trace labels. */
+export function modTypeLabel(lang: Lang, type: string): string {
+  return MOD_TYPE_LABELS[type.toUpperCase()]?.[lang] ?? type;
+}
+
+/** Localize structural source IDs, keeping unknown suffixes available verbatim. */
+export function originLabel(lang: Lang, source: string): string {
+  const [kind, id, ...suffix] = source.split('.');
+  if (kind === 'item' && id) {
+    const affixKind: Record<string, string> = { explicit: 'ItemAffix', implicit: 'ItemImplicit', enchant: 'ItemEnchant', quality: 'ItemQuality' };
+    return [slotLabel(lang, id), ...suffix.map(part => affixKind[part] ? originKindLabel(lang, affixKind[part]) : part)].join(' · ');
+  }
+  if (kind === 'config' && id) {
+    const label = lang === 'zh-CN' ? CONFIG_LABEL_ZH[id] : lang === 'zh-TW' ? CONFIG_LABEL_ZH_TW[id] : undefined;
+    return label ?? source;
+  }
+  if (kind === 'flask' && id) return [slotLabel(lang, id), ...suffix].join(' · ');
+  if ((kind === 'node' || kind === 'jewel') && id) {
+    return `${originKindLabel(lang, kind === 'node' ? 'PassiveNode' : 'Jewel')} ${[id, ...suffix].join('.')}`;
+  }
+  if (kind === 'base' && id) {
+    const alias: Record<string, string> = { MaximumLife: 'Life', MaximumMana: 'Mana' };
+    const label = statNameLabel(lang, alias[id] ?? id);
+    return `${originKindLabel(lang, 'CharacterBase')} · ${label}`;
+  }
+  return source;
 }
 
 /** 侧栏目录之外的展示量补充译名（diff 列表 / Calcs 分节里出现的长尾字段）。 */
@@ -1194,7 +1292,7 @@ const STAT_EXTRA_LABELS: Record<string, { 'zh-TW': string; 'zh-CN': string }> = 
   HeavyStunBuildupAvg: { 'zh-TW': '每次擊中重度暈眩累積', 'zh-CN': '每次击中重度晕眩积累' },
   PinBuildupAvg: { 'zh-TW': '每次擊中定身累積', 'zh-CN': '每次击中定身积累' },
   FreezeBuildupPct: { 'zh-TW': '凍結積累 %', 'zh-CN': '冻结积累 %' },
-  ElectrocuteBuildupPct: { 'zh-TW': '感電麻痺積累 %', 'zh-CN': '感电麻痹积累 %' },
+  ElectrocuteBuildupPct: { 'zh-TW': '觸電積累 %', 'zh-CN': '触电积累 %' },
   BleedStackedDPS: { 'zh-TW': '流血疊層 DPS', 'zh-CN': '流血叠层 DPS' },
   BleedActiveStacks: { 'zh-TW': '流血生效層數', 'zh-CN': '流血生效层数' },
   PoisonStackedDPS: { 'zh-TW': '中毒疊層 DPS', 'zh-CN': '中毒叠层 DPS' },
